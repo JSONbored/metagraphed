@@ -156,8 +156,10 @@ describe("loadBlockFeedColdTier", () => {
     );
     assert.match(
       queries[0]!,
-      new RegExp(`block_number < ${SEAM + 1}`),
-      "continues strictly below the last D1 row",
+      new RegExp(
+        `\\(observed_at, block_number\\) < \\(${1_700_000_000_000 + SEAM + 1}, ${SEAM + 1}\\)`,
+      ),
+      "continues via the last D1 row's own cursor token",
     );
   });
 
@@ -171,6 +173,7 @@ describe("loadBlockFeedColdTier", () => {
         offset: 0,
       },
     );
+    // No D1 rows -> an exclusive block ceiling at the seam, not a tuple seek.
     assert.match(queries[0]!, new RegExp(`block_number < ${SEAM + 1}`));
   });
 
@@ -279,7 +282,11 @@ describe("loadBlockFeedColdTier", () => {
         offset: 0,
       },
     );
-    assert.equal(full!.next_cursor, String(SEAM + 1));
+    // The Postgres tier's own token for this row: observed_at.block_number.
+    assert.equal(
+      full!.next_cursor,
+      `${1_700_000_000_000 + SEAM + 1}.${SEAM + 1}`,
+    );
 
     const { db: db2 } = d1([headRow(SEAM + 1)]);
     lakeFetch([]);
@@ -310,18 +317,29 @@ describe("loadBlockFeedColdTier", () => {
       {
         limit: 1,
         offset: 0,
-        cursor: SEAM + 9,
+        cursor: `${1_700_000_000_000 + SEAM + 9}.${SEAM + 9}`,
         blockStart: SEAM + 1,
         blockEnd: SEAM + 8,
+        from: 1_700_000_000_000,
         minExtrinsics: 2,
       } as never,
     );
-    assert.match(sql[0]!, /block_number < \?/);
+    assert.match(sql[0]!, /\(observed_at, block_number\) < \(\?, \?\)/);
     assert.match(sql[0]!, /block_number >= \?/);
     assert.match(sql[0]!, /block_number <= \?/);
+    assert.match(sql[0]!, /observed_at >= \?/);
     assert.match(sql[0]!, /extrinsic_count >= \?/);
     // Bound, never interpolated — order matters as much as presence.
-    assert.deepEqual(params[0], [SEAM, SEAM + 9, SEAM + 1, SEAM + 8, 2, 1]);
+    assert.deepEqual(params[0], [
+      SEAM,
+      1_700_000_000_000 + SEAM + 9,
+      SEAM + 9,
+      SEAM + 1,
+      SEAM + 8,
+      1_700_000_000_000,
+      2,
+      1,
+    ]);
   });
 
   test("an unparseable range filter declines rather than dropping it", async () => {
@@ -381,7 +399,7 @@ describe("loadBlockFeedColdTier", () => {
     );
   });
 
-  test("a cursor tightens the lakehouse leg when it is below the D1 floor", async () => {
+  test("with no D1 rows the caller's cursor token reaches the lakehouse leg", async () => {
     const { db } = d1([]);
     const queries = lakeFetch([lakeRow(500)]);
     await loadBlockFeedColdTier(
@@ -389,13 +407,13 @@ describe("loadBlockFeedColdTier", () => {
       {
         limit: 1,
         offset: 0,
-        cursor: 501,
+        cursor: "1700000000501.501",
       } as never,
     );
     assert.match(
       queries[0]!,
-      /block_number < 501/,
-      "the caller's cursor wins over the seam ceiling",
+      /\(observed_at, block_number\) < \(1700000000501, 501\)/,
+      "the caller's own token seeks the lake leg",
     );
   });
 
@@ -439,8 +457,11 @@ describe("loadBlockFeedColdTier", () => {
     assert.equal(queries.length, 0, "no lakehouse query");
   });
 
-  test("a malformed cursor declines rather than serving the wrong page", async () => {
-    const { db } = d1([headRow(SEAM + 1)]);
+  test("a malformed cursor token means page 1 -- data-api's exact behavior", async () => {
+    // decodeCursor(junk) -> null -> no cursor, identical to the Postgres
+    // tier. Parity means the SAME page for the SAME request on either tier,
+    // malformed tokens included, so this must not decline.
+    const { db, params } = d1([headRow(SEAM + 1)]);
     lakeFetch([]);
     const data = await loadBlockFeedColdTier(
       { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
@@ -450,7 +471,8 @@ describe("loadBlockFeedColdTier", () => {
         cursor: "junk",
       } as never,
     );
-    assert.equal(data, null);
+    assert.ok(data, "page 1, not a decline");
+    assert.deepEqual(params[0], [SEAM, 2], "no seek bound for a bad token");
   });
 });
 

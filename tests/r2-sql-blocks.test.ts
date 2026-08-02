@@ -67,7 +67,11 @@ describe("loadBlockFeedFromR2Sql", () => {
     // Formatter-owned fields prove buildBlockFeed ran, not a local reshape.
     assert.equal(data!.blocks[0]!.block_number, 10);
     assert.match(queries[0]!, /FROM chain\.blocks/);
-    assert.match(queries[0]!, /ORDER BY block_number DESC LIMIT 2/);
+    assert.match(
+      queries[0]!,
+      /ORDER BY observed_at DESC, block_number DESC LIMIT 2/,
+      "the exact composite key the cursor token encodes",
+    );
   });
 
   test("emulates OFFSET by over-fetching and slicing, since R2 SQL has none", async () => {
@@ -106,16 +110,21 @@ describe("loadBlockFeedFromR2Sql", () => {
       blockEnd: 900,
       minExtrinsics: 2,
       minEvents: 1,
-      cursor: 950,
+      from: 1_700_000_000_000,
+      to: 1_800_000_000_000,
+      cursor: "1700000000950.950",
     } as never);
     const q = queries[0]!;
     assert.match(q, new RegExp(`author = '${AUTHOR}'`));
     assert.match(q, /spec_version = 240/);
     assert.match(q, /block_number >= 100/);
     assert.match(q, /block_number <= 900/);
+    assert.match(q, /observed_at >= 1700000000000/);
+    assert.match(q, /observed_at <= 1800000000000/);
     assert.match(q, /extrinsic_count >= 2/);
     assert.match(q, /event_count >= 1/);
-    assert.match(q, /block_number < 950/);
+    // The EXACT tuple seek data-api issues for the same token.
+    assert.match(q, /\(observed_at, block_number\) < \(1700000000950, 950\)/);
   });
 
   test("DECLINES on an unsafe author instead of dropping the filter", async () => {
@@ -134,13 +143,13 @@ describe("loadBlockFeedFromR2Sql", () => {
     assert.equal(queries.length, 0);
   });
 
-  test("declines on an unsafe numeric filter or cursor", async () => {
+  test("declines on an unsafe numeric filter", async () => {
     const { impl } = sqlFetch([row(1)]);
     globalThis.fetch = impl;
     for (const bad of [
       { limit: 5, offset: 0, specVersion: "abc" },
       { limit: 5, offset: 0, blockStart: -3 },
-      { limit: 5, offset: 0, cursor: "junk" },
+      { limit: 5, offset: 0, from: "abc" },
       { limit: 0, offset: 0 },
       // an offset that is not a number at all
       { limit: 5, offset: "abc" },
@@ -151,6 +160,30 @@ describe("loadBlockFeedFromR2Sql", () => {
         JSON.stringify(bad),
       );
     }
+  });
+
+  test("a malformed cursor token means page 1 -- data-api's exact behavior", async () => {
+    const { impl, queries } = sqlFetch([row(9)]);
+    globalThis.fetch = impl;
+    const data = await loadBlockFeedFromR2Sql(mockEnv(TOKEN), {
+      limit: 5,
+      offset: 0,
+      cursor: "junk",
+    } as never);
+    assert.ok(data, "parity: the same page the Postgres tier would serve");
+    assert.ok(!/junk/.test(queries[0]!), "the bad token never reaches SQL");
+  });
+
+  test("a cursor page ignores offset, mirroring data-api", async () => {
+    const { impl, queries } = sqlFetch([row(9), row(8)]);
+    globalThis.fetch = impl;
+    const data = await loadBlockFeedFromR2Sql(mockEnv(TOKEN), {
+      limit: 2,
+      offset: 5,
+      cursor: "1700000000009.9",
+    } as never);
+    assert.match(queries[0]!, /LIMIT 2/, "no over-fetch on a cursor page");
+    assert.equal(data!.blocks.length, 2);
   });
 
   test("an omitted offset defaults to zero rather than declining", async () => {
@@ -187,14 +220,16 @@ describe("loadBlockFeedFromR2Sql", () => {
     assert.equal(data!.next_cursor ?? null, null);
   });
 
-  test("a full page carries the last block as the cursor", async () => {
+  test("a full page carries the Postgres tier's own token format", async () => {
     const { impl } = sqlFetch([row(9), row(8)]);
     globalThis.fetch = impl;
     const data = await loadBlockFeedFromR2Sql(mockEnv(TOKEN), {
       limit: 2,
       offset: 0,
     });
-    assert.equal(data!.next_cursor, "8");
+    // observed_at.block_number -- the same dot-joined token data-api emits,
+    // so paging survives a tier transition in either direction.
+    assert.equal(data!.next_cursor, "1700000000008.8");
   });
 });
 

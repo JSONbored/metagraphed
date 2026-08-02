@@ -23,6 +23,7 @@
 //     cache. See src/r2-sql.ts's header for the measurements.
 
 import { buildBlock, buildBlockFeed } from "./blocks.ts";
+import { decodeCursor, encodeCursor } from "./cursor.ts";
 import {
   r2SqlQuery,
   safeBlockNumber,
@@ -46,14 +47,26 @@ export const OFFSET_EMULATION_CAP = 1000;
 export interface BlockFeedQuery {
   limit: number;
   offset: number;
-  cursor?: number | null;
+  /** The raw ?cursor token: data-api's dot-joined (observed_at, block_number)
+   * pair, decoded with the shared codec so tokens round-trip across tiers. */
+  cursor?: unknown;
   author?: string | null;
   specVersion?: number | null;
   blockStart?: number | null;
   blockEnd?: number | null;
+  from?: unknown;
+  to?: unknown;
   minExtrinsics?: number | null;
   minEvents?: number | null;
+  /** INTERNAL continuation for the seam stitch (src/blocks-cold-tier.ts):
+   * strictly-below-this-block, applied on top of whatever public cursor the
+   * caller sent. Distinct from `cursor` because the stitch needs an exclusive
+   * block ceiling, not a public token. */
+  ceilingBlock?: number | null;
 }
+
+/** The cursor pair the blocks feed pages on, mirroring data-api. */
+const BLOCKS_CURSOR_ARITY = 2;
 
 /** An author is an SS58 address; accept only the character set that can be,
  * since R2 SQL has no bound parameters and this value reaches a string-built
@@ -118,35 +131,50 @@ export async function fetchBlockRowsFromR2Sql(
     [query.specVersion, "spec_version ="],
     [query.blockStart, "block_number >="],
     [query.blockEnd, "block_number <="],
+    [query.from, "observed_at >="],
+    [query.to, "observed_at <="],
     [query.minExtrinsics, "extrinsic_count >="],
     [query.minEvents, "event_count >="],
+    [query.ceilingBlock, "block_number <"],
   ] as [unknown, string][]) {
     if (value == null) continue;
     const n = safeBlockNumber(value);
     if (n === null) return null;
     where.push(`${clause} ${n}`);
   }
-  if (query.cursor != null) {
-    const c = safeBlockNumber(query.cursor);
-    if (c === null) return null;
-    where.push(`block_number < ${c}`);
+  const cursor = decodeCursor(query.cursor, BLOCKS_CURSOR_ARITY);
+  if (cursor) {
+    // The same 2-part tuple seek data-api issues for this token (tuple
+    // comparison verified supported on the live engine, 2026-08-02). An
+    // invalid token decodes to null and means page 1 -- data-api's exact
+    // behavior -- so both tiers serve the identical page for the identical
+    // request, malformed tokens included.
+    where.push(`(observed_at, block_number) < (${cursor[0]}, ${cursor[1]})`);
   }
 
-  const fetchCount = limit + offset;
+  // Cursor pages never carry an offset (the cursor already narrows past
+  // prior pages), mirroring data-api's `OFFSET only when no cursor`.
+  const paged = cursor ? 0 : offset;
   const sql =
     `SELECT ${BLOCK_COLUMNS} FROM chain.blocks` +
     (where.length ? ` WHERE ${where.join(" AND ")}` : "") +
-    ` ORDER BY block_number DESC LIMIT ${fetchCount}`;
+    // observed_at-leading, EXACTLY data-api's order: the cursor token encodes
+    // this composite key, so a different order would mis-seek its tokens.
+    ` ORDER BY observed_at DESC, block_number DESC LIMIT ${limit + paged}`;
 
   const rows = await r2SqlQuery(env, sql);
   if (rows === null) return null;
 
-  const page = offset > 0 ? rows.slice(offset) : rows;
+  const page = paged > 0 ? rows.slice(paged) : rows;
   const last = page.length === limit ? page[page.length - 1] : null;
-  const nextCursor =
-    last && typeof last.block_number === "number"
-      ? String(last.block_number)
-      : null;
+  // The SAME token the Postgres tier emits for this row, so a client can page
+  // seamlessly across a tier transition in either direction.
+  const nextCursor = last
+    ? encodeCursor([
+        safeBlockNumber(last.observed_at),
+        safeBlockNumber(last.block_number),
+      ])
+    : null;
   return { rows: page, limit, offset, nextCursor };
 }
 

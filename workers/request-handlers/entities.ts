@@ -4856,6 +4856,10 @@ export async function handleBlocks(request: Request, env: Env, url: URL) {
       specVersion: url.searchParams.get("spec_version"),
       blockStart: url.searchParams.get("block_start"),
       blockEnd: url.searchParams.get("block_end"),
+      // from/to are part of this route's contract too -- a filter the tier
+      // never receives is a filter it silently ignores.
+      from: url.searchParams.get("from"),
+      to: url.searchParams.get("to"),
       minExtrinsics: url.searchParams.get("min_extrinsics"),
       minEvents: url.searchParams.get("min_events"),
     } as never)) ??

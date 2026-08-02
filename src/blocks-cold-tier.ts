@@ -34,6 +34,7 @@ import {
   type BlockFeedQuery,
 } from "./r2-sql-blocks.ts";
 import { safeBlockNumber, safeHexLiteral } from "./r2-sql.ts";
+import { decodeCursor, encodeCursor } from "./cursor.ts";
 
 /** Highest block the lakehouse holds. Overridable so the seam can move when a
  * backfill extends verified history, without a deploy of new code. */
@@ -90,7 +91,7 @@ export function d1CanServe(query: BlockFeedQuery): boolean {
 async function d1HeadRows(
   env: Env | null | undefined,
   query: BlockFeedQuery,
-  cursor: number | null,
+  cursor: number[] | null,
   seam: number,
   want: number,
 ): Promise<Record<string, unknown>[] | null> {
@@ -99,16 +100,17 @@ async function d1HeadRows(
 
   const where: string[] = ["block_number > ?"];
   const params: unknown[] = [seam];
-  // `cursor` arrives already validated by the caller, which needs it for the
-  // seam arithmetic anyway; re-parsing it here would be a second source of
-  // truth for the same value.
-  if (cursor !== null) {
-    where.push("block_number < ?");
-    params.push(cursor);
+  if (cursor) {
+    // The same 2-part (observed_at, block_number) seek the other tiers issue
+    // for this token; SQLite row values keep it a single bound comparison.
+    where.push("(observed_at, block_number) < (?, ?)");
+    params.push(cursor[0], cursor[1]);
   }
   for (const [value, clause] of [
     [query.blockStart, "block_number >= ?"],
     [query.blockEnd, "block_number <= ?"],
+    [query.from, "observed_at >= ?"],
+    [query.to, "observed_at <= ?"],
     [query.minExtrinsics, "extrinsic_count >= ?"],
   ] as [unknown, string][]) {
     if (value == null) continue;
@@ -124,7 +126,7 @@ async function d1HeadRows(
     const res = await db
       .prepare(
         `SELECT ${D1_COLUMNS} FROM blocks_head WHERE ${where.join(" AND ")}
-         ORDER BY block_number DESC LIMIT ?`,
+         ORDER BY observed_at DESC, block_number DESC LIMIT ?`,
       )
       .bind(...params, want)
       .all?.();
@@ -149,12 +151,11 @@ export async function loadBlockFeedColdTier(
   const offset = safeBlockNumber(query.offset ?? 0);
   if (limit === null || offset === null || limit <= 0) return null;
 
-  // Validate the cursor ONCE, here, and decline on a bad one. Leaving it to
-  // the legs lets an unparseable cursor fall back to "no cursor" further down,
-  // which silently serves the FIRST page to a caller who asked for a later
-  // one -- a wrong answer that looks entirely healthy.
-  const cursor = query.cursor == null ? null : safeBlockNumber(query.cursor);
-  if (query.cursor != null && cursor === null) return null;
+  // Decode the public token ONCE, with the shared codec and data-api's arity.
+  // An invalid token decodes to null and means page 1 -- the Postgres tier's
+  // exact behavior -- so both tiers serve the identical page for the
+  // identical request, malformed tokens included.
+  const cursor = decodeCursor(query.cursor, 2);
 
   // An inverted range matches nothing, at any height, in either source. Answer
   // it here rather than issuing two queries to prove an impossible result --
@@ -168,10 +169,12 @@ export async function loadBlockFeedColdTier(
   }
 
   const seam = blocksSeam(env);
-  // Page through the seam correctly: the rows the caller skipped may live in
-  // either source, so both legs are asked for limit+offset and the slice
-  // happens once, after they are concatenated.
-  const want = limit + offset;
+  // Cursor pages never carry an offset (the cursor already narrows past prior
+  // pages), mirroring data-api. Both legs are asked for the full window and
+  // the slice happens once, after they are concatenated, because the rows an
+  // offset skips may live in either source.
+  const paged = cursor ? 0 : offset;
+  const want = limit + paged;
 
   const head = d1CanServe(query)
     ? ((await d1HeadRows(env, query, cursor, seam, want)) ?? [])
@@ -180,32 +183,40 @@ export async function loadBlockFeedColdTier(
   let rows = head;
   if (rows.length < want) {
     // Continue strictly BELOW whatever the head leg returned so a block cannot
-    // appear twice; with no head rows this is the seam itself.
-    const lowest = rows.length
-      ? safeBlockNumber(rows[rows.length - 1]!.block_number)
+    // appear twice. With head rows, the continuation is the last row's OWN
+    // cursor token -- the exact mechanism a client would use, already tighter
+    // than any cursor the caller sent (the D1 leg consumed it). With none,
+    // an exclusive block ceiling at the seam bounds the lake leg instead.
+    const lastHead = rows.length ? rows[rows.length - 1]! : null;
+    const continuation = lastHead
+      ? encodeCursor([
+          safeBlockNumber(lastHead.observed_at),
+          safeBlockNumber(lastHead.block_number),
+        ])
       : null;
-    const ceiling = lowest !== null ? lowest : seam + 1;
-    // `cursor` is already validated above, so this min() can only tighten the
-    // window, never quietly widen it back to the top of the chain.
-    const lakeCursor = cursor !== null ? Math.min(cursor, ceiling) : ceiling;
     // RAW rows, deliberately: they are formatted once below, together with the
     // D1 rows, so both sources go through the formatter exactly the same way.
     const lake = await fetchBlockRowsFromR2Sql(env, {
       ...query,
       limit: want - rows.length,
       offset: 0,
-      cursor: lakeCursor,
+      cursor: continuation ?? query.cursor,
+      ceilingBlock: lastHead ? null : seam + 1,
     });
     if (lake === null && rows.length === 0) return null;
     if (lake) rows = rows.concat(lake.rows);
   }
 
-  const page = offset > 0 ? rows.slice(offset) : rows;
+  const page = paged > 0 ? rows.slice(paged) : rows;
   const last = page.length === limit ? page[page.length - 1] : null;
-  const nextCursor =
-    last != null
-      ? (safeBlockNumber(last.block_number)?.toString() ?? null)
-      : null;
+  // The SAME token every other tier emits for this row, so paging survives a
+  // tier transition in either direction.
+  const nextCursor = last
+    ? encodeCursor([
+        safeBlockNumber(last.observed_at),
+        safeBlockNumber(last.block_number),
+      ])
+    : null;
   return buildBlockFeed(page, { limit, offset, nextCursor });
 }
 
