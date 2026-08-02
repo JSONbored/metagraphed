@@ -1243,6 +1243,32 @@ const CHAIN_EVENTS_CSV_COLUMNS = [
 // version) since this tier has no publish-time snapshot to key off of.
 const CHAIN_EVENTS_PROXY_CACHE_TTL_SECONDS = 60;
 
+// A service binding can REJECT, not merely return a bad status. An unreachable
+// DATA_API -- Hyperdrive down, the upstream Worker over its duration limit, the
+// binding absent at runtime -- makes `fetch` throw. Every proxy below used to
+// let that rejection propagate into handleRequest, which has no top-level
+// try/catch (and api.entry.ts stopped wrapping when Sentry was removed), so the
+// caller got an opaque 500 instead of a diagnosis.
+//
+// This matters most in exactly the situation it was least tested for: when the
+// Postgres tier goes away for good, EVERY one of these paths throws rather than
+// degrades. A structured 503 is the difference between a site that is honestly
+// degraded and one that looks broken.
+//
+// Returns a discriminated result rather than a Response so each call site keeps
+// its own error code -- the codes are part of the published contract and must
+// not be flattened into a shared one.
+async function fetchDataApiOrUnreachable(
+  env: Env,
+  request: Request,
+): Promise<{ upstream: Response } | { unreachable: true }> {
+  try {
+    return { upstream: await env.DATA_API.fetch(request) };
+  } catch {
+    return { unreachable: true };
+  }
+}
+
 async function chainEventsProxyCacheKey(env: Env, url: URL) {
   return new Request(
     `https://edge-cache.metagraph.sh/chain-events-proxy/${encodeURIComponent(
@@ -1281,11 +1307,20 @@ async function handleChainEventsProxy(
     // bodiless 200 that HEAD yields on every other GET route (and that this route's
     // own CORS preflight advertises). envelopeResponse(request, …) below still
     // strips the body for HEAD, so the client gets the correct empty 200.
-    const upstream = await env.DATA_API.fetch(
+    const fetched = await fetchDataApiOrUnreachable(
+      env,
       request.method === "HEAD"
         ? new Request(request.url, { method: "GET", headers: request.headers })
         : request,
     );
+    if ("unreachable" in fetched) {
+      return errorResponse(
+        "data_tier_unavailable",
+        "The all-events data tier is unreachable.",
+        503,
+      );
+    }
+    const upstream = fetched.upstream;
     try {
       body = await upstream.json();
     } catch {
@@ -1398,7 +1433,15 @@ async function handleAlertTriggersProxy(request: Request, env: Env) {
       503,
     );
   }
-  const upstream = await env.DATA_API.fetch(request);
+  const fetched = await fetchDataApiOrUnreachable(env, request);
+  if ("unreachable" in fetched) {
+    return errorResponse(
+      "alert_triggers_unavailable",
+      "The alert triggers tier is unreachable.",
+      503,
+    );
+  }
+  const upstream = fetched.upstream;
   let body: Row;
   try {
     body = await upstream.json();
@@ -1462,7 +1505,15 @@ async function handleWalletAuthProxy(request: Request, env: Env) {
       503,
     );
   }
-  const upstream = await env.DATA_API.fetch(request);
+  const fetched = await fetchDataApiOrUnreachable(env, request);
+  if ("unreachable" in fetched) {
+    return errorResponse(
+      "wallet_auth_unavailable",
+      "The wallet-auth tier is unreachable.",
+      503,
+    );
+  }
+  const upstream = fetched.upstream;
   let body: Row;
   try {
     body = await upstream.json();
@@ -1528,7 +1579,15 @@ async function handleWatchAuthProxy(request: Request, env: Env) {
       503,
     );
   }
-  const upstream = await env.DATA_API.fetch(request);
+  const fetched = await fetchDataApiOrUnreachable(env, request);
+  if ("unreachable" in fetched) {
+    return errorResponse(
+      "watch_auth_unavailable",
+      "The watch-alert-issuance tier is unreachable.",
+      503,
+    );
+  }
+  const upstream = fetched.upstream;
   let body: Row;
   try {
     body = await upstream.json();
@@ -1592,7 +1651,15 @@ async function handleAccountKeysProxy(request: Request, env: Env) {
       503,
     );
   }
-  const upstream = await env.DATA_API.fetch(request);
+  const fetched = await fetchDataApiOrUnreachable(env, request);
+  if ("unreachable" in fetched) {
+    return errorResponse(
+      "account_keys_unavailable",
+      "The account-keys tier is unreachable.",
+      503,
+    );
+  }
+  const upstream = fetched.upstream;
   let body: Row;
   try {
     body = await upstream.json();
@@ -1772,7 +1839,11 @@ async function proxyToDataApi(
   }
   const rateLimited = await internalSyncRateLimited(request, env);
   if (rateLimited) return rateLimited;
-  const upstream = await env.DATA_API.fetch(request);
+  const fetched = await fetchDataApiOrUnreachable(env, request);
+  if ("unreachable" in fetched) {
+    return errorResponse(code, notBoundMessage, 503);
+  }
+  const upstream = fetched.upstream;
   let body;
   try {
     body = await upstream.json();
