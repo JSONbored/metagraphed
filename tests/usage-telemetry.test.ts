@@ -1505,6 +1505,54 @@ describe("recordMcpToolCallEvent — #8963 properties", () => {
     assert.equal(props.$mcp_duration_ms, 37);
   });
 
+  // #8967 / ADR 0027. Authentication on /mcp buys throughput, not reach, and
+  // the whole point of this dimension is that clause is revisitable against
+  // data: without it, "what share of MCP traffic is authenticated" -- the
+  // question any decision to extend the tier system starts from -- has no
+  // answer at all.
+  test("stamps the auth tier for a keyed caller", async () => {
+    const calls: Row[] = [];
+    await recordMcpToolCallEvent(
+      CONFIGURED_8963,
+      {
+        toolName: "get_subnet",
+        isError: false,
+        durationMs: 5,
+        authTier: "paid",
+      } as McpToolCallEvent,
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(calls[0].body.properties.$mcp_auth_tier, "paid");
+  });
+
+  // "anonymous" is emitted as a VALUE, not as an absence. An unlabelled event
+  // would otherwise be ambiguous between "anonymous caller" and "emitted
+  // before this dimension shipped", which are different facts.
+  test("stamps anonymous as an explicit tier, not an omission", async () => {
+    const calls: Row[] = [];
+    await recordMcpToolCallEvent(
+      CONFIGURED_8963,
+      {
+        toolName: "get_subnet",
+        isError: false,
+        durationMs: 5,
+        authTier: "anonymous",
+      } as McpToolCallEvent,
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(calls[0].body.properties.$mcp_auth_tier, "anonymous");
+  });
+
+  test("omits the auth tier when none was resolved", async () => {
+    const calls: Row[] = [];
+    await recordMcpToolCallEvent(
+      CONFIGURED_8963,
+      { toolName: "get_subnet", isError: false, durationMs: 5 },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(calls[0].body.properties.$mcp_auth_tier, undefined);
+  });
+
   test("emits no error classification on a successful call", async () => {
     const calls: Row[] = [];
     await recordMcpToolCallEvent(

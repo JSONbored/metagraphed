@@ -2257,31 +2257,61 @@ await fs.writeFile(
 );
 
 // auth.md: agents probing for an auth scheme should get an unambiguous answer.
-// metagraphed's API is wholly public and read-only, so the honest answer is
-// "no auth" — stated explicitly rather than implied by silence. Mirrors the
-// server card's `authentication: "none"`. Static ASSETS at /auth.md.
+//
+// #8967 / ADR 0027: that answer used to be "no auth", and it was wrong on six
+// separate points -- it claimed there was nothing to register for, no protected
+// resources, that OAuth was "not applicable", that requests with and without an
+// Authorization header are "treated identically", and that no key raises the
+// rate limits. All five of those are false, and have been since the tiered
+// ceilings (#8608) and the OAuth provider (#7151) shipped.
+//
+// A discovery document that is confidently wrong is worse than one that is
+// vague: an integrator reading this would conclude there is no way to raise
+// their rate limit, and an OAuth-aware MCP client author would conclude there
+// is nothing to discover. Both are the opposite of the truth.
 const authMarkdown = `# Authentication
 
-The metagraphed API at \`${PRIMARY_DOMAIN}\` is fully public and read-only.
-**No authentication, API key, token, or registration is required** for any
-endpoint.
+The metagraphed API at \`${PRIMARY_DOMAIN}\` is **public by default and
+read-only**. No authentication is _required_ for any endpoint — every tool and
+route is callable anonymously.
 
-- Auth scheme: none
-- Registration: not required (there is nothing to register for)
-- Protected resources: none
-- OAuth / OIDC: not applicable (no protected resources to authorize)
+Authentication is **optional and additive**: it raises rate limits. It does not
+currently unlock additional endpoints, tools, or data.
 
-If a tool expects an \`Authorization\` header, omit it — requests with or
-without one are treated identically.
+- Auth scheme: none required; \`Authorization: Bearer\` accepted
+- Registration: not required, but self-serve keys are available
+- Protected resources: \`POST /mcp\` is an OAuth 2.1 protected resource that
+  permits anonymous access
+- OAuth / OIDC: supported for MCP clients (see below)
+
+## Optional credentials
+
+**API key.** A self-serve \`mg_...\` key sent as \`Authorization: Bearer mg_...\`
+raises the rate limits below. Keys are minted by wallet-signature login.
+
+**OAuth 2.1.** MCP clients that speak the spec can discover and complete
+authorization with no manual configuration:
+
+- Protected-resource metadata (RFC 9728):
+  ${llmsApiBase}/.well-known/oauth-protected-resource/mcp
+- Authorization-server metadata:
+  ${llmsApiBase}/.well-known/oauth-authorization-server
+
+A Bearer token that cannot be validated gets \`401\` with a
+\`WWW-Authenticate\` challenge pointing at the metadata above. **An anonymous
+request is not challenged** — it is served.
 
 ## Rate limits
 
-Anonymous abuse-control limits apply per client IP (no key raises them):
+Anonymous limits apply per client IP; a valid key raises them per account.
+Each entry below is anonymous \u2192 keyed.
 
-- REST + artifact reads: unmetered (cached at the edge)
-- RPC proxy (\`/rpc/v1/*\`): 100 requests / 60s
-- MCP endpoint (\`POST /mcp\`): 100 requests / 60s
-- AI routes (\`/api/v1/ask\`, \`/api/v1/search/semantic\`): 20 requests / 60s
+- REST + artifact reads: unmetered either way (cached at the edge)
+- RPC proxy (\`/rpc/v1/*\`): 100 / 60s \u2192 higher, per tier
+- MCP endpoint (\`POST /mcp\`): 100 / 60s \u2192 500 / 60s, higher on paid tiers
+- AI routes (\`/api/v1/ask\`, \`/api/v1/search/semantic\`): 20 / 60s \u2192 higher, per tier
+
+Keyed accounts are also subject to a cost-weighted daily quota.
 
 ## Discovery
 

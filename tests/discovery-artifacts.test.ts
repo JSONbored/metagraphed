@@ -95,10 +95,32 @@ describe("Discovery artifacts", () => {
     );
   });
 
-  test("auth.md states the API is unauthenticated", async () => {
+  // #8967 / ADR 0027. This used to assert auth.md said "No authentication",
+  // which it did -- and which was wrong on six points once the tiered ceilings
+  // (#8608) and the OAuth provider (#7151) shipped. A discovery document that
+  // is confidently wrong is worse than a vague one: an integrator would have
+  // concluded there is no way to raise their rate limit, and an OAuth-aware MCP
+  // client author that there is nothing to discover.
+  //
+  // So the assertions now pin the two facts an agent actually acts on -- auth
+  // is NOT required, and it IS available -- rather than a slogan.
+  test("auth.md states auth is optional, not absent", async () => {
     const authMd = await fs.readFile(path.join(publicDir, "auth.md"), "utf8");
-    assert.match(authMd, /public and read-only/i);
-    assert.match(authMd, /No authentication/i);
+    assert.match(authMd, /public by default and\s+read-only/i);
+    // Anonymous access still works: the thing that must never silently change.
+    // Emphasis-agnostic: prettier normalizes *required* to _required_, and the
+    // claim is what matters, not which marker markdown ends up with.
+    assert.match(authMd, /No authentication is [*_]required[*_]/i);
+    assert.match(authMd, /callable anonymously/i);
+    // ...and the optional half is discoverable rather than denied.
+    assert.match(authMd, /optional and additive/i);
+    assert.match(authMd, /oauth-protected-resource/i);
+    assert.match(authMd, /Bearer mg_/);
+    // The old text's specific falsehoods must not come back.
+    assert.doesNotMatch(authMd, /Auth scheme: none$/im);
+    assert.doesNotMatch(authMd, /Protected resources: none/i);
+    assert.doesNotMatch(authMd, /not applicable \(no protected resources/i);
+    assert.doesNotMatch(authMd, /treated identically/i);
   });
 
   test("security.txt follows RFC 9116 (contact, expires, canonical)", async () => {

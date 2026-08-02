@@ -367,8 +367,17 @@ function assignMcpAttribution(
     clientName?: string;
     clientVersion?: string;
     clientNameSource?: McpClientNameSource;
+    authTier?: string;
   } & McpServerIdentity,
 ): void {
+  // #8967: "anonymous", or the tier of the verified mg_ key. This is the one
+  // dimension that makes the MCP access model measurable -- authentication
+  // currently buys throughput only, and without this there is no way to ask
+  // what share of traffic is authenticated, which is the question any decision
+  // to extend the tier system has to start from.
+  const authTier = sanitizeLabel(event.authTier);
+  if (authTier !== undefined) properties["$mcp_auth_tier"] = authTier;
+
   const clientName = sanitizeLabel(event.clientName);
   if (clientName !== undefined) {
     properties["$mcp_client_name"] = clientName;
@@ -502,6 +511,13 @@ export interface McpToolCallEvent extends McpServerIdentity {
   clientName?: string;
   clientVersion?: string;
   clientNameSource?: McpClientNameSource;
+  /**
+   * #8967 / ADR 0027: which side of the MCP access model this call fell on --
+   * "anonymous", or the tier of a verified mg_ key ("free" / "community" /
+   * "paid"). Resolved by the rate-limit gate, which had to verify the bearer
+   * token anyway, so labelling costs no extra verification.
+   */
+  authTier?: string;
   /** Mcp-Session-Id header value; omitted from the payload when absent. */
   sessionId?: string | null;
   /**
