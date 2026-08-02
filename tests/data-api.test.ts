@@ -3109,7 +3109,7 @@ test("GET /api/v1/validators/:hotkey/history shapes the validator's cross-subnet
     {
       snapshot_date: "2026-07-01",
       subnet_count: "2",
-      total_stake_tao: "10",
+      total_stake_alpha: "10",
       total_emission_tao: "1",
     },
   ];
@@ -3140,7 +3140,7 @@ test("GET /api/v1/subnets/:netuid/history shapes the daily neuron/validator/stak
       snapshot_date: "2026-07-01",
       neuron_count: "5",
       validator_count: "2",
-      total_stake_tao: "10",
+      total_stake_alpha: "10",
       total_emission_tao: "1",
     },
   ];
@@ -3291,7 +3291,7 @@ test("GET /api/v1/subnets/movers shapes every subnet ranked by its stake/emissio
         snapshot_date: "2026-06-01",
         neuron_count: "5",
         validator_count: "2",
-        total_stake_tao: "10",
+        total_stake_alpha: "10",
         total_emission_tao: "1",
       },
       {
@@ -3299,7 +3299,7 @@ test("GET /api/v1/subnets/movers shapes every subnet ranked by its stake/emissio
         snapshot_date: "2026-07-01",
         neuron_count: "6",
         validator_count: "3",
-        total_stake_tao: "20",
+        total_stake_alpha: "20",
         total_emission_tao: "2",
       },
     ],
@@ -3317,7 +3317,7 @@ test("GET /api/v1/validators/:hotkey/history falls back to the default window on
     {
       snapshot_date: "2026-07-01",
       subnet_count: "1",
-      total_stake_tao: "5",
+      total_stake_alpha: "5",
       total_emission_tao: "0.5",
     },
   ];
@@ -3333,7 +3333,7 @@ test("GET /api/v1/validators/:hotkey/history?window=all skips the snapshot_date 
     {
       snapshot_date: "2026-01-01",
       subnet_count: "1",
-      total_stake_tao: "5",
+      total_stake_alpha: "5",
       total_emission_tao: "0.5",
     },
   ];
@@ -3359,7 +3359,7 @@ test("GET /api/v1/subnets/:netuid/history?window=all skips the snapshot_date cut
       snapshot_date: "2026-01-01",
       neuron_count: "5",
       validator_count: "2",
-      total_stake_tao: "10",
+      total_stake_alpha: "10",
       total_emission_tao: "1",
     },
   ];
@@ -3473,7 +3473,7 @@ test("GET /api/v1/subnets/movers falls back on an unrecognized window and respec
         snapshot_date: "2026-06-01",
         neuron_count: "5",
         validator_count: "2",
-        total_stake_tao: "10",
+        total_stake_alpha: "10",
         total_emission_tao: "1",
       },
       {
@@ -3481,7 +3481,7 @@ test("GET /api/v1/subnets/movers falls back on an unrecognized window and respec
         snapshot_date: "2026-07-01",
         neuron_count: "6",
         validator_count: "3",
-        total_stake_tao: "20",
+        total_stake_alpha: "20",
         total_emission_tao: "2",
       },
     ],
@@ -9112,7 +9112,7 @@ test("GET /api/v1/subnets/:netuid/trajectory: formats daily snapshot rows", asyn
       endpoint_count: 5,
       validator_count: 8,
       miner_count: 60,
-      total_stake_tao: 90,
+      total_stake_alpha: 90,
       alpha_price_tao: 0.01,
       emission_share: 0.02,
       tao_in_pool_tao: 26707.57,
@@ -9138,7 +9138,7 @@ test("GET /api/v1/economics/trends: aggregates daily rows network-wide", async (
   mockRows.current = [
     {
       snapshot_date: "2026-06-01",
-      total_stake_tao: 300,
+      total_stake_alpha: 300,
       alpha_price_tao: 0.02,
       validator_count: 8,
       miner_count: 50,
@@ -9172,7 +9172,7 @@ function snapshotRow(overrides = {}) {
     candidate_count: 1,
     validator_count: 8,
     miner_count: 60,
-    total_stake_tao: 90,
+    total_stake_alpha: 90,
     alpha_price_tao: 0.01,
     emission_share: 0.02,
     tao_in_pool_tao: 26707.57,

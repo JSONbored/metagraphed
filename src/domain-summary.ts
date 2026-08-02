@@ -93,7 +93,7 @@ export function buildDomainSummary(
     const netuid = subnet.netuid as number;
     netuids.push(netuid);
     const econ = economicsByNetuid.get(netuid);
-    const stake = Number(econ?.total_stake_tao);
+    const stake = Number(econ?.total_stake_alpha);
     if (Number.isFinite(stake)) stakeRao += toRaoBig(stake);
     const emissionShare = Number(econ?.emission_share);
     if (Number.isFinite(emissionShare) && emissionShare > 0) {

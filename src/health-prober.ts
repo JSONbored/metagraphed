@@ -1009,7 +1009,7 @@ export async function syncSubnetSnapshotToPostgres(
         candidate_count: profile.candidate_count ?? null,
         validator_count: econ.validator_count ?? null,
         miner_count: econ.miner_count ?? null,
-        total_stake_tao: econ.total_stake_tao ?? null,
+        total_stake_alpha: econ.total_stake_alpha ?? null,
         alpha_price_tao: econ.alpha_price_tao ?? null,
         emission_share: econ.emission_share ?? null,
         tao_in_pool_tao: econ.tao_in_pool_tao ?? null,

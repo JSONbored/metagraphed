@@ -12,7 +12,7 @@ const blob = {
       validator_count: 50,
       miner_count: 200,
       registration_allowed: true,
-      max_stake_tao: 1234.5,
+      max_stake_alpha: 1234.5,
       alpha_price_tao: 0.042,
     },
   ],

@@ -71,7 +71,7 @@ describe("buildEconomicsArtifact", () => {
           alpha_price_tao: 0.25,
           validator_count: 3,
           miner_count: 10,
-          total_stake_tao: 100,
+          total_stake_alpha: 100,
           registration_allowed: true,
         },
       ],
@@ -81,7 +81,7 @@ describe("buildEconomicsArtifact", () => {
           alpha_price_tao: 0.75,
           validator_count: 5,
           miner_count: 20,
-          total_stake_tao: 300,
+          total_stake_alpha: 300,
           registration_allowed: false,
         },
       ],
@@ -96,7 +96,7 @@ describe("buildEconomicsArtifact", () => {
     assert.equal(out.summary.with_economics_count, 2);
     assert.equal(out.summary.total_validators, 8);
     assert.equal(out.summary.total_miners, 30);
-    assert.equal(out.summary.total_stake_tao, "400.000000000");
+    assert.equal(out.summary.total_stake_alpha, "400.000000000");
     assert.equal(out.summary.registration_open_count, 1);
     assert.equal(out.network, "finney");
   });
@@ -127,7 +127,7 @@ describe("buildEconomicsArtifact", () => {
     assert.equal(out.subnets.length, 0);
     assert.equal(out.summary.with_economics_count, 0);
     assert.equal(out.summary.subnet_count, 1);
-    assert.equal(out.summary.total_stake_tao, "0.000000000");
+    assert.equal(out.summary.total_stake_alpha, "0.000000000");
   });
 
   test("orders equal emission shares by netuid and ignores non-numeric stake", () => {
@@ -140,9 +140,12 @@ describe("buildEconomicsArtifact", () => {
         // equal price → equal share → tiebreak on netuid; null stake → 0 in sum
         [
           5,
-          { alpha_price_tao: 0.5, total_stake_tao: null, validator_count: 1 },
+          { alpha_price_tao: 0.5, total_stake_alpha: null, validator_count: 1 },
         ],
-        [2, { alpha_price_tao: 0.5, total_stake_tao: 40, validator_count: 1 }],
+        [
+          2,
+          { alpha_price_tao: 0.5, total_stake_alpha: 40, validator_count: 1 },
+        ],
       ]),
       ...base,
     });
@@ -151,7 +154,7 @@ describe("buildEconomicsArtifact", () => {
       [2, 5],
     );
     assert.equal(out.subnets[0].emission_share, 0.5);
-    assert.equal(out.summary.total_stake_tao, "40.000000000");
+    assert.equal(out.summary.total_stake_alpha, "40.000000000");
   });
 
   test("emission_share is null for every subnet when no positive alpha price exists", () => {

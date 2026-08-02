@@ -134,7 +134,7 @@ describe("composeCompareData", () => {
           alpha_price_tao: "0.04",
           validator_count: "8",
           miner_count: "64",
-          total_stake_tao: "1200",
+          total_stake_alpha: "1200",
           miner_readiness: "72",
         },
       ],
@@ -164,7 +164,7 @@ describe("composeCompareData", () => {
       alpha_price_tao: 0.04,
       validator_count: 8,
       miner_count: 64,
-      total_stake_tao: 1200,
+      total_stake_alpha: 1200,
       miner_readiness: 72,
     });
 
@@ -296,7 +296,7 @@ describe("composeCompareData", () => {
           alpha_price_tao: 0.04,
           validator_count: 8,
           miner_count: 64,
-          total_stake_tao: 1200,
+          total_stake_alpha: 1200,
           miner_readiness: 72,
         },
       ],
