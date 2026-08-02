@@ -131,6 +131,11 @@ import {
 import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.ts";
 import { loadSubnetBurn } from "../../src/subnet-burn.ts";
 import { loadSubnetLease } from "../../src/subnet-lease.ts";
+import {
+  isCrowdloanId,
+  loadCrowdloan,
+  loadCrowdloans,
+} from "../../src/crowdloans.ts";
 import { computeStakeQuote } from "../../src/stake-quote.ts";
 import { buildRuntimeVersionHistory } from "../../src/runtime-versions.ts";
 import { loadUpgradeRadar } from "../../src/upgrade-radar.ts";
@@ -4805,6 +4810,88 @@ export async function handleSubnetLease(
   }
 
   const data = await loadSubnetLease(env, netuid);
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// Shared rate-limit guard for the two live-RPC crowdloan routes (#8696). Same
+// live-RPC + KV-cache + rate-limit shape as handleSubnetLease above; factored
+// out only because two routes need the identical check with a different key
+// scope. Returns a 429 Response to return, or null to proceed.
+async function crowdloanRateLimitResponse(
+  request: Request,
+  env: Env,
+  scope: string,
+): Promise<Response | null> {
+  if (!env.RPC_RATE_LIMITER?.limit) return null;
+  const { success } = await env.RPC_RATE_LIMITER.limit({
+    key: `${scope}:${resolveClientIp(request)}`,
+  });
+  if (success) return null;
+  return errorResponse(
+    "crowdloan_rate_limited",
+    "Too many live crowdloan-state requests from this client; slow down.",
+    429,
+    {},
+    {
+      "retry-after": String(BALANCE_RATE_LIMIT.windowSeconds),
+      "x-ratelimit-limit": String(BALANCE_RATE_LIMIT.limit),
+      "x-ratelimit-policy": `${BALANCE_RATE_LIMIT.limit};w=${BALANCE_RATE_LIMIT.windowSeconds}`,
+      "x-ratelimit-remaining": "0",
+    },
+  );
+}
+
+// GET /api/v1/crowdloans (#8696): every crowdloan the chain has ever opened,
+// with its terms and how much it raised, read from the Crowdloan pallet's own
+// NextCrowdloanId + Crowdloans storage at request time. Not paginated: the
+// collection is bounded by NextCrowdloanId (15 on finney at time of writing)
+// and the whole set is one batched storage read, so a page cursor would cost
+// more than it saves. See src/crowdloans.ts's header for why this is a
+// storage read rather than an extrinsics feed.
+export async function handleCrowdloans(request: Request, env: Env, url: URL) {
+  const validationError = validateEntityQuery(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+
+  const limited = await crowdloanRateLimitResponse(request, env, "crowdloans");
+  if (limited) return limited;
+
+  const data = await loadCrowdloans(env);
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/crowdloans/{id} (#8696): one crowdloan's live state. `exists` is
+// null (not false) on RPC failure, distinct from a confirmed-absent id
+// (exists:false) — an id can be absent legitimately, because `dissolve`
+// removes the record while NextCrowdloanId keeps counting.
+export async function handleCrowdloan(
+  request: Request,
+  env: Env,
+  crowdloanId: number,
+  url: URL,
+) {
+  const validationError = validateEntityQuery(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+
+  if (!isCrowdloanId(crowdloanId)) {
+    return errorResponse(
+      "invalid_crowdloan_id",
+      "crowdloan_id must be an integer in the u32 range 0..4294967295.",
+      400,
+    );
+  }
+
+  const limited = await crowdloanRateLimitResponse(request, env, "crowdloan");
+  if (limited) return limited;
+
+  const data = await loadCrowdloan(env, crowdloanId);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },

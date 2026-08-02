@@ -1115,6 +1115,28 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/crowdloans",
+    (body) => {
+      assert.ok(Array.isArray(body.data.crowdloans));
+      assert.equal(body.data.crowdloan_count, body.data.crowdloans.length);
+      // A dissolved record is omitted while NextCrowdloanId keeps counting,
+      // so the count is bounded by it rather than equal to it.
+      assert.ok(
+        body.data.next_crowdloan_id === null ||
+          body.data.crowdloan_count <= body.data.next_crowdloan_id,
+      );
+    },
+  ],
+  [
+    "/api/v1/crowdloans/0",
+    (body) => {
+      assert.equal(body.data.crowdloan_id, 0);
+      assert.ok(
+        body.data.exists === null || typeof body.data.exists === "boolean",
+      );
+    },
+  ],
+  [
     "/api/v1/subnets/7/lease/history",
     (body) => {
       assert.equal(body.data.netuid, 7);

@@ -2645,6 +2645,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/crowdloans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List every crowdloan the chain has ever opened (#8696), with its terms and how much it raised, queried from the Crowdloan pallet's own NextCrowdloanId/Crowdloans storage at request time with 120s KV cache. Not paginated: the collection is bounded by NextCrowdloanId and fetched in one batched storage read. A dissolved crowdloan is omitted, so crowdloan_count can be lower than next_crowdloan_id. Every crowdloan on finney today is finalized, so this is a record of completed raises rather than a feed of open ones — read `finalized` and `end` rather than assuming liveness. */
+        get: operations["crowdloans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/crowdloans/{crowdloan_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch one crowdloan's live state (#8696) from the Crowdloan pallet's Crowdloans storage map at request time with 120s KV cache. exists is null (not false) on RPC failure, distinct from a confirmed-absent id (exists:false) — an id can be legitimately absent because dissolve removes the record while NextCrowdloanId keeps counting. */
+        get: operations["crowdloanDetail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/curation": {
         parameters: {
             query?: never;
@@ -7145,6 +7179,76 @@ export interface components {
         };
         /** @enum {string} */
         CoverageLevel: "native-only" | "manifested" | "probed";
+        CrowdloanDetailArtifact: {
+            crowdloan: ({
+                cap_tao: number;
+                contributors_count: number;
+                creator: string;
+                crowdloan_id: number;
+                deposit_tao: number;
+                end: number;
+                finalized: boolean;
+                funds_account: string;
+                has_dispatch_call: boolean;
+                min_contribution_tao: number;
+                percent_raised: number | null;
+                raised_tao: number;
+                target_address: string | null;
+            } & {
+                [key: string]: unknown;
+            }) | null;
+            crowdloan_id: number;
+            exists: boolean | null;
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
+            queried_at?: string | null;
+            schema_version: number;
+        } & {
+            [key: string]: unknown;
+        };
+        CrowdloansArtifact: {
+            crowdloan_count: number;
+            crowdloans: ({
+                cap_tao: number;
+                contributors_count: number;
+                creator: string;
+                crowdloan_id: number;
+                deposit_tao: number;
+                end: number;
+                finalized: boolean;
+                funds_account: string;
+                has_dispatch_call: boolean;
+                min_contribution_tao: number;
+                percent_raised: number | null;
+                raised_tao: number;
+                target_address: string | null;
+            } & {
+                [key: string]: unknown;
+            })[];
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
+            next_crowdloan_id: number | null;
+            queried_at?: string | null;
+            schema_version: number;
+        } & {
+            [key: string]: unknown;
+        };
         CurationArtifact: {
             contract_version?: string;
             curation: {
@@ -31645,6 +31749,256 @@ export interface operations {
                      *     7,Allways
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    crowdloans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "crowdloan_count": 1,
+                     *         "crowdloans": [
+                     *           {
+                     *             "cap_tao": 0.5,
+                     *             "contributors_count": 1,
+                     *             "creator": "example",
+                     *             "crowdloan_id": 1,
+                     *             "deposit_tao": 0.5,
+                     *             "end": 1,
+                     *             "finalized": false,
+                     *             "funds_account": "example",
+                     *             "has_dispatch_call": false,
+                     *             "min_contribution_tao": 0.5,
+                     *             "percent_raised": 0.5,
+                     *             "raised_tao": 0.5,
+                     *             "target_address": "example"
+                     *           }
+                     *         ],
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
+                     *         "next_crowdloan_id": 1,
+                     *         "queried_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["CrowdloansArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    crowdloanDetail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                crowdloan_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "crowdloan": {
+                     *           "cap_tao": 0.5,
+                     *           "contributors_count": 1,
+                     *           "creator": "example",
+                     *           "crowdloan_id": 1,
+                     *           "deposit_tao": 0.5,
+                     *           "end": 1,
+                     *           "finalized": false,
+                     *           "funds_account": "example",
+                     *           "has_dispatch_call": false,
+                     *           "min_contribution_tao": 0.5,
+                     *           "percent_raised": 0.5,
+                     *           "raised_tao": 0.5,
+                     *           "target_address": "example"
+                     *         },
+                     *         "crowdloan_id": 1,
+                     *         "exists": false,
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
+                     *         "queried_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["CrowdloanDetailArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

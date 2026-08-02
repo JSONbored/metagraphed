@@ -146,6 +146,10 @@ import {
   SubnetLeaseArtifactSchema,
   SubnetLeaseHistoryArtifactSchema,
 } from "./routes/subnet-lease.ts";
+import {
+  CrowdloansArtifactSchema,
+  CrowdloanDetailArtifactSchema,
+} from "./routes/crowdloans.ts";
 import { SubnetOwnershipHistoryArtifactSchema } from "./routes/subnet-ownership-history.ts";
 import { SubnetConvictionArtifactSchema } from "./routes/subnet-conviction.ts";
 import {
@@ -456,6 +460,8 @@ register(SubnetMoversArtifactSchema, "SubnetMoversArtifact");
 register(SubnetTrajectoryArtifactSchema, "SubnetTrajectoryArtifact");
 register(SubnetLeaseArtifactSchema, "SubnetLeaseArtifact");
 register(SubnetLeaseHistoryArtifactSchema, "SubnetLeaseHistoryArtifact");
+register(CrowdloansArtifactSchema, "CrowdloansArtifact");
+register(CrowdloanDetailArtifactSchema, "CrowdloanDetailArtifact");
 register(
   SubnetOwnershipHistoryArtifactSchema,
   "SubnetOwnershipHistoryArtifact",
@@ -795,6 +801,8 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "SubnetTrajectoryArtifact",
   "SubnetLeaseArtifact",
   "SubnetLeaseHistoryArtifact",
+  "CrowdloansArtifact",
+  "CrowdloanDetailArtifact",
   "SubnetOwnershipHistoryArtifact",
   "SubnetConvictionArtifact",
   "SubnetMetagraphArtifact",

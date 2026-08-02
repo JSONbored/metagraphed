@@ -68,6 +68,8 @@ function concretePath(template: string): string {
       // to the catch-all "x" below and matched nothing, for the same reason
       // {ref} and {hash} did.
       .replace(/\{uid\}/g, "0")
+      // A crowdloan id is a u32 (#8696) — numeric, same reason as {uid}.
+      .replace("{crowdloan_id}", "0")
       .replace("{date}", "2026-08-01")
       .replace(/\{[^}]+\}/g, "x")
   );

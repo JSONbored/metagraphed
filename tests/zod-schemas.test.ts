@@ -58,6 +58,10 @@ import {
   SubnetLeaseResponseSchema,
   SubnetLeaseHistoryArtifactSchema,
 } from "../schemas-src/routes/subnet-lease.ts";
+import {
+  CrowdloansResponseSchema,
+  CrowdloanDetailResponseSchema,
+} from "../schemas-src/routes/crowdloans.ts";
 import { SubnetOwnershipHistoryArtifactSchema } from "../schemas-src/routes/subnet-ownership-history.ts";
 import { SubnetConvictionArtifactSchema } from "../schemas-src/routes/subnet-conviction.ts";
 import { buildSubnetLeaseHistory } from "../src/subnet-lease-history.ts";
@@ -517,6 +521,8 @@ const batch2Cases: [string, string, z.ZodType][] = [
     SubnetTrajectoryResponseSchema,
   ],
   ["subnet-lease", "/api/v1/subnets/64/lease", SubnetLeaseResponseSchema],
+  ["crowdloans", "/api/v1/crowdloans", CrowdloansResponseSchema],
+  ["crowdloan-detail", "/api/v1/crowdloans/0", CrowdloanDetailResponseSchema],
 ];
 
 describe("pilot route response schemas parse real handler output", () => {

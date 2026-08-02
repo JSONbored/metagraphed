@@ -1423,6 +1423,28 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Live Crowdloan-pallet state (#8696) — every crowdloan the chain has ever opened, with its terms (creator, deposit, cap, min contribution, end block, funds account, target address) and how much it raised, read from the pallet's own NextCrowdloanId/Crowdloans storage at request time with 120s KV cache. Served live, no static file. A crowdloan whose record was dissolved is omitted rather than returned as a null hole, so crowdloan_count can be lower than next_crowdloan_id.",
+      "id": "crowdloans",
+      "path": "/metagraph/crowdloans.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/CrowdloansArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "One crowdloan's live state (#8696), read from the Crowdloan pallet's Crowdloans storage map at request time with 120s KV cache. exists is null (not false) on RPC failure, distinct from a confirmed-absent id (exists:false) — an id can be legitimately absent because dissolve removes the record while NextCrowdloanId keeps counting.",
+      "id": "crowdloan-detail",
+      "path": "/metagraph/crowdloans/{crowdloan_id}.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/CrowdloanDetailArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing. Served live from the Postgres-backed all-events tier (ADR 0013), no static file. A subnet that has never been leased returns an empty lease_events array, not an error.",
       "id": "subnet-lease-history",
       "path": "/metagraph/subnets/{netuid}/lease/history.json",
@@ -2523,7 +2545,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 113,
+    "mainnet_only_route_count": 115,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
