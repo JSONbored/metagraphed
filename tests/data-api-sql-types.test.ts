@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import { beforeAll, afterAll, describe, test } from "vitest";
 import { REALIZED_RETURN_BASELINE_TOLERANCE_DAYS } from "../workers/data-api.ts";
+import { NEURON_INSERT_COLUMNS } from "../src/metagraph-neurons.ts";
 
 const ANALYTICS_DAY_MS = 24 * 60 * 60 * 1000;
 const isoDate = (msAgo: number) =>
@@ -50,6 +51,29 @@ describe("deploy/postgres/schema.sql", () => {
     const tables = rows.map((row) => row.table_name);
     assert.ok(tables.includes("neuron_daily"));
     assert.ok(tables.length > 40, `only ${tables.length} tables created`);
+  });
+
+  // The `take` drift, generalized (see the schema's own drift-fix comments):
+  // handleNeuronsSync writes NEURON_INSERT_COLUMNS into BOTH neurons and
+  // neuron_daily, so every column in that list must exist in both tables —
+  // neuron_daily additionally carries the snapshot key and updated_at. A
+  // column added to the sync path but not to schema.sql fails here instead of
+  // at apply time against a fresh deploy.
+  test("neurons and neuron_daily carry every column handleNeuronsSync writes", async () => {
+    for (const [table, extra] of [
+      ["neurons", []],
+      ["neuron_daily", ["snapshot_date", "updated_at"]],
+    ] as const) {
+      const { rows } = await db.query<{ column_name: string }>(
+        `SELECT column_name FROM information_schema.columns
+          WHERE table_name = $1`,
+        [table],
+      );
+      const columns = rows.map((row) => row.column_name);
+      for (const column of [...NEURON_INSERT_COLUMNS, ...extra]) {
+        assert.ok(columns.includes(column), `${table} is missing ${column}`);
+      }
+    }
   });
 
   test("neuron_daily.snapshot_date is a native DATE", async () => {
