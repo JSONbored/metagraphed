@@ -10,6 +10,31 @@
   // deploy` would create a NEW worker and never update the live `metagraphed-ui`
   // worker that holds the `metagraph.sh/*` route.
   "name": "metagraphed-ui",
+  // #9004: the whole site was ALSO being served, in parallel, from the
+  // account's leftover workers.dev subdomain --
+  // https://metagraphed-ui.zeronode.workers.dev returned 200 for every route.
+  // Cloudflare enables workers.dev by default (the sibling wrangler.data.jsonc
+  // and wrangler.registry.jsonc both turn it off with the same note); this
+  // config never set it, so it stayed on.
+  //
+  // That was not cosmetic. Crawlers walking the block pages on that hostname
+  // made the SSR Worker fan out to /api/v1/blocks/{n} on every render, and that
+  // amplification was 82% of `block-detail` -- the single largest route in the
+  // project at 758,995 requests/day, each one a Worker invocation, a Hyperdrive
+  // round-trip to the self-hosted Postgres AND a PostHog event, on an account
+  // ~30x over its free-tier event allowance.
+  //
+  // It was also a duplicate-content liability: the entire site indexable on two
+  // hostnames, only one of which is canonical.
+  //
+  // PR previews are unaffected -- .github/actions/deploy-ui-preview writes its
+  // own trusted wrangler.preview.json with workers_dev:true and uses
+  // `wrangler versions upload`, so it never reads this file.
+  //
+  // preview_urls is deliberately NOT set here: this change is about the
+  // production workers.dev ROUTE, and disabling version preview URLs is a
+  // separate concern with its own tradeoffs.
+  "workers_dev": false,
   // Run the SSR Worker in the Cloudflare PoP nearest the data it talks to
   // (api.metagraph.sh), not nearest the visitor — lowers SSR fetch latency.
   "placement": { "mode": "smart" },
