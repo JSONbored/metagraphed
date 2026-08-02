@@ -1615,7 +1615,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the latest-only personal chain identity for one account (epic #4301/5.4), computed live from the account_identity D1 tier. has_identity is false for the common case of an account that never called set_identity. */
+        /** Fetch the latest-only personal chain identity for one account (epic #4301/5.4), computed live from the Postgres-backed account_identity tier. has_identity is false for the common case of an account that never called set_identity. */
         get: operations["accountIdentity"];
         put?: never;
         post?: never;
@@ -2278,7 +2278,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets: the most-recent SubnetIdentitiesV3 changes, each carrying the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route, capped to ?limit (default 50, max 200) and reporting the distinct subnet_count the feed spans, computed live from the subnet_identity_history D1 tier; schema-stable empty feed when cold. */
+        /** Fetch the network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets: the most-recent SubnetIdentitiesV3 changes, each carrying the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route, capped to ?limit (default 50, max 200) and reporting the distinct subnet_count the feed spans, computed live from the Postgres-backed subnet_identity_history tier; schema-stable empty feed when cold. */
         get: operations["chainIdentityHistory"];
         put?: never;
         post?: never;
@@ -4288,7 +4288,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one subnet's consensus, economic, and governance hyperparameters (kappa, weight/activity settings, burn cost, liquid alpha, commit-reveal, yuma version, and more), refreshed daily and computed live from the subnet_hyperparams D1 tier. */
+        /** Fetch one subnet's consensus, economic, and governance hyperparameters (kappa, weight/activity settings, burn cost, liquid alpha, commit-reveal, yuma version, and more), refreshed daily and computed live from the Postgres-backed subnet_hyperparams tier. */
         get: operations["subnetHyperparameters"];
         put?: never;
         post?: never;

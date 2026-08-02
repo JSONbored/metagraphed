@@ -939,7 +939,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "One subnet's consensus, economic, and governance hyperparameters (kappa, weight/activity settings, burn cost, liquid alpha, commit-reveal, yuma version, and more), refreshed daily and served live from the subnet_hyperparams D1 tier at /api/v1/subnets/{netuid}/hyperparameters (no static file).",
+      "description": "One subnet's consensus, economic, and governance hyperparameters (kappa, weight/activity settings, burn cost, liquid alpha, commit-reveal, yuma version, and more), refreshed daily and served live from the Postgres-backed subnet_hyperparams tier at /api/v1/subnets/{netuid}/hyperparameters (no static file).",
       "id": "subnet-hyperparameters",
       "path": "/metagraph/subnets/{netuid}/hyperparameters.json",
       "retirement": null,
@@ -950,7 +950,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Append-only hyperparameter-change timeline for one subnet (subnet_hyperparams field snapshots on change), served live from the subnet_hyperparams_history D1 tier at /api/v1/subnets/{netuid}/hyperparameters/history; pass ?format=csv to download the page as CSV (no static file). Forward-only.",
+      "description": "Append-only hyperparameter-change timeline for one subnet (subnet_hyperparams field snapshots on change), served live from the Postgres-backed subnet_hyperparams_history tier at /api/v1/subnets/{netuid}/hyperparameters/history; pass ?format=csv to download the page as CSV (no static file). Forward-only.",
       "id": "subnet-hyperparameters-history",
       "path": "/metagraph/subnets/{netuid}/hyperparameters/history.json",
       "retirement": null,
@@ -1038,7 +1038,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Append-only on-chain identity timeline for one subnet (SubnetIdentitiesV3 field snapshots on change), served live from the subnet_identity_history D1 tier at /api/v1/subnets/{netuid}/identity-history (no static file).",
+      "description": "Append-only on-chain identity timeline for one subnet (SubnetIdentitiesV3 field snapshots on change), served live from the Postgres-backed subnet_identity_history tier at /api/v1/subnets/{netuid}/identity-history (no static file).",
       "id": "subnet-identity-history",
       "path": "/metagraph/subnets/{netuid}/identity-history.json",
       "retirement": null,
@@ -1258,7 +1258,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Personal chain identity for one account (epic #4301/5.4), the latest-only account_identity D1 row served live at /api/v1/accounts/{ss58}/identity (no static file). has_identity is false for the common case of an account that never called set_identity.",
+      "description": "Personal chain identity for one account (epic #4301/5.4), the latest-only Postgres-backed account_identity row served live at /api/v1/accounts/{ss58}/identity (no static file). has_identity is false for the common case of an account that never called set_identity.",
       "id": "account-identity",
       "path": "/metagraph/accounts/{ss58}/identity.json",
       "retirement": null,
@@ -1269,7 +1269,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2), served live from the account_identity_history D1 tier at /api/v1/accounts/{ss58}/identity-history (no static file).",
+      "description": "Append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2), served live from the Postgres-backed account_identity_history tier at /api/v1/accounts/{ss58}/identity-history (no static file).",
       "id": "account-identity-history",
       "path": "/metagraph/accounts/{ss58}/identity-history.json",
       "retirement": null,
@@ -1808,7 +1808,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets: the most-recent SubnetIdentitiesV3 changes, each carrying the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route, capped to a ?limit (default 50, max 200) and reporting the distinct subnet_count the feed spans, computed live from the subnet_identity_history D1 tier at /api/v1/chain/identity-history (no static file).",
+      "description": "Network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets: the most-recent SubnetIdentitiesV3 changes, each carrying the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route, capped to a ?limit (default 50, max 200) and reporting the distinct subnet_count the feed spans, computed live from the Postgres-backed subnet_identity_history tier at /api/v1/chain/identity-history (no static file).",
       "id": "chain-identity-history",
       "path": "/metagraph/chain/identity-history.json",
       "retirement": null,
