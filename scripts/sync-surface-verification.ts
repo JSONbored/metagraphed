@@ -7,18 +7,36 @@
 // the evidence comes from the health prober rather than verify-candidates.ts,
 // and for the promotion bar itself.
 //
+// #9096: the SCHEDULED writer of this snapshot is now the Worker cron
+// (src/surface-verification-sync.ts), which computes the same evidence
+// straight from D1 and writes the `generated/surface-health.json` R2 store —
+// replacing the retired sync-surface-verification.yml bot-PR lane. This script
+// stays as the way to refresh the committed SEED by hand, and shares the
+// record extractor + artifact assembler with the cron
+// (src/surface-verification.ts) so the two writers cannot diverge on semantics
+// that decide surface trust levels.
+//
 // COMMITTED, not fetched at build time. tests/artifacts-build-determinism.test.ts asserts the
 // artifact build is byte-identical across rebuilds; a network call inside the
 // build would end that, and would also make every build depend on the API being
 // up. Same posture as registry/verification/promotions.json.
+// (loadSurfaceProbeEvidence's store read is credential-gated for exactly this
+// reason — see its header in scripts/lib.ts.)
 //
 // Usage:
 //   node scripts/sync-surface-verification.ts --write     (default: dry-run)
 //   node scripts/sync-surface-verification.ts --dry-run
 import path from "node:path";
-import { loadSubnets, repoRoot, stableStringify, writeJson } from "./lib.ts";
 import {
-  verifyFromProbeEvidence,
+  loadSubnets,
+  repoRoot,
+  stableStringify,
+  SURFACE_HEALTH_PATH,
+  writeJson,
+} from "./lib.ts";
+import {
+  buildSurfaceHealthArtifact,
+  collectSurfaceProbeRecords,
   type SurfaceProbeRecord,
 } from "../src/surface-verification.ts";
 
@@ -74,79 +92,30 @@ for (const netuid of netuids) {
   const data = await fetchUptime(netuid);
   if (!data) continue;
   reachedSubnets += 1;
-  for (const surface of (data.surfaces as Row[]) || []) {
-    const surfaceId = surface?.surface_id;
-    if (typeof surfaceId !== "string" || !surfaceId) continue;
-    const reliability = (surface.reliability as Row | undefined) || {};
-    records[surfaceId] = {
-      day_count: Number(surface.day_count ?? 0),
-      samples: Number(surface.samples ?? reliability.sample_count ?? 0),
-      uptime_ratio: Number(
-        surface.uptime_ratio ?? reliability.uptime_ratio ?? 0,
-      ),
-      // The uptime rollup carries no last_ok of its own, so the window's own
-      // observation instant is what the evidence attests to.
-      last_ok:
-        typeof surface.last_ok === "string"
-          ? surface.last_ok
-          : typeof data.observed_at === "string"
-            ? data.observed_at
-            : null,
-      classification:
-        typeof surface.classification === "string"
-          ? surface.classification
-          : null,
-    };
-  }
+  collectSurfaceProbeRecords(data, records);
   if (REQUEST_SPACING_MS > 0) {
     await new Promise((resolve) => setTimeout(resolve, REQUEST_SPACING_MS));
   }
 }
 
-const surfaceIds = Object.keys(records).sort();
-let verified = 0;
-const reasons: Record<string, number> = {};
-for (const id of surfaceIds) {
-  const verdict = verifyFromProbeEvidence(records[id]);
-  if (verdict.verified) verified += 1;
-  else {
-    // Bucket by the failing CONDITION, not the formatted reason, so the summary
-    // stays a fixed small set instead of one bucket per distinct number.
-    const bucket = verdict.reason.replace(/[\d.]+/g, "N");
-    reasons[bucket] = (reasons[bucket] || 0) + 1;
-  }
-}
-
-const artifact = {
-  schema_version: 1,
-  generated_at: new Date().toISOString(),
-  notes:
-    "Per-surface probe evidence from the live cron prober, snapshotted for " +
-    "deterministic Git review. Consumed by scripts/lib.ts flattenSurfaces to " +
-    "derive machine verification; see src/surface-verification.ts for the bar.",
-  source: "live-cron-prober",
-  subnets_reached: reachedSubnets,
-  subnets_total: netuids.length,
-  surface_count: surfaceIds.length,
-  verified_count: verified,
-  unverified_reasons: reasons,
-  surfaces: Object.fromEntries(surfaceIds.map((id) => [id, records[id]])),
-};
+const artifact = buildSurfaceHealthArtifact({
+  records,
+  subnetsReached: reachedSubnets,
+  subnetsTotal: netuids.length,
+  generatedAt: new Date().toISOString(),
+});
 
 if (!dryRun) {
-  await writeJson(
-    path.join(repoRoot, "registry/verification/surface-health.json"),
-    artifact,
-  );
+  await writeJson(path.join(repoRoot, SURFACE_HEALTH_PATH), artifact);
 }
 
 console.log(
   stableStringify({
     mode: dryRun ? "dry-run" : "write",
-    subnets_reached: reachedSubnets,
-    subnets_total: netuids.length,
-    surface_count: surfaceIds.length,
-    verified_count: verified,
-    unverified_reasons: reasons,
+    subnets_reached: artifact.subnets_reached,
+    subnets_total: artifact.subnets_total,
+    surface_count: artifact.surface_count,
+    verified_count: artifact.verified_count,
+    unverified_reasons: artifact.unverified_reasons,
   }),
 );

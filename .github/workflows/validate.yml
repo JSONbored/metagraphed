@@ -458,9 +458,19 @@ jobs:
           # probe-enabled, public-safe operational-kind surface (subnet-api / sse /
           # data-artifact / wss / rpc) is added or changed, which a one-file community
           # surface PR does NOT regenerate (there is no authority/review gate on that
-          # list). It stays committed so the prober's ASSETS read succeeds on a cold
-          # start, but the served copy is rebuilt fresh on every deploy — so a
-          # momentarily-stale git copy is a tolerated cache, not a runtime fault.
+          # list).
+          #
+          # #9096 changed WHO KEEPS THOSE TWO FRESH, not whether they are gated here.
+          # Both were previously refreshed by hourly/daily bot-PR workflows
+          # (sync-operational-surfaces, sync-schema-snapshots), both now retired: the
+          # live copies are written directly by Worker crons into R2 stores
+          # (generated/operational-surfaces.json, generated/schemas-index.json) that
+          # every reader prefers. The committed files stayed behind as FALLBACK SEEDS —
+          # operational-surfaces.json so the prober's ASSETS read succeeds on a cold
+          # start, schemas/index.json so a credential-less build still has a drift
+          # baseline — so a momentarily-stale git copy is a tolerated seed, not a
+          # runtime fault, and gating a contributor's build on either would red-line
+          # PRs over data no contributor produced.
           excludes=(
             ':(exclude)public/metagraph/r2-manifest.json'
             ':(exclude)public/metagraph/schemas/index.json'

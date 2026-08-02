@@ -650,6 +650,19 @@
       // 06:20 UTC cadence it ran on) -- see GITHUB_SIGNALS_SYNC_CRON in
       // workers/config.ts and src/github-signals-sync.ts's header.
       "20 6 * * *",
+      // #9096, the remaining three machine-data lanes, each replacing a
+      // retired commit-a-file workflow on the cadence that workflow ran:
+      //   47      = hourly operational-surfaces derivation (was
+      //             sync-operational-surfaces.yml, `0 * * * *`)
+      //   40 4    = daily surface-verification evidence sweep (was
+      //             sync-surface-verification.yml, same `40 4 * * *`)
+      //   5 5     = daily schema-index baseline promotion (was
+      //             sync-schema-snapshots.yml, `0 5 * * *`)
+      // See the three *_SYNC_CRON constants in workers/config.ts for the
+      // minute-offset rationale and each module's header for the lane itself.
+      "47 * * * *",
+      "40 4 * * *",
+      "5 5 * * *",
     ],
   },
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite

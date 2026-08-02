@@ -80,3 +80,63 @@ export async function r2ObjectExists(
     return { exists: false, determinate: false };
   }
 }
+
+/**
+ * Read one Worker-cron-written `generated/*` store object as JSON (#9096).
+ *
+ * The Worker crons that replaced this repo's machine-data bot-PR lanes write
+ * their output to keys under `generated/`, outside the publish pipeline's
+ * `latest/` / `runs/` / `by-hash/` trees. Node-side readers (the artifact
+ * build, the registry validators) reach them through Cloudflare's R2 REST API
+ * with the same credential pair the publish scripts already use. One shared
+ * implementation so every store reader agrees on the bucket, the URL shape,
+ * and — critically — the failure posture.
+ *
+ * Returns null whenever the store cannot be read AS FRESH TRUTH: credentials
+ * absent (local dev, and the Validate CI lane, which is what keeps
+ * tests/artifacts-build-determinism.test.ts network-free), a fetch failure, or
+ * a body that is not a JSON object. Null means the caller falls back to its
+ * committed seed, never a hard error — the same tolerant posture every
+ * optional registry enrichment here follows.
+ */
+export async function readGeneratedStoreJson(
+  key: string,
+  timeoutMs = 30_000,
+): Promise<Record<string, unknown> | null> {
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+  if (!accountId || !apiToken) {
+    return null;
+  }
+  try {
+    const { readFile } = await import("node:fs/promises");
+    let bucketName = "metagraphed-artifacts";
+    try {
+      const manifest = JSON.parse(
+        await readFile(
+          new URL("../public/metagraph/r2-manifest.json", import.meta.url),
+          "utf8",
+        ),
+      ) as { bucket_name?: unknown };
+      if (typeof manifest.bucket_name === "string" && manifest.bucket_name) {
+        bucketName = manifest.bucket_name;
+      }
+    } catch {
+      // No committed manifest (a fresh checkout of a sparse tree): the default
+      // bucket name is the same one the manifest carries in practice.
+    }
+    const response = await fetch(r2ObjectUrl(accountId, bucketName, key), {
+      headers: { authorization: `Bearer ${apiToken}` },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const doc = (await response.json()) as unknown;
+    return doc && typeof doc === "object" && !Array.isArray(doc)
+      ? (doc as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}

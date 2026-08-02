@@ -19,8 +19,14 @@ name: Sync contract artifacts
 # moment the drift can first exist -- with a daily schedule as a backstop for
 # anything that lands while a run is skipped or fails.
 #
-# Same auto-PR shape as sync-operational-surfaces.yml: regenerate, open a PR
-# only when something actually differs, stay silent otherwise.
+# Same auto-PR shape as sync-client-version.yml / sync-mcp-version.yml:
+# regenerate, open a PR only when something actually differs, stay silent
+# otherwise. (The machine-DATA lanes that used to share this shape --
+# sync-operational-surfaces, sync-schema-snapshots, sync-surface-verification,
+# sync-github-signals -- are retired: their files are now written directly by
+# Worker crons into R2 stores, see #9096. This lane stays a PR because its
+# output is COMMITTED CONTRACT -- openapi.json, generated types -- which must
+# be reviewed and versioned in git, not swapped underneath a deploy.)
 on:
   push:
     branches:

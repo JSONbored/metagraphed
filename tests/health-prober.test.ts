@@ -16,6 +16,7 @@ import {
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
 } from "../src/health-prober.ts";
+import { OPERATIONAL_SURFACES_R2_KEY } from "../src/operational-surfaces-sync.ts";
 import { handleScheduled } from "../workers/api.ts";
 import { mockEnv, type AnyFn, type Row } from "./row-type.ts";
 
@@ -1113,6 +1114,62 @@ describe("workerWebSocketConnector", () => {
 
 describe("loadOperationalSurfaces", () => {
   const surfacesBody = { surfaces: [{ surface_id: "x", netuid: 1 }] };
+
+  // #9096: the hourly cron store is now the FIRST tier, ahead of the committed
+  // ASSETS seed. These three cover the tier order itself -- preferring the
+  // store, and never letting a cold/empty/broken store cost the prober its
+  // cold-start list.
+  test("prefers the hourly cron's store over the committed ASSETS seed", async () => {
+    const storeBody = { surfaces: [{ surface_id: "from-store", netuid: 2 }] };
+    let requestedKey: string | null = null;
+    const env = mockEnv({
+      METAGRAPH_ARCHIVE: {
+        get: async (key: string) => {
+          requestedKey = key;
+          return { text: async () => JSON.stringify(storeBody) };
+        },
+      },
+      ASSETS: {
+        fetch: async () => ({ ok: true, json: async () => surfacesBody }),
+      },
+    });
+    assert.deepEqual(await loadOperationalSurfaces(env), storeBody.surfaces);
+    assert.equal(requestedKey, OPERATIONAL_SURFACES_R2_KEY);
+  });
+
+  test("a cold or empty store falls through to the committed seed rather than probing nothing", async () => {
+    for (const storeDoc of [null, { surfaces: [] }, { nope: 1 }]) {
+      const env = mockEnv({
+        METAGRAPH_ARCHIVE: {
+          get: async (key: string) =>
+            key === OPERATIONAL_SURFACES_R2_KEY
+              ? storeDoc && { text: async () => JSON.stringify(storeDoc) }
+              : null,
+        },
+        ASSETS: {
+          fetch: async () => ({ ok: true, json: async () => surfacesBody }),
+        },
+      });
+      assert.deepEqual(
+        await loadOperationalSurfaces(env),
+        surfacesBody.surfaces,
+      );
+    }
+  });
+
+  test("a throwing store read falls through to the committed seed", async () => {
+    const env = mockEnv({
+      METAGRAPH_ARCHIVE: {
+        get: async () => {
+          throw new Error("store read failed");
+        },
+      },
+      ASSETS: {
+        fetch: async () => ({ ok: true, json: async () => surfacesBody }),
+      },
+    });
+    assert.deepEqual(await loadOperationalSurfaces(env), surfacesBody.surfaces);
+  });
 
   test("returns surfaces from the ASSETS binding on success", async () => {
     let requested: string | null = null;

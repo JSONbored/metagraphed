@@ -15,6 +15,8 @@ import {
   stableStringify,
   writeJson,
 } from "./lib.ts";
+import { readGeneratedStoreJson } from "./r2-rest.ts";
+import { SCHEMA_INDEX_R2_KEY } from "../src/schema-snapshots-sync.ts";
 
 // Untrusted OpenAPI/Swagger JSON fetched from arbitrary subnet-declared URLs --
 // every deep field below (info.title, components.schemas, ...) is read for
@@ -464,19 +466,41 @@ function isOpenApiLike(value: unknown): boolean {
   );
 }
 
+/**
+ * The DRIFT BASELINE this capture compares against — the store first (#9096),
+ * the committed file as the fallback seed.
+ *
+ * The store (`generated/schemas-index.json`) is written daily by the Worker
+ * cron in src/schema-snapshots-sync.ts, which replaced the retired
+ * sync-schema-snapshots.yml bot-PR lane. Preferring it is what makes
+ * `previous_hash`/`drift_status` meaningful again: under the retired lane the
+ * baseline only advanced when a bot PR merged, so a lane misfire pinned every
+ * capture to the same frozen comparison forever (observed: 22 days stale,
+ * every entry `drift_status: "new"`).
+ *
+ * Credential-less callers (local dev, CI) read the committed seed exactly as
+ * before — see readGeneratedStoreJson's header for that posture.
+ */
 async function loadExistingSchemaIndex(): Promise<Map<string, Row>> {
-  try {
-    const index = JSON.parse(
-      await fs.readFile(artifactFilePath("schemas/index.json"), "utf8"),
-    );
-    return new Map(
-      (index.schemas || [])
-        .filter((entry: Row) => entry.hash)
-        .map((entry: Row) => [entry.surface_id, entry]),
-    );
-  } catch {
-    return new Map();
+  const storeDoc = await readGeneratedStoreJson(SCHEMA_INDEX_R2_KEY).catch(
+    () => null,
+  );
+  let index: Row | null =
+    storeDoc && Array.isArray(storeDoc.schemas) ? (storeDoc as Row) : null;
+  if (!index) {
+    try {
+      index = JSON.parse(
+        await fs.readFile(artifactFilePath("schemas/index.json"), "utf8"),
+      ) as Row;
+    } catch {
+      return new Map();
+    }
   }
+  return new Map(
+    ((index.schemas as Row[]) || [])
+      .filter((entry: Row) => entry.hash)
+      .map((entry: Row) => [entry.surface_id, entry]),
+  );
 }
 
 async function mapLimit(

@@ -183,7 +183,9 @@ under `public/` after a fresh build — only CONTRACT artifacts are gated; DATA/
 are NOT: `public/datasets/` + the llms.txt catalogs are gitignored, the README catalog is refreshed
 out-of-band by `readme-catalog-refresh.yml`, and `operational-surfaces.json` is committed-but-excluded —
 adding a probe-enabled operational-kind surface (subnet-api/sse/data-artifact) regenerates the prober's
-input list, which a one-file surface PR does not commit; it is served fresh on deploy) · `validate` ·
+input list, which a one-file surface PR does not commit; since #9096 that list is written live to the
+`generated/operational-surfaces.json` R2 store by an hourly Worker cron and the committed file is just
+the prober's cold-start seed) · `validate` ·
 `validate:schemas` · `validate:api` ·
 `validate:mcp` · `validate:ai` · `validate:openapi` · `validate:types` · `validate:artifact-budgets` ·
 `validate:docs` · `validate:intake` · `validate:surface` · `validate:workflows` ·
@@ -545,7 +547,9 @@ public/metagraph/<x>.json` that names neither the cause nor the fix; and `src/ar
   committed path by `scripts/kv-publish-pointer.ts` / `scripts/cloudflare-verify.ts` /
   `scripts/sync-summary.ts` during the actual publish, and its `*_artifact_size_bytes` totals are
   inherently non-deterministic build-to-build; `schemas/index.json` is a network-capture cache the build
-  "reconciles in place". Both are explicitly excluded from the derived-artifact freshness gate in
+  "reconciles in place", and since #9096 its live copy lives in the `generated/schemas-index.json` R2
+  store written daily by a Worker cron (`src/schema-snapshots-sync.ts`) — the committed file is only the
+  fallback seed a credential-less build reads. Both are explicitly excluded from the derived-artifact freshness gate in
   `.github/workflows/validate.yml` (see the comment above that step) — CI won't catch this, but the
   Gittensory Gate's registry-review lane will reject a PR that bundles them in. After `npm run build`,
   revert them against your **base** remote — `upstream/main` if you forked per Phase A0, or

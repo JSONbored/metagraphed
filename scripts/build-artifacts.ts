@@ -90,6 +90,8 @@ import {
   listToolDefinitions,
 } from "../src/mcp-server.ts";
 import { buildDatasetExports } from "./datasets.ts";
+import { readGeneratedStoreJson } from "./r2-rest.ts";
+import { SCHEMA_INDEX_R2_KEY } from "../src/schema-snapshots-sync.ts";
 import {
   buildChangelog,
   type ArtifactEntry,
@@ -285,9 +287,23 @@ const previousHealthArtifact = await loadPreviousHealthArtifact();
 const previousSchemaDriftArtifact = await readOptionalJson(
   path.join(outputRoot, "schema-drift.json"),
 );
-const previousSchemaIndexArtifact = await readOptionalJson(
-  path.join(outputRoot, "schemas/index.json"),
-);
+// The schema index the build reconciles in place. #9096: the Worker cron's
+// durable baseline store first (generated/schemas-index.json, written daily by
+// src/schema-snapshots-sync.ts, which replaced the retired
+// sync-schema-snapshots.yml bot-PR lane), the committed copy as the fallback
+// seed. The store carries the published index VERBATIM plus last-good
+// retention, including `source: "openapi-snapshot"` — which
+// reusableSchemaIndexArtifact below gates on — so preferring it changes which
+// COPY is reconciled, never how. Credential-less builds (local dev, the
+// Validate CI lane, the determinism test) read the committed seed exactly as
+// before, which is what keeps the artifact build byte-reproducible.
+const previousSchemaIndexStore = await readGeneratedStoreJson(
+  SCHEMA_INDEX_R2_KEY,
+).catch(() => null);
+const previousSchemaIndexArtifact =
+  previousSchemaIndexStore && Array.isArray(previousSchemaIndexStore.schemas)
+    ? previousSchemaIndexStore
+    : await readOptionalJson(path.join(outputRoot, "schemas/index.json"));
 
 // snapshot-openapi writes the sanitized OpenAPI `document` into per-surface
 // schema files (R2 staging); capture it before the wipe below so the schema
@@ -2811,8 +2827,9 @@ console.log(
 // this script actually writes -- rather than the full array: schemas/
 // index.json is a sibling DEPLOY_OWNED_ARTIFACTS member, but this script never
 // writes it, and a caller (a test forging it to exercise the
-// forgery/staleness reconciler, or sync-schema-snapshots.yml's own commit
-// step) may legitimately have just written it in the same process tree.
+// forgery/staleness reconciler, or `npm run schemas:snapshot` refreshing the
+// committed seed by hand) may legitimately have just written it in the same
+// process tree.
 // Reverting the whole array here would silently discard that caller's
 // deliberate change out from under it the moment this script exits.
 if (!isProductionPublishBuild()) {

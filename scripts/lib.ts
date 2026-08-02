@@ -819,8 +819,10 @@ export async function loadCandidates(
 
 /**
  * Per-surface probe evidence for machine verification (#8689), keyed by
- * surface id. Written by scripts/sync-surface-verification.ts from the live
- * cron prober's per-surface uptime history.
+ * surface id. Written by the daily Worker cron
+ * (src/surface-verification-sync.ts) straight from the prober's D1 uptime
+ * history; scripts/sync-surface-verification.ts refreshes the committed SEED
+ * by hand.
  *
  * A MISSING or unreadable file yields `{}`, which means every surface falls
  * back to hand-authored verification exactly as before this existed. That is
@@ -831,18 +833,56 @@ export async function loadCandidates(
  */
 export const SURFACE_HEALTH_PATH = "registry/verification/surface-health.json";
 
+/**
+ * The store the cron writes (#9096). Kept next to the path above so the two
+ * copies of this snapshot are named in one place.
+ */
+export const SURFACE_HEALTH_R2_KEY = "generated/surface-health.json";
+
+function surfaceRecordMap(
+  artifact: Row | null,
+): Record<string, SurfaceProbeRecord> | null {
+  const surfaces = artifact?.surfaces;
+  // An array is `typeof "object"` too, and would silently index by numeric
+  // string, matching nothing -- rejected explicitly so a malformed snapshot
+  // reads as "no evidence" rather than as a map that never matches.
+  return surfaces && typeof surfaces === "object" && !Array.isArray(surfaces)
+    ? (surfaces as Record<string, SurfaceProbeRecord>)
+    : null;
+}
+
+/**
+ * Store first (the cron's fresh copy), committed seed second.
+ *
+ * A successful store read is MATERIALIZED into the committed seed (when it
+ * differs) before being returned, for the same reason loadGithubSignals does
+ * it: the publish build reads the store (it holds the Cloudflare credentials)
+ * while the publish job's later `npm run validate` step runs credential-less
+ * against the restored registry/ tree, and the two must agree on the same
+ * snapshot or the reproducibility parity check fails. The local write is what
+ * carries it across; it also doubles as the seed-refresh mechanism.
+ *
+ * Credential-less callers (local dev, the Validate CI lane, the determinism
+ * test) never touch the network and read the committed seed exactly as
+ * before — which is what keeps the artifact build byte-reproducible.
+ */
 export async function loadSurfaceProbeEvidence(
   filePath: string = path.join(repoRoot, SURFACE_HEALTH_PATH),
 ): Promise<Record<string, SurfaceProbeRecord>> {
+  const { readGeneratedStoreJson } = await import("./r2-rest.ts");
+  const storeDoc = await readGeneratedStoreJson(SURFACE_HEALTH_R2_KEY).catch(
+    () => null,
+  );
+  const storeRecords = surfaceRecordMap(storeDoc as Row | null);
+  if (storeRecords) {
+    const seeded: Row | null = await readJson(filePath).catch(() => null);
+    if (stableStringify(seeded) !== stableStringify(storeDoc)) {
+      await writeJson(filePath, storeDoc).catch(() => undefined);
+    }
+    return storeRecords;
+  }
   try {
-    const artifact = await readJson(filePath);
-    const surfaces = artifact?.surfaces;
-    // An array is `typeof "object"` too, and would silently index by numeric
-    // string, matching nothing -- rejected explicitly so a malformed snapshot
-    // reads as "no evidence" rather than as a map that never matches.
-    return surfaces && typeof surfaces === "object" && !Array.isArray(surfaces)
-      ? (surfaces as Record<string, SurfaceProbeRecord>)
-      : {};
+    return surfaceRecordMap(await readJson(filePath)) ?? {};
   } catch {
     return {};
   }

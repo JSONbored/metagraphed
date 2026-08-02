@@ -23,13 +23,21 @@
 // leaves the candidates corpus. It cannot verify the catalogue because it does
 // not probe the catalogue. The health prober does, and covers all of it.
 //
-// The evidence therefore comes from GET /api/v1/subnets/{netuid}/uptime, which
-// reports per-surface `day_count`, `samples` and `uptime_ratio` over a 90-day
-// window. `scripts/sync-surface-verification.ts` snapshots that into
-// `registry/verification/surface-health.json` on a schedule, and flattenSurfaces
-// reads the snapshot. Committed rather than fetched at build time because this
-// repo's builds are byte-for-byte deterministic (tests/artifacts.test.ts asserts
-// it) and a network call inside the build would end that.
+// The evidence therefore comes from the prober's per-surface `day_count`,
+// `samples` and `uptime_ratio` over a 90-day window — the shape
+// `GET /api/v1/subnets/{netuid}/uptime` serves. #9096 moved the SCHEDULED
+// snapshot of that evidence off a GitHub Actions bot-PR lane and onto the
+// daily Worker cron in src/surface-verification-sync.ts, which reads the same
+// window straight from D1 and writes the `generated/surface-health.json` R2
+// store; `scripts/sync-surface-verification.ts` remains the way to refresh the
+// committed `registry/verification/surface-health.json` seed by hand. Both
+// writers share the extractor and assembler at the bottom of this file, and
+// flattenSurfaces reads whichever copy loadSurfaceProbeEvidence resolved
+// (store first, committed seed second). Still committed rather than fetched
+// unconditionally at build time because this repo's builds are byte-for-byte
+// deterministic (tests/artifacts.test.ts asserts it) and an unconditional
+// network call inside the build would end that — the store read is
+// credential-gated for exactly that reason.
 
 /** One surface's probe record, as snapshotted from the uptime endpoint. */
 export interface SurfaceProbeRecord {
@@ -209,4 +217,159 @@ export function probeVerificationBlock(verdict: VerificationVerdict): {
     method: "live-cron-prober",
     evidence: verdict.reason,
   };
+}
+
+// --- The snapshot artifact both writers produce (#9096) ----------------------
+//
+// Extracted here so the Worker cron (src/surface-verification-sync.ts, which
+// replaced the retired sync-surface-verification.yml bot-PR lane) and the CLI
+// seed refresher (scripts/sync-surface-verification.ts) share ONE record
+// extractor and ONE artifact assembler. These feed `machine-verified`, so a
+// fork between the two writers would silently change surface TRUST LEVELS
+// rather than merely producing a different-looking file.
+
+type UptimeRow = Record<string, unknown>;
+
+/**
+ * Extract per-surface probe records from ONE subnet's uptime payload — the
+ * exact shape `formatUptime` (src/health-serving.ts) returns, which is what
+ * both `GET /api/v1/subnets/{netuid}/uptime` serves and what `loadSubnetUptime`
+ * returns directly from D1.
+ *
+ * Field-for-field the mapping the retired lane's script performed:
+ *   - `samples` / `uptime_ratio` fall back to the surface's `reliability` block
+ *     (formatUptime sets both at the top level today, so the fallback is belt
+ *     and braces against a future shape change, not a live path);
+ *   - `last_ok` prefers a per-surface instant and otherwise takes the payload's
+ *     own `observed_at`, because the uptime rollup carries no last_ok of its
+ *     own and the window's observation instant is what the evidence attests to;
+ *   - `classification` is passed through only when it is a string.
+ *
+ * Writes INTO the supplied map so a caller sweeping every subnet accumulates
+ * one flat surface_id-keyed record set, exactly as the script's loop did.
+ */
+export function collectSurfaceProbeRecords(
+  data: unknown,
+  into: Record<string, SurfaceProbeRecord>,
+): Record<string, SurfaceProbeRecord> {
+  const payload = (data ?? {}) as UptimeRow;
+  const surfaces = Array.isArray(payload.surfaces)
+    ? (payload.surfaces as UptimeRow[])
+    : [];
+  for (const surface of surfaces) {
+    const surfaceId = surface?.surface_id;
+    if (typeof surfaceId !== "string" || !surfaceId) continue;
+    const reliability = (surface.reliability as UptimeRow | undefined) || {};
+    into[surfaceId] = {
+      day_count: Number(surface.day_count ?? 0),
+      samples: Number(surface.samples ?? reliability.sample_count ?? 0),
+      uptime_ratio: Number(
+        surface.uptime_ratio ?? reliability.uptime_ratio ?? 0,
+      ),
+      last_ok:
+        typeof surface.last_ok === "string"
+          ? surface.last_ok
+          : typeof payload.observed_at === "string"
+            ? (payload.observed_at as string)
+            : null,
+      classification:
+        typeof surface.classification === "string"
+          ? surface.classification
+          : null,
+    };
+  }
+  return into;
+}
+
+export interface SurfaceHealthArtifact {
+  schema_version: 1;
+  generated_at: string;
+  notes: string;
+  source: "live-cron-prober";
+  subnets_reached: number;
+  subnets_total: number;
+  surface_count: number;
+  verified_count: number;
+  unverified_reasons: Record<string, number>;
+  surfaces: Record<string, SurfaceProbeRecord>;
+}
+
+/**
+ * Assemble the surface-health snapshot from a surface_id-keyed record set.
+ *
+ * Surface ids are sorted and re-inserted in order so the object's key order is
+ * stable across runs — the retired lane depended on that for a readable git
+ * diff, and the cron depends on it for its content digest.
+ */
+export function buildSurfaceHealthArtifact({
+  records,
+  subnetsReached,
+  subnetsTotal,
+  generatedAt,
+}: {
+  records: Record<string, SurfaceProbeRecord>;
+  subnetsReached: number;
+  subnetsTotal: number;
+  generatedAt: string;
+}): SurfaceHealthArtifact {
+  const surfaceIds = Object.keys(records).sort();
+  let verified = 0;
+  const reasons: Record<string, number> = {};
+  for (const id of surfaceIds) {
+    const verdict = verifyFromProbeEvidence(records[id]);
+    if (verdict.verified) verified += 1;
+    else {
+      // Bucket by the failing CONDITION, not the formatted reason, so the
+      // summary stays a fixed small set instead of one bucket per distinct
+      // number.
+      const bucket = verdict.reason.replace(/[\d.]+/g, "N");
+      reasons[bucket] = (reasons[bucket] || 0) + 1;
+    }
+  }
+  return {
+    schema_version: 1,
+    generated_at: generatedAt,
+    notes:
+      "Per-surface probe evidence from the live cron prober, snapshotted for " +
+      "deterministic Git review. Consumed by scripts/lib.ts flattenSurfaces to " +
+      "derive machine verification; see src/surface-verification.ts for the bar.",
+    source: "live-cron-prober",
+    subnets_reached: subnetsReached,
+    subnets_total: subnetsTotal,
+    surface_count: surfaceIds.length,
+    verified_count: verified,
+    unverified_reasons: reasons,
+    surfaces: Object.fromEntries(surfaceIds.map((id) => [id, records[id]])),
+  };
+}
+
+// Key-sorted stringify, matching the local-copy convention in
+// github-signals-core.ts / operational-surfaces-sync.ts — this module must stay
+// importable from both a Worker bundle and a Node script, so it pulls in
+// nothing.
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(",")}]`;
+  }
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
+  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`;
+}
+
+/**
+ * Content identity of the snapshot with the volatile `generated_at` excluded —
+ * the cron's write-only-when-changed gate, equivalent to the retired
+ * workflow's `git diff --quiet` gate.
+ *
+ * `last_ok` is NOT excluded even though it moves with every prober run: it is
+ * the instant a verification attests to, so a changed last_ok is a real
+ * content change that downstream freshness TTLs measure against.
+ */
+export function surfaceHealthContentDigest(
+  artifact: SurfaceHealthArtifact,
+): string {
+  return stableStringify({ ...artifact, generated_at: null });
 }
