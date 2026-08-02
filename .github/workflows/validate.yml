@@ -964,10 +964,10 @@ jobs:
       # client build with no Worker entry) -- matches the exact env Cloudflare
       # Workers Builds sets in production (see apps/ui/DEPLOY.md).
       - name: Build
-        env:
-          LOVABLE_SANDBOX: "1"
-          NITRO_PRESET: cloudflare-module
-        run: npm run build --workspace=apps/ui
+        # build:worker owns LOVABLE_SANDBOX + NITRO_PRESET: they decide whether
+        # Nitro emits a Worker entry at all, and WHERE (dist/, not .output/).
+        # Named so the e2e server below and this step cannot drift apart.
+        run: npm run build:worker --workspace=apps/ui
 
       # Cache the downloaded browser binary across runs (#8910): the install
       # step below measured 65s (11% of this job), and re-downloading the same

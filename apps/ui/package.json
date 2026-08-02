@@ -13,6 +13,7 @@
     "build:client": "cd ../../packages/client && npm run build",
     "dev": "vite dev",
     "build": "NODE_OPTIONS=--max-old-space-size=4096 vite build",
+    "build:worker": "LOVABLE_SANDBOX=1 NITRO_PRESET=cloudflare-module npm run build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",

@@ -75,8 +75,15 @@ export default defineConfig({
     // emits a Worker (.output/server/index.mjs + its own generated
     // wrangler.json with the ASSETS binding), which vite preview cannot serve.
     // The build must therefore already exist -- in CI the `Build` step is
-    // ordered before this one; locally, run `npm run build` first.
-    command: `npx wrangler dev -c .output/server/wrangler.json --port ${PORT} --local`,
+    // ordered before this one; locally, run `npm run build:worker` first.
+    //
+    // `dist/`, NOT `.output/`, and that distinction broke this once already:
+    // a plain `npm run build` emits .output/ with no Worker entry, while the
+    // cloudflare-module preset (LOVABLE_SANDBOX + NITRO_PRESET, which is what
+    // CI and production use) emits dist/. Testing against the former locally
+    // passed while CI had only the latter. `build:worker` exists so those two
+    // env vars are never the thing you forgot.
+    command: `npx wrangler dev -c dist/server/wrangler.json --port ${PORT} --local`,
     cwd: import.meta.dirname,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
