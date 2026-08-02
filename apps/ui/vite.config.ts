@@ -96,11 +96,14 @@ export default defineConfig({
         projectId: posthogProjectId,
         sourcemaps: {
           enabled: posthogSourcemapsEnabled,
-          // Same value the runtime Sentry SDK's `release` tag uses
-          // (Cloudflare Workers Builds' own commit SHA, see VITE_SENTRY_RELEASE
-          // below) -- undefined locally/in PR CI, where sourcemaps.enabled is
-          // already false anyway.
-          releaseName: commitSha,
+          // Stable name + per-deploy version, matching the Worker deploys'
+          // convention (scripts/deploy-worker-with-sourcemaps.sh passes
+          // metagraphed-<config> / <sha>). Passing the SHA as releaseName
+          // made every deploy its own one-off "project" in PostHog's release
+          // UI instead of versions of one app. commitSha is undefined
+          // locally/in PR CI, where sourcemaps.enabled is already false.
+          releaseName: "metagraphed-ui",
+          releaseVersion: commitSha,
           // Same "don't publicly serve the app's own source maps" rationale
           // as Sentry's filesToDeleteAfterUpload above -- this plugin's own
           // equivalent option (config.ts's `deleteAfterUpload`, defaults
