@@ -8,7 +8,8 @@ import {
   USAGE_EVENT_NAME,
   classifyMcpErrorType,
   isUsageTelemetryConfigured,
-  statusClassOf,
+  recordAiDegradedEvent,
+  recordAiEmbeddingEvent,
   recordAiGenerationEvent,
   recordExceptionEvent,
   recordMcpInitializeEvent,
@@ -16,6 +17,7 @@ import {
   recordMcpToolsListEvent,
   recordUsageEvent,
   resolvePostHogHost,
+  statusClassOf,
   usageEventProperties,
 } from "../src/usage-telemetry.ts";
 import { mockEnv, type Row } from "./row-type.ts";
@@ -1654,5 +1656,236 @@ describe("usageEventProperties — #8963 dimensions", () => {
       client: "x".repeat(300),
     });
     assert.equal(String(props!.client).length, 256);
+  });
+});
+
+// ─── #8965: embedding + degraded-path observability ────────────────────────
+
+const CONFIGURED_8965 = {
+  [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token",
+} as unknown as Env;
+
+function capture8965() {
+  const calls: Row[] = [];
+  return {
+    calls,
+    deps: { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+  };
+}
+
+describe("recordAiEmbeddingEvent", () => {
+  test("posts $ai_embedding with model, latency in seconds, and batch size", async () => {
+    const { calls, deps } = capture8965();
+    const recorded = await recordAiEmbeddingEvent(
+      CONFIGURED_8965,
+      {
+        provider: "cloudflare_workers_ai",
+        model: "@cf/qwen/qwen3-embedding-0.6b",
+        traceId: "trace-1",
+        traceName: "ask",
+        latencyMs: 250,
+        isError: false,
+        inputTokens: 18,
+        inputCount: 1,
+      },
+      deps,
+    );
+    assert.equal(recorded, true);
+    assert.equal(calls[0].body.event, "$ai_embedding");
+    const props = calls[0].body.properties;
+    assert.equal(props.$ai_trace_id, "trace-1");
+    assert.equal(props.$ai_trace_name, "ask");
+    // PostHog reports latency in SECONDS, matching $ai_generation.
+    assert.equal(props.$ai_latency, 0.25);
+    assert.equal(props.$ai_http_status, 200);
+    assert.equal(props.$ai_input_tokens, 18);
+    assert.equal(props.$ai_input_count, 1);
+    assert.equal(props.$ai_is_error, false);
+  });
+
+  test("never reports a cost — Workers AI bills embeddings in neurons", async () => {
+    const { calls, deps } = capture8965();
+    await recordAiEmbeddingEvent(
+      CONFIGURED_8965,
+      {
+        provider: "cloudflare_workers_ai",
+        model: "m",
+        latencyMs: 1,
+        isError: false,
+      },
+      deps,
+    );
+    const props = calls[0].body.properties;
+    // A fabricated cost would poison the same dashboards $ai_generation feeds
+    // honestly, so the column is left genuinely empty.
+    assert.ok(!("$ai_total_cost_usd" in props));
+    assert.ok(!("$ai_input_cost_usd" in props));
+  });
+
+  test("mints a trace id when the caller supplies none", async () => {
+    const { calls, deps } = capture8965();
+    await recordAiEmbeddingEvent(
+      CONFIGURED_8965,
+      { provider: "p", model: "m", latencyMs: 1, isError: false },
+      deps,
+    );
+    assert.equal(typeof calls[0].body.properties.$ai_trace_id, "string");
+  });
+
+  test("records the error text and a 500 status on failure", async () => {
+    const { calls, deps } = capture8965();
+    await recordAiEmbeddingEvent(
+      CONFIGURED_8965,
+      {
+        provider: "p",
+        model: "m",
+        latencyMs: 5,
+        isError: true,
+        error: new TypeError("embedding model returned no vector"),
+      },
+      deps,
+    );
+    const props = calls[0].body.properties;
+    assert.equal(props.$ai_is_error, true);
+    assert.equal(props.$ai_http_status, 500);
+    assert.match(String(props.$ai_error), /embedding model returned no vector/);
+  });
+
+  test("rejects a malformed event rather than posting it", async () => {
+    const { calls, deps } = capture8965();
+    for (const event of [
+      { provider: "p", model: "m", latencyMs: 1 },
+      { provider: "p", model: "m", latencyMs: -1, isError: false },
+      { provider: "p", model: "m", latencyMs: Number.NaN, isError: false },
+    ]) {
+      assert.equal(
+        await recordAiEmbeddingEvent(
+          CONFIGURED_8965,
+          event as Parameters<typeof recordAiEmbeddingEvent>[1],
+          deps,
+        ),
+        false,
+      );
+    }
+    assert.equal(calls.length, 0);
+  });
+
+  test("is a no-op unconfigured and swallows a transport failure", async () => {
+    const { calls, deps } = capture8965();
+    assert.equal(
+      await recordAiEmbeddingEvent(
+        mockEnv({}),
+        { provider: "p", model: "m", latencyMs: 1, isError: false },
+        deps,
+      ),
+      false,
+    );
+    assert.equal(calls.length, 0);
+    assert.equal(
+      await recordAiEmbeddingEvent(
+        CONFIGURED_8965,
+        { provider: "p", model: "m", latencyMs: 1, isError: false },
+        { fetch: fakeFetch({ throws: true }) },
+      ),
+      false,
+    );
+  });
+
+  test("defaults to the platform fetch when none is injected", async () => {
+    const original = globalThis.fetch;
+    const calls: Row[] = [];
+    globalThis.fetch = fakeFetch({ onCall: (call) => calls.push(call) });
+    try {
+      assert.equal(
+        await recordAiEmbeddingEvent(CONFIGURED_8965, {
+          provider: "p",
+          model: "m",
+          latencyMs: 1,
+          isError: false,
+        }),
+        true,
+      );
+      assert.equal(calls.length, 1);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+});
+
+describe("recordAiDegradedEvent", () => {
+  test("posts ai_degraded with the reason and surface", async () => {
+    const { calls, deps } = capture8965();
+    const recorded = await recordAiDegradedEvent(
+      CONFIGURED_8965,
+      { reason: "rate_limited", surface: "ask" },
+      deps,
+    );
+    assert.equal(recorded, true);
+    assert.equal(calls[0].body.event, "ai_degraded");
+    assert.deepEqual(calls[0].body.properties, {
+      reason: "rate_limited",
+      surface: "ask",
+    });
+  });
+
+  test("omits an absent surface", async () => {
+    const { calls, deps } = capture8965();
+    await recordAiDegradedEvent(
+      CONFIGURED_8965,
+      { reason: "ai_disabled" },
+      deps,
+    );
+    assert.deepEqual(calls[0].body.properties, { reason: "ai_disabled" });
+  });
+
+  test("rejects an event with no reason", async () => {
+    const { calls, deps } = capture8965();
+    assert.equal(
+      await recordAiDegradedEvent(
+        CONFIGURED_8965,
+        {} as Parameters<typeof recordAiDegradedEvent>[1],
+        deps,
+      ),
+      false,
+    );
+    assert.equal(calls.length, 0);
+  });
+
+  test("is a no-op unconfigured and swallows a transport failure", async () => {
+    const { calls, deps } = capture8965();
+    assert.equal(
+      await recordAiDegradedEvent(
+        mockEnv({}),
+        { reason: "rate_limited" },
+        deps,
+      ),
+      false,
+    );
+    assert.equal(calls.length, 0);
+    assert.equal(
+      await recordAiDegradedEvent(
+        CONFIGURED_8965,
+        { reason: "rate_limited" },
+        { fetch: fakeFetch({ throws: true }) },
+      ),
+      false,
+    );
+  });
+
+  test("defaults to the platform fetch when none is injected", async () => {
+    const original = globalThis.fetch;
+    const calls: Row[] = [];
+    globalThis.fetch = fakeFetch({ onCall: (call) => calls.push(call) });
+    try {
+      assert.equal(
+        await recordAiDegradedEvent(CONFIGURED_8965, {
+          reason: "rate_limited",
+        }),
+        true,
+      );
+      assert.equal(calls.length, 1);
+    } finally {
+      globalThis.fetch = original;
+    }
   });
 });
