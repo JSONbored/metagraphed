@@ -347,7 +347,7 @@ function SubnetsCompactStats() {
   const economicsRes = useQuery(economicsQuery());
   const economicsPhase = statPhase(economicsRes);
   const economicsRows = economicsRes.data?.data ?? [];
-  const totalStake = economicsRows.reduce((sum, e) => sum + (e.total_stake_tao ?? 0), 0);
+  const totalStake = economicsRows.reduce((sum, e) => sum + (e.total_stake_alpha ?? 0), 0);
   const generatedAt = coverageRes.data.meta?.generated_at ?? healthRes.data.meta?.generated_at;
   const stale = isStaleFreshness(generatedAt);
   const totalStakeFigure =

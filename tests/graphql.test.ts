@@ -6628,7 +6628,7 @@ describe("graphql — accounts / account (#5574, Postgres-tier accounts leaderbo
     assert.equal(item.hotkey, "5Account");
     assert.equal(item.coldkey, "5Coldkey");
     assert.equal(item.subnet_count, 2);
-    assert.equal(item.total_stake_alpha, 1500);
+    assert.equal(item.total_stake_tao, 1500);
     assert.equal(item.stake_dominance, 0.42);
     assert.deepEqual(item.subnets, [
       { netuid: 1, uid: 5, stake_tao: 1000, emission_tao: 5 },
@@ -7391,7 +7391,7 @@ describe("graphql — account_portfolio (#5702, Postgres-tier flat body + zeroed
     assert.equal(status, 200);
     const p = body.data.account_portfolio;
     assert.equal(p.subnet_count, 2);
-    assert.equal(p.total_stake_alpha, 1500);
+    assert.equal(p.total_stake_tao, 1500);
     assert.equal(p.stake_concentration.holders, 2);
     assert.equal(p.positions[0].netuid, 3);
     assert.equal(p.positions[0].role, "validator");
@@ -9348,7 +9348,7 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
         subnets: [{ netuid: 1, name: "A", categories: ["agents"] }],
       },
       "/metagraph/economics.json": {
-        subnets: [{ netuid: 1, total_stake_tao: 100, emission_share: 0.5 }],
+        subnets: [{ netuid: 1, total_stake_alpha: 100, emission_share: 0.5 }],
       },
     });
     const { status, body } = await gql(
@@ -9430,7 +9430,7 @@ describe("graphql — discovery parity (#6989, search/domains/compare_validators
     assert.ok(paths[0].endsWith(`/validators/${HOTKEY_A}`));
     assert.equal(body.data.compare_validators.netuid, 3);
     assert.equal(
-      body.data.compare_validators.validators[0].total_stake_alpha,
+      body.data.compare_validators.validators[0].total_stake_tao,
       42,
     );
   });
@@ -12079,8 +12079,8 @@ describe("graphql — subnet_yield (#5713, Postgres-tier + zeroed-card fallback)
           neuron_count: 2,
           validator_count: 1,
           miner_count: 1,
-          total_stake_tao: 1500.5,
-          total_emission_tao: 12.25,
+          total_stake_alpha: 1500.5,
+          total_emission_alpha: 12.25,
           subnet_yield: 0.0081,
           mean_yield: 0.009,
           median_yield: 0.009,
@@ -12111,7 +12111,7 @@ describe("graphql — subnet_yield (#5713, Postgres-tier + zeroed-card fallback)
     const { status, body } = await gql(
       `{ subnet_yield(netuid: 5) {
           netuid captured_at block_number neuron_count validator_count miner_count
-          total_stake_tao total_emission_tao subnet_yield mean_yield median_yield
+          total_stake_alpha total_emission_alpha subnet_yield mean_yield median_yield
           p25_yield p75_yield p90_yield
           neurons { uid hotkey role stake_tao emission_tao yield }
         } }`,
@@ -12606,7 +12606,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
   test("subnet_idle_stake cold store returns a schema-stable zeroed card", async () => {
     const { status, body } = await gql(
       `{ subnet_idle_stake(netuid: 5) {
-          schema_version netuid captured_at neuron_count idle_neuron_count idle_stake_tao
+          schema_version netuid captured_at neuron_count idle_neuron_count idle_stake_alpha
         } }`,
     );
     assert.equal(status, 200);
@@ -12617,7 +12617,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
       captured_at: null,
       neuron_count: 0,
       idle_neuron_count: 0,
-      idle_stake_tao: 0,
+      idle_stake_alpha: 0,
     });
   });
 
@@ -12631,13 +12631,13 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
         captured_at: "2026-07-01T00:00:00.000Z",
         neuron_count: 200,
         idle_neuron_count: 30,
-        idle_stake_tao: 1234.5,
+        idle_stake_alpha: 1234.5,
       },
       captured,
     );
     const { body } = await gql(
       `{ subnet_idle_stake(netuid: 7) {
-          netuid captured_at neuron_count idle_neuron_count idle_stake_tao
+          netuid captured_at neuron_count idle_neuron_count idle_stake_alpha
         } }`,
       env as unknown as Env,
     );
@@ -12654,7 +12654,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
     const env = tierEnv("METAGRAPH_NEURONS_SOURCE", {});
     const { body } = await gql(
       `{ subnet_idle_stake(netuid: 9) {
-          schema_version netuid captured_at neuron_count idle_neuron_count idle_stake_tao
+          schema_version netuid captured_at neuron_count idle_neuron_count idle_stake_alpha
         } }`,
       env as unknown as Env,
     );
@@ -12664,7 +12664,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
       captured_at: null,
       neuron_count: 0,
       idle_neuron_count: 0,
-      idle_stake_tao: 0,
+      idle_stake_alpha: 0,
     });
   });
 
@@ -12871,8 +12871,8 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
             snapshot_date: "2026-06-30",
             neuron_count: 200,
             validator_count: 64,
-            total_stake_tao: 1000.5,
-            total_emission_tao: 12.25,
+            total_stake_alpha: 1000.5,
+            total_emission_alpha: 12.25,
           },
         ],
       },
@@ -12880,7 +12880,7 @@ describe("graphql — subnet idle-stake/stake-flow/events/history/prometheus (#7
     );
     const { body } = await gql(
       `{ subnet_history(netuid: 7, window: "7d") {
-          window point_count points { snapshot_date neuron_count validator_count total_stake_tao total_emission_tao }
+          window point_count points { snapshot_date neuron_count validator_count total_stake_alpha total_emission_alpha }
         } }`,
       env as unknown as Env,
     );
@@ -15811,7 +15811,7 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
             {
               snapshot_date: "2026-07-01",
               subnet_count: 3,
-              total_stake_tao: "1000.000000000",
+              total_stake_alpha: "1000.000000000",
               alpha_price_tao_weighted: 0.06,
               alpha_price_tao_median: 0.05,
               validator_count: 12,
@@ -15825,7 +15825,7 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
     const { status, body } = await gql(
       `{ economics_trends(window: "90d") {
           window day_count
-          days { snapshot_date subnet_count total_stake_tao alpha_price_tao_weighted alpha_price_tao_median validator_count miner_count mean_emission_share }
+          days { snapshot_date subnet_count total_stake_alpha alpha_price_tao_weighted alpha_price_tao_median validator_count miner_count mean_emission_share }
         } }`,
       env as unknown as Env,
     );
@@ -15892,7 +15892,7 @@ describe("graphql — economics_trends (#5663, Postgres-tier + D1-fallback time 
     };
     const { status, body } = await gql(
       `{ economics_trends(window: "7d") {
-          window day_count days { snapshot_date total_stake_tao validator_count }
+          window day_count days { snapshot_date total_stake_alpha validator_count }
         } }`,
       env as unknown as Env,
     );
@@ -15941,12 +15941,12 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
     return `{ subnet_movers${argsClause} {
       schema_version window start_date end_date sort subnet_count
       network {
-        total_stake_start_tao total_stake_end_tao total_stake_delta_tao
-        total_emission_start_tao total_emission_end_tao total_emission_delta_tao
+        total_stake_start_alpha total_stake_end_alpha total_stake_delta_alpha
+        total_emission_start_alpha total_emission_end_alpha total_emission_delta_alpha
         total_validators_start total_validators_end total_validators_delta
         gainers losers unchanged
       }
-      movers { netuid stake_delta_tao emission_delta_tao validators_delta }
+      movers { netuid stake_delta_alpha emission_delta_alpha validators_delta }
     } }`;
   }
 
@@ -15961,12 +15961,12 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
       sort: "stake",
       subnet_count: 0,
       network: {
-        total_stake_start_tao: "0.000000000",
-        total_stake_end_tao: "0.000000000",
-        total_stake_delta_tao: "0.000000000",
-        total_emission_start_tao: "0.000000000",
-        total_emission_end_tao: "0.000000000",
-        total_emission_delta_tao: "0.000000000",
+        total_stake_start_alpha: "0.000000000",
+        total_stake_end_alpha: "0.000000000",
+        total_stake_delta_alpha: "0.000000000",
+        total_emission_start_alpha: "0.000000000",
+        total_emission_end_alpha: "0.000000000",
+        total_emission_delta_alpha: "0.000000000",
         total_validators_start: 0,
         total_validators_end: 0,
         total_validators_delta: 0,
@@ -15993,12 +15993,12 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
             sort: "emission",
             subnet_count: 1,
             network: {
-              total_stake_start_tao: "1000.000000000",
-              total_stake_end_tao: "1200.000000000",
-              total_stake_delta_tao: "200.000000000",
-              total_emission_start_tao: "10.000000000",
-              total_emission_end_tao: "12.000000000",
-              total_emission_delta_tao: "2.000000000",
+              total_stake_start_alpha: "1000.000000000",
+              total_stake_end_alpha: "1200.000000000",
+              total_stake_delta_alpha: "200.000000000",
+              total_emission_start_alpha: "10.000000000",
+              total_emission_end_alpha: "12.000000000",
+              total_emission_delta_alpha: "2.000000000",
               total_validators_start: 5,
               total_validators_end: 6,
               total_validators_delta: 1,
@@ -16009,14 +16009,14 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
             movers: [
               {
                 netuid: 3,
-                stake_start_tao: 1000,
-                stake_end_tao: 1200,
-                stake_delta_tao: 200,
+                stake_start_alpha: 1000,
+                stake_end_alpha: 1200,
+                stake_delta_alpha: 200,
                 stake_pct_change: 20,
                 stake_share_pct: 100,
-                emission_start_tao: 10,
-                emission_end_tao: 12,
-                emission_delta_tao: 2,
+                emission_start_alpha: 10,
+                emission_end_alpha: 12,
+                emission_delta_alpha: 2,
                 emission_pct_change: 20,
                 emission_share_pct: 100,
                 validators_start: 5,
@@ -16044,12 +16044,12 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
     assert.equal(body.data.subnet_movers.sort, "emission");
     assert.equal(body.data.subnet_movers.subnet_count, 1);
     assert.equal(
-      body.data.subnet_movers.network.total_stake_delta_tao,
+      body.data.subnet_movers.network.total_stake_delta_alpha,
       "200.000000000",
     );
     assert.equal(body.data.subnet_movers.movers.length, 1);
     assert.equal(body.data.subnet_movers.movers[0].netuid, 3);
-    assert.equal(body.data.subnet_movers.movers[0].emission_delta_tao, 2);
+    assert.equal(body.data.subnet_movers.movers[0].emission_delta_alpha, 2);
   });
 
   test("a limit argument is forwarded as a query param to the Postgres tier", async () => {
@@ -16077,7 +16077,7 @@ describe("graphql — subnet_movers (#5662, Postgres-tier + buildMovers fallback
     assert.equal(body.data.subnet_movers.subnet_count, 0);
     assert.deepEqual(body.data.subnet_movers.movers, []);
     assert.equal(
-      body.data.subnet_movers.network.total_stake_start_tao,
+      body.data.subnet_movers.network.total_stake_start_alpha,
       "0.000000000",
     );
     assert.equal(body.data.subnet_movers.network.gainers, 0);
@@ -21608,8 +21608,8 @@ describe("graphql — chain_signers (#5882, Postgres-tier + D1-live fallback)", 
 
 describe("graphql — chain_idle_stake (#6975, Postgres-tier + cold-store fallback)", () => {
   const query = `{ chain_idle_stake {
-    schema_version captured_at subnet_count total_idle_stake_tao
-    subnets { netuid neuron_count idle_neuron_count idle_stake_tao }
+    schema_version captured_at subnet_count total_idle_stake_alpha
+    subnets { netuid neuron_count idle_neuron_count idle_stake_alpha }
   } }`;
 
   test("cold store: schema-stable empty ranking, never an error", async () => {
@@ -21620,7 +21620,7 @@ describe("graphql — chain_idle_stake (#6975, Postgres-tier + cold-store fallba
       schema_version: 1,
       captured_at: null,
       subnet_count: 0,
-      total_idle_stake_tao: 0,
+      total_idle_stake_alpha: 0,
       subnets: [],
     });
   });
@@ -21636,13 +21636,13 @@ describe("graphql — chain_idle_stake (#6975, Postgres-tier + cold-store fallba
             schema_version: 1,
             captured_at: "2026-07-20T00:00:00.000Z",
             subnet_count: 1,
-            total_idle_stake_tao: 12.5,
+            total_idle_stake_alpha: 12.5,
             subnets: [
               {
                 netuid: 7,
                 neuron_count: 10,
                 idle_neuron_count: 3,
-                idle_stake_tao: 12.5,
+                idle_stake_alpha: 12.5,
               },
             ],
           });

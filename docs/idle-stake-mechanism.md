@@ -89,7 +89,7 @@ polling, just a join across two tiers that already exist.
 ## Deliverable scoping (follow-up issue, not this one)
 
 This design note stops at "the mechanism is `dividends == 0`, fully decodable today." The actual
-capture/API-exposure work — a per-subnet `idle_stake_tao` rollup (and optionally a per-neuron
+capture/API-exposure work — a per-subnet `idle_stake_alpha` rollup (and optionally a per-neuron
 `is_idle` flag, and a per-coldkey lookup joining #6507's self-stake data) — is buildable as a
 pure shaping module + a REST route/MCP tool, following the same pattern as every other
 `neurons`-tier-derived artifact in this codebase. Scoped as a fresh implementation issue (#6789)

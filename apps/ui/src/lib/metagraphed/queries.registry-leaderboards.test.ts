@@ -74,7 +74,7 @@ describe("leaderboardsQuery normalizer — registry boards (#6995)", () => {
           slug: "sn-64",
           name: "Chutes",
           emission_share: 0.054756,
-          total_stake_tao: 3674872.73,
+          total_stake_alpha: 3674872.73,
           validator_count: 18,
           miner_count: 238,
         },
@@ -102,7 +102,7 @@ describe("leaderboardsQuery normalizer — registry boards (#6995)", () => {
     });
     expect(res.data["highest-emission"][0]).toMatchObject({
       emission_share: 0.054756,
-      total_stake_tao: 3674872.73,
+      total_stake_alpha: 3674872.73,
       validator_count: 18,
       miner_count: 238,
     });

@@ -10377,14 +10377,14 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.netuid, 7);
     assert.equal(out.neuron_count, 0);
     assert.equal(out.idle_neuron_count, 0);
-    assert.equal(out.idle_stake_tao, 0);
+    assert.equal(out.idle_stake_alpha, 0);
   });
 
   test("get_chain_idle_stake returns a schema-stable empty ranking on cold D1", async () => {
     const res = await callTool("get_chain_idle_stake", {});
     const out = res.body.result.structuredContent;
     assert.equal(out.subnet_count, 0);
-    assert.equal(out.total_idle_stake_tao, 0);
+    assert.equal(out.total_idle_stake_alpha, 0);
     assert.deepEqual(out.subnets, []);
   });
 
@@ -12538,7 +12538,7 @@ describe("MCP economics + metagraph data tools", () => {
       assert.equal(out.domain, "inference");
       assert.deepEqual(out.netuids, [1, 2]);
       assert.equal(out.subnet_count, 2);
-      assert.equal(out.total_stake_alpha, 150);
+      assert.equal(out.total_stake_tao, 150);
       assert.equal(out.total_emission_share, 0.5);
     });
 

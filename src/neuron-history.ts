@@ -197,7 +197,9 @@ export function buildEconomicsTrends(
   const days = entries.map(([snapshot_date, acc]) => ({
     snapshot_date,
     subnet_count: acc.subnet_count,
-    total_stake_alpha: acc.stake_seen ? raoToTaoString(acc.stake_sum_rao) : null,
+    total_stake_alpha: acc.stake_seen
+      ? raoToTaoString(acc.stake_sum_rao)
+      : null,
     alpha_price_tao_weighted:
       acc.weighted_price_den > 0
         ? roundPrice(acc.weighted_price_num / acc.weighted_price_den)

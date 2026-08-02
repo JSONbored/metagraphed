@@ -6310,14 +6310,17 @@ const rootValue = {
       sort: data.sort ?? requestedSort,
       subnet_count: data.subnet_count ?? 0,
       network: {
-        total_stake_start_tao: network.total_stake_start_tao ?? "0.000000000",
-        total_stake_end_tao: network.total_stake_end_tao ?? "0.000000000",
-        total_stake_delta_tao: network.total_stake_delta_tao ?? "0.000000000",
-        total_emission_start_tao:
-          network.total_emission_start_tao ?? "0.000000000",
-        total_emission_end_tao: network.total_emission_end_tao ?? "0.000000000",
-        total_emission_delta_tao:
-          network.total_emission_delta_tao ?? "0.000000000",
+        total_stake_start_alpha:
+          network.total_stake_start_alpha ?? "0.000000000",
+        total_stake_end_alpha: network.total_stake_end_alpha ?? "0.000000000",
+        total_stake_delta_alpha:
+          network.total_stake_delta_alpha ?? "0.000000000",
+        total_emission_start_alpha:
+          network.total_emission_start_alpha ?? "0.000000000",
+        total_emission_end_alpha:
+          network.total_emission_end_alpha ?? "0.000000000",
+        total_emission_delta_alpha:
+          network.total_emission_delta_alpha ?? "0.000000000",
         total_validators_start: network.total_validators_start ?? 0,
         total_validators_end: network.total_validators_end ?? 0,
         total_validators_delta: network.total_validators_delta ?? 0,

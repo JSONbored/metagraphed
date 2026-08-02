@@ -38,12 +38,16 @@ function moverDelta(m: SubnetMover, sort: MoversSort) {
   switch (sort) {
     case "stake":
       return {
-        delta: m.stake_delta_tao,
+        delta: m.stake_delta_alpha,
         pct: m.stake_pct_change,
-        formatted: signedTao(m.stake_delta_tao),
+        formatted: signedTao(m.stake_delta_alpha),
       };
     case "emission":
-      return { delta: m.emission_delta_tao, pct: null, formatted: signedTao(m.emission_delta_tao) };
+      return {
+        delta: m.emission_delta_alpha,
+        pct: null,
+        formatted: signedTao(m.emission_delta_alpha),
+      };
     case "validators":
       return { delta: m.validators_delta, pct: null, formatted: signedCount(m.validators_delta) };
     case "neurons":

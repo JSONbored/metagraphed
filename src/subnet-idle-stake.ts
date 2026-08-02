@@ -130,10 +130,13 @@ export function buildChainIdleStake(rows: Row[] | null | undefined): Row {
         netuid,
         neuron_count: entry.neuronCount,
         idle_neuron_count: entry.idleNeuronCount,
-        idle_stake_alpha: Math.round(raoBigToTao(entry.idleStakeRao) * 1e9) / 1e9,
+        idle_stake_alpha:
+          Math.round(raoBigToTao(entry.idleStakeRao) * 1e9) / 1e9,
       };
     })
-    .sort((a, b) => b.idle_stake_alpha - a.idle_stake_alpha || a.netuid - b.netuid);
+    .sort(
+      (a, b) => b.idle_stake_alpha - a.idle_stake_alpha || a.netuid - b.netuid,
+    );
   return {
     schema_version: 1,
     captured_at: newestCapturedAt(list),

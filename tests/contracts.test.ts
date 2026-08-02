@@ -340,7 +340,7 @@ describe("public contract registry", () => {
       ],
       [
         "/api/v1/validators",
-        "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_alpha,total_emission_tao,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets",
+        "hotkey,coldkey,coldkey_count,subnet_count,uid_count,total_stake_tao,total_emission_tao,stake_dominance,avg_validator_trust,max_validator_trust,latest_captured_at,latest_block_number,subnets",
       ],
       [
         "/api/v1/economics/trends",

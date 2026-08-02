@@ -41,7 +41,7 @@ describe("economicsTrendsQuery", () => {
         {
           snapshot_date: "2026-07-08",
           subnet_count: 129,
-          total_stake_tao: 12_500_000,
+          total_stake_alpha: 12_500_000,
           alpha_price_tao_weighted: 0.045,
           alpha_price_tao_median: 0.041,
           validator_count: 4200,
@@ -51,7 +51,7 @@ describe("economicsTrendsQuery", () => {
         {
           snapshot_date: "2026-07-07",
           subnet_count: 128,
-          total_stake_tao: 12_300_000,
+          total_stake_alpha: 12_300_000,
           alpha_price_tao_weighted: 0.044,
           alpha_price_tao_median: 0.04,
           validator_count: 4190,
@@ -71,7 +71,7 @@ describe("economicsTrendsQuery", () => {
     expect(res.data.days[0]).toEqual({
       snapshot_date: "2026-07-08",
       subnet_count: 129,
-      total_stake_tao: 12_500_000,
+      total_stake_alpha: 12_500_000,
       alpha_price_tao_weighted: 0.045,
       alpha_price_tao_median: 0.041,
       validator_count: 4200,
@@ -105,14 +105,14 @@ describe("economicsTrendsQuery", () => {
     resolveWith({
       day_count: 3,
       days: [
-        { subnet_count: 129, total_stake_tao: 100 }, // no snapshot_date -> dropped
+        { subnet_count: 129, total_stake_alpha: 100 }, // no snapshot_date -> dropped
         { snapshot_date: "2026-07-06", subnet_count: "nope" }, // junk count -> dropped
         {
           // no subnet reported a price or validator/miner count this day, but the
           // row itself is well-formed -> kept, with every optional metric null.
           snapshot_date: "2026-07-05",
           subnet_count: 3,
-          total_stake_tao: null,
+          total_stake_alpha: null,
           alpha_price_tao_weighted: null,
           alpha_price_tao_median: null,
           validator_count: null,
@@ -126,7 +126,7 @@ describe("economicsTrendsQuery", () => {
     expect(res.data.days[0]).toEqual({
       snapshot_date: "2026-07-05",
       subnet_count: 3,
-      total_stake_tao: null,
+      total_stake_alpha: null,
       alpha_price_tao_weighted: null,
       alpha_price_tao_median: null,
       validator_count: null,
@@ -135,7 +135,7 @@ describe("economicsTrendsQuery", () => {
     });
   });
 
-  it("normalizes total_stake_tao when the API sends the new lossless rao-precision string (#2924)", async () => {
+  it("normalizes total_stake_alpha when the API sends the new lossless rao-precision string (#2924)", async () => {
     // The network-wide sum already exceeds a JSON number's exact-double
     // ceiling (~9,007,199 TAO at rao precision), so the wire contract now
     // sends a fixed 9-decimal string instead of a number -- confirm the
@@ -148,7 +148,7 @@ describe("economicsTrendsQuery", () => {
         {
           snapshot_date: "2026-07-08",
           subnet_count: 129,
-          total_stake_tao: "327838334.635978317",
+          total_stake_alpha: "327838334.635978317",
         },
       ],
     });
@@ -156,7 +156,7 @@ describe("economicsTrendsQuery", () => {
     // Number(...) here too, not a source literal -- the same 18-significant-
     // digit value would trip eslint's no-loss-of-precision if written out,
     // which is exactly the class of bug #2924 exists to avoid on the wire.
-    expect(res.data.days[0].total_stake_tao).toBe(Number("327838334.635978317"));
+    expect(res.data.days[0].total_stake_alpha).toBe(Number("327838334.635978317"));
   });
 
   it("caps the rendered rows at 31 days", async () => {

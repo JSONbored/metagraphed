@@ -2364,7 +2364,7 @@ test("GET /api/v1/validators returns the network-wide validator leaderboard with
   expect(body.sort).toBe("subnet_count");
   expect(body.limit).toBe(20);
   expect(body.validators[0].hotkey).toBe("5Hot");
-  expect(body.validators[0].total_stake_alpha).toBe(456.7);
+  expect(body.validators[0].total_stake_tao).toBe(456.7);
 });
 
 test("GET /api/v1/validators sets featured per hotkey, matched against featured_validators", async () => {
@@ -3109,7 +3109,7 @@ test("GET /api/v1/validators/:hotkey/history shapes the validator's cross-subnet
     {
       snapshot_date: "2026-07-01",
       subnet_count: "2",
-      total_stake_alpha: "10",
+      total_stake_tao: "10",
       total_emission_tao: "1",
     },
   ];
@@ -3140,7 +3140,7 @@ test("GET /api/v1/subnets/:netuid/history shapes the daily neuron/validator/stak
       snapshot_date: "2026-07-01",
       neuron_count: "5",
       validator_count: "2",
-      total_stake_alpha: "10",
+      total_stake_tao: "10",
       total_emission_tao: "1",
     },
   ];
@@ -3291,7 +3291,7 @@ test("GET /api/v1/subnets/movers shapes every subnet ranked by its stake/emissio
         snapshot_date: "2026-06-01",
         neuron_count: "5",
         validator_count: "2",
-        total_stake_alpha: "10",
+        total_stake_tao: "10",
         total_emission_tao: "1",
       },
       {
@@ -3299,7 +3299,7 @@ test("GET /api/v1/subnets/movers shapes every subnet ranked by its stake/emissio
         snapshot_date: "2026-07-01",
         neuron_count: "6",
         validator_count: "3",
-        total_stake_alpha: "20",
+        total_stake_tao: "20",
         total_emission_tao: "2",
       },
     ],
@@ -3317,7 +3317,7 @@ test("GET /api/v1/validators/:hotkey/history falls back to the default window on
     {
       snapshot_date: "2026-07-01",
       subnet_count: "1",
-      total_stake_alpha: "5",
+      total_stake_tao: "5",
       total_emission_tao: "0.5",
     },
   ];
@@ -3333,7 +3333,7 @@ test("GET /api/v1/validators/:hotkey/history?window=all skips the snapshot_date 
     {
       snapshot_date: "2026-01-01",
       subnet_count: "1",
-      total_stake_alpha: "5",
+      total_stake_tao: "5",
       total_emission_tao: "0.5",
     },
   ];
@@ -3359,7 +3359,7 @@ test("GET /api/v1/subnets/:netuid/history?window=all skips the snapshot_date cut
       snapshot_date: "2026-01-01",
       neuron_count: "5",
       validator_count: "2",
-      total_stake_alpha: "10",
+      total_stake_tao: "10",
       total_emission_tao: "1",
     },
   ];
@@ -3473,7 +3473,7 @@ test("GET /api/v1/subnets/movers falls back on an unrecognized window and respec
         snapshot_date: "2026-06-01",
         neuron_count: "5",
         validator_count: "2",
-        total_stake_alpha: "10",
+        total_stake_tao: "10",
         total_emission_tao: "1",
       },
       {
@@ -3481,7 +3481,7 @@ test("GET /api/v1/subnets/movers falls back on an unrecognized window and respec
         snapshot_date: "2026-07-01",
         neuron_count: "6",
         validator_count: "3",
-        total_stake_alpha: "20",
+        total_stake_tao: "20",
         total_emission_tao: "2",
       },
     ],

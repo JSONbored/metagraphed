@@ -728,7 +728,7 @@ export interface LeaderboardRow {
   registration_cost_tao?: number; // open-slots / cheapest-registration
   registration_allowed?: boolean; // open-slots / cheapest-registration
   emission_share?: number; // highest-emission / validator-headroom (0–1)
-  total_stake_tao?: number; // highest-emission
+  total_stake_alpha?: number; // highest-emission
   validator_count?: number; // highest-emission / validator-headroom
   miner_count?: number; // highest-emission
   validator_headroom?: number; // validator-headroom
@@ -1651,7 +1651,7 @@ export interface SubnetEconomics {
   max_validators?: number;
   miner_count?: number;
   max_uids?: number;
-  total_stake_tao?: number;
+  total_stake_alpha?: number;
   max_stake_tao?: number;
   subnet_volume_tao?: number;
   registration_cost_tao?: number;
@@ -1683,7 +1683,7 @@ export interface CompareEconomics {
   alpha_price_tao?: number;
   validator_count?: number;
   miner_count?: number;
-  total_stake_tao?: number;
+  total_stake_alpha?: number;
   miner_readiness?: number;
   [key: string]: unknown;
 }
@@ -1717,8 +1717,8 @@ export interface SubnetHistoryPoint {
   snapshot_date: string;
   neuron_count?: number;
   validator_count?: number;
-  total_stake_tao?: number;
-  total_emission_tao?: number;
+  total_stake_alpha?: number;
+  total_emission_alpha?: number;
   [key: string]: unknown;
 }
 
@@ -1915,7 +1915,7 @@ export interface SubnetIdleStake {
   captured_at: string | null;
   neuron_count: number;
   idle_neuron_count: number;
-  idle_stake_tao: number | null;
+  idle_stake_alpha: number | null;
 }
 
 /** One subnet's row in the network-wide idle-stake rollup. */
@@ -1923,7 +1923,7 @@ export interface ChainIdleStakeSubnet {
   netuid: number;
   neuron_count: number;
   idle_neuron_count: number;
-  idle_stake_tao: number | null;
+  idle_stake_alpha: number | null;
 }
 
 /** Network-wide idle-stake rollup (GET /api/v1/chain/idle-stake). */
@@ -1931,7 +1931,7 @@ export interface ChainIdleStake {
   schema_version: number;
   captured_at: string | null;
   subnet_count: number;
-  total_idle_stake_tao: number | null;
+  total_idle_stake_alpha: number | null;
   subnets: ChainIdleStakeSubnet[];
 }
 
@@ -2311,12 +2311,12 @@ export interface SubnetLeaseHistory {
 /** One subnet's movement over the comparison window on the /subnets/movers board. */
 export interface SubnetMover {
   netuid: number;
-  stake_start_tao: number;
-  stake_end_tao: number;
-  stake_delta_tao: number;
+  stake_start_alpha: number;
+  stake_end_alpha: number;
+  stake_delta_alpha: number;
   stake_pct_change: number | null;
   stake_share_pct: number | null;
-  emission_delta_tao: number;
+  emission_delta_alpha: number;
   validators_delta: number;
   neurons_delta: number;
 }
@@ -2870,8 +2870,8 @@ export interface SubnetYield {
   neuron_count?: number;
   validator_count?: number;
   miner_count?: number;
-  total_stake_tao?: number;
-  total_emission_tao?: number;
+  total_stake_alpha?: number;
+  total_emission_alpha?: number;
   subnet_yield?: number | null;
   mean_yield?: number | null;
   median_yield?: number | null;
@@ -2984,7 +2984,7 @@ export interface ChainActivity {
 export interface EconomicsTrendsDay {
   snapshot_date: string;
   subnet_count: number;
-  total_stake_tao: number | null;
+  total_stake_alpha: number | null;
   alpha_price_tao_weighted: number | null;
   alpha_price_tao_median: number | null;
   validator_count: number | null;
