@@ -941,6 +941,19 @@ const GRAPHQL_USAGE_ROUTE = "graphql";
  * @param {URL} url
  * @returns {string | null}
  */
+// #8996: the auth-surface paths that get a usage label despite living outside
+// /api/v1/. Low-volume by nature -- an authorize round trip happens once per
+// client, and the two OAuth metadata documents are fetched once per client that
+// speaks the spec -- so this is a bounded addition, unlike the crawler-facing
+// discovery documents deliberately left out.
+const AUTH_SURFACE_ROUTES: Record<string, string> = {
+  "/authorize": "oauth-authorize",
+  "/oauth/callback/github": "oauth-callback",
+  "/.well-known/oauth-protected-resource": "oauth-protected-resource",
+  "/.well-known/oauth-protected-resource/mcp": "oauth-protected-resource",
+  "/.well-known/oauth-authorization-server": "oauth-authorization-server",
+};
+
 export function usageRouteLabel(url: URL) {
   const { network, url: resolved } = resolveNetworkPrefix(url);
   const { pathname } = resolved;
@@ -967,6 +980,27 @@ export function usageRouteLabel(url: URL) {
   // This excludes the per-request usage event, not error tracking.
   if (pathname.startsWith("/api/v1/internal/")) {
     return null;
+  }
+
+  // #8996: the auth surface, which had no usage telemetry at all because none
+  // of it lives under /api/v1/. ADR 0027 established that /mcp is a live OAuth
+  // 2.1 protected resource and that authentication currently buys throughput
+  // rather than reach -- and the next question that decision invites is
+  // "does anyone actually authenticate?". Without these, the answer is
+  // unobtainable: the authorize flow and the discovery documents that make
+  // spec-aware MCP clients authenticate natively were entirely unmeasured.
+  //
+  // A CLOSED LIST, not a prefix. `/.well-known/` as a prefix would also sweep
+  // in the agent-tools and server-card documents, which are crawler traffic
+  // measured in thousands per day -- and this project is ~30x over its PostHog
+  // free tier (#9004), so "instrument the auth surface" must not quietly mean
+  // "instrument every crawler fetch". /health is excluded for the same reason:
+  // our own prober hits it every minute.
+  const authSurfaceRoute = AUTH_SURFACE_ROUTES[pathname];
+  if (authSurfaceRoute) {
+    return network.isDefault
+      ? authSurfaceRoute
+      : `${network.id}:${authSurfaceRoute}`;
   }
 
   const route =
