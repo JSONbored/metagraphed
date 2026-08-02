@@ -70,14 +70,22 @@ test("a semantic-search backend failure reaches PostHog as $exception, tagged by
     {},
   );
   assert.equal(res.status, 502);
-  assert.equal(posted.length, 1);
-  assert.equal(posted[0].body.event, "$exception");
-  assert.equal(posted[0].body.properties.route, "semantic_search");
-  assert.equal(posted[0].body.properties.error_code, "ai_error");
+  // #8965: the query embedding is the call that fails here, and it now emits
+  // its own $ai_embedding alongside the route-level $exception. Select by
+  // event name rather than by index -- the count is no longer 1.
+  const exception = posted.find((call) => call.body.event === "$exception");
+  const embedding = posted.find((call) => call.body.event === "$ai_embedding");
+  assert.ok(exception, "the route failure must still reach PostHog");
+  assert.equal(exception.body.properties.route, "semantic_search");
+  assert.equal(exception.body.properties.error_code, "ai_error");
   assert.equal(
-    posted[0].body.properties.$exception_list[0].value,
+    exception.body.properties.$exception_list[0].value,
     "model down",
   );
+  // The embedding failure is no longer silent, which is the point of #8965.
+  assert.ok(embedding, "the failed embedding must be recorded");
+  assert.equal(embedding.body.properties.$ai_is_error, true);
+  assert.equal(embedding.body.properties.$ai_trace_name, "semantic_search");
 });
 
 test("an ask backend failure also reaches PostHog as $exception, tagged by the same route", async () => {
@@ -99,8 +107,14 @@ test("an ask backend failure also reaches PostHog as $exception, tagged by the s
     {},
   );
   assert.equal(res.status, 502);
-  assert.equal(posted.length, 1);
-  assert.equal(posted[0].body.properties.route, "ask");
+  // Same as the semantic-search case above: the embedding fails first and now
+  // reports itself, so the $exception is one of two captures, not the only one.
+  const exception = posted.find((call) => call.body.event === "$exception");
+  assert.ok(exception, "the route failure must still reach PostHog");
+  assert.equal(exception.body.properties.route, "ask");
+  const embedding = posted.find((call) => call.body.event === "$ai_embedding");
+  assert.ok(embedding, "the failed embedding must be recorded");
+  assert.equal(embedding.body.properties.$ai_trace_name, "ask");
 });
 
 test("a caller-input rejection (aiInput) on either route never reaches PostHog either", async () => {

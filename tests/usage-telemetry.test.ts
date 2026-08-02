@@ -8,13 +8,8 @@ import {
   USAGE_EVENT_NAME,
   classifyMcpErrorType,
   isUsageTelemetryConfigured,
-<<<<<<< HEAD
-  statusClassOf,
-||||||| parent of 9928dda62 (feat(ai): $ai_embedding, one trace per ask, and degraded-path visibility)
-=======
   recordAiDegradedEvent,
   recordAiEmbeddingEvent,
->>>>>>> 9928dda62 (feat(ai): $ai_embedding, one trace per ask, and degraded-path visibility)
   recordAiGenerationEvent,
   recordExceptionEvent,
   recordMcpInitializeEvent,
@@ -22,6 +17,7 @@ import {
   recordMcpToolsListEvent,
   recordUsageEvent,
   resolvePostHogHost,
+  statusClassOf,
   usageEventProperties,
 } from "../src/usage-telemetry.ts";
 import { mockEnv, type Row } from "./row-type.ts";
@@ -1596,7 +1592,6 @@ describe("recordMcpToolsListEvent", () => {
   });
 });
 
-<<<<<<< HEAD
 // ─── #8963: usage_event dimensions ─────────────────────────────────────────
 
 describe("statusClassOf", () => {
@@ -1661,8 +1656,9 @@ describe("usageEventProperties — #8963 dimensions", () => {
       client: "x".repeat(300),
     });
     assert.equal(String(props!.client).length, 256);
-||||||| parent of 9928dda62 (feat(ai): $ai_embedding, one trace per ask, and degraded-path visibility)
-=======
+  });
+});
+
 // ─── #8965: embedding + degraded-path observability ────────────────────────
 
 const CONFIGURED_8965 = {
@@ -1891,6 +1887,5 @@ describe("recordAiDegradedEvent", () => {
     } finally {
       globalThis.fetch = original;
     }
->>>>>>> 9928dda62 (feat(ai): $ai_embedding, one trace per ask, and degraded-path visibility)
   });
 });
