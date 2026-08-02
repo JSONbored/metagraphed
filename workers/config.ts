@@ -186,6 +186,13 @@ export const SUBNET_BURN_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/burn$/;
 // handleRequest, matching ownership-history/conviction's own inline-regex
 // convention rather than a config.ts pattern constant.
 export const SUBNET_LEASE_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/lease$/;
+// Live Crowdloan-pallet state (#8696) — every crowdloan the chain has opened,
+// and one crowdloan's detail, read from the pallet's own NextCrowdloanId/
+// Crowdloans storage at request time. Not a Postgres/lakehouse tier and no
+// static file; see src/crowdloans.ts's header for why this is a storage read
+// rather than the extrinsics feed the issue originally scoped.
+export const CROWDLOANS_PATH_PATTERN = /^\/api\/v1\/crowdloans$/;
+export const CROWDLOAN_DETAIL_PATH_PATTERN = /^\/api\/v1\/crowdloans\/(\d+)$/;
 // Validator weight-setting activity over the window, live from account_events, no static file.
 export const SUBNET_WEIGHTS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/weights$/;

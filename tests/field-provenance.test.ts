@@ -48,6 +48,14 @@ import { ECONOMICS_FIELD_SOURCES } from "../src/economics-field-sources.ts";
 import { AccountBalanceArtifactSchema } from "../schemas-src/routes/account-balance.ts";
 import { AccountRootClaimArtifactSchema } from "../schemas-src/routes/account-root-claim.ts";
 import { EvmAddressMappingArtifactSchema } from "../schemas-src/routes/network-singletons.ts";
+import {
+  CrowdloansArtifactSchema,
+  CrowdloanDetailArtifactSchema,
+} from "../schemas-src/routes/crowdloans.ts";
+import {
+  CROWDLOANS_FIELD_SOURCES,
+  CROWDLOAN_FIELD_SOURCES,
+} from "../src/crowdloans.ts";
 import { SubnetLeaseArtifactSchema } from "../schemas-src/routes/subnet-lease.ts";
 import {
   AccountChildrenArtifactSchema,
@@ -134,6 +142,16 @@ const SURFACES: {
     name: "GET /api/v1/subnets/{netuid}/lease",
     schema: SubnetLeaseArtifactSchema,
     sources: SUBNET_LEASE_FIELD_SOURCES,
+  },
+  {
+    name: "GET /api/v1/crowdloans",
+    schema: CrowdloansArtifactSchema,
+    sources: CROWDLOANS_FIELD_SOURCES,
+  },
+  {
+    name: "GET /api/v1/crowdloans/{crowdloan_id}",
+    schema: CrowdloanDetailArtifactSchema,
+    sources: CROWDLOAN_FIELD_SOURCES,
   },
   {
     // The map describes the SUBNET ROW, not the artifact envelope -- same

@@ -3466,16 +3466,20 @@ describe("inverse contract coverage (dispatched ⊆ contracted)", () => {
   ];
 
   function buildSamplePath(routePath: string) {
-    return routePath
-      .replace("{netuid}", "7")
-      .replace("{slug}", "allways")
-      .replace("{date}", "2026-06-24")
-      .replace("{uid}", "0")
-      .replace("{hash}", `0x${"0".repeat(64)}`)
-      .replace("{ref}", "0")
-      .replace("{ss58}", "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM")
-      .replace("{hotkey}", "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM")
-      .replace("{tag}", "inference");
+    return (
+      routePath
+        .replace("{netuid}", "7")
+        .replace("{slug}", "allways")
+        .replace("{date}", "2026-06-24")
+        .replace("{uid}", "0")
+        // A crowdloan id is a u32 (#8696) — numeric, same as {uid}.
+        .replace("{crowdloan_id}", "0")
+        .replace("{hash}", `0x${"0".repeat(64)}`)
+        .replace("{ref}", "0")
+        .replace("{ss58}", "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM")
+        .replace("{hotkey}", "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM")
+        .replace("{tag}", "inference")
+    );
   }
 
   // One concrete sample pathname per contract route (placeholders substituted).

@@ -134,6 +134,8 @@ import {
   handleSubnetStakeQuote,
   handleSubnetRecycled,
   handleSubnetBurn,
+  handleCrowdloan,
+  handleCrowdloans,
   handleSubnetLease,
   handleSubnetWeights,
   canonicalSubnetWeightsCachePath,
@@ -431,6 +433,8 @@ import {
   SUBNET_STAKE_QUOTE_PATH_PATTERN,
   SUBNET_RECYCLED_PATH_PATTERN,
   SUBNET_BURN_PATH_PATTERN,
+  CROWDLOANS_PATH_PATTERN,
+  CROWDLOAN_DETAIL_PATH_PATTERN,
   SUBNET_LEASE_PATH_PATTERN,
   SUBNET_WEIGHTS_PATH_PATTERN,
   SUBNET_WEIGHT_SETTERS_PATH_PATTERN,
@@ -3812,6 +3816,24 @@ export async function handleRequest(
       // this never shadows it.
       return handleSubnetLease(request, env, Number(leaseMatch[1]));
     }
+    // Live RPC + KV-cache routes (#8696), same shape as SUBNET_LEASE above.
+    // The detail pattern is tested first: /crowdloans/{id} and /crowdloans are
+    // disjoint regexes, but keeping the more specific one first matches the
+    // ordering convention every other pair in this router uses.
+    const crowdloanDetailMatch = CROWDLOAN_DETAIL_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (crowdloanDetailMatch) {
+      return handleCrowdloan(
+        request,
+        env,
+        Number(crowdloanDetailMatch[1]),
+        resolved.url,
+      );
+    }
+    if (CROWDLOANS_PATH_PATTERN.test(resolved.url.pathname)) {
+      return handleCrowdloans(request, env, resolved.url);
+    }
     const weightSettersMatch = SUBNET_WEIGHT_SETTERS_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -4785,6 +4807,11 @@ export function isMainnetOnlyApiPath(pathname: string) {
     SUBNET_RECYCLED_PATH_PATTERN.test(pathname) ||
     SUBNET_BURN_PATH_PATTERN.test(pathname) ||
     SUBNET_LEASE_PATH_PATTERN.test(pathname) ||
+    // #8696: both crowdloan routes read finney storage directly (src/
+    // crowdloans.ts hardcodes the finney RPC), so they are mainnet-only by
+    // construction, not by policy.
+    CROWDLOANS_PATH_PATTERN.test(pathname) ||
+    CROWDLOAN_DETAIL_PATH_PATTERN.test(pathname) ||
     SUBNET_YIELD_PATH_PATTERN.test(pathname) ||
     SUBNET_PERFORMANCE_PATH_PATTERN.test(pathname) ||
     SUBNET_IDLE_STAKE_PATH_PATTERN.test(pathname) ||

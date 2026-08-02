@@ -25,6 +25,8 @@
     "chain-turnover",
     "chain-weight-setters",
     "chain-weights",
-    "chain-yield"
+    "chain-yield",
+    "crowdloan-detail",
+    "crowdloans"
   ]
 }

@@ -204,6 +204,10 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // Lease-lifecycle history (#6719): served live from the Postgres-backed
   // all-events tier (ADR 0013), never a static file.
   /^subnets\/(?:\d+|\{netuid\})\/lease\/history\.json$/,
+  // Live Crowdloan-pallet state (#8696): computed from RPC at request time,
+  // never a static file. Same tier rationale as subnet lease above.
+  /^crowdloans\.json$/,
+  /^crowdloans\/(?:\d+|\{crowdloan_id\})\.json$/,
   // Block-explorer tiers (#1345): computed live from the blocks D1 tier at
   // /api/v1/blocks (recent feed) + /api/v1/blocks/{ref} (numeric block_number or
   // 0x block_hash) — never written as files.
