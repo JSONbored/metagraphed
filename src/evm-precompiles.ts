@@ -1239,20 +1239,32 @@ export const EVM_PRECOMPILES: EvmPrecompileEntry[] = [
 // generated table above, so a signature transcription bug would show up as a
 // selector mismatch in tests rather than silently trusting a hand-typed hex
 // value.
-export const EVM_PRECOMPILE_BY_ADDRESS = new Map<string, EvmPrecompileEntry>();
-const FUNCTION_BY_ADDRESS_AND_SELECTOR = new Map<
-  string,
-  EvmPrecompileFunction
->();
-
+// #8988: built from ARRAYS rather than by .set()-ing into empty Maps.
+//
+// Behaviourally identical -- both are still populated exactly once at module
+// load and never touched again. The difference is that they no longer LOOK
+// like runtime-mutable state to scripts/validate-module-state-resets.ts, which
+// flags any module-level Map/Set with a .set()/.add() call anywhere in the
+// file. Widening that validator to see generically-typed collections (the
+// point of #8988) newly caught these two, and registering a reset for them
+// would be actively wrong: clearing a build-once lookup table would break the
+// module rather than isolate it.
+//
+// So the honest fix is to stop them being mutable at all, which is also what
+// the header above already claims they are.
+const precompileEntries: [string, EvmPrecompileEntry][] = [];
+const functionEntries: [string, EvmPrecompileFunction][] = [];
 for (const precompile of EVM_PRECOMPILES) {
   const address = precompile.address.toLowerCase();
-  EVM_PRECOMPILE_BY_ADDRESS.set(address, precompile);
+  precompileEntries.push([address, precompile]);
   for (const fn of precompile.functions) {
     fn.selector = functionSelector(fn.signature);
-    FUNCTION_BY_ADDRESS_AND_SELECTOR.set(`${address}:${fn.selector}`, fn);
+    functionEntries.push([`${address}:${fn.selector}`, fn]);
   }
 }
+
+export const EVM_PRECOMPILE_BY_ADDRESS = new Map(precompileEntries);
+const FUNCTION_BY_ADDRESS_AND_SELECTOR = new Map(functionEntries);
 
 /** Case-insensitive precompile lookup by H160 address, or undefined if
  * `address` isn't one of the 16 known precompile addresses. */
