@@ -3583,6 +3583,8 @@ export const SDL = /* GraphQL */ `
     schema_version: Int!
     hotkey: String
     queried_at: String!
+    "Per-field { kind, storage } map: hotkey is measured, read from Sudo.Key. ADR 0023 decision 5, generalised in #9078."
+    field_sources: JSON!
   }
 
   "Live global Subtensor protocol/governance parameters, read live from chain via RPC. Each field is independently null on its own RPC failure (schema-stable). Mirrors GET /api/v1/network/parameters's data envelope."
@@ -3599,6 +3601,8 @@ export const SDL = /* GraphQL */ `
     emission_gate_exponent: Float
     emission_gate_exponent_effective: Float
     queried_at: String!
+    "Per-field { kind, storage } map: every value labelled measured (with the storage item it came from) or reconstructed (ours). READ IT BEFORE CITING block_emission_tao, block_emission_halvings, or emission_gate_exponent_effective -- all three are reconstructed. The first two are derived from TotalIssuance rather than the stale BlockEmission item, and the third is the runtime default whenever the storage item is unset, which is its current state. ADR 0023 decision 5, generalised in #9078."
+    field_sources: JSON!
   }
 
   "Live drand randomness-beacon status read from chain via RPC. Each field is independently null on its own RPC failure (schema-stable). Mirrors GET /api/v1/network/randomness's data envelope."
@@ -3608,6 +3612,8 @@ export const SDL = /* GraphQL */ `
     oldest_stored_round: Int
     stored_round_span: Int
     queried_at: String!
+    "Per-field { kind, storage } map: the two rounds are measured (Drand.LastStoredRound / Drand.OldestStoredRound); stored_round_span is reconstructed -- our subtraction of them, not a retention window the beacon publishes. ADR 0023 decision 5, generalised in #9078."
+    field_sources: JSON!
   }
 
   "Live EVM (H160) -> Substrate (SS58) account-address mapping read from chain via RPC. ss58 is null when the mapping cannot be resolved (schema-stable, never a GraphQL error). Mirrors GET /api/v1/evm/address/{h160}."

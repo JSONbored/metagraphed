@@ -4,6 +4,7 @@ import {
   SUDO_KEY_KV_TTL,
   SUDO_KEY_NEGATIVE_KV_TTL,
   SUDO_KEY_RPC_TIMEOUT_MS,
+  SUDO_KEY_FIELD_SOURCES,
   loadSudoKey,
 } from "../src/sudo-key.ts";
 import { handleRequest } from "../workers/api.ts";
@@ -129,7 +130,13 @@ describe("loadSudoKey", () => {
     }) as unknown as typeof fetch;
     try {
       const data = await loadSudoKey(env as unknown as Env);
-      assert.deepEqual(data, cached);
+      // The cached body verbatim, PLUS provenance (#9078) — attached outside
+      // the cache, which matters most here: at a 1h TTL an entry written
+      // before the map existed would otherwise serve without one all hour.
+      assert.deepEqual(data, {
+        ...cached,
+        field_sources: SUDO_KEY_FIELD_SOURCES,
+      });
       assert.equal(fetchCalled, false);
     } finally {
       globalThis.fetch = orig;

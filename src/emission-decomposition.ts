@@ -29,6 +29,7 @@ import {
   type SubnetPipelineInput,
 } from "./emission-pipeline.ts";
 import { blockEmissionForIssuance } from "./block-emission.ts";
+import type { FieldSources } from "./field-provenance.ts";
 
 /** Rao per TAO. */
 const RAO_PER_TAO = 1_000_000_000n;
@@ -85,6 +86,9 @@ export interface DecompositionChainState {
  * Where each published value came from. ADR 0023 decision 5: provenance is a
  * contract, so the surface names the storage item behind every measurement and
  * marks every derived value as OURS rather than the chain's.
+ *
+ * The shape is src/field-provenance.ts's, shared with the other surfaces that
+ * publish a `field_sources` map (#9078) — this one was first, not special.
  */
 export const EMISSION_FIELD_SOURCES = {
   emission_share: {
@@ -112,11 +116,23 @@ export const EMISSION_FIELD_SOURCES = {
   weighted_share: { kind: "reconstructed", storage: null },
   gated_share: { kind: "reconstructed", storage: null },
   final_share: { kind: "reconstructed", storage: null },
-  tao_emission: { kind: "reconstructed", storage: null },
   liquidity_fraction: { kind: "reconstructed", storage: null },
   gate_delta: { kind: "reconstructed", storage: null },
   distance_to_bar: { kind: "reconstructed", storage: null },
-} as const;
+  // The three below were missing (or wrong) until tests/field-provenance.test.ts
+  // checked this map against the row schema it describes. `tao_emission` was
+  // declared here and served nowhere -- provenance for a field that does not
+  // exist -- while `tao_total` and `ineligible_reason`, both served on every
+  // row, had no entry at all.
+  //
+  // `tao_total` is tao_in_emission + excess_tao, our sum of two reads.
+  // `ineligible_reason` is stage 0's verdict, decided from netuid,
+  // first_emission_block, subtoken_enabled and registration_allowed together
+  // (src/emission-pipeline.ts's ineligibleReason) -- four inputs, one string
+  // the chain never publishes.
+  tao_total: { kind: "reconstructed", storage: null },
+  ineligible_reason: { kind: "reconstructed", storage: null },
+} as const satisfies FieldSources;
 
 export interface SubnetDecomposition {
   netuid: number;

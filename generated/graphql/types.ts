@@ -2237,6 +2237,8 @@ export type NetworkParameters = {
   emission_gate_bar?: Maybe<Scalars['Float']['output']>;
   emission_gate_exponent?: Maybe<Scalars['Float']['output']>;
   emission_gate_exponent_effective?: Maybe<Scalars['Float']['output']>;
+  /** Per-field { kind, storage } map: every value labelled measured (with the storage item it came from) or reconstructed (ours). READ IT BEFORE CITING block_emission_tao, block_emission_halvings, or emission_gate_exponent_effective -- all three are reconstructed. The first two are derived from TotalIssuance rather than the stale BlockEmission item, and the third is the runtime default whenever the storage item is unset, which is its current state. ADR 0023 decision 5, generalised in #9078. */
+  field_sources: Scalars['JSON']['output'];
   pending_childkey_cooldown_blocks?: Maybe<Scalars['Int']['output']>;
   queried_at: Scalars['String']['output'];
   schema_version: Scalars['Int']['output'];
@@ -2248,6 +2250,8 @@ export type NetworkParameters = {
 /** Live drand randomness-beacon status read from chain via RPC. Each field is independently null on its own RPC failure (schema-stable). Mirrors GET /api/v1/network/randomness's data envelope. */
 export type NetworkRandomness = {
   __typename?: 'NetworkRandomness';
+  /** Per-field { kind, storage } map: the two rounds are measured (Drand.LastStoredRound / Drand.OldestStoredRound); stored_round_span is reconstructed -- our subtraction of them, not a retention window the beacon publishes. ADR 0023 decision 5, generalised in #9078. */
+  field_sources: Scalars['JSON']['output'];
   last_stored_round?: Maybe<Scalars['Int']['output']>;
   oldest_stored_round?: Maybe<Scalars['Int']['output']>;
   queried_at: Scalars['String']['output'];
@@ -5276,6 +5280,8 @@ export type SubscriptionChainEventsArgs = {
 /** The network's on-chain sudo (superuser) key, read live from chain via RPC. hotkey is null on RPC failure or a renounced sudo (schema-stable). Mirrors GET /api/v1/sudo/key's data envelope. */
 export type SudoKey = {
   __typename?: 'SudoKey';
+  /** Per-field { kind, storage } map: hotkey is measured, read from Sudo.Key. ADR 0023 decision 5, generalised in #9078. */
+  field_sources: Scalars['JSON']['output'];
   hotkey?: Maybe<Scalars['String']['output']>;
   queried_at: Scalars['String']['output'];
   schema_version: Scalars['Int']['output'];
@@ -7933,6 +7939,7 @@ export type NetworkParametersResolvers<ContextType = GqlContext, ParentType exte
   emission_gate_bar?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   emission_gate_exponent?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   emission_gate_exponent_effective?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
   pending_childkey_cooldown_blocks?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   queried_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -7942,6 +7949,7 @@ export type NetworkParametersResolvers<ContextType = GqlContext, ParentType exte
 }>;
 
 export type NetworkRandomnessResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['NetworkRandomness'] = ResolversParentTypes['NetworkRandomness']> = ResolversObject<{
+  field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
   last_stored_round?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   oldest_stored_round?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   queried_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -9232,6 +9240,7 @@ export type SubscriptionResolvers<ContextType = GqlContext, ParentType extends R
 }>;
 
 export type SudoKeyResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SudoKey'] = ResolversParentTypes['SudoKey']> = ResolversObject<{
+  field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
   hotkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   queried_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;

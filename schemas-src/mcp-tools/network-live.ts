@@ -6,6 +6,7 @@
 // call that can fail on its own) -- modeled fresh, matching each hand-written
 // literal field-for-field.
 import { z } from "zod";
+import { FieldSourcesSchema } from "../shared.ts";
 
 export const GetNetworkParametersInputSchema = z.object({}).strict();
 export type GetNetworkParametersInput = z.infer<
@@ -29,6 +30,11 @@ export const GetNetworkParametersOutputSchema = z
     emission_gate_exponent: z.number().nullable(),
     emission_gate_exponent_effective: z.number().nullable(),
     queried_at: z.string().nullable(),
+    // #9078 provenance, mirroring NetworkParametersArtifactSchema field for
+    // field. It matters most to an MCP caller: an agent that cites
+    // `emission_gate_exponent_effective: 3` as a chain reading is citing our
+    // runtime default, and this map is the only thing that says so.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type GetNetworkParametersOutput = z.infer<
@@ -47,6 +53,8 @@ export const GetRandomnessStatusOutputSchema = z
     oldest_stored_round: z.int().nullable(),
     stored_round_span: z.int().nullable(),
     queried_at: z.string().nullable(),
+    // #9078 provenance, mirroring RandomnessArtifactSchema field for field.
+    field_sources: FieldSourcesSchema,
   })
   .passthrough();
 export type GetRandomnessStatusOutput = z.infer<

@@ -3469,7 +3469,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch live global Subtensor protocol/governance parameters (#6343) — TaoWeight, StakeThreshold, PendingChildKeyCooldown — queried from the finney RPC at request time with 300s KV cache. Each field is independently null on its own RPC failure. */
+        /** Fetch live global Subtensor protocol/governance parameters (#6343) — TaoWeight, StakeThreshold, PendingChildKeyCooldown — queried from the finney RPC at request time with 300s KV cache. Each field is independently null on its own RPC failure. READ `field_sources` BEFORE CITING ANY VALUE HERE: it labels every field measured (with the storage item behind it) or reconstructed (our arithmetic), and three are reconstructed. `block_emission_tao` and `block_emission_halvings` are derived from TotalIssuance, never read from the `BlockEmission` storage item, which is stale at 1.0 TAO (#8747). `emission_gate_exponent_effective` is the runtime default (3) whenever the storage item is unset, which is its current state on finney — that 3 comes from our source tree, not from chain. */
         get: operations["networkParameters"];
         put?: never;
         post?: never;
@@ -3486,7 +3486,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the live drand randomness-beacon status (#6730/#6731) — LastStoredRound, OldestStoredRound — queried from the finney RPC at request time with 30s KV cache. A current-state snapshot, not a history feed. Each field is independently null on its own RPC failure. */
+        /** Fetch the live drand randomness-beacon status (#6730/#6731) — LastStoredRound, OldestStoredRound — queried from the finney RPC at request time with 30s KV cache. A current-state snapshot, not a history feed. Each field is independently null on its own RPC failure. `field_sources` marks the two rounds measured (Drand.LastStoredRound / Drand.OldestStoredRound) and `stored_round_span` reconstructed — it is our subtraction of them, not a retention window the beacon publishes. */
         get: operations["randomness"];
         put?: never;
         post?: never;
@@ -4829,7 +4829,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the current Sudo::Key holder, queried from the finney RPC at request time with 1h KV cache (re-scoped from the original Senate/Council membership framing — subtensor has no such pallet, #4310). hotkey is null on RPC failure or an unset sudo key. */
+        /** Fetch the current Sudo::Key holder, queried from the finney RPC at request time with 1h KV cache (re-scoped from the original Senate/Council membership framing — subtensor has no such pallet, #4310). hotkey is null on RPC failure or an unset sudo key. `field_sources` marks hotkey measured and names the storage item behind it (Sudo.Key). */
         get: operations["sudoKey"];
         put?: never;
         post?: never;
@@ -7183,6 +7183,7 @@ export interface components {
                 emission_gate_exponent: number | null;
                 total_issuance_tao: number;
             };
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
                 [key: string]: {
                     /** @enum {string} */
@@ -8077,6 +8078,14 @@ export interface components {
             emission_gate_bar?: number | null;
             emission_gate_exponent?: number | null;
             emission_gate_exponent_effective?: number | null;
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    storage: string | null;
+                };
+            };
             pending_childkey_cooldown_blocks?: number | null;
             queried_at?: string | null;
             schema_version: number;
@@ -8323,6 +8332,14 @@ export interface components {
             storage_tier: "dual" | "git" | "r2";
         };
         RandomnessArtifact: {
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    storage: string | null;
+                };
+            };
             last_stored_round?: number | null;
             oldest_stored_round?: number | null;
             queried_at?: string | null;
@@ -10582,6 +10599,14 @@ export interface components {
             schema_version: 1;
         };
         SudoKeyArtifact: {
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    storage: string | null;
+                };
+            };
             hotkey?: string | null;
             queried_at?: string | null;
             schema_version: number;
@@ -35093,6 +35118,12 @@ export interface operations {
                      *         "emission_gate_bar": 0.5,
                      *         "emission_gate_exponent": 0.5,
                      *         "emission_gate_exponent_effective": 0.5,
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
                      *         "pending_childkey_cooldown_blocks": 5000000,
                      *         "queried_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
@@ -35197,6 +35228,12 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
                      *         "last_stored_round": 1,
                      *         "oldest_stored_round": 1,
                      *         "queried_at": "2026-06-01T00:00:00.000Z",
@@ -46435,6 +46472,12 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
                      *         "hotkey": "example",
                      *         "queried_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1

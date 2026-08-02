@@ -8514,7 +8514,8 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     description:
       "Fetch the current Sudo::Key holder, queried live from finney RPC at " +
       "request time (1h KV cache). hotkey is null on an RPC failure or an " +
-      "unset sudo key. Mirrors GET /api/v1/sudo/key.",
+      "unset sudo key. `field_sources` marks it measured and names the " +
+      "storage item (Sudo.Key) it was read from. Mirrors GET /api/v1/sudo/key.",
     inputSchema: z.toJSONSchema(GetSudoKeyInputSchema, {
       target: "draft-2020-12",
     }),
@@ -8529,7 +8530,15 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "Fetch live global Subtensor protocol/governance parameters -- " +
       "TaoWeight, StakeThreshold, PendingChildKeyCooldown -- queried live " +
       "from finney RPC at request time (300s KV cache). Each field is " +
-      "independently null on its own RPC failure. Mirrors GET " +
+      "independently null on its own RPC failure. READ `field_sources` " +
+      "BEFORE CITING ANY VALUE HERE: it labels each field measured (with the " +
+      "storage item behind it) or reconstructed (ours), and three are " +
+      "reconstructed. `block_emission_tao`/`block_emission_halvings` are " +
+      "derived from TotalIssuance, never read from the `BlockEmission` " +
+      "storage item, which is stale at 1.0 TAO. " +
+      "`emission_gate_exponent_effective` is the runtime default (3) whenever " +
+      "the storage item is unset, which is its current state on finney -- so " +
+      "that 3 comes from our source tree, not from chain. Mirrors GET " +
       "/api/v1/network/parameters.",
     inputSchema: z.toJSONSchema(GetNetworkParametersInputSchema, {
       target: "draft-2020-12",
@@ -8547,8 +8556,11 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "RPC at request time (30s KV cache). A current-state snapshot, not a " +
       "history feed (pulses land ~3s apart). Useful for a commit-reveal " +
       "weight-setter checking whether a given round has landed. Each field " +
-      "is independently null on its own RPC failure. Mirrors GET " +
-      "/api/v1/network/randomness.",
+      "is independently null on its own RPC failure. `field_sources` marks " +
+      "the two rounds measured (Drand.LastStoredRound / " +
+      "Drand.OldestStoredRound) and `stored_round_span` reconstructed -- it " +
+      "is our subtraction of them, not a retention window the beacon " +
+      "publishes. Mirrors GET /api/v1/network/randomness.",
     inputSchema: z.toJSONSchema(GetRandomnessStatusInputSchema, {
       target: "draft-2020-12",
     }),

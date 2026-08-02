@@ -1302,7 +1302,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "The current Sudo::Key holder (#4310/2.4, re-scoped from the original Senate/Council membership framing — subtensor has no such pallet), queried from the finney RPC at request time with 1h KV cache (the key changes extremely rarely). hotkey is null on RPC failure or an unset sudo key.",
+      "description": "The current Sudo::Key holder (#4310/2.4, re-scoped from the original Senate/Council membership framing — subtensor has no such pallet), queried from the finney RPC at request time with 1h KV cache (the key changes extremely rarely). hotkey is null on RPC failure or an unset sudo key. `field_sources` marks hotkey measured and names the storage item behind it (Sudo.Key).",
       "id": "sudo-key",
       "path": "/metagraph/sudo/key.json",
       "retirement": null,
@@ -1313,7 +1313,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Live global Subtensor protocol/governance parameters (#6343) — TaoWeight, StakeThreshold, PendingChildKeyCooldown — queried from the finney RPC at request time with 300s KV cache. Each field is independently null on its own RPC failure.",
+      "description": "Live global Subtensor protocol/governance parameters (#6343) — TaoWeight, StakeThreshold, PendingChildKeyCooldown — queried from the finney RPC at request time with 300s KV cache. Each field is independently null on its own RPC failure. READ `field_sources` BEFORE CITING ANY VALUE HERE: it labels every field measured (with the storage item behind it) or reconstructed (our arithmetic), and three are reconstructed. `block_emission_tao` and `block_emission_halvings` are derived from TotalIssuance, never read from the `BlockEmission` storage item, which is stale at 1.0 TAO (#8747). `emission_gate_exponent_effective` is the runtime default (3) whenever the storage item is unset, which is its current state on finney — that 3 comes from our source tree, not from chain.",
       "id": "network-parameters",
       "path": "/metagraph/network/parameters.json",
       "retirement": null,
@@ -1324,7 +1324,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Live drand randomness-beacon status (#6730/#6731) — LastStoredRound, OldestStoredRound — queried from the finney RPC at request time with 30s KV cache. A current-state snapshot, not a history feed. Each field is independently null on its own RPC failure.",
+      "description": "Live drand randomness-beacon status (#6730/#6731) — LastStoredRound, OldestStoredRound — queried from the finney RPC at request time with 30s KV cache. A current-state snapshot, not a history feed. Each field is independently null on its own RPC failure. `field_sources` marks the two rounds measured (Drand.LastStoredRound / Drand.OldestStoredRound) and `stored_round_span` reconstructed — it is our subtraction of them, not a retention window the beacon publishes.",
       "id": "randomness",
       "path": "/metagraph/network/randomness.json",
       "retirement": null,
