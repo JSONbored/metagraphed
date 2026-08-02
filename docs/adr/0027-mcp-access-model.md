@@ -106,11 +106,17 @@ something real — and there are none, which is exactly why clause 4 exists.
   sufficiently concurrent burst), so it must never be the only thing standing
   between an anonymous caller and an expensive or mutating operation. Clause 4
   is what keeps that true.
-- **`credential`-in-tool-arguments survives for now**, for `auth_required`
-  subnet surfaces. It is the wrong long-term shape — OAuth-aware clients are
-  moving away from passing secrets through tool arguments — but migrating it
-  changes published tool schemas for real callers and needs a session-bound
-  credential store. Tracked as #9009.
+- **`credential`-in-tool-arguments survives, but is no longer the only shape.**
+  #9009 landed the session-bound credential store: an authenticated caller
+  registers a surface credential once (`store_surface_credential`) and
+  `call_subnet_surface` resolves it from that store, so the secret never
+  travels through tool arguments. The in-band argument stays fully supported
+  for anonymous callers — removing it would shrink anonymous reach, which
+  clause 1 forbids — and is deprecated-with-a-notice, not rejected, for
+  authenticated ones. **This is the first privileged capability on `/mcp`, so
+  clause 4 has now fired**: the three store tools require authentication and
+  refuse anonymous callers outright. Clause 3 is unchanged for every other
+  tool — authentication still buys throughput, and now one capability.
 - **Tier changes are now observable.** `$mcp_auth_tier` distinguishes
   `anonymous` from `free` / `community` / `paid`, so the paid-tier question ADR
   0022 deferred can be answered with measured MCP demand instead of a guess.
@@ -133,9 +139,18 @@ Already live before it (see the table above): bearer verification, tiered
 ceilings, blocklist, daily quota, and the full RFC 9728 / `WWW-Authenticate`
 resource-server posture.
 
+Landed after it:
+
+- The session-bound surface-credential store (#9009) —
+  `src/mcp-surface-credentials.ts` plus `store_surface_credential` /
+  `list_surface_credentials` / `delete_surface_credential`. Requires the
+  `MCP_SURFACE_CREDENTIAL_SECRET` worker secret; without it the store refuses
+  every operation rather than degrading to plaintext, and
+  `call_subnet_surface` keeps working with an in-band `credential`.
+
 Deliberately not in scope, tracked separately:
 
-- Migrating `auth_required` surface credentials out of tool arguments (#9009).
-- Deciding _which_ tools, if any, should require authentication — clause 4's
-  trigger has not fired yet, and inventing a privileged tool to justify the
-  mechanism would be backwards.
+- Deciding whether any of the _read_ tools should require authentication.
+  Clause 4 fired for a write capability; it says nothing about narrowing the
+  anonymous read surface, and doing that would trade the distribution channel
+  for access control over deliberately-public data.

@@ -106,8 +106,82 @@ export const CallSubnetSurfaceOutputSchema = z
     body: z.unknown().optional(),
     truncated: z.boolean(),
     parse_error: z.string().nullable().optional(),
+    // #9009: set only when an AUTHENTICATED caller passed `credential`
+    // in-band -- the deprecation window's per-call notice.
+    credential_deprecation: z.string().optional(),
+    // #9009: "argument" (in-band) or "stored" (resolved from the caller's
+    // registered credential). Absent for surfaces that need no credential.
+    credential_source: z.enum(["argument", "stored"]).optional(),
   })
   .passthrough();
 export type CallSubnetSurfaceOutput = z.infer<
   typeof CallSubnetSurfaceOutputSchema
+>;
+
+// MCP tools `store_surface_credential` / `list_surface_credentials` /
+// `delete_surface_credential` (#9009): the session-bound credential store
+// that moves auth_required surface secrets out of call_subnet_surface's
+// tool arguments for authenticated callers. Defined inline in
+// src/mcp-server.ts's MCP_TOOLS array, backed by
+// src/mcp-surface-credentials.ts.
+
+export const StoreSurfaceCredentialInputSchema = z
+  .object({
+    surface_id: z.string(),
+    // Same two shapes call_subnet_surface accepts in-band: a single opaque
+    // string for bearer/api-key/basic schemes, or a {name: value} bundle
+    // for scheme:signature. Branch order (string, then object) mirrors
+    // CallSubnetSurfaceInputSchema's `credential`.
+    credential: z.union([z.string(), OpenObjectSchema]),
+    ttl_seconds: z.int().min(60).max(7_776_000).optional(),
+  })
+  .strict();
+export type StoreSurfaceCredentialInput = z.infer<
+  typeof StoreSurfaceCredentialInputSchema
+>;
+
+export const StoreSurfaceCredentialOutputSchema = z
+  .object({
+    surface_id: z.string(),
+    stored: z.boolean(),
+    expires_at: z.string(),
+    replaced: z.boolean(),
+  })
+  .passthrough();
+export type StoreSurfaceCredentialOutput = z.infer<
+  typeof StoreSurfaceCredentialOutputSchema
+>;
+
+export const ListSurfaceCredentialsInputSchema = z.object({}).strict();
+export type ListSurfaceCredentialsInput = z.infer<
+  typeof ListSurfaceCredentialsInputSchema
+>;
+
+export const ListSurfaceCredentialsOutputSchema = z
+  .object({
+    credentials: OpenObjectArraySchema,
+    count: z.int(),
+  })
+  .passthrough();
+export type ListSurfaceCredentialsOutput = z.infer<
+  typeof ListSurfaceCredentialsOutputSchema
+>;
+
+export const DeleteSurfaceCredentialInputSchema = z
+  .object({
+    surface_id: z.string(),
+  })
+  .strict();
+export type DeleteSurfaceCredentialInput = z.infer<
+  typeof DeleteSurfaceCredentialInputSchema
+>;
+
+export const DeleteSurfaceCredentialOutputSchema = z
+  .object({
+    surface_id: z.string(),
+    deleted: z.boolean(),
+  })
+  .passthrough();
+export type DeleteSurfaceCredentialOutput = z.infer<
+  typeof DeleteSurfaceCredentialOutputSchema
 >;
