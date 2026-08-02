@@ -1,6 +1,6 @@
 // PR-time guard on the compiled Worker bundle size. Cloudflare rejects a Worker
-// whose script + bound modules exceed 1 MiB gzipped, but that limit is only
-// enforced at deploy time — i.e. post-merge. This gate reproduces the deploy-side
+// whose script + bound modules exceed the plan's gzipped size limit, and that
+// limit is only enforced at deploy time — i.e. post-merge. This gate reproduces the deploy-side
 // bundling locally via `wrangler deploy --dry-run` (no network/auth required),
 // gzip-measures the produced Worker JS + wasm modules (NOT the ./public assets,
 // which don't count against the Worker script limit), and fails the build if the
@@ -16,18 +16,30 @@ import { repoRoot } from "./lib.ts";
 
 const KIB = 1024;
 
-// Cloudflare's hard ceiling is 1 MiB (1024 KiB) gzipped. Warn early, fail before
-// the ceiling so a regression is caught at PR time rather than at deploy. The
-// bundle has grown past the original 980 / 1000 / 1008 / 1016 KiB fail-lines as
-// more live routes, GraphQL parity fields, and MCP tools landed while staying
-// under the 1024 KiB deploy limit. The GitHub Actions runner's toolchain produces
-// a consistently larger gzip output than a local build of the same commit
-// (observed: 1008.2 KiB in CI vs. 1002.8 KiB local for identical source), so the
-// fail-budget is raised again to 1020 KiB (a 4 KiB margin to the ceiling, still
-// short of the 1024 KiB deploy limit) to absorb the new list_search MCP module
-// rather than flake red on every PR at the old line; still tunable via env vars.
-const WARN_KIB = Number(process.env.WORKER_BUNDLE_WARN_KIB ?? "1000");
-const FAIL_KIB = Number(process.env.WORKER_BUNDLE_FAIL_KIB ?? "1020");
+// Cloudflare's gzipped script limit is 3 MB on Workers Free and 10 MB on
+// Workers Paid (developers.cloudflare.com/workers/platform/limits/). This
+// account is Paid -- Hyperdrive, Smart Placement and Workers Builds are all
+// paid-only and all are in use -- so the real ceiling is 10 MB.
+//
+// It was NOT always read that way. Until #9059 this gate asserted a 1 MiB
+// (1024 KiB) ceiling and sat at a 1020 KiB fail line, "a 4 KiB margin". That
+// number was ~10x too small, and it was load-bearing: src/usage-telemetry.ts
+// cited it to justify hand-writing a PostHog client (a V8 stack-trace regex
+// parser and a hand-maintained $exception wire shape) rather than importing
+// the ~40 KiB official SDK. Measured at the time of that correction the entry
+// was 531 KiB -- about 5% of the true budget, not "within a few KiB of the
+// limit". Keep the real number here: a wrong budget does not just fail late,
+// it silently shapes the architecture around it.
+//
+// The gate stays, because a bundle budget is still worth having -- an
+// unnoticed multi-MB dependency is a real cold-start and deploy risk. It just
+// guards the ceiling that exists, with headroom expressed as a fraction of it
+// rather than a hairline. Both thresholds stay tunable via env vars.
+const CLOUDFLARE_PAID_LIMIT_KIB = 10 * 1024;
+// ~20% of the ceiling warns, ~40% fails: generous room for ordinary growth,
+// while still catching a dependency that doubles the bundle in one PR.
+const WARN_KIB = Number(process.env.WORKER_BUNDLE_WARN_KIB ?? "2048");
+const FAIL_KIB = Number(process.env.WORKER_BUNDLE_FAIL_KIB ?? "4096");
 
 if (!Number.isFinite(WARN_KIB) || !Number.isFinite(FAIL_KIB)) {
   console.error("Invalid WORKER_BUNDLE_WARN_KIB/WORKER_BUNDLE_FAIL_KIB value.");
@@ -78,14 +90,17 @@ try {
   }
   console.log(
     `Worker bundle: ${totalKib.toFixed(1)} KiB gzipped ` +
-      `(warn ${WARN_KIB} KiB, fail ${FAIL_KIB} KiB, Cloudflare limit 1024 KiB).`,
+      `(warn ${WARN_KIB} KiB, fail ${FAIL_KIB} KiB, ` +
+      `Cloudflare Paid limit ${CLOUDFLARE_PAID_LIMIT_KIB} KiB — ` +
+      `${((totalKib / CLOUDFLARE_PAID_LIMIT_KIB) * 100).toFixed(1)}% used).`,
   );
 
   if (totalKib >= FAIL_KIB) {
     console.error(
       `Worker bundle ${totalKib.toFixed(1)} KiB exceeds the ${FAIL_KIB} KiB ` +
         `budget. Trim the Worker entry (workers/api.ts) or its dependencies ` +
-        `before this reaches Cloudflare's 1024 KiB deploy limit.`,
+        `before this reaches Cloudflare's ${CLOUDFLARE_PAID_LIMIT_KIB} KiB ` +
+        `Paid-plan deploy limit.`,
     );
     process.exit(1);
   }
