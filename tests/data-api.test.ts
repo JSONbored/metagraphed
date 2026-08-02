@@ -944,12 +944,44 @@ test("chain-events/stats answers empty on a cold store instead of scanning", asy
     expect(body.groups).toBe(0);
     expect(body.activity).toEqual([]);
     expect(body.window_blocks).toBe(500);
-    // Only the head lookup ran — no aggregate was issued.
-    expect(sqlCalls.at(-1)!.text).toContain("max(block_number)");
+    // Only the TIMESTAMP head lookup ran. Neither the block-head lookup nor the
+    // aggregate was issued: with no max(observed_at) there is nothing to bound
+    // either of them on, and issuing them anyway is the unanchored scan #8970
+    // exists to remove.
+    expect(sqlCalls.at(-1)!.text).toContain("max(observed_at)");
+    expect(sqlCalls.at(-1)!.text).not.toContain("max(block_number)");
     expect(sqlCalls.at(-1)!.text).not.toContain("GROUP BY pallet, method");
+    // Nowhere in the request, not merely "not last".
+    expect(
+      sqlCalls.filter((c) => c.text.includes("max(block_number)")),
+    ).toEqual([]);
   } finally {
     mockRows.current = previous;
   }
+});
+
+// #8970 round two. The first fix bounded the AGGREGATE on observed_at but left
+// the head lookup itself unbounded, so it inherited the same defect and the
+// route was still a deterministic 502 in production. Measured on the live
+// hypertable: max(observed_at) 179ms, unbounded max(block_number) 5,432ms,
+// max(block_number) bounded on observed_at 56ms.
+test("chain-events/stats bounds the head lookup on the partition column too", async () => {
+  const res = await req("/api/v1/chain-events/stats?blocks=500");
+  expect(res.status).toBe(200);
+
+  const texts = sqlCalls.map((c) => c.text);
+  const tsHead = texts.find((t) => t.includes("max(observed_at)"))!;
+  const blockHead = texts.find((t) => t.includes("max(block_number)"))!;
+
+  // The timestamp head is the ONLY unbounded aggregate left, and it is the one
+  // that is a single index probe on the partition column.
+  expect(tsHead).toBeDefined();
+  expect(tsHead).not.toMatch(/WHERE/);
+
+  // The block head must be bounded, or it probes every chunk.
+  expect(blockHead).toBeDefined();
+  expect(blockHead).toMatch(/WHERE observed_at >= /);
+  expect(blockHead).not.toBe(tsHead);
 });
 
 // The defect this route was 502-ing on: chain_events is partitioned on
