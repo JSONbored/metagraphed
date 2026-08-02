@@ -167,6 +167,7 @@ jobs:
       - name: Open sync PR (no-op if unchanged)
         if: steps.mcp-diff.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
+        id: pr
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           branch: chore/sync-mcp-version
@@ -180,3 +181,23 @@ jobs:
             Auto-bumps `MCP_SERVER_VERSION` (and the matching `server.json` MCP Registry listing) from `${{ steps.version.outputs.current }}` to `${{ steps.version.outputs.next }}` because `src/mcp-server.ts`'s tool registry changed on main.
           labels: |
             automation
+      # #233 interim: merge the bot PR itself once its own checks are green,
+      # replacing the daily manual merge. Deliberately the RELEASE_PLEASE_TOKEN
+      # (a real PAT) rather than GITHUB_TOKEN: a GITHUB_TOKEN merge would not
+      # trigger push-to-main workflows (the merge-triggered fast registry sync,
+      # the version-bump lanes), silently detaching everything that reacts to
+      # these merges. A failed or missing check leaves the PR open for a human
+      # and turns this run red, which is the alert.
+      - name: Auto-merge when checks are green
+        if: steps.pr.outputs.pull-request-number
+        timeout-minutes: 30
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          pr="${{ steps.pr.outputs.pull-request-number }}"
+          # Checks register within moments of the branch push; give them a
+          # beat so --watch sees the run instead of "no checks reported".
+          sleep 60
+          gh pr checks "$pr" --watch --fail-fast
+          gh pr merge "$pr" --squash
