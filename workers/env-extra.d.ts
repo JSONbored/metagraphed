@@ -77,6 +77,7 @@ interface Env {
   POSTHOG_HOST?: string;
   POSTHOG_PROJECT_TOKEN?: string;
   POSTHOG_TRACES_SAMPLE_RATE?: string;
+  POSTHOG_TRACES_SAMPLE_RATE_MCP?: string;
   REGISTRY_SYNC_SECRET?: string;
   RESEND_API_KEY?: string;
   RESEND_FROM_ADDRESS?: string;

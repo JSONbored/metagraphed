@@ -247,6 +247,17 @@
     // that moment, and claiming "operational" would be a lie told by an
     // outage. Always "postgres" from this route's first deploy.
     "METAGRAPH_SELF_HEALTH_SOURCE": "postgres",
+    // #9000: MCP trace sampling at 1.0. Tracing has been wired into four
+    // Workers since #7768 and emitted ZERO spans in 30 days because the rate
+    // defaults to 0 and was set nowhere.
+    //
+    // 1.0 is safe HERE specifically because MCP is the cheap surface:
+    // ~1.9K tool calls/day, so ~56K spans/month against a 1M/month free tier.
+    // The general POSTHOG_TRACES_SAMPLE_RATE is deliberately left UNSET, so
+    // REST stays at 0 -- at ~1.1M requests/day even 1% would be 330K
+    // spans/month on an account already ~33x over its event allowance (#9004).
+    // Raise REST once that volume is dealt with; it is a config change.
+    "POSTHOG_TRACES_SAMPLE_RATE_MCP": "1",
     // subnet_hyperparams (#4832 gap-closure): FLIPPED to "postgres" 2026-07-11,
     // after a live parity pass. refresh-subnet-hyperparams.yml's real
     // workflow_dispatch run synced all 129 subnets (Postgres started
