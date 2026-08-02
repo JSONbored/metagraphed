@@ -502,6 +502,9 @@ export function apiRouteUrl(
     .replace("{slug}", "allways")
     .replace("{date}", date)
     .replace("{uid}", "0")
+    // Crowdloan ids are dense from 0 (#8696); id 0 always exists while any
+    // crowdloan has ever been created, and an absent id is still a 200.
+    .replace("{crowdloan_id}", "0")
     .replace("{hash}", `0x${"0".repeat(64)}`)
     .replace("{ref}", "0")
     .replace("{surface_id}", options.surfaceId || "7:subnet-api:new_v2")
