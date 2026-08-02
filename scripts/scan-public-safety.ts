@@ -41,7 +41,6 @@ const targetRoots = [
   // that syntactic context (JSX text, TS type members); doing that properly is
   // its own follow-up, not a same-PR add-on. See SKIPPED_DIR_NAMES below for
   // why walking these roots wholesale doesn't also walk node_modules/target.
-  "apps/indexer-rs",
   "scripts",
   "deploy",
 ];

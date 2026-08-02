@@ -38,6 +38,12 @@ import {
   publishedAt,
 } from "../responses.ts";
 import { tryPostgresTier } from "../postgres-tier.ts";
+import {
+  currentNeuronsD1ReadFailureGeneration,
+  readNeuron,
+  readSubnetNeurons,
+  readSubnetValidators,
+} from "../../src/neurons-d1-read.ts";
 import { csvRequested, csvResponse } from "../csv.ts";
 import { validateResponseTripwire } from "../../src/response-validation-tripwire.ts";
 import {
@@ -696,31 +702,44 @@ export async function handleSubnetMetagraph(
   // rather than a full 256-row fetch the caller never sees.
   const projection = parseNeuronFields(url.searchParams, "neurons");
   if (projection.error) return analyticsQueryError(projection.error);
-  // #4909 D1 retirement: neurons' D1 write path is retired (#4772) and the
-  // table is dropped in production, so a D1 query here would always miss.
-  // Mirrors handleSubnetHyperparams's pattern below (a schema-stable literal,
-  // not a live D1 query) rather than querying a table that no longer exists.
-  // validator_permit is still validated above and forwarded to Postgres via
-  // the proxied request (tryPostgresTier passes the request through unchanged).
-  const data =
-    ((await tryPostgresTier(
-      env,
-      request,
-      "METAGRAPH_NEURONS_SOURCE",
-    )) as ReturnType<typeof buildSubnetMetagraph> | null) ??
-    buildSubnetMetagraph([], netuid);
+  // #9146: neurons live on D1 again (0007_neurons.sql + #9157's writer), so a
+  // Postgres miss is no longer a guaranteed empty. validator_permit is still
+  // validated above and forwarded to Postgres via the proxied request
+  // (tryPostgresTier passes the request through unchanged); the D1 leg applies
+  // it below, since it reads rows rather than a built payload.
+  let isFallback = false;
+  let data = (await tryPostgresTier(
+    env,
+    request,
+    "METAGRAPH_NEURONS_SOURCE",
+  )) as ReturnType<typeof buildSubnetMetagraph> | null;
+  if (!data) {
+    // Cacheable when D1-served — only an empty payload (no binding, or a read
+    // failure mid-load) is barred from the edge cache, so a transient D1 blip
+    // cannot pin zeros in as fresh.
+    const d1Generation = currentNeuronsD1ReadFailureGeneration();
+    let rows = await readSubnetNeurons(env.METAGRAPH_HEALTH_DB, netuid);
+    if (url.searchParams.get("validator_permit") === "true") {
+      rows = rows.filter((row) => row.validator_permit);
+    }
+    data = buildSubnetMetagraph(rows, netuid);
+    isFallback =
+      !env.METAGRAPH_HEALTH_DB ||
+      currentNeuronsD1ReadFailureGeneration() !== d1Generation;
+  }
   // CSV keeps its own fixed column set (NEURON_CSV_COLUMNS): a projected CSV
   // would be a second, caller-defined column contract for the same download.
   if (csvRequested(url, request)) {
-    return csvResponse(
+    const csvRes = await csvResponse(
       data.neurons as unknown[],
       "subnet-metagraph",
       "short",
       request,
       NEURON_CSV_COLUMNS,
     );
+    return isFallback ? markPostgresTierFallbackResponse(csvRes) : csvRes;
   }
-  return envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data: projectNeuronPayload(data, projection.fields),
@@ -735,6 +754,7 @@ export async function handleSubnetMetagraph(
     },
     "short",
   );
+  return isFallback ? markPostgresTierFallbackResponse(response) : response;
 }
 
 // GET /api/v1/subnets/{netuid}/yield: per-UID emission yield (emission/stake) over the
@@ -791,15 +811,25 @@ export async function handleNeuron(
   const projection = parseNeuronFields(url.searchParams, "neuron");
   if (projection.error) return analyticsQueryError(projection.error);
   // Cold/absent snapshot → 200 with neuron:null, consistent with the other live
-  // tiers (health/economics never 404 on a cold store).
-  const data =
-    ((await tryPostgresTier(
-      env,
-      request,
-      "METAGRAPH_NEURONS_SOURCE",
-    )) as ReturnType<typeof buildNeuronDetail> | null) ??
-    buildNeuronDetail(null, netuid);
-  return envelopeResponse(
+  // tiers (health/economics never 404 on a cold store). #9146: a Postgres miss
+  // now falls through to D1 before that empty.
+  let isFallback = false;
+  let data = (await tryPostgresTier(
+    env,
+    request,
+    "METAGRAPH_NEURONS_SOURCE",
+  )) as ReturnType<typeof buildNeuronDetail> | null;
+  if (!data) {
+    const d1Generation = currentNeuronsD1ReadFailureGeneration();
+    data = buildNeuronDetail(
+      await readNeuron(env.METAGRAPH_HEALTH_DB, netuid, uid),
+      netuid,
+    );
+    isFallback =
+      !env.METAGRAPH_HEALTH_DB ||
+      currentNeuronsD1ReadFailureGeneration() !== d1Generation;
+  }
+  const response = await envelopeResponse(
     request,
     {
       data: projectNeuronPayload(data, projection.fields),
@@ -814,6 +844,7 @@ export async function handleNeuron(
     },
     "short",
   );
+  return isFallback ? markPostgresTierFallbackResponse(response) : response;
 }
 
 // GET /api/v1/subnets/{netuid}/hyperparameters (#4307/1.4): one netuid's live
@@ -945,24 +976,38 @@ export async function handleSubnetValidators(
   // tiers converge, so it never needs duplicating per tier. This route has no
   // `sort` param at all -- its ranking is always the stake-DESC default -- so
   // the overlay always applies here (see overlayFeaturedValidators).
-  const data = overlayFeaturedValidators(
-    ((await tryPostgresTier(
-      env,
-      request,
-      "METAGRAPH_NEURONS_SOURCE",
-    )) as ReturnType<typeof buildSubnetValidators> | null) ??
-      buildSubnetValidators([], netuid),
-  )!;
+  let isFallback = false;
+  let tierData = (await tryPostgresTier(
+    env,
+    request,
+    "METAGRAPH_NEURONS_SOURCE",
+  )) as ReturnType<typeof buildSubnetValidators> | null;
+  if (!tierData) {
+    // #9146: filtered in SQL, because buildSubnetValidators does NOT filter --
+    // it formats whatever rows it is given, and the Postgres tier applied
+    // `WHERE validator_permit` upstream. Reusing the unfiltered subnet read
+    // here would serve every miner as a validator.
+    const d1Generation = currentNeuronsD1ReadFailureGeneration();
+    tierData = buildSubnetValidators(
+      await readSubnetValidators(env.METAGRAPH_HEALTH_DB, netuid),
+      netuid,
+    );
+    isFallback =
+      !env.METAGRAPH_HEALTH_DB ||
+      currentNeuronsD1ReadFailureGeneration() !== d1Generation;
+  }
+  const data = overlayFeaturedValidators(tierData)!;
   if (csvRequested(url, request)) {
-    return csvResponse(
+    const csvRes = await csvResponse(
       data.validators as unknown[],
       "subnet-validators",
       "short",
       request,
       NEURON_CSV_COLUMNS,
     );
+    return isFallback ? markPostgresTierFallbackResponse(csvRes) : csvRes;
   }
-  return envelopeResponse(
+  const response = await envelopeResponse(
     request,
     {
       data: projectNeuronPayload(data, projection.fields),
@@ -977,6 +1022,7 @@ export async function handleSubnetValidators(
     },
     "short",
   );
+  return isFallback ? markPostgresTierFallbackResponse(response) : response;
 }
 
 // GET /api/v1/validators?sort=subnet_count|uid_count|avg_validator_trust|max_validator_trust&limit=20:

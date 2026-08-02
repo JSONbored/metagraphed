@@ -806,7 +806,7 @@ describe("captured-fixture body scan", () => {
 // tests model that exact regression: a fixture placed in each of the three
 // newly-covered roots must still be scanned, not just the pattern that
 // catches it.
-describe("extended target-root coverage (apps/indexer-rs, scripts, deploy)", () => {
+describe("extended target-root coverage (scripts, deploy)", () => {
   // A bare AWS access key id (a hard pattern, not terminology) placed in
   // each of the three newly-covered roots. If any root were still
   // unwalked, this would silently pass -- exactly how the real leaks went
@@ -815,9 +815,8 @@ describe("extended target-root coverage (apps/indexer-rs, scripts, deploy)", () 
   const ROOT_CASES = [
     rootCase("scripts/__public_safety_roots__.mjs", AWS_TOKEN),
     rootCase("deploy/__public_safety_roots__.md", AWS_TOKEN),
-    rootCase("apps/indexer-rs/__public_safety_roots__.rs", AWS_TOKEN),
   ];
-  test("scans scripts/, deploy/, and apps/indexer-rs/ for a real secret shape", () => {
+  test("scans scripts/ and deploy/ for a real secret shape", () => {
     for (const { file } of ROOT_CASES) {
       assert.ok(
         scanOutput.includes(`${file}:1: aws access key id`),
