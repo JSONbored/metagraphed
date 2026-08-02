@@ -14792,6 +14792,28 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
     assert.match(queries[1]!, /FROM chain\.account_events/);
   });
 
+  test("get_sudo and get_governance_config_changes serve their fixed modules", async () => {
+    const SUDO_ROW = {
+      ...LAKE_EXTRINSIC,
+      call_module: "Sudo",
+      call_function: "sudo",
+    };
+    const q1 = lakeFetch([SUDO_ROW]);
+    const sudo = await callTool("get_sudo", { limit: 5 }, { env: LAKE_ENV });
+    assert.equal(sudo.body.result.structuredContent.extrinsics.length, 1);
+    assert.match(q1[0]!, /call_module = 'Sudo'/);
+
+    const q2 = lakeFetch([{ ...SUDO_ROW, call_module: "AdminUtils" }]);
+    const gov = await callTool(
+      "get_governance_config_changes",
+      { limit: 5, success: true },
+      { env: LAKE_ENV },
+    );
+    assert.equal(gov.body.result.structuredContent.extrinsics.length, 1);
+    assert.match(q2[0]!, /call_module = 'AdminUtils'/);
+    assert.match(q2[0]!, /success = TRUE/);
+  });
+
   test("get_block_events serves one block's events in read order", async () => {
     const queries = lakeFetch([
       {

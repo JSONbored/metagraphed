@@ -5247,6 +5247,22 @@ export async function handleSudo(request: Request, env: Env, url: URL) {
       request,
       "METAGRAPH_EXTRINSICS_SOURCE",
     )) as ReturnType<typeof buildExtrinsicFeed> | null) ??
+    // The category predicate is data-api's own pathname->module mapping
+    // ("Sudo"), expressed against the lakehouse verbatim -- same feed, same
+    // cursor, one fixed filter.
+    (await loadExtrinsicFeedColdTier(env, {
+      limit,
+      offset,
+      module: "Sudo",
+      cursor: sp.get("cursor"),
+      callFunction: sp.get("call_function"),
+      success: successRaw === null ? null : successRaw === "true",
+      block: sp.get("block"),
+      blockStart: sp.get("block_start"),
+      blockEnd: sp.get("block_end"),
+      from: sp.get("from"),
+      to: sp.get("to"),
+    })) ??
     buildExtrinsicFeed([], { limit, offset, nextCursor: null });
   if (csvRequested(url, request)) {
     return csvResponse(
@@ -5322,6 +5338,22 @@ export async function handleGovernanceConfigChanges(
       request,
       "METAGRAPH_EXTRINSICS_SOURCE",
     )) as ReturnType<typeof buildExtrinsicFeed> | null) ??
+    // The category predicate is data-api's own pathname->module mapping
+    // ("AdminUtils"), expressed against the lakehouse verbatim -- same feed, same
+    // cursor, one fixed filter.
+    (await loadExtrinsicFeedColdTier(env, {
+      limit,
+      offset,
+      module: "AdminUtils",
+      cursor: sp.get("cursor"),
+      callFunction: sp.get("call_function"),
+      success: successRaw === null ? null : successRaw === "true",
+      block: sp.get("block"),
+      blockStart: sp.get("block_start"),
+      blockEnd: sp.get("block_end"),
+      from: sp.get("from"),
+      to: sp.get("to"),
+    })) ??
     buildExtrinsicFeed([], { limit, offset, nextCursor: null });
   if (csvRequested(url, request)) {
     return csvResponse(

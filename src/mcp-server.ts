@@ -8646,6 +8646,23 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           mcpFixedCallModuleFeedRequest("/api/v1/sudo", args),
           "METAGRAPH_EXTRINSICS_SOURCE",
         )) ??
+        // The category predicate is data-api's own pathname->module mapping
+        // ("Sudo"), expressed against the lakehouse verbatim.
+        (await loadExtrinsicFeedColdTier(ctx.env, {
+          limit: clampLimit(args?.limit, 50, 100),
+          offset: Number.isFinite(args?.offset)
+            ? Math.max(0, Math.floor(args.offset as number))
+            : 0,
+          module: "Sudo",
+          cursor: optionalString(args, "cursor"),
+          callFunction: optionalString(args, "call_function"),
+          success: optionalSuccessFilter(args),
+          block: optionalNonNegativeInt(args, "block"),
+          blockStart: optionalNonNegativeInt(args, "block_start"),
+          blockEnd: optionalNonNegativeInt(args, "block_end"),
+          from: optionalNonNegativeInt(args, "from"),
+          to: optionalNonNegativeInt(args, "to"),
+        })) ??
         buildExtrinsicFeed([], {
           limit: args?.limit,
           offset: args?.offset,
@@ -8739,6 +8756,23 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           ),
           "METAGRAPH_EXTRINSICS_SOURCE",
         )) ??
+        // The category predicate is data-api's own pathname->module mapping
+        // ("AdminUtils"), expressed against the lakehouse verbatim.
+        (await loadExtrinsicFeedColdTier(ctx.env, {
+          limit: clampLimit(args?.limit, 50, 100),
+          offset: Number.isFinite(args?.offset)
+            ? Math.max(0, Math.floor(args.offset as number))
+            : 0,
+          module: "AdminUtils",
+          cursor: optionalString(args, "cursor"),
+          callFunction: optionalString(args, "call_function"),
+          success: optionalSuccessFilter(args),
+          block: optionalNonNegativeInt(args, "block"),
+          blockStart: optionalNonNegativeInt(args, "block_start"),
+          blockEnd: optionalNonNegativeInt(args, "block_end"),
+          from: optionalNonNegativeInt(args, "from"),
+          to: optionalNonNegativeInt(args, "to"),
+        })) ??
         buildExtrinsicFeed([], {
           limit: args?.limit,
           offset: args?.offset,
