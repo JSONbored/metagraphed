@@ -757,10 +757,6 @@
       // the lakehouse -- see PROJECTION_LANES_CRON in workers/config.ts for
       // the cadence and minute-offset rationale.
       "11,41 * * * *",
-      // #9146: the daily projection tick -- lanes that declare `intervalCron`
-      // (subnet-event-summary, ~8.3 GB/tick) run here instead of half-hourly.
-      // See PROJECTION_LANES_DAILY_CRON in workers/config.ts.
-      "38 2 * * *",
       // 3,13,... = the 10-minute emission-gate sampler (#8748/#8750), moved
       // off its GitHub Actions schedule -- offset from :0-based grids so it
       // never stacks on the */5 raw-capture tick's busiest minute.

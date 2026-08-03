@@ -81,18 +81,6 @@ export function parsePagination(
 // falls back to defaultLimit; a present limit must be a positive integer (no
 // leading zero) of at most maxLimit, else an { error } descriptor is returned for
 // the caller to surface via its query-error helper. Returns { limit } on success.
-// Supplying `defaultLimit` guarantees a number back: the only path that
-// yields undefined is the one where no default was given. Stating that as an
-// overload keeps callers from writing an unreachable `?? fallback` -- a branch
-// no test can reach, which the patch-coverage gate then counts against them.
-export function parseLimitParam(
-  url: URL,
-  profile: PaginationProfile & { defaultLimit: number },
-): { limit: number } | ParamError;
-export function parseLimitParam(
-  url: URL,
-  profile?: PaginationProfile,
-): { limit: number | undefined } | ParamError;
 export function parseLimitParam(
   url: URL,
   { defaultLimit, maxLimit = MAX_LIMIT }: PaginationProfile = {},

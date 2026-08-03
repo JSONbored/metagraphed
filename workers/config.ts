@@ -166,15 +166,6 @@ export const CHAIN_DETAIL_STALENESS_WATCHDOG_CRON = "14,29,44,59 * * * *";
 // raw-capture and */15 probe grids. Must match a wrangler.jsonc
 // `triggers.crons` entry.
 export const PROJECTION_LANES_CRON = "11,41 * * * *";
-
-// Daily tick for projection lanes that declare `intervalCron`, i.e. the ones
-// too heavy for the half-hourly PROJECTION_LANES_CRON above. The
-// subnet-event-summary lane scans ~8.3 GB across its three windows, which is
-// fine once a day and ~400 GB/day at the half-hourly cadence -- and a
-// 7/30/90-day summary gains nothing from 30-minute freshness.
-//
-// 02:38 UTC: hour 2 is unused (3-6 are taken) and :38 is a free minute.
-export const PROJECTION_LANES_DAILY_CRON = "38 2 * * *";
 // The live-economics refresh, moved off .github/workflows/refresh-economics.yml
 // -- the last GitHub Actions data lane. Same 3-hourly cadence that workflow
 // ran (it was `41 */3 * * *`), on minute :26, which is the nearest free minute:
