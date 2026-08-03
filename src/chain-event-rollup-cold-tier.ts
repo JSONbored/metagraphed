@@ -26,7 +26,7 @@
 // unmeasurable one. NeuronDeregistered and AxonInfoRemoved have zero rows in
 // both account_events and chain_events, and PrometheusServed exists only in
 // chain_events with its hotkey inside the args JSON. See the survey on #9146.
-import { r2SqlQuery } from "./r2-sql.ts";
+import { r2SqlQuery, safeBlockNumber } from "./r2-sql.ts";
 
 type Row = Record<string, unknown>;
 
@@ -254,11 +254,18 @@ export async function loadChainEventIdentityRollup(
     windowDays,
     now = Date.now(),
     limit = 200,
+    netuid,
     query = r2SqlQuery,
   }: {
     windowDays: number;
     now?: number;
     limit?: number;
+    /**
+     * Narrow to one subnet. Absent means every subnet, which is the chain-wide
+     * leaderboard; supplied, the grouping still carries netuid so the rows keep
+     * the identity shape the builders read either way.
+     */
+    netuid?: number;
     query?: typeof r2SqlQuery;
   },
 ): Promise<ChainEventIdentityRollup | null> {
@@ -277,7 +284,16 @@ export async function loadChainEventIdentityRollup(
   const cap =
     Number.isSafeInteger(limit) && limit > 0 ? Math.min(limit, 1000) : 200;
 
-  const where = `WHERE event_kind = '${kind}' AND observed_at >= ${cutoff}`;
+  // An unusable netuid is a decline, not a silent chain-wide scan answering a
+  // per-subnet question.
+  let subnetFilter = "";
+  if (netuid !== undefined) {
+    const safe = safeBlockNumber(netuid);
+    if (safe === null) return null;
+    subnetFilter = ` AND netuid = ${safe}`;
+  }
+
+  const where = `WHERE event_kind = '${kind}' AND observed_at >= ${cutoff}${subnetFilter}`;
 
   const [rows, totalsRows, distinctRows] = await Promise.all([
     query(
