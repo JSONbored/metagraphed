@@ -1252,7 +1252,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-ohlc",
     "/metagraph/subnets/{netuid}/ohlc.json",
-    "OHLC price/volume candlesticks for one subnet (#5655, Phase 1 of the OHLC epic #5304): open/high/low/close/volume candles bucketed by ?interval=1h|1d (default 1h), shaped in pure JS from the raw StakeAdded/StakeRemoved account_events stream the same /volume and /stake-flow read (per-trade price = amount_tao / alpha_amount), no static file. ?days= bounds the lookback window (default 90, max 365). Empty buckets are gaps, never synthesized flat candles. Root (netuid 0) has no AMM pool (1:1 TAO, no price impact) and returns an empty, root_excluded series rather than a meaningless flat line. Extends metagraphed's original developer-explorer scope fence (#2589's OHLC exclusion) per #4302's maintainer decision.",
+    "OHLC price/volume candlesticks for one subnet (#5655, Phase 1 of the OHLC epic #5304): open/high/low/close/volume candles bucketed by ?interval=1h|1d (default 1h), shaped from the raw StakeAdded/StakeRemoved account_events stream the same /volume and /stake-flow read (per-trade price = amount_tao / alpha_amount), no static file. ?days= bounds the lookback window (default 90, max 365). Empty buckets are gaps, never synthesized flat candles. Root (netuid 0) has no AMM pool (1:1 TAO, no price impact) and returns an empty, root_excluded series rather than a meaningless flat line. Extends metagraphed's original developer-explorer scope fence (#2589's OHLC exclusion) per #4302's maintainer decision.",
     "SubnetOhlcArtifact",
     COMPUTED_LIVE,
   ),
@@ -1609,7 +1609,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-ownership-history",
     "/metagraph/subnets/{netuid}/ownership-history.json",
-    "Every automatic ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302), decoded from the chain_events SubnetOwnerChanged stream — see docs/conviction-lock-mechanism.md for the on-chain mechanism: a permissionless, conviction-weighted contest that runs continuously for every subnet, where ownership transfers automatically once a challenger's rolled conviction overtakes the incumbent owner's (no vote, no owner cooperation required). Served live from the Postgres-backed all-events tier (ADR 0013), no static file. A subnet that has never changed hands returns an empty ownership_changes array, not an error.",
+    "Every automatic ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302), decoded from the chain_events SubnetOwnerChanged stream — see docs/conviction-lock-mechanism.md for the on-chain mechanism: a permissionless, conviction-weighted contest that runs continuously for every subnet, where ownership transfers automatically once a challenger's rolled conviction overtakes the incumbent owner's (no vote, no owner cooperation required). Served live from the all-events tier (ADR 0013), falling to the R2 lakehouse reader when that tier cannot answer, no static file. A subnet that has never changed hands returns an empty ownership_changes array, not an error.",
     "SubnetOwnershipHistoryArtifact",
     COMPUTED_LIVE,
   ),
@@ -3689,7 +3689,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/ownership-history",
     "/metagraph/subnets/{netuid}/ownership-history.json",
-    "Fetch every automatic ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302), decoded from the chain_events SubnetOwnerChanged stream — see docs/conviction-lock-mechanism.md for the on-chain mechanism: a permissionless, conviction-weighted contest that runs continuously for every subnet, where ownership transfers automatically once a challenger's rolled conviction overtakes the incumbent owner's (no vote, no owner cooperation required). Served live from the Postgres-backed all-events tier (ADR 0013), no static file. A subnet that has never changed hands returns an empty ownership_changes array, not an error — that's the common case.",
+    "Fetch every automatic ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302), decoded from the chain_events SubnetOwnerChanged stream — see docs/conviction-lock-mechanism.md for the on-chain mechanism: a permissionless, conviction-weighted contest that runs continuously for every subnet, where ownership transfers automatically once a challenger's rolled conviction overtakes the incumbent owner's (no vote, no owner cooperation required). Served live from the all-events tier (ADR 0013), falling to the R2 lakehouse reader when that tier cannot answer, no static file. A subnet that has never changed hands returns an empty ownership_changes array, not an error — that's the common case.",
     "short",
     ["subnets"],
     [],
