@@ -67,7 +67,13 @@ export const GlobalValidatorEntrySchema = z
       .describe(
         "Cross-subnet total in genuine TAO (#9051): each membership converts through its own subnet's latest alpha_price_tao (root at 1:1) before summing, so this is a real TAO value rather than a sum of incomparable per-subnet alpha tokens. Prices are complete by construction (the economics tier carries a price for every subnet, and subnet_snapshots is written from it); a membership whose subnet has no price row is excluded, which under-reports rather than mis-denominates. Prices come from the daily subnet_snapshots rollup, so the valuation can lag up to ~24h behind the live economics tier.",
       ),
-    nominator_count: z.int().min(0).nullable(),
+    nominator_count: z
+      .int()
+      .min(0)
+      .nullable()
+      .describe(
+        "Distinct coldkeys with stake delegated to this validator's hotkey, from the poller's exhaustive SubtensorModule::Alpha scan (24h cadence). A validator absent from a FRESH scan reads as 0 rather than null: the pass covers the whole keyspace, so absence is a confirmed zero rather than a gap (#9314). null means the scan itself is stale or unavailable -- the count is unknown, not zero.",
+      ),
     apy_estimate: z.number().min(0).nullable(),
     apy_estimate_eligible_subnet_count: z.int().min(0),
     realized_return_1d: z.number().nullable(),

@@ -653,13 +653,18 @@ test("GET /api/v1/validators/:hotkey aggregates one hotkey across subnets with p
 // still reads as UNKNOWN rather than as a confident zero.
 
 /** One row in the counts side table. */
-function insertNominatorCount(hotkey: string, count: number, at = 1_000) {
+/** A capture stamp inside the staleness threshold, so the zero-fill engages. */
+const FRESH_SCAN = () => Date.now();
+/** Far outside it -- absence then means "not looked recently", not "zero". */
+const STALE_SCAN = 1_000;
+
+function insertNominatorCount(hotkey: string, count: number, at = STALE_SCAN) {
   db.prepare(
     "INSERT INTO validator_nominator_counts (hotkey, nominator_count, captured_at) VALUES (?, ?, ?)",
   ).run(hotkey, count, at);
 }
 
-test("GET /api/v1/validators fills nominator_count from D1, and leaves an unscanned hotkey null", async () => {
+test("GET /api/v1/validators fills nominator_count from D1; a STALE scan leaves the rest null", async () => {
   insertNeuron({
     netuid: 0,
     uid: 0,
@@ -731,6 +736,105 @@ test("GET /api/v1/validators/:hotkey leaves nominator_count null when the hotkey
   });
   const res = await call(req("/api/v1/validators/5Val"));
   assert.equal(((await res.json()) as Row).nominator_count, null);
+});
+
+// --- Confirmed zero, from a FRESH scan only (#9314) --------------------------
+//
+// The producer never records a zero -- it emits a row only for hotkeys it saw
+// in Alpha -- so 471 of 1,028 permitted validators had no row and read as
+// "unknown". Its pass is exhaustive, so against a CURRENT scan that absence is
+// a confirmed zero. Against a stale one it is still unknown, and the whole
+// point of these tests is that the two cases stay apart.
+
+test("a permitted validator absent from a FRESH scan serves 0, not null", async () => {
+  insertNeuron({
+    netuid: 0,
+    uid: 0,
+    hotkey: "5Counted",
+    stake_tao: 200,
+    validator_permit: 1,
+  });
+  insertNeuron({
+    netuid: 0,
+    uid: 1,
+    hotkey: "5NoNominators",
+    stake_tao: 100,
+    validator_permit: 1,
+  });
+  insertNominatorCount("5Counted", 42, FRESH_SCAN());
+
+  const res = await call(req("/api/v1/validators"));
+  const entries = ((await res.json()) as Row).validators as Row[];
+  const byHotkey = new Map(entries.map((e) => [e.hotkey as string, e]));
+
+  assert.equal(byHotkey.get("5Counted")!.nominator_count, 42);
+  assert.equal(
+    byHotkey.get("5NoNominators")!.nominator_count,
+    0,
+    "an exhaustive current pass that did not see this hotkey means zero",
+  );
+});
+
+test("the same absence against a STALE scan stays null", async () => {
+  // The gate that makes the inference above safe rather than reckless: with no
+  // recent pass, absence means "we have not looked", and 0 would be a
+  // confident wrong number.
+  insertNeuron({
+    netuid: 0,
+    uid: 0,
+    hotkey: "5Counted",
+    stake_tao: 200,
+    validator_permit: 1,
+  });
+  insertNeuron({
+    netuid: 0,
+    uid: 1,
+    hotkey: "5Unknown",
+    stake_tao: 100,
+    validator_permit: 1,
+  });
+  insertNominatorCount("5Counted", 42, STALE_SCAN);
+
+  const res = await call(req("/api/v1/validators"));
+  const entries = ((await res.json()) as Row).validators as Row[];
+  const byHotkey = new Map(entries.map((e) => [e.hotkey as string, e]));
+  assert.equal(byHotkey.get("5Counted")!.nominator_count, 42);
+  assert.equal(byHotkey.get("5Unknown")!.nominator_count, null);
+});
+
+test("the detail route applies the same fresh-vs-stale rule", async () => {
+  insertNeuron({
+    netuid: 0,
+    uid: 0,
+    hotkey: "5Val",
+    stake_tao: 100,
+    validator_permit: 1,
+  });
+  // No row for 5Val at all, but another hotkey's FRESH row stamps the scan.
+  insertNominatorCount("5Other", 5, FRESH_SCAN());
+  const fresh = await call(req("/api/v1/validators/5Val"));
+  assert.equal(((await fresh.json()) as Row).nominator_count, 0);
+
+  db.exec("DELETE FROM validator_nominator_counts");
+  insertNominatorCount("5Other", 5, STALE_SCAN);
+  const stale = await call(req("/api/v1/validators/5Val"));
+  assert.equal(((await stale.json()) as Row).nominator_count, null);
+});
+
+test("an entirely empty counts table never invents zeros", async () => {
+  // No scan has ever run: there is no stamp to judge freshness by, so every
+  // count is unknown. This is the cutover state, and inventing zeros here
+  // would publish a wrong number for the whole network at once.
+  insertNeuron({
+    netuid: 0,
+    uid: 0,
+    hotkey: "5Val",
+    stake_tao: 100,
+    validator_permit: 1,
+  });
+  const res = await call(req("/api/v1/validators"));
+  const entries = ((await res.json()) as Row).validators as Row[];
+  assert.equal(entries[0]!.nominator_count, null);
 });
 
 test("a failing counts read degrades to null rather than failing the request", async () => {

@@ -8032,6 +8032,7 @@ export interface components {
                 latest_block_number: number | null;
                 latest_captured_at: string | null;
                 max_validator_trust: number | null;
+                /** @description Distinct coldkeys with stake delegated to this validator's hotkey, from the poller's exhaustive SubtensorModule::Alpha scan (24h cadence). A validator absent from a FRESH scan reads as 0 rather than null: the pass covers the whole keyspace, so absence is a confirmed zero rather than a gap (#9314). null means the scan itself is stale or unavailable -- the count is unknown, not zero. */
                 nominator_count: number | null;
                 realized_return_1d: number | null;
                 realized_return_1m: number | null;
@@ -11287,6 +11288,7 @@ export interface components {
             } | null;
             hotkey: string;
             max_validator_trust: number | null;
+            /** @description Distinct coldkeys with stake delegated to this validator's hotkey, from the poller's exhaustive SubtensorModule::Alpha scan (24h cadence). A validator absent from a FRESH scan reads as 0 rather than null: the pass covers the whole keyspace, so absence is a confirmed zero rather than a gap (#9314). null means the scan itself is stale or unavailable -- the count is unknown, not zero. */
             nominator_count: number | null;
             realized_return_1d: number | null;
             realized_return_1m: number | null;
