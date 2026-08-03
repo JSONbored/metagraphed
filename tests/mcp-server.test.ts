@@ -3974,6 +3974,83 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
   });
 });
 
+// #9146: the three MCP-only subnet loaders degrade rather than throw.
+//
+// They reach DATA_API directly (the all-events tier has no per-table
+// tryPostgresTier flag) and used to throw on binding-absent, on a rejected
+// binding, and on any non-ok status -- which is what they did in production
+// once the Postgres box went away, verified live:
+//
+//   get_subnet_ownership_history(netuid: 1)
+//     -> tier_unavailable: The chain-events tier returned an error (status 502)
+//
+// An agent can no more act on "the tier is down" than a browser can. What it
+// CAN act on is a contract-shaped empty carrying #9120's in-band marker --
+// the only channel MCP has, a tools/call result being
+// { content, structuredContent, isError } with no headers.
+//
+// SCOPE IS DELIBERATE. src/data-api-mcp.ts's loaders (loadChainEventsFeed /
+// loadChainActivity / loadBlockChainEvents) are SHARED with GraphQL, whose
+// contract is the opposite ON PURPOSE -- tests/graphql.test.ts asserts "an
+// absent all-events tier is a GraphQL error, not null-degrade", which is right
+// for a transport that has structured errors. Degrading in the shared path
+// would silently flip that, so list_chain_events and get_chain_activity keep
+// throwing pending a decision about what GraphQL wants. These three are
+// MCP-only (GraphQL carries its own byte-for-byte proxies) so they move alone.
+describe("MCP subnet history/conviction tools degrade on a dead tier (#9146)", () => {
+  const CASES: [string, string][] = [
+    ["get_subnet_ownership_history", "ownership_changes"],
+    ["get_subnet_lease_history", "lease_events"],
+    ["get_subnet_conviction", "leaderboard"],
+  ];
+
+  function deadDataApi(mode: "5xx" | "reject") {
+    return {
+      fetch() {
+        if (mode === "reject") throw new Error("binding rejected");
+        return Promise.resolve(
+          new Response(JSON.stringify({ error: "gone" }), { status: 502 }),
+        );
+      },
+    };
+  }
+
+  for (const [tool, rowsKey] of CASES) {
+    test(`${tool} returns a marked empty when the tier 5xxs`, async () => {
+      const res = await callTool(
+        tool,
+        { netuid: 1 },
+        { env: { DATA_API: deadDataApi("5xx") } },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(res.body.result.isError, false, `${tool} must not error`);
+      assert.deepEqual(out[rowsKey], []);
+      // Without this an agent reports "this subnet never changed hands" when
+      // the truth is "we could not look".
+      assert.deepEqual(out.degraded, { reason: "tier_unavailable" });
+    });
+
+    test(`${tool} returns a marked empty when the binding rejects`, async () => {
+      const res = await callTool(
+        tool,
+        { netuid: 1 },
+        { env: { DATA_API: deadDataApi("reject") } },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(res.body.result.isError, false);
+      assert.deepEqual(out.degraded, { reason: "tier_unavailable" });
+    });
+
+    test(`${tool} returns a marked empty when the binding is absent`, async () => {
+      const res = await callTool(tool, { netuid: 1 }, { env: {} });
+      const out = res.body.result.structuredContent;
+      assert.equal(res.body.result.isError, false);
+      assert.deepEqual(out[rowsKey], []);
+      assert.deepEqual(out.degraded, { reason: "tier_unavailable" });
+    });
+  }
+});
+
 // get_subnet_ownership_history reaches the same Postgres-backed all-events
 // tier as get_chain_activity above (#6637), so its tests mock DATA_API the
 // same way.
@@ -4057,30 +4134,6 @@ describe("MCP get_subnet_ownership_history (DATA_API binding)", () => {
       { env: { DATA_API: makeDataApi() } },
     );
     assert.equal(res.body.result.isError, true);
-  });
-
-  test("errors cleanly when the DATA_API binding is absent", async () => {
-    const res = await callTool(
-      "get_subnet_ownership_history",
-      { netuid: 7 },
-      { env: {} },
-    );
-    assert.equal(res.body.result.isError, true);
-    assert.ok(
-      res.body.result.content[0].text.includes("all-events data Worker"),
-      "must surface a clear tier-unavailable message",
-    );
-  });
-
-  test("errors cleanly when the data Worker returns a non-OK response", async () => {
-    const dataApi = makeDataApi({ status: 502 });
-    const res = await callTool(
-      "get_subnet_ownership_history",
-      { netuid: 7 },
-      { env: { DATA_API: dataApi } },
-    );
-    assert.equal(res.body.result.isError, true);
-    assert.ok(res.body.result.content[0].text.includes("502"));
   });
 
   test("applies the data API limiter before fetching ownership history", async () => {
@@ -4202,41 +4255,6 @@ describe("MCP get_subnet_lease_history (DATA_API binding)", () => {
     assert.equal(res.body.result.isError, true);
   });
 
-  test("errors cleanly when the DATA_API binding is absent", async () => {
-    const res = await callTool(
-      "get_subnet_lease_history",
-      { netuid: 7 },
-      { env: {} },
-    );
-    assert.equal(res.body.result.isError, true);
-    assert.ok(
-      res.body.result.content[0].text.includes("all-events data Worker"),
-      "must surface a clear tier-unavailable message",
-    );
-  });
-
-  test("errors cleanly when the data Worker's fetch throws", async () => {
-    const dataApi = makeDataApi({ throws: true });
-    const res = await callTool(
-      "get_subnet_lease_history",
-      { netuid: 7 },
-      { env: { DATA_API: dataApi } },
-    );
-    assert.equal(res.body.result.isError, true);
-    assert.ok(res.body.result.content[0].text.includes("could not be reached"));
-  });
-
-  test("errors cleanly when the data Worker returns a non-OK response", async () => {
-    const dataApi = makeDataApi({ status: 502 });
-    const res = await callTool(
-      "get_subnet_lease_history",
-      { netuid: 7 },
-      { env: { DATA_API: dataApi } },
-    );
-    assert.equal(res.body.result.isError, true);
-    assert.ok(res.body.result.content[0].text.includes("502"));
-  });
-
   test("applies the data API limiter before fetching lease history", async () => {
     const dataApi = makeDataApi({
       payload: { schema_version: 1, netuid: 7, count: 0, lease_events: [] },
@@ -4348,30 +4366,6 @@ describe("MCP get_subnet_conviction (DATA_API binding)", () => {
       { env: { DATA_API: makeDataApi() } },
     );
     assert.equal(res.body.result.isError, true);
-  });
-
-  test("errors cleanly when the DATA_API binding is absent", async () => {
-    const res = await callTool(
-      "get_subnet_conviction",
-      { netuid: 1 },
-      { env: {} },
-    );
-    assert.equal(res.body.result.isError, true);
-    assert.ok(
-      res.body.result.content[0].text.includes("all-events data Worker"),
-      "must surface a clear tier-unavailable message",
-    );
-  });
-
-  test("errors cleanly when the data Worker returns a non-OK response", async () => {
-    const dataApi = makeDataApi({ status: 502 });
-    const res = await callTool(
-      "get_subnet_conviction",
-      { netuid: 1 },
-      { env: { DATA_API: dataApi } },
-    );
-    assert.equal(res.body.result.isError, true);
-    assert.ok(res.body.result.content[0].text.includes("502"));
   });
 });
 
