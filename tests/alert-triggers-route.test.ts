@@ -4,17 +4,13 @@
 // tests/data-api.test.ts) with its OWN per-test-queue fakes scoped to just
 // this table's shape.
 //
-// Two fakes, one per storage tier the routes actually touch since the
-// accounts-d1 port:
-//   - a queue-shaped D1 binding (tests/user-state-d1-queue.ts) for every
-//     user-state route (trigger CRUD, watch routes, evaluator scan/write-
-//     backs) -- chain_alert_triggers/chain_alert_deliveries live on D1 now;
-//   - the old postgres-module mock ONLY for the dereg-risk snapshot, whose
-//     reads are chain tables (blocks/neurons/...) still on the Postgres tier.
-// Both record into the SAME sqlCalls/mockQueue/failNextQuery stores, so each
-// test keeps the established convention: push exactly the rows each of ITS
-// statements (in order) should resolve to, and assert on the recorded call
-// text/values.
+// One fake: a queue-shaped D1 binding (tests/user-state-d1-queue.ts), which
+// is the only tier these routes touch since the accounts-d1 port --
+// chain_alert_triggers/chain_alert_deliveries live on D1, and the Postgres
+// mock that used to stand in for the dereg-risk snapshot's chain-table reads
+// went with the tier itself (#9193). Each test keeps the established
+// convention: push exactly the rows each of ITS statements (in order) should
+// resolve to, and assert on the recorded call text/values.
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
 import { createTriggerToken } from "../src/wallet-auth.ts";
@@ -27,27 +23,6 @@ const sqlCalls = vi.hoisted(
 );
 const failNextQuery = vi.hoisted(() => ({ error: null as Error | null }));
 
-vi.mock("postgres", () => ({
-  default: () => {
-    function sql(strings: TemplateStringsArray, ...values: unknown[]) {
-      let text = strings[0];
-      for (let i = 0; i < values.length; i += 1) text += "?" + strings[i + 1];
-      sqlCalls.push({ text, values });
-      if (failNextQuery.error) {
-        const err = failNextQuery.error;
-        failNextQuery.error = null;
-        return Promise.reject(err);
-      }
-      return Promise.resolve(
-        mockQueue.current.length ? mockQueue.current.shift() : [],
-      );
-    }
-    sql.begin = (cb: (sql: unknown) => unknown) => cb(sql);
-    sql.end = () => Promise.resolve();
-    return sql;
-  },
-}));
-
 const { default: worker } = await import("../workers/data-api.ts");
 
 const CREATE_TOKEN = "test-alert-trigger-create-token";
@@ -55,12 +30,6 @@ const INTERNAL_TOKEN = "test-alert-triggers-internal-token";
 const WATCH_SECRET = "test-watch-trigger-token-secret";
 const env: Env = {
   METAGRAPH_HEALTH_DB: createQueueD1({ mockQueue, sqlCalls, failNextQuery }),
-  HYPERDRIVE: { connectionString: "postgres://mock" },
-  // Keeps the dereg-risk snapshot's immune-neurons read on the mocked
-  // Postgres lane this suite queues answers for (the neurons family is
-  // flag-switched to D1 in workers/data-api.ts; its D1 lane is exercised in
-  // tests/data-api-neurons-d1.test.ts).
-  METAGRAPH_NEURONS_SOURCE: "postgres",
   ALERT_TRIGGER_CREATE_TOKEN: CREATE_TOKEN,
   ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
   WATCH_TRIGGER_TOKEN_SECRET: WATCH_SECRET,
@@ -1571,95 +1540,20 @@ test("dereg-risk snapshot: 401 when the internal token is present but wrong", as
   assert.equal(res.status, 401);
 });
 
-test("dereg-risk snapshot: 200, joins registered_at_block + immunity_period into immunity_expires_at_block, and returns the latest subnet_snapshots row per netuid", async () => {
-  // block_number/registered_at_block are BIGINT columns -- postgres.js
-  // returns those as strings over the wire, not JS numbers (#7861 caught a
-  // real bug here: the handler used to do string concatenation / an
-  // always-false Number.isInteger(string) check because these mocks used
-  // raw numbers, masking the mismatch).
-  mockQueue.current.push([{ block_number: "12345" }]); // MAX(block_number)
-  mockQueue.current.push([
-    { netuid: 7, immunity_period: 500 },
-    { netuid: 8, immunity_period: 1000 },
-  ]);
-  mockQueue.current.push([
-    { netuid: 7, hotkey: "5Fhot", registered_at_block: "12000" },
-  ]);
-  mockQueue.current.push([
-    { netuid: 7, alpha_price_tao: "1.5" },
-    { netuid: 8, alpha_price_tao: null },
-  ]);
+// #9193: the snapshot's four chain-table reads (blocks, subnet_hyperparams,
+// neurons, subnet_snapshots) all ran on the box's Postgres and went with it.
+// The route still answers past its auth gates, unchanged, so the evaluator
+// sees the same "this refresh is unavailable" it has seen since the wipe.
+test("dereg-risk snapshot: 503 -- the Postgres tier its chain-table reads used is gone", async () => {
   const res = await fetch(
     req("/api/v1/internal/alert-triggers-dereg-risk-snapshot", {
       headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
     }),
-  );
-  assert.equal(res.status, 200);
-  const body = (await res.json()) as Row;
-  assert.equal(body.current_block, 12345);
-  assert.deepEqual(body.subnets, [
-    { netuid: 7, alpha_price_tao: 1.5 },
-    { netuid: 8, alpha_price_tao: null },
-  ]);
-  assert.deepEqual(body.immune_neurons, [
-    { netuid: 7, hotkey: "5Fhot", immunity_expires_at_block: 12500 },
-  ]);
-  assert.equal(sqlCalls.length, 4);
-});
-
-test("dereg-risk snapshot: an immune neuron on a subnet with no immunity_period hyperparameter row is dropped, not defaulted", async () => {
-  mockQueue.current.push([{ block_number: "100" }]);
-  mockQueue.current.push([]); // no subnet_hyperparams rows at all
-  mockQueue.current.push([
-    { netuid: 7, hotkey: "5Fhot", registered_at_block: "50" },
-  ]);
-  mockQueue.current.push([]);
-  const res = await fetch(
-    req("/api/v1/internal/alert-triggers-dereg-risk-snapshot", {
-      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
-    }),
-  );
-  assert.equal(res.status, 200);
-  const body = (await res.json()) as Row;
-  assert.deepEqual(body.immune_neurons, []);
-});
-
-test("dereg-risk snapshot: current_block is null when the blocks table is empty", async () => {
-  mockQueue.current.push([{ block_number: null }]);
-  mockQueue.current.push([]);
-  mockQueue.current.push([]);
-  mockQueue.current.push([]);
-  const res = await fetch(
-    req("/api/v1/internal/alert-triggers-dereg-risk-snapshot", {
-      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
-    }),
-  );
-  assert.equal(res.status, 200);
-  const body = (await res.json()) as Row;
-  assert.equal(body.current_block, null);
-});
-
-test("dereg-risk snapshot: 503 when HYPERDRIVE is unbound -- its chain-table reads stay on the Postgres tier", async () => {
-  const res = await fetch(
-    req("/api/v1/internal/alert-triggers-dereg-risk-snapshot", {
-      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
-    }),
-    { ...env, HYPERDRIVE: undefined } as unknown as Env,
   );
   assert.equal(res.status, 503);
   assert.deepEqual(await res.json(), {
     error: "hyperdrive binding unavailable",
   });
-});
-
-test("dereg-risk snapshot: 502 when a query fails", async () => {
-  failNextQuery.error = new Error("boom");
-  const res = await fetch(
-    req("/api/v1/internal/alert-triggers-dereg-risk-snapshot", {
-      headers: { "x-alert-triggers-internal-token": INTERNAL_TOKEN },
-    }),
-  );
-  assert.equal(res.status, 502);
 });
 
 // --- method-dispatch fallthrough -----------------------------------------------
