@@ -24,12 +24,19 @@ const SS58 = "5E2LP6EnZ54m3wS8s1yPvD5c3xo71kQroBw7aUVK32TKeZ5u";
 
 const AGG = {
   c: 6,
-  sc: 2,
   fb: 8_700_000,
   lb: 8_760_000,
   fo: 1_784_000_000_000,
   lo: 1_785_000_000_000,
 };
+/**
+ * The distinct-subnet count, from its own GROUP BY read.
+ *
+ * Deliberately NOT a key on AGG: keeping the two apart is what makes a
+ * regression back to a single `count(DISTINCT netuid)` beside the aggregates
+ * visible here rather than only in production.
+ */
+const SUBNETS = { sc: 2 };
 const KINDS = [
   { kind: "AxonServed", count: 4 },
   { kind: "NeuronRegistered", count: 2 },
@@ -38,10 +45,18 @@ const RECENT = [
   { block_number: 8_760_000, event_kind: "AxonServed", netuid: 55 },
 ];
 
-/** Answers each of the four reads by the shape of its SQL. */
+/**
+ * Answers each of the five reads by the shape of its SQL.
+ *
+ * The distinct-subnet count is its OWN read now, so it needs its own
+ * discriminator. `AS sc` is the one clause only it carries -- the aggregate is
+ * matched on `min(block_number)` rather than on `count(*)`, which three of the
+ * five share.
+ */
 function fakeEngine(
   overrides: {
     agg?: Row[] | null;
+    subnets?: Row[] | null;
     kinds?: Row[] | null;
     probe?: Row[] | null;
     recent?: Row[] | null;
@@ -54,17 +69,18 @@ function fakeEngine(
     seen.push(sql);
     if (sql.includes("GROUP BY event_kind"))
       return pick(overrides.kinds, KINDS);
-    if (sql.includes("count(DISTINCT netuid)"))
-      return pick(overrides.agg, [AGG]);
+    if (sql.includes("AS sc")) return pick(overrides.subnets, [SUBNETS]);
     if (sql.includes("count(*) AS c FROM ("))
       return pick(overrides.probe, [{ c: 6 }]);
+    if (sql.includes("min(block_number)")) return pick(overrides.agg, [AGG]);
     return pick(overrides.recent, RECENT);
   };
   return {
     query,
     seen,
     probe: () => seen.find((s) => s.includes("count(*) AS c FROM ("))!,
-    agg: () => seen.find((s) => s.includes("count(DISTINCT netuid)"))!,
+    agg: () => seen.find((s) => s.includes("min(block_number)"))!,
+    subnets: () => seen.find((s) => s.includes("AS sc"))!,
   };
 }
 
@@ -81,6 +97,62 @@ describe("loadAccountSummaryColdTier", () => {
     assert.equal(card.event_kinds.length, 2);
     assert.equal(card.recent_events.length, 1);
     assert.equal(card.event_scan_capped, false);
+  });
+
+  test("no read anywhere uses COUNT(DISTINCT)", async () => {
+    // R2 SQL REJECTS an ungrouped count(DISTINCT) at this scale --
+    //
+    //   40015: scan budget exceeded: scanning too much data for
+    //   count(DISTINCT) without GROUP BY
+    //
+    // -- and a rejected read declines the whole reader, so this card published
+    // event_count 0 for an address whose own /events feed returned rows.
+    const engine = fakeEngine();
+    await loadAccountSummaryColdTier({} as never, SS58, {
+      query: engine.query as never,
+    });
+    for (const sql of engine.seen) {
+      assert.doesNotMatch(
+        sql,
+        /count\(\s*DISTINCT/i,
+        `R2 SQL rejects this at production scale: ${sql.slice(0, 120)}`,
+      );
+    }
+  });
+
+  test("the distinct-subnet count is a GROUP BY read, not a bounded CTE", async () => {
+    // The `scan` CTE caps at ACCOUNT_EVENT_SUMMARY_SCAN_CAP rows, which makes a
+    // count(DISTINCT) over it LOOK obviously safe -- an aggregate over 5,000
+    // rows. It is not: the engine costs the distinct against the underlying
+    // scan, not the materialized cap. Wrapping a distinct in a bounded CTE is
+    // not a workaround; only GROUP BY is. That is why this asserts the shape
+    // and not merely the absence of the word DISTINCT.
+    const engine = fakeEngine();
+    const cold = await loadAccountSummaryColdTier({} as never, SS58, {
+      query: engine.query as never,
+    });
+    assert.match(
+      engine.subnets(),
+      /FROM \(SELECT netuid FROM scan GROUP BY netuid\)/,
+      "the distinct subnet count must group",
+    );
+    assert.equal(buildAccountSummary(SS58, cold!).subnet_count, 2);
+  });
+
+  test("declines when the distinct-subnet read misses", async () => {
+    // Publishing the aggregates without it would report an event_count over
+    // subnet_count 0 -- a card that is internally impossible and reads as
+    // measured fact.
+    for (const miss of [{ subnets: null }, { subnets: [] }]) {
+      const engine = fakeEngine(miss);
+      assert.equal(
+        await loadAccountSummaryColdTier({} as never, SS58, {
+          query: engine.query as never,
+        }),
+        null,
+        `${JSON.stringify(miss)} must decline`,
+      );
+    }
   });
 
   test("attributes events by hotkey OR coldkey, like the feed", async () => {
