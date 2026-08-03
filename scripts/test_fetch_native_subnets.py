@@ -173,7 +173,7 @@ def _pipeline_state(**overrides):
         "alpha_in_emission": {1: _le_hex(0, 8)},
         "alpha_out_emission": {1: _le_hex(1_000_000_000, 8)},
         # #8744: stage 1's input and stage 0's last gate, now pinned.
-        "moving_price": {1: _le_hex(round(0.25 * U64F64_SCALE), 16)},
+        "moving_price": {1: _le_hex(round(0.25 * U96F32_SCALE), 16)},
         "registration_allowed": {1: "0x01"},
     }
     for key, value in overrides.items():
@@ -319,7 +319,7 @@ class PinnedPipelineInputTests(unittest.TestCase):
     reconstruction combines them with reads pinned to one block.
     """
 
-    def test_moving_price_decodes_as_u64f64_not_rao(self):
+    def test_moving_price_decodes_as_i96f32_not_rao_or_u64f64(self):
         row = normalize_pipeline(_pipeline_state(), 1)
         self.assertAlmostEqual(row["moving_price_pinned"], 0.25, places=12)
 

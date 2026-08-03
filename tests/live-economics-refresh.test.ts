@@ -388,13 +388,21 @@ describe("live-economics decoders", () => {
     assert.equal(decodeAccountId(undefined), null);
   });
 
-  test("decodeMovingPrice publishes both scales, exactly 2^32 apart", () => {
+  test("decodeMovingPrice reads one I96F32 word at ONE scale", () => {
+    // A real finney word for netuid 64. Both published fields are bits / 2^32:
+    // SubnetMovingPrice is I96F32, so there is no second scale to publish.
     const decoded = decodeMovingPrice(u128(360_101_426n));
     // The published price, at rao precision, as the SDK path produced it.
     assert.equal(decoded.alpha_price_tao, 0.083842646);
-    // The #8744 pipeline reading is the SAME word at U64F64 -- the pair exists
-    // because the two are not interchangeable, and the ratio is the tell.
-    assert.equal(decoded.moving_price_pinned! * 2 ** 32, 360_101_426 / 2 ** 32);
+    assert.equal(decoded.moving_price_pinned, 360_101_426 / 2 ** 32);
+    // #9224: this was u64f64 and therefore 2^32 too small. The two fields
+    // agreeing to rao precision is the regression check -- the old decode put
+    // them a flat 4.29e9 apart, which no consumer could reconcile with the
+    // AMM pool spot the price tracks.
+    assert.ok(
+      Math.abs(decoded.moving_price_pinned! - decoded.alpha_price_tao!) < 1e-9,
+      "the pinned reading must be the same magnitude as the published price",
+    );
     assert.deepEqual(decodeMovingPrice(undefined), {
       alpha_price_tao: null,
       moving_price_pinned: null,

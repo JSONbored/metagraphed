@@ -42,7 +42,10 @@ const fixtureRows: EconomicsPipelineRow[] = NETUIDS.map((netuid) => {
   const excess = decodeLeU64(at("excess_tao", netuid)) ?? 0n;
   return {
     netuid,
-    moving_price_pinned: price === null ? null : u64f64U128ToFloat(price),
+    // I96F32, matching the producers (#9224). The reconstruction normalizes
+    // this into a share, so the scale cancels and every assertion below holds
+    // either way -- which is exactly why the wrong scale survived so long.
+    moving_price_pinned: price === null ? null : u96f32U128ToFloat(price),
     miner_burned_fraction: burned === null ? null : u96f32U128ToFloat(burned),
     // ABSENT MEANS ENABLED.
     emission_enabled: enabled === null ? true : enabled !== "0x00",

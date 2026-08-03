@@ -125,11 +125,17 @@ TOTAL_ISSUANCE_STORAGE_KEY = (
 # which is what a fraction looks like and what a misscaled amount does not.
 U96F32_SCALE = 2**32
 
-# SubnetMovingPrice, EmissionGateBar and EmissionBarQuantile are U64F64: a
-# 128-bit word scaled by 2**64, a DIFFERENT width from MinerBurned's U96F32
-# above. Two fixed-point widths in one pallet is a trap -- reading MinerBurned
-# at the wrong one is what put the first reconstruction at 5.4e-4 -- so they
-# are two named scales, never one helper with a width argument.
+# EmissionGateBar and EmissionBarQuantile are U64F64: a 128-bit word scaled by
+# 2**64, a DIFFERENT width from MinerBurned's U96F32 above. Two fixed-point
+# widths in one pallet is a trap -- reading MinerBurned at the wrong one is what
+# put the first reconstruction at 5.4e-4 -- so they are two named scales, never
+# one helper with a width argument.
+#
+# SubnetMovingPrice was in this group until #9224 and does NOT belong: it is
+# I96F32 like MinerBurned, so it was published 2**32 too small. It went
+# unnoticed because the reconstruction only uses it as a ratio against the other
+# subnets' values, where a uniform factor cancels -- unlike MinerBurned's, whose
+# error did not cancel and so was caught at once.
 U64F64_SCALE = 2**64
 
 
@@ -254,7 +260,7 @@ def normalize_pipeline(state, netuid):
         # published field keeps its source and meaning; the pipeline gets an
         # input that shares an instant with everything it is combined with.
         "moving_price_pinned": (
-            moving_price_bits / U64F64_SCALE
+            moving_price_bits / U96F32_SCALE
             if moving_price_bits is not None
             else None
         ),
