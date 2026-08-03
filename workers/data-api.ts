@@ -298,6 +298,12 @@ import {
   writeAccountIdentityToD1,
   writeSubnetHyperparamsToD1,
 } from "../src/hyperparams-identity-d1-write.ts";
+import { writeChainDetailToD1 } from "../src/chain-detail-d1-write.ts";
+import {
+  CHAIN_DETAIL_SYNC_MAX_BODY_BYTES,
+  parseChainDetailSync,
+} from "../src/chain-detail-sync-payload.ts";
+import { chainDetailHead } from "../src/chain-detail-hot-tier.ts";
 import { buildAccountPositionHistory } from "../src/account-position-history.ts";
 import {
   createUnkeyKey,
@@ -615,6 +621,122 @@ async function handleNeuronsSync(request: Request, env: Env) {
     stores: ["d1"],
     d1_statements: d1Statements,
   });
+}
+
+// --- POST /api/v1/internal/chain-detail-sync (#9208) ------------------------
+//
+// The write path into the chain-detail HOT TIER: the rolling window of
+// extrinsics / chain_events / account_events that makes block drill-down
+// current instead of up to an hour stale. Same delivery pattern as every other
+// lane in this file -- the producer decodes, POSTs a token-authed batch, and
+// this lands it in D1 -- so there is no new topology, only a new destination.
+//
+// The producer is metagraphed-infra's live-follow poller lane, which follows
+// the FINALIZED head and decodes with the SAME shared decoder the hourly R2
+// batch lane uses (#9208 requirement 1: one decoder, never two). It batches 2
+// blocks per POST, ~350-662 KiB and ~800-3,000 rows.
+//
+// Everything payload-shaped lives in src/chain-detail-sync-payload.ts and
+// everything statement-shaped in src/chain-detail-d1-write.ts; what is left
+// here is auth, body size, and the ack -- deliberately, because those three are
+// the parts that must match the other sync routes exactly, and the rest is the
+// part that benefits from being a pure function.
+const CHAIN_DETAIL_SYNC_TOKEN_HEADER = "x-chain-detail-sync-token";
+
+/** Auth gate shared by the sync POST and its head GET: one secret, because
+ * both are the same producer on the same trust boundary, and a second secret
+ * for a read of one integer would be ceremony. Returns the failing response, or
+ * null when the caller is authorised. */
+function chainDetailSyncAuth(request: Request, env: Env): Response | null {
+  if (!env.CHAIN_DETAIL_SYNC_SECRET) {
+    return writeJson(
+      { error: "chain-detail sync is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided = request.headers.get(CHAIN_DETAIL_SYNC_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, env.CHAIN_DETAIL_SYNC_SECRET)) {
+    return writeJson(
+      { error: `provide a valid ${CHAIN_DETAIL_SYNC_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+  return null;
+}
+
+async function handleChainDetailSync(request: Request, env: Env) {
+  const denied = chainDetailSyncAuth(request, env);
+  if (denied) return denied;
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > CHAIN_DETAIL_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      { error: `body exceeds ${CHAIN_DETAIL_SYNC_MAX_BODY_BYTES} bytes` },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const batch = parseChainDetailSync(parsed, Date.now());
+  if (!batch.ok) return writeJson({ error: batch.error }, batch.status);
+
+  // D1 is the binding this path REQUIRES -- it is the only store (data-api's
+  // Postgres tier was deleted in #9202), so the lane has nowhere else to land.
+  //
+  // Checked HERE, after parsing and validation, not at the top: a malformed
+  // body is a 400 whether or not a store happens to be bound, and answering 503
+  // to it would blame the infrastructure for the caller's payload. Same
+  // ordering, and the same reason, as handleNeuronsSync above.
+  if (!env.METAGRAPH_HEALTH_DB) {
+    return writeJson({ error: "d1 binding unavailable" }, 503);
+  }
+
+  let statements: number;
+  try {
+    ({ statements } = await writeChainDetailToD1(
+      env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof writeChainDetailToD1
+      >[0],
+      batch.rows,
+    ));
+  } catch (err) {
+    console.error("data-api chain-detail-sync D1 write failed:", err);
+    await captureDataApiError(err, "chain-detail-sync-d1", env);
+    return writeJson({ error: "d1 write failed" }, 502);
+  }
+
+  return writeJson({
+    ok: true,
+    blocks_written: batch.rows.blockRows.length,
+    extrinsics_written: batch.rows.extrinsicRows.length,
+    chain_events_written: batch.rows.chainEventRows.length,
+    account_events_written: batch.rows.accountEventRows.length,
+    head: batch.rows.head,
+    stores: ["d1"],
+    d1_statements: statements,
+  });
+}
+
+// --- GET /api/v1/internal/chain-detail-sync/head (#9208) --------------------
+//
+// The producer's resume point: the highest block already synced, so a restarted
+// lane picks up where it left off instead of re-decoding its whole window or,
+// worse, skipping forward and leaving a hole nothing will ever fill.
+//
+// `head: null` is a real answer, not an error -- an empty tier is exactly the
+// state a first deploy is in, and the producer's correct response to it is to
+// start from the current finalized head, not to retry.
+async function handleChainDetailSyncHead(request: Request, env: Env) {
+  const denied = chainDetailSyncAuth(request, env);
+  if (denied) return denied;
+  if (!env.METAGRAPH_HEALTH_DB) {
+    return writeJson({ error: "d1 binding unavailable" }, 503);
+  }
+  return writeJson({ head: await chainDetailHead(env) });
 }
 
 // --- POST /api/v1/internal/backfill-neuron-daily ----------------------------
@@ -5204,6 +5326,21 @@ async function dispatchDataApiRequest(
       url.pathname === "/api/v1/internal/backfill-neuron-daily"
     ) {
       return handleNeuronDailyBackfill(request, env);
+    }
+    // #9208's live-follow lane. The head read is a GET and therefore has to be
+    // matched HERE too rather than left to the read dispatcher: the gate below
+    // admits GETs, but only for paths it knows, and this one is internal.
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/chain-detail-sync"
+    ) {
+      return handleChainDetailSync(request, env);
+    }
+    if (
+      request.method === "GET" &&
+      url.pathname === "/api/v1/internal/chain-detail-sync/head"
+    ) {
+      return handleChainDetailSyncHead(request, env);
     }
     if (
       request.method === "POST" &&

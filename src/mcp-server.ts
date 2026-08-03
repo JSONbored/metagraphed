@@ -240,6 +240,16 @@ import {
   loadAccountEventsColdTier,
   loadBlockEventsColdTier,
 } from "./events-cold-tier.ts";
+import {
+  answerBlockDetail,
+  answerExtrinsicDetail,
+  chainDetailGapMessage,
+  isEmptyEventPayload,
+  isEmptyExtrinsicPayload,
+  loadBlockEventsHotTier,
+  loadBlockExtrinsicsHotTier,
+  type ChainDetailAnswer,
+} from "./chain-detail-hot-tier.ts";
 import { loadTopHoldersFromArtifact } from "./top-holders-artifact.ts";
 import { loadChainTransfersFromArtifact } from "./chain-transfers-artifact.ts";
 import { loadChainStakeFlowFromArtifact } from "./chain-stake-flow-artifact.ts";
@@ -2085,6 +2095,27 @@ function toolError(code: string, message: string) {
   error.toolError = true;
   error.code = code;
   return error;
+}
+
+/**
+ * #9208: unwrap a chain-detail tier answer, or DECLINE.
+ *
+ * The REST side turns a gap into a 503; MCP has no status codes, so the same
+ * condition becomes a tool error with the same code. Both are refusals, and
+ * that is the point -- an agent that receives `extrinsics: []` for a block that
+ * has 47 of them will reason from it, and unlike a human it will not think to
+ * click again in an hour. `empty` builds the schema-stable payload for a
+ * genuine miss (no tier bound at all), which is the pre-#9208 behaviour and
+ * still correct for a ref outside the seam's jurisdiction.
+ */
+function chainDetailAnswerOrThrow<T>(
+  answer: ChainDetailAnswer<T>,
+  empty: () => T,
+): T {
+  if (answer.kind === "answer") return answer.data;
+  if (answer.kind === "gap")
+    throw toolError("block_detail_unavailable", chainDetailGapMessage(answer));
+  return empty();
 }
 
 // The published `network` enum, read from the schema the tools declare rather
@@ -8671,12 +8702,22 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         "METAGRAPH_EXTRINSICS_SOURCE",
       )) ?? {
         // Lazily built only when the Postgres tier missed, mirroring REST's
-        // handleBlockExtrinsics.
-        data:
-          (await loadBlockExtrinsicsColdTier(ctx.env, ref, {
-            limit,
-            offset,
-          })) ?? buildBlockExtrinsics([], ref, null, { limit, offset }),
+        // handleBlockExtrinsics -- including #9208's hot/cold/decline routing,
+        // so an MCP caller and a REST caller get the same answer for the same
+        // block rather than the tool quietly keeping the old empty.
+        data: chainDetailAnswerOrThrow(
+          await answerBlockDetail(ctx.env, ref, {
+            hot: (height) =>
+              loadBlockExtrinsicsHotTier(ctx.env, ref, height, {
+                limit,
+                offset,
+              }),
+            cold: () =>
+              loadBlockExtrinsicsColdTier(ctx.env, ref, { limit, offset }),
+            isEmpty: isEmptyExtrinsicPayload,
+          }),
+          () => buildBlockExtrinsics([], ref, null, { limit, offset }),
+        ),
       };
       return data;
     },
@@ -8718,10 +8759,18 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) ?? {
         // Lazily built only when the Postgres tier missed, mirroring REST's
-        // handleBlockEvents.
-        data:
-          (await loadBlockEventsColdTier(ctx.env, ref, { limit, offset })) ??
-          buildBlockEvents([], ref, null, { limit, offset }),
+        // handleBlockEvents -- #9208's routing included, for the same reason as
+        // list_block_extrinsics above.
+        data: chainDetailAnswerOrThrow(
+          await answerBlockDetail(ctx.env, ref, {
+            hot: (height) =>
+              loadBlockEventsHotTier(ctx.env, ref, height, { limit, offset }),
+            cold: () =>
+              loadBlockEventsColdTier(ctx.env, ref, { limit, offset }),
+            isEmpty: isEmptyEventPayload,
+          }),
+          () => buildBlockEvents([], ref, null, { limit, offset }),
+        ),
       };
       return data;
     },
@@ -8821,14 +8870,20 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       // Mirrors REST's handleExtrinsic: try Postgres first (#4694), fall back to
       // the schema-stable empty detail now that extrinsics' D1 write path is
       // retired (#4772) and the table is dropped in production.
-      return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpExtrinsicDetailRequest(ref),
-          "METAGRAPH_EXTRINSICS_SOURCE",
-        )) ??
-        (await loadExtrinsicColdTier(ctx.env, ref)) ??
-        buildExtrinsic(undefined, ref)
+      const postgres = await tryPostgresTier(
+        ctx.env,
+        mcpExtrinsicDetailRequest(ref),
+        "METAGRAPH_EXTRINSICS_SOURCE",
+      );
+      if (postgres) return postgres;
+      // #9208: hot tier ahead of the lakehouse, and a DECLINE when a composite
+      // `<block>-<index>` ref names a position neither tier can answer. A HASH
+      // ref keeps the schema-stable empty -- see answerExtrinsicDetail.
+      return chainDetailAnswerOrThrow(
+        await answerExtrinsicDetail(ctx.env, ref, () =>
+          loadExtrinsicColdTier(ctx.env, ref),
+        ),
+        () => buildExtrinsic(undefined, ref),
       );
     },
   },

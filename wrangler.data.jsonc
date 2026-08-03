@@ -7,10 +7,15 @@
   // Also owns every write route into this same Postgres instance (#4771's
   // neurons-sync, subnet-hyperparams-sync, account-identity-sync,
   // subnet-identity-sync, health-checks-sync, health-uptime-rollup-sync,
-  // subnet-snapshot-sync, rpc-usage-sync, subnet-locks-sync (#6638) -- see
-  // workers/data-api.ts's handle*Sync functions) -- each requires its own
-  // secret, set via:
+  // subnet-snapshot-sync, rpc-usage-sync, subnet-locks-sync (#6638),
+  // chain-detail-sync (#9208) -- see workers/data-api.ts's handle*Sync
+  // functions) -- each requires its own secret, set via:
   //   wrangler secret put <NAME>_SYNC_SECRET -c wrangler.data.jsonc
+  //
+  // CHAIN_DETAIL_SYNC_SECRET (#9208) is the one that must be set on BOTH
+  // Workers: the main Worker proxies the route (so it never checks the value)
+  // but the producer POSTs through it, and data-api is where the check
+  // happens. It also gates the head GET the producer resumes from.
   // (and, for the ones called from the main Worker's own cron rather than an
   // external GitHub Actions workflow, the SAME secret value on the main
   // Worker too -- see wrangler.jsonc.)

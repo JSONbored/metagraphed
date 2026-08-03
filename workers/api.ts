@@ -205,6 +205,7 @@ import {
   handleBlock,
   handleBlockExtrinsics,
   handleBlockEvents,
+  chainDetailGapResponse,
   handleExtrinsics,
   handleExtrinsic,
   handleSudo,
@@ -319,6 +320,7 @@ import { tryPostgresTier } from "./postgres-tier.ts";
 import {
   coldTierChainEventsPayload,
   degradedChainEventsPayload,
+  hotTierBlockChainEvents,
   shouldDegrade,
 } from "../src/chain-events-degraded.ts";
 import { markPostgresTierFallbackResponse } from "./request-handlers/analytics.ts";
@@ -340,6 +342,8 @@ import { sampleEmissionGate } from "../src/emission-gate-sampler.ts";
 import { checkEmissionDrift } from "../src/emission-drift-check.ts";
 import { refreshLiveEconomics } from "../src/live-economics-refresh.ts";
 import { runNeuronsStalenessWatchdog } from "../src/neurons-staleness-watchdog.ts";
+import { runChainDetailStalenessWatchdog } from "../src/chain-detail-staleness-watchdog.ts";
+import { pruneChainDetail } from "../src/chain-detail-prune.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
 import { validateResponseTripwire } from "../src/response-validation-tripwire.ts";
 import {
@@ -402,6 +406,8 @@ import {
   EMISSION_GATE_SAMPLE_CRON,
   EMISSION_DRIFT_CHECK_CRON,
   NEURONS_STALENESS_WATCHDOG_CRON,
+  CHAIN_DETAIL_PRUNE_CRON,
+  CHAIN_DETAIL_STALENESS_WATCHDOG_CRON,
   LIVE_ECONOMICS_REFRESH_CRON,
   PROJECTION_LANES_CRON,
   FRESHNESS_WATCHDOG_STATE_KEY,
@@ -1366,6 +1372,9 @@ function cronLabel(cron: string): string {
   if (cron === EMISSION_DRIFT_CHECK_CRON) return "emission-drift-check";
   if (cron === NEURONS_STALENESS_WATCHDOG_CRON)
     return "neurons-staleness-watchdog";
+  if (cron === CHAIN_DETAIL_PRUNE_CRON) return "chain-detail-prune";
+  if (cron === CHAIN_DETAIL_STALENESS_WATCHDOG_CRON)
+    return "chain-detail-staleness-watchdog";
   if (cron === LIVE_ECONOMICS_REFRESH_CRON) return "live-economics-refresh";
   // Every unmatched cron falls through to the health prober, matching dispatch.
   return "health-prober";
@@ -1625,6 +1634,21 @@ async function dispatchScheduled(
       env as unknown as Record<string, unknown>,
     );
   }
+  if (cron === CHAIN_DETAIL_PRUNE_CRON) {
+    // #9208 retention. Returns a summary rather than throwing so the #8998
+    // wrapper records the tick either way; `ok:false` on an unbound D1 or a
+    // failed delete is a real "did not do the work" outcome, and the wrapper
+    // honours it.
+    return pruneChainDetail(env);
+  }
+  if (cron === CHAIN_DETAIL_STALENESS_WATCHDOG_CRON) {
+    // The chain-detail live lane's alarm. Zero alerts is the correct steady
+    // state; a stale verdict records one exception under
+    // watchdog:chain-detail-staleness, the project's alert channel.
+    return runChainDetailStalenessWatchdog(
+      env as unknown as Record<string, unknown>,
+    );
+  }
   if (cron === LIVE_ECONOMICS_REFRESH_CRON) {
     // The live-economics refresh, formerly the 3-hourly Actions schedule and
     // the last data lane on it. All the chain/D1 reading and the whole build
@@ -1826,7 +1850,29 @@ export async function dataApiFailureResponse(
   message: string,
   status: number,
 ): Promise<Response> {
-  // The lakehouse first: a DATA_API failure is only the END of the road for a
+  // #9208: the HOT tier first, ahead of both the lakehouse and the empty.
+  // /blocks/{n}/chain-events is the one route here a user reaches by clicking a
+  // recent block, and it is exactly the range the live-follow lane covers. A
+  // block above the decode seam that the lane does not hold DECLINES rather
+  // than degrading -- see hotTierBlockChainEvents for why the cold leg is null.
+  const hot = await hotTierBlockChainEvents(env, url);
+  if (hot?.kind === "gap") return chainDetailGapResponse(hot);
+  if (hot?.kind === "answer") {
+    return envelopeResponse(
+      request,
+      {
+        data: hot.data,
+        meta: {
+          artifact_path: url.pathname,
+          cache: "short",
+          contract_version: contractVersion(env),
+          source: "chain-detail-hot-tier",
+        },
+      },
+      "short",
+    );
+  }
+  // The lakehouse next: a DATA_API failure is only the END of the road for a
   // route with no cold-tier reader. /subnets/{netuid}/ownership-history has
   // one, so it serves real SubnetOwnerChanged rows here instead of the empty
   // below -- unmarked and cacheable, because these are current rows, not a
@@ -2456,10 +2502,24 @@ async function proxyToDataApi(
     code,
     notBoundMessage,
     unreadableMessage,
-  }: { code: string; notBoundMessage: string; unreadableMessage: string },
+    method = "POST",
+  }: {
+    code: string;
+    notBoundMessage: string;
+    unreadableMessage: string;
+    /** The ONE method this route accepts. Defaults to POST because every sync
+     * route is a write; #9208's chain-detail head read is the first GET, and it
+     * is still a single-method route -- the gate stays "exactly one", not "any
+     * method", so a POST to a read route is still a clean 405. */
+    method?: "GET" | "POST";
+  },
 ) {
-  if (request.method !== "POST") {
-    return errorResponse("method_not_allowed", "Only POST is supported.", 405);
+  if (request.method !== method) {
+    return errorResponse(
+      "method_not_allowed",
+      `Only ${method} is supported.`,
+      405,
+    );
   }
   if (!env.DATA_API) {
     return errorResponse(code, notBoundMessage, 503);
@@ -2492,6 +2552,38 @@ async function handleNeuronsSyncProxy(request: Request, env: Env) {
     code: "neurons_sync_unavailable",
     notBoundMessage: "The neurons-sync tier is not bound to this deployment.",
     unreadableMessage: "The neurons-sync tier returned an unreadable response.",
+  });
+}
+
+// Proxies POST /api/v1/internal/chain-detail-sync -- the write path into the
+// chain-detail hot tier (#9208), which is what makes drill-down on a recent
+// block current rather than empty. metagraphed-infra's live-follow poller lane
+// calls this every ~24s with 2 decoded blocks. Same DATA_API service binding,
+// and the same INTERNAL_SYNC_RATE_LIMITER bucket, as neurons-sync above: at
+// ~2.5 requests/minute the lane sits an order of magnitude under that bucket's
+// 30/60s, so it shares the limit without needing its own.
+async function handleChainDetailSyncProxy(request: Request, env: Env) {
+  return proxyToDataApi(request, env, {
+    code: "chain_detail_sync_unavailable",
+    notBoundMessage:
+      "The chain-detail sync tier is not bound to this deployment.",
+    unreadableMessage:
+      "The chain-detail sync tier returned an unreadable response.",
+  });
+}
+
+// Proxies GET /api/v1/internal/chain-detail-sync/head -- the producer's resume
+// point (#9208). A GET rather than a POST because it reads one integer and
+// changes nothing; it carries the same token as the sync itself, so it is not a
+// public read.
+async function handleChainDetailSyncHeadProxy(request: Request, env: Env) {
+  return proxyToDataApi(request, env, {
+    code: "chain_detail_sync_unavailable",
+    notBoundMessage:
+      "The chain-detail sync tier is not bound to this deployment.",
+    unreadableMessage:
+      "The chain-detail sync tier returned an unreadable response.",
+    method: "GET",
   });
 }
 
@@ -3358,6 +3450,15 @@ export async function handleRequest(
   // from neurons-sync. Same DATA_API service binding.
   if (url.pathname === "/api/v1/internal/backfill-neuron-daily") {
     return handleNeuronDailyBackfillProxy(request, env);
+  }
+  // The write path into the chain-detail hot tier (#9208) and the producer's
+  // resume read. Both go to the SAME DATA_API service binding as the sync
+  // routes above; the head route is the family's first GET.
+  if (url.pathname === "/api/v1/internal/chain-detail-sync") {
+    return handleChainDetailSyncProxy(request, env);
+  }
+  if (url.pathname === "/api/v1/internal/chain-detail-sync/head") {
+    return handleChainDetailSyncHeadProxy(request, env);
   }
   // The write path into the chain-indexer Postgres's account_events_daily
   // rollup (#4832 gap-closure) -- a dedicated hourly GitHub Actions workflow

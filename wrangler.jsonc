@@ -748,6 +748,17 @@
       // dispatch keys on the literal cron string. See
       // LIVE_ECONOMICS_REFRESH_CRON in workers/config.ts.
       "26 */3 * * *",
+      // 12,27,42,57 = the chain-detail hot-tier prune (#9208): drops the
+      // rolling extrinsics/events window once the lakehouse has absorbed it.
+      // Four times an hour with a per-run block cap, so no single run deletes a
+      // whole backlog in one D1 transaction. See CHAIN_DETAIL_PRUNE_CRON in
+      // workers/config.ts and src/chain-detail-prune.ts's measured sizing.
+      "12,27,42,57 * * * *",
+      // 14,29,44,59 = the chain-detail staleness watchdog (#9208): alarms when
+      // the live-follow decode lane stops advancing. Its own trigger rather
+      // than a step inside the prune, so a prune failure cannot swallow the
+      // staleness verdict.
+      "14,29,44,59 * * * *",
     ],
   },
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite

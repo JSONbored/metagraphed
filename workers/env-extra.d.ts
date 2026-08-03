@@ -28,6 +28,15 @@ interface Env {
   ALERT_TRIGGER_CREATE_TOKEN?: string;
   ALERT_TRIGGERS_INTERNAL_TOKEN?: string;
   API_KEY_LOOKUP_INTERNAL_TOKEN?: string;
+  /** #9208: gates POST /api/v1/internal/chain-detail-sync and its head GET --
+   * the live-follow decode lane's write path into the chain-detail hot tier.
+   * Set via `wrangler secret put` on BOTH Workers (api.ts proxies, data-api.ts
+   * checks) and on the producer side in metagraphed-infra. */
+  CHAIN_DETAIL_SYNC_SECRET?: string;
+  /** #9208: overrides CHAIN_DETAIL_STALENESS_THRESHOLD_MS for the hot-tier
+   * watchdog, so the alarm can be widened during a known outage without a
+   * deploy. Unset means the module's own 20-minute default. */
+  CHAIN_DETAIL_STALENESS_THRESHOLD_MS?: string;
   CHAIN_FIREHOSE_SYNC_SECRET?: string;
   /** #8748/#8750 restored lane: gates POST /api/v1/internal/emission-gate-sync,
    * the D1 write path the sample-emission-gate.yml schedule POSTs chain
