@@ -54,17 +54,27 @@ describe("the WeightsSet identity", () => {
       limit: 20,
       query: engine.query,
     });
-    // The per-subnet rollup counts distinct uids WITHIN each netuid.
-    assert.match(engine.rowsSql()!, /count\(DISTINCT uid\)/, "must count uid");
-    // The network total counts distinct (netuid, uid) PAIRS instead, because a
-    // uid is unique only within a subnet -- see the rollup reader's own note.
+    // The per-subnet rollup counts distinct uids WITHIN each netuid. Since
+    // #9227 that is a nested `GROUP BY netuid, uid` whose rows are counted,
+    // not a `count(DISTINCT uid)` -- the latter is rejected outright at 30d.
+    // Asserted on the identity being grouped rather than on the aggregate's
+    // spelling, so the next shape change cannot silently swap the identity.
+    assert.match(
+      engine.rowsSql()!,
+      /GROUP BY netuid, uid/,
+      "must group by uid within netuid",
+    );
+    // The network total counts distinct (netuid, uid) PAIRS, because a uid is
+    // unique only within a subnet -- see the rollup reader's own note.
     assert.match(engine.networkSql()!, /GROUP BY netuid, uid/);
-    // Neither may count hotkey: it is NULL on every WeightsSet row, so it
-    // yields a well-formed card of zeros rather than an error.
+    // Neither half may reference hotkey AT ALL: it is NULL on every WeightsSet
+    // row, so counting it yields a well-formed card of zeros rather than an
+    // error. Checked against the bare column, since with COUNT(DISTINCT) gone
+    // a test for `count(DISTINCT hotkey)` would now pass no matter what.
     for (const sql of engine.seen) {
       assert.doesNotMatch(
         sql,
-        /count\(DISTINCT hotkey\)/,
+        /hotkey/,
         "hotkey is NULL on every WeightsSet row -- counting it yields zeros",
       );
     }
