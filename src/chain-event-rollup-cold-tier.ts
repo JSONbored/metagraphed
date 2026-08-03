@@ -178,13 +178,30 @@ export async function loadChainEventRollup(
         ` FROM chain.account_events ${where}` +
         ` GROUP BY netuid ORDER BY ${countField} DESC LIMIT ${cap}`,
     ),
-    // Separate because distinct hotkeys do not sum across subnets: one hotkey
-    // serving five subnets is five rows above and one server here.
+    // Separate because a distinct count does not sum across subnets: one
+    // participant active on five subnets is five rows above and one here.
+    //
+    // The SHAPE depends on what identifies a participant. A hotkey is globally
+    // unique, so an ungrouped COUNT(DISTINCT hotkey) is the answer. A uid is
+    // only unique WITHIN a subnet -- uid 5 on twenty subnets is twenty
+    // different neurons -- so the same query would collapse them and report
+    // roughly "how many distinct uid numbers appeared", which is capped near
+    // 256 and means nothing as a participant count. Measured: it reported 254
+    // where the true distinct-pair count was 1,280.
+    //
+    // Counting rows of a GROUP BY gives the distinct pairs exactly, and it is
+    // also the form the engine can execute: an ungrouped COUNT(DISTINCT) over
+    // this many rows is rejected with `40015: scan budget exceeded ... add a
+    // GROUP BY to distribute the aggregation`.
     query(
       env,
-      `SELECT count(DISTINCT ${distinctColumn}) AS ${distinctField},` +
-        ` max(observed_at) AS newest_observed` +
-        ` FROM chain.account_events ${where}`,
+      distinctColumn === "uid"
+        ? `SELECT count(*) AS ${distinctField}, max(newest) AS newest_observed` +
+            ` FROM (SELECT netuid, uid, max(observed_at) AS newest` +
+            ` FROM chain.account_events ${where} GROUP BY netuid, uid)`
+        : `SELECT count(DISTINCT ${distinctColumn}) AS ${distinctField},` +
+            ` max(observed_at) AS newest_observed` +
+            ` FROM chain.account_events ${where}`,
     ),
   ]);
 
