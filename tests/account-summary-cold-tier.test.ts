@@ -24,7 +24,6 @@ const SS58 = "5E2LP6EnZ54m3wS8s1yPvD5c3xo71kQroBw7aUVK32TKeZ5u";
 
 const AGG = {
   c: 6,
-  sc: 2,
   fb: 8_700_000,
   lb: 8_760_000,
   fo: 1_784_000_000_000,
@@ -38,10 +37,11 @@ const RECENT = [
   { block_number: 8_760_000, event_kind: "AxonServed", netuid: 55 },
 ];
 
-/** Answers each of the four reads by the shape of its SQL. */
+/** Answers each of the five reads by the shape of its SQL. */
 function fakeEngine(
   overrides: {
     agg?: Row[] | null;
+    subnets?: Row[] | null;
     kinds?: Row[] | null;
     probe?: Row[] | null;
     recent?: Row[] | null;
@@ -54,7 +54,9 @@ function fakeEngine(
     seen.push(sql);
     if (sql.includes("GROUP BY event_kind"))
       return pick(overrides.kinds, KINDS);
-    if (sql.includes("count(DISTINCT netuid)"))
+    if (sql.includes("GROUP BY netuid"))
+      return pick(overrides.subnets, [{ sc: 2 }]);
+    if (sql.includes("min(block_number) AS fb"))
       return pick(overrides.agg, [AGG]);
     if (sql.includes("count(*) AS c FROM ("))
       return pick(overrides.probe, [{ c: 6 }]);
@@ -64,7 +66,8 @@ function fakeEngine(
     query,
     seen,
     probe: () => seen.find((s) => s.includes("count(*) AS c FROM ("))!,
-    agg: () => seen.find((s) => s.includes("count(DISTINCT netuid)"))!,
+    agg: () => seen.find((s) => s.includes("min(block_number) AS fb"))!,
+    subnets: () => seen.find((s) => s.includes("GROUP BY netuid"))!,
   };
 }
 
@@ -144,6 +147,7 @@ describe("loadAccountSummaryColdTier", () => {
     // event_scan_capped and publish a window floor as first_seen_at.
     for (const miss of [
       { agg: null },
+      { subnets: null },
       { kinds: null },
       { probe: null },
       { recent: null },
@@ -204,5 +208,65 @@ describe("all three account-summary surfaces go through the one loader", () => {
         `${surface} (${path}) would keep answering the all-zero card`,
       );
     }
+  });
+});
+
+describe("the summary's SQL stays inside R2 SQL's scan budget", () => {
+  // THE REGRESSION THIS EXISTS FOR. The aggregate used to select an ungrouped
+  // `count(DISTINCT netuid)` beside its other aggregates, and R2 SQL refuses
+  // that over this table -- `40015: scan budget exceeded: scanning too much
+  // data for count(DISTINCT) without GROUP BY`. One refused query declines the
+  // whole loader, so /api/v1/accounts/{ss58} served an all-zero card for EVERY
+  // account, including accounts whose own /events route was returning rows
+  // from the same table at the same moment. Measured in production 2026-08-03:
+  // one HTTP 422 per summary request, three of four queries fine.
+  //
+  // src/chain-event-rollup-cold-tier.ts hit this first and rewrote its distinct
+  // count as a GROUP BY subquery; this asserts the summary now does the same.
+  test("no read asks for an ungrouped count(DISTINCT)", async () => {
+    const engine = fakeEngine();
+    await loadAccountSummaryColdTier({} as never, SS58, {
+      query: engine.query as never,
+    });
+    assert.equal(engine.seen.length, 5);
+    for (const sql of engine.seen) {
+      assert.ok(
+        !/count\(\s*DISTINCT/i.test(sql),
+        `count(DISTINCT) is over budget on this table: ${sql}`,
+      );
+    }
+  });
+
+  test("the distinct subnet count is a GROUP BY subquery", async () => {
+    const engine = fakeEngine();
+    await loadAccountSummaryColdTier({} as never, SS58, {
+      query: engine.query as never,
+    });
+    const sql = engine.subnets();
+    assert.match(sql, /count\(\*\) AS sc/);
+    assert.match(sql, /FROM \(SELECT netuid FROM scan GROUP BY netuid\)/);
+    // It must read the SAME capped window the aggregate reads, or the card
+    // would count subnets over a wider span than the events it reports.
+    assert.match(sql, new RegExp(`LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP}`));
+  });
+
+  test("the subnet count reaches the card", async () => {
+    const engine = fakeEngine({ subnets: [{ sc: 7 }] });
+    const cold = await loadAccountSummaryColdTier({} as never, SS58, {
+      query: engine.query as never,
+    });
+    assert.equal(buildAccountSummary(SS58, cold!).subnet_count, 7);
+  });
+
+  test("no netuid rows is zero subnets, not a decline", async () => {
+    // An account with no events in the window has no netuid rows either. That
+    // is a measured zero, unlike a refused query -- which is the distinction
+    // the whole card got wrong before.
+    const engine = fakeEngine({ subnets: [] });
+    const cold = await loadAccountSummaryColdTier({} as never, SS58, {
+      query: engine.query as never,
+    });
+    assert.ok(cold);
+    assert.equal(buildAccountSummary(SS58, cold).subnet_count, 0);
   });
 });

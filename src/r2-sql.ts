@@ -86,6 +86,34 @@ export function isR2SqlConfigured(env: Env | null | undefined): boolean {
   return typeof token === "string" && token.trim().length > 0;
 }
 
+/** How much of a rejected query's body to keep in the thrown error. */
+const MAX_REJECTION_DETAIL = 300;
+
+/**
+ * The engine's own explanation of a rejection, appended to the status.
+ *
+ * R2 SQL answers a refused query with a numbered, self-explaining message
+ * (`40015: scan budget exceeded: scanning too much data for count(DISTINCT)
+ * without GROUP BY` is the one that mattered here). Only the non-2xx arm threw
+ * that message away; the `success: false` arm below has always surfaced it.
+ * That asymmetry is why an account summary served zeros for every account
+ * while the same table answered the /events route beside it, and why finding
+ * out took a live tail rather than reading the log.
+ *
+ * Bounded, and never allowed to replace the status: a body we cannot read is
+ * strictly less informative than the status we already have.
+ */
+async function rejectionDetail(
+  res: { text?: () => Promise<string> } | null | undefined,
+): Promise<string> {
+  try {
+    const text = (await res?.text?.())?.trim();
+    return text ? `: ${text.slice(0, MAX_REJECTION_DETAIL)}` : "";
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Run one read-only query and return its rows, or null on ANY failure.
  *
@@ -132,7 +160,9 @@ export async function r2SqlQuery(
       signal: abort.signal,
     } as RequestInit);
     if (!res?.ok) {
-      throw new Error(`r2 sql: HTTP ${res?.status}`);
+      throw new Error(
+        `r2 sql: HTTP ${res?.status}${await rejectionDetail(res)}`,
+      );
     }
     const body = (await res.json()) as R2SqlBody;
     if (body?.success !== true) {
