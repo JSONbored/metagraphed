@@ -9,6 +9,7 @@ import {
   D1_BIND_PARAM_CAP,
   LEDGER_STAMP_MEMO_TTL_MS,
   POSITION_SCAN_CAP,
+  latestStakeEventAt,
   ledgerCapturedAt,
   loadAccountPositionsColdTier,
   resetLedgerStampMemo,
@@ -405,5 +406,40 @@ describe("ledgerCapturedAt", () => {
   test("the default clock engages when no timestamp is passed", async () => {
     routedFetch([], [{ latest: 7 }]);
     assert.equal(await ledgerCapturedAt(TOKEN as never), 7);
+  });
+});
+
+describe("latestStakeEventAt", () => {
+  test("sanitizes its OWN input rather than trusting the caller", async () => {
+    // R2 SQL has no bound parameters at all, so every predicate in this module
+    // is interpolated and safeSs58Literal is the only thing between a request
+    // path and the warehouse. This function is exported, so "the one caller
+    // already validated it" is a property of today's code, not of the
+    // function.
+    const queries = routedFetch([], [{ latest: 1 }]);
+    for (const bad of ["' OR 1=1 --", "not-an-ss58", ""]) {
+      assert.equal(
+        await latestStakeEventAt(TOKEN as never, bad),
+        null,
+        `${bad} must be refused, not escaped`,
+      );
+    }
+    assert.equal(queries.length, 0, "an unusable address issues no query");
+  });
+
+  test("asks account_events for this coldkey's newest stake event only", async () => {
+    const queries = routedFetch([], [{ latest: 1_785_700_000_000 }]);
+    assert.equal(
+      await latestStakeEventAt(TOKEN as never, COLDKEY),
+      1_785_700_000_000,
+    );
+    assert.match(queries[0]!, /MAX\(observed_at\).*FROM chain\.account_events/);
+    assert.match(queries[0]!, new RegExp(`coldkey = '${COLDKEY}'`));
+    assert.match(queries[0]!, /event_kind IN \('StakeAdded', 'StakeRemoved'\)/);
+  });
+
+  test("a failed read is null, never a manufactured contradiction", async () => {
+    failingFetch();
+    assert.equal(await latestStakeEventAt(TOKEN as never, COLDKEY), null);
   });
 });

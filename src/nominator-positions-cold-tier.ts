@@ -208,15 +208,24 @@ export async function ledgerCapturedAt(
  * it is the one source that can tell a post-export delegator from an account
  * that genuinely holds nothing. Selective single-address predicate, which is
  * exactly the shape the request-time lakehouse lane is for.
+ *
+ * SANITIZES ITS OWN INPUT rather than trusting the caller. R2 SQL has no bound
+ * parameters at all, so every predicate in this file is interpolated and
+ * `safeSs58Literal` is the only thing standing between a request path and the
+ * warehouse. This function is exported, so "the one caller already validated
+ * it" is a property of today's code, not of the function -- re-validating here
+ * is idempotent on an already-safe literal and costs one regex.
  */
 export async function latestStakeEventAt(
   env: Env | null | undefined,
-  coldkeyLiteral: string,
+  ss58: string,
 ): Promise<number | null> {
+  const coldkey = safeSs58Literal(ss58);
+  if (coldkey === null) return null;
   const rows = await r2SqlQuery(
     env,
     "SELECT MAX(observed_at) AS latest FROM chain.account_events" +
-      ` WHERE coldkey = '${coldkeyLiteral}'` +
+      ` WHERE coldkey = '${coldkey}'` +
       ` AND event_kind IN ('${STAKE_ADDED_KIND}', '${STAKE_REMOVED_KIND}')`,
   );
   return latestStamp(rows);
