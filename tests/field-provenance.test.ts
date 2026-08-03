@@ -44,7 +44,11 @@ import {
 import { SUBNET_BURN_FIELD_SOURCES } from "../src/subnet-burn.ts";
 import { SUBNET_RECYCLED_FIELD_SOURCES } from "../src/subnet-recycled.ts";
 import { SubnetEconomicsSchema } from "../schemas-src/shared.ts";
-import { ECONOMICS_FIELD_SOURCES } from "../src/economics-field-sources.ts";
+import {
+  ECONOMICS_FIELD_SOURCES,
+  ECONOMICS_FIELD_SOURCES_LIVE_KV,
+  economicsFieldSources,
+} from "../src/economics-field-sources.ts";
 import { AccountBalanceArtifactSchema } from "../schemas-src/routes/account-balance.ts";
 import { AccountRootClaimArtifactSchema } from "../schemas-src/routes/account-root-claim.ts";
 import { EvmAddressMappingArtifactSchema } from "../schemas-src/routes/network-singletons.ts";
@@ -159,6 +163,14 @@ const SURFACES: {
     name: "GET /api/v1/economics (subnet row)",
     schema: SubnetEconomicsSchema,
     sources: ECONOMICS_FIELD_SOURCES,
+  },
+  {
+    // The SAME schema, described for the other tier. Both maps are checked
+    // against the published field set so they can never drift apart in what
+    // they cover -- only in what they claim about it.
+    name: "GET /api/v1/economics (subnet row, live-kv tier)",
+    schema: SubnetEconomicsSchema,
+    sources: ECONOMICS_FIELD_SOURCES_LIVE_KV,
   },
   {
     // The map describes the per-subnet ROW, not the artifact envelope — the
@@ -372,6 +384,100 @@ describe("published field_sources maps match the fields they describe (#9078)", 
         ].kind,
         "reconstructed",
         `${field} is ours, not the chain's`,
+      );
+    }
+  });
+});
+
+// #9220: the map is per TIER. resolveLiveEconomics prefers the KV blob, and
+// since #9197 that blob is built by a Worker cron with no bittensor SDK -- so
+// the bulk-call provenance the R2 artifact carries is not how the served row
+// was read. These pin the differences that make two maps necessary rather than
+// one map plus a comment.
+describe("economics provenance is selected per serving tier", () => {
+  test("the selector follows loadNetworkEconomics' own source label", () => {
+    assert.equal(
+      economicsFieldSources("live-kv"),
+      ECONOMICS_FIELD_SOURCES_LIVE_KV,
+    );
+    assert.equal(economicsFieldSources("r2-fallback"), ECONOMICS_FIELD_SOURCES);
+  });
+
+  test("an unknown or absent source falls back to the R2 map", () => {
+    // Conservative on purpose: claiming a live read that may not have happened
+    // is the failure mode worth avoiding, and the committed artifact is what
+    // the R2 map always describes.
+    for (const source of [null, undefined, "", "something-else"]) {
+      assert.equal(
+        economicsFieldSources(source),
+        ECONOMICS_FIELD_SOURCES,
+        `source ${String(source)} must not claim live-kv provenance`,
+      );
+    }
+  });
+
+  test("the live tier reads the price pair at ONE instant, from one item", () => {
+    // The exact inverse of the R2 assertion above. There is no bulk call on
+    // this lane, so alpha_price_tao and moving_price_pinned are the same
+    // storage word at the same block -- they differ only in fixed-point scale.
+    // The R2 map must keep asserting they are two instants; this one must not.
+    const capture = ECONOMICS_FIELD_SOURCES_LIVE_KV.alpha_price_tao;
+    const pinned = ECONOMICS_FIELD_SOURCES_LIVE_KV.moving_price_pinned;
+    assert.equal(capture.storage, "SubtensorModule.SubnetMovingPrice");
+    assert.equal(pinned.storage, capture.storage);
+    assert.equal(capture.read_at, "chain_state.block");
+    assert.equal(pinned.read_at, capture.read_at);
+    // ...while the R2 map still distinguishes them, or #8744's pair is lost.
+    assert.notEqual(
+      ECONOMICS_FIELD_SOURCES.alpha_price_tao.read_at,
+      ECONOMICS_FIELD_SOURCES.moving_price_pinned.read_at,
+    );
+  });
+
+  test("no live-tier field claims the bulk call", () => {
+    // The runtime API a Worker cannot call. An entry naming it would be
+    // provenance for a read that did not happen.
+    const claimed = Object.entries(
+      ECONOMICS_FIELD_SOURCES_LIVE_KV as FieldSources,
+    )
+      .filter(([, source]) => source.storage?.includes("RuntimeApi"))
+      .map(([field]) => field);
+    assert.deepEqual(claimed, []);
+  });
+
+  test("no live-tier field claims the capture instant", () => {
+    // `capture` is defined as the bulk call's own height. With no bulk call
+    // there is no such instant, so every labelled field must say
+    // chain_state.block instead.
+    const claimed = Object.entries(
+      ECONOMICS_FIELD_SOURCES_LIVE_KV as FieldSources,
+    )
+      .filter(([, source]) => source.read_at === "capture")
+      .map(([field]) => field);
+    assert.deepEqual(claimed, []);
+  });
+
+  test("the D1-backed aggregates declare no instant", () => {
+    // The poller Container refreshes `neurons` on its own 15-minute tick, so
+    // these were read at neither published instant. Absent means "no single
+    // published instant applies"; naming either would be a false claim.
+    const published = ECONOMICS_FIELD_SOURCES_LIVE_KV as FieldSources;
+    for (const field of [
+      "validator_count",
+      "miner_count",
+      "total_stake_alpha",
+      "max_stake_alpha",
+    ]) {
+      assert.equal(
+        published[field].read_at,
+        undefined,
+        `${field} comes from the neurons table, not from either pinned instant`,
+      );
+      // And the R2 tier genuinely does read them at capture, off the bulk
+      // call's per-UID arrays -- so this is a real divergence, not a style one.
+      assert.equal(
+        (ECONOMICS_FIELD_SOURCES as FieldSources)[field].read_at,
+        "capture",
       );
     }
   });
