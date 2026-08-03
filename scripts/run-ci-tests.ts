@@ -77,7 +77,11 @@ const NO_PER_PASS_THRESHOLDS = [
   "--coverage.thresholds.branches=0",
 ];
 
-const BASE = ["run", "--fileParallelism", "--testTimeout=30000"];
+// No --testTimeout here: vitest.config.ts owns it now. Restating it on this
+// one script is what let `npm test` and `npm run test:coverage` run with the
+// 5s default while CI ran with 30s, so the timeout has to live where every
+// invocation reads it.
+const BASE = ["run", "--fileParallelism"];
 const excludeArgs = (names: string[]) =>
   names.flatMap((name) => ["--exclude", `**/${name}`]);
 
