@@ -33,6 +33,7 @@ import {
 import { parseLimitParam } from "../request-params.ts";
 import { loadChainServingColdTier } from "../../src/chain-serving-loader.ts";
 import { loadChainWeightsColdTier } from "../../src/chain-weights-loader.ts";
+import { loadChainWeightSettersColdTier } from "../../src/chain-weight-setters-loader.ts";
 import { API_ROUTES } from "../../src/contracts.ts";
 import { registerModuleStateReset } from "../../src/module-state-registry.ts";
 import { errorResponse, ifNoneMatchSatisfied } from "../http.ts";
@@ -2035,10 +2036,16 @@ export async function handleChainWeightSetters(
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) as ReturnType<typeof buildChainWeightSetters> | null) ??
-        buildChainWeightSetters([], null, {
-          window: label,
-          limit,
-        } as unknown as Parameters<typeof buildChainWeightSetters>[2]);
+        // The same WeightsSet stream /chain/weights already reads, grouped one
+        // level finer (#9249). Through the shared loader so MCP and GraphQL get
+        // it too rather than being wired one surface at a time.
+        (await loadChainWeightSettersColdTier(
+          env as unknown as Parameters<
+            typeof loadChainWeightSettersColdTier
+          >[0],
+          { window: label, limit },
+        )) ??
+        buildChainWeightSetters([], null, { window: label, limit });
       if (csv) {
         return csvResponse(
           data.setters,
