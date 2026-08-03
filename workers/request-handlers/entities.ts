@@ -106,6 +106,7 @@ import {
 } from "../../src/account-events.ts";
 import { buildAccountPortfolio } from "../../src/account-portfolio.ts";
 import { loadAccountSummaryColdTier } from "../../src/account-feeds-cold-tier.ts";
+import { enrichValidatorNominatorCounts } from "../../src/validator-nominator-counts-cold-tier.ts";
 import { buildAccountPositions } from "../../src/account-nominator-positions.ts";
 import { buildAccountPositionHistory } from "../../src/account-position-history.ts";
 import { buildAccountIdentity } from "../../src/account-identity.ts";
@@ -1070,18 +1071,25 @@ export async function handleGlobalValidators(
   // param, so overlayFeaturedValidators only reorders the default (unsorted)
   // view; an explicit non-default ?sort= keeps the caller's exact order while
   // `featured` stays present on every row either way.
-  const data = overlayFeaturedValidators(
-    ((await tryPostgresTier(
-      env,
-      request,
-      "METAGRAPH_NEURONS_SOURCE",
-    )) as ReturnType<typeof buildGlobalValidators> | null) ??
-      buildGlobalValidators([], {
-        sort: parsed.sort,
-        limit: parsed.limit,
-        priceByNetuid: NO_ALPHA_PRICES,
-      }),
-  )!;
+  // #9146: nominator_count comes from a side table with no D1 home, so the D1
+  // tier answers null for every row -- filled here, at tier convergence, from
+  // the lakehouse. Applied BEFORE the CSV branch below so both representations
+  // carry the same field (it is a GLOBAL_VALIDATOR_CSV_COLUMNS column).
+  const data = await enrichValidatorNominatorCounts(
+    env,
+    overlayFeaturedValidators(
+      ((await tryPostgresTier(
+        env,
+        request,
+        "METAGRAPH_NEURONS_SOURCE",
+      )) as ReturnType<typeof buildGlobalValidators> | null) ??
+        buildGlobalValidators([], {
+          sort: parsed.sort,
+          limit: parsed.limit,
+          priceByNetuid: NO_ALPHA_PRICES,
+        }),
+    )!,
+  );
   if (csvRequested(url, request)) {
     return csvResponse(
       data.validators as unknown[],
@@ -1307,15 +1315,19 @@ export async function handleValidatorDetail(
   env: Env,
   hotkey: string,
 ) {
-  const data =
+  // #9146: the single-hotkey half of the same side-table gap the leaderboard
+  // above fills -- same loader, same decline-to-null-count posture.
+  const data = await enrichValidatorNominatorCounts(
+    env,
     ((await tryPostgresTier(
       env,
       request,
       "METAGRAPH_NEURONS_SOURCE",
     )) as ReturnType<typeof buildValidatorDetail> | null) ??
-    buildValidatorDetail([], hotkey, {
-      priceByNetuid: NO_ALPHA_PRICES,
-    });
+      buildValidatorDetail([], hotkey, {
+        priceByNetuid: NO_ALPHA_PRICES,
+      }),
+  );
   return envelopeResponse(
     request,
     {
