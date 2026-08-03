@@ -156,6 +156,16 @@ import {
   loadSubnetEventsColdTier,
 } from "../../src/events-cold-tier.ts";
 import {
+  answerBlockDetail,
+  answerExtrinsicDetail,
+  chainDetailGapMessage,
+  isEmptyEventPayload,
+  isEmptyExtrinsicPayload,
+  loadBlockEventsHotTier,
+  loadBlockExtrinsicsHotTier,
+  type ChainDetailAnswer,
+} from "../../src/chain-detail-hot-tier.ts";
+import {
   loadAccountCounterpartiesColdTier,
   loadAccountStakeFlowColdTier,
   loadAccountStakeMovesColdTier,
@@ -5204,6 +5214,38 @@ export async function handleBlock(request: Request, env: Env, ref: string) {
   );
 }
 
+/**
+ * The one response every chain-detail route emits for a gap between the
+ * live-follow window and the decoded lakehouse (#9208).
+ *
+ * 503, NOT 200-with-an-empty-list, and not 404 either. An empty list is a lie
+ * by omission: the caller cannot tell it from a block that genuinely had no
+ * extrinsics, and that indistinguishability is the whole bug. A 404 would claim
+ * the block does not exist, when the block list is serving its header right
+ * now. 503 says what is true -- the data exists and this deployment cannot
+ * currently read it -- and it is retryable, which a gap genuinely is: the
+ * decode lane closes it within the hour.
+ *
+ * The meta carries both boundaries so the condition is diagnosable from the
+ * response alone, without reading a dashboard.
+ */
+export function chainDetailGapResponse(
+  gap: Extract<ChainDetailAnswer<unknown>, { kind: "gap" }>,
+) {
+  return errorResponse(
+    "block_detail_unavailable",
+    chainDetailGapMessage(gap),
+    503,
+    {
+      block_number: gap.block,
+      decoded_through: gap.seam,
+      hot_window: gap.coverage
+        ? { from: gap.coverage.floor, to: gap.coverage.head }
+        : null,
+    },
+  );
+}
+
 // GET /api/v1/blocks/{ref}/extrinsics: the extrinsics in one block (#1845), in
 // natural read order (extrinsic_index ASC). ref is a numeric block_number OR a 0x
 // block_hash — a hash ref is resolved to its block_number first (idx_blocks_hash),
@@ -5225,17 +5267,31 @@ export async function handleBlockExtrinsics(
   const { limit, offset } = parsePagination(url, BLOCK_PAGINATION);
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
-  const { data } = ((await tryPostgresTier(
+  const postgres = (await tryPostgresTier(
     env,
     request,
     "METAGRAPH_EXTRINSICS_SOURCE",
-  )) as { data: ReturnType<typeof buildBlockExtrinsics> } | null) ?? {
-    // Only built when the Postgres tier missed: `??` evaluates its right side
-    // lazily, so the lakehouse is not queried on the hot path.
-    data:
-      (await loadBlockExtrinsicsColdTier(env, ref, { limit, offset })) ??
-      buildBlockExtrinsics([], ref, null, { limit, offset }),
-  };
+  )) as { data: ReturnType<typeof buildBlockExtrinsics> } | null;
+  // #9208: hot tier above the decode seam, lakehouse at or below it, and a
+  // DECLINE for a block neither can answer -- an empty extrinsics array is
+  // indistinguishable from a block that genuinely had none, which is the exact
+  // ambiguity this route used to produce for every recent block. Reached only
+  // when the Postgres tier missed, so the lakehouse is still not queried on the
+  // hot path.
+  const answer = postgres
+    ? null
+    : await answerBlockDetail(env, ref, {
+        hot: (height) =>
+          loadBlockExtrinsicsHotTier(env, ref, height, { limit, offset }),
+        cold: () => loadBlockExtrinsicsColdTier(env, ref, { limit, offset }),
+        isEmpty: isEmptyExtrinsicPayload,
+      });
+  if (answer?.kind === "gap") return chainDetailGapResponse(answer);
+  const data =
+    postgres?.data ??
+    (answer?.kind === "answer"
+      ? answer.data
+      : buildBlockExtrinsics([], ref, null, { limit, offset }));
   // CSV reuses handleExtrinsics's transform + columns — buildBlockExtrinsics maps
   // the same formatExtrinsic row shape (#5746). Cold block → empty → header-only.
   if (csvRequested(url, request)) {
@@ -5285,17 +5341,28 @@ export async function handleBlockEvents(
   const { limit, offset } = parsePagination(url, FEED_PAGINATION);
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
-  const { data } = ((await tryPostgresTier(
+  const postgres = (await tryPostgresTier(
     env,
     request,
     "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-  )) as { data: ReturnType<typeof buildBlockEvents> } | null) ?? {
-    // Lazily built only when the Postgres tier missed: `??` evaluates its
-    // right side lazily, so the lakehouse is not queried on the hot path.
-    data:
-      (await loadBlockEventsColdTier(env, ref, { limit, offset })) ??
-      buildBlockEvents([], ref, null, { limit, offset }),
-  };
+  )) as { data: ReturnType<typeof buildBlockEvents> } | null;
+  // #9208, same hot/cold/decline routing as handleBlockExtrinsics above and for
+  // the same reason -- and it matters more here, because a block CAN legitimately
+  // emit zero account-scoped events, so an empty list is a plausible-looking lie.
+  const answer = postgres
+    ? null
+    : await answerBlockDetail(env, ref, {
+        hot: (height) =>
+          loadBlockEventsHotTier(env, ref, height, { limit, offset }),
+        cold: () => loadBlockEventsColdTier(env, ref, { limit, offset }),
+        isEmpty: isEmptyEventPayload,
+      });
+  if (answer?.kind === "gap") return chainDetailGapResponse(answer);
+  const data =
+    postgres?.data ??
+    (answer?.kind === "answer"
+      ? answer.data
+      : buildBlockEvents([], ref, null, { limit, offset }));
   // CSV reuses the account-events EVENTS_CSV_COLUMNS — buildBlockEvents maps the
   // same formatAccountEvent row shape (#5746). Cold block → empty → header-only.
   if (csvRequested(url, request)) {
@@ -5796,14 +5863,24 @@ export async function handleRandomnessStatus(request: Request, env: Env) {
 export async function handleExtrinsic(request: Request, env: Env, ref: string) {
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
+  const postgres = (await tryPostgresTier(
+    env,
+    request,
+    "METAGRAPH_EXTRINSICS_SOURCE",
+  )) as ReturnType<typeof buildExtrinsic> | null;
+  // #9208: the composite `<block>-<index>` form is a POSITION and follows the
+  // seam, declining in the gap; the hash form asks hot-then-cold and keeps its
+  // schema-stable `extrinsic: null`, because a hash absent from a few-thousand-
+  // block window proves nothing. See answerExtrinsicDetail for the argument.
+  const answer = postgres
+    ? null
+    : await answerExtrinsicDetail(env, ref, () =>
+        loadExtrinsicColdTier(env, ref),
+      );
+  if (answer?.kind === "gap") return chainDetailGapResponse(answer);
   const data =
-    ((await tryPostgresTier(
-      env,
-      request,
-      "METAGRAPH_EXTRINSICS_SOURCE",
-    )) as ReturnType<typeof buildExtrinsic> | null) ??
-    (await loadExtrinsicColdTier(env, ref)) ??
-    buildExtrinsic(undefined, ref);
+    postgres ??
+    (answer?.kind === "answer" ? answer.data : buildExtrinsic(undefined, ref));
   return envelopeResponse(
     request,
     {

@@ -139,6 +139,21 @@ export const EMISSION_DRIFT_CHECK_CRON = "9,39 * * * *";
 // a routine restart from a stall. Unique string, matching a wrangler.jsonc
 // entry -- dispatch keys on the LITERAL cron string.
 export const NEURONS_STALENESS_WATCHDOG_CRON = "6,21,36,51 * * * *";
+// #9208 retention for the chain-detail hot tier. The window only has to cover
+// the gap between chain tip and the decoded seam, so everything the lakehouse
+// has already absorbed is dropped -- see src/chain-detail-prune.ts for the
+// measured sizing and for why the retained depth follows the seam instead of
+// being a fixed number of hours. Four times an hour against the chain's ~300
+// blocks/hour, with a per-run block cap, so no single run tries to delete a
+// whole backlog in one D1 transaction. Minutes 12/27/42/57 tick on none of the
+// crons in this file and stay off the */5 raw-capture and */15 probe grids.
+export const CHAIN_DETAIL_PRUNE_CRON = "12,27,42,57 * * * *";
+// #9208's alarm for the same lane. Separate from the prune above, and
+// deliberately so: a prune failure must not swallow the staleness verdict, and
+// this is the ONLY signal that the lane has stopped -- a stalled chain-detail
+// lane keeps the block list live and merely starts declining drill-down, which
+// is silent in aggregate. Minutes 14/29/44/59 are likewise unused elsewhere.
+export const CHAIN_DETAIL_STALENESS_WATCHDOG_CRON = "14,29,44,59 * * * *";
 // #9146: scheduled projections -- recompute the windowed-aggregate artifacts
 // (every lane in src/projection-lanes.ts's PROJECTION_LANES) from the
 // lakehouse. These routes cannot

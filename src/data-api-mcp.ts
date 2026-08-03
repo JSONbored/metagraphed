@@ -2,6 +2,9 @@
 // the DATA_API service binding — the same path REST proxy routes use. Keeps the
 // postgres.js driver out of the main Worker bundle.
 
+import { chainDetailGapMessage } from "./chain-detail-hot-tier.ts";
+import { hotTierBlockChainEvents } from "./chain-events-degraded.ts";
+
 interface DataApiToolError extends Error {
   toolError: true;
   code: string;
@@ -131,6 +134,25 @@ export async function loadBlockChainEvents(
       "invalid_params",
       "block_number must be a non-negative integer.",
     );
+  }
+  // #9208: the hot tier owns everything above the decode seam, so ask it before
+  // the DATA_API leg -- which, for a recent block, can only answer 503. A gap
+  // between the two tiers DECLINES here exactly as it does over REST: an agent
+  // handed `events: []` for a block with 400 of them will reason from it, and
+  // will not think to retry in an hour the way a person clicking a page might.
+  const hot = await hotTierBlockChainEvents(
+    ctx.env,
+    new URL(`https://data.invalid/api/v1/blocks/${blockNumber}/chain-events`),
+  );
+  if (hot?.kind === "gap")
+    throwToolError("block_detail_unavailable", chainDetailGapMessage(hot));
+  if (hot?.kind === "answer") {
+    return {
+      schema_version: 1,
+      block_number: hot.data.block_number,
+      event_count: hot.data.count,
+      events: hot.data.events,
+    };
   }
   const data = (await dataApiFetchJson(
     ctx,

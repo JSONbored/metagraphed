@@ -15639,15 +15639,21 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
 
   // extrinsics'/account_events' D1 write paths are retired (#4772) and both
   // tables are dropped in production, so list_block_extrinsics and
-  // get_block_events always return the schema-stable block_number:null
-  // detail (buildBlockExtrinsics([], ref, null, {...}) /
-  // buildBlockEvents([], ref, null, {...})) -- no block-ref resolution (numeric
-  // or hash) or sub-resource query happens at all. Covered by "returns empty
-  // payload for unknown ref" below for each tool.
+  // get_block_events fall through to the tiered readers. BELOW the decode seam
+  // that still means the schema-stable block_number:null detail
+  // (buildBlockExtrinsics([], ref, null, {...}) / buildBlockEvents([], ref,
+  // null, {...})); ABOVE it, #9208 declines rather than answering empty --
+  // both cases are covered below, and the routing itself in
+  // tests/chain-detail-hot-tier.ts + tests/chain-detail-serving.test.ts.
+  //
+  // The two refs differ ONLY in which side of the seam they land on, which is
+  // the whole point: 9,999,999 is past chain head, so an empty answer for it
+  // would be a claim nobody can support.
+  const BELOW_SEAM_REF = "8000000";
 
-  test("list_block_extrinsics returns empty payload for unknown ref", async () => {
+  test("list_block_extrinsics returns empty payload for an unknown ref below the seam", async () => {
     const res = await callTool("list_block_extrinsics", {
-      ref: "9999999",
+      ref: BELOW_SEAM_REF,
       offset: 5,
     });
     const out = res.body.result.structuredContent;
@@ -15656,15 +15662,29 @@ describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsic
     assert.equal(out.offset, 5);
   });
 
-  test("get_block_events returns empty payload for unknown ref", async () => {
+  test("get_block_events returns empty payload for an unknown ref below the seam", async () => {
     const res = await callTool("get_block_events", {
-      ref: "9999999",
+      ref: BELOW_SEAM_REF,
       offset: 5,
     });
     const out = res.body.result.structuredContent;
     assert.equal(out.block_number, null);
     assert.deepEqual(out.events, []);
     assert.equal(out.offset, 5);
+  });
+
+  test("both tools DECLINE a ref above the decode seam that no tier holds (#9208)", async () => {
+    // An empty extrinsics array is indistinguishable from a block that
+    // genuinely had none. Above the seam nothing can support that claim, so the
+    // tools refuse instead of letting an agent reason from a fabricated zero.
+    for (const name of ["list_block_extrinsics", "get_block_events"]) {
+      const res = await callTool(name, { ref: "9999999", offset: 5 });
+      assert.equal(res.body.result.isError, true);
+      assert.match(
+        res.body.result.content[0].text,
+        /not a block without extrinsics or events/,
+      );
+    }
   });
 
   // extrinsics' D1 write path is retired (#4772) and the table is dropped in

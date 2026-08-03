@@ -29,6 +29,13 @@
 // buildSubnetConviction) rather than a hand-written literal, so a field added
 // to a payload cannot drift out of its degraded twin.
 
+import {
+  answerBlockDetail,
+  isEmptyChainEventPayload,
+  loadBlockChainEventsHotTier,
+  type ChainDetailAnswer,
+  type ChainEventApi,
+} from "./chain-detail-hot-tier.ts";
 import { buildSubnetConviction } from "./subnet-conviction.ts";
 import { buildSubnetLeaseHistory } from "./subnet-lease-history.ts";
 import { buildSubnetOwnershipHistory } from "./subnet-ownership-history.ts";
@@ -137,6 +144,43 @@ export async function coldTierChainEventsPayload(
   const ownership = SUBNET_OWNERSHIP_HISTORY.exec(url.pathname);
   if (!ownership) return null;
   return await loadSubnetOwnershipHistoryColdTier(env, ownership[1]);
+}
+
+export interface BlockChainEventsPayload {
+  block_number: number;
+  count: number;
+  events: ChainEventApi[];
+}
+
+/**
+ * The HOT-tier answer for `/api/v1/blocks/{n}/chain-events` (#9208), or null
+ * when this URL is not that route.
+ *
+ * This is the one route in the six whose stream the live-follow lane feeds, and
+ * it is the reason `chain_events` is in the hot tier at all: the two block
+ * feeds above it are unfiltered scans, but this one is a single-block read that
+ * a user reaches by clicking a block.
+ *
+ * THE COLD LEG IS DELIBERATELY NULL. `chain.chain_events` is exported and
+ * current in the lakehouse, but nothing in this repo reads it per block yet --
+ * this module's own header explains why the remaining five stayed uncovered.
+ * A null cold leg gives exactly the right routing anyway: at or below the seam
+ * the answer is `miss`, and the caller keeps today's schema-stable empty; above
+ * the seam an uncovered block is a `gap` and DECLINES, which is the behaviour
+ * #9208 requirement 4 asks for. Adding the cold reader later only turns some of
+ * those misses into rows -- it does not change this shape.
+ */
+export async function hotTierBlockChainEvents(
+  env: Env | null | undefined,
+  url: URL,
+): Promise<ChainDetailAnswer<BlockChainEventsPayload> | null> {
+  const block = BLOCK_CHAIN_EVENTS.exec(url.pathname);
+  if (!block) return null;
+  return answerBlockDetail<BlockChainEventsPayload>(env, block[1]!, {
+    hot: (height) => loadBlockChainEventsHotTier(env, height),
+    cold: async () => null,
+    isEmpty: isEmptyChainEventPayload,
+  });
 }
 
 /**
