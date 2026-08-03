@@ -54,11 +54,28 @@ function shapeOwnershipChange(row: Row): Row {
 // by block_number. Empty/absent rows -> the schema-stable empty-list shape,
 // never a 404 -- a subnet that has never changed hands is the common case,
 // not an error.
+//
+// `filterByNetuid` is the opt-in for a tier that CANNOT express the netuid
+// predicate in SQL. The Postgres tier can (chain_events.args is JSONB there,
+// so data-api matches COALESCE(args->'netuid'->>0, args->>'netuid')); the
+// lakehouse stores the same column as an opaque JSON STRING (Iceberg has no
+// JSON type), so its reader hands over the whole SubnetOwnerChanged stream and
+// narrows here instead. Doing it here rather than in the caller keeps ONE
+// decode of `args` for both the filter and the shaped record -- a caller-side
+// filter would have to decode every row a second time, which is exactly the
+// "second, subtly different decoder" this family exists to avoid.
 export function buildSubnetOwnershipHistory(
   rows: Row[] | null | undefined,
   netuid: unknown,
+  { filterByNetuid = false }: { filterByNetuid?: boolean } = {},
 ): Row {
-  const changes = (rows ?? []).map(shapeOwnershipChange);
+  const shaped = (rows ?? []).map(shapeOwnershipChange);
+  // shapeOwnershipChange already normalized netuid to a number (the raw args
+  // hold it as either a scalar or a one-element array), so this compares two
+  // numbers rather than re-reading the encoded form.
+  const changes = filterByNetuid
+    ? shaped.filter((change) => change.netuid === Number(netuid))
+    : shaped;
   return {
     schema_version: 1,
     netuid,
