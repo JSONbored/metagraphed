@@ -1189,7 +1189,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Fetch every automatic ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302), decoded from the chain_events SubnetOwnerChanged stream — see docs/conviction-lock-mechanism.md for the on-chain mechanism: a permissionless, conviction-weighted contest that runs continuously for every subnet, where ownership transfers automatically once a challenger's rolled conviction overtakes the incumbent owner's (no vote, no owner cooperation required). Served live from the all-events tier (ADR 0013), falling to the R2 lakehouse reader when that tier cannot answer, no static file. A subnet that has never changed hands returns an empty ownership_changes array, not an error — that's the common case.
+         * Fetch every ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302) — see docs/conviction-lock-mechanism.md for the on-chain mechanism: a permissionless, conviction-weighted contest that runs continuously for every subnet, where ownership transfers automatically once a challenger's rolled conviction overtakes the incumbent owner's (no vote, no owner cooperation required). Two sources, labelled per record by `source`: `chain-event` records are decoded from the chain_events SubnetOwnerChanged stream and carry the block that emitted them, while `owner-observation` records are inferred from two consecutive owner captures, so their observed_at is when the change was NOTICED and block_number is null. Both are needed because a subnet's owning account can change without that event ever being emitted. observed_through reports how far the observation source covers this subnet at all. Served live from the all-events tier (ADR 0013), falling to the R2 lakehouse reader when that tier cannot answer, no static file. A subnet that has never changed hands returns an empty ownership_changes array, not an error — that's the common case.
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["subnetOwnershipHistoryByNetwork"];
@@ -4509,7 +4509,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch every automatic ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302), decoded from the chain_events SubnetOwnerChanged stream — see docs/conviction-lock-mechanism.md for the on-chain mechanism: a permissionless, conviction-weighted contest that runs continuously for every subnet, where ownership transfers automatically once a challenger's rolled conviction overtakes the incumbent owner's (no vote, no owner cooperation required). Served live from the all-events tier (ADR 0013), falling to the R2 lakehouse reader when that tier cannot answer, no static file. A subnet that has never changed hands returns an empty ownership_changes array, not an error — that's the common case. */
+        /** Fetch every ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302) — see docs/conviction-lock-mechanism.md for the on-chain mechanism: a permissionless, conviction-weighted contest that runs continuously for every subnet, where ownership transfers automatically once a challenger's rolled conviction overtakes the incumbent owner's (no vote, no owner cooperation required). Two sources, labelled per record by `source`: `chain-event` records are decoded from the chain_events SubnetOwnerChanged stream and carry the block that emitted them, while `owner-observation` records are inferred from two consecutive owner captures, so their observed_at is when the change was NOTICED and block_number is null. Both are needed because a subnet's owning account can change without that event ever being emitted. observed_through reports how far the observation source covers this subnet at all. Served live from the all-events tier (ADR 0013), falling to the R2 lakehouse reader when that tier cannot answer, no static file. A subnet that has never changed hands returns an empty ownership_changes array, not an error — that's the common case. */
         get: operations["subnetOwnershipHistory"];
         put?: never;
         post?: never;
@@ -10412,12 +10412,14 @@ export interface components {
             event_method: string;
             event_pallet: string;
             netuid: number;
+            observed_through?: string | null;
             ownership_changes: {
                 block_number?: number | null;
                 netuid?: number | null;
                 new_coldkey?: string | null;
                 observed_at?: string | null;
                 old_coldkey?: string | null;
+                source?: ("chain-event" | "owner-observation") | null;
             }[];
             schema_version: number;
         } & {
@@ -20659,6 +20661,7 @@ export interface operations {
                      *         "event_method": "GET",
                      *         "event_pallet": "example",
                      *         "netuid": 7,
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "ownership_changes": [
                      *           {}
                      *         ],
@@ -44710,6 +44713,7 @@ export interface operations {
                      *         "event_method": "GET",
                      *         "event_pallet": "example",
                      *         "netuid": 7,
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
                      *         "ownership_changes": [
                      *           {}
                      *         ],

@@ -41,7 +41,7 @@ import { buildSubnetConviction } from "./subnet-conviction.ts";
 import { buildSubnetLeaseHistory } from "./subnet-lease-history.ts";
 import { buildSubnetOwnershipHistory } from "./subnet-ownership-history.ts";
 import { loadSubnetConvictionChainTier } from "./subnet-lock-state.ts";
-import { loadSubnetOwnershipHistoryColdTier } from "./subnet-ownership-cold-tier.ts";
+import { answerSubnetOwnershipHistory } from "./subnet-ownership-answer.ts";
 import {
   loadChainEventsColdTier,
   loadChainEventsStatsColdTier,
@@ -158,7 +158,10 @@ export async function coldTierChainEventsPayload(
 ): Promise<Row | null> {
   const ownership = SUBNET_OWNERSHIP_HISTORY.exec(url.pathname);
   if (ownership) {
-    return await loadSubnetOwnershipHistoryColdTier(env, ownership[1]);
+    // Through the composer, not the reader: MCP and GraphQL answer this route
+    // from the same function, so the path table here stays the URL matcher it
+    // is rather than a second place that decides what the payload contains.
+    return await answerSubnetOwnershipHistory(env, ownership[1]);
   }
   // #9146: the all-events feed. `chain.chain_events` carries every pallet and
   // method -- 895M rows genesis-to-head -- including kinds the curated

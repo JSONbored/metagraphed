@@ -3500,8 +3500,15 @@ export const SDL = /* GraphQL */ `
   type SubnetOwnershipHistory {
     schema_version: Int!
     netuid: Int!
+    "The chain_events pallet the authoritative records are decoded from."
+    event_pallet: String
+    "The chain_events method the authoritative records are decoded from."
+    event_method: String
     count: Int!
+    "Each record carries a source: chain-event (announced on chain, block-stamped) or owner-observation (inferred from two consecutive owner captures, so observed_at is when the change was NOTICED and block_number is null)."
     ownership_changes: [JSON!]!
+    "The newest owner observation for this subnet, ISO-8601 -- how far the observation source covers it at all, so watched-but-never-changed-hands is distinguishable from not-watched-since. Null when no observations were read."
+    observed_through: String
   }
 
   "Live per-subnet conviction leaderboard -- who currently holds the most rolled conviction, rolled forward from a periodically-captured snapshot using the current live-queried unlock_rate/maturity_rate. Mirrors GET /api/v1/subnets/{netuid}/conviction."
