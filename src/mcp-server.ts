@@ -1105,6 +1105,7 @@ import {
   CHAIN_SERVING_WINDOWS,
   DEFAULT_CHAIN_SERVING_WINDOW,
 } from "./chain-serving.ts";
+import { loadChainServingRollup } from "./chain-serving-loader.ts";
 import { generateServiceSnippets } from "./integration-snippets.ts";
 import {
   KV_HEALTH_RPC_POOL,
@@ -5396,7 +5397,16 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             limit,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainServing([], { window, limit })
+        )) ??
+        // #9229: the same lakehouse rollup REST reads. Without it this tool
+        // answered a zeroed card while GET /api/v1/chain/serving answered 20
+        // subnets and 2,931 servers, and nothing in either payload said which
+        // one to believe.
+        (await loadChainServingRollup(
+          ctx.env as unknown as Parameters<typeof loadChainServingRollup>[0],
+          { window, limit },
+        )) ??
+        buildChainServing([], { window, limit })
       );
     },
   },

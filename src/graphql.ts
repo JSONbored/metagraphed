@@ -443,6 +443,7 @@ import {
   DEFAULT_CHAIN_SERVING_WINDOW,
   buildChainServing,
 } from "./chain-serving.ts";
+import { loadChainServingRollup } from "./chain-serving-loader.ts";
 import {
   buildChainTurnover,
   CHAIN_TURNOVER_LIMIT_DEFAULT,
@@ -6739,6 +6740,14 @@ const rootValue = {
         context.env,
         postgresTierRequest(context, "/api/v1/chain/serving", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) as Row | null) ??
+      // #9229: the same lakehouse rollup REST reads. The zeroed card below
+      // stays the fallback -- this resolver's contract is a schema-stable card
+      // rather than an error, which is exactly why the loader declines with
+      // null instead of returning the empty card itself.
+      ((await loadChainServingRollup(
+        context.env as unknown as Parameters<typeof loadChainServingRollup>[0],
+        { window: requestedWindow, limit: safeLimit },
       )) as Row | null) ??
       buildChainServing([], { window: requestedWindow, limit: safeLimit });
     return {
