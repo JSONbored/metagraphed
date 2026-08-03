@@ -170,12 +170,40 @@ export async function loadChainEventRollup(
 
   const where = `WHERE event_kind = '${kind}' AND observed_at >= ${cutoff}`;
 
+  // What identifies ONE participant on the network block below. A uid is unique
+  // only WITHIN a subnet -- uid 5 on twenty subnets is twenty neurons -- so the
+  // participant is the (netuid, uid) pair; a hotkey is globally unique and
+  // stands alone. The per-subnet half below is already scoped to one netuid, so
+  // there the column alone is the identity either way.
+  const identity =
+    distinctColumn === "uid" ? `netuid, ${distinctColumn}` : distinctColumn;
+
   const [rows, networkRows] = await Promise.all([
+    // TWO LEVELS, NOT count(DISTINCT)+GROUP BY (#9227). The single-level form
+    //
+    //   SELECT netuid, count(*), count(DISTINCT hotkey) ... GROUP BY netuid
+    //
+    // is rejected at 30d -- one of the two windows these routes offer -- with
+    //
+    //   40015: scan budget exceeded: scanning too much data for
+    //          count(DISTINCT) with GROUP BY
+    //
+    // and a rejection here declines the whole rollup, which is why /chain/
+    // serving and /chain/weights both answered an EMPTY 30d window while their
+    // 7d window worked. Having a GROUP BY is not the cure the error message
+    // suggests: this query already had one. The budget is spent on the DISTINCT
+    // itself, so the fix is to leave no DISTINCT to evaluate -- group to
+    // (netuid, identity) first, then sum the per-pair counts and COUNT THE ROWS
+    // to get the distinct participants. Verified live against the 30d and 90d
+    // windows of both AxonServed and WeightsSet, and proved row-for-row
+    // identical to the form it replaces at every window where that form still
+    // executes (1d and 7d).
     query(
       env,
-      `SELECT netuid, count(*) AS ${countField},` +
-        ` count(DISTINCT ${distinctColumn}) AS ${distinctField}` +
+      `SELECT netuid, sum(n) AS ${countField}, count(*) AS ${distinctField}` +
+        ` FROM (SELECT netuid, ${distinctColumn}, count(*) AS n` +
         ` FROM chain.account_events ${where}` +
+        ` GROUP BY netuid, ${distinctColumn})` +
         ` GROUP BY netuid ORDER BY ${countField} DESC LIMIT ${cap}`,
     ),
     // Separate because a distinct count does not sum across subnets: one
@@ -189,19 +217,23 @@ export async function loadChainEventRollup(
     // 256 and means nothing as a participant count. Measured: it reported 254
     // where the true distinct-pair count was 1,280.
     //
-    // Counting rows of a GROUP BY gives the distinct pairs exactly, and it is
-    // also the form the engine can execute: an ungrouped COUNT(DISTINCT) over
-    // this many rows is rejected with `40015: scan budget exceeded ... add a
-    // GROUP BY to distribute the aggregation`.
+    // Counting rows of a GROUP BY gives the distinct participants exactly, and
+    // it is also the form the engine can execute: an ungrouped COUNT(DISTINCT)
+    // over this many rows is rejected with `40015: scan budget exceeded ... add
+    // a GROUP BY to distribute the aggregation`.
+    //
+    // ONE SHAPE FOR BOTH IDENTITIES. The hotkey branch used to be a bare
+    // ungrouped `count(DISTINCT hotkey)`, which still executes today (measured
+    // 14,883 over a 90d AxonServed window) -- but that is the exact form that
+    // has been rejected twice as the table grew, and the grouped form returns
+    // the identical number over the identical window. Keeping one shape means
+    // there is no COUNT(DISTINCT) left in this module to grow into the budget
+    // later, and no second form to reason about.
     query(
       env,
-      distinctColumn === "uid"
-        ? `SELECT count(*) AS ${distinctField}, max(newest) AS newest_observed` +
-            ` FROM (SELECT netuid, uid, max(observed_at) AS newest` +
-            ` FROM chain.account_events ${where} GROUP BY netuid, uid)`
-        : `SELECT count(DISTINCT ${distinctColumn}) AS ${distinctField},` +
-            ` max(observed_at) AS newest_observed` +
-            ` FROM chain.account_events ${where}`,
+      `SELECT count(*) AS ${distinctField}, max(newest) AS newest_observed` +
+        ` FROM (SELECT ${identity}, max(observed_at) AS newest` +
+        ` FROM chain.account_events ${where} GROUP BY ${identity})`,
     ),
   ]);
 

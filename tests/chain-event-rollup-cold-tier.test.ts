@@ -256,10 +256,46 @@ describe("the SQL it emits", () => {
     assert.match(rowsSql, /GROUP BY netuid/);
     assert.doesNotMatch(
       networkSql,
-      /GROUP BY/,
-      "the network total must be ungrouped, or it is a per-subnet count again",
+      /GROUP BY netuid/,
+      "the network total must not be grouped per subnet, or it is a per-subnet count again",
     );
-    assert.match(networkSql, /count\(DISTINCT hotkey\)/);
+  });
+
+  test("neither half uses COUNT(DISTINCT), at any window", async () => {
+    // #9227: the single-level `count(DISTINCT x) ... GROUP BY netuid` form is
+    // rejected by R2 SQL at 30d -- one of the two windows these routes offer --
+    // with `40015: scan budget exceeded ... count(DISTINCT) with GROUP BY`, and
+    // a rejection declines the whole rollup, so /chain/serving and
+    // /chain/weights served an EMPTY 30d window while 7d worked. Adding a GROUP
+    // BY is not the cure the message implies: that query already had one. The
+    // budget is spent on the DISTINCT, so the only durable fix is to emit none.
+    //
+    // Asserted over EVERY spec, because the shape is the reader's, not one
+    // route's -- and CI cannot catch a regression here any other way: the fake
+    // engine below never executes the SQL, so a reintroduced COUNT(DISTINCT)
+    // would pass every other assertion in this file and fail only in
+    // production.
+    for (const spec of [
+      CHAIN_SERVING_ROLLUP,
+      CHAIN_WEIGHTS_ROLLUP,
+      CHAIN_REGISTRATIONS_ROLLUP,
+    ]) {
+      for (const windowDays of [7, 30]) {
+        const engine = fakeEngine();
+        await loadChainEventRollup({} as never, spec, {
+          windowDays,
+          now: NOW,
+          query: engine.query,
+        } as never);
+        for (const sql of engine.seen) {
+          assert.doesNotMatch(
+            sql,
+            /count\(DISTINCT/i,
+            `${spec.eventKind} @${windowDays}d still emits COUNT(DISTINCT): ${sql}`,
+          );
+        }
+      }
+    }
   });
 
   test("a uid-keyed network total counts distinct PAIRS, not distinct uids", async () => {
@@ -287,9 +323,14 @@ describe("the SQL it emits", () => {
     );
   });
 
-  test("a hotkey-keyed network total stays an ungrouped distinct count", async () => {
-    // A hotkey IS globally unique, so the pair form would be wrong here --
-    // it would count one hotkey once per subnet it serves on.
+  test("a hotkey-keyed network total groups by the hotkey ALONE", async () => {
+    // A hotkey IS globally unique, so the pair form would be wrong here -- it
+    // would count one hotkey once per subnet it serves on, turning a network
+    // total into a sum of per-subnet counts. The uid form above must group by
+    // the pair; this one must NOT. Same reason the old ungrouped
+    // count(DISTINCT hotkey) was right about the semantics even though the
+    // engine could no longer be trusted to run it: verified live, the grouped
+    // form returns the identical 14,883 over a 90d AxonServed window.
     const engine = fakeEngine();
     await loadChainEventRollup({} as never, CHAIN_SERVING_ROLLUP, {
       windowDays: 7,
@@ -297,8 +338,12 @@ describe("the SQL it emits", () => {
       query: engine.query,
     } as never);
     const networkSql = engine.networkSql()!;
-    assert.match(networkSql, /count\(DISTINCT hotkey\)/);
-    assert.doesNotMatch(networkSql, /GROUP BY/);
+    assert.match(networkSql, /GROUP BY hotkey/);
+    assert.doesNotMatch(
+      networkSql,
+      /GROUP BY netuid/,
+      "grouping a globally-unique identity per subnet counts it once per subnet",
+    );
   });
 
   test("the uid form still reports the newest reading", async () => {
