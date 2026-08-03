@@ -45,7 +45,7 @@ import { formatRpcUsage } from "./health-serving.ts";
 import {
   analyticsSqlQuery,
   isAnalyticsSqlConfigured,
-  sampledAvg,
+  sampledMean,
   sampledCount,
   sampledCountIf,
   sampledSum,
@@ -113,6 +113,18 @@ function orNull(value: unknown): unknown {
   return value === "" || value === undefined ? null : value;
 }
 
+/**
+ * Turn a rollup's sampled latency SUM into the mean this route publishes.
+ *
+ * `latency_sum` is an artefact of AE having no way to guard a division, not a
+ * field the payload has ever carried, so it is dropped rather than passed
+ * through -- a query column must not become a published one by accident.
+ */
+function withMeanLatency(row: Row, count: unknown): Row {
+  const { latency_sum: latencySum, ...rest } = row;
+  return { ...rest, avg_latency_ms: sampledMean(latencySum, count) };
+}
+
 /** AE returns `toUnixTimestamp` in SECONDS; every timestamp in this route's
  * published payload is epoch MILLISECONDS (the lakehouse tier's `observed_at`
  * and bucket `ts` both are). Converted here, once. */
@@ -165,7 +177,7 @@ export async function loadRpcUsageHotTier(
   // routing one.
   const where =
     `WHERE ${B.pool} = 'public'` +
-    ` AND timestamp > NOW() - INTERVAL '${bounds.days}' DAY`;
+    ` AND timestamp > now() - INTERVAL '${bounds.days}' DAY`;
 
   const [totalsRows, endpointRows, networkRows, bucketRows] = await Promise.all(
     [
@@ -175,13 +187,13 @@ export async function loadRpcUsageHotTier(
           ` ${sampledSum(D.ok)} AS ok_count,` +
           ` ${sampledCountIf(`${D.attempts} > 1`)} AS failover_count,` +
           ` ${sampledCountIf(`${B.cache} = 'hit'`)} AS cache_hits,` +
-          ` ${sampledAvg(D.latencyMs)} AS avg_latency_ms,` +
+          ` ${sampledSum(D.latencyMs)} AS latency_sum,` +
           // The measured percentiles -- see the header. Weighted by
           // _sample_interval so they describe the underlying events, not the
           // stored sample.
           ` ${weightedQuantile(0.5, D.latencyMs)} AS p50,` +
           ` ${weightedQuantile(0.95, D.latencyMs)} AS p95,` +
-          ` toUnixTimestamp(MAX(timestamp)) AS observed_at_s` +
+          ` toUnixTimestamp(max(timestamp)) AS observed_at_s` +
           ` FROM ${RPC_USAGE_DATASET} ${where}`,
         deps,
       ),
@@ -190,7 +202,7 @@ export async function loadRpcUsageHotTier(
         `SELECT ${B.endpointId} AS endpoint_id, ${B.provider} AS provider,` +
           ` ${B.network} AS network, ${sampledCount()} AS requests,` +
           ` ${sampledSum(D.ok)} AS ok_count,` +
-          ` ${sampledAvg(D.latencyMs)} AS avg_latency_ms` +
+          ` ${sampledSum(D.latencyMs)} AS latency_sum` +
           ` FROM ${RPC_USAGE_DATASET} ${where}` +
           ` GROUP BY ${B.endpointId}, ${B.provider}, ${B.network}` +
           ` ORDER BY requests DESC LIMIT 100`,
@@ -200,7 +212,7 @@ export async function loadRpcUsageHotTier(
         env,
         `SELECT ${B.network} AS network, ${sampledCount()} AS requests,` +
           ` ${sampledSum(D.ok)} AS ok_count,` +
-          ` ${sampledAvg(D.latencyMs)} AS avg_latency_ms` +
+          ` ${sampledSum(D.latencyMs)} AS latency_sum` +
           ` FROM ${RPC_USAGE_DATASET} ${where}` +
           ` GROUP BY ${B.network} ORDER BY requests DESC LIMIT 100`,
         deps,
@@ -210,7 +222,7 @@ export async function loadRpcUsageHotTier(
         `SELECT toUnixTimestamp(toStartOfInterval(timestamp, ${bounds.interval}))` +
           ` AS ts, ${sampledCount()} AS requests,` +
           ` ${sampledSum(D.ok)} AS ok_count,` +
-          ` ${sampledAvg(D.latencyMs)} AS avg_latency_ms` +
+          ` ${sampledSum(D.latencyMs)} AS latency_sum` +
           ` FROM ${RPC_USAGE_DATASET} ${where}` +
           ` GROUP BY ts ORDER BY ts ASC LIMIT 1000`,
         deps,
@@ -229,18 +241,23 @@ export async function loadRpcUsageHotTier(
   return formatRpcUsage({
     window: windowLabel,
     observedAt: secondsToMs(totals.observed_at_s),
-    totals,
+    // Each rollup selects the sampled latency SUM and the sampled request
+    // count; the mean is taken here because AE cannot express the empty-window
+    // guard (see sampledMean). `total`/`requests` is the same denominator the
+    // rollup already reports, so the published mean and the published count
+    // can never disagree about how many events they describe.
+    totals: withMeanLatency(totals, totals.total),
     // The one field the cold tier cannot supply. Passing it here is what
     // makes p50/p95 real numbers instead of nulls.
     latency: { p50: totals.p50, p95: totals.p95 },
     endpointRows: endpointRows.map((row) => ({
-      ...row,
+      ...withMeanLatency(row, row.requests),
       endpoint_id: orNull(row.endpoint_id),
       provider: orNull(row.provider),
     })),
-    networkRows,
+    networkRows: networkRows.map((row) => withMeanLatency(row, row.requests)),
     bucketRows: bucketRows.map((row) => ({
-      ...row,
+      ...withMeanLatency(row, row.requests),
       ts: secondsToMs(row.ts),
       // endpoints/networks derive their own error_rate inside the formatter;
       // only the bucket mapping reads a literal `errors`. Clamped so a

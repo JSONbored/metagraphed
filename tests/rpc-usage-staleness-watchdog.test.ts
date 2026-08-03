@@ -165,8 +165,8 @@ describe("runRpcUsageStalenessWatchdog", () => {
     });
     assert.equal(seen.length, 1);
     assert.match(seen[0]!, /FROM rpc_proxy_events/);
-    assert.match(seen[0]!, /timestamp > NOW\(\) - INTERVAL '24' HOUR/);
-    assert.match(seen[0]!, /toUnixTimestamp\(MAX\(timestamp\)\) AS latest/);
+    assert.match(seen[0]!, /timestamp > now\(\) - INTERVAL '24' HOUR/);
+    assert.match(seen[0]!, /toUnixTimestamp\(max\(timestamp\)\) AS latest/);
   });
 
   test("an env override replaces the default threshold", async () => {
