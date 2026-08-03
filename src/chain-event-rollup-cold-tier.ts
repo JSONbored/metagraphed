@@ -279,7 +279,7 @@ export async function loadChainEventIdentityRollup(
 
   const where = `WHERE event_kind = '${kind}' AND observed_at >= ${cutoff}`;
 
-  const [rows, totalsRows] = await Promise.all([
+  const [rows, totalsRows, distinctRows] = await Promise.all([
     query(
       env,
       `SELECT netuid, ${identity} AS ${identity}, count(*) AS ${countField},` +
@@ -288,22 +288,48 @@ export async function loadChainEventIdentityRollup(
         ` GROUP BY netuid, ${identity}` +
         ` ORDER BY ${countField} DESC LIMIT ${cap}`,
     ),
-    // Ungrouped, and separate for the same reason the netuid rollup keeps its
-    // network half separate: the page is capped at `cap`, so summing it would
-    // make the share denominator depend on the page size.
+    // Separate from the row page for the same reason the netuid rollup keeps
+    // its network half separate: the page is capped at `cap`, so summing it
+    // would make the share denominator depend on the page size.
+    //
+    // The distinct half is a GROUP BY subquery, not an ungrouped
+    // COUNT(DISTINCT). Two independent reasons, both measured:
+    //
+    //  * The engine REJECTS the ungrouped form at this scale -- `40015: scan
+    //    budget exceeded: scanning too much data for count(DISTINCT) without
+    //    GROUP BY` -- which made the whole rollup decline and served this route
+    //    a card of zeros.
+    //  * For a uid identity it also answered the wrong question. A uid is
+    //    unique only WITHIN a subnet, so an ungrouped distinct count collapses
+    //    uid 5 on twenty subnets into one and lands near 256 regardless of the
+    //    truth. The pair is the participant; see the netuid rollup's own note.
+    //
+    // COUNT(*) stays ungrouped -- it is a plain row count with no distinct in
+    // it, so neither problem applies and it is the honest share denominator.
     query(
       env,
-      `SELECT count(*) AS ${countField},` +
-        ` count(DISTINCT ${identity}) AS ${distinctField},` +
-        ` max(observed_at) AS newest_observed` +
+      `SELECT count(*) AS ${countField}, max(observed_at) AS newest_observed` +
         ` FROM chain.account_events ${where}`,
+    ),
+    query(
+      env,
+      `SELECT count(*) AS ${distinctField}` +
+        ` FROM (SELECT netuid, ${identity} FROM chain.account_events ${where}` +
+        ` GROUP BY netuid, ${identity})`,
     ),
   ]);
 
-  if (!rows || !totalsRows) return null;
+  if (!rows || !totalsRows || !distinctRows) return null;
   const totals = totalsRows[0];
-  if (!totals) return null;
+  const distinct = distinctRows[0];
+  if (!totals || !distinct) return null;
   if (rows.length === 0) return null;
 
-  return { rows, totals };
+  // The distinct count rides back inside `totals` so the shape callers and
+  // the builder already read is unchanged -- only where the number comes from
+  // is different.
+  return {
+    rows,
+    totals: { ...totals, [distinctField]: distinct[distinctField] },
+  };
 }

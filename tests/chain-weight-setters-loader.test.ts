@@ -42,29 +42,50 @@ const ROWS = [
     last_set: NOW,
   },
 ];
-const TOTALS = {
-  weight_sets: 65_043,
-  distinct_setters: 254,
-  newest_observed: NOW,
-};
+const TOTALS = { weight_sets: 65_043, newest_observed: NOW };
+/**
+ * The distinct count arrives from its own GROUP BY subquery, not from TOTALS.
+ *
+ * 1,284 is the real 7d figure measured against the lakehouse. The number the
+ * ungrouped `count(DISTINCT uid)` used to return was 254 -- roughly the uid
+ * ceiling, because it counted uid NUMBERS across all subnets instead of
+ * (netuid, uid) participants. Keeping the two apart in the fixtures is what
+ * makes a regression back to the collapsed count visible here.
+ */
+const DISTINCT = { distinct_setters: 1_284 };
 
+/**
+ * Answers all three halves of the rollup, and records the SQL.
+ *
+ * The discriminator is deliberately NOT "does it contain GROUP BY": the
+ * distinct-pair query is a GROUP BY subquery too, so that test would have
+ * silently answered the row fixture to two different questions. Each query is
+ * selected on the clause only it can have -- `ORDER BY` for the ranked page,
+ * `FROM (` for the subquery -- so a fixture can never drift onto the wrong one.
+ */
 function fakeEngine(
-  overrides: { rows?: Row[] | null; totals?: Row[] | null } = {},
+  overrides: {
+    rows?: Row[] | null;
+    totals?: Row[] | null;
+    distinct?: Row[] | null;
+  } = {},
 ) {
   const seen: string[] = [];
   const pick = <T>(value: T | undefined, fallback: T) =>
     value === undefined ? fallback : value;
   const query = async (_env: unknown, sql: string) => {
     seen.push(sql);
-    return sql.includes("GROUP BY")
-      ? pick(overrides.rows, ROWS)
-      : pick(overrides.totals, [TOTALS]);
+    if (sql.includes("ORDER BY")) return pick(overrides.rows, ROWS);
+    if (sql.includes("FROM (")) return pick(overrides.distinct, [DISTINCT]);
+    return pick(overrides.totals, [TOTALS]);
   };
   return {
     query,
     seen,
-    grouped: () => seen.find((sql) => sql.includes("GROUP BY"))!,
-    ungrouped: () => seen.find((sql) => !sql.includes("GROUP BY"))!,
+    grouped: () => seen.find((sql) => sql.includes("ORDER BY"))!,
+    distinct: () => seen.find((sql) => sql.includes("FROM ("))!,
+    totals: () =>
+      seen.find((sql) => !sql.includes("ORDER BY") && !sql.includes("FROM ("))!,
   };
 }
 
@@ -112,7 +133,7 @@ describe("loadChainWeightSettersColdTier", () => {
       query: engine.query as never,
     });
     assert.equal(data?.weight_sets, 65_043);
-    assert.equal(data?.distinct_setters, 254);
+    assert.equal(data?.distinct_setters, 1_284);
     // 20 / 65043, not 20 / 30.
     assert.ok(
       (data!.setters[0].share ?? 0) < 0.001,
@@ -120,22 +141,58 @@ describe("loadChainWeightSettersColdTier", () => {
     );
   });
 
-  test("the grouped half carries no COUNT(DISTINCT)", async () => {
-    // R2 SQL rejects count(DISTINCT) with GROUP BY over a wide span ("scan
-    // budget exceeded"), which is what empties the 30d window elsewhere. The
-    // only COUNT(DISTINCT) here is in the ungrouped totals, over one row.
+  test("no query anywhere uses COUNT(DISTINCT)", async () => {
+    // This is the bug that made the route serve zeros. R2 SQL REJECTS an
+    // ungrouped count(DISTINCT) at this scale outright --
+    //
+    //   40015: scan budget exceeded: scanning too much data for
+    //   count(DISTINCT) without GROUP BY
+    //
+    // -- and a rejected query makes the reader decline, so /chain/weights/
+    // setters answered a stable 0 beside a sibling serving real numbers off
+    // the same stream. The distinct count has to come from a GROUP BY
+    // subquery, which is also the only form that counts the right thing.
     const engine = fakeEngine();
     await loadChainWeightSettersColdTier({} as never, {
       window: "30d",
       limit: 20,
       query: engine.query as never,
     });
-    assert.doesNotMatch(engine.grouped(), /DISTINCT/i);
-    assert.match(engine.ungrouped(), /count\(DISTINCT uid\)/);
+    for (const sql of engine.seen) {
+      assert.doesNotMatch(
+        sql,
+        /count\(\s*DISTINCT/i,
+        `R2 SQL rejects this at production scale: ${sql}`,
+      );
+    }
+  });
+
+  test("counts distinct (netuid, uid) pairs, not distinct uid numbers", async () => {
+    // A uid is unique only WITHIN a subnet, so counting uid alone collapses
+    // uid 5 on twenty subnets into one and lands near the 256 uid ceiling
+    // regardless of the truth -- it reported 254 against a real 1,284.
+    const engine = fakeEngine();
+    const data = await loadChainWeightSettersColdTier({} as never, {
+      window: "7d",
+      limit: 20,
+      query: engine.query as never,
+    });
+    assert.equal(data?.distinct_setters, 1_284);
+    assert.match(
+      engine.distinct(),
+      /FROM \(SELECT netuid, uid FROM chain\.account_events .*GROUP BY netuid, uid\)/,
+      "the distinct count must group on the pair",
+    );
   });
 
   test("declines with null when either half misses", async () => {
-    for (const miss of [{ rows: null }, { totals: null }, { rows: [] }]) {
+    for (const miss of [
+      { rows: null },
+      { totals: null },
+      { distinct: null },
+      { rows: [] },
+      { distinct: [] },
+    ]) {
       const engine = fakeEngine(miss);
       const data = await loadChainWeightSettersColdTier({} as never, {
         window: "7d",
