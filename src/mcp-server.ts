@@ -4314,6 +4314,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       if (postgres) return postgres;
       const { data } = await loadBulkHealthTrends({
         observedAt: await mcpObservedAt(ctx),
+        db: ctx.env.METAGRAPH_HEALTH_DB,
       });
       return data;
     },
