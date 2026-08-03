@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 
 import {
   NOMINATOR_POSITION_INSERT_COLUMNS,
+  POSITIONS_DEGRADED_SNAPSHOT_PREDATES_ACTIVITY,
+  POSITIONS_DEGRADED_UNPRICEABLE,
+  annotatePositionsSnapshot,
   buildAccountPositions,
   distinctHotkeys,
   stakeByHotkeyNetuid,
@@ -131,6 +134,118 @@ describe("distinctHotkeys", () => {
   test("is cold-safe and skips blank hotkeys", () => {
     assert.deepEqual(distinctHotkeys(null), []);
     assert.deepEqual(distinctHotkeys([{ hotkey: "" }, { hotkey: null }]), []);
+  });
+});
+
+describe("unpriceable positions are declared, not silently dropped (#9305)", () => {
+  // Positions are priced off the live `neurons` table, which carries only
+  // CURRENTLY-registered neurons, while the position ledger is a snapshot. A
+  // hotkey that has since deregistered prices to nothing. Excluding it is
+  // right -- #9066 forbids publishing unpriced values -- but saying nothing
+  // about it published `position_count: 0, total_stake_alpha: 0` over real
+  // ledger rows, indistinguishable from "this account delegates nothing".
+  //
+  // Live measurement behind this: sampling eight distinct hotkeys from
+  // chain.nominator_positions, only ONE was present in `neurons`.
+  const ROW = (hotkey: string, netuid: number) => ({
+    coldkey: "5Cold",
+    hotkey,
+    netuid,
+    share_fraction: 0.5,
+    captured_at: 1_780_000_000_000,
+  });
+
+  test("a coldkey whose every position is unpriceable is marked degraded", () => {
+    const data = buildAccountPositions([ROW("5Gone", 18)], new Map(), "5Cold");
+    assert.equal(data.position_count, 0);
+    assert.equal(data.total_stake_alpha, 0);
+    assert.equal(
+      data.degraded?.reason,
+      POSITIONS_DEGRADED_UNPRICEABLE,
+      "a zero over real ledger rows must not read as a measurement",
+    );
+  });
+
+  test("a PARTIALLY priced coldkey is marked too, not just an all-zero one", () => {
+    // The understatement is the same defect and is harder to notice: the
+    // payload looks healthy because it carries positions.
+    const data = buildAccountPositions(
+      [ROW("5Hk1", 3), ROW("5Gone", 18)],
+      new Map([["5Hk1|3", 1000]]),
+      "5Cold",
+    );
+    assert.equal(data.position_count, 1);
+    assert.equal(data.total_stake_alpha, 500);
+    assert.equal(data.degraded?.reason, POSITIONS_DEGRADED_UNPRICEABLE);
+  });
+
+  test("a fully priced coldkey carries NO degraded block", () => {
+    // The field's contract is that it is absent on every trustworthy answer,
+    // so a consumer ignoring it reads exactly what it read before.
+    const data = buildAccountPositions(
+      [ROW("5Hk1", 3)],
+      new Map([["5Hk1|3", 1000]]),
+      "5Cold",
+    );
+    assert.equal(data.position_count, 1);
+    assert.equal(data.degraded, undefined);
+  });
+
+  test("an account with no ledger rows at all is not marked", () => {
+    // Nothing was dropped, so nothing is being hidden. That zero IS a
+    // measurement, and labelling it would cry wolf on every empty account.
+    const data = buildAccountPositions([], new Map(), "5Cold");
+    assert.equal(data.position_count, 0);
+    assert.equal(data.degraded, undefined);
+  });
+
+  test("a malformed row is not counted as unpriceable", () => {
+    // A row with no hotkey/netuid/fraction is bad data, not an unpriced
+    // holding -- conflating them would report a pricing problem that is not
+    // happening.
+    const data = buildAccountPositions(
+      [{ coldkey: "5Cold", hotkey: null, netuid: 3, share_fraction: 0.5 }],
+      new Map(),
+      "5Cold",
+    );
+    assert.equal(data.position_count, 0);
+    assert.equal(data.degraded, undefined);
+  });
+
+  test("the snapshot annotator's stronger reason wins when both apply", () => {
+    // Both mean "do not trust this total"; `snapshot_predates_stake_activity`
+    // says why more usefully, and carries the two stamps this pure builder
+    // cannot see.
+    const built = buildAccountPositions([ROW("5Gone", 18)], new Map(), "5Cold");
+    assert.equal(built.degraded?.reason, POSITIONS_DEGRADED_UNPRICEABLE);
+    const annotated = annotatePositionsSnapshot(built, {
+      snapshotCapturedAtMs: 1_780_000_000_000,
+      latestStakeEventMs: 1_785_000_000_000,
+    });
+    assert.equal(
+      annotated.degraded?.reason,
+      POSITIONS_DEGRADED_SNAPSHOT_PREDATES_ACTIVITY,
+    );
+    assert.equal(
+      annotated.degraded?.latest_stake_event_at,
+      new Date(1_785_000_000_000).toISOString(),
+    );
+  });
+
+  test("the unpriceable reason survives an annotator pass that does not contradict", () => {
+    // The annotator only replaces `degraded` when a newer stake event
+    // contradicts the zero. Otherwise this marker must not be erased.
+    const built = buildAccountPositions([ROW("5Gone", 18)], new Map(), "5Cold");
+    const annotated = annotatePositionsSnapshot(built, {
+      snapshotCapturedAtMs: 1_785_000_000_000,
+      latestStakeEventMs: null,
+    });
+    assert.equal(annotated.degraded?.reason, POSITIONS_DEGRADED_UNPRICEABLE);
+    assert.equal(
+      annotated.captured_at,
+      new Date(1_785_000_000_000).toISOString(),
+      "the ledger stamp is still attached",
+    );
   });
 });
 
