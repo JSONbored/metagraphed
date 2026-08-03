@@ -15,6 +15,8 @@ import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import {
   LOCK_RATE_DEFAULT,
+  LOCK_STATE_KV_TTL,
+  LOCK_STATE_NEGATIVE_KV_TTL,
   decodeLockState,
   defaultChainRpc,
   loadSubnetConvictionChainTier,
@@ -310,6 +312,149 @@ describe("loadSubnetConvictionChainTier", () => {
         JSON.stringify(bad),
       );
     }
+  });
+});
+
+describe("the KV cache in front of the chain reads (#9335)", () => {
+  // WHY THIS EXISTS. The first cut had no cache, on the reasoning that the edge
+  // cache's "short" profile already bounded finney traffic. It does not: the
+  // edge keys on the URL, so 129 subnets are 129 independent entries, and a
+  // sweep across them issues ~6 RPC calls EACH against the public endpoint.
+  // Measured after shipping -- every netuid began answering
+  // `data-worker-unavailable`, including ones that had just answered, while a
+  // direct RPC from elsewhere stayed healthy in 0.67s. finney was throttling
+  // this Worker, not failing.
+
+  /** An in-memory KV that records its writes. */
+  function fakeKv(seed: Record<string, string> = {}) {
+    const store = new Map(Object.entries(seed));
+    const puts: Array<{ key: string; ttl?: number }> = [];
+    return {
+      puts,
+      store,
+      get: async (key: string) => {
+        const raw = store.get(key);
+        return raw === undefined ? null : JSON.parse(raw);
+      },
+      put: async (
+        key: string,
+        value: string,
+        opts?: { expirationTtl?: number },
+      ) => {
+        store.set(key, value);
+        puts.push({ key, ttl: opts?.expirationTtl });
+      },
+    };
+  }
+
+  function chainCounting() {
+    let calls = 0;
+    const rpc = async (method: string) => {
+      calls += 1;
+      if (method === "chain_getHeader") return HEAD;
+      if (method === "state_getKeysPaged") return [];
+      return null;
+    };
+    return { rpc, calls: () => calls };
+  }
+
+  test("a second request for the same subnet makes NO rpc calls", async () => {
+    const kv = fakeKv();
+    const first = chainCounting();
+    await loadSubnetConvictionChainTier(7, { rpc: first.rpc, kv });
+    assert.ok(first.calls() > 0, "the first pass reads the chain");
+
+    const second = chainCounting();
+    const data = await loadSubnetConvictionChainTier(7, {
+      rpc: second.rpc,
+      kv,
+    });
+    assert.equal(second.calls(), 0, "the second pass must be served from KV");
+    assert.ok(data, "and must still answer");
+    assert.equal(data.queried_at_block, 8_770_011);
+  });
+
+  test("the cache is per-subnet, so one netuid does not answer for another", async () => {
+    const kv = fakeKv();
+    await loadSubnetConvictionChainTier(7, { rpc: chainCounting().rpc, kv });
+    const other = chainCounting();
+    await loadSubnetConvictionChainTier(8, { rpc: other.rpc, kv });
+    assert.ok(other.calls() > 0, "netuid 8 must not reuse netuid 7's board");
+  });
+
+  test("a DECLINE is cached too, so a throttled endpoint is not retried per request", async () => {
+    // Not caching declines is what turns one throttled burst into a sustained
+    // one: every retry adds load to the endpoint already refusing.
+    const kv = fakeKv();
+    const dead = async () => undefined; // no header -> decline
+    assert.equal(
+      await loadSubnetConvictionChainTier(7, { rpc: dead, kv }),
+      null,
+    );
+    const retry = chainCounting();
+    assert.equal(
+      await loadSubnetConvictionChainTier(7, { rpc: retry.rpc, kv }),
+      null,
+      "the cached decline stands",
+    );
+    assert.equal(retry.calls(), 0, "and costs no further RPC");
+  });
+
+  test("a decline expires much sooner than a success", async () => {
+    // A blip must clear quickly; a good board can sit for a minute.
+    const kvOk = fakeKv();
+    await loadSubnetConvictionChainTier(7, {
+      rpc: chainCounting().rpc,
+      kv: kvOk,
+    });
+    assert.equal(kvOk.puts.at(-1)?.ttl, LOCK_STATE_KV_TTL);
+
+    const kvBad = fakeKv();
+    await loadSubnetConvictionChainTier(7, {
+      rpc: async () => undefined,
+      kv: kvBad,
+    });
+    assert.equal(kvBad.puts.at(-1)?.ttl, LOCK_STATE_NEGATIVE_KV_TTL);
+    assert.ok(
+      LOCK_STATE_NEGATIVE_KV_TTL < LOCK_STATE_KV_TTL,
+      "a blip must clear sooner than a good board expires",
+    );
+  });
+
+  test("a KV outage degrades to the live read, it does not fail the route", async () => {
+    const exploding = {
+      get: async () => {
+        throw new Error("kv down");
+      },
+      put: async () => {
+        throw new Error("kv down");
+      },
+    };
+    const data = await loadSubnetConvictionChainTier(7, {
+      rpc: chainCounting().rpc,
+      kv: exploding,
+    });
+    assert.ok(data, "a cache is an optimisation, never a dependency");
+    assert.equal(data.count, 0);
+  });
+
+  test("an unusable netuid is refused without touching KV", async () => {
+    // It fires before any RPC, so there is no load to suppress -- and caching
+    // per bogus netuid would just fill KV with junk keys.
+    const kv = fakeKv();
+    assert.equal(
+      await loadSubnetConvictionChainTier(-1, { rpc: chainCounting().rpc, kv }),
+      null,
+    );
+    assert.equal(kv.puts.length, 0);
+  });
+
+  test("works with no KV binding at all", async () => {
+    // Local dev and any deployment without METAGRAPH_CONTROL.
+    const c = chainCounting();
+    const data = await loadSubnetConvictionChainTier(7, { rpc: c.rpc });
+    assert.ok(data);
+    assert.ok(c.calls() > 0);
   });
 });
 

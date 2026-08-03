@@ -19,12 +19,25 @@
 // posture as /sudo/key and the upgrade radar: live chain state, read at request
 // time.
 //
-// NO KV LAYER, deliberately. This route already carries the edge cache's
-// "short" profile, which is what bounds finney traffic; a second cache in front
-// of a read this small would add a staleness window and a whole invalidation
-// question to save nothing. /sudo/key caches in KV because it has a fixed key
-// and changes almost never -- this is per-subnet and rolls forward every block,
-// so its natural cache key IS the edge's.
+// KV-CACHED PER SUBNET, and the reasoning that first said otherwise was wrong.
+// The original argument was "the edge cache's short profile already bounds
+// finney traffic". It does not: the edge keys on the URL, so 129 subnets are
+// 129 independent cache entries, and a crawler or an audit sweep walking them
+// issues ~6 RPC calls EACH against the public endpoint with nothing in front.
+// Measured after shipping: a sweep across subnets made every netuid answer
+// `data-worker-unavailable` -- including ones that had just answered -- while a
+// direct RPC from elsewhere stayed healthy in 0.67s, i.e. finney was throttling
+// this Worker, not failing. Twenty seconds later it recovered.
+//
+// So the cache is per-netuid and short (LOCK_STATE_KV_TTL). A board is a smooth
+// decay curve, so a minute of staleness changes nothing a caller can perceive,
+// and `queried_at_block` keeps reporting the block it was actually computed at
+// rather than pretending to be current.
+//
+// Declines are cached too, for much longer than zero but much shorter than a
+// success (LOCK_STATE_NEGATIVE_KV_TTL). Not caching them at all is what turns
+// one throttled burst into a sustained one: every retry adds load to the
+// endpoint that is already refusing.
 //
 // STORAGE LAYOUT, all verified against finney rather than inferred:
 //
@@ -60,6 +73,15 @@ import {
 const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
 
 export const SUBNET_CONVICTION_RPC_TIMEOUT_MS = 5000;
+
+/** Seconds a computed board stays cached. ~5 blocks: the decay is smooth, so
+ * this is imperceptible, and it collapses a burst across one subnet to a single
+ * pass of RPC calls. */
+export const LOCK_STATE_KV_TTL = 60;
+/** Seconds a DECLINE stays cached. Short enough that a blip clears quickly,
+ * long enough that a throttled endpoint is not retried on every request. */
+export const LOCK_STATE_NEGATIVE_KV_TTL = 10;
+const LOCK_STATE_KV_PREFIX = "subnet-conviction:v1";
 
 /**
  * `UnlockRate`'s on-chain default, applied when the StorageValue is absent.
@@ -196,10 +218,33 @@ function rateOrDefault(raw: unknown): number | null {
  */
 export async function loadSubnetConvictionChainTier(
   netuid: number,
-  { rpc = defaultChainRpc }: { rpc?: ChainRpc } = {},
+  {
+    rpc = defaultChainRpc,
+    kv,
+  }: {
+    rpc?: ChainRpc;
+    /** METAGRAPH_CONTROL, when the caller has an env to take it from. */
+    kv?: KvLike | null;
+  } = {},
 ): Promise<ReturnType<typeof buildSubnetConviction> | null> {
+  // Not cached: this fires before any RPC call, so there is no load to
+  // suppress, and caching per bogus netuid would just fill KV with junk keys.
   if (!Number.isSafeInteger(netuid) || netuid < 0 || netuid > 65_535) {
     return null;
+  }
+
+  const cacheKey = `${LOCK_STATE_KV_PREFIX}:${netuid}`;
+  if (kv?.get) {
+    try {
+      const cached = (await kv.get(cacheKey, { type: "json" })) as {
+        board: ReturnType<typeof buildSubnetConviction> | null;
+      } | null;
+      // A cached DECLINE is stored as an explicit null board, so it is
+      // distinguishable from a cache miss and actually suppresses the retry.
+      if (cached) return cached.board;
+    } catch {
+      // A KV read failure is non-fatal -- fall through to the live read.
+    }
   }
 
   const [header, unlockRaw, maturityRaw, ownerHotkeyRaw] = await Promise.all([
@@ -220,11 +265,13 @@ export async function loadSubnetConvictionChainTier(
     typeof headNumber === "string"
       ? Number.parseInt(headNumber, 16)
       : Number.NaN;
-  if (!Number.isSafeInteger(now) || now <= 0) return null;
+  if (!Number.isSafeInteger(now) || now <= 0)
+    return await remember(kv, cacheKey, null);
 
   const unlockRate = rateOrDefault(unlockRaw);
   const maturityRate = rateOrDefault(maturityRaw);
-  if (unlockRate === null || maturityRate === null) return null;
+  if (unlockRate === null || maturityRate === null)
+    return await remember(kv, cacheKey, null);
 
   const ownerHotkey =
     ownerHotkeyRaw == null ? null : hotkeyFromLockKey(ownerHotkeyRaw);
@@ -234,7 +281,7 @@ export async function loadSubnetConvictionChainTier(
     const collected = map.isOwner
       ? await readOwnerLock(rpc, map.item, netuid, ownerHotkey)
       : await readHotkeyLocks(rpc, map.item, netuid);
-    if (collected === null) return null;
+    if (collected === null) return await remember(kv, cacheKey, null);
     for (const row of collected) {
       rows.push({
         ...row,
@@ -244,7 +291,41 @@ export async function loadSubnetConvictionChainTier(
     }
   }
 
-  return buildSubnetConviction(rows, netuid, { now, unlockRate, maturityRate });
+  return await remember(
+    kv,
+    cacheKey,
+    buildSubnetConviction(rows, netuid, { now, unlockRate, maturityRate }),
+  );
+}
+
+/** The minimal KV surface this module needs -- structural, so tests can hand a
+ * plain object. */
+export interface KvLike {
+  get?: (key: string, opts?: { type: "json" }) => Promise<unknown>;
+  put?: (
+    key: string,
+    value: string,
+    opts?: { expirationTtl?: number },
+  ) => Promise<unknown>;
+}
+
+/** Cache `board` (including a null decline) and hand it straight back. */
+async function remember<T>(
+  kv: KvLike | null | undefined,
+  cacheKey: string,
+  board: T,
+): Promise<T> {
+  if (kv?.put) {
+    try {
+      await kv.put(cacheKey, JSON.stringify({ board }), {
+        expirationTtl:
+          board === null ? LOCK_STATE_NEGATIVE_KV_TTL : LOCK_STATE_KV_TTL,
+      });
+    } catch {
+      // A KV write failure is non-fatal.
+    }
+  }
+  return board;
 }
 
 /** A decoded lock before its map's `is_owner`/`is_perpetual` are attached.
