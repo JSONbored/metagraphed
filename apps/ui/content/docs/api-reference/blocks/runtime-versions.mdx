@@ -13,10 +13,11 @@ _openapi:
       - content: 'Fetch the spec-version transition timeline — the earliest known block
           at each distinct runtime spec_version, ascending by block_number. A
           single aggregate over the whole retained blocks window, nothing to
-          filter or paginate. spec_version is best-effort/nullable and wasn''t
-          tracked before 2026-06-25, so coverage_from_block/coverage_from_at
-          bound what this endpoint can see. Computed live from the first-party
-          blocks D1 tier (#4316/3.1). The `current` block (#8702) adds the
+          filter or paginate. Every block from genesis to head carries a
+          spec_version reading, so coverage_from_block/coverage_from_at and
+          coverage_gaps describe a complete timeline rather than bounding a
+          partial one. Computed live from the first-party blocks tier
+          (#4316/3.1, #9265). The `current` block (#8702) adds the
           forward-looking half: live mainnet/testnet spec versions, the latest
           subtensor release, and a derived pending_upgrade state of none /
           testnet_soaking / released_undeployed / unknown. Every field is
