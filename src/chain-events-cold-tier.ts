@@ -172,3 +172,56 @@ export async function loadChainEventsColdTier(
     events: rows,
   };
 }
+
+/** The `?blocks=` window: default 1000, clamped to the 1-5000 bound the
+ * deleted handler enforced, so a stray value cannot widen the scan. */
+export const CHAIN_EVENTS_STATS_BLOCKS_DEFAULT = 1_000;
+export const CHAIN_EVENTS_STATS_BLOCKS_MAX = 5_000;
+/** The deleted handler's own output cap. */
+const STATS_GROUP_LIMIT = 100;
+
+export interface ChainEventsStats {
+  window_blocks: number;
+  groups: number;
+  activity: Record<string, unknown>[];
+}
+
+/**
+ * The pallet.method distribution over the most recent N blocks.
+ *
+ * MUCH cheaper than the feed because it reads only two columns: measured
+ * 1.28 MB at the 1,000-block default and 4.23 MB at the 5,000 cap, against a
+ * feed page's 18.6 MB. R2 SQL is columnar, so a narrow projection is what
+ * makes an aggregate affordable.
+ *
+ * The deleted Postgres version needed a whole second `observed_at` bound and a
+ * separate head lookup purely so TimescaleDB could exclude chunks -- its own
+ * comment records the aggregate scanning ~723M rows and taking 181s without
+ * it. None of that applies here: `block_number` IS the lakehouse's pruning
+ * key, so the block bound alone does the work it was always meant to.
+ */
+export async function loadChainEventsStatsColdTier(
+  env: Env | null | undefined,
+  blocks?: unknown,
+): Promise<ChainEventsStats | null> {
+  const requested = blocks == null ? null : safeBlockNumber(blocks);
+  if (blocks != null && requested === null) return null;
+  const window =
+    requested === null || requested < 1
+      ? CHAIN_EVENTS_STATS_BLOCKS_DEFAULT
+      : Math.min(requested, CHAIN_EVENTS_STATS_BLOCKS_MAX);
+
+  const head = blocksSeamFloor(env);
+  const rows = await r2SqlQuery(
+    env,
+    `SELECT pallet, method, COUNT(*) AS count FROM chain.chain_events ` +
+      `WHERE block_number > ${head - window} ` +
+      // Tie-break on the GROUP BY keys: `count` alone is non-unique, so equal
+      // counts could reshuffle between requests and flip which groups survive
+      // the LIMIT at the boundary.
+      `GROUP BY pallet, method ORDER BY count DESC, pallet ASC, method ASC ` +
+      `LIMIT ${STATS_GROUP_LIMIT}`,
+  );
+  if (rows === null) return null;
+  return { window_blocks: window, groups: rows.length, activity: rows };
+}

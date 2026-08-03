@@ -40,7 +40,10 @@ import { buildSubnetConviction } from "./subnet-conviction.ts";
 import { buildSubnetLeaseHistory } from "./subnet-lease-history.ts";
 import { buildSubnetOwnershipHistory } from "./subnet-ownership-history.ts";
 import { loadSubnetOwnershipHistoryColdTier } from "./subnet-ownership-cold-tier.ts";
-import { loadChainEventsColdTier } from "./chain-events-cold-tier.ts";
+import {
+  loadChainEventsColdTier,
+  loadChainEventsStatsColdTier,
+} from "./chain-events-cold-tier.ts";
 
 type Row = Record<string, unknown>;
 
@@ -162,6 +165,12 @@ export async function coldTierChainEventsPayload(
       cursor: params.get("cursor"),
       before: params.get("before"),
     })) as Row | null;
+  }
+  if (url.pathname === "/api/v1/chain-events/stats") {
+    return (await loadChainEventsStatsColdTier(
+      env,
+      url.searchParams.get("blocks"),
+    )) as Row | null;
   }
   return null;
 }

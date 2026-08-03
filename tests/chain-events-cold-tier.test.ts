@@ -11,7 +11,10 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   CHAIN_EVENTS_BLOCK_WINDOW,
+  CHAIN_EVENTS_STATS_BLOCKS_DEFAULT,
+  CHAIN_EVENTS_STATS_BLOCKS_MAX,
   loadChainEventsColdTier,
+  loadChainEventsStatsColdTier,
 } from "../src/chain-events-cold-tier.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
 import { DEFAULT_BLOCKS_SEAM } from "../src/blocks-cold-tier.ts";
@@ -199,5 +202,71 @@ describe("loadChainEventsColdTier", () => {
         status: 500,
       }) as unknown as Response) as unknown as typeof fetch;
     assert.equal(await loadChainEventsColdTier(TOKEN, { limit: 5 }), null);
+  });
+});
+
+describe("loadChainEventsStatsColdTier", () => {
+  const GROUP = { pallet: "Balances", method: "Transfer", count: 976_676 };
+
+  test("bounds the window on block_number and caps the group list", async () => {
+    // The deleted Postgres version carried a second observed_at bound and a
+    // separate head lookup purely so Timescale could exclude chunks -- without
+    // it the aggregate scanned ~723M rows. block_number IS the lakehouse's
+    // pruning key, so the block bound alone does that work.
+    const q = sqlFetch([GROUP]);
+    const stats = await loadChainEventsStatsColdTier(TOKEN);
+    assert.ok(stats);
+    assert.equal(stats.window_blocks, CHAIN_EVENTS_STATS_BLOCKS_DEFAULT);
+    assert.equal(stats.groups, 1);
+    assert.match(
+      q[0]!,
+      new RegExp(
+        `block_number > ${DEFAULT_BLOCKS_SEAM - CHAIN_EVENTS_STATS_BLOCKS_DEFAULT}`,
+      ),
+    );
+    assert.match(q[0]!, /GROUP BY pallet, method/);
+    assert.match(q[0]!, /LIMIT 100/);
+    assert.doesNotMatch(q[0]!, /observed_at/);
+  });
+
+  test("orders by count then the GROUP BY keys so ties are stable", async () => {
+    // count is non-unique: ordering on it alone lets equal-count groups
+    // reshuffle between requests and flip which ones survive the LIMIT.
+    const q = sqlFetch([GROUP]);
+    await loadChainEventsStatsColdTier(TOKEN);
+    assert.match(q[0]!, /ORDER BY count DESC, pallet ASC, method ASC/);
+  });
+
+  test("clamps ?blocks= to the 1-5000 bound", async () => {
+    for (const [asked, expected] of [
+      [500, 500],
+      [99_999, CHAIN_EVENTS_STATS_BLOCKS_MAX],
+      [0, CHAIN_EVENTS_STATS_BLOCKS_DEFAULT],
+      [null, CHAIN_EVENTS_STATS_BLOCKS_DEFAULT],
+    ] as [number | null, number][]) {
+      sqlFetch([GROUP]);
+      const stats = await loadChainEventsStatsColdTier(TOKEN, asked);
+      assert.equal(stats!.window_blocks, expected, `blocks=${asked}`);
+    }
+  });
+
+  test("declines an unusable ?blocks= rather than silently defaulting", async () => {
+    // Defaulting a malformed value would answer a DIFFERENT question than the
+    // caller asked and look successful doing it.
+    const q = sqlFetch([]);
+    assert.equal(
+      await loadChainEventsStatsColdTier(TOKEN, "not-a-number"),
+      null,
+    );
+    assert.equal(q.length, 0, "must not issue a query at all");
+  });
+
+  test("declines when the lakehouse cannot answer", async () => {
+    globalThis.fetch = (async () =>
+      ({
+        ok: false,
+        status: 500,
+      }) as unknown as Response) as unknown as typeof fetch;
+    assert.equal(await loadChainEventsStatsColdTier(TOKEN), null);
   });
 });
