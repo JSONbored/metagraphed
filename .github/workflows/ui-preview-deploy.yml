@@ -78,7 +78,7 @@ jobs:
         if: steps.cfg.outputs.ready == 'true'
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: 22.23.1
+          node-version: 22.23.2
 
       # Resolve the fork PR this build belongs to BEFORE deploying, so the composite can record the
       # deployment against it. Both easy signals are EMPTY for fork PRs (the only PRs that reach this

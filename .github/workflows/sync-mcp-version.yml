@@ -121,7 +121,7 @@ jobs:
         if: steps.mcp-diff.outputs.changed == 'true'
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
-          node-version: 22.23.1
+          node-version: 22.23.2
 
       # MCP_SERVER_VERSION lives in a JS source file, not JSON, so this is a
       # regex extract/replace rather than a JSON.parse/stringify round-trip
