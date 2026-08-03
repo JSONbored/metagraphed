@@ -206,24 +206,27 @@ describe("RPC proxy usage telemetry (recordRpcUsage)", () => {
     });
   }
 
-  // D1 write retired 2026-07-16 (item 7 of the D1->Postgres cleanup):
-  // syncRpcUsageEventToPostgres (via env.DATA_API) is the sole writer for
-  // rpc_proxy_events now -- confirmed unconditionally called, live since
-  // 2026-07-11 per METAGRAPH_RPC_USAGE_SOURCE's own wrangler.jsonc comment.
-  test("records a served request (endpoint, ok, latency, bypass cache)", async () => {
-    const captured: Row[] = [];
-    const env = {
-      ...baseEnv(),
-      DATA_API: {
-        fetch: async (request: Request) => {
-          captured.push(await request.json());
-          return new Response(JSON.stringify({ ok: true }), { status: 200 });
-        },
+  // #9228: the write target is a Workers Analytics Engine dataset. This
+  // double records the data points the writer emitted; the slot LAYOUT those
+  // points use is asserted positionally in tests/rpc-usage-capture.test.ts.
+  function captureDataset() {
+    const points: { blobs: string[]; doubles: number[]; indexes: string[] }[] =
+      [];
+    return {
+      points,
+      writeDataPoint(point: {
+        blobs: string[];
+        doubles: number[];
+        indexes: string[];
+      }) {
+        points.push(point);
       },
-      RPC_USAGE_SYNC_SECRET: "test-secret",
     };
-    const waits: Promise<unknown>[] = [];
-    const ctx = { waitUntil: (p: Promise<unknown>) => waits.push(p) };
+  }
+
+  test("records a served request (endpoint, ok, latency, bypass cache)", async () => {
+    const dataset = captureDataset();
+    const env = { ...baseEnv(), RPC_USAGE_ANALYTICS: dataset };
     await withFetch(
       (async () =>
         new Response(
@@ -231,35 +234,39 @@ describe("RPC proxy usage telemetry (recordRpcUsage)", () => {
           { status: 200 },
         )) as unknown as typeof fetch,
       async () => {
-        // system_health is uncacheable → cache "bypass", recorded after failover.
+        // system_health is uncacheable -> cache "bypass", recorded after failover.
         const res = await handleRequest(
           reqFor("system_health"),
           env as unknown as Env,
-          ctx,
+          {},
         );
         assert.equal(res.status, 200);
-        await Promise.all(waits);
       },
     );
-    assert.equal(captured.length, 1);
-    const event = captured[0];
-    assert.equal(event.network, "finney");
-    assert.equal(event.endpoint_id, "fx");
-    assert.equal(event.ok, true);
-    assert.equal(event.cache, "bypass");
+    assert.equal(dataset.points.length, 1);
+    const point = dataset.points[0]!;
+    // pool, network, endpoint_id, provider, cache -- see RPC_USAGE_BLOBS.
+    assert.deepEqual(point.blobs, [
+      "public",
+      "finney",
+      "fx",
+      "onfinality",
+      "bypass",
+    ]);
+    // ok, attempts, latency, status.
+    assert.equal(point.doubles[0], 1);
+    assert.equal(point.doubles[3], 200);
+    assert.ok(point.doubles[2] >= 0);
+    assert.deepEqual(point.indexes, ["public/finney/fx"]);
   });
 
-  test("a telemetry write that throws never breaks the proxied call", async () => {
-    const env = {
-      ...baseEnv(),
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("telemetry binding exploded");
-        },
-      },
-      RPC_USAGE_SYNC_SECRET: "test-secret",
-    };
-    const ctx = { waitUntil() {} };
+  test("the write is off the request path entirely -- no ctx.waitUntil needed", async () => {
+    // The structural half of the latency guarantee: writeDataPoint is
+    // non-blocking, so there is no deferred promise for a request to wait on.
+    // A ctx-less invocation must still capture, which is the difference from
+    // every previous implementation of this writer.
+    const dataset = captureDataset();
+    const waits: Promise<unknown>[] = [];
     await withFetch(
       (async () =>
         new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: "0x1" }), {
@@ -268,25 +275,24 @@ describe("RPC proxy usage telemetry (recordRpcUsage)", () => {
       async () => {
         const res = await handleRequest(
           reqFor("system_health"),
-          env as unknown as Env,
-          ctx,
+          { ...baseEnv(), RPC_USAGE_ANALYTICS: dataset } as unknown as Env,
+          { waitUntil: (p: Promise<unknown>) => waits.push(p) },
         );
         assert.equal(res.status, 200);
       },
     );
+    assert.equal(dataset.points.length, 1);
+    assert.equal(waits.length, 0, "telemetry must not extend the request");
   });
 
-  test("no telemetry without a ctx.waitUntil (no-op, proxy still serves)", async () => {
-    let fetched = false;
+  test("a telemetry write that throws never breaks the proxied call", async () => {
     const env = {
       ...baseEnv(),
-      DATA_API: {
-        fetch: async () => {
-          fetched = true;
-          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      RPC_USAGE_ANALYTICS: {
+        writeDataPoint() {
+          throw new Error("dataset unavailable");
         },
       },
-      RPC_USAGE_SYNC_SECRET: "test-secret",
     };
     await withFetch(
       (async () =>
@@ -302,11 +308,27 @@ describe("RPC proxy usage telemetry (recordRpcUsage)", () => {
         assert.equal(res.status, 200);
       },
     );
-    assert.equal(fetched, false);
   });
 
-  test("records a routing failure (no eligible endpoint → 503)", async () => {
-    const captured: Row[] = [];
+  test("no dataset binding is a no-op, and the proxy still serves", async () => {
+    await withFetch(
+      (async () =>
+        new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: "0x1" }), {
+          status: 200,
+        })) as unknown as typeof fetch,
+      async () => {
+        const res = await handleRequest(
+          reqFor("system_health"),
+          baseEnv() as unknown as Env,
+          {},
+        );
+        assert.equal(res.status, 200);
+      },
+    );
+  });
+
+  test("records a routing failure (no eligible endpoint -> 503)", async () => {
+    const dataset = captureDataset();
     const emptyPool = { pools: [{ id: "finney-rpc", endpoints: [] }] };
     const env = {
       METAGRAPH_ENABLE_RPC_PROXY: "true",
@@ -319,27 +341,21 @@ describe("RPC proxy usage telemetry (recordRpcUsage)", () => {
           };
         },
       },
-      DATA_API: {
-        fetch: async (request: Request) => {
-          captured.push(await request.json());
-          return new Response(JSON.stringify({ ok: true }), { status: 200 });
-        },
-      },
-      RPC_USAGE_SYNC_SECRET: "test-secret",
+      RPC_USAGE_ANALYTICS: dataset,
     };
-    const waits: Promise<unknown>[] = [];
     const res = await handleRequest(
       reqFor("system_health"),
       env as unknown as Env,
-      {
-        waitUntil: (p: Promise<unknown>) => waits.push(p),
-      },
+      {},
     );
     assert.equal(res.status, 503);
-    await Promise.all(waits);
-    assert.equal(captured.length, 1);
-    const event = captured[0];
-    assert.equal(event.endpoint_id, null);
-    assert.equal(event.ok, false);
+    assert.equal(dataset.points.length, 1);
+    const point = dataset.points[0]!;
+    // "" is the no-endpoint sentinel; a GROUP BY needs a value to bucket.
+    assert.equal(point.blobs[2], "");
+    assert.equal(point.blobs[3], "");
+    assert.equal(point.doubles[0], 0, "not ok");
+    assert.equal(point.doubles[3], 503);
+    assert.deepEqual(point.indexes, ["public/finney/none"]);
   });
 });

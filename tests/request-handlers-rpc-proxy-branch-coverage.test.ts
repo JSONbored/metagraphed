@@ -116,30 +116,20 @@ function fakeCache() {
   };
 }
 
-// D1 write retired 2026-07-16 (item 7 of the D1->Postgres cleanup): this
-// double is unused now that recordRpcUsage never touches
-// METAGRAPH_HEALTH_DB, kept only so any stray reference in this file fails
-// loudly with "not a function" rather than silently no-op-ing.
-function captureDb() {
+// #9228: AE double capturing every data point recordRpcUsage emitted. The
+// slot LAYOUT those points use is asserted positionally in
+// tests/rpc-usage-capture.test.ts; here only the wiring matters.
+function captureDataset() {
+  const points: { blobs: string[]; doubles: number[]; indexes: string[] }[] =
+    [];
   return {
-    prepare() {
-      throw new Error(
-        "recordRpcUsage must never touch METAGRAPH_HEALTH_DB (D1 write retired)",
-      );
-    },
-  };
-}
-
-// DATA_API double capturing every request recordRpcUsage's Postgres mirror
-// (syncRpcUsageEventToPostgres) posts, so a test can assert on the JSON body
-// it shipped -- the sole write target for rpc_proxy_events now.
-function dataApiCapture() {
-  const calls: Row[] = [];
-  return {
-    calls,
-    fetch: async (request: Request) => {
-      calls.push(request);
-      return Response.json({ ok: true });
+    points,
+    writeDataPoint(point: {
+      blobs: string[];
+      doubles: number[];
+      indexes: string[];
+    }) {
+      points.push(point);
     },
   };
 }
@@ -277,16 +267,16 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
       body: JSON.stringify(body),
     });
 
-  // D1 write retired 2026-07-16 (item 7 of the D1->Postgres cleanup):
-  // syncRpcUsageEventToPostgres (via env.DATA_API) is the sole writer now --
-  // these two drive it the same "dataApiCapture" way the
-  // "syncRpcUsageEventToPostgres wiring" describe block below does.
+  // #9228: recordRpcUsage writes an AE data point -- these two drive it the
+  // same "captureDataset" way the "AE usage capture wiring" describe block
+  // below does.
   test("records a null endpoint_id telemetry event when all upstreams fail", async () => {
     // Drives the served-event recordRpcUsage with a 502 bare response: the
     // attempts header is absent (proxyWithFailover's exhausted-pool path never
     // sets it) so `Number(null) || Math.min(candidates.length, RPC_MAX_ATTEMPTS)`
-    // supplies the attempt count, and endpoint_id falls back through `?? null`.
-    const dataApi = dataApiCapture();
+    // supplies the attempt count, and endpoint_id falls back through `?? null`
+    // into the layout's empty-string sentinel.
+    const dataset = captureDataset();
     const ctx = { waitUntil: () => {} };
     const original = globalThis.fetch;
     globalThis.fetch = scriptedFetch(
@@ -301,19 +291,19 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
       const res = await handleRpcProxyRequest(
         rpcPost({ jsonrpc: "2.0", id: 1, method: "system_health" }),
         rpcEnv(poolWith(ep("a", SAFE_A), ep("b", SAFE_B)), {
-          DATA_API: dataApi,
-          RPC_USAGE_SYNC_SECRET: "test-secret",
+          RPC_USAGE_ANALYTICS: dataset,
         }),
         url("/rpc/v1/finney"),
         ctx,
       );
       const body = await errorJson(res, 502);
       assert.equal(body.error.code, "rpc_upstream_unavailable");
-      // The served telemetry event was posted: endpoint_id null, attempts = 2.
-      assert.equal(dataApi.calls.length, 1);
-      const served = await dataApi.calls[0].json();
-      assert.equal(served.endpoint_id, null); // endpoint_id ?? null
-      assert.equal(served.attempts, 2); // attempts || Math.min(candidates.length, RPC_MAX_ATTEMPTS)
+      // The served telemetry point was written: no endpoint, not ok, and the
+      // fallback attempt count of 2.
+      assert.equal(dataset.points.length, 1);
+      assert.equal(dataset.points[0]!.blobs[2], ""); // endpoint_id ?? null
+      assert.equal(dataset.points[0]!.doubles[0], 0); // ok
+      assert.equal(dataset.points[0]!.doubles[1], 2); // attempts
     } finally {
       globalThis.fetch = original;
     }
@@ -324,8 +314,8 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
     // ever tries `Math.min(orderedEndpoints.length, RPC_MAX_ATTEMPTS)` of them,
     // so the fallback attempt count reported when its attempts header is absent
     // must match that cap, not the full (uncapped) candidate count — otherwise
-    // rpc_usage_events.attempts is inflated whenever the eligible pool > 3.
-    const dataApi = dataApiCapture();
+    // the recorded attempt count is inflated whenever the eligible pool > 3.
+    const dataset = captureDataset();
     const ctx = { waitUntil: () => {} };
     const original = globalThis.fetch;
     const fetchFn = scriptedFetch(
@@ -350,7 +340,7 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
             ep("c", "https://entrypoint-finney.opentensor.ai"),
             ep("d", "https://lite.chain.opentensor.ai"),
           ),
-          { DATA_API: dataApi, RPC_USAGE_SYNC_SECRET: "test-secret" },
+          { RPC_USAGE_ANALYTICS: dataset },
         ),
         url("/rpc/v1/finney"),
         ctx,
@@ -359,9 +349,11 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
       assert.equal(body.error.code, "rpc_upstream_unavailable");
       // Only 3 upstream calls were actually made (the failover cap), not 4.
       assert.equal(fetchFn.calls.length, 3);
-      assert.equal(dataApi.calls.length, 1);
-      const served = await dataApi.calls[0].json();
-      assert.equal(served.attempts, 3); // capped, not the uncapped 4-candidate count
+      assert.equal(dataset.points.length, 1);
+      // Capped, not the uncapped 4-candidate count. The AE layout keeps the
+      // real attempt count in its own slot rather than collapsing it to a
+      // failover flag, so the cap arithmetic stays directly assertable.
+      assert.equal(dataset.points[0]!.doubles[1], 3);
     } finally {
       globalThis.fetch = original;
     }
@@ -524,12 +516,13 @@ describe("handleRpcProxyRequest telemetry + cache path", () => {
   });
 });
 
-// #4832 gap-closure: syncRpcUsageEventToPostgres (the Pattern-C per-request
-// Postgres mirror recordRpcUsage fires before its D1 write) is unexported, so
-// these drive it the same way the telemetry test above drives recordRpcUsage
-// itself -- through a guaranteed-502 handleRpcProxyRequest call (both
-// upstreams throw) that deterministically reaches the served-event write.
-describe("syncRpcUsageEventToPostgres wiring (#4832 gap-closure)", () => {
+// #9228: recordRpcUsage is unexported, so these drive its AE wiring the same
+// way the telemetry test above does -- through a guaranteed-502
+// handleRpcProxyRequest call (both upstreams throw) that deterministically
+// reaches the served-event write. Each arm matters on its own: a telemetry
+// write that reaches the request path, or one that silently stops firing, is
+// precisely the failure #9228 documents.
+describe("AE usage capture wiring (#9228)", () => {
   const rpcPost = (body: unknown) =>
     req("/rpc/v1/finney", {
       method: "POST",
@@ -550,13 +543,16 @@ describe("syncRpcUsageEventToPostgres wiring (#4832 gap-closure)", () => {
       },
     );
 
-  test("posts a mirrored event to DATA_API when the sync secret is configured", async () => {
-    const db = captureDb();
-    const dataApi = dataApiCapture();
-    let waited = null;
+  test("writes without deferring anything to ctx.waitUntil", async () => {
+    // The structural half of the latency guarantee: writeDataPoint is
+    // non-blocking, so nothing is handed to waitUntil and the request is not
+    // extended by telemetry at all. Every prior implementation of this writer
+    // needed a deferred fetch; this one does not.
+    const dataset = captureDataset();
+    let waitCalls = 0;
     const ctx = {
-      waitUntil: (p: Promise<unknown>) => {
-        waited = p;
+      waitUntil: () => {
+        waitCalls += 1;
       },
     };
     const original = globalThis.fetch;
@@ -565,73 +561,51 @@ describe("syncRpcUsageEventToPostgres wiring (#4832 gap-closure)", () => {
       const res = await handleRpcProxyRequest(
         rpcPost({ jsonrpc: "2.0", id: 1, method: "system_health" }),
         rpcEnv(poolWith(ep("a", SAFE_A), ep("b", SAFE_B)), {
-          METAGRAPH_HEALTH_DB: db,
-          DATA_API: dataApi,
-          RPC_USAGE_SYNC_SECRET: "test-secret",
+          RPC_USAGE_ANALYTICS: dataset,
         }),
         url("/rpc/v1/finney"),
         ctx,
       );
       await errorJson(res, 502);
-      assert.equal(dataApi.calls.length, 1);
-      const sent = dataApi.calls[0];
-      assert.equal(
-        sent.url,
-        "https://api.metagraph.sh/api/v1/internal/rpc-usage-sync",
-      );
-      assert.equal(sent.method, "POST");
-      assert.equal(sent.headers.get("x-rpc-usage-sync-token"), "test-secret");
-      const body = await sent.json();
-      assert.equal(body.network, "finney");
-      assert.equal(body.ok, false);
-      assert.equal(body.attempts, 2);
-      // ctx.waitUntil actually received the fire-and-forget promise.
-      assert.ok(waited);
-      await waited;
+      assert.equal(dataset.points.length, 1);
+      assert.equal(dataset.points[0]!.blobs[1], "finney");
+      assert.equal(waitCalls, 0);
     } finally {
       globalThis.fetch = original;
     }
   });
 
-  test("skips the Postgres mirror when RPC_USAGE_SYNC_SECRET is not configured", async () => {
-    const db = captureDb();
-    const dataApi = dataApiCapture();
-    const ctx = { waitUntil: () => {} };
+  test("captures even when the caller passes no ctx at all", async () => {
+    // The other half of the same property: under the old deferred-fetch
+    // writer a ctx-less call site lost its telemetry silently.
+    const dataset = captureDataset();
     const original = globalThis.fetch;
     globalThis.fetch = failBothUpstreams();
     try {
       await handleRpcProxyRequest(
         rpcPost({ jsonrpc: "2.0", id: 1, method: "system_health" }),
         rpcEnv(poolWith(ep("a", SAFE_A), ep("b", SAFE_B)), {
-          METAGRAPH_HEALTH_DB: db,
-          DATA_API: dataApi,
+          RPC_USAGE_ANALYTICS: dataset,
         }),
         url("/rpc/v1/finney"),
-        ctx,
       );
-      assert.equal(dataApi.calls.length, 0);
+      assert.equal(dataset.points.length, 1);
     } finally {
       globalThis.fetch = original;
     }
   });
 
-  test("skips the Postgres mirror when ctx.waitUntil is not a function", async () => {
-    const db = captureDb();
-    const dataApi = dataApiCapture();
+  test("no dataset binding is a no-op, and the proxy still answers", async () => {
     const original = globalThis.fetch;
     globalThis.fetch = failBothUpstreams();
     try {
-      await handleRpcProxyRequest(
+      const res = await handleRpcProxyRequest(
         rpcPost({ jsonrpc: "2.0", id: 1, method: "system_health" }),
-        rpcEnv(poolWith(ep("a", SAFE_A), ep("b", SAFE_B)), {
-          METAGRAPH_HEALTH_DB: db,
-          DATA_API: dataApi,
-          RPC_USAGE_SYNC_SECRET: "test-secret",
-        }),
+        rpcEnv(poolWith(ep("a", SAFE_A), ep("b", SAFE_B))),
         url("/rpc/v1/finney"),
         {},
       );
-      assert.equal(dataApi.calls.length, 0);
+      await errorJson(res, 502);
     } finally {
       globalThis.fetch = original;
     }

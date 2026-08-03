@@ -344,6 +344,7 @@ import { refreshLiveEconomics } from "../src/live-economics-refresh.ts";
 import { runNeuronsStalenessWatchdog } from "../src/neurons-staleness-watchdog.ts";
 import { runChainDetailStalenessWatchdog } from "../src/chain-detail-staleness-watchdog.ts";
 import { pruneChainDetail } from "../src/chain-detail-prune.ts";
+import { runRpcUsageStalenessWatchdog } from "../src/rpc-usage-staleness-watchdog.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
 import { validateResponseTripwire } from "../src/response-validation-tripwire.ts";
 import {
@@ -1478,6 +1479,11 @@ async function dispatchScheduled(
     // that no longer exists) and, worse, its `!eventsRollup.rolled` gate would
     // have silently skipped THIS cron's unrelated pruneHealthHistory
     // (surface_checks) prune forever — a regression to fix here, not carry.
+    // #9228: run BEFORE the rollup gate below, not inside the prune it
+    // guards. The gate can early-return this whole tick, and an alarm that a
+    // sibling lane's failure can silence is an alarm that reports "healthy"
+    // for exactly the reason it should be shouting.
+    const rpcUsageStaleness = await runRpcUsageStalenessWatchdog(env);
     const uptimeRollup = await rollupDailyUptime(env);
     const snapshotPromise = writeSubnetSnapshot(env, {
       readArtifact: readArtifact as unknown as (
@@ -1492,6 +1498,7 @@ async function dispatchScheduled(
         rollup_skipped_prune: true,
         uptime_rolled: uptimeRollup.rolled,
         snapshot,
+        rpc_usage_staleness: rpcUsageStaleness,
       };
     }
     const [pruned] = await Promise.all([
@@ -1506,7 +1513,7 @@ async function dispatchScheduled(
       }).catch(() => ({ pruned: false })),
       snapshotPromise,
     ]);
-    return pruned;
+    return { ...pruned, rpc_usage_staleness: rpcUsageStaleness };
   }
   if (cron === EMBEDDING_SYNC_CRON) {
     return runEmbeddingSync(env, { readArtifact });

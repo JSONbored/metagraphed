@@ -169,3 +169,22 @@ interface Env {
   R2_SQL_ACCOUNT_ID?: string;
   R2_SQL_WAREHOUSE?: string;
 }
+
+// RPC reverse-proxy usage telemetry on Workers Analytics Engine (#9228).
+//
+// The WRITE binding is declared in wrangler.jsonc and needs no secret. The
+// READ path is a separate Cloudflare API token with the
+// `Account | Account Analytics | Read` scope, which is the only scope the AE
+// SQL API accepts -- so it is a genuinely new credential, not a reuse of
+// R2_SQL_TOKEN (different product, different permission). Optional because a
+// deployment without it must still type-check and still serve: the hot tier
+// declines and /api/v1/rpc/usage falls through to the lakehouse cold tier.
+interface Env {
+  RPC_USAGE_ANALYTICS?: AnalyticsEngineDataset;
+  /** `npx wrangler secret put ANALYTICS_ENGINE_SQL_TOKEN` */
+  ANALYTICS_ENGINE_SQL_TOKEN?: string;
+  ANALYTICS_ENGINE_SQL_ACCOUNT_ID?: string;
+  /** Override for the capture-staleness alarm's threshold, in ms. Unset uses
+   * the measured RPC_USAGE_STALENESS_THRESHOLD_MS default. */
+  RPC_USAGE_STALENESS_THRESHOLD_MS?: string;
+}

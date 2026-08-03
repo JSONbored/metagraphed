@@ -90,6 +90,35 @@ beforeEach(() => {
   });
 });
 
+// #9228: an env carrying the AE read token, so the hot tier is reachable at
+// all. Without it loadRpcUsageHotTier declines before issuing a query --
+// which is itself the shipping default and is covered below.
+const AE_ENV = { ANALYTICS_ENGINE_SQL_TOKEN: "test-token" };
+
+// A fetch double answering the AE SQL API with one canned result set per
+// query, in the order loadRpcUsageHotTier issues them (totals, endpoints,
+// networks, buckets). The SQL those queries contain is asserted in
+// tests/rpc-usage-hot-tier.test.ts -- this file only wires the tier ordering,
+// so it goes through the real client rather than the injectable query seam.
+function aeFetch(resultSets: Row[][]) {
+  let index = 0;
+  return (async () => {
+    const data = resultSets[index] ?? [];
+    index += 1;
+    return Response.json({ meta: [], data, rows: data.length });
+  }) as unknown as typeof fetch;
+}
+
+async function withFetch<T>(impl: typeof fetch, run: () => Promise<T>) {
+  const original = globalThis.fetch;
+  globalThis.fetch = impl;
+  try {
+    return await run();
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
 describe("handleRpcUsage", () => {
   // D1 fully eliminated (2026-07-17): loadRpcUsage never queries
   // rpc_proxy_events any more, so a Postgres-tier miss always returns the
@@ -131,13 +160,59 @@ describe("handleRpcUsage", () => {
     assert.equal(body.meta.parameter, "window");
   });
 
-  // #4832 gap-closure: METAGRAPH_RPC_USAGE_SOURCE is flipped to "postgres" in
-  // wrangler.jsonc (after a one-time historical backfill -- see its inline
-  // comment) -- these tests prove the wiring, independent of that live flag
-  // value.
-  test("flag=postgres serves the DATA_API response, D1 never queried", async () => {
-    let d1Called = false;
+  // #9228: the Analytics Engine hot tier is queried FIRST -- once capture is
+  // running it is the only tier that can answer with today's traffic, and the
+  // tiers below it are a dead Postgres mirror and a frozen lakehouse.
+  test("the AE hot tier answers ahead of the Postgres tier", async () => {
+    let dataApiCalled = false;
     const env = {
+      ...AE_ENV,
+      METAGRAPH_RPC_USAGE_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () => {
+          dataApiCalled = true;
+          return Response.json({ summary: { total_requests: 42 } });
+        },
+      },
+    };
+    const body = await withFetch(
+      aeFetch([
+        [{ total: 7, ok_count: 6, p50: 40, p95: 90, observed_at_s: 1_700_000 }],
+        [
+          {
+            endpoint_id: "",
+            provider: "",
+            network: "finney",
+            requests: 7,
+            ok_count: 6,
+          },
+        ],
+        [{ network: "finney", requests: 7, ok_count: 6 }],
+        [{ ts: 1_700_000, requests: 7, ok_count: 6 }],
+      ]),
+      async () =>
+        json(
+          await handleRpcUsage(
+            req("/api/v1/rpc/usage"),
+            env as unknown as Env,
+            url("/api/v1/rpc/usage"),
+          ),
+        ),
+    );
+    assert.equal(body.data.summary.total_requests, 7);
+    // The one deliberate tier difference, visible end to end: AE has weighted
+    // quantiles so these are measured, where the lakehouse tier reports null.
+    assert.equal(body.data.summary.latency_ms.p50, 40);
+    assert.equal(body.data.summary.latency_ms.p95, 90);
+    // The "" sentinel is mapped back to the lakehouse tier's NULL group, so
+    // the two tiers serve the same endpoint shape.
+    assert.equal(body.data.endpoints[0].endpoint_id, null);
+    assert.equal(dataApiCalled, false);
+  });
+
+  test("an empty AE window falls through to the tier below", async () => {
+    const env = {
+      ...AE_ENV,
       METAGRAPH_RPC_USAGE_SOURCE: "postgres",
       DATA_API: {
         fetch: async () =>
@@ -151,20 +226,43 @@ describe("handleRpcUsage", () => {
             buckets: [],
           }),
       },
-      get METAGRAPH_HEALTH_DB() {
-        d1Called = true;
-        throw new Error("D1 must not be queried when Postgres serves");
-      },
     };
-    const body = await json(
-      await handleRpcUsage(
-        req("/api/v1/rpc/usage"),
-        env as unknown as Env,
-        url("/api/v1/rpc/usage"),
-      ),
+    const body = await withFetch(
+      aeFetch([[{ total: null }], [], [], []]),
+      async () =>
+        json(
+          await handleRpcUsage(
+            req("/api/v1/rpc/usage"),
+            env as unknown as Env,
+            url("/api/v1/rpc/usage"),
+          ),
+        ),
     );
     assert.equal(body.data.summary.total_requests, 42);
-    assert.equal(d1Called, false);
+  });
+
+  test("no AE read token means the route behaves exactly as it does today", async () => {
+    // The shipping default: capture starts on deploy, the read token is
+    // provisioned separately, and until it exists this route must not change
+    // its answer OR reach for a credential it does not have.
+    let aeCalled = false;
+    const body = await withFetch(
+      (async () => {
+        aeCalled = true;
+        return Response.json({ data: [] });
+      }) as unknown as typeof fetch,
+      async () =>
+        json(
+          await handleRpcUsage(
+            req("/api/v1/rpc/usage"),
+            mockEnv(),
+            url("/api/v1/rpc/usage"),
+          ),
+        ),
+    );
+    assert.equal(aeCalled, false);
+    assert.equal(body.data.summary.total_requests, 0);
+    assert.equal(body.data.observed_at, OBSERVED_AT);
   });
 
   test("flag=postgres falls back to the empty payload when DATA_API fails", async () => {
