@@ -7,8 +7,10 @@ import { describe, test } from "vitest";
 import {
   loadAccountEventsColdTier,
   loadBlockEventsColdTier,
+  loadSubnetEventsColdTier,
 } from "../src/events-cold-tier.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { OFFSET_EMULATION_CAP } from "../src/r2-sql-blocks.ts";
 
 const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
 const ADDR = "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F";
@@ -268,6 +270,177 @@ describe("loadBlockEventsColdTier", () => {
     }) as unknown as typeof fetch;
     assert.equal(
       await loadBlockEventsColdTier(TOKEN as never, "42", { limit: 5 }),
+      null,
+    );
+  });
+});
+
+describe("loadSubnetEventsColdTier", () => {
+  test("scopes to one subnet, newest first, with data-api's ordering", async () => {
+    const q = sqlFetch([eventRow(10, 1), eventRow(10, 0)]);
+    const out = await loadSubnetEventsColdTier(TOKEN as unknown as Env, 7, {
+      limit: 2,
+    });
+    assert.ok(out);
+    assert.equal(out.netuid, 7);
+    assert.equal(out.event_count, 2);
+    assert.equal(q.length, 1);
+    assert.match(q[0]!, /FROM chain\.account_events/);
+    assert.match(q[0]!, /netuid = 7/);
+    assert.match(
+      q[0]!,
+      /ORDER BY observed_at DESC, block_number DESC, event_index DESC/,
+    );
+    // The netuid is inlined as a bounded integer, never as caller text.
+    assert.doesNotMatch(q[0]!, /netuid = '/);
+  });
+
+  test("declines a non-numeric netuid rather than scanning every subnet", async () => {
+    // The failure this prevents is an UNFILTERED read of a 441M-row table.
+    const q = sqlFetch([]);
+    assert.equal(
+      await loadSubnetEventsColdTier(
+        TOKEN as unknown as Env,
+        "7; DROP" as never,
+        {
+          limit: 5,
+        },
+      ),
+      null,
+    );
+    assert.equal(q.length, 0, "must not issue a query at all");
+  });
+
+  test("composes the kind and block-range filters", async () => {
+    const q = sqlFetch([eventRow(20)]);
+    await loadSubnetEventsColdTier(TOKEN as unknown as Env, 1, {
+      limit: 5,
+      kind: "StakeAdded",
+      blockStart: 8_700_000,
+      blockEnd: 8_759_336,
+    });
+    assert.match(q[0]!, /event_kind = 'StakeAdded'/);
+    assert.match(q[0]!, /block_number >= 8700000/);
+    assert.match(q[0]!, /block_number <= 8759336/);
+  });
+
+  test("declines an unusable kind instead of widening to every kind", async () => {
+    const q = sqlFetch([]);
+    assert.equal(
+      await loadSubnetEventsColdTier(TOKEN as unknown as Env, 1, {
+        limit: 5,
+        kind: "Stake' OR '1'='1",
+      }),
+      null,
+    );
+    assert.equal(q.length, 0);
+  });
+
+  test("emits the 3-part cursor token and seeks with it", async () => {
+    const rows = [eventRow(10, 2), eventRow(10, 1)];
+    const q = sqlFetch(rows);
+    const first = await loadSubnetEventsColdTier(TOKEN as unknown as Env, 7, {
+      limit: 2,
+    });
+    assert.ok(first!.next_cursor, "a full page must carry a cursor");
+
+    const q2 = sqlFetch([eventRow(9)]);
+    await loadSubnetEventsColdTier(TOKEN as unknown as Env, 7, {
+      limit: 2,
+      cursor: first!.next_cursor,
+    });
+    // The same tuple seek the account feed uses, so tokens are interchangeable.
+    assert.match(
+      q2[0]!,
+      /\(observed_at, block_number, event_index\) < \(\d+, \d+, \d+\)/,
+    );
+    void q;
+  });
+
+  test("a short page carries no cursor", async () => {
+    sqlFetch([eventRow(10)]);
+    const out = await loadSubnetEventsColdTier(TOKEN as unknown as Env, 7, {
+      limit: 5,
+    });
+    assert.equal(out!.next_cursor, null);
+  });
+
+  test("a cursor page ignores offset, mirroring data-api", async () => {
+    const rows = [eventRow(10, 2), eventRow(10, 1)];
+    sqlFetch(rows);
+    const first = await loadSubnetEventsColdTier(TOKEN as unknown as Env, 7, {
+      limit: 2,
+    });
+    const q = sqlFetch(rows);
+    await loadSubnetEventsColdTier(TOKEN as unknown as Env, 7, {
+      limit: 2,
+      offset: 5,
+      cursor: first!.next_cursor,
+    });
+    assert.match(q[0]!, /LIMIT 2/, "offset must not inflate a cursor page");
+  });
+
+  test("declines past the offset-emulation cap", async () => {
+    const q = sqlFetch([]);
+    assert.equal(
+      await loadSubnetEventsColdTier(TOKEN as unknown as Env, 7, {
+        limit: 5,
+        offset: OFFSET_EMULATION_CAP + 1,
+      }),
+      null,
+    );
+    assert.equal(q.length, 0);
+  });
+
+  test("declines an unusable limit rather than issuing an unbounded read", async () => {
+    const q = sqlFetch([]);
+    for (const limit of [0, -1, Number.NaN]) {
+      assert.equal(
+        await loadSubnetEventsColdTier(TOKEN as unknown as Env, 7, { limit }),
+        null,
+        `limit ${limit} must decline`,
+      );
+    }
+    assert.equal(q.length, 0, "must not issue a query at all");
+  });
+
+  test("declines an unusable block bound instead of dropping the filter", async () => {
+    // Dropping a malformed bound would silently WIDEN the scan to the whole
+    // subnet -- the caller asked for a window and would get everything.
+    const q = sqlFetch([]);
+    assert.equal(
+      await loadSubnetEventsColdTier(TOKEN as unknown as Env, 7, {
+        limit: 5,
+        blockStart: "not-a-block",
+      }),
+      null,
+    );
+    assert.equal(q.length, 0);
+  });
+
+  test("emulates offset by over-fetching then slicing", async () => {
+    const rows = [eventRow(12), eventRow(11), eventRow(10)];
+    const q = sqlFetch(rows);
+    const out = await loadSubnetEventsColdTier(TOKEN as unknown as Env, 7, {
+      limit: 2,
+      offset: 1,
+    });
+    // limit + offset is fetched, then the offset rows are dropped locally --
+    // R2 SQL has no OFFSET.
+    assert.match(q[0]!, /LIMIT 3/);
+    assert.equal(out!.event_count, 2);
+    assert.equal(out!.offset, 1);
+    assert.equal(out!.events[0].block_number, 11);
+  });
+
+  test("declines when the lakehouse cannot answer", async () => {
+    globalThis.fetch = (async () =>
+      ({
+        ok: false,
+        status: 500,
+      }) as unknown as Response) as unknown as typeof fetch;
+    assert.equal(
+      await loadSubnetEventsColdTier(TOKEN as unknown as Env, 7, { limit: 5 }),
       null,
     );
   });
