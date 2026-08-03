@@ -1,18 +1,20 @@
-// The nominator-positions lane's alarm (#9273) and its cron wiring.
+// The validator-nominator-counts lane's alarm (#9301) and its cron wiring.
 //
-// The rule's edges are the point, and one of them is unusual: an EMPTY table
-// alerts. That is the pre-cutover state -- until the revived sync lane posts,
-// every /accounts/{ss58}/positions read is still answering from a frozen
-// lakehouse export, which is exactly the condition that ran unnoticed for
-// 34 hours and produced this issue.
+// The rule's edges are the point, and two of them matter here. An EMPTY table
+// alerts: that is the pre-cutover state, in which every nominator_count is
+// still coming from a frozen lakehouse mirror or serving null outright, which
+// is exactly the condition that ran unnoticed from 2026-08-02. And a capture
+// from the middle of the producer's 24h cycle is QUIET -- the threshold is
+// derived from that cadence rather than picked, because an alarm that fires on
+// a healthy lane is one nobody reads.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import {
-  NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS,
-  evaluateNominatorPositionsStaleness,
-  runNominatorPositionsStalenessWatchdog,
-} from "../src/nominator-positions-staleness-watchdog.ts";
+  VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS,
+  evaluateValidatorNominatorCountsStaleness,
+  runValidatorNominatorCountsStalenessWatchdog,
+} from "../src/validator-nominator-counts-staleness-watchdog.ts";
 import { handleScheduled } from "../workers/api.ts";
 import * as workerConfig from "../workers/config.ts";
 
@@ -37,24 +39,21 @@ function fakeDb(latest: number | null | Error) {
   };
 }
 
-describe("evaluateNominatorPositionsStaleness", () => {
+describe("evaluateValidatorNominatorCountsStaleness", () => {
   test("a recent pass is quiet; one past the threshold is a stall", () => {
-    const fresh = evaluateNominatorPositionsStaleness({
+    const fresh = evaluateValidatorNominatorCountsStaleness({
       latestCapturedAtMs: NOW - 2 * HOUR,
       nowMs: NOW,
-      thresholdMs: NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS,
+      thresholdMs: VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS,
     });
     assert.equal(fresh.stale, false);
     assert.equal(fresh.reason, null);
     assert.equal(fresh.age_ms, 2 * HOUR);
 
-    // 31h, not 7h: the threshold moved to 30h in #9301 once the lane had a
-    // real producer on a 24h tick. A 7-hour-old capture is now a HEALTHY
-    // mid-cycle reading -- see the constant's own header.
-    const stalled = evaluateNominatorPositionsStaleness({
+    const stalled = evaluateValidatorNominatorCountsStaleness({
       latestCapturedAtMs: NOW - 31 * HOUR,
       nowMs: NOW,
-      thresholdMs: NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS,
+      thresholdMs: VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS,
     });
     assert.equal(stalled.stale, true);
     assert.equal(stalled.reason, "stale");
@@ -62,13 +61,14 @@ describe("evaluateNominatorPositionsStaleness", () => {
   });
 
   test("a capture from the middle of the producer's 24h cycle is quiet", () => {
-    // The regression #9301 fixed: at the old 6h threshold this lane alerted
-    // for roughly three quarters of every day while working perfectly.
-    for (const hours of [7, 12, 20, 23]) {
-      const verdict = evaluateNominatorPositionsStaleness({
+    // The threshold has to clear one whole cadence: the producer scans every
+    // 24h, so a healthy lane presents an age anywhere in [0h, 24h+scan] and
+    // any threshold at or under 24h alerts on a lane that is working.
+    for (const hours of [7, 12, 20, 23, 24]) {
+      const verdict = evaluateValidatorNominatorCountsStaleness({
         latestCapturedAtMs: NOW - hours * HOUR,
         nowMs: NOW,
-        thresholdMs: NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS,
+        thresholdMs: VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS,
       });
       assert.equal(
         verdict.stale,
@@ -80,19 +80,20 @@ describe("evaluateNominatorPositionsStaleness", () => {
 
   test("exactly at the threshold is not yet a stall", () => {
     // Strictly-greater, so a lane running exactly on cadence never flaps.
-    const verdict = evaluateNominatorPositionsStaleness({
-      latestCapturedAtMs: NOW - NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS,
+    const verdict = evaluateValidatorNominatorCountsStaleness({
+      latestCapturedAtMs:
+        NOW - VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS,
       nowMs: NOW,
-      thresholdMs: NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS,
+      thresholdMs: VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS,
     });
     assert.equal(verdict.stale, false);
   });
 
   test("an empty table is a stall of infinite age, never a healthy quiet", () => {
-    const verdict = evaluateNominatorPositionsStaleness({
+    const verdict = evaluateValidatorNominatorCountsStaleness({
       latestCapturedAtMs: null,
       nowMs: NOW,
-      thresholdMs: NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS,
+      thresholdMs: VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS,
     });
     assert.equal(verdict.stale, true);
     assert.equal(verdict.reason, "no_rows");
@@ -101,11 +102,11 @@ describe("evaluateNominatorPositionsStaleness", () => {
   });
 });
 
-describe("runNominatorPositionsStalenessWatchdog", () => {
+describe("runValidatorNominatorCountsStalenessWatchdog", () => {
   test("a fresh lane reports quiet and records nothing", async () => {
     const { db, queries } = fakeDb(NOW - HOUR);
     const recorded: unknown[] = [];
-    const result = await runNominatorPositionsStalenessWatchdog(
+    const result = await runValidatorNominatorCountsStalenessWatchdog(
       { METAGRAPH_HEALTH_DB: db },
       {
         now: () => NOW,
@@ -118,14 +119,17 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
     assert.equal(result.ok, true);
     assert.equal(result.alerted, false);
     assert.deepEqual(recorded, []);
-    assert.match(queries[0]!, /MAX\(captured_at\).*FROM nominator_positions/);
+    assert.match(
+      queries[0]!,
+      /MAX\(captured_at\)[\s\S]*FROM validator_nominator_counts/,
+    );
   });
 
   test("a stalled lane records ONE exception naming the age and the route it breaks", async () => {
-    const { db } = fakeDb(NOW - 34 * HOUR);
+    const { db } = fakeDb(NOW - 48 * HOUR);
     const recorded: { error?: Error; route?: string; errorCode?: string }[] =
       [];
-    const result = await runNominatorPositionsStalenessWatchdog(
+    const result = await runValidatorNominatorCountsStalenessWatchdog(
       { METAGRAPH_HEALTH_DB: db },
       {
         now: () => NOW,
@@ -137,17 +141,20 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
     );
     assert.equal(result.alerted, true);
     assert.equal(recorded.length, 1);
-    assert.equal(recorded[0]!.route, "watchdog:nominator-positions-staleness");
+    assert.equal(
+      recorded[0]!.route,
+      "watchdog:validator-nominator-counts-staleness",
+    );
     assert.equal(recorded[0]!.errorCode, "stale_lane");
-    assert.match(String(recorded[0]!.error?.message), /34\.0 h old/);
+    assert.match(String(recorded[0]!.error?.message), /48\.0 h old/);
     assert.match(String(recorded[0]!.error?.message), /threshold 30 h/);
-    assert.match(String(recorded[0]!.error?.message), /positions/);
+    assert.match(String(recorded[0]!.error?.message), /nominator_count/);
   });
 
   test("an empty table alerts with the no-rows wording", async () => {
     const { db } = fakeDb(null);
     const recorded: { error?: Error }[] = [];
-    const result = await runNominatorPositionsStalenessWatchdog(
+    const result = await runValidatorNominatorCountsStalenessWatchdog(
       { METAGRAPH_HEALTH_DB: db },
       {
         now: () => NOW,
@@ -164,10 +171,10 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
 
   test("the env threshold override wins over the default", async () => {
     const { db } = fakeDb(NOW - 2 * HOUR);
-    const result = await runNominatorPositionsStalenessWatchdog(
+    const result = await runValidatorNominatorCountsStalenessWatchdog(
       {
         METAGRAPH_HEALTH_DB: db,
-        NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS: String(HOUR),
+        VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS: String(HOUR),
       },
       { now: () => NOW, recordException: (async () => true) as never },
     );
@@ -176,19 +183,19 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
   });
 
   test("a missing binding and a failing query degrade to summaries, never throw", async () => {
-    assert.deepEqual(await runNominatorPositionsStalenessWatchdog({}), {
+    assert.deepEqual(await runValidatorNominatorCountsStalenessWatchdog({}), {
       ok: false,
       reason: "d1 binding unavailable",
     });
-    assert.deepEqual(await runNominatorPositionsStalenessWatchdog(null), {
+    assert.deepEqual(await runValidatorNominatorCountsStalenessWatchdog(null), {
       ok: false,
       reason: "d1 binding unavailable",
     });
 
     const { db } = fakeDb(
-      new Error("D1_ERROR: no such table: nominator_positions"),
+      new Error("D1_ERROR: no such table: validator_nominator_counts"),
     );
-    const failed = await runNominatorPositionsStalenessWatchdog(
+    const failed = await runValidatorNominatorCountsStalenessWatchdog(
       { METAGRAPH_HEALTH_DB: db },
       { recordException: (async () => true) as never },
     );
@@ -205,7 +212,7 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
         },
       }),
     };
-    const nonError = await runNominatorPositionsStalenessWatchdog(
+    const nonError = await runValidatorNominatorCountsStalenessWatchdog(
       { METAGRAPH_HEALTH_DB: stringThrow },
       { recordException: (async () => true) as never },
     );
@@ -217,7 +224,7 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
     const nullRow = {
       prepare: () => ({ first: async () => null }),
     };
-    const empty = await runNominatorPositionsStalenessWatchdog(
+    const empty = await runValidatorNominatorCountsStalenessWatchdog(
       { METAGRAPH_HEALTH_DB: nullRow },
       { now: () => NOW, recordException: (async () => true) as never },
     );
@@ -225,7 +232,7 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
     assert.equal(empty.reason, "no_rows");
 
     const { db } = fakeDb(NOW - 48 * HOUR);
-    const result = await runNominatorPositionsStalenessWatchdog(
+    const result = await runValidatorNominatorCountsStalenessWatchdog(
       { METAGRAPH_HEALTH_DB: db },
       {
         now: () => NOW,
@@ -242,7 +249,7 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
     // No telemetry env configured: the real recorder returns false without
     // touching the network, so the default path is exercisable in-process.
     const { db } = fakeDb(NOW - 48 * HOUR);
-    const result = await runNominatorPositionsStalenessWatchdog(
+    const result = await runValidatorNominatorCountsStalenessWatchdog(
       { METAGRAPH_HEALTH_DB: db },
       { now: () => NOW },
     );
@@ -252,7 +259,7 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
     // The default clock is the real one, so a stamp far in the past is stale
     // without injecting `now`.
     const past = fakeDb(0);
-    const defaults = await runNominatorPositionsStalenessWatchdog({
+    const defaults = await runValidatorNominatorCountsStalenessWatchdog({
       METAGRAPH_HEALTH_DB: past.db,
     });
     assert.equal(defaults.alerted, true);
@@ -266,7 +273,8 @@ describe("the cron string is unique and wired", () => {
     const crons = Object.entries(workerConfig)
       .filter(([key]) => key.endsWith("_CRON"))
       .map(([, value]) => value);
-    const mine = workerConfig.NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON;
+    const mine =
+      workerConfig.VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON;
     assert.equal(
       crons.filter((cron) => cron === mine).length,
       1,
@@ -286,7 +294,7 @@ describe("the cron string is unique and wired", () => {
     const parsed = JSON.parse(raw) as { triggers?: { crons?: string[] } };
     assert.ok(
       parsed.triggers?.crons?.includes(
-        workerConfig.NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON,
+        workerConfig.VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON,
       ),
     );
   });
@@ -295,7 +303,7 @@ describe("the cron string is unique and wired", () => {
     const { db, queries } = fakeDb(Date.now());
     const result = (await handleScheduled(
       {
-        cron: workerConfig.NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON,
+        cron: workerConfig.VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON,
       } as unknown as ScheduledController,
       { METAGRAPH_HEALTH_DB: db } as unknown as Parameters<
         typeof handleScheduled
@@ -305,6 +313,6 @@ describe("the cron string is unique and wired", () => {
     assert.equal(result.ok, true);
     assert.equal(result.alerted, false);
     assert.equal(queries.length, 1);
-    assert.match(queries[0]!, /FROM nominator_positions/);
+    assert.match(queries[0]!, /FROM validator_nominator_counts/);
   });
 });

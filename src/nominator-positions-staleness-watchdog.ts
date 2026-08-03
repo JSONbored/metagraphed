@@ -17,18 +17,30 @@ import { recordExceptionEvent } from "./usage-telemetry.ts";
 /**
  * How old the ledger may get before this is a stall.
  *
- * SIX HOURS, not the neurons lane's 45 minutes, and the difference is the
+ * THIRTY HOURS, not the neurons lane's 45 minutes, and the difference is the
  * work: this lane is a full SubtensorModule::Alpha scan (~153k rows across
  * every coldkey on the network), which is why it never shared the 15-minute
- * metagraph cadence even when it ran. Six hours is several missed passes at
- * any plausible cadence the Container runs it on, and still catches the
- * failure class this exists for -- a writer that stopped entirely -- inside
- * one working morning rather than never.
+ * metagraph cadence even when it ran.
+ *
+ * CORRECTED from six hours (#9301). Six was chosen while the lane had no
+ * producer at all, on the reasoning that it was "several missed passes at any
+ * plausible cadence" -- but the producer that now feeds it runs on a 24h tick
+ * (VALIDATOR_NOMINATORS_POLL_SECS defaults to 24*3600 in metagraphed-infra's
+ * poller, and one job's scan writes BOTH this table and
+ * validator_nominator_counts). A healthy lane therefore presents an age
+ * anywhere in [0h, 24h+scan] at any moment, so a six-hour threshold would have
+ * alerted for roughly three quarters of every day on a lane working perfectly
+ * -- the failure mode where an alarm that always fires stops being read.
+ *
+ * 30h is one missed pass plus slack for the scan itself (~4 minutes at the
+ * measured ~3,100 rows/sec) and cron jitter. It fires only once a pass has
+ * genuinely been skipped, and still catches a writer that stopped entirely
+ * inside a day and a quarter rather than never.
  *
  * Overridable per-deployment via NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS so
  * the number can follow the Container's cadence without a code deploy.
  */
-export const NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS = 6 * 60 * 60 * 1000;
+export const NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS = 30 * 60 * 60 * 1000;
 
 export interface NominatorPositionsStalenessVerdict {
   stale: boolean;
