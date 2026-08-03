@@ -711,6 +711,10 @@
       // the lakehouse -- see PROJECTION_LANES_CRON in workers/config.ts for
       // the cadence and minute-offset rationale.
       "11,41 * * * *",
+      // 3,13,... = the 10-minute emission-gate sampler (#8748/#8750), moved
+      // off its GitHub Actions schedule -- offset from :0-based grids so it
+      // never stacks on the */5 raw-capture tick's busiest minute.
+      "3,13,23,33,43,53 * * * *",
     ],
   },
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite

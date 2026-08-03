@@ -3035,6 +3035,97 @@ describe("handleScheduled", () => {
 
 // --- handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON (#4832, moved off GitHub
 // Actions -- formerly rollup-account-events-daily.yml, retired) -------------
+describe("handleScheduled EMISSION_GATE_SAMPLE_CRON", () => {
+  test("skips (does not throw) when EMISSION_GATE_SYNC_SECRET is not configured", async () => {
+    const result = await handleScheduled(
+      {
+        cron: workerConfig.EMISSION_GATE_SAMPLE_CRON,
+      } as unknown as ScheduledController,
+      {} as unknown as Env,
+      {} as unknown as ExecutionContext,
+    );
+    assert.deepEqual(result, {
+      ok: false,
+      skipped: true,
+      reason: "EMISSION_GATE_SYNC_SECRET not configured",
+    });
+  });
+
+  test("samples the chain and persists through the real sync handler", async () => {
+    // End to end minus the network: a stubbed RPC chain on globalThis.fetch,
+    // the REAL sync handler, and a REAL sqlite loaded with the emission-gate
+    // migration -- the same wiring production runs, one tick.
+    const { DatabaseSync } = await import("node:sqlite");
+    const fs = await import("node:fs");
+    const db = new DatabaseSync(":memory:");
+    db.exec(fs.readFileSync("migrations/d1/0005_emission_gate.sql", "utf8"));
+    const d1 = {
+      prepare(sql: string) {
+        const bound: unknown[] = [];
+        const shim = {
+          bind(...values: unknown[]) {
+            bound.push(...values);
+            return shim;
+          },
+          async all() {
+            return { results: db.prepare(sql).all(...(bound as never[])) };
+          },
+          async first() {
+            return db.prepare(sql).get(...(bound as never[])) ?? null;
+          },
+          async run() {
+            return db.prepare(sql).run(...(bound as never[]));
+          },
+        };
+        return shim;
+      },
+      async batch(statements: { run(): Promise<unknown> }[]) {
+        const out = [];
+        for (const s of statements) out.push(await s.run());
+        return out;
+      },
+    };
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body)) as {
+        method: string;
+        params: unknown[];
+      };
+      let result: unknown = null;
+      if (body.method === "chain_getHeader") result = { number: "0x85a1c8" };
+      else if (body.method === "state_getKeysPaged") result = [];
+      return {
+        ok: true,
+        json: async () => ({ result }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    try {
+      const result = (await handleScheduled(
+        {
+          cron: workerConfig.EMISSION_GATE_SAMPLE_CRON,
+        } as unknown as ScheduledController,
+        {
+          EMISSION_GATE_SYNC_SECRET: "cron-test-secret",
+          METAGRAPH_HEALTH_DB: d1,
+        } as unknown as Env,
+        {} as unknown as ExecutionContext,
+      )) as Row;
+      assert.equal(result.ok, true, JSON.stringify(result));
+      const body = result.body as Row;
+      assert.equal(body.block_number, 0x85a1c8);
+      // First observation writes one history row PER gate parameter (bar,
+      // quantile, exponent, halvings) -- proof the differs ran against the
+      // real store, not merely that the handler returned 200.
+      const rows = db
+        .prepare("SELECT count(*) AS n FROM emission_gate_param_history")
+        .get() as { n: number };
+      assert.equal(rows.n, 4);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+});
+
 describe("handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON", () => {
   test("skips FIRST when the account_events postgres tier is retired", async () => {
     // Post-wipe state: the rollup's write target no longer exists, so the

@@ -34,6 +34,9 @@ interface Env {
    * readings to. Set via `wrangler secret put` AND as a GitHub Actions secret
    * (the workflow sends it; the Worker checks it). */
   EMISSION_GATE_SYNC_SECRET?: string;
+  /** RPC endpoint for the Worker-cron emission-gate sampler; falls back to
+   * CHAIN_HEAD_RPC_URL and then the public archive endpoint. */
+  EMISSION_SAMPLER_RPC_URL?: string;
   FULLNODE_RPC_ORIGINS?: string;
   GITHUB_OAUTH_CLIENT_SECRET?: string;
   /** Authenticates the daily github-signals cron's ~476 GitHub reads

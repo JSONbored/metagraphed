@@ -16,11 +16,13 @@ name: Sample Emission Gate
 # is decommissioned too, so this fetches from the public archive endpoint
 # like every other caller now does.
 on:
-  schedule:
-    # Every 10 minutes — theta is recomputed by the runtime every 360 blocks
-    # (~72 minutes), and catching its moves needs a cadence tighter than that;
-    # matches the box timer this restores.
-    - cron: "*/10 * * * *"
+  # Schedule RETIRED (2026-08-03): the 10-minute cadence moved onto the
+  # Worker cron EMISSION_GATE_SAMPLE_CRON (workers/config.ts) -- the
+  # persistence route, the D1 state, and the differs already live in that
+  # Worker, so the Actions hop bought a third-party trigger dependency and
+  # 144 runner spins a day for a job the Worker runs itself. This workflow
+  # stays as a manual fallback shell around the same shared sampler
+  # (src/emission-gate-sampler.ts).
   workflow_dispatch: {}
 
 permissions:
