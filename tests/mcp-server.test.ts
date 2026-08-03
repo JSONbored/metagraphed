@@ -15085,6 +15085,90 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
     assert.equal(drillData.counterparties[0].sent_tao, 2.5);
     assert.match(queries[0]!, /hotkey = '5G9hfkx.*AND coldkey = '5EYCAe5/);
   });
+
+  test("get_validator_nominators serves the nominator list from the lakehouse", async () => {
+    const queries = lakeFetch([
+      {
+        coldkey: "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F",
+        staked_tao: 40,
+        unstaked_tao: 5,
+        event_count: 4,
+        last_observed: 1785544524000,
+        net_staked_tao: 35,
+        gross_staked_tao: 45,
+      },
+    ]);
+    const res = await callTool(
+      "get_validator_nominators",
+      { hotkey: LAKE_EXTRINSIC.signer, sort: "last_activity" },
+      { env: LAKE_ENV },
+    );
+    const data = res.body.result.structuredContent;
+    assert.equal(data.nominator_count, 1);
+    assert.equal(data.nominators[0].net_staked_tao, 35);
+    assert.equal(data.sort, "last_activity");
+    assert.match(queries[0]!, /GROUP BY coldkey/);
+    assert.match(queries[0]!, /ORDER BY last_observed DESC, coldkey ASC/);
+  });
+
+  test("get_account_positions prices the lakehouse ledger off D1 neurons", async () => {
+    const queries = lakeFetch([
+      {
+        hotkey: LAKE_EXTRINSIC.signer,
+        netuid: 18,
+        share_fraction: 0.5,
+        captured_at: 1785634702670,
+      },
+    ]);
+    const envWithD1 = {
+      ...LAKE_ENV,
+      METAGRAPH_HEALTH_DB: {
+        prepare: () => ({
+          bind: () => ({
+            all: async () => ({
+              results: [
+                {
+                  hotkey: LAKE_EXTRINSIC.signer,
+                  netuid: 18,
+                  stake_tao: 100,
+                },
+              ],
+            }),
+          }),
+        }),
+      },
+    };
+    const res = await callTool(
+      "get_account_positions",
+      { ss58: LAKE_EXTRINSIC.signer },
+      { env: envWithD1 },
+    );
+    const data = res.body.result.structuredContent;
+    assert.equal(data.position_count, 1);
+    assert.equal(data.positions[0].stake_tao, 50);
+    assert.equal(data.total_stake_alpha, 50);
+    assert.match(queries[0]!, /FROM chain\.nominator_positions/);
+
+    // The compound card resolves through the SAME chain, so it cannot
+    // disagree with the single-facet tool about what this coldkey holds.
+    lakeFetch([
+      {
+        hotkey: LAKE_EXTRINSIC.signer,
+        netuid: 18,
+        share_fraction: 0.5,
+        captured_at: 1785634702670,
+      },
+    ]);
+    const snapshot = await callTool(
+      "get_account_snapshot",
+      { ss58: LAKE_EXTRINSIC.signer },
+      { env: envWithD1 },
+    );
+    assert.equal(
+      snapshot.body.result.structuredContent.positions.position_count,
+      1,
+    );
+  });
 });
 
 // #9146: the two windowed-aggregate tools, proving the projection tier the

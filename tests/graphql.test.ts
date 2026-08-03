@@ -7717,6 +7717,68 @@ describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-
     assert.equal(called, false);
   });
 
+  // #9146's cold-tier lane, through the SAME loadAccountPositionsColdTier
+  // reader REST's handleAccountPositions and MCP's get_account_positions use,
+  // so a retired Postgres tier no longer means GraphQL alone serves silence
+  // over a ledger that is in the lakehouse.
+  test("falls to the lakehouse when the Postgres tier misses", async () => {
+    const realFetch = globalThis.fetch;
+    let capturedQuery = "";
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      capturedQuery = JSON.parse(String(init.body)).query;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          result: {
+            rows: [
+              {
+                hotkey: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+                netuid: 3,
+                share_fraction: 0.5,
+                captured_at: 1785634702670,
+              },
+            ],
+          },
+        }),
+      };
+    }) as unknown as typeof fetch;
+    try {
+      const env = {
+        R2_SQL_TOKEN: "cfut_test",
+        METAGRAPH_HEALTH_DB: {
+          prepare: () => ({
+            bind: () => ({
+              all: async () => ({
+                results: [
+                  {
+                    hotkey: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+                    netuid: 3,
+                    stake_tao: 200,
+                  },
+                ],
+              }),
+            }),
+          }),
+        },
+      };
+      const { status, body } = await gql(
+        query(`(ss58: "${SS58}")`),
+        env as unknown as Env,
+      );
+      assert.equal(status, 200);
+      assert.equal(body.errors, undefined);
+      const p = body.data.account_positions;
+      assert.equal(p.position_count, 1);
+      assert.equal(p.positions[0].stake_tao, 100);
+      assert.equal(p.total_stake_alpha, 100);
+      assert.match(capturedQuery, /FROM chain\.nominator_positions/);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
   test("account_positions is weighted as a fan-out field", () => {
     assert.equal(FIELD_COMPLEXITY.account_positions, 5);
   });
@@ -19149,6 +19211,60 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
       /`offset` must be a non-negative integer/,
     );
     assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
+  });
+
+  // #9146's cold-tier lane, through the SAME loadValidatorNominatorsColdTier
+  // reader REST's handleValidatorNominators and MCP's
+  // get_validator_nominators use.
+  test("falls to the lakehouse when the Postgres tier misses", async () => {
+    // A REAL SS58 hotkey: this describe's placeholder HOTKEY is 51 chars, and
+    // the reader refuses anything it cannot safely inline rather than
+    // scanning every validator.
+    const REAL = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+    const COLDKEY = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+    const realFetch = globalThis.fetch;
+    let capturedQuery = "";
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      capturedQuery = JSON.parse(String(init.body)).query;
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          result: {
+            rows: [
+              {
+                coldkey: COLDKEY,
+                staked_tao: 12.5,
+                unstaked_tao: 2.5,
+                event_count: 3,
+                last_observed: 1785544524000,
+                net_staked_tao: 10,
+                gross_staked_tao: 15,
+              },
+            ],
+          },
+        }),
+      };
+    }) as unknown as typeof fetch;
+    try {
+      const { status, body } = await gql(
+        nominatorsQuery(`(hotkey: "${REAL}", window: "7d", limit: 5)`),
+        { R2_SQL_TOKEN: "cfut_test" } as unknown as Env,
+      );
+      assert.equal(status, 200);
+      assert.equal(body.errors, undefined);
+      const n = body.data.validator_nominators;
+      assert.equal(n.window, "7d");
+      assert.equal(n.limit, 5);
+      assert.equal(n.nominator_count, 1);
+      assert.equal(n.nominators[0].coldkey, COLDKEY);
+      assert.equal(n.nominators[0].net_staked_tao, 10);
+      assert.match(capturedQuery, /FROM chain\.account_events/);
+      assert.match(capturedQuery, new RegExp(`hotkey = '${REAL}'`));
+    } finally {
+      globalThis.fetch = realFetch;
+    }
   });
 });
 

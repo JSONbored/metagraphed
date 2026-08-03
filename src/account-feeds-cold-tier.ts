@@ -7,6 +7,15 @@
 // never a silently-wrong answer), and cursors are data-api's own tokens so
 // paging survives a tier transition.
 //
+// /validators/{hotkey}/nominators lives here too, despite hanging off a
+// different route family. It is the same `chain.account_events` read with the
+// hotkey fixed and the grouping turned around -- StakeAdded/StakeRemoved carry
+// both the validator hotkey and the staker coldkey on every row, so "who is
+// behind this validator" is loadAccountStakeFlowColdTier's query grouped by
+// coldkey instead of netuid. Putting it beside its siblings shares their
+// window cutoff and generatedAt derivation rather than restating both in a
+// module whose only difference is a GROUP BY.
+//
 // These are all reads over chain.account_events with a selective predicate
 // (one address against a big table), which is exactly the shape the
 // request-time lane is for -- unlike the chain-wide aggregates, which moved to
@@ -75,6 +84,13 @@ import {
   SERVING_WINDOWS,
   DEFAULT_SERVING_WINDOW,
 } from "./account-serving.ts";
+import {
+  buildValidatorNominators,
+  DEFAULT_NOMINATOR_SORT,
+  DEFAULT_NOMINATOR_WINDOW,
+  NOMINATOR_SORTS,
+  NOMINATOR_WINDOWS,
+} from "./validator-nominators.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
 import { OFFSET_EMULATION_CAP } from "./r2-sql-blocks.ts";
@@ -504,6 +520,122 @@ export async function loadAccountWeightSettersColdTier(
   return {
     data: buildAccountWeightSetters(rows, ss58, { window: label }),
     generatedAt: latestObservedIso(rows),
+  };
+}
+
+/** The retired Postgres tier's ORDER BY, keyed by sort label. Every branch
+ * tie-breaks on `coldkey` ASC (the original wrote it as the ordinal `1`, the
+ * grouped column) so equal aggregates page deterministically -- which matters
+ * more here than usual, since the offset emulation below re-slices a single
+ * ordered scan. */
+const NOMINATOR_ORDER: Record<string, string> = {
+  net_staked: "net_staked_tao DESC, coldkey ASC",
+  gross_staked: "gross_staked_tao DESC, coldkey ASC",
+  last_activity: "last_observed DESC, coldkey ASC",
+};
+
+export interface ValidatorNominatorsQuery {
+  window?: string | null;
+  sort?: string | null;
+  limit: number;
+  offset?: number | null;
+  /** ?coldkey= narrows to one nominator's own flow -- an exact match, so it
+   * rides the SQL predicate exactly as it did on Postgres. */
+  coldkey?: unknown;
+}
+
+/**
+ * GET /api/v1/validators/{hotkey}/nominators -- who has staked to one
+ * validator over the window, aggregated per coldkey and ranked.
+ *
+ * Carries the retired Postgres query's projection verbatim: the same six
+ * aggregates, the same `hotkey = X AND kind IN (added, removed) AND
+ * observed_at >= cutoff` predicate, the same optional coldkey narrowing. Two
+ * dialect rewrites, neither of which changes the row set:
+ *   - `event_kind IN (a, b)` becomes an OR of the two equalities, as every
+ *     sibling here does rather than lean on the beta engine's IN support.
+ *   - `LIMIT n OFFSET m` becomes a single `LIMIT n + m` scan sliced in JS,
+ *     because R2 SQL has no OFFSET. Past OFFSET_EMULATION_CAP the over-fetch
+ *     stops being a reasonable trade and the read declines instead of paging
+ *     wrongly -- the same rule the block and transfer feeds apply.
+ *
+ * `totalCount` is the returned page's own length, which is what the Postgres
+ * route passed (`rows.length` of its LIMIT/OFFSET result). Preserved
+ * deliberately: it makes the builder emit the SQL-ordered page unsliced, and
+ * changing it here would change `nominator_count` under existing callers on a
+ * tier switch rather than on a decision to change it.
+ *
+ * Measured live before shipping (2026-08-03) against the busiest validator on
+ * the network (64,520 StakeAdded rows in 30d): 30d 1.36 GB at ~4.2s, 90d
+ * 2.06 GB at ~4.1s, against a 15s ceiling.
+ */
+export async function loadValidatorNominatorsColdTier(
+  env: Env | null | undefined,
+  hotkey: string,
+  query: ValidatorNominatorsQuery,
+): Promise<{
+  data: ReturnType<typeof buildValidatorNominators>;
+  generatedAt: string | null;
+} | null> {
+  const addr = safeSs58Literal(hotkey);
+  if (addr === null) return null;
+  const limit = safeBlockNumber(query.limit);
+  const offset = safeBlockNumber(query.offset ?? 0);
+  if (limit === null || offset === null || limit <= 0) return null;
+  if (offset > OFFSET_EMULATION_CAP) return null;
+
+  const sort = query.sort ?? DEFAULT_NOMINATOR_SORT;
+  // A sort this tier cannot express would otherwise silently serve the default
+  // ordering under the caller's requested label -- decline instead.
+  if (!NOMINATOR_SORTS.includes(sort)) return null;
+
+  const where = [
+    `hotkey = '${addr}'`,
+    `(event_kind = '${STAKE_ADDED_KIND}' OR event_kind = '${STAKE_REMOVED_KIND}')`,
+  ];
+  if (query.coldkey != null) {
+    const nominator = safeSs58Literal(query.coldkey);
+    // An unusable coldkey filter must not widen to "every nominator".
+    if (nominator === null) return null;
+    where.push(`coldkey = '${nominator}'`);
+  }
+  const { label, cutoff } = windowCutoff(
+    NOMINATOR_WINDOWS,
+    DEFAULT_NOMINATOR_WINDOW,
+    query.window,
+  );
+  where.push(`observed_at >= ${cutoff}`);
+
+  const rows = await r2SqlQuery(
+    env,
+    `SELECT coldkey,` +
+      ` SUM(CASE WHEN event_kind = '${STAKE_ADDED_KIND}' THEN amount_tao ELSE 0 END) AS staked_tao,` +
+      ` SUM(CASE WHEN event_kind = '${STAKE_REMOVED_KIND}' THEN amount_tao ELSE 0 END) AS unstaked_tao,` +
+      ` COUNT(*) AS event_count, MAX(observed_at) AS last_observed,` +
+      ` SUM(CASE WHEN event_kind = '${STAKE_ADDED_KIND}' THEN amount_tao ELSE -amount_tao END) AS net_staked_tao,` +
+      ` SUM(amount_tao) AS gross_staked_tao` +
+      ` FROM chain.account_events WHERE ${where.join(" AND ")}` +
+      ` GROUP BY coldkey ORDER BY ${NOMINATOR_ORDER[sort]} LIMIT ${limit + offset}`,
+  );
+  if (rows === null) return null;
+
+  // data-api wrapped every sum in COALESCE(..., 0); replicate that client-side
+  // rather than lean on the beta engine's function coverage. Without it an
+  // all-null group would be skipped by the builder instead of counted at zero.
+  const page = rows.slice(offset).map((row) => ({
+    ...row,
+    staked_tao: row.staked_tao ?? 0,
+    unstaked_tao: row.unstaked_tao ?? 0,
+  }));
+  return {
+    data: buildValidatorNominators(page, hotkey, {
+      window: label,
+      sort,
+      limit,
+      offset,
+      totalCount: page.length,
+    }),
+    generatedAt: latestObservedIso(page),
   };
 }
 

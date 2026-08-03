@@ -237,7 +237,9 @@ import {
   loadAccountServingColdTier,
   loadAccountWeightSettersColdTier,
   loadCounterpartyRelationshipColdTier,
+  loadValidatorNominatorsColdTier,
 } from "./account-feeds-cold-tier.ts";
+import { loadAccountPositionsColdTier } from "./nominator-positions-cold-tier.ts";
 import {
   loadAccountEventsColdTier,
   loadBlockEventsColdTier,
@@ -6855,6 +6857,15 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
           )
         )?.data ??
+        (
+          await loadValidatorNominatorsColdTier(ctx.env, hotkey, {
+            window,
+            sort,
+            limit,
+            offset,
+            coldkey,
+          })
+        )?.data ??
         buildValidatorNominators([], hotkey, { window, sort, limit, offset })
       );
     },
@@ -7758,7 +7769,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/positions`),
           "METAGRAPH_NEURONS_SOURCE",
-        )) ?? buildAccountPositions([], new Map(), ss58)
+        )) ??
+        (await loadAccountPositionsColdTier(ctx.env, ss58)) ??
+        buildAccountPositions([], new Map(), ss58)
       );
     },
   },
@@ -7827,11 +7840,19 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/subnets`),
             "METAGRAPH_NEURONS_SOURCE",
           ).then((data) => data ?? buildAccountSubnets([], ss58)),
+          // Same Postgres → lakehouse → empty-card chain get_account_positions
+          // resolves through, so the compound card and the single-facet tool
+          // cannot disagree about what this coldkey holds.
           tryPostgresTier(
             ctx.env,
             mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/positions`),
             "METAGRAPH_NEURONS_SOURCE",
-          ).then((data) => data ?? buildAccountPositions([], new Map(), ss58)),
+          ).then(
+            async (data) =>
+              data ??
+              (await loadAccountPositionsColdTier(ctx.env, ss58)) ??
+              buildAccountPositions([], new Map(), ss58),
+          ),
           tryPostgresTier(
             ctx.env,
             mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/events`, {

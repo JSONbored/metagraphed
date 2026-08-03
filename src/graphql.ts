@@ -295,6 +295,7 @@ import { loadAddressMapping, H160_PATTERN } from "./address-mapping.ts";
 import {
   NO_ALPHA_PRICES,
   DEFAULT_GLOBAL_VALIDATOR_SORT,
+  GLOBAL_VALIDATOR_LIMIT_DEFAULT,
   GLOBAL_VALIDATOR_LIMIT_MAX,
   GLOBAL_VALIDATOR_SORTS,
   buildGlobalValidators,
@@ -320,6 +321,8 @@ import {
   MAX_OHLC_WINDOW_DAYS,
 } from "./subnet-ohlc.ts";
 import { loadSubnetOhlcColdTier } from "./subnet-ohlc-cold-tier.ts";
+import { loadValidatorNominatorsColdTier } from "./account-feeds-cold-tier.ts";
+import { loadAccountPositionsColdTier } from "./nominator-positions-cold-tier.ts";
 import { coldTierChainEventsPayload } from "./chain-events-degraded.ts";
 import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.ts";
 import {
@@ -5025,6 +5028,20 @@ const rootValue = {
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )
       )?.data as Row | undefined) ??
+      // The SAME lakehouse reader REST's handleValidatorNominators and MCP's
+      // get_validator_nominators fall to, so the three surfaces cannot
+      // disagree about who is behind a validator. An omitted limit/offset
+      // takes the module's own REST defaults here rather than the builder's,
+      // because the reader needs a concrete SQL LIMIT.
+      ((
+        await loadValidatorNominatorsColdTier(context.env, hotkey, {
+          window: requestedWindow,
+          sort,
+          limit: limit ?? GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+          offset: offset ?? 0,
+          coldkey,
+        })
+      )?.data as Row | undefined) ??
       buildValidatorNominators([], hotkey, {
         window: requestedWindow,
         sort: sort ?? undefined,
@@ -5366,11 +5383,13 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) ->
+    // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> lakehouse cold tier ->
     // buildAccountPositions([], new Map(), ss58) fallback contract
-    // handleAccountPositions uses -- Postgres-only (no D1 predecessor), flat
-    // body (like account_portfolio's), not the { data, generatedAt } envelope
-    // the account-event-footprint family uses.
+    // handleAccountPositions uses -- no D1 predecessor, flat body (like
+    // account_portfolio's), not the { data, generatedAt } envelope the
+    // account-event-footprint family uses. The cold-tier reader is the SAME one
+    // REST and MCP's get_account_positions fall to, so the three surfaces
+    // cannot disagree about what a coldkey holds.
     const data =
       ((await tryPostgresTier(
         context.env,
@@ -5379,7 +5398,9 @@ const rootValue = {
           `/api/v1/accounts/${encodeURIComponent(ss58)}/positions`,
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) as Row | null) ?? buildAccountPositions([], new Map(), ss58);
+      )) as Row | null) ??
+      ((await loadAccountPositionsColdTier(context.env, ss58)) as Row | null) ??
+      buildAccountPositions([], new Map(), ss58);
     return {
       schema_version: data.schema_version ?? 1,
       ss58: data.ss58 ?? ss58,
