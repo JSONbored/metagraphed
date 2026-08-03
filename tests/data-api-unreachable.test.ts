@@ -6,16 +6,23 @@
 // api.entry.ts stopped wrapping when Sentry was removed, so that rejection
 // surfaced as an opaque 500.
 //
-// The distinction these tests pin down is deliberate:
-//   - binding ABSENT      -> 503 (already covered elsewhere)
-//   - binding THROWS      -> 503, same code  <-- this file
-//   - body UNREADABLE     -> 502, same code
-// A caller cannot act on a 500. It can act on "this tier is unreachable".
+// The distinction these tests pin down is deliberate, and #9146 split it by
+// what the route DOES rather than by how it fails:
+//   - user-state WRITES (alerts, auth, keys) -> 503 on absent/throwing binding.
+//     Inventing an empty success for a write would be a lie.
+//   - public READS (the six chain-events-proxied routes) -> 200 + the
+//     schema-stable empty, marked x-metagraph-degraded. They are the only
+//     routes with no METAGRAPH_*_SOURCE flag, so they were the only ones that
+//     still erred once the Postgres box went away.
 //
-// This matters most in the situation it was least tested for: when the Postgres
-// tier goes away permanently, every one of these paths throws rather than
-// degrades, and the whole public surface reads as broken rather than honestly
-// degraded.
+// A caller cannot act on a 500. It can act on "this tier is unreachable" -- and
+// for a read it can act better still on an empty that says so in a header,
+// because the payload still parses against the published schema.
+//
+// That last part is the situation this file was written for and least tested
+// for: when the Postgres tier went away permanently, every one of these paths
+// threw rather than degraded, and the public surface read as broken rather
+// than honestly degraded. The read half of that is now fixed.
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
@@ -106,25 +113,44 @@ test("account-keys proxy answers 503 when DATA_API throws", async () => {
   );
 });
 
-// The chain-events proxy is the one public READ family with no fail-empty path
-// and no artifact fallback, so an unreachable upstream is the difference
-// between a structured 503 and a 500 for /chain-events, /chain-events/stats,
-// ownership-history, conviction and lease/history.
-test("chain-events proxy answers 503 when DATA_API throws", async () => {
-  await expectUnreachable(
+// The chain-events family NO LONGER 503s here (#9146). This file's own header
+// named the situation it was least tested for -- "when the Postgres tier goes
+// away permanently, every one of these paths throws rather than degrades, and
+// the whole public surface reads as broken rather than honestly degraded" --
+// and that is exactly what happened: all six answered 502/503 in production
+// once the box was decommissioned.
+//
+// They now degrade to the schema-stable empty every FLAGGED tier already
+// returned, marked with x-metagraph-degraded so the payload is barred from the
+// edge cache and a caller can tell "no events" from "we could not look". The
+// remaining proxies above keep their 503: those are user-state writes
+// (alerts/auth/keys), where inventing an empty success would be wrong.
+test("chain-events proxy degrades instead of erroring when DATA_API throws", async () => {
+  const res = await handleRequest(
     req("/api/v1/chain-events?limit=1"),
-    "data_tier_unavailable",
+    throwingDataApi(),
+    {},
   );
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("x-metagraph-degraded"), "tier_unavailable");
+  const payload = (await res.json()) as {
+    ok: boolean;
+    data?: { events?: unknown[]; count?: number };
+  };
+  assert.equal(payload.ok, true);
+  assert.deepEqual(payload.data?.events, []);
+  assert.equal(payload.data?.count, 0);
 });
 
 // HEAD is rewritten to GET before forwarding (so the upstream does not 405), so
 // it takes a different construction path to the same fetch and needs its own
 // assertion rather than being assumed equivalent.
-test("chain-events proxy answers 503 when DATA_API throws on a HEAD request", async () => {
+test("chain-events proxy degrades on a HEAD request too", async () => {
   const res = await handleRequest(
     req("/api/v1/chain-events?limit=1", { method: "HEAD" }),
     throwingDataApi(),
     {},
   );
-  assert.equal(res.status, 503);
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("x-metagraph-degraded"), "tier_unavailable");
 });
