@@ -42,9 +42,16 @@ const BASE: Row[] = [
     amount_tao: "1234.5",
   },
 ];
-// WeightsSet is absent from BOTH distinct reads: its rows carry neither key,
-// so the `IS NOT NULL` filter drops it entirely rather than returning 0.
-const HOTKEYS: Row[] = [{ event_kind: "StakeAdded", n: 66 }];
+// WeightsSet IS present in the actor read and absent from the coldkey one --
+// the asymmetry is the point. Its rows carry no hotkey and no coldkey, but the
+// chain event does emit a uid, so the actor identity falls back to that and
+// counts real setters; there is no delegating account to fall back to for
+// coldkey, so it drops out entirely. Measured live for netuid 64/30d: 15
+// setters against 9,830 WeightsSet events.
+const HOTKEYS: Row[] = [
+  { event_kind: "StakeAdded", n: 66 },
+  { event_kind: "WeightsSet", n: 15 },
+];
 const COLDKEYS: Row[] = [{ event_kind: "StakeAdded", n: 2109 }];
 const RECENT: Row[] = [
   {
@@ -77,8 +84,7 @@ function fakeEngine(
   const query = async (_env: unknown, sql: string) => {
     seen.push(sql);
     if (sql.includes("ORDER BY")) return pick(overrides.recent, RECENT);
-    if (sql.includes("GROUP BY event_kind, hotkey"))
-      return pick(overrides.hotkeys, HOTKEYS);
+    if (sql.includes("AS actor")) return pick(overrides.hotkeys, HOTKEYS);
     if (sql.includes("GROUP BY event_kind, coldkey"))
       return pick(overrides.coldkeys, COLDKEYS);
     return pick(overrides.base, BASE);
@@ -87,7 +93,7 @@ function fakeEngine(
     query,
     seen,
     base: () => seen.find((s) => s.includes("count(*) AS event_count"))!,
-    hotkeys: () => seen.find((s) => s.includes("GROUP BY event_kind, hotkey"))!,
+    hotkeys: () => seen.find((s) => s.includes("AS actor"))!,
     coldkeys: () =>
       seen.find((s) => s.includes("GROUP BY event_kind, coldkey"))!,
     recent: () => seen.find((s) => s.includes("ORDER BY"))!,
@@ -138,7 +144,7 @@ describe("loadSubnetEventSummaryColdTier", () => {
     await load(engine);
     assert.match(
       engine.hotkeys(),
-      /count\(\*\) AS n FROM \(SELECT event_kind, hotkey FROM chain\.account_events .*GROUP BY event_kind, hotkey\) GROUP BY event_kind/,
+      /count\(\*\) AS n FROM \(SELECT event_kind, CASE .* AS actor FROM chain\.account_events .*GROUP BY event_kind, CASE .*\) WHERE actor IS NOT NULL GROUP BY event_kind/,
     );
     assert.match(
       engine.coldkeys(),
@@ -146,13 +152,36 @@ describe("loadSubnetEventSummaryColdTier", () => {
     );
   });
 
-  test("the distinct reads exclude NULL keys, or every kind gains a phantom", async () => {
-    // COUNT(DISTINCT col) ignores NULLs; GROUP BY col yields a NULL GROUP. So
-    // without the filter, WeightsSet -- whose rows carry no hotkey at all --
-    // would report exactly one distinct hotkey that does not exist.
+  test("the actor count falls back to uid, or WeightsSet reports zero setters", async () => {
+    // THE BUG THIS REPLACED. Counting `hotkey` alone reported hotkey_count 0
+    // beside a five-figure event_count for WeightsSet -- the highest-volume
+    // kind on most subnets -- because the chain event emits [netuid, uid] and
+    // no hotkey at all. Live, netuid 64/30d: 9,830 events credited to 0
+    // setters, against a real 15. A confident zero, which is exactly what this
+    // reader exists to stop publishing.
+    //
+    // The retired Postgres route counted this same hotkey-or-uid identity for
+    // the same stated reason, as do the weight-setter leaderboards.
     const engine = fakeEngine();
     await load(engine);
-    assert.match(engine.hotkeys(), /hotkey IS NOT NULL/);
+    assert.match(engine.hotkeys(), /WHEN uid IS NOT NULL/);
+    assert.match(engine.hotkeys(), /'uid:'/);
+    assert.doesNotMatch(
+      engine.hotkeys(),
+      /GROUP BY event_kind, hotkey\)/,
+      "grouping on hotkey alone is the zero-setter bug",
+    );
+  });
+
+  test("the distinct reads exclude NULL keys, or every kind gains a phantom", async () => {
+    // COUNT(DISTINCT col) ignores NULLs; GROUP BY col yields a NULL GROUP. The
+    // actor read filters the composite value AFTER grouping (a row with
+    // neither hotkey nor uid collapses to a NULL actor); the coldkey read
+    // filters the column directly. Without either, a kind carrying none of that
+    // key would report exactly one participant that does not exist.
+    const engine = fakeEngine();
+    await load(engine);
+    assert.match(engine.hotkeys(), /WHERE actor IS NOT NULL/);
     assert.match(engine.coldkeys(), /coldkey IS NOT NULL/);
   });
 
@@ -169,9 +198,11 @@ describe("loadSubnetEventSummaryColdTier", () => {
     assert.equal(byKind.StakeAdded.coldkey_count, 2109);
     assert.equal(
       byKind.WeightsSet.hotkey_count,
-      0,
-      "WeightsSet carries no hotkey, so 0 -- never StakeAdded's 66",
+      15,
+      "WeightsSet has no hotkey but does have uids -- its setters must be counted, never StakeAdded's 66",
     );
+    // Still zero here, and genuinely so: a WeightsSet has no delegating
+    // account, so there is nothing for the coldkey count to fall back to.
     assert.equal(byKind.WeightsSet.coldkey_count, 0);
   });
 

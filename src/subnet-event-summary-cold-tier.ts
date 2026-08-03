@@ -62,6 +62,39 @@ function distinctPerKind(column: string, where: string): string {
   );
 }
 
+/**
+ * What identifies ONE participant, for the per-kind actor count.
+ *
+ * NOT `hotkey` alone. WeightsSet is the highest-volume kind on most subnets and
+ * the chain event emits [netuid, uid] with NO hotkey, so `hotkey` is NULL on
+ * every one of its rows -- counting it reports `hotkey_count: 0` beside a
+ * five-figure `event_count`, which is precisely the "measured zero" this reader
+ * exists to stop publishing (netuid 64/30d: 9,830 events, 0 setters, against a
+ * real 15). The retired Postgres route counted this same hotkey-or-uid
+ * identity, citing the same reason, as do the weight-setter leaderboards.
+ *
+ * `netuid` is fixed by the caller's WHERE, so a bare uid is unambiguous here;
+ * the retired query spelled the (netuid, uid) pair only because it was not
+ * subnet-scoped. The prefixes keep the two namespaces from colliding, and the
+ * CASE yields NULL when a row carries neither -- dropped by the outer filter,
+ * matching COUNT(DISTINCT)'s own NULL handling.
+ */
+const ACTOR_IDENTITY =
+  `CASE WHEN hotkey IS NOT NULL AND hotkey != '' THEN 'hotkey:' || hotkey` +
+  ` WHEN uid IS NOT NULL THEN 'uid:' || CAST(uid AS VARCHAR) END`;
+
+/** The actor count per event_kind, distributed exactly like distinctPerKind
+ * but over the composite identity above. */
+function distinctActorPerKind(where: string): string {
+  return (
+    `SELECT event_kind, count(*) AS n FROM (` +
+    `SELECT event_kind, ${ACTOR_IDENTITY} AS actor FROM chain.account_events` +
+    ` WHERE ${where}` +
+    ` GROUP BY event_kind, ${ACTOR_IDENTITY})` +
+    ` WHERE actor IS NOT NULL GROUP BY event_kind`
+  );
+}
+
 /** event_kind -> the counted value, for merging a distinct read into the base
  * rollup. A row whose kind is not a usable string is dropped rather than keyed
  * under "undefined". */
@@ -142,7 +175,11 @@ export async function loadSubnetEventSummaryColdTier(
         ` sum(amount_tao) AS amount_tao, sum(alpha_amount) AS alpha_amount` +
         ` FROM chain.account_events WHERE ${where} GROUP BY event_kind`,
     ),
-    query(env, distinctPerKind("hotkey", where)),
+    query(env, distinctActorPerKind(where)),
+    // Coldkey has no such fallback and needs none: it is the delegating
+    // account, absent by nature on the kinds that have no delegator (a
+    // WeightsSet has no payer), so a plain distinct over the non-null rows is
+    // the answer rather than a gap to fill.
     query(env, distinctPerKind("coldkey", where)),
     query(
       env,
