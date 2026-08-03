@@ -316,6 +316,11 @@ import {
   overlayPreviouslyKnownAs,
 } from "../src/subnet-identity-history.ts";
 import { tryPostgresTier } from "./postgres-tier.ts";
+import {
+  degradedChainEventsPayload,
+  shouldDegrade,
+} from "../src/chain-events-degraded.ts";
+import { markPostgresTierFallbackResponse } from "./request-handlers/analytics.ts";
 import { loadGlobalOperationalHealth } from "../src/global-operational-health.ts";
 import {
   CHAIN_FIREHOSE_INGEST_TOKEN_HEADER,
@@ -1767,6 +1772,50 @@ async function chainEventsProxyCacheKey(env: Env, url: URL) {
   );
 }
 
+// #9146: the ONE place a DATA_API failure becomes a response.
+//
+// Four call sites used to build their own error (binding absent, binding
+// rejected, unreadable body, upstream non-2xx) and all four returned an error
+// the moment the Postgres box died -- these six routes are the only ones with
+// no METAGRAPH_*_SOURCE flag, so they never had the degrade path every flagged
+// tier has. Collapsed into one function so the degrade decision is made once
+// rather than remembered four times.
+//
+// `source` names the tier that FAILED rather than the one that answered: the
+// body is not data-worker-postgres output, and labelling it so would make a
+// degraded empty indistinguishable from a measured one.
+//
+// Exported for tests: the null-payload branch is unreachable through the
+// router (the gate admits only paths this map covers, asserted in
+// tests/chain-events-degraded.test.ts), so it is only observable here.
+export async function dataApiFailureResponse(
+  request: Request,
+  env: Env,
+  url: URL,
+  code: string,
+  message: string,
+  status: number,
+): Promise<Response> {
+  const data = degradedChainEventsPayload(url);
+  // A path this map does not cover keeps its original error rather than
+  // serving a payload that satisfies no schema.
+  if (!data) return errorResponse(code, message, status);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: {
+        artifact_path: url.pathname,
+        cache: "short",
+        contract_version: contractVersion(env),
+        source: "data-worker-unavailable",
+      },
+    },
+    "short",
+  );
+  return markPostgresTierFallbackResponse(response);
+}
+
 async function handleChainEventsProxy(
   request: Request,
   env: Env,
@@ -1790,7 +1839,10 @@ async function handleChainEventsProxy(
   // `parameter` field are identical rather than merely similar.
   if (unknownParam) return analyticsQueryError(unknownParam);
   if (!env.DATA_API) {
-    return errorResponse(
+    return dataApiFailureResponse(
+      request,
+      env,
+      url,
       "data_tier_unavailable",
       "The all-events data tier is not bound to this deployment.",
       503,
@@ -1820,7 +1872,10 @@ async function handleChainEventsProxy(
         : request,
     );
     if ("unreachable" in fetched) {
-      return errorResponse(
+      return dataApiFailureResponse(
+        request,
+        env,
+        url,
         "data_tier_unavailable",
         "The all-events data tier is unreachable.",
         503,
@@ -1830,7 +1885,10 @@ async function handleChainEventsProxy(
     try {
       body = await upstream.json();
     } catch {
-      return errorResponse(
+      return dataApiFailureResponse(
+        request,
+        env,
+        url,
         "data_tier_unavailable",
         "The all-events data tier returned an unreadable response.",
         502,
@@ -1854,13 +1912,25 @@ async function handleChainEventsProxy(
     }
   }
   if (!upstreamOk) {
-    return errorResponse(
-      "data_query_failed",
+    // Only the TIER's own failures degrade. A 4xx is the caller's error -- a
+    // bad cursor, an out-of-range limit -- and turning that into an empty 200
+    // would hide a bug in their request behind a payload that merely looks
+    // uneventful.
+    const message =
       typeof body?.error === "string"
         ? body.error
-        : "The all-events data tier returned an error.",
-      upstreamStatus,
-    );
+        : "The all-events data tier returned an error.";
+    if (shouldDegrade(upstreamStatus)) {
+      return dataApiFailureResponse(
+        request,
+        env,
+        url,
+        "data_query_failed",
+        message,
+        upstreamStatus,
+      );
+    }
+    return errorResponse("data_query_failed", message, upstreamStatus);
   }
   // CSV download of the page: the /api/v1/chain-events feed exposes `events`, so
   // serialize that array to text/csv when negotiated. The stats/blocks paths this

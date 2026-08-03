@@ -369,7 +369,7 @@ describe("Worker runtime", () => {
     }
   });
 
-  test("does not cache a non-200 DATA_API response (#6767)", async () => {
+  test("never caches a failed DATA_API response, degraded or not (#6767)", async () => {
     let dataCalls = 0;
     const store = new Map();
     globalWithCaches.caches = {
@@ -403,9 +403,21 @@ describe("Worker runtime", () => {
         testEnv as unknown as Env,
         ctx,
       );
-      assert.equal(response.status, 502);
+      // #9146: a failed tier now degrades to the schema-stable empty rather
+      // than 502-ing. The CACHE invariant is unchanged and is the load-bearing
+      // half of this test -- a degraded empty must never be cached either, or
+      // one transient upstream blip pins zeros in for the whole TTL.
+      assert.equal(response.status, 200);
+      assert.equal(
+        response.headers.get("x-metagraph-degraded"),
+        "tier_unavailable",
+      );
       await Promise.all(waited);
-      assert.equal(store.size, 0, "an error response must never be cached");
+      assert.equal(
+        store.size,
+        0,
+        "neither an error NOR a degraded empty may be cached",
+      );
       assert.equal(dataCalls, 1);
     } finally {
       globalWithCaches.caches = undefined;
@@ -699,7 +711,7 @@ describe("Worker runtime", () => {
     assert.ok(response.headers.get("etag"));
   });
 
-  test("maps a DATA_API upstream error to a clean error envelope", async () => {
+  test("degrades a DATA_API upstream 5xx instead of erroring", async () => {
     const response = await handleRequest(
       new Request("https://metagraph.sh/api/v1/chain-events"),
       {
@@ -718,18 +730,35 @@ describe("Worker runtime", () => {
       } as unknown as Env,
       {},
     );
-    assert.equal(response.status, 502);
-    assert.equal((await response.json()).error.code, "data_query_failed");
+    // #9146: a 5xx from the tier degrades. A 4xx still surfaces as an error
+    // envelope -- covered in tests/chain-events-degraded.test.ts.
+    assert.equal(response.status, 200);
+    assert.equal(
+      response.headers.get("x-metagraph-degraded"),
+      "tier_unavailable",
+    );
+    const degraded = (await response.json()) as {
+      ok: boolean;
+      data?: { events?: unknown[] };
+    };
+    assert.equal(degraded.ok, true);
+    assert.deepEqual(degraded.data?.events, []);
   });
 
-  test("returns a 503 error envelope when the DATA_API binding is absent", async () => {
+  test("degrades when the DATA_API binding is absent", async () => {
     const response = await handleRequest(
       new Request("https://metagraph.sh/api/v1/chain-events"),
       env as unknown as Env,
       {},
     );
-    assert.equal(response.status, 503);
-    assert.equal((await response.json()).error.code, "data_tier_unavailable");
+    // #9146: an absent binding degrades for these READ routes too. The
+    // user-state write proxies (alerts/auth/keys) keep their 503 -- see
+    // tests/data-api-unreachable.test.ts.
+    assert.equal(response.status, 200);
+    assert.equal(
+      response.headers.get("x-metagraph-degraded"),
+      "tier_unavailable",
+    );
   });
 
   test("serves API envelopes with cache and CORS headers", async () => {
