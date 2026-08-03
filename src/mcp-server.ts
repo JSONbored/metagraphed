@@ -984,6 +984,7 @@ import { loadBulkHealthTrends } from "./bulk-health-trends.ts";
 import { loadRpcUsage } from "./rpc-usage-loader.ts";
 import { loadChainServingColdTier } from "./chain-serving-loader.ts";
 import { loadChainWeightsColdTier } from "./chain-weights-loader.ts";
+import { loadChainWeightSettersColdTier } from "./chain-weight-setters-loader.ts";
 import {
   buildChainTransfers,
   CHAIN_TRANSFER_LIMIT_DEFAULT,
@@ -5226,7 +5227,14 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             limit,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainWeightSetters([], null, { window, limit })
+        )) ??
+        (await loadChainWeightSettersColdTier(
+          ctx.env as unknown as Parameters<
+            typeof loadChainWeightSettersColdTier
+          >[0],
+          { window, limit },
+        )) ??
+        buildChainWeightSetters([], null, { window, limit })
       );
     },
   },

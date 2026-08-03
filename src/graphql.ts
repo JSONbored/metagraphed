@@ -403,6 +403,7 @@ import {
 import { loadRpcUsage } from "./rpc-usage-loader.ts";
 import { loadChainServingColdTier } from "./chain-serving-loader.ts";
 import { loadChainWeightsColdTier } from "./chain-weights-loader.ts";
+import { loadChainWeightSettersColdTier } from "./chain-weight-setters-loader.ts";
 import {
   CHAIN_SIGNERS_SORTS,
   CHAIN_SIGNERS_LIMIT_DEFAULT,
@@ -7072,6 +7073,15 @@ const rootValue = {
         context.env,
         postgresTierRequest(context, "/api/v1/chain/weights/setters", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) as Row | null) ??
+      // Same lakehouse reader REST and MCP use; the zeroed card below stays the
+      // fallback because this resolver's contract is a schema-stable card
+      // rather than an error, which is why the loader declines with null.
+      ((await loadChainWeightSettersColdTier(
+        context.env as unknown as Parameters<
+          typeof loadChainWeightSettersColdTier
+        >[0],
+        { window: requestedWindow, limit: safeLimit },
       )) as Row | null) ??
       buildChainWeightSetters([], null, {
         window: requestedWindow,

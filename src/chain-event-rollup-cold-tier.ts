@@ -200,3 +200,93 @@ export async function loadChainEventRollup(
 
   return { rows, networkDistinct };
 }
+
+/** The per-identity leaderboard, plus the ungrouped totals it is a share of. */
+export interface ChainEventIdentityRollup {
+  /** One row per (netuid, identity), ordered most-active first. */
+  rows: Row[];
+  /** The window's totals: the count denominator, the distinct identities, and
+   * the newest reading. */
+  totals: Row;
+}
+
+/**
+ * The same window as loadChainEventRollup, grouped one level finer.
+ *
+ * That reader answers "which subnets", keyed by netuid. This one answers "which
+ * participants", keyed by (netuid, identity) -- the shape the weight-setter and
+ * equivalent leaderboards publish.
+ *
+ * IDENTITY IS PER SPEC, and for WeightsSet it is `uid`, not `hotkey`. The chain
+ * event emits [netuid, uid] and carries no hotkey at all, so `hotkey` is NULL on
+ * every one of the 50,890,747 WeightsSet rows in the export. Grouping on it
+ * would collapse every setter into a single null bucket. `uid` is only unique
+ * WITHIN a subnet, which is why the grouping is the pair rather than the
+ * identity alone -- and why the builders publish these rows under (netuid, uid)
+ * with a null hotkey rather than inventing one.
+ *
+ * `GROUP BY netuid, <identity>` is also the distributed shape R2 SQL wants: no
+ * COUNT(DISTINCT) in the grouped half at all, so the scan budget that rejects
+ * count(DISTINCT)+GROUP BY over a 30d span is never spent here. The one
+ * COUNT(DISTINCT) left is in the ungrouped totals, over a single row.
+ */
+export async function loadChainEventIdentityRollup(
+  env: Parameters<typeof r2SqlQuery>[0],
+  spec: ChainEventRollupSpec,
+  {
+    windowDays,
+    now = Date.now(),
+    limit = 200,
+    query = r2SqlQuery,
+  }: {
+    windowDays: number;
+    now?: number;
+    limit?: number;
+    query?: typeof r2SqlQuery;
+  },
+): Promise<ChainEventIdentityRollup | null> {
+  const kind = safeEventKind(spec.eventKind);
+  const countField = safeColumnAlias(spec.countField);
+  const distinctField = safeColumnAlias(spec.distinctField);
+  const identity =
+    spec.distinctColumn === "hotkey" || spec.distinctColumn === "uid"
+      ? spec.distinctColumn
+      : null;
+  if (!kind || !countField || !distinctField || !identity) return null;
+  if (!Number.isFinite(windowDays) || windowDays <= 0) return null;
+
+  const cutoff = now - windowDays * 24 * 60 * 60 * 1000;
+  if (!Number.isSafeInteger(cutoff) || cutoff < 0) return null;
+  const cap =
+    Number.isSafeInteger(limit) && limit > 0 ? Math.min(limit, 1000) : 200;
+
+  const where = `WHERE event_kind = '${kind}' AND observed_at >= ${cutoff}`;
+
+  const [rows, totalsRows] = await Promise.all([
+    query(
+      env,
+      `SELECT netuid, ${identity} AS ${identity}, count(*) AS ${countField},` +
+        ` min(observed_at) AS first_set, max(observed_at) AS last_set` +
+        ` FROM chain.account_events ${where}` +
+        ` GROUP BY netuid, ${identity}` +
+        ` ORDER BY ${countField} DESC LIMIT ${cap}`,
+    ),
+    // Ungrouped, and separate for the same reason the netuid rollup keeps its
+    // network half separate: the page is capped at `cap`, so summing it would
+    // make the share denominator depend on the page size.
+    query(
+      env,
+      `SELECT count(*) AS ${countField},` +
+        ` count(DISTINCT ${identity}) AS ${distinctField},` +
+        ` max(observed_at) AS newest_observed` +
+        ` FROM chain.account_events ${where}`,
+    ),
+  ]);
+
+  if (!rows || !totalsRows) return null;
+  const totals = totalsRows[0];
+  if (!totals) return null;
+  if (rows.length === 0) return null;
+
+  return { rows, totals };
+}
