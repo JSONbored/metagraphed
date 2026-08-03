@@ -255,12 +255,14 @@ describe("coldTierChainEventsPayload", () => {
     assert.equal(payload.ownership_changes[0].block_number, 8_587_754);
   });
 
-  // The other five are uncovered on purpose (see the function's own note), and
-  // a path with no reader must fall through to the floor rather than invent one.
+  // Two of the six now have readers (ownership-history, and the all-events
+  // feed as of #9146). The rest are uncovered on purpose, and a path with no
+  // reader must fall through to the floor rather than invent one.
+  const COVERED = ["/ownership-history", "/api/v1/chain-events"];
   test("a route with no cold-tier reader yields null", async () => {
     const env = lakehouse([OWNERSHIP_ROW]);
     for (const path of PROXIED.filter(
-      (p) => !p.endsWith("/ownership-history"),
+      (p) => !COVERED.some((c) => p.endsWith(c) || p === c),
     )) {
       assert.equal(
         await coldTierChainEventsPayload(
@@ -271,6 +273,19 @@ describe("coldTierChainEventsPayload", () => {
         path,
       );
     }
+  });
+
+  test("the all-events feed reads the lakehouse and clamps ?limit=", async () => {
+    // #9146: the feed now has a reader. The limit is clamped to the same
+    // 1-100 range data-api enforced, so a caller cannot widen the page.
+    const env = lakehouse([]);
+    const payload = (await coldTierChainEventsPayload(
+      env,
+      new URL("https://api.metagraph.sh/api/v1/chain-events?limit=10"),
+    )) as Row;
+    assert.ok(payload, "the feed must be covered, not fall through to null");
+    assert.equal(payload.count, 0);
+    assert.ok("next_before" in payload);
   });
 
   test("an unconfigured lakehouse declines, leaving the floor to answer", async () => {

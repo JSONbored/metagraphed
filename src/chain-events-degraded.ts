@@ -40,6 +40,7 @@ import { buildSubnetConviction } from "./subnet-conviction.ts";
 import { buildSubnetLeaseHistory } from "./subnet-lease-history.ts";
 import { buildSubnetOwnershipHistory } from "./subnet-ownership-history.ts";
 import { loadSubnetOwnershipHistoryColdTier } from "./subnet-ownership-cold-tier.ts";
+import { loadChainEventsColdTier } from "./chain-events-cold-tier.ts";
 
 type Row = Record<string, unknown>;
 
@@ -142,9 +143,39 @@ export async function coldTierChainEventsPayload(
   url: URL,
 ): Promise<Row | null> {
   const ownership = SUBNET_OWNERSHIP_HISTORY.exec(url.pathname);
-  if (!ownership) return null;
-  return await loadSubnetOwnershipHistoryColdTier(env, ownership[1]);
+  if (ownership) {
+    return await loadSubnetOwnershipHistoryColdTier(env, ownership[1]);
+  }
+  // #9146: the all-events feed. `chain.chain_events` carries every pallet and
+  // method -- 895M rows genesis-to-head -- including kinds the curated
+  // account_events stream drops entirely (PrometheusServed exists only here).
+  // The reader bounds each page to a block window; see its header for why an
+  // unbounded port would have scanned ~2 GB per request.
+  if (url.pathname === "/api/v1/chain-events") {
+    const params = url.searchParams;
+    return (await loadChainEventsColdTier(env, {
+      limit: chainEventsLimit(params.get("limit")),
+      pallet: params.get("pallet"),
+      method: params.get("method"),
+      block: params.get("block"),
+      extrinsic: params.get("extrinsic"),
+      cursor: params.get("cursor"),
+      before: params.get("before"),
+    })) as Row | null;
+  }
+  return null;
 }
+
+/** The feed's page size, clamped to the same 1-100 range data-api enforced. */
+function chainEventsLimit(raw: string | null): number {
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < 1)
+    return CHAIN_EVENTS_LIMIT_DEFAULT;
+  return Math.min(parsed, CHAIN_EVENTS_LIMIT_MAX);
+}
+
+export const CHAIN_EVENTS_LIMIT_DEFAULT = 50;
+export const CHAIN_EVENTS_LIMIT_MAX = 100;
 
 export interface BlockChainEventsPayload {
   block_number: number;
