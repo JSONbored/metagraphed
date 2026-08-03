@@ -109,6 +109,29 @@ export const POSITIONS_DEGRADED_TIER_UNAVAILABLE = "tier_unavailable";
 export const POSITIONS_DEGRADED_SNAPSHOT_PREDATES_ACTIVITY =
   "snapshot_predates_stake_activity";
 
+/**
+ * The ledger HAS rows for this coldkey, but one or more of them could not be
+ * priced, so they are absent from `positions` and from `total_stake_alpha`.
+ *
+ * Positions are priced off the live `neurons` table, which carries only
+ * CURRENTLY-registered neurons, while the position ledger is a snapshot. A
+ * hotkey that has since deregistered -- or that the ledger saw and `neurons`
+ * has not -- prices to nothing, and the position is excluded rather than
+ * reported with a fabricated 0 stake_tao (#9066's rule: no unpriced values).
+ *
+ * Excluding it is right. Saying nothing about it was not. Sampling eight
+ * distinct hotkeys from the live ledger, only ONE was present in `neurons`, so
+ * a coldkey whose positions all price to nothing published
+ * `position_count: 0, total_stake_alpha: 0` with no marker at all -- a
+ * confident zero over real holdings, indistinguishable from "delegates
+ * nothing" (#9305).
+ *
+ * Fires whenever ANY row was dropped, not only when all of them were: a
+ * partially-priced total understates the account's real position just as
+ * silently, it is merely harder to notice.
+ */
+export const POSITIONS_DEGRADED_UNPRICEABLE = "positions_unpriceable";
+
 export interface AccountPositionsDegraded {
   reason: string;
   /** The LEDGER's own capture stamp, not this account's -- present even when
@@ -152,6 +175,10 @@ export function buildAccountPositions(
   const positions: AccountNominatorPosition[] = [];
   let totalStakeAlpha = 0;
   let latestCapturedAt: number | null = null;
+  // Rows the ledger holds that no live `neurons` row could price. Counted
+  // rather than merely skipped so the payload can say so -- see
+  // POSITIONS_DEGRADED_UNPRICEABLE.
+  let unpriceable = 0;
 
   for (const row of rows) {
     const hotkey = typeof row?.hotkey === "string" ? row.hotkey : null;
@@ -160,7 +187,10 @@ export function buildAccountPositions(
     if (!hotkey || netuid == null || fraction == null) continue;
 
     const hotkeyStake = stakeByKey.get(`${hotkey}|${netuid}`);
-    if (hotkeyStake == null) continue;
+    if (hotkeyStake == null) {
+      unpriceable += 1;
+      continue;
+    }
 
     const stakeTao = roundTao(fraction * hotkeyStake);
     if (stakeTao == null) continue;
@@ -190,7 +220,7 @@ export function buildAccountPositions(
       a.netuid - b.netuid,
   );
 
-  return {
+  const result: AccountPositionsResult = {
     schema_version: 1,
     ss58,
     captured_at: latestCapturedAt != null ? toIso(latestCapturedAt) : null,
@@ -198,6 +228,19 @@ export function buildAccountPositions(
     total_stake_alpha: roundTao(totalStakeAlpha) ?? 0,
     positions,
   };
+  // The two provenance stamps belong to the LEDGER and to this coldkey's chain
+  // activity, neither of which this pure builder can see -- the callers that
+  // do have them attach the stronger `snapshot_predates_stake_activity` reason
+  // over this one when it also applies, which is the right precedence: both
+  // say "do not trust this total", and that one says why more usefully.
+  if (unpriceable > 0) {
+    result.degraded = {
+      reason: POSITIONS_DEGRADED_UNPRICEABLE,
+      snapshot_captured_at: null,
+      latest_stake_event_at: null,
+    };
+  }
+  return result;
 }
 
 // Distinct, order-stable, non-empty hotkeys referenced by a coldkey's
