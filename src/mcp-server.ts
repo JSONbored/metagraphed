@@ -983,6 +983,7 @@ import { CHAIN_SIGNERS_SORTS } from "./chain-query-loaders.ts";
 import { loadBulkHealthTrends } from "./bulk-health-trends.ts";
 import { loadRpcUsage } from "./rpc-usage-loader.ts";
 import { loadChainServingColdTier } from "./chain-serving-loader.ts";
+import { loadAccountSummaryColdTier } from "./account-feeds-cold-tier.ts";
 import { loadChainWeightsColdTier } from "./chain-weights-loader.ts";
 import { loadChainWeightSettersColdTier } from "./chain-weight-setters-loader.ts";
 import {
@@ -7397,7 +7398,12 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}`),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildAccountSummary(ss58, {});
+        )) ??
+        (await (async () => {
+          const cold = await loadAccountSummaryColdTier(ctx.env, ss58);
+          return cold ? buildAccountSummary(ss58, cold) : null;
+        })()) ??
+        buildAccountSummary(ss58, {});
       // Community-contributable entity labels (#6739), same REST-parity join
       // as workers/request-handlers/entities.ts's own handleAccount.
       const entitiesArtifact = (await ctx.readArtifact!(
