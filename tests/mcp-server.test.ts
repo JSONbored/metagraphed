@@ -14879,6 +14879,137 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
     assert.equal(data.extrinsics.length, 1);
     assert.match(queries[0]!, /signer = '5G9hfkx/);
   });
+
+  test("get_account_transfers serves the Transfer feed from the lakehouse", async () => {
+    const OTHER_SS58 = "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F";
+    const queries = lakeFetch([
+      {
+        block_number: 4200000,
+        event_index: 0,
+        extrinsic_index: 3,
+        event_kind: "Transfer",
+        hotkey: LAKE_EXTRINSIC.signer,
+        coldkey: OTHER_SS58,
+        netuid: null,
+        uid: null,
+        amount_tao: "2.5",
+        alpha_amount: null,
+        observed_at: 1750009000000,
+      },
+    ]);
+    const res = await callTool(
+      "get_account_transfers",
+      { ss58: LAKE_EXTRINSIC.signer, limit: 5, direction: "sent" },
+      { env: LAKE_ENV },
+    );
+    const data = res.body.result.structuredContent;
+    assert.equal(data.transfer_count, 1);
+    assert.equal(data.transfers[0].direction, "sent");
+    assert.match(queries[0]!, /event_kind = 'Transfer'/);
+    assert.match(queries[0]!, /hotkey = '5G9hfkx/);
+  });
+
+  test("get_account_stake_flow serves the windowed flow card from the lakehouse", async () => {
+    const queries = lakeFetch([
+      {
+        netuid: 7,
+        event_kind: "StakeAdded",
+        total_tao: "100",
+        event_count: "2",
+        last_observed: 1750009000000,
+      },
+    ]);
+    const res = await callTool(
+      "get_account_stake_flow",
+      { ss58: LAKE_EXTRINSIC.signer, window: "7d" },
+      { env: LAKE_ENV },
+    );
+    const data = res.body.result.structuredContent;
+    assert.equal(data.total_staked_tao, 100);
+    assert.equal(data.window, "7d");
+    assert.match(queries[0]!, /GROUP BY netuid, event_kind/);
+  });
+
+  test("get_account_stake_moves serves the movement card from the lakehouse", async () => {
+    const queries = lakeFetch([
+      {
+        netuid: 3,
+        movements: "4",
+        first_observed: 1750008000000,
+        last_observed: 1750009000000,
+      },
+    ]);
+    const res = await callTool(
+      "get_account_stake_moves",
+      { ss58: LAKE_EXTRINSIC.signer },
+      { env: LAKE_ENV },
+    );
+    const data = res.body.result.structuredContent;
+    assert.equal(data.total_movements, 4);
+    assert.match(queries[0]!, /event_kind = 'StakeMoved'/);
+  });
+
+  test("get_account_weight_setters joins the D1 neuron slots into the lakehouse read", async () => {
+    const queries = lakeFetch([
+      {
+        netuid: 11,
+        weight_sets: "6",
+        first_observed: 1750008000000,
+        last_observed: 1750009000000,
+      },
+    ]);
+    const envWithD1 = {
+      ...LAKE_ENV,
+      METAGRAPH_HEALTH_DB: {
+        prepare: () => ({
+          bind: () => ({
+            all: async () => ({ results: [{ netuid: 11, uid: 4 }] }),
+          }),
+        }),
+      },
+    };
+    const res = await callTool(
+      "get_account_weight_setters",
+      { ss58: LAKE_EXTRINSIC.signer },
+      { env: envWithD1 },
+    );
+    const data = res.body.result.structuredContent;
+    assert.equal(data.total_weight_sets, 6);
+    assert.match(queries[0]!, /event_kind = 'WeightsSet'/);
+    assert.match(queries[0]!, /\(netuid = 11 AND uid = 4\)/);
+  });
+
+  test("get_account_counterparties serves both modes from the lakehouse", async () => {
+    const OTHER_SS58 = "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F";
+    const TRANSFER = {
+      hotkey: LAKE_EXTRINSIC.signer,
+      coldkey: OTHER_SS58,
+      amount_tao: "2.5",
+      block_number: 4200000,
+      event_index: 0,
+      observed_at: 1750009000000,
+    };
+    lakeFetch([TRANSFER]);
+    const list = await callTool(
+      "get_account_counterparties",
+      { ss58: LAKE_EXTRINSIC.signer },
+      { env: LAKE_ENV },
+    );
+    const listData = list.body.result.structuredContent;
+    assert.equal(listData.counterparty_count, 1);
+    assert.equal(listData.counterparties[0].address, OTHER_SS58);
+
+    const queries = lakeFetch([TRANSFER]);
+    const drill = await callTool(
+      "get_account_counterparties",
+      { ss58: LAKE_EXTRINSIC.signer, counterparty: OTHER_SS58 },
+      { env: LAKE_ENV },
+    );
+    const drillData = drill.body.result.structuredContent;
+    assert.equal(drillData.relationship.transfer_count, 1);
+    assert.equal(drillData.counterparties[0].sent_tao, 2.5);
+    assert.match(queries[0]!, /hotkey = '5G9hfkx.*AND coldkey = '5EYCAe5/);
+  });
 });
 
 // #9146: the two windowed-aggregate tools, proving the projection tier the

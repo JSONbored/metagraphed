@@ -229,6 +229,14 @@ import {
   loadExtrinsicFeedColdTier,
 } from "./extrinsics-cold-tier.ts";
 import {
+  loadAccountCounterpartiesColdTier,
+  loadAccountStakeFlowColdTier,
+  loadAccountStakeMovesColdTier,
+  loadAccountTransfersColdTier,
+  loadAccountWeightSettersColdTier,
+  loadCounterpartyRelationshipColdTier,
+} from "./account-feeds-cold-tier.ts";
+import {
   loadAccountEventsColdTier,
   loadBlockEventsColdTier,
 } from "./events-cold-tier.ts";
@@ -7793,7 +7801,14 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             }),
             "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
           )
-        )?.data ?? buildAccountStakeFlow([], ss58, { window })
+        )?.data ??
+        (
+          await loadAccountStakeFlowColdTier(ctx.env, ss58, {
+            window,
+            direction,
+          })
+        )?.data ??
+        buildAccountStakeFlow([], ss58, { window })
       );
     },
   },
@@ -7834,7 +7849,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             }),
             "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
           )
-        )?.data ?? buildAccountStakeMoves([], ss58, { window })
+        )?.data ??
+        (await loadAccountStakeMovesColdTier(ctx.env, ss58, { window }))
+          ?.data ??
+        buildAccountStakeMoves([], ss58, { window })
       );
     },
   },
@@ -7998,7 +8016,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             }),
             "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
           )
-        )?.data ?? buildAccountWeightSetters([], ss58, { window })
+        )?.data ??
+        (await loadAccountWeightSettersColdTier(ctx.env, ss58, { window }))
+          ?.data ??
+        buildAccountWeightSetters([], ss58, { window })
       );
     },
   },
@@ -8251,6 +8272,14 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) ??
+        (await loadAccountTransfersColdTier(ctx.env, ss58, {
+          limit,
+          offset,
+          cursor,
+          direction,
+          blockStart,
+          blockEnd,
+        })) ??
         buildAccountTransfers([], ss58, {
           direction,
           limit,
@@ -8312,6 +8341,12 @@ export const MCP_TOOLS: McpToolDefinition[] = [
               limit: args?.limit,
             }),
             "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+          )) ??
+          (await loadCounterpartyRelationshipColdTier(
+            ctx.env,
+            ss58,
+            counterparty,
+            { limit: args?.limit },
           )) ?? {
             schema_version: 1,
             ss58,
@@ -8332,7 +8367,11 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             limit: args?.limit,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildCounterparties([], ss58, { limit: args?.limit })
+        )) ??
+        (await loadAccountCounterpartiesColdTier(ctx.env, ss58, {
+          limit: args?.limit,
+        })) ??
+        buildCounterparties([], ss58, { limit: args?.limit })
       );
     },
   },
