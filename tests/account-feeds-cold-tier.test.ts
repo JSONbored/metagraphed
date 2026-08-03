@@ -7,6 +7,8 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
+  loadAccountRegistrationsColdTier,
+  loadAccountServingColdTier,
   loadAccountCounterpartiesColdTier,
   loadAccountStakeFlowColdTier,
   loadAccountStakeMovesColdTier,
@@ -574,5 +576,138 @@ describe("loadCounterpartyRelationshipColdTier", () => {
       await loadCounterpartyRelationshipColdTier(TOKEN as never, ADDR, OTHER),
       null,
     );
+  });
+});
+
+describe("loadAccountRegistrationsColdTier", () => {
+  const REG_ROW = {
+    netuid: 104,
+    registrations: "3",
+    first_observed: 1_783_319_088_000,
+    last_observed: 1_783_386_048_000,
+  };
+
+  test("groups NeuronRegistered by netuid over the window", async () => {
+    const q = sqlFetch([REG_ROW]);
+    const res = await loadAccountRegistrationsColdTier(TOKEN as never, ADDR, {
+      window: "90d",
+    });
+    const s = q[0]!;
+    assert.match(s, /event_kind = 'NeuronRegistered'/);
+    assert.match(s, /GROUP BY netuid$/);
+    assert.equal(res!.data.total_registrations, 3);
+    assert.equal(res!.data.window, "90d");
+    assert.equal(res!.generatedAt, new Date(1_783_386_048_000).toISOString());
+  });
+
+  test("attributes on the hotkey ALONE, never widening to the coldkey", async () => {
+    // A registration belongs to the hotkey being registered. Widening to
+    // `hotkey OR coldkey` -- the shape the transfer-style feeds use -- would
+    // credit an operator with every registration made by every hotkey it
+    // funds, which is a plausible-looking wrong answer rather than an error.
+    const q = sqlFetch([REG_ROW]);
+    await loadAccountRegistrationsColdTier(TOKEN as never, ADDR, {});
+    assert.match(q[0]!, new RegExp(`hotkey = '${ADDR}'`));
+    assert.doesNotMatch(q[0]!, /coldkey/);
+  });
+
+  test("does not carry the SQLite INDEXED BY hint into R2 SQL", async () => {
+    // The retired D1 loader named an index; R2 SQL has none to name and would
+    // reject the statement.
+    const q = sqlFetch([REG_ROW]);
+    await loadAccountRegistrationsColdTier(TOKEN as never, ADDR, {});
+    assert.doesNotMatch(q[0]!, /INDEXED BY/);
+  });
+
+  test("falls back to the default window for an unknown label", async () => {
+    const q = sqlFetch([REG_ROW]);
+    const res = await loadAccountRegistrationsColdTier(TOKEN as never, ADDR, {
+      window: "1y",
+    });
+    assert.equal(res!.data.window, "30d");
+    void q;
+  });
+
+  test("an empty window answers zeros with a null generatedAt — an answer, not a decline", async () => {
+    sqlFetch([]);
+    const res = await loadAccountRegistrationsColdTier(TOKEN as never, ADDR);
+    assert.equal(res!.data.total_registrations, 0);
+    assert.equal(res!.generatedAt, null);
+  });
+
+  test("declines an unusable address rather than scanning every account", async () => {
+    const q = sqlFetch([]);
+    assert.equal(
+      await loadAccountRegistrationsColdTier(TOKEN as never, "not-an-ss58"),
+      null,
+    );
+    assert.equal(q.length, 0, "must not issue a query at all");
+  });
+
+  test("declines when the lakehouse cannot answer", async () => {
+    globalThis.fetch = (async () =>
+      ({
+        ok: false,
+        status: 500,
+      }) as unknown as Response) as unknown as typeof fetch;
+    assert.equal(
+      await loadAccountRegistrationsColdTier(TOKEN as never, ADDR),
+      null,
+    );
+  });
+});
+
+describe("loadAccountServingColdTier", () => {
+  const SERVE_ROW = {
+    netuid: 55,
+    announcements: "3",
+    first_observed: 1_784_016_000_001,
+    last_observed: 1_785_342_888_001,
+  };
+
+  test("groups AxonServed by netuid and reads the announcements column", async () => {
+    const q = sqlFetch([SERVE_ROW]);
+    const res = await loadAccountServingColdTier(TOKEN as never, ADDR, {
+      window: "7d",
+    });
+    const s = q[0]!;
+    assert.match(s, /event_kind = 'AxonServed'/);
+    // The builder reads `announcements`, not `registrations` -- aliasing it
+    // wrongly would yield a card of zeros from a healthy read.
+    assert.match(s, /COUNT\(\*\) AS announcements/);
+    assert.equal(res!.data.total_announcements, 3);
+    assert.equal(res!.data.window, "7d");
+  });
+
+  test("attributes on the hotkey ALONE, never widening to the coldkey", async () => {
+    const q = sqlFetch([SERVE_ROW]);
+    await loadAccountServingColdTier(TOKEN as never, ADDR, {});
+    assert.match(q[0]!, new RegExp(`hotkey = '${ADDR}'`));
+    assert.doesNotMatch(q[0]!, /coldkey/);
+  });
+
+  test("an empty window answers zeros with a null generatedAt", async () => {
+    sqlFetch([]);
+    const res = await loadAccountServingColdTier(TOKEN as never, ADDR);
+    assert.equal(res!.data.total_announcements, 0);
+    assert.equal(res!.generatedAt, null);
+  });
+
+  test("declines an unusable address rather than scanning every account", async () => {
+    const q = sqlFetch([]);
+    assert.equal(
+      await loadAccountServingColdTier(TOKEN as never, "not-an-ss58"),
+      null,
+    );
+    assert.equal(q.length, 0);
+  });
+
+  test("declines when the lakehouse cannot answer", async () => {
+    globalThis.fetch = (async () =>
+      ({
+        ok: false,
+        status: 500,
+      }) as unknown as Response) as unknown as typeof fetch;
+    assert.equal(await loadAccountServingColdTier(TOKEN as never, ADDR), null);
   });
 });
