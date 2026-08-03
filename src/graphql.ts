@@ -260,6 +260,7 @@ import {
 import { buildBlock, buildBlockFeed } from "./blocks.ts";
 import { loadBlockChainEvents } from "./data-api-mcp.ts";
 import { buildBlocksSummary } from "./blocks-summary.ts";
+import { loadBlocksSummaryFromArtifact } from "./blocks-summary-artifact.ts";
 import { buildRuntimeVersionHistory } from "./runtime-versions.ts";
 import { buildChainYield } from "./chain-yield.ts";
 import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.ts";
@@ -4703,7 +4704,10 @@ const rootValue = {
         context.env,
         postgresTierRequest(context, "/api/v1/blocks/summary"),
         "METAGRAPH_BLOCKS_SOURCE",
-      )) as Row | null) ?? buildBlocksSummary([]);
+      )) as Row | null) ??
+      // #9146: same blocks-summary projection REST and MCP read.
+      ((await loadBlocksSummaryFromArtifact(context.env)) as Row | null) ??
+      buildBlocksSummary([]);
     return {
       schema_version: data.schema_version ?? 1,
       block_count: data.block_count ?? 0,

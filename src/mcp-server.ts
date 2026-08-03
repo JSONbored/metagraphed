@@ -1241,6 +1241,7 @@ import {
   buildSubnetIdleStake,
 } from "./subnet-idle-stake.ts";
 import { buildBlocksSummary } from "./blocks-summary.ts";
+import { loadBlocksSummaryFromArtifact } from "./blocks-summary-artifact.ts";
 import {
   buildChainIdentityHistory,
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
@@ -5432,7 +5433,11 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           ctx.env,
           mcpNeuronsTierRequest("/api/v1/blocks/summary"),
           "METAGRAPH_BLOCKS_SOURCE",
-        )) ?? buildBlocksSummary([])
+        )) ??
+        // #9146: same blocks-summary projection REST reads, so the tool and
+        // the route cannot report different block-production numbers.
+        (await loadBlocksSummaryFromArtifact(ctx.env)) ??
+        buildBlocksSummary([])
       );
     },
   },

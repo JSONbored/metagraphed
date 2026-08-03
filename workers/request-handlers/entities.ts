@@ -178,6 +178,7 @@ import { loadAccountEntitiesColdTier } from "../../src/subnet-ownership-cold-tie
 import { loadSelfHealthColdTier } from "../../src/self-health-cold-tier.ts";
 import { loadTopHoldersFromArtifact } from "../../src/top-holders-artifact.ts";
 import { buildBlocksSummary } from "../../src/blocks-summary.ts";
+import { loadBlocksSummaryFromArtifact } from "../../src/blocks-summary-artifact.ts";
 import {
   EXTRINSICS_CSV_COLUMNS,
   extrinsicsToCsvRows,
@@ -5119,7 +5120,11 @@ export async function handleBlocksSummary(
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
   const pgData = await tryPostgresTier(env, request, "METAGRAPH_BLOCKS_SOURCE");
-  const data = pgData ?? buildBlocksSummary([]);
+  // #9146: on a tier miss, serve the precomputed card from the blocks-summary
+  // projection rather than a zeroed one. The reader declines (null) when it
+  // cannot answer faithfully, which keeps buildBlocksSummary([]) as the floor.
+  const projected = pgData ?? (await loadBlocksSummaryFromArtifact(env));
+  const data = projected ?? buildBlocksSummary([]);
   const response = await envelopeResponse(
     request,
     {
@@ -5132,7 +5137,7 @@ export async function handleBlocksSummary(
     },
     "short",
   );
-  return pgData ? response : markPostgresTierFallbackResponse(response);
+  return projected ? response : markPostgresTierFallbackResponse(response);
 }
 
 // GET /api/v1/blocks/{ref}: per-block detail (#1345). ref is a numeric
