@@ -114,6 +114,17 @@ export const LAKEHOUSE_SEAM_CRON = "23 7 * * *";
 // this Worker, so it is not the circular case a deploy-drift check would be.
 // Must match a wrangler.jsonc cron entry.
 export const SAFE_MODE_WATCHDOG_CRON = "41 * * * *";
+// #9146: scheduled projections -- recompute the windowed-aggregate artifacts
+// (chain-transfers, chain-stake-flow) from the lakehouse. These routes cannot
+// be one-shot materialized (their windows anchor to the current date, so a
+// stored answer rots) and cannot query R2 SQL at request time (second-scale,
+// no indexes), so a cron recomputes and the readers serve R2. Twice-hourly:
+// the artifacts sit behind the same short edge-cache TTL the live tier used,
+// so a finer cadence would recompute answers nothing could serve yet.
+// Minutes 11/41 tick on none of the crons above and stay off the */5
+// raw-capture and */15 probe grids. Must match a wrangler.jsonc
+// `triggers.crons` entry.
+export const PROJECTION_LANES_CRON = "11,41 * * * *";
 // KV key holding the last-reported staleness signature, so a standing outage is
 // announced when it starts and when it changes rather than every hour forever.
 export const FRESHNESS_WATCHDOG_STATE_KEY = "watchdog:freshness:signature";

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { describe, test } from "vitest";
+import { afterEach, describe, test } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import {
   handleRequest,
@@ -3160,6 +3160,89 @@ describe("handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON", () => {
       (result as Row).body.error.code,
       "rollup_account_events_daily_unavailable",
     );
+  });
+});
+
+// --- handleScheduled PROJECTION_LANES_CRON (#9146, scheduled projections) ---
+describe("handleScheduled PROJECTION_LANES_CRON", () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  function projectionTick(env: unknown) {
+    return handleScheduled(
+      {
+        cron: workerConfig.PROJECTION_LANES_CRON,
+      } as unknown as ScheduledController,
+      env as unknown as Env,
+      {} as unknown as ExecutionContext,
+    );
+  }
+
+  test("skips quietly when R2 SQL is not configured — local/CI/self-hosters have no lakehouse", async () => {
+    const result = await projectionTick({});
+    assert.deepEqual(result, {
+      ok: false,
+      skipped: true,
+      reason: "r2 sql not configured",
+      lanes: {},
+    });
+  });
+
+  test("recomputes and writes every registered lane's artifact on one tick", async () => {
+    const puts: string[] = [];
+    globalThis.fetch = (async () =>
+      ({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows: [] } }),
+      }) as unknown as Response) as unknown as typeof fetch;
+    const result = await projectionTick({
+      R2_SQL_TOKEN: "cfut_test",
+      METAGRAPH_ARCHIVE: {
+        async put(key: string) {
+          puts.push(key);
+        },
+      },
+    });
+    assert.deepEqual(result, {
+      ok: true,
+      lanes: { "chain-transfers": 0, "chain-stake-flow": 0 },
+    });
+    assert.deepEqual(puts, [
+      "metagraph/projections/chain-transfers.json",
+      "metagraph/projections/chain-stake-flow.json",
+    ]);
+  });
+
+  test("a failed lane reports ok:false without aborting the tick or the sibling lane", async () => {
+    const puts: string[] = [];
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      const sql = String(JSON.parse(String(init?.body)).query);
+      if (sql.includes("'Transfer'")) {
+        return { ok: false, status: 500 } as unknown as Response;
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows: [] } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    const result = await projectionTick({
+      R2_SQL_TOKEN: "cfut_test",
+      METAGRAPH_ARCHIVE: {
+        async put(key: string) {
+          puts.push(key);
+        },
+      },
+    });
+    assert.deepEqual(result, {
+      ok: false,
+      lanes: { "chain-transfers": null, "chain-stake-flow": 0 },
+    });
+    // The failed lane wrote nothing — its previous artifact survives.
+    assert.deepEqual(puts, ["metagraph/projections/chain-stake-flow.json"]);
   });
 });
 

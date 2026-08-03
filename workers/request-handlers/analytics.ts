@@ -125,6 +125,8 @@ import {
   CHAIN_STAKE_FLOW_LIMIT_DEFAULT,
   CHAIN_STAKE_FLOW_LIMIT_MAX,
 } from "../../src/chain-stake-flow.ts";
+import { loadChainTransfersFromArtifact } from "../../src/chain-transfers-artifact.ts";
+import { loadChainStakeFlowFromArtifact } from "../../src/chain-stake-flow-artifact.ts";
 import {
   buildChainAlphaVolume,
   CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
@@ -1520,6 +1522,14 @@ export async function handleChainTransfers(
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) as ReturnType<typeof buildChainTransfers> | null) ??
+        // The projection tier (#9146): a cron recomputes this window's
+        // scorecard from the lakehouse; the artifact reader slices to the
+        // request's limit and feeds the same formatter. See
+        // src/chain-transfers-artifact.ts.
+        (await loadChainTransfersFromArtifact(env, {
+          window: label,
+          limit,
+        })) ??
         buildChainTransfers({
           window: label,
           observedAt: meta?.last_run_at || null,
@@ -1696,6 +1706,14 @@ export async function handleChainStakeFlow(
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) as ReturnType<typeof buildChainStakeFlow> | null) ??
+        // The projection tier (#9146): a cron recomputes this window's
+        // per-(netuid, event_kind) aggregate from the lakehouse; the shared
+        // builder owns ranking and the limit. See
+        // src/chain-stake-flow-artifact.ts.
+        (await loadChainStakeFlowFromArtifact(env, {
+          window: label,
+          limit,
+        })) ??
         buildChainStakeFlow([], {
           window: label,
           limit,

@@ -233,6 +233,8 @@ import {
   loadBlockEventsColdTier,
 } from "./events-cold-tier.ts";
 import { loadTopHoldersFromArtifact } from "./top-holders-artifact.ts";
+import { loadChainTransfersFromArtifact } from "./chain-transfers-artifact.ts";
+import { loadChainStakeFlowFromArtifact } from "./chain-stake-flow-artifact.ts";
 import {
   handleRpcProxyRequest,
   graphqlRateLimited,
@@ -4927,6 +4929,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) ??
+        // The projection tier (#9146): the cron-recomputed lakehouse
+        // aggregate, through the same builder. See
+        // src/chain-stake-flow-artifact.ts.
+        (await loadChainStakeFlowFromArtifact(ctx.env, { window, limit })) ??
         buildChainStakeFlow([], {
           window,
           limit,
@@ -9302,6 +9308,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) ??
+        // The projection tier (#9146): the cron-recomputed lakehouse
+        // scorecard, sliced to this call's limit and fed through the same
+        // formatter. See src/chain-transfers-artifact.ts.
+        (await loadChainTransfersFromArtifact(ctx.env, { window, limit })) ??
         buildChainTransfers({
           window,
           observedAt: await mcpObservedAt(ctx),

@@ -14881,6 +14881,112 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
   });
 });
 
+// #9146: the two windowed-aggregate tools, proving the projection tier the
+// same way the lakehouse describe above proves the cold tier — with no
+// Postgres flag set and the cron-written artifact present, the stored rows
+// flow through the shared formatters into the tool result instead of the
+// schema-stable empty.
+describe("MCP windowed-aggregate tools — projection artifact answers when Postgres misses", () => {
+  const NEWEST = 1785680000000;
+
+  function archiveEnv(bodyByKey: Record<string, unknown>) {
+    return {
+      METAGRAPH_ARCHIVE: {
+        async get(key: string) {
+          if (!Object.hasOwn(bodyByKey, key)) return null;
+          return { json: async () => bodyByKey[key] };
+        },
+      },
+    };
+  }
+
+  test("get_chain_transfers serves the projected scorecard sliced to the call's limit", async () => {
+    const env = archiveEnv({
+      "metagraph/projections/chain-transfers.json": {
+        schema_version: 1,
+        windows: {
+          "7d": {
+            days: 7,
+            totals: {
+              transfer_count: "12",
+              total_volume_tao: "2000",
+              newest_observed: NEWEST,
+              unique_senders: "5",
+              unique_receivers: "6",
+            },
+            senders: [
+              { address: "5A", volume_tao: "600", transfer_count: "7" },
+              { address: "5B", volume_tao: "400", transfer_count: "5" },
+            ],
+            receivers: [
+              { address: "5C", volume_tao: "2000", transfer_count: "12" },
+            ],
+          },
+        },
+      },
+    });
+    const res = await callTool("get_chain_transfers", { limit: 1 }, { env });
+    const data = res.body.result.structuredContent;
+    assert.equal(data.window, "7d");
+    assert.equal(data.total_volume_tao, 2000);
+    assert.equal(data.unique_senders, 5);
+    assert.equal(data.observed_at, new Date(NEWEST).toISOString());
+    assert.deepEqual(
+      data.top_senders.map((row: { address: string }) => row.address),
+      ["5A"],
+    );
+    assert.equal(data.top_sender_share, 600 / 2000);
+  });
+
+  test("get_chain_stake_flow serves the projected leaderboard for the requested window", async () => {
+    const env = archiveEnv({
+      "metagraph/projections/chain-stake-flow.json": {
+        schema_version: 1,
+        windows: {
+          "30d": {
+            days: 30,
+            rows: [
+              {
+                netuid: 7,
+                event_kind: "StakeAdded",
+                total_tao: "100",
+                event_count: "3",
+                last_observed: NEWEST,
+              },
+              {
+                netuid: 7,
+                event_kind: "StakeRemoved",
+                total_tao: "40",
+                event_count: "2",
+                last_observed: NEWEST - 1000,
+              },
+            ],
+          },
+        },
+      },
+    });
+    const res = await callTool(
+      "get_chain_stake_flow",
+      { window: "30d" },
+      { env },
+    );
+    const data = res.body.result.structuredContent;
+    assert.equal(data.window, "30d");
+    assert.equal(data.subnet_count, 1);
+    assert.equal(data.subnets[0].netuid, 7);
+    assert.equal(data.subnets[0].net_flow_tao, 60);
+    assert.equal(data.observed_at, new Date(NEWEST).toISOString());
+  });
+
+  test("a missing artifact still degrades to the schema-stable empty", async () => {
+    const env = archiveEnv({});
+    const transfers = await callTool("get_chain_transfers", {}, { env });
+    assert.equal(transfers.body.result.structuredContent.transfer_count, 0);
+    const flow = await callTool("get_chain_stake_flow", {}, { env });
+    assert.equal(flow.body.result.structuredContent.subnet_count, 0);
+  });
+});
+
 describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsics, get_block_events, list_extrinsics, get_extrinsic)", () => {
   // Tests for the chain block-explorer MCP surface.
 
