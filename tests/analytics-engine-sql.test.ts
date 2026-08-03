@@ -17,7 +17,9 @@ import {
   ANALYTICS_SQL_TOKEN_ENV,
   currentAnalyticsSqlFailureGeneration,
   isAnalyticsSqlConfigured,
-  sampledAvg,
+  sampledMean,
+  unsupportedAeFunctions,
+  AE_SUPPORTED_FUNCTIONS,
   sampledCount,
   sampledCountIf,
   sampledSum,
@@ -263,24 +265,35 @@ describe("sampling-aware aggregate builders", () => {
   // _sample_interval. Each of these is the corrected form of an aggregate
   // that would otherwise silently undercount.
   test("counts weight by the sample interval, never COUNT(*)", () => {
-    assert.equal(sampledCount(), "SUM(_sample_interval)");
+    assert.equal(sampledCount(), "sum(_sample_interval)");
     assert.equal(
       sampledCountIf("double2 > 1"),
       "sumIf(_sample_interval, double2 > 1)",
     );
   });
 
-  test("sums and averages weight by the sample interval", () => {
-    assert.equal(sampledSum("double3"), "SUM(_sample_interval * double3)");
-    assert.equal(
-      sampledAvg("double3"),
-      "SUM(_sample_interval * double3) / nullif(SUM(_sample_interval), 0)",
-    );
+  test("sums weight by the sample interval", () => {
+    assert.equal(sampledSum("double3"), "sum(_sample_interval * double3)");
   });
 
-  test("the average is NULL over an empty window, not a divide-by-zero", () => {
-    // null there means "unmeasured", which is what an empty window is.
-    assert.match(sampledAvg("double3"), /nullif\(SUM\(_sample_interval\), 0\)/);
+  test("the mean divides the sampled sum by the sampled count", () => {
+    assert.equal(sampledMean(300, 4), 75);
+  });
+
+  test("an empty window is null, not a divide-by-zero", () => {
+    // AE has no nullif/ifNull/coalesce and no NULL literal, so this guard
+    // CANNOT live in the query -- the previous SQL-side attempt 422'd every
+    // rollup that carried it. null here means "unmeasured", which is what an
+    // empty window is; NaN or Infinity would be a value with no JSON form.
+    assert.equal(sampledMean(0, 0), null);
+    assert.equal(sampledMean(10, 0), null);
+    assert.equal(sampledMean(10, -1), null);
+  });
+
+  test("a non-numeric rollup value is null rather than NaN", () => {
+    assert.equal(sampledMean("nonsense", 4), null);
+    assert.equal(sampledMean(300, "nonsense"), null);
+    assert.equal(sampledMean(undefined, undefined), null);
   });
 
   test("quantiles are weighted, so they describe events not stored rows", () => {
@@ -299,5 +312,135 @@ describe("sampling-aware aggregate builders", () => {
         /level must be in \(0,1\)/,
       );
     }
+  });
+});
+
+describe("a rejected query says WHICH function the engine refused", () => {
+  // The bug this exists for: `nullif` is in none of AE's function families,
+  // so every rollup carrying it 422'd -- and the thrown error said only
+  // "HTTP 422". The engine names the offending function in the response body;
+  // discarding it turned a one-line diagnosis into a live tail plus a walk
+  // through the SQL reference.
+  const record = (async () => true) as never;
+
+  test("the engine's explanation reaches the logged error", async () => {
+    const errors: string[] = [];
+    const spy = console.error;
+    console.error = (...args: unknown[]) => errors.push(args.join(" "));
+    try {
+      const http = fetchReturning(
+        new Response("Unknown function nullif", { status: 422 }),
+      );
+      assert.equal(
+        await analyticsSqlQuery(TOKEN_ENV, "SELECT nullif(1, 0)", {
+          fetch: http.doFetch,
+          recordException: record,
+          ...noAbort,
+        }),
+        null,
+      );
+    } finally {
+      console.error = spy;
+    }
+    assert.equal(errors.length, 1);
+    assert.match(errors[0]!, /HTTP 422/);
+    assert.match(errors[0]!, /Unknown function nullif/);
+  });
+
+  test("an empty or unreadable body still reports the status", async () => {
+    for (const res of [
+      new Response("", { status: 422 }),
+      // A body that throws on read must not erase the status we already have.
+      {
+        ok: false,
+        status: 500,
+        text: async () => {
+          throw new Error("stream broken");
+        },
+      } as unknown as Response,
+    ]) {
+      const errors: string[] = [];
+      const spy = console.error;
+      console.error = (...args: unknown[]) => errors.push(args.join(" "));
+      try {
+        const http = fetchReturning(res);
+        await analyticsSqlQuery(TOKEN_ENV, "SELECT 1", {
+          fetch: http.doFetch,
+          recordException: record,
+          ...noAbort,
+        });
+      } finally {
+        console.error = spy;
+      }
+      assert.equal(errors.length, 1);
+      assert.match(errors[0]!, /analytics engine sql: HTTP \d+$/);
+    }
+  });
+
+  test("a long body is bounded rather than logged whole", async () => {
+    const errors: string[] = [];
+    const spy = console.error;
+    console.error = (...args: unknown[]) => errors.push(args.join(" "));
+    try {
+      const http = fetchReturning(
+        new Response("x".repeat(5000), { status: 422 }),
+      );
+      await analyticsSqlQuery(TOKEN_ENV, "SELECT 1", {
+        fetch: http.doFetch,
+        recordException: record,
+        ...noAbort,
+      });
+    } finally {
+      console.error = spy;
+    }
+    assert.ok(errors[0]!.length < 400, errors[0]!.length.toString());
+  });
+});
+
+describe("unsupportedAeFunctions", () => {
+  test("names the builtins AE does not document", () => {
+    assert.deepEqual(
+      unsupportedAeFunctions("SELECT nullif(sum(x), 0), coalesce(a, b)"),
+      ["coalesce", "nullif"],
+    );
+  });
+
+  test("documented functions pass, in the spelling the reference uses", () => {
+    assert.deepEqual(
+      unsupportedAeFunctions(
+        "SELECT sum(_sample_interval), sumIf(_sample_interval, a > 1)," +
+          " quantileExactWeighted(0.5)(d, _sample_interval)," +
+          " toUnixTimestamp(toStartOfInterval(timestamp, INTERVAL '1' HOUR))" +
+          " FROM t WHERE timestamp > now() - INTERVAL '7' DAY",
+      ),
+      [],
+    );
+  });
+
+  test("parenthesised SQL keywords are syntax, not calls", () => {
+    assert.deepEqual(
+      unsupportedAeFunctions("SELECT a FROM t WHERE b IN (1, 2) GROUP BY (a)"),
+      [],
+    );
+  });
+
+  test("a name that merely contains a function name is not a call", () => {
+    // `latency_sum` and a `count_of_things` column are columns; only an
+    // identifier immediately followed by `(` is a call.
+    assert.deepEqual(
+      unsupportedAeFunctions("SELECT latency_sum, count_of_things FROM t"),
+      [],
+    );
+  });
+
+  test("the allowlist records the absence that caused the outage", () => {
+    // Stated as a test so a future edit cannot quietly re-admit them.
+    for (const absent of ["nullif", "ifNull", "coalesce", "CASE"]) {
+      assert.ok(
+        !AE_SUPPORTED_FUNCTIONS.has(absent),
+        `${absent} is not an AE function`,
+      );
+    }
+    assert.ok(AE_SUPPORTED_FUNCTIONS.has("if"));
   });
 });

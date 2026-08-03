@@ -20,7 +20,10 @@ import {
   hotWindowBounds,
   loadRpcUsageHotTier,
 } from "../src/rpc-usage-hot-tier.ts";
-import { ANALYTICS_SQL_TOKEN_ENV } from "../src/analytics-engine-sql.ts";
+import {
+  ANALYTICS_SQL_TOKEN_ENV,
+  unsupportedAeFunctions,
+} from "../src/analytics-engine-sql.ts";
 import type { Row } from "./row-type.ts";
 
 const ENV = { [ANALYTICS_SQL_TOKEN_ENV]: "test-token" } as unknown as Env;
@@ -51,7 +54,7 @@ const TOTALS = [
     ok_count: 950,
     failover_count: 40,
     cache_hits: 250,
-    avg_latency_ms: 125.4,
+    latency_sum: 125_400,
     p50: 87.2,
     p95: 402.8,
     observed_at_s: OBSERVED_AT_S,
@@ -64,7 +67,7 @@ const ENDPOINTS = [
     network: "finney",
     requests: 700,
     ok_count: 690,
-    avg_latency_ms: 83,
+    latency_sum: 58_100,
   },
   {
     endpoint_id: "",
@@ -72,21 +75,21 @@ const ENDPOINTS = [
     network: "finney",
     requests: 300,
     ok_count: 260,
-    avg_latency_ms: 4,
+    latency_sum: 1_200,
   },
 ];
 const NETWORKS = [
-  { network: "finney", requests: 990, ok_count: 945 },
-  { network: "test", requests: 10, ok_count: 5 },
+  { network: "finney", requests: 990, ok_count: 945, latency_sum: 99_000 },
+  { network: "test", requests: 10, ok_count: 5, latency_sum: 500 },
 ];
 const BUCKETS = [
   {
     ts: OBSERVED_AT_S - 3600,
     requests: 400,
     ok_count: 390,
-    avg_latency_ms: 90,
+    latency_sum: 36_000,
   },
-  { ts: OBSERVED_AT_S, requests: 600, ok_count: 560, avg_latency_ms: 140 },
+  { ts: OBSERVED_AT_S, requests: 600, ok_count: 560, latency_sum: 84_000 },
 ];
 
 const FULL = [TOTALS, ENDPOINTS, NETWORKS, BUCKETS];
@@ -192,14 +195,13 @@ describe("the SQL the hot tier issues", () => {
         !/\bCOUNT\(\*\)/i.test(statement),
         `a raw COUNT(*) undercounts a sampled dataset: ${statement}`,
       );
-      assert.match(statement, /SUM\(_sample_interval\)/);
+      assert.match(statement, /sum\(_sample_interval\)/);
     }
-    // Sums and averages are weighted too, not just counts.
-    assert.match(sql[0]!, /SUM\(_sample_interval \* double1\)/);
-    assert.match(
-      sql[0]!,
-      /SUM\(_sample_interval \* double3\) \/ nullif\(SUM\(_sample_interval\), 0\)/,
-    );
+    // Sums are weighted too, not just counts.
+    assert.match(sql[0]!, /sum\(_sample_interval \* double1\)/);
+    // The latency NUMERATOR is what the query selects; the mean is taken in
+    // TypeScript, because AE cannot express the empty-window guard.
+    assert.match(sql[0]!, /sum\(_sample_interval \* double3\) AS latency_sum/);
   });
 
   test("percentiles are weighted quantiles over the latency slot", async () => {
@@ -387,5 +389,53 @@ describe("window bounds", () => {
     assert.equal(bucketInterval(90_000), null);
     assert.equal(bucketInterval(0), null);
     assert.equal(bucketInterval(-3_600_000), null);
+  });
+});
+
+describe("the SQL this tier emits stays inside AE's dialect", () => {
+  // THE REGRESSION THIS FILE EXISTS FOR. Every rollup once carried
+  // `nullif(SUM(_sample_interval), 0)`, and AE has no `nullif` -- so all four
+  // queries returned HTTP 422, loadRpcUsageHotTier declined on every request,
+  // and /api/v1/rpc/usage served the frozen lakehouse for eight hours while
+  // looking entirely healthy. Nothing caught it: a decline is indistinguishable
+  // from an untouched window, and the staleness watchdog reads the same engine.
+  //
+  // So the guard is on the SQL itself rather than on the one function that was
+  // wrong. AE's dialect reads like ClickHouse and is a small subset of it; the
+  // next unsupported builtin someone reaches for by reflex fails here instead
+  // of in production.
+  test("every function called is one AE documents", async () => {
+    const { query, sql } = cannedQuery(FULL);
+    await loadRpcUsageHotTier(ENV, { query });
+    assert.equal(sql.length, 4);
+    for (const statement of sql) {
+      assert.deepEqual(
+        unsupportedAeFunctions(statement),
+        [],
+        `unsupported AE function in: ${statement}`,
+      );
+    }
+  });
+
+  test("no rollup asks the engine to guard a division", async () => {
+    const { query, sql } = cannedQuery(FULL);
+    await loadRpcUsageHotTier(ENV, { query });
+    for (const statement of sql) {
+      assert.ok(
+        !/nullif|ifNull|coalesce/i.test(statement),
+        `null-guard leaked back into: ${statement}`,
+      );
+    }
+  });
+
+  test("the mean is derived from the sum, and the sum is not published", async () => {
+    const { query } = cannedQuery(FULL);
+    const out = (await loadRpcUsageHotTier(ENV, { query })) as Row;
+    // 58_100 / 700 == 83
+    assert.equal((out.endpoints as Row[])[0].avg_latency_ms, 83);
+    // The numerator is a query artefact; it must not reach the payload.
+    assert.ok(!("latency_sum" in (out.endpoints as Row[])[0]));
+    assert.ok(!("latency_sum" in (out.buckets as Row[])[0]));
+    assert.ok(!("latency_sum" in (out.networks as Row[])[0]));
   });
 });

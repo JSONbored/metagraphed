@@ -121,9 +121,9 @@ export async function runRpcUsageStalenessWatchdog(
 
   const rows = await query(
     env,
-    `SELECT toUnixTimestamp(MAX(timestamp)) AS latest` +
+    `SELECT toUnixTimestamp(max(timestamp)) AS latest` +
       ` FROM ${RPC_USAGE_DATASET}` +
-      ` WHERE timestamp > NOW() - INTERVAL '${LOOKBACK_HOURS}' HOUR`,
+      ` WHERE timestamp > now() - INTERVAL '${LOOKBACK_HOURS}' HOUR`,
   );
   // The client already reported the failure to the exception channel; a
   // second alert here would double-report one fault, and "the query failed"

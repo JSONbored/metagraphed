@@ -12,11 +12,24 @@
 //   points and exposes the rate through `_sample_interval`. A plain COUNT(*)
 //   over a sampled dataset is therefore an UNDERCOUNT, silently and without
 //   any signal in the response. Cloudflare's own guidance is the correction:
-//   `SUM(_sample_interval)` for counts, `SUM(_sample_interval * doubleN)`
+//   `sum(_sample_interval)` for counts, `sum(_sample_interval * doubleN)`
 //   for sums, and the weighted quantile family for percentiles. Callers here
-//   MUST use `sampledCount`/`sampledSum`/`sampledAvg`/`weightedQuantile`
+//   MUST use `sampledCount`/`sampledSum`/`sampledMean`/`weightedQuantile`
 //   below rather than writing the raw aggregate, which is why those helpers
 //   exist as exported functions instead of inline strings.
+//
+//   THE DIALECT IS SMALLER THAN IT LOOKS, AND FAILS OPAQUELY. AE accepts a
+//   fixed function list; anything outside it is a 422 with no partial
+//   success. There is no NULL literal, and no null-guard function at all --
+//   `nullif`, `ifNull` and `coalesce` are all absent. That is why a mean is
+//   computed as `sampledSum / sampledCount` in TypeScript rather than as a
+//   guarded division in SQL: the guard cannot be expressed here, and the
+//   unguarded form divides by zero on an empty window.
+//
+//   Function names are emitted in the exact spelling the reference documents
+//   (lowercase `sum`/`max`/`now`, camelCase `sumIf`/`toUnixTimestamp`), and
+//   `unsupportedAeFunctions` is the guard against reaching for a builtin that
+//   reads as obviously available and is not.
 //
 //   THE SCHEMA IS POSITIONAL. There are no named columns: a dataset's rows
 //   are blob1..blob20, double1..double20, index1, timestamp and
@@ -103,6 +116,33 @@ export function isAnalyticsSqlConfigured(env: Env | null | undefined): boolean {
   return typeof token === "string" && token.trim().length > 0;
 }
 
+/** How much of a rejected query's body to keep in the thrown error. */
+const MAX_REJECTION_DETAIL = 300;
+
+/**
+ * The engine's own explanation of a rejection, appended to the status.
+ *
+ * AE answers an invalid query with a plain-text body naming what it refused,
+ * and discarding it is what let an unsupported builtin (`nullif`, which is in
+ * neither AE's conditional nor its mathematical function set) 422 every hot
+ * tier query in production while the route quietly fell through to the frozen
+ * lakehouse. A bare `HTTP 422` said only that something was wrong; finding
+ * WHICH something took a live tail and a walk through the SQL reference.
+ *
+ * Bounded, and never allowed to replace the status: a body we cannot read is
+ * strictly less informative than the status we already have.
+ */
+async function rejectionDetail(
+  res: { text?: () => Promise<string> } | null | undefined,
+): Promise<string> {
+  try {
+    const text = (await res?.text?.())?.trim();
+    return text ? `: ${text.slice(0, MAX_REJECTION_DETAIL)}` : "";
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Run one read-only query and return its rows, or null on ANY failure.
  *
@@ -150,7 +190,9 @@ export async function analyticsSqlQuery(
       signal: abort.signal,
     } as RequestInit);
     if (!res?.ok) {
-      throw new Error(`analytics engine sql: HTTP ${res?.status}`);
+      throw new Error(
+        `analytics engine sql: HTTP ${res?.status}${await rejectionDetail(res)}`,
+      );
     }
     const body = (await res.json()) as AnalyticsSqlBody;
     const rows = body?.data;
@@ -185,7 +227,7 @@ export async function analyticsSqlQuery(
 
 /** True event count: each stored row stands for `_sample_interval` events. */
 export function sampledCount(): string {
-  return "SUM(_sample_interval)";
+  return "sum(_sample_interval)";
 }
 
 /** True count of the events matching `predicate`. */
@@ -195,14 +237,170 @@ export function sampledCountIf(predicate: string): string {
 
 /** True sum of a numeric column across the events it stands for. */
 export function sampledSum(column: string): string {
-  return `SUM(_sample_interval * ${column})`;
+  return `sum(_sample_interval * ${column})`;
 }
 
-/** Sampling-corrected mean: the weighted sum over the weighted count.
- * NULL rather than a divide-by-zero when the window is empty. */
-export function sampledAvg(column: string): string {
-  return `${sampledSum(column)} / nullif(${sampledCount()}, 0)`;
+/**
+ * Sampling-corrected mean, computed HERE rather than in SQL.
+ *
+ * This used to be `sampledSum(col) / nullif(sampledCount(), 0)`, and that
+ * expression 422'd every query it appeared in: AE has no `nullif`, no
+ * `ifNull`, no `coalesce`, and no NULL literal to feed them, so an empty
+ * window simply cannot be guarded engine-side. Dropping the guard is not the
+ * alternative -- an unguarded `x / 0` yields a non-finite value that has no
+ * JSON representation, which trades a loud failure for a corrupt payload.
+ *
+ * So the query selects the numerator (`sampledSum`) alongside the count it
+ * already selects, and the division happens where `null` is expressible and
+ * means exactly what the route publishes: not measured.
+ *
+ * Null for an empty window, a non-finite input, or a negative count -- never
+ * a number derived from nothing.
+ */
+export function sampledMean(sum: unknown, count: unknown): number | null {
+  const n = Number(count);
+  const s = Number(sum);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  if (!Number.isFinite(s)) return null;
+  return s / n;
 }
+
+/**
+ * Every function Analytics Engine documents, by family.
+ *
+ * Transcribed from the SQL reference (verified 2026-08-03). This exists
+ * because AE's dialect looks like ClickHouse and is a strict, much smaller
+ * subset of it: the functions a SQL author reaches for by reflex -- `nullif`,
+ * `coalesce`, `ifNull`, `CASE` -- are simply absent, and reaching for one
+ * costs a 422 on EVERY query that carries it, with no partial success and,
+ * before this change, no message saying which name was refused.
+ *
+ * A name missing from this list is not proof it is unsupported; it is proof
+ * nobody verified it. Check the reference, then add it here in the same
+ * change that uses it -- that is the point of the list.
+ */
+export const AE_SUPPORTED_FUNCTIONS: ReadonlySet<string> = new Set([
+  // Aggregate
+  "count",
+  "sum",
+  "avg",
+  "min",
+  "max",
+  "quantileExactWeighted",
+  "quantileWeighted",
+  "argMax",
+  "argMin",
+  "first_value",
+  "last_value",
+  "topK",
+  "topKWeighted",
+  "countIf",
+  "sumIf",
+  "avgIf",
+  // Conditional -- `if` is the ONLY one. No nullif, ifNull, coalesce, CASE.
+  "if",
+  // Date and time
+  "formatDateTime",
+  "now",
+  "today",
+  "toDateTime",
+  "toYear",
+  "toMonth",
+  "toDayOfWeek",
+  "toDayOfMonth",
+  "toHour",
+  "toMinute",
+  "toSecond",
+  "toUnixTimestamp",
+  "toStartOfInterval",
+  "toStartOfYear",
+  "toStartOfMonth",
+  "toStartOfWeek",
+  "toStartOfDay",
+  "toStartOfHour",
+  "toStartOfFifteenMinutes",
+  "toStartOfTenMinutes",
+  "toStartOfFiveMinutes",
+  "toStartOfMinute",
+  "toYYYYMM",
+  // Mathematical
+  "intDiv",
+  "log",
+  "pow",
+  "round",
+  "floor",
+  "ceil",
+  // String
+  "length",
+  "empty",
+  "lower",
+  "lowerUTF8",
+  "upper",
+  "upperUTF8",
+  "startsWith",
+  "endsWith",
+  "position",
+  "substring",
+  "format",
+  "extract",
+  // Type conversion
+  "toUInt8",
+  "toUInt32",
+  // Bit
+  "bitAnd",
+  "bitCount",
+  "bitHammingDistance",
+  "bitNot",
+  "bitOr",
+  "bitRotateLeft",
+  "bitRotateRight",
+  "bitShiftLeft",
+  "bitShiftRight",
+  "bitTest",
+  "bitXor",
+  // Encoding
+  "bin",
+  "hex",
+]);
+
+/**
+ * The function names a query calls that AE does not document.
+ *
+ * A call is an identifier immediately followed by `(`, which is what makes
+ * this precise rather than a substring hunt: a column or alias containing the
+ * text `count` is not a call, and is not reported. SQL keywords that take
+ * parenthesised arguments are excluded for the same reason -- they are
+ * syntax, not functions.
+ */
+export function unsupportedAeFunctions(sql: string): string[] {
+  const found = new Set<string>();
+  for (const [, name] of sql.matchAll(/\b([A-Za-z_][A-Za-z0-9_]*)\s*\(/g)) {
+    if (AE_SUPPORTED_FUNCTIONS.has(name)) continue;
+    if (AE_SQL_KEYWORDS.has(name.toUpperCase())) continue;
+    found.add(name);
+  }
+  return [...found].sort();
+}
+
+/** Parenthesised syntax, not callable functions. */
+const AE_SQL_KEYWORDS: ReadonlySet<string> = new Set([
+  "AND",
+  "AS",
+  "BY",
+  "FROM",
+  "GROUP",
+  "IN",
+  "NOT",
+  "OR",
+  "SELECT",
+  "WHERE",
+  "HAVING",
+  "ORDER",
+  "LIMIT",
+  "ON",
+  "OVER",
+  "INTERVAL",
+]);
 
 /**
  * A REAL percentile, weighted by the sampling interval.
