@@ -130,10 +130,15 @@ const DEGRADED_DATA_API = {
 };
 
 async function restOwnership(): Promise<Row> {
-  return (await coldTierChainEventsPayload(
+  // `.data`: the dispatcher returns { data, source } so it can name the tier
+  // that answered (#9332). That envelope structurally satisfies Row, so
+  // reading it whole here type-checks and then fails on every field -- which
+  // is exactly how this test caught the change.
+  const answer = await coldTierChainEventsPayload(
     ENV,
     new URL(`https://api.test/api/v1/subnets/${NETUID}/ownership-history`),
-  )) as Row;
+  );
+  return answer!.data as Row;
 }
 
 async function mcpOwnership(): Promise<Row> {
