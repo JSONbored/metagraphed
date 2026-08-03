@@ -672,6 +672,9 @@
       // UPGRADE_RADAR_CRON in workers/config.ts for why the cadence is fixed
       // by GitHub's unauthenticated rate limit rather than by the chain.
       "7,37 * * * *",
+      // 41 = hourly SafeMode watchdog (#8696), Worker-native -- see
+      // SAFE_MODE_WATCHDOG_CRON in workers/config.ts.
+      "41 * * * *",
       // 23 7 = daily lakehouse seam watchdog (#9161), Worker-native rather
       // than a GitHub Action because R2_SQL_TOKEN already lives here -- see
       // LAKEHOUSE_SEAM_CRON in workers/config.ts.

@@ -105,6 +105,15 @@ export const FRESHNESS_WATCHDOG_CRON = "23 * * * *";
 // workflow form needed the same secret duplicated repo-side. Must match a
 // wrangler.jsonc cron entry.
 export const LAKEHOUSE_SEAM_CRON = "23 7 * * *";
+
+// #8696: hourly SafeMode watchdog. SafeMode is the emergency chain pause, and
+// an emergency pause is not something to learn about a day late -- the job is
+// two reads. Worker-native rather than an Actions job for the same reason as
+// LAKEHOUSE_SEAM_CRON above: no repository secret and no third-party trigger
+// hop to ask a question this Worker can ask itself. It watches the CHAIN, not
+// this Worker, so it is not the circular case a deploy-drift check would be.
+// Must match a wrangler.jsonc cron entry.
+export const SAFE_MODE_WATCHDOG_CRON = "41 * * * *";
 // KV key holding the last-reported staleness signature, so a standing outage is
 // announced when it starts and when it changes rather than every hour forever.
 export const FRESHNESS_WATCHDOG_STATE_KEY = "watchdog:freshness:signature";
