@@ -38,6 +38,13 @@ const OBSERVATIONS_SCHEMA = fs.readFileSync(
   path.join(process.cwd(), "migrations/d1/0002_observations.sql"),
   "utf8",
 );
+// validator_nominator_counts (the nominator_count join target, #9146) -- the
+// same reason as subnet_snapshots above: the real database carries it, and the
+// leaderboard's read joins against it.
+const NOMINATOR_COUNTS_SCHEMA = fs.readFileSync(
+  path.join(process.cwd(), "migrations/d1/0012_validator_nominator_counts.sql"),
+  "utf8",
+);
 
 let db: InstanceType<typeof DatabaseSync>;
 
@@ -249,6 +256,7 @@ beforeEach(() => {
   db.exec(NEURONS_SCHEMA);
   db.exec(NEURONS_READ_INDEXES);
   db.exec(OBSERVATIONS_SCHEMA);
+  db.exec(NOMINATOR_COUNTS_SCHEMA);
 });
 
 // --- POST /api/v1/internal/neurons-sync: the D1 write lane -------------------
@@ -634,6 +642,120 @@ test("GET /api/v1/validators/:hotkey aggregates one hotkey across subnets with p
   assert.equal(body.subnet_count, 2);
   // root 100 * 1 + netuid-7 100 * 0.5
   assert.equal(body.total_stake_tao, 150);
+});
+
+// --- nominator_count, joined from D1 (#9146) ---------------------------------
+//
+// This field was null on EVERY validator for the whole period between the box
+// wipe and migration 0012: the side table was Postgres-only, so both builders
+// were handed a hardcoded empty map / null. What is under test is that the
+// join now answers, and -- just as important -- that a hotkey with no row
+// still reads as UNKNOWN rather than as a confident zero.
+
+/** One row in the counts side table. */
+function insertNominatorCount(hotkey: string, count: number, at = 1_000) {
+  db.prepare(
+    "INSERT INTO validator_nominator_counts (hotkey, nominator_count, captured_at) VALUES (?, ?, ?)",
+  ).run(hotkey, count, at);
+}
+
+test("GET /api/v1/validators fills nominator_count from D1, and leaves an unscanned hotkey null", async () => {
+  insertNeuron({
+    netuid: 0,
+    uid: 0,
+    hotkey: "5Counted",
+    stake_tao: 200,
+    validator_permit: 1,
+  });
+  insertNeuron({
+    netuid: 0,
+    uid: 1,
+    hotkey: "5Unscanned",
+    stake_tao: 100,
+    validator_permit: 1,
+  });
+  insertNominatorCount("5Counted", 42);
+
+  const res = await call(req("/api/v1/validators"));
+  assert.equal(res.status, 200);
+  const entries = ((await res.json()) as Row).validators as Row[];
+  const byHotkey = new Map(entries.map((e) => [e.hotkey as string, e]));
+
+  assert.equal(byHotkey.get("5Counted")!.nominator_count, 42);
+  assert.equal(
+    byHotkey.get("5Unscanned")!.nominator_count,
+    null,
+    "a hotkey the scan has not reached is unknown, NOT a confident zero",
+  );
+});
+
+test("GET /api/v1/validators/:hotkey fills nominator_count for that one hotkey", async () => {
+  insertNeuron({
+    netuid: 0,
+    uid: 0,
+    hotkey: "5Val",
+    stake_tao: 100,
+    validator_permit: 1,
+  });
+  insertNominatorCount("5Val", 7);
+  // A second hotkey's row must not leak into this one's answer.
+  insertNominatorCount("5Other", 999);
+
+  const res = await call(req("/api/v1/validators/5Val"));
+  assert.equal(res.status, 200);
+  assert.equal(((await res.json()) as Row).nominator_count, 7);
+});
+
+test("GET /api/v1/validators/:hotkey reports a zero count as a real answer", async () => {
+  // 0 is an ANSWER, not an absence -- the one case where the distinction the
+  // rest of this lane preserves has to survive all the way to the payload.
+  insertNeuron({
+    netuid: 0,
+    uid: 0,
+    hotkey: "5Val",
+    stake_tao: 100,
+    validator_permit: 1,
+  });
+  insertNominatorCount("5Val", 0);
+  const res = await call(req("/api/v1/validators/5Val"));
+  assert.equal(((await res.json()) as Row).nominator_count, 0);
+});
+
+test("GET /api/v1/validators/:hotkey leaves nominator_count null when the hotkey has no row", async () => {
+  insertNeuron({
+    netuid: 0,
+    uid: 0,
+    hotkey: "5Val",
+    stake_tao: 100,
+    validator_permit: 1,
+  });
+  const res = await call(req("/api/v1/validators/5Val"));
+  assert.equal(((await res.json()) as Row).nominator_count, null);
+});
+
+test("a failing counts read degrades to null rather than failing the request", async () => {
+  // The whole lane's failure posture: the leaderboard is the product, the
+  // count is an enrichment. Dropping the table is the bluntest way to make the
+  // read throw for real, rather than asserting a mocked rejection.
+  insertNeuron({
+    netuid: 0,
+    uid: 0,
+    hotkey: "5Val",
+    stake_tao: 100,
+    validator_permit: 1,
+  });
+  db.exec("DROP TABLE validator_nominator_counts");
+
+  const list = await call(req("/api/v1/validators"));
+  assert.equal(list.status, 200, "the leaderboard still serves");
+  assert.equal(
+    (((await list.json()) as Row).validators as Row[])[0]!.nominator_count,
+    null,
+  );
+
+  const detail = await call(req("/api/v1/validators/5Val"));
+  assert.equal(detail.status, 200, "the detail card still serves");
+  assert.equal(((await detail.json()) as Row).nominator_count, null);
 });
 
 // --- Live-neurons analytics routes -------------------------------------------

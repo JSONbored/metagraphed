@@ -109,7 +109,10 @@ import {
   IDENTITY_FIELDS,
   buildAccountIdentity,
 } from "../src/account-identity.ts";
-import {} from "../src/validator-nominator-summary.ts";
+import {
+  nominatorCountsByHotkey,
+  VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS,
+} from "../src/validator-nominator-summary.ts";
 import { NOMINATOR_POSITION_INSERT_COLUMNS } from "../src/account-nominator-positions.ts";
 import {
   identityHash,
@@ -302,6 +305,7 @@ import {
   coldkeyMaxCapturedAt,
   writeNominatorPositionsToD1,
 } from "../src/nominator-positions-d1-write.ts";
+import { writeValidatorNominatorCountsToD1 } from "../src/validator-nominator-counts-d1-write.ts";
 import { writeChainDetailToD1 } from "../src/chain-detail-d1-write.ts";
 import {
   CHAIN_DETAIL_SYNC_MAX_BODY_BYTES,
@@ -1453,20 +1457,71 @@ async function handleAccountIdentitySync(request: Request, env: Env) {
 
 // --- POST /api/v1/internal/validator-nominator-counts-sync (#2549) --------
 //
-// RETIRED (#9193): the Postgres tables this wrote were destroyed with the
-// box, so the handler now stops at its auth gate and answers exactly what it
-// already answered in production. What follows describes what it DID.
+// RESTORED ON D1 (#9146). Retired by #9193 when the Postgres table it wrote
+// was destroyed with the box; this is the same route against
+// migrations/d1/0011_validator_nominator_counts.sql instead.
 //
-// The write path into validator_nominator_counts (migration 0043) --
-// simpler than account-identity-sync above: latest-only, no history table
-// (a nominator count is a live gauge, not a fact worth diffing over time
-// yet). Populated by its own low-frequency job
-// (apps/indexer-rs/src/bin/poller/jobs/validator_nominators.rs), decoupled
-// from the fast refresh-metagraph cron -- see that job's and the migration's
+// The write path into validator_nominator_counts -- simpler than
+// account-identity-sync above: latest-only, no history table (a nominator
+// count is a live gauge, not a fact worth diffing over time yet). Populated by
+// its own low-frequency job
+// (metagraphed-infra src/bin/poller/jobs/validator_nominators.rs, 24h),
+// decoupled from the fast neurons sync -- see that job's and the migration's
 // own header comments for why a full SubtensorModule::Alpha scan can't share
 // the neurons snapshot's cadence.
+//
+// THE PRODUCER CHUNKS; THIS ROUTE DOES NOT REASSEMBLE. One scan is ~112,550
+// rows, over the per-request cap below, so a scan arrives as several
+// independent requests. That is why there is no prune here and no batch-wide
+// bookkeeping: each request is a self-contained upsert, and correctness comes
+// from buildUpsert's captured_at guard rather than from requests arriving in
+// order or at all. A dropped chunk costs those hotkeys one cycle of freshness,
+// never a wrong value.
 const VALIDATOR_NOMINATOR_COUNTS_SYNC_TOKEN_HEADER =
   "x-validator-nominator-counts-sync-token";
+
+// 50k rows x 3 narrow columns is ~4 MB, putting a full ~113k-row scan at 3
+// requests. Body bound first, row bound second -- neither alone is sufficient,
+// the same pairing nominator-positions-sync above spells out.
+const VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_BODY_BYTES = 8_000_000;
+const VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_ROWS = 50_000;
+// Same 128-byte ceiling nominator-positions-sync puts on its SS58 keys, for
+// the same reason: an address is 48 characters, and the slack is so a future
+// address format does not silently fail the whole batch.
+const VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_KEY_BYTES = 128;
+
+/**
+ * Bounds-check one incoming row against
+ * VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS.
+ *
+ * `nominator_count` is required to be a non-negative integer rather than
+ * coerced into one, because the read side (nominatorCountsByHotkey) already
+ * discards anything that isn't -- a value this route accepted but every reader
+ * silently drops is worse than a 400 the producer can actually see.
+ */
+function validNominatorCountSyncRow(row: Row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+  for (const key of Object.keys(row)) {
+    if (!VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS.includes(key)) return false;
+  }
+  if (typeof row.hotkey !== "string" || row.hotkey.length === 0) return false;
+  if (
+    utf8Bytes(row.hotkey).length > VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_KEY_BYTES
+  )
+    return false;
+  if (!Number.isInteger(row.nominator_count) || row.nominator_count < 0)
+    return false;
+  if (!Number.isInteger(row.captured_at) || row.captured_at <= 0) return false;
+  return true;
+}
+
+/** Project a validated row onto the writer's exact column list and order. */
+function coerceNominatorCountSyncRow(row: Row) {
+  const out: Row = {};
+  for (const col of VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS)
+    out[col] = row[col];
+  return out;
+}
 
 async function handleValidatorNominatorCountsSync(request: Request, env: Env) {
   if (!env.VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET) {
@@ -1491,9 +1546,87 @@ async function handleValidatorNominatorCountsSync(request: Request, env: Env) {
       401,
     );
   }
-  // #9193: same deletion as handleRollupAccountEventsDaily above -- unreachable
-  // since HYPERDRIVE went away, answered here, status and body unchanged.
-  return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      {
+        error: `body exceeds ${VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_BODY_BYTES} bytes`,
+      },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  // Both envelopes accepted, matching handleNeuronsSync's own tolerance -- the
+  // producer sends a bare array, but {rows:[...]} is what every other sync
+  // route here speaks and a mismatch is not worth a failed cycle.
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return writeJson(
+      {
+        error:
+          "body must be a JSON array of nominator count rows (or {rows:[...]})",
+      },
+      400,
+    );
+  }
+  if (incoming.length > VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_ROWS) {
+    return writeJson(
+      {
+        error: `at most ${VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_ROWS} rows per request`,
+      },
+      413,
+    );
+  }
+  if (!incoming.length || !incoming.every(validNominatorCountSyncRow)) {
+    return writeJson(
+      { error: "rows must match the nominator count row shape" },
+      400,
+    );
+  }
+
+  const rows = incoming.map(coerceNominatorCountSyncRow);
+
+  // D1 is the binding this path REQUIRES -- the only store this family has.
+  // Checked HERE, after validation, not at the top: a malformed body is a 400
+  // whether or not a store happens to be bound (handleNominatorPositionsSync's
+  // own 400-before-503 reasoning).
+  if (!env.METAGRAPH_HEALTH_DB) {
+    return writeJson({ error: "d1 binding unavailable" }, 503);
+  }
+
+  let d1Statements: number;
+  try {
+    ({ statements: d1Statements } = await writeValidatorNominatorCountsToD1(
+      env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof writeValidatorNominatorCountsToD1
+      >[0],
+      rows,
+    ));
+  } catch (err) {
+    console.error(
+      "data-api validator-nominator-counts-sync D1 write failed:",
+      err,
+    );
+    await captureDataApiError(err, "validator-nominator-counts-sync-d1", env);
+    return writeJson({ error: "d1 write failed" }, 502);
+  }
+
+  return writeJson({
+    ok: true,
+    nominator_counts_written: rows.length,
+    stores: ["d1"],
+    d1_statements: d1Statements,
+  });
 }
 
 // --- POST /api/v1/internal/nominator-positions-sync (#5233, revived #9273) --
@@ -4483,20 +4616,22 @@ async function handleAccountKeysRoute(request: Request, env: Env, url: URL) {
 // Cross-tier joins: subnet_snapshots has a live D1 home (migrations/d1/
 // 0002_observations.sql), so the alpha_price_tao joins/loads port for real.
 // The remaining enrichment side tables (featured_validators,
-// validator_nominator_counts, subnet_hyperparams' tempo/immunity_period,
-// account_identity) have NO D1 home yet -- their families are frozen or port
-// separately -- so the twins pass each builder the degraded value the retired
-// Postgres loader's own catch branch produced (empty set/map, null), rather
-// than issuing a query that can only ever throw. Wire the real reads in when
-// those tables land on D1.
+// subnet_hyperparams' tempo/immunity_period, account_identity) have NO D1 home
+// yet -- their families are frozen or port separately -- so the twins pass each
+// builder the degraded value the retired Postgres loader's own catch branch
+// produced (empty set/map, null), rather than issuing a query that can only
+// ever throw. Wire the real reads in when those tables land on D1.
 //
-// One of them is no longer degraded downstream: nominator_count is filled from
-// chain.validator_nominator_counts by the SERVING Worker, at tier convergence
-// (src/validator-nominator-counts-cold-tier.ts, #9146). It could not be filled
-// here -- R2_SQL_TOKEN is bound to the main Worker, not to this one -- so the
-// empty map / null count below stay correct as this tier's own answer. If this
-// table ever does land on D1, wiring it here makes that overlay a no-op rather
-// than a conflict: it only ever fills a count the payload left null.
+// validator_nominator_counts NO LONGER BELONGS TO THAT LIST. It landed on D1
+// in migrations/d1/0012, so the real read is wired below and this tier answers
+// nominator_count itself. That is exactly the resolution this comment
+// anticipated: the serving Worker's lakehouse overlay
+// (src/validator-nominator-counts-cold-tier.ts, #9146) becomes a no-op rather
+// than a conflict, because validatorHotkeysNeedingCount only collects hotkeys
+// whose count is still null and returns early when there are none. The overlay
+// stays in place while the producer backfills -- covering hotkeys D1 has not
+// received yet from the frozen mirror -- and stops firing on its own once a
+// full scan has landed.
 type NeuronsD1RouteHandler = (sql: D1Sql, env: Env) => Promise<Response>;
 
 // The D1 twin of loadAlphaPricesByNetuid (#9051): netuid -> latest
@@ -4526,6 +4661,65 @@ async function loadAlphaPricesByNetuidD1(
     console.error("subnet_snapshots alpha-price query failed:", err);
     await captureDataApiError(err, "subnet-snapshots-alpha-price-query", env);
     return new Map();
+  }
+}
+
+// hotkey -> nominator_count for every permitted validator, from the D1 table
+// migrations/d1/0012 created (#9146).
+//
+// CORRELATED SUBQUERY, NOT AN IN LIST, and that is load-bearing rather than
+// stylistic: the leaderboard covers ~1,031 hotkeys and the Workers D1 binding
+// caps a statement at 100 bound parameters, so an inlined key list would need
+// chunking into a dozen round trips (what the lakehouse reader has to do,
+// having no join to reach for). Joining against `neurons` inside SQLite costs
+// ZERO bound parameters and one query, and keeps the filter exactly in step
+// with the leaderboard's own `validator_permit = 1 AND hotkey IS NOT NULL`.
+//
+// Same degrade-to-empty-map contract as loadAlphaPricesByNetuidD1 above: on
+// any failure every nominator_count stays null, which is precisely the state
+// this tier served before the table existed -- so a broken read is a lost
+// enrichment, never a wrong number.
+async function loadNominatorCountsD1(
+  sql: D1Sql,
+  env: Env,
+): Promise<Map<string, number>> {
+  try {
+    const rows = await sql`
+      SELECT hotkey, nominator_count FROM validator_nominator_counts
+      WHERE hotkey IN (
+        SELECT DISTINCT hotkey FROM neurons
+        WHERE validator_permit = 1 AND hotkey IS NOT NULL
+      )`;
+    return nominatorCountsByHotkey(rows);
+  } catch (err) {
+    console.error("validator_nominator_counts query failed:", err);
+    await captureDataApiError(err, "validator-nominator-counts-query", env);
+    return new Map();
+  }
+}
+
+// The single-hotkey twin of the above, for /api/v1/validators/{hotkey}. Returns
+// null -- not 0 -- when the hotkey has no row, keeping "unknown" and "confirmed
+// zero" distinguishable exactly as buildValidatorDetail's own contract requires.
+async function loadNominatorCountD1(
+  sql: D1Sql,
+  hotkey: string,
+  env: Env,
+): Promise<number | null> {
+  try {
+    const rows = await sql.unsafe(
+      "SELECT hotkey, nominator_count FROM validator_nominator_counts WHERE hotkey = ?",
+      [hotkey],
+    );
+    return nominatorCountsByHotkey(rows).get(hotkey) ?? null;
+  } catch (err) {
+    console.error("validator_nominator_counts detail query failed:", err);
+    await captureDataApiError(
+      err,
+      "validator-nominator-count-detail-query",
+      env,
+    );
+    return null;
   }
 }
 
@@ -4756,14 +4950,16 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         limitParam <= GLOBAL_VALIDATOR_LIMIT_MAX
           ? limitParam
           : GLOBAL_VALIDATOR_LIMIT_DEFAULT;
-      const [rows, realizedStakeByHotkey, priceByNetuid] = await Promise.all([
-        sql`
+      const [rows, realizedStakeByHotkey, priceByNetuid, nominatorCounts] =
+        await Promise.all([
+          sql`
           SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at, take
           FROM neurons WHERE validator_permit = 1 AND hotkey IS NOT NULL
           ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
-        loadRealizedStakeBaselinesD1(sql, {}, env),
-        loadAlphaPricesByNetuidD1(sql, env),
-      ]);
+          loadRealizedStakeBaselinesD1(sql, {}, env),
+          loadAlphaPricesByNetuidD1(sql, env),
+          loadNominatorCountsD1(sql, env),
+        ]);
       return json(
         buildGlobalValidators(rows, {
           sort,
@@ -4771,7 +4967,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
           priceByNetuid,
           featuredHotkeys: new Set(),
           identityByColdkey: new Map(),
-          nominatorCounts: new Map(),
+          nominatorCounts,
           tempoByNetuid: new Map(),
           realizedStakeByHotkey,
         }),
@@ -4786,19 +4982,21 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
   if (validatorDetail) {
     return async (sql, env) => {
       const hotkey = decodeURIComponent(validatorDetail[1]);
-      const [rows, realizedByHotkey, priceByNetuid] = await Promise.all([
-        sql.unsafe(
-          `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = 1 ORDER BY netuid ASC, uid ASC`,
-          [hotkey],
-        ),
-        loadRealizedStakeBaselinesD1(sql, { hotkey }, env),
-        loadAlphaPricesByNetuidD1(sql, env),
-      ]);
+      const [rows, realizedByHotkey, priceByNetuid, nominatorCount] =
+        await Promise.all([
+          sql.unsafe(
+            `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = 1 ORDER BY netuid ASC, uid ASC`,
+            [hotkey],
+          ),
+          loadRealizedStakeBaselinesD1(sql, { hotkey }, env),
+          loadAlphaPricesByNetuidD1(sql, env),
+          loadNominatorCountD1(sql, hotkey, env),
+        ]);
       return json(
         buildValidatorDetail(rows, hotkey, {
           identityByColdkey: new Map(),
           priceByNetuid,
-          nominatorCount: null,
+          nominatorCount,
           tempoByNetuid: new Map(),
           realizedStake: realizedByHotkey.get(hotkey) ?? null,
         }),
