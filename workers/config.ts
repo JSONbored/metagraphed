@@ -130,6 +130,13 @@ export const EMISSION_GATE_SAMPLE_CRON = "3,13,23,33,43,53 * * * *";
 // workers/config.ts (":7,37" already belongs to the upgrade radar) as well as
 // matching a wrangler.jsonc cron entry.
 export const EMISSION_DRIFT_CHECK_CRON = "9,39 * * * *";
+// The neurons LIVE lane's alarm: the poller Container feeds D1 on a
+// 15-minute tick, and its first stall (a zombie instance, 2026-08-03) ran
+// three silent hours because no watchdog reads that table. Same cadence as
+// the lane it watches; a 45-minute threshold (three missed ticks) separates
+// a routine restart from a stall. Unique string, matching a wrangler.jsonc
+// entry -- dispatch keys on the LITERAL cron string.
+export const NEURONS_STALENESS_WATCHDOG_CRON = "6,21,36,51 * * * *";
 // #9146: scheduled projections -- recompute the windowed-aggregate artifacts
 // (every lane in src/projection-lanes.ts's PROJECTION_LANES) from the
 // lakehouse. These routes cannot
