@@ -804,38 +804,67 @@ export async function loadAccountSummaryColdTier(
     `FROM chain.account_events WHERE ${where} ` +
     `ORDER BY block_number DESC LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP}`;
 
-  const [aggRows, kindRows, probeRows, recentRows] = await Promise.all([
-    query(
-      env,
-      `WITH scan AS (${scan}) SELECT count(*) AS c, count(DISTINCT netuid) AS sc, ` +
-        `min(block_number) AS fb, max(block_number) AS lb, ` +
-        `min(observed_at) AS fo, max(observed_at) AS lo FROM scan`,
-    ),
-    query(
-      env,
-      `WITH scan AS (${scan}) SELECT event_kind AS kind, count(*) AS count ` +
-        `FROM scan GROUP BY event_kind`,
-    ),
-    // CAP + 1 so "exactly CAP" is distinguishable from "more than CAP".
-    query(
-      env,
-      `SELECT count(*) AS c FROM (SELECT block_number FROM chain.account_events ` +
-        `WHERE ${where} LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1})`,
-    ),
-    query(
-      env,
-      `SELECT ${EVENT_COLUMNS} FROM chain.account_events WHERE ${where} ` +
-        `${FEED_ORDER} LIMIT ${limit}`,
-    ),
-  ]);
+  const [aggRows, subnetRows, kindRows, probeRows, recentRows] =
+    await Promise.all([
+      query(
+        env,
+        `WITH scan AS (${scan}) SELECT count(*) AS c, ` +
+          `min(block_number) AS fb, max(block_number) AS lb, ` +
+          `min(observed_at) AS fo, max(observed_at) AS lo FROM scan`,
+      ),
+      // The distinct-subnet count rides in its own GROUP BY query rather than as
+      // a `count(DISTINCT netuid)` beside the aggregates above, because R2 SQL
+      // REJECTS the ungrouped form outright:
+      //
+      //   40015: scan budget exceeded: scanning too much data for
+      //   count(DISTINCT) without GROUP BY
+      //
+      // and a rejected query declines the whole reader, which is what made
+      // /api/v1/accounts/{ss58} and get_account_snapshot publish a card of zeros
+      // for an address whose own /events feed returned rows.
+      //
+      // THE CTE'S `LIMIT` DOES NOT BOUND THE BUDGET. `scan` caps at
+      // ACCOUNT_EVENT_SUMMARY_SCAN_CAP rows, so this reads as an aggregate over
+      // 5,000 rows and looks obviously safe -- but the engine costs the
+      // count(DISTINCT) against the underlying scan, not the materialized cap.
+      // Wrapping a distinct in a bounded CTE is not a workaround; only GROUP BY
+      // is.
+      query(
+        env,
+        `WITH scan AS (${scan}) SELECT count(*) AS sc` +
+          ` FROM (SELECT netuid FROM scan GROUP BY netuid)`,
+      ),
+      query(
+        env,
+        `WITH scan AS (${scan}) SELECT event_kind AS kind, count(*) AS count ` +
+          `FROM scan GROUP BY event_kind`,
+      ),
+      // CAP + 1 so "exactly CAP" is distinguishable from "more than CAP".
+      query(
+        env,
+        `SELECT count(*) AS c FROM (SELECT block_number FROM chain.account_events ` +
+          `WHERE ${where} LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1})`,
+      ),
+      query(
+        env,
+        `SELECT ${EVENT_COLUMNS} FROM chain.account_events WHERE ${where} ` +
+          `${FEED_ORDER} LIMIT ${limit}`,
+      ),
+    ]);
 
   // Any half missing is a decline: a card mixing measured aggregates with a
   // zeroed probe would silently flip event_scan_capped and publish a first_seen
   // that is really a window floor.
-  if (!aggRows || !kindRows || !probeRows || !recentRows) return null;
-  const agg = aggRows[0] ?? null;
+  if (!aggRows || !subnetRows || !kindRows || !probeRows || !recentRows)
+    return null;
+  const aggRow = aggRows[0] ?? null;
+  const subnetCount = subnetRows[0]?.sc;
   const scanned = probeRows[0]?.c;
-  if (agg === null || scanned === undefined) return null;
+  if (aggRow === null || subnetCount === undefined || scanned === undefined)
+    return null;
+  // Recombined under the key the caller already reads, so only where the
+  // number comes from changed.
+  const agg = { ...aggRow, sc: subnetCount };
 
   return {
     agg,
