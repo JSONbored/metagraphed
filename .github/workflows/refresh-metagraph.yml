@@ -18,15 +18,17 @@ name: Refresh Metagraph
 #
 # Like every other restored lane, this reads the PUBLIC archive endpoint — the
 # private fullnode the box used is decommissioned too.
+# SCHEDULE RETIRED (2026-08-03): the poller Container is the primary driver
+# again — 15-minute cadence, all three lanes (metagraph, subnet-hyperparams,
+# account-identity), verified writing D1 end-to-end after the stale-secret
+# incident. Running BOTH drivers risks exactly the race the concurrency
+# comment below warns about: two concurrent snapshots racing the route's
+# per-netuid prune, where the older run can delete UIDs the newer one just
+# wrote — the workflow's own concurrency group cannot see the Container.
+# workflow_dispatch stays as the manual fallback (it saved the lane once
+# already); the neurons-staleness watchdog (6,21,36,51 Worker cron) alarms
+# within 45 minutes if the Container stalls again.
 on:
-  schedule:
-    # Every 30 minutes. Sized against what is being measured, not by habit:
-    # incentive/consensus/dividends are recomputed every tempo (360 blocks,
-    # ~72 minutes), so a 30-minute cadence samples comfortably faster than the
-    # values can change. Tighten only with an eye on the archive RPC's
-    # per-connection rate limit — one run is a full get_all_metagraphs_info
-    # sweep plus two SubtensorModule storage maps.
-    - cron: "*/30 * * * *"
   workflow_dispatch: {}
 
 permissions:
