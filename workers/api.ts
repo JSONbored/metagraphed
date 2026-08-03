@@ -1553,8 +1553,8 @@ async function dispatchScheduled(
     );
   }
   if (cron === PROJECTION_LANES_CRON) {
-    // #9146: recompute the windowed-aggregate artifacts (chain-transfers,
-    // chain-stake-flow) from the lakehouse. See src/projection-lanes.ts's
+    // #9146: recompute the windowed-aggregate artifacts (every lane in
+    // PROJECTION_LANES) from the lakehouse. See src/projection-lanes.ts's
     // header for why these routes are a cron and not a one-shot artifact or
     // a request-time reader. The #8998 wrapper above records the tick's
     // usage_event; lane-level failures record their own exceptions.

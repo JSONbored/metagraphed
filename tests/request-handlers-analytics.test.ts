@@ -25,6 +25,10 @@ import {
   canonicalHealthWindowCachePath,
   handleChainStakeFlow,
   handleChainTransfers,
+  handleChainTransferPairs,
+  handleChainAlphaVolume,
+  handleChainStakeMoves,
+  handleChainStakeTransfers,
   handleChainWeights,
   handleChainWeightSetters,
   handleChainServing,
@@ -2439,5 +2443,358 @@ describe("projection artifact answers when Postgres misses (windowed aggregates)
     const tp = "/api/v1/chain/transfers";
     const tbody = await json(await handleChainTransfers(req(tp), env, url(tp)));
     assert.equal(tbody.data.transfer_count, 0);
+  });
+
+  // #9146 wave 2: the remaining chain-wide windowed aggregates, one proof
+  // each — the cron-written artifact present, no Postgres flag set, the
+  // stored rows flow through the shared formatters into the response.
+
+  test("handleChainActivity serves the projected daily series, trimmed like a live answer", async () => {
+    const env = archiveEnv({
+      schema_version: 1,
+      windows: {
+        "7d": {
+          days: 7,
+          extrinsic_rows: [
+            {
+              day: "2026-08-02",
+              extrinsic_count: "100",
+              successful_extrinsics: "97",
+              unique_signers: "9",
+            },
+          ],
+          block_rows: [
+            { day: "2026-08-02", block_count: "7200", event_count: "40000" },
+          ],
+          newest_observed: NEWEST,
+        },
+      },
+    });
+    const p = "/api/v1/chain/activity";
+    const body = await json(await handleChainActivity(req(p), env, url(p)));
+    assert.equal(body.data.window, "7d");
+    assert.equal(body.data.day_count, 1);
+    assert.equal(body.data.days[0].day, "2026-08-02");
+    assert.equal(body.data.days[0].extrinsic_count, 100);
+    assert.equal(body.data.days[0].block_count, 7200);
+    assert.equal(body.data.days[0].unique_signers, 9);
+    assert.equal(body.data.days[0].success_rate, 0.97);
+    assert.equal(body.data.observed_at, new Date(NEWEST).toISOString());
+  });
+
+  test("handleChainCalls serves the projected call mix, sliced to ?limit=, unmarked as degraded", async () => {
+    const env = archiveEnv({
+      schema_version: 1,
+      windows: {
+        "7d": {
+          days: 7,
+          newest_observed: NEWEST,
+          total: "200",
+          groups: {
+            module: [
+              { call_module: "Balances", count: "120" },
+              { call_module: "SubtensorModule", count: "60" },
+            ],
+            module_function: [],
+          },
+        },
+      },
+    });
+    const p = "/api/v1/chain/calls?limit=1";
+    const res = await handleChainCalls(req(p), env, url(p));
+    // A projected answer is a real answer — never marked as a degraded
+    // fallback the way the schema-stable empty is.
+    assert.equal(res.headers.get("x-metagraph-degraded"), null);
+    const body = await json(res);
+    assert.equal(body.data.total_extrinsics, 200);
+    assert.equal(body.data.call_count, 1);
+    assert.equal(body.data.calls[0].call_module, "Balances");
+    // share divides by the full-window total, not the sliced page.
+    assert.equal(body.data.calls[0].share, 120 / 200);
+  });
+
+  test("handleChainCalls with a call_module scope still degrades — the artifact declines filters", async () => {
+    const env = archiveEnv({
+      schema_version: 1,
+      windows: {
+        "7d": {
+          days: 7,
+          newest_observed: NEWEST,
+          total: "200",
+          groups: { module: [{ call_module: "Balances", count: "120" }] },
+        },
+      },
+    });
+    const p = "/api/v1/chain/calls?call_module=Balances";
+    const res = await handleChainCalls(req(p), env, url(p));
+    assert.ok(res.headers.get("x-metagraph-degraded"));
+    const body = await json(res);
+    assert.equal(body.data.call_count, 0);
+  });
+
+  test("handleChainSigners serves the projected leaderboard for the requested sort", async () => {
+    const env = archiveEnv({
+      schema_version: 1,
+      windows: {
+        "7d": {
+          days: 7,
+          newest_observed: NEWEST,
+          sorts: {
+            tx_count: [],
+            total_fee_tao: [
+              {
+                signer: "5B",
+                tx_count: "30",
+                total_fee_tao: "0.9",
+                total_tip_tao: "0",
+                last_tx_block: "123456",
+              },
+            ],
+          },
+        },
+      },
+    });
+    const p = "/api/v1/chain/signers?sort=total_fee_tao";
+    const body = await json(await handleChainSigners(req(p), env, url(p)));
+    assert.equal(body.data.sort, "total_fee_tao");
+    assert.equal(body.data.signer_count, 1);
+    assert.equal(body.data.signers[0].signer, "5B");
+    assert.equal(body.data.signers[0].total_fee_tao, 0.9);
+    assert.equal(body.data.observed_at, new Date(NEWEST).toISOString());
+  });
+
+  test("handleChainFees serves the projected fee series, sliced to ?limit=", async () => {
+    const env = archiveEnv({
+      schema_version: 1,
+      windows: {
+        "7d": {
+          days: 7,
+          newest_observed: NEWEST,
+          daily_rows: [
+            {
+              day: "2026-08-02",
+              extrinsic_count: "100",
+              signed_extrinsic_count: "80",
+              total_fee_tao: "1.6",
+              total_tip_tao: "0.4",
+            },
+          ],
+          median_rows: [
+            {
+              day: "2026-08-02",
+              median_fee_tao: 0.005,
+              median_tip_tao: 0.001,
+            },
+          ],
+          payer_rows: [
+            {
+              signer: "5A",
+              total_fee_tao: "0.9",
+              total_tip_tao: "0",
+              extrinsic_count: "10",
+            },
+            {
+              signer: "5B",
+              total_fee_tao: "0.7",
+              total_tip_tao: "0",
+              extrinsic_count: "8",
+            },
+          ],
+        },
+      },
+    });
+    const p = "/api/v1/chain/fees?limit=1";
+    const body = await json(await handleChainFees(req(p), env, url(p)));
+    assert.equal(body.data.day_count, 1);
+    assert.equal(body.data.daily[0].median_fee_tao, 0.005);
+    assert.equal(body.data.daily[0].avg_fee_tao, 0.02);
+    // The limit sliced the payer leaderboard BEFORE the formatter.
+    assert.deepEqual(
+      body.data.top_fee_payers.map((row: Row) => row.signer),
+      ["5A"],
+    );
+    assert.equal(body.data.observed_at, new Date(NEWEST).toISOString());
+  });
+
+  test("handleChainAlphaVolume serves the projected 24h leaderboard", async () => {
+    const env = archiveEnv({
+      schema_version: 1,
+      windows: {
+        "24h": {
+          days: 1,
+          rows: [
+            {
+              netuid: 7,
+              event_kind: "StakeAdded",
+              alpha_volume: "120",
+              tao_volume: "60",
+              event_count: "4",
+              last_observed: NEWEST,
+            },
+          ],
+        },
+      },
+    });
+    const p = "/api/v1/chain/alpha-volume";
+    const body = await json(await handleChainAlphaVolume(req(p), env, url(p)));
+    assert.equal(body.data.window, "24h");
+    assert.equal(body.data.subnet_count, 1);
+    assert.equal(body.data.subnets[0].netuid, 7);
+    assert.equal(body.data.subnets[0].buy_volume_tao, 60);
+    assert.equal(body.data.observed_at, new Date(NEWEST).toISOString());
+  });
+
+  test("handleChainStakeTransfers serves the projected leaderboard for ?window=30d", async () => {
+    const env = archiveEnv({
+      schema_version: 1,
+      windows: {
+        "30d": {
+          days: 30,
+          network: { distinct_senders: "4", newest_observed: NEWEST },
+          rows: [{ netuid: 7, transfers: "6", distinct_senders: "3" }],
+        },
+      },
+    });
+    const p = "/api/v1/chain/stake-transfers?window=30d";
+    const body = await json(
+      await handleChainStakeTransfers(req(p), env, url(p)),
+    );
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.subnet_count, 1);
+    assert.equal(body.data.subnets[0].netuid, 7);
+    assert.equal(body.data.subnets[0].transfers_per_sender, 2);
+    assert.equal(body.data.network.distinct_senders, 4);
+    assert.equal(body.data.observed_at, new Date(NEWEST).toISOString());
+  });
+
+  test("handleChainTransferPairs serves the projected corridors, sliced to ?limit=", async () => {
+    const env = archiveEnv({
+      schema_version: 1,
+      windows: {
+        "7d": {
+          days: 7,
+          totals: {
+            transfer_count: "10",
+            total_volume_tao: "500",
+            unique_pairs: "3",
+            top_pair_volume_tao: "300",
+            newest_observed: NEWEST,
+          },
+          sorts: {
+            volume: [
+              {
+                from_address: "5A",
+                to_address: "5B",
+                volume_tao: "300",
+                transfer_count: "4",
+                last_block: "123456",
+                last_observed_at: NEWEST,
+              },
+              {
+                from_address: "5C",
+                to_address: "5D",
+                volume_tao: "150",
+                transfer_count: "6",
+                last_block: "123457",
+                last_observed_at: NEWEST,
+              },
+            ],
+            count: [],
+          },
+        },
+      },
+    });
+    const p = "/api/v1/chain/transfer-pairs?limit=1";
+    const body = await json(
+      await handleChainTransferPairs(req(p), env, url(p)),
+    );
+    assert.equal(body.data.sort, "volume");
+    assert.equal(body.data.pair_count, 1);
+    assert.equal(body.data.pairs[0].from, "5A");
+    assert.equal(body.data.unique_pairs, 3);
+    // The share is the stored full-window rollup, not the sliced page's.
+    assert.equal(body.data.top_pair_share, 300 / 500);
+    assert.equal(body.data.observed_at, new Date(NEWEST).toISOString());
+  });
+
+  test("handleChainStakeMoves serves the projected leaderboard through the shared builder", async () => {
+    const env = archiveEnv({
+      schema_version: 1,
+      windows: {
+        "7d": {
+          days: 7,
+          network: { distinct_movers: "5", newest_observed: NEWEST },
+          rows: [{ netuid: 3, movements: "10", distinct_movers: "2" }],
+        },
+      },
+    });
+    const p = "/api/v1/chain/stake-moves";
+    const body = await json(await handleChainStakeMoves(req(p), env, url(p)));
+    assert.equal(body.data.window, "7d");
+    assert.equal(body.data.subnet_count, 1);
+    assert.equal(body.data.subnets[0].netuid, 3);
+    assert.equal(body.data.subnets[0].movements_per_mover, 5);
+    assert.equal(body.data.network.distinct_movers, 5);
+    assert.equal(body.data.observed_at, new Date(NEWEST).toISOString());
+  });
+
+  test("a missing artifact degrades every wave-2 route to its schema-stable empty", async () => {
+    const env = {
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          return null;
+        },
+      },
+    } as unknown as TestEnv;
+    const cases: [
+      string,
+      (r: Request, e: TestEnv, u: URL) => Promise<Response>,
+      (data: Row) => void,
+    ][] = [
+      [
+        "/api/v1/chain/activity",
+        handleChainActivity,
+        (data) => assert.equal(data.day_count, 0),
+      ],
+      [
+        "/api/v1/chain/calls",
+        handleChainCalls,
+        (data) => assert.equal(data.call_count, 0),
+      ],
+      [
+        "/api/v1/chain/signers",
+        handleChainSigners,
+        (data) => assert.equal(data.signer_count, 0),
+      ],
+      [
+        "/api/v1/chain/fees",
+        handleChainFees,
+        (data) => assert.equal(data.day_count, 0),
+      ],
+      [
+        "/api/v1/chain/alpha-volume",
+        handleChainAlphaVolume,
+        (data) => assert.equal(data.subnet_count, 0),
+      ],
+      [
+        "/api/v1/chain/stake-transfers",
+        handleChainStakeTransfers,
+        (data) => assert.equal(data.subnet_count, 0),
+      ],
+      [
+        "/api/v1/chain/transfer-pairs",
+        handleChainTransferPairs,
+        (data) => assert.equal(data.pair_count, 0),
+      ],
+      [
+        "/api/v1/chain/stake-moves",
+        handleChainStakeMoves,
+        (data) => assert.equal(data.subnet_count, 0),
+      ],
+    ];
+    for (const [p, handler, check] of cases) {
+      const body = await json(await handler(req(p), env, url(p)));
+      check(body.data as Row);
+    }
   });
 });
