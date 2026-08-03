@@ -175,23 +175,21 @@ describe("loadSubnetStakeFlowFromArtifact", () => {
   });
 
   test.each([
-    ["no binding", null, undefined],
-    ["wrong schema_version", { schema_version: 2, windows: {} }, undefined],
-    ["windows absent", { schema_version: 1 }, undefined],
-    ["windows null", { schema_version: 1, windows: null }, undefined],
-    [
-      "rows not an array",
-      { schema_version: 1, windows: { "7d": {} } },
-      undefined,
-    ],
-  ])("declines when the artifact is unusable: %s", async (_label, body) => {
-    const env =
-      body === null ? ({} as unknown as Env) : envWith(body as unknown).env;
-    assert.equal(
-      await loadSubnetStakeFlowFromArtifact(env, 1, { window: "7d" }),
-      null,
-    );
-  });
+    ["no binding", null],
+    ["wrong schema_version", { schema_version: 2, windows: {} }],
+    ["windows absent", { schema_version: 1 }],
+    ["windows null", { schema_version: 1, windows: null }],
+    ["rows not an array", { schema_version: 1, windows: { "7d": {} } }],
+  ] as [string, unknown][])(
+    "declines when the artifact is unusable: %s",
+    async (_label, body) => {
+      const env = body === null ? ({} as unknown as Env) : envWith(body).env;
+      assert.equal(
+        await loadSubnetStakeFlowFromArtifact(env, 1, { window: "7d" }),
+        null,
+      );
+    },
+  );
 
   test("declines when the object is missing", async () => {
     const env = {
