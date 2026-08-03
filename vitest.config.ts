@@ -36,9 +36,10 @@ export default defineConfig({
     // there is no race left to avoid. That also deleted the separate serial CI
     // pass (`test:ci:artifacts`) those files needed.
     //
-    // The raised `--testTimeout` in test:ci stays: the subprocess-spawning
-    // tests (public-safety's full-repo scan, script-utils, r2-upload) are
-    // CPU-starved under parallel load and would otherwise hit the 5s default.
+    // The raised timeout that used to live on test:ci now lives in this file
+    // (see `testTimeout` below): the CPU-starved tests under parallel load are
+    // not only the subprocess-spawning ones, and putting the number on a
+    // single npm script left every other way of running the suite short.
     //
     // `test:ci` (scripts/run-ci-tests.ts) additionally splits by isolation
     // (#8922): the ~17 files that drive vi.mock/vi.doMock/vi.unmock/
@@ -56,6 +57,29 @@ export default defineConfig({
     // per-file isolation; required by `isolate: false`. See
     // src/module-state-registry.ts.
     setupFiles: ["tests/setup/reset-module-state.ts"],
+    // Vitest's 5s default is too tight for THIS suite under file parallelism,
+    // and the gap was papered over by putting the real number on one npm
+    // script. Measured on a 12-core machine during a full parallel run that
+    // passed, the slowest test in each of these sat at 2.1-3.0s with no
+    // declared timeout of its own -- network-routing 2983ms,
+    // subnet-idle-stake-handler 2639ms, network-addressing 2573ms,
+    // request-handlers-entities 2503ms, r2-upload 2312ms, zod-schemas 2301ms,
+    // subnet-hyperparams-history-csv 2098ms -- so they cleared 5s only while
+    // the machine was not busy. Under heavier contention the same run failed
+    // 13 tests across 12 files, and re-running it green is what made this look
+    // like flakiness rather than a budget set too low.
+    //
+    // 30s is not new: scripts/run-ci-tests.ts has passed --testTimeout=30000
+    // since this class of failure first appeared, so CI has always had it.
+    // What it did NOT cover is `npm test`, `npm run test:coverage`, or running
+    // one file from an editor -- all plain `vitest run`. The coverage command
+    // the contributor guide tells you to run locally was the flaky one while
+    // CI was green, which is the wrong way round.
+    //
+    // Declaring it here makes every invocation agree, and lets
+    // run-ci-tests.ts stop restating it. Files needing MORE than this still
+    // say so themselves (tests/public-safety.test.ts's 45s full-repo scan).
+    testTimeout: 30_000,
     // Takes ONE pristine copy of the tree before any worker starts, which every
     // per-file sandbox then clones from. Cloning the LIVE repo instead is racy
     // by construction: lib.ts writes JSON atomically, so a concurrent writer
