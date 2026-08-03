@@ -3352,6 +3352,24 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
     globalThis.fetch = realFetch;
   });
 
+  // The blocks-summary lane DECLINES on an empty read (it refuses to overwrite
+  // a good card with a zeroed one), so a globally-empty stub would make it the
+  // one lane that never writes and would flip the whole tick to ok:false. Give
+  // its query real rows; every other lane still reads empty.
+  const BLOCKS_ROW = {
+    block_number: 8_760_000,
+    author: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+    extrinsic_count: 3,
+    event_count: 11,
+    spec_version: 440,
+    observed_at: 1_785_700_000_000,
+  };
+  // Match blocks-summary's read specifically, NOT every chain.blocks query --
+  // chain-activity reads that table too and declines when handed rows it
+  // cannot bucket by day. The author/count column list is unique to this lane.
+  const isBlocksLaneQuery = (sql: string) =>
+    sql.includes("author, extrinsic_count");
+
   function projectionTick(env: unknown) {
     return handleScheduled(
       {
@@ -3374,12 +3392,17 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
 
   test("recomputes and writes every registered lane's artifact on one tick", async () => {
     const puts: string[] = [];
-    globalThis.fetch = (async () =>
-      ({
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      const sql = String(JSON.parse(String(init?.body)).query);
+      return {
         ok: true,
         status: 200,
-        json: async () => ({ success: true, result: { rows: [] } }),
-      }) as unknown as Response) as unknown as typeof fetch;
+        json: async () => ({
+          success: true,
+          result: { rows: isBlocksLaneQuery(sql) ? [BLOCKS_ROW] : [] },
+        }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
     const result = await projectionTick({
       R2_SQL_TOKEN: "cfut_test",
       METAGRAPH_ARCHIVE: {
@@ -3391,6 +3414,7 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
     assert.deepEqual(result, {
       ok: true,
       lanes: {
+        "blocks-summary": 1,
         "chain-transfers": 0,
         "chain-stake-flow": 0,
         "chain-activity": 0,
@@ -3404,6 +3428,7 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
       },
     });
     assert.deepEqual(puts, [
+      "metagraph/projections/blocks-summary.json",
       "metagraph/projections/chain-transfers.json",
       "metagraph/projections/chain-stake-flow.json",
       "metagraph/projections/chain-activity.json",
@@ -3427,7 +3452,10 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
       return {
         ok: true,
         status: 200,
-        json: async () => ({ success: true, result: { rows: [] } }),
+        json: async () => ({
+          success: true,
+          result: { rows: isBlocksLaneQuery(sql) ? [BLOCKS_ROW] : [] },
+        }),
       } as unknown as Response;
     }) as unknown as typeof fetch;
     const result = await projectionTick({
