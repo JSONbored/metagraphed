@@ -15,6 +15,7 @@ import {
   loadAccountTransfersColdTier,
   loadAccountWeightSettersColdTier,
   loadCounterpartyRelationshipColdTier,
+  loadValidatorNominatorsColdTier,
 } from "../src/account-feeds-cold-tier.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
 
@@ -709,5 +710,219 @@ describe("loadAccountServingColdTier", () => {
         status: 500,
       }) as unknown as Response) as unknown as typeof fetch;
     assert.equal(await loadAccountServingColdTier(TOKEN as never, ADDR), null);
+  });
+});
+
+describe("loadValidatorNominatorsColdTier", () => {
+  const THIRD = "5CkS5AGtGDPnXFXnZgBHqhqnaGsQzEwGmnPmauK1EhdG3JQY";
+
+  // The lakehouse's aggregate shape carries no event_kind column, so the
+  // builder takes its pre-grouped branch -- the same shape the Postgres tier
+  // returned from its own GROUP BY.
+  function nominatorRow(coldkey: string, staked: number, unstaked = 0) {
+    return {
+      coldkey,
+      staked_tao: staked,
+      unstaked_tao: unstaked,
+      event_count: 3,
+      last_observed: 1_785_544_524_000,
+      net_staked_tao: staked - unstaked,
+      gross_staked_tao: staked + unstaked,
+    };
+  }
+
+  test("carries the retired Postgres projection and predicate verbatim", async () => {
+    const q = sqlFetch([nominatorRow(OTHER, 20)]);
+    const res = await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
+      limit: 20,
+      window: "30d",
+    });
+    const s = q[0]!;
+    assert.match(s, new RegExp(`hotkey = '${ADDR}'`));
+    assert.match(s, /COUNT\(\*\) AS event_count/);
+    assert.match(s, /MAX\(observed_at\) AS last_observed/);
+    assert.match(s, /SUM\(amount_tao\) AS gross_staked_tao/);
+    assert.match(s, /GROUP BY coldkey/);
+    assert.equal(res!.data.window, "30d");
+    assert.equal(res!.data.nominator_count, 1);
+    assert.equal(
+      (res!.data.nominators as { net_staked_tao: number }[])[0]!.net_staked_tao,
+      20,
+    );
+    assert.equal(
+      res!.generatedAt,
+      new Date(1_785_544_524_000).toISOString(),
+      "generatedAt is the newest last_observed, as data-api derived it",
+    );
+  });
+
+  test("rewrites the kind IN-list as an OR, never leaning on IN", async () => {
+    const q = sqlFetch([nominatorRow(OTHER, 5)]);
+    await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, { limit: 5 });
+    assert.match(
+      q[0]!,
+      /\(event_kind = 'StakeAdded' OR event_kind = 'StakeRemoved'\)/,
+    );
+    assert.doesNotMatch(q[0]!, /event_kind IN/);
+  });
+
+  test("each sort picks its own ORDER BY, tie-broken on coldkey", async () => {
+    for (const [sort, expected] of [
+      ["net_staked", "net_staked_tao DESC, coldkey ASC"],
+      ["gross_staked", "gross_staked_tao DESC, coldkey ASC"],
+      ["last_activity", "last_observed DESC, coldkey ASC"],
+    ] as const) {
+      const q = sqlFetch([nominatorRow(OTHER, 5)]);
+      const res = await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
+        limit: 5,
+        sort,
+      });
+      assert.match(q[0]!, new RegExp(`ORDER BY ${expected} LIMIT`));
+      assert.equal(res!.data.sort, sort);
+    }
+  });
+
+  test("declines a sort it cannot express rather than serving the default order", async () => {
+    // Silently substituting net_staked under the caller's requested label
+    // would be a wrong answer wearing the right label.
+    const q = sqlFetch([nominatorRow(OTHER, 5)]);
+    assert.equal(
+      await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
+        limit: 5,
+        sort: "apy",
+      }),
+      null,
+    );
+    assert.equal(q.length, 0, "must not issue a query at all");
+  });
+
+  test("emulates OFFSET by over-fetching and slicing, since R2 SQL has none", async () => {
+    const q = sqlFetch([
+      nominatorRow(OTHER, 30),
+      nominatorRow(ADDR, 20),
+      nominatorRow(THIRD, 10),
+    ]);
+    const res = await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
+      limit: 2,
+      offset: 1,
+    });
+    assert.match(q[0]!, /LIMIT 3/, "over-fetches limit + offset");
+    assert.doesNotMatch(q[0]!, /OFFSET/);
+    const rows = res!.data.nominators as { coldkey: string }[];
+    assert.equal(rows.length, 2);
+    assert.equal(res!.data.offset, 1);
+    assert.ok(
+      !rows.some((row) => row.coldkey === OTHER),
+      "the skipped first row must not reappear in the page",
+    );
+  });
+
+  test("declines past the offset-emulation cap rather than paging wrongly", async () => {
+    const q = sqlFetch([nominatorRow(OTHER, 5)]);
+    assert.equal(
+      await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
+        limit: 5,
+        offset: 1001,
+      }),
+      null,
+    );
+    assert.equal(q.length, 0);
+  });
+
+  test("narrows on an exact coldkey, and declines an unusable one", async () => {
+    const q = sqlFetch([nominatorRow(OTHER, 5)]);
+    await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
+      limit: 5,
+      coldkey: OTHER,
+    });
+    assert.match(q[0]!, new RegExp(`coldkey = '${OTHER}'`));
+
+    // A filter that cannot be inlined must not widen to every nominator.
+    const bad = sqlFetch([nominatorRow(OTHER, 5)]);
+    assert.equal(
+      await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
+        limit: 5,
+        coldkey: "not-an-ss58",
+      }),
+      null,
+    );
+    assert.equal(bad.length, 0);
+  });
+
+  test("coalesces null sums to zero, as data-api's COALESCE did", async () => {
+    // Without this the builder skips the group entirely, losing a nominator a
+    // healthy read did return.
+    sqlFetch([
+      {
+        coldkey: OTHER,
+        staked_tao: null,
+        unstaked_tao: null,
+        event_count: 2,
+        last_observed: 1_785_000_000_000,
+      },
+    ]);
+    const res = await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
+      limit: 5,
+    });
+    assert.equal(res!.data.nominator_count, 1);
+    assert.equal(
+      (res!.data.nominators as { staked_tao: number }[])[0]!.staked_tao,
+      0,
+    );
+  });
+
+  test("falls back to the default window for an unknown label", async () => {
+    sqlFetch([nominatorRow(OTHER, 5)]);
+    const res = await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
+      limit: 5,
+      window: "1y",
+    });
+    assert.equal(res!.data.window, "30d");
+  });
+
+  test("a validator with no nominators answers an empty list, not a decline", async () => {
+    sqlFetch([]);
+    const res = await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
+      limit: 5,
+    });
+    assert.equal(res!.data.nominator_count, 0);
+    assert.equal(res!.generatedAt, null);
+  });
+
+  test("declines an unusable hotkey, limit or offset rather than scanning", async () => {
+    const q = sqlFetch([]);
+    assert.equal(
+      await loadValidatorNominatorsColdTier(TOKEN as never, "not-an-ss58", {
+        limit: 5,
+      }),
+      null,
+    );
+    assert.equal(
+      await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, { limit: 0 }),
+      null,
+    );
+    assert.equal(
+      await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
+        limit: 1.5,
+      }),
+      null,
+      "a limit that is not a safe integer cannot be inlined",
+    );
+    assert.equal(
+      await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
+        limit: 5,
+        offset: -1,
+      }),
+      null,
+    );
+    assert.equal(q.length, 0);
+  });
+
+  test("declines when the lakehouse cannot answer", async () => {
+    failingFetch();
+    assert.equal(
+      await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, { limit: 5 }),
+      null,
+    );
   });
 });

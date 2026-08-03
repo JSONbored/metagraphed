@@ -3161,6 +3161,138 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
       new RegExp(`hotkey = '${ADDR}' AND coldkey = '${COUNTERPARTY}'`),
     );
   });
+
+  test("handleValidatorNominators serves the nominator list from the lakehouse", async () => {
+    const q = lakeFetch([
+      {
+        coldkey: COUNTERPARTY,
+        staked_tao: 40,
+        unstaked_tao: 5,
+        event_count: 4,
+        last_observed: 1_785_544_524_000,
+        net_staked_tao: 35,
+        gross_staked_tao: 45,
+      },
+    ]);
+    const body = await json(
+      await handleValidatorNominators(
+        req(`/api/v1/validators/${ADDR}/nominators`),
+        LAKE_ENV,
+        ADDR,
+        url(`/api/v1/validators/${ADDR}/nominators?sort=gross_staked`),
+      ),
+    );
+    assert.equal(body.data.nominator_count, 1);
+    assert.equal(body.data.nominators[0].coldkey, COUNTERPARTY);
+    assert.equal(body.data.nominators[0].net_staked_tao, 35);
+    assert.equal(body.data.sort, "gross_staked");
+    assert.match(q[0]!, new RegExp(`hotkey = '${ADDR}'`));
+    assert.match(q[0]!, /GROUP BY coldkey/);
+    assert.equal(
+      body.meta.generated_at,
+      new Date(1_785_544_524_000).toISOString(),
+    );
+  });
+
+  test("handleValidatorNominators forwards ?coldkey to the lakehouse predicate", async () => {
+    const q = lakeFetch([]);
+    await json(
+      await handleValidatorNominators(
+        req(`/api/v1/validators/${ADDR}/nominators`),
+        LAKE_ENV,
+        ADDR,
+        url(`/api/v1/validators/${ADDR}/nominators?coldkey=${COUNTERPARTY}`),
+      ),
+    );
+    assert.match(q[0]!, new RegExp(`coldkey = '${COUNTERPARTY}'`));
+  });
+
+  test("handleValidatorNominators keeps its empty envelope when the lakehouse declines too", async () => {
+    // No Postgres flag and no R2 SQL token -- the local/CI and self-hosted
+    // case. Both echoes of the requested sort still have to survive: the
+    // supplied label, and the default when none was asked for.
+    const coldEnv = {} as unknown as Env;
+    const asked = await json(
+      await handleValidatorNominators(
+        req(`/api/v1/validators/${ADDR}/nominators`),
+        coldEnv,
+        ADDR,
+        url(`/api/v1/validators/${ADDR}/nominators?sort=gross_staked`),
+      ),
+    );
+    assert.equal(asked.data.nominator_count, 0);
+    assert.deepEqual(asked.data.nominators, []);
+    assert.equal(asked.data.sort, "gross_staked");
+    assert.equal(asked.meta.generated_at, null);
+
+    const defaulted = await json(
+      await handleValidatorNominators(
+        req(`/api/v1/validators/${ADDR}/nominators`),
+        coldEnv,
+        ADDR,
+        url(`/api/v1/validators/${ADDR}/nominators`),
+      ),
+    );
+    assert.equal(defaulted.data.sort, "net_staked");
+    assert.equal(defaulted.data.window, "30d");
+  });
+
+  test("handleAccountPositions prices the lakehouse ledger off D1 neurons", async () => {
+    const q = lakeFetch([
+      {
+        hotkey: COUNTERPARTY,
+        netuid: 18,
+        share_fraction: 0.5,
+        captured_at: 1_785_634_702_670,
+      },
+    ]);
+    const envWithD1 = {
+      ...LAKE_ENV,
+      METAGRAPH_HEALTH_DB: {
+        prepare: () => ({
+          bind: () => ({
+            all: async () => ({
+              results: [{ hotkey: COUNTERPARTY, netuid: 18, stake_tao: 100 }],
+            }),
+          }),
+        }),
+      },
+    } as unknown as Env;
+    const body = await json(
+      await handleAccountPositions(
+        req(`/api/v1/accounts/${ADDR}/positions`),
+        envWithD1,
+        ADDR,
+      ),
+    );
+    assert.equal(body.data.position_count, 1);
+    assert.equal(body.data.positions[0].stake_tao, 50);
+    assert.equal(body.data.total_stake_alpha, 50);
+    assert.match(q[0]!, /FROM chain\.nominator_positions/);
+    assert.match(q[0]!, new RegExp(`coldkey = '${ADDR}'`));
+  });
+
+  test("handleAccountPositions keeps the empty card when the stake leg is unreadable", async () => {
+    // No D1 binding: the reader declines rather than pricing a partial set,
+    // and the route serves the schema-stable empty it already had.
+    lakeFetch([
+      {
+        hotkey: COUNTERPARTY,
+        netuid: 18,
+        share_fraction: 0.5,
+        captured_at: 1_785_634_702_670,
+      },
+    ]);
+    const body = await json(
+      await handleAccountPositions(
+        req(`/api/v1/accounts/${ADDR}/positions`),
+        LAKE_ENV,
+        ADDR,
+      ),
+    );
+    assert.equal(body.data.position_count, 0);
+    assert.equal(body.data.total_stake_alpha, 0);
+  });
 });
 
 describe("handleAccountEvents", () => {

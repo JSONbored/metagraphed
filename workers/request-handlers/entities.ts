@@ -176,7 +176,9 @@ import {
   loadAccountTransfersColdTier,
   loadAccountWeightSettersColdTier,
   loadCounterpartyRelationshipColdTier,
+  loadValidatorNominatorsColdTier,
 } from "../../src/account-feeds-cold-tier.ts";
+import { loadAccountPositionsColdTier } from "../../src/nominator-positions-cold-tier.ts";
 import {
   loadSubnetHyperparamsColdTier,
   loadSubnetHyperparamsHistoryColdTier,
@@ -1386,6 +1388,8 @@ export async function handleValidatorNominators(
       message: `"coldkey" must be a valid SS58 address.`,
     });
   }
+  // Postgres → lakehouse cold tier → schema-stable empty stub, the same three
+  // steps every account_events-derived route now takes.
   const { data, generatedAt } = ((await tryPostgresTier(
     env,
     request,
@@ -1393,15 +1397,22 @@ export async function handleValidatorNominators(
   )) as {
     data: ReturnType<typeof buildValidatorNominators>;
     generatedAt: string | null;
-  } | null) ?? {
-    data: buildValidatorNominators([], hotkey, {
+  } | null) ??
+    (await loadValidatorNominatorsColdTier(env, hotkey, {
       window: windowParam,
-      sort: sort ?? undefined,
+      sort,
       limit: limit.value,
       offset: offset.value,
-    }),
-    generatedAt: null,
-  };
+      coldkey: coldkeyParam,
+    })) ?? {
+      data: buildValidatorNominators([], hotkey, {
+        window: windowParam,
+        sort: sort ?? undefined,
+        limit: limit.value,
+        offset: offset.value,
+      }),
+      generatedAt: null,
+    };
   // CSV export mirrors handleAccountsList / handleGlobalValidators: the rows are
   // already sorted/paginated/coldkey-filtered by buildValidatorNominators, so
   // the CSV path carries the identical set the JSON path would (#5745). A cold
@@ -4315,12 +4326,13 @@ export async function handleAccountPortfolio(
 
 // GET /api/v1/accounts/{ss58}/positions (#5233): this account's reconstructed
 // nominator-side positions -- what it holds delegated across every
-// hotkey/subnet, distinct from /portfolio above (hotkey-scoped). Postgres-
-// only, same shape as handleAccountPositionHistory's own no-D1-fallback note:
-// nominator_positions never had a D1-era predecessor, so there is nothing to
-// fall back to besides a schema-stable empty card. Reuses
+// hotkey/subnet, distinct from /portfolio above (hotkey-scoped). Reuses
 // METAGRAPH_NEURONS_SOURCE (not a dedicated flag) since this route's stake_tao
 // join reads the same neurons tier that flag already gates in production.
+// Postgres → lakehouse cold tier → schema-stable empty card: nominator_positions
+// never had a D1-era predecessor, so the lakehouse is the only tier behind the
+// retired Postgres one (the stake half of the join is read from D1 there --
+// see src/nominator-positions-cold-tier.ts).
 export async function handleAccountPositions(
   request: Request,
   env: Env,
@@ -4332,6 +4344,7 @@ export async function handleAccountPositions(
       request,
       "METAGRAPH_NEURONS_SOURCE",
     )) as ReturnType<typeof buildAccountPositions> | null) ??
+    (await loadAccountPositionsColdTier(env, ss58)) ??
     buildAccountPositions([], new Map(), ss58);
   return accountEnvelopeResponse(
     request,
