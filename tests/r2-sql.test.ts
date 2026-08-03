@@ -307,3 +307,65 @@ describe("r2SqlQuery", () => {
     }
   });
 });
+
+describe("a rejected query says WHY the engine refused it", () => {
+  // R2 SQL answers a refusal with a numbered, self-explaining message. Only
+  // the non-2xx arm threw it away (the success:false arm above always
+  // surfaced it), and that asymmetry is what made the account summary card's
+  // outage opaque: one query tripped `40015: scan budget exceeded: scanning
+  // too much data for count(DISTINCT) without GROUP BY`, the whole loader
+  // declined, and every account got a zero card while the log said only
+  // "HTTP 422".
+  function textFetch(text: string | (() => Promise<string>), status = 422) {
+    const impl = (async () => ({
+      ok: false,
+      status,
+      text: typeof text === "function" ? text : async () => text,
+    })) as unknown as typeof fetch;
+    return impl;
+  }
+
+  async function errorFrom(impl: typeof fetch): Promise<string> {
+    const lines: string[] = [];
+    const spy = console.error;
+    console.error = (...args: unknown[]) => lines.push(args.join(" "));
+    try {
+      await r2SqlQuery(mockEnv(TOKEN), "SELECT 1", {
+        fetch: impl,
+        recordException: (async () => true) as never,
+      });
+    } finally {
+      console.error = spy;
+    }
+    return lines.join(" ");
+  }
+
+  test("the engine's numbered message reaches the logged error", async () => {
+    const logged = await errorFrom(
+      textFetch(
+        "40015: scan budget exceeded: scanning too much data for" +
+          " count(DISTINCT) without GROUP BY",
+      ),
+    );
+    assert.match(logged, /HTTP 422/);
+    assert.match(logged, /40015/);
+    assert.match(logged, /count\(DISTINCT\) without GROUP BY/);
+  });
+
+  test("an empty or unreadable body still reports the status", async () => {
+    assert.match(await errorFrom(textFetch("")), /r2 sql: HTTP 422/);
+    assert.match(
+      await errorFrom(
+        textFetch(async () => {
+          throw new Error("stream broken");
+        }, 500),
+      ),
+      /r2 sql: HTTP 500/,
+    );
+  });
+
+  test("a long body is bounded rather than logged whole", async () => {
+    const logged = await errorFrom(textFetch("x".repeat(5000)));
+    assert.ok(logged.length < 400, String(logged.length));
+  });
+});
