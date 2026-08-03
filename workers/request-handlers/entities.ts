@@ -150,6 +150,7 @@ import {
   loadExtrinsicColdTier,
   loadExtrinsicFeedColdTier,
 } from "../../src/extrinsics-cold-tier.ts";
+import { loadSubnetEventSummaryKindRows } from "../../src/subnet-event-summary-artifact.ts";
 import {
   loadAccountEventsColdTier,
   loadBlockEventsColdTier,
@@ -4627,16 +4628,37 @@ export async function handleSubnetEventSummary(
     maxLimit: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
   });
   if ("error" in parsedLimit) return analyticsQueryError(parsedLimit.error);
-  const data =
-    ((await tryPostgresTier(
+  // #9146: the two halves come from different places on purpose. The
+  // per-event_kind rows need distinct hotkey/coldkey counts, which R2 SQL
+  // refuses at request time (40015 scan budget, at every window), so they are
+  // precomputed by the daily subnet-event-summary lane. `recent_events` is a
+  // short newest-first slice the events cold tier already serves cheaply and
+  // which honours ?limit=, so it stays live rather than being frozen into a
+  // daily artifact.
+  let data = (await tryPostgresTier(
+    env,
+    request,
+    "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+  )) as ReturnType<typeof buildSubnetEventSummary> | null;
+  if (!data) {
+    const kindRows = await loadSubnetEventSummaryKindRows(
       env,
-      request,
-      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-    )) as ReturnType<typeof buildSubnetEventSummary> | null) ??
-    buildSubnetEventSummary([], [], Number(netuid), {
-      window: windowLabel,
+      Number(netuid),
+      windowLabel,
+    );
+    const recent = await loadSubnetEventsColdTier(env, Number(netuid), {
       limit: parsedLimit.limit,
     });
+    // Either half missing degrades only ITS half -- a subnet with a fresh
+    // artifact but a failed live read still gets its kind breakdown, and vice
+    // versa, rather than the whole card collapsing to zeros.
+    data = buildSubnetEventSummary(
+      kindRows ?? [],
+      (recent?.events ?? []) as unknown as Array<Record<string, unknown>>,
+      Number(netuid),
+      { window: windowLabel, limit: parsedLimit.limit },
+    );
+  }
   return envelopeResponse(
     request,
     {

@@ -1,3 +1,4 @@
+import { PROJECTION_LANES_CRON } from "../workers/config.ts";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -14,7 +15,7 @@ import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import { tieredRejectionResponse } from "../workers/tiered-rate-limit.ts";
 import { API_ROUTES, compileRoutePattern } from "../src/contracts.ts";
 import * as workerConfig from "../workers/config.ts";
-import { PROJECTION_LANES } from "../src/projection-lanes.ts";
+import { lanesForCron } from "../src/projection-lanes.ts";
 import { type AnyFn, type Row } from "./row-type.ts";
 import type { RpcEndpoint } from "../workers/request-handlers/rpc-proxy.ts";
 
@@ -3411,6 +3412,40 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
     );
   }
 
+  test("the DAILY cron runs only the intervalCron lanes, not the half-hourly ones", async () => {
+    // subnet-event-summary scans ~8.3 GB per tick; it must never ride the
+    // half-hourly tick, and the half-hourly lanes must never re-run here.
+    const puts: string[] = [];
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      const sql = String(JSON.parse(String(init?.body)).query);
+      const rows = sql.includes("GROUP BY netuid, event_kind")
+        ? [{ netuid: 1, event_kind: "StakeAdded", event_count: 3, n: 2 }]
+        : [];
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    const result = (await handleScheduled(
+      {
+        cron: workerConfig.PROJECTION_LANES_DAILY_CRON,
+      } as unknown as ScheduledController,
+      {
+        R2_SQL_TOKEN: "cfut_test",
+        METAGRAPH_ARCHIVE: {
+          async put(key: string) {
+            puts.push(key);
+          },
+        },
+      } as unknown as Env,
+      {} as unknown as ExecutionContext,
+    )) as { ok: boolean; lanes: Record<string, number | null> };
+
+    assert.deepEqual(Object.keys(result.lanes), ["subnet-event-summary"]);
+    assert.deepEqual(puts, ["metagraph/projections/subnet-event-summary.json"]);
+  });
+
   test("skips quietly when R2 SQL is not configured — local/CI/self-hosters have no lakehouse", async () => {
     const result = await projectionTick({});
     assert.deepEqual(result, {
@@ -3448,7 +3483,12 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
     // to be edited in lockstep. Deriving means registering a lane can never
     // again break this by omission -- it can only fail if the lane genuinely
     // did not run or did not write, which is what this test is for.
-    const registered = PROJECTION_LANES.map((lane) => lane.name);
+    // Only the lanes on THIS cadence: a lane declaring `intervalCron` runs on
+    // its own tick, so including it here would assert it ran when it
+    // deliberately did not.
+    const registered = lanesForCron(PROJECTION_LANES_CRON).map(
+      (lane) => lane.name,
+    );
     const outcome = result as {
       ok: boolean;
       lanes: Record<string, number | null>;
@@ -3472,7 +3512,9 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
     assert.equal(outcome.ok, true);
     assert.deepEqual(
       puts.sort(),
-      PROJECTION_LANES.map((lane) => lane.artifactKey).sort(),
+      lanesForCron(PROJECTION_LANES_CRON)
+        .map((lane) => lane.artifactKey)
+        .sort(),
       "each lane writes exactly its own artifact key",
     );
   });
