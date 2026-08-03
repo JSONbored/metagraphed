@@ -13,6 +13,7 @@ import {
   markMcpTierDegraded,
 } from "../src/mcp-server.ts";
 import { currentPostgresTierFallbackGeneration } from "../workers/postgres-tier.ts";
+import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
 import * as profilesMcp from "../src/profiles-mcp.ts";
 import * as healthHistoryMcp from "../src/health-history-mcp.ts";
 import { KV_HEALTH_RPC_POOL } from "../src/health-prober.ts";
@@ -4163,6 +4164,84 @@ describe("MCP get_subnet_ownership_history (DATA_API binding)", () => {
     );
     assert.equal(res.status, 200);
     assert.deepEqual(limiterKeys, ["data:anonymous"]);
+  });
+
+  // Every field of the tool's projection has a fallback, because a tier that
+  // answers 200 with a body missing them must not surface as `undefined` in a
+  // structured result an agent then reasons over.
+  test("a payload missing every field still projects a complete result", async () => {
+    const dataApi = {
+      fetch: async () => Response.json({}),
+    };
+    const res = await callTool(
+      "get_subnet_ownership_history",
+      { netuid: 3 },
+      { env: { DATA_API: dataApi } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.schema_version, 1);
+    assert.equal(out.netuid, 3);
+    assert.equal(out.count, 0);
+    assert.deepEqual(out.ownership_changes, []);
+  });
+});
+
+// The MCP half of the ownership-history cold tier: the SAME lakehouse reader
+// REST reaches, consulted only once DATA_API has already degraded.
+describe("MCP get_subnet_ownership_history (lakehouse cold tier)", () => {
+  const realFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+  });
+
+  function lakehouse(rows: unknown[]) {
+    globalThis.fetch = (async () =>
+      ({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows } }),
+      }) as unknown as Response) as unknown as typeof fetch;
+  }
+
+  test("a dead DATA_API is answered from the lakehouse, not with the empty", async () => {
+    lakehouse([
+      {
+        pallet: "SubtensorModule",
+        method: "SubnetOwnerChanged",
+        block_number: 8_587_754,
+        observed_at: 1_783_600_000_000,
+        args: { netuid: 7 },
+      },
+      { pallet: "SubtensorModule", method: "SubnetOwnerChanged", args: {} },
+    ]);
+    const res = await callTool(
+      "get_subnet_ownership_history",
+      { netuid: 7 },
+      { env: { [R2_SQL_TOKEN_ENV]: "cfut_test" } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, false);
+    assert.equal(out.count, 1, "the other subnet's transfer is filtered out");
+    assert.equal(out.ownership_changes[0].block_number, 8_587_754);
+    assert.equal(
+      out.degraded,
+      undefined,
+      "a real answer must not carry the degraded marker",
+    );
+  });
+
+  test("a lakehouse that also declines leaves the marked empty in place", async () => {
+    globalThis.fetch = (async () => {
+      throw new Error("lakehouse down");
+    }) as unknown as typeof fetch;
+    const res = await callTool(
+      "get_subnet_ownership_history",
+      { netuid: 7 },
+      { env: { [R2_SQL_TOKEN_ENV]: "cfut_test" } },
+    );
+    const out = res.body.result.structuredContent;
+    assert.deepEqual(out.ownership_changes, []);
+    assert.deepEqual(out.degraded, { reason: "tier_unavailable" });
   });
 });
 
@@ -19287,6 +19366,49 @@ describe("MCP subnet hyperparams/volume/recycled tools (#5225 parity)", () => {
     const out = res.body.result.structuredContent;
     assert.equal(out.root_excluded, true);
     assert.deepEqual(out.candles, []);
+  });
+
+  // The same lakehouse reader handleSubnetOhlc falls to, so the REST route and
+  // the tool cannot report different candles for the same subnet.
+  test("get_subnet_ohlc serves candles from the lakehouse cold tier", async () => {
+    const orig = globalThis.fetch;
+    globalThis.fetch = (async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        result: {
+          rows: [
+            {
+              bucket_start: 1_783_600_000_000,
+              open_price: 2,
+              close_price: 3,
+              high_price: 4,
+              low_price: 1,
+              volume_alpha: 10,
+              volume_tao: 25,
+              event_count: 2,
+              last_observed: 1_783_600_060_000,
+            },
+          ],
+        },
+      }),
+    })) as unknown as typeof globalThis.fetch;
+    try {
+      const res = await callTool(
+        "get_subnet_ohlc",
+        { netuid: 7, interval: "1d", days: 14 },
+        { env: { [R2_SQL_TOKEN_ENV]: "cfut_test" } },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(res.body.result.isError, false);
+      assert.equal(out.interval, "1d");
+      assert.equal(out.candles.length, 1);
+      assert.equal(out.candles[0].open, 2);
+      assert.equal(out.candles[0].close, 3);
+    } finally {
+      globalThis.fetch = orig;
+    }
   });
 
   test("get_subnet_recycled returns recycled_tao:0 for genuinely unset storage", async () => {

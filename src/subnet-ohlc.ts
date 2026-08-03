@@ -16,6 +16,15 @@
 // empty window yields a schema-stable empty candle array (never throws),
 // matching the sibling live tiers (alpha-volume, stake-flow).
 //
+// The lakehouse cold tier CANNOT keep that shape, and the split is drawn on
+// purpose. R2 SQL is reached over HTTP, so "every raw trade in the window"
+// would be a multi-megabyte body for an active subnet (the busiest non-root
+// subnet trades ~1.4k times a day; ?days= goes to 365) -- and capping the row
+// count would silently shorten the window a caller asked for. So that tier
+// aggregates in SQL and fills OhlcBucket directly. buildSubnetOhlcFromBuckets
+// below is therefore the seam: both tiers agree on what a BUCKET is, and only
+// one of them decides what a CANDLE looks like.
+//
 // Root subnet (netuid 0) has no AMM pool -- staking there is 1:1 TAO<->TAO with
 // no price impact (mirrors src/stake-quote.ts's own root short-circuit) -- so
 // an OHLC series for it would just be a flat line at 1.0 and isn't a
@@ -109,7 +118,11 @@ function normalizeInterval(interval: unknown): string {
     : OHLC_INTERVAL_DEFAULT;
 }
 
-interface OhlcBucket {
+// One finished bucket, before it is rounded and named. The lakehouse cold
+// tier (src/subnet-ohlc-cold-tier.ts) fills these from a SQL GROUP BY rather
+// than from a row loop, which is why this shape and the assembler below are
+// exported: the aggregation differs by tier, the CANDLE never does.
+export interface OhlcBucket {
   open: number;
   high: number;
   low: number;
@@ -117,6 +130,64 @@ interface OhlcBucket {
   volumeAlpha: number;
   volumeTao: number;
   eventCount: number;
+}
+
+// Turn finished buckets into the response payload: the MAX_CANDLES cap, the
+// rao rounding, the field names, the root_excluded shape. Every tier ends
+// here, so none of that can drift between them -- a tier only has to agree on
+// what a bucket IS, not on how a candle is spelled.
+//
+// Root (netuid 0) has no AMM pool -- 1:1 TAO, no price impact. Short-circuit
+// with an explicit degenerate shape rather than computing a meaningless
+// flat-line series, mirroring stake-quote.ts's is_root short-circuit (which
+// similarly never runs its pool math against nonexistent reserves). `candles`
+// stays an empty array (not omitted) and `root_excluded` is always present as
+// a boolean -- one schema-stable shape for both the root and non-root case,
+// rather than two different response shapes for callers to branch on.
+export function buildSubnetOhlcFromBuckets(
+  buckets: Map<number, OhlcBucket>,
+  netuid: number,
+  { interval = OHLC_INTERVAL_DEFAULT }: { interval?: unknown } = {},
+): Row {
+  const normalizedInterval = normalizeInterval(interval);
+  if (netuid === 0) {
+    return {
+      schema_version: 1,
+      netuid: 0,
+      interval: normalizedInterval,
+      candles: [],
+      root_excluded: true,
+    };
+  }
+
+  const bucketStarts = [...buckets.keys()].sort((a, b) => a - b);
+  const cappedStarts =
+    bucketStarts.length > MAX_CANDLES
+      ? bucketStarts.slice(bucketStarts.length - MAX_CANDLES)
+      : bucketStarts;
+
+  const candles = cappedStarts.map((bucketStart) => {
+    const b = buckets.get(bucketStart) as OhlcBucket;
+    return {
+      bucket_start: bucketStart,
+      bucket_start_iso: new Date(bucketStart).toISOString(),
+      open: roundUnit(b.open),
+      high: roundUnit(b.high),
+      low: roundUnit(b.low),
+      close: roundUnit(b.close),
+      volume_alpha: roundUnit(b.volumeAlpha),
+      volume_tao: roundUnit(b.volumeTao),
+      event_count: b.eventCount,
+    };
+  });
+
+  return {
+    schema_version: 1,
+    netuid,
+    interval: normalizedInterval,
+    candles,
+    root_excluded: false,
+  };
 }
 
 // Shape a subnet's raw StakeAdded/StakeRemoved account_events rows into
@@ -142,22 +213,13 @@ export function buildSubnetOhlc(
 ): Row {
   const normalizedInterval = normalizeInterval(interval);
 
-  // Root subnet (netuid 0) has no AMM pool -- 1:1 TAO, no price impact.
-  // Short-circuit with an explicit degenerate shape rather than computing a
-  // meaningless flat-line series, mirroring stake-quote.ts's is_root
-  // short-circuit (which similarly never runs its pool math against
-  // nonexistent reserves). `candles` stays an empty array (not omitted) and
-  // `root_excluded` is always present as a boolean -- one schema-stable shape
-  // for both the root and non-root case, rather than two different response
-  // shapes for callers to branch on.
+  // Root subnet (netuid 0) has no candles at all, so there is nothing to
+  // bucket -- hand the assembler an empty map and let its one root branch
+  // produce the degenerate shape.
   if (netuid === 0) {
-    return {
-      schema_version: 1,
-      netuid: 0,
+    return buildSubnetOhlcFromBuckets(new Map(), netuid, {
       interval: normalizedInterval,
-      candles: [],
-      root_excluded: true,
-    };
+    });
   }
 
   const intervalMs = OHLC_INTERVALS[normalizedInterval];
@@ -206,32 +268,7 @@ export function buildSubnetOhlc(
     bucket.eventCount += 1;
   }
 
-  const bucketStarts = [...buckets.keys()].sort((a, b) => a - b);
-  const cappedStarts =
-    bucketStarts.length > MAX_CANDLES
-      ? bucketStarts.slice(bucketStarts.length - MAX_CANDLES)
-      : bucketStarts;
-
-  const candles = cappedStarts.map((bucketStart) => {
-    const b = buckets.get(bucketStart) as OhlcBucket;
-    return {
-      bucket_start: bucketStart,
-      bucket_start_iso: new Date(bucketStart).toISOString(),
-      open: roundUnit(b.open),
-      high: roundUnit(b.high),
-      low: roundUnit(b.low),
-      close: roundUnit(b.close),
-      volume_alpha: roundUnit(b.volumeAlpha),
-      volume_tao: roundUnit(b.volumeTao),
-      event_count: b.eventCount,
-    };
-  });
-
-  return {
-    schema_version: 1,
-    netuid,
+  return buildSubnetOhlcFromBuckets(buckets, netuid, {
     interval: normalizedInterval,
-    candles,
-    root_excluded: false,
-  };
+  });
 }

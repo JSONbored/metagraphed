@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   buildSubnetOhlc,
+  buildSubnetOhlcFromBuckets,
   OHLC_INTERVALS,
   OHLC_INTERVAL_DEFAULT,
   MAX_CANDLES,
   STAKE_ADDED_KIND,
   STAKE_REMOVED_KIND,
 } from "../src/subnet-ohlc.ts";
+import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
@@ -625,5 +627,119 @@ describe("GET /api/v1/subnets/{netuid}/ohlc via the Worker", () => {
     assert.equal(body.data.candles.length, 1);
     assert.equal(body.data.candles[0].volume_alpha, 5);
     assert.equal(body.meta.generated_at, "2026-07-01T00:00:00.000Z");
+  });
+
+  // The route stopped serving candles when Postgres went away; the lakehouse
+  // is what makes it answer again, with ?days= finally load-bearing (on the
+  // Postgres tier it only ever travelled as part of the forwarded URL).
+  test("falls to the lakehouse cold tier and honours ?days=", async () => {
+    const queries: string[] = [];
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      queries.push(JSON.parse(String(init.body)).query);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          result: {
+            rows: [
+              {
+                bucket_start: BASE,
+                open_price: 2,
+                close_price: 3,
+                high_price: 4,
+                low_price: 1,
+                volume_alpha: 10,
+                volume_tao: 25,
+                event_count: 2,
+                last_observed: BASE + 60_000,
+              },
+            ],
+          },
+        }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    const env = {
+      ...createLocalArtifactEnv(),
+      [R2_SQL_TOKEN_ENV]: "cfut_test",
+    };
+    const res = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/subnets/7/ohlc?interval=1d&days=14",
+      ),
+      env as unknown as Env,
+      ctx,
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.interval, "1d");
+    assert.equal(body.data.candles.length, 1);
+    assert.equal(body.data.candles[0].open, 2);
+    assert.equal(body.data.candles[0].close, 3);
+    assert.equal(body.meta.generated_at, new Date(BASE + 60_000).toISOString());
+    assert.match(queries[0]!, /WHERE netuid = 7 /);
+  });
+});
+
+// The seam both tiers end in: data-api's row loop fills these buckets, the
+// lakehouse's GROUP BY fills them, and only this function decides what a
+// candle looks like.
+describe("buildSubnetOhlcFromBuckets", () => {
+  function bucket(overrides: Record<string, unknown> = {}) {
+    return {
+      open: 1,
+      high: 2,
+      low: 0.5,
+      close: 1.5,
+      volumeAlpha: 10,
+      volumeTao: 12,
+      eventCount: 3,
+      ...overrides,
+    };
+  }
+
+  test("defaults to the declared interval when none is supplied", () => {
+    const out = buildSubnetOhlcFromBuckets(
+      new Map([[BASE, bucket()]]),
+      7,
+    ) as Row;
+    assert.equal(out.interval, OHLC_INTERVAL_DEFAULT);
+    assert.equal(out.root_excluded, false);
+    assert.deepEqual(out.candles, [
+      {
+        bucket_start: BASE,
+        bucket_start_iso: new Date(BASE).toISOString(),
+        open: 1,
+        high: 2,
+        low: 0.5,
+        close: 1.5,
+        volume_alpha: 10,
+        volume_tao: 12,
+        event_count: 3,
+      },
+    ]);
+  });
+
+  test("root is degenerate here too, whatever buckets it is handed", () => {
+    const out = buildSubnetOhlcFromBuckets(new Map([[BASE, bucket()]]), 0, {
+      interval: "1d",
+    }) as Row;
+    assert.equal(out.root_excluded, true);
+    assert.deepEqual(out.candles, []);
+    assert.equal(out.interval, "1d");
+  });
+
+  test("caps to the most recent MAX_CANDLES, dropping the oldest tail", () => {
+    const many = new Map<number, ReturnType<typeof bucket>>();
+    for (let i = 0; i < MAX_CANDLES + 3; i += 1) {
+      many.set(BASE + i * HOUR_MS, bucket({ open: i }));
+    }
+    const out = buildSubnetOhlcFromBuckets(many, 7, { interval: "1h" }) as Row;
+    assert.equal(out.candles.length, MAX_CANDLES);
+    assert.equal(
+      out.candles[0].open,
+      3,
+      "the three oldest buckets are dropped",
+    );
   });
 });

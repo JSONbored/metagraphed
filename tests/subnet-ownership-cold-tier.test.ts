@@ -6,8 +6,12 @@
 // shape postgres.js would have delivered — or the read declines.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { loadAccountEntitiesColdTier } from "../src/subnet-ownership-cold-tier.ts";
+import {
+  loadAccountEntitiesColdTier,
+  loadSubnetOwnershipHistoryColdTier,
+} from "../src/subnet-ownership-cold-tier.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import type { Row } from "./row-type.ts";
 
 const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
 
@@ -122,5 +126,75 @@ describe("loadAccountEntitiesColdTier", () => {
       NEW_COLDKEY_SS58,
     );
     assert.equal(empty!.ownership_tie_count, 0);
+  });
+});
+
+describe("loadSubnetOwnershipHistoryColdTier", () => {
+  // The netuid predicate data-api writes in SQL (chain_events.args is JSONB
+  // there) has no lakehouse form -- args is an opaque JSON string in Iceberg.
+  // So the whole stream is read and the SHARED formatter narrows it, which is
+  // also why no netuid literal may appear in the query.
+  test("narrows the shared stream to one subnet, in JS, not in SQL", async () => {
+    const q = sqlFetch([
+      ownershipRow(),
+      ownershipRow({
+        block_number: 8_600_000,
+        args: {
+          netuid: 18,
+          old_coldkey: OLD_COLDKEY_BYTES,
+          new_coldkey: NEW_COLDKEY_BYTES,
+        },
+      }),
+    ]);
+    const data = (await loadSubnetOwnershipHistoryColdTier(
+      TOKEN as never,
+      7,
+    )) as Row;
+    assert.match(q[0]!, /FROM chain\.chain_events/);
+    assert.ok(
+      !/netuid/.test(q[0]!),
+      "the netuid predicate is not expressible against a JSON-string args column",
+    );
+    assert.equal(data.netuid, 7);
+    assert.equal(data.count, 1);
+    assert.equal(data.ownership_changes[0].netuid, 7);
+    assert.equal(data.event_method, "SubnetOwnerChanged");
+  });
+
+  // A subnet that has never changed hands is the common case, so an empty
+  // match set is a real answer -- distinct from a decline.
+  test("a subnet with no transfers is an empty list, not a decline", async () => {
+    sqlFetch([ownershipRow({ args: { netuid: 18 } })]);
+    const data = (await loadSubnetOwnershipHistoryColdTier(
+      TOKEN as never,
+      7,
+    )) as Row;
+    assert.equal(data.count, 0);
+    assert.deepEqual(data.ownership_changes, []);
+  });
+
+  test("declines an unusable netuid rather than echoing it back", async () => {
+    let called = 0;
+    globalThis.fetch = (async () => {
+      called += 1;
+      throw new Error("must not be reached");
+    }) as unknown as typeof fetch;
+    for (const netuid of [null, "seven", -3]) {
+      assert.equal(
+        await loadSubnetOwnershipHistoryColdTier(TOKEN as never, netuid),
+        null,
+      );
+    }
+    assert.equal(called, 0);
+  });
+
+  test("a failed query declines, keeping the caller's schema-stable empty", async () => {
+    globalThis.fetch = (async () => {
+      throw new Error("down");
+    }) as unknown as typeof fetch;
+    assert.equal(
+      await loadSubnetOwnershipHistoryColdTier(TOKEN as never, 7),
+      null,
+    );
   });
 });

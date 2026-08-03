@@ -32,6 +32,7 @@
 import { buildSubnetConviction } from "./subnet-conviction.ts";
 import { buildSubnetLeaseHistory } from "./subnet-lease-history.ts";
 import { buildSubnetOwnershipHistory } from "./subnet-ownership-history.ts";
+import { loadSubnetOwnershipHistoryColdTier } from "./subnet-ownership-cold-tier.ts";
 
 type Row = Record<string, unknown>;
 
@@ -105,6 +106,37 @@ export function degradedChainEventsPayload(url: URL): Row | null {
   }
 
   return null;
+}
+
+/**
+ * The LAKEHOUSE answer for whichever proxied route this URL names, or null
+ * when no cold-tier reader covers it (or the reader itself declines).
+ *
+ * The floor above is what a caller gets when nothing can answer; this is the
+ * step before it -- #9146's "NOT A REPLACEMENT FOR THE LAKEHOUSE PORT" note
+ * made concrete for the one route whose stream already has a reader. Both
+ * live in this module so the six proxied paths are matched in exactly one
+ * place: a route that gains a cold tier is a branch here, not a second URL
+ * table somewhere else that can silently disagree with this one.
+ *
+ * Callers MUST try this before degradedChainEventsPayload and must NOT mark
+ * its result as a degraded fallback -- these are real, current rows, and
+ * flagging them would bar them from the edge cache for no reason.
+ *
+ * The other five stay uncovered on purpose rather than by omission: the two
+ * chain-events feeds and the block feed are unfiltered scans of the 894M-row
+ * event tables (the shape #9146 moved to scheduled projections), conviction
+ * additionally needs live UnlockRate/MaturityRate RPC reads that no lakehouse
+ * query can stand in for, and lease/history reads account_events, a different
+ * stream with no reader yet.
+ */
+export async function coldTierChainEventsPayload(
+  env: Env | null | undefined,
+  url: URL,
+): Promise<Row | null> {
+  const ownership = SUBNET_OWNERSHIP_HISTORY.exec(url.pathname);
+  if (!ownership) return null;
+  return await loadSubnetOwnershipHistoryColdTier(env, ownership[1]);
 }
 
 /**
