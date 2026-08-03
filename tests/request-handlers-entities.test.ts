@@ -2984,6 +2984,72 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
     assert.match(q[0]!, /event_kind = 'StakeMoved'/);
   });
 
+  test("handleSubnetEventSummary pairs the projection rows with live recent events", async () => {
+    // The two halves come from different sources: kind rows from the daily
+    // projection (distinct counts cannot be computed at request time), recent
+    // events from the live events cold tier so ?limit= still works.
+    const q = lakeFetch([
+      {
+        block_number: 8_759_336,
+        event_index: 1,
+        extrinsic_index: 2,
+        event_kind: "StakeAdded",
+        hotkey: ADDR,
+        coldkey: null,
+        netuid: 1,
+        uid: 3,
+        amount_tao: "5",
+        alpha_amount: null,
+        observed_at: 1_785_708_540_000,
+      },
+    ]);
+    const env = {
+      ...LAKE_ENV,
+      METAGRAPH_ARCHIVE: {
+        get: async () => ({
+          json: async () => ({
+            schema_version: 1,
+            windows: {
+              "30d": {
+                days: 30,
+                rows: [
+                  {
+                    netuid: 1,
+                    event_kind: "StakeAdded",
+                    event_count: 10,
+                    hotkey_count: 4,
+                    coldkey_count: 3,
+                    amount_tao: 5,
+                    alpha_amount: 0,
+                    first_block: 1,
+                    last_block: 2,
+                    first_observed_at: 1_785_700_000_000,
+                    last_observed_at: 1_785_708_000_000,
+                  },
+                ],
+              },
+            },
+          }),
+        }),
+      },
+    } as unknown as Env;
+    const body = await json(
+      await handleSubnetEventSummary(
+        req(`/api/v1/subnets/1/event-summary`),
+        env,
+        1,
+        url(`/api/v1/subnets/1/event-summary`),
+      ),
+    );
+    const kinds = body.data.event_kinds as Array<Record<string, unknown>>;
+    assert.equal(kinds.length, 1);
+    assert.equal(kinds[0].event_kind, "StakeAdded");
+    assert.equal(kinds[0].hotkey_count, 4);
+    // recent_events came from the LIVE read, not the artifact.
+    assert.equal((body.data.recent_events as unknown[]).length, 1);
+    assert.match(q[0]!, /FROM chain\.account_events/);
+  });
+
   test("handleAccountRegistrations serves the registration card from the lakehouse", async () => {
     const q = lakeFetch([
       {

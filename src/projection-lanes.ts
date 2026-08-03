@@ -31,7 +31,11 @@ import {
 import { CHAIN_TRANSFERS_PROJECTION_KEY } from "./chain-transfers-artifact.ts";
 import { CHAIN_STAKE_FLOW_PROJECTION_KEY } from "./chain-stake-flow-artifact.ts";
 import { STAKE_FLOW_WINDOWS } from "./stake-flow.ts";
-import { ANALYTICS_WINDOWS } from "../workers/config.ts";
+import {
+  ANALYTICS_WINDOWS,
+  PROJECTION_LANES_CRON,
+  PROJECTION_LANES_DAILY_CRON,
+} from "../workers/config.ts";
 import {
   CHAIN_STAKE_MOVES_WINDOWS,
   STAKE_MOVED_EVENT_KIND,
@@ -75,6 +79,8 @@ import {
   REGISTRATION_EVENT_KIND,
 } from "./chain-registrations.ts";
 import { CHAIN_REGISTRATIONS_PROJECTION_KEY } from "./chain-registrations-artifact.ts";
+import { SUBNET_EVENT_SUMMARY_WINDOWS } from "./account-events.ts";
+import { SUBNET_EVENT_SUMMARY_PROJECTION_KEY } from "./subnet-event-summary-artifact.ts";
 
 /** Matches the analytics routes' day arithmetic (workers/data-api.ts's
  * ANALYTICS_DAY_MS) so a lane's cutoff is the same instant the live Postgres
@@ -907,7 +913,108 @@ async function computeChainRegistrations(
   };
 }
 
+/**
+ * GET /api/v1/subnets/{netuid}/event-summary's per-event_kind rows, for every
+ * subnet and window.
+ *
+ * THREE READS PER WINDOW, and the split is forced by the engine. The natural
+ * query --
+ *   SELECT event_kind, COUNT(*), COUNT(DISTINCT hotkey), COUNT(DISTINCT coldkey)
+ *   ... GROUP BY event_kind
+ * -- is rejected with `40015: scan budget exceeded` at 7d, 30d AND 90d, and on
+ * this table even a bare COUNT(DISTINCT) with no GROUP BY is rejected. So the
+ * distinct counts are DISTRIBUTED, per the engine's own remedy: group by
+ * (netuid, event_kind, key) in a subquery and count the resulting rows.
+ *
+ * That is EXACT, not approximate -- grouping by a key yields exactly one row
+ * per distinct value, so counting those rows IS the distinct count. It is
+ * deliberately not APPROX_DISTINCT: these are published figures. The same
+ * rewrite was proven field-for-field against COUNT(DISTINCT) ground truth on
+ * the chain-registrations lane (#9222), where the original form still ran.
+ *
+ * NULL KEYS ARE EXCLUDED from the identity counts. WeightsSet carries a null
+ * hotkey in 100% of rows, and a null is not an identity -- counting it would
+ * report one phantom distinct participant per kind.
+ *
+ * ALL SUBNETS IN ONE PASS: grouping by (netuid, event_kind) costs one query
+ * per window instead of 129. Measured 2026-08-03 -- 7d ~1.0 GB, 30d ~2.6 GB,
+ * 90d ~4.7 GB across the three reads, ~8.3 GB for a full tick. That is why
+ * this lane declares its own DAILY cadence rather than riding the 30-minute
+ * projection tick: a 7/30/90-day summary gains nothing from 30-minute
+ * freshness, and 8.3 GB every half hour would be ~400 GB/day of scanning.
+ */
+async function computeSubnetEventSummary(
+  env: Env,
+): Promise<Record<string, unknown> | null> {
+  const generatedAt = Date.now();
+  const windows: Record<string, unknown> = {};
+  let rowCount = 0;
+  for (const [label, days] of Object.entries(SUBNET_EVENT_SUMMARY_WINDOWS)) {
+    const cutoff = generatedAt - days * DAY_MS;
+    const scope = `FROM chain.account_events WHERE observed_at >= ${cutoff}`;
+
+    const totals = await r2SqlQuery(
+      env,
+      `SELECT netuid, event_kind, COUNT(*) AS event_count, ` +
+        `COALESCE(SUM(amount_tao), 0) AS amount_tao, ` +
+        `COALESCE(SUM(alpha_amount), 0) AS alpha_amount, ` +
+        `MIN(block_number) AS first_block, MAX(block_number) AS last_block, ` +
+        `MIN(observed_at) AS first_observed_at, ` +
+        `MAX(observed_at) AS last_observed_at ` +
+        `${scope} GROUP BY netuid, event_kind`,
+    );
+    if (totals === null) return null;
+
+    const identityCount = async (column: "hotkey" | "coldkey") =>
+      r2SqlQuery(
+        env,
+        `SELECT netuid, event_kind, COUNT(*) AS n FROM (` +
+          `SELECT netuid, event_kind, ${column} ${scope} ` +
+          `AND ${column} IS NOT NULL GROUP BY netuid, event_kind, ${column}` +
+          `) GROUP BY netuid, event_kind`,
+      );
+    const hotkeys = await identityCount("hotkey");
+    if (hotkeys === null) return null;
+    const coldkeys = await identityCount("coldkey");
+    if (coldkeys === null) return null;
+
+    const key = (netuid: unknown, kind: unknown) => `${netuid}\u0000${kind}`;
+    const hotkeyByKey = new Map<string, number>();
+    for (const row of hotkeys) {
+      hotkeyByKey.set(key(row.netuid, row.event_kind), Number(row.n) || 0);
+    }
+    const coldkeyByKey = new Map<string, number>();
+    for (const row of coldkeys) {
+      coldkeyByKey.set(key(row.netuid, row.event_kind), Number(row.n) || 0);
+    }
+
+    const rows = totals.map((row) => {
+      const k = key(row.netuid, row.event_kind);
+      return {
+        ...row,
+        hotkey_count: hotkeyByKey.get(k) ?? 0,
+        coldkey_count: coldkeyByKey.get(k) ?? 0,
+      };
+    });
+    windows[label] = { days, rows };
+    rowCount += rows.length;
+  }
+  return {
+    schema_version: 1,
+    generated_at: new Date(generatedAt).toISOString(),
+    row_count: rowCount,
+    windows,
+  };
+}
+
 export const PROJECTION_LANES: ProjectionLane[] = [
+  {
+    name: "subnet-event-summary",
+    artifactKey: SUBNET_EVENT_SUMMARY_PROJECTION_KEY,
+    // ~8.3 GB per tick across three windows -- daily, not every 30 minutes.
+    intervalCron: PROJECTION_LANES_DAILY_CRON,
+    compute: computeSubnetEventSummary,
+  },
   {
     name: "blocks-summary",
     artifactKey: BLOCKS_SUMMARY_PROJECTION_KEY,
@@ -1050,9 +1157,26 @@ export async function runProjectionLane(
  * The cron entrypoint: every registered lane, sequentially. `lanes` maps each
  * lane name to the row count it wrote, or null when it wrote nothing.
  */
+/**
+ * The lanes belonging to one cadence.
+ *
+ * A lane with no `intervalCron` rides the shared half-hourly tick; a lane that
+ * declares one runs ONLY on that cron. Selecting here rather than at the call
+ * site means a lane's cadence lives with the lane, and adding one can never
+ * accidentally double-run it on both ticks.
+ */
+export function lanesForCron(cron: string): ProjectionLane[] {
+  return PROJECTION_LANES.filter((lane) =>
+    lane.intervalCron == null
+      ? cron === PROJECTION_LANES_CRON
+      : lane.intervalCron === cron,
+  );
+}
+
 export async function runProjectionLanes(
   env: Env,
   deps: ProjectionLaneDeps = {},
+  cron: string = PROJECTION_LANES_CRON,
 ): Promise<{
   ok: boolean;
   skipped?: true;
@@ -1073,7 +1197,7 @@ export async function runProjectionLanes(
   }
   const lanes: Record<string, number | null> = {};
   let ok = true;
-  for (const lane of PROJECTION_LANES) {
+  for (const lane of lanesForCron(cron)) {
     const result = await runProjectionLane(env, lane, deps);
     lanes[lane.name] = result.rows;
     ok = ok && result.ok;
