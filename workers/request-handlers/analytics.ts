@@ -32,6 +32,7 @@ import {
 } from "../config.ts";
 import { parseLimitParam } from "../request-params.ts";
 import { loadChainServingColdTier } from "../../src/chain-serving-loader.ts";
+import { loadChainWeightsColdTier } from "../../src/chain-weights-loader.ts";
 import { API_ROUTES } from "../../src/contracts.ts";
 import { registerModuleStateReset } from "../../src/module-state-registry.ts";
 import { errorResponse, ifNoneMatchSatisfied } from "../http.ts";
@@ -1947,6 +1948,13 @@ export async function handleChainWeights(
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) as ReturnType<typeof buildChainWeights> | null) ??
+        // Same shared loader MCP and GraphQL call, so all three surfaces
+        // answer from one implementation. Declines (null) rather than
+        // half-answering, leaving the empty payload below as the fallback.
+        (await loadChainWeightsColdTier(
+          env as unknown as Parameters<typeof loadChainWeightsColdTier>[0],
+          { window: label, limit },
+        )) ??
         buildChainWeights([], {
           window: label,
           limit,

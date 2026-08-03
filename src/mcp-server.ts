@@ -971,6 +971,7 @@ import { CHAIN_SIGNERS_SORTS } from "./chain-query-loaders.ts";
 import { loadBulkHealthTrends } from "./bulk-health-trends.ts";
 import { loadRpcUsage } from "./rpc-usage-loader.ts";
 import { loadChainServingColdTier } from "./chain-serving-loader.ts";
+import { loadChainWeightsColdTier } from "./chain-weights-loader.ts";
 import {
   buildChainTransfers,
   CHAIN_TRANSFER_LIMIT_DEFAULT,
@@ -5135,6 +5136,11 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             limit,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+        )) ??
+        // Same shared loader REST and GraphQL use (#9229's parity lesson).
+        (await loadChainWeightsColdTier(
+          ctx.env as unknown as Parameters<typeof loadChainWeightsColdTier>[0],
+          { window, limit },
         )) ??
         buildChainWeights([], {
           window,

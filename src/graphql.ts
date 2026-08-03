@@ -402,6 +402,7 @@ import {
 } from "../workers/config.ts";
 import { loadRpcUsage } from "./rpc-usage-loader.ts";
 import { loadChainServingColdTier } from "./chain-serving-loader.ts";
+import { loadChainWeightsColdTier } from "./chain-weights-loader.ts";
 import {
   CHAIN_SIGNERS_SORTS,
   CHAIN_SIGNERS_LIMIT_DEFAULT,
@@ -6691,6 +6692,14 @@ const rootValue = {
         context.env,
         postgresTierRequest(context, "/api/v1/chain/weights", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) as Row | null) ??
+      // Same shared loader REST and MCP use; GraphQL keeps its own
+      // schema-stable card below because that contract is this surface's own.
+      ((await loadChainWeightsColdTier(
+        context.env as unknown as Parameters<
+          typeof loadChainWeightsColdTier
+        >[0],
+        { window: requestedWindow, limit: safeLimit },
       )) as Row | null) ??
       buildChainWeights([], {
         window: requestedWindow,
