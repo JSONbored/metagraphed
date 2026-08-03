@@ -5315,12 +5315,14 @@ export interface components {
             positions: {
                 active: boolean;
                 dividends: number | null;
+                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. */
                 emission_tao: number;
                 incentive: number | null;
                 netuid: number;
                 rank: number | null;
                 /** @enum {string} */
                 role: "validator" | "miner";
+                /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
                 stake_tao: number;
                 trust: number | null;
                 uid: number | null;
@@ -5346,12 +5348,14 @@ export interface components {
                 captured_at: string | null;
                 coldkey: string | null;
                 dividends: number | null;
+                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. */
                 emission_tao: number;
                 incentive: number | null;
                 rank: number | null;
                 /** @enum {string} */
                 role: "validator" | "miner";
                 snapshot_date: string;
+                /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
                 stake_tao: number;
                 trust: number | null;
                 uid: number | null;
@@ -5370,6 +5374,7 @@ export interface components {
                 hotkey: string;
                 netuid: number;
                 share_fraction: number;
+                /** @description This position's stake in the subnet named by the sibling `netuid`. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows, so this is always that subnet's alpha token (#2550). It is the per-row counterpart of `total_stake_alpha` above -- same denomination, kept under the on-chain column name deliberately (#8945). */
                 stake_tao: number;
             }[];
             schema_version: number;
@@ -5467,8 +5472,10 @@ export interface components {
                 stake_dominance: number | null;
                 subnet_count: number;
                 subnets: {
+                    /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. */
                     emission_tao: number;
                     netuid: number;
+                    /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
                     stake_tao: number;
                     uid: number;
                 }[];
@@ -8363,6 +8370,7 @@ export interface components {
                 coldkey: string | null;
                 consensus?: number | null;
                 dividends?: number | null;
+                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. */
                 emission_tao?: number | null;
                 featured?: boolean;
                 hotkey: string | null;
@@ -8372,6 +8380,7 @@ export interface components {
                 is_immunity_period?: boolean;
                 rank?: number | null;
                 registered_at_block?: number | null;
+                /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
                 stake_tao?: number | null;
                 take?: number | null;
                 trust?: number | null;
@@ -8394,6 +8403,7 @@ export interface components {
                 coldkey: string | null;
                 consensus?: number | null;
                 dividends?: number | null;
+                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. */
                 emission_tao?: number | null;
                 featured?: boolean;
                 hotkey: string | null;
@@ -8404,6 +8414,7 @@ export interface components {
                 rank?: number | null;
                 registered_at_block?: number | null;
                 snapshot_date: string;
+                /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
                 stake_tao?: number | null;
                 take?: number | null;
                 trust?: number | null;
@@ -10242,6 +10253,7 @@ export interface components {
                 coldkey: string | null;
                 consensus?: number | null;
                 dividends?: number | null;
+                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. */
                 emission_tao?: number | null;
                 featured?: boolean;
                 hotkey: string | null;
@@ -10251,6 +10263,7 @@ export interface components {
                 is_immunity_period?: boolean;
                 rank?: number | null;
                 registered_at_block?: number | null;
+                /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
                 stake_tao?: number | null;
                 take?: number | null;
                 trust?: number | null;
@@ -10812,6 +10825,7 @@ export interface components {
                 coldkey: string | null;
                 consensus?: number | null;
                 dividends?: number | null;
+                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. */
                 emission_tao?: number | null;
                 featured?: boolean;
                 hotkey: string | null;
@@ -10821,6 +10835,7 @@ export interface components {
                 is_immunity_period?: boolean;
                 rank?: number | null;
                 registered_at_block?: number | null;
+                /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
                 stake_tao?: number | null;
                 take?: number | null;
                 trust?: number | null;
@@ -10867,10 +10882,12 @@ export interface components {
             netuid: number;
             neuron_count: number;
             neurons: {
+                /** @description This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO. */
                 emission_tao: number | null;
                 hotkey: string | null;
                 /** @enum {string} */
                 role: "validator" | "miner";
+                /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
                 stake_tao: number;
                 uid: number;
                 vs_median: ("above" | "below" | "at") | null;
