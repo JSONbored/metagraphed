@@ -1,4 +1,4 @@
-import { ECONOMICS_FIELD_SOURCES } from "../src/economics-field-sources.ts";
+import { economicsFieldSources } from "../src/economics-field-sources.ts";
 import {
   API_QUERY_COLLECTIONS,
   API_ROUTES,
@@ -6134,8 +6134,15 @@ async function handleApiRequest(
     // read at both. Attached here rather than baked into the artifact: the blob
     // is written by a Python producer and mirrored into KV and R2, so baking it
     // would put one declaration in three writers.
+    //
+    // #9220: and it is per TIER, not one map for both. Since #9197 the live KV
+    // blob is built by a Worker cron that has no bittensor SDK -- every field is
+    // a named storage map pinned to one block, with the per-UID aggregates from
+    // D1 -- so the bulk-call provenance the R2 artifact carries is simply not
+    // how the served row was read. Keyed off the same `live.source` the
+    // effectivePublishedAt branch above already trusts.
     if (matched.id === "economics") {
-      patch.field_sources = ECONOMICS_FIELD_SOURCES;
+      patch.field_sources = economicsFieldSources(live?.source);
     }
     if (effectivePublishedAt && "generated_at" in responseData) {
       patch.generated_at = effectivePublishedAt;

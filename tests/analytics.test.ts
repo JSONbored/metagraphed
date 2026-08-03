@@ -1946,6 +1946,43 @@ describe("emission-pipeline route", () => {
     } as unknown as Row;
   }
 
+  // #9220: the provenance map published on /api/v1/economics must describe the
+  // tier the row actually came from. Since #9197 the live KV blob is built by a
+  // Worker cron with no bittensor SDK -- named storage maps pinned to one block
+  // -- so the bulk-call provenance the R2 artifact carries would be a claim
+  // about a read that never happened.
+  test("economics field_sources follows the serving tier", async () => {
+    const live = await getJson(
+      "https://api.metagraph.sh/api/v1/economics?limit=1",
+      envWithEconomics({ chain_state: CHAIN_STATE, subnets: SUBNETS }),
+    );
+    assert.equal(live.status, 200);
+    assert.equal(live.body.meta.source, "live-kv");
+    const liveSources = live.body.data.field_sources;
+    assert.equal(liveSources.alpha_price_tao.read_at, "chain_state.block");
+    assert.equal(
+      liveSources.alpha_price_tao.storage,
+      "SubtensorModule.SubnetMovingPrice",
+    );
+    // The aggregates come from D1 on this tier, so they claim no instant.
+    assert.equal(liveSources.validator_count.read_at, undefined);
+
+    // With no live blob the route falls back to the committed artifact, and the
+    // bulk-call map is the true one again.
+    const r2 = await getJson(
+      "https://api.metagraph.sh/api/v1/economics?limit=1",
+      envWithEconomics(null),
+    );
+    assert.equal(r2.status, 200);
+    const r2Sources = r2.body.data.field_sources;
+    assert.equal(r2Sources.alpha_price_tao.read_at, "capture");
+    assert.equal(
+      r2Sources.alpha_price_tao.storage,
+      "SubnetInfoRuntimeApi.get_all_metagraphs_info",
+    );
+    assert.equal(r2Sources.validator_count.read_at, "capture");
+  });
+
   test("serves the decomposition with its pinned block", async () => {
     const { status, body } = await getJson(
       "https://api.metagraph.sh/api/v1/chain/emission-pipeline",
