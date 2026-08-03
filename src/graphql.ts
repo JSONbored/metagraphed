@@ -401,6 +401,7 @@ import {
   SS58_ADDRESS_PATTERN,
 } from "../workers/config.ts";
 import { loadRpcUsage } from "./rpc-usage-loader.ts";
+import { loadChainServingColdTier } from "./chain-serving-loader.ts";
 import {
   CHAIN_SIGNERS_SORTS,
   CHAIN_SIGNERS_LIMIT_DEFAULT,
@@ -6739,6 +6740,15 @@ const rootValue = {
         context.env,
         postgresTierRequest(context, "/api/v1/chain/serving", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) as Row | null) ??
+      // Same shared loader REST and MCP use. GraphQL keeps its own fallback
+      // below because answering with the schema-stable card rather than an
+      // error is this surface's deliberate contract, not the loader's call.
+      ((await loadChainServingColdTier(
+        context.env as unknown as Parameters<
+          typeof loadChainServingColdTier
+        >[0],
+        { window: requestedWindow, limit: safeLimit },
       )) as Row | null) ??
       buildChainServing([], { window: requestedWindow, limit: safeLimit });
     return {
