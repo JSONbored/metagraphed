@@ -338,6 +338,7 @@ import { handleIconProxy } from "../src/icon-proxy.ts";
 import { maskRouteParams } from "../src/route-label.ts";
 import { sampleEmissionGate } from "../src/emission-gate-sampler.ts";
 import { checkEmissionDrift } from "../src/emission-drift-check.ts";
+import { refreshLiveEconomics } from "../src/live-economics-refresh.ts";
 import { runNeuronsStalenessWatchdog } from "../src/neurons-staleness-watchdog.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
 import { validateResponseTripwire } from "../src/response-validation-tripwire.ts";
@@ -401,6 +402,7 @@ import {
   EMISSION_GATE_SAMPLE_CRON,
   EMISSION_DRIFT_CHECK_CRON,
   NEURONS_STALENESS_WATCHDOG_CRON,
+  LIVE_ECONOMICS_REFRESH_CRON,
   PROJECTION_LANES_CRON,
   FRESHNESS_WATCHDOG_STATE_KEY,
   BULK_TRENDS_PATH_PATTERN,
@@ -1364,6 +1366,7 @@ function cronLabel(cron: string): string {
   if (cron === EMISSION_DRIFT_CHECK_CRON) return "emission-drift-check";
   if (cron === NEURONS_STALENESS_WATCHDOG_CRON)
     return "neurons-staleness-watchdog";
+  if (cron === LIVE_ECONOMICS_REFRESH_CRON) return "live-economics-refresh";
   // Every unmatched cron falls through to the health prober, matching dispatch.
   return "health-prober";
 }
@@ -1619,6 +1622,18 @@ async function dispatchScheduled(
     return runNeuronsStalenessWatchdog(
       env as unknown as Record<string, unknown>,
     );
+  }
+  if (cron === LIVE_ECONOMICS_REFRESH_CRON) {
+    // The live-economics refresh, formerly the 3-hourly Actions schedule and
+    // the last data lane on it. All the chain/D1 reading and the whole build
+    // live in src/live-economics-refresh.ts; this branch owns only the
+    // reader injection, exactly as the github-signals branch above does.
+    //
+    // NOTHING HERE THROWS BY DESIGN. The KV key it writes SHADOWS the R2
+    // economics artifact, so a degraded blob is worse than no write at all --
+    // the module returns ok:false and skips the write instead, and the #8998
+    // wrapper records that as a failed tick.
+    return refreshLiveEconomics(env, { readArtifact });
   }
   if (cron === EMISSION_DRIFT_CHECK_CRON) {
     // The live emission-drift check, formerly the 30-minute Actions schedule.

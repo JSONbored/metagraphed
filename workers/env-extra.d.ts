@@ -39,6 +39,10 @@ interface Env {
   EMISSION_SAMPLER_RPC_URL?: string;
   EMISSION_DRIFT_RPC_URL?: string;
   LIVE_ALERT_WEBHOOK_URL?: string;
+  /** RPC endpoint for the Worker-cron live-economics refresh
+   * (src/live-economics-refresh.ts); falls back to CHAIN_HEAD_RPC_URL and then
+   * the public archive endpoint, matching the sampler and drift-check lanes. */
+  LIVE_ECONOMICS_RPC_URL?: string;
   FULLNODE_RPC_ORIGINS?: string;
   GITHUB_OAUTH_CLIENT_SECRET?: string;
   /** Authenticates the daily github-signals cron's ~476 GitHub reads

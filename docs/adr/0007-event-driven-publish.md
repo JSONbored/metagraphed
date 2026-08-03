@@ -56,9 +56,13 @@ trigger to carry freshness.** `publish-cloudflare.yml` is repurposed:
 
 The two volatile tiers stay decoupled and refresh independently: operational
 health via the 15-minute prober (`src/health-prober.ts`, ADR 0002), economics
-via the indexer-box `data-refresh-economics` systemd timer (~3h KV tier,
-JSONbored/metagraphed-infra -- moved off the former GitHub Actions
-refresh-economics.yml 2026-07-15). `operational-surfaces.json` is
+via the `LIVE_ECONOMICS_REFRESH_CRON` Worker cron (~3h KV tier,
+`src/live-economics-refresh.ts`). That lane has moved twice: off the
+indexer-box `data-refresh-economics` systemd timer onto GitHub Actions'
+refresh-economics.yml when the box was decommissioned, and off that schedule
+onto the Worker itself -- it was the last data lane on Actions, and the KV
+namespace, the D1 tables and the R2 artifact it needs are all bindings the
+Worker already holds. `operational-surfaces.json` is
 DUAL/committed (#1247) so the live prober survives a publish outage.
 
 ## Consequences

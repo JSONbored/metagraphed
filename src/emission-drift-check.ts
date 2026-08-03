@@ -10,6 +10,13 @@
 // it is monitoring, which is the failure mode that makes monitors worse than
 // nothing.
 //
+// The pinned-read mechanics themselves -- the pallet prefix, the netuid key
+// layout, and one state_queryStorageAt per storage ITEM across every netuid --
+// now live in src/subtensor-pinned-storage.ts, shared with the live-economics
+// refresh cron (#9189 follow-up). Extracted rather than copied: a second copy
+// of the key layout is how two lanes reading the same items at the same block
+// would start disagreeing about which block that was.
+//
 // This module reads, reconstructs, and judges. What to DO with a divergence
 // stays with the caller: the script prints and exits non-zero, the cron
 // throws so the scheduled-run scaffolding records the exception. Reads are
@@ -32,11 +39,9 @@ import {
   SUBNET_SHARE_TOLERANCE,
   type SubnetPipelineInput,
 } from "./emission-pipeline.ts";
+import { createSubtensorPinnedStorage } from "./subtensor-pinned-storage.ts";
 
 const MAX_NETUID = 128;
-
-/** twox128("SubtensorModule"). */
-const PALLET = "658faa385070e074c85bf6b568cf0555";
 
 const MAPS = {
   moving_price: "1abf1b0f4fd14f7b72ee50f9d91d5915",
@@ -87,15 +92,6 @@ export interface EmissionDriftResult {
   reasons: string[];
 }
 
-function netuidSuffix(netuid: number): string {
-  return (
-    (netuid % 256).toString(16).padStart(2, "0") +
-    Math.floor(netuid / 256)
-      .toString(16)
-      .padStart(2, "0")
-  );
-}
-
 /**
  * Reconstruct the emission pipeline from live chain state and hold it against
  * the four identity checks plus the per-subnet share tolerance CI enforces.
@@ -105,67 +101,18 @@ function netuidSuffix(netuid: number): string {
 export async function checkEmissionDrift(
   options: EmissionDriftCheckOptions,
 ): Promise<EmissionDriftResult> {
-  const doFetch = options.fetchImpl ?? globalThis.fetch;
-  const timeoutMs = options.timeoutMs ?? 20_000;
-  let rpcId = 0;
+  const storage = createSubtensorPinnedStorage(options);
+  const netuids = Array.from({ length: MAX_NETUID }, (_, i) => i);
 
-  async function rpc<T>(method: string, params: unknown[]): Promise<T> {
-    const response = await doFetch(options.rpcUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: (rpcId += 1),
-        method,
-        params,
-      }),
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (!response.ok) throw new Error(`${method}: HTTP ${response.status}`);
-    const body = (await response.json()) as { result?: T; error?: unknown };
-    if (body.error) throw new Error(`${method}: ${JSON.stringify(body.error)}`);
-    return body.result as T;
-  }
-
-  async function readMap(
-    itemHash: string,
-    blockHash: string,
-  ): Promise<Map<number, string>> {
-    const keys = Array.from(
-      { length: MAX_NETUID },
-      (_, n) => `0x${PALLET}${itemHash}${netuidSuffix(n)}`,
-    );
-    const result = await rpc<{ changes: [string, string | null][] }[]>(
-      "state_queryStorageAt",
-      [keys, blockHash],
-    );
-    const out = new Map<number, string>();
-    for (const [key, value] of result[0]?.changes ?? []) {
-      if (value === null) continue;
-      const suffix = key.slice(-4);
-      out.set(
-        Number.parseInt(suffix.slice(0, 2), 16) +
-          Number.parseInt(suffix.slice(2, 4), 16) * 256,
-        value,
-      );
-    }
-    return out;
-  }
-
-  const header = await rpc<{ number: string }>("chain_getHeader", []);
-  const blockNumber = Number.parseInt(header.number, 16);
-  const blockHash = await rpc<string>("chain_getBlockHash", [blockNumber]);
+  const { blockNumber, blockHash } = await storage.pinHead();
 
   const maps: Record<string, Map<number, string>> = {};
   for (const [name, hash] of Object.entries(MAPS)) {
-    maps[name] = await readMap(hash, blockHash);
+    maps[name] = await storage.readNetuidMap(hash, blockHash, netuids);
   }
   const values: Record<string, string | null> = {};
   for (const [name, hash] of Object.entries(VALUES)) {
-    values[name] = await rpc<string | null>("state_getStorage", [
-      `0x${PALLET}${hash}`,
-      blockHash,
-    ]);
+    values[name] = await storage.readValue(hash, blockHash);
   }
 
   const theta = u64f64U128ToFloat(decodeLeU128(values.emission_gate_bar) ?? 0n);
@@ -185,7 +132,6 @@ export async function checkEmissionDrift(
     throw new Error("could not derive block emission from TotalIssuance");
   }
 
-  const netuids = Array.from({ length: MAX_NETUID }, (_, i) => i);
   const inputs: SubnetPipelineInput[] = netuids.map((netuid) => {
     const price = decodeLeU128(maps.moving_price.get(netuid));
     const burned = decodeLeU128(maps.miner_burned.get(netuid));
