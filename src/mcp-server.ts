@@ -970,6 +970,7 @@ import { buildDomainOverview, buildDomainSummary } from "./domain-summary.ts";
 import { CHAIN_SIGNERS_SORTS } from "./chain-query-loaders.ts";
 import { loadBulkHealthTrends } from "./bulk-health-trends.ts";
 import { loadRpcUsage } from "./rpc-usage-loader.ts";
+import { loadChainServingColdTier } from "./chain-serving-loader.ts";
 import {
   buildChainTransfers,
   CHAIN_TRANSFER_LIMIT_DEFAULT,
@@ -5396,7 +5397,16 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             limit,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainServing([], { window, limit })
+        )) ??
+        // Same shared loader the REST route and GraphQL use, so all three
+        // surfaces answer from one implementation. Without this the tool kept
+        // returning the zeroed card while /api/v1/chain/serving returned real
+        // numbers for the identical question (#9216 wired REST only).
+        (await loadChainServingColdTier(
+          ctx.env as unknown as Parameters<typeof loadChainServingColdTier>[0],
+          { window, limit },
+        )) ??
+        buildChainServing([], { window, limit })
       );
     },
   },
