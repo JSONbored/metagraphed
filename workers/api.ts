@@ -330,6 +330,7 @@ import { handleBadgeRequest } from "../src/badge.ts";
 import { handleOgImage } from "../src/og-image.ts";
 import { handleIconProxy } from "../src/icon-proxy.ts";
 import { maskRouteParams } from "../src/route-label.ts";
+import { sampleEmissionGate } from "../src/emission-gate-sampler.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
 import { validateResponseTripwire } from "../src/response-validation-tripwire.ts";
 import {
@@ -389,6 +390,7 @@ import {
   FRESHNESS_WATCHDOG_CRON,
   LAKEHOUSE_SEAM_CRON,
   SAFE_MODE_WATCHDOG_CRON,
+  EMISSION_GATE_SAMPLE_CRON,
   PROJECTION_LANES_CRON,
   FRESHNESS_WATCHDOG_STATE_KEY,
   BULK_TRENDS_PATH_PATTERN,
@@ -1348,6 +1350,7 @@ function cronLabel(cron: string): string {
   if (cron === SAFE_MODE_WATCHDOG_CRON) return "safe-mode-watchdog";
   if (cron === PROJECTION_LANES_CRON) return "projection-lanes";
   if (cron === ACCOUNT_EVENTS_ROLLUP_CRON) return "account-events-rollup";
+  if (cron === EMISSION_GATE_SAMPLE_CRON) return "emission-gate-sample";
   // Every unmatched cron falls through to the health prober, matching dispatch.
   return "health-prober";
 }
@@ -1559,6 +1562,42 @@ async function dispatchScheduled(
     // publish lane stops moving, which serving a 200 from stale artifacts
     // otherwise hides completely.
     return runFreshnessWatchdog(env, ctx);
+  }
+  if (cron === EMISSION_GATE_SAMPLE_CRON) {
+    // The emission-gate sampler, formerly the 10-minute Actions schedule.
+    // Chain reads live in src/emission-gate-sampler.ts (shared verbatim with
+    // the script shell); persistence goes through the SAME token-authed sync
+    // handler the external callers use, as an in-process synthetic Request --
+    // one code path for the differs and their D1 writes no matter who calls.
+    if (!env.EMISSION_GATE_SYNC_SECRET) {
+      return {
+        ok: false,
+        skipped: true,
+        reason: "EMISSION_GATE_SYNC_SECRET not configured",
+      };
+    }
+    const sample = await sampleEmissionGate({
+      rpcUrl:
+        env.EMISSION_SAMPLER_RPC_URL ||
+        env.CHAIN_HEAD_RPC_URL ||
+        "https://archive.chain.opentensor.ai",
+    });
+    const response = await handleEmissionGateSync(
+      new Request(
+        "https://internal.metagraph.sh/api/v1/internal/emission-gate-sync",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-emission-gate-sync-token": env.EMISSION_GATE_SYNC_SECRET,
+          },
+          body: JSON.stringify(sample),
+        },
+      ),
+      env,
+    );
+    const body = (await response.json()) as Row;
+    return { ok: response.ok, status: response.status, body };
   }
   if (cron === ACCOUNT_EVENTS_ROLLUP_CRON) {
     // #4832 gap-closure, moved off GitHub Actions (rollup-account-events-daily.yml,

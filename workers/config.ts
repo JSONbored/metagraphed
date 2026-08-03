@@ -114,6 +114,14 @@ export const LAKEHOUSE_SEAM_CRON = "23 7 * * *";
 // this Worker, so it is not the circular case a deploy-drift check would be.
 // Must match a wrangler.jsonc cron entry.
 export const SAFE_MODE_WATCHDOG_CRON = "41 * * * *";
+
+// The emission-gate sampler (#8748/#8750), moved off its GitHub Actions
+// schedule onto this Worker: the persistence route, the D1 state, and the
+// differs already live here, so the Actions hop bought a third-party trigger
+// dependency and 144 runner spins a day for a job this Worker can run
+// itself. Same 10-minute cadence the box timer and the Actions schedule
+// used. Must match a wrangler.jsonc cron entry.
+export const EMISSION_GATE_SAMPLE_CRON = "3,13,23,33,43,53 * * * *";
 // #9146: scheduled projections -- recompute the windowed-aggregate artifacts
 // (chain-transfers, chain-stake-flow) from the lakehouse. These routes cannot
 // be one-shot materialized (their windows anchor to the current date, so a
