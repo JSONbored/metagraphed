@@ -14,6 +14,7 @@ import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import { tieredRejectionResponse } from "../workers/tiered-rate-limit.ts";
 import { API_ROUTES, compileRoutePattern } from "../src/contracts.ts";
 import * as workerConfig from "../workers/config.ts";
+import { PROJECTION_LANES } from "../src/projection-lanes.ts";
 import { type AnyFn, type Row } from "./row-type.ts";
 import type { RpcEndpoint } from "../workers/request-handlers/rpc-proxy.ts";
 
@@ -3441,35 +3442,39 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
         },
       },
     });
-    assert.deepEqual(result, {
-      ok: true,
-      lanes: {
-        "blocks-summary": 1,
-        "chain-transfers": 0,
-        "chain-stake-flow": 0,
-        "chain-activity": 0,
-        "chain-calls": 0,
-        "chain-fees": 0,
-        "chain-signers": 0,
-        "chain-alpha-volume": 0,
-        "chain-stake-transfers": 0,
-        "chain-transfer-pairs": 0,
-        "chain-stake-moves": 0,
-      },
-    });
-    assert.deepEqual(puts, [
-      "metagraph/projections/blocks-summary.json",
-      "metagraph/projections/chain-transfers.json",
-      "metagraph/projections/chain-stake-flow.json",
-      "metagraph/projections/chain-activity.json",
-      "metagraph/projections/chain-calls.json",
-      "metagraph/projections/chain-fees.json",
-      "metagraph/projections/chain-signers.json",
-      "metagraph/projections/chain-alpha-volume.json",
-      "metagraph/projections/chain-stake-transfers.json",
-      "metagraph/projections/chain-transfer-pairs.json",
-      "metagraph/projections/chain-stake-moves.json",
-    ]);
+    // Derived from the registry, NOT a hand-written list. A hardcoded roster
+    // is what red-lined main when #9195 registered blocks-summary: the lane
+    // and the runner were both correct, and the TEST was the thing that had
+    // to be edited in lockstep. Deriving means registering a lane can never
+    // again break this by omission -- it can only fail if the lane genuinely
+    // did not run or did not write, which is what this test is for.
+    const registered = PROJECTION_LANES.map((lane) => lane.name);
+    const outcome = result as {
+      ok: boolean;
+      lanes: Record<string, number | null>;
+    };
+    assert.deepEqual(
+      Object.keys(outcome.lanes).sort(),
+      [...registered].sort(),
+      "every registered lane must appear in the tick summary",
+    );
+    // A lane reporting null DECLINED (compute returned null, previous artifact
+    // left in place). Name them, because "ok: false" alone sends the next
+    // reader hunting through ten lanes.
+    const declined = registered.filter((name) => outcome.lanes[name] === null);
+    assert.deepEqual(
+      declined,
+      [],
+      `these lanes declined instead of writing: ${declined.join(", ")}. ` +
+        `If a newly registered lane declines on an empty read, give its query ` +
+        `rows in the stub above -- do not weaken this assertion.`,
+    );
+    assert.equal(outcome.ok, true);
+    assert.deepEqual(
+      puts.sort(),
+      PROJECTION_LANES.map((lane) => lane.artifactKey).sort(),
+      "each lane writes exactly its own artifact key",
+    );
   });
 
   test("a failed lane reports ok:false without aborting the tick or the sibling lane", async () => {
