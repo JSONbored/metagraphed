@@ -382,14 +382,51 @@ describe("loadAccountWeightSettersColdTier", () => {
       s,
       new RegExp(
         `\\(hotkey = '${ADDR}' OR \\(\\(hotkey IS NULL OR hotkey = ''\\) AND ` +
-          `\\(\\(netuid = 11 AND uid = 4\\) OR \\(netuid = 20 AND uid = 9\\)\\)\\)\\)`,
+          `\\(netuid, uid\\) IN \\(\\(11, 4\\), \\(20, 9\\)\\)\\)\\)`,
       ),
       "the two UNION ALL branches are disjoint, so one OR is the same multiset",
     );
+    // A TUPLE list, never `netuid IN (...) AND uid IN (...)` -- that would
+    // match the cross product and credit this account with other neurons'
+    // weight-sets.
+    assert.doesNotMatch(s, /netuid IN \(/);
     assert.match(s, /GROUP BY netuid$/);
     assert.equal(res!.data.total_weight_sets, 6);
     assert.equal(res!.data.window, "30d");
     assert.equal(res!.generatedAt, new Date(1_700_000_000_800).toISOString());
+  });
+
+  test("a many-subnet account produces a flat IN list, not a deep OR chain", async () => {
+    // THE REGRESSION THIS GUARDS. One OR clause per slot exceeded R2 SQL's
+    // expression nesting limit once an account held enough of them:
+    //   40018: query expression too deep ... rewrite long chains of AND/OR
+    //   operators using IN/NOT IN lists
+    // The engine rejected the query, r2SqlQuery returned null, the reader
+    // declined, and the route served an empty payload -- so it failed for
+    // exactly the validators registered on the most subnets and passed for
+    // accounts on a handful. Verified live: an account on 119 subnets got
+    // 40018 from the OR chain and real rows from this form.
+    const slots = Array.from({ length: 128 }, (_, i) => ({
+      netuid: i,
+      uid: i + 1,
+    }));
+    const q = sqlFetch([WS_ROW]);
+    const res = await loadAccountWeightSettersColdTier(
+      envWith(d1With(slots)),
+      ADDR,
+      {},
+    );
+    assert.ok(res, "a many-subnet account must not decline");
+    const sql = q[0]!;
+    assert.match(sql, /\(netuid, uid\) IN \(\(0, 1\), \(1, 2\), /);
+    assert.match(sql, /\(127, 128\)\)/);
+    // No per-slot OR clauses at all: the only ORs left are the two structural
+    // ones (hotkey branch, and the NULL/empty hotkey test).
+    assert.equal(
+      (sql.match(/ OR /g) ?? []).length,
+      2,
+      "slot count must not add OR clauses",
+    );
   });
 
   test("no registered slots leaves only the hotkey branch, like data-api's dropped UNION", async () => {

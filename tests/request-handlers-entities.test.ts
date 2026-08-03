@@ -3013,7 +3013,9 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
     );
     assert.equal(body.data.total_weight_sets, 6);
     assert.match(q[0]!, /event_kind = 'WeightsSet'/);
-    assert.match(q[0]!, /\(netuid = 11 AND uid = 4\)/);
+    // A tuple IN list, not an OR chain -- one OR clause per slot exceeded R2
+    // SQL's expression nesting limit (40018) for accounts on many subnets.
+    assert.match(q[0]!, /\(netuid, uid\) IN \(\(11, 4\)\)/);
   });
 
   test("handleAccountCounterparties serves both modes from the lakehouse", async () => {

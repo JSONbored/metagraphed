@@ -370,11 +370,28 @@ export async function loadAccountWeightSettersColdTier(
 
   let predicate = `hotkey = '${addr}'`;
   if (slots.length > 0) {
-    const pairs = slots
-      .map((s) => `(netuid = ${s.netuid} AND uid = ${s.uid})`)
-      .join(" OR ");
+    // A TUPLE IN LIST, NOT A CHAIN OF ORs. One `(netuid = a AND uid = x) OR ...`
+    // clause per slot exceeds R2 SQL's expression nesting limit once an
+    // account holds enough of them:
+    //
+    //   40018: query expression too deep: nesting depth exceeds the protocol's
+    //   limit; rewrite long chains of AND/OR operators using IN/NOT IN lists
+    //
+    // The rejected query made r2SqlQuery return null, the reader decline, and
+    // the route serve an empty payload -- so this failed for exactly the
+    // validators that matter most, the ones registered on many subnets, while
+    // passing for accounts on a handful. Verified live 2026-08-03: an account
+    // on 119 subnets got 40018 from the OR chain and real rows (netuid 19: 454
+    // weight-sets, netuid 15: 444) from the IN form.
+    //
+    // `(netuid, uid) IN (...)` is the engine's own suggested rewrite and is
+    // exact. It must stay a TUPLE list -- `netuid IN (...) AND uid IN (...)`
+    // would match the cross product and attribute other neurons' weight-sets
+    // to this account.
+    const pairs = slots.map((s) => `(${s.netuid}, ${s.uid})`).join(", ");
     predicate =
-      `(${predicate} OR ` + `((hotkey IS NULL OR hotkey = '') AND (${pairs})))`;
+      `(${predicate} OR ` +
+      `((hotkey IS NULL OR hotkey = '') AND (netuid, uid) IN (${pairs})))`;
   }
   const { label, cutoff } = windowCutoff(
     ACCOUNT_WEIGHT_SETTERS_WINDOWS,

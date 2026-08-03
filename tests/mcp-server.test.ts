@@ -15049,7 +15049,9 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
     const data = res.body.result.structuredContent;
     assert.equal(data.total_weight_sets, 6);
     assert.match(queries[0]!, /event_kind = 'WeightsSet'/);
-    assert.match(queries[0]!, /\(netuid = 11 AND uid = 4\)/);
+    // A tuple IN list, not an OR chain -- one OR clause per slot exceeded R2
+    // SQL's expression nesting limit (40018) for accounts on many subnets.
+    assert.match(queries[0]!, /\(netuid, uid\) IN \(\(11, 4\)\)/);
   });
 
   test("get_account_counterparties serves both modes from the lakehouse", async () => {
