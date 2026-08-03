@@ -57,6 +57,7 @@ import {
 import { ipv6EmbeddedIpv4 } from "../../src/ip-safety.ts";
 import { overlayRpcPoolEligibility } from "../../src/health-serving.ts";
 import { loadRpcUsage } from "../../src/rpc-usage-loader.ts";
+import { loadRpcUsageColdTier } from "../../src/rpc-usage-cold-tier.ts";
 import { tryPostgresTier } from "../postgres-tier.ts";
 import {
   DENIED_RPC_PREFIXES,
@@ -263,6 +264,15 @@ export async function handleRpcUsage(
       request,
       "METAGRAPH_RPC_USAGE_SOURCE",
     )) as Awaited<ReturnType<typeof loadRpcUsage>> | null) ??
+    // The box's Postgres is gone, so the tier above always misses and this
+    // route served a zeroed rollup while 578,682 verified rows of the same
+    // table sat in the lakehouse. The cold tier declines (null) rather than
+    // half-answering, so the empty payload below stays the fallback rather
+    // than being replaced by a partial one.
+    (await loadRpcUsageColdTier(
+      env as unknown as Parameters<typeof loadRpcUsageColdTier>[0],
+      { window: label },
+    )) ??
     (await loadRpcUsage({
       window: label,
       observedAt: meta?.last_run_at || null,
