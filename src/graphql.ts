@@ -264,6 +264,7 @@ import { loadBlockChainEvents } from "./data-api-mcp.ts";
 import { buildBlocksSummary } from "./blocks-summary.ts";
 import { loadBlocksSummaryFromArtifact } from "./blocks-summary-artifact.ts";
 import { buildRuntimeVersionHistory } from "./runtime-versions.ts";
+import { loadSubnetEventSummaryColdTier } from "./subnet-event-summary-cold-tier.ts";
 import { loadRuntimeVersionHistoryColdTier } from "./runtime-versions-cold-tier.ts";
 import { buildChainYield } from "./chain-yield.ts";
 import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.ts";
@@ -4171,6 +4172,12 @@ const rootValue = {
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
+      // #9303: same stream, same rollup -- the non-null contract below is now
+      // satisfied with real numbers rather than only with the empty shape.
+      ((await loadSubnetEventSummaryColdTier(context.env, netuid, {
+        window: windowParam,
+        limit: limitParam,
+      })) as Row | null) ??
       buildSubnetEventSummary([], [], netuid, {
         window: windowParam,
         limit: limitParam,

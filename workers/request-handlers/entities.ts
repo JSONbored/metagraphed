@@ -105,6 +105,7 @@ import {
   buildAccountSubnets,
   buildBlockEvents,
 } from "../../src/account-events.ts";
+import { loadSubnetEventSummaryColdTier } from "../../src/subnet-event-summary-cold-tier.ts";
 import { buildAccountPortfolio } from "../../src/account-portfolio.ts";
 import { enrichValidatorNominatorCounts } from "../../src/validator-nominator-counts-cold-tier.ts";
 import {
@@ -4705,6 +4706,13 @@ export async function handleSubnetEventSummary(
       request,
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     )) as ReturnType<typeof buildSubnetEventSummary> | null) ??
+    // The same account_events stream /subnets/{netuid}/events already reads,
+    // rolled up by kind (#9303). Through the shared reader so MCP and GraphQL
+    // get it too rather than being wired one surface at a time.
+    (await loadSubnetEventSummaryColdTier(env, Number(netuid), {
+      window: windowLabel,
+      limit: parsedLimit.limit,
+    })) ??
     buildSubnetEventSummary([], [], Number(netuid), {
       window: windowLabel,
       limit: parsedLimit.limit,
