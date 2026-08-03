@@ -60,6 +60,10 @@ import {
 
 type Row = Record<string, unknown>;
 
+/** The `coverage.segments[].source` label for this store. Exported so the
+ * composer and its tests name the tier the same way the payload does. */
+export const HOT_TIER_SOURCE = "analytics-engine";
+
 const B = RPC_USAGE_BLOBS;
 const D = RPC_USAGE_DOUBLES;
 
@@ -193,6 +197,13 @@ export async function loadRpcUsageHotTier(
           // stored sample.
           ` ${weightedQuantile(0.5, D.latencyMs)} AS p50,` +
           ` ${weightedQuantile(0.95, D.latencyMs)} AS p95,` +
+          // BOTH ends of the measured span, not just the newest. AE's
+          // retention starts at deploy, so the oldest event it holds is
+          // usually LATER than the window's own cutoff -- that difference is
+          // exactly what the payload's `coverage` has to publish, and what
+          // src/rpc-usage-answer.ts partitions the lakehouse read on so the
+          // two stores can be summed without double-counting.
+          ` toUnixTimestamp(min(timestamp)) AS observed_from_s,` +
           ` toUnixTimestamp(max(timestamp)) AS observed_at_s` +
           ` FROM ${RPC_USAGE_DATASET} ${where}`,
         deps,
@@ -238,9 +249,21 @@ export async function loadRpcUsageHotTier(
   // measured silence.
   if (!totals || !Number(totals.total)) return null;
 
+  const observedFrom = secondsToMs(totals.observed_from_s);
+  const observedAt = secondsToMs(totals.observed_at_s);
+
   return formatRpcUsage({
     window: windowLabel,
-    observedAt: secondsToMs(totals.observed_at_s),
+    observedAt,
+    // What this tier actually measured, and the sub-range its percentiles
+    // describe -- the same span here, because AE is the only store that has
+    // percentiles at all.
+    coverage: {
+      segments: [
+        { source: HOT_TIER_SOURCE, start: observedFrom, end: observedAt },
+      ],
+      latency: { start: observedFrom, end: observedAt },
+    },
     // Each rollup selects the sampled latency SUM and the sampled request
     // count; the mean is taken here because AE cannot express the empty-window
     // guard (see sampledMean). `total`/`requests` is the same denominator the

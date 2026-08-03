@@ -70,6 +70,32 @@ export const GetRpcUsageInputSchema = z
   .strict();
 export type GetRpcUsageInput = z.infer<typeof GetRpcUsageInputSchema>;
 
+// The measured span, per contributing store -- see RpcUsageArtifactSchema in
+// schemas-src/routes/providers-rpc.ts for why `window` alone is not enough.
+const RpcUsageCoverageRangeItemSchema = z
+  .object({
+    start: z.int().nullable(),
+    end: z.int().nullable(),
+  })
+  .passthrough();
+
+const RpcUsageCoverageSegmentItemSchema = z
+  .object({
+    source: z.string(),
+    start: z.int().nullable(),
+    end: z.int().nullable(),
+  })
+  .passthrough();
+
+const RpcUsageCoverageItemSchema = z
+  .object({
+    start: z.int().nullable(),
+    end: z.int().nullable(),
+    segments: z.array(RpcUsageCoverageSegmentItemSchema),
+    latency_percentiles: RpcUsageCoverageRangeItemSchema.nullable(),
+  })
+  .passthrough();
+
 export const GetRpcUsageOutputSchema = z
   .object({
     schema_version: z.int(),
@@ -77,6 +103,7 @@ export const GetRpcUsageOutputSchema = z
     bucket_granularity: z.string().nullable().optional(),
     observed_at: z.string().nullable().optional(),
     source: z.string(),
+    coverage: RpcUsageCoverageItemSchema,
     summary: RpcUsageSummarySchema,
     endpoints: z.array(RpcUsageEndpointItemSchema),
     networks: z.array(RpcUsageNetworkItemSchema),

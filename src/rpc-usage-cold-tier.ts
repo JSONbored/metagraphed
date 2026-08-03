@@ -36,6 +36,10 @@ import { r2SqlQuery } from "./r2-sql.ts";
 
 type Row = Record<string, unknown>;
 
+/** The `coverage.segments[].source` label for this store. Exported so the
+ * composer and its tests name the tier the same way the payload does. */
+export const COLD_TIER_SOURCE = "lakehouse";
+
 /** `ok` is a real boolean in the lakehouse; the Postgres tier counted it with
  * a filtered aggregate. R2 SQL rejects `count_if`, so the portable CASE form
  * is used -- same arithmetic, and measured to work. */
@@ -81,6 +85,13 @@ export async function loadRpcUsageColdTier(
   {
     window = "7d",
     now = Date.now(),
+    // Exclusive upper bound, epoch ms. src/rpc-usage-answer.ts sets it to the
+    // OLDEST event the hot tier holds so the two stores describe strictly
+    // disjoint ranges and their counts can be summed -- without it a merge
+    // would double-count any overlap, and "counts are additive" would stop
+    // being true the moment the two stores share a second. Undefined keeps
+    // the whole window, which is what a lakehouse-only answer wants.
+    until,
     // Injectable so every rollup's SQL and every decline path is testable
     // without a lakehouse -- the same seam r2-sql.ts's scheduleAbort uses. A
     // branch that only runs against live infrastructure is a branch nothing
@@ -89,6 +100,7 @@ export async function loadRpcUsageColdTier(
   }: {
     window?: string;
     now?: number;
+    until?: number | null;
     query?: typeof r2SqlQuery;
   } = {},
 ): Promise<Record<string, unknown> | null> {
@@ -96,7 +108,17 @@ export async function loadRpcUsageColdTier(
   const bounds = windowCutoffMs(windowLabel, now);
   if (!bounds) return null;
   const { cutoff, bucketMs, granularity } = bounds;
-  const where = `WHERE observed_at >= ${cutoff}`;
+  // Same no-bound-parameters rule the cutoff obeys: the ceiling is a literal,
+  // so it is forced through Number.isSafeInteger rather than trusted. A
+  // non-integer ceiling is dropped (the window's own cutoff still applies)
+  // instead of being interpolated.
+  const ceiling =
+    typeof until === "number" && Number.isSafeInteger(until) && until > 0
+      ? until
+      : null;
+  const where =
+    `WHERE observed_at >= ${cutoff}` +
+    (ceiling === null ? "" : ` AND observed_at < ${ceiling}`);
 
   const [totalsRows, endpointRows, networkRows, bucketRows] = await Promise.all(
     [
@@ -106,6 +128,11 @@ export async function loadRpcUsageColdTier(
           ` sum(CASE WHEN attempts > 1 THEN 1 ELSE 0 END) AS failover_count,` +
           ` sum(CASE WHEN cache = 'hit' THEN 1 ELSE 0 END) AS cache_hits,` +
           ` avg(latency_ms) AS avg_latency_ms,` +
+          // Both ends of the measured span. The newest reading has always been
+          // published as `observed_at`; the oldest is what `coverage` needs so
+          // a merged answer can say where the lakehouse's half of it stops and
+          // the gap before Analytics Engine begins starts.
+          ` min(observed_at) AS observed_from,` +
           ` max(observed_at) AS observed_at` +
           ` FROM chain.rpc_proxy_events ${where}`,
       ),
@@ -148,6 +175,17 @@ export async function loadRpcUsageColdTier(
     totals,
     // Deliberately absent -- see the header. Not a TODO.
     latency: undefined,
+    // What this tier measured. `latency` is omitted for the same reason
+    // p50/p95 are: there is no percentile here to scope.
+    coverage: {
+      segments: [
+        {
+          source: COLD_TIER_SOURCE,
+          start: totals.observed_from ?? null,
+          end: totals.observed_at ?? null,
+        },
+      ],
+    },
     // endpoints/networks derive their own error_rate from requests - ok
     // inside the formatter; only the bucket mapping reads a literal `errors`,
     // so it is the only one that needs deriving here.

@@ -338,6 +338,34 @@ const RpcUsageBucketSchema = z
   })
   .passthrough();
 
+// `window` is what the caller asked for; `coverage` is what the two stores
+// (Analytics Engine live, R2 lakehouse frozen) could actually answer. They
+// diverge whenever a store's retention does not span the window, and
+// publishing only `window` is what let a two-hour answer ship labelled `7d`.
+const RpcUsageCoverageRangeSchema = z
+  .object({
+    start: z.int().nullable(),
+    end: z.int().nullable(),
+  })
+  .passthrough();
+
+const RpcUsageCoverageSegmentSchema = z
+  .object({
+    source: z.string(),
+    start: z.int().nullable(),
+    end: z.int().nullable(),
+  })
+  .passthrough();
+
+const RpcUsageCoverageSchema = z
+  .object({
+    start: z.int().nullable(),
+    end: z.int().nullable(),
+    segments: z.array(RpcUsageCoverageSegmentSchema),
+    latency_percentiles: RpcUsageCoverageRangeSchema.nullable(),
+  })
+  .passthrough();
+
 export const RpcUsageArtifactSchema = z
   .object({
     schema_version: z.int(),
@@ -345,6 +373,7 @@ export const RpcUsageArtifactSchema = z
     bucket_granularity: z.string().nullable().optional(),
     observed_at: z.string().nullable().optional(),
     source: z.string(),
+    coverage: RpcUsageCoverageSchema,
     summary: z
       .object({
         total_requests: z.int().min(0),
