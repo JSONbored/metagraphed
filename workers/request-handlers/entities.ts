@@ -153,6 +153,7 @@ import {
 import {
   loadAccountEventsColdTier,
   loadBlockEventsColdTier,
+  loadSubnetEventsColdTier,
 } from "../../src/events-cold-tier.ts";
 import {
   loadAccountCounterpartiesColdTier,
@@ -4527,12 +4528,31 @@ export async function handleSubnetEvents(
     url,
     FEED_PAGINATION,
   );
+  // #9146: this feed has always read empty -- data-api never registered
+  // /api/v1/subnets/:netuid/events, so the tier call below has never had a
+  // handler to reach, even while the box was alive. Live proof of the gap:
+  // /subnets/1/events reported event_count 0 while /subnets/1/stake-flow
+  // counted 1,142 stake events over the same subnet and window, both derived
+  // from this one stream. The lakehouse holds it -- chain.account_events,
+  // 441,963,747 rows, genesis to head.
+  //
+  // The tier is still tried first and the cold read is awaited only on a miss:
+  // it scans the largest table in the lakehouse, so it must not run when the
+  // tier can answer.
   const data =
     ((await tryPostgresTier(
       env,
       request,
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     )) as ReturnType<typeof buildSubnetEvents> | null) ??
+    (await loadSubnetEventsColdTier(env, Number(netuid), {
+      limit: parsedLimit,
+      offset: parsedOffset,
+      cursor: url.searchParams.get("cursor"),
+      kind,
+      blockStart: blockStart.value,
+      blockEnd: blockEnd.value,
+    })) ??
     buildSubnetEvents([], Number(netuid), {
       limit: parsedLimit,
       offset: parsedOffset,
