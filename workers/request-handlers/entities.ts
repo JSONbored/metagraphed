@@ -106,8 +106,12 @@ import {
   buildBlockEvents,
 } from "../../src/account-events.ts";
 import { buildAccountPortfolio } from "../../src/account-portfolio.ts";
-import { loadAccountSummaryColdTier } from "../../src/account-feeds-cold-tier.ts";
 import { enrichValidatorNominatorCounts } from "../../src/validator-nominator-counts-cold-tier.ts";
+import {
+  accountSummaryGapMessage,
+  answerAccountSummary,
+  ACCOUNT_SUMMARY_GAP_CODE,
+} from "../../src/account-summary-card.ts";
 import { buildAccountPositions } from "../../src/account-nominator-positions.ts";
 import { buildAccountPositionHistory } from "../../src/account-position-history.ts";
 import { buildAccountIdentity } from "../../src/account-identity.ts";
@@ -3677,22 +3681,32 @@ export const handleAccountDeregistrations = makeAccountEventHandler({
 
 // GET /api/v1/accounts/{ss58}: cross-subnet summary — event-history aggregates
 // (account_events, matched by hotkey OR coldkey) joined to current registrations
-// (neurons, by hotkey). Cold/absent store → schema-stable zero (never 404).
+// (neurons, by hotkey). A deployment with no chain tier at all → schema-stable
+// zero (never 404); a tier that exists and could not answer → 503, never a
+// zeroed card (#9263 — see src/account-summary-card.ts).
 export async function handleAccount(request: Request, env: Env, ss58: string) {
+  const postgres = (await tryPostgresTier(
+    env,
+    request,
+    "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+  )) as ReturnType<typeof buildAccountSummary> | null;
+  // #9254/#9263: both non-Postgres legs of the card, assembled in ONE place
+  // shared with MCP and GraphQL. Without it a single tier miss zeroed every
+  // field at once while this account's own /events and /subnets routes read
+  // real rows — and it zeroed them silently, reporting a source as though it
+  // had measured them.
+  const answer = postgres ? null : await answerAccountSummary(env, ss58);
+  if (answer?.kind === "gap") {
+    return errorResponse(
+      ACCOUNT_SUMMARY_GAP_CODE,
+      accountSummaryGapMessage(ss58),
+      503,
+      { ss58 },
+    );
+  }
   const data =
-    ((await tryPostgresTier(
-      env,
-      request,
-      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-    )) as ReturnType<typeof buildAccountSummary> | null) ??
-    // #9254: the account_events half of the card, from the lakehouse. Without
-    // it a single Postgres miss zeroed every field at once, while this
-    // account's own /events and /registrations routes read real rows.
-    (await (async () => {
-      const cold = await loadAccountSummaryColdTier(env, ss58);
-      return cold ? buildAccountSummary(ss58, cold) : null;
-    })()) ??
-    buildAccountSummary(ss58, {});
+    postgres ??
+    (answer?.kind === "answer" ? answer.data : buildAccountSummary(ss58, {}));
   // Community-contributable entity labels (#6739): additive field over the
   // baked entities.json artifact, joined by ss58 here rather than in either
   // upstream builder above (one join site instead of two). A missing/cold

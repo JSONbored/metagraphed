@@ -112,8 +112,10 @@ const EXTRINSIC_COLUMNS =
 const ACCOUNT_EVENT_COLUMNS =
   "block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, " +
   "netuid, uid, amount_tao, alpha_amount, observed_at";
-/** Ditto for chain events. */
-const CHAIN_EVENT_COLUMNS =
+/** Ditto for chain events. Exported because the LAKEHOUSE leg of the same
+ * route selects it too (src/events-cold-tier.ts): one column list, so the two
+ * tiers cannot hand `formatChainEvent` different shapes. */
+export const CHAIN_EVENT_COLUMNS =
   "block_number, event_index, pallet, method, args, phase, extrinsic_index, " +
   "observed_at";
 /** The cold tier embeds at most this many events in an extrinsic-detail
@@ -245,21 +247,30 @@ export interface ChainEventApi {
  * This is the SAME sequence the deleted Postgres tier's `coerceEvent` ran
  * (decode the args, then summarize from the decoded form, never the raw one),
  * with one addition the tiers do not share: Postgres handed back JSONB already
- * parsed into an object, while D1 hands back the TEXT column verbatim, so the
- * JSON.parse happens here. Malformed text degrades to null args rather than
- * failing the block -- one undecodable event must not empty a block's feed.
+ * parsed into an object, while D1 and the Iceberg lakehouse both hand back the
+ * column as TEXT, so the JSON.parse happens here. Malformed text degrades to
+ * null args rather than failing the block -- one undecodable event must not
+ * empty a block's feed.
+ *
+ * AN ALREADY-PARSED `args` PASSES STRAIGHT THROUGH, which is what makes this
+ * formatter safe to share with the cold tier (#9260). Both live stores hand
+ * back a string today, but `String(anObject)` is "[object Object]" -- it would
+ * fail to parse and null out the args of EVERY event in the block rather than
+ * failing visibly. The type check costs nothing and removes the trap.
  */
 export function formatChainEvent(
   row: Row | null | undefined,
 ): ChainEventApi | null {
   if (!row || typeof row !== "object") return null;
   let parsed: unknown = null;
-  if (row.args != null) {
+  if (typeof row.args === "string") {
     try {
-      parsed = JSON.parse(String(row.args));
+      parsed = JSON.parse(row.args);
     } catch {
       parsed = null;
     }
+  } else if (row.args != null) {
+    parsed = row.args;
   }
   const pallet = (row.pallet as string | null | undefined) ?? null;
   const method = (row.method as string | null | undefined) ?? null;

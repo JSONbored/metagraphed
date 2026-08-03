@@ -986,8 +986,12 @@ import { CHAIN_SIGNERS_SORTS } from "./chain-query-loaders.ts";
 import { loadBulkHealthTrends } from "./bulk-health-trends.ts";
 import { loadRpcUsage } from "./rpc-usage-loader.ts";
 import { loadChainServingColdTier } from "./chain-serving-loader.ts";
-import { loadAccountSummaryColdTier } from "./account-feeds-cold-tier.ts";
 import { enrichValidatorNominatorCounts } from "./validator-nominator-counts-cold-tier.ts";
+import {
+  accountSummaryGapMessage,
+  answerAccountSummary,
+  ACCOUNT_SUMMARY_GAP_CODE,
+} from "./account-summary-card.ts";
 import { loadChainWeightsColdTier } from "./chain-weights-loader.ts";
 import { loadChainWeightSettersColdTier } from "./chain-weight-setters-loader.ts";
 import {
@@ -7434,17 +7438,29 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     }),
     async handler(args: z.infer<typeof GetAccountInputSchema>, ctx: McpCtx) {
       const ss58 = requireSs58(args);
+      const postgres = await tryPostgresTier(
+        ctx.env,
+        mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}`),
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      );
+      // #9263: the SAME composition REST and GraphQL run. A tier that exists
+      // and could not answer DECLINES here rather than handing back a zeroed
+      // card -- an agent told an account has no history will reason from it and
+      // will not think to re-ask, the way a person reloading a page might.
+      const answer = postgres
+        ? null
+        : await answerAccountSummary(ctx.env, ss58);
+      if (answer?.kind === "gap") {
+        throw toolError(
+          ACCOUNT_SUMMARY_GAP_CODE,
+          accountSummaryGapMessage(ss58),
+        );
+      }
       const data =
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}`),
-          "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
-        (await (async () => {
-          const cold = await loadAccountSummaryColdTier(ctx.env, ss58);
-          return cold ? buildAccountSummary(ss58, cold) : null;
-        })()) ??
-        buildAccountSummary(ss58, {});
+        postgres ??
+        (answer?.kind === "answer"
+          ? answer.data
+          : buildAccountSummary(ss58, {}));
       // Community-contributable entity labels (#6739), same REST-parity join
       // as workers/request-handlers/entities.ts's own handleAccount.
       const entitiesArtifact = (await ctx.readArtifact!(

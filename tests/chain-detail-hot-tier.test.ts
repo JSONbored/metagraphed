@@ -342,6 +342,28 @@ describe("formatChainEvent", () => {
     assert.equal(event?.pallet, null);
     assert.equal(event?.summary, null);
   });
+
+  test("an already-parsed args object passes through instead of stringifying", () => {
+    // #9260: this formatter is shared with the lakehouse leg. Both live stores
+    // hand back TEXT today, but `String({...})` is "[object Object]" -- it
+    // would parse-fail and null the args of EVERY event in the block while
+    // still returning a full-looking payload.
+    const event = formatChainEvent({
+      block_number: 1,
+      event_index: 0,
+      pallet: "Balances",
+      method: "Transfer",
+      args: { amount: 30681 },
+      phase: "ApplyExtrinsic",
+      extrinsic_index: null,
+      observed_at: 1,
+    });
+    assert.ok(event?.args && typeof event.args === "object");
+    assert.ok(
+      Object.hasOwn(event.args as Record<string, unknown>, "amount"),
+      "the object survived the decode rather than being stringified to null",
+    );
+  });
 });
 
 describe("loadBlockChainEventsHotTier", () => {

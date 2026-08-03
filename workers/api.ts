@@ -1857,11 +1857,11 @@ export async function dataApiFailureResponse(
   message: string,
   status: number,
 ): Promise<Response> {
-  // #9208: the HOT tier first, ahead of both the lakehouse and the empty.
-  // /blocks/{n}/chain-events is the one route here a user reaches by clicking a
-  // recent block, and it is exactly the range the live-follow lane covers. A
-  // block above the decode seam that the lane does not hold DECLINES rather
-  // than degrading -- see hotTierBlockChainEvents for why the cold leg is null.
+  // #9208/#9260: the TIERED block-detail read first, ahead of both the generic
+  // lakehouse leg and the empty. /blocks/{n}/chain-events is the one route here
+  // a user reaches by clicking a block, so it routes hot above the decode seam,
+  // lakehouse at or below it, and DECLINES for the gap between them rather than
+  // degrading to an `events: []` no caller can tell from a quiet block.
   const hot = await hotTierBlockChainEvents(env, url);
   if (hot?.kind === "gap") return chainDetailGapResponse(hot);
   if (hot?.kind === "answer") {
@@ -1873,7 +1873,13 @@ export async function dataApiFailureResponse(
           artifact_path: url.pathname,
           cache: "short",
           contract_version: contractVersion(env),
-          source: "chain-detail-hot-tier",
+          // Name the tier that ACTUALLY served. Labelling a lakehouse row as
+          // the hot tier's would make the one thing this meta exists to report
+          // -- which store answered -- a guess.
+          source:
+            hot.tier === "cold"
+              ? "lakehouse-cold-tier"
+              : "chain-detail-hot-tier",
         },
       },
       "short",

@@ -261,20 +261,38 @@ describe("loadAccountSummaryColdTier", () => {
   });
 });
 
-describe("all three account-summary surfaces go through the one loader", () => {
+describe("all three account-summary surfaces go through the one composer", () => {
   const sources = {
     REST: "workers/request-handlers/entities.ts",
     MCP: "src/mcp-server.ts",
     GraphQL: "src/graphql.ts",
   } as const;
 
-  test("every surface calls loadAccountSummaryColdTier", () => {
+  // #9263 tightened this from "every surface calls the loader" to "every
+  // surface calls the SAME composer". Three call sites each assembling the
+  // card themselves is how one of them ends up a version behind: #9257 wired
+  // the event half into all three, and all three still shipped an empty
+  // `registrations` because that leg was assembled separately.
+  test("every surface calls answerAccountSummary, not its own assembly", () => {
     for (const [surface, path] of Object.entries(sources)) {
+      const source = readFileSync(path, "utf8");
       assert.match(
-        readFileSync(path, "utf8"),
-        /loadAccountSummaryColdTier\(/,
+        source,
+        /answerAccountSummary\(/,
         `${surface} (${path}) would keep answering the all-zero card`,
       );
+      assert.doesNotMatch(
+        source,
+        /loadAccountSummaryColdTier\(/,
+        `${surface} (${path}) must not compose the card itself`,
+      );
     }
+  });
+
+  test("and the composer is the only thing that calls the loader", () => {
+    assert.match(
+      readFileSync("src/account-summary-card.ts", "utf8"),
+      /loadAccountSummaryColdTier\(/,
+    );
   });
 });
