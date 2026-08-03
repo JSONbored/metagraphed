@@ -151,6 +151,17 @@ export const NEURONS_STALENESS_WATCHDOG_CRON = "6,21,36,51 * * * *";
 // the LITERAL cron string, so this must be unique here as well as matching a
 // wrangler.jsonc `triggers.crons` entry.
 export const NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON = "8,38 * * * *";
+// #9301: the validator-nominator-counts lane's alarm -- the SIBLING of the
+// watchdog above, watching the other output of the same Alpha scan. It had the
+// same gap for the same reason: its writer targeted a Postgres that went away,
+// and `nominator_count` degraded to null (or to a frozen lakehouse mirror)
+// without anything going red. Twice hourly against the same 30-hour threshold,
+// since the one producer tick writes both tables. Minutes 19/49 tick on none
+// of the crons in this file and stay off the */5 raw-capture and */15 probe
+// grids -- dispatch keys on the LITERAL cron string, so this must be unique
+// here as well as matching a wrangler.jsonc `triggers.crons` entry.
+export const VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON =
+  "19,49 * * * *";
 // #9208 retention for the chain-detail hot tier. The window only has to cover
 // the gap between chain tip and the decoded seam, so everything the lakehouse
 // has already absorbed is dropped -- see src/chain-detail-prune.ts for the

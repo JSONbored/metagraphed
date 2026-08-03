@@ -343,6 +343,7 @@ import { checkEmissionDrift } from "../src/emission-drift-check.ts";
 import { refreshLiveEconomics } from "../src/live-economics-refresh.ts";
 import { runNeuronsStalenessWatchdog } from "../src/neurons-staleness-watchdog.ts";
 import { runNominatorPositionsStalenessWatchdog } from "../src/nominator-positions-staleness-watchdog.ts";
+import { runValidatorNominatorCountsStalenessWatchdog } from "../src/validator-nominator-counts-staleness-watchdog.ts";
 import { runChainDetailStalenessWatchdog } from "../src/chain-detail-staleness-watchdog.ts";
 import { pruneChainDetail } from "../src/chain-detail-prune.ts";
 import { runRpcUsageStalenessWatchdog } from "../src/rpc-usage-staleness-watchdog.ts";
@@ -409,6 +410,7 @@ import {
   EMISSION_DRIFT_CHECK_CRON,
   NEURONS_STALENESS_WATCHDOG_CRON,
   NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON,
+  VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON,
   CHAIN_DETAIL_PRUNE_CRON,
   CHAIN_DETAIL_STALENESS_WATCHDOG_CRON,
   LIVE_ECONOMICS_REFRESH_CRON,
@@ -1377,6 +1379,8 @@ function cronLabel(cron: string): string {
     return "neurons-staleness-watchdog";
   if (cron === NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON)
     return "nominator-positions-staleness-watchdog";
+  if (cron === VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON)
+    return "validator-nominator-counts-staleness-watchdog";
   if (cron === CHAIN_DETAIL_PRUNE_CRON) return "chain-detail-prune";
   if (cron === CHAIN_DETAIL_STALENESS_WATCHDOG_CRON)
     return "chain-detail-staleness-watchdog";
@@ -1652,6 +1656,18 @@ async function dispatchScheduled(
     // EMPTY table alerts too -- until the revived lane posts, every positions
     // read is still answering from the frozen lakehouse export.
     return runNominatorPositionsStalenessWatchdog(
+      env as unknown as Record<string, unknown>,
+    );
+  }
+  if (cron === VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON) {
+    // The validator-nominator-counts lane's alarm (#9301) -- the sibling of
+    // the watchdog above, over the other output of the same Alpha scan. Zero
+    // alerts is the correct steady state; a stale verdict records one
+    // exception under watchdog:validator-nominator-counts-staleness, the
+    // project's alert channel. An EMPTY table alerts too -- until the
+    // re-enabled lane posts, every nominator_count is still coming from the
+    // frozen lakehouse mirror or serving null outright.
+    return runValidatorNominatorCountsStalenessWatchdog(
       env as unknown as Record<string, unknown>,
     );
   }

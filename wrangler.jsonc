@@ -774,6 +774,11 @@
       // watchdog and lost its writer entirely without anything noticing -- see
       // NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON in workers/config.ts.
       "8,38 * * * *",
+      // 19,49 = the validator-nominator-counts staleness watchdog (#9301): the
+      // sibling of the one above, over the other output of the same Alpha
+      // scan, and blind for the same reason -- see
+      // VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON in workers/config.ts.
+      "19,49 * * * *",
       // 26 */3 = the live-economics refresh (KV economics:current), moved off
       // the retired refresh-economics.yml schedule -- the last Actions data
       // lane. Same 3-hourly cadence; :26 because :41 is taken twice over and
