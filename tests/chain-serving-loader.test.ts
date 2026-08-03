@@ -109,6 +109,55 @@ describe("the shared chain-serving loader", () => {
   });
 });
 
+// #9239: the window and the limit are each resolved ONCE, and the resolved
+// value is what reaches both the scan and the builder. Both defects were latent
+// -- every caller validates first -- but each is the kind that publishes a
+// confident, wrong number rather than failing.
+describe("the loader resolves its window and limit exactly once", () => {
+  test("an unrecognised window narrows the scan AND the published label", () => {
+    // The half-applied fallback is the trap: windowDays fell back to 7 while
+    // the caller's original string still reached the builder, so the card
+    // scanned seven days and claimed to be something else. A response that
+    // misdescribes correct data is worse than one that is merely narrow.
+    const engine = fakeEngine();
+    return loadChainServingColdTier({} as never, {
+      window: "90d",
+      limit: 20,
+      query: engine.query,
+    }).then((data) => {
+      assert.equal(data?.window, "7d", "the label must narrow with the scan");
+      const rowsSql = engine.seen.find((sql) =>
+        sql.includes("GROUP BY netuid"),
+      )!;
+      const cutoff = Number(/observed_at >= (\d+)/.exec(rowsSql)![1]);
+      const days = (Date.now() - cutoff) / 86_400_000;
+      assert.ok(
+        days > 6.9 && days < 7.1,
+        `expected ~7d, got ${days.toFixed(2)}d`,
+      );
+    });
+  });
+
+  test("an omitted limit caps the scan at what the response can carry", async () => {
+    // loadChainEventRollup defaults to 200 and buildChainServing to 20, so
+    // leaving each to its own default scanned ten times the rows the card
+    // could hold. One resolved number has to feed both.
+    const engine = fakeEngine();
+    const data = await loadChainServingColdTier({} as never, {
+      window: "7d",
+      query: engine.query,
+    });
+    assert.ok(data);
+    const rowsSql = engine.seen.find((sql) => sql.includes("GROUP BY netuid"))!;
+    assert.match(
+      rowsSql,
+      /LIMIT 20\b/,
+      `scan cap must match the builder's own default: ${rowsSql}`,
+    );
+    assert.doesNotMatch(rowsSql, /LIMIT 200\b/);
+  });
+});
+
 describe("all three surfaces go through the one loader", () => {
   // The regression this file exists for is a surface being wired to the
   // lakehouse while its siblings are not. Reading the sources is the only way
