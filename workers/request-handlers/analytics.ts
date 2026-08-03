@@ -32,7 +32,6 @@ import {
 } from "../config.ts";
 import { parseLimitParam } from "../request-params.ts";
 import {
-  CHAIN_REGISTRATIONS_ROLLUP,
   CHAIN_SERVING_ROLLUP,
   loadChainEventRollup,
 } from "../../src/chain-event-rollup-cold-tier.ts";
@@ -132,6 +131,7 @@ import {
 } from "../../src/chain-stake-flow.ts";
 import { loadChainTransfersFromArtifact } from "../../src/chain-transfers-artifact.ts";
 import { loadChainStakeFlowFromArtifact } from "../../src/chain-stake-flow-artifact.ts";
+import { loadChainRegistrationsFromArtifact } from "../../src/chain-registrations-artifact.ts";
 import { loadChainActivityFromArtifact } from "../../src/chain-activity-artifact.ts";
 import { loadChainCallsFromArtifact } from "../../src/chain-calls-artifact.ts";
 import { loadChainFeesFromArtifact } from "../../src/chain-fees-artifact.ts";
@@ -2365,26 +2365,18 @@ export async function handleChainRegistrations(
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) as ReturnType<typeof buildChainRegistrations> | null) ??
-        // The box's Postgres is gone, so the tier above always misses. The
-        // lakehouse holds this event kind with a populated hotkey, and the
-        // builder already expects rows grouped by netuid, so the rollup is a
-        // request-time read rather than a scheduled projection. It declines
-        // (null) rather than half-answering, leaving the empty payload below
-        // as the fallback.
-        (await (async () => {
-          const rollup = await loadChainEventRollup(
-            env as unknown as Parameters<typeof loadChainEventRollup>[0],
-            CHAIN_REGISTRATIONS_ROLLUP,
-            { windowDays: ANALYTICS_WINDOWS[label] ?? 7, limit },
-          );
-          return rollup
-            ? buildChainRegistrations(rollup.rows, {
-                window: label,
-                limit,
-                networkDistinct: rollup.networkDistinct,
-              } as unknown as Parameters<typeof buildChainRegistrations>[1])
-            : null;
-        })()) ??
+        // #9146: served from the chain-registrations PROJECTION lane rather
+        // than a request-time read. The request-time form cannot answer the
+        // 30d window at all: R2 SQL rejects
+        // `COUNT(DISTINCT hotkey) ... GROUP BY netuid` over it with
+        // `40015: scan budget exceeded`, which is why /chain/registrations
+        // served real 7d numbers and an empty 30d block in production. The
+        // lane distributes that aggregation (GROUP BY netuid, hotkey) and
+        // reduces it writer-side, exactly and once per tick.
+        (await loadChainRegistrationsFromArtifact(env, {
+          window: label,
+          limit,
+        })) ??
         buildChainRegistrations([], {
           window: label,
           limit,

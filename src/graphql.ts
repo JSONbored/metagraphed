@@ -359,6 +359,7 @@ import {
   STAKE_FLOW_DIRECTIONS,
   buildStakeFlow,
 } from "./stake-flow.ts";
+import { loadChainRegistrationsFromArtifact } from "./chain-registrations-artifact.ts";
 import { loadSubnetStakeFlowFromArtifact } from "./subnet-stake-flow-artifact.ts";
 import { buildAccountPortfolio } from "./account-portfolio.ts";
 import { buildAccountPositions } from "./account-nominator-positions.ts";
@@ -6880,6 +6881,12 @@ const rootValue = {
         postgresTierRequest(context, "/api/v1/chain/registrations", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
+      // #9146: same chain-registrations projection REST reads, so the two
+      // surfaces cannot report different registration activity.
+      ((await loadChainRegistrationsFromArtifact(context.env, {
+        window: requestedWindow,
+        limit: safeLimit,
+      })) as Row | null) ??
       buildChainRegistrations([], {
         window: requestedWindow,
         limit: safeLimit,

@@ -243,6 +243,7 @@ import {
 import { loadTopHoldersFromArtifact } from "./top-holders-artifact.ts";
 import { loadChainTransfersFromArtifact } from "./chain-transfers-artifact.ts";
 import { loadChainStakeFlowFromArtifact } from "./chain-stake-flow-artifact.ts";
+import { loadChainRegistrationsFromArtifact } from "./chain-registrations-artifact.ts";
 import { loadSubnetStakeFlowFromArtifact } from "./subnet-stake-flow-artifact.ts";
 import { loadChainActivityFromArtifact } from "./chain-activity-artifact.ts";
 import { loadChainCallsFromArtifact } from "./chain-calls-artifact.ts";
@@ -9428,7 +9429,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             limit,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainRegistrations([], { window: label, limit })
+        )) ??
+        // #9146: same chain-registrations projection REST and GraphQL read.
+        (await loadChainRegistrationsFromArtifact(ctx.env, {
+          window: label,
+          limit,
+        })) ??
+        buildChainRegistrations([], { window: label, limit })
       );
     },
   },
