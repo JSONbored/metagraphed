@@ -139,6 +139,7 @@ import {
 } from "../../src/crowdloans.ts";
 import { computeStakeQuote } from "../../src/stake-quote.ts";
 import { buildRuntimeVersionHistory } from "../../src/runtime-versions.ts";
+import { loadRuntimeVersionHistoryColdTier } from "../../src/runtime-versions-cold-tier.ts";
 import { loadUpgradeRadar } from "../../src/upgrade-radar.ts";
 import { buildBlock, buildBlockFeed } from "../../src/blocks.ts";
 import {
@@ -5723,12 +5724,15 @@ const RUNTIME_VERSIONS_CSV_COLUMNS = [
 ];
 
 // GET /api/v1/runtime (#4316/3.1): the spec-version transition timeline — the
-// earliest known block at each distinct spec_version the blocks D1 tier has
-// observed, ascending by block_number. A single-row aggregate over the whole
-// retained window, nothing to filter or paginate (?format=csv is the one
-// accepted param, #6392). See src/runtime-versions.ts for the coverage caveat
-// (spec_version wasn't tracked before 2026-06-25 and can't be back-filled for
-// rows written before then).
+// earliest known block at each distinct spec_version, ascending by
+// block_number. A single-row aggregate over the whole retained window, nothing
+// to filter or paginate (?format=csv is the one accepted param, #6392).
+//
+// The coverage caveat in src/runtime-versions.ts is about the RETIRED D1 tier,
+// where spec_version arrived via a never-back-filled nullable ALTER. The
+// lakehouse tier this now reads (#9265) carries a reading on every block from
+// genesis to head, so coverage_from_block/coverage_gaps describe a complete
+// timeline rather than bounding a partial one.
 export async function handleRuntime(request: Request, env: Env, url: URL) {
   const validationError = validateEntityQuery(url, ["format"]);
   if (validationError) return analyticsQueryError(validationError);
@@ -5740,6 +5744,12 @@ export async function handleRuntime(request: Request, env: Env, url: URL) {
       request,
       "METAGRAPH_BLOCKS_SOURCE",
     )) as ReturnType<typeof buildRuntimeVersionHistory> | null) ??
+    // The same spec_version column, from the tier that actually has it
+    // (#9265). Through the shared reader so MCP and GraphQL get the timeline
+    // too rather than being wired one surface at a time.
+    (await loadRuntimeVersionHistoryColdTier(
+      env as unknown as Parameters<typeof loadRuntimeVersionHistoryColdTier>[0],
+    )) ??
     buildRuntimeVersionHistory([]);
   // #8702: the forward-looking half of the same question. `transitions` is
   // where the runtime has BEEN (first-party block observations); `current` is

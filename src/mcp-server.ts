@@ -1400,6 +1400,7 @@ import {
   labelsForSs58,
 } from "./entity-labels.ts";
 import { buildRuntimeVersionHistory } from "./runtime-versions.ts";
+import { loadRuntimeVersionHistoryColdTier } from "./runtime-versions-cold-tier.ts";
 import {
   buildValidatorNominators,
   NOMINATOR_WINDOWS,
@@ -9123,9 +9124,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "Fetch the spec-version transition timeline: the earliest known block " +
       "at each distinct runtime spec_version observed, ascending by block " +
       "number. A single aggregate over the whole retained window — nothing to " +
-      "filter or paginate. spec_version wasn't tracked before 2026-06-25 and " +
-      "can't be back-filled for rows written before then. Mirrors " +
-      "GET /api/v1/runtime.",
+      "filter or paginate. Every block from genesis to head carries a " +
+      "spec_version reading, so coverage_gaps reports real holes rather than " +
+      "bounding a partial timeline. Mirrors GET /api/v1/runtime.",
     inputSchema: z.toJSONSchema(GetRuntimeInputSchema, {
       target: "draft-2020-12",
     }),
@@ -9145,6 +9146,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       ]);
       return {
         ...((history as Record<string, unknown> | null) ??
+          // #9265: the lakehouse carries the same spec_version column, so an
+          // agent gets the real timeline instead of an empty one beside a
+          // `current` that reports a live spec version.
+          (await loadRuntimeVersionHistoryColdTier(ctx.env)) ??
           buildRuntimeVersionHistory([])),
         current,
       };

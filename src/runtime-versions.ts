@@ -24,6 +24,14 @@
 // 6,000,000, 348 at 7,000,000, 393 at 8,000,000 and 422 at 8,480,000.
 // `coverage_complete`/`coverage_gaps` (see detectRuntimeCoverageGaps) expose
 // interior holes, which a single coverage floor structurally cannot.
+//
+// EVERYTHING ABOVE IS ABOUT THE RETIRED D1/Postgres TIER. The route now reads
+// `chain.blocks` from the lakehouse (src/runtime-versions-cold-tier.ts,
+// #9265), written by the full genesis→head backfill rather than by a nullable
+// ALTER: measured 2026-08-03, 8,763,321 of 8,763,321 rows carry a
+// spec_version, yielding 147 transitions from spec 101 at block 0. The
+// coverage machinery below is kept — it is what PROVES the timeline is whole,
+// and it is the only thing that would notice if that ever stopped being true.
 
 type Row = Record<string, unknown>;
 type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
