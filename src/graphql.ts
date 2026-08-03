@@ -417,7 +417,6 @@ import {
 } from "../workers/config.ts";
 import { answerRpcUsage } from "./rpc-usage-answer.ts";
 import { loadChainServingColdTier } from "./chain-serving-loader.ts";
-import { enrichValidatorNominatorCounts } from "./validator-nominator-counts-cold-tier.ts";
 import {
   accountSummaryGapMessage,
   answerAccountSummary,
@@ -3871,25 +3870,18 @@ const rootValue = {
     // REST/MCP fan-out.
     const details = [];
     for (const hotkey of parsed) {
-      // #9146: enriched per detail, since nominator_count is one of the fields
-      // this comparison projects -- see the MCP compare_validators tool's own
-      // note for why an unenriched detail here would contradict the
-      // single-validator field for the same hotkey.
       details.push(
-        await enrichValidatorNominatorCounts(
+        ((await tryPostgresTier(
           context.env,
-          ((await tryPostgresTier(
-            context.env,
-            postgresTierRequest(
-              context,
-              `/api/v1/validators/${encodeURIComponent(hotkey)}`,
-            ),
-            "METAGRAPH_NEURONS_SOURCE",
-          )) as Row | null) ??
-            buildValidatorDetail([], hotkey, {
-              priceByNetuid: NO_ALPHA_PRICES,
-            }),
-        ),
+          postgresTierRequest(
+            context,
+            `/api/v1/validators/${encodeURIComponent(hotkey)}`,
+          ),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) as Row | null) ??
+          buildValidatorDetail([], hotkey, {
+            priceByNetuid: NO_ALPHA_PRICES,
+          }),
       );
     }
     return composeValidatorComparison(details, { netuid: netuid ?? null });
@@ -4984,25 +4976,18 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("sort", requestedSort);
     params.set("limit", String(GLOBAL_VALIDATOR_LIMIT_MAX));
-    // #9146: nominator_count has no D1 home, so the tier answers null for every
-    // row -- filled from the lakehouse by the same loader REST and MCP call.
-    // Applied before paginate() so a page carries the field regardless of which
-    // slice of the leaderboard the cursor lands on.
-    const data = (await enrichValidatorNominatorCounts(
-      context.env,
-      overlayFeaturedValidators(
-        ((await tryPostgresTier(
-          context.env,
-          postgresTierRequest(context, "/api/v1/validators", params),
-          "METAGRAPH_NEURONS_SOURCE",
-        )) as Row | null) ??
-          buildGlobalValidators([], {
-            sort: requestedSort,
-            limit: GLOBAL_VALIDATOR_LIMIT_MAX,
-            priceByNetuid: NO_ALPHA_PRICES,
-          }),
-      )!,
-    )) as Row;
+    const data = overlayFeaturedValidators(
+      ((await tryPostgresTier(
+        context.env,
+        postgresTierRequest(context, "/api/v1/validators", params),
+        "METAGRAPH_NEURONS_SOURCE",
+      )) as Row | null) ??
+        buildGlobalValidators([], {
+          sort: requestedSort,
+          limit: GLOBAL_VALIDATOR_LIMIT_MAX,
+          priceByNetuid: NO_ALPHA_PRICES,
+        }),
+    )! as Row;
     const nodes = (data.validators || []).map(validatorNode);
     const { page, total, nextCursor } = paginate(
       nodes,
@@ -5137,20 +5122,13 @@ const rootValue = {
   },
 
   async validator({ hotkey }: QueryValidatorArgs, context: GqlContext) {
-    // #9146: the single-hotkey half of the same side-table gap the `validators`
-    // resolver fills. A null tier body carries no hotkey to look up, so the
-    // loader passes it straight through to validatorDetailNode's own
-    // normalization rather than needing a guard here.
-    const data = await enrichValidatorNominatorCounts(
+    const data = await tryPostgresTier(
       context.env,
-      await tryPostgresTier(
-        context.env,
-        postgresTierRequest(
-          context,
-          `/api/v1/validators/${encodeURIComponent(hotkey)}`,
-        ),
-        "METAGRAPH_NEURONS_SOURCE",
+      postgresTierRequest(
+        context,
+        `/api/v1/validators/${encodeURIComponent(hotkey)}`,
       ),
+      "METAGRAPH_NEURONS_SOURCE",
     );
     return validatorDetailNode(data as Row, hotkey);
   },
