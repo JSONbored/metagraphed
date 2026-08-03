@@ -127,6 +127,23 @@ describe("the event kind that reaches SQL", () => {
     }
   });
 
+  test("a spec naming a column the table does not have declines", async () => {
+    // distinctColumn is a closed set, not an alias guard: the two values are
+    // the only columns that carry an identity for these events, so anything
+    // else is a bug rather than merely unsafe -- and must stop before SQL.
+    const engine = fakeEngine();
+    const result = await loadChainEventRollup(
+      {} as never,
+      {
+        ...CHAIN_SERVING_ROLLUP,
+        distinctColumn: "coldkey" as unknown as "hotkey",
+      },
+      { windowDays: 7, now: NOW, query: engine.query } as never,
+    );
+    assert.equal(result, null);
+    assert.deepEqual(engine.seen, [], "an unknown column must not reach SQL");
+  });
+
   test("a spec with an injected column alias declines without querying", () => {
     // Exercised through the loader, not only the guard: a refused alias must
     // stop before any SQL is built, or the refusal is theoretical.

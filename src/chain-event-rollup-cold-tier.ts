@@ -36,21 +36,45 @@ export interface ChainEventRollupSpec {
   eventKind: string;
   /** Field name the builder reads for the per-subnet event count. */
   countField: string;
-  /** Field name the builder reads for the distinct-hotkey count, per subnet
-   * AND on the network block. */
+  /** Field name the builder reads for the distinct-participant count, per
+   * subnet AND on the network block. */
   distinctField: string;
+  /**
+   * Column the distinct count is taken over.
+   *
+   * `hotkey` where the export carries it. `uid` for WeightsSet, whose hotkey
+   * column is NULL on all 50,890,747 rows -- the chain event itself only emits
+   * [netuid, uid], so uid IS the identity the event records. Within a subnet a
+   * uid is one neuron, so a distinct-uid count is the distinct-setter count.
+   * Over a long window a uid can be reassigned after a deregistration, which
+   * makes this an upper bound on distinct hotkeys rather than an identity --
+   * accurate for the 7d/30d windows these routes serve, and stated here rather
+   * than left for a reader to infer.
+   */
+  distinctColumn: "hotkey" | "uid";
 }
 
 export const CHAIN_SERVING_ROLLUP: ChainEventRollupSpec = {
   eventKind: "AxonServed",
   countField: "announcements",
   distinctField: "distinct_servers",
+  distinctColumn: "hotkey",
+};
+
+export const CHAIN_WEIGHTS_ROLLUP: ChainEventRollupSpec = {
+  eventKind: "WeightsSet",
+  countField: "weight_sets",
+  distinctField: "distinct_setters",
+  // See distinctColumn's note: WeightsSet has no hotkey in the export because
+  // the chain event does not emit one.
+  distinctColumn: "uid",
 };
 
 export const CHAIN_REGISTRATIONS_ROLLUP: ChainEventRollupSpec = {
   eventKind: "NeuronRegistered",
   countField: "registrations",
   distinctField: "distinct_registrants",
+  distinctColumn: "hotkey",
 };
 
 /**
@@ -129,8 +153,14 @@ export async function loadChainEventRollup(
   const kind = safeEventKind(spec.eventKind);
   const countField = safeColumnAlias(spec.countField);
   const distinctField = safeColumnAlias(spec.distinctField);
+  // Closed set rather than the alias guard: this one names a real column, so
+  // anything outside the two the table has is a bug, not merely unsafe.
+  const distinctColumn =
+    spec.distinctColumn === "hotkey" || spec.distinctColumn === "uid"
+      ? spec.distinctColumn
+      : null;
   // Every interpolated identifier is guarded, not just the quoted value.
-  if (!kind || !countField || !distinctField) return null;
+  if (!kind || !countField || !distinctField || !distinctColumn) return null;
   if (!Number.isFinite(windowDays) || windowDays <= 0) return null;
 
   const cutoff = now - windowDays * 24 * 60 * 60 * 1000;
@@ -144,7 +174,7 @@ export async function loadChainEventRollup(
     query(
       env,
       `SELECT netuid, count(*) AS ${countField},` +
-        ` count(DISTINCT hotkey) AS ${distinctField}` +
+        ` count(DISTINCT ${distinctColumn}) AS ${distinctField}` +
         ` FROM chain.account_events ${where}` +
         ` GROUP BY netuid ORDER BY ${countField} DESC LIMIT ${cap}`,
     ),
@@ -152,7 +182,7 @@ export async function loadChainEventRollup(
     // serving five subnets is five rows above and one server here.
     query(
       env,
-      `SELECT count(DISTINCT hotkey) AS ${distinctField},` +
+      `SELECT count(DISTINCT ${distinctColumn}) AS ${distinctField},` +
         ` max(observed_at) AS newest_observed` +
         ` FROM chain.account_events ${where}`,
     ),
