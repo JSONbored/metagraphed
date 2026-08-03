@@ -706,6 +706,11 @@
       "47 * * * *",
       "40 4 * * *",
       "5 5 * * *",
+      // 11,41 = twice-hourly scheduled projections (#9146): recompute the
+      // windowed-aggregate artifacts (chain-transfers, chain-stake-flow) from
+      // the lakehouse -- see PROJECTION_LANES_CRON in workers/config.ts for
+      // the cadence and minute-offset rationale.
+      "11,41 * * * *",
     ],
   },
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite

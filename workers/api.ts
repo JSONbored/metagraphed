@@ -389,6 +389,7 @@ import {
   FRESHNESS_WATCHDOG_CRON,
   LAKEHOUSE_SEAM_CRON,
   SAFE_MODE_WATCHDOG_CRON,
+  PROJECTION_LANES_CRON,
   FRESHNESS_WATCHDOG_STATE_KEY,
   BULK_TRENDS_PATH_PATTERN,
   ABUSE_SCAN_CRON,
@@ -485,6 +486,7 @@ import type { UsageObservation } from "../src/usage-rollup.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
 import { runLakehouseSeamWatchdog } from "../src/lakehouse-seam-watchdog.ts";
 import { runSafeModeWatchdog } from "../src/safe-mode-watchdog.ts";
+import { runProjectionLanes } from "../src/projection-lanes.ts";
 
 // #8386: anonymous stays the existing, regression-tested DATA_RATE_LIMITER
 // policy (60/60s, unchanged); a caller with a valid mg_... key gets 5x via a
@@ -1344,6 +1346,7 @@ function cronLabel(cron: string): string {
   if (cron === FRESHNESS_WATCHDOG_CRON) return "freshness-watchdog";
   if (cron === LAKEHOUSE_SEAM_CRON) return "lakehouse-seam-watchdog";
   if (cron === SAFE_MODE_WATCHDOG_CRON) return "safe-mode-watchdog";
+  if (cron === PROJECTION_LANES_CRON) return "projection-lanes";
   if (cron === ACCOUNT_EVENTS_ROLLUP_CRON) return "account-events-rollup";
   // Every unmatched cron falls through to the health prober, matching dispatch.
   return "health-prober";
@@ -1542,6 +1545,14 @@ async function dispatchScheduled(
     return runLakehouseSeamWatchdog(
       env as unknown as Parameters<typeof runLakehouseSeamWatchdog>[0],
     );
+  }
+  if (cron === PROJECTION_LANES_CRON) {
+    // #9146: recompute the windowed-aggregate artifacts (chain-transfers,
+    // chain-stake-flow) from the lakehouse. See src/projection-lanes.ts's
+    // header for why these routes are a cron and not a one-shot artifact or
+    // a request-time reader. The #8998 wrapper above records the tick's
+    // usage_event; lane-level failures record their own exceptions.
+    return runProjectionLanes(env);
   }
   if (cron === FRESHNESS_WATCHDOG_CRON) {
     // The alarm that replaces the box-side monitoring stack: notice when a

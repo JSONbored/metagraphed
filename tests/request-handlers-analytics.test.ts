@@ -24,6 +24,7 @@ import {
   canonicalAnalyticsCacheRoute,
   canonicalHealthWindowCachePath,
   handleChainStakeFlow,
+  handleChainTransfers,
   handleChainWeights,
   handleChainWeightSetters,
   handleChainServing,
@@ -2332,5 +2333,111 @@ describe("health analytics: postgres tier wiring", () => {
     assert.equal(res.status, 200);
     const body = await jsonBody(res);
     assert.equal(body.data.schema_version, 1);
+  });
+});
+
+// #9146: the projection tier for the windowed aggregates. Both proofs are the
+// same shape as the entities suite's lakehouse describe: with no Postgres
+// flag set and the projection artifact present, the stored rows flow through
+// the shared formatters into the response instead of the schema-stable empty.
+describe("projection artifact answers when Postgres misses (windowed aggregates)", () => {
+  const NEWEST = 1785680000000;
+
+  function archiveEnv(body: unknown): TestEnv {
+    return {
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          return { json: async () => body };
+        },
+      },
+    } as unknown as TestEnv;
+  }
+
+  test("handleChainTransfers serves the projected scorecard, sliced to ?limit=", async () => {
+    const env = archiveEnv({
+      schema_version: 1,
+      windows: {
+        "7d": {
+          days: 7,
+          totals: {
+            transfer_count: "12",
+            total_volume_tao: "2000",
+            newest_observed: NEWEST,
+            unique_senders: "5",
+            unique_receivers: "6",
+          },
+          senders: [
+            { address: "5A", volume_tao: "600", transfer_count: "7" },
+            { address: "5B", volume_tao: "400", transfer_count: "5" },
+          ],
+          receivers: [
+            { address: "5C", volume_tao: "2000", transfer_count: "12" },
+          ],
+        },
+      },
+    });
+    const p = "/api/v1/chain/transfers?limit=1";
+    const body = await json(await handleChainTransfers(req(p), env, url(p)));
+    assert.equal(body.data.window, "7d");
+    assert.equal(body.data.total_volume_tao, 2000);
+    assert.equal(body.data.unique_senders, 5);
+    assert.equal(body.data.observed_at, new Date(NEWEST).toISOString());
+    // The limit sliced BEFORE the formatter: one sender, and the share is
+    // that one sender's share — data-api's LIMIT-ed fetch semantics.
+    assert.deepEqual(
+      body.data.top_senders.map((row: Row) => row.address),
+      ["5A"],
+    );
+    assert.equal(body.data.top_sender_share, 600 / 2000);
+  });
+
+  test("handleChainStakeFlow serves the projected leaderboard for ?window=30d", async () => {
+    const env = archiveEnv({
+      schema_version: 1,
+      windows: {
+        "30d": {
+          days: 30,
+          rows: [
+            {
+              netuid: 7,
+              event_kind: "StakeAdded",
+              total_tao: "100",
+              event_count: "3",
+              last_observed: NEWEST,
+            },
+            {
+              netuid: 7,
+              event_kind: "StakeRemoved",
+              total_tao: "40",
+              event_count: "2",
+              last_observed: NEWEST - 1000,
+            },
+          ],
+        },
+      },
+    });
+    const p = "/api/v1/chain/stake-flow?window=30d";
+    const body = await json(await handleChainStakeFlow(req(p), env, url(p)));
+    assert.equal(body.data.window, "30d");
+    assert.equal(body.data.subnet_count, 1);
+    assert.equal(body.data.subnets[0].netuid, 7);
+    assert.equal(body.data.subnets[0].net_flow_tao, 60);
+    assert.equal(body.data.observed_at, new Date(NEWEST).toISOString());
+  });
+
+  test("a missing artifact still degrades to the schema-stable empty", async () => {
+    const env = {
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          return null;
+        },
+      },
+    } as unknown as TestEnv;
+    const p = "/api/v1/chain/stake-flow";
+    const body = await json(await handleChainStakeFlow(req(p), env, url(p)));
+    assert.equal(body.data.subnet_count, 0);
+    const tp = "/api/v1/chain/transfers";
+    const tbody = await json(await handleChainTransfers(req(tp), env, url(tp)));
+    assert.equal(tbody.data.transfer_count, 0);
   });
 });
