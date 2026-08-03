@@ -106,3 +106,38 @@ describe("buildSubnetOwnershipHistory — shaping a real row", () => {
     assert.equal(change.new_coldkey, null);
   });
 });
+
+// The opt-in for a tier that cannot express the netuid predicate in SQL --
+// the lakehouse stores args as an opaque JSON string. Off by default so the
+// Postgres tier, which already filtered in SQL, is untouched.
+describe("buildSubnetOwnershipHistory — filterByNetuid", () => {
+  const mixed = [
+    row({ args: { netuid: 7, old_coldkey: null, new_coldkey: null } }),
+    row({ args: { netuid: 18, old_coldkey: null, new_coldkey: null } }),
+    // The raw args hold netuid as an array on live rows (#8649); the shaped
+    // record has already normalized it, so both forms narrow correctly.
+    row({ args: { netuid: [7], old_coldkey: null, new_coldkey: null } }),
+  ];
+
+  test("off by default: every row survives, as the Postgres tier expects", () => {
+    assert.equal(buildSubnetOwnershipHistory(mixed, 7).count, 3);
+  });
+
+  test("on: keeps only this subnet's transfers, scalar or array-encoded", () => {
+    const data = buildSubnetOwnershipHistory(mixed, 7, {
+      filterByNetuid: true,
+    });
+    assert.equal(data.count, 2);
+    assert.deepEqual(
+      (data.ownership_changes as Row[]).map((c) => c.netuid),
+      [7, 7],
+    );
+  });
+
+  test("a subnet with no transfers in the stream is an empty list", () => {
+    assert.equal(
+      buildSubnetOwnershipHistory(mixed, 99, { filterByNetuid: true }).count,
+      0,
+    );
+  });
+});

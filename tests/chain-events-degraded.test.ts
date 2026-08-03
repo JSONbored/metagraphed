@@ -6,9 +6,11 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
+  coldTierChainEventsPayload,
   degradedChainEventsPayload,
   shouldDegrade,
 } from "../src/chain-events-degraded.ts";
+import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
 import { dataApiFailureResponse, handleRequest } from "../workers/api.ts";
 import { BlockChainEventsArtifactSchema } from "../schemas-src/routes/block-chain-events.ts";
 import {
@@ -206,6 +208,82 @@ describe("every degraded payload satisfies its published schema", () => {
   }
 });
 
+// The step BEFORE the floor: a proxied route whose stream already has a
+// lakehouse reader serves real rows on a DATA_API failure instead of the empty.
+describe("coldTierChainEventsPayload", () => {
+  const OWNERSHIP_ROW = {
+    pallet: "SubtensorModule",
+    method: "SubnetOwnerChanged",
+    block_number: 8_587_754,
+    observed_at: 1_783_600_000_000,
+    args: {
+      netuid: 7,
+      old_coldkey: [
+        [
+          230, 177, 94, 10, 88, 222, 149, 217, 176, 218, 228, 3, 237, 17, 117,
+          251, 19, 70, 95, 132, 123, 114, 171, 235, 189, 66, 130, 2, 183, 175,
+          143, 88,
+        ],
+      ],
+      new_coldkey: [
+        [
+          109, 111, 100, 108, 115, 117, 98, 116, 101, 110, 115, 114, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        ],
+      ],
+    },
+  };
+
+  function lakehouse(rows: unknown[]) {
+    globalThis.fetch = (async () =>
+      ({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows } }),
+      }) as unknown as Response) as unknown as typeof fetch;
+    return mockEnv({ [R2_SQL_TOKEN_ENV]: "cfut_test" }) as unknown as Env;
+  }
+
+  test("ownership-history is served from the lakehouse", async () => {
+    const env = lakehouse([OWNERSHIP_ROW]);
+    const payload = (await coldTierChainEventsPayload(
+      env,
+      new URL("https://api.metagraph.sh/api/v1/subnets/7/ownership-history"),
+    )) as Row;
+    assert.equal(payload.netuid, 7);
+    assert.equal(payload.count, 1);
+    assert.equal(payload.ownership_changes[0].block_number, 8_587_754);
+  });
+
+  // The other five are uncovered on purpose (see the function's own note), and
+  // a path with no reader must fall through to the floor rather than invent one.
+  test("a route with no cold-tier reader yields null", async () => {
+    const env = lakehouse([OWNERSHIP_ROW]);
+    for (const path of PROXIED.filter(
+      (p) => !p.endsWith("/ownership-history"),
+    )) {
+      assert.equal(
+        await coldTierChainEventsPayload(
+          env,
+          new URL(`https://api.metagraph.sh${path}`),
+        ),
+        null,
+        path,
+      );
+    }
+  });
+
+  test("an unconfigured lakehouse declines, leaving the floor to answer", async () => {
+    assert.equal(
+      await coldTierChainEventsPayload(
+        mockEnv({}) as unknown as Env,
+        new URL("https://api.metagraph.sh/api/v1/subnets/7/ownership-history"),
+      ),
+      null,
+    );
+  });
+});
+
 describe("shouldDegrade", () => {
   test("only the tier's own failures degrade", () => {
     assert.equal(shouldDegrade(500), true);
@@ -250,6 +328,43 @@ describe("dataApiFailureResponse", () => {
     assert.equal(res.headers.get("x-metagraph-degraded"), "tier_unavailable");
     const body = (await res.json()) as Row;
     assert.equal((body.meta as Row).source, "data-worker-unavailable");
+  });
+
+  // Real rows, so NOT marked degraded and NOT barred from the edge cache --
+  // the marker means "we could not look", which would be a lie here.
+  test("a route with a cold tier serves the lakehouse, unmarked", async () => {
+    globalThis.fetch = (async () =>
+      ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          result: {
+            rows: [
+              {
+                pallet: "SubtensorModule",
+                method: "SubnetOwnerChanged",
+                block_number: 8_587_754,
+                observed_at: 1_783_600_000_000,
+                args: { netuid: 7 },
+              },
+            ],
+          },
+        }),
+      }) as unknown as Response) as unknown as typeof fetch;
+    const res = await dataApiFailureResponse(
+      req("/api/v1/subnets/7/ownership-history"),
+      mockEnv({ [R2_SQL_TOKEN_ENV]: "cfut_test" }) as unknown as Env,
+      new URL("https://api.metagraph.sh/api/v1/subnets/7/ownership-history"),
+      "data_query_failed",
+      "boom",
+      500,
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("x-metagraph-degraded"), null);
+    const body = (await res.json()) as Row;
+    assert.equal((body.meta as Row).source, "lakehouse-cold-tier");
+    assert.equal((body.data as Row).count, 1);
   });
 });
 

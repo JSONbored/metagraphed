@@ -278,6 +278,7 @@ import {
   DEFAULT_OHLC_WINDOW_DAYS,
   MAX_OHLC_WINDOW_DAYS,
 } from "../../src/subnet-ohlc.ts";
+import { loadSubnetOhlcColdTier } from "../../src/subnet-ohlc-cold-tier.ts";
 import { resolveLiveEconomics } from "../../src/health-serving.ts";
 import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.ts";
 import { readArtifact, readHealthKv } from "../storage.ts";
@@ -3272,10 +3273,19 @@ export async function handleSubnetOhlc(
   )) as {
     data: ReturnType<typeof buildSubnetOhlc>;
     generatedAt: string | null;
-  } | null) ?? {
-    data: buildSubnetOhlc([], Number(netuid), { interval }),
-    generatedAt: null,
-  };
+  } | null) ??
+    // Lakehouse cold tier (src/subnet-ohlc-cold-tier.ts): the SAME
+    // StakeAdded/StakeRemoved trades, bucketed in SQL instead of in a row
+    // loop, ending in the SAME candle assembler. ?days= is finally load-
+    // bearing here -- on the Postgres tier it only ever travelled as part of
+    // the forwarded URL.
+    (await loadSubnetOhlcColdTier(env, netuid, {
+      interval,
+      days: daysResult.value,
+    })) ?? {
+      data: buildSubnetOhlc([], Number(netuid), { interval }),
+      generatedAt: null,
+    };
   return envelopeResponse(
     request,
     {

@@ -317,6 +317,7 @@ import {
 } from "../src/subnet-identity-history.ts";
 import { tryPostgresTier } from "./postgres-tier.ts";
 import {
+  coldTierChainEventsPayload,
   degradedChainEventsPayload,
   shouldDegrade,
 } from "../src/chain-events-degraded.ts";
@@ -1808,6 +1809,27 @@ export async function dataApiFailureResponse(
   message: string,
   status: number,
 ): Promise<Response> {
+  // The lakehouse first: a DATA_API failure is only the END of the road for a
+  // route with no cold-tier reader. /subnets/{netuid}/ownership-history has
+  // one, so it serves real SubnetOwnerChanged rows here instead of the empty
+  // below -- unmarked and cacheable, because these are current rows, not a
+  // degradation. `source` names the tier that actually answered.
+  const cold = await coldTierChainEventsPayload(env, url);
+  if (cold) {
+    return envelopeResponse(
+      request,
+      {
+        data: cold,
+        meta: {
+          artifact_path: url.pathname,
+          cache: "short",
+          contract_version: contractVersion(env),
+          source: "lakehouse-cold-tier",
+        },
+      },
+      "short",
+    );
+  }
   const data = degradedChainEventsPayload(url);
   // A path this map does not cover keeps its original error rather than
   // serving a payload that satisfies no schema.

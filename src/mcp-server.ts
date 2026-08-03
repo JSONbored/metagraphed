@@ -1351,6 +1351,7 @@ import {
   DEFAULT_OHLC_WINDOW_DAYS,
   MAX_OHLC_WINDOW_DAYS,
 } from "./subnet-ohlc.ts";
+import { loadSubnetOhlcColdTier } from "./subnet-ohlc-cold-tier.ts";
 import { computeStakeQuote } from "./stake-quote.ts";
 import { buildAccountPositionHistory } from "./account-position-history.ts";
 import { buildAccountIdentity } from "./account-identity.ts";
@@ -1358,7 +1359,10 @@ import { buildAccountIdentityHistory } from "./account-identity-history.ts";
 import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.ts";
 import { loadSubnetBurn } from "./subnet-burn.ts";
 import { loadSubnetLease } from "./subnet-lease.ts";
-import { degradedChainEventsPayload } from "./chain-events-degraded.ts";
+import {
+  coldTierChainEventsPayload,
+  degradedChainEventsPayload,
+} from "./chain-events-degraded.ts";
 import { loadSudoKey } from "./sudo-key.ts";
 import { loadNetworkParameters } from "./network-parameters.ts";
 import { loadUpgradeRadar } from "./upgrade-radar.ts";
@@ -2713,7 +2717,48 @@ function degradedDataApiRead(path: string): Row | null {
     : null;
 }
 
+// The tool's projection of an ownership-history payload, whichever tier
+// produced it -- one narrowing so a cold-tier answer and a DATA_API answer
+// cannot present differently.
+function narrowOwnershipHistory(data: Row | null, netuid: number) {
+  return {
+    schema_version: data?.schema_version ?? 1,
+    netuid,
+    count: data?.count ?? 0,
+    ownership_changes: Array.isArray(data?.ownership_changes)
+      ? data.ownership_changes
+      : [],
+  };
+}
+
+// get_subnet_ownership_history, with the lakehouse behind DATA_API.
+//
+// Layered around the DATA_API reader rather than threaded into its three
+// failure sites: that reader already collapses every one of them onto #9146's
+// MARKED empty, so `degraded` is a reliable "this tier could not answer"
+// signal and one check replaces three. The cold tier is only consulted then --
+// DATA_API stays the primary, exactly as on the REST side.
+//
+// The reader it consults is the SAME one REST reaches through
+// coldTierChainEventsPayload, so the two surfaces cannot disagree about a
+// subnet's transfers. A cold-tier decline leaves the marked empty in place.
 async function loadSubnetOwnershipHistory(ctx: McpCtx, netuid: number) {
+  const answer = (await loadSubnetOwnershipHistoryFromDataApi(
+    ctx,
+    netuid,
+  )) as Row;
+  if (!answer.degraded) return answer;
+  const cold = await coldTierChainEventsPayload(
+    ctx.env,
+    new URL(`https://d/api/v1/subnets/${netuid}/ownership-history`),
+  );
+  return cold ? narrowOwnershipHistory(cold, netuid) : answer;
+}
+
+async function loadSubnetOwnershipHistoryFromDataApi(
+  ctx: McpCtx,
+  netuid: number,
+) {
   await requireDataTierRateLimit(ctx);
   const dataApi = ctx.env?.DATA_API;
   if (!dataApi?.fetch) {
@@ -2753,15 +2798,7 @@ async function loadSubnetOwnershipHistory(ctx: McpCtx, netuid: number) {
         "Try again shortly.",
     );
   }
-  const data = (await response.json()) as Row | null;
-  return {
-    schema_version: data?.schema_version ?? 1,
-    netuid,
-    count: data?.count ?? 0,
-    ownership_changes: Array.isArray(data?.ownership_changes)
-      ? data.ownership_changes
-      : [],
-  };
+  return narrowOwnershipHistory((await response.json()) as Row | null, netuid);
 }
 
 // Mirrors loadSubnetOwnershipHistory above (#6638): the data-api.ts route
@@ -7082,7 +7119,12 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             }),
             "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
           )
-        )?.data ?? buildSubnetOhlc([], netuid, { interval })
+        )?.data ??
+        // The SAME lakehouse reader REST's handleSubnetOhlc falls to, so the
+        // two surfaces cannot disagree about a subnet's candles.
+        (await loadSubnetOhlcColdTier(ctx.env, netuid, { interval, days }))
+          ?.data ??
+        buildSubnetOhlc([], netuid, { interval })
       );
     },
   },
