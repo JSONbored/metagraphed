@@ -1925,12 +1925,15 @@ export async function dataApiFailureResponse(
     return envelopeResponse(
       request,
       {
-        data: cold,
+        data: cold.data,
         meta: {
           artifact_path: url.pathname,
           cache: "short",
           contract_version: contractVersion(env),
-          source: "lakehouse-cold-tier",
+          // From the dispatcher, not hardcoded here: conviction reads live
+          // chain storage rather than the lakehouse, and this used to report
+          // every cold answer as `lakehouse-cold-tier` regardless (#9319).
+          source: cold.source,
         },
       },
       "short",

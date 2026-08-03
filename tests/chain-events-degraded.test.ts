@@ -211,6 +211,39 @@ describe("every degraded payload satisfies its published schema", () => {
 // The step BEFORE the floor: a proxied route whose stream already has a
 // lakehouse reader serves real rows on a DATA_API failure instead of the empty.
 describe("coldTierChainEventsPayload", () => {
+  // #9319: the dispatcher reports WHICH tier answered, because only it knows.
+  // Before this, every cold answer was labelled `lakehouse-cold-tier` at the
+  // call site -- including conviction, which reads live chain storage and has
+  // no lakehouse involvement at all. `meta.source` exists to report the store
+  // that answered, so a wrong one makes the field worse than absent.
+  test("conviction reports the live chain tier, not the lakehouse", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (_url: unknown, init: unknown) => {
+      const body = JSON.parse(
+        String((init as { body?: string })?.body ?? "{}"),
+      );
+      const result =
+        body.method === "chain_getHeader"
+          ? { number: "0x85d1db" }
+          : body.method === "state_getKeysPaged"
+            ? []
+            : null;
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result }));
+    }) as unknown as typeof fetch;
+    try {
+      const answer = await coldTierChainEventsPayload(
+        {} as never,
+        new URL("https://api.metagraph.sh/api/v1/subnets/7/conviction"),
+      );
+      assert.ok(answer, "the live tier must answer");
+      assert.equal(answer.source, "live-chain-storage");
+      assert.notEqual(answer.source, "lakehouse-cold-tier");
+      assert.equal((answer.data as Row).count, 0);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   const OWNERSHIP_ROW = {
     pallet: "SubtensorModule",
     method: "SubnetOwnerChanged",
@@ -246,10 +279,16 @@ describe("coldTierChainEventsPayload", () => {
 
   test("ownership-history is served from the lakehouse", async () => {
     const env = lakehouse([OWNERSHIP_ROW]);
-    const payload = (await coldTierChainEventsPayload(
+    const answer = (await coldTierChainEventsPayload(
       env,
       new URL("https://api.metagraph.sh/api/v1/subnets/7/ownership-history"),
-    )) as Row;
+    ))!;
+    const payload = answer.data as Row;
+    assert.equal(
+      answer.source,
+      "lakehouse-cold-tier",
+      "a lakehouse read must say so",
+    );
     assert.equal(payload.netuid, 7);
     assert.equal(payload.count, 1);
     assert.equal(payload.ownership_changes[0].block_number, 8_587_754);
@@ -285,10 +324,11 @@ describe("coldTierChainEventsPayload", () => {
     // #9146: the feed now has a reader. The limit is clamped to the same
     // 1-100 range data-api enforced, so a caller cannot widen the page.
     const env = lakehouse([]);
-    const payload = (await coldTierChainEventsPayload(
+    const answer = (await coldTierChainEventsPayload(
       env,
       new URL("https://api.metagraph.sh/api/v1/chain-events?limit=10"),
-    )) as Row;
+    ))!;
+    const payload = answer.data as Row;
     assert.ok(payload, "the feed must be covered, not fall through to null");
     assert.equal(payload.count, 0);
     assert.ok("next_before" in payload);
@@ -296,10 +336,11 @@ describe("coldTierChainEventsPayload", () => {
 
   test("the stats aggregate reads the lakehouse", async () => {
     const env = lakehouse([]);
-    const payload = (await coldTierChainEventsPayload(
+    const answer = (await coldTierChainEventsPayload(
       env,
       new URL("https://api.metagraph.sh/api/v1/chain-events/stats?blocks=500"),
-    )) as Row;
+    ))!;
+    const payload = answer.data as Row;
     assert.ok(payload, "stats must be covered, not fall through to null");
     assert.equal(payload.window_blocks, 500);
     assert.equal(payload.groups, 0);
@@ -309,10 +350,11 @@ describe("coldTierChainEventsPayload", () => {
     // No subnet has ever been leased; a tier_unavailable marker on that would
     // tell callers to retry something that will never change.
     const env = lakehouse([]);
-    const payload = (await coldTierChainEventsPayload(
+    const answer = (await coldTierChainEventsPayload(
       env,
       new URL("https://api.metagraph.sh/api/v1/subnets/7/lease/history"),
-    )) as Row;
+    ))!;
+    const payload = answer.data as Row;
     assert.ok(
       payload,
       "must be an answer, not a fall-through to the marked empty",
