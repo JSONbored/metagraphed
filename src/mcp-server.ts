@@ -241,6 +241,7 @@ import {
   loadValidatorNominatorsColdTier,
 } from "./account-feeds-cold-tier.ts";
 import { loadAccountPositionsColdTier } from "./nominator-positions-cold-tier.ts";
+import { loadAccountPositionsD1 } from "./nominator-positions-hot-tier.ts";
 import {
   loadAccountEventsColdTier,
   loadBlockEventsColdTier,
@@ -1238,7 +1239,7 @@ import {
   DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
 } from "./subnet-deregistrations.ts";
 import { buildAccountPortfolio } from "./account-portfolio.ts";
-import { buildAccountPositions } from "./account-nominator-positions.ts";
+import { unavailableAccountPositions } from "./account-nominator-positions.ts";
 import {
   buildNeuronHistory,
   buildSubnetHistory,
@@ -7816,8 +7817,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/positions`),
           "METAGRAPH_NEURONS_SOURCE",
         )) ??
+        (await loadAccountPositionsD1(ctx.env, ss58)) ??
         (await loadAccountPositionsColdTier(ctx.env, ss58)) ??
-        buildAccountPositions([], new Map(), ss58)
+        unavailableAccountPositions(ss58)
       );
     },
   },
@@ -7896,8 +7898,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           ).then(
             async (data) =>
               data ??
+              (await loadAccountPositionsD1(ctx.env, ss58)) ??
               (await loadAccountPositionsColdTier(ctx.env, ss58)) ??
-              buildAccountPositions([], new Map(), ss58),
+              unavailableAccountPositions(ss58),
           ),
           tryPostgresTier(
             ctx.env,

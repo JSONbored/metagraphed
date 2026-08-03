@@ -42,6 +42,32 @@ const NominatorPositionSchema = z
   })
   .strict();
 
+// #9273. Present ONLY when this payload's zero is not a measurement, so a
+// consumer that ignores it reads exactly what it read before. Optional rather
+// than nullable for that reason: the key's absence is the healthy case, and a
+// permanently-null field trains callers not to look.
+const AccountPositionsDegradedSchema = z
+  .object({
+    reason: z
+      .enum(["tier_unavailable", "snapshot_predates_stake_activity"])
+      .describe(
+        "`tier_unavailable`: every tier declined, so this zero is a read failure. `snapshot_predates_stake_activity`: the position ledger answered zero, but this account has an on-chain StakeAdded/StakeRemoved NEWER than the ledger's own snapshot -- it was demonstrably staking after the ledger was captured, so `positions: 0` is a claim the ledger is not entitled to make.",
+      ),
+    snapshot_captured_at: z
+      .string()
+      .nullable()
+      .describe(
+        "The LEDGER's own capture stamp, not this account's -- present even when the account has no rows in it, which is the case this field exists for.",
+      ),
+    latest_stake_event_at: z
+      .string()
+      .nullable()
+      .describe(
+        "The newest StakeAdded/StakeRemoved this account has on chain, when that is what contradicts the zero.",
+      ),
+  })
+  .strict();
+
 export const AccountPositionsArtifactSchema = z
   .object({
     schema_version: z.int(),
@@ -55,6 +81,7 @@ export const AccountPositionsArtifactSchema = z
         "Sum of this account's stake across every position. ALPHA, not TAO: nominator_positions holds only netuid != 0 rows and non-root stake is that subnet's alpha token, so this sums different subnets' alpha (renamed from total_stake_tao in #8803). Not a TAO value and not comparable with a free-balance figure.",
       ),
     positions: z.array(NominatorPositionSchema),
+    degraded: AccountPositionsDegradedSchema.optional(),
   })
   .passthrough();
 export type AccountPositionsArtifact = z.infer<

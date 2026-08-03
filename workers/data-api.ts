@@ -110,7 +110,7 @@ import {
   buildAccountIdentity,
 } from "../src/account-identity.ts";
 import {} from "../src/validator-nominator-summary.ts";
-import {} from "../src/account-nominator-positions.ts";
+import { NOMINATOR_POSITION_INSERT_COLUMNS } from "../src/account-nominator-positions.ts";
 import {
   identityHash,
   buildAccountIdentityHistory,
@@ -298,6 +298,10 @@ import {
   writeAccountIdentityToD1,
   writeSubnetHyperparamsToD1,
 } from "../src/hyperparams-identity-d1-write.ts";
+import {
+  coldkeyMaxCapturedAt,
+  writeNominatorPositionsToD1,
+} from "../src/nominator-positions-d1-write.ts";
 import { writeChainDetailToD1 } from "../src/chain-detail-d1-write.ts";
 import {
   CHAIN_DETAIL_SYNC_MAX_BODY_BYTES,
@@ -1492,8 +1496,82 @@ async function handleValidatorNominatorCountsSync(request: Request, env: Env) {
   return writeJson({ error: "hyperdrive binding unavailable" }, 503);
 }
 
+// --- POST /api/v1/internal/nominator-positions-sync (#5233, revived #9273) --
+//
+// The per-coldkey position ledger: one row per (coldkey, hotkey, netuid) with
+// that account's dimensionless share of the hotkey's alpha-pool shares on that
+// subnet, from the poller's SubtensorModule::Alpha full scan. Root (netuid 0)
+// is not covered -- Alpha carries no root data at all.
+//
+// RETIRED with the box (#9193) and REVIVED against D1 here, because nothing
+// replaced it: the lakehouse kept the frozen 153,611-row export and the route
+// over it has served a stamp that cannot advance ever since, answering
+// `positions: 0, total_stake_alpha: 0` for anyone who began delegating after
+// the export. Same request/{rows:[...]} shape, same token gate, and the same
+// D1-is-required posture as handleSubnetHyperparamsSync above.
+//
+// A FULL SCAN DOES NOT FIT ONE REQUEST. 153,611 rows is far past any single
+// body, so the poster chunks it -- and the prune below is therefore per-coldkey
+// rather than a batch-wide sweep (see
+// src/nominator-positions-d1-write.ts's header). The poster's contract is that
+// an account's positions all land in the same request; one split across two
+// requests would have its first half pruned by its second.
 const NOMINATOR_POSITIONS_SYNC_TOKEN_HEADER =
   "x-nominator-positions-sync-token";
+// 25k rows x ~5 short columns sits well inside the Worker request ceiling and
+// puts a full ~154k-row scan at ~7 requests. Body bound first, row bound
+// second -- neither alone is sufficient (a few enormous SS58-shaped strings
+// pass the row bound; 25k tiny rows pass the byte bound).
+const NOMINATOR_POSITIONS_SYNC_MAX_BODY_BYTES = 8_000_000;
+const NOMINATOR_POSITIONS_SYNC_MAX_ROWS = 25_000;
+const NOMINATOR_POSITIONS_SYNC_MAX_NETUID = 65_535;
+// An SS58 address is 48 characters; the ceiling is generous rather than exact
+// so a future address format does not silently fail the whole batch.
+const NOMINATOR_POSITIONS_SYNC_MAX_KEY_BYTES = 128;
+
+/**
+ * Bounds-check one incoming row against NOMINATOR_POSITION_INSERT_COLUMNS.
+ *
+ * share_fraction is a FRACTION, so it is range-checked, not merely
+ * finite-checked: it multiplies a hotkey's whole stake at serve time
+ * (buildAccountPositions), so a value of 12 would publish twelve times that
+ * hotkey's stake as this account's position. That is the one field here whose
+ * garbage would read as a plausible number rather than as an error.
+ */
+function validNominatorPositionSyncRow(row: Row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+  for (const key of Object.keys(row)) {
+    if (!NOMINATOR_POSITION_INSERT_COLUMNS.includes(key)) return false;
+  }
+  for (const key of ["coldkey", "hotkey"]) {
+    const value = row[key];
+    if (typeof value !== "string" || value.length === 0) return false;
+    if (utf8Bytes(value).length > NOMINATOR_POSITIONS_SYNC_MAX_KEY_BYTES)
+      return false;
+  }
+  if (
+    !Number.isInteger(row.netuid) ||
+    row.netuid < 0 ||
+    row.netuid > NOMINATOR_POSITIONS_SYNC_MAX_NETUID
+  )
+    return false;
+  if (
+    typeof row.share_fraction !== "number" ||
+    !Number.isFinite(row.share_fraction) ||
+    row.share_fraction < 0 ||
+    row.share_fraction > 1
+  )
+    return false;
+  if (!Number.isInteger(row.captured_at) || row.captured_at <= 0) return false;
+  return true;
+}
+
+/** Project a validated row onto the writer's exact column list and order. */
+function coerceNominatorPositionSyncRow(row: Row) {
+  const out: Row = {};
+  for (const col of NOMINATOR_POSITION_INSERT_COLUMNS) out[col] = row[col];
+  return out;
+}
 
 async function handleNominatorPositionsSync(request: Request, env: Env) {
   if (!env.NOMINATOR_POSITIONS_SYNC_SECRET) {
@@ -1517,9 +1595,83 @@ async function handleNominatorPositionsSync(request: Request, env: Env) {
       401,
     );
   }
-  // #9193: same deletion as handleRollupAccountEventsDaily above -- unreachable
-  // since HYPERDRIVE went away, answered here, status and body unchanged.
-  return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > NOMINATOR_POSITIONS_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      {
+        error: `body exceeds ${NOMINATOR_POSITIONS_SYNC_MAX_BODY_BYTES} bytes`,
+      },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return writeJson(
+      {
+        error:
+          "body must be a JSON array of nominator-position rows (or {rows:[...]})",
+      },
+      400,
+    );
+  }
+  if (incoming.length > NOMINATOR_POSITIONS_SYNC_MAX_ROWS) {
+    return writeJson(
+      {
+        error: `at most ${NOMINATOR_POSITIONS_SYNC_MAX_ROWS} rows per request`,
+      },
+      413,
+    );
+  }
+  if (!incoming.length || !incoming.every(validNominatorPositionSyncRow)) {
+    return writeJson(
+      { error: "rows must match the nominator-position row shape" },
+      400,
+    );
+  }
+
+  const rows = incoming.map(coerceNominatorPositionSyncRow);
+  const cutoffs = coldkeyMaxCapturedAt(rows);
+
+  // D1 is the binding this path REQUIRES -- the only store this family has.
+  // Checked HERE, after validation, not at the top: a malformed body is a 400
+  // whether or not a store happens to be bound (handleSubnetHyperparamsSync's
+  // own 400-before-503 reasoning).
+  if (!env.METAGRAPH_HEALTH_DB) {
+    return writeJson({ error: "d1 binding unavailable" }, 503);
+  }
+
+  let d1Statements: number;
+  try {
+    ({ statements: d1Statements } = await writeNominatorPositionsToD1(
+      env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof writeNominatorPositionsToD1
+      >[0],
+      { rows, coldkeyMaxCapturedAt: cutoffs },
+    ));
+  } catch (err) {
+    console.error("data-api nominator-positions-sync D1 write failed:", err);
+    await captureDataApiError(err, "nominator-positions-sync-d1", env);
+    return writeJson({ error: "d1 write failed" }, 502);
+  }
+
+  return writeJson({
+    ok: true,
+    nominator_positions_written: rows.length,
+    coldkeys_pruned: cutoffs.size,
+    stores: ["d1"],
+    d1_statements: d1Statements,
+  });
 }
 
 // --- POST /api/v1/internal/account-balances-sync (#6742) -------------------

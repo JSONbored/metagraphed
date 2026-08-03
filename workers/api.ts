@@ -342,6 +342,7 @@ import { sampleEmissionGate } from "../src/emission-gate-sampler.ts";
 import { checkEmissionDrift } from "../src/emission-drift-check.ts";
 import { refreshLiveEconomics } from "../src/live-economics-refresh.ts";
 import { runNeuronsStalenessWatchdog } from "../src/neurons-staleness-watchdog.ts";
+import { runNominatorPositionsStalenessWatchdog } from "../src/nominator-positions-staleness-watchdog.ts";
 import { runChainDetailStalenessWatchdog } from "../src/chain-detail-staleness-watchdog.ts";
 import { pruneChainDetail } from "../src/chain-detail-prune.ts";
 import { runRpcUsageStalenessWatchdog } from "../src/rpc-usage-staleness-watchdog.ts";
@@ -407,6 +408,7 @@ import {
   EMISSION_GATE_SAMPLE_CRON,
   EMISSION_DRIFT_CHECK_CRON,
   NEURONS_STALENESS_WATCHDOG_CRON,
+  NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON,
   CHAIN_DETAIL_PRUNE_CRON,
   CHAIN_DETAIL_STALENESS_WATCHDOG_CRON,
   LIVE_ECONOMICS_REFRESH_CRON,
@@ -1373,6 +1375,8 @@ function cronLabel(cron: string): string {
   if (cron === EMISSION_DRIFT_CHECK_CRON) return "emission-drift-check";
   if (cron === NEURONS_STALENESS_WATCHDOG_CRON)
     return "neurons-staleness-watchdog";
+  if (cron === NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON)
+    return "nominator-positions-staleness-watchdog";
   if (cron === CHAIN_DETAIL_PRUNE_CRON) return "chain-detail-prune";
   if (cron === CHAIN_DETAIL_STALENESS_WATCHDOG_CRON)
     return "chain-detail-staleness-watchdog";
@@ -1638,6 +1642,16 @@ async function dispatchScheduled(
     // a stale verdict records one exception under
     // watchdog:neurons-staleness, which is the project's alert channel.
     return runNeuronsStalenessWatchdog(
+      env as unknown as Record<string, unknown>,
+    );
+  }
+  if (cron === NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON) {
+    // The nominator-positions lane's alarm (#9273). Zero alerts is the correct
+    // steady state; a stale verdict records one exception under
+    // watchdog:nominator-positions-staleness, the project's alert channel. An
+    // EMPTY table alerts too -- until the revived lane posts, every positions
+    // read is still answering from the frozen lakehouse export.
+    return runNominatorPositionsStalenessWatchdog(
       env as unknown as Record<string, unknown>,
     );
   }

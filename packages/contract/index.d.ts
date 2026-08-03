@@ -5369,6 +5369,17 @@ export interface components {
         };
         AccountPositionsArtifact: {
             captured_at: string | null;
+            degraded?: {
+                /** @description The newest StakeAdded/StakeRemoved this account has on chain, when that is what contradicts the zero. */
+                latest_stake_event_at: string | null;
+                /**
+                 * @description `tier_unavailable`: every tier declined, so this zero is a read failure. `snapshot_predates_stake_activity`: the position ledger answered zero, but this account has an on-chain StakeAdded/StakeRemoved NEWER than the ledger's own snapshot -- it was demonstrably staking after the ledger was captured, so `positions: 0` is a claim the ledger is not entitled to make.
+                 * @enum {string}
+                 */
+                reason: "tier_unavailable" | "snapshot_predates_stake_activity";
+                /** @description The LEDGER's own capture stamp, not this account's -- present even when the account has no rows in it, which is the case this field exists for. */
+                snapshot_captured_at: string | null;
+            };
             position_count: number;
             positions: {
                 hotkey: string;
@@ -24249,6 +24260,11 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "degraded": {
+                     *           "latest_stake_event_at": "2026-06-01T00:00:00.000Z",
+                     *           "reason": "tier_unavailable",
+                     *           "snapshot_captured_at": "2026-06-01T00:00:00.000Z"
+                     *         },
                      *         "position_count": 1,
                      *         "positions": [
                      *           {

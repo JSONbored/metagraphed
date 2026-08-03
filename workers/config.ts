@@ -139,6 +139,18 @@ export const EMISSION_DRIFT_CHECK_CRON = "9,39 * * * *";
 // a routine restart from a stall. Unique string, matching a wrangler.jsonc
 // entry -- dispatch keys on the LITERAL cron string.
 export const NEURONS_STALENESS_WATCHDOG_CRON = "6,21,36,51 * * * *";
+// #9273: the nominator-positions lane's alarm. That lane had NO watchdog and
+// no writer at all -- its box-side job died with the box and the route over it
+// kept serving a frozen 153k-row export, so the gap was found by a caller
+// noticing a stale `captured_at`, not by us. Twice hourly against a six-hour
+// threshold (src/nominator-positions-staleness-watchdog.ts explains why this
+// lane's threshold is hours where the neurons lane's is minutes): the tick is
+// one MAX() read, so a cheap cadence costs nothing and bounds detection well
+// inside the threshold. Minutes 8/38 tick on none of the crons in this file
+// and stay off the */5 raw-capture and */15 probe grids -- dispatch keys on
+// the LITERAL cron string, so this must be unique here as well as matching a
+// wrangler.jsonc `triggers.crons` entry.
+export const NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON = "8,38 * * * *";
 // #9208 retention for the chain-detail hot tier. The window only has to cover
 // the gap between chain tip and the decoded seam, so everything the lakehouse
 // has already absorbed is dropped -- see src/chain-detail-prune.ts for the

@@ -112,7 +112,10 @@ import {
   answerAccountSummary,
   ACCOUNT_SUMMARY_GAP_CODE,
 } from "../../src/account-summary-card.ts";
-import { buildAccountPositions } from "../../src/account-nominator-positions.ts";
+import {
+  buildAccountPositions,
+  unavailableAccountPositions,
+} from "../../src/account-nominator-positions.ts";
 import { buildAccountPositionHistory } from "../../src/account-position-history.ts";
 import { buildAccountIdentity } from "../../src/account-identity.ts";
 import { buildAccountIdentityHistory } from "../../src/account-identity-history.ts";
@@ -185,6 +188,7 @@ import {
   loadValidatorNominatorsColdTier,
 } from "../../src/account-feeds-cold-tier.ts";
 import { loadAccountPositionsColdTier } from "../../src/nominator-positions-cold-tier.ts";
+import { loadAccountPositionsD1 } from "../../src/nominator-positions-hot-tier.ts";
 import {
   loadSubnetHyperparamsColdTier,
   loadSubnetHyperparamsHistoryColdTier,
@@ -4368,10 +4372,16 @@ export async function handleAccountPortfolio(
 // hotkey/subnet, distinct from /portfolio above (hotkey-scoped). Reuses
 // METAGRAPH_NEURONS_SOURCE (not a dedicated flag) since this route's stake_tao
 // join reads the same neurons tier that flag already gates in production.
-// Postgres → lakehouse cold tier → schema-stable empty card: nominator_positions
-// never had a D1-era predecessor, so the lakehouse is the only tier behind the
-// retired Postgres one (the stake half of the join is read from D1 there --
-// see src/nominator-positions-cold-tier.ts).
+//
+// Postgres → D1 hot tier → lakehouse cold tier → LABELLED empty card (#9273).
+// The D1 leg is the live one: `nominator_positions` had no live writer at all
+// between the box's decommission and #9273, so the lakehouse leg (#9266) is a
+// frozen export whose `captured_at` can never advance. The hot leg declines
+// while its table is empty, which makes the cutover a property of the data
+// rather than of a deploy. The final card is `unavailableAccountPositions`,
+// not a bare `buildAccountPositions([], ...)`: when every tier declines, this
+// route's zero is a read failure, and it now says so instead of publishing a
+// confident `total_stake_alpha: 0`.
 export async function handleAccountPositions(
   request: Request,
   env: Env,
@@ -4383,8 +4393,9 @@ export async function handleAccountPositions(
       request,
       "METAGRAPH_NEURONS_SOURCE",
     )) as ReturnType<typeof buildAccountPositions> | null) ??
+    (await loadAccountPositionsD1(env, ss58)) ??
     (await loadAccountPositionsColdTier(env, ss58)) ??
-    buildAccountPositions([], new Map(), ss58);
+    unavailableAccountPositions(ss58);
   return accountEnvelopeResponse(
     request,
     {
