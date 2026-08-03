@@ -15,8 +15,23 @@ permissions:
   contents: read
 
 concurrency:
+  # Cancel-in-progress is right for a PR and wrong for main, so it is keyed off
+  # the event rather than set flat. On a PR, a new push makes the older run
+  # meaningless -- only the head commit is being merged. On MAIN, the run IS the
+  # post-merge verification, and cancelling it drops the only check that the
+  # merged tree is sound (same reasoning sync-contract-artifacts.yml gives for
+  # its own `false`, and every other push-to-main workflow here already agrees).
+  #
+  # This was not a theoretical gap. On 2026-08-03 merges landed every few
+  # minutes against a ~7-minute `test` job, so EVERY main run from 07:54 onward
+  # was cancelled by the next merge and not one completed. Main's status went
+  # blind in both directions: a genuinely failing tree (the projection-lanes
+  # count, #9200) sat unreported, and the merge that fixed it could not report
+  # green either. GitHub still supersedes a queued run when a newer one arrives,
+  # so this does not build an unbounded backlog -- it only stops killing a run
+  # that is already doing the work.
   group: validate-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Every contributor PR runs the FULL validation — there is NO reduced "UGC"
 # fast-lane. The old lane skipped the safety scans for "single community file"
