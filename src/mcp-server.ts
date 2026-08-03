@@ -1356,6 +1356,7 @@ import { buildAccountIdentityHistory } from "./account-identity-history.ts";
 import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.ts";
 import { loadSubnetBurn } from "./subnet-burn.ts";
 import { loadSubnetLease } from "./subnet-lease.ts";
+import { degradedChainEventsPayload } from "./chain-events-degraded.ts";
 import { loadSudoKey } from "./sudo-key.ts";
 import { loadNetworkParameters } from "./network-parameters.ts";
 import { loadUpgradeRadar } from "./upgrade-radar.ts";
@@ -2691,10 +2692,33 @@ async function loadSubnetEconomics(ctx: McpCtx, netuid: number) {
 // all-events tier has no per-table tryPostgresTier flag (unlike
 // account_events-backed routes such as get_subnet_ohlc), so this reaches
 // DATA_API unconditionally, same as list_chain_events above.
+// #9146: the degraded answer for a DATA_API-backed MCP read.
+//
+// These three loaders reach DATA_API directly (the all-events tier has no
+// per-table tryPostgresTier flag), and each threw on binding-absent, on a
+// rejected binding, and on any non-ok status. Once the Postgres box was
+// decommissioned that meant every call answered
+// `tier_unavailable (status 502)` -- verified live against production.
+//
+// The empty comes from the same map the REST proxy uses, so the two surfaces
+// cannot disagree about a route's empty, and carries #9120's in-band marker
+// because an MCP result has no headers to put it in. Null when the path is
+// unmapped, which keeps the throw for anything this map does not cover.
+function degradedDataApiRead(path: string): Row | null {
+  const payload = degradedChainEventsPayload(new URL(`https://d${path}`));
+  return payload
+    ? { ...payload, degraded: { reason: MCP_DEGRADED_REASON } }
+    : null;
+}
+
 async function loadSubnetOwnershipHistory(ctx: McpCtx, netuid: number) {
   await requireDataTierRateLimit(ctx);
   const dataApi = ctx.env?.DATA_API;
   if (!dataApi?.fetch) {
+    const degraded = degradedDataApiRead(
+      `/api/v1/subnets/${netuid}/ownership-history`,
+    );
+    if (degraded) return degraded;
     throw toolError(
       "tier_unavailable",
       "The chain-events tier is unavailable (the all-events data Worker is " +
@@ -2707,12 +2731,20 @@ async function loadSubnetOwnershipHistory(ctx: McpCtx, netuid: number) {
       new Request(`https://d/api/v1/subnets/${netuid}/ownership-history`),
     );
   } catch {
+    const degraded = degradedDataApiRead(
+      `/api/v1/subnets/${netuid}/ownership-history`,
+    );
+    if (degraded) return degraded;
     throw toolError(
       "tier_unavailable",
       "The chain-events tier could not be reached. Try again shortly.",
     );
   }
   if (!response.ok) {
+    const degraded = degradedDataApiRead(
+      `/api/v1/subnets/${netuid}/ownership-history`,
+    );
+    if (degraded) return degraded;
     throw toolError(
       "tier_unavailable",
       `The chain-events tier returned an error (status ${response.status}). ` +
@@ -2738,6 +2770,10 @@ async function loadSubnetConviction(ctx: McpCtx, netuid: number) {
   await requireDataTierRateLimit(ctx);
   const dataApi = ctx.env?.DATA_API;
   if (!dataApi?.fetch) {
+    const degraded = degradedDataApiRead(
+      `/api/v1/subnets/${netuid}/conviction`,
+    );
+    if (degraded) return degraded;
     throw toolError(
       "tier_unavailable",
       "The chain-events tier is unavailable (the all-events data Worker is " +
@@ -2750,12 +2786,20 @@ async function loadSubnetConviction(ctx: McpCtx, netuid: number) {
       new Request(`https://d/api/v1/subnets/${netuid}/conviction`),
     );
   } catch {
+    const degraded = degradedDataApiRead(
+      `/api/v1/subnets/${netuid}/conviction`,
+    );
+    if (degraded) return degraded;
     throw toolError(
       "tier_unavailable",
       "The chain-events tier could not be reached. Try again shortly.",
     );
   }
   if (!response.ok) {
+    const degraded = degradedDataApiRead(
+      `/api/v1/subnets/${netuid}/conviction`,
+    );
+    if (degraded) return degraded;
     throw toolError(
       "tier_unavailable",
       `The chain-events tier returned an error (status ${response.status}). ` +
@@ -2782,6 +2826,10 @@ async function loadSubnetLeaseHistory(ctx: McpCtx, netuid: number) {
   await requireDataTierRateLimit(ctx);
   const dataApi = ctx.env?.DATA_API;
   if (!dataApi?.fetch) {
+    const degraded = degradedDataApiRead(
+      `/api/v1/subnets/${netuid}/lease/history`,
+    );
+    if (degraded) return degraded;
     throw toolError(
       "tier_unavailable",
       "The chain-events tier is unavailable (the all-events data Worker is " +
@@ -2794,12 +2842,20 @@ async function loadSubnetLeaseHistory(ctx: McpCtx, netuid: number) {
       new Request(`https://d/api/v1/subnets/${netuid}/lease/history`),
     );
   } catch {
+    const degraded = degradedDataApiRead(
+      `/api/v1/subnets/${netuid}/lease/history`,
+    );
+    if (degraded) return degraded;
     throw toolError(
       "tier_unavailable",
       "The chain-events tier could not be reached. Try again shortly.",
     );
   }
   if (!response.ok) {
+    const degraded = degradedDataApiRead(
+      `/api/v1/subnets/${netuid}/lease/history`,
+    );
+    if (degraded) return degraded;
     throw toolError(
       "tier_unavailable",
       `The chain-events tier returned an error (status ${response.status}). ` +
