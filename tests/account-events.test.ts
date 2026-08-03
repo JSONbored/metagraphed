@@ -1105,11 +1105,11 @@ test("buildSubnetEventSummary keeps unknown future kinds in the other category",
   assert.equal(out.categories[0].category, "other");
 });
 
-test("loadAccountHistory is schema-stable when the D1 read yields nothing", async () => {
-  // D1 fully eliminated (2026-07-17): account_events_daily is Postgres-only
-  // now, so loadAccountHistory no longer takes a `d1` runner and always
-  // returns the cold/empty shape.
-  const out = await loadAccountHistory("5Hk", {
+test("loadAccountHistory is schema-stable when no tier can answer", async () => {
+  // With no bound lakehouse the cold tier declines (r2SqlQuery returns null on
+  // an unconfigured env), so this still yields the schema-stable empty shape --
+  // the property MCP and GraphQL depend on for their non-null contracts.
+  const out = await loadAccountHistory(null, "5Hk", {
     limit: 25,
     offset: 0,
   });

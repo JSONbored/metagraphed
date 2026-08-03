@@ -9,6 +9,7 @@ import {
   clampOffset,
 } from "../workers/request-params.ts";
 import { resolvePriceAtTx, type PriceBasis } from "./price-at-tx.ts";
+import { loadAccountHistoryColdTier } from "./account-history-cold-tier.ts";
 
 // Page-size ceiling, single-sourced in route-limits.ts so the contract's
 // published `maximum` and this route's enforcement cannot drift (#9127).
@@ -946,22 +947,46 @@ export const ACCOUNT_SUMMARY_RECENT_LIMIT = 10;
 // only reached on a tier miss, so it always returns the schema-stable empty
 // shape. Clamps limit to 1-1000 (default 100); clamps offset to 0-1 000 000.
 export async function loadAccountHistory(
+  env: Env | null | undefined,
   ss58: string,
   {
     limit,
     offset,
+    netuid,
+    from,
+    to,
+    cursor,
   }: {
     limit?: string | number | null;
     offset?: string | number | null;
+    netuid?: unknown;
+    from?: string | null;
+    to?: string | null;
+    cursor?: unknown;
   } = {},
 ): Promise<AccountHistoryResult> {
   const lim = clampLimit(limit, FEED_PAGINATION);
   const off = clampOffset(offset);
-  return buildAccountHistory([], ss58, {
+  // Until #9315 this ignored netuid/from/to/cursor entirely and returned the
+  // empty series unconditionally -- MCP and GraphQL passed all four and got a
+  // zeroed page that silently answered a different question than the one asked.
+  // They are forwarded now, and the lakehouse actually answers.
+  const cold = await loadAccountHistoryColdTier(env, ss58, {
     limit: lim,
     offset: off,
-    nextCursor: null,
+    netuid,
+    from,
+    to,
+    cursor,
   });
+  return (
+    cold ??
+    buildAccountHistory([], ss58, {
+      limit: lim,
+      offset: off,
+      nextCursor: null,
+    })
+  );
 }
 
 // loadAccountTransfers (the D1-querying account_events reader) was deleted
