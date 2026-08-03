@@ -22,6 +22,7 @@ import { describe, test } from "vitest";
 import {
   CHAIN_REGISTRATIONS_ROLLUP,
   CHAIN_SERVING_ROLLUP,
+  CHAIN_WEIGHTS_ROLLUP,
   loadChainEventRollup,
   safeColumnAlias,
   safeEventKind,
@@ -43,7 +44,7 @@ function fakeEngine(
     value === undefined ? fallback : value;
   const query = async (_env: unknown, sql: string) => {
     seen.push(sql);
-    return sql.includes("GROUP BY netuid")
+    return sql.includes("ORDER BY")
       ? pick(answers.rows, [
           { netuid: 1, announcements: 5, distinct_servers: 3 },
         ])
@@ -55,10 +56,11 @@ function fakeEngine(
     query,
     seen,
     /** Both halves run under Promise.all, so push order is not guaranteed --
-     * select by content rather than asserting on an index, which would be a
-     * claim about scheduling rather than about the SQL. */
-    rowsSql: () => seen.find((sql) => sql.includes("GROUP BY netuid")),
-    networkSql: () => seen.find((sql) => !sql.includes("GROUP BY netuid")),
+     * select by content rather than by index. Discriminating on ORDER BY, not
+     * on GROUP BY: the uid-keyed network total is itself a GROUP BY subquery,
+     * so that would misroute it. */
+    rowsSql: () => seen.find((sql) => sql.includes("ORDER BY")),
+    networkSql: () => seen.find((sql) => !sql.includes("ORDER BY")),
   };
 }
 
@@ -258,6 +260,57 @@ describe("the SQL it emits", () => {
       "the network total must be ungrouped, or it is a per-subnet count again",
     );
     assert.match(networkSql, /count\(DISTINCT hotkey\)/);
+  });
+
+  test("a uid-keyed network total counts distinct PAIRS, not distinct uids", async () => {
+    // The bug this replaced: an ungrouped COUNT(DISTINCT uid) counts distinct
+    // uid NUMBERS, which are capped near 256 and shared across every subnet --
+    // uid 5 on twenty subnets collapsed to one. It reported 254 in production
+    // where the true distinct-pair count was 1,280. A uid identifies a neuron
+    // only WITHIN a subnet, so the pair is the participant.
+    const engine = fakeEngine();
+    await loadChainEventRollup({} as never, CHAIN_WEIGHTS_ROLLUP, {
+      windowDays: 7,
+      now: NOW,
+      query: engine.query,
+    } as never);
+    const networkSql = engine.networkSql()!;
+    assert.match(
+      networkSql,
+      /GROUP BY netuid, uid/,
+      "a uid-keyed total must group by the pair",
+    );
+    assert.doesNotMatch(
+      networkSql,
+      /count\(DISTINCT uid\)/,
+      "counting distinct uid numbers is not a participant count",
+    );
+  });
+
+  test("a hotkey-keyed network total stays an ungrouped distinct count", async () => {
+    // A hotkey IS globally unique, so the pair form would be wrong here --
+    // it would count one hotkey once per subnet it serves on.
+    const engine = fakeEngine();
+    await loadChainEventRollup({} as never, CHAIN_SERVING_ROLLUP, {
+      windowDays: 7,
+      now: NOW,
+      query: engine.query,
+    } as never);
+    const networkSql = engine.networkSql()!;
+    assert.match(networkSql, /count\(DISTINCT hotkey\)/);
+    assert.doesNotMatch(networkSql, /GROUP BY/);
+  });
+
+  test("the uid form still reports the newest reading", async () => {
+    // The subquery changes where observed_at comes from; losing it would make
+    // every uid-keyed route report a null timestamp and look unmeasured.
+    const engine = fakeEngine();
+    await loadChainEventRollup({} as never, CHAIN_WEIGHTS_ROLLUP, {
+      windowDays: 7,
+      now: NOW,
+      query: engine.query,
+    } as never);
+    assert.match(engine.networkSql()!, /AS newest_observed/);
   });
 
   test("both halves carry the same kind and window predicate", async () => {

@@ -29,7 +29,7 @@ function fakeEngine(
     value === undefined ? fallback : value;
   const query = async (_env: unknown, sql: string) => {
     seen.push(sql);
-    return sql.includes("GROUP BY netuid")
+    return sql.includes("ORDER BY")
       ? pick(overrides.rows, NOW_ROWS)
       : pick(overrides.network, NETWORK);
   };
@@ -84,7 +84,7 @@ describe("the shared chain-serving loader", () => {
       limit: 20,
       query: engine.query,
     });
-    const rowsSql = engine.seen.find((sql) => sql.includes("GROUP BY netuid"))!;
+    const rowsSql = engine.seen.find((sql) => sql.includes("ORDER BY"))!;
     const sevenDayCutoff = /observed_at >= (\d+)/.exec(rowsSql)![1];
     const days = (Date.now() - Number(sevenDayCutoff)) / 86_400_000;
     assert.ok(

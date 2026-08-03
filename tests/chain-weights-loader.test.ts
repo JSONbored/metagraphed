@@ -30,7 +30,7 @@ function fakeEngine(
     value === undefined ? fallback : value;
   const query = async (_env: unknown, sql: string) => {
     seen.push(sql);
-    return sql.includes("GROUP BY netuid")
+    return sql.includes("ORDER BY")
       ? pick(overrides.rows, ROWS)
       : pick(overrides.network, NETWORK);
   };
@@ -39,8 +39,8 @@ function fakeEngine(
     seen,
     // Both halves run under Promise.all, so push order is not guaranteed:
     // select by content rather than asserting on scheduling.
-    rowsSql: () => seen.find((sql) => sql.includes("GROUP BY netuid")),
-    networkSql: () => seen.find((sql) => !sql.includes("GROUP BY netuid")),
+    rowsSql: () => seen.find((sql) => sql.includes("ORDER BY")),
+    networkSql: () => seen.find((sql) => !sql.includes("ORDER BY")),
   };
 }
 
@@ -54,8 +54,14 @@ describe("the WeightsSet identity", () => {
       limit: 20,
       query: engine.query,
     });
+    // The per-subnet rollup counts distinct uids WITHIN each netuid.
+    assert.match(engine.rowsSql()!, /count\(DISTINCT uid\)/, "must count uid");
+    // The network total counts distinct (netuid, uid) PAIRS instead, because a
+    // uid is unique only within a subnet -- see the rollup reader's own note.
+    assert.match(engine.networkSql()!, /GROUP BY netuid, uid/);
+    // Neither may count hotkey: it is NULL on every WeightsSet row, so it
+    // yields a well-formed card of zeros rather than an error.
     for (const sql of engine.seen) {
-      assert.match(sql, /count\(DISTINCT uid\)/, "must count uid");
       assert.doesNotMatch(
         sql,
         /count\(DISTINCT hotkey\)/,
