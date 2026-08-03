@@ -3388,33 +3388,60 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
         },
       },
     });
+    // DERIVED from the registry, not hand-listed. The previous literal map
+    // went stale the moment a lane was added -- #9195 registered
+    // blocks-summary and this assertion, not the lane, is what turned main
+    // red. Deriving it means a new lane is covered the day it lands, and the
+    // property actually worth asserting (every registered lane ran, reported a
+    // count, and wrote its own artifact key) is what gets checked.
+    const { PROJECTION_LANES } = await import("../src/projection-lanes.ts");
     assert.deepEqual(result, {
       ok: true,
-      lanes: {
-        "chain-transfers": 0,
-        "chain-stake-flow": 0,
-        "chain-activity": 0,
-        "chain-calls": 0,
-        "chain-fees": 0,
-        "chain-signers": 0,
-        "chain-alpha-volume": 0,
-        "chain-stake-transfers": 0,
-        "chain-transfer-pairs": 0,
-        "chain-stake-moves": 0,
-      },
+      lanes: Object.fromEntries(PROJECTION_LANES.map((lane) => [lane.name, 0])),
     });
-    assert.deepEqual(puts, [
-      "metagraph/projections/chain-transfers.json",
-      "metagraph/projections/chain-stake-flow.json",
-      "metagraph/projections/chain-activity.json",
-      "metagraph/projections/chain-calls.json",
-      "metagraph/projections/chain-fees.json",
-      "metagraph/projections/chain-signers.json",
-      "metagraph/projections/chain-alpha-volume.json",
-      "metagraph/projections/chain-stake-transfers.json",
-      "metagraph/projections/chain-transfer-pairs.json",
-      "metagraph/projections/chain-stake-moves.json",
-    ]);
+    // Derived from the lane NAME, not from artifactKey -- comparing puts to
+    // the same field the runner read would move both sides together and catch
+    // nothing. Every current lane's key is exactly this shape, so a key that
+    // stops matching its own name is either a typo or a writer/reader pair
+    // that has drifted apart.
+    assert.deepEqual(
+      puts,
+      PROJECTION_LANES.map((lane) => `metagraph/projections/${lane.name}.json`),
+      "every registered lane must write the artifact key its name implies, in registry order",
+    );
+  });
+
+  test("an empty result is an answer; only an unanswerable query declines", async () => {
+    // The distinction main got wrong (#9195): blocks-summary treated zero rows
+    // as a failure, so a successful-but-empty tick reported ok:false and the
+    // runner could not tell a lane that declined from one that broke. Both
+    // halves are asserted here because fixing one direction alone would let
+    // the other regress silently.
+    const { PROJECTION_LANES } = await import("../src/projection-lanes.ts");
+    const lane = PROJECTION_LANES.find(
+      (entry) => entry.name === "blocks-summary",
+    );
+    assert.ok(lane, "blocks-summary must be registered");
+
+    const withResponse = async (body: unknown) => {
+      globalThis.fetch = (async () =>
+        ({
+          ok: true,
+          status: 200,
+          json: async () => body,
+        }) as unknown as Response) as unknown as typeof fetch;
+      return lane.compute({ R2_SQL_TOKEN: "cfut_test" } as never);
+    };
+
+    // A query that SUCCEEDS with no rows: an answer, and a well-formed body.
+    const empty = await withResponse({ success: true, result: { rows: [] } });
+    assert.ok(empty, "an empty result must produce a body, not a decline");
+    assert.equal(empty.row_count, 0);
+
+    // A query that could not be answered at all: still declines, so a failed
+    // compute never overwrites a good artifact.
+    const failed = await withResponse({ success: false, errors: ["boom"] });
+    assert.equal(failed, null, "an unanswerable query must still decline");
   });
 
   test("a failed lane reports ok:false without aborting the tick or the sibling lane", async () => {

@@ -785,7 +785,12 @@ async function computeBlocksSummary(
     `SELECT ${BLOCKS_SUMMARY_READ_COLUMNS} FROM chain.blocks ` +
       `ORDER BY block_number DESC LIMIT ${BLOCKS_SUMMARY_SCAN_CAP}`,
   );
-  if (rows === null || rows.length === 0) return null;
+  // null ONLY when the lakehouse could not answer -- the contract every other
+  // lane follows. An empty result is an ANSWER, not a failure: treating it as
+  // one made the whole tick report ok:false, because the runner cannot tell a
+  // lane that declined from a lane that broke. buildBlocksSummary already has
+  // an explicit zero-block branch, so the empty body is well-formed.
+  if (rows === null) return null;
   return {
     schema_version: 1,
     generated_at: new Date(generatedAt).toISOString(),
