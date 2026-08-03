@@ -109,8 +109,9 @@
   },
   // #8600: the TAO/USD index tick (ADR 0025 decision 5's 60-second cadence,
   // which is also Cloudflare's finest cron granularity). This Worker's only
-  // cron, and it is here rather than on the api Worker because HYPERDRIVE is
-  // bound here -- see TAO_USD_INDEX_CRON in workers/config.ts.
+  // cron. (Historically here because HYPERDRIVE was bound here; the index
+  // itself lives in D1, so the placement outlived the binding.) See
+  // TAO_USD_INDEX_CRON in workers/config.ts.
   //
   // ETH_RPC_URL is a Worker SECRET, not a var, and not in this file:
   //
@@ -128,19 +129,20 @@
     "crons": ["* * * * *"],
   },
 
-  "hyperdrive": [
-    {
-      "binding": "HYPERDRIVE",
-      "id": "2e989d5380044b57b57cb6481c18487e",
-      "localConnectionString": "postgresql://postgres:postgres@localhost:5432/metagraphed",
-    },
-  ],
+  // HYPERDRIVE is gone with the box (2026-08-03): the Postgres it fronted was
+  // wiped, and every handler already gates on `env.HYPERDRIVE?.connectionString`
+  // -- but with the binding present, each sync PAID for the dead leg: the
+  // neurons sync wrote D1 successfully and then 502'd "write failed" against a
+  // connection string pointing at destroyed hardware, which made every
+  // refresh-metagraph run read as a failure while the data was in fact
+  // landing. Unbound, the writes are D1-complete 200s and the reads fall
+  // through to the D1/lakehouse tiers, which is the post-wipe design.
   // The SAME bounded D1 database the main Worker binds under the same name
   // (wrangler.jsonc): registry + observations + user-state -- accounts, API
   // keys, usage accounting, alert triggers, push subscriptions, and the
   // TAO/USD index (migrations/d1/0004_user_state.sql). Chain-scale data
-  // (blocks/extrinsics/chain_events/...) never goes to D1; those reads stay
-  // on HYPERDRIVE above.
+  // (blocks/extrinsics/chain_events/...) never goes to D1; those reads live
+  // in the R2 lakehouse cold tier.
   "d1_databases": [
     {
       "binding": "METAGRAPH_HEALTH_DB",
