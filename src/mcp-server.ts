@@ -6198,6 +6198,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         board,
         limit,
         observedAt: await mcpObservedAt(ctx),
+        db: ctx.env.METAGRAPH_HEALTH_DB,
       });
     },
   },
@@ -6336,6 +6337,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         netuids,
         dimensions,
         observedAt,
+        db: ctx.env.METAGRAPH_HEALTH_DB,
       });
     },
   },

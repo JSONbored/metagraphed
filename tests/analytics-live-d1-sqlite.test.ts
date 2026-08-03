@@ -17,6 +17,9 @@ import {
   loadSubnetPercentiles,
   loadSubnetTrajectory,
   loadSubnetUptime,
+  loadLeaderboardD1Rows,
+  loadRegistryLeaderboards,
+  loadCompareSubnets,
   type ObservationsReadDb,
 } from "../src/analytics-live.ts";
 import { loadEconomicsTrends } from "../src/economics-trends.ts";
@@ -351,4 +354,155 @@ test("loadEconomicsTrends aggregates snapshots per day, windowed and unwindowed"
   );
   const noDb = await loadEconomicsTrends({ windowLabel: "30d" });
   assert.deepEqual(noDb.rows, []);
+});
+
+// --- Registry leaderboards + compare, resurrected 2026-08-03 -----------------
+// These four reads were deleted in #6455 and skipped by #9061's resurrection,
+// so they had never been executed against a real database. Running them here
+// is the point: surfaceStatusAvgLatencySql and dailyLatencyColumns interpolate
+// SQL fragments, and a fragment that no longer parses only fails at execution.
+
+function seedStatus(over: Record<string, unknown> = {}) {
+  const row = {
+    surface_id: `sn${String(over.netuid ?? 8)}-${String(over.kind ?? "docs")}`,
+    surface_key: null,
+    netuid: 8,
+    kind: "docs",
+    url: "https://example.com/docs",
+    provider: null,
+    status: "ok",
+    classification: null,
+    latency_ms: 120,
+    status_code: 200,
+    last_checked: Date.now(),
+    last_ok: Date.now(),
+    consecutive_failures: 0,
+    updated_at: Date.now(),
+    ...over,
+  };
+  db.prepare(
+    `INSERT INTO surface_status
+     (surface_id, surface_key, netuid, kind, url, provider, status, classification,
+      latency_ms, status_code, last_checked, last_ok, consecutive_failures, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    ...([
+      row.surface_id,
+      row.surface_key,
+      row.netuid,
+      row.kind,
+      row.url,
+      row.provider,
+      row.status,
+      row.classification,
+      row.latency_ms,
+      row.status_code,
+      row.last_checked,
+      row.last_ok,
+      row.consecutive_failures,
+      row.updated_at,
+    ] as never[]),
+  );
+}
+
+test("loadLeaderboardD1Rows executes all four reads against a real database", async () => {
+  seedStatus({ surface_id: "a", netuid: 3, status: "ok", latency_ms: 40 });
+  seedStatus({ surface_id: "b", netuid: 3, status: "failed", latency_ms: 900 });
+  seedStatus({
+    surface_id: "c",
+    netuid: 3,
+    kind: "subtensor-rpc",
+    status: "ok",
+    latency_ms: 25,
+  });
+  seedSnapshot({ netuid: 3, completeness_score: 50 });
+  seedUptimeDay({ surface_id: "u1", netuid: 3, samples: 10, ok_count: 9 });
+
+  const out = await loadLeaderboardD1Rows(readDb());
+
+  const health = out.healthRows.find((r) => Number(r.netuid) === 3)!;
+  assert.equal(Number(health.total), 3);
+  assert.equal(Number(health.ok_count), 2);
+  // Averages OK probes only -- the failed 900ms row must not drag the mean.
+  assert.ok(Number(health.avg_latency_ms) < 100);
+
+  // fastest-rpc reads only the rpc/wss kinds.
+  assert.deepEqual(
+    out.rpcRows.map((r) => [Number(r.netuid), Number(r.min_latency_ms)]),
+    [[3, 25]],
+  );
+  assert.equal(out.growthSamples.length, 1);
+  assert.equal(Number(out.reliabilityRows[0].ok_count), 9);
+});
+
+test("loadLeaderboardD1Rows returns empty sets without a binding", async () => {
+  const out = await loadLeaderboardD1Rows(null);
+  assert.deepEqual(out.healthRows, []);
+  assert.deepEqual(out.rpcRows, []);
+  assert.deepEqual(out.growthSamples, []);
+  assert.deepEqual(out.reliabilityRows, []);
+});
+
+test("loadRegistryLeaderboards ranks the healthiest board from D1", async () => {
+  seedStatus({ surface_id: "a", netuid: 3, status: "ok" });
+  seedStatus({ surface_id: "b", netuid: 7, status: "failed" });
+  const data = (await loadRegistryLeaderboards({
+    board: "healthiest",
+    db: readDbD1Shaped(),
+  })) as { boards: Record<string, Array<Record<string, unknown>>> };
+  assert.deepEqual(
+    data.boards.healthiest.map((entry) => entry.netuid),
+    [3, 7],
+  );
+});
+
+test("loadCompareSubnets filters surface_status in memory, binding no parameters", async () => {
+  seedStatus({ surface_id: "a", netuid: 3, status: "ok" });
+  seedStatus({ surface_id: "b", netuid: 7, status: "ok" });
+  seedStatus({ surface_id: "c", netuid: 9, status: "ok" });
+  const bound: unknown[][] = [];
+  const spy: ObservationsReadDb = {
+    prepare(sql: string) {
+      return {
+        bind(...values: unknown[]) {
+          bound.push(values);
+          return { all: async () => db.prepare(sql).all() as unknown };
+        },
+      };
+    },
+  };
+  const data = (await loadCompareSubnets({
+    netuids: [3, 9],
+    dimensions: ["health"],
+    db: spy,
+  })) as { subnets?: Array<Record<string, unknown>> };
+
+  // No bound parameters at all: /api/v1/compare accepts up to 128 netuids and
+  // D1's Workers binding caps a statement at 100, so the netuid list must
+  // never become `IN (?, ?, ...)`.
+  assert.deepEqual(bound, [[]]);
+  const netuids = (data.subnets ?? [])
+    .map((s) => Number(s.netuid))
+    .filter((n) => Number.isFinite(n));
+  assert.deepEqual(netuids.sort(), [3, 9]);
+});
+
+test("loadCompareSubnets skips the D1 read when health is not requested", async () => {
+  let prepared = 0;
+  const spy: ObservationsReadDb = {
+    prepare(sql: string) {
+      prepared += 1;
+      return {
+        bind() {
+          return { all: async () => db.prepare(sql).all() as unknown };
+        },
+      };
+    },
+  };
+  await loadCompareSubnets({
+    netuids: [3],
+    dimensions: ["economics"],
+    db: spy,
+  });
+  assert.equal(prepared, 0);
 });

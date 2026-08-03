@@ -3618,6 +3618,7 @@ const rootValue = {
       netuids: parsedNetuids,
       dimensions: parsedDimensions!,
       observedAt: await loadObservedAt(context),
+      db: context.env.METAGRAPH_HEALTH_DB,
     });
   },
 

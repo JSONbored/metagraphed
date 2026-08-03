@@ -1330,6 +1330,33 @@ describe("analytics edge cache", () => {
     }
   });
 
+  test("a D1-served leaderboards payload IS cached", async () => {
+    // The other half of the resurrection (#9146): before it, every
+    // leaderboards response was barred from the edge cache unconditionally
+    // because its operational boards were always empty. With a working
+    // binding the response is a real read and must cache like any other.
+    originalCaches = globalWithCaches.caches;
+    const cache = mockCaches();
+    cache.install();
+    const queries: Row[] = [];
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/registry/leaderboards"),
+      mockEnv(analyticsEnv(queries)) as unknown as Env,
+      ctx,
+    );
+    await Promise.resolve();
+    assert.equal(res.status, 200);
+    assert.ok(
+      queries.some((q) => String(q.sql).includes("FROM surface_status")),
+      "the leaderboards route must actually read D1",
+    );
+    assert.equal(
+      cache.putKeys.length,
+      1,
+      "a D1-served leaderboards payload is cacheable",
+    );
+  });
+
   test("NO-CACHE-ON-ERROR: an unbound D1 binding with a warm snapshot stamp is not cached", async () => {
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
