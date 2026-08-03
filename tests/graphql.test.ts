@@ -5880,6 +5880,131 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
     assert.equal(body.data, null);
   });
 
+  // #9146's cold-tier lane. The SubnetOwnerChanged stream is in the lakehouse
+  // and current, so a DATA_API that cannot answer is no longer the end of the
+  // road for this ONE path -- GraphQL reaches the same
+  // loadSubnetOwnershipHistoryColdTier reader REST reaches through
+  // dataApiFailureResponse and MCP through loadSubnetOwnershipHistory.
+  describe("the lakehouse behind a failed DATA_API", () => {
+    const TOKEN_ENV = { R2_SQL_TOKEN: "cfut_test" };
+    // Real-shaped SubnetOwnerChanged args: hex pubkey byte arrays, and `args`
+    // itself a JSON STRING, which is how Iceberg stores it (postgres.js hands
+    // the same cell back already parsed).
+    const OLD_COLDKEY_BYTES = [
+      [
+        230, 177, 94, 10, 88, 222, 149, 217, 176, 218, 228, 3, 237, 17, 117,
+        251, 19, 70, 95, 132, 123, 114, 171, 235, 189, 66, 130, 2, 183, 175,
+        143, 88,
+      ],
+    ];
+    const NEW_COLDKEY_BYTES = [
+      [
+        109, 111, 100, 108, 115, 117, 98, 116, 101, 110, 115, 114, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      ],
+    ];
+    const NEW_COLDKEY_SS58 = "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F";
+
+    function withLakehouse(rows: Row[], fn: AnyFn) {
+      const orig = globalThis.fetch;
+      globalThis.fetch = (async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows } }),
+      })) as unknown as typeof fetch;
+      return Promise.resolve(fn()).finally(() => {
+        globalThis.fetch = orig;
+      });
+    }
+
+    const OWNERSHIP_ROWS = [
+      {
+        pallet: "SubtensorModule",
+        method: "SubnetOwnerChanged",
+        block_number: 8_587_754,
+        observed_at: 1_783_600_000_000,
+        args: JSON.stringify({
+          netuid: 7,
+          old_coldkey: OLD_COLDKEY_BYTES,
+          new_coldkey: NEW_COLDKEY_BYTES,
+        }),
+      },
+    ];
+
+    test("a non-OK DATA_API serves real rows instead of the error", async () => {
+      await withLakehouse(OWNERSHIP_ROWS, async () => {
+        const env = {
+          ...TOKEN_ENV,
+          DATA_API: dataApi(new Response("err", { status: 502 })),
+        };
+        const { status, body } = await gql(
+          "{ subnet_ownership_history(netuid: 7) { netuid count ownership_changes } }",
+          env as unknown as Env,
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        const r = body.data.subnet_ownership_history;
+        assert.equal(r.netuid, 7);
+        assert.equal(r.count, 1);
+        assert.equal(r.ownership_changes[0].new_coldkey, NEW_COLDKEY_SS58);
+      });
+    });
+
+    test("a missing DATA_API binding reaches the lakehouse too", async () => {
+      await withLakehouse(OWNERSHIP_ROWS, async () => {
+        const { status, body } = await gql(
+          "{ subnet_ownership_history(netuid: 7) { count } }",
+          TOKEN_ENV as unknown as Env,
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        assert.equal(body.data.subnet_ownership_history.count, 1);
+      });
+    });
+
+    test("a subnet the stream never names is an empty list, not an error", async () => {
+      await withLakehouse(OWNERSHIP_ROWS, async () => {
+        const env = {
+          ...TOKEN_ENV,
+          DATA_API: dataApi(new Response("err", { status: 502 })),
+        };
+        const { body } = await gql(
+          "{ subnet_ownership_history(netuid: 18) { count ownership_changes } }",
+          env as unknown as Env,
+        );
+        assert.equal(body.errors, undefined);
+        assert.equal(body.data.subnet_ownership_history.count, 0);
+        assert.deepEqual(
+          body.data.subnet_ownership_history.ownership_changes,
+          [],
+        );
+      });
+    });
+
+    // The wrapper must not over-apply: conviction needs live UnlockRate/
+    // MaturityRate RPC reads and lease/history reads a stream with no reader,
+    // so both keep the error a failed DATA_API has always produced even with
+    // the lakehouse fully configured.
+    test("conviction and lease_history keep their error — no reader covers them", async () => {
+      await withLakehouse(OWNERSHIP_ROWS, async () => {
+        for (const field of ["subnet_conviction", "subnet_lease_history"]) {
+          const env = {
+            ...TOKEN_ENV,
+            DATA_API: {
+              fetch: async () => new Response("err", { status: 502 }),
+            },
+          };
+          const { body } = await gql(
+            `{ ${field}(netuid: 7) { count } }`,
+            env as unknown as Env,
+          );
+          assert.ok(body.errors?.length, `${field} should still error`);
+          assert.equal(body.data, null);
+        }
+      });
+    });
+  });
+
   test("surfaces a non-OK DATA_API response as a GraphQL error", async () => {
     const env = { DATA_API: dataApi(new Response("err", { status: 502 })) };
     const { body } = await gql(
@@ -10204,6 +10329,16 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
   function dataApi(response: Row) {
     return { fetch: async () => response };
   }
+  // The lakehouse is reached over plain HTTP by src/r2-sql.ts, so stubbing
+  // globalThis.fetch is how a cold-tier answer is injected here — same
+  // one-test-then-restore shape as withFetchStub above.
+  function withOhlcFetchStub(stub: AnyFn, fn: AnyFn) {
+    const orig = globalThis.fetch;
+    globalThis.fetch = stub as unknown as typeof fetch;
+    return Promise.resolve(fn()).finally(() => {
+      globalThis.fetch = orig;
+    });
+  }
   const POOL = {
     "/metagraph/economics.json": {
       subnets: [
@@ -10279,7 +10414,12 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
     assert.equal(o.root_excluded, false);
   });
 
-  test("subnet_ohlc forwards interval + days and returns tier candles", async () => {
+  // The tier body here is data-api's OWN { data, generatedAt } envelope (see
+  // its /ohlc branch), not the flat card this test used to feed. The flat
+  // shape was a mock built from what the resolver assumed rather than from
+  // what the producer sends, and it hid the resolver reading `candles` off the
+  // envelope -- so every real tier answer became an empty series.
+  test("subnet_ohlc forwards interval + days and unwraps the tier's { data } envelope", async () => {
     let capturedUrl: URL | undefined;
     const env = {
       METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
@@ -10287,23 +10427,26 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
         fetch: async (req: Request) => {
           capturedUrl = new URL(req.url);
           return Response.json({
-            schema_version: 1,
-            netuid: 7,
-            interval: "1d",
-            root_excluded: false,
-            candles: [
-              {
-                bucket_start: 1770000000000,
-                bucket_start_iso: "2026-02-02T00:00:00.000Z",
-                open: 0.1,
-                high: 0.2,
-                low: 0.09,
-                close: 0.15,
-                volume_alpha: 100,
-                volume_tao: 12,
-                event_count: 4,
-              },
-            ],
+            data: {
+              schema_version: 1,
+              netuid: 7,
+              interval: "1d",
+              root_excluded: false,
+              candles: [
+                {
+                  bucket_start: 1770000000000,
+                  bucket_start_iso: "2026-02-02T00:00:00.000Z",
+                  open: 0.1,
+                  high: 0.2,
+                  low: 0.09,
+                  close: 0.15,
+                  volume_alpha: 100,
+                  volume_tao: 12,
+                  event_count: 4,
+                },
+              ],
+            },
+            generatedAt: "2026-02-02T01:00:00.000Z",
           });
         },
       },
@@ -10321,6 +10464,108 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
     assert.equal(o.interval, "1d");
     assert.equal(o.candles[0].bucket_start, 1770000000000);
     assert.equal(o.candles[0].event_count, 4);
+  });
+
+  // The other side of the envelope contract: an ENVELOPE-LESS body is not an
+  // answer. Reading such a body as the payload is precisely the bug above, and
+  // this pins it -- a tier that returns a bare card contributes nothing and the
+  // resolver goes on to its next tier.
+  test("subnet_ohlc does not read candles off an envelope-less tier body", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: {
+        fetch: async () =>
+          Response.json({
+            schema_version: 1,
+            netuid: 7,
+            interval: "1h",
+            root_excluded: false,
+            candles: [{ bucket_start: 1770000000000, close: 0.15 }],
+          }),
+      },
+    };
+    const { status, body } = await gql(
+      "{ subnet_ohlc(netuid: 7) { netuid interval candles { bucket_start } } }",
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_ohlc.candles, []);
+  });
+
+  // #9146's cold-tier lane, reached through the SAME loadSubnetOhlcColdTier
+  // reader REST's handleSubnetOhlc and MCP's get_subnet_ohlc use -- so a
+  // Postgres tier that is gone no longer means GraphQL alone serves silence
+  // over trades that are in the lakehouse.
+  test("subnet_ohlc falls to the lakehouse when the Postgres tier misses", async () => {
+    const bucketStart = 1770000000000;
+    let capturedQuery = "";
+    await withOhlcFetchStub(
+      async (_url: string, init: RequestInit) => {
+        capturedQuery = JSON.parse(String(init.body)).query;
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            result: {
+              rows: [
+                {
+                  bucket_start: bucketStart,
+                  open_price: 0.1,
+                  close_price: 0.15,
+                  high_price: 0.2,
+                  low_price: 0.09,
+                  volume_alpha: 100,
+                  volume_tao: 12,
+                  event_count: 4,
+                  last_observed: bucketStart + 900_000,
+                },
+              ],
+            },
+          }),
+        };
+      },
+      async () => {
+        // No METAGRAPH_ACCOUNT_EVENTS_SOURCE, so tryPostgresTier declines
+        // without forwarding and the lakehouse is the tier that answers.
+        const env = { R2_SQL_TOKEN: "cfut_test" };
+        const { status, body } = await gql(
+          '{ subnet_ohlc(netuid: 7, interval: "1d", days: 30) { netuid interval candles { bucket_start close event_count } } }',
+          env as unknown as Env,
+        );
+        assert.equal(status, 200);
+        assert.equal(body.errors, undefined);
+        const o = body.data.subnet_ohlc;
+        assert.equal(o.netuid, 7);
+        assert.equal(o.interval, "1d");
+        assert.equal(o.candles.length, 1);
+        assert.equal(o.candles[0].bucket_start, bucketStart);
+        assert.equal(o.candles[0].close, 0.15);
+        assert.equal(o.candles[0].event_count, 4);
+        // The resolver's validated arguments reach the reader, so ?days= is
+        // load-bearing on this tier rather than travelling only in a URL.
+        assert.match(capturedQuery, /FROM chain\.account_events/);
+        assert.match(capturedQuery, /WHERE netuid = 7 /);
+      },
+    );
+  });
+
+  // A lakehouse that declines (here: not configured at all, the local/CI and
+  // self-hosted case) leaves the schema-stable empty in place, never an error.
+  test("subnet_ohlc keeps its empty card when the lakehouse declines too", async () => {
+    const env = {
+      METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
+      DATA_API: { fetch: async () => new Response("nope", { status: 503 }) },
+    };
+    const { status, body } = await gql(
+      "{ subnet_ohlc(netuid: 7) { netuid interval candles { bucket_start } root_excluded } }",
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.deepEqual(body.data.subnet_ohlc.candles, []);
+    assert.equal(body.data.subnet_ohlc.root_excluded, false);
   });
 
   test("subnet_ohlc rejects an unsupported interval", async () => {

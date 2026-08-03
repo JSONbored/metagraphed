@@ -319,6 +319,8 @@ import {
   DEFAULT_OHLC_WINDOW_DAYS,
   MAX_OHLC_WINDOW_DAYS,
 } from "./subnet-ohlc.ts";
+import { loadSubnetOhlcColdTier } from "./subnet-ohlc-cold-tier.ts";
+import { coldTierChainEventsPayload } from "./chain-events-degraded.ts";
 import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.ts";
 import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,
@@ -1468,11 +1470,42 @@ function postgresTierRequest(
 // call above, there is no D1 predecessor and so no per-table flag to gate on
 // (workers/api.ts forwards these three paths to DATA_API unconditionally).
 // Mirrors MCP's own loadSubnetOwnershipHistory/loadSubnetConviction/
-// loadSubnetLeaseHistory proxies (src/mcp-server.ts) byte-for-byte;
-// reimplemented here rather than imported since mcp-server.ts already
-// imports this file's handleGraphQLRequest and importing back would be
-// circular.
+// loadSubnetLeaseHistory proxies (src/mcp-server.ts) byte-for-byte --
+// including their lakehouse fallback, see the wrapper below; reimplemented
+// here rather than imported since mcp-server.ts already imports this file's
+// handleGraphQLRequest and importing back would be circular.
 async function fetchAllEventsTier(
+  context: GqlContext,
+  pathname: string,
+): Promise<Row | null> {
+  try {
+    return await fetchAllEventsTierFromDataApi(context, pathname);
+  } catch (err) {
+    // The lakehouse before the error: a DATA_API failure is only the END of the
+    // road for a path with no cold-tier reader. /subnets/{netuid}/ownership-
+    // history has one, and it is the SAME reader REST reaches through
+    // dataApiFailureResponse and MCP through loadSubnetOwnershipHistory, so the
+    // three surfaces cannot disagree about a subnet's transfers.
+    //
+    // Layered around the reader rather than threaded into its three throw
+    // sites, mirroring MCP's own split for the same reason: one check replaces
+    // three, and DATA_API stays the primary tier. A path the reader does not
+    // cover, or a lakehouse that declines, keeps the original error.
+    //
+    // The origin is synthetic (as it is in MCP's call) because
+    // coldTierChainEventsPayload matches on the PATH alone -- unlike
+    // postgresTierRequest, this needs no inbound request to key off, so the
+    // fallback cannot itself fail on a context that has none.
+    const cold = await coldTierChainEventsPayload(
+      context.env,
+      new URL(`https://d${pathname}`),
+    );
+    if (cold) return cold;
+    throw err;
+  }
+}
+
+async function fetchAllEventsTierFromDataApi(
   context: GqlContext,
   pathname: string,
 ): Promise<Row | null> {
@@ -3914,12 +3947,27 @@ const rootValue = {
     const params = new URLSearchParams();
     params.set("interval", intervalParam);
     params.set("days", String(daysParam));
+    // The tier serves this route inside a { data, generatedAt } envelope (same
+    // as subnet_volume above, unlike the flat cards), so unwrap it before
+    // falling back. Reading the envelope as the payload made `candles` always
+    // undefined, so this resolver answered with an empty series even when the
+    // tier had returned a full one.
+    const tier = await tryPostgresTier(
+      context.env,
+      postgresTierRequest(context, `/api/v1/subnets/${netuid}/ohlc`, params),
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    );
     const data =
-      ((await tryPostgresTier(
-        context.env,
-        postgresTierRequest(context, `/api/v1/subnets/${netuid}/ohlc`, params),
-        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) as Row | null) ??
+      (tier?.data as Row | undefined) ??
+      // The SAME lakehouse reader REST's handleSubnetOhlc and MCP's
+      // get_subnet_ohlc fall to, so the three surfaces cannot disagree about a
+      // subnet's candles.
+      (
+        await loadSubnetOhlcColdTier(context.env, netuid, {
+          interval: intervalParam,
+          days: daysParam,
+        })
+      )?.data ??
       buildSubnetOhlc([], netuid, { interval: intervalParam });
     return {
       schema_version: data.schema_version ?? 1,
