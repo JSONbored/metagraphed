@@ -24,12 +24,13 @@ const SS58 = "5E2LP6EnZ54m3wS8s1yPvD5c3xo71kQroBw7aUVK32TKeZ5u";
 
 const AGG = {
   c: 6,
-  sc: 2,
   fb: 8_700_000,
   lb: 8_760_000,
   fo: 1_784_000_000_000,
   lo: 1_785_000_000_000,
 };
+/** subnet_count arrives from its own GROUP BY subquery, never from AGG. */
+const SUBNETS = { sc: 2 };
 const KINDS = [
   { kind: "AxonServed", count: 4 },
   { kind: "NeuronRegistered", count: 2 },
@@ -38,10 +39,16 @@ const RECENT = [
   { block_number: 8_760_000, event_kind: "AxonServed", netuid: 55 },
 ];
 
-/** Answers each of the four reads by the shape of its SQL. */
+/**
+ * Answers each of the five reads by the clause only it can have.
+ *
+ * Discriminating loosely (e.g. on "GROUP BY", which three of them contain)
+ * would silently answer one fixture to several different questions.
+ */
 function fakeEngine(
   overrides: {
     agg?: Row[] | null;
+    subnets?: Row[] | null;
     kinds?: Row[] | null;
     probe?: Row[] | null;
     recent?: Row[] | null;
@@ -54,8 +61,9 @@ function fakeEngine(
     seen.push(sql);
     if (sql.includes("GROUP BY event_kind"))
       return pick(overrides.kinds, KINDS);
-    if (sql.includes("count(DISTINCT netuid)"))
-      return pick(overrides.agg, [AGG]);
+    if (sql.includes("count(*) AS sc"))
+      return pick(overrides.subnets, [SUBNETS]);
+    if (sql.includes("min(block_number)")) return pick(overrides.agg, [AGG]);
     if (sql.includes("count(*) AS c FROM ("))
       return pick(overrides.probe, [{ c: 6 }]);
     return pick(overrides.recent, RECENT);
@@ -64,7 +72,7 @@ function fakeEngine(
     query,
     seen,
     probe: () => seen.find((s) => s.includes("count(*) AS c FROM ("))!,
-    agg: () => seen.find((s) => s.includes("count(DISTINCT netuid)"))!,
+    agg: () => seen.find((s) => s.includes("min(block_number)"))!,
   };
 }
 
@@ -139,15 +147,42 @@ describe("loadAccountSummaryColdTier", () => {
     }
   });
 
+  test("no read anywhere uses COUNT(DISTINCT)", async () => {
+    // The bug that made #9254 ship and still serve zeros. R2 SQL REJECTS an
+    // ungrouped count(DISTINCT) at this scale --
+    //
+    //   40015: scan budget exceeded: scanning too much data for
+    //   count(DISTINCT) without GROUP BY
+    //
+    // -- and being inside a capped CTE does not save it, because the planner
+    // still evaluates the DISTINCT against the underlying scan. A rejected
+    // query makes the whole read decline, so the card kept answering zeros
+    // beside detail routes serving real rows. subnet_count has to come from a
+    // GROUP BY subquery.
+    const engine = fakeEngine();
+    await loadAccountSummaryColdTier({} as never, SS58, {
+      query: engine.query as never,
+    });
+    for (const sql of engine.seen) {
+      assert.doesNotMatch(
+        sql,
+        /count\(\s*DISTINCT/i,
+        `the engine rejects this at production scale: ${sql}`,
+      );
+    }
+  });
+
   test("declines when any half misses", async () => {
     // A card mixing measured aggregates with a zeroed probe would silently flip
     // event_scan_capped and publish a window floor as first_seen_at.
     for (const miss of [
       { agg: null },
+      { subnets: null },
       { kinds: null },
       { probe: null },
       { recent: null },
       { agg: [] },
+      { subnets: [] },
       { probe: [] },
     ]) {
       const engine = fakeEngine(miss);
