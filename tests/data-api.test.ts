@@ -1068,7 +1068,12 @@ test("validator-nominator-counts-sync is disabled (503) when VALIDATOR_NOMINATOR
   expect(res.status).toBe(503);
 });
 
-test("validator-nominator-counts-sync answers 503 -- the Postgres tier it wrote to is gone (#9193)", async () => {
+test("validator-nominator-counts-sync answers 503 when no store is bound (#9146)", async () => {
+  // Was "the Postgres tier it wrote to is gone (#9193)". The lane is no longer
+  // retired -- migration 0012 gave it a D1 store and the handler writes there
+  // (tests/data-api-validator-nominator-counts-d1.test.ts covers the write
+  // against a real database). What this env pins is the remaining 503: an
+  // authenticated, well-formed request with NOTHING bound to write to.
   const res = await worker.fetch(
     new Request("https://d/api/v1/internal/validator-nominator-counts-sync", {
       method: "POST",
@@ -1083,6 +1088,7 @@ test("validator-nominator-counts-sync answers 503 -- the Postgres tier it wrote 
     ctx,
   );
   expect(res.status).toBe(503);
+  expect(await res.json()).toEqual({ error: "d1 binding unavailable" });
 });
 
 // #5233: POST /api/v1/internal/nominator-positions-sync -- the write path
