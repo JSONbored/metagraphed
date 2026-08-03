@@ -10298,6 +10298,24 @@ describe("MCP economics + metagraph data tools", () => {
       });
     });
 
+    test("a handler's OWN degraded label survives the chokepoint (#9273)", () => {
+      // get_account_positions can say the position ledger predates a stake
+      // event this coldkey has on chain -- a specific reason the generic
+      // `tier_unavailable` would erase, making MCP the one surface unable to
+      // report WHY a zero is untrustworthy. Both answers are degraded either
+      // way, so keeping the specific one never loses the signal.
+      const stale = currentPostgresTierFallbackGeneration() - 1;
+      const specific = {
+        position_count: 0,
+        degraded: {
+          reason: "snapshot_predates_stake_activity",
+          snapshot_captured_at: "2026-08-02T01:38:22.670Z",
+          latest_stake_event_at: "2026-08-02T08:46:24.000Z",
+        },
+      };
+      assert.deepEqual(markMcpTierDegraded(specific, stale), specific);
+    });
+
     test("the SAME tool with a healthy tier is NOT marked", async () => {
       // The same call, with a working DATA_API. Deliberately the same tool
       // rather than some unrelated one: it isolates the tier outcome as the

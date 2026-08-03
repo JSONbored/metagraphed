@@ -13418,6 +13418,14 @@ export function markMcpTierDegraded(
 ): unknown {
   if (currentPostgresTierFallbackGeneration() === generationBefore) return data;
   if (!data || typeof data !== "object" || Array.isArray(data)) return data;
+  // A handler that already labelled its OWN answer knows more than this
+  // chokepoint does (#9273): get_account_positions can say the position ledger
+  // predates a stake event this coldkey has on chain, which is a specific
+  // reason `tier_unavailable` would erase. Overwriting it would make MCP the
+  // one surface that cannot report why a zero is untrustworthy, when REST and
+  // GraphQL both can -- and every one of those answers is already degraded, so
+  // keeping the specific reason never loses the signal this marker exists for.
+  if ("degraded" in (data as Row)) return data;
   return { ...(data as Row), degraded: { reason: MCP_DEGRADED_REASON } };
 }
 
