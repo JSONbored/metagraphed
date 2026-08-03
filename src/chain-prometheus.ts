@@ -8,6 +8,10 @@
 // the same account_events [netuid, hotkey] tuple AxonServed uses.
 
 import { median, percentile } from "./lib/stats.ts";
+import {
+  PROMETHEUS_DEGRADED_NOT_CURATED,
+  type EventStreamDegraded,
+} from "./uncurated-event-streams.ts";
 
 // The account_events kind emitted when a neuron announces its Prometheus telemetry endpoint on a subnet.
 export const PROMETHEUS_EVENT_KIND = "PrometheusServed";
@@ -133,6 +137,8 @@ export interface ChainPrometheusResult {
   network: ChainPrometheusNetwork;
   intensity_distribution: IntensityDistribution | null;
   subnets: ChainPrometheusSubnet[];
+  /** Present only on the empty answer — see the `empty` literal below. */
+  degraded?: EventStreamDegraded;
 }
 
 // Shape the network-wide Prometheus scorecard from the per-subnet account_events aggregate.
@@ -172,6 +178,12 @@ export function buildChainPrometheus(
     network: { ...EMPTY_NETWORK },
     intensity_distribution: null,
     subnets: [],
+    // The empty answer is the ONLY answer this route can produce today, and
+    // it is not a measurement: the chain emitted 18,041 PrometheusServed
+    // events and our account_events curation carries 0 of them. Marking it
+    // here rather than at each caller means REST, MCP and the GraphQL
+    // resolver all inherit it from the one builder they share.
+    degraded: { reason: PROMETHEUS_DEGRADED_NOT_CURATED },
   };
   if (list.length === 0) return empty;
 

@@ -7,6 +7,8 @@
 // (buildSubnetAxonRemovals) + a thin D1 loader (loadSubnetAxonRemovals); the Worker adds the
 // envelope. Null-safe: a cold store or a subnet with no AxonInfoRemoved events yields the zeroed card.
 
+import { AXON_REMOVALS_DEGRADED_NEVER_EMITTED } from "./uncurated-event-streams.ts";
+
 type Row = Record<string, unknown>;
 type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
 
@@ -65,7 +67,7 @@ export function buildSubnetAxonRemovals(
 ): Row {
   const distinctRemovers = toCount(row?.distinct_removers);
   const removals = toCount(row?.removals);
-  return {
+  const card: Row = {
     schema_version: 1,
     netuid,
     window: window ?? null,
@@ -74,6 +76,14 @@ export function buildSubnetAxonRemovals(
     removals,
     removals_per_remover: removalsPerRemover(removals, distinctRemovers),
   };
+  // AxonInfoRemoved has zero occurrences in the complete pallet-level stream,
+  // ever, so this card's zero has never been a measurement of this subnet.
+  // Conditional rather than unconditional so a future tier that CAN observe
+  // axon teardown serves an unmarked card without touching this line.
+  if (removals === 0) {
+    card.degraded = { reason: AXON_REMOVALS_DEGRADED_NEVER_EMITTED };
+  }
+  return card;
 }
 
 // One subnet's axon-removal activity, computed live: read the account_events AxonInfoRemoved

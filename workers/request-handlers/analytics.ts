@@ -131,6 +131,10 @@ import {
 import { loadChainTransfersFromArtifact } from "../../src/chain-transfers-artifact.ts";
 import { loadChainStakeFlowFromArtifact } from "../../src/chain-stake-flow-artifact.ts";
 import { loadChainRegistrationsFromArtifact } from "../../src/chain-registrations-artifact.ts";
+import {
+  loadChainDeregistrationsFromArtifact,
+  markDeregistrationsNotDerived,
+} from "../../src/chain-deregistrations-artifact.ts";
 import { loadChainActivityFromArtifact } from "../../src/chain-activity-artifact.ts";
 import { loadChainCallsFromArtifact } from "../../src/chain-calls-artifact.ts";
 import { loadChainFeesFromArtifact } from "../../src/chain-fees-artifact.ts";
@@ -2458,10 +2462,23 @@ export async function handleChainDeregistrations(
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) as ReturnType<typeof buildChainDeregistrations> | null) ??
-        buildChainDeregistrations([], {
+        // #9307: NeuronDeregistered has never been emitted, so the filter this
+        // route was built on matched nothing and it published a permanent 0.
+        // The feed is DERIVED from UID reuse in the NeuronRegistered stream by
+        // the chain-deregistrations projection lane — see
+        // src/deregistration-derivation.ts.
+        (await loadChainDeregistrationsFromArtifact(env, {
           window: label,
           limit,
-        } as unknown as Parameters<typeof buildChainDeregistrations>[1]);
+        })) ??
+        // Still the schema-stable empty when nothing derived it — but MARKED,
+        // so a caller can tell "no evictions" from "we could not look".
+        markDeregistrationsNotDerived(
+          buildChainDeregistrations([], {
+            window: label,
+            limit,
+          } as unknown as Parameters<typeof buildChainDeregistrations>[1]),
+        );
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-registrations).
       if (csv) {

@@ -38,6 +38,7 @@ export type AccountAxonRemovals = {
   __typename?: 'AccountAxonRemovals';
   address: Scalars['String']['output'];
   concentration?: Maybe<Scalars['Float']['output']>;
+  degraded?: Maybe<DegradedInfo>;
   dominant_netuid?: Maybe<Scalars['Int']['output']>;
   schema_version: Scalars['Int']['output'];
   subnet_count: Scalars['Int']['output'];
@@ -163,6 +164,8 @@ export type AccountDeregistrations = {
   __typename?: 'AccountDeregistrations';
   address: Scalars['String']['output'];
   concentration?: Maybe<Scalars['Float']['output']>;
+  degraded?: Maybe<DegradedInfo>;
+  derivation?: Maybe<DeregistrationDerivation>;
   dominant_netuid?: Maybe<Scalars['Int']['output']>;
   schema_version: Scalars['Int']['output'];
   subnet_count: Scalars['Int']['output'];
@@ -440,6 +443,7 @@ export type AccountPrometheus = {
   address: Scalars['String']['output'];
   /** Herfindahl-Hirschman index of announcements across subnets: 1 = all on one subnet, -> 1/n as it spreads evenly; null when the account has no announcements. */
   concentration?: Maybe<Scalars['Float']['output']>;
+  degraded?: Maybe<DegradedInfo>;
   dominant_netuid?: Maybe<Scalars['Int']['output']>;
   schema_version: Scalars['Int']['output'];
   subnet_count: Scalars['Int']['output'];
@@ -889,6 +893,7 @@ export type ChainAlphaVolumeSubnet = {
 
 export type ChainAxonRemovals = {
   __typename?: 'ChainAxonRemovals';
+  degraded?: Maybe<DegradedInfo>;
   intensity_distribution?: Maybe<ChainAxonRemovalsIntensityDistribution>;
   network: ChainAxonRemovalsNetwork;
   observed_at?: Maybe<Scalars['String']['output']>;
@@ -976,6 +981,8 @@ export type ChainConcentration = {
 
 export type ChainDeregistrations = {
   __typename?: 'ChainDeregistrations';
+  degraded?: Maybe<DegradedInfo>;
+  derivation?: Maybe<DeregistrationDerivation>;
   intensity_distribution?: Maybe<ChainDeregistrationsIntensityDistribution>;
   network: ChainDeregistrationsNetwork;
   observed_at?: Maybe<Scalars['String']['output']>;
@@ -985,7 +992,7 @@ export type ChainDeregistrations = {
   window?: Maybe<Scalars['String']['output']>;
 };
 
-/** Spread of per-subnet churn intensity (NeuronDeregistered events per hotkey) across EVERY subnet with deregistrations in the window -- network-wide even when limit truncates the leaderboard. */
+/** Spread of per-subnet churn intensity (derived deregistrations per hotkey) across EVERY subnet with deregistrations in the window -- network-wide even when limit truncates the leaderboard. */
 export type ChainDeregistrationsIntensityDistribution = {
   __typename?: 'ChainDeregistrationsIntensityDistribution';
   count: Scalars['Int']['output'];
@@ -998,7 +1005,7 @@ export type ChainDeregistrationsIntensityDistribution = {
   p90: Scalars['Float']['output'];
 };
 
-/** Network-wide deregistration rollup: every subnet with NeuronDeregistered events in the window, combined. distinct_deregistered_hotkeys counts a hotkey once even when it is deregistered from several subnets, so it is NOT the sum of the per-subnet counts. */
+/** Network-wide deregistration rollup: every subnet with a derived deregistration in the window, combined. distinct_deregistered_hotkeys counts a hotkey once even when it is deregistered from several subnets, so it is NOT the sum of the per-subnet counts. */
 export type ChainDeregistrationsNetwork = {
   __typename?: 'ChainDeregistrationsNetwork';
   deregistrations: Scalars['Int']['output'];
@@ -1203,6 +1210,7 @@ export type ChainPerformance = {
 
 export type ChainPrometheus = {
   __typename?: 'ChainPrometheus';
+  degraded?: Maybe<DegradedInfo>;
   intensity_distribution?: Maybe<ChainPrometheusIntensityDistribution>;
   network: ChainPrometheusNetwork;
   observed_at?: Maybe<Scalars['String']['output']>;
@@ -1807,6 +1815,25 @@ export type CurationList = {
   returned: Scalars['Int']['output'];
   sort?: Maybe<Scalars['String']['output']>;
   total: Scalars['Int']['output'];
+};
+
+/** A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer. */
+export type DegradedInfo = {
+  __typename?: 'DegradedInfo';
+  detail?: Maybe<Scalars['String']['output']>;
+  reason: Scalars['String']['output'];
+};
+
+/** How a deregistration feed was derived (#9307). NeuronDeregistered has never been emitted, so deregistrations are derived from UID reuse: a NeuronRegistered on a (netuid, uid) slot already held by a different hotkey IS the deregistration of the previous occupant. unattributed_registrations is the honest part -- the published totals are a LOWER BOUND by that many events, because those registrations displaced a holder the derivation's lookback cannot name. */
+export type DeregistrationDerivation = {
+  __typename?: 'DeregistrationDerivation';
+  /** Days of NeuronRegistered history the derivation had available. */
+  lookback_days: Scalars['Int']['output'];
+  method: Scalars['String']['output'];
+  /** Of those, the ones with no observed previous holder. */
+  unattributed_registrations: Scalars['Int']['output'];
+  /** Registrations observed inside the reported window. */
+  window_registrations: Scalars['Int']['output'];
 };
 
 /** The per-domain rollup overview across the fixed capability taxonomy (#6989). Mirrors GET /api/v1/domains. */
@@ -2479,7 +2506,7 @@ export type Query = {
   account_children?: Maybe<AccountChildren>;
   /** Rank who one account transacts native TAO with, by total transfer volume, from the Balances.Transfer feed: per counterparty the sent/received/net TAO, transfer count, and last block, plus scan totals. Pass counterparty=<ss58> (must differ from ss58) to drill into a single relationship instead -- its fund-flow totals plus direction-aware transfer evidence under relationship, newest first. limit caps the ranked list (default 20) or the relationship's transfer evidence (default 50); 1-100. An address with no transfers resolves to a schema-stable zero card, never null. Mirrors GET /api/v1/accounts/{ss58}/counterparties. */
   account_counterparties: AccountCounterparties;
-  /** One account's per-subnet deregistration footprint over a 7d/30d/90d window (default 30d): NeuronDeregistered count and first/last timestamps per subnet, an HHI concentration of where its deregistration activity is focused, and the dominant subnet; an address with no deregistrations in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/deregistrations. */
+  /** One account's per-subnet deregistration footprint over a 7d/30d/90d window (default 30d) -- the slots where this hotkey was the PREVIOUS holder, DERIVED from UID reuse (#9307): eviction count and first/last timestamps per subnet, an HHI concentration of where its deregistration activity is focused, and the dominant subnet. An address with no evictions resolves to a schema-stable zeroed card, never null; the 90d window is not precomputed, so it carries a degraded block instead of a confident zero. Mirrors GET /api/v1/accounts/{ss58}/deregistrations. */
   account_deregistrations: AccountDeregistrations;
   /** One coldkey's community-contributed entity labels (exchange/foundation/operator/other) plus every subnet-ownership tie it has via the chain_events SubnetOwnerChanged stream (either side of an automatic conviction-contest transfer). Only tracks automatic SubnetOwnerChanged transfers, not genesis ownership -- a coldkey that has held a subnet since registration and never lost it to a challenger will not appear in ownership_ties. An address with no labels or ties resolves to a schema-stable empty card, never null. Mirrors GET /api/v1/accounts/{ss58}/entities. */
   account_entities: AccountEntities;
@@ -2553,7 +2580,7 @@ export type Query = {
   chain_calls: ChainCalls;
   /** Network-wide stake & emission decentralization across every subnet's neurons at once: the raw stake/emission distribution, the same two lenses collapsed per controlling entity (an operator running hotkeys in ten subnets counts once, not ten times), and the permitted-validator stake distribution -- each as gini/HHI/Nakamoto/top-share/entropy. uids_per_entity is the network consolidation signal (1.0 = every UID a distinct owner). Current snapshot only (no window/params). Every metric block is null (never a GraphQL error) on a cold store. The network analog of subnet concentration. Mirrors GET /api/v1/chain/concentration. */
   chain_concentration: ChainConcentration;
-  /** Network-wide neuron-deregistration leaderboard over a 7d/30d window (default 7d): subnets ranked by NeuronDeregistered events with each's distinct-hotkey count and deregistrations-per-hotkey churn intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. The network-wide, exit-side counterpart of subnet_deregistrations -- where neurons are being pushed out. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/deregistrations. */
+  /** Network-wide neuron-deregistration leaderboard over a 7d/30d window (default 7d): subnets ranked by deregistration events with each's distinct-hotkey count and deregistrations-per-hotkey churn intensity, plus a network rollup and the per-subnet intensity spread, DERIVED from UID reuse in the NeuronRegistered stream by a scheduled projection -- NeuronDeregistered has never been emitted by the runtime (#9307). The network-wide, exit-side counterpart of subnet_deregistrations -- where neurons are being pushed out. limit caps the leaderboard (default 20, max 100). A window nothing derived carries a degraded block rather than a confident zero. Mirrors GET /api/v1/chain/deregistrations. */
   chain_deregistrations: ChainDeregistrations;
   /** Paginated all-events feed (newest first) from the Postgres-backed all-events tier: each event's block, event index, pallet, method, decoded args, phase, and emitting extrinsic index. Filter by pallet/method/block/extrinsic; page with limit (1-200, default 50) and the opaque keyset cursor (or legacy before=block_number). An invalid filter combo is a GraphQL BAD_USER_INPUT error; a cold/unbound tier resolves to a schema-stable empty feed, never a GraphQL error. Reads the raw all-events tier -- distinct from account_events/subnet_events (the curated account-attributed streams, a different data source) and from Subscription.chainEvents (live WebSocket firehose). Mirrors GET /api/v1/chain-events. */
   chain_events: ChainEventsFeed;
@@ -2727,7 +2754,7 @@ export type Query = {
   subnet_concentration_history: SubnetConcentrationHistory;
   /** Live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) -- who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. Companion to subnet_ownership_history (that's the event log of past flips; this is the current standings). A subnet with no active challengers/owner lock returns an empty leaderboard. Reaches the Postgres-only all-events tier directly; an out-of-range netuid or an unavailable tier is a GraphQL error, never a silent empty leaderboard. Mirrors GET /api/v1/subnets/{netuid}/conviction. */
   subnet_conviction: SubnetConviction;
-  /** Per-subnet neuron-deregistration activity over a 7d/30d window (distinct deregistered hotkeys, NeuronDeregistered count, and deregistrations per hotkey); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/deregistrations. */
+  /** Per-subnet neuron-deregistration activity over a 7d/30d window (distinct deregistered hotkeys, deregistration count, and deregistrations per hotkey), DERIVED from UID reuse in the NeuronRegistered stream -- NeuronDeregistered has never been emitted by the runtime (#9307). A subnet with no slot turnover in the window resolves to a schema-stable zeroed card, never null; when nothing derived the window the card carries a degraded block instead of a confident zero. Mirrors GET /api/v1/subnets/{netuid}/deregistrations. */
   subnet_deregistrations: SubnetDeregistrations;
   /** One subnet's endpoint/resource registry as a filtered/sorted/paged list — the baked per-subnet /metagraph/endpoints/{netuid}.json artifact the REST route and list_subnet_endpoints MCP tool read. Filter with kind, layer, provider, publication_state, status, and pool_eligible (a true/false string); threshold with min_/max_latency_ms and min_/max_score; project with fields; sort with sort + order; and page with limit (1-100) / cursor, exactly as REST does — an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the endpoints rows. Null when no endpoint artifact has been baked for the netuid (rather than a GraphQL error). Distinct from endpoints(...) (the filterable network-wide endpoint registry). Mirrors GET /api/v1/subnets/{netuid}/endpoints. */
   subnet_endpoints?: Maybe<Scalars['JSON']['output']>;
@@ -4494,6 +4521,7 @@ export type SubnetSurfacesArgs = {
 
 export type SubnetAxonRemovals = {
   __typename?: 'SubnetAxonRemovals';
+  degraded?: Maybe<DegradedInfo>;
   distinct_removers: Scalars['Int']['output'];
   netuid: Scalars['Int']['output'];
   observed_at?: Maybe<Scalars['String']['output']>;
@@ -4576,8 +4604,10 @@ export type SubnetConviction = {
 /** Per-subnet neuron-deregistration activity over a window (#5719). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/deregistrations. */
 export type SubnetDeregistrations = {
   __typename?: 'SubnetDeregistrations';
+  degraded?: Maybe<DegradedInfo>;
   deregistrations: Scalars['Int']['output'];
   deregistrations_per_hotkey?: Maybe<Scalars['Float']['output']>;
+  derivation?: Maybe<DeregistrationDerivation>;
   distinct_deregistered_hotkeys: Scalars['Int']['output'];
   netuid: Scalars['Int']['output'];
   observed_at?: Maybe<Scalars['String']['output']>;
@@ -4989,6 +5019,7 @@ export type SubnetPrometheus = {
   __typename?: 'SubnetPrometheus';
   announcements: Scalars['Int']['output'];
   announcements_per_exporter?: Maybe<Scalars['Float']['output']>;
+  degraded?: Maybe<DegradedInfo>;
   distinct_exporters: Scalars['Int']['output'];
   netuid: Scalars['Int']['output'];
   observed_at?: Maybe<Scalars['String']['output']>;
@@ -5736,6 +5767,8 @@ export type ResolversTypes = ResolversObject<{
   ConcentrationMetrics: ResolverTypeWrapper<ConcentrationMetrics>;
   Contracts: ResolverTypeWrapper<Contracts>;
   CurationList: ResolverTypeWrapper<CurationList>;
+  DegradedInfo: ResolverTypeWrapper<DegradedInfo>;
+  DeregistrationDerivation: ResolverTypeWrapper<DeregistrationDerivation>;
   DomainOverview: ResolverTypeWrapper<DomainOverview>;
   DomainSummary: ResolverTypeWrapper<DomainSummary>;
   EconomicsList: ResolverTypeWrapper<EconomicsList>;
@@ -6040,6 +6073,8 @@ export type ResolversParentTypes = ResolversObject<{
   ConcentrationMetrics: ConcentrationMetrics;
   Contracts: Contracts;
   CurationList: CurationList;
+  DegradedInfo: DegradedInfo;
+  DeregistrationDerivation: DeregistrationDerivation;
   DomainOverview: DomainOverview;
   DomainSummary: DomainSummary;
   EconomicsList: EconomicsList;
@@ -6212,6 +6247,7 @@ export type AccountAxonRemovalSubnetResolvers<ContextType = GqlContext, ParentTy
 export type AccountAxonRemovalsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountAxonRemovals'] = ResolversParentTypes['AccountAxonRemovals']> = ResolversObject<{
   address?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   concentration?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   dominant_netuid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -6314,6 +6350,8 @@ export type AccountDeregistrationSubnetResolvers<ContextType = GqlContext, Paren
 export type AccountDeregistrationsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountDeregistrations'] = ResolversParentTypes['AccountDeregistrations']> = ResolversObject<{
   address?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   concentration?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
+  derivation?: Resolver<Maybe<ResolversTypes['DeregistrationDerivation']>, ParentType, ContextType>;
   dominant_netuid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -6542,6 +6580,7 @@ export type AccountPositionsResolvers<ContextType = GqlContext, ParentType exten
 export type AccountPrometheusResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['AccountPrometheus'] = ResolversParentTypes['AccountPrometheus']> = ResolversObject<{
   address?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   concentration?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   dominant_netuid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -6908,6 +6947,7 @@ export type ChainAlphaVolumeSubnetResolvers<ContextType = GqlContext, ParentType
 }>;
 
 export type ChainAxonRemovalsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainAxonRemovals'] = ResolversParentTypes['ChainAxonRemovals']> = ResolversObject<{
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   intensity_distribution?: Resolver<Maybe<ResolversTypes['ChainAxonRemovalsIntensityDistribution']>, ParentType, ContextType>;
   network?: Resolver<ResolversTypes['ChainAxonRemovalsNetwork'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -6973,6 +7013,8 @@ export type ChainConcentrationResolvers<ContextType = GqlContext, ParentType ext
 }>;
 
 export type ChainDeregistrationsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainDeregistrations'] = ResolversParentTypes['ChainDeregistrations']> = ResolversObject<{
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
+  derivation?: Resolver<Maybe<ResolversTypes['DeregistrationDerivation']>, ParentType, ContextType>;
   intensity_distribution?: Resolver<Maybe<ResolversTypes['ChainDeregistrationsIntensityDistribution']>, ParentType, ContextType>;
   network?: Resolver<ResolversTypes['ChainDeregistrationsNetwork'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -7138,6 +7180,7 @@ export type ChainPerformanceResolvers<ContextType = GqlContext, ParentType exten
 }>;
 
 export type ChainPrometheusResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainPrometheus'] = ResolversParentTypes['ChainPrometheus']> = ResolversObject<{
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   intensity_distribution?: Resolver<Maybe<ResolversTypes['ChainPrometheusIntensityDistribution']>, ParentType, ContextType>;
   network?: Resolver<ResolversTypes['ChainPrometheusNetwork'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -7628,6 +7671,18 @@ export type CurationListResolvers<ContextType = GqlContext, ParentType extends R
   returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type DegradedInfoResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['DegradedInfo'] = ResolversParentTypes['DegradedInfo']> = ResolversObject<{
+  detail?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type DeregistrationDerivationResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['DeregistrationDerivation'] = ResolversParentTypes['DeregistrationDerivation']> = ResolversObject<{
+  lookback_days?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  method?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  unattributed_registrations?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  window_registrations?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type DomainOverviewResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['DomainOverview'] = ResolversParentTypes['DomainOverview']> = ResolversObject<{
@@ -8646,6 +8701,7 @@ export type SubnetResolvers<ContextType = GqlContext, ParentType extends Resolve
 }>;
 
 export type SubnetAxonRemovalsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetAxonRemovals'] = ResolversParentTypes['SubnetAxonRemovals']> = ResolversObject<{
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   distinct_removers?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -8708,8 +8764,10 @@ export type SubnetConvictionResolvers<ContextType = GqlContext, ParentType exten
 }>;
 
 export type SubnetDeregistrationsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetDeregistrations'] = ResolversParentTypes['SubnetDeregistrations']> = ResolversObject<{
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   deregistrations?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   deregistrations_per_hotkey?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  derivation?: Resolver<Maybe<ResolversTypes['DeregistrationDerivation']>, ParentType, ContextType>;
   distinct_deregistered_hotkeys?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -9037,6 +9095,7 @@ export type SubnetPerformanceHistoryPointResolvers<ContextType = GqlContext, Par
 export type SubnetPrometheusResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetPrometheus'] = ResolversParentTypes['SubnetPrometheus']> = ResolversObject<{
   announcements?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   announcements_per_exporter?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
   distinct_exporters?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -9614,6 +9673,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ConcentrationMetrics?: ConcentrationMetricsResolvers<ContextType>;
   Contracts?: ContractsResolvers<ContextType>;
   CurationList?: CurationListResolvers<ContextType>;
+  DegradedInfo?: DegradedInfoResolvers<ContextType>;
+  DeregistrationDerivation?: DeregistrationDerivationResolvers<ContextType>;
   DomainOverview?: DomainOverviewResolvers<ContextType>;
   DomainSummary?: DomainSummaryResolvers<ContextType>;
   EconomicsList?: EconomicsListResolvers<ContextType>;

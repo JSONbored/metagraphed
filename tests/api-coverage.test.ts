@@ -3401,6 +3401,25 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
   const isBlocksLaneQuery = (sql: string) =>
     sql.includes("author, extrinsic_count");
 
+  // chain-deregistrations is the one lane reading RAW registration rows, and
+  // it declines on an empty pull by design (30 days with no registration
+  // anywhere is a failed read, not a quiet month) -- so it needs a row.
+  const isDeregistrationLaneQuery = (sql: string) =>
+    sql.includes("uid, hotkey, block_number, event_index");
+  const REGISTRATION_ROW = {
+    netuid: 5,
+    uid: 216,
+    hotkey: "5A",
+    block_number: 10,
+    event_index: 1,
+    observed_at: Date.now(),
+  };
+  const laneRows = (sql: string) => {
+    if (isBlocksLaneQuery(sql)) return [BLOCKS_ROW];
+    if (isDeregistrationLaneQuery(sql)) return [REGISTRATION_ROW];
+    return [];
+  };
+
   function projectionTick(env: unknown) {
     return handleScheduled(
       {
@@ -3430,7 +3449,7 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
         status: 200,
         json: async () => ({
           success: true,
-          result: { rows: isBlocksLaneQuery(sql) ? [BLOCKS_ROW] : [] },
+          result: { rows: laneRows(sql) },
         }),
       } as unknown as Response;
     }) as unknown as typeof fetch;
@@ -3472,8 +3491,13 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
     assert.equal(outcome.ok, true);
     assert.deepEqual(
       puts.sort(),
-      PROJECTION_LANES.map((lane) => lane.artifactKey).sort(),
-      "each lane writes exactly its own artifact key",
+      [
+        ...PROJECTION_LANES.map((lane) => lane.artifactKey),
+        // The one lane that fans its single computed body across two objects
+        // (src/chain-deregistrations-artifact.ts's header says why).
+        "metagraph/projections/chain-deregistrations-by-hotkey.json",
+      ].sort(),
+      "each lane writes its own artifact key, plus any it declares a split for",
     );
   });
 
@@ -3489,7 +3513,7 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
         status: 200,
         json: async () => ({
           success: true,
-          result: { rows: isBlocksLaneQuery(sql) ? [BLOCKS_ROW] : [] },
+          result: { rows: laneRows(sql) },
         }),
       } as unknown as Response;
     }) as unknown as typeof fetch;
@@ -3515,7 +3539,8 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
     assert.ok(
       !puts.includes("metagraph/projections/chain-transfer-pairs.json"),
     );
-    assert.equal(puts.length, Object.keys(lanes).length - 2);
+    // -2 failed lanes, +1 for the chain-deregistrations split's second object.
+    assert.equal(puts.length, Object.keys(lanes).length - 2 + 1);
     assert.ok(puts.includes("metagraph/projections/chain-stake-flow.json"));
   });
 });

@@ -295,6 +295,11 @@ import {
   DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
 } from "../../src/subnet-deregistrations.ts";
 import {
+  loadAccountDeregistrationsFromArtifact,
+  loadSubnetDeregistrationsFromArtifact,
+  markDeregistrationsNotDerived,
+} from "../../src/chain-deregistrations-artifact.ts";
+import {
   buildStakeFlow,
   STAKE_FLOW_WINDOWS,
   DEFAULT_STAKE_FLOW_WINDOW,
@@ -3042,9 +3047,18 @@ export async function handleSubnetDeregistrations(
       request,
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     )) as ReturnType<typeof buildSubnetDeregistrations> | null) ??
-    buildSubnetDeregistrations(null, netuid, { window: windowParam });
+    // #9307: derived from UID reuse in the NeuronRegistered stream, out of the
+    // same projection rows the chain leaderboard ranks — NeuronDeregistered
+    // has never been emitted, so the filter this card was built on matched
+    // nothing and it published a permanent 0.
+    (await loadSubnetDeregistrationsFromArtifact(env, netuid, {
+      window: windowParam,
+    })) ??
+    markDeregistrationsNotDerived(
+      buildSubnetDeregistrations(null, netuid, { window: windowParam }),
+    );
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
-  // generated_at the newest observed NeuronDeregistered event, mirroring the sibling stake-flow route.
+  // generated_at the newest derived deregistration, mirroring the sibling stake-flow route.
   return envelopeResponse(
     request,
     {
@@ -3539,6 +3553,7 @@ function makeAccountEventHandler({
   build,
   urlSuffix,
   coldTier,
+  markUnanswered,
 }: {
   windows: Record<string, number>;
   defaultWindow: string;
@@ -3557,6 +3572,10 @@ function makeAccountEventHandler({
     ss58: string,
     window: string,
   ) => Promise<{ data: unknown; generatedAt: string | null } | null>;
+  /** Applied to the schema-stable empty when NOTHING above answered, so the
+   * zero carries the route's own statement that it is not a measurement
+   * (#9307). Omitted by feeds whose empty really is a measured empty. */
+  markUnanswered?: <T extends object>(payload: T) => T;
 }) {
   return async function handleAccountEvent(
     request: Request,
@@ -3573,18 +3592,23 @@ function makeAccountEventHandler({
         message: unsupportedWindowMessage(windowParam, windows),
       });
     }
-    const { data, generatedAt } = ((await tryPostgresTier(
-      env,
-      request,
-      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-    )) as {
-      data: ReturnType<typeof build>;
-      generatedAt: string | null;
-    } | null) ??
-      (coldTier ? await coldTier(env, ss58, windowParam) : null) ?? {
-        data: build([], ss58, { window: windowParam }),
-        generatedAt: null,
-      };
+    const { data, generatedAt } =
+      ((await tryPostgresTier(
+        env,
+        request,
+        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) as {
+        data: ReturnType<typeof build>;
+        generatedAt: string | null;
+      } | null) ??
+      (coldTier ? await coldTier(env, ss58, windowParam) : null) ??
+      (() => {
+        const empty = build([], ss58, { window: windowParam });
+        return {
+          data: markUnanswered ? markUnanswered(empty as object) : empty,
+          generatedAt: null,
+        };
+      })();
     return accountEnvelopeResponse(
       request,
       {
@@ -3683,6 +3707,14 @@ export const handleAccountDeregistrations = makeAccountEventHandler({
   defaultWindow: DEFAULT_DEREGISTRATION_WINDOW,
   build: buildAccountDeregistrations,
   urlSuffix: "deregistrations",
+  // #9307: an account's deregistrations are the slots where it was the
+  // PREVIOUS holder, derived from UID reuse. The lane derives 7d/30d; the 90d
+  // this route also offers is not precomputed, so the reader declines it
+  // rather than answering with another window's numbers, and the marked empty
+  // below says so.
+  coldTier: (env, ss58, window) =>
+    loadAccountDeregistrationsFromArtifact(env, ss58, { window }),
+  markUnanswered: markDeregistrationsNotDerived,
 });
 
 // GET /api/v1/accounts/{ss58}: cross-subnet summary — event-history aggregates

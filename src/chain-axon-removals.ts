@@ -10,6 +10,10 @@
 // per-subnet /api/v1/subnets/{netuid}/axon-removals.
 
 import { median, percentile } from "./lib/stats.ts";
+import {
+  AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
+  type EventStreamDegraded,
+} from "./uncurated-event-streams.ts";
 
 // The account_events kind emitted when a neuron's announced axon endpoint is removed on a subnet.
 export const AXON_REMOVAL_EVENT_KIND = "AxonInfoRemoved";
@@ -132,6 +136,8 @@ export interface ChainAxonRemovalsResult {
   network: ChainAxonRemovalsNetwork;
   intensity_distribution: IntensityDistribution | null;
   subnets: ChainAxonRemovalsSubnet[];
+  /** Present only on the empty answer — see the `empty` literal below. */
+  degraded?: EventStreamDegraded;
 }
 
 // Shape the network-wide axon-removal scorecard from the per-subnet account_events aggregate.
@@ -171,6 +177,11 @@ export function buildChainAxonRemovals(
     network: { ...EMPTY_NETWORK },
     intensity_distribution: null,
     subnets: [],
+    // AxonInfoRemoved has never been emitted -- zero occurrences in the
+    // complete pallet-level stream, ever -- so the empty answer is the only
+    // answer, and it is not a measurement. Marked in the shared builder so
+    // REST, MCP and the GraphQL resolver all inherit it.
+    degraded: { reason: AXON_REMOVALS_DEGRADED_NEVER_EMITTED },
   };
   if (list.length === 0) return empty;
 

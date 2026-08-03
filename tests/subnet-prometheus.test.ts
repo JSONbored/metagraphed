@@ -8,6 +8,7 @@ import {
   DEFAULT_SUBNET_PROMETHEUS_WINDOW,
 } from "../src/subnet-prometheus.ts";
 import type { Row } from "./row-type.ts";
+import { PROMETHEUS_DEGRADED_NOT_CURATED } from "../src/uncurated-event-streams.ts";
 
 describe("buildSubnetPrometheus", () => {
   test("cold / null row yields a zeroed, schema-stable card", () => {
@@ -81,6 +82,31 @@ describe("buildSubnetPrometheus", () => {
     assert.equal(z.distinct_exporters, 0);
     assert.equal(z.announcements, 0);
     assert.equal(z.announcements_per_exporter, null);
+  });
+});
+
+describe("buildSubnetPrometheus honesty marker (#9307)", () => {
+  test("an empty card says its zero is not a measurement", () => {
+    // The chain emitted 18,041 PrometheusServed events; the account_events
+    // projection this route reads carries 0 of them. Without the marker the
+    // card is indistinguishable from "this subnet announced nothing".
+    const d = buildSubnetPrometheus(null, 7, { window: "7d" });
+    assert.deepEqual(d.degraded, { reason: PROMETHEUS_DEGRADED_NOT_CURATED });
+  });
+
+  test("a card with announcements carries NO marker", () => {
+    // Marking a real answer would be as wrong as not marking an empty one --
+    // this is what makes the marker disappear once the curation gap closes.
+    const d = buildSubnetPrometheus(
+      {
+        distinct_exporters: 2,
+        announcements: 5,
+        newest_observed: 1750000000000,
+      },
+      7,
+      { window: "7d" },
+    );
+    assert.equal(d.degraded, undefined);
   });
 });
 

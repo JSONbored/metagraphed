@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { AXON_REMOVALS_DEGRADED_NEVER_EMITTED } from "../src/uncurated-event-streams.ts";
 import { describe, test } from "vitest";
 import {
   buildAccountAxonRemovals,
@@ -147,6 +148,24 @@ describe("buildAccountAxonRemovals", () => {
     const s2 = d.subnets.find((s) => s.netuid === 2)!;
     assert.equal(s2.first_removed_at, null);
     assert.equal(s2.last_removed_at, null);
+  });
+});
+
+describe("buildAccountAxonRemovals honesty marker (#9307)", () => {
+  test("an empty footprint says its zero is not a measurement", () => {
+    const d = buildAccountAxonRemovals([], "5A", { window: "30d" });
+    assert.deepEqual(d.degraded, {
+      reason: AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
+    });
+  });
+
+  test("a footprint with removals carries NO marker", () => {
+    const d = buildAccountAxonRemovals(
+      [{ netuid: 5, removals: 3, first_observed: 1, last_observed: 2 }],
+      "5A",
+      { window: "30d" },
+    );
+    assert.equal(d.degraded, undefined);
   });
 });
 

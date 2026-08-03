@@ -9,6 +9,10 @@
 // four hand-edited Subnet*Artifact components they replace.
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
+import {
+  DeregistrationDerivationSchema,
+  EventStreamDegradedSchema,
+} from "./event-stream-honesty.ts";
 
 const ACTIVITY_WINDOWS = ["7d", "30d"] as const;
 
@@ -26,6 +30,9 @@ export const SubnetAxonRemovalsArtifactSchema = z
     distinct_removers: z.int().min(0),
     removals: z.int().min(0),
     removals_per_remover: z.number().min(0).nullable(),
+    // #9307: AxonInfoRemoved has never been emitted, so this card's zero has
+    // never measured this subnet.
+    degraded: EventStreamDegradedSchema.optional(),
   })
   .strict();
 export type SubnetAxonRemovalsArtifact = z.infer<
@@ -44,6 +51,10 @@ export const SubnetDeregistrationsArtifactSchema = z
     distinct_deregistered_hotkeys: z.int().min(0),
     deregistrations: z.int().min(0),
     deregistrations_per_hotkey: z.number().min(0).nullable(),
+    // #9307: derived from UID reuse out of the same projection rows the chain
+    // leaderboard ranks; `degraded` when nothing derived it.
+    derivation: DeregistrationDerivationSchema.optional(),
+    degraded: EventStreamDegradedSchema.optional(),
   })
   .strict();
 export type SubnetDeregistrationsArtifact = z.infer<

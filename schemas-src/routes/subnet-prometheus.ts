@@ -7,6 +7,7 @@
 // PrometheusServed events in the window).
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
+import { EventStreamDegradedSchema } from "./event-stream-honesty.ts";
 
 export const SubnetPrometheusArtifactSchema = z
   .object({
@@ -17,6 +18,9 @@ export const SubnetPrometheusArtifactSchema = z
     distinct_exporters: z.int().min(0),
     announcements: z.int().min(0),
     announcements_per_exporter: z.number().min(0).nullable(),
+    // #9307: the chain emits PrometheusServed and our account_events curation
+    // drops all 18,041 of them, so this card's zero is "we could not look".
+    degraded: EventStreamDegradedSchema.optional(),
   })
   .strict();
 export type SubnetPrometheusArtifact = z.infer<

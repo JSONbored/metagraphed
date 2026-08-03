@@ -14,6 +14,11 @@
 // /accounts/{ss58}/serving (axon endpoints), operational activity orthogonal to
 // /accounts/{ss58}/subnets (registration state).
 
+import {
+  PROMETHEUS_DEGRADED_NOT_CURATED,
+  type EventStreamDegraded,
+} from "./uncurated-event-streams.ts";
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // The account_events kind emitted when a neuron announces its Prometheus telemetry endpoint on a
@@ -85,6 +90,8 @@ export interface AccountPrometheusResult {
   concentration: number | null;
   dominant_netuid: number | null;
   subnets: AccountPrometheusSubnet[];
+  /** Present only when the footprint is empty — see buildAccountPrometheus. */
+  degraded?: EventStreamDegraded;
 }
 
 // Shape an account's per-netuid PrometheusServed aggregate into a footprint scorecard. `rows` is the
@@ -156,7 +163,7 @@ export function buildAccountPrometheus(
       ? roundConcentration(squares / (totalAnnouncements * totalAnnouncements))
       : null;
 
-  return {
+  const card: AccountPrometheusResult = {
     schema_version: 1,
     address,
     window: window ?? null,
@@ -166,6 +173,13 @@ export function buildAccountPrometheus(
     dominant_netuid: dominantNetuid,
     subnets,
   };
+  // An empty footprint here has never been a measurement of this account: the
+  // chain emitted 18,041 PrometheusServed events and the account_events
+  // projection this reads carries 0 of them.
+  if (totalAnnouncements === 0) {
+    card.degraded = { reason: PROMETHEUS_DEGRADED_NOT_CURATED };
+  }
+  return card;
 }
 
 // One account's Prometheus-serving footprint — reads its PrometheusServed events from account_events

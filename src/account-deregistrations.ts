@@ -1,4 +1,6 @@
-// Per-account deregistration footprint: which subnets one account (hotkey) was deregistered
+// Per-account deregistration footprint, DERIVED from UID reuse in the NeuronRegistered stream
+// (#9307 -- an account's deregistrations are the slots where it was the PREVIOUS holder; see
+// src/deregistration-derivation.ts): which subnets one account (hotkey) was deregistered
 // (evicted) from over a recent window, broken down per subnet and rolled up into a deregistration
 // scorecard. Pure shaping (buildAccountDeregistrations) + a thin D1 loader
 // (loadAccountDeregistrations); the Worker adds the REST envelope. Null-safe: a cold store or an
@@ -15,10 +17,18 @@
 // re-registers; this is the exit leg of that lifecycle, not shown by /accounts/{ss58}/subnets
 // (current registration state).
 
+import type { DeregistrationDerivation } from "./deregistration-derivation.ts";
+import type { EventStreamDegraded } from "./uncurated-event-streams.ts";
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // The account_events kind emitted when a neuron is deregistered (evicted) from a subnet's UID set;
 // always carries the evicted hotkey (scripts/fetch-events.py _registered -> [netuid, uid, hotkey]).
+//
+// RETAINED FOR THE RECORD, NOT AS A READ PATH (#9307): the Subtensor runtime
+// has never emitted it. The feed is DERIVED from UID reuse -- an account's
+// deregistrations are the slots where it was the PREVIOUS holder. See
+// src/deregistration-derivation.ts.
 export const DEREGISTRATION_EVENT_KIND = "NeuronDeregistered";
 
 // Supported windows (label -> days) + default, the same set the account stake-flow route exposes.
@@ -86,6 +96,11 @@ export interface AccountDeregistrationsResult {
   concentration: number | null;
   dominant_netuid: number | null;
   subnets: AccountDeregistrationSubnet[];
+  /** How these numbers were derived, and by how much they under-count.
+   * Attached by the projection reader; absent when nothing derived them. */
+  derivation?: DeregistrationDerivation;
+  /** Present only when the derivation could not answer this request. */
+  degraded?: EventStreamDegraded;
 }
 
 // Shape an account's per-netuid NeuronDeregistered aggregate into a deregistration scorecard. `rows`

@@ -75,6 +75,18 @@ import {
   REGISTRATION_EVENT_KIND,
 } from "./chain-registrations.ts";
 import { CHAIN_REGISTRATIONS_PROJECTION_KEY } from "./chain-registrations-artifact.ts";
+import { CHAIN_DEREGISTRATIONS_WINDOWS } from "./chain-deregistrations.ts";
+import {
+  CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY,
+  CHAIN_DEREGISTRATIONS_PROJECTION_KEY,
+} from "./chain-deregistrations-artifact.ts";
+import {
+  deregistrationsByHotkey,
+  deregistrationsByNetuid,
+  deregistrationsNetworkRollup,
+  deriveDeregistrations,
+  DEREGISTRATION_DERIVATION_METHOD,
+} from "./deregistration-derivation.ts";
 
 /** Matches the analytics routes' day arithmetic (workers/data-api.ts's
  * ANALYTICS_DAY_MS) so a lane's cutoff is the same instant the live Postgres
@@ -100,6 +112,21 @@ export interface ProjectionLane {
    * artifact would serve one window's fresh numbers next to another's
    * garbage, so all-or-nothing is the only honest contract. */
   compute(env: Env): Promise<Record<string, unknown> | null>;
+  /**
+   * Optional: fan ONE computed body out across several R2 keys, as
+   * `key -> body`. Defaults to `{ [artifactKey]: body }`.
+   *
+   * Exists because a lane can derive answers of wildly different sizes from
+   * a single expensive read, and a reader should not have to fetch and parse
+   * the ones it will not look at. chain-deregistrations is the case: its
+   * rollup body is ~8 KB and its per-hotkey index ~1.5 MB, both from the same
+   * 693 MB pull. Splitting is the only way to keep the chain and subnet
+   * scopes cheap without paying for the pull twice.
+   *
+   * The split runs INSIDE the same all-or-nothing write below: either every
+   * key lands or the previous tick's objects all survive together.
+   */
+  split?(body: Record<string, unknown>): Record<string, unknown>;
 }
 
 /** Every value a lane inlines below is a module constant or a computed
@@ -907,6 +934,117 @@ async function computeChainRegistrations(
   };
 }
 
+/** The registration columns the deregivation derivation needs: the slot, its
+ * holder, and enough ordering to say which registration came first. Named so
+ * the cost note below stays attached to the exact column set it measured. */
+const DEREGISTRATION_READ_COLUMNS =
+  "netuid, uid, hotkey, block_number, event_index, observed_at";
+
+/**
+ * GET /api/v1/{chain,subnets/{netuid},accounts/{ss58}}/deregistrations, all
+ * three scopes, precomputed per window (#9307).
+ *
+ * ONE PULL, NOT ONE PER WINDOW. Unlike every sibling lane this reads RAW rows
+ * rather than an aggregate, because "who held this slot before" is a sequence
+ * question no GROUP BY answers. So it pulls the WIDEST window once and slices
+ * the narrower ones out of it, which is both cheaper (one query, not two) and
+ * strictly more accurate: the 7d window then derives against 23 days of prior
+ * occupancy instead of starting cold.
+ *
+ * PRICED BEFORE SHIPPING, per this repo's own rule. Measured live 2026-08-03
+ * on the six columns above:
+ *   30d  33,386 rows   693 MB scanned   ~5s
+ *   7d    7,977 rows   246 MB scanned   ~4s   (not issued -- sliced instead)
+ * For calibration the already-shipped chain-registrations lane's 30d
+ * (netuid, hotkey) aggregate scans 508 MB, so this is 1.4x a lane that
+ * already runs on the same tick, and it replaces TWO windowed reads with one.
+ *
+ * WHAT IT PRODUCES, on the same live pull:
+ *   window   registrations   deregistrations   unattributed   subnets
+ *   7d               8,064             6,338          1,726        35
+ *   30d             33,386            21,579         11,807        40
+ * against the 0 every one of these routes published before.
+ *
+ * An empty pull returns null rather than an artifact of zeros: 30 days with
+ * no registration anywhere on the network is not a state this chain reaches,
+ * so an empty result is a failed read wearing the shape of a quiet month, and
+ * the previous tick's artifact is strictly better than persisting it
+ * (computeBlocksSummary's posture).
+ */
+async function computeChainDeregistrations(
+  env: Env,
+): Promise<Record<string, unknown> | null> {
+  const generatedAt = Date.now();
+  const lookbackDays = Math.max(
+    ...Object.values(CHAIN_DEREGISTRATIONS_WINDOWS),
+  );
+  const rows = await r2SqlQuery(
+    env,
+    `SELECT ${DEREGISTRATION_READ_COLUMNS} FROM chain.account_events ` +
+      `WHERE event_kind = '${REGISTRATION_EVENT_KIND}' ` +
+      `AND observed_at >= ${generatedAt - lookbackDays * DAY_MS}`,
+  );
+  if (rows === null || rows.length === 0) return null;
+
+  const windows: Record<string, unknown> = {};
+  const hotkeyWindows: Record<string, unknown> = {};
+  let rowCount = 0;
+  for (const [label, days] of Object.entries(CHAIN_DEREGISTRATIONS_WINDOWS)) {
+    const derived = deriveDeregistrations(rows, {
+      since: generatedAt - days * DAY_MS,
+    });
+    const derivation = {
+      method: DEREGISTRATION_DERIVATION_METHOD,
+      lookback_days: lookbackDays,
+      window_registrations: derived.registrations,
+      unattributed_registrations: derived.unattributed,
+    };
+    const subnetRows = deregistrationsByNetuid(derived.events);
+    windows[label] = {
+      days,
+      network: deregistrationsNetworkRollup(derived.events),
+      rows: subnetRows,
+      derivation,
+    };
+    // The per-hotkey index is the SAME events keyed by the displaced holder,
+    // split into its own object because it is ~200x the rollup's size.
+    hotkeyWindows[label] = {
+      days,
+      hotkeys: deregistrationsByHotkey(derived.events),
+      derivation,
+    };
+    rowCount += subnetRows.length;
+  }
+  return {
+    schema_version: 1,
+    generated_at: new Date(generatedAt).toISOString(),
+    row_count: rowCount,
+    lookback_days: lookbackDays,
+    windows,
+    // Carried on the computed body and split off by the lane below, so the
+    // expensive pull is paid for exactly once.
+    hotkey_windows: hotkeyWindows,
+  };
+}
+
+/** Fan computeChainDeregistrations' one body across its two objects: the
+ * rollups the chain/subnet scopes read, and the per-hotkey index only the
+ * account scope reads. */
+function splitChainDeregistrations(
+  body: Record<string, unknown>,
+): Record<string, unknown> {
+  const { hotkey_windows: hotkeyWindows, ...rollup } = body;
+  return {
+    [CHAIN_DEREGISTRATIONS_PROJECTION_KEY]: rollup,
+    [CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY]: {
+      schema_version: rollup.schema_version,
+      generated_at: rollup.generated_at,
+      lookback_days: rollup.lookback_days,
+      windows: hotkeyWindows,
+    },
+  };
+}
+
 export const PROJECTION_LANES: ProjectionLane[] = [
   {
     name: "blocks-summary",
@@ -917,6 +1055,12 @@ export const PROJECTION_LANES: ProjectionLane[] = [
     name: "chain-registrations",
     artifactKey: CHAIN_REGISTRATIONS_PROJECTION_KEY,
     compute: computeChainRegistrations,
+  },
+  {
+    name: "chain-deregistrations",
+    artifactKey: CHAIN_DEREGISTRATIONS_PROJECTION_KEY,
+    compute: computeChainDeregistrations,
+    split: splitChainDeregistrations,
   },
   {
     name: "chain-transfers",
@@ -1027,7 +1171,12 @@ export async function runProjectionLane(
         reason: "compute_declined",
       };
     }
-    await bucket.put(lane.artifactKey, JSON.stringify(body));
+    const objects = lane.split
+      ? lane.split(body)
+      : { [lane.artifactKey]: body };
+    for (const [key, value] of Object.entries(objects)) {
+      await bucket.put(key, JSON.stringify(value));
+    }
     const rows = (body as { row_count?: unknown }).row_count;
     return {
       name: lane.name,

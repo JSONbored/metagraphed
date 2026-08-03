@@ -368,6 +368,12 @@ import {
   buildStakeFlow,
 } from "./stake-flow.ts";
 import { loadChainRegistrationsFromArtifact } from "./chain-registrations-artifact.ts";
+import {
+  loadAccountDeregistrationsFromArtifact,
+  loadChainDeregistrationsFromArtifact,
+  loadSubnetDeregistrationsFromArtifact,
+  markDeregistrationsNotDerived,
+} from "./chain-deregistrations-artifact.ts";
 import { loadSubnetStakeFlowFromArtifact } from "./subnet-stake-flow-artifact.ts";
 import { buildAccountPortfolio } from "./account-portfolio.ts";
 import { unavailableAccountPositions } from "./account-nominator-positions.ts";
@@ -2313,7 +2319,14 @@ const rootValue = {
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
-      buildSubnetDeregistrations(null, netuid, { window: windowParam });
+      // #9307: same UID-reuse derivation REST's handleSubnetDeregistrations
+      // reads, then the same MARKED empty when nothing derived it.
+      (await loadSubnetDeregistrationsFromArtifact(context.env, netuid, {
+        window: windowParam,
+      })) ??
+      markDeregistrationsNotDerived(
+        buildSubnetDeregistrations(null, netuid, { window: windowParam }),
+      );
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -2322,6 +2335,8 @@ const rootValue = {
       distinct_deregistered_hotkeys: data.distinct_deregistered_hotkeys ?? 0,
       deregistrations: data.deregistrations ?? 0,
       deregistrations_per_hotkey: data.deregistrations_per_hotkey ?? null,
+      derivation: data.derivation ?? null,
+      degraded: data.degraded ?? null,
     };
   },
 
@@ -2404,6 +2419,9 @@ const rootValue = {
       distinct_removers: data.distinct_removers ?? 0,
       removals: data.removals ?? 0,
       removals_per_remover: data.removals_per_remover ?? null,
+      // #9307: AxonInfoRemoved has zero occurrences in the complete stream,
+      // ever, so this card's zero has never measured this subnet.
+      degraded: data.degraded ?? null,
     };
   },
 
@@ -3177,6 +3195,9 @@ const rootValue = {
       distinct_exporters: data.distinct_exporters ?? 0,
       announcements: data.announcements ?? 0,
       announcements_per_exporter: data.announcements_per_exporter ?? null,
+      // #9307: the account_events projection this reads carries 0 of the
+      // 18,041 PrometheusServed events the chain emitted.
+      degraded: data.degraded ?? null,
     };
   },
 
@@ -5333,6 +5354,9 @@ const rootValue = {
       concentration: data.concentration ?? null,
       dominant_netuid: data.dominant_netuid ?? null,
       subnets: data.subnets || [],
+      // #9307: the account_events projection this reads carries 0 of the
+      // 18,041 PrometheusServed events the chain emitted.
+      degraded: data.degraded ?? null,
     };
   },
 
@@ -5583,7 +5607,7 @@ const rootValue = {
     }
     // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) -> { data } envelope
     // (with the buildAccountDeregistrations([], ...) zeroed-card cold fallback) the
-    // REST handler uses; an account with no NeuronDeregistered events in the window
+    // REST handler uses; an account with no derived deregistration in the window
     // is a schema-stable zeroed card, never a GraphQL error.
     const params = new URLSearchParams();
     params.set("window", windowParam);
@@ -5598,7 +5622,17 @@ const rootValue = {
     );
     const data =
       (tier?.data as Row | undefined) ??
-      buildAccountDeregistrations([], ss58, { window: windowParam });
+      // #9307: an account's deregistrations are the slots where it was the
+      // PREVIOUS holder, derived from UID reuse — the same reader REST's
+      // handleAccountDeregistrations uses, then the same MARKED empty.
+      ((
+        await loadAccountDeregistrationsFromArtifact(context.env, ss58, {
+          window: windowParam,
+        })
+      )?.data as Row | undefined) ??
+      (markDeregistrationsNotDerived(
+        buildAccountDeregistrations([], ss58, { window: windowParam }),
+      ) as Row);
     return {
       schema_version: data.schema_version ?? 1,
       address: data.address ?? ss58,
@@ -5613,6 +5647,8 @@ const rootValue = {
         first_deregistered_at: s.first_deregistered_at ?? null,
         last_deregistered_at: s.last_deregistered_at ?? null,
       })),
+      derivation: data.derivation ?? null,
+      degraded: data.degraded ?? null,
     };
   },
 
@@ -5721,6 +5757,9 @@ const rootValue = {
         first_removed_at: s.first_removed_at ?? null,
         last_removed_at: s.last_removed_at ?? null,
       })),
+      // #9307: AxonInfoRemoved has zero occurrences in the complete stream,
+      // ever, so this footprint's zero has never measured this account.
+      degraded: data.degraded ?? null,
     };
   },
 
@@ -6916,6 +6955,10 @@ const rootValue = {
       },
       intensity_distribution: data.intensity_distribution ?? null,
       subnets: data.subnets || [],
+      // #9307: AxonInfoRemoved was never emitted, so an empty answer here is
+      // not a measurement. The builder marks it; this projection must carry
+      // the marker through or GraphQL alone keeps publishing a confident 0.
+      degraded: data.degraded ?? null,
     };
   },
 
@@ -6951,10 +6994,18 @@ const rootValue = {
         postgresTierRequest(context, "/api/v1/chain/deregistrations", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
-      buildChainDeregistrations([], {
+      // #9307: same UID-reuse derivation REST's handleChainDeregistrations
+      // reads, then the same MARKED empty when nothing derived it.
+      ((await loadChainDeregistrationsFromArtifact(context.env, {
         window: requestedWindow,
         limit: safeLimit,
-      });
+      })) as Row | null) ??
+      (markDeregistrationsNotDerived(
+        buildChainDeregistrations([], {
+          window: requestedWindow,
+          limit: safeLimit,
+        }),
+      ) as Row);
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? requestedWindow,
@@ -6967,6 +7018,8 @@ const rootValue = {
       },
       intensity_distribution: data.intensity_distribution ?? null,
       subnets: data.subnets || [],
+      derivation: data.derivation ?? null,
+      degraded: data.degraded ?? null,
     };
   },
 
@@ -7066,6 +7119,9 @@ const rootValue = {
       },
       intensity_distribution: data.intensity_distribution ?? null,
       subnets: data.subnets || [],
+      // #9307: the chain emits PrometheusServed and our account_events
+      // curation drops it, so an empty answer here is not a measurement.
+      degraded: data.degraded ?? null,
     };
   },
 

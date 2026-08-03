@@ -1,4 +1,5 @@
-// Per-subnet neuron-deregistration activity from the account_events NeuronDeregistered stream: for
+// Per-subnet neuron-deregistration activity, DERIVED from UID reuse in the NeuronRegistered stream
+// (#9307 -- NeuronDeregistered has never been emitted; see src/deregistration-derivation.ts): for
 // ONE subnet over a 7d/30d window, the distinct deregistered hotkeys, NeuronDeregistered event
 // count, and average deregistrations per hotkey. This is raw deregistration/eviction activity —
 // the exit-side companion to the raw NeuronRegistered demand in /registrations, and the
@@ -14,6 +15,11 @@ type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // The account_events kind emitted when a neuron is deregistered (evicted) from a subnet.
+//
+// RETAINED FOR THE RECORD, NOT AS A READ PATH (#9307): the Subtensor runtime
+// has never emitted it, so this filter never matched and the card was a
+// permanent 0. The feed is DERIVED from UID reuse in the NeuronRegistered
+// stream -- see src/deregistration-derivation.ts.
 export const DEREGISTRATION_EVENT_KIND = "NeuronDeregistered";
 
 // Supported windows (label -> days) + default, matching the sibling account_events routes.

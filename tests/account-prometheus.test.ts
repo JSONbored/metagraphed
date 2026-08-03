@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { PROMETHEUS_DEGRADED_NOT_CURATED } from "../src/uncurated-event-streams.ts";
 import { describe, test } from "vitest";
 import {
   buildAccountPrometheus,
@@ -150,6 +151,22 @@ describe("buildAccountPrometheus", () => {
     const s2 = d.subnets.find((s) => s.netuid === 2)!;
     assert.equal(s2.first_announced_at, null);
     assert.equal(s2.last_announced_at, null);
+  });
+});
+
+describe("buildAccountPrometheus honesty marker (#9307)", () => {
+  test("an empty footprint says its zero is not a measurement", () => {
+    const d = buildAccountPrometheus([], "5A", { window: "30d" });
+    assert.deepEqual(d.degraded, { reason: PROMETHEUS_DEGRADED_NOT_CURATED });
+  });
+
+  test("a footprint with announcements carries NO marker", () => {
+    const d = buildAccountPrometheus(
+      [{ netuid: 5, announcements: 3, first_observed: 1, last_observed: 2 }],
+      "5A",
+      { window: "30d" },
+    );
+    assert.equal(d.degraded, undefined);
   });
 });
 

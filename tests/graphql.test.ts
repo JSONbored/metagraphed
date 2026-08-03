@@ -40,6 +40,15 @@ import {
   KV_HEALTH_META,
   KV_HEALTH_RPC_POOL,
 } from "../src/kv-keys.ts";
+import {
+  CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY,
+  CHAIN_DEREGISTRATIONS_PROJECTION_KEY,
+} from "../src/chain-deregistrations-artifact.ts";
+import {
+  AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
+  DEREGISTRATIONS_DEGRADED_NOT_DERIVED,
+  PROMETHEUS_DEGRADED_NOT_CURATED,
+} from "../src/uncurated-event-streams.ts";
 import type { AnyFn, Row } from "./row-type.ts";
 
 // Minimal fake env — no R2 or ASSETS, so readArtifact always returns ok:false.
@@ -23677,4 +23686,184 @@ describe("graphql — subnet_hyperparameters_history cursor (#7882)", () => {
     );
     assert.equal(new URL(seen.url!).searchParams.has("cursor"), false);
   });
+});
+
+// #9307: nine GraphQL fields published a permanent, confident zero. The
+// resolvers project field-by-field, so a marker the shared builder sets is
+// dropped unless the projection carries it -- which is exactly how GraphQL
+// alone could keep serving a confident 0 after REST and MCP were fixed.
+describe("graphql — event-stream honesty (#9307)", () => {
+  /** An R2 double serving the deregistration projections by key. */
+  function projectionEnv(bodies: Record<string, unknown>): Row {
+    return {
+      METAGRAPH_ARCHIVE: {
+        async get(key: string) {
+          if (!Object.hasOwn(bodies, key)) return null;
+          return { json: async () => bodies[key] };
+        },
+      },
+    };
+  }
+
+  const DERIVATION = {
+    method: "uid-reuse",
+    lookback_days: 30,
+    window_registrations: 8064,
+    unattributed_registrations: 1726,
+  };
+  const SS58_ADDR = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  const ROLLUP = {
+    [CHAIN_DEREGISTRATIONS_PROJECTION_KEY]: {
+      schema_version: 1,
+      lookback_days: 30,
+      windows: {
+        "7d": {
+          days: 7,
+          network: {
+            distinct_deregistered_hotkeys: 4989,
+            newest_observed: 1_785_784_392_000,
+          },
+          rows: [
+            {
+              netuid: 3,
+              deregistrations: 441,
+              distinct_deregistered_hotkeys: 432,
+              newest_observed: 1_785_784_392_000,
+            },
+          ],
+          derivation: DERIVATION,
+        },
+      },
+    },
+  };
+
+  const HOTKEY_INDEX = {
+    [CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY]: {
+      schema_version: 1,
+      lookback_days: 30,
+      windows: {
+        "30d": {
+          days: 30,
+          hotkeys: {
+            [SS58_ADDR]: [[5, 2, 1_785_700_000_000, 1_785_784_392_000]],
+          },
+          derivation: DERIVATION,
+        },
+      },
+    },
+  };
+
+  test("chain_deregistrations serves the UID-reuse derivation", async () => {
+    const { body } = await gql(
+      `{ chain_deregistrations(window: "7d") {
+          subnet_count
+          network { distinct_deregistered_hotkeys }
+          subnets { netuid deregistrations }
+          derivation { method lookback_days window_registrations unattributed_registrations }
+          degraded { reason }
+        } }`,
+      projectionEnv(ROLLUP),
+    );
+    assert.equal(body.errors, undefined);
+    const d = body.data.chain_deregistrations;
+    assert.equal(d.subnet_count, 1);
+    assert.equal(d.subnets[0].deregistrations, 441);
+    assert.equal(d.network.distinct_deregistered_hotkeys, 4989);
+    assert.deepEqual(d.derivation, DERIVATION);
+    assert.equal(d.degraded, null);
+  });
+
+  test("subnet_deregistrations reads the same derived rows", async () => {
+    const { body } = await gql(
+      `{ subnet_deregistrations(netuid: 3, window: "7d") {
+          deregistrations distinct_deregistered_hotkeys
+          derivation { unattributed_registrations }
+          degraded { reason }
+        } }`,
+      projectionEnv(ROLLUP),
+    );
+    assert.equal(body.errors, undefined);
+    const d = body.data.subnet_deregistrations;
+    assert.equal(d.deregistrations, 441);
+    assert.equal(d.derivation.unattributed_registrations, 1726);
+    assert.equal(d.degraded, null);
+  });
+
+  test("account_deregistrations reads the slots where the hotkey was displaced", async () => {
+    const { body } = await gql(
+      `{ account_deregistrations(ss58: "${SS58_ADDR}") {
+          total_deregistrations
+          subnets { netuid deregistrations }
+          derivation { method }
+          degraded { reason }
+        } }`,
+      projectionEnv(HOTKEY_INDEX),
+    );
+    assert.equal(body.errors, undefined);
+    const d = body.data.account_deregistrations;
+    assert.equal(d.total_deregistrations, 2);
+    assert.equal(d.subnets[0].netuid, 5);
+    assert.equal(d.derivation.method, "uid-reuse");
+    assert.equal(d.degraded, null);
+  });
+
+  test.each([
+    [
+      "chain_deregistrations",
+      '{ chain_deregistrations(window: "30d") { degraded { reason } } }',
+      DEREGISTRATIONS_DEGRADED_NOT_DERIVED,
+    ],
+    [
+      "subnet_deregistrations",
+      "{ subnet_deregistrations(netuid: 3) { degraded { reason } } }",
+      DEREGISTRATIONS_DEGRADED_NOT_DERIVED,
+    ],
+    [
+      "account_deregistrations",
+      `{ account_deregistrations(ss58: "${SS58_ADDR}") { degraded { reason } } }`,
+      DEREGISTRATIONS_DEGRADED_NOT_DERIVED,
+    ],
+    [
+      "chain_prometheus",
+      "{ chain_prometheus { degraded { reason } } }",
+      PROMETHEUS_DEGRADED_NOT_CURATED,
+    ],
+    [
+      "subnet_prometheus",
+      "{ subnet_prometheus(netuid: 3) { degraded { reason } } }",
+      PROMETHEUS_DEGRADED_NOT_CURATED,
+    ],
+    [
+      "account_prometheus",
+      `{ account_prometheus(ss58: "${SS58_ADDR}") { degraded { reason } } }`,
+      PROMETHEUS_DEGRADED_NOT_CURATED,
+    ],
+    [
+      "chain_axon_removals",
+      "{ chain_axon_removals { degraded { reason } } }",
+      AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
+    ],
+    [
+      "subnet_axon_removals",
+      "{ subnet_axon_removals(netuid: 3) { degraded { reason } } }",
+      AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
+    ],
+    [
+      "account_axon_removals",
+      `{ account_axon_removals(ss58: "${SS58_ADDR}") { degraded { reason } } }`,
+      AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
+    ],
+  ])(
+    "%s marks an empty answer instead of publishing a zero",
+    async (field, query, reason) => {
+      const { body } = await gql(query);
+      assert.equal(body.errors, undefined);
+      assert.deepEqual(
+        body.data[field].degraded,
+        { reason },
+        `${field} must not publish a confident zero`,
+      );
+    },
+  );
 });

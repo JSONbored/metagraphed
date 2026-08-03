@@ -18,6 +18,7 @@
 // all (diff:openapi-zod reports PASS after cosmetic normalization).
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
+import { EventStreamDegradedSchema } from "./event-stream-honesty.ts";
 
 const WINDOW_ENUM = ["7d", "30d", "90d"] as const;
 
@@ -72,6 +73,10 @@ export const AccountPrometheusArtifactSchema = z
         })
         .strict(),
     ),
+    // #9307: the chain emits PrometheusServed and our account_events curation
+    // drops all 18,041 of them, so this footprint's zero is "we could not
+    // look".
+    degraded: EventStreamDegradedSchema.optional(),
   })
   .strict();
 export type AccountPrometheusArtifact = z.infer<

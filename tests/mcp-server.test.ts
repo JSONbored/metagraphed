@@ -71,6 +71,15 @@ import {
 import { buildBlock, buildBlockFeed } from "../src/blocks.ts";
 import { DOMAIN_TAGS } from "../src/domain-tags.ts";
 import { EVM_PRECOMPILE_BY_ADDRESS } from "../src/evm-precompiles.ts";
+import {
+  CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY,
+  CHAIN_DEREGISTRATIONS_PROJECTION_KEY,
+} from "../src/chain-deregistrations-artifact.ts";
+import {
+  AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
+  DEREGISTRATIONS_DEGRADED_NOT_DERIVED,
+  PROMETHEUS_DEGRADED_NOT_CURATED,
+} from "../src/uncurated-event-streams.ts";
 import type { AnyFn, Row } from "./row-type.ts";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";
@@ -23088,4 +23097,156 @@ describe("tools that require one of two identifiers advertise it (#8636)", () =>
       );
     }
   });
+});
+
+// #9307: nine MCP tools returned a permanent, confident zero -- three because
+// they filtered for events the runtime has never emitted, three because our
+// account_events curation drops the event, and three that now serve a real
+// derivation. The tool handlers duplicate the tier chain rather than calling
+// the REST handler, so each one is wired (and asserted) separately.
+describe("MCP event-stream honesty (#9307)", () => {
+  const DERIVATION = {
+    method: "uid-reuse",
+    lookback_days: 30,
+    window_registrations: 8064,
+    unattributed_registrations: 1726,
+  };
+  const HONEST_SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+
+  function projectionEnv(bodies: Record<string, unknown>): Row {
+    return {
+      METAGRAPH_ARCHIVE: {
+        async get(key: string) {
+          if (!Object.hasOwn(bodies, key)) return null;
+          return { json: async () => bodies[key] };
+        },
+      },
+    };
+  }
+
+  const ROLLUP_ENV = projectionEnv({
+    [CHAIN_DEREGISTRATIONS_PROJECTION_KEY]: {
+      schema_version: 1,
+      lookback_days: 30,
+      windows: {
+        "7d": {
+          days: 7,
+          network: {
+            distinct_deregistered_hotkeys: 4989,
+            newest_observed: 1_785_784_392_000,
+          },
+          rows: [
+            {
+              netuid: 3,
+              deregistrations: 441,
+              distinct_deregistered_hotkeys: 432,
+              newest_observed: 1_785_784_392_000,
+            },
+          ],
+          derivation: DERIVATION,
+        },
+      },
+    },
+  });
+
+  const HOTKEY_ENV = projectionEnv({
+    [CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY]: {
+      schema_version: 1,
+      lookback_days: 30,
+      windows: {
+        "30d": {
+          days: 30,
+          hotkeys: {
+            [HONEST_SS58]: [[5, 2, 1_785_700_000_000, 1_785_784_392_000]],
+          },
+          derivation: DERIVATION,
+        },
+      },
+    },
+  });
+
+  test("get_chain_deregistrations serves the UID-reuse derivation", async () => {
+    const res = await callTool(
+      "get_chain_deregistrations",
+      { window: "7d" },
+      { env: ROLLUP_ENV },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet_count, 1);
+    assert.equal(out.subnets[0].deregistrations, 441);
+    assert.equal(out.network.distinct_deregistered_hotkeys, 4989);
+    assert.deepEqual(out.derivation, DERIVATION);
+    assert.equal(out.degraded, undefined);
+  });
+
+  test("get_subnet_deregistrations reads the same derived rows", async () => {
+    const res = await callTool(
+      "get_subnet_deregistrations",
+      { netuid: 3, window: "7d" },
+      { env: ROLLUP_ENV },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.deregistrations, 441);
+    assert.equal(out.derivation.unattributed_registrations, 1726);
+    assert.equal(out.degraded, undefined);
+  });
+
+  test("get_account_deregistrations reads the slots where the hotkey was displaced", async () => {
+    const res = await callTool(
+      "get_account_deregistrations",
+      { ss58: HONEST_SS58 },
+      { env: HOTKEY_ENV },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.total_deregistrations, 2);
+    assert.equal(out.subnets[0].netuid, 5);
+    assert.equal(out.derivation.method, "uid-reuse");
+    assert.equal(out.degraded, undefined);
+  });
+
+  test.each([
+    [
+      "get_chain_deregistrations",
+      { window: "30d" },
+      DEREGISTRATIONS_DEGRADED_NOT_DERIVED,
+    ],
+    [
+      "get_subnet_deregistrations",
+      { netuid: 3 },
+      DEREGISTRATIONS_DEGRADED_NOT_DERIVED,
+    ],
+    [
+      "get_account_deregistrations",
+      { ss58: HONEST_SS58 },
+      DEREGISTRATIONS_DEGRADED_NOT_DERIVED,
+    ],
+    ["get_chain_prometheus", {}, PROMETHEUS_DEGRADED_NOT_CURATED],
+    ["get_subnet_prometheus", { netuid: 3 }, PROMETHEUS_DEGRADED_NOT_CURATED],
+    [
+      "get_account_prometheus",
+      { ss58: HONEST_SS58 },
+      PROMETHEUS_DEGRADED_NOT_CURATED,
+    ],
+    ["get_chain_axon_removals", {}, AXON_REMOVALS_DEGRADED_NEVER_EMITTED],
+    [
+      "get_subnet_axon_removals",
+      { netuid: 3 },
+      AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
+    ],
+    [
+      "get_account_axon_removals",
+      { ss58: HONEST_SS58 },
+      AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
+    ],
+  ])(
+    "%s marks an empty answer instead of publishing a zero",
+    async (tool, args, reason) => {
+      const res = await callTool(tool as string, args);
+      assert.deepEqual(
+        res.body.result.structuredContent.degraded,
+        { reason },
+        `${tool} must not publish a confident zero`,
+      );
+    },
+  );
 });

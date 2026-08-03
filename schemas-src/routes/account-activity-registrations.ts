@@ -10,6 +10,10 @@
 // src/account-weight-setters.ts's buildAccountWeightSetters().
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
+import {
+  DeregistrationDerivationSchema,
+  EventStreamDegradedSchema,
+} from "./event-stream-honesty.ts";
 
 const WINDOW_ENUM_90D = ["7d", "30d", "90d"] as const;
 const WINDOW_ENUM_7_30D = ["7d", "30d"] as const;
@@ -33,6 +37,9 @@ export const AccountAxonRemovalsArtifactSchema = z
         })
         .strict(),
     ),
+    // #9307: AxonInfoRemoved has never been emitted, so this footprint's zero
+    // has never measured this account.
+    degraded: EventStreamDegradedSchema.optional(),
   })
   .strict();
 export type AccountAxonRemovalsArtifact = z.infer<
@@ -67,6 +74,10 @@ export const AccountDeregistrationsArtifactSchema = z
         })
         .strict(),
     ),
+    // #9307: the slots where this account was the PREVIOUS holder, derived
+    // from UID reuse; `degraded` when nothing derived it.
+    derivation: DeregistrationDerivationSchema.optional(),
+    degraded: EventStreamDegradedSchema.optional(),
   })
   .strict();
 export type AccountDeregistrationsArtifact = z.infer<
