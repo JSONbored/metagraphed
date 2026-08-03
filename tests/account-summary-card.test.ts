@@ -52,22 +52,31 @@ function lakehouse({ fail = false }: { fail?: boolean } = {}) {
     const sql = JSON.parse(String(init.body)).query as string;
     queries.push(sql);
     if (fail) return { ok: false, status: 500 } as unknown as Response;
+    // Matched on each read's DISTINCTIVE clause. `count(DISTINCT netuid)` was
+    // the aggregate's marker until #9282 split the distinct count into its own
+    // GROUP BY subquery (R2 SQL refuses the ungrouped form -- 40015, scan
+    // budget). A stub that still looks for it silently stops matching the
+    // aggregate, which falls through to the event rows, and the loader then
+    // declines -- so this test failed on main claiming the card was a gap.
+    // Ordered so the subnet read is recognised before the cap probe: both
+    // select count(*), only one groups by netuid.
     const rows = sql.includes("GROUP BY event_kind")
       ? [{ kind: "TimelockedWeightsCommitted", count: 100 }]
-      : sql.includes("count(DISTINCT netuid)")
-        ? [
-            {
-              c: 100,
-              sc: 1,
-              fb: 8_700_000,
-              lb: 8_763_529,
-              fo: 1_785_000_000_000,
-              lo: 1_785_759_000_000,
-            },
-          ]
-        : sql.includes("count(*) AS c FROM (")
-          ? [{ c: 100 }]
-          : [RECENT_EVENT];
+      : sql.includes("GROUP BY netuid")
+        ? [{ sc: 1 }]
+        : sql.includes("min(block_number) AS fb")
+          ? [
+              {
+                c: 100,
+                fb: 8_700_000,
+                lb: 8_763_529,
+                fo: 1_785_000_000_000,
+                lo: 1_785_759_000_000,
+              },
+            ]
+          : sql.includes("count(*) AS c FROM (")
+            ? [{ c: 100 }]
+            : [RECENT_EVENT];
     return {
       ok: true,
       status: 200,

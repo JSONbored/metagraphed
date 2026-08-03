@@ -90,11 +90,15 @@ function lakehouse() {
       rows = CHAIN_EVENTS;
     } else if (sql.includes("GROUP BY event_kind")) {
       rows = [{ kind: "TimelockedWeightsCommitted", count: 100 }];
-    } else if (sql.includes("count(DISTINCT netuid)")) {
+    } else if (sql.includes("GROUP BY netuid")) {
+      // Its own read since #9282 -- R2 SQL refuses an ungrouped
+      // count(DISTINCT) over this table (40015, scan budget exceeded).
+      // Checked before the cap probe: both select count(*), only this groups.
+      rows = [{ sc: 1 }];
+    } else if (sql.includes("min(block_number) AS fb")) {
       rows = [
         {
           c: 100,
-          sc: 1,
           fb: 8_700_000,
           lb: 8_763_529,
           fo: 1_785_000_000_000,
