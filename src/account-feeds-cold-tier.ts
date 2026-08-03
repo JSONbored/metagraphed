@@ -1,0 +1,504 @@
+// The remaining ACCOUNT-scoped feeds served from the lakehouse when the
+// Postgres tier misses: transfers, stake-flow, stake-moves, weight-setters,
+// and counterparties. Fourth member of the cold-tier family (blocks,
+// extrinsics, events, now the account analytics feeds), same posture
+// throughout: rows feed the SAME src/ formatters the Postgres tier feeds,
+// filters the lakehouse cannot express make the whole read DECLINE (null,
+// never a silently-wrong answer), and cursors are data-api's own tokens so
+// paging survives a tier transition.
+//
+// These are all reads over chain.account_events with a selective predicate
+// (one address against a big table), which is exactly the shape the
+// request-time lane is for -- unlike the chain-wide aggregates, which moved to
+// scheduled projections. Latency is second-scale (src/r2-sql.ts's measured
+// numbers) and acceptable behind the edge cache, the precedent the merged
+// account-events reader set.
+//
+// EQUIVALENCE ARGUMENTS, stated because data-api's SQL is index-shaped for
+// Postgres/TimescaleDB and R2 SQL has no indexes to shape around:
+//   - transfers "all directions": data-api reads TWO scans (hotkey = X, then
+//     coldkey = X) merged client-side; this tier issues the single disjunction
+//     `(hotkey = X OR coldkey = X)`. Identical row sets -- see
+//     src/events-cold-tier.ts's header for the full argument.
+//   - weight-setters: data-api's UNION ALL of a hotkey branch and a
+//     (netuid, uid)-slot branch has DISJOINT branches (the second requires
+//     hotkey NULL/'', the first requires hotkey = X, a non-empty value), so a
+//     single OR of both predicates yields the identical multiset -- which
+//     matters, because R2 SQL has no UNION at all. The slot list itself still
+//     comes from D1 `neurons`, the same source data-api reads it from.
+//   - counterparties: data-api's UNION ALL of two per-leg-capped ordered scans
+//     re-sorted and capped again equals the top-CAP of the single OR predicate
+//     under the same total order (each leg is a subset of the OR set, so any
+//     row in the overall top CAP sits within its own leg's top CAP; the
+//     IS DISTINCT FROM guards only prevent UNION ALL double-counting, which a
+//     single OR cannot do).
+
+import { buildAccountTransfers } from "./account-events.ts";
+import {
+  buildAccountStakeFlow,
+  DEFAULT_STAKE_FLOW_WINDOW,
+  STAKE_ADDED_KIND,
+  STAKE_FLOW_WINDOWS,
+  STAKE_REMOVED_KIND,
+} from "./account-stake-flow.ts";
+import {
+  ACCOUNT_STAKE_MOVES_WINDOWS,
+  buildAccountStakeMoves,
+  DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
+  STAKE_MOVED_EVENT_KIND,
+} from "./account-stake-moves.ts";
+import {
+  ACCOUNT_WEIGHT_SETTERS_WINDOWS,
+  buildAccountWeightSetters,
+  DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
+  WEIGHTS_EVENT_KIND,
+} from "./account-weight-setters.ts";
+import {
+  buildCounterparties,
+  buildCounterpartyRelationship,
+  COUNTERPARTIES_SCAN_CAP,
+  type CounterpartyRelationshipResult,
+} from "./counterparties.ts";
+import { decodeCursor, encodeCursor } from "./cursor.ts";
+import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
+import { OFFSET_EMULATION_CAP } from "./r2-sql-blocks.ts";
+
+/** Kept identical to the Postgres tier's SELECT list so both tiers hand the
+ * formatter the same shape. */
+const EVENT_COLUMNS =
+  "block_number, event_index, extrinsic_index, event_kind, hotkey, coldkey, " +
+  "netuid, uid, amount_tao, alpha_amount, observed_at";
+
+/** EXACTLY the Postgres tier's feed order -- the public cursor token encodes
+ * this composite key, so a different order would emit tokens the other tier
+ * mis-seeks on. */
+const FEED_ORDER =
+  "ORDER BY observed_at DESC, block_number DESC, event_index DESC";
+
+/** The 3-part key the transfer feed pages on, mirroring data-api. */
+const CURSOR_ARITY = 3;
+
+/** Same day length windowCutoff (workers/data-api.ts) uses, so both tiers
+ * compute the identical request-time cutoff for the same window label. */
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Resolve a window label to its request-time epoch-ms cutoff, mirroring
+ * data-api's windowCutoff exactly: an unrecognized label falls back to the
+ * map's default rather than erroring (the REST/MCP callers already rejected
+ * genuinely bad values before any tier is tried). */
+function windowCutoff(
+  windows: Record<string, number>,
+  defaultLabel: string,
+  label: string | null | undefined,
+): { label: string; cutoff: number } {
+  const resolved =
+    label != null && Object.hasOwn(windows, label) ? label : defaultLabel;
+  return { label: resolved, cutoff: Date.now() - windows[resolved] * DAY_MS };
+}
+
+/** The newest `last_observed` epoch-ms across a row set as an ISO string --
+ * the same generatedAt data-api's latestObservedIso derives for these routes,
+ * so the envelope reads identically across tiers. */
+function latestObservedIso(rows: Record<string, unknown>[]): string | null {
+  let latest: number | null = null;
+  for (const row of rows) {
+    const n = Number(row?.last_observed);
+    if (Number.isFinite(n) && n > 0 && (latest == null || n > latest)) {
+      latest = n;
+    }
+  }
+  return latest == null ? null : new Date(latest).toISOString();
+}
+
+export interface AccountTransfersQuery {
+  limit: number;
+  offset?: number | null;
+  cursor?: unknown;
+  /** "sent" | "received" narrows the side; "all"/null/undefined reads both.
+   * Anything else is a filter this tier will not guess at -- decline. */
+  direction?: unknown;
+  blockStart?: unknown;
+  blockEnd?: unknown;
+}
+
+/**
+ * GET /api/v1/accounts/{ss58}/transfers -- the native-TAO Balances.Transfer
+ * feed (event_kind='Transfer', hotkey=from / coldkey=to), newest first.
+ * Returns null when the lakehouse cannot answer faithfully.
+ */
+export async function loadAccountTransfersColdTier(
+  env: Env | null | undefined,
+  ss58: string,
+  query: AccountTransfersQuery,
+): Promise<ReturnType<typeof buildAccountTransfers> | null> {
+  const limit = safeBlockNumber(query.limit);
+  const offset = safeBlockNumber(query.offset ?? 0);
+  if (limit === null || offset === null || limit <= 0) return null;
+  // R2 SQL has no OFFSET; past this depth the over-fetch stops being a
+  // reasonable trade and declining beats serving a page that is quietly wrong.
+  if (offset > OFFSET_EMULATION_CAP) return null;
+
+  // An unusable address is a decline, not an unfiltered scan of every account.
+  const addr = safeSs58Literal(ss58);
+  if (addr === null) return null;
+
+  const direction = query.direction ?? null;
+  if (
+    direction !== null &&
+    direction !== "all" &&
+    direction !== "sent" &&
+    direction !== "received"
+  ) {
+    return null;
+  }
+  const where = ["event_kind = 'Transfer'"];
+  // data-api's exact direction semantics: sent matches the from side (hotkey),
+  // received the to side (coldkey), and "all"/omitted reads both -- the single
+  // OR standing in for its two-scan merge (see the module header).
+  if (direction === "sent") where.push(`hotkey = '${addr}'`);
+  else if (direction === "received") where.push(`coldkey = '${addr}'`);
+  else where.push(`(hotkey = '${addr}' OR coldkey = '${addr}')`);
+
+  for (const [value, clause] of [
+    [query.blockStart, "block_number >="],
+    [query.blockEnd, "block_number <="],
+  ] as [unknown, string][]) {
+    if (value == null) continue;
+    const n = safeBlockNumber(value);
+    if (n === null) return null;
+    where.push(`${clause} ${n}`);
+  }
+  const cursor = decodeCursor(query.cursor, CURSOR_ARITY);
+  if (cursor) {
+    // data-api's exact 3-part tuple seek; an invalid token means page 1,
+    // exactly as data-api treats it.
+    where.push(
+      `(observed_at, block_number, event_index) < ` +
+        `(${cursor[0]}, ${cursor[1]}, ${cursor[2]})`,
+    );
+  }
+
+  // Cursor pages never carry an offset, mirroring data-api.
+  const paged = cursor ? 0 : offset;
+  const rows = await r2SqlQuery(
+    env,
+    `SELECT ${EVENT_COLUMNS} FROM chain.account_events WHERE ${where.join(" AND ")}` +
+      ` ${FEED_ORDER} LIMIT ${limit + paged}`,
+  );
+  if (rows === null) return null;
+
+  const page = paged > 0 ? rows.slice(paged) : rows;
+  const last = page.length === limit ? page[page.length - 1] : null;
+  const nextCursor = last
+    ? encodeCursor([
+        safeBlockNumber(last.observed_at),
+        safeBlockNumber(last.block_number),
+        safeBlockNumber(last.event_index),
+      ])
+    : null;
+  return buildAccountTransfers(page, ss58, {
+    limit,
+    offset,
+    nextCursor,
+    // The fixed-label hint ONLY when the SQL already filtered one side --
+    // the same rule data-api applies (#2362's self-transfer fix).
+    direction:
+      direction === "sent" || direction === "received" ? direction : undefined,
+  });
+}
+
+/**
+ * GET /api/v1/accounts/{ss58}/stake-flow -- the windowed StakeAdded vs
+ * StakeRemoved aggregate, GROUP BY (netuid, event_kind), ACCOUNT-scoped so a
+ * live selective query is fine where the chain-wide twin needed a projection.
+ * Returns data-api's `{ data, generatedAt }` wrapped shape.
+ */
+export async function loadAccountStakeFlowColdTier(
+  env: Env | null | undefined,
+  ss58: string,
+  query: { window?: string | null; direction?: unknown } = {},
+): Promise<{
+  data: ReturnType<typeof buildAccountStakeFlow>;
+  generatedAt: string | null;
+} | null> {
+  const addr = safeSs58Literal(ss58);
+  if (addr === null) return null;
+
+  const direction = query.direction ?? null;
+  if (
+    direction !== null &&
+    direction !== "all" &&
+    direction !== "in" &&
+    direction !== "out"
+  ) {
+    return null;
+  }
+  // data-api's per-direction kind filter; the IN (added, removed) branch is
+  // rewritten as an OR of the two equalities -- same row set, no IN-list
+  // dependence on the beta engine.
+  const kind =
+    direction === "in"
+      ? `event_kind = '${STAKE_ADDED_KIND}'`
+      : direction === "out"
+        ? `event_kind = '${STAKE_REMOVED_KIND}'`
+        : `(event_kind = '${STAKE_ADDED_KIND}' OR event_kind = '${STAKE_REMOVED_KIND}')`;
+
+  const { label, cutoff } = windowCutoff(
+    STAKE_FLOW_WINDOWS,
+    DEFAULT_STAKE_FLOW_WINDOW,
+    query.window,
+  );
+  const rows = await r2SqlQuery(
+    env,
+    `SELECT netuid, event_kind, SUM(amount_tao) AS total_tao, ` +
+      `COUNT(*) AS event_count, MAX(observed_at) AS last_observed ` +
+      `FROM chain.account_events ` +
+      `WHERE (hotkey = '${addr}' OR coldkey = '${addr}') AND ${kind} ` +
+      `AND observed_at >= ${cutoff} GROUP BY netuid, event_kind`,
+  );
+  if (rows === null) return null;
+  // data-api wraps the SUM in COALESCE(..., 0); replicate that client-side
+  // rather than lean on the beta engine's function coverage -- an all-null
+  // group must still count its events, not be skipped by the formatter.
+  const coalesced = rows.map((row) => ({
+    ...row,
+    total_tao: row.total_tao ?? 0,
+  }));
+  return {
+    data: buildAccountStakeFlow(coalesced, ss58, { window: label }),
+    generatedAt: latestObservedIso(rows),
+  };
+}
+
+/**
+ * GET /api/v1/accounts/{ss58}/stake-moves -- the windowed per-subnet
+ * StakeMoved footprint, GROUP BY netuid. Same wrapped shape as stake-flow.
+ */
+export async function loadAccountStakeMovesColdTier(
+  env: Env | null | undefined,
+  ss58: string,
+  query: { window?: string | null } = {},
+): Promise<{
+  data: ReturnType<typeof buildAccountStakeMoves>;
+  generatedAt: string | null;
+} | null> {
+  const addr = safeSs58Literal(ss58);
+  if (addr === null) return null;
+  const { label, cutoff } = windowCutoff(
+    ACCOUNT_STAKE_MOVES_WINDOWS,
+    DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
+    query.window,
+  );
+  const rows = await r2SqlQuery(
+    env,
+    `SELECT netuid, COUNT(*) AS movements, MIN(observed_at) AS first_observed, ` +
+      `MAX(observed_at) AS last_observed FROM chain.account_events ` +
+      `WHERE (hotkey = '${addr}' OR coldkey = '${addr}') ` +
+      `AND event_kind = '${STAKE_MOVED_EVENT_KIND}' ` +
+      `AND observed_at >= ${cutoff} GROUP BY netuid`,
+  );
+  if (rows === null) return null;
+  return {
+    data: buildAccountStakeMoves(rows, ss58, { window: label }),
+    generatedAt: latestObservedIso(rows),
+  };
+}
+
+/** The D1 surface this module needs from `neurons` -- structural, so tests
+ * can hand a plain object (same pattern as src/blocks-cold-tier.ts). */
+interface D1Like {
+  prepare(sql: string): {
+    bind(...values: unknown[]): {
+      all?(): Promise<{ results?: unknown[] } | null>;
+    };
+  };
+}
+
+/** The hotkey's registered (netuid, uid) slots from D1 `neurons` -- the same
+ * decomposition data-api runs now that neurons is off Postgres. null when the
+ * slots cannot be read (no binding, D1 failure, or an unusable cell), because
+ * without them the hotkey-less WeightsSet rows would be silently dropped --
+ * a degrade, and this family declines rather than degrades. */
+async function neuronSlots(
+  env: Env | null | undefined,
+  addr: string,
+): Promise<{ netuid: number; uid: number }[] | null> {
+  const db = (env as { METAGRAPH_HEALTH_DB?: D1Like } | null | undefined)
+    ?.METAGRAPH_HEALTH_DB;
+  if (!db?.prepare) return null;
+  let results: unknown[];
+  try {
+    const res = await db
+      .prepare("SELECT netuid, uid FROM neurons WHERE hotkey = ?")
+      .bind(addr)
+      .all?.();
+    if (!Array.isArray(res?.results)) return null;
+    results = res.results;
+  } catch {
+    return null;
+  }
+  const slots: { netuid: number; uid: number }[] = [];
+  for (const row of results as Record<string, unknown>[]) {
+    const netuid = safeBlockNumber(row?.netuid);
+    const uid = safeBlockNumber(row?.uid);
+    // A slot that cannot be inlined safely poisons the whole predicate --
+    // refuse the read rather than build a partial one.
+    if (netuid === null || uid === null) return null;
+    slots.push({ netuid, uid });
+  }
+  return slots;
+}
+
+/**
+ * GET /api/v1/accounts/{ss58}/weight-setters -- the windowed per-subnet
+ * WeightsSet footprint. data-api's two-branch read (direct hotkey rows UNION
+ * ALL hotkey-less rows matched via the hotkey's D1 neuron slots) collapses to
+ * one disjunction here; see the module header for the equivalence.
+ */
+export async function loadAccountWeightSettersColdTier(
+  env: Env | null | undefined,
+  ss58: string,
+  query: { window?: string | null } = {},
+): Promise<{
+  data: ReturnType<typeof buildAccountWeightSetters>;
+  generatedAt: string | null;
+} | null> {
+  const addr = safeSs58Literal(ss58);
+  if (addr === null) return null;
+  const slots = await neuronSlots(env, addr);
+  if (slots === null) return null;
+
+  let predicate = `hotkey = '${addr}'`;
+  if (slots.length > 0) {
+    const pairs = slots
+      .map((s) => `(netuid = ${s.netuid} AND uid = ${s.uid})`)
+      .join(" OR ");
+    predicate =
+      `(${predicate} OR ` + `((hotkey IS NULL OR hotkey = '') AND (${pairs})))`;
+  }
+  const { label, cutoff } = windowCutoff(
+    ACCOUNT_WEIGHT_SETTERS_WINDOWS,
+    DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
+    query.window,
+  );
+  const rows = await r2SqlQuery(
+    env,
+    `SELECT netuid, COUNT(*) AS weight_sets, MIN(observed_at) AS first_observed, ` +
+      `MAX(observed_at) AS last_observed FROM chain.account_events ` +
+      `WHERE event_kind = '${WEIGHTS_EVENT_KIND}' AND observed_at >= ${cutoff} ` +
+      `AND ${predicate} GROUP BY netuid`,
+  );
+  if (rows === null) return null;
+  return {
+    data: buildAccountWeightSetters(rows, ss58, { window: label }),
+    generatedAt: latestObservedIso(rows),
+  };
+}
+
+/** The bounded newest-first Transfer scan both counterparty modes read.
+ * observed_at is selected (it drives the ORDER BY) but STRIPPED before the
+ * rows reach a builder: data-api's outer projection drops it, so keeping it
+ * would let this tier populate relationship timestamps the Postgres tier
+ * leaves null -- a payload difference callers could observe. */
+async function counterpartyScan(
+  env: Env | null | undefined,
+  predicate: string,
+): Promise<Record<string, unknown>[] | null> {
+  const rows = await r2SqlQuery(
+    env,
+    `SELECT hotkey, coldkey, amount_tao, block_number, event_index, observed_at ` +
+      `FROM chain.account_events WHERE event_kind = 'Transfer' AND ${predicate} ` +
+      `${FEED_ORDER} LIMIT ${COUNTERPARTIES_SCAN_CAP}`,
+  );
+  if (rows === null) return null;
+  return rows.map(({ observed_at: _observedAt, ...rest }) => rest);
+}
+
+/**
+ * GET /api/v1/accounts/{ss58}/counterparties (list mode) -- who this account
+ * transacts native TAO with, aggregated client-side from the capped scan by
+ * the same builder every tier feeds.
+ */
+export async function loadAccountCounterpartiesColdTier(
+  env: Env | null | undefined,
+  ss58: string,
+  query: { limit?: number } = {},
+): Promise<ReturnType<typeof buildCounterparties> | null> {
+  const addr = safeSs58Literal(ss58);
+  if (addr === null) return null;
+  const rows = await counterpartyScan(
+    env,
+    `(hotkey = '${addr}' OR coldkey = '${addr}')`,
+  );
+  if (rows === null) return null;
+  return buildCounterparties(rows, ss58, { limit: query.limit });
+}
+
+/** The composite drilldown payload data-api assembles inline for
+ * ?counterparty= -- reproduced field-for-field so the route's shape does not
+ * depend on which tier answered. */
+export interface CounterpartyDrilldownResult {
+  schema_version: 1;
+  ss58: string;
+  counterparty_count: number;
+  transfers_scanned: number;
+  scan_capped: boolean;
+  total_sent_tao: number;
+  total_received_tao: number;
+  counterparties: {
+    address: string;
+    sent_tao: number;
+    received_tao: number;
+    net_tao: number;
+    transfer_count: number;
+    last_block: number | null;
+  }[];
+  relationship: CounterpartyRelationshipResult;
+}
+
+/**
+ * GET /api/v1/accounts/{ss58}/counterparties?counterparty= (drilldown mode) --
+ * one relationship's fund-flow totals plus the transfer evidence.
+ */
+export async function loadCounterpartyRelationshipColdTier(
+  env: Env | null | undefined,
+  ss58: string,
+  counterparty: string,
+  query: { limit?: number } = {},
+): Promise<CounterpartyDrilldownResult | null> {
+  const addr = safeSs58Literal(ss58);
+  const other = safeSs58Literal(counterparty);
+  if (addr === null || other === null) return null;
+  const rows = await counterpartyScan(
+    env,
+    `((hotkey = '${addr}' AND coldkey = '${other}') OR ` +
+      `(hotkey = '${other}' AND coldkey = '${addr}'))`,
+  );
+  if (rows === null) return null;
+  const relationship = buildCounterpartyRelationship(rows, ss58, counterparty, {
+    limit: query.limit,
+  });
+  return {
+    schema_version: 1,
+    ss58,
+    counterparty_count: relationship.transfer_count === 0 ? 0 : 1,
+    transfers_scanned: relationship.transfers_scanned,
+    scan_capped: relationship.scan_capped,
+    total_sent_tao: relationship.total_sent_tao,
+    total_received_tao: relationship.total_received_tao,
+    counterparties:
+      relationship.transfer_count === 0
+        ? []
+        : [
+            {
+              address: counterparty,
+              sent_tao: relationship.total_sent_tao,
+              received_tao: relationship.total_received_tao,
+              net_tao: relationship.net_tao,
+              transfer_count: relationship.transfer_count,
+              last_block: relationship.last_block,
+            },
+          ],
+    relationship,
+  };
+}

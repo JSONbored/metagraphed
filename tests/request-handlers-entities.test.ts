@@ -2915,6 +2915,138 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
       new RegExp(`hotkey = '${ADDR}' OR coldkey = '${ADDR}'`),
     );
   });
+
+  const COUNTERPARTY = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
+  const TRANSFER_ROW = {
+    ...EVENT_ROW,
+    event_kind: "Transfer",
+    coldkey: COUNTERPARTY,
+    amount_tao: "2.5",
+  };
+
+  test("handleAccountTransfers serves the Transfer feed from the lakehouse", async () => {
+    const q = lakeFetch([TRANSFER_ROW]);
+    const body = await json(
+      await handleAccountTransfers(
+        req(`/api/v1/accounts/${ADDR}/transfers`),
+        LAKE_ENV,
+        ADDR,
+        url(`/api/v1/accounts/${ADDR}/transfers?direction=sent`),
+      ),
+    );
+    assert.equal(body.data.transfer_count, 1);
+    assert.equal(body.data.transfers[0].direction, "sent");
+    assert.match(q[0]!, /event_kind = 'Transfer'/);
+    assert.match(q[0]!, new RegExp(`hotkey = '${ADDR}'`));
+  });
+
+  test("handleAccountStakeFlow serves the windowed flow card from the lakehouse", async () => {
+    const q = lakeFetch([
+      {
+        netuid: 7,
+        event_kind: "StakeAdded",
+        total_tao: "100",
+        event_count: "2",
+        last_observed: 1_700_000_004_200,
+      },
+    ]);
+    const body = await json(
+      await handleAccountStakeFlow(
+        req(`/api/v1/accounts/${ADDR}/stake-flow`),
+        LAKE_ENV,
+        ADDR,
+        url(`/api/v1/accounts/${ADDR}/stake-flow?window=7d`),
+      ),
+    );
+    assert.equal(body.data.total_staked_tao, 100);
+    assert.equal(body.data.window, "7d");
+    assert.match(q[0]!, /GROUP BY netuid, event_kind/);
+  });
+
+  test("handleAccountStakeMoves serves the movement card from the lakehouse", async () => {
+    const q = lakeFetch([
+      {
+        netuid: 3,
+        movements: "4",
+        first_observed: 1_700_000_000_100,
+        last_observed: 1_700_000_004_200,
+      },
+    ]);
+    const body = await json(
+      await handleAccountStakeMoves(
+        req(`/api/v1/accounts/${ADDR}/stake-moves`),
+        LAKE_ENV,
+        ADDR,
+        url(`/api/v1/accounts/${ADDR}/stake-moves`),
+      ),
+    );
+    assert.equal(body.data.total_movements, 4);
+    assert.match(q[0]!, /event_kind = 'StakeMoved'/);
+  });
+
+  test("handleAccountWeightSetters joins the D1 neuron slots into the lakehouse read", async () => {
+    const q = lakeFetch([
+      {
+        netuid: 11,
+        weight_sets: "6",
+        first_observed: 1_700_000_000_100,
+        last_observed: 1_700_000_004_200,
+      },
+    ]);
+    const envWithD1 = {
+      ...LAKE_ENV,
+      METAGRAPH_HEALTH_DB: {
+        prepare: () => ({
+          bind: () => ({
+            all: async () => ({ results: [{ netuid: 11, uid: 4 }] }),
+          }),
+        }),
+      },
+    } as unknown as Env;
+    const body = await json(
+      await handleAccountWeightSetters(
+        req(`/api/v1/accounts/${ADDR}/weight-setters`),
+        envWithD1,
+        ADDR,
+        url(`/api/v1/accounts/${ADDR}/weight-setters`),
+      ),
+    );
+    assert.equal(body.data.total_weight_sets, 6);
+    assert.match(q[0]!, /event_kind = 'WeightsSet'/);
+    assert.match(q[0]!, /\(netuid = 11 AND uid = 4\)/);
+  });
+
+  test("handleAccountCounterparties serves both modes from the lakehouse", async () => {
+    lakeFetch([TRANSFER_ROW]);
+    const list = await json(
+      await handleAccountCounterparties(
+        req(`/api/v1/accounts/${ADDR}/counterparties`),
+        LAKE_ENV,
+        ADDR,
+        url(`/api/v1/accounts/${ADDR}/counterparties`),
+      ),
+    );
+    assert.equal(list.data.counterparty_count, 1);
+    assert.equal(list.data.counterparties[0].address, COUNTERPARTY);
+
+    const q = lakeFetch([TRANSFER_ROW]);
+    const drill = await json(
+      await handleAccountCounterparties(
+        req(`/api/v1/accounts/${ADDR}/counterparties`),
+        LAKE_ENV,
+        ADDR,
+        url(
+          `/api/v1/accounts/${ADDR}/counterparties?counterparty=${COUNTERPARTY}`,
+        ),
+      ),
+    );
+    assert.equal(drill.data.relationship.transfer_count, 1);
+    assert.equal(drill.data.counterparties[0].sent_tao, 2.5);
+    assert.match(
+      q[0]!,
+      new RegExp(`hotkey = '${ADDR}' AND coldkey = '${COUNTERPARTY}'`),
+    );
+  });
 });
 
 describe("handleAccountEvents", () => {

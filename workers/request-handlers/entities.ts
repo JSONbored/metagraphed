@@ -155,6 +155,14 @@ import {
   loadBlockEventsColdTier,
 } from "../../src/events-cold-tier.ts";
 import {
+  loadAccountCounterpartiesColdTier,
+  loadAccountStakeFlowColdTier,
+  loadAccountStakeMovesColdTier,
+  loadAccountTransfersColdTier,
+  loadAccountWeightSettersColdTier,
+  loadCounterpartyRelationshipColdTier,
+} from "../../src/account-feeds-cold-tier.ts";
+import {
   loadSubnetHyperparamsColdTier,
   loadSubnetHyperparamsHistoryColdTier,
 } from "../../src/subnet-hyperparams-cold-tier.ts";
@@ -3407,7 +3415,7 @@ export async function handleAccountStakeFlow(
   }
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss
-  // (#6016/#6017). Postgres → schema-stable empty stub.
+  // (#6016/#6017). Postgres → lakehouse cold tier → schema-stable empty stub.
   const { data, generatedAt } = ((await tryPostgresTier(
     env,
     request,
@@ -3415,10 +3423,14 @@ export async function handleAccountStakeFlow(
   )) as {
     data: ReturnType<typeof buildAccountStakeFlow>;
     generatedAt: string | null;
-  } | null) ?? {
-    data: buildAccountStakeFlow([], ss58, { window: windowParam }),
-    generatedAt: null,
-  };
+  } | null) ??
+    (await loadAccountStakeFlowColdTier(env, ss58, {
+      window: windowParam,
+      direction,
+    })) ?? {
+      data: buildAccountStakeFlow([], ss58, { window: windowParam }),
+      generatedAt: null,
+    };
   return accountEnvelopeResponse(
     request,
     {
@@ -3442,6 +3454,7 @@ function makeAccountEventHandler({
   defaultWindow,
   build,
   urlSuffix,
+  coldTier,
 }: {
   windows: Record<string, number>;
   defaultWindow: string;
@@ -3451,6 +3464,15 @@ function makeAccountEventHandler({
     options: { window: string },
   ) => unknown;
   urlSuffix: string;
+  /** Lakehouse reader tried between the Postgres tier and the schema-stable
+   * empty (src/account-feeds-cold-tier.ts) -- returns the same wrapped
+   * `{ data, generatedAt }` shape the Postgres tier does, or null to fall
+   * through. Only the account_events-backed feeds with a wired reader set it. */
+  coldTier?: (
+    env: Env,
+    ss58: string,
+    window: string,
+  ) => Promise<{ data: unknown; generatedAt: string | null } | null>;
 }) {
   return async function handleAccountEvent(
     request: Request,
@@ -3474,10 +3496,11 @@ function makeAccountEventHandler({
     )) as {
       data: ReturnType<typeof build>;
       generatedAt: string | null;
-    } | null) ?? {
-      data: build([], ss58, { window: windowParam }),
-      generatedAt: null,
-    };
+    } | null) ??
+      (coldTier ? await coldTier(env, ss58, windowParam) : null) ?? {
+        data: build([], ss58, { window: windowParam }),
+        generatedAt: null,
+      };
     return accountEnvelopeResponse(
       request,
       {
@@ -3502,6 +3525,8 @@ export const handleAccountStakeMoves = makeAccountEventHandler({
   defaultWindow: DEFAULT_ACCOUNT_STAKE_MOVES_WINDOW,
   build: buildAccountStakeMoves,
   urlSuffix: "stake-moves",
+  coldTier: (env, ss58, window) =>
+    loadAccountStakeMovesColdTier(env, ss58, { window }),
 });
 
 // GET /api/v1/accounts/{ss58}/weight-setters: the account's (validator's) per-subnet WeightsSet
@@ -3513,6 +3538,8 @@ export const handleAccountWeightSetters = makeAccountEventHandler({
   defaultWindow: DEFAULT_ACCOUNT_WEIGHT_SETTERS_WINDOW,
   build: buildAccountWeightSetters,
   urlSuffix: "weight-setters",
+  coldTier: (env, ss58, window) =>
+    loadAccountWeightSettersColdTier(env, ss58, { window }),
 });
 
 // GET /api/v1/accounts/{ss58}/registrations: the account's per-subnet NeuronRegistered footprint
@@ -4013,12 +4040,21 @@ export async function handleAccountTransfers(
   if ("error" in blockEnd) return analyticsQueryError(blockEnd.error);
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
+  // Postgres → lakehouse cold tier → schema-stable empty stub.
   const data =
     ((await tryPostgresTier(
       env,
       request,
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     )) as ReturnType<typeof buildAccountTransfers> | null) ??
+    (await loadAccountTransfersColdTier(env, ss58, {
+      limit,
+      offset,
+      cursor: url.searchParams.get("cursor"),
+      direction,
+      blockStart: url.searchParams.get("block_start"),
+      blockEnd: url.searchParams.get("block_end"),
+    })) ??
     buildAccountTransfers([], ss58, {
       limit,
       offset,
@@ -4112,17 +4148,20 @@ export async function handleAccountCounterparties(
       env,
       request,
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-    )) ?? {
-      schema_version: 1,
-      ss58,
-      counterparty_count: 0,
-      transfers_scanned: emptyRelationship.transfers_scanned,
-      scan_capped: emptyRelationship.scan_capped,
-      total_sent_tao: emptyRelationship.total_sent_tao,
-      total_received_tao: emptyRelationship.total_received_tao,
-      counterparties: [],
-      relationship: emptyRelationship,
-    };
+    )) ??
+      (await loadCounterpartyRelationshipColdTier(env, ss58, counterparty, {
+        limit,
+      })) ?? {
+        schema_version: 1,
+        ss58,
+        counterparty_count: 0,
+        transfers_scanned: emptyRelationship.transfers_scanned,
+        scan_capped: emptyRelationship.scan_capped,
+        total_sent_tao: emptyRelationship.total_sent_tao,
+        total_received_tao: emptyRelationship.total_received_tao,
+        counterparties: [],
+        relationship: emptyRelationship,
+      };
     return accountEnvelopeResponse(
       request,
       {
@@ -4142,6 +4181,7 @@ export async function handleAccountCounterparties(
       request,
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     )) as ReturnType<typeof buildCounterparties> | null) ??
+    (await loadAccountCounterpartiesColdTier(env, ss58, { limit })) ??
     buildCounterparties([], ss58, { limit });
   if (csvRequested(url, request)) {
     return csvResponse(
