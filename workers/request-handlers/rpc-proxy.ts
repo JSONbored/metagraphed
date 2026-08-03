@@ -56,15 +56,12 @@ import {
 } from "../../src/health-prober.ts";
 import { ipv6EmbeddedIpv4 } from "../../src/ip-safety.ts";
 import { overlayRpcPoolEligibility } from "../../src/health-serving.ts";
-import { loadRpcUsage } from "../../src/rpc-usage-loader.ts";
-import { loadRpcUsageColdTier } from "../../src/rpc-usage-cold-tier.ts";
-import { loadRpcUsageHotTier } from "../../src/rpc-usage-hot-tier.ts";
+import { answerRpcUsage } from "../../src/rpc-usage-answer.ts";
 import {
   recordRpcUsageEvent,
   type AnalyticsEngineDatasetLike,
   type RpcUsageEvent,
 } from "../../src/rpc-usage-capture.ts";
-import { tryPostgresTier } from "../postgres-tier.ts";
 import {
   DENIED_RPC_PREFIXES,
   JSON_CONTENT_TYPE,
@@ -219,24 +216,12 @@ function recordRpcUsage(env: Env, event: RpcUsageEvent) {
 // failover + error rate, cache-hit rate, and the per-endpoint distribution that
 // shows whether the load balancer is actually spreading traffic.
 //
-// #9228 restores a HOT tier in front of the frozen lakehouse one: Analytics
-// Engine answers whatever window it has captured, the lakehouse answers the
-// windows it still covers, and a zeroed payload remains the floor. Both tiers
-// feed formatRpcUsage, so the shape is identical -- with ONE deliberate,
-// documented difference: the hot tier reports real measured p50/p95 (AE has
-// weighted quantiles) where the cold tier reports null (R2 SQL has no
-// percentile function and refuses to synthesise one). See
-// src/rpc-usage-hot-tier.ts's header for why null therefore stays unambiguous
-// in both.
-//
-// The two stores are disjoint in time (the lakehouse froze when the box died;
-// AE starts at deploy) and are NOT merged: the first captured hour makes the
-// hot tier answer the 7d window on its own, under-reporting the older days
-// the lakehouse still holds until capture catches up. That transition is
-// bounded, self-healing, and visible -- `observed_at` always reports the
-// answering data's own newest reading -- and summing two aggregate payloads
-// (weighted averages across two endpoint/network/bucket lists) is a second
-// change that has no business riding along with restoring capture.
+// The tier cascade lives in src/rpc-usage-answer.ts, NOT here (#9269/#9293).
+// This handler used to own it, and the MCP tool and the GraphQL resolver each
+// owned a different, staler copy -- which is how the same route came to serve
+// 118,309 requests over REST and `total_requests: 0` over GraphQL at the same
+// instant. One composer answers all three surfaces; this handler's only job is
+// the window parse and the envelope.
 export async function handleRpcUsage(
   request: Request,
   env: Env,
@@ -246,39 +231,14 @@ export async function handleRpcUsage(
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
   const { label } = windowResult;
   const meta = await readHealthMetaKv(env);
-  // #4832 gap-closure: reuses tryPostgresTier's usual "forward the caller's
-  // request unchanged" contract (a clean 1:1 route, unlike handleCompare's
-  // embedded-helper shape). METAGRAPH_RPC_USAGE_SOURCE flipped to "postgres"
-  // in wrangler.jsonc 2026-07-12 after a one-time historical backfill closed
-  // the gap (see wrangler.jsonc's inline comment for the verification
-  // details) -- unlike METAGRAPH_HEALTH_SOURCE/METAGRAPH_SUBNET_SNAPSHOTS_SOURCE,
-  // this table's reads are always window-bounded (7d/30d) and both stores
-  // only ever hold that same rolling slice, so there was no long-tail
-  // history a backfill could leave behind.
-  const data =
-    // The live tier, first: once capture is running this is the only one that
-    // can answer with today's traffic. It declines when the AE read token is
-    // not provisioned, so on a deployment without that secret this route
-    // behaves exactly as it did before.
-    (await loadRpcUsageHotTier(env, { window: label })) ??
-    ((await tryPostgresTier(
-      env,
-      request,
-      "METAGRAPH_RPC_USAGE_SOURCE",
-    )) as Awaited<ReturnType<typeof loadRpcUsage>> | null) ??
-    // The box's Postgres is gone, so the tier above always misses and this
-    // route served a zeroed rollup while 578,682 verified rows of the same
-    // table sat in the lakehouse. The cold tier declines (null) rather than
-    // half-answering, so the empty payload below stays the fallback rather
-    // than being replaced by a partial one.
-    (await loadRpcUsageColdTier(
-      env as unknown as Parameters<typeof loadRpcUsageColdTier>[0],
-      { window: label },
-    )) ??
-    (await loadRpcUsage({
-      window: label,
-      observedAt: meta?.last_run_at || null,
-    } as unknown as Parameters<typeof loadRpcUsage>[0]));
+  const data = await answerRpcUsage(env, {
+    window: label,
+    observedAt: meta?.last_run_at || null,
+    // #4832 gap-closure: reuses tryPostgresTier's usual "forward the caller's
+    // request unchanged" contract (a clean 1:1 route, unlike handleCompare's
+    // embedded-helper shape). The composer decides WHEN that tier is tried.
+    postgresRequest: request,
+  });
   return envelopeResponse(
     request,
     {

@@ -57,6 +57,7 @@ const TOTALS = [
     latency_sum: 125_400,
     p50: 87.2,
     p95: 402.8,
+    observed_from_s: OBSERVED_AT_S - 3600,
     observed_at_s: OBSERVED_AT_S,
   },
 ];
@@ -183,6 +184,38 @@ describe("loadRpcUsageHotTier", () => {
     const out = (await loadRpcUsageHotTier(ENV, { query })) as Row;
     assert.equal(out.observed_at, null);
   });
+
+  // #9293: the window LABEL is what the caller asked for; `coverage` is what
+  // AE could actually answer. AE's retention starts at deploy, so for the
+  // first weeks those are wildly different spans -- and publishing only the
+  // label is what let two hours of data ship as a `7d` total.
+  test("publishes the span it measured, not just the window it was asked for", async () => {
+    const { query } = cannedQuery(FULL);
+    const out = (await loadRpcUsageHotTier(ENV, { query })) as Row;
+    const coverage = out.coverage as Row;
+    assert.equal(coverage.start, (OBSERVED_AT_S - 3600) * 1000);
+    assert.equal(coverage.end, OBSERVED_AT_S * 1000);
+    assert.deepEqual(coverage.segments, [
+      {
+        source: "analytics-engine",
+        start: (OBSERVED_AT_S - 3600) * 1000,
+        end: OBSERVED_AT_S * 1000,
+      },
+    ]);
+    // The percentiles this tier measures describe exactly that span, and say so.
+    assert.deepEqual(coverage.latency_percentiles, {
+      start: (OBSERVED_AT_S - 3600) * 1000,
+      end: OBSERVED_AT_S * 1000,
+    });
+  });
+
+  test("a totals row with no min(timestamp) reports an unmeasured start", async () => {
+    const { query } = cannedQuery([[{ total: 5, ok_count: 5 }], [], [], []]);
+    const out = (await loadRpcUsageHotTier(ENV, { query })) as Row;
+    const coverage = out.coverage as Row;
+    assert.equal(coverage.start, null);
+    assert.equal(coverage.latency_percentiles, null);
+  });
 });
 
 describe("the SQL the hot tier issues", () => {
@@ -250,6 +283,22 @@ describe("the SQL the hot tier issues", () => {
       /toStartOfInterval\(timestamp, INTERVAL '6' HOUR\)/,
     );
     assert.equal(out.bucket_granularity, "6h");
+  });
+
+  test("selects BOTH ends of the measured span", async () => {
+    // The newest reading has always been published as observed_at; the oldest
+    // is what bounds the lakehouse read in src/rpc-usage-answer.ts, so the two
+    // stores can be summed without describing the same event twice.
+    const { query, sql } = cannedQuery(FULL);
+    await loadRpcUsageHotTier(ENV, { query });
+    assert.match(
+      sql[0]!,
+      /toUnixTimestamp\(min\(timestamp\)\) AS observed_from_s/,
+    );
+    assert.match(
+      sql[0]!,
+      /toUnixTimestamp\(max\(timestamp\)\) AS observed_at_s/,
+    );
   });
 
   test("groups endpoints by the declared blob slots", async () => {

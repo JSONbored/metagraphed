@@ -407,7 +407,7 @@ import {
   DEFAULT_ANALYTICS_WINDOW,
   SS58_ADDRESS_PATTERN,
 } from "../workers/config.ts";
-import { loadRpcUsage } from "./rpc-usage-loader.ts";
+import { answerRpcUsage } from "./rpc-usage-answer.ts";
 import { loadChainServingColdTier } from "./chain-serving-loader.ts";
 import { enrichValidatorNominatorCounts } from "./validator-nominator-counts-cold-tier.ts";
 import {
@@ -7725,27 +7725,36 @@ const rootValue = {
     }
     const params = new URLSearchParams();
     params.set("window", requestedWindow);
-    // Same tryPostgresTier(METAGRAPH_RPC_USAGE_SOURCE) -> loadRpcUsage fallback
-    // contract REST's handleRpcUsage and the get_rpc_usage MCP tool share -- a
-    // cold store yields a schema-stable zeroed card, never a GraphQL error.
-    const data =
-      ((await tryPostgresTier(
-        context.env,
-        postgresTierRequest(context, "/api/v1/rpc/usage", params),
-        "METAGRAPH_RPC_USAGE_SOURCE",
-      )) as Row | null) ??
-      (await loadRpcUsage({
-        window: requestedWindow,
-        observedAt: await loadObservedAt(context),
-      }));
+    // The tier cascade is src/rpc-usage-answer.ts's, shared verbatim with
+    // REST's handleRpcUsage and the get_rpc_usage MCP tool. This resolver used
+    // to run its own `tryPostgresTier -> loadRpcUsage` copy, which -- with the
+    // Postgres box gone -- resolved to the zeroed floor while REST served the
+    // real numbers from two live stores (#9269). A cold store still yields a
+    // schema-stable zeroed card, never a GraphQL error.
+    const data = (await answerRpcUsage(context.env, {
+      window: requestedWindow,
+      observedAt: await loadObservedAt(context),
+      postgresRequest: postgresTierRequest(
+        context,
+        "/api/v1/rpc/usage",
+        params,
+      ),
+    })) as Row;
     const summary = data.summary ?? {};
     const latency = summary.latency_ms ?? {};
+    const coverage = data.coverage ?? {};
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? requestedWindow,
       bucket_granularity: data.bucket_granularity ?? null,
       observed_at: data.observed_at ?? null,
       source: data.source ?? null,
+      coverage: {
+        start: coverage.start ?? null,
+        end: coverage.end ?? null,
+        segments: coverage.segments ?? [],
+        latency_percentiles: coverage.latency_percentiles ?? null,
+      },
       summary: {
         total_requests: summary.total_requests ?? 0,
         ok_requests: summary.ok_requests ?? 0,

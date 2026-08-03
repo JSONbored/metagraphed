@@ -2695,7 +2695,7 @@ export type Query = {
   rpc_endpoints?: Maybe<Scalars['JSON']['output']>;
   /** The load-balanced Bittensor RPC pool scores -- the RPC-specific predecessor of endpoint_pools (#6570): same pools[] row shape and filter/sort/page surface, with a live 15-minute cron eligibility overlay applied before filtering/sorting. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/rpc/pools. */
   rpc_pools: PoolList;
-  /** RPC reverse-proxy usage analytics over a 7d/30d window (default 7d): total request volume, error + failover rates, cache-hit rate, latency p50/p95/avg, the per-endpoint and per-network request distribution, and bounded time buckets (1h for 7d, 6h for 30d), computed live from the rpc_proxy_events telemetry. A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/rpc/usage. */
+  /** RPC reverse-proxy usage analytics over a 7d/30d window (default 7d): total request volume, error + failover rates, cache-hit rate, latency p50/p95/avg, the per-endpoint and per-network request distribution, and bounded time buckets (1h for 7d, 6h for 30d). Counts are summed across two disjoint stores -- Workers Analytics Engine for live traffic, the R2 lakehouse for history -- and coverage reports the span each contributed plus any gap between them. p50/p95 are measured only over the Analytics Engine span (coverage.latency_percentiles) and are null where nothing measured them; the lakehouse has no percentile function. A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/rpc/usage. */
   rpc_usage: RpcUsage;
   /** Site-wide runtime spec-version transition timeline: the earliest known block at each distinct spec_version observed (ascending), the current spec_version, and where coverage starts. The empty shape (transition_count 0, current_spec_version null) is schema-stable, never a GraphQL error, when the store has no reading yet. Mirrors GET /api/v1/runtime. */
   runtime: RuntimeVersionHistory;
@@ -4221,6 +4221,8 @@ export type RpcUsage = {
   bucket_granularity?: Maybe<Scalars['String']['output']>;
   /** Bounded time buckets over the window for heatmaps, oldest-first. */
   buckets: Array<RpcUsageBucket>;
+  /** What the answer is actually about, as opposed to what window was asked for. */
+  coverage: RpcUsageCoverage;
   /** Per-endpoint request distribution, ranked by request volume (top 50). */
   endpoints: Array<RpcUsageEndpoint>;
   /** Per-network request breakdown, ordered by request volume. */
@@ -4239,6 +4241,37 @@ export type RpcUsageBucket = {
   errors: Scalars['Int']['output'];
   requests: Scalars['Int']['output'];
   ts: Scalars['Float']['output'];
+};
+
+/** The measured span behind an rpc_usage answer. window is what the caller asked for; this is what the stores could answer, and they are not the same whenever a store's retention does not span the window. */
+export type RpcUsageCoverage = {
+  __typename?: 'RpcUsageCoverage';
+  /** Epoch ms of the newest measured event across every contributing store, or null when nothing was measured. */
+  end?: Maybe<Scalars['Float']['output']>;
+  /** The sub-range summary.latency_ms p50/p95 describe, or null when nothing measured them. Counts are additive across disjoint ranges; percentiles are not, so they stay scoped to the one store that has a percentile function. */
+  latency_percentiles?: Maybe<RpcUsageCoverageRange>;
+  /** One entry per contributing store, oldest first. Two non-adjacent entries mean the window has a hole between them that no store covers. */
+  segments: Array<RpcUsageCoverageSegment>;
+  /** Epoch ms of the oldest measured event across every contributing store, or null when nothing was measured. */
+  start?: Maybe<Scalars['Float']['output']>;
+};
+
+/** An epoch-ms span. */
+export type RpcUsageCoverageRange = {
+  __typename?: 'RpcUsageCoverageRange';
+  end?: Maybe<Scalars['Float']['output']>;
+  start?: Maybe<Scalars['Float']['output']>;
+};
+
+/** One store's contribution to an rpc_usage answer. */
+export type RpcUsageCoverageSegment = {
+  __typename?: 'RpcUsageCoverageSegment';
+  /** Epoch ms of this store's newest measured event in the window. */
+  end?: Maybe<Scalars['Float']['output']>;
+  /** Which store measured it: analytics-engine (live capture) or lakehouse (frozen history). */
+  source: Scalars['String']['output'];
+  /** Epoch ms of this store's oldest measured event in the window. */
+  start?: Maybe<Scalars['Float']['output']>;
 };
 
 /** One endpoint's share of RPC reverse-proxy traffic in the window. */
@@ -5763,6 +5796,9 @@ export type ResolversTypes = ResolversObject<{
   RootClaimType: ResolverTypeWrapper<RootClaimType>;
   RpcUsage: ResolverTypeWrapper<RpcUsage>;
   RpcUsageBucket: ResolverTypeWrapper<RpcUsageBucket>;
+  RpcUsageCoverage: ResolverTypeWrapper<RpcUsageCoverage>;
+  RpcUsageCoverageRange: ResolverTypeWrapper<RpcUsageCoverageRange>;
+  RpcUsageCoverageSegment: ResolverTypeWrapper<RpcUsageCoverageSegment>;
   RpcUsageEndpoint: ResolverTypeWrapper<RpcUsageEndpoint>;
   RpcUsageLatency: ResolverTypeWrapper<RpcUsageLatency>;
   RpcUsageNetwork: ResolverTypeWrapper<RpcUsageNetwork>;
@@ -6063,6 +6099,9 @@ export type ResolversParentTypes = ResolversObject<{
   RootClaimType: RootClaimType;
   RpcUsage: RpcUsage;
   RpcUsageBucket: RpcUsageBucket;
+  RpcUsageCoverage: RpcUsageCoverage;
+  RpcUsageCoverageRange: RpcUsageCoverageRange;
+  RpcUsageCoverageSegment: RpcUsageCoverageSegment;
   RpcUsageEndpoint: RpcUsageEndpoint;
   RpcUsageLatency: RpcUsageLatency;
   RpcUsageNetwork: RpcUsageNetwork;
@@ -8424,6 +8463,7 @@ export type RootClaimTypeResolvers<ContextType = GqlContext, ParentType extends 
 export type RpcUsageResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RpcUsage'] = ResolversParentTypes['RpcUsage']> = ResolversObject<{
   bucket_granularity?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   buckets?: Resolver<Array<ResolversTypes['RpcUsageBucket']>, ParentType, ContextType>;
+  coverage?: Resolver<ResolversTypes['RpcUsageCoverage'], ParentType, ContextType>;
   endpoints?: Resolver<Array<ResolversTypes['RpcUsageEndpoint']>, ParentType, ContextType>;
   networks?: Resolver<Array<ResolversTypes['RpcUsageNetwork']>, ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -8438,6 +8478,24 @@ export type RpcUsageBucketResolvers<ContextType = GqlContext, ParentType extends
   errors?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   requests?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   ts?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+}>;
+
+export type RpcUsageCoverageResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RpcUsageCoverage'] = ResolversParentTypes['RpcUsageCoverage']> = ResolversObject<{
+  end?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  latency_percentiles?: Resolver<Maybe<ResolversTypes['RpcUsageCoverageRange']>, ParentType, ContextType>;
+  segments?: Resolver<Array<ResolversTypes['RpcUsageCoverageSegment']>, ParentType, ContextType>;
+  start?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type RpcUsageCoverageRangeResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RpcUsageCoverageRange'] = ResolversParentTypes['RpcUsageCoverageRange']> = ResolversObject<{
+  end?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  start?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type RpcUsageCoverageSegmentResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RpcUsageCoverageSegment'] = ResolversParentTypes['RpcUsageCoverageSegment']> = ResolversObject<{
+  end?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  source?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  start?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type RpcUsageEndpointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RpcUsageEndpoint'] = ResolversParentTypes['RpcUsageEndpoint']> = ResolversObject<{
@@ -9613,6 +9671,9 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   RootClaimType?: RootClaimTypeResolvers<ContextType>;
   RpcUsage?: RpcUsageResolvers<ContextType>;
   RpcUsageBucket?: RpcUsageBucketResolvers<ContextType>;
+  RpcUsageCoverage?: RpcUsageCoverageResolvers<ContextType>;
+  RpcUsageCoverageRange?: RpcUsageCoverageRangeResolvers<ContextType>;
+  RpcUsageCoverageSegment?: RpcUsageCoverageSegmentResolvers<ContextType>;
   RpcUsageEndpoint?: RpcUsageEndpointResolvers<ContextType>;
   RpcUsageLatency?: RpcUsageLatencyResolvers<ContextType>;
   RpcUsageNetwork?: RpcUsageNetworkResolvers<ContextType>;

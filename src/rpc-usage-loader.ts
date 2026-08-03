@@ -1,8 +1,12 @@
-// Shared RPC reverse-proxy usage analytics loader for REST + MCP parity.
+// The ZEROED FLOOR for /api/v1/rpc/usage -- a schema-stable empty card, with
+// `coverage` reporting no segments at all because nothing was measured.
 //
-// D1 fully eliminated (2026-07-17): rpc_proxy_events is Postgres-only now
-// (both callers try the Postgres tier first) -- this loader is only reached
-// on a tier miss, so it always returns the schema-stable empty shape.
+// Reachable ONLY from src/rpc-usage-answer.ts, and only when every store
+// declined. That restriction is the whole point: this shape is correct when
+// no store had anything to say and WRONG whenever one did, and #9269 was
+// exactly that -- the MCP tool and the GraphQL resolver reached it directly
+// while two live stores held the data, reporting zero requests in seven days
+// to callers who could not tell that apart from an idle proxy.
 
 import { ANALYTICS_WINDOWS, RPC_USAGE_BUCKETS } from "../workers/config.ts";
 import { formatRpcUsage } from "./health-serving.ts";

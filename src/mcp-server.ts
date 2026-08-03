@@ -985,7 +985,7 @@ import { DOMAIN_TAGS } from "./domain-tags.ts";
 import { buildDomainOverview, buildDomainSummary } from "./domain-summary.ts";
 import { CHAIN_SIGNERS_SORTS } from "./chain-query-loaders.ts";
 import { loadBulkHealthTrends } from "./bulk-health-trends.ts";
-import { loadRpcUsage } from "./rpc-usage-loader.ts";
+import { answerRpcUsage } from "./rpc-usage-answer.ts";
 import { loadChainServingColdTier } from "./chain-serving-loader.ts";
 import { enrichValidatorNominatorCounts } from "./validator-nominator-counts-cold-tier.ts";
 import {
@@ -10531,10 +10531,14 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "Fetch RPC reverse-proxy usage analytics over a 7d or 30d window: total " +
       "request volume, error and failover rates, cache-hit rate, latency p50/p95 " +
       "and average, per-endpoint request distribution, per-network breakdown, " +
-      "and bounded time buckets (1h for 7d, 6h for 30d). Computed live from the " +
-      "rpc_proxy_events D1 telemetry. Use alongside get_best_rpc_endpoint to see " +
-      "which endpoints are actually carrying traffic. Mirrors " +
-      "GET /api/v1/rpc/usage.",
+      "and bounded time buckets (1h for 7d, 6h for 30d). Counts are summed " +
+      "across two disjoint stores -- Workers Analytics Engine for live traffic, " +
+      "the R2 lakehouse for history -- and `coverage` reports the span each one " +
+      "contributed plus any gap between them. latency p50/p95 are measured only " +
+      "over the Analytics Engine span (`coverage.latency_percentiles`) and are " +
+      "null where nothing measured them; the lakehouse has no percentile " +
+      "function. Use alongside get_best_rpc_endpoint to see which endpoints are " +
+      "actually carrying traffic. Mirrors GET /api/v1/rpc/usage.",
     inputSchema: z.toJSONSchema(GetRpcUsageInputSchema, {
       target: "draft-2020-12",
     }),
@@ -10544,17 +10548,17 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         throw toolError("invalid_params", "window must be one of: 7d, 30d.");
       }
       const { label } = parsed!;
-      return (
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest("/api/v1/rpc/usage", { window: label }),
-          "METAGRAPH_RPC_USAGE_SOURCE",
-        )) ??
-        loadRpcUsage({
+      // The tier cascade is src/rpc-usage-answer.ts's, not this tool's. It
+      // used to be `tryPostgresTier -> loadRpcUsage` here, which -- with the
+      // Postgres box gone -- meant an MCP client was told the proxy served
+      // zero requests in seven days while REST served the real number (#9269).
+      return answerRpcUsage(ctx.env, {
+        window: label,
+        observedAt: await mcpObservedAt(ctx),
+        postgresRequest: mcpNeuronsTierRequest("/api/v1/rpc/usage", {
           window: label,
-          observedAt: await mcpObservedAt(ctx),
-        })
-      );
+        }),
+      });
     },
   },
   {

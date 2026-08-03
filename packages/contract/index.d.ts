@@ -9210,6 +9210,25 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
+            coverage: {
+                end: number | null;
+                latency_percentiles: ({
+                    end: number | null;
+                    start: number | null;
+                } & {
+                    [key: string]: unknown;
+                }) | null;
+                segments: ({
+                    end: number | null;
+                    source: string;
+                    start: number | null;
+                } & {
+                    [key: string]: unknown;
+                })[];
+                start: number | null;
+            } & {
+                [key: string]: unknown;
+            };
             endpoints: ({
                 avg_latency_ms?: number | null;
                 endpoint_id: string | null;
@@ -39192,6 +39211,21 @@ export interface operations {
                      *             "ts": 1
                      *           }
                      *         ],
+                     *         "coverage": {
+                     *           "end": 1,
+                     *           "latency_percentiles": {
+                     *             "end": 1,
+                     *             "start": 1
+                     *           },
+                     *           "segments": [
+                     *             {
+                     *               "end": 1,
+                     *               "source": "live-cron-prober",
+                     *               "start": 1
+                     *             }
+                     *           ],
+                     *           "start": 1
+                     *         },
                      *         "endpoints": [
                      *           {
                      *             "endpoint_id": "https://api.metagraph.sh/example",

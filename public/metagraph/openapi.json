@@ -7135,6 +7135,21 @@
                 "ts": 1
               }
             ],
+            "coverage": {
+              "end": 1,
+              "latency_percentiles": {
+                "end": 1,
+                "start": 1
+              },
+              "segments": [
+                {
+                  "end": 1,
+                  "source": "live-cron-prober",
+                  "start": 1
+                }
+              ],
+              "start": 1
+            },
             "endpoints": [
               {
                 "endpoint_id": "https://api.metagraph.sh/example",
@@ -34608,6 +34623,124 @@
             },
             "type": "array"
           },
+          "coverage": {
+            "additionalProperties": {},
+            "properties": {
+              "end": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "latency_percentiles": {
+                "anyOf": [
+                  {
+                    "additionalProperties": {},
+                    "properties": {
+                      "end": {
+                        "anyOf": [
+                          {
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "type": "integer"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "start": {
+                        "anyOf": [
+                          {
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "type": "integer"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "start",
+                      "end"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "segments": {
+                "items": {
+                  "additionalProperties": {},
+                  "properties": {
+                    "end": {
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "source": {
+                      "type": "string"
+                    },
+                    "start": {
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "source",
+                    "start",
+                    "end"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "start": {
+                "anyOf": [
+                  {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "start",
+              "end",
+              "segments",
+              "latency_percentiles"
+            ],
+            "type": "object"
+          },
           "endpoints": {
             "items": {
               "additionalProperties": {},
@@ -34856,6 +34989,7 @@
         "required": [
           "schema_version",
           "source",
+          "coverage",
           "summary",
           "endpoints",
           "networks",

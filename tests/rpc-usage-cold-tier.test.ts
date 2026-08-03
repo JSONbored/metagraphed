@@ -336,6 +336,81 @@ describe("the rows it hands the shared formatter", () => {
     );
   });
 
+  // #9293: the composer sums this tier with the Analytics Engine one, and
+  // that is only sound while the two describe strictly disjoint ranges.
+  test("an `until` ceiling bounds every rollup above as well as below", async () => {
+    const engine = fakeEngine({
+      totals: [{ total: 3, ok_count: 3 }],
+      endpoints: [],
+      networks: [],
+      buckets: [],
+    });
+    const until = NOW - 3_600_000;
+    await loadRpcUsageColdTier(
+      {} as never,
+      { window: "7d", now: NOW, until, query: engine.query } as never,
+    );
+    const cutoff = windowCutoffMs("7d", NOW)!.cutoff;
+    assert.ok(engine.seen.length >= 4);
+    for (const sql of engine.seen) {
+      assert.ok(
+        sql.includes(`observed_at >= ${cutoff} AND observed_at < ${until}`),
+        `a rollup dropped the ceiling: ${sql.slice(0, 100)}`,
+      );
+    }
+  });
+
+  test("an unusable ceiling is dropped, never interpolated", async () => {
+    // R2 SQL has no bound parameters. A non-integer ceiling must not reach the
+    // literal -- and dropping it leaves the window's own cutoff in force,
+    // which is a narrower answer than an injected one, never a wider one.
+    for (const until of [1.5, -1, 0, Number.NaN, null]) {
+      const engine = fakeEngine({
+        totals: [{ total: 3, ok_count: 3 }],
+        endpoints: [],
+        networks: [],
+        buckets: [],
+      });
+      await loadRpcUsageColdTier(
+        {} as never,
+        { window: "7d", now: NOW, until, query: engine.query } as never,
+      );
+      for (const sql of engine.seen) {
+        assert.doesNotMatch(
+          sql,
+          /observed_at </,
+          `an unusable ceiling (${String(until)}) reached the SQL`,
+        );
+      }
+    }
+  });
+
+  test("publishes the span it measured, with no percentile range to scope", async () => {
+    const oldest = 1_784_000_000_000;
+    const newest = 1_784_900_000_000;
+    const engine = fakeEngine({
+      totals: [
+        { total: 5, ok_count: 5, observed_from: oldest, observed_at: newest },
+      ],
+      endpoints: [],
+      networks: [],
+      buckets: [],
+    });
+    const result = (await loadRpcUsageColdTier(
+      {} as never,
+      { window: "7d", now: NOW, query: engine.query } as never,
+    )) as Record<string, unknown>;
+    const coverage = result.coverage as Record<string, unknown>;
+    assert.equal(coverage.start, oldest);
+    assert.equal(coverage.end, newest);
+    assert.deepEqual(coverage.segments, [
+      { source: "lakehouse", start: oldest, end: newest },
+    ]);
+    // Nothing measured a percentile here, and the payload says exactly that.
+    assert.equal(coverage.latency_percentiles, null);
+    assert.ok(engine.seen[0].includes("min(observed_at) AS observed_from"));
+  });
+
   test("a bucket row missing its counts reads as zero, not NaN", async () => {
     // avg/count aggregates can come back absent for a bucket the engine
     // produced but could not summarise. NaN would serialise as null and read

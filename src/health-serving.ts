@@ -687,11 +687,82 @@ export function formatPercentiles({
   };
 }
 
+/** One store's contribution to an rpc-usage answer: which store, and the
+ * epoch-ms span of the events it actually measured. */
+export interface RpcUsageSegment {
+  source: string;
+  start?: unknown;
+  end?: unknown;
+}
+
+/** Epoch ms, or null when the input is not a usable reading. Every timestamp
+ * `coverage` publishes goes through this, so a missing `min()`/`max()` from
+ * either engine reads as "not measured" rather than as 1970. */
+function epochMs(value: unknown): number | null {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : null;
+}
+
+/**
+ * `coverage` — the range the answer is actually about.
+ *
+ * `window` is what the CALLER asked for; this is what the stores could
+ * answer, and the two are not the same thing whenever a store's retention
+ * does not span the window. Publishing only `window` is what let a two-hour
+ * Analytics Engine answer ship labelled `7d` (#9293), under-reporting by
+ * 99.3% with nothing in the payload to contradict it.
+ *
+ * `segments` is per-store rather than a single start/end because the two
+ * stores are disjoint AND non-adjacent: the lakehouse froze before AE capture
+ * began, so the honest picture has a hole in the middle that a bare
+ * start/end pair would silently paper over.
+ *
+ * `latency_percentiles` scopes p50/p95 explicitly. Counts are additive across
+ * disjoint ranges and are summed; percentiles are not, and AE's
+ * quantileExactWeighted cannot be merged with a store that has no percentile
+ * function at all. So they stay AE-only and say which sub-range they describe
+ * -- null still means "not measured", exactly as it does everywhere else in
+ * this payload.
+ */
+function formatCoverage(coverage?: {
+  segments?: RpcUsageSegment[];
+  latency?: { start?: unknown; end?: unknown } | null;
+}): Row {
+  const segments = (coverage?.segments || [])
+    .map((segment) => ({
+      source: segment.source,
+      start: epochMs(segment.start),
+      end: epochMs(segment.end),
+    }))
+    // Oldest first. `Number(null)` is 0, so a segment that measured no start
+    // sorts ahead of every measured one without needing a null-guard branch
+    // that no fixture could reach on both sides.
+    .sort((a, b) => Number(a.start) - Number(b.start));
+  const starts = segments
+    .map((segment) => segment.start)
+    .filter((value): value is number => value !== null);
+  const ends = segments
+    .map((segment) => segment.end)
+    .filter((value): value is number => value !== null);
+  const latencyStart = epochMs(coverage?.latency?.start);
+  const latencyEnd = epochMs(coverage?.latency?.end);
+  return {
+    start: starts.length ? Math.min(...starts) : null,
+    end: ends.length ? Math.max(...ends) : null,
+    segments,
+    latency_percentiles:
+      latencyStart === null && latencyEnd === null
+        ? null
+        : { start: latencyStart, end: latencyEnd },
+  };
+}
+
 // RPC reverse-proxy usage analytics (B3) from the rpc_proxy_events telemetry.
 // `totals`: one aggregate row { total, ok_count, failover_count, cache_hits,
 // avg_latency_ms }. `latency`: one row { p50, p95 } (window percentiles).
 // `endpointRows`/`networkRows`: per-endpoint / per-network breakdowns ordered by
-// request volume. `bucketRows`: bounded time buckets for heatmaps. Cold/
+// request volume. `bucketRows`: bounded time buckets for heatmaps. `coverage`:
+// the measured span per contributing store (see formatCoverage). Cold/
 // unmigrated D1 yields a schema-stable zeroed payload (every arg may be
 // empty/undefined), so the route never errors before the table exists.
 export function formatRpcUsage({
@@ -703,6 +774,7 @@ export function formatRpcUsage({
   networkRows,
   bucketRows,
   bucketGranularity,
+  coverage,
 }: {
   window?: unknown;
   observedAt?: unknown;
@@ -712,6 +784,10 @@ export function formatRpcUsage({
   networkRows?: Row[];
   bucketRows?: Row[];
   bucketGranularity?: unknown;
+  coverage?: {
+    segments?: RpcUsageSegment[];
+    latency?: { start?: unknown; end?: unknown } | null;
+  };
 }): Row {
   const total = Number(totals?.total) || 0;
   const okCount = Number(totals?.ok_count) || 0;
@@ -726,6 +802,7 @@ export function formatRpcUsage({
     bucket_granularity: bucketGranularity || null,
     observed_at: observedAt || null,
     source: "rpc-proxy",
+    coverage: formatCoverage(coverage),
     summary: {
       total_requests: total,
       ok_requests: okCount,

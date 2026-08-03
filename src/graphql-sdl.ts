@@ -867,7 +867,7 @@ export const SDL = /* GraphQL */ `
     ): ChainSigners!
     "Compact all-subnet 7d/30d daily uptime + latency trend matrix from the live health-probe history (probed every ~15 minutes); a cold store still returns both windows, schema-stable and zeroed, never a GraphQL error. Mirrors GET /api/v1/health/trends."
     health_trends: HealthTrends!
-    "RPC reverse-proxy usage analytics over a 7d/30d window (default 7d): total request volume, error + failover rates, cache-hit rate, latency p50/p95/avg, the per-endpoint and per-network request distribution, and bounded time buckets (1h for 7d, 6h for 30d), computed live from the rpc_proxy_events telemetry. A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/rpc/usage."
+    "RPC reverse-proxy usage analytics over a 7d/30d window (default 7d): total request volume, error + failover rates, cache-hit rate, latency p50/p95/avg, the per-endpoint and per-network request distribution, and bounded time buckets (1h for 7d, 6h for 30d). Counts are summed across two disjoint stores -- Workers Analytics Engine for live traffic, the R2 lakehouse for history -- and coverage reports the span each contributed plus any gap between them. p50/p95 are measured only over the Analytics Engine span (coverage.latency_percentiles) and are null where nothing measured them; the lakehouse has no percentile function. A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/rpc/usage."
     rpc_usage(window: String): RpcUsage!
     "Network-wide reward-distribution & score-spread card across every subnet's neurons: incentive/dividends concentration (who actually captures rewards network-wide) plus the trust/consensus/validator_trust score spread. Current snapshot only (no window/params). Every metric block is null (never a GraphQL error) on a cold store. The network analog of subnet_performance. Mirrors GET /api/v1/chain/performance."
     chain_performance: ChainPerformance!
@@ -2000,6 +2000,8 @@ export const SDL = /* GraphQL */ `
     bucket_granularity: String
     observed_at: String
     source: String
+    "What the answer is actually about, as opposed to what window was asked for."
+    coverage: RpcUsageCoverage!
     summary: RpcUsageSummary!
     "Per-endpoint request distribution, ranked by request volume (top 50)."
     endpoints: [RpcUsageEndpoint!]!
@@ -2007,6 +2009,34 @@ export const SDL = /* GraphQL */ `
     networks: [RpcUsageNetwork!]!
     "Bounded time buckets over the window for heatmaps, oldest-first."
     buckets: [RpcUsageBucket!]!
+  }
+
+  "The measured span behind an rpc_usage answer. window is what the caller asked for; this is what the stores could answer, and they are not the same whenever a store's retention does not span the window."
+  type RpcUsageCoverage {
+    "Epoch ms of the oldest measured event across every contributing store, or null when nothing was measured."
+    start: Float
+    "Epoch ms of the newest measured event across every contributing store, or null when nothing was measured."
+    end: Float
+    "One entry per contributing store, oldest first. Two non-adjacent entries mean the window has a hole between them that no store covers."
+    segments: [RpcUsageCoverageSegment!]!
+    "The sub-range summary.latency_ms p50/p95 describe, or null when nothing measured them. Counts are additive across disjoint ranges; percentiles are not, so they stay scoped to the one store that has a percentile function."
+    latency_percentiles: RpcUsageCoverageRange
+  }
+
+  "One store's contribution to an rpc_usage answer."
+  type RpcUsageCoverageSegment {
+    "Which store measured it: analytics-engine (live capture) or lakehouse (frozen history)."
+    source: String!
+    "Epoch ms of this store's oldest measured event in the window."
+    start: Float
+    "Epoch ms of this store's newest measured event in the window."
+    end: Float
+  }
+
+  "An epoch-ms span."
+  type RpcUsageCoverageRange {
+    start: Float
+    end: Float
   }
 
   "Window-total rollup for RPC reverse-proxy traffic."
