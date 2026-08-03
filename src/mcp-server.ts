@@ -2851,11 +2851,42 @@ async function loadSubnetOwnershipHistoryFromDataApi(
   return narrowOwnershipHistory((await response.json()) as Row | null, netuid);
 }
 
-// Mirrors loadSubnetOwnershipHistory above (#6638): the data-api.ts route
-// already does both the subnet_locks read AND the live UnlockRate/
-// MaturityRate RPC lookup and returns the fully-rolled-forward result, so
-// this just proxies -- no duplicate logic here.
+// Mirrors loadSubnetOwnershipHistory above, including its two-step shape:
+// DATA_API stays the primary, and the live chain tier is consulted only when
+// the proxy comes back MARKED degraded.
+//
+// #9319: data-api's own conviction route was deleted with Postgres, so in
+// practice the proxy always degrades and the second step always answers. It is
+// still written as a fallback rather than a replacement so a restored DATA_API
+// wins automatically, and so this tool cannot disagree with REST -- both reach
+// the same reader through coldTierChainEventsPayload.
 async function loadSubnetConviction(ctx: McpCtx, netuid: number) {
+  const answer = (await loadSubnetConvictionFromDataApi(ctx, netuid)) as Row;
+  if (!answer.degraded) return answer;
+  const live = await coldTierChainEventsPayload(
+    ctx.env,
+    new URL(`https://d/api/v1/subnets/${netuid}/conviction`),
+  );
+  return live ? narrowConviction(live, netuid) : answer;
+}
+
+// The tool's projection of a conviction payload, whichever tier produced it --
+// one narrowing so a live-tier answer and a DATA_API answer cannot present
+// differently.
+function narrowConviction(data: Row | null, netuid: number) {
+  return {
+    schema_version: data?.schema_version ?? 1,
+    netuid,
+    queried_at_block: data?.queried_at_block ?? null,
+    unlock_rate: data?.unlock_rate ?? null,
+    maturity_rate: data?.maturity_rate ?? null,
+    king: data?.king ?? null,
+    count: data?.count ?? 0,
+    leaderboard: Array.isArray(data?.leaderboard) ? data.leaderboard : [],
+  };
+}
+
+async function loadSubnetConvictionFromDataApi(ctx: McpCtx, netuid: number) {
   await requireDataTierRateLimit(ctx);
   const dataApi = ctx.env?.DATA_API;
   if (!dataApi?.fetch) {
@@ -2895,17 +2926,7 @@ async function loadSubnetConviction(ctx: McpCtx, netuid: number) {
         "Try again shortly.",
     );
   }
-  const data = (await response.json()) as Row | null;
-  return {
-    schema_version: data?.schema_version ?? 1,
-    netuid,
-    queried_at_block: data?.queried_at_block ?? null,
-    unlock_rate: data?.unlock_rate ?? null,
-    maturity_rate: data?.maturity_rate ?? null,
-    king: data?.king ?? null,
-    count: data?.count ?? 0,
-    leaderboard: Array.isArray(data?.leaderboard) ? data.leaderboard : [],
-  };
+  return narrowConviction((await response.json()) as Row | null, netuid);
 }
 
 // Mirrors loadSubnetOwnershipHistory above (#6719): same DATA_API-direct

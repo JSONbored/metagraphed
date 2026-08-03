@@ -5981,38 +5981,82 @@ describe("graphql — subnet_ownership_history / subnet_conviction / subnet_leas
       });
     });
 
-    // The wrapper must not over-apply: conviction needs live UnlockRate/
-    // MaturityRate RPC reads and lease/history reads a stream with no reader,
-    // so both keep the error a failed DATA_API has always produced even with
-    // the lakehouse fully configured.
-    test("conviction and lease_history keep their error — no reader covers them", async () => {
+    // The wrapper must not over-apply: lease/history reads a stream with no
+    // reader, so it keeps the error a failed DATA_API has always produced even
+    // with the lakehouse fully configured.
+    //
+    // #9319 REMOVED conviction from this list. The note here used to say it
+    // "needs live UnlockRate/MaturityRate RPC reads" and must therefore keep
+    // erroring -- the right observation with the wrong conclusion, since the
+    // reader now makes exactly those reads and the lock maps in the same pass.
+    // Its own case is below.
+    test("lease_history keeps its error — no reader covers it", async () => {
       await withLakehouse(OWNERSHIP_ROWS, async () => {
-        for (const field of ["subnet_conviction", "subnet_lease_history"]) {
-          const env = {
-            ...TOKEN_ENV,
-            DATA_API: {
-              fetch: async () => new Response("err", { status: 502 }),
-            },
-          };
-          const { body } = await gql(
-            `{ ${field}(netuid: 7) { count } }`,
-            env as unknown as Env,
-          );
-          assert.ok(body.errors?.length, `${field} should still error`);
-          assert.equal(body.data, null);
-        }
+        const env = {
+          ...TOKEN_ENV,
+          DATA_API: {
+            fetch: async () => new Response("err", { status: 502 }),
+          },
+        };
+        const { body } = await gql(
+          "{ subnet_lease_history(netuid: 7) { count } }",
+          env as unknown as Env,
+        );
+        assert.ok(body.errors?.length, "lease_history should still error");
+        assert.equal(body.data, null);
       });
     });
   });
 
   test("surfaces a non-OK DATA_API response as a GraphQL error", async () => {
+    // #9319: conviction now has a SECOND tier behind DATA_API -- a live chain
+    // read. "DATA_API is down" is no longer sufficient for this field to fail,
+    // so the chain has to be unreachable too, or this asserts against finney
+    // over the network. GraphQL's deliberate contract is unchanged: when
+    // NOTHING can answer, it errors rather than null-degrading.
     const env = { DATA_API: dataApi(new Response("err", { status: 502 })) };
-    const { body } = await gql(
-      "{ subnet_conviction(netuid: 7) { count } }",
-      env as unknown as Env,
-    );
-    assert.ok(body.errors?.length);
-    assert.equal(body.data, null);
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (() =>
+      Promise.reject(new Error("no network in tests"))) as typeof fetch;
+    try {
+      const { body } = await gql(
+        "{ subnet_conviction(netuid: 7) { count } }",
+        env as unknown as Env,
+      );
+      assert.ok(body.errors?.length);
+      assert.equal(body.data, null);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("conviction answers from the live chain tier when DATA_API is down", async () => {
+    // The whole point of #9319: a dead DATA_API is no longer fatal for this
+    // field, because the lock maps and the rates are both readable directly.
+    const env = { DATA_API: dataApi(new Response("err", { status: 502 })) };
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (_url: unknown, init: unknown) => {
+      const body = JSON.parse(
+        String((init as { body?: string })?.body ?? "{}"),
+      );
+      const result =
+        body.method === "chain_getHeader"
+          ? { number: "0x85d1db" }
+          : body.method === "state_getKeysPaged"
+            ? []
+            : null;
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result }));
+    }) as unknown as typeof fetch;
+    try {
+      const { body } = await gql(
+        "{ subnet_conviction(netuid: 7) { count } }",
+        env as unknown as Env,
+      );
+      assert.equal(body.errors, undefined, JSON.stringify(body.errors));
+      assert.equal(body.data.subnet_conviction.count, 0);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   test("surfaces a DATA_API fetch failure as a GraphQL error", async () => {
