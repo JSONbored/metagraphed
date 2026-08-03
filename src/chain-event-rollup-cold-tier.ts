@@ -68,6 +68,29 @@ export function safeEventKind(value: unknown): string | null {
     : null;
 }
 
+/**
+ * The column aliases a spec contributes, guarded the same way.
+ *
+ * `countField` and `distinctField` land in `AS <name>` and `ORDER BY <name>` --
+ * IDENTIFIER position, not a quoted value, so there are no quotes to break out
+ * of and anything accepted here executes as SQL. `ORDER BY` in particular is a
+ * clause an attacker can hang a subquery off, which makes it the sink worth
+ * guarding even though today's only callers are the two module constants
+ * below. That is the same reasoning `safeEventKind` already carried; applying
+ * it to the value and not to its siblings was an inconsistency, not a
+ * judgement that these were safe.
+ *
+ * Separate from `safeEventKind` because the shapes genuinely differ: chain
+ * event kinds are PascalCase with no underscore, column aliases are
+ * snake_case. One permissive regex covering both would accept more than either
+ * position needs.
+ */
+export function safeColumnAlias(value: unknown): string | null {
+  return typeof value === "string" && /^[a-z][a-z0-9_]{0,63}$/.test(value)
+    ? value
+    : null;
+}
+
 export interface ChainEventRollup {
   /** One row per netuid, already grouped -- the shape the builders expect. */
   rows: Row[];
@@ -104,7 +127,10 @@ export async function loadChainEventRollup(
   },
 ): Promise<ChainEventRollup | null> {
   const kind = safeEventKind(spec.eventKind);
-  if (!kind) return null;
+  const countField = safeColumnAlias(spec.countField);
+  const distinctField = safeColumnAlias(spec.distinctField);
+  // Every interpolated identifier is guarded, not just the quoted value.
+  if (!kind || !countField || !distinctField) return null;
   if (!Number.isFinite(windowDays) || windowDays <= 0) return null;
 
   const cutoff = now - windowDays * 24 * 60 * 60 * 1000;
@@ -117,16 +143,16 @@ export async function loadChainEventRollup(
   const [rows, networkRows] = await Promise.all([
     query(
       env,
-      `SELECT netuid, count(*) AS ${spec.countField},` +
-        ` count(DISTINCT hotkey) AS ${spec.distinctField}` +
+      `SELECT netuid, count(*) AS ${countField},` +
+        ` count(DISTINCT hotkey) AS ${distinctField}` +
         ` FROM chain.account_events ${where}` +
-        ` GROUP BY netuid ORDER BY ${spec.countField} DESC LIMIT ${cap}`,
+        ` GROUP BY netuid ORDER BY ${countField} DESC LIMIT ${cap}`,
     ),
     // Separate because distinct hotkeys do not sum across subnets: one hotkey
     // serving five subnets is five rows above and one server here.
     query(
       env,
-      `SELECT count(DISTINCT hotkey) AS ${spec.distinctField},` +
+      `SELECT count(DISTINCT hotkey) AS ${distinctField},` +
         ` max(observed_at) AS newest_observed` +
         ` FROM chain.account_events ${where}`,
     ),

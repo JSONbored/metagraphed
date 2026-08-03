@@ -23,6 +23,7 @@ import {
   CHAIN_REGISTRATIONS_ROLLUP,
   CHAIN_SERVING_ROLLUP,
   loadChainEventRollup,
+  safeColumnAlias,
   safeEventKind,
 } from "../src/chain-event-rollup-cold-tier.ts";
 
@@ -98,11 +99,55 @@ describe("the event kind that reaches SQL", () => {
     }
   });
 
+  test("a column alias that is not a bare identifier is refused", () => {
+    // countField/distinctField land in `AS <name>` and `ORDER BY <name>` --
+    // IDENTIFIER position, so there are no quotes to break out of and anything
+    // accepted here executes as SQL. ORDER BY is the sink an attacker can hang
+    // a subquery off.
+    for (const bad of [
+      "announcements, (SELECT 1)",
+      "announcements DESC, netuid",
+      "(SELECT count(*) FROM chain.blocks)",
+      "Announcements",
+      "",
+      null,
+      7,
+    ]) {
+      assert.equal(
+        safeColumnAlias(bad),
+        null,
+        `${String(bad)} must be refused`,
+      );
+    }
+  });
+
+  test("real column aliases are accepted", () => {
+    for (const good of ["announcements", "distinct_servers", "registrations"]) {
+      assert.equal(safeColumnAlias(good), good);
+    }
+  });
+
+  test("a spec with an injected column alias declines without querying", () => {
+    // Exercised through the loader, not only the guard: a refused alias must
+    // stop before any SQL is built, or the refusal is theoretical.
+    const engine = fakeEngine();
+    return loadChainEventRollup(
+      {} as never,
+      { ...CHAIN_SERVING_ROLLUP, countField: "announcements, (SELECT 1)" },
+      { windowDays: 7, now: NOW, query: engine.query } as never,
+    ).then((result) => {
+      assert.equal(result, null);
+      assert.deepEqual(engine.seen, [], "a refused alias must not reach SQL");
+    });
+  });
+
   test("both shipped specs pass their own guard", () => {
     // A spec that could not pass would make its route silently decline
     // forever, which looks exactly like "no data".
     for (const spec of [CHAIN_SERVING_ROLLUP, CHAIN_REGISTRATIONS_ROLLUP]) {
       assert.equal(safeEventKind(spec.eventKind), spec.eventKind);
+      assert.equal(safeColumnAlias(spec.countField), spec.countField);
+      assert.equal(safeColumnAlias(spec.distinctField), spec.distinctField);
     }
   });
 });
