@@ -3035,6 +3035,97 @@ describe("handleScheduled", () => {
 
 // --- handleScheduled ACCOUNT_EVENTS_ROLLUP_CRON (#4832, moved off GitHub
 // Actions -- formerly rollup-account-events-daily.yml, retired) -------------
+describe("handleScheduled EMISSION_DRIFT_CHECK_CRON", () => {
+  test("returns the clean summary on a healthy tick against the fixture chain", async () => {
+    const { fixtureFetch } = await import("./helpers/emission-fixture-rpc.ts");
+    const fixture = (
+      await import("./fixtures/emission-pipeline.json", {
+        with: { type: "json" },
+      })
+    ).default;
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = fixtureFetch().impl;
+    try {
+      const result = (await handleScheduled(
+        {
+          cron: workerConfig.EMISSION_DRIFT_CHECK_CRON,
+        } as unknown as ScheduledController,
+        { EMISSION_DRIFT_RPC_URL: "https://rpc.test" } as unknown as Env,
+        {} as unknown as ExecutionContext,
+      )) as Row;
+      assert.equal(result.ok, true);
+      assert.equal(result.block_number, fixture.block_number);
+      assert.equal(result.identities_failed, 0);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
+  test("a divergence posts the alert webhook and then throws", async () => {
+    // An empty chain read is a real divergence shape (observed emission sums
+    // to zero); the webhook must carry the block, and the throw must land in
+    // the scheduled-run scaffolding regardless.
+    const { fixtureFetch } = await import("./helpers/emission-fixture-rpc.ts");
+    const webhookBodies: string[] = [];
+    const rpc = fixtureFetch((m) =>
+      m === "state_queryStorageAt" ? [] : undefined,
+    ).impl;
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      if (String(url) === "https://hooks.test/alerts") {
+        webhookBodies.push(String(init.body));
+        return { ok: true } as unknown as Response;
+      }
+      return (rpc as unknown as (u: string, i: RequestInit) => unknown)(
+        url,
+        init,
+      );
+    }) as unknown as typeof fetch;
+    try {
+      await assert.rejects(
+        () =>
+          handleScheduled(
+            {
+              cron: workerConfig.EMISSION_DRIFT_CHECK_CRON,
+            } as unknown as ScheduledController,
+            {
+              LIVE_ALERT_WEBHOOK_URL: "https://hooks.test/alerts",
+            } as unknown as Env,
+            {} as unknown as ExecutionContext,
+          ),
+        /emission drift/,
+      );
+      assert.equal(webhookBodies.length, 1);
+      assert.match(webhookBodies[0]!, /diverged at block/);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
+  test("a divergence without a webhook still throws -- alerting never depends on it", async () => {
+    const { fixtureFetch } = await import("./helpers/emission-fixture-rpc.ts");
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = fixtureFetch((m) =>
+      m === "state_queryStorageAt" ? [] : undefined,
+    ).impl;
+    try {
+      await assert.rejects(
+        () =>
+          handleScheduled(
+            {
+              cron: workerConfig.EMISSION_DRIFT_CHECK_CRON,
+            } as unknown as ScheduledController,
+            {} as unknown as Env,
+            {} as unknown as ExecutionContext,
+          ),
+        /emission drift/,
+      );
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+});
+
 describe("handleScheduled EMISSION_GATE_SAMPLE_CRON", () => {
   test("skips (does not throw) when EMISSION_GATE_SYNC_SECRET is not configured", async () => {
     const result = await handleScheduled(

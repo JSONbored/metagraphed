@@ -715,6 +715,11 @@
       // off its GitHub Actions schedule -- offset from :0-based grids so it
       // never stacks on the */5 raw-capture tick's busiest minute.
       "3,13,23,33,43,53 * * * *",
+      // 9,39 = the 30-minute live emission-drift check (#8749), moved off its
+      // GitHub Actions schedule -- offset so it never stacks on the sampler,
+      // and distinct from the upgrade radar's 7,37 (dispatch keys on the
+      // literal cron string).
+      "9,39 * * * *",
     ],
   },
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite

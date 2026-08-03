@@ -25,11 +25,11 @@ name: Check emission drift
 # has since caught up and is what every other caller now reads. Verified before
 # this workflow was written by running the script against it -- it returned
 # block 8,753,790 (chain tip) with identities_failed: 0.
+# SCHEDULE RETIRED: the 30-minute cadence now runs as a Worker cron
+# (EMISSION_DRIFT_CHECK_CRON in workers/config.ts, dispatching
+# src/emission-drift-check.ts -- the same module this script shell imports).
+# workflow_dispatch stays as the manual fallback.
 on:
-  schedule:
-    # Every 30 minutes, matching the box timer's observed cadence. The job is a
-    # handful of RPC reads, so this is cheap.
-    - cron: "*/30 * * * *"
   workflow_dispatch: {}
 
 permissions:

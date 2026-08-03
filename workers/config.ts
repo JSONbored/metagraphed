@@ -122,6 +122,14 @@ export const SAFE_MODE_WATCHDOG_CRON = "41 * * * *";
 // itself. Same 10-minute cadence the box timer and the Actions schedule
 // used. Must match a wrangler.jsonc cron entry.
 export const EMISSION_GATE_SAMPLE_CRON = "3,13,23,33,43,53 * * * *";
+// #8749: the live emission-drift check, formerly the 30-minute Actions
+// schedule -- the same reconstruction CI pins against a fixture, held against
+// live chain state. Reads and alerts, writes nothing; a divergence throws so
+// the scheduled-run scaffolding records the exception. Offset to :9/:39 --
+// dispatch keys on the LITERAL cron string, so this must be unique across
+// workers/config.ts (":7,37" already belongs to the upgrade radar) as well as
+// matching a wrangler.jsonc cron entry.
+export const EMISSION_DRIFT_CHECK_CRON = "9,39 * * * *";
 // #9146: scheduled projections -- recompute the windowed-aggregate artifacts
 // (chain-transfers, chain-stake-flow) from the lakehouse. These routes cannot
 // be one-shot materialized (their windows anchor to the current date, so a

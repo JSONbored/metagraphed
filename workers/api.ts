@@ -331,6 +331,7 @@ import { handleOgImage } from "../src/og-image.ts";
 import { handleIconProxy } from "../src/icon-proxy.ts";
 import { maskRouteParams } from "../src/route-label.ts";
 import { sampleEmissionGate } from "../src/emission-gate-sampler.ts";
+import { checkEmissionDrift } from "../src/emission-drift-check.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
 import { validateResponseTripwire } from "../src/response-validation-tripwire.ts";
 import {
@@ -391,6 +392,7 @@ import {
   LAKEHOUSE_SEAM_CRON,
   SAFE_MODE_WATCHDOG_CRON,
   EMISSION_GATE_SAMPLE_CRON,
+  EMISSION_DRIFT_CHECK_CRON,
   PROJECTION_LANES_CRON,
   FRESHNESS_WATCHDOG_STATE_KEY,
   BULK_TRENDS_PATH_PATTERN,
@@ -1351,6 +1353,7 @@ function cronLabel(cron: string): string {
   if (cron === PROJECTION_LANES_CRON) return "projection-lanes";
   if (cron === ACCOUNT_EVENTS_ROLLUP_CRON) return "account-events-rollup";
   if (cron === EMISSION_GATE_SAMPLE_CRON) return "emission-gate-sample";
+  if (cron === EMISSION_DRIFT_CHECK_CRON) return "emission-drift-check";
   // Every unmatched cron falls through to the health prober, matching dispatch.
   return "health-prober";
 }
@@ -1598,6 +1601,40 @@ async function dispatchScheduled(
     );
     const body = (await response.json()) as Row;
     return { ok: response.ok, status: response.status, body };
+  }
+  if (cron === EMISSION_DRIFT_CHECK_CRON) {
+    // The live emission-drift check, formerly the 30-minute Actions schedule.
+    // The whole read-reconstruct-judge sequence lives in
+    // src/emission-drift-check.ts (shared verbatim with the script shell);
+    // this branch owns only the cron-caller policy. A divergence THROWS after
+    // the optional webhook post -- the scheduled-run scaffolding then records
+    // the cron failure and the exception under cron:emission-drift-check,
+    // which is the same visibility the Actions run's red X provided.
+    const { summary, reasons } = await checkEmissionDrift({
+      rpcUrl:
+        env.EMISSION_DRIFT_RPC_URL || "https://archive.chain.opentensor.ai",
+    });
+    if (reasons.length > 0) {
+      if (env.LIVE_ALERT_WEBHOOK_URL) {
+        // Best-effort, before the throw: a webhook failure must not mask the
+        // drift signal, and the throw must not skip the webhook.
+        await fetch(env.LIVE_ALERT_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(15_000),
+          body: JSON.stringify({
+            content:
+              `🚨 metagraphed: the v440 emission reconstruction diverged at block ${summary.block_number}.\n` +
+              reasons.map((r) => `• ${r}`).join("\n") +
+              `\nOne of: our capture broke, a runtime upgrade changed the pipeline, ` +
+              `or a dormant switch was flipped (#8750). Published emission ` +
+              `decomposition is suspect until this is explained (#8749).`,
+          }),
+        }).catch(() => undefined);
+      }
+      throw new Error(`emission drift: ${reasons.join("; ")}`);
+    }
+    return { ok: true, ...summary };
   }
   if (cron === ACCOUNT_EVENTS_ROLLUP_CRON) {
     // #4832 gap-closure, moved off GitHub Actions (rollup-account-events-daily.yml,
