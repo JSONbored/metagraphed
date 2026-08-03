@@ -37,6 +37,10 @@
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeNameLiteral } from "./r2-sql.ts";
 import { blocksSeamFloor } from "./blocks-cold-tier.ts";
+import {
+  SUBNET_LEASE_CREATED_KIND,
+  SUBNET_LEASE_TERMINATED_KIND,
+} from "./subnet-lease-history.ts";
 
 /** Kept identical to the deleted handler's SELECT list so both tiers hand the
  * caller the same event shape. */
@@ -224,4 +228,47 @@ export async function loadChainEventsStatsColdTier(
   );
   if (rows === null) return null;
   return { window_blocks: window, groups: rows.length, activity: rows };
+}
+
+/**
+ * Whether the chain has emitted ANY subnet-lease event, chain-wide.
+ *
+ * `/subnets/{netuid}/lease/history` currently answers with
+ * `x-metagraph-degraded: tier_unavailable`, which tells a caller the data is
+ * missing. It is not -- no subnet has ever been leased. Verified against
+ * `chain.chain_events`, the complete 895M-row stream: `SubnetLeaseCreated` and
+ * `SubnetLeaseTerminated` have ZERO rows across all of chain history.
+ *
+ * A `tier_unavailable` marker on a genuinely empty answer is worse than
+ * useless -- it bars the response from the edge cache and tells the caller to
+ * retry something that will never change.
+ *
+ * DELIBERATELY BINARY. `netuid` lives inside the positional `args` JSON for
+ * these kinds, and R2 SQL has no JSON extraction (`json_extract`,
+ * `get_json_object` and `::json` all return 40004), so a per-subnet filter is
+ * not expressible in SQL. Rather than half-decode, this asks only whether ANY
+ * lease event exists:
+ *
+ *   none  -> every subnet's history is legitimately empty, so answer with the
+ *            schema-stable empty as a real ANSWER, unmarked and cacheable.
+ *   some  -> DECLINE (null). The caller keeps today's marked empty rather than
+ *            us guessing which subnet those events belong to. The day leasing
+ *            starts, this route needs a real decoder, and declining makes that
+ *            visible instead of silently attributing events to netuid 0.
+ */
+export async function loadSubnetLeaseHistoryColdTier(
+  env: Env | null | undefined,
+  netuid: number,
+): Promise<{ rows: Record<string, unknown>[] } | null> {
+  const subnet = safeBlockNumber(netuid);
+  if (subnet === null) return null;
+  const rows = await r2SqlQuery(
+    env,
+    `SELECT block_number FROM chain.chain_events ` +
+      `WHERE method IN ('${SUBNET_LEASE_CREATED_KIND}', ` +
+      `'${SUBNET_LEASE_TERMINATED_KIND}') LIMIT 1`,
+  );
+  if (rows === null) return null;
+  if (rows.length > 0) return null;
+  return { rows: [] };
 }

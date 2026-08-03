@@ -15,6 +15,7 @@ import {
   CHAIN_EVENTS_STATS_BLOCKS_MAX,
   loadChainEventsColdTier,
   loadChainEventsStatsColdTier,
+  loadSubnetLeaseHistoryColdTier,
 } from "../src/chain-events-cold-tier.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
 import { DEFAULT_BLOCKS_SEAM } from "../src/blocks-cold-tier.ts";
@@ -268,5 +269,50 @@ describe("loadChainEventsStatsColdTier", () => {
         status: 500,
       }) as unknown as Response) as unknown as typeof fetch;
     assert.equal(await loadChainEventsStatsColdTier(TOKEN), null);
+  });
+});
+
+describe("loadSubnetLeaseHistoryColdTier", () => {
+  test("no lease events anywhere means every subnet's history is a real empty", async () => {
+    // Verified against the complete 895M-row stream: SubnetLeaseCreated and
+    // SubnetLeaseTerminated have zero rows in all of chain history. The route
+    // currently answers `tier_unavailable`, which claims the data is missing
+    // and bars the response from the edge cache -- for something that will
+    // never change until leasing is used.
+    const q = sqlFetch([]);
+    const out = await loadSubnetLeaseHistoryColdTier(TOKEN, 1);
+    assert.deepEqual(out, { rows: [] });
+    assert.match(
+      q[0]!,
+      /method IN \('SubnetLeaseCreated', 'SubnetLeaseTerminated'\)/,
+    );
+    assert.match(q[0]!, /LIMIT 1/);
+  });
+
+  test("DECLINES once lease events exist, rather than guessing the subnet", async () => {
+    // netuid lives in the positional args JSON and R2 SQL has no JSON
+    // extraction, so a per-subnet filter is not expressible. The day leasing
+    // starts this route needs a real decoder; declining makes that visible
+    // instead of silently attributing every lease to one subnet.
+    sqlFetch([{ block_number: 8_000_000 }]);
+    assert.equal(await loadSubnetLeaseHistoryColdTier(TOKEN, 1), null);
+  });
+
+  test("declines an unusable netuid", async () => {
+    const q = sqlFetch([]);
+    assert.equal(
+      await loadSubnetLeaseHistoryColdTier(TOKEN, "abc" as never),
+      null,
+    );
+    assert.equal(q.length, 0);
+  });
+
+  test("declines when the lakehouse cannot answer", async () => {
+    globalThis.fetch = (async () =>
+      ({
+        ok: false,
+        status: 500,
+      }) as unknown as Response) as unknown as typeof fetch;
+    assert.equal(await loadSubnetLeaseHistoryColdTier(TOKEN, 1), null);
   });
 });

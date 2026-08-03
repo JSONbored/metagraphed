@@ -263,6 +263,7 @@ describe("coldTierChainEventsPayload", () => {
     "/ownership-history",
     "/api/v1/chain-events",
     "/api/v1/chain-events/stats",
+    "/lease/history",
   ];
   test("a route with no cold-tier reader yields null", async () => {
     const env = lakehouse([OWNERSHIP_ROW]);
@@ -302,6 +303,23 @@ describe("coldTierChainEventsPayload", () => {
     assert.ok(payload, "stats must be covered, not fall through to null");
     assert.equal(payload.window_blocks, 500);
     assert.equal(payload.groups, 0);
+  });
+
+  test("lease history answers a verified empty instead of claiming unavailable", async () => {
+    // No subnet has ever been leased; a tier_unavailable marker on that would
+    // tell callers to retry something that will never change.
+    const env = lakehouse([]);
+    const payload = (await coldTierChainEventsPayload(
+      env,
+      new URL("https://api.metagraph.sh/api/v1/subnets/7/lease/history"),
+    )) as Row;
+    assert.ok(
+      payload,
+      "must be an answer, not a fall-through to the marked empty",
+    );
+    assert.equal(payload.netuid, 7);
+    assert.equal(payload.count, 0);
+    assert.deepEqual(payload.lease_events, []);
   });
 
   test("an unconfigured lakehouse declines, leaving the floor to answer", async () => {

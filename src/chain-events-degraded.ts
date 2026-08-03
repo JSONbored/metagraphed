@@ -43,6 +43,7 @@ import { loadSubnetOwnershipHistoryColdTier } from "./subnet-ownership-cold-tier
 import {
   loadChainEventsColdTier,
   loadChainEventsStatsColdTier,
+  loadSubnetLeaseHistoryColdTier,
 } from "./chain-events-cold-tier.ts";
 
 type Row = Record<string, unknown>;
@@ -165,6 +166,15 @@ export async function coldTierChainEventsPayload(
       cursor: params.get("cursor"),
       before: params.get("before"),
     })) as Row | null;
+  }
+  const lease = SUBNET_LEASE_HISTORY.exec(url.pathname);
+  if (lease) {
+    const found = await loadSubnetLeaseHistoryColdTier(env, Number(lease[1]));
+    // A verified-empty history is an ANSWER; only an inconclusive read keeps
+    // the marked empty below.
+    return found
+      ? (buildSubnetLeaseHistory(found.rows, Number(lease[1])) as Row)
+      : null;
   }
   if (url.pathname === "/api/v1/chain-events/stats") {
     return (await loadChainEventsStatsColdTier(
