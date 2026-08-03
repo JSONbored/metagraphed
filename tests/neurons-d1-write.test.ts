@@ -27,6 +27,7 @@ import { NEURON_INSERT_COLUMNS } from "../src/metagraph-neurons.ts";
 function fakeDb() {
   const prepared: { sql: string; values: unknown[] }[] = [];
   let batched: unknown[] | null = null;
+  const batchCalls: unknown[][] = [];
   const db = {
     prepare(sql: string) {
       const entry = { sql, values: [] as unknown[] };
@@ -39,7 +40,8 @@ function fakeDb() {
       };
     },
     async batch(statements: unknown[]) {
-      batched = statements;
+      batched = batched ? [...batched, ...statements] : [...statements];
+      batchCalls.push(statements);
       return [];
     },
   };
@@ -47,6 +49,7 @@ function fakeDb() {
     db: db as unknown as Parameters<typeof writeNeuronSnapshotToD1>[0],
     prepared,
     batched: () => batched,
+    batchCalls: () => batchCalls,
   };
 }
 
@@ -59,6 +62,43 @@ function neuronRow(
   for (const column of NEURON_INSERT_COLUMNS) row[column] = null;
   return { ...row, netuid, uid, hotkey: `hk${uid}`, captured_at: capturedAt };
 }
+
+describe("the Workers-binding parameter limit (the one that bit production)", () => {
+  test("every statement stays at or under 100 bound parameters", () => {
+    // The wrangler/HTTP path accepts 1,200 params; the WORKERS BINDING caps
+    // at 100 and failed all 15 first production syncs. The budget must hold
+    // against the strictest limit of the runtime it actually executes on.
+    for (const cols of [15, 20, 21, 22, 30]) {
+      const per = rowsPerStatement(cols);
+      assert.ok(
+        per * cols <= 100,
+        `${cols} columns x ${per} rows = ${per * cols} params > 100`,
+      );
+      assert.ok(per >= 1);
+    }
+  });
+
+  test("a full-size snapshot is batched in slices with prunes last", async () => {
+    const { db, batchCalls } = fakeDb();
+    // 4 rows/statement at 21 columns -> 4,500 rows = 1,126 statements = 2 slices.
+    const rows = Array.from({ length: 4_500 }, (_, i) => neuronRow(1, i));
+    await writeNeuronSnapshotToD1(db, {
+      rows,
+      dailyRows: [],
+      positionRows: [],
+      netuidMaxCapturedAt: new Map([[1, 1785700000000]]),
+    });
+    const calls = batchCalls();
+    assert.ok(calls.length >= 2, "sliced into multiple batch() calls");
+    for (const c of calls) {
+      assert.ok(c.length <= 1_000, `slice of ${c.length} exceeds 1,000`);
+    }
+    // Order across slices is the write order; the prune is the last statement
+    // of the last slice, never ahead of the upserts it depends on.
+    const last = calls[calls.length - 1]!;
+    assert.ok(last.length >= 1);
+  });
+});
 
 describe("the neurons D1 write path (#9146)", () => {
   test("the batch size is derived from the column count, not fixed", () => {

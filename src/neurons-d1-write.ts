@@ -42,14 +42,17 @@ export const ACCOUNT_POSITION_DAILY_COLUMNS = [
 /**
  * Bound-parameter budget per statement.
  *
- * MEASURED against production D1 rather than assumed: 1,200 bound parameters
- * execute fine, so SQLite's classic 999-variable ceiling does not apply here.
- * 900 keeps a wide margin under the smallest limit anyone reports while still
- * batching ~45 of the 20-column neuron rows per statement -- the point is that
- * the chunk size is DERIVED from the column count below, so adding a column
- * re-sizes the batch instead of silently pushing it over a limit.
+ * CORRECTED against production, the hard way: the original 900 budget was
+ * "measured" through the wrangler/HTTP path, where 1,200 bound parameters do
+ * execute -- but the WORKERS-RUNTIME BINDING enforces 100 bound parameters
+ * per statement, and every one of the first 15 production syncs failed with
+ * "D1_ERROR: too many SQL variables" before a single row landed. The two
+ * paths have different limits; only the binding's limit matters here because
+ * the binding is what this code runs on. 90 leaves margin under 100, and the
+ * chunk size stays DERIVED from the column count, so adding a column
+ * re-sizes the batch instead of silently pushing it over the limit again.
  */
-export const D1_PARAM_BUDGET = 900;
+export const D1_PARAM_BUDGET = 90;
 
 export function rowsPerStatement(columnCount: number): number {
   return Math.max(1, Math.floor(D1_PARAM_BUDGET / Math.max(1, columnCount)));
@@ -130,6 +133,30 @@ export interface NeuronSnapshotWrite {
  * batch-wide max captured_at would let one netuid's later capture delete rows
  * this very request just wrote for a different, earlier-captured netuid.
  */
+/**
+ * db.batch in slices. One giant batch was the original design (single
+ * implicit transaction, all-or-nothing), but the 90-param budget puts a full
+ * 30k-neuron snapshot at ~16,000 statements, which is its own way to find a
+ * platform ceiling. Slices of 1,000 keep each call far from any limit.
+ *
+ * The trade, stated honestly: atomicity is now per-slice. Statement ORDER is
+ * preserved and the prunes are appended last, so the failure mode of a
+ * mid-run slice is "fresh rows landed, prune not yet run" -- stale UIDs
+ * linger until the next 15-minute tick, which is the same staleness the old
+ * all-or-nothing failure produced (nothing landed at all), with strictly
+ * more fresh data. No failure mode reorders a prune ahead of its upserts.
+ */
+const BATCH_SLICE = 1_000;
+
+async function batchInSlices(
+  db: D1Like,
+  statements: D1PreparedStatement[],
+): Promise<void> {
+  for (let i = 0; i < statements.length; i += BATCH_SLICE) {
+    await db.batch(statements.slice(i, i + BATCH_SLICE));
+  }
+}
+
 export async function writeNeuronSnapshotToD1(
   db: D1Like,
   { rows, dailyRows, positionRows, netuidMaxCapturedAt }: NeuronSnapshotWrite,
@@ -166,7 +193,7 @@ export async function writeNeuronSnapshotToD1(
     );
   }
 
-  if (statements.length) await db.batch(statements);
+  if (statements.length) await batchInSlices(db, statements);
   return { statements: statements.length };
 }
 
@@ -203,6 +230,6 @@ export async function writeNeuronDailyBackfillToD1(
       positionRows,
     ),
   ];
-  if (statements.length) await db.batch(statements);
+  if (statements.length) await batchInSlices(db, statements);
   return { statements: statements.length };
 }
