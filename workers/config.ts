@@ -149,6 +149,23 @@ export const NEURONS_STALENESS_WATCHDOG_CRON = "6,21,36,51 * * * *";
 // raw-capture and */15 probe grids. Must match a wrangler.jsonc
 // `triggers.crons` entry.
 export const PROJECTION_LANES_CRON = "11,41 * * * *";
+// The live-economics refresh, moved off .github/workflows/refresh-economics.yml
+// -- the last GitHub Actions data lane. Same 3-hourly cadence that workflow
+// ran (it was `41 */3 * * *`), on minute :26, which is the nearest free minute:
+// :41 already belongs to BOTH the SafeMode watchdog and the projection lanes,
+// and dispatch keys on the LITERAL cron string, so a shared string would route
+// this lane into another branch entirely. :26 collides with no trigger in this
+// file and stays off the */5 raw-capture and */15 probe grids.
+//
+// Worker-native rather than an Actions job for the reason the sampler and the
+// drift check moved: the KV tier this writes, the D1 tables it aggregates and
+// the R2 artifact it reads all live in this Worker, so the Actions hop bought
+// a third-party trigger dependency and a credential (the repo
+// CLOUDFLARE_API_TOKEN, which has no D1 read permission and silently nulled
+// every alpha_price_change_* field, #9189) for work the Worker can do with
+// bindings it already holds. See src/live-economics-refresh.ts's header.
+// Must match a wrangler.jsonc `triggers.crons` entry.
+export const LIVE_ECONOMICS_REFRESH_CRON = "26 */3 * * *";
 // KV key holding the last-reported staleness signature, so a standing outage is
 // announced when it starts and when it changes rather than every hour forever.
 export const FRESHNESS_WATCHDOG_STATE_KEY = "watchdog:freshness:signature";

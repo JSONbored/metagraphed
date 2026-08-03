@@ -735,6 +735,12 @@
       // 6,21,36,51 = the neurons-staleness watchdog: alarms when the poller
       // Container's 15-minute D1 feed stops moving.
       "6,21,36,51 * * * *",
+      // 26 */3 = the live-economics refresh (KV economics:current), moved off
+      // the retired refresh-economics.yml schedule -- the last Actions data
+      // lane. Same 3-hourly cadence; :26 because :41 is taken twice over and
+      // dispatch keys on the literal cron string. See
+      // LIVE_ECONOMICS_REFRESH_CRON in workers/config.ts.
+      "26 */3 * * *",
     ],
   },
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite

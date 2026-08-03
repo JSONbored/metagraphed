@@ -14,9 +14,20 @@ name: Refresh Economics (live tier)
 # so this fetches from the public chain endpoint like every other caller now
 # does.
 on:
-  schedule:
-    # Every 3 hours — fresher than the 6h publish, light chain load.
-    - cron: "41 */3 * * *"
+  # Schedule RETIRED: the 3-hourly cadence now runs as a Worker cron
+  # (LIVE_ECONOMICS_REFRESH_CRON in workers/config.ts, dispatching
+  # src/live-economics-refresh.ts). This was the LAST data lane on GitHub
+  # Actions, and it had no business being here: the KV key it writes, the D1
+  # tables it aggregates and the R2 artifact it reads are all bindings the
+  # Worker already holds, so the Actions hop bought a third-party trigger
+  # dependency plus a repository CLOUDFLARE_API_TOKEN whose missing D1 read
+  # permission silently nulled every alpha_price_change_* field (#9189) on a
+  # blob that SHADOWS the complete R2 artifact.
+  #
+  # This workflow stays as the manual fallback: `npm run economics:refresh`
+  # (scripts/refresh-economics.ts) still builds and publishes the same blob
+  # from the Python chain capture, which is the path to reach for when the
+  # cron itself is the thing under suspicion.
   workflow_dispatch: {}
 
 permissions:

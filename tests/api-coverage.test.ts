@@ -3126,6 +3126,36 @@ describe("handleScheduled EMISSION_DRIFT_CHECK_CRON", () => {
   });
 });
 
+// The live-economics refresh (formerly refresh-economics.yml's 3-hourly
+// schedule -- the last Actions data lane). Dispatch keys on the LITERAL cron
+// string, so this asserts the string routes to that lane and not to the
+// health prober every other unmatched cron falls through to.
+describe("handleScheduled LIVE_ECONOMICS_REFRESH_CRON", () => {
+  test("routes to the refresh, which declines rather than writing a degraded blob", async () => {
+    const result = await handleScheduled(
+      {
+        cron: workerConfig.LIVE_ECONOMICS_REFRESH_CRON,
+      } as unknown as ScheduledController,
+      {} as unknown as Env,
+      {} as unknown as ExecutionContext,
+    );
+    // Reaching the module at all is the routing proof: an unmatched string
+    // would have run the health prober and returned its probe summary.
+    assert.deepEqual(result, { ok: false, reason: "kv_binding_missing" });
+  });
+
+  test("its cron string is unique across every trigger in workers/config.ts", () => {
+    const crons = Object.entries(workerConfig)
+      .filter(([name]) => name.endsWith("_CRON"))
+      .map(([, value]) => value);
+    assert.equal(
+      crons.filter((cron) => cron === workerConfig.LIVE_ECONOMICS_REFRESH_CRON)
+        .length,
+      1,
+    );
+  });
+});
+
 describe("handleScheduled EMISSION_GATE_SAMPLE_CRON", () => {
   test("skips (does not throw) when EMISSION_GATE_SYNC_SECRET is not configured", async () => {
     const result = await handleScheduled(
