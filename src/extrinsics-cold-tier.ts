@@ -6,13 +6,24 @@
 // Every loader here feeds the SAME formatters the Postgres tier feeds
 // (src/extrinsics.ts), so a caller cannot tell which tier answered.
 //
-// ONE HONEST LIMIT, STATED UP FRONT. Verified extrinsics stop at the export
-// height. Blocks past it are captured as raw SCALE bytes but not yet decoded,
-// so no source can answer for that range -- unlike blocks, there is no D1 leg
-// to stitch on. This tier therefore serves history and returns a confirmed
-// EMPTY above the seam rather than inventing a partial row. A caller reading
-// `observed_at` can see exactly how current the answer is; nothing is
-// presented as more recent than it is.
+// ONE HONEST LIMIT, STATED UP FRONT. Verified extrinsics stop wherever the
+// decode lane has reached. Blocks past that are captured as raw SCALE bytes
+// but not yet decoded, so no source can answer for that range -- unlike
+// blocks, there is no D1 leg to stitch on. This tier therefore serves history
+// and returns a confirmed EMPTY above the decoded height rather than inventing
+// a partial row. A caller reading `observed_at` can see exactly how current
+// the answer is; nothing is presented as more recent than it is.
+//
+// AND IT DOES NOT CONSULT THE SEAM TO DECIDE THAT, deliberately. The seam
+// (src/blocks-cold-tier.ts) exists to choose BETWEEN two sources, and here
+// there is only one, so the lakehouse's own emptiness is the answer -- read
+// from the lakehouse rather than predicted from a watermark. That matters
+// because the published watermark is the `min` across four tables: a run that
+// committed chain.extrinsics and not chain.chain_events leaves rows here that
+// a seam gate would refuse to serve, and refusing rows we hold is exactly the
+// failure the seam was introduced to avoid. The cost of asking is one R2 SQL
+// scan that comes back empty, behind an edge cache, on a tier that is
+// second-scale by design.
 //
 // R2 SQL has no bound parameters, so every interpolated value passes a
 // literal guard that REFUSES rather than escapes. A filter this tier cannot

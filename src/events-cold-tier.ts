@@ -12,6 +12,11 @@
 // identical: the two-scan form's second branch merely excludes rows the
 // first already returned, which a single OR cannot double-count. (OR support
 // verified on the live engine, 2026-08-02.)
+//
+// NO SEAM GATE HERE EITHER, for the reason spelled out at the top of
+// src/extrinsics-cold-tier.ts: the seam picks between two sources and this
+// family has one, so the lakehouse's own empty answer is more truthful than a
+// prediction made from a four-table `min` watermark.
 
 import {
   buildAccountEvents,

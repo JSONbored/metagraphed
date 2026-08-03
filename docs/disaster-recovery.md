@@ -45,11 +45,23 @@ Re-measured 2026-08-02 (#9161). The decoder has run: `chain.extrinsics` and
 `chain.account_events` now reach the same height as `chain.blocks`, so the
 "captured but not queryable" range described below is closed up to 8,759,336.
 
-`DEFAULT_BLOCKS_SEAM` is exactly `max(chain.blocks)` = **8,759,336**. It was
-8,756,998 for long enough to matter: the drift is invisible while the box
-answers reads and would have started mis-routing at the wipe.
-`scripts/check-lakehouse-seam.ts` now fails when the constant and the lakehouse
-diverge, so **re-measuring after a backfill is enforced rather than remembered**.
+**The seam is no longer a constant.** `DEFAULT_BLOCKS_SEAM` (**8,759,336**, the
+measured `max(chain.blocks)` at the final top-up load) is now only a FLOOR. The
+seam each request routes on is resolved as `max(floor, published watermark)`,
+where the watermark is `metagraph/lakehouse/decode-watermark.json` in the
+`metagraphed-artifacts` bucket, written by the private decode lane — see
+`src/decode-watermark.ts`. That constant was a ceiling twice and went stale
+both times: on 2026-08-03 the block list was at chain head while every block
+above 8,759,336 answered with 0 extrinsics and 0 events, because the decoder
+was extending the lakehouse and the Worker could not see past its own config.
+
+Nothing about the seam needs re-measuring after a backfill any more; raising
+`ICEBERG_BLOCKS_MAX` by hand is neither required nor harmful. What does need
+watching is the lane that publishes, and the hourly
+`src/lakehouse-seam-watchdog.ts` cron does exactly that: it alarms when nothing
+publishes at all, when the watermark stops moving for 3h, when the seam trails
+the raw capture by more than 2,400 blocks, or when the watermark and
+`chain.blocks` disagree in either direction.
 
 `RAW_CAPTURE_GENESIS_FLOOR` (8,756,635) is deliberately left where it is. It is
 the raw lane's STARTING height, so a value below the decoded ceiling only
@@ -64,12 +76,13 @@ Verify coverage at any time:
 SELECT min(block_number) AS lo, max(block_number) AS hi, count(*) AS n FROM chain.blocks;
 ```
 
-> **Raw bytes are not yet decoded.** Blocks after the seam exist as raw NDJSON
+> **Raw bytes trail decode by design.** Blocks after the seam exist as raw NDJSON
 > (block + events, SCALE-encoded) and in `blocks_head`. Extrinsics and events for
-> that range are **captured and durable but not queryable** until a decoder lands.
-> Capture-before-decode was deliberate: the chain serves recent state cheaply and
-> old state expensively, so a missed capture is permanent while a missed decode
-> is not.
+> that range are **captured and durable but not queryable** until the hourly
+> decode lane reaches them. Capture-before-decode was deliberate: the chain serves
+> recent state cheaply and old state expensively, so a missed capture is permanent
+> while a missed decode is not. A backlog here is normal; a backlog that stops
+> shrinking is what the seam watchdog alarms on.
 
 ---
 

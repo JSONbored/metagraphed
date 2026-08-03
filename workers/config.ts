@@ -96,15 +96,17 @@ export const SCHEMA_SNAPSHOTS_SYNC_CRON = "5 5 * * *";
 // the first tick regardless. Must match a wrangler.jsonc cron entry.
 export const FRESHNESS_WATCHDOG_CRON = "23 * * * *";
 
-// #9161: daily lakehouse seam watchdog. DEFAULT_BLOCKS_SEAM routes every cold
-// block read, and it drifted 2,338 blocks once already because a decoder
-// extended the lakehouse and nothing re-measured. Daily because the lakehouse
-// only moves when a backfill or decode lane runs -- a tighter tick would
-// re-ask a question whose answer cannot have changed. A Worker cron rather
-// than an Actions job because this Worker already holds R2_SQL_TOKEN; the
-// workflow form needed the same secret duplicated repo-side. Must match a
-// wrangler.jsonc cron entry.
-export const LAKEHOUSE_SEAM_CRON = "23 7 * * *";
+// #9161: the lakehouse seam watchdog. HOURLY at :48, raised from daily (23 7)
+// when the seam stopped being a constant and started following the decoder's
+// published watermark. Daily was right for a number only a deploy could move;
+// it is useless against a watermark whose staleness threshold is three hours,
+// because a once-a-day sample cannot tell a three-hour stall from a
+// twenty-hour one. :48 is 31 minutes after the decode lane's own `17 * * * *`
+// cron, so a tick reads the result of that hour's run rather than racing it.
+// A Worker cron rather than an Actions job because this Worker already holds
+// R2_SQL_TOKEN, METAGRAPH_ARCHIVE and the D1 binding; the workflow form needed
+// all three duplicated repo-side. Must match a wrangler.jsonc cron entry.
+export const LAKEHOUSE_SEAM_CRON = "48 * * * *";
 
 // #8696: hourly SafeMode watchdog. SafeMode is the emergency chain pause, and
 // an emergency pause is not something to learn about a day late -- the job is

@@ -1558,9 +1558,11 @@ async function dispatchScheduled(
     return runSafeModeWatchdog(env as unknown as Record<string, unknown>);
   }
   if (cron === LAKEHOUSE_SEAM_CRON) {
-    // The seam that routes every cold block read drifted 2,338 blocks once
-    // already, invisibly, because Postgres was still answering first. This
-    // notices the next time before the wipe makes it matter.
+    // The seam that routes every cold block read now follows the decode
+    // lane's published watermark, so what can break is the lane itself:
+    // stopped, losing ground to the raw capture, or publishing a height the
+    // lakehouse does not back. All three look like a healthy block list with
+    // empty block detail, which is why nothing noticed for a day.
     return runLakehouseSeamWatchdog(
       env as unknown as Parameters<typeof runLakehouseSeamWatchdog>[0],
     );
