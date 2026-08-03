@@ -4337,6 +4337,14 @@ async function handleAccountKeysRoute(request: Request, env: Env, url: URL) {
 // Postgres loader's own catch branch produced (empty set/map, null), rather
 // than issuing a query that can only ever throw. Wire the real reads in when
 // those tables land on D1.
+//
+// One of them is no longer degraded downstream: nominator_count is filled from
+// chain.validator_nominator_counts by the SERVING Worker, at tier convergence
+// (src/validator-nominator-counts-cold-tier.ts, #9146). It could not be filled
+// here -- R2_SQL_TOKEN is bound to the main Worker, not to this one -- so the
+// empty map / null count below stay correct as this tier's own answer. If this
+// table ever does land on D1, wiring it here makes that overlay a no-op rather
+// than a conflict: it only ever fills a count the payload left null.
 type NeuronsD1RouteHandler = (sql: D1Sql, env: Env) => Promise<Response>;
 
 // The D1 twin of loadAlphaPricesByNetuid (#9051): netuid -> latest
@@ -4579,7 +4587,9 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
 
   // GET /api/v1/validators?sort=&limit=. The nominator-count, tempo and
   // identity joins keep their Postgres loaders' degraded values (no D1
-  // homes); prices and realized-return baselines port for real.
+  // homes); prices and realized-return baselines port for real. The serving
+  // Worker fills nominator_count over this response from the lakehouse (#9146)
+  // -- see this dispatcher's header.
   if (url.pathname === "/api/v1/validators") {
     return async (sql, env) => {
       const sortParam = url.searchParams.get("sort");

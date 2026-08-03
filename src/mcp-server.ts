@@ -987,6 +987,7 @@ import { loadBulkHealthTrends } from "./bulk-health-trends.ts";
 import { loadRpcUsage } from "./rpc-usage-loader.ts";
 import { loadChainServingColdTier } from "./chain-serving-loader.ts";
 import { loadAccountSummaryColdTier } from "./account-feeds-cold-tier.ts";
+import { enrichValidatorNominatorCounts } from "./validator-nominator-counts-cold-tier.ts";
 import { loadChainWeightsColdTier } from "./chain-weights-loader.ts";
 import { loadChainWeightSettersColdTier } from "./chain-weight-setters-loader.ts";
 import {
@@ -6626,17 +6627,21 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         GLOBAL_VALIDATOR_LIMIT_DEFAULT,
         GLOBAL_VALIDATOR_LIMIT_MAX,
       );
-      return (
+      // #9146: nominator_count has no D1 home, so the tier answers null for
+      // every row -- filled from the lakehouse by the same loader REST and
+      // GraphQL call.
+      return await enrichValidatorNominatorCounts(
+        ctx.env,
         (await tryPostgresTier(
           ctx.env,
           mcpNeuronsTierRequest("/api/v1/validators", { sort, limit }),
           "METAGRAPH_NEURONS_SOURCE",
         )) ??
-        buildGlobalValidators([], {
-          sort,
-          limit,
-          priceByNetuid: NO_ALPHA_PRICES,
-        })
+          buildGlobalValidators([], {
+            sort,
+            limit,
+            priceByNetuid: NO_ALPHA_PRICES,
+          }),
       );
     },
   },
@@ -6658,7 +6663,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const hotkey = requireHotkey(args);
-      return (
+      // #9146: same side-table gap as list_global_validators, one hotkey wide.
+      return await enrichValidatorNominatorCounts(
+        ctx.env,
         (await tryPostgresTier(
           ctx.env,
           mcpNeuronsTierRequest(
@@ -6666,7 +6673,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           ),
           "METAGRAPH_NEURONS_SOURCE",
         )) ??
-        buildValidatorDetail([], hotkey, { priceByNetuid: NO_ALPHA_PRICES })
+          buildValidatorDetail([], hotkey, { priceByNetuid: NO_ALPHA_PRICES }),
       );
     },
   },
@@ -6706,17 +6713,25 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       // fan-out's request pattern identical to N get_validator_detail calls.
       const details = [];
       for (const hotkey of hotkeys) {
+        // #9146: enriched per detail, inside the loop, because nominator_count
+        // is one of the fields this comparison projects (and one of the four
+        // this tool's own description promises) -- an unenriched detail here
+        // would answer null for it while get_validator_detail answered a
+        // number for the same hotkey.
         details.push(
-          (await tryPostgresTier(
+          await enrichValidatorNominatorCounts(
             ctx.env,
-            mcpNeuronsTierRequest(
-              `/api/v1/validators/${encodeURIComponent(hotkey)}`,
-            ),
-            "METAGRAPH_NEURONS_SOURCE",
-          )) ??
-            buildValidatorDetail([], hotkey, {
-              priceByNetuid: NO_ALPHA_PRICES,
-            }),
+            (await tryPostgresTier(
+              ctx.env,
+              mcpNeuronsTierRequest(
+                `/api/v1/validators/${encodeURIComponent(hotkey)}`,
+              ),
+              "METAGRAPH_NEURONS_SOURCE",
+            )) ??
+              buildValidatorDetail([], hotkey, {
+                priceByNetuid: NO_ALPHA_PRICES,
+              }),
+          ),
         );
       }
       return composeValidatorComparison(details, { netuid });
