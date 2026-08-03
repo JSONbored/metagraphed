@@ -30,6 +30,10 @@ import {
   canonicalTopHoldersCachePath,
 } from "../workers/request-handlers/entities.ts";
 import {
+  BLOCK_PAGINATION,
+  FEED_PAGINATION,
+} from "../workers/request-params.ts";
+import {
   ACCOUNTS_LIST_LIMIT_MAX,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
   CHAIN_TURNOVER_LIMIT_MAX,
@@ -49,6 +53,20 @@ const CONSTANT_BACKED: Record<string, number> = {
   "/api/v1/subnets/{netuid}/event-summary":
     SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
   "/api/v1/chain/identity-history": CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
+  // #9128: the PROFILE-backed feed routes. These have no per-route constant --
+  // they take a shared pagination profile -- which is exactly why they were
+  // missed here and why the drift went unnoticed: the account feeds declared
+  // 1000 while the upstream Postgres tier silently served 200, so a client
+  // paginating on the declared ceiling skipped 800 rows per page with a 200 OK
+  // every time. That tier is gone and the ceilings agree again; these entries
+  // are what keeps them agreeing.
+  //
+  // Listed with the profile's own maxLimit rather than a literal, so changing
+  // FEED_PAGINATION re-points the assertion instead of silently passing.
+  "/api/v1/accounts/{ss58}/extrinsics": FEED_PAGINATION.maxLimit,
+  "/api/v1/accounts/{ss58}/transfers": FEED_PAGINATION.maxLimit,
+  "/api/v1/extrinsics": BLOCK_PAGINATION.maxLimit,
+  "/api/v1/blocks": BLOCK_PAGINATION.maxLimit,
 };
 
 interface Route {
