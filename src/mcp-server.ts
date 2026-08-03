@@ -233,6 +233,8 @@ import {
   loadAccountStakeFlowColdTier,
   loadAccountStakeMovesColdTier,
   loadAccountTransfersColdTier,
+  loadAccountRegistrationsColdTier,
+  loadAccountServingColdTier,
   loadAccountWeightSettersColdTier,
   loadCounterpartyRelationshipColdTier,
 } from "./account-feeds-cold-tier.ts";
@@ -8166,7 +8168,12 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             }),
             "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
           )
-        )?.data ?? buildAccountRegistrations([], ss58, { window })
+        )?.data ??
+        // #9146: same lakehouse read the REST handler uses, so the tool and
+        // the route cannot report different footprints.
+        (await loadAccountRegistrationsColdTier(ctx.env, ss58, { window }))
+          ?.data ??
+        buildAccountRegistrations([], ss58, { window })
       );
     },
   },
@@ -8250,7 +8257,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             }),
             "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
           )
-        )?.data ?? buildAccountServing([], ss58, { window })
+        )?.data ??
+        // #9146: same lakehouse read the REST handler uses.
+        (await loadAccountServingColdTier(ctx.env, ss58, { window }))?.data ??
+        buildAccountServing([], ss58, { window })
       );
     },
   },

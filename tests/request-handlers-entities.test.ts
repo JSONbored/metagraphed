@@ -2984,6 +2984,52 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
     assert.match(q[0]!, /event_kind = 'StakeMoved'/);
   });
 
+  test("handleAccountRegistrations serves the registration card from the lakehouse", async () => {
+    const q = lakeFetch([
+      {
+        netuid: 104,
+        registrations: "3",
+        first_observed: 1_783_319_088_000,
+        last_observed: 1_783_386_048_000,
+      },
+    ]);
+    const body = await json(
+      await handleAccountRegistrations(
+        req(`/api/v1/accounts/${ADDR}/registrations`),
+        LAKE_ENV,
+        ADDR,
+        url(`/api/v1/accounts/${ADDR}/registrations`),
+      ),
+    );
+    assert.equal(body.data.total_registrations, 3);
+    assert.match(q[0]!, /event_kind = 'NeuronRegistered'/);
+    // Hotkey-only attribution: widening to the coldkey would credit an
+    // operator with registrations made by every hotkey it funds.
+    assert.doesNotMatch(q[0]!, /coldkey/);
+  });
+
+  test("handleAccountServing serves the serving card from the lakehouse", async () => {
+    const q = lakeFetch([
+      {
+        netuid: 55,
+        announcements: "3",
+        first_observed: 1_784_016_000_001,
+        last_observed: 1_785_342_888_001,
+      },
+    ]);
+    const body = await json(
+      await handleAccountServing(
+        req(`/api/v1/accounts/${ADDR}/serving`),
+        LAKE_ENV,
+        ADDR,
+        url(`/api/v1/accounts/${ADDR}/serving`),
+      ),
+    );
+    assert.equal(body.data.total_announcements, 3);
+    assert.match(q[0]!, /event_kind = 'AxonServed'/);
+    assert.doesNotMatch(q[0]!, /coldkey/);
+  });
+
   test("handleAccountWeightSetters joins the D1 neuron slots into the lakehouse read", async () => {
     const q = lakeFetch([
       {

@@ -59,6 +59,18 @@ import {
   COUNTERPARTIES_SCAN_CAP,
   type CounterpartyRelationshipResult,
 } from "./counterparties.ts";
+import {
+  buildAccountRegistrations,
+  REGISTRATION_EVENT_KIND,
+  REGISTRATION_WINDOWS,
+  DEFAULT_REGISTRATION_WINDOW,
+} from "./account-registrations.ts";
+import {
+  buildAccountServing,
+  SERVING_EVENT_KIND,
+  SERVING_WINDOWS,
+  DEFAULT_SERVING_WINDOW,
+} from "./account-serving.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
 import { OFFSET_EMULATION_CAP } from "./r2-sql-blocks.ts";
@@ -300,6 +312,85 @@ export async function loadAccountStakeMovesColdTier(
   if (rows === null) return null;
   return {
     data: buildAccountStakeMoves(rows, ss58, { window: label }),
+    generatedAt: latestObservedIso(rows),
+  };
+}
+
+/**
+ * One account's per-subnet NeuronRegistered footprint.
+ *
+ * The retired D1 loader's query verbatim, minus its SQLite `INDEXED BY
+ * idx_account_events_hotkey` hint -- R2 SQL has no indexes to name. Keyed on
+ * `hotkey` ALONE, not the `(hotkey OR coldkey)` disjunction the transfer-shaped
+ * feeds use: a registration is attributed to the hotkey being registered, and
+ * widening it to the coldkey would credit an operator with every registration
+ * made by every hotkey it funds.
+ *
+ * Measured live before shipping (2026-08-03): all three windows execute inside
+ * the query timeout on an account registered across 119 subnets -- 7d 82 MB,
+ * 30d 238 MB, 90d 392 MB at ~4s. A selective single-hotkey predicate is the
+ * shape this request-time module is for; see the header above.
+ */
+export async function loadAccountRegistrationsColdTier(
+  env: Env | null | undefined,
+  ss58: string,
+  query: { window?: string | null } = {},
+): Promise<{
+  data: ReturnType<typeof buildAccountRegistrations>;
+  generatedAt: string | null;
+} | null> {
+  const addr = safeSs58Literal(ss58);
+  if (addr === null) return null;
+  const { label, cutoff } = windowCutoff(
+    REGISTRATION_WINDOWS,
+    DEFAULT_REGISTRATION_WINDOW,
+    query.window,
+  );
+  const rows = await r2SqlQuery(
+    env,
+    `SELECT netuid, COUNT(*) AS registrations, MIN(observed_at) AS first_observed, ` +
+      `MAX(observed_at) AS last_observed FROM chain.account_events ` +
+      `WHERE hotkey = '${addr}' AND event_kind = '${REGISTRATION_EVENT_KIND}' ` +
+      `AND observed_at >= ${cutoff} GROUP BY netuid`,
+  );
+  if (rows === null) return null;
+  return {
+    data: buildAccountRegistrations(rows, ss58, { window: label }),
+    generatedAt: latestObservedIso(rows),
+  };
+}
+
+/**
+ * One account's per-subnet AxonServed footprint -- the serving companion to
+ * loadAccountRegistrationsColdTier above, same query shape, same hotkey-only
+ * attribution, differing only in event kind and the count column the builder
+ * reads (`announcements`).
+ */
+export async function loadAccountServingColdTier(
+  env: Env | null | undefined,
+  ss58: string,
+  query: { window?: string | null } = {},
+): Promise<{
+  data: ReturnType<typeof buildAccountServing>;
+  generatedAt: string | null;
+} | null> {
+  const addr = safeSs58Literal(ss58);
+  if (addr === null) return null;
+  const { label, cutoff } = windowCutoff(
+    SERVING_WINDOWS,
+    DEFAULT_SERVING_WINDOW,
+    query.window,
+  );
+  const rows = await r2SqlQuery(
+    env,
+    `SELECT netuid, COUNT(*) AS announcements, MIN(observed_at) AS first_observed, ` +
+      `MAX(observed_at) AS last_observed FROM chain.account_events ` +
+      `WHERE hotkey = '${addr}' AND event_kind = '${SERVING_EVENT_KIND}' ` +
+      `AND observed_at >= ${cutoff} GROUP BY netuid`,
+  );
+  if (rows === null) return null;
+  return {
+    data: buildAccountServing(rows, ss58, { window: label }),
     generatedAt: latestObservedIso(rows),
   };
 }
