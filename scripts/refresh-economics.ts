@@ -45,8 +45,8 @@ for (const subnet of (native.subnets as Row[] | undefined) || []) {
   }
 }
 
-// #7227: bake alpha_price_change_* from subnet_snapshots when DATABASE_URL is
-// present (indexer box). Missing DB → null change fields (schema-stable).
+// #7227: bake alpha_price_change_* from subnet_snapshots in D1. Missing
+// Cloudflare credentials → null change fields (schema-stable).
 const priceHistoryByNetuid = await loadAlphaPriceHistoryByNetuid();
 
 const economics = buildEconomicsArtifact({
