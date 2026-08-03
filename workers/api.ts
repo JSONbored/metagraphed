@@ -337,6 +337,7 @@ import { handleIconProxy } from "../src/icon-proxy.ts";
 import { maskRouteParams } from "../src/route-label.ts";
 import { sampleEmissionGate } from "../src/emission-gate-sampler.ts";
 import { checkEmissionDrift } from "../src/emission-drift-check.ts";
+import { runNeuronsStalenessWatchdog } from "../src/neurons-staleness-watchdog.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
 import { validateResponseTripwire } from "../src/response-validation-tripwire.ts";
 import {
@@ -398,6 +399,7 @@ import {
   SAFE_MODE_WATCHDOG_CRON,
   EMISSION_GATE_SAMPLE_CRON,
   EMISSION_DRIFT_CHECK_CRON,
+  NEURONS_STALENESS_WATCHDOG_CRON,
   PROJECTION_LANES_CRON,
   FRESHNESS_WATCHDOG_STATE_KEY,
   BULK_TRENDS_PATH_PATTERN,
@@ -1359,6 +1361,8 @@ function cronLabel(cron: string): string {
   if (cron === ACCOUNT_EVENTS_ROLLUP_CRON) return "account-events-rollup";
   if (cron === EMISSION_GATE_SAMPLE_CRON) return "emission-gate-sample";
   if (cron === EMISSION_DRIFT_CHECK_CRON) return "emission-drift-check";
+  if (cron === NEURONS_STALENESS_WATCHDOG_CRON)
+    return "neurons-staleness-watchdog";
   // Every unmatched cron falls through to the health prober, matching dispatch.
   return "health-prober";
 }
@@ -1606,6 +1610,14 @@ async function dispatchScheduled(
     );
     const body = (await response.json()) as Row;
     return { ok: response.ok, status: response.status, body };
+  }
+  if (cron === NEURONS_STALENESS_WATCHDOG_CRON) {
+    // The neurons live lane's alarm. Zero alerts is the correct steady state;
+    // a stale verdict records one exception under
+    // watchdog:neurons-staleness, which is the project's alert channel.
+    return runNeuronsStalenessWatchdog(
+      env as unknown as Record<string, unknown>,
+    );
   }
   if (cron === EMISSION_DRIFT_CHECK_CRON) {
     // The live emission-drift check, formerly the 30-minute Actions schedule.

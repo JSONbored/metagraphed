@@ -732,6 +732,9 @@
       // and distinct from the upgrade radar's 7,37 (dispatch keys on the
       // literal cron string).
       "9,39 * * * *",
+      // 6,21,36,51 = the neurons-staleness watchdog: alarms when the poller
+      // Container's 15-minute D1 feed stops moving.
+      "6,21,36,51 * * * *",
     ],
   },
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite
