@@ -139,7 +139,9 @@ export async function checkEmissionDrift(
     const first = decodeLeU64(maps.first_emission_block.get(netuid));
     return {
       netuid,
-      moving_price: price === null ? 0 : u64f64U128ToFloat(price),
+      // I96F32, like miner_burned below -- NOT U64F64. Only theta/quantile in
+      // VALUES are that width (#9224).
+      moving_price: price === null ? 0 : u96f32U128ToFloat(price),
       miner_burned: burned === null ? 0 : u96f32U128ToFloat(burned),
       // ABSENT MEANS ENABLED -- the default that inverts if read as presence.
       emission_enabled: enabled === undefined ? true : enabled !== "0x00",

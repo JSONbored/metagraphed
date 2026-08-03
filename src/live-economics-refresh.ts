@@ -213,22 +213,29 @@ export function decodeAccountId(raw: string | undefined): string | null {
 }
 
 /**
- * SubnetMovingPrice, decoded BOTH ways it is published -- and they differ by
- * exactly 2^32, which is not a bug in either of them.
+ * SubnetMovingPrice, decoded ONE way, published under two names.
+ *
+ * `SubnetMovingPrice` is `I96F32` -- a 128-bit word with 32 fractional bits --
+ * so the value is `bits / 2^32`, full stop. Both fields below use that scale.
  *
  * `alpha_price_tao` is the published price whose meaning ADR 0023 decision 1
- * fixes as-is: the bittensor SDK reads this word as a 32-bit-fraction fixed
- * point, so the value the API has always served is bits / 2^32, carried at rao
- * precision because it arrived as a Balance. Verified against the live tier:
- * netuid 64 served 0.083135901 against a stored word of the matching height.
+ * fixes as-is: the SDK read this word the same way, at rao precision because it
+ * arrived as a Balance.
  *
- * `moving_price_pinned` is the SEPARATE #8744 reading the emission pipeline
- * consumes, decoded at U64F64 exactly as src/emission-drift-check.ts and
- * scripts/fetch-native-subnets.py decode it. The reconstruction only ever uses
- * it as a ratio against the other subnets' values, so the scale cancels --
- * and the two fields exist separately precisely because they are not
- * interchangeable. Changing either scale here would silently redefine a
- * published field, so both are reproduced exactly.
+ * `moving_price_pinned` is the #8744 reading the emission pipeline consumes.
+ * Until #9224 it was decoded at U64F64, which published it 2^32 too small: the
+ * ratio between the two fields was a flat 2^32 on all 127 priced rows, while
+ * `alpha_price_tao` tracked the AMM pool spot (`tao_in_pool / alpha_in_pool`)
+ * within ~1% on every one of them. The error survived because the
+ * reconstruction only uses this value as a ratio against the other subnets'
+ * -- a uniform factor cancels, so no downstream number was ever wrong. That is
+ * the same trap `MinerBurned` fell into (#8739), except MinerBurned's error did
+ * NOT cancel and so was caught immediately.
+ *
+ * The two fields still exist separately: on the R2 tier they are read at two
+ * different heights (#8744), which is the difference that matters. On this lane
+ * they are one word at one instant and now agree, which is what the live-kv
+ * provenance map declares (#9220).
  */
 export function decodeMovingPrice(raw: string | undefined): {
   alpha_price_tao: number | null;
@@ -241,7 +248,7 @@ export function decodeMovingPrice(raw: string | undefined): {
     // Truncate to rao in BigInt space, matching the Balance the SDK path
     // produced, rather than publishing a float with sub-rao digits.
     alpha_price_tao: raoToTao((bits * 1_000_000_000n) >> 32n),
-    moving_price_pinned: u64f64U128ToFloat(bits),
+    moving_price_pinned: u96f32U128ToFloat(bits),
   };
 }
 
