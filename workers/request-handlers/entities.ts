@@ -106,6 +106,7 @@ import {
   buildBlockEvents,
 } from "../../src/account-events.ts";
 import { loadSubnetEventSummaryColdTier } from "../../src/subnet-event-summary-cold-tier.ts";
+import { loadAccountHistoryColdTier } from "../../src/account-history-cold-tier.ts";
 import { buildAccountPortfolio } from "../../src/account-portfolio.ts";
 import { enrichValidatorNominatorCounts } from "../../src/validator-nominator-counts-cold-tier.ts";
 import {
@@ -3985,6 +3986,16 @@ export async function handleAccountHistory(
       request,
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     )) as ReturnType<typeof buildAccountHistory> | null) ??
+    // The same account_events stream /events already reads, rolled up per UTC
+    // day (#9315). Through the shared reader so MCP and GraphQL get it too.
+    (await loadAccountHistoryColdTier(env, ss58, {
+      limit,
+      offset,
+      netuid,
+      from,
+      to,
+      cursor: url.searchParams.get("cursor"),
+    })) ??
     buildAccountHistory([], ss58, { limit, offset, nextCursor: null });
   // CSV export mirrors handleAccountEvents/Extrinsics/Transfers: the rows are
   // already range/netuid-filtered and paginated, so the CSV path carries the

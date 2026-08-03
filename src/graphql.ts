@@ -6346,7 +6346,8 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) as Row | null) ?? (await loadAccountHistory(ss58, historyOptions));
+      )) as Row | null) ??
+      (await loadAccountHistory(context.env, ss58, historyOptions));
     return {
       schema_version: data.schema_version ?? 1,
       ss58: data.ss58 ?? ss58,

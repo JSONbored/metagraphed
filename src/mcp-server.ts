@@ -8437,7 +8437,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             historyOptions,
           ),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? (await loadAccountHistory(ss58, historyOptions))
+        )) ?? (await loadAccountHistory(ctx.env, ss58, historyOptions))
       );
     },
   },
