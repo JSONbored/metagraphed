@@ -45,7 +45,7 @@
     "@tanstack/zod-adapter": "^1.167.0",
     "clsx": "^2.1.1",
     "fumadocs-core": "^16.11.5",
-    "fumadocs-mdx": "^15.2.0",
+    "fumadocs-mdx": "^15.2.1",
     "fumadocs-openapi": "^11.2.2",
     "fumadocs-ui": "^16.11.5",
     "graphiql": "^4.1.2",
