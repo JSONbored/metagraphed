@@ -170,6 +170,8 @@ import {
   loadAccountStakeFlowColdTier,
   loadAccountStakeMovesColdTier,
   loadAccountTransfersColdTier,
+  loadAccountRegistrationsColdTier,
+  loadAccountServingColdTier,
   loadAccountWeightSettersColdTier,
   loadCounterpartyRelationshipColdTier,
 } from "../../src/account-feeds-cold-tier.ts";
@@ -3585,6 +3587,8 @@ export const handleAccountRegistrations = makeAccountEventHandler({
   defaultWindow: DEFAULT_REGISTRATION_WINDOW,
   build: buildAccountRegistrations,
   urlSuffix: "registrations",
+  coldTier: (env, ss58, window) =>
+    loadAccountRegistrationsColdTier(env, ss58, { window }),
 });
 
 // GET /api/v1/accounts/{ss58}/serving: the account's per-subnet AxonServed footprint over a
@@ -3596,6 +3600,8 @@ export const handleAccountServing = makeAccountEventHandler({
   defaultWindow: DEFAULT_SERVING_WINDOW,
   build: buildAccountServing,
   urlSuffix: "serving",
+  coldTier: (env, ss58, window) =>
+    loadAccountServingColdTier(env, ss58, { window }),
 });
 
 // GET /api/v1/accounts/{ss58}/axon-removals: the account's per-subnet AxonInfoRemoved footprint over

@@ -432,3 +432,49 @@ test("GET /accounts/{ss58}/axon-removals rejects an unsupported window with 400"
   const body = await res.json();
   assert.equal(body.meta.parameter, "window");
 });
+
+// The lakehouse readers behind these two feeds were wired last (#9146's account
+// lane). These drive the handler itself, not the loader, because the wiring
+// lambda is the part a unit test of the loader cannot reach -- and an unwired
+// feed answers a schema-stable zero that looks exactly like a cold store.
+for (const [suffix, label] of [
+  ["serving", "AxonServed"],
+  ["registrations", "NeuronRegistered"],
+] as const) {
+  test(`GET /accounts/{ss58}/${suffix} reaches its lakehouse reader`, async () => {
+    const queries: string[] = [];
+    globalThis.fetch = (async (_url: unknown, init?: { body?: string }) => {
+      queries.push(String(JSON.parse(String(init?.body ?? "{}")).query ?? ""));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows: [] } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+
+    const res = await handleRequest(
+      req(`/api/v1/accounts/${SS58}/${suffix}`),
+      { R2_SQL_TOKEN: "cfut_test" } as unknown as Env,
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.ok(
+      queries.some((q) => q.includes(`event_kind = '${label}'`)),
+      `the ${suffix} route did not query ${label} -- its cold tier is unwired, ` +
+        "so it answers zeros indistinguishable from a cold store",
+    );
+  });
+
+  test(`GET /accounts/{ss58}/${suffix} is still schema-stable with no lakehouse`, async () => {
+    // The pre-existing contract: never a 404, never an error, zeros instead.
+    const res = await handleRequest(
+      req(`/api/v1/accounts/${SS58}/${suffix}`),
+      {} as unknown as Env,
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as { data: Record<string, unknown> };
+    assert.equal(body.data.address, SS58);
+    assert.equal(body.data.subnet_count, 0);
+  });
+}

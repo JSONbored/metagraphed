@@ -59,6 +59,16 @@ import {
   COUNTERPARTIES_SCAN_CAP,
   type CounterpartyRelationshipResult,
 } from "./counterparties.ts";
+import {
+  buildAccountServing,
+  DEFAULT_SERVING_WINDOW,
+  SERVING_WINDOWS,
+} from "./account-serving.ts";
+import {
+  buildAccountRegistrations,
+  DEFAULT_REGISTRATION_WINDOW,
+  REGISTRATION_WINDOWS,
+} from "./account-registrations.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { r2SqlQuery, safeBlockNumber, safeSs58Literal } from "./r2-sql.ts";
 import { OFFSET_EMULATION_CAP } from "./r2-sql-blocks.ts";
@@ -517,5 +527,96 @@ export async function loadCounterpartyRelationshipColdTier(
             },
           ],
     relationship,
+  };
+}
+
+/**
+ * One account's per-subnet footprint for a single event kind.
+ *
+ * `AxonServed` and `NeuronRegistered` both carry a populated `hotkey` on every
+ * row in the export, so unlike the weight-setters reader above these need no
+ * `(netuid, uid)` slot lookup -- the account IS the hotkey and the predicate is
+ * a single equality. Keeping them off that path matters: the slot lookup exists
+ * to work around WeightsSet's NULL hotkey, and applying it where it is not
+ * needed would attribute rows by neuron slot rather than by account.
+ */
+async function accountEventFootprint(
+  env: Env | null | undefined,
+  ss58: string,
+  {
+    eventKind,
+    countAlias,
+    windows,
+    defaultWindow,
+    window,
+  }: {
+    eventKind: string;
+    countAlias: string;
+    windows: Record<string, number>;
+    defaultWindow: string;
+    window?: string | null;
+  },
+): Promise<{ rows: Record<string, unknown>[]; label: string } | null> {
+  const addr = safeSs58Literal(ss58);
+  if (addr === null) return null;
+  const { label, cutoff } = windowCutoff(windows, defaultWindow, window);
+  const rows = await r2SqlQuery(
+    env,
+    `SELECT netuid, COUNT(*) AS ${countAlias}, MIN(observed_at) AS first_observed, ` +
+      `MAX(observed_at) AS last_observed FROM chain.account_events ` +
+      `WHERE event_kind = '${eventKind}' AND observed_at >= ${cutoff} ` +
+      `AND hotkey = '${addr}' GROUP BY netuid`,
+  );
+  if (rows === null) return null;
+  return { rows, label };
+}
+
+/** GET /api/v1/accounts/{ss58}/serving -- the account's per-subnet AxonServed
+ * footprint, from the lakehouse. */
+export async function loadAccountServingColdTier(
+  env: Env | null | undefined,
+  ss58: string,
+  query: { window?: string | null } = {},
+): Promise<{
+  data: ReturnType<typeof buildAccountServing>;
+  generatedAt: string | null;
+} | null> {
+  const result = await accountEventFootprint(env, ss58, {
+    eventKind: "AxonServed",
+    countAlias: "announcements",
+    windows: SERVING_WINDOWS,
+    defaultWindow: DEFAULT_SERVING_WINDOW,
+    window: query.window,
+  });
+  if (!result) return null;
+  return {
+    data: buildAccountServing(result.rows, ss58, { window: result.label }),
+    generatedAt: latestObservedIso(result.rows),
+  };
+}
+
+/** GET /api/v1/accounts/{ss58}/registrations -- the account's per-subnet
+ * NeuronRegistered footprint, from the lakehouse. */
+export async function loadAccountRegistrationsColdTier(
+  env: Env | null | undefined,
+  ss58: string,
+  query: { window?: string | null } = {},
+): Promise<{
+  data: ReturnType<typeof buildAccountRegistrations>;
+  generatedAt: string | null;
+} | null> {
+  const result = await accountEventFootprint(env, ss58, {
+    eventKind: "NeuronRegistered",
+    countAlias: "registrations",
+    windows: REGISTRATION_WINDOWS,
+    defaultWindow: DEFAULT_REGISTRATION_WINDOW,
+    window: query.window,
+  });
+  if (!result) return null;
+  return {
+    data: buildAccountRegistrations(result.rows, ss58, {
+      window: result.label,
+    }),
+    generatedAt: latestObservedIso(result.rows),
   };
 }
