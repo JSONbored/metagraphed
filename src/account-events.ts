@@ -928,6 +928,13 @@ export function buildAccountTransfers(
 // this cap, so the summary window stays bounded for high-volume coldkeys.
 export const ACCOUNT_EVENT_SUMMARY_SCAN_CAP = 5000;
 
+/** How many of the newest events the summary card carries inline.
+ *
+ * The card is a landing view, not a feed: /accounts/{ss58}/events is the paged
+ * surface. Ten is enough to show what an account just did without turning the
+ * summary into a second feed with its own cursor semantics to keep in sync. */
+export const ACCOUNT_SUMMARY_RECENT_LIMIT = 10;
+
 // ---- Account tail loaders (history, transfers) -----------------------------
 // These complete the account chain-data surface for the MCP server, sharing the
 // same loader pattern (clamp, cursor, schema-stable zero) as the other account

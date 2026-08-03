@@ -402,6 +402,7 @@ import {
 } from "../workers/config.ts";
 import { loadRpcUsage } from "./rpc-usage-loader.ts";
 import { loadChainServingColdTier } from "./chain-serving-loader.ts";
+import { loadAccountSummaryColdTier } from "./account-feeds-cold-tier.ts";
 import { loadChainWeightsColdTier } from "./chain-weights-loader.ts";
 import { loadChainWeightSettersColdTier } from "./chain-weight-setters-loader.ts";
 import {
@@ -5193,7 +5194,16 @@ const rootValue = {
           `/api/v1/accounts/${encodeURIComponent(ss58)}`,
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) as Row | null) ?? buildAccountSummary(ss58, {});
+      )) as Row | null) ??
+      // #9254: the account_events half of the card, from the lakehouse. The
+      // zeroed card below stays the fallback -- this resolver answers with a
+      // schema-stable card rather than an error, which is why the loader
+      // declines with null instead of returning the card itself.
+      ((await (async () => {
+        const cold = await loadAccountSummaryColdTier(context.env, ss58);
+        return cold ? buildAccountSummary(ss58, cold) : null;
+      })()) as Row | null) ??
+      buildAccountSummary(ss58, {});
     return accountSummaryNode(data, ss58);
   },
 

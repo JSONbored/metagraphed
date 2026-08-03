@@ -105,6 +105,7 @@ import {
   buildBlockEvents,
 } from "../../src/account-events.ts";
 import { buildAccountPortfolio } from "../../src/account-portfolio.ts";
+import { loadAccountSummaryColdTier } from "../../src/account-feeds-cold-tier.ts";
 import { buildAccountPositions } from "../../src/account-nominator-positions.ts";
 import { buildAccountPositionHistory } from "../../src/account-position-history.ts";
 import { buildAccountIdentity } from "../../src/account-identity.ts";
@@ -3647,6 +3648,13 @@ export async function handleAccount(request: Request, env: Env, ss58: string) {
       request,
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     )) as ReturnType<typeof buildAccountSummary> | null) ??
+    // #9254: the account_events half of the card, from the lakehouse. Without
+    // it a single Postgres miss zeroed every field at once, while this
+    // account's own /events and /registrations routes read real rows.
+    (await (async () => {
+      const cold = await loadAccountSummaryColdTier(env, ss58);
+      return cold ? buildAccountSummary(ss58, cold) : null;
+    })()) ??
     buildAccountSummary(ss58, {});
   // Community-contributable entity labels (#6739): additive field over the
   // baked entities.json artifact, joined by ss58 here rather than in either
