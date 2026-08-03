@@ -1408,6 +1408,7 @@ import {
   labelsForSs58,
 } from "./entity-labels.ts";
 import { buildRuntimeVersionHistory } from "./runtime-versions.ts";
+import { loadSubnetEventSummaryColdTier } from "./subnet-event-summary-cold-tier.ts";
 import { loadRuntimeVersionHistoryColdTier } from "./runtime-versions-cold-tier.ts";
 import {
   buildValidatorNominators,
@@ -5796,6 +5797,12 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) ??
+        // #9303: the lakehouse carries the same stream, so an agent gets the
+        // real per-kind rollup instead of a zeroed card.
+        (await loadSubnetEventSummaryColdTier(ctx.env, netuid, {
+          window,
+          limit,
+        })) ??
         buildSubnetEventSummary([], [], netuid, {
           window,
           limit,
