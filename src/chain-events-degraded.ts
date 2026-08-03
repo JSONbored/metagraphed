@@ -40,7 +40,10 @@ import { loadBlockChainEventsColdTier } from "./events-cold-tier.ts";
 import { buildSubnetConviction } from "./subnet-conviction.ts";
 import { buildSubnetLeaseHistory } from "./subnet-lease-history.ts";
 import { buildSubnetOwnershipHistory } from "./subnet-ownership-history.ts";
-import { loadSubnetConvictionChainTier } from "./subnet-lock-state.ts";
+import {
+  loadSubnetConvictionChainTier,
+  type KvLike,
+} from "./subnet-lock-state.ts";
 import { answerSubnetOwnershipHistory } from "./subnet-ownership-answer.ts";
 import {
   loadChainEventsColdTier,
@@ -222,13 +225,16 @@ export async function coldTierChainEventsPayload(
   }
   const conviction = SUBNET_CONVICTION.exec(url.pathname);
   if (conviction) {
-    // The one branch that does not touch the lakehouse. `env` is unused here
-    // because the reader talks to finney directly, exactly as /sudo/key and the
-    // upgrade radar do -- see src/subnet-lock-state.ts's header for why no
-    // captured tier is involved.
-    const board = (await loadSubnetConvictionChainTier(
-      Number(conviction[1]),
-    )) as Row | null;
+    // The one branch that does not touch the lakehouse: it reads chain storage
+    // directly, exactly as /sudo/key and the upgrade radar do -- see
+    // src/subnet-lock-state.ts's header for why no captured tier is involved.
+    // `env` IS used on this branch after all -- for the KV cache, not for a
+    // store. The chain read itself talks to finney directly; without the cache
+    // a sweep across subnets throttles the endpoint and every netuid starts
+    // declining at once (#9335).
+    const board = (await loadSubnetConvictionChainTier(Number(conviction[1]), {
+      kv: (env?.METAGRAPH_CONTROL ?? null) as KvLike | null,
+    })) as Row | null;
     return board ? { data: board, source: LIVE_CHAIN_TIER } : null;
   }
   return null;
