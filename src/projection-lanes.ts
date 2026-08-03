@@ -30,6 +30,7 @@ import {
 } from "./chain-stake-flow.ts";
 import { CHAIN_TRANSFERS_PROJECTION_KEY } from "./chain-transfers-artifact.ts";
 import { CHAIN_STAKE_FLOW_PROJECTION_KEY } from "./chain-stake-flow-artifact.ts";
+import { STAKE_FLOW_WINDOWS } from "./stake-flow.ts";
 import { ANALYTICS_WINDOWS } from "../workers/config.ts";
 import {
   CHAIN_STAKE_MOVES_WINDOWS,
@@ -177,13 +178,28 @@ async function computeChainTransfers(
 /** GET /api/v1/chain/stake-flow, every supported window — data-api's single
  * GROUP BY netuid, event_kind aggregate in R2 SQL, rows stored verbatim so
  * the reader's buildChainStakeFlow pass serves every limit. */
+/**
+ * The windows this lane precomputes: the UNION of the chain-wide route's set
+ * and the per-subnet route's, because both are served from this one artifact
+ * (src/subnet-stake-flow-artifact.ts). The rows are grouped by
+ * (netuid, event_kind) either way, so the per-subnet route costs no extra
+ * query -- only the 90d window it accepts and the chain route does not.
+ *
+ * Each reader still gates on its OWN route's window set, so widening this does
+ * not widen either route's accepted parameters.
+ */
+export const STAKE_FLOW_PROJECTION_WINDOWS: Record<string, number> = {
+  ...CHAIN_STAKE_FLOW_WINDOWS,
+  ...STAKE_FLOW_WINDOWS,
+};
+
 async function computeChainStakeFlow(
   env: Env,
 ): Promise<Record<string, unknown> | null> {
   const generatedAt = Date.now();
   const windows: Record<string, unknown> = {};
   let rowCount = 0;
-  for (const [label, days] of Object.entries(CHAIN_STAKE_FLOW_WINDOWS)) {
+  for (const [label, days] of Object.entries(STAKE_FLOW_PROJECTION_WINDOWS)) {
     const cutoff = generatedAt - days * DAY_MS;
     const rows = await r2SqlQuery(
       env,

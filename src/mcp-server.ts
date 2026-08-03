@@ -243,6 +243,7 @@ import {
 import { loadTopHoldersFromArtifact } from "./top-holders-artifact.ts";
 import { loadChainTransfersFromArtifact } from "./chain-transfers-artifact.ts";
 import { loadChainStakeFlowFromArtifact } from "./chain-stake-flow-artifact.ts";
+import { loadSubnetStakeFlowFromArtifact } from "./subnet-stake-flow-artifact.ts";
 import { loadChainActivityFromArtifact } from "./chain-activity-artifact.ts";
 import { loadChainCallsFromArtifact } from "./chain-calls-artifact.ts";
 import { loadChainFeesFromArtifact } from "./chain-fees-artifact.ts";
@@ -5626,7 +5627,16 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             }),
             "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
           )
-        )?.data ?? buildStakeFlow([], netuid, { window })
+        )?.data ??
+        // #9146: same chain-stake-flow projection slice REST reads, so the
+        // MCP tool and the route cannot disagree about one subnet's flow.
+        (
+          await loadSubnetStakeFlowFromArtifact(ctx.env, netuid, {
+            window,
+            direction,
+          })
+        )?.data ??
+        buildStakeFlow([], netuid, { window })
       );
     },
   },

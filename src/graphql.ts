@@ -356,6 +356,7 @@ import {
   STAKE_FLOW_DIRECTIONS,
   buildStakeFlow,
 } from "./stake-flow.ts";
+import { loadSubnetStakeFlowFromArtifact } from "./subnet-stake-flow-artifact.ts";
 import { buildAccountPortfolio } from "./account-portfolio.ts";
 import { buildAccountPositions } from "./account-nominator-positions.ts";
 import {
@@ -2957,6 +2958,13 @@ const rootValue = {
     );
     const data =
       (tier?.data as Row | undefined) ??
+      // #9146: same chain-stake-flow projection slice REST and MCP read.
+      ((
+        await loadSubnetStakeFlowFromArtifact(context.env, netuid, {
+          window: windowParam,
+          direction: directionParam,
+        })
+      )?.data as Row | undefined) ??
       buildStakeFlow([], netuid, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,

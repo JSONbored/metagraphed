@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { afterEach, describe, test, vi } from "vitest";
 import {
   PROJECTION_LANES,
+  STAKE_FLOW_PROJECTION_WINDOWS,
   runProjectionLane,
   runProjectionLanes,
   type ProjectionLane,
@@ -331,7 +332,14 @@ describe("chain-stake-flow lane compute", () => {
     const body = (await laneNamed("chain-stake-flow").compute(
       LAKE_ENV as unknown as Env,
     )) as Row;
-    assert.equal(queries.length, 2);
+    // One query per PROJECTED window -- the union of the chain route's set and
+    // the per-subnet route's, since both are served from this one artifact.
+    // Asserted against the constant, not a literal, so widening either route's
+    // windows cannot silently leave a window uncomputed.
+    assert.equal(
+      queries.length,
+      Object.keys(STAKE_FLOW_PROJECTION_WINDOWS).length,
+    );
     assert.match(queries[0]!, /FROM chain\.account_events/);
     assert.match(queries[0]!, /event_kind IN \('StakeAdded', 'StakeRemoved'\)/);
     assert.match(queries[0]!, new RegExp(`observed_at >= ${NOW - 7 * DAY_MS}`));
@@ -350,6 +358,9 @@ describe("chain-stake-flow lane compute", () => {
     // Rows are stored VERBATIM: shaping is the reader-side builder's job.
     assert.deepEqual((body.windows as Row)["7d"], { days: 7, rows: ROWS });
     assert.deepEqual((body.windows as Row)["30d"], { days: 30, rows: [] });
+    // 90d exists for the per-subnet route even though the chain reader gates
+    // it out of its own window set.
+    assert.deepEqual((body.windows as Row)["90d"], { days: 90, rows: [] });
   });
 
   test("a failed window declines the whole compute", async () => {
