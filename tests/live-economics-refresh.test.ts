@@ -184,11 +184,23 @@ function chainFetch(chain: ChainState): {
   return { impl, calls };
 }
 
+// The published index's `block` is the last registry publish's bulk-call
+// height, which is a DIFFERENT and older instant than the block this sweep pins
+// -- on the live tier the two were 7206 blocks apart. It is deliberately not
+// BLOCK_NUMBER here: setting them equal is what let the row inherit the index's
+// stale height without any test noticing.
+const INDEX_STALE_BLOCK = BLOCK_NUMBER - 7_206;
+
 const SUBNETS_INDEX = {
   network: "finney",
   subnets: [
-    { netuid: 64, slug: "sn-64", name: "Chutes", block: BLOCK_NUMBER },
-    { netuid: 9, slug: "sn-9", name: "Pretraining", block: BLOCK_NUMBER },
+    { netuid: 64, slug: "sn-64", name: "Chutes", block: INDEX_STALE_BLOCK },
+    {
+      netuid: 9,
+      slug: "sn-9",
+      name: "Pretraining",
+      block: INDEX_STALE_BLOCK,
+    },
   ],
 };
 
@@ -525,7 +537,11 @@ describe("refreshLiveEconomics", () => {
     assert.equal(blob.captured_at, "2026-08-03T07:35:48.000Z");
     const chutes = (blob.subnets as Row[]).find((row) => row.netuid === 64)!;
     assert.equal(chutes.slug, "sn-64");
+    // The PINNED height, not the index's older one: every value on this row was
+    // read at blockHash, so stamping the index's publish-time height would
+    // claim an instant none of them came from.
     assert.equal(chutes.block, BLOCK_NUMBER);
+    assert.notEqual(chutes.block, INDEX_STALE_BLOCK);
     assert.equal(chutes.alpha_in_pool, 2571457.878769909);
     assert.equal(chutes.tao_in_pool_tao, 217944.967412489);
     assert.equal(chutes.subnet_volume_tao, 4853018.550832965);

@@ -454,6 +454,24 @@ export async function refreshLiveEconomics(
     });
     const { blockNumber, blockHash } = await storage.pinHead();
 
+    // `block` is the instant ECONOMICS_FIELD_SOURCES calls `read_at: "capture"`
+    // -- the height the row's values were read at. On this lane that is the
+    // block we just pinned: every one of the thirteen fields below comes from a
+    // storage map read at `blockHash`, and there is no bulk call at a second
+    // height the way the retired SDK path had.
+    //
+    // The index's own `block` is NOT that. It is the last registry publish's
+    // bulk-call height, so it drifts a full publish cycle behind this sweep --
+    // measured 2026-08-03 on the live tier, the served row carried block
+    // 8755515 against a chain_state.block of 8762721, 7206 blocks (~24h) of
+    // skew. Inheriting it stamps every row with a height none of its values
+    // were read at, which is worse than no height because it looks like
+    // provenance.
+    const pinnedSubnets = subnets.map((row) => ({
+      ...row,
+      block: blockNumber,
+    }));
+
     const maps = {} as StorageMaps;
     for (const [name, hash] of Object.entries(ECONOMICS_STORAGE_MAPS)) {
       maps[name as MapName] = await storage.readNetuidMap(
@@ -489,7 +507,7 @@ export async function refreshLiveEconomics(
     const quantile = decodeLeU128(values.emission_bar_quantile);
     const exponent = decodeLeU128(values.emission_gate_exponent);
     const economics = buildEconomicsArtifact({
-      subnets,
+      subnets: pinnedSubnets,
       economicsByNetuid,
       generatedAt: stampedAt,
       network: typeof index.network === "string" ? index.network : null,
