@@ -1,0 +1,9 @@
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/blake2b_simd-173855bc42b9ff77.d: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake2b_simd-1.0.4/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake2b_simd-1.0.4/src/portable.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake2b_simd-1.0.4/src/blake2bp.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake2b_simd-1.0.4/src/guts.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake2b_simd-1.0.4/src/many.rs
+
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/libblake2b_simd-173855bc42b9ff77.rmeta: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake2b_simd-1.0.4/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake2b_simd-1.0.4/src/portable.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake2b_simd-1.0.4/src/blake2bp.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake2b_simd-1.0.4/src/guts.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake2b_simd-1.0.4/src/many.rs
+
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake2b_simd-1.0.4/src/lib.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake2b_simd-1.0.4/src/portable.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake2b_simd-1.0.4/src/blake2bp.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake2b_simd-1.0.4/src/guts.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/blake2b_simd-1.0.4/src/many.rs:

@@ -1,0 +1,12 @@
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/serde-b36ee6b515bd9756.d: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/build/serde-40bf98eaf0675dd1/out/private.rs
+
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/libserde-b36ee6b515bd9756.rmeta: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/build/serde-40bf98eaf0675dd1/out/private.rs
+
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs:
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/build/serde-40bf98eaf0675dd1/out/private.rs:
+
+# env-dep:OUT_DIR=/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/build/serde-40bf98eaf0675dd1/out

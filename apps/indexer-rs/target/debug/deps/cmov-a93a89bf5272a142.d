@@ -1,0 +1,11 @@
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/cmov-a93a89bf5272a142.d: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/macros.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/array.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/backends.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/backends/aarch64.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/slice.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/../README.md
+
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/libcmov-a93a89bf5272a142.rmeta: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/macros.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/array.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/backends.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/backends/aarch64.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/slice.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/../README.md
+
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/lib.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/macros.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/array.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/backends.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/backends/aarch64.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/slice.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cmov-0.5.4/src/../README.md:

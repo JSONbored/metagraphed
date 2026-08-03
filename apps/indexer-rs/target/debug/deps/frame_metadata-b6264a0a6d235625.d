@@ -1,0 +1,10 @@
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/frame_metadata-b6264a0a6d235625.d: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/frame-metadata-23.0.1/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/frame-metadata-23.0.1/src/v14.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/frame-metadata-23.0.1/src/v15.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/frame-metadata-23.0.1/src/v16.rs
+
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/libframe_metadata-b6264a0a6d235625.rlib: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/frame-metadata-23.0.1/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/frame-metadata-23.0.1/src/v14.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/frame-metadata-23.0.1/src/v15.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/frame-metadata-23.0.1/src/v16.rs
+
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/libframe_metadata-b6264a0a6d235625.rmeta: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/frame-metadata-23.0.1/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/frame-metadata-23.0.1/src/v14.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/frame-metadata-23.0.1/src/v15.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/frame-metadata-23.0.1/src/v16.rs
+
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/frame-metadata-23.0.1/src/lib.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/frame-metadata-23.0.1/src/v14.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/frame-metadata-23.0.1/src/v15.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/frame-metadata-23.0.1/src/v16.rs:

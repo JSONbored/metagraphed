@@ -17,6 +17,7 @@ import {
   ACCOUNT_POSITION_DAILY_COLUMNS,
   buildUpsert,
   D1_PARAM_BUDGET,
+  D1_STATEMENTS_PER_BATCH,
   NEURON_DAILY_COLUMNS,
   rowsPerStatement,
   writeNeuronSnapshotToD1,
@@ -219,5 +220,122 @@ describe("the neurons D1 write path (#9146)", () => {
     });
     assert.equal(result.statements, 0);
     assert.equal(batched(), null, "an empty write must not open a transaction");
+  });
+});
+
+// The constraint that actually broke production (#9146). The old tests pinned
+// D1_PARAM_BUDGET's own value, so they passed at 900 while every real sync
+// 502'd -- asserting the code's assumption rather than the platform's limit.
+// These assert the limit itself, so raising the budget can only fail here.
+describe("D1's per-query bound-parameter cap", () => {
+  // D1's Workers binding rejects a query with more than this many bound
+  // parameters. NOT the same as `wrangler d1 execute`'s HTTP-API ceiling,
+  // which is far higher and is what the old 900 was measured against.
+  const D1_BINDING_PARAM_LIMIT = 100;
+
+  function captureStatements(rowCount: number) {
+    const statements: { sql: string; params: unknown[] }[] = [];
+    const batches: number[] = [];
+    const db = {
+      prepare(sql: string) {
+        return {
+          bind(...params: unknown[]) {
+            const s = { sql, params };
+            statements.push(s);
+            return s as never;
+          },
+        };
+      },
+      async batch(chunk: unknown[]) {
+        batches.push(chunk.length);
+        return [];
+      },
+    };
+    const base: Record<string, unknown> = {};
+    for (const column of NEURON_INSERT_COLUMNS) base[column] = 0;
+    const rows = Array.from({ length: rowCount }, (_, i) => ({
+      ...base,
+      netuid: 1,
+      uid: i,
+      hotkey: `h${i}`,
+      captured_at: 1_785_657_051_538,
+    }));
+    const dailyRows = rows.map((r) => ({
+      ...r,
+      snapshot_date: "2026-08-03",
+      updated_at: 1,
+    }));
+    const positionRows = dailyRows.map((r) => ({
+      account: r.hotkey,
+      netuid: r.netuid,
+      snapshot_date: r.snapshot_date,
+      uid: r.uid,
+      coldkey: null,
+      active: 0,
+      validator_permit: 0,
+      rank: null,
+      trust: 0,
+      incentive: 0,
+      dividends: 0,
+      stake_tao: 0,
+      emission_tao: 0,
+      captured_at: r.captured_at,
+      updated_at: 1,
+    }));
+    return {
+      statements,
+      batches,
+      run: () =>
+        writeNeuronSnapshotToD1(db as never, {
+          rows,
+          dailyRows,
+          positionRows,
+          netuidMaxCapturedAt: new Map([[1, 1_785_657_051_538]]),
+        }),
+    };
+  }
+
+  test("no emitted statement exceeds the binding's parameter limit", async () => {
+    const captured = captureStatements(500);
+    await captured.run();
+    assert.ok(captured.statements.length > 0);
+    const worst = Math.max(...captured.statements.map((s) => s.params.length));
+    assert.ok(
+      worst <= D1_BINDING_PARAM_LIMIT,
+      `widest statement binds ${worst} parameters, over D1's ${D1_BINDING_PARAM_LIMIT} limit`,
+    );
+  });
+
+  // 22 columns is the widest table (neuron_daily), and it is what set the
+  // real-world threshold: 5 rows = 110 params was the first payload to 502.
+  test("the budget admits no chunk wider than the limit, for any table", () => {
+    for (const columns of [
+      NEURON_INSERT_COLUMNS.length,
+      NEURON_DAILY_COLUMNS.length,
+      ACCOUNT_POSITION_DAILY_COLUMNS.length,
+    ]) {
+      const perStatement = rowsPerStatement(columns);
+      assert.ok(
+        perStatement * columns <= D1_BINDING_PARAM_LIMIT,
+        `${columns}-column table chunks ${perStatement} rows = ${perStatement * columns} params`,
+      );
+      assert.ok(perStatement >= 1, "must always emit at least one row");
+    }
+  });
+
+  // A 30k-row snapshot is ~18,700 statements at this budget, which no single
+  // batch carries -- so the writer must split them.
+  test("statements are split across bounded batches", async () => {
+    const captured = captureStatements(500);
+    await captured.run();
+    assert.ok(
+      captured.batches.length > 1,
+      "a large snapshot must span batches",
+    );
+    const widest = Math.max(...captured.batches);
+    assert.ok(
+      widest <= D1_STATEMENTS_PER_BATCH,
+      `batch of ${widest} statements exceeds ${D1_STATEMENTS_PER_BATCH}`,
+    );
   });
 });

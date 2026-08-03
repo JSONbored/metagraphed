@@ -1,0 +1,9 @@
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/derive_more_impl-eadc98f7c5921ffd.d: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/derive_more-impl-1.0.0/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/derive_more-impl-1.0.0/src/utils.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/derive_more-impl-1.0.0/src/from.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/derive_more-impl-1.0.0/src/../README.md /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/derive_more-impl-1.0.0/src/../doc/from.md
+
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/libderive_more_impl-eadc98f7c5921ffd.dylib: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/derive_more-impl-1.0.0/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/derive_more-impl-1.0.0/src/utils.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/derive_more-impl-1.0.0/src/from.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/derive_more-impl-1.0.0/src/../README.md /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/derive_more-impl-1.0.0/src/../doc/from.md
+
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/derive_more-impl-1.0.0/src/lib.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/derive_more-impl-1.0.0/src/utils.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/derive_more-impl-1.0.0/src/from.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/derive_more-impl-1.0.0/src/../README.md:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/derive_more-impl-1.0.0/src/../doc/from.md:

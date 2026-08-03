@@ -1,0 +1,9 @@
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/jsonrpsee_types-6238c09e0e7ea933.d: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/jsonrpsee-types-0.24.11/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/jsonrpsee-types-0.24.11/src/params.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/jsonrpsee-types-0.24.11/src/request.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/jsonrpsee-types-0.24.11/src/response.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/jsonrpsee-types-0.24.11/src/error.rs
+
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/libjsonrpsee_types-6238c09e0e7ea933.rmeta: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/jsonrpsee-types-0.24.11/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/jsonrpsee-types-0.24.11/src/params.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/jsonrpsee-types-0.24.11/src/request.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/jsonrpsee-types-0.24.11/src/response.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/jsonrpsee-types-0.24.11/src/error.rs
+
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/jsonrpsee-types-0.24.11/src/lib.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/jsonrpsee-types-0.24.11/src/params.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/jsonrpsee-types-0.24.11/src/request.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/jsonrpsee-types-0.24.11/src/response.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/jsonrpsee-types-0.24.11/src/error.rs:

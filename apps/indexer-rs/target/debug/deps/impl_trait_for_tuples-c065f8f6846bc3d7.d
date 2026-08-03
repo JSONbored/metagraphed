@@ -1,0 +1,8 @@
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/impl_trait_for_tuples-c065f8f6846bc3d7.d: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/impl-trait-for-tuples-0.2.3/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/impl-trait-for-tuples-0.2.3/src/full_automatic.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/impl-trait-for-tuples-0.2.3/src/semi_automatic.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/impl-trait-for-tuples-0.2.3/src/utils.rs
+
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/libimpl_trait_for_tuples-c065f8f6846bc3d7.dylib: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/impl-trait-for-tuples-0.2.3/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/impl-trait-for-tuples-0.2.3/src/full_automatic.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/impl-trait-for-tuples-0.2.3/src/semi_automatic.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/impl-trait-for-tuples-0.2.3/src/utils.rs
+
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/impl-trait-for-tuples-0.2.3/src/lib.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/impl-trait-for-tuples-0.2.3/src/full_automatic.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/impl-trait-for-tuples-0.2.3/src/semi_automatic.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/impl-trait-for-tuples-0.2.3/src/utils.rs:

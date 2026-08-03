@@ -42,14 +42,37 @@ export const ACCOUNT_POSITION_DAILY_COLUMNS = [
 /**
  * Bound-parameter budget per statement.
  *
- * MEASURED against production D1 rather than assumed: 1,200 bound parameters
- * execute fine, so SQLite's classic 999-variable ceiling does not apply here.
- * 900 keeps a wide margin under the smallest limit anyone reports while still
- * batching ~45 of the 20-column neuron rows per statement -- the point is that
- * the chunk size is DERIVED from the column count below, so adding a column
- * re-sizes the batch instead of silently pushing it over a limit.
+ * 100, because that is D1's limit for a query issued through the WORKERS
+ * BINDING. This was 900, justified by a measurement that 1,200 parameters
+ * "execute fine" against production D1 -- and they do, through
+ * `wrangler d1 execute`, which goes over the HTTP API and has a different
+ * ceiling. The binding does not, and the difference is invisible until a real
+ * sync runs.
+ *
+ * The failure it caused was exact and reproducible: `POST
+ * /api/v1/internal/neurons-sync` returned 502 `d1 write failed` for any
+ * payload of 5+ rows, while 1-4 rows succeeded. neuron_daily is the widest
+ * table at 22 columns, so 5 rows is 110 bound parameters -- the first chunk to
+ * cross 100. Confirmed against production: 3 rows (66 params) and 4 rows (88)
+ * return 200; 5 rows (110) returns 502. Every statement the writer emits
+ * executes fine on its own via `wrangler d1 execute`, including all four in
+ * one multi-statement transaction, which is why this looked like a batch or
+ * schema problem rather than a per-query parameter cap.
+ *
+ * Keep the chunk size DERIVED from the column count: adding a column re-sizes
+ * the chunk instead of silently pushing it over the limit. At 100 that is 5
+ * rows per neurons statement, 4 per neuron_daily, 6 per account_position_daily.
  */
-export const D1_PARAM_BUDGET = 900;
+export const D1_PARAM_BUDGET = 100;
+
+/**
+ * Statements per `db.batch()` call.
+ *
+ * Matches src/observations-d1.ts's proven value. The 100-parameter cap above
+ * means a full 30k-row snapshot is ~18,700 statements, and one `batch()` of
+ * that size is its own failure mode -- so the batch is chunked too.
+ */
+export const D1_STATEMENTS_PER_BATCH = 50;
 
 export function rowsPerStatement(columnCount: number): number {
   return Math.max(1, Math.floor(D1_PARAM_BUDGET / Math.max(1, columnCount)));
@@ -121,10 +144,13 @@ export interface NeuronSnapshotWrite {
 /**
  * Write one sync batch to D1, atomically.
  *
- * `db.batch()` runs its statements in a single implicit transaction, which is
- * what the Postgres side gets from `sql.begin()`. That matters for the prune:
- * a mid-batch failure must never leave `neurons` upserted with stale UIDs left
- * un-pruned.
+ * Statements are ordered upserts-first, prune-last, and runBatches preserves
+ * that. A single `db.batch()` would be one implicit transaction -- what the
+ * Postgres side gets from `sql.begin()` -- but D1's 100-parameter-per-query
+ * cap makes a full snapshot ~18,700 statements, far past what one batch
+ * carries. See runBatches for why the ordering makes chunking safe: a failure
+ * part-way leaves stale rows the next tick prunes, never live UIDs deleted
+ * with nothing to replace them.
  *
  * The prune is per-netuid for the same reason it is on the Postgres side -- a
  * batch-wide max captured_at would let one netuid's later capture delete rows
@@ -166,8 +192,33 @@ export async function writeNeuronSnapshotToD1(
     );
   }
 
-  if (statements.length) await db.batch(statements);
+  await runBatches(db, statements);
   return { statements: statements.length };
+}
+
+/**
+ * Run `statements` as a sequence of bounded `db.batch()` calls.
+ *
+ * ATOMICITY, HONESTLY. One `batch()` is one implicit transaction; several are
+ * not. At D1_PARAM_BUDGET=100 a full snapshot is ~18,700 statements, which a
+ * single batch will not carry, so the choice is between chunked batches and a
+ * write that does not work at all.
+ *
+ * The ordering is what makes chunking safe: callers append every upsert BEFORE
+ * any prune, and this preserves that order. A failure part-way therefore
+ * leaves some rows refreshed and the prune un-run -- stale rows survive that
+ * the next tick removes. The inverse (prune first, then fail) would delete
+ * live UIDs and leave nothing to replace them, which is why the order is a
+ * contract and not an accident.
+ */
+async function runBatches(
+  db: D1Like,
+  statements: D1PreparedStatement[],
+): Promise<void> {
+  for (let i = 0; i < statements.length; i += D1_STATEMENTS_PER_BATCH) {
+    const chunk = statements.slice(i, i + D1_STATEMENTS_PER_BATCH);
+    if (chunk.length) await db.batch(chunk);
+  }
 }
 
 /**
@@ -203,6 +254,6 @@ export async function writeNeuronDailyBackfillToD1(
       positionRows,
     ),
   ];
-  if (statements.length) await db.batch(statements);
+  await runBatches(db, statements);
   return { statements: statements.length };
 }

@@ -1,0 +1,10 @@
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/md5-c411839bd56e1729.d: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/md-5-0.11.0/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/md-5-0.11.0/src/block_api.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/md-5-0.11.0/src/compress.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/md-5-0.11.0/src/consts.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/md-5-0.11.0/src/../README.md /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/md-5-0.11.0/src/compress/soft.rs
+
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/libmd5-c411839bd56e1729.rmeta: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/md-5-0.11.0/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/md-5-0.11.0/src/block_api.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/md-5-0.11.0/src/compress.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/md-5-0.11.0/src/consts.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/md-5-0.11.0/src/../README.md /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/md-5-0.11.0/src/compress/soft.rs
+
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/md-5-0.11.0/src/lib.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/md-5-0.11.0/src/block_api.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/md-5-0.11.0/src/compress.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/md-5-0.11.0/src/consts.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/md-5-0.11.0/src/../README.md:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/md-5-0.11.0/src/compress/soft.rs:

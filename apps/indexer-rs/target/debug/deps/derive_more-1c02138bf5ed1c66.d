@@ -1,0 +1,7 @@
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/derive_more-1c02138bf5ed1c66.d: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/derive_more-1.0.0/src/lib.rs
+
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/libderive_more-1c02138bf5ed1c66.rlib: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/derive_more-1.0.0/src/lib.rs
+
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/libderive_more-1c02138bf5ed1c66.rmeta: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/derive_more-1.0.0/src/lib.rs
+
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/derive_more-1.0.0/src/lib.rs:

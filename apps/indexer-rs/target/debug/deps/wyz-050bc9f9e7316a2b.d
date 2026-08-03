@@ -1,0 +1,11 @@
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/wyz-050bc9f9e7316a2b.d: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wyz-0.5.1/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wyz-0.5.1/src/bidi.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wyz-0.5.1/src/comu.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wyz-0.5.1/src/fmt.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wyz-0.5.1/src/range.rs
+
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/libwyz-050bc9f9e7316a2b.rlib: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wyz-0.5.1/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wyz-0.5.1/src/bidi.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wyz-0.5.1/src/comu.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wyz-0.5.1/src/fmt.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wyz-0.5.1/src/range.rs
+
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/libwyz-050bc9f9e7316a2b.rmeta: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wyz-0.5.1/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wyz-0.5.1/src/bidi.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wyz-0.5.1/src/comu.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wyz-0.5.1/src/fmt.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wyz-0.5.1/src/range.rs
+
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wyz-0.5.1/src/lib.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wyz-0.5.1/src/bidi.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wyz-0.5.1/src/comu.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wyz-0.5.1/src/fmt.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wyz-0.5.1/src/range.rs:

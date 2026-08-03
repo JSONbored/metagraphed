@@ -1,0 +1,10 @@
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/hmac-99cf90446847081b.d: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hmac-0.13.0/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hmac-0.13.0/src/block_api.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hmac-0.13.0/src/simple.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hmac-0.13.0/src/simple_reset.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hmac-0.13.0/src/utils.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hmac-0.13.0/src/../README.md
+
+/Users/shadowbook/Documents/metagraphed/.claude/worktrees/outstanding-issues-84e8ee/apps/indexer-rs/target/debug/deps/libhmac-99cf90446847081b.rmeta: /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hmac-0.13.0/src/lib.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hmac-0.13.0/src/block_api.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hmac-0.13.0/src/simple.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hmac-0.13.0/src/simple_reset.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hmac-0.13.0/src/utils.rs /Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hmac-0.13.0/src/../README.md
+
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hmac-0.13.0/src/lib.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hmac-0.13.0/src/block_api.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hmac-0.13.0/src/simple.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hmac-0.13.0/src/simple_reset.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hmac-0.13.0/src/utils.rs:
+/Users/shadowbook/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hmac-0.13.0/src/../README.md:
