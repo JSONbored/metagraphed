@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "posthog-node": "^5.44.0",
+    "posthog-node": "^5.47.2",
     "ws": "^8.21.1"
   },
   "devDependencies": {

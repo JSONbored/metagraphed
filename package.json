@@ -153,7 +153,7 @@
     "graphql": "^17.0.2",
     "graphql-ws": "^6.1.1",
     "postgres": "^3.4.9",
-    "posthog-node": "^5.44.0",
+    "posthog-node": "^5.47.2",
     "satori": "^0.28.0",
     "satori-html": "^0.3.2",
     "workers-og": "^0.0.27",
