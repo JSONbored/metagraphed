@@ -21,9 +21,10 @@ _openapi:
           intensity. `limit` caps the leaderboard (default 20, max 100). The
           teardown-side companion to the axon-announcement GET
           /api/v1/chain/serving and the network-wide companion to GET
-          /api/v1/subnets/{netuid}/axon-removals. Computed live from the
-          account_events AxonInfoRemoved stream; schema-stable empty block when
-          cold. Pass ?format=csv to download the per-subnet leaderboard as CSV
+          /api/v1/subnets/{netuid}/axon-removals. Read from the account_events
+          AxonInfoRemoved stream, which the runtime has never populated; an
+          empty block is marked `degraded` rather than published as a measured
+          zero. Pass ?format=csv to download the per-subnet leaderboard as CSV
           (the network rollup + intensity distribution stay JSON-only).'
 ---
 

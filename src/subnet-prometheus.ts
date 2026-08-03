@@ -8,6 +8,8 @@
 // shaping (buildSubnetPrometheus) + a thin D1 loader (loadSubnetPrometheus); the Worker adds the
 // envelope. Null-safe: a cold store or a subnet with no PrometheusServed events yields the zeroed card.
 
+import { PROMETHEUS_DEGRADED_NOT_CURATED } from "./uncurated-event-streams.ts";
+
 type Row = Record<string, unknown>;
 type D1Runner = (sql: string, params: unknown[]) => Promise<Row[]>;
 
@@ -69,7 +71,7 @@ export function buildSubnetPrometheus(
 ): Row {
   const distinctExporters = toCount(row?.distinct_exporters);
   const announcements = toCount(row?.announcements);
-  return {
+  const card: Row = {
     schema_version: 1,
     netuid,
     window: window ?? null,
@@ -81,6 +83,15 @@ export function buildSubnetPrometheus(
       distinctExporters,
     ),
   };
+  // The zeroed card is the only card this route can produce: the chain emitted
+  // 18,041 PrometheusServed events and the account_events projection this
+  // reads carries 0 of them, so its zero is "we could not look", not "this
+  // subnet announced nothing". Conditional rather than unconditional so the
+  // marker disappears on its own the day the curation gap is closed upstream.
+  if (announcements === 0) {
+    card.degraded = { reason: PROMETHEUS_DEGRADED_NOT_CURATED };
+  }
+  return card;
 }
 
 // One subnet's Prometheus-serving activity, computed live: read the account_events PrometheusServed

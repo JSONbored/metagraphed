@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
+import { CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY } from "../src/chain-deregistrations-artifact.ts";
+import { DEREGISTRATIONS_DEGRADED_NOT_DERIVED } from "../src/uncurated-event-streams.ts";
 import type { Row } from "./row-type.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
@@ -345,6 +347,73 @@ test("GET /accounts/{ss58}/deregistrations is schema-stable when D1 is cold (nev
   assert.equal(body.data.address, SS58);
   assert.equal(body.data.subnet_count, 0);
   assert.equal(Array.isArray(body.data.subnets), true);
+  // #9307: NeuronDeregistered has never been emitted, and nothing derived this
+  // request, so the zero says so instead of reading as "evicted from nothing".
+  assert.deepEqual(body.data.degraded, {
+    reason: DEREGISTRATIONS_DEGRADED_NOT_DERIVED,
+  });
+});
+
+test("GET /accounts/{ss58}/deregistrations serves the slots where it was the PREVIOUS holder (#9307)", async () => {
+  const derivation = {
+    method: "uid-reuse",
+    lookback_days: 30,
+    window_registrations: 33386,
+    unattributed_registrations: 11807,
+  };
+  const env = {
+    METAGRAPH_ARCHIVE: {
+      async get(key: string) {
+        if (key !== CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY) return null;
+        return {
+          json: async () => ({
+            schema_version: 1,
+            lookback_days: 30,
+            windows: {
+              "30d": {
+                days: 30,
+                hotkeys: {
+                  [SS58]: [[5, 2, 1_785_700_000_000, 1_785_784_392_000]],
+                },
+                derivation,
+              },
+            },
+          }),
+        };
+      },
+    },
+  };
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/deregistrations`),
+    env as unknown as Env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.total_deregistrations, 2);
+  assert.equal(body.data.subnets[0].netuid, 5);
+  assert.equal(body.data.derivation.unattributed_registrations, 11807);
+  assert.equal(body.data.degraded, undefined);
+  assert.equal(
+    body.meta.generated_at,
+    new Date(1_785_784_392_000).toISOString(),
+  );
+});
+
+test("GET /accounts/{ss58}/deregistrations marks the 90d window the lane never derives (#9307)", async () => {
+  // The route offers 90d and the lane derives 7d/30d, so the reader declines
+  // rather than answering with the 30d numbers under a 90d label.
+  const res = await handleRequest(
+    req(`/api/v1/accounts/${SS58}/deregistrations?window=90d`),
+    {} as unknown as Env,
+    {},
+  );
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.data.window, "90d");
+  assert.deepEqual(body.data.degraded, {
+    reason: DEREGISTRATIONS_DEGRADED_NOT_DERIVED,
+  });
 });
 
 test("GET /accounts/{ss58}/deregistrations rejects an unknown query param with 400", async () => {

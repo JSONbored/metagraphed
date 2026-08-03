@@ -260,6 +260,12 @@ import { loadTopHoldersFromArtifact } from "./top-holders-artifact.ts";
 import { loadChainTransfersFromArtifact } from "./chain-transfers-artifact.ts";
 import { loadChainStakeFlowFromArtifact } from "./chain-stake-flow-artifact.ts";
 import { loadChainRegistrationsFromArtifact } from "./chain-registrations-artifact.ts";
+import {
+  loadAccountDeregistrationsFromArtifact,
+  loadChainDeregistrationsFromArtifact,
+  loadSubnetDeregistrationsFromArtifact,
+  markDeregistrationsNotDerived,
+} from "./chain-deregistrations-artifact.ts";
 import { loadSubnetStakeFlowFromArtifact } from "./subnet-stake-flow-artifact.ts";
 import { loadChainActivityFromArtifact } from "./chain-activity-artifact.ts";
 import { loadChainCallsFromArtifact } from "./chain-calls-artifact.ts";
@@ -6180,7 +6186,15 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             window,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildSubnetDeregistrations(null, netuid, { window })
+        )) ??
+        // #9307: the UID-reuse derivation REST reads, then the same MARKED
+        // empty when nothing derived it.
+        (await loadSubnetDeregistrationsFromArtifact(ctx.env, netuid, {
+          window,
+        })) ??
+        markDeregistrationsNotDerived(
+          buildSubnetDeregistrations(null, netuid, { window }),
+        )
       );
     },
   },
@@ -8415,7 +8429,17 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             }),
             "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
           )
-        )?.data ?? buildAccountDeregistrations([], ss58, { window })
+        )?.data ??
+        // #9307: an account's deregistrations are the slots where it was the
+        // PREVIOUS holder, derived from UID reuse.
+        (
+          await loadAccountDeregistrationsFromArtifact(ctx.env, ss58, {
+            window,
+          })
+        )?.data ??
+        markDeregistrationsNotDerived(
+          buildAccountDeregistrations([], ss58, { window }),
+        )
       );
     },
   },
@@ -9682,7 +9706,16 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             limit,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainDeregistrations([], { window, limit })
+        )) ??
+        // #9307: NeuronDeregistered has never been emitted; the feed is
+        // derived from UID reuse by the chain-deregistrations projection lane.
+        (await loadChainDeregistrationsFromArtifact(ctx.env, {
+          window,
+          limit,
+        })) ??
+        markDeregistrationsNotDerived(
+          buildChainDeregistrations([], { window, limit }),
+        )
       );
     },
   },

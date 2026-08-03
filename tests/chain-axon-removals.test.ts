@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { AXON_REMOVALS_DEGRADED_NEVER_EMITTED } from "../src/uncurated-event-streams.ts";
 import { afterEach, describe, test } from "vitest";
 import {
   buildChainAxonRemovals,
@@ -214,6 +215,25 @@ describe("buildChainAxonRemovals", () => {
       assert.equal(data.network.distinct_removers, 0);
       assert.equal(data.network.removals_per_remover, null);
     }
+  });
+});
+
+describe("buildChainAxonRemovals honesty marker (#9307)", () => {
+  test("the empty block says its zero is not a measurement", () => {
+    for (const rows of [null, [], [{ netuid: 1, distinct_removers: 0 }]]) {
+      const d = buildChainAxonRemovals(rows, { window: "7d" });
+      assert.deepEqual(d.degraded, {
+        reason: AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
+      });
+    }
+  });
+
+  test("a populated leaderboard carries NO marker", () => {
+    const d = buildChainAxonRemovals(
+      [{ netuid: 5, distinct_removers: 2, removals: 6 }],
+      { window: "7d" },
+    );
+    assert.equal(d.degraded, undefined);
   });
 });
 

@@ -14,6 +14,10 @@ import {
 import { CHAIN_TRANSFERS_PROJECTION_KEY } from "../src/chain-transfers-artifact.ts";
 import { BLOCKS_SUMMARY_SCAN_CAP } from "../src/blocks-summary.ts";
 import { CHAIN_TRANSFER_PAIRS_PROJECTION_KEY } from "../src/chain-transfer-pairs-artifact.ts";
+import {
+  CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY,
+  CHAIN_DEREGISTRATIONS_PROJECTION_KEY,
+} from "../src/chain-deregistrations-artifact.ts";
 import { type Row } from "./row-type.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -80,18 +84,33 @@ function lakeFetchWithBlocks(onFail?: (sql: string) => boolean) {
     // Matched on the ORDER BY, not just the table: chain-activity aggregates
     // over chain.blocks too, and feeding IT rows would change what that lane
     // computes. Only the blocks-summary scan orders by block_number.
-    const rows = sql.includes("ORDER BY block_number DESC")
-      ? [
-          {
-            block_number: 8_760_000,
-            author: "5A",
-            extrinsic_count: 2,
-            event_count: 4,
-            spec_version: 300,
-            observed_at: NOW - 12_000,
-          },
-        ]
-      : [];
+    let rows: Record<string, unknown>[] = [];
+    if (sql.includes("ORDER BY block_number DESC")) {
+      rows = [
+        {
+          block_number: 8_760_000,
+          author: "5A",
+          extrinsic_count: 2,
+          event_count: 4,
+          spec_version: 300,
+          observed_at: NOW - 12_000,
+        },
+      ];
+    } else if (sql.includes("event_index")) {
+      // chain-deregistrations is the one lane that reads RAW registration
+      // rows, and it declines on an empty pull by design (30 days with no
+      // registration anywhere is a failed read, not a quiet month).
+      rows = [
+        {
+          netuid: 5,
+          uid: 216,
+          hotkey: "A",
+          block_number: 10,
+          event_index: 1,
+          observed_at: NOW - 2 * DAY_MS,
+        },
+      ];
+    }
     return {
       ok: true,
       status: 200,
@@ -1358,8 +1377,13 @@ describe("runProjectionLanes", () => {
     assert.equal(outcome.ok, true);
     assert.deepEqual(
       puts.map((put) => put.key).sort(),
-      PROJECTION_LANES.map((lane) => lane.artifactKey).sort(),
-      "each lane writes exactly its own artifact key",
+      [
+        ...PROJECTION_LANES.map((lane) => lane.artifactKey),
+        // The one lane that fans its single computed body across two objects
+        // (src/chain-deregistrations-artifact.ts's header says why).
+        CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY,
+      ].sort(),
+      "each lane writes its own artifact key, plus any it declares a split for",
     );
   });
 
@@ -1384,7 +1408,11 @@ describe("runProjectionLanes", () => {
     assert.equal(Object.keys(result.lanes).length, PROJECTION_LANES.length);
     assert.deepEqual(
       puts.map((put) => put.key),
-      PROJECTION_LANES.map((lane) => lane.artifactKey).filter(
+      PROJECTION_LANES.flatMap((lane) =>
+        lane.artifactKey === CHAIN_DEREGISTRATIONS_PROJECTION_KEY
+          ? [lane.artifactKey, CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY]
+          : [lane.artifactKey],
+      ).filter(
         (key) =>
           key !== CHAIN_TRANSFERS_PROJECTION_KEY &&
           key !== CHAIN_TRANSFER_PAIRS_PROJECTION_KEY,
@@ -1394,6 +1422,151 @@ describe("runProjectionLanes", () => {
       events.map((event) => event.route),
       ["projection:chain-transfers", "projection:chain-transfer-pairs"],
     );
+  });
+});
+
+describe("chain-deregistrations lane compute", () => {
+  // Two claims on slot (5,216) and one on (5,217): A -> B on the first, and a
+  // lone first claim on the second, which displaced nobody we can see.
+  const REGS = [
+    {
+      netuid: 5,
+      uid: 216,
+      hotkey: "A",
+      block_number: 10,
+      event_index: 1,
+      observed_at: NOW - 20 * DAY_MS,
+    },
+    {
+      netuid: 5,
+      uid: 216,
+      hotkey: "B",
+      block_number: 20,
+      event_index: 1,
+      observed_at: NOW - 2 * DAY_MS,
+    },
+    {
+      netuid: 5,
+      uid: 217,
+      hotkey: "A",
+      block_number: 30,
+      event_index: 1,
+      observed_at: NOW - DAY_MS,
+    },
+  ];
+
+  test("issues ONE raw read over the widest window and slices the rest", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const queries = lakeFetch(REGS);
+    const body = (await laneNamed("chain-deregistrations").compute(
+      LAKE_ENV as unknown as Env,
+    )) as Row;
+
+    // One query for two windows. The 7d window is derived from the same rows,
+    // which is both cheaper and what gives it 23 days of prior occupancy.
+    assert.equal(queries.length, 1);
+    assert.match(queries[0]!, /FROM chain\.account_events/);
+    assert.match(queries[0]!, /event_kind = 'NeuronRegistered'/);
+    // NeuronDeregistered has never been emitted -- reading it is the bug.
+    assert.doesNotMatch(queries[0]!, /NeuronDeregistered/);
+    // Raw rows, not an aggregate: "who held this slot before" is a sequence
+    // question no GROUP BY answers.
+    assert.doesNotMatch(queries[0]!, /GROUP BY/);
+    assert.doesNotMatch(queries[0]!, /COUNT\(DISTINCT/);
+    assert.match(queries[0]!, /uid, hotkey, block_number, event_index/);
+    assert.match(
+      queries[0]!,
+      new RegExp(`observed_at >= ${NOW - 30 * DAY_MS}`),
+      "the widest window, so the narrow one derives against a real prefix",
+    );
+    assert.equal(body.lookback_days, 30);
+  });
+
+  test("derives the displaced holder, not the arriving one", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    lakeFetch(REGS);
+    const body = (await laneNamed("chain-deregistrations").compute(
+      LAKE_ENV as unknown as Env,
+    )) as Row;
+    const win = (body.windows as Row)["7d"] as Row;
+    assert.deepEqual(win.rows, [
+      {
+        netuid: 5,
+        deregistrations: 1,
+        distinct_deregistered_hotkeys: 1,
+        newest_observed: NOW - 2 * DAY_MS,
+      },
+    ]);
+    assert.deepEqual(win.network, {
+      distinct_deregistered_hotkeys: 1,
+      newest_observed: NOW - 2 * DAY_MS,
+    });
+    const index = ((body.hotkey_windows as Row)["7d"] as Row).hotkeys as Row;
+    assert.deepEqual(Object.keys(index), ["A"], "A lost the slot; B gained it");
+  });
+
+  test("declares the unattributed registrations rather than hiding them", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    lakeFetch(REGS);
+    const body = (await laneNamed("chain-deregistrations").compute(
+      LAKE_ENV as unknown as Env,
+    )) as Row;
+    const derivation = ((body.windows as Row)["7d"] as Row).derivation as Row;
+    assert.equal(derivation.method, "uid-reuse");
+    assert.equal(derivation.lookback_days, 30);
+    // Two registrations inside 7d; one of them (slot 217's first claim) has no
+    // observed previous holder, so the published total is a lower bound by 1.
+    assert.equal(derivation.window_registrations, 2);
+    assert.equal(derivation.unattributed_registrations, 1);
+  });
+
+  test("a failed read declines rather than persisting an empty derivation", async () => {
+    lakeFetch("fail");
+    assert.equal(
+      await laneNamed("chain-deregistrations").compute(
+        LAKE_ENV as unknown as Env,
+      ),
+      null,
+    );
+  });
+
+  test("an empty 30d pull declines -- no month of this chain has zero registrations", async () => {
+    lakeFetch([]);
+    assert.equal(
+      await laneNamed("chain-deregistrations").compute(
+        LAKE_ENV as unknown as Env,
+      ),
+      null,
+    );
+  });
+
+  test("splits the rollup away from the 200x-larger per-hotkey index", async () => {
+    const { puts, bucket } = archiveBucket();
+    lakeFetch(REGS);
+    const result = await runProjectionLane(
+      { ...LAKE_ENV, METAGRAPH_ARCHIVE: bucket } as unknown as Env,
+      laneNamed("chain-deregistrations"),
+    );
+    assert.equal(result.ok, true);
+    assert.deepEqual(
+      puts.map((p) => p.key),
+      [
+        CHAIN_DEREGISTRATIONS_PROJECTION_KEY,
+        CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY,
+      ],
+    );
+    const rollup = JSON.parse(puts[0]!.value) as Row;
+    // The rollup must NOT carry the index: the chain and subnet routes read it
+    // per request and would otherwise parse ~200x the bytes they use.
+    assert.equal(rollup.hotkey_windows, undefined);
+    assert.ok(((rollup.windows as Row)["7d"] as Row).rows);
+    const index = JSON.parse(puts[1]!.value) as Row;
+    assert.equal(index.schema_version, 1);
+    assert.equal(index.lookback_days, 30);
+    assert.ok(((index.windows as Row)["7d"] as Row).hotkeys);
   });
 });
 

@@ -74,7 +74,7 @@ export const SDL = /* GraphQL */ `
       offset: Int
       cursor: String
     ): SubnetHyperparamsHistory!
-    "Per-subnet neuron-deregistration activity over a 7d/30d window (distinct deregistered hotkeys, NeuronDeregistered count, and deregistrations per hotkey); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/deregistrations."
+    "Per-subnet neuron-deregistration activity over a 7d/30d window (distinct deregistered hotkeys, deregistration count, and deregistrations per hotkey), DERIVED from UID reuse in the NeuronRegistered stream -- NeuronDeregistered has never been emitted by the runtime (#9307). A subnet with no slot turnover in the window resolves to a schema-stable zeroed card, never null; when nothing derived the window the card carries a degraded block instead of a confident zero. Mirrors GET /api/v1/subnets/{netuid}/deregistrations."
     subnet_deregistrations(netuid: Int!, window: String): SubnetDeregistrations!
     "Per-subnet axon-serving activity over a 7d/30d window (distinct servers, AxonServed announcement count, and announcements per server); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/serving."
     subnet_serving(netuid: Int!, window: String): SubnetServing!
@@ -733,7 +733,7 @@ export const SDL = /* GraphQL */ `
     account_prometheus(ss58: String!, window: String): AccountPrometheus!
     "One account's per-subnet registration footprint over a 7d/30d/90d window (default 30d): NeuronRegistered count and first/last timestamps per subnet, an HHI concentration of where its registration activity is focused, and the dominant subnet; an address with no registrations in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/registrations."
     account_registrations(ss58: String!, window: String): AccountRegistrations!
-    "One account's per-subnet deregistration footprint over a 7d/30d/90d window (default 30d): NeuronDeregistered count and first/last timestamps per subnet, an HHI concentration of where its deregistration activity is focused, and the dominant subnet; an address with no deregistrations in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/accounts/{ss58}/deregistrations."
+    "One account's per-subnet deregistration footprint over a 7d/30d/90d window (default 30d) -- the slots where this hotkey was the PREVIOUS holder, DERIVED from UID reuse (#9307): eviction count and first/last timestamps per subnet, an HHI concentration of where its deregistration activity is focused, and the dominant subnet. An address with no evictions resolves to a schema-stable zeroed card, never null; the 90d window is not precomputed, so it carries a degraded block instead of a confident zero. Mirrors GET /api/v1/accounts/{ss58}/deregistrations."
     account_deregistrations(
       ss58: String!
       window: String
@@ -846,7 +846,7 @@ export const SDL = /* GraphQL */ `
     ): ChainCalls!
     "Network-wide Prometheus telemetry-endpoint announcement leaderboard over a 7d/30d window (default 7d): subnets ranked by PrometheusServed announcements with each's distinct-exporter count and announcements-per-exporter re-announcement intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. The telemetry-endpoint companion to chain_serving's axon endpoints -- which subnets run observability infrastructure. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/prometheus."
     chain_prometheus(window: String, limit: Int): ChainPrometheus!
-    "Network-wide neuron-deregistration leaderboard over a 7d/30d window (default 7d): subnets ranked by NeuronDeregistered events with each's distinct-hotkey count and deregistrations-per-hotkey churn intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. The network-wide, exit-side counterpart of subnet_deregistrations -- where neurons are being pushed out. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/deregistrations."
+    "Network-wide neuron-deregistration leaderboard over a 7d/30d window (default 7d): subnets ranked by deregistration events with each's distinct-hotkey count and deregistrations-per-hotkey churn intensity, plus a network rollup and the per-subnet intensity spread, DERIVED from UID reuse in the NeuronRegistered stream by a scheduled projection -- NeuronDeregistered has never been emitted by the runtime (#9307). The network-wide, exit-side counterpart of subnet_deregistrations -- where neurons are being pushed out. limit caps the leaderboard (default 20, max 100). A window nothing derived carries a degraded block rather than a confident zero. Mirrors GET /api/v1/chain/deregistrations."
     chain_deregistrations(window: String, limit: Int): ChainDeregistrations!
     "Network-wide neuron-registration leaderboard over a 7d/30d window (default 7d): subnets ranked by NeuronRegistered events with each's distinct-hotkey count and registrations-per-registrant re-registration intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. The network-wide, entry-side counterpart of subnet_registrations -- where neurons are joining. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/registrations."
     chain_registrations(window: String, limit: Int): ChainRegistrations!
@@ -1465,6 +1465,23 @@ export const SDL = /* GraphQL */ `
     announcements_per_server: Float
   }
 
+  "A field's own statement that its zero is not a measurement (#9307): the stream it reads is uncurated or was never emitted, or the derivation behind it could not answer this request. Absent on every trustworthy answer."
+  type DegradedInfo {
+    reason: String!
+    detail: String
+  }
+
+  "How a deregistration feed was derived (#9307). NeuronDeregistered has never been emitted, so deregistrations are derived from UID reuse: a NeuronRegistered on a (netuid, uid) slot already held by a different hotkey IS the deregistration of the previous occupant. unattributed_registrations is the honest part -- the published totals are a LOWER BOUND by that many events, because those registrations displaced a holder the derivation's lookback cannot name."
+  type DeregistrationDerivation {
+    method: String!
+    "Days of NeuronRegistered history the derivation had available."
+    lookback_days: Int!
+    "Registrations observed inside the reported window."
+    window_registrations: Int!
+    "Of those, the ones with no observed previous holder."
+    unattributed_registrations: Int!
+  }
+
   type ChainAxonRemovals {
     schema_version: Int!
     window: String
@@ -1473,6 +1490,7 @@ export const SDL = /* GraphQL */ `
     network: ChainAxonRemovalsNetwork!
     intensity_distribution: ChainAxonRemovalsIntensityDistribution
     subnets: [ChainAxonRemovalsSubnet!]!
+    degraded: DegradedInfo
   }
 
   "Network-wide axon-removal rollup: every subnet with AxonInfoRemoved events in the window, combined. distinct_removers counts a hotkey once even when it tears endpoints down on several subnets, so it is NOT the sum of the per-subnet counts."
@@ -1549,9 +1567,11 @@ export const SDL = /* GraphQL */ `
     network: ChainDeregistrationsNetwork!
     intensity_distribution: ChainDeregistrationsIntensityDistribution
     subnets: [ChainDeregistrationsSubnet!]!
+    derivation: DeregistrationDerivation
+    degraded: DegradedInfo
   }
 
-  "Network-wide deregistration rollup: every subnet with NeuronDeregistered events in the window, combined. distinct_deregistered_hotkeys counts a hotkey once even when it is deregistered from several subnets, so it is NOT the sum of the per-subnet counts."
+  "Network-wide deregistration rollup: every subnet with a derived deregistration in the window, combined. distinct_deregistered_hotkeys counts a hotkey once even when it is deregistered from several subnets, so it is NOT the sum of the per-subnet counts."
   type ChainDeregistrationsNetwork {
     distinct_deregistered_hotkeys: Int!
     deregistrations: Int!
@@ -1559,7 +1579,7 @@ export const SDL = /* GraphQL */ `
     deregistrations_per_hotkey: Float
   }
 
-  "Spread of per-subnet churn intensity (NeuronDeregistered events per hotkey) across EVERY subnet with deregistrations in the window -- network-wide even when limit truncates the leaderboard."
+  "Spread of per-subnet churn intensity (derived deregistrations per hotkey) across EVERY subnet with deregistrations in the window -- network-wide even when limit truncates the leaderboard."
   type ChainDeregistrationsIntensityDistribution {
     count: Int!
     mean: Float!
@@ -1587,6 +1607,7 @@ export const SDL = /* GraphQL */ `
     network: ChainPrometheusNetwork!
     intensity_distribution: ChainPrometheusIntensityDistribution
     subnets: [ChainPrometheusSubnet!]!
+    degraded: DegradedInfo
   }
 
   "Network-wide Prometheus-serving rollup: every subnet with PrometheusServed announcements in the window, combined. distinct_exporters counts a hotkey once even when it announces on several subnets, so it is NOT the sum of the per-subnet counts."
@@ -2744,6 +2765,8 @@ export const SDL = /* GraphQL */ `
     distinct_deregistered_hotkeys: Int!
     deregistrations: Int!
     deregistrations_per_hotkey: Float
+    derivation: DeregistrationDerivation
+    degraded: DegradedInfo
   }
 
   type SubnetServing {
@@ -2764,6 +2787,7 @@ export const SDL = /* GraphQL */ `
     distinct_removers: Int!
     removals: Int!
     removals_per_remover: Float
+    degraded: DegradedInfo
   }
 
   type SubnetWeights {
@@ -2857,6 +2881,7 @@ export const SDL = /* GraphQL */ `
     distinct_exporters: Int!
     announcements: Int!
     announcements_per_exporter: Float
+    degraded: DegradedInfo
   }
 
   "Per-subnet weight-setter leaderboard (#5712). Empty setters on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/weights/setters."
@@ -4023,6 +4048,8 @@ export const SDL = /* GraphQL */ `
     concentration: Float
     dominant_netuid: Int
     subnets: [AccountDeregistrationSubnet!]!
+    derivation: DeregistrationDerivation
+    degraded: DegradedInfo
   }
 
   "One subnet's slice of an account's axon-serving footprint over the window."
@@ -4061,6 +4088,7 @@ export const SDL = /* GraphQL */ `
     concentration: Float
     dominant_netuid: Int
     subnets: [AccountAxonRemovalSubnet!]!
+    degraded: DegradedInfo
   }
 
   "One subnet's slice of an account's stake-movement footprint over the window."
@@ -4283,6 +4311,7 @@ export const SDL = /* GraphQL */ `
     concentration: Float
     dominant_netuid: Int
     subnets: [AccountPrometheusSubnet!]!
+    degraded: DegradedInfo
   }
 
   "One subnet's Prometheus-announcement activity in an account's footprint, ranked most-active-first."

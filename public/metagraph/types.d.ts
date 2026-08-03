@@ -969,7 +969,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Fetch axon-removal activity for one subnet over a 7d or 30d window: the distinct removers (hotkeys), the AxonInfoRemoved event count, and the average removals per remover, computed live from the account_events AxonInfoRemoved stream. Raw axon-teardown activity — the removal-side companion to the AxonServed announcements in GET /api/v1/subnets/{netuid}/serving (which counts axon announcements, not teardowns). Schema-stable zeroed card when the subnet has no AxonInfoRemoved events in the window.
+         * Fetch axon-removal activity for one subnet over a 7d or 30d window: the distinct removers (hotkeys), the AxonInfoRemoved event count, and the average removals per remover, read from the account_events AxonInfoRemoved stream, which the runtime has never populated — an empty card is marked `degraded` rather than published as a measured zero. Raw axon-teardown activity — the removal-side companion to the AxonServed announcements in GET /api/v1/subnets/{netuid}/serving (which counts axon announcements, not teardowns). The zeroed card carries a `degraded` block whenever it is empty.
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["subnetAxonRemovalsByNetwork"];
@@ -1029,7 +1029,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Fetch neuron-deregistration activity for one subnet over a 7d or 30d window: the distinct deregistered hotkeys, the NeuronDeregistered event count, and the average deregistrations per hotkey, computed live from the account_events NeuronDeregistered stream. Raw deregistration/eviction activity — the exit-side companion to the NeuronRegistered demand in GET /api/v1/subnets/{netuid}/registrations and the account_events companion to the neuron_daily churn in GET /api/v1/subnets/{netuid}/turnover (net snapshot change, not raw event volume). Schema-stable zeroed card when the subnet has no NeuronDeregistered events in the window.
+         * Fetch neuron-deregistration activity for one subnet over a 7d or 30d window: the distinct deregistered hotkeys, the NeuronDeregistered event count, and the average deregistrations per hotkey, DERIVED from UID reuse in the NeuronRegistered stream (NeuronDeregistered has never been emitted by the runtime). Raw deregistration/eviction activity — the exit-side companion to the NeuronRegistered demand in GET /api/v1/subnets/{netuid}/registrations and the account_events companion to the neuron_daily churn in GET /api/v1/subnets/{netuid}/turnover (net snapshot change, not raw event volume). The card carries a `derivation` block stating how many window registrations had no observable previous holder, and a `degraded` block when nothing derived it.
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["subnetDeregistrationsByNetwork"];
@@ -1229,7 +1229,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Fetch Prometheus-endpoint serving activity for one subnet over a 7d or 30d window: the distinct exporters (hotkeys), the PrometheusServed event count, and the average announcements per exporter, computed live from the account_events PrometheusServed stream. The per-subnet drill-in of GET /api/v1/chain/prometheus (which ranks only the top-N subnets and cannot be queried by netuid) and the telemetry-endpoint sibling of GET /api/v1/subnets/{netuid}/serving (axon endpoints). Schema-stable zeroed card when the subnet has no PrometheusServed events in the window.
+         * Fetch Prometheus-endpoint serving activity for one subnet over a 7d or 30d window: the distinct exporters (hotkeys), the PrometheusServed event count, and the average announcements per exporter, read from the account_events PrometheusServed stream, which carries 0 of the 18,041 PrometheusServed events the chain emitted — an empty card is marked `degraded` rather than published as a measured zero. The per-subnet drill-in of GET /api/v1/chain/prometheus (which ranks only the top-N subnets and cannot be queried by netuid) and the telemetry-endpoint sibling of GET /api/v1/subnets/{netuid}/serving (axon endpoints). The zeroed card carries a `degraded` block whenever it is empty.
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["subnetPrometheusByNetwork"];
@@ -1462,7 +1462,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one account's axon-removal footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonInfoRemoved count with the first and last removal timestamps, plus account totals, an HHI concentration of where its teardown activity is focused, and the dominant subnet — summed live from the account_events D1 tier. The teardown-side complement to GET /api/v1/accounts/{ss58}/serving (axon announcements) and the account-level companion to GET /api/v1/chain/axon-removals, orthogonal to GET /api/v1/accounts/{ss58}/subnets (registration state). */
+        /** Fetch one account's axon-removal footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonInfoRemoved count with the first and last removal timestamps, plus account totals, an HHI concentration of where its teardown activity is focused, and the dominant subnet — read from the account_events AxonInfoRemoved stream, which the runtime has never populated; an empty footprint is marked `degraded` rather than published as a measured zero. The teardown-side complement to GET /api/v1/accounts/{ss58}/serving (axon announcements) and the account-level companion to GET /api/v1/chain/axon-removals, orthogonal to GET /api/v1/accounts/{ss58}/subnets (registration state). */
         get: operations["accountAxonRemovals"];
         put?: never;
         post?: never;
@@ -1530,7 +1530,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one account's neuron-deregistration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronDeregistered eviction count with the first and last eviction timestamps, plus account totals, an HHI concentration of where its deregistration activity is focused, and the dominant subnet — summed live from the account_events D1 tier. The eviction-side complement to GET /api/v1/accounts/{ss58}/registrations and the account-level companion to GET /api/v1/chain/deregistrations, distinct from GET /api/v1/accounts/{ss58}/subnets (current registration state). */
+        /** Fetch one account's neuron-deregistration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronDeregistered eviction count with the first and last eviction timestamps, plus account totals, an HHI concentration of where its deregistration activity is focused, and the dominant subnet — DERIVED from UID reuse (the slots where this account was the PREVIOUS holder); NeuronDeregistered has never been emitted by the runtime, the payload's `derivation` block states the lower bound, and `degraded` marks an answer nothing derived. The eviction-side complement to GET /api/v1/accounts/{ss58}/registrations and the account-level companion to GET /api/v1/chain/deregistrations, distinct from GET /api/v1/accounts/{ss58}/subnets (current registration state). */
         get: operations["accountDeregistrations"];
         put?: never;
         post?: never;
@@ -1700,7 +1700,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch one account's Prometheus-endpoint serving footprint per subnet over a recent window (7d/30d/90d): each subnet's PrometheusServed announcement count with the first and last announcement timestamps, plus account totals, an HHI concentration of where its telemetry activity is focused, and the dominant subnet — summed live from the account_events D1 tier. Operational activity (announcing a Prometheus telemetry endpoint); the telemetry sibling of GET /api/v1/accounts/{ss58}/serving and the account-level companion to GET /api/v1/chain/prometheus, orthogonal to GET /api/v1/accounts/{ss58}/subnets (registration state). */
+        /** Fetch one account's Prometheus-endpoint serving footprint per subnet over a recent window (7d/30d/90d): each subnet's PrometheusServed announcement count with the first and last announcement timestamps, plus account totals, an HHI concentration of where its telemetry activity is focused, and the dominant subnet — read from the account_events PrometheusServed stream, which carries 0 of the 18,041 PrometheusServed events the chain emitted; an empty footprint is marked `degraded` rather than published as a measured zero. Operational activity (announcing a Prometheus telemetry endpoint); the telemetry sibling of GET /api/v1/accounts/{ss58}/serving and the account-level companion to GET /api/v1/chain/prometheus, orthogonal to GET /api/v1/accounts/{ss58}/subnets (registration state). */
         get: operations["accountPrometheus"];
         put?: never;
         post?: never;
@@ -2176,7 +2176,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide axon-removal activity over a 7d or 30d window across the subnets with observed removal activity (subnets with no AxonInfoRemoved events are absent): a per-subnet leaderboard (AxonInfoRemoved event count, distinct removers, and average removals per remover) ranked by total removals, a network rollup with the true distinct remover count (a hotkey removing an axon on several subnets counts once) and total removals, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-teardown intensity. `limit` caps the leaderboard (default 20, max 100). The teardown-side companion to the axon-announcement GET /api/v1/chain/serving and the network-wide companion to GET /api/v1/subnets/{netuid}/axon-removals. Computed live from the account_events AxonInfoRemoved stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
+        /** Fetch network-wide axon-removal activity over a 7d or 30d window across the subnets with observed removal activity (subnets with no AxonInfoRemoved events are absent): a per-subnet leaderboard (AxonInfoRemoved event count, distinct removers, and average removals per remover) ranked by total removals, a network rollup with the true distinct remover count (a hotkey removing an axon on several subnets counts once) and total removals, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-teardown intensity. `limit` caps the leaderboard (default 20, max 100). The teardown-side companion to the axon-announcement GET /api/v1/chain/serving and the network-wide companion to GET /api/v1/subnets/{netuid}/axon-removals. Read from the account_events AxonInfoRemoved stream, which the runtime has never populated; an empty block is marked `degraded` rather than published as a measured zero. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
         get: operations["chainAxonRemovals"];
         put?: never;
         post?: never;
@@ -2227,7 +2227,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide neuron-deregistration activity over a 7d or 30d window across the subnets with observed deregistration activity (subnets with no NeuronDeregistered events are absent): a per-subnet leaderboard (NeuronDeregistered event count, distinct deregistered hotkeys, and average deregistrations per hotkey) ranked by total deregistrations, a network rollup with the true distinct hotkey count (a hotkey deregistered on several subnets counts once) and total deregistrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-deregistration intensity. `limit` caps the leaderboard (default 20, max 100). Raw deregistration/eviction activity — the exit-side companion to GET /api/v1/chain/registrations and the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. Computed live from the account_events NeuronDeregistered stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
+        /** Fetch network-wide neuron-deregistration activity over a 7d or 30d window across the subnets with observed deregistration activity (subnets with no NeuronDeregistered events are absent): a per-subnet leaderboard (NeuronDeregistered event count, distinct deregistered hotkeys, and average deregistrations per hotkey) ranked by total deregistrations, a network rollup with the true distinct hotkey count (a hotkey deregistered on several subnets counts once) and total deregistrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-deregistration intensity. `limit` caps the leaderboard (default 20, max 100). Raw deregistration/eviction activity — the exit-side companion to GET /api/v1/chain/registrations and the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. DERIVED from UID reuse in the NeuronRegistered stream by a scheduled projection (NeuronDeregistered has never been emitted by the runtime); the payload's `derivation` block states how many window registrations had no observable previous holder, and `degraded` marks an answer nothing derived. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
         get: operations["chainDeregistrations"];
         put?: never;
         post?: never;
@@ -2329,7 +2329,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch network-wide Prometheus-endpoint serving activity over a 7d or 30d window across the subnets with observed telemetry activity (subnets with no PrometheusServed events are absent): a per-subnet leaderboard (PrometheusServed event count, distinct exporters, and average announcements per exporter) ranked by total announcements, a network rollup with the true distinct exporter count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). The telemetry-endpoint companion to the axon-endpoint GET /api/v1/chain/serving — which subnets run observability infrastructure. Computed live from the account_events PrometheusServed stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
+        /** Fetch network-wide Prometheus-endpoint serving activity over a 7d or 30d window across the subnets with observed telemetry activity (subnets with no PrometheusServed events are absent): a per-subnet leaderboard (PrometheusServed event count, distinct exporters, and average announcements per exporter) ranked by total announcements, a network rollup with the true distinct exporter count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). The telemetry-endpoint companion to the axon-endpoint GET /api/v1/chain/serving — which subnets run observability infrastructure. Read from the account_events PrometheusServed stream, which carries 0 of the 18,041 PrometheusServed events the chain emitted; an empty block is marked `degraded` rather than published as a measured zero. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
         get: operations["chainPrometheus"];
         put?: never;
         post?: never;
@@ -4033,7 +4033,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch axon-removal activity for one subnet over a 7d or 30d window: the distinct removers (hotkeys), the AxonInfoRemoved event count, and the average removals per remover, computed live from the account_events AxonInfoRemoved stream. Raw axon-teardown activity — the removal-side companion to the AxonServed announcements in GET /api/v1/subnets/{netuid}/serving (which counts axon announcements, not teardowns). Schema-stable zeroed card when the subnet has no AxonInfoRemoved events in the window. */
+        /** Fetch axon-removal activity for one subnet over a 7d or 30d window: the distinct removers (hotkeys), the AxonInfoRemoved event count, and the average removals per remover, read from the account_events AxonInfoRemoved stream, which the runtime has never populated — an empty card is marked `degraded` rather than published as a measured zero. Raw axon-teardown activity — the removal-side companion to the AxonServed announcements in GET /api/v1/subnets/{netuid}/serving (which counts axon announcements, not teardowns). The zeroed card carries a `degraded` block whenever it is empty. */
         get: operations["subnetAxonRemovals"];
         put?: never;
         post?: never;
@@ -4135,7 +4135,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch neuron-deregistration activity for one subnet over a 7d or 30d window: the distinct deregistered hotkeys, the NeuronDeregistered event count, and the average deregistrations per hotkey, computed live from the account_events NeuronDeregistered stream. Raw deregistration/eviction activity — the exit-side companion to the NeuronRegistered demand in GET /api/v1/subnets/{netuid}/registrations and the account_events companion to the neuron_daily churn in GET /api/v1/subnets/{netuid}/turnover (net snapshot change, not raw event volume). Schema-stable zeroed card when the subnet has no NeuronDeregistered events in the window. */
+        /** Fetch neuron-deregistration activity for one subnet over a 7d or 30d window: the distinct deregistered hotkeys, the NeuronDeregistered event count, and the average deregistrations per hotkey, DERIVED from UID reuse in the NeuronRegistered stream (NeuronDeregistered has never been emitted by the runtime). Raw deregistration/eviction activity — the exit-side companion to the NeuronRegistered demand in GET /api/v1/subnets/{netuid}/registrations and the account_events companion to the neuron_daily churn in GET /api/v1/subnets/{netuid}/turnover (net snapshot change, not raw event volume). The card carries a `derivation` block stating how many window registrations had no observable previous holder, and a `degraded` block when nothing derived it. */
         get: operations["subnetDeregistrations"];
         put?: never;
         post?: never;
@@ -4577,7 +4577,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch Prometheus-endpoint serving activity for one subnet over a 7d or 30d window: the distinct exporters (hotkeys), the PrometheusServed event count, and the average announcements per exporter, computed live from the account_events PrometheusServed stream. The per-subnet drill-in of GET /api/v1/chain/prometheus (which ranks only the top-N subnets and cannot be queried by netuid) and the telemetry-endpoint sibling of GET /api/v1/subnets/{netuid}/serving (axon endpoints). Schema-stable zeroed card when the subnet has no PrometheusServed events in the window. */
+        /** Fetch Prometheus-endpoint serving activity for one subnet over a 7d or 30d window: the distinct exporters (hotkeys), the PrometheusServed event count, and the average announcements per exporter, read from the account_events PrometheusServed stream, which carries 0 of the 18,041 PrometheusServed events the chain emitted — an empty card is marked `degraded` rather than published as a measured zero. The per-subnet drill-in of GET /api/v1/chain/prometheus (which ranks only the top-N subnets and cannot be queried by netuid) and the telemetry-endpoint sibling of GET /api/v1/subnets/{netuid}/serving (axon endpoints). The zeroed card carries a `degraded` block whenever it is empty. */
         get: operations["subnetPrometheus"];
         put?: never;
         post?: never;
@@ -5036,6 +5036,10 @@ export interface components {
         AccountAxonRemovalsArtifact: {
             address: string;
             concentration: number | null;
+            degraded?: {
+                detail?: string;
+                reason: string;
+            };
             dominant_netuid: number | null;
             schema_version: number;
             subnet_count: number;
@@ -5140,6 +5144,16 @@ export interface components {
         AccountDeregistrationsArtifact: {
             address: string;
             concentration: number | null;
+            degraded?: {
+                detail?: string;
+                reason: string;
+            };
+            derivation?: {
+                lookback_days: number;
+                method: string;
+                unattributed_registrations: number;
+                window_registrations: number;
+            };
             dominant_netuid: number | null;
             schema_version: number;
             subnet_count: number;
@@ -5398,6 +5412,10 @@ export interface components {
         AccountPrometheusArtifact: {
             address: string;
             concentration: number | null;
+            degraded?: {
+                detail?: string;
+                reason: string;
+            };
             dominant_netuid: number | null;
             schema_version: number;
             subnet_count: number;
@@ -6303,6 +6321,10 @@ export interface components {
             window: "24h";
         };
         ChainAxonRemovalsArtifact: {
+            degraded?: {
+                detail?: string;
+                reason: string;
+            };
             intensity_distribution: {
                 count: number;
                 max: number;
@@ -6361,6 +6383,16 @@ export interface components {
             [key: string]: unknown;
         };
         ChainDeregistrationsArtifact: {
+            degraded?: {
+                detail?: string;
+                reason: string;
+            };
+            derivation?: {
+                lookback_days: number;
+                method: string;
+                unattributed_registrations: number;
+                window_registrations: number;
+            };
             intensity_distribution: {
                 count: number;
                 max: number;
@@ -6497,6 +6529,10 @@ export interface components {
             [key: string]: unknown;
         };
         ChainPrometheusArtifact: {
+            degraded?: {
+                detail?: string;
+                reason: string;
+            };
             intensity_distribution: {
                 count: number;
                 max: number;
@@ -9558,6 +9594,10 @@ export interface components {
             window: "24h";
         };
         SubnetAxonRemovalsArtifact: {
+            degraded?: {
+                detail?: string;
+                reason: string;
+            };
             distinct_removers: number;
             netuid: number;
             observed_at: string | null;
@@ -9735,8 +9775,18 @@ export interface components {
             [key: string]: unknown;
         };
         SubnetDeregistrationsArtifact: {
+            degraded?: {
+                detail?: string;
+                reason: string;
+            };
             deregistrations: number;
             deregistrations_per_hotkey: number | null;
+            derivation?: {
+                lookback_days: number;
+                method: string;
+                unattributed_registrations: number;
+                window_registrations: number;
+            };
             distinct_deregistered_hotkeys: number;
             netuid: number;
             observed_at: string | null;
@@ -10654,6 +10704,10 @@ export interface components {
         SubnetPrometheusArtifact: {
             announcements: number;
             announcements_per_exporter: number | null;
+            degraded?: {
+                detail?: string;
+                reason: string;
+            };
             distinct_exporters: number;
             netuid: number;
             observed_at: string | null;
@@ -18933,6 +18987,10 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "distinct_removers": 1,
                      *         "netuid": 7,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
@@ -19310,8 +19368,18 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "deregistrations": 1,
                      *         "deregistrations_per_hotkey": 0.5,
+                     *         "derivation": {
+                     *           "lookback_days": 1,
+                     *           "method": "GET",
+                     *           "unattributed_registrations": 1,
+                     *           "window_registrations": 1
+                     *         },
                      *         "distinct_deregistered_hotkeys": 1,
                      *         "netuid": 7,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
@@ -21192,6 +21260,10 @@ export interface operations {
                      *       "data": {
                      *         "announcements": 1,
                      *         "announcements_per_exporter": 0.5,
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "distinct_exporters": 1,
                      *         "netuid": 7,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
@@ -22675,6 +22747,10 @@ export interface operations {
                      *       "data": {
                      *         "address": "example",
                      *         "concentration": 0.5,
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "dominant_netuid": 7,
                      *         "schema_version": 1,
                      *         "subnet_count": 1,
@@ -23180,6 +23256,16 @@ export interface operations {
                      *       "data": {
                      *         "address": "example",
                      *         "concentration": 0.5,
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
+                     *         "derivation": {
+                     *           "lookback_days": 1,
+                     *           "method": "GET",
+                     *           "unattributed_registrations": 1,
+                     *           "window_registrations": 1
+                     *         },
                      *         "dominant_netuid": 7,
                      *         "schema_version": 1,
                      *         "subnet_count": 1,
@@ -24404,6 +24490,10 @@ export interface operations {
                      *       "data": {
                      *         "address": "example",
                      *         "concentration": 0.5,
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "dominant_netuid": 7,
                      *         "schema_version": 1,
                      *         "subnet_count": 1,
@@ -27937,6 +28027,10 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "intensity_distribution": {
                      *           "count": 2,
                      *           "max": 15,
@@ -28380,6 +28474,16 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
+                     *         "derivation": {
+                     *           "lookback_days": 1,
+                     *           "method": "GET",
+                     *           "unattributed_registrations": 1,
+                     *           "window_registrations": 1
+                     *         },
                      *         "intensity_distribution": {
                      *           "count": 2,
                      *           "max": 15,
@@ -29204,6 +29308,10 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "intensity_distribution": {
                      *           "count": 2,
                      *           "max": 15,
@@ -40853,6 +40961,10 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "distinct_removers": 1,
                      *         "netuid": 7,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
@@ -41629,8 +41741,18 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "deregistrations": 1,
                      *         "deregistrations_per_hotkey": 0.5,
+                     *         "derivation": {
+                     *           "lookback_days": 1,
+                     *           "method": "GET",
+                     *           "unattributed_registrations": 1,
+                     *           "window_registrations": 1
+                     *         },
                      *         "distinct_deregistered_hotkeys": 1,
                      *         "netuid": 7,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
@@ -45526,6 +45648,10 @@ export interface operations {
                      *       "data": {
                      *         "announcements": 1,
                      *         "announcements_per_exporter": 0.5,
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "distinct_exporters": 1,
                      *         "netuid": 7,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",

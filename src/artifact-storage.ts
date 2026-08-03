@@ -98,7 +98,8 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   /^subnets\/(?:\d+|\{netuid\})\/registrations\.json$/,
   // Axon-removal activity: computed live from the account_events AxonInfoRemoved stream.
   /^subnets\/(?:\d+|\{netuid\})\/axon-removals\.json$/,
-  // Neuron-deregistration activity: computed live from the account_events NeuronDeregistered stream.
+  // Neuron-deregistration activity: DERIVED from UID reuse in the NeuronRegistered
+  // stream (#9307) -- NeuronDeregistered has never been emitted by the runtime.
   /^subnets\/(?:\d+|\{netuid\})\/deregistrations\.json$/,
   // Per-UID emission yield distribution: computed live from the neurons snapshot.
   /^subnets\/(?:\d+|\{netuid\})\/yield\.json$/,
@@ -287,8 +288,9 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // Network-wide neuron-registration activity across every subnet, computed live from
   // the account_events NeuronRegistered stream at /api/v1/chain/registrations — never a file.
   /^chain\/registrations\.json$/,
-  // Network-wide neuron-deregistration activity across every subnet, computed live from
-  // the account_events NeuronDeregistered stream at /api/v1/chain/deregistrations — never a file.
+  // Network-wide neuron-deregistration activity across every subnet, DERIVED from UID
+  // reuse in the NeuronRegistered stream by a scheduled projection (#9307) at
+  // /api/v1/chain/deregistrations — never a file.
   /^chain\/deregistrations\.json$/,
   // Network-wide stake-movement (re-delegation) activity across every subnet, computed live from
   // the account_events StakeMoved stream at /api/v1/chain/stake-moves — never a file.

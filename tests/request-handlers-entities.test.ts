@@ -18,6 +18,11 @@ import { unsupportedWindowMessage } from "../src/neuron-history.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 import { type Row, type AnyFn, jsonBody } from "./row-type.ts";
 import {
+  CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY,
+  CHAIN_DEREGISTRATIONS_PROJECTION_KEY,
+} from "../src/chain-deregistrations-artifact.ts";
+import { DEREGISTRATIONS_DEGRADED_NOT_DERIVED } from "../src/uncurated-event-streams.ts";
+import {
   handleSubnetMetagraph,
   handleSubnetYield,
   handleNeuron,
@@ -140,6 +145,65 @@ async function errorJson(res: Response): Promise<Row> {
 
 function emptyEnv(): Row {
   return {};
+}
+
+/**
+ * An env whose archive carries a chain-deregistrations projection (#9307):
+ * one derived row for NETUID in the rollup object, and one displaced-hotkey
+ * entry for SS58 in the split-out per-hotkey object.
+ */
+function deregistrationProjectionEnv(): Row {
+  const derivation = {
+    method: "uid-reuse",
+    lookback_days: 30,
+    window_registrations: 8064,
+    unattributed_registrations: 1726,
+  };
+  const bodies: Record<string, unknown> = {
+    [CHAIN_DEREGISTRATIONS_PROJECTION_KEY]: {
+      schema_version: 1,
+      lookback_days: 30,
+      windows: {
+        "7d": {
+          days: 7,
+          network: {
+            distinct_deregistered_hotkeys: 4989,
+            newest_observed: 1_785_784_392_000,
+          },
+          rows: [
+            {
+              netuid: NETUID,
+              deregistrations: 441,
+              distinct_deregistered_hotkeys: 432,
+              newest_observed: 1_785_784_392_000,
+            },
+          ],
+          derivation,
+        },
+      },
+    },
+    [CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY]: {
+      schema_version: 1,
+      lookback_days: 30,
+      windows: {
+        "30d": {
+          days: 30,
+          hotkeys: {
+            [SS58]: [[NETUID, 2, 1_785_700_000_000, 1_785_784_392_000]],
+          },
+          derivation,
+        },
+      },
+    },
+  };
+  return {
+    METAGRAPH_ARCHIVE: {
+      async get(key: string) {
+        if (!Object.hasOwn(bodies, key)) return null;
+        return { json: async () => bodies[key] };
+      },
+    },
+  };
 }
 
 // ---- Fixture rows (stable shapes matching D1 column contracts) ----------------
@@ -2464,6 +2528,26 @@ describe("handleSubnetDeregistrations", () => {
     );
     // account_events provenance (not the metagraph snapshot); null on a cold store.
     assert.equal(body.meta.generated_at, null);
+    // #9307: that zero is not a measurement -- NeuronDeregistered has never
+    // been emitted -- and nothing derived this window here, so it says so.
+    assert.deepEqual(body.data.degraded, {
+      reason: DEREGISTRATIONS_DEGRADED_NOT_DERIVED,
+    });
+  });
+
+  test("serves the UID-reuse derivation when the projection carries it (#9307)", async () => {
+    const res = await handleSubnetDeregistrations(
+      req(`/api/v1/subnets/${NETUID}/deregistrations`),
+      deregistrationProjectionEnv() as unknown as Env,
+      NETUID,
+      url(`/api/v1/subnets/${NETUID}/deregistrations?window=7d`),
+    );
+    const body = await json(res);
+    assert.equal(body.data.deregistrations, 441);
+    assert.equal(body.data.distinct_deregistered_hotkeys, 432);
+    assert.equal(body.data.derivation.unattributed_registrations, 1726);
+    assert.equal(body.data.degraded, undefined);
+    await assertValidComponent("SubnetDeregistrationsArtifact", body.data);
   });
 
   describe("canonicalSubnetDeregistrationsCachePath", () => {
@@ -5565,6 +5649,21 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     assert.equal(body.data.marker, "pg");
     assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleAccountDeregistrations: serves the derived footprint from the per-hotkey index (#9307)", async () => {
+    const body = await json(
+      await handleAccountDeregistrations(
+        req(`/api/v1/accounts/${SS58}/deregistrations`),
+        deregistrationProjectionEnv() as unknown as Env,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/deregistrations`),
+      ),
+    );
+    assert.equal(body.data.total_deregistrations, 2);
+    assert.equal(body.data.derivation.unattributed_registrations, 1726);
+    assert.equal(body.data.degraded, undefined);
+    await assertValidComponent("AccountDeregistrationsArtifact", body.data);
   });
 
   test("handleSubnetAxonRemovals: flag=postgres uses Postgres data, D1 never queried", async () => {

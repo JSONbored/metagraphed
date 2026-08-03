@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { PROMETHEUS_DEGRADED_NOT_CURATED } from "../src/uncurated-event-streams.ts";
 import { afterEach, describe, test } from "vitest";
 import {
   buildChainPrometheus,
@@ -213,6 +214,25 @@ describe("buildChainPrometheus", () => {
       assert.equal(data.network.distinct_exporters, 0);
       assert.equal(data.network.announcements_per_exporter, null);
     }
+  });
+});
+
+describe("buildChainPrometheus honesty marker (#9307)", () => {
+  test("the empty block says its zero is not a measurement", () => {
+    // Marked in the builder rather than at each caller, so REST, MCP and the
+    // GraphQL resolver all inherit it from the one function they share.
+    for (const rows of [null, [], [{ netuid: 1, distinct_exporters: 0 }]]) {
+      const d = buildChainPrometheus(rows, { window: "7d" });
+      assert.deepEqual(d.degraded, { reason: PROMETHEUS_DEGRADED_NOT_CURATED });
+    }
+  });
+
+  test("a populated leaderboard carries NO marker", () => {
+    const d = buildChainPrometheus(
+      [{ netuid: 5, distinct_exporters: 2, announcements: 6 }],
+      { window: "7d" },
+    );
+    assert.equal(d.degraded, undefined);
   });
 });
 

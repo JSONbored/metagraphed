@@ -1,5 +1,8 @@
-// Live network-wide neuron-deregistration activity from the account_events NeuronDeregistered
-// stream: a per-subnet leaderboard plus a network rollup and intensity distribution. Raw
+// Network-wide neuron-deregistration activity, DERIVED from UID reuse in the NeuronRegistered
+// stream (#9307 — NeuronDeregistered has never been emitted by the runtime, so the stream this
+// once filtered has always been empty; see src/deregistration-derivation.ts and
+// src/chain-deregistrations-artifact.ts): a per-subnet leaderboard plus a network rollup and
+// intensity distribution. Raw
 // deregistration/eviction activity across every subnet — the exit-side companion to the
 // NeuronRegistered demand in /chain/registrations, and the account_events companion to the
 // neuron_daily validator-set churn in /chain/turnover (which measures net snapshot change, not raw
@@ -10,8 +13,16 @@
 // schemas/components/05-subnets.schema.json (ChainDeregistrationsArtifact).
 
 import { median, percentile } from "./lib/stats.ts";
+import type { DeregistrationDerivation } from "./deregistration-derivation.ts";
+import type { EventStreamDegraded } from "./uncurated-event-streams.ts";
 
 // The account_events kind emitted when a neuron is deregistered (evicted) from a subnet.
+//
+// RETAINED FOR THE RECORD, NOT AS A READ PATH (#9307): this event has ZERO
+// occurrences in the complete pallet-level stream, ever, so every filter on it
+// matched nothing and this route family published a permanent 0. The feed is
+// now DERIVED from UID reuse in the NeuronRegistered stream -- see
+// src/deregistration-derivation.ts for the mechanism and the measurements.
 export const DEREGISTRATION_EVENT_KIND = "NeuronDeregistered";
 
 export const CHAIN_DEREGISTRATIONS_LIMIT_DEFAULT = 20;
@@ -136,6 +147,11 @@ export interface ChainDeregistrationsResult {
   network: ChainDeregistrationsNetwork;
   intensity_distribution: IntensityDistribution | null;
   subnets: ChainDeregistrationsSubnet[];
+  /** How these numbers were derived, and by how much they under-count.
+   * Attached by the projection reader; absent when nothing derived them. */
+  derivation?: DeregistrationDerivation;
+  /** Present only when the derivation could not answer this request. */
+  degraded?: EventStreamDegraded;
 }
 
 // Shape the network-wide deregistration scorecard from the per-subnet account_events aggregate.
@@ -144,7 +160,7 @@ export interface ChainDeregistrationsResult {
 // count (a hotkey deregistered on several subnets counts once, so this is NOT the sum of the
 // per-subnet distinct_deregistered_hotkeys) plus the newest observed_at. `limit` caps the
 // leaderboard; subnet_count and the distribution span every subnet with observed deregistration
-// activity (subnets with no NeuronDeregistered events in the window are absent). Null-safe: no rows
+// activity (subnets with no derived deregistration in the window are absent). Null-safe: no rows
 // yields the empty block.
 export function buildChainDeregistrations(
   subnetRows: Array<Record<string, unknown>> | null | undefined,

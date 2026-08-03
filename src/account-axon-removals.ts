@@ -13,6 +13,11 @@
 // (axon announcements) — an account announces an axon, then removes it — operational activity
 // orthogonal to /accounts/{ss58}/subnets (registration state).
 
+import {
+  AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
+  type EventStreamDegraded,
+} from "./uncurated-event-streams.ts";
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // The account_events kind emitted when a neuron's announced axon endpoint is removed on a subnet;
@@ -84,6 +89,8 @@ export interface AccountAxonRemovalsResult {
   concentration: number | null;
   dominant_netuid: number | null;
   subnets: AccountAxonRemovalSubnet[];
+  /** Present only when the footprint is empty — see buildAccountAxonRemovals. */
+  degraded?: EventStreamDegraded;
 }
 
 // Shape an account's per-netuid AxonInfoRemoved aggregate into a footprint scorecard. `rows` is the
@@ -153,7 +160,7 @@ export function buildAccountAxonRemovals(
       ? roundConcentration(squares / (totalRemovals * totalRemovals))
       : null;
 
-  return {
+  const card: AccountAxonRemovalsResult = {
     schema_version: 1,
     address,
     window: window ?? null,
@@ -163,6 +170,13 @@ export function buildAccountAxonRemovals(
     dominant_netuid: dominantNetuid,
     subnets,
   };
+  // AxonInfoRemoved has zero occurrences in the complete pallet-level stream,
+  // ever, so an empty footprint here has never been a measurement of this
+  // account.
+  if (totalRemovals === 0) {
+    card.degraded = { reason: AXON_REMOVALS_DEGRADED_NEVER_EMITTED };
+  }
+  return card;
 }
 
 // One account's axon-removal footprint — reads its AxonInfoRemoved events from account_events over

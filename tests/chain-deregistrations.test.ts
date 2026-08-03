@@ -6,6 +6,8 @@ import {
 } from "../src/chain-deregistrations.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import { CHAIN_DEREGISTRATIONS_PROJECTION_KEY } from "../src/chain-deregistrations-artifact.ts";
+import { DEREGISTRATIONS_DEGRADED_NOT_DERIVED } from "../src/uncurated-event-streams.ts";
 import type { Row } from "./row-type.ts";
 
 const OBS = 1_700_000_000_000;
@@ -297,6 +299,78 @@ describe("GET /api/v1/chain/deregistrations", () => {
     assert.equal(body.data.subnet_count, 0);
     assert.deepEqual(body.data.subnets, []);
     assert.equal(body.data.intensity_distribution, null);
+  });
+
+  // #9307: the route no longer filters for NeuronDeregistered (never emitted,
+  // 0 occurrences in the complete stream, ever) -- it serves the UID-reuse
+  // derivation from the chain-deregistrations projection.
+  test("serves the derived leaderboard and its lower-bound statement", async () => {
+    const env = {
+      ...deregistrationsEnv(cold),
+      METAGRAPH_ARCHIVE: {
+        async get(key: string) {
+          if (key !== CHAIN_DEREGISTRATIONS_PROJECTION_KEY) return null;
+          return {
+            json: async () => ({
+              schema_version: 1,
+              lookback_days: 30,
+              windows: {
+                "7d": {
+                  days: 7,
+                  network: {
+                    distinct_deregistered_hotkeys: 4989,
+                    newest_observed: 1_785_784_392_000,
+                  },
+                  rows: [
+                    {
+                      netuid: 3,
+                      deregistrations: 441,
+                      distinct_deregistered_hotkeys: 432,
+                      newest_observed: 1_785_784_392_000,
+                    },
+                  ],
+                  derivation: {
+                    method: "uid-reuse",
+                    lookback_days: 30,
+                    window_registrations: 8064,
+                    unattributed_registrations: 1726,
+                  },
+                },
+              },
+            }),
+          };
+        },
+      },
+    };
+    const res = await handleRequest(
+      req("?window=7d"),
+      env as unknown as Env,
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.subnet_count, 1);
+    assert.equal(body.data.subnets[0].deregistrations, 441);
+    assert.equal(body.data.network.distinct_deregistered_hotkeys, 4989);
+    assert.equal(body.data.derivation.unattributed_registrations, 1726);
+    // A derived answer is a real answer, so nothing is marked.
+    assert.equal(body.data.degraded, undefined);
+  });
+
+  test("an underived window is MARKED, never a confident zero", async () => {
+    // The whole defect: a well-formed 0 indistinguishable from "nothing
+    // happened this week".
+    const res = await handleRequest(
+      req("?window=30d"),
+      deregistrationsEnv(cold) as unknown as Env,
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.data.subnet_count, 0);
+    assert.deepEqual(body.data.degraded, {
+      reason: DEREGISTRATIONS_DEGRADED_NOT_DERIVED,
+    });
   });
 
   // #4832 Tier 2: METAGRAPH_ACCOUNT_EVENTS_SOURCE reused (same account_events

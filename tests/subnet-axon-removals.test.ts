@@ -8,6 +8,7 @@ import {
   DEFAULT_SUBNET_AXON_REMOVALS_WINDOW,
 } from "../src/subnet-axon-removals.ts";
 import type { Row } from "./row-type.ts";
+import { AXON_REMOVALS_DEGRADED_NEVER_EMITTED } from "../src/uncurated-event-streams.ts";
 
 describe("buildSubnetAxonRemovals", () => {
   test("cold / null row yields a zeroed, schema-stable card", () => {
@@ -81,6 +82,26 @@ describe("buildSubnetAxonRemovals", () => {
     assert.equal(z.distinct_removers, 0);
     assert.equal(z.removals, 0);
     assert.equal(z.removals_per_remover, null);
+  });
+});
+
+describe("buildSubnetAxonRemovals honesty marker (#9307)", () => {
+  test("an empty card says its zero is not a measurement", () => {
+    // AxonInfoRemoved has ZERO occurrences in the complete pallet-level
+    // stream, ever, so this card has never measured anything.
+    const d = buildSubnetAxonRemovals(null, 7, { window: "7d" });
+    assert.deepEqual(d.degraded, {
+      reason: AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
+    });
+  });
+
+  test("a card with removals carries NO marker", () => {
+    const d = buildSubnetAxonRemovals(
+      { distinct_removers: 2, removals: 5, newest_observed: 1750000000000 },
+      7,
+      { window: "7d" },
+    );
+    assert.equal(d.degraded, undefined);
   });
 });
 
