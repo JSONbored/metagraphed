@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   loadAccountEventsColdTier,
+  loadBlockChainEventsColdTier,
   loadBlockEventsColdTier,
   loadSubnetEventsColdTier,
 } from "../src/events-cold-tier.ts";
@@ -443,5 +444,103 @@ describe("loadSubnetEventsColdTier", () => {
       await loadSubnetEventsColdTier(TOKEN as unknown as Env, 7, { limit: 5 }),
       null,
     );
+  });
+});
+
+// #9260: the raw every-event stream per block. This route answered `events: []`
+// for all ~8.76M blocks at or below the decode seam because it had a hot tier
+// and no cold one -- an empty 200 a caller cannot tell from a block that
+// genuinely emitted nothing, and which the block header's own `event_count`
+// directly contradicted.
+describe("loadBlockChainEventsColdTier", () => {
+  function chainEventRow(index = 0, args: unknown = null) {
+    return {
+      block_number: 8_500_000,
+      event_index: index,
+      pallet: "Balances",
+      method: "Transfer",
+      args,
+      phase: "ApplyExtrinsic",
+      extrinsic_index: 2,
+      observed_at: 1_785_000_000_000 + index,
+    };
+  }
+
+  test("reads chain.chain_events for the block in event_index ASC order", async () => {
+    const q = sqlFetch([chainEventRow(0), chainEventRow(1)]);
+    const data = await loadBlockChainEventsColdTier(TOKEN as never, "8500000");
+    assert.equal(data!.count, 2);
+    assert.equal(data!.block_number, 8_500_000);
+    assert.match(q[0]!, /FROM chain\.chain_events/);
+    assert.match(q[0]!, /WHERE block_number = 8500000/);
+    assert.match(
+      q[0]!,
+      /ORDER BY event_index ASC/,
+      "a block is read top-to-bottom, the order the hot tier also uses",
+    );
+  });
+
+  test("issues no LIMIT — a block is a bounded unit, not a page", async () => {
+    // A cap chosen "for safety" would silently truncate the one block that
+    // exceeded it into a shorter feed that still looked complete.
+    const q = sqlFetch([chainEventRow()]);
+    await loadBlockChainEventsColdTier(TOKEN as never, "8500000");
+    assert.doesNotMatch(q[0]!, /LIMIT/);
+  });
+
+  test("decodes the opaque JSON args through the SAME formatter the hot tier feeds", async () => {
+    // Iceberg stores args as a JSON string exactly as D1 stores it as TEXT, so
+    // one decoder covers both tiers -- a caller cannot tell which answered.
+    const q = sqlFetch([
+      chainEventRow(0, JSON.stringify({ amount: 30681 })),
+      chainEventRow(1, "{not json"),
+    ]);
+    const data = await loadBlockChainEventsColdTier(TOKEN as never, "8500000");
+    assert.match(q[0]!, /block_number, event_index, pallet, method, args/);
+    assert.ok(
+      Object.hasOwn(data!.events[0]!.args as Record<string, unknown>, "amount"),
+    );
+    assert.equal(data!.events[0]!.method, "Transfer");
+    // One undecodable event degrades its own args, never the block's feed.
+    assert.equal(data!.events[1]!.args, null);
+    assert.equal(data!.count, 2);
+  });
+
+  test("a hash ref resolves to a height first, reusing the block resolver", async () => {
+    const q = sqlFetch([{ block_number: 77 }], [chainEventRow(0)]);
+    const data = await loadBlockChainEventsColdTier(TOKEN as never, "0xbeef");
+    assert.match(q[0]!, /FROM chain\.blocks WHERE block_hash = '0xbeef'/);
+    assert.match(q[1]!, /FROM chain\.chain_events WHERE block_number = 77/);
+    assert.equal(data!.block_number, 77);
+  });
+
+  test("an unusable ref declines without issuing a query at all", async () => {
+    const q = sqlFetch([]);
+    assert.equal(
+      await loadBlockChainEventsColdTier(TOKEN as never, "'; DROP --"),
+      null,
+    );
+    assert.equal(q.length, 0);
+  });
+
+  test("declines when the lakehouse cannot answer, never an empty payload", async () => {
+    globalThis.fetch = (async () =>
+      ({
+        ok: false,
+        status: 500,
+      }) as unknown as Response) as unknown as typeof fetch;
+    assert.equal(
+      await loadBlockChainEventsColdTier(TOKEN as never, "8500000"),
+      null,
+      "a failed read must decline so the caller can decline too",
+    );
+  });
+
+  test("a real empty answer is a measurement, not a decline", async () => {
+    // The distinction the whole issue turns on: the engine answered and the
+    // answer was zero rows. That IS a block without chain events.
+    sqlFetch([]);
+    const data = await loadBlockChainEventsColdTier(TOKEN as never, "8500000");
+    assert.deepEqual(data, { block_number: 8_500_000, count: 0, events: [] });
   });
 });

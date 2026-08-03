@@ -61126,7 +61126,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch a cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to its current subnet registrations + stake. Computed live from the Postgres-backed account_events + neurons tiers.",
+        "summary": "Fetch a cross-subnet activity summary for one account (hotkey or coldkey): chain-event aggregates joined to its current subnet registrations + stake. Computed live from the account_events lakehouse and the neurons tier -- the same rows /accounts/{ss58}/events and /accounts/{ss58}/subnets serve, so the three cannot disagree. A tier that exists and cannot answer declines with a typed 503 (account_summary_unavailable) rather than an all-zero card, which is indistinguishable from an account with no history.",
         "tags": [
           "accounts",
           "analytics"
@@ -65340,7 +65340,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch every raw pallet-level event in one block (by numeric block_number; event_index ascending) from the Postgres-backed all-events tier (ADR 0013). Distinct from /api/v1/blocks/{ref}/events (the curated account-attributed D1 stream). Served live (no static file); empty (count:0, events:[]) when the block is unknown or before the all-events backfill runs.",
+        "summary": "Fetch EVERY raw pallet-level event in one block (by numeric block_number; event_index ascending), served live from the live-follow hot tier above the decode seam and the chain_events lakehouse at or below it (no static file). This is the complete stream, so its count matches the block header's own event_count; /api/v1/blocks/{ref}/events is deliberately a SUBSET of it -- the curated account-attributed projection, which is smaller by design and not a loss. A block neither tier can read declines with a typed 503 (block_detail_unavailable) rather than an empty list, because count:0 is indistinguishable from a block that emitted nothing.",
         "tags": [
           "blocks",
           "chain",
@@ -65469,7 +65469,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the decoded chain events in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=1000) / ?offset. Computed live from the first-party account_events D1 tier filtered by block_number (#1852); 200 with events:[] when cold/unknown.",
+        "summary": "Fetch the ACCOUNT-ATTRIBUTED events in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=1000) / ?offset. This is the curated account_events projection -- a deliberate SUBSET of /api/v1/blocks/{ref}/chain-events (the complete pallet-level stream the block header's event_count counts), narrower by design rather than by loss. 200 with events:[] when cold/unknown.",
         "tags": [
           "blocks",
           "analytics"

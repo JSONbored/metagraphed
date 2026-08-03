@@ -36,6 +36,7 @@ import {
   type ChainDetailAnswer,
   type ChainEventApi,
 } from "./chain-detail-hot-tier.ts";
+import { loadBlockChainEventsColdTier } from "./events-cold-tier.ts";
 import { buildSubnetConviction } from "./subnet-conviction.ts";
 import { buildSubnetLeaseHistory } from "./subnet-lease-history.ts";
 import { buildSubnetOwnershipHistory } from "./subnet-ownership-history.ts";
@@ -131,12 +132,17 @@ export function degradedChainEventsPayload(url: URL): Row | null {
  * its result as a degraded fallback -- these are real, current rows, and
  * flagging them would bar them from the edge cache for no reason.
  *
- * The other five stay uncovered on purpose rather than by omission: the two
- * chain-events feeds and the block feed are unfiltered scans of the 894M-row
- * event tables (the shape #9146 moved to scheduled projections), conviction
- * additionally needs live UnlockRate/MaturityRate RPC reads that no lakehouse
- * query can stand in for, and lease/history reads account_events, a different
- * stream with no reader yet.
+ * `/blocks/{n}/chain-events` is covered too, but by `hotTierBlockChainEvents`
+ * below rather than here, because it is the one path with a hot tier to route
+ * against first -- putting its cold leg in this function would give it two
+ * entry points that could disagree about the same block.
+ *
+ * The remaining four stay uncovered on purpose rather than by omission: the two
+ * chain-events feeds are unfiltered scans of the 894M-row event table (the
+ * shape #9146 moved to scheduled projections), conviction additionally needs
+ * live UnlockRate/MaturityRate RPC reads that no lakehouse query can stand in
+ * for, and lease/history reads account_events, a different stream with no
+ * reader yet.
  */
 export async function coldTierChainEventsPayload(
   env: Env | null | undefined,
@@ -184,22 +190,27 @@ export interface BlockChainEventsPayload {
 }
 
 /**
- * The HOT-tier answer for `/api/v1/blocks/{n}/chain-events` (#9208), or null
- * when this URL is not that route.
+ * The TIERED answer for `/api/v1/blocks/{n}/chain-events` (#9208, #9260), or
+ * null when this URL is not that route.
  *
  * This is the one route in the six whose stream the live-follow lane feeds, and
  * it is the reason `chain_events` is in the hot tier at all: the two block
  * feeds above it are unfiltered scans, but this one is a single-block read that
  * a user reaches by clicking a block.
  *
- * THE COLD LEG IS DELIBERATELY NULL. `chain.chain_events` is exported and
- * current in the lakehouse, but nothing in this repo reads it per block yet --
- * this module's own header explains why the remaining five stayed uncovered.
- * A null cold leg gives exactly the right routing anyway: at or below the seam
- * the answer is `miss`, and the caller keeps today's schema-stable empty; above
- * the seam an uncovered block is a `gap` and DECLINES, which is the behaviour
- * #9208 requirement 4 asks for. Adding the cold reader later only turns some of
- * those misses into rows -- it does not change this shape.
+ * THE COLD LEG USED TO BE NULL, and that was the whole of #9260. It was the
+ * right call when #9208 shipped -- nothing read `chain.chain_events` per block
+ * yet, and a null cold leg still routed correctly -- but the consequence was
+ * that every one of the ~8.76M blocks at or below the seam answered `miss`,
+ * which the caller turns into a schema-stable `events: []`. For a block that
+ * really did emit 570 events, an empty 200 is a wrong answer wearing the shape
+ * of a quiet one. It now reads the lakehouse, so the routing is what it always
+ * claimed to be: hot above the seam, lakehouse at or below it, and a DECLINE
+ * only for the genuine gap between them.
+ *
+ * The `tier` on the answer is not decoration -- callers use it to name the
+ * source that actually served, so a lakehouse row is never labelled as the
+ * hot tier's.
  */
 export async function hotTierBlockChainEvents(
   env: Env | null | undefined,
@@ -209,7 +220,7 @@ export async function hotTierBlockChainEvents(
   if (!block) return null;
   return answerBlockDetail<BlockChainEventsPayload>(env, block[1]!, {
     hot: (height) => loadBlockChainEventsHotTier(env, height),
-    cold: async () => null,
+    cold: () => loadBlockChainEventsColdTier(env, block[1]!),
     isEmpty: isEmptyChainEventPayload,
   });
 }

@@ -1,8 +1,10 @@
 // GET /api/v1/blocks/{ref}/chain-events (types-epic B batch 7, #8061).
-// Postgres-backed all-events tier (ADR 0013), proxied verbatim from the
-// DATA_API service Worker (workers/data-api.ts) -- no local D1 read, no
-// local pure builder to drive directly (same situation as batch 6's
-// chain-events.ts). Modeled from workers/data-api.ts's inline SQL handler
+// Originally the Postgres-backed all-events tier (ADR 0013), proxied verbatim
+// from the DATA_API service Worker. It is now served locally from two tiers --
+// the live-follow D1 lane above the decode seam (#9208) and chain.chain_events
+// in the lakehouse at or below it (#9260) -- through one formatter, so the
+// PAYLOAD shape this file models is unchanged and tier-independent. Modeled
+// from the original workers/data-api.ts inline SQL handler
 // for "GET /api/v1/blocks/:n/chain-events" and cross-checked against the
 // hand-edited BlockChainEventsArtifact component it replaces. Unlike
 // /api/v1/blocks/{ref}/events, this route's {ref} is ALWAYS a numeric

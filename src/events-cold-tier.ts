@@ -17,12 +17,28 @@
 // src/extrinsics-cold-tier.ts: the seam picks between two sources and this
 // family has one, so the lakehouse's own empty answer is more truthful than a
 // prediction made from a four-table `min` watermark.
+//
+// TWO STREAMS, ONE BLOCK. Everything above reads `chain.account_events`, the
+// curated projection that names an account. `loadBlockChainEventsColdTier` at
+// the bottom reads `chain.chain_events`, the RAW every-event stream, and it
+// lives here rather than in a module of its own precisely because the two
+// per-block readers must sit side by side: `/blocks/{n}/events` and
+// `/blocks/{n}/chain-events` are two views of one block, and #9260 happened
+// because one of them had a reader and the other did not. The raw one is the
+// larger stream (894M rows against the projection's own count) and its rows go
+// through formatChainEvent, the SAME formatter the D1 hot tier feeds -- so a
+// caller cannot tell which tier answered, which is the entire point.
 
 import {
   buildAccountEvents,
   buildBlockEvents,
   buildSubnetEvents,
 } from "./account-events.ts";
+import {
+  CHAIN_EVENT_COLUMNS,
+  formatChainEvent,
+  type ChainEventApi,
+} from "./chain-detail-hot-tier.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import {
   r2SqlQuery,
@@ -253,4 +269,56 @@ async function resolveBlockHeight(
   );
   if (rows === null) return null;
   return safeBlockNumber(rows[0]?.block_number);
+}
+
+/** The payload `/api/v1/blocks/{n}/chain-events` has always published, built
+ * here from lakehouse rows and by src/chain-detail-hot-tier.ts from D1 rows. */
+export interface BlockChainEventsColdResult {
+  block_number: number;
+  count: number;
+  events: ChainEventApi[];
+}
+
+/**
+ * Every RAW chain event in one block, in natural read order (#9260).
+ *
+ * THE ROUTE THIS CLOSES WAS EMPTY FOR ALL OF HISTORY. #9240 gave
+ * `/blocks/{n}/chain-events` a hot tier above the decode seam and deliberately
+ * left the cold leg null, so the ~8.76M blocks at or below the seam answered
+ * `ok: true` with `events: []` -- indistinguishable from a block that emitted
+ * nothing, and contradicted by the block header's own `event_count` (block
+ * 1,000 advertised 21 while this route served 0). The rows were there the whole
+ * time: `chain.chain_events`, verified row-for-row during the migration.
+ *
+ * NO LIMIT, deliberately, and matching the hot tier exactly. A block is a
+ * bounded unit -- the largest observed carries 667 chain events
+ * (src/chain-detail-prune.ts's measured per-block maxima) -- so there is no
+ * page to serve, and a cap chosen "for safety" would silently truncate the one
+ * block that exceeded it into a shorter feed that still looked complete.
+ *
+ * `args` is an opaque JSON string in Iceberg exactly as it is TEXT in D1, and
+ * it is decoded ONCE, by formatChainEvent, through the serve-time normalizers
+ * both tiers already share -- never a second decoder for the same bytes.
+ *
+ * Returns null when the lakehouse cannot answer (unconfigured, failed query,
+ * or a ref that resolves to no height), so the caller keeps its own decline or
+ * schema-stable empty rather than inventing one here.
+ */
+export async function loadBlockChainEventsColdTier(
+  env: Env | null | undefined,
+  ref: string,
+): Promise<BlockChainEventsColdResult | null> {
+  const height = await resolveBlockHeight(env, ref);
+  if (height === null) return null;
+
+  const rows = await r2SqlQuery(
+    env,
+    `SELECT ${CHAIN_EVENT_COLUMNS} FROM chain.chain_events ` +
+      `WHERE block_number = ${height} ORDER BY event_index ASC`,
+  );
+  if (rows === null) return null;
+  const events = rows
+    .map(formatChainEvent)
+    .filter((event): event is ChainEventApi => Boolean(event));
+  return { block_number: height, count: events.length, events };
 }

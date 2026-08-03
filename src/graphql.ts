@@ -408,8 +408,12 @@ import {
 } from "../workers/config.ts";
 import { loadRpcUsage } from "./rpc-usage-loader.ts";
 import { loadChainServingColdTier } from "./chain-serving-loader.ts";
-import { loadAccountSummaryColdTier } from "./account-feeds-cold-tier.ts";
 import { enrichValidatorNominatorCounts } from "./validator-nominator-counts-cold-tier.ts";
+import {
+  accountSummaryGapMessage,
+  answerAccountSummary,
+  ACCOUNT_SUMMARY_GAP_CODE,
+} from "./account-summary-card.ts";
 import { loadChainWeightsColdTier } from "./chain-weights-loader.ts";
 import { loadChainWeightSettersColdTier } from "./chain-weight-setters-loader.ts";
 import {
@@ -5248,24 +5252,32 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
+    const postgres = (await tryPostgresTier(
+      context.env,
+      postgresTierRequest(
+        context,
+        `/api/v1/accounts/${encodeURIComponent(ss58)}`,
+      ),
+      "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+    )) as Row | null;
+    // #9254/#9263: the SAME composition REST and MCP run. The zeroed card stays
+    // the answer only where there is no tier to ask at all; a tier that exists
+    // and could not answer raises, because a card reading zero events for an
+    // account whose own events field would return 100 is a wrong answer, not a
+    // degraded one.
+    const answer = postgres
+      ? null
+      : await answerAccountSummary(context.env, ss58);
+    if (answer?.kind === "gap") {
+      throw new GraphQLError(accountSummaryGapMessage(ss58), {
+        extensions: { code: ACCOUNT_SUMMARY_GAP_CODE },
+      });
+    }
     const data =
-      ((await tryPostgresTier(
-        context.env,
-        postgresTierRequest(
-          context,
-          `/api/v1/accounts/${encodeURIComponent(ss58)}`,
-        ),
-        "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) as Row | null) ??
-      // #9254: the account_events half of the card, from the lakehouse. The
-      // zeroed card below stays the fallback -- this resolver answers with a
-      // schema-stable card rather than an error, which is why the loader
-      // declines with null instead of returning the card itself.
-      ((await (async () => {
-        const cold = await loadAccountSummaryColdTier(context.env, ss58);
-        return cold ? buildAccountSummary(ss58, cold) : null;
-      })()) as Row | null) ??
-      buildAccountSummary(ss58, {});
+      postgres ??
+      ((answer?.kind === "answer"
+        ? answer.data
+        : buildAccountSummary(ss58, {})) as Row);
     return accountSummaryNode(data, ss58);
   },
 

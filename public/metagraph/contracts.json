@@ -1500,7 +1500,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "The decoded chain events in one block (by numeric block_number or 0x block_hash), in natural order, served live from the first-party account_events D1 tier filtered by block_number at /api/v1/blocks/{ref}/events (no static file).",
+      "description": "The account-attributed events in one block (by numeric block_number or 0x block_hash), in natural order, served live at /api/v1/blocks/{ref}/events (no static file). A deliberate subset of /blocks/{ref}/chain-events, which carries the complete pallet-level stream.",
       "id": "block-events",
       "path": "/metagraph/blocks/{ref}/events.json",
       "retirement": null,
@@ -1522,7 +1522,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "Every raw pallet-level event in one block (event_index ascending) from the Postgres-backed all-events tier (ADR 0013), served live at /api/v1/blocks/{ref}/chain-events (no static file). Distinct from /blocks/{ref}/events (the curated account-attributed D1 stream).",
+      "description": "Every raw pallet-level event in one block (event_index ascending), served live at /api/v1/blocks/{ref}/chain-events from the live-follow hot tier above the decode seam and the chain_events lakehouse at or below it (no static file). The complete stream the block header's event_count counts; /blocks/{ref}/events is its curated account-attributed subset.",
       "id": "block-chain-events",
       "path": "/metagraph/blocks/{ref}/chain-events.json",
       "retirement": null,
