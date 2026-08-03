@@ -281,6 +281,7 @@ import { resolveLiveEconomics } from "../../src/health-serving.ts";
 import { KV_ECONOMICS_CURRENT } from "../../src/kv-keys.ts";
 import { readArtifact, readHealthKv } from "../storage.ts";
 import { buildAccountStakeFlow } from "../../src/account-stake-flow.ts";
+import { loadSubnetStakeFlowFromArtifact } from "../../src/subnet-stake-flow-artifact.ts";
 import {
   buildValidatorNominators,
   NOMINATOR_WINDOWS,
@@ -3033,7 +3034,18 @@ export async function handleSubnetStakeFlow(
     request,
     "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
   );
-  const { data, generatedAt } = pgPayload ?? {
+  // #9146: on a tier miss, slice this subnet out of the chain-stake-flow
+  // projection rather than serving zeros -- that lane already groups by
+  // (netuid, event_kind), so the numbers exist and were simply unread. The
+  // reader declines (null) when it cannot answer faithfully, which keeps the
+  // zeroed card as the floor.
+  const projected =
+    pgPayload ??
+    (await loadSubnetStakeFlowFromArtifact(env, netuid, {
+      window: windowParam,
+      direction,
+    }));
+  const { data, generatedAt } = projected ?? {
     data: buildStakeFlow([], netuid, { window: windowParam }),
     generatedAt: null,
   };
@@ -3052,7 +3064,7 @@ export async function handleSubnetStakeFlow(
     },
     "short",
   );
-  return pgPayload ? response : markPostgresTierFallbackResponse(response);
+  return projected ? response : markPostgresTierFallbackResponse(response);
 }
 
 // One subnet's alpha_market_cap_tao (#4342/8.3), preferring the live economics
