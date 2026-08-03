@@ -769,6 +769,11 @@
       // 6,21,36,51 = the neurons-staleness watchdog: alarms when the poller
       // Container's 15-minute D1 feed stops moving.
       "6,21,36,51 * * * *",
+      // 8,38 = the nominator-positions staleness watchdog (#9273): alarms when
+      // the per-coldkey position ledger stops advancing. That lane ran with no
+      // watchdog and lost its writer entirely without anything noticing -- see
+      // NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON in workers/config.ts.
+      "8,38 * * * *",
       // 26 */3 = the live-economics refresh (KV economics:current), moved off
       // the retired refresh-economics.yml schedule -- the last Actions data
       // lane. Same 3-hourly cadence; :26 because :41 is taken twice over and

@@ -326,6 +326,7 @@ import {
 import { loadSubnetOhlcColdTier } from "./subnet-ohlc-cold-tier.ts";
 import { loadValidatorNominatorsColdTier } from "./account-feeds-cold-tier.ts";
 import { loadAccountPositionsColdTier } from "./nominator-positions-cold-tier.ts";
+import { loadAccountPositionsD1 } from "./nominator-positions-hot-tier.ts";
 import { coldTierChainEventsPayload } from "./chain-events-degraded.ts";
 import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.ts";
 import {
@@ -368,7 +369,7 @@ import {
 import { loadChainRegistrationsFromArtifact } from "./chain-registrations-artifact.ts";
 import { loadSubnetStakeFlowFromArtifact } from "./subnet-stake-flow-artifact.ts";
 import { buildAccountPortfolio } from "./account-portfolio.ts";
-import { buildAccountPositions } from "./account-nominator-positions.ts";
+import { unavailableAccountPositions } from "./account-nominator-positions.ts";
 import {
   buildAccountRegistrations,
   REGISTRATION_WINDOWS,
@@ -5456,8 +5457,9 @@ const rootValue = {
         ),
         "METAGRAPH_NEURONS_SOURCE",
       )) as Row | null) ??
+      ((await loadAccountPositionsD1(context.env, ss58)) as Row | null) ??
       ((await loadAccountPositionsColdTier(context.env, ss58)) as Row | null) ??
-      buildAccountPositions([], new Map(), ss58);
+      unavailableAccountPositions(ss58);
     return {
       schema_version: data.schema_version ?? 1,
       ss58: data.ss58 ?? ss58,

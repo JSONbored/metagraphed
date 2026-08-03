@@ -4,12 +4,17 @@
 // 100-parameter ceiling, and every failure DECLINES rather than publishing a
 // total that is quietly too small.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { beforeEach, describe, test } from "vitest";
 import {
   D1_BIND_PARAM_CAP,
+  LEDGER_STAMP_MEMO_TTL_MS,
   POSITION_SCAN_CAP,
+  latestStakeEventAt,
+  ledgerCapturedAt,
   loadAccountPositionsColdTier,
+  resetLedgerStampMemo,
 } from "../src/nominator-positions-cold-tier.ts";
+import { POSITIONS_DEGRADED_SNAPSHOT_PREDATES_ACTIVITY } from "../src/account-nominator-positions.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
 
 const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
@@ -76,6 +81,34 @@ function positionRow(hotkey: string, netuid: number, fraction: number) {
     captured_at: 1_785_634_702_670,
   };
 }
+
+/**
+ * Routes each query to its own rows, keyed on a fragment of the SQL -- the
+ * zero path issues three different reads (the ledger scan, the ledger's
+ * MAX(captured_at), and this coldkey's newest stake event) and `sqlFetch`
+ * above deliberately answers them all identically.
+ */
+function routedFetch(
+  routes: { match: RegExp; rows: unknown[] }[],
+  fallback: unknown[] = [],
+) {
+  const queries: string[] = [];
+  globalThis.fetch = (async (_u: string, init: RequestInit) => {
+    const query = JSON.parse(String(init.body)).query as string;
+    queries.push(query);
+    const rows = routes.find((r) => r.match.test(query))?.rows ?? fallback;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ success: true, result: { rows } }),
+    } as unknown as Response;
+  }) as unknown as typeof fetch;
+  return queries;
+}
+
+// The ledger stamp is memoized per isolate; each test starts from cold so one
+// test's answer cannot decide another's.
+beforeEach(resetLedgerStampMemo);
 
 describe("loadAccountPositionsColdTier", () => {
   test("prices the ledger's share fractions off D1's live neurons stake", async () => {
@@ -222,6 +255,93 @@ describe("loadAccountPositionsColdTier", () => {
     );
   });
 
+  test("a zero contradicted by a newer stake event is DEGRADED, not a confident zero", async () => {
+    // #9273 in one test. The ledger is a frozen export; a coldkey that started
+    // delegating after it has no rows here, and the old payload said
+    // `positions: 0, total_stake_alpha: 0, captured_at: null` -- a confident,
+    // unfalsifiable wrong answer for four of five live delegators sampled.
+    const ledgerAt = 1_785_634_702_670;
+    const stakeAt = ledgerAt + 3_600_000;
+    const queries = routedFetch([
+      { match: /MAX\(captured_at\)/, rows: [{ latest: ledgerAt }] },
+      { match: /MAX\(observed_at\)/, rows: [{ latest: stakeAt }] },
+    ]);
+    const { env } = d1Stub([]);
+    const data = await loadAccountPositionsColdTier(env as never, COLDKEY);
+
+    assert.equal(data!.position_count, 0);
+    assert.equal(
+      data!.captured_at,
+      new Date(ledgerAt).toISOString(),
+      "the LEDGER's stamp, so the age of the zero is visible with no rows to derive it from",
+    );
+    assert.equal(
+      data!.degraded!.reason,
+      POSITIONS_DEGRADED_SNAPSHOT_PREDATES_ACTIVITY,
+    );
+    assert.equal(
+      data!.degraded!.latest_stake_event_at,
+      new Date(stakeAt).toISOString(),
+    );
+
+    const stakeQuery = queries.find((q) => /MAX\(observed_at\)/.test(q))!;
+    assert.match(stakeQuery, /FROM chain\.account_events/);
+    assert.match(stakeQuery, new RegExp(`coldkey = '${COLDKEY}'`));
+    assert.match(stakeQuery, /'StakeAdded', 'StakeRemoved'/);
+  });
+
+  test("a zero with no newer stake activity keeps its measured meaning", async () => {
+    const ledgerAt = 1_785_634_702_670;
+    routedFetch([
+      { match: /MAX\(captured_at\)/, rows: [{ latest: ledgerAt }] },
+      { match: /MAX\(observed_at\)/, rows: [{ latest: ledgerAt - 1_000 }] },
+    ]);
+    const { env } = d1Stub([]);
+    const data = await loadAccountPositionsColdTier(env as never, COLDKEY);
+    assert.equal(data!.captured_at, new Date(ledgerAt).toISOString());
+    assert.ok(
+      !("degraded" in data!),
+      "an account that stopped delegating BEFORE the snapshot really does hold nothing",
+    );
+  });
+
+  test("a non-empty result never pays for the two snapshot reads", async () => {
+    // The cross-check exists for zeros; a result with positions already
+    // carries its own stamp, and R2 SQL is a second-scale engine.
+    const queries = routedFetch([], [positionRow(HOTKEY_A, 18, 1)]);
+    const { env } = d1Stub([{ hotkey: HOTKEY_A, netuid: 18, stake_tao: 9 }]);
+    const data = await loadAccountPositionsColdTier(env as never, COLDKEY);
+    assert.equal(data!.position_count, 1);
+    assert.equal(
+      queries.length,
+      1,
+      "one query: the ledger scan and nothing else",
+    );
+  });
+
+  test("a failed cross-check never manufactures a degraded label", async () => {
+    // Conservative direction: a lakehouse that cannot answer says nothing
+    // about whether this coldkey's zero is real.
+    const queries = routedFetch([{ match: /nominator_positions/, rows: [] }]);
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      const query = JSON.parse(String(init.body)).query as string;
+      queries.push(query);
+      if (/nominator_positions WHERE coldkey/.test(query)) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ success: true, result: { rows: [] } }),
+        } as unknown as Response;
+      }
+      throw new Error("lakehouse down");
+    }) as unknown as typeof fetch;
+    const { env } = d1Stub([]);
+    const data = await loadAccountPositionsColdTier(env as never, COLDKEY);
+    assert.equal(data!.position_count, 0);
+    assert.equal(data!.captured_at, null);
+    assert.ok(!("degraded" in data!));
+  });
+
   test("excludes a position whose hotkey D1 has no stake row for", async () => {
     // The retired loader's own contract: a deregistered hotkey (or a snapshot
     // that has not caught up) is omitted, never reported at a fabricated zero.
@@ -230,5 +350,96 @@ describe("loadAccountPositionsColdTier", () => {
     const data = await loadAccountPositionsColdTier(env as never, COLDKEY);
     assert.equal(data!.position_count, 1);
     assert.equal(data!.positions[0]!.hotkey, HOTKEY_A);
+  });
+});
+
+describe("ledgerCapturedAt", () => {
+  test("memoizes the stamp for its TTL, then re-reads", async () => {
+    // The ledger's MAX(captured_at) is identical for every caller and moves at
+    // most once per lane pass, so a zero-position request should not pay for
+    // it more than once per isolate per TTL.
+    const queries = routedFetch([], [{ latest: 100 }]);
+    const start = 1_000_000;
+    assert.equal(await ledgerCapturedAt(TOKEN as never, start), 100);
+    assert.equal(await ledgerCapturedAt(TOKEN as never, start + 1_000), 100);
+    assert.equal(queries.length, 1, "the second read is served from the memo");
+
+    assert.equal(
+      await ledgerCapturedAt(
+        TOKEN as never,
+        start + LEDGER_STAMP_MEMO_TTL_MS + 1,
+      ),
+      100,
+    );
+    assert.equal(queries.length, 2, "past the TTL it re-reads");
+  });
+
+  test("a failed read is NOT memoized", async () => {
+    // Pinning a null for five minutes would turn one transient R2 SQL failure
+    // into five minutes of unstamped zeros.
+    failingFetch();
+    assert.equal(await ledgerCapturedAt(TOKEN as never, 1), null);
+    const queries = routedFetch([], [{ latest: 42 }]);
+    assert.equal(await ledgerCapturedAt(TOKEN as never, 2), 42);
+    assert.equal(queries.length, 1);
+  });
+
+  test("an absent, blank, or non-numeric stamp reads as null", async () => {
+    for (const latest of [null, undefined, "", "  ", "not-a-date", -1]) {
+      resetLedgerStampMemo();
+      routedFetch([], [{ latest }]);
+      assert.equal(
+        await ledgerCapturedAt(TOKEN as never, 1),
+        null,
+        `latest=${String(latest)}`,
+      );
+    }
+    resetLedgerStampMemo();
+    routedFetch([], []);
+    assert.equal(
+      await ledgerCapturedAt(TOKEN as never, 1),
+      null,
+      "no row at all",
+    );
+  });
+
+  test("the default clock engages when no timestamp is passed", async () => {
+    routedFetch([], [{ latest: 7 }]);
+    assert.equal(await ledgerCapturedAt(TOKEN as never), 7);
+  });
+});
+
+describe("latestStakeEventAt", () => {
+  test("sanitizes its OWN input rather than trusting the caller", async () => {
+    // R2 SQL has no bound parameters at all, so every predicate in this module
+    // is interpolated and safeSs58Literal is the only thing between a request
+    // path and the warehouse. This function is exported, so "the one caller
+    // already validated it" is a property of today's code, not of the
+    // function.
+    const queries = routedFetch([], [{ latest: 1 }]);
+    for (const bad of ["' OR 1=1 --", "not-an-ss58", ""]) {
+      assert.equal(
+        await latestStakeEventAt(TOKEN as never, bad),
+        null,
+        `${bad} must be refused, not escaped`,
+      );
+    }
+    assert.equal(queries.length, 0, "an unusable address issues no query");
+  });
+
+  test("asks account_events for this coldkey's newest stake event only", async () => {
+    const queries = routedFetch([], [{ latest: 1_785_700_000_000 }]);
+    assert.equal(
+      await latestStakeEventAt(TOKEN as never, COLDKEY),
+      1_785_700_000_000,
+    );
+    assert.match(queries[0]!, /MAX\(observed_at\).*FROM chain\.account_events/);
+    assert.match(queries[0]!, new RegExp(`coldkey = '${COLDKEY}'`));
+    assert.match(queries[0]!, /event_kind IN \('StakeAdded', 'StakeRemoved'\)/);
+  });
+
+  test("a failed read is null, never a manufactured contradiction", async () => {
+    failingFetch();
+    assert.equal(await latestStakeEventAt(TOKEN as never, COLDKEY), null);
   });
 });

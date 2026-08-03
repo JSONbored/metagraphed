@@ -35,11 +35,30 @@
 // the empty it replaced. Same for a partial stake map: a chunk that fails
 // would drop every position it covered, and buildAccountPositions has no way
 // to tell a dropped hotkey from a deregistered one.
+//
+// #9273 -- THE ZERO THIS TIER USED TO PUBLISH. The ledger it reads is a frozen
+// export (captured 2026-08-02) and nothing refreshes it, so a coldkey that
+// began delegating after that date has no rows here and got
+// `positions: 0, total_stake_alpha: 0` with a NULL captured_at: a confident,
+// unfalsifiable wrong answer. Four of five coldkeys sampled from a live
+// /validators/{hotkey}/nominators response -- all provably delegating right
+// now -- came back that way. So when this tier resolves to zero it now reads
+// two more facts and says what it actually knows: the ledger's own capture
+// stamp (so the age of the answer is visible even with no rows to derive it
+// from), and this coldkey's newest on-chain stake event. A stake event newer
+// than the ledger contradicts the zero, and the payload says so
+// (`degraded.reason: snapshot_predates_stake_activity`) instead of asserting
+// it. Both reads are issued ONLY on the zero path, in parallel with each
+// other, and the ledger stamp is memoized per isolate -- it moves at most once
+// per lane tick and is identical for every caller.
 import {
+  annotatePositionsSnapshot,
   buildAccountPositions,
   distinctHotkeys,
   stakeByHotkeyNetuid,
 } from "./account-nominator-positions.ts";
+import { STAKE_ADDED_KIND, STAKE_REMOVED_KIND } from "./account-stake-flow.ts";
+import { registerModuleStateReset } from "./module-state-registry.ts";
 import { r2SqlQuery, safeSs58Literal } from "./r2-sql.ts";
 
 /** Kept identical to the retired Postgres tier's SELECT list (minus `coldkey`,
@@ -85,7 +104,7 @@ interface D1Like {
  * own early return: an account with no positions is a legitimate empty card,
  * not a decline.
  */
-async function neuronStakeByHotkeys(
+export async function neuronStakeByHotkeys(
   env: Env | null | undefined,
   hotkeys: string[],
 ): Promise<Map<string, number> | null> {
@@ -118,6 +137,100 @@ async function neuronStakeByHotkeys(
   return stakeByHotkeyNetuid(results.flat() as Record<string, unknown>[]);
 }
 
+/** First finite non-negative `latest` cell of a MAX() result, or null. Both
+ * snapshot reads below return exactly one row with one column. */
+function latestStamp(
+  rows: Array<Record<string, unknown>> | null,
+): number | null {
+  const value = rows?.[0]?.latest;
+  if (value == null || (typeof value === "string" && value.trim() === "")) {
+    return null;
+  }
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+/**
+ * How long the ledger's capture stamp is reused within one isolate.
+ *
+ * The ledger is a frozen export today and a per-tick snapshot once the live
+ * lane runs, so its MAX(captured_at) is the same value for every caller and
+ * moves at most once per pass. Five minutes is far shorter than any plausible
+ * pass and removes the query from all but the first zero-position request an
+ * isolate serves.
+ */
+export const LEDGER_STAMP_MEMO_TTL_MS = 5 * 60 * 1000;
+
+let ledgerStampMemo: { value: number | null; expiresAtMs: number } | null =
+  null;
+
+/** Drop the memo so the next read goes back to the lakehouse. Exported for
+ * tests and for any caller that has just observed the ledger change (mirrors
+ * src/decode-watermark.ts's own reset seam). */
+export function resetLedgerStampMemo(): void {
+  ledgerStampMemo = null;
+}
+
+registerModuleStateReset(
+  "src/nominator-positions-cold-tier.ts",
+  resetLedgerStampMemo,
+);
+
+/**
+ * The LEDGER's own capture stamp -- not this account's. Memoized per isolate;
+ * a failed read is not memoized, so a transient R2 SQL failure does not pin a
+ * null for five minutes.
+ */
+export async function ledgerCapturedAt(
+  env: Env | null | undefined,
+  nowMs: number = Date.now(),
+): Promise<number | null> {
+  if (ledgerStampMemo && ledgerStampMemo.expiresAtMs > nowMs) {
+    return ledgerStampMemo.value;
+  }
+  const rows = await r2SqlQuery(
+    env,
+    "SELECT MAX(captured_at) AS latest FROM chain.nominator_positions",
+  );
+  if (rows === null) return null;
+  const value = latestStamp(rows);
+  ledgerStampMemo = { value, expiresAtMs: nowMs + LEDGER_STAMP_MEMO_TTL_MS };
+  return value;
+}
+
+/**
+ * The newest StakeAdded/StakeRemoved this coldkey has on chain, or null when
+ * it has none (or the read failed -- both mean "nothing here contradicts the
+ * ledger", which is the conservative direction: a failed cross-check must not
+ * manufacture a `degraded` label out of nothing).
+ *
+ * `account_events` is the LIVE stream -- the decode lane keeps writing it -- so
+ * it is the one source that can tell a post-export delegator from an account
+ * that genuinely holds nothing. Selective single-address predicate, which is
+ * exactly the shape the request-time lakehouse lane is for.
+ *
+ * SANITIZES ITS OWN INPUT rather than trusting the caller. R2 SQL has no bound
+ * parameters at all, so every predicate in this file is interpolated and
+ * `safeSs58Literal` is the only thing standing between a request path and the
+ * warehouse. This function is exported, so "the one caller already validated
+ * it" is a property of today's code, not of the function -- re-validating here
+ * is idempotent on an already-safe literal and costs one regex.
+ */
+export async function latestStakeEventAt(
+  env: Env | null | undefined,
+  ss58: string,
+): Promise<number | null> {
+  const coldkey = safeSs58Literal(ss58);
+  if (coldkey === null) return null;
+  const rows = await r2SqlQuery(
+    env,
+    "SELECT MAX(observed_at) AS latest FROM chain.account_events" +
+      ` WHERE coldkey = '${coldkey}'` +
+      ` AND event_kind IN ('${STAKE_ADDED_KIND}', '${STAKE_REMOVED_KIND}')`,
+  );
+  return latestStamp(rows);
+}
+
 /**
  * One coldkey's reconstructed nominator-side positions, or null to let the
  * caller keep its existing empty payload.
@@ -141,5 +254,17 @@ export async function loadAccountPositionsColdTier(
 
   const stake = await neuronStakeByHotkeys(env, distinctHotkeys(rows));
   if (stake === null) return null;
-  return buildAccountPositions(rows, stake, ss58);
+  const result = buildAccountPositions(rows, stake, ss58);
+
+  // Only a ZERO needs explaining; a result with positions already carries its
+  // own stamp and is not the answer this issue is about.
+  if (result.position_count > 0) return result;
+  const [snapshotCapturedAtMs, latestStakeEventMs] = await Promise.all([
+    ledgerCapturedAt(env),
+    latestStakeEventAt(env, coldkey),
+  ]);
+  return annotatePositionsSnapshot(result, {
+    snapshotCapturedAtMs,
+    latestStakeEventMs,
+  });
 }

@@ -6326,7 +6326,12 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
-  test("handleAccountPositions: flag=postgres degrades to an empty schema-stable card on failure, D1 never queried (#5233)", async () => {
+  test("handleAccountPositions: flag=postgres falls through to the D1 hot leg and LABELS the empty card (#9273)", async () => {
+    // The chain is Postgres -> D1 -> lakehouse -> labelled empty. This stub's
+    // D1 has no nominator_positions ledger and there is no R2 SQL token, so
+    // every tier declines -- and the card that comes back now SAYS so rather
+    // than publishing a confident `total_stake_alpha: 0`, which is the
+    // #9260/#9263 defect class this route shared.
     const { env, captures } = dbWith({});
     env.METAGRAPH_NEURONS_SOURCE = "postgres";
     env.DATA_API = {
@@ -6346,7 +6351,11 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(body.data.positions, []);
     assert.equal(body.data.position_count, 0);
     assert.equal(body.data.total_stake_alpha, 0);
-    assert.deepEqual(captures.sql, []);
+    assert.equal(body.data.degraded.reason, "tier_unavailable");
+    assert.ok(
+      captures.sql.some((sql: string) => /FROM nominator_positions/.test(sql)),
+      "the D1 hot leg is consulted before the lakehouse -- it is the only tier that can be current",
+    );
   });
 
   test("handleAccountsList: flag=postgres uses Postgres data, D1 never queried", async () => {

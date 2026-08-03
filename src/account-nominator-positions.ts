@@ -88,6 +88,37 @@ export interface AccountNominatorPosition {
   stake_tao: number;
 }
 
+/**
+ * Both tiers declined -- this zero is a read failure, not a measurement.
+ * Same vocabulary as workers/request-handlers/analytics.ts's
+ * DEGRADED_TIER_UNAVAILABLE, which labels the identical condition on the
+ * analytics routes.
+ */
+export const POSITIONS_DEGRADED_TIER_UNAVAILABLE = "tier_unavailable";
+
+/**
+ * The ledger answered zero, but this coldkey has stake activity on chain that
+ * is NEWER than the ledger's own snapshot -- so the zero cannot be trusted.
+ *
+ * This is the #9273 failure in one field. Four of five coldkeys sampled from a
+ * live /validators/{hotkey}/nominators response -- all of them provably
+ * delegating right now -- got `positions: 0, total_stake_alpha: 0` from a
+ * ledger frozen before they started. An honest decline beats a confident wrong
+ * zero.
+ */
+export const POSITIONS_DEGRADED_SNAPSHOT_PREDATES_ACTIVITY =
+  "snapshot_predates_stake_activity";
+
+export interface AccountPositionsDegraded {
+  reason: string;
+  /** The LEDGER's own capture stamp, not this account's -- present even when
+   * the account has no rows in it, which is the case this exists for. */
+  snapshot_captured_at: string | null;
+  /** The newest StakeAdded/StakeRemoved this coldkey has on chain, when that
+   * is what contradicts the zero. */
+  latest_stake_event_at: string | null;
+}
+
 export interface AccountPositionsResult {
   schema_version: 1;
   ss58: string;
@@ -95,6 +126,13 @@ export interface AccountPositionsResult {
   position_count: number;
   total_stake_alpha: number;
   positions: AccountNominatorPosition[];
+  /**
+   * Present ONLY when this payload's zero is not a measurement. Absent on
+   * every trustworthy answer, so a consumer that ignores it reads exactly what
+   * it read before -- and one that checks it can tell "delegates nothing" from
+   * "we cannot currently say".
+   */
+  degraded?: AccountPositionsDegraded;
 }
 
 // hotkeyNetuidStake: a Map keyed by "hotkey|netuid" -> stake_tao, built by
@@ -174,6 +212,77 @@ export function distinctHotkeys(
     }
   }
   return [...seen];
+}
+
+/**
+ * The empty card served when EVERY tier declined -- labelled as such (#9273).
+ *
+ * The unlabelled `buildAccountPositions([], new Map(), ss58)` this replaces
+ * was indistinguishable from a coldkey that genuinely delegates nothing: same
+ * `position_count: 0`, same `total_stake_alpha: 0`, same 200. That is the
+ * defect this route shares with #9260/#9263, and it is worse here because the
+ * payload carries a confident TOTAL rather than merely an empty list.
+ */
+export function unavailableAccountPositions(
+  ss58: string,
+): AccountPositionsResult {
+  return {
+    ...buildAccountPositions([], new Map(), ss58),
+    degraded: {
+      reason: POSITIONS_DEGRADED_TIER_UNAVAILABLE,
+      snapshot_captured_at: null,
+      latest_stake_event_at: null,
+    },
+  };
+}
+
+/**
+ * Attach a snapshot's own provenance to a result that came back empty.
+ *
+ * Two things happen here, both only when the account resolved to ZERO
+ * positions (a non-empty result already carries its own `captured_at` from its
+ * own rows, and needs no help being read correctly):
+ *
+ *  1. `captured_at` becomes the LEDGER's stamp rather than null. A null stamp
+ *     beside a zero total tells a caller nothing at all; the ledger's stamp
+ *     tells them exactly how old the answer is, which is requirement 2's floor.
+ *  2. When the coldkey has a stake event NEWER than that stamp, the zero is
+ *     labelled `degraded`. The account was demonstrably staking after the
+ *     ledger was captured, so "holds nothing" is a claim the ledger is not
+ *     entitled to make.
+ *
+ * A missing ledger stamp with a known stake event still degrades: an
+ * unstamped ledger is strictly less trustworthy than a stamped one, so it
+ * cannot be the thing that rescues the zero.
+ *
+ * Pure -- no clock, no store -- so both edges are testable directly.
+ */
+export function annotatePositionsSnapshot(
+  result: AccountPositionsResult,
+  snapshot: {
+    snapshotCapturedAtMs: number | null;
+    latestStakeEventMs: number | null;
+  },
+): AccountPositionsResult {
+  if (result.position_count > 0) return result;
+  const { snapshotCapturedAtMs, latestStakeEventMs } = snapshot;
+  const snapshotCapturedAt =
+    snapshotCapturedAtMs != null ? toIso(snapshotCapturedAtMs) : null;
+  const annotated: AccountPositionsResult = {
+    ...result,
+    captured_at: result.captured_at ?? snapshotCapturedAt,
+  };
+  const contradicted =
+    latestStakeEventMs != null &&
+    (snapshotCapturedAtMs == null || latestStakeEventMs > snapshotCapturedAtMs);
+  if (contradicted) {
+    annotated.degraded = {
+      reason: POSITIONS_DEGRADED_SNAPSHOT_PREDATES_ACTIVITY,
+      snapshot_captured_at: snapshotCapturedAt,
+      latest_stake_event_at: toIso(latestStakeEventMs),
+    };
+  }
+  return annotated;
 }
 
 // Postgres neurons rows (hotkey, netuid, stake_tao) -> a "hotkey|netuid" ->

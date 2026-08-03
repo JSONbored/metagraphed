@@ -1141,7 +1141,12 @@ test("nominator-positions-sync is disabled (503) when NOMINATOR_POSITIONS_SYNC_S
   expect(res.status).toBe(503);
 });
 
-test("nominator-positions-sync answers 503 -- the Postgres tier it wrote to is gone (#9193)", async () => {
+test("nominator-positions-sync writes to D1 -- the lane is live again (#9273)", async () => {
+  // It answered 503 for the whole period the ledger was frozen (#9193 retired
+  // it with the box), which is why /accounts/{ss58}/positions served a stamp
+  // that could never advance. The end-to-end write contract lives in
+  // tests/data-api-nominator-positions-d1.test.ts against a real SQLite
+  // database; this asserts only that the route no longer dead-ends here.
   const res = await worker.fetch(
     new Request("https://d/api/v1/internal/nominator-positions-sync", {
       method: "POST",
@@ -1154,7 +1159,12 @@ test("nominator-positions-sync answers 503 -- the Postgres tier it wrote to is g
     env as unknown as Env,
     ctx,
   );
-  expect(res.status).toBe(503);
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({
+    ok: true,
+    nominator_positions_written: 1,
+    stores: ["d1"],
+  });
 });
 
 // #6638: POST /api/v1/internal/subnet-locks-sync -- the write path into
