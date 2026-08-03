@@ -4926,7 +4926,14 @@ export type SubnetOhlcCandle = {
 export type SubnetOwnershipHistory = {
   __typename?: 'SubnetOwnershipHistory';
   count: Scalars['Int']['output'];
+  /** The chain_events method the authoritative records are decoded from. */
+  event_method?: Maybe<Scalars['String']['output']>;
+  /** The chain_events pallet the authoritative records are decoded from. */
+  event_pallet?: Maybe<Scalars['String']['output']>;
   netuid: Scalars['Int']['output'];
+  /** The newest owner observation for this subnet, ISO-8601 -- how far the observation source covers it at all, so watched-but-never-changed-hands is distinguishable from not-watched-since. Null when no observations were read. */
+  observed_through?: Maybe<Scalars['String']['output']>;
+  /** Each record carries a source: chain-event (announced on chain, block-stamped) or owner-observation (inferred from two consecutive owner captures, so observed_at is when the change was NOTICED and block_number is null). */
   ownership_changes: Array<Scalars['JSON']['output']>;
   schema_version: Scalars['Int']['output'];
 };
@@ -8988,7 +8995,10 @@ export type SubnetOhlcCandleResolvers<ContextType = GqlContext, ParentType exten
 
 export type SubnetOwnershipHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetOwnershipHistory'] = ResolversParentTypes['SubnetOwnershipHistory']> = ResolversObject<{
   count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  event_method?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  event_pallet?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  observed_through?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   ownership_changes?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;

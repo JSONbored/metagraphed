@@ -122,7 +122,53 @@ export async function loadSubnetOwnershipHistoryColdTier(
 ): Promise<ReturnType<typeof buildSubnetOwnershipHistory> | null> {
   const subnet = safeBlockNumber(netuid);
   if (subnet === null) return null;
-  const rows = await loadOwnershipChangeRows(env);
-  if (rows === null) return null;
-  return buildSubnetOwnershipHistory(rows, subnet, { filterByNetuid: true });
+  const [rows, observations] = await Promise.all([
+    loadOwnershipChangeRows(env),
+    loadSubnetOwnerObservations(env, subnet),
+  ]);
+  if (rows === null || observations === null) return null;
+  return buildSubnetOwnershipHistory(rows, subnet, {
+    filterByNetuid: true,
+    observations,
+  });
+}
+
+/** The ledger's SELECT list. `owner_hotkey` is read but not published: the
+ * contract's records are coldkey-to-coldkey, and a hotkey rotation under an
+ * unchanged coldkey is not a change of ownership. */
+const OWNER_OBSERVATION_COLUMNS = "owner_coldkey, captured_at";
+
+/**
+ * One subnet's owner observations, oldest first -- or null when the lakehouse
+ * cannot answer.
+ *
+ * THE SECOND SOURCE, and the one that actually has rows. The whole 895M-row
+ * event table holds exactly ONE SubnetOwnerChanged event, so the stream above
+ * answers an empty history for 127 of the 128 subnets the poller has ever
+ * watched. `chain.subnet_ownership_history` is the poller's own record of who
+ * it observed owning each subnet, appended only when the observed owner
+ * CHANGES (see deploy/postgres/schema.sql's note on the writer) -- so a subnet
+ * with two rows changed hands between them whether or not the chain emitted an
+ * event for it, and three did (measured 2026-08-03).
+ *
+ * Small enough to read whole for one netuid: 135 rows chain-wide, at most two
+ * per subnet. The netuid is forced through `safeBlockNumber` by the caller
+ * before it reaches this string-built query, since R2 SQL takes no bound
+ * parameters.
+ *
+ * FROZEN, LIKE EVERYTHING ELSE THE BOX WROTE. The newest capture is
+ * 2026-08-01, so `observed_through` in the payload is the honest ceiling on
+ * what this source can know -- not a refresh lane, which is separate work, but
+ * enough that a caller is never told "no transfers" when the truth is "not
+ * watched since".
+ */
+export async function loadSubnetOwnerObservations(
+  env: Env | null | undefined,
+  netuid: number,
+): Promise<Record<string, unknown>[] | null> {
+  return await r2SqlQuery(
+    env,
+    `SELECT ${OWNER_OBSERVATION_COLUMNS} FROM chain.subnet_ownership_history` +
+      ` WHERE netuid = ${netuid} ORDER BY captured_at ASC`,
+  );
 }

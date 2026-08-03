@@ -329,6 +329,7 @@ import { loadValidatorNominatorsColdTier } from "./account-feeds-cold-tier.ts";
 import { loadAccountPositionsColdTier } from "./nominator-positions-cold-tier.ts";
 import { loadAccountPositionsD1 } from "./nominator-positions-hot-tier.ts";
 import { coldTierChainEventsPayload } from "./chain-events-degraded.ts";
+import { subnetOwnershipHistoryNode } from "./subnet-ownership-answer.ts";
 import { computeStakeQuote, STAKE_QUOTE_DIRECTIONS } from "./stake-quote.ts";
 import {
   ACCOUNTS_LIST_LIMIT_DEFAULT,
@@ -8032,14 +8033,10 @@ const rootValue = {
       context,
       `/api/v1/subnets/${netuid}/ownership-history`,
     );
-    return {
-      schema_version: data?.schema_version ?? 1,
-      netuid,
-      count: data?.count ?? 0,
-      ownership_changes: Array.isArray(data?.ownership_changes)
-        ? data.ownership_changes
-        : [],
-    };
+    // Shaped by the composer's own node builder, not here. The inline reshape
+    // this replaces kept four fields, so every field REST's payload gained
+    // reached REST alone -- the per-surface drift #9296 fixed for /rpc/usage.
+    return subnetOwnershipHistoryNode(data, netuid);
   },
 
   async subnet_conviction(

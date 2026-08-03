@@ -1386,10 +1386,17 @@ import { buildAccountIdentityHistory } from "./account-identity-history.ts";
 import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.ts";
 import { loadSubnetBurn } from "./subnet-burn.ts";
 import { loadSubnetLease } from "./subnet-lease.ts";
+// coldTierChainEventsPayload is still reached for CONVICTION (#9319), which
+// has no composer of its own. The ownership-history branch no longer comes
+// through here -- it has one, and this tool answers from it below.
 import {
   coldTierChainEventsPayload,
   degradedChainEventsPayload,
 } from "./chain-events-degraded.ts";
+import {
+  answerSubnetOwnershipHistory,
+  subnetOwnershipHistoryNode,
+} from "./subnet-ownership-answer.ts";
 import { loadSudoKey } from "./sudo-key.ts";
 import { loadNetworkParameters } from "./network-parameters.ts";
 import { loadUpgradeRadar } from "./upgrade-radar.ts";
@@ -2767,20 +2774,6 @@ function degradedDataApiRead(path: string): Row | null {
     : null;
 }
 
-// The tool's projection of an ownership-history payload, whichever tier
-// produced it -- one narrowing so a cold-tier answer and a DATA_API answer
-// cannot present differently.
-function narrowOwnershipHistory(data: Row | null, netuid: number) {
-  return {
-    schema_version: data?.schema_version ?? 1,
-    netuid,
-    count: data?.count ?? 0,
-    ownership_changes: Array.isArray(data?.ownership_changes)
-      ? data.ownership_changes
-      : [],
-  };
-}
-
 // get_subnet_ownership_history, with the lakehouse behind DATA_API.
 //
 // Layered around the DATA_API reader rather than threaded into its three
@@ -2789,20 +2782,20 @@ function narrowOwnershipHistory(data: Row | null, netuid: number) {
 // signal and one check replaces three. The cold tier is only consulted then --
 // DATA_API stays the primary, exactly as on the REST side.
 //
-// The reader it consults is the SAME one REST reaches through
-// coldTierChainEventsPayload, so the two surfaces cannot disagree about a
-// subnet's transfers. A cold-tier decline leaves the marked empty in place.
+// It goes through answerSubnetOwnershipHistory, the composer REST and GraphQL
+// also answer this route from, and returns its payload WHOLE. The narrowing
+// that used to sit here kept four fields and dropped the rest, which meant
+// every field the reader gained reached REST and not this tool -- the same
+// per-call-site drift #9296 fixed for /rpc/usage. A cold-tier decline leaves
+// the marked empty in place.
 async function loadSubnetOwnershipHistory(ctx: McpCtx, netuid: number) {
   const answer = (await loadSubnetOwnershipHistoryFromDataApi(
     ctx,
     netuid,
   )) as Row;
   if (!answer.degraded) return answer;
-  const cold = await coldTierChainEventsPayload(
-    ctx.env,
-    new URL(`https://d/api/v1/subnets/${netuid}/ownership-history`),
-  );
-  return cold ? narrowOwnershipHistory(cold, netuid) : answer;
+  const cold = await answerSubnetOwnershipHistory(ctx.env, netuid);
+  return cold ? subnetOwnershipHistoryNode(cold, netuid) : answer;
 }
 
 async function loadSubnetOwnershipHistoryFromDataApi(
@@ -2848,7 +2841,15 @@ async function loadSubnetOwnershipHistoryFromDataApi(
         "Try again shortly.",
     );
   }
-  return narrowOwnershipHistory((await response.json()) as Row | null, netuid);
+  // DATA_API's own payload, through the SAME node builder the cold-tier leg
+  // and GraphQL use. It fills the contract's fields without dropping the rest,
+  // so a tier answering 200 with a thin body still yields a complete structured
+  // result and a tier answering with more than the contract names does not have
+  // it projected away here.
+  return subnetOwnershipHistoryNode(
+    (await response.json()) as Row | null,
+    netuid,
+  );
 }
 
 // Mirrors loadSubnetOwnershipHistory above, including its two-step shape:
