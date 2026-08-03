@@ -6,17 +6,26 @@
 //   3. ONE FORMATTING PASS — rows from both sources go through the shared
 //      formatter together, never formatted twice.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { beforeEach, describe, test } from "vitest";
 import {
-  blocksSeam,
+  blocksSeamFloor,
   d1CanServe,
   DEFAULT_BLOCKS_SEAM,
   loadBlockColdTier,
   loadBlockFeedColdTier,
+  resolveBlocksSeam,
 } from "../src/blocks-cold-tier.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import {
+  DECODE_WATERMARK_KEY,
+  resetDecodeWatermarkCache,
+} from "../src/decode-watermark.ts";
 
-const SEAM = DEFAULT_BLOCKS_SEAM; // 8_756_998
+const SEAM = DEFAULT_BLOCKS_SEAM; // 8_759_336
+
+// The watermark memo is module state that outlives a test. Without this, the
+// first test to publish one silently moves the seam for every test after it.
+beforeEach(() => resetDecodeWatermarkCache());
 
 /** A D1 stub that records the SQL it was asked for. */
 function d1(rows: Record<string, unknown>[], opts: { throws?: boolean } = {}) {
@@ -83,14 +92,30 @@ function lakeFetch(rows: unknown[]) {
 
 const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
 
-describe("blocksSeam", () => {
+/** A bucket stub serving one watermark body (or nothing). */
+function archive(body: unknown) {
+  return {
+    METAGRAPH_ARCHIVE: {
+      async get(key: string) {
+        if (key !== DECODE_WATERMARK_KEY || body === undefined) return null;
+        return {
+          async text() {
+            return JSON.stringify(body);
+          },
+        };
+      },
+    },
+  };
+}
+
+describe("blocksSeamFloor", () => {
   test("defaults to the verified lakehouse maximum", () => {
-    assert.equal(blocksSeam(undefined), DEFAULT_BLOCKS_SEAM);
-    assert.equal(blocksSeam({}), DEFAULT_BLOCKS_SEAM);
+    assert.equal(blocksSeamFloor(undefined), DEFAULT_BLOCKS_SEAM);
+    assert.equal(blocksSeamFloor({}), DEFAULT_BLOCKS_SEAM);
   });
 
-  test("is overridable so a backfill can move it without a code change", () => {
-    assert.equal(blocksSeam({ ICEBERG_BLOCKS_MAX: "9000000" }), 9_000_000);
+  test("is overridable so a deployment can raise its own floor", () => {
+    assert.equal(blocksSeamFloor({ ICEBERG_BLOCKS_MAX: "9000000" }), 9_000_000);
   });
 
   test("a malformed override falls back rather than serving from block 0", () => {
@@ -98,10 +123,91 @@ describe("blocksSeam", () => {
     // the seam at 0 and route the ENTIRE chain to D1, which holds days of it.
     for (const bad of ["abc", "", "-5", "1.5"]) {
       assert.equal(
-        blocksSeam({ ICEBERG_BLOCKS_MAX: bad }),
+        blocksSeamFloor({ ICEBERG_BLOCKS_MAX: bad }),
         DEFAULT_BLOCKS_SEAM,
       );
     }
+  });
+});
+
+describe("resolveBlocksSeam — the constant is a FLOOR, never a ceiling", () => {
+  test("a published watermark ahead of the floor moves the seam", async () => {
+    // The whole point: the decode lane extends the lakehouse hourly and the
+    // Worker follows without a deploy.
+    assert.equal(
+      await resolveBlocksSeam(archive({ decoded_through: SEAM + 4_000 })),
+      SEAM + 4_000,
+    );
+  });
+
+  test("no watermark at all leaves the floor exactly where it was", async () => {
+    assert.equal(await resolveBlocksSeam({}), DEFAULT_BLOCKS_SEAM);
+    assert.equal(await resolveBlocksSeam(archive(undefined)), SEAM);
+  });
+
+  test("a watermark BEHIND the floor cannot lower the seam", async () => {
+    // A regressed watermark (a rolled-back ledger, a half-written object) must
+    // not un-serve verified history the lakehouse still holds.
+    assert.equal(
+      await resolveBlocksSeam(archive({ decoded_through: 1 })),
+      SEAM,
+    );
+  });
+
+  test("a malformed watermark falls back instead of guessing", async () => {
+    for (const body of [{}, { decoded_through: "later" }, "nonsense", null]) {
+      resetDecodeWatermarkCache();
+      assert.equal(await resolveBlocksSeam(archive(body)), SEAM);
+    }
+  });
+
+  test("the env floor still wins when it is the higher of the two", async () => {
+    assert.equal(
+      await resolveBlocksSeam({
+        ...archive({ decoded_through: SEAM + 10 }),
+        ICEBERG_BLOCKS_MAX: String(SEAM + 5_000),
+      }),
+      SEAM + 5_000,
+    );
+  });
+});
+
+describe("the resolved seam actually routes the request", () => {
+  test("a block above the constant but below the watermark reads from the lake", async () => {
+    // The production bug, as a test: block SEAM+3264 was served from D1 with
+    // null author/spec_version/event_count while the lakehouse held it.
+    const above = SEAM + 3_264;
+    const { db, sql } = d1([headRow(above)]);
+    const queries = lakeFetch([lakeRow(above)]);
+    const data = await loadBlockColdTier(
+      {
+        ...TOKEN,
+        ...archive({ decoded_through: above }),
+        METAGRAPH_HEALTH_DB: db,
+      } as never,
+      String(above),
+    );
+    assert.deepEqual(sql, [], "D1 must not be asked for a decoded block");
+    assert.match(queries[0]!, new RegExp(`block_number = ${above}`));
+    assert.equal(data!.block!.author, lakeRow(above).author);
+  });
+
+  test("the D1 leg's floor moves with the watermark, not with the constant", async () => {
+    const { db, params } = d1([headRow(SEAM + 5_000)]);
+    lakeFetch([]);
+    await loadBlockFeedColdTier(
+      {
+        ...TOKEN,
+        ...archive({ decoded_through: SEAM + 4_000 }),
+        METAGRAPH_HEALTH_DB: db,
+      } as never,
+      { limit: 1, offset: 0 },
+    );
+    assert.equal(
+      params[0]![0],
+      SEAM + 4_000,
+      "the head leg is bounded by the resolved seam, not DEFAULT_BLOCKS_SEAM",
+    );
   });
 });
 

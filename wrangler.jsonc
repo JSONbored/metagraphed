@@ -218,9 +218,14 @@
     // same fallback. Explorer routes (blocks/extrinsics/events/sudo) serve
     // from the lakehouse cold tiers; the remaining families serve schema-
     // stable empties until their D1 ports / projections land.
-    // Measured max(chain.blocks) after the final top-up load (2026-08-02,
-    // contiguity re-verified: count == max - min + 1). Blocks at or below
-    // this height serve from the lakehouse; above it, from D1 blocks_head.
+    // The seam FLOOR, not the seam. Measured max(chain.blocks) after the final
+    // top-up load (2026-08-02, contiguity re-verified: count == max - min + 1).
+    // The seam itself is resolved per request as max(this, the watermark the
+    // decode lane publishes to metagraph/lakehouse/decode-watermark.json) --
+    // see src/decode-watermark.ts. Raising this by hand is never required and
+    // never harmful; leaving it stale costs nothing while the decoder
+    // publishes. Blocks at or below the resolved seam serve from the
+    // lakehouse; above it, from D1 blocks_head.
     "ICEBERG_BLOCKS_MAX": "8759336",
     "METAGRAPH_BLOCKS_SOURCE": "retired",
     "METAGRAPH_EXTRINSICS_SOURCE": "retired",
@@ -687,10 +692,12 @@
       // 41 = hourly SafeMode watchdog (#8696), Worker-native -- see
       // SAFE_MODE_WATCHDOG_CRON in workers/config.ts.
       "41 * * * *",
-      // 23 7 = daily lakehouse seam watchdog (#9161), Worker-native rather
+      // 48 = hourly lakehouse seam watchdog (#9161), Worker-native rather
       // than a GitHub Action because R2_SQL_TOKEN already lives here -- see
-      // LAKEHOUSE_SEAM_CRON in workers/config.ts.
-      "23 7 * * *",
+      // LAKEHOUSE_SEAM_CRON in workers/config.ts. Hourly, 31 minutes after
+      // the decode lane's own cron, since what it now watches is whether that
+      // lane is still publishing.
+      "48 * * * *",
       // 23 = hourly freshness watchdog. The alarm that replaces the indexer
       // box's Prometheus/Alertmanager pair and the cross-box dead-man's-switch,
       // which do not survive the boxes -- see FRESHNESS_WATCHDOG_CRON in

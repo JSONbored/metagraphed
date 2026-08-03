@@ -13,10 +13,19 @@
 // in range (the poller was running before the export was cut), so stitching by
 // "whatever D1 has" would serve observer-copied rows in a range where verified
 // rows exist, silently downgrading columns for blocks we hold good data for.
-// Routing on a fixed height makes each block come from exactly one source, so
+// Routing on a single height makes each block come from exactly one source, so
 // the boundary is reproducible instead of depending on what the poller
-// happened to retain. When a reconciling backfill later lands more verified
-// history in the lakehouse, the seam moves forward by config -- no code change.
+// happened to retain.
+//
+// THE HEIGHT IS RESOLVED, NOT PINNED. It used to be a wrangler var, and that
+// made the seam a thing only a human could move: the decode lane extended the
+// lakehouse hourly while the Worker kept routing against a constant from the
+// last deploy, so every recently-decoded block served reduced columns forever
+// (measured in production 2026-08-03 -- see src/decode-watermark.ts's header).
+// The seam now comes from the watermark the decoder itself publishes, with the
+// configured constant as a FLOOR beneath it. It is still ONE height per
+// request -- resolved once and threaded through both legs -- so the "exactly
+// one source per block" property is unchanged; only who chooses it moved.
 //
 // COLUMN COVERAGE IS NOT UNIFORM, and this module does not pretend otherwise.
 // `blocks_head` carries block_number, block_hash, parent_hash, extrinsic_count
@@ -35,27 +44,30 @@ import {
 } from "./r2-sql-blocks.ts";
 import { safeBlockNumber, safeHexLiteral } from "./r2-sql.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
+import {
+  resolveDecodeWatermark,
+  type DecodeWatermarkDeps,
+} from "./decode-watermark.ts";
 
-/** Highest block the lakehouse holds. Overridable so the seam can move when a
- * backfill extends verified history, without a deploy of new code. */
+/** Floor for the seam, overridable per environment. NOT the seam itself any
+ * more: see `resolveBlocksSeam`. */
 export const BLOCKS_SEAM_ENV = "ICEBERG_BLOCKS_MAX";
 
 /**
- * Default seam: the maximum block_number in chain.blocks.
+ * The seam FLOOR: history the lakehouse is known to hold regardless of what
+ * the decode lane has published since.
  *
- * Re-measured 2026-08-02 against the live lakehouse (#9161):
- * `min=0, max=8,759,336, count=8,759,337` -- `count == max - min + 1`, so the
- * range is contiguous with no gaps and no duplicates.
+ * Measured 2026-08-02 against the live lakehouse (#9161): `min=0,
+ * max=8,759,336, count=8,759,337` -- `count == max - min + 1`, so the range is
+ * contiguous with no gaps and no duplicates. It is the height of the final
+ * export plus the delta loads that followed, and it is the same number the
+ * decoder's own `iceberg_r2.py seam` uses when its ledger is empty.
  *
- * It was 8,756,998, the height of the final export + delta load. The decoder
- * has since extended chain.blocks (and chain.extrinsics and
- * chain.account_events) 2,338 blocks further, and nothing re-measured this.
- * That drift is invisible while the box lives -- Postgres answers first -- and
- * would have started mis-routing the moment the box was wiped, serving those
- * blocks from D1 blocks_head with null author/spec_version/event_count.
- *
- * scripts/check-lakehouse-seam.ts now fails when this and the lakehouse
- * diverge, so the next backfill cannot leave it stale in silence.
+ * As a CEILING this number went stale twice, both times invisibly, because
+ * nothing re-measured it between deploys. As a floor it cannot: the published
+ * watermark only raises the seam, so a constant that lags reality costs
+ * nothing the moment the decoder publishes, and a constant that is somehow
+ * ahead of the lakehouse still bounds the damage to the range it always did.
  */
 export const DEFAULT_BLOCKS_SEAM = 8_759_336;
 
@@ -82,9 +94,31 @@ function bindings(env: unknown): ColdTierBindings {
   return (env ?? {}) as ColdTierBindings;
 }
 
-export function blocksSeam(env: unknown): number {
+/** The configured floor: the env override when it parses, else the constant. */
+export function blocksSeamFloor(env: unknown): number {
   const parsed = safeBlockNumber(bindings(env)[BLOCKS_SEAM_ENV]);
   return parsed ?? DEFAULT_BLOCKS_SEAM;
+}
+
+/**
+ * The seam this request routes on: the published decode watermark when it is
+ * ahead of the configured floor, the floor otherwise.
+ *
+ * `Math.max` is the whole fail-safe. A missing, unreadable, malformed or
+ * REGRESSED watermark cannot lower the seam, so the worst case is the
+ * behaviour this module had before the watermark existed. A watermark that is
+ * ahead is trusted because the decoder writes its ledger property in the SAME
+ * Iceberg commit as the rows -- there is no window in which it can claim a
+ * height whose data is not yet visible -- and because it is the `min` across
+ * all four decoded tables, so it never runs ahead of the slowest one.
+ */
+export async function resolveBlocksSeam(
+  env: unknown,
+  deps: DecodeWatermarkDeps = {},
+): Promise<number> {
+  const floor = blocksSeamFloor(env);
+  const watermark = await resolveDecodeWatermark(env, deps);
+  return Math.max(floor, watermark?.decodedThrough ?? floor);
 }
 
 /**
@@ -180,7 +214,7 @@ export async function loadBlockFeedColdTier(
     return buildBlockFeed([], { limit, offset, nextCursor: null });
   }
 
-  const seam = blocksSeam(env);
+  const seam = await resolveBlocksSeam(env);
   // Cursor pages never carry an offset (the cursor already narrows past prior
   // pages), mirroring data-api. Both legs are asked for the full window and
   // the slice happens once, after they are concatenated, because the rows an
@@ -241,7 +275,7 @@ export async function loadBlockColdTier(
   env: Env | null | undefined,
   ref: string,
 ): Promise<ReturnType<typeof buildBlock> | null> {
-  const seam = blocksSeam(env);
+  const seam = await resolveBlocksSeam(env);
   const asNumber = safeBlockNumber(ref);
   const asHash = asNumber === null ? safeHexLiteral(ref) : null;
   if (asNumber === null && asHash === null) return null;
