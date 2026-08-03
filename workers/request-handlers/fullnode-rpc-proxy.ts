@@ -45,18 +45,22 @@ import {
   SAFE_RPC_METHODS,
 } from "../config.ts";
 import { recordUsageEvent } from "../../src/usage-telemetry.ts";
+import {
+  recordRpcUsageEvent,
+  type AnalyticsEngineDatasetLike,
+} from "../../src/rpc-usage-capture.ts";
 
 // PostHog usage telemetry for this gate (metagraphed#7153): excluded from the
 // generic withUsageTelemetry chokepoint (workers/api.ts's usageRouteLabel
 // explicitly treats "the RPC proxy" as not API usage -- it has its own
-// Postgres-backed rpc_proxy_events analytics instead, see rpc-proxy.ts's
-// recordRpcUsage), so this route records its own event directly. Unlike the
-// public pool, every caller here already authenticates with a real mg_...
-// key (validateApiKey), so distinct_id is the actual rpc_accounts.id rather
-// than the shared USAGE_EVENT_DISTINCT_ID fallback every anonymous surface
-// is stuck with -- this is real per-caller identity, not proxy volume/
-// failover analytics, so it's a deliberate second, PostHog-side event
-// alongside (not a replacement for) recordRpcUsage.
+// rpc_proxy_events analytics instead, see rpc-proxy.ts's recordRpcUsage), so
+// this route records its own event directly. Unlike the public pool, every
+// caller here already authenticates with a real mg_... key (validateApiKey),
+// so distinct_id is the actual rpc_accounts.id rather than the shared
+// USAGE_EVENT_DISTINCT_ID fallback every anonymous surface is stuck with --
+// this is real per-caller identity, not proxy volume/failover analytics, so
+// it's a deliberate second, PostHog-side event alongside (not a replacement
+// for) the proxy-usage data point recorded below.
 function recordFullnodeRpcUsage(
   env: Env,
   ctx: EdgeCacheCtx | undefined,
@@ -264,12 +268,49 @@ export async function handleFullnodeRpcProxyRequest(
 
   const startedAt = Date.now();
   const response = await runAuthenticatedFullnodeRpc(request, env, auth);
+  const durationMs = Date.now() - startedAt;
   recordFullnodeRpcUsage(env, ctx, {
     ok: response.status < 500,
-    durationMs: Date.now() - startedAt,
+    durationMs,
     errorCode: response.headers.get("x-metagraph-error-code") ?? undefined,
     accountId: String(auth.accountId),
   });
+  // #9228: this gate is the OTHER proxy entry point, and it has never had
+  // volume/failover/latency telemetry of its own -- the PostHog event above
+  // answers "which account called", not "which upstream served and how
+  // fast". It writes into the same Analytics Engine dataset as the public
+  // proxy, tagged pool="fullnode", so the two stay queryable together
+  // without being conflated: /api/v1/rpc/usage filters to pool="public", so
+  // this pool's traffic cannot move a single published number. That
+  // separation is ADR 0021's isolation requirement carried into the data
+  // model -- a gated tier's endpoints are scored separately and must not
+  // appear in the public pool's distribution.
+  //
+  // Endpoint attribution comes from the same headers the public proxy reads:
+  // proxyWithFailover sets them only when an upstream actually served, and
+  // runAuthenticatedFullnodeRpc returns that response unmodified. So a
+  // missing header is a genuine routing failure (a 401/403/429 rejected
+  // before any upstream, or an exhausted pool) and records as "no endpoint"
+  // rather than as an invented one.
+  recordRpcUsageEvent(
+    (env as unknown as { RPC_USAGE_ANALYTICS?: AnalyticsEngineDatasetLike })
+      ?.RPC_USAGE_ANALYTICS,
+    {
+      pool: "fullnode",
+      // Not network-scoped: FULLNODE_RPC_ORIGINS is one configured pool, not
+      // a /rpc/v1/{network} path segment.
+      network: "fullnode",
+      endpointId: response.headers.get("x-metagraph-rpc-endpoint-id"),
+      provider: response.headers.get("x-metagraph-rpc-provider"),
+      ok: response.status < 500,
+      status: response.status,
+      attempts: Number(response.headers.get("x-metagraph-rpc-attempts")) || 0,
+      latencyMs: durationMs,
+      // No response cache on this tier at all (see the module header) --
+      // every request is a real upstream call.
+      cache: "bypass",
+    },
+  );
   return response;
 }
 

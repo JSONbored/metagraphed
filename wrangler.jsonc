@@ -523,6 +523,33 @@
       "database_id": "8e14c15f-d0b0-4ffd-ad65-01e37993efcf",
     },
   ],
+  // RPC reverse-proxy usage telemetry (#9228). Both proxy entry points --
+  // the public /rpc/v1/{network} proxy and the gated /rpc/v1/fullnode gate --
+  // write one data point per proxied request here, tagged with which pool
+  // served it; /api/v1/rpc/usage reads it back through the AE SQL API.
+  //
+  // Analytics Engine rather than a table: writeDataPoint is non-blocking by
+  // design, so the "telemetry must never add latency to a proxied call"
+  // constraint holds structurally, and AE expires its own data after three
+  // months so this lane has no prune cron to keep correct. It also keeps
+  // request telemetry out of D1, which holds product data.
+  //
+  // The dataset name is the retired table's name on purpose: it is the same
+  // measurement, restored. The slot layout (blob1..blob5, double1..double4,
+  // one index) is an unmigratable schema -- see src/rpc-usage-capture.ts.
+  //
+  // READING it needs a separate credential the WRITE path does not: a
+  // Cloudflare API token scoped Account | Account Analytics | Read, held as
+  // the ANALYTICS_ENGINE_SQL_TOKEN secret (`npx wrangler secret put
+  // ANALYTICS_ENGINE_SQL_TOKEN`). Capture starts the moment this binding
+  // deploys; until that secret exists the route keeps answering from the
+  // lakehouse cold tier rather than erroring.
+  "analytics_engine_datasets": [
+    {
+      "binding": "RPC_USAGE_ANALYTICS",
+      "dataset": "rpc_proxy_events",
+    },
+  ],
   // AI-native layer (semantic search + grounded /ask). Workers AI runs the
   // embedding (bge-base-en-v1.5, 768-dim) + answer (llama-3.1-8b) models; the
   // Vectorize index holds the registry embeddings, refreshed by the daily

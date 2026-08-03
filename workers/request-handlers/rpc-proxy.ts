@@ -58,6 +58,12 @@ import { ipv6EmbeddedIpv4 } from "../../src/ip-safety.ts";
 import { overlayRpcPoolEligibility } from "../../src/health-serving.ts";
 import { loadRpcUsage } from "../../src/rpc-usage-loader.ts";
 import { loadRpcUsageColdTier } from "../../src/rpc-usage-cold-tier.ts";
+import { loadRpcUsageHotTier } from "../../src/rpc-usage-hot-tier.ts";
+import {
+  recordRpcUsageEvent,
+  type AnalyticsEngineDatasetLike,
+  type RpcUsageEvent,
+} from "../../src/rpc-usage-capture.ts";
 import { tryPostgresTier } from "../postgres-tier.ts";
 import {
   DENIED_RPC_PREFIXES,
@@ -180,66 +186,57 @@ export async function readRpcPoolArtifact(
   return poolArtifact;
 }
 
-// Best-effort Postgres mirror of a single rpc_proxy_events row -- the sole
-// writer now (D1 write retired 2026-07-16, item 7 of the D1->Postgres
-// cleanup: confirmed unconditionally called here, live since 2026-07-11 per
-// METAGRAPH_RPC_USAGE_SOURCE's own wrangler.jsonc comment, so removing the
-// redundant D1 INSERT below loses nothing). Unlike every other #4832 sync
-// route (all cron/workflow batch writes), this fires once per live proxied
-// request -- confirmed live 2026-07-11 the real volume is trivial (69 rows
-// over ~25 days), so a plain per-request env.DATA_API.fetch() under the
-// SAME ctx.waitUntil is safe; revisit if traffic grows enough to warrant
-// batching. Never throws, never adds latency to the proxied call.
-export interface RpcUsageEvent {
-  observed_at: number;
-  network: string;
-  endpoint_id: string | null;
-  provider: string | null;
-  ok: boolean;
-  status: number;
-  attempts: number;
-  latency_ms: number;
-  cache: "hit" | "miss" | "bypass";
-}
-
-function syncRpcUsageEventToPostgres(
-  env: Env,
-  ctx: EdgeCacheCtx | undefined,
-  event: RpcUsageEvent,
-) {
-  if (!env?.DATA_API || !env?.RPC_USAGE_SYNC_SECRET) return;
-  if (typeof ctx?.waitUntil !== "function") return;
-  const send = env.DATA_API.fetch(
-    new Request("https://api.metagraph.sh/api/v1/internal/rpc-usage-sync", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-rpc-usage-sync-token": env.RPC_USAGE_SYNC_SECRET,
-      },
-      body: JSON.stringify(event),
-    }),
-  ).catch(() => {});
-  ctx.waitUntil(send);
-}
-
-// Best-effort, async usage telemetry for the RPC proxy (B3). A telemetry write
-// must never add latency to, or fail, a proxied call — so it runs under
-// ctx.waitUntil and swallows every error. When the binding/ctx is absent
-// (tests, local dev) it is a no-op. The proxy degrades to "no analytics",
-// never to "broken".
-function recordRpcUsage(
-  env: Env,
-  ctx: EdgeCacheCtx | undefined,
-  event: RpcUsageEvent,
-) {
-  syncRpcUsageEventToPostgres(env, ctx, event);
+// Usage telemetry for the public RPC proxy (B3). A telemetry write must never
+// add latency to, or fail, a proxied call. When the binding is absent (tests,
+// local dev) it is a no-op: the proxy degrades to "no analytics", never to
+// "broken".
+//
+// #9228: the write target is a Workers Analytics Engine dataset. What was
+// here before posted one row per proxied request to a Postgres route that has
+// answered 503 unconditionally since #9193 -- a subrequest per call that
+// wrote nothing, which is how the capture outage stayed invisible for a day
+// and a half.
+//
+// NOTE THE MISSING ctx.waitUntil. That is the point of the move, not an
+// omission: `writeDataPoint` is non-blocking by design, so there is no
+// promise for the request to wait on and none for the isolate to keep alive.
+// The latency constraint is now satisfied structurally rather than by our own
+// discipline about deferring a fetch. `ctx` is still threaded through this
+// module for the edge cache, which is why it is unused here.
+//
+// A silent writer is still possible (an undeployed binding, a rejected data
+// point), and that is what src/rpc-usage-staleness-watchdog.ts watches for --
+// the fix for "nothing noticed" is an alarm, not a blocking write.
+function recordRpcUsage(env: Env, event: RpcUsageEvent) {
+  recordRpcUsageEvent(
+    (env as unknown as { RPC_USAGE_ANALYTICS?: AnalyticsEngineDatasetLike })
+      ?.RPC_USAGE_ANALYTICS,
+    event,
+  );
 }
 
 // RPC reverse-proxy usage analytics (B3): request volume, latency p50/p95,
 // failover + error rate, cache-hit rate, and the per-endpoint distribution that
-// shows whether the load balancer is actually spreading traffic. D1 fully
-// eliminated (2026-07-17): rpc_proxy_events is Postgres-only now, so a tier
-// miss returns a schema-stable zeroed payload rather than a live D1 query.
+// shows whether the load balancer is actually spreading traffic.
+//
+// #9228 restores a HOT tier in front of the frozen lakehouse one: Analytics
+// Engine answers whatever window it has captured, the lakehouse answers the
+// windows it still covers, and a zeroed payload remains the floor. Both tiers
+// feed formatRpcUsage, so the shape is identical -- with ONE deliberate,
+// documented difference: the hot tier reports real measured p50/p95 (AE has
+// weighted quantiles) where the cold tier reports null (R2 SQL has no
+// percentile function and refuses to synthesise one). See
+// src/rpc-usage-hot-tier.ts's header for why null therefore stays unambiguous
+// in both.
+//
+// The two stores are disjoint in time (the lakehouse froze when the box died;
+// AE starts at deploy) and are NOT merged: the first captured hour makes the
+// hot tier answer the 7d window on its own, under-reporting the older days
+// the lakehouse still holds until capture catches up. That transition is
+// bounded, self-healing, and visible -- `observed_at` always reports the
+// answering data's own newest reading -- and summing two aggregate payloads
+// (weighted averages across two endpoint/network/bucket lists) is a second
+// change that has no business riding along with restoring capture.
 export async function handleRpcUsage(
   request: Request,
   env: Env,
@@ -259,6 +256,11 @@ export async function handleRpcUsage(
   // only ever hold that same rolling slice, so there was no long-tail
   // history a backfill could leave behind.
   const data =
+    // The live tier, first: once capture is running this is the only one that
+    // can answer with today's traffic. It declines when the AE read token is
+    // not provisioned, so on a deployment without that secret this route
+    // behaves exactly as it did before.
+    (await loadRpcUsageHotTier(env, { window: label })) ??
     ((await tryPostgresTier(
       env,
       request,
@@ -630,15 +632,15 @@ export async function handleRpcProxyRequest(
   const startedAt = Date.now();
   const { endpoints: candidates, unsafeEndpoint } = orderSafeRpcEndpoints(pool);
   if (!candidates.length) {
-    recordRpcUsage(env, ctx, {
-      observed_at: startedAt,
+    recordRpcUsage(env, {
+      pool: "public",
       network,
-      endpoint_id: null,
+      endpointId: null,
       provider: null,
       ok: false,
       status: unsafeEndpoint ? 502 : 503,
       attempts: 0,
-      latency_ms: Date.now() - startedAt,
+      latencyMs: Date.now() - startedAt,
       cache: "bypass",
     });
     if (unsafeEndpoint) {
@@ -686,15 +688,15 @@ export async function handleRpcProxyRequest(
         headers.set("cache-control", "no-store");
         headers.set("x-metagraph-rpc-cache", "hit");
         setRpcRateLimitHeaders(headers);
-        recordRpcUsage(env, ctx, {
-          observed_at: startedAt,
+        recordRpcUsage(env, {
+          pool: "public",
           network,
-          endpoint_id: null,
+          endpointId: null,
           provider: null,
           ok: true,
           status: 200,
           attempts: 0,
-          latency_ms: Date.now() - startedAt,
+          latencyMs: Date.now() - startedAt,
           cache: "hit",
         });
         return new Response(
@@ -711,10 +713,10 @@ export async function handleRpcProxyRequest(
   // a routing failure (ok=false). Recorded once here — every downstream return
   // reuses this same response, so its served-endpoint/status/attempts are stable.
   const servedEndpointId = response.headers.get("x-metagraph-rpc-endpoint-id");
-  recordRpcUsage(env, ctx, {
-    observed_at: startedAt,
+  recordRpcUsage(env, {
+    pool: "public",
     network,
-    endpoint_id: servedEndpointId,
+    endpointId: servedEndpointId,
     provider: response.headers.get("x-metagraph-rpc-provider"),
     ok: Boolean(servedEndpointId),
     status: response.status,
@@ -725,7 +727,7 @@ export async function handleRpcProxyRequest(
     attempts:
       Number(response.headers.get("x-metagraph-rpc-attempts")) ||
       Math.min(candidates.length, RPC_MAX_ATTEMPTS),
-    latency_ms: Date.now() - startedAt,
+    latencyMs: Date.now() - startedAt,
     cache: cacheKey ? "miss" : "bypass",
   });
   // Post-fetch response-size cap for state-query methods (#4344/9.2): even

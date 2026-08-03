@@ -840,6 +840,117 @@ describe("PostHog usage telemetry", () => {
   });
 });
 
+// #9228: this gate is the SECOND proxy entry point, and until now it had no
+// volume/failover/latency telemetry at all -- the PostHog event above answers
+// "which account called", not "which upstream served and how fast". It now
+// writes into the same Analytics Engine dataset as the public proxy, tagged
+// pool="fullnode".
+//
+// The isolation is what these tests are really about. ADR 0021 keeps this
+// pool's origins, scoring and circuit breaker separate from the public pool's,
+// and /api/v1/rpc/usage has published the PUBLIC pool's endpoint distribution
+// since B3. Capturing both into one dataset is only safe because every point
+// carries the pool discriminator and the reader filters on it; a point written
+// without that tag would silently move a published number.
+describe("Analytics Engine usage capture (#9228)", () => {
+  function captureDataset() {
+    const points: { blobs: string[]; doubles: number[]; indexes: string[] }[] =
+      [];
+    return {
+      points,
+      writeDataPoint(point: {
+        blobs: string[];
+        doubles: number[];
+        indexes: string[];
+      }) {
+        points.push(point);
+      },
+    };
+  }
+
+  async function callGate(env: Env, key: string) {
+    const request = req(`/rpc/v1/fullnode?authorization=${key}`, {
+      body: { jsonrpc: "2.0", id: 1, method: "system_health" },
+    });
+    return handleFullnodeRpcProxyRequest(request, env, new URL(request.url));
+  }
+
+  test("tags every point pool=fullnode so it can never reach the public rollup", async () => {
+    const dataset = captureDataset();
+    const { env, key } = makeValidatedKeyEnv({
+      RPC_USAGE_ANALYTICS: dataset,
+    });
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: "ok" }), {
+        status: 200,
+      });
+    const res = await callGate(env, key);
+    assert.equal(res.status, 200);
+    assert.equal(dataset.points.length, 1);
+    const point = dataset.points[0]!;
+    assert.equal(point.blobs[0], "fullnode", "the pool discriminator");
+    // Not network-scoped: FULLNODE_RPC_ORIGINS is one configured pool, not a
+    // /rpc/v1/{network} path segment, so "finney" here would be a lie that
+    // also collides with the public pool's own network grouping.
+    assert.equal(point.blobs[1], "fullnode");
+    // No response cache on this tier at all.
+    assert.equal(point.blobs[4], "bypass");
+    assert.equal(point.doubles[0], 1, "ok");
+    assert.equal(point.doubles[3], 200, "status");
+    assert.ok(point.indexes[0]!.startsWith("fullnode/fullnode/"));
+  });
+
+  test("a request rejected before any upstream records no endpoint", async () => {
+    // A 429 never reaches proxyWithFailover, so the endpoint headers are
+    // absent -- recording "" keeps the honest gap rather than inventing an
+    // attribution the code does not have.
+    const dataset = captureDataset();
+    const { env, key } = makeValidatedKeyEnv({
+      RPC_USAGE_ANALYTICS: dataset,
+      FULLNODE_RPC_RATE_LIMITER: { limit: async () => ({ success: false }) },
+    });
+    const res = await callGate(env, key);
+    assert.equal(res.status, 429);
+    assert.equal(dataset.points.length, 1);
+    assert.equal(dataset.points[0]!.blobs[2], "");
+    assert.equal(dataset.points[0]!.blobs[3], "");
+    assert.equal(dataset.points[0]!.doubles[3], 429);
+    // 429 is a route correctly rejecting an over-quota caller, not a broken
+    // one -- the same status<500 convention the PostHog event uses.
+    assert.equal(dataset.points[0]!.doubles[0], 1);
+    assert.equal(dataset.points[0]!.indexes[0], "fullnode/fullnode/none");
+  });
+
+  test("an unauthenticated caller records nothing at all", async () => {
+    // The 401 path returns before the recording site: an unauthenticated
+    // guess is what FULLNODE_RPC_GUESS_RATE_LIMITER already bounds the cost
+    // of, and counting it as proxy usage would inflate the gate's volume
+    // with traffic it never proxied.
+    const dataset = captureDataset();
+    const { env } = makeValidatedKeyEnv({ RPC_USAGE_ANALYTICS: dataset });
+    const request = req("/rpc/v1/fullnode", {
+      body: { jsonrpc: "2.0", id: 1, method: "system_health" },
+    });
+    const res = await handleFullnodeRpcProxyRequest(
+      request,
+      env,
+      new URL(request.url),
+    );
+    assert.equal(res.status, 401);
+    assert.equal(dataset.points.length, 0);
+  });
+
+  test("no dataset binding is a no-op, and the gate still proxies", async () => {
+    const { env, key } = makeValidatedKeyEnv();
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: "ok" }), {
+        status: 200,
+      });
+    const res = await callGate(env, key);
+    assert.equal(res.status, 200);
+  });
+});
+
 // workers/api.ts's own dispatch (codecov/patch flagged this line after
 // #8123: every other test in this file calls handleFullnodeRpcProxyRequest
 // directly, so the "/rpc/v1/fullnode" branch's ctx passthrough in
