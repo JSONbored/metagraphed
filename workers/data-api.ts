@@ -640,6 +640,10 @@ import {
   writeNeuronDailyBackfillToD1,
   writeNeuronSnapshotToD1,
 } from "../src/neurons-d1-write.ts";
+import {
+  writeAccountIdentityToD1,
+  writeSubnetHyperparamsToD1,
+} from "../src/hyperparams-identity-d1-write.ts";
 import { buildAccountPositionHistory } from "../src/account-position-history.ts";
 import {
   createUnkeyKey,
@@ -1626,6 +1630,44 @@ function coerceSubnetHyperparamsSyncRow(row: Row) {
   return out;
 }
 
+/**
+ * One incoming hyperparams row, formatted and hashed exactly once -- both
+ * stores' history diffs consume this same sequence, so the hash can never
+ * diverge between them; only each store's own latest-hash map differs.
+ */
+interface HashedHyperparamsRow {
+  netuid: number;
+  block_number: unknown;
+  hyperparameters: Row | null;
+  hash: string | null;
+}
+
+/**
+ * The diff-and-append row set for ONE store: rows whose hash moved against
+ * that store's own last-recorded history hash. Mutates `latestByNetuid` as it
+ * goes so a duplicate netuid within one batch appends once, matching the
+ * original in-transaction loop's semantics.
+ */
+function diffHyperparamsHistory(
+  hashedRows: HashedHyperparamsRow[],
+  latestByNetuid: Map<number, unknown>,
+  observedAt: number,
+): Row[] {
+  const changedRows: Row[] = [];
+  for (const { netuid, block_number, hyperparameters, hash } of hashedRows) {
+    if (latestByNetuid.get(netuid) === hash) continue;
+    changedRows.push({
+      netuid,
+      block_number,
+      observed_at: observedAt,
+      ...hyperparameters,
+      hyperparams_hash: hash,
+    });
+    latestByNetuid.set(netuid, hash);
+  }
+  return changedRows;
+}
+
 async function handleSubnetHyperparamsSync(request: Request, env: Env) {
   if (!env.SUBNET_HYPERPARAMS_SYNC_SECRET) {
     return writeJson(
@@ -1647,9 +1689,6 @@ async function handleSubnetHyperparamsSync(request: Request, env: Env) {
       },
       401,
     );
-  }
-  if (!env.HYPERDRIVE?.connectionString) {
-    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
   }
 
   const raw = await request.text();
@@ -1694,6 +1733,77 @@ async function handleSubnetHyperparamsSync(request: Request, env: Env) {
 
   const rows = incoming.map(coerceSubnetHyperparamsSyncRow);
   const netuids = incoming.map((row: Row) => row.netuid);
+
+  // Hashed ONCE, before either store writes, on the RAW incoming rows
+  // (pre-coercion) -- formatSubnetHyperparams' toD1Flag(value) tolerates
+  // either a 0/1 number or a real boolean, so the hash is domain-identical no
+  // matter which store's diff consumes it. Each store then diffs this same
+  // sequence against ITS OWN latest-recorded hashes below (the two histories
+  // legitimately diverge: D1 starts empty at the cutover).
+  const now = Date.now();
+  const hashedRows: HashedHyperparamsRow[] = [];
+  for (const row of incoming) {
+    const hyperparameters = formatSubnetHyperparams(row);
+    hashedRows.push({
+      netuid: row.netuid,
+      block_number: row.block_number ?? null,
+      hyperparameters,
+      hash: await hyperparamsHash(hyperparameters),
+    });
+  }
+
+  // D1 is the binding this path REQUIRES; Hyperdrive is the one that went
+  // away with the box (#9157's contract, applied to this lane). Checked HERE,
+  // after parsing and validation, not at the top: a malformed body is a 400
+  // whether or not a store happens to be bound.
+  if (!env.METAGRAPH_HEALTH_DB) {
+    return writeJson({ error: "d1 binding unavailable" }, 503);
+  }
+
+  // D1 first, and it must succeed: it is where this family lives now.
+  let d1Statements = 0;
+  let d1HistoryAppended: number;
+  try {
+    const d1Sql = createD1Sql(env.METAGRAPH_HEALTH_DB);
+    // Latest hash per netuid -- group-wise MAX(id) join, the SQLite spelling
+    // of the Postgres side's `DISTINCT ON (netuid) ... ORDER BY netuid, id
+    // DESC` below.
+    const latest = await d1Sql`
+      SELECT h.netuid AS netuid, h.hyperparams_hash AS hyperparams_hash
+      FROM subnet_hyperparams_history h
+      JOIN (
+        SELECT netuid, MAX(id) AS id
+        FROM subnet_hyperparams_history GROUP BY netuid
+      ) latest ON latest.id = h.id`;
+    const latestByNetuid = new Map<number, unknown>(
+      latest.map((row) => [Number(row.netuid), row.hyperparams_hash]),
+    );
+    const historyRows = diffHyperparamsHistory(hashedRows, latestByNetuid, now);
+    d1HistoryAppended = historyRows.length;
+    ({ statements: d1Statements } = await writeSubnetHyperparamsToD1(
+      env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof writeSubnetHyperparamsToD1
+      >[0],
+      { rows, netuids, historyRows },
+    ));
+  } catch (err) {
+    console.error("data-api subnet-hyperparams-sync D1 write failed:", err);
+    await captureDataApiError(err, "subnet-hyperparams-sync-d1", env);
+    return writeJson({ error: "d1 write failed" }, 502);
+  }
+
+  // Postgres second, and only while it exists -- once HYPERDRIVE is unbound
+  // (it is, in production, since the wipe) the sync is complete at the D1
+  // write above. Kept for tests and self-hosters running the full stack.
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({
+      ok: true,
+      subnet_hyperparams_written: rows.length,
+      history_appended: d1HistoryAppended,
+      stores: ["d1"],
+      d1_statements: d1Statements,
+    });
+  }
 
   try {
     return await syncBeginWithConnectionRetry(
@@ -1754,33 +1864,24 @@ async function handleSubnetHyperparamsSync(request: Request, env: Env) {
           netuids,
         );
 
-        // Diff-and-append into subnet_hyperparams_history (mirrors D1's
-        // recordSubnetHyperparamsChanges) -- hashed on the RAW incoming rows
-        // (pre-coercion): formatSubnetHyperparams' toD1Flag(value) already
-        // tolerates either a 0/1 number or a real boolean, so the hash stays
-        // domain-identical to the D1 path regardless of which shape reaches it.
+        // Diff-and-append into subnet_hyperparams_history -- the SAME
+        // pre-computed hash sequence the D1 half consumed above
+        // (`hashedRows`), diffed against THIS store's own latest hashes: the
+        // two histories legitimately hold different last-recorded states
+        // (D1 starts empty at the cutover), but a given row hashes
+        // identically for both.
         const latest = await sql`
         SELECT DISTINCT ON (netuid) netuid, hyperparams_hash
         FROM subnet_hyperparams_history
         ORDER BY netuid, id DESC`;
-        const latestByNetuid = new Map(
+        const latestByNetuid = new Map<number, unknown>(
           latest.map((row) => [Number(row.netuid), row.hyperparams_hash]),
         );
-        const now = Date.now();
-        const changedRows: Row[] = [];
-        for (const row of incoming) {
-          const hyperparameters = formatSubnetHyperparams(row);
-          const hash = await hyperparamsHash(hyperparameters);
-          if (latestByNetuid.get(row.netuid) === hash) continue;
-          changedRows.push({
-            netuid: row.netuid,
-            block_number: row.block_number ?? null,
-            observed_at: now,
-            ...hyperparameters,
-            hyperparams_hash: hash,
-          });
-          latestByNetuid.set(row.netuid, hash);
-        }
+        const changedRows = diffHyperparamsHistory(
+          hashedRows,
+          latestByNetuid,
+          now,
+        );
         if (changedRows.length) {
           await sql`
           INSERT INTO subnet_hyperparams_history ${sql(
@@ -1798,6 +1899,8 @@ async function handleSubnetHyperparamsSync(request: Request, env: Env) {
           subnet_hyperparams_written: rows.length,
           deregistered_pruned: pruned.length,
           history_appended: changedRows.length,
+          stores: ["d1", "postgres"],
+          d1_statements: d1Statements,
         });
       },
     );
@@ -2045,6 +2148,36 @@ function coerceAccountIdentitySyncRow(row: Row) {
   return out;
 }
 
+/** One sanitized identity row, snapshot-shaped and hashed exactly once --
+ * both stores' history diffs consume this same sequence (see
+ * HashedHyperparamsRow's identical contract above). */
+interface HashedIdentityRow {
+  account: string;
+  snapshot: Row;
+  hash: string | null;
+}
+
+/** The diff-and-append row set for ONE store -- the identity twin of
+ * diffHyperparamsHistory, keyed by account and without block_number. */
+function diffIdentityHistory(
+  hashedRows: HashedIdentityRow[],
+  latestByAccount: Map<unknown, unknown>,
+  observedAt: number,
+): Row[] {
+  const changedRows: Row[] = [];
+  for (const { account, snapshot, hash } of hashedRows) {
+    if (latestByAccount.get(account) === hash) continue;
+    changedRows.push({
+      account,
+      observed_at: observedAt,
+      ...snapshot,
+      identity_hash: hash,
+    });
+    latestByAccount.set(account, hash);
+  }
+  return changedRows;
+}
+
 async function handleAccountIdentitySync(request: Request, env: Env) {
   if (!env.ACCOUNT_IDENTITY_SYNC_SECRET) {
     return writeJson(
@@ -2062,9 +2195,6 @@ async function handleAccountIdentitySync(request: Request, env: Env) {
       { error: `provide a valid ${ACCOUNT_IDENTITY_SYNC_TOKEN_HEADER} header` },
       401,
     );
-  }
-  if (!env.HYPERDRIVE?.connectionString) {
-    return writeJson({ error: "hyperdrive binding unavailable" }, 503);
   }
 
   const raw = await request.text();
@@ -2114,6 +2244,71 @@ async function handleAccountIdentitySync(request: Request, env: Env) {
   const sanitized = incoming.map(sanitizeAccountIdentitySyncRow);
   const rows = sanitized.map(coerceAccountIdentitySyncRow);
 
+  // Hashed ONCE, before either store writes, on the sanitized rows (NUL
+  // bytes already stripped above), matching identitySnapshotFromRow's own
+  // field selection. Each store diffs this same sequence against ITS OWN
+  // latest-recorded hashes below.
+  const now = Date.now();
+  const hashedRows: HashedIdentityRow[] = [];
+  for (const row of sanitized) {
+    const snapshot: Row = {};
+    for (const field of IDENTITY_FIELDS) snapshot[field] = row[field] ?? null;
+    hashedRows.push({
+      account: row.account as string,
+      snapshot,
+      hash: await identityHash(snapshot),
+    });
+  }
+
+  // D1 is the binding this path REQUIRES; Hyperdrive is the one that went
+  // away with the box (#9157's contract, applied to this lane). Checked
+  // after parsing and validation for the same reason as the hyperparams sync.
+  if (!env.METAGRAPH_HEALTH_DB) {
+    return writeJson({ error: "d1 binding unavailable" }, 503);
+  }
+
+  let d1Statements = 0;
+  let d1HistoryAppended: number;
+  try {
+    const d1Sql = createD1Sql(env.METAGRAPH_HEALTH_DB);
+    // Latest hash per account -- group-wise MAX(id) join, the SQLite
+    // spelling of the Postgres `DISTINCT ON (account)` below.
+    const latest = await d1Sql`
+      SELECT h.account AS account, h.identity_hash AS identity_hash
+      FROM account_identity_history h
+      JOIN (
+        SELECT account, MAX(id) AS id
+        FROM account_identity_history GROUP BY account
+      ) latest ON latest.id = h.id`;
+    const latestByAccount = new Map<unknown, unknown>(
+      latest.map((row) => [row.account, row.identity_hash]),
+    );
+    const historyRows = diffIdentityHistory(hashedRows, latestByAccount, now);
+    d1HistoryAppended = historyRows.length;
+    ({ statements: d1Statements } = await writeAccountIdentityToD1(
+      env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof writeAccountIdentityToD1
+      >[0],
+      { rows, historyRows },
+    ));
+  } catch (err) {
+    console.error("data-api account-identity-sync D1 write failed:", err);
+    await captureDataApiError(err, "account-identity-sync-d1", env);
+    return writeJson({ error: "d1 write failed" }, 502);
+  }
+
+  // Postgres second, and only while it exists -- see the hyperparams sync's
+  // identical branch for why the D1-only return is the production path.
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({
+      ok: true,
+      account_identity_written: rows.length,
+      history_appended: d1HistoryAppended,
+      stores: ["d1"],
+      d1_statements: d1Statements,
+    });
+  }
+
   try {
     return await syncBeginWithConnectionRetry(
       env,
@@ -2133,33 +2328,22 @@ async function handleAccountIdentitySync(request: Request, env: Env) {
           captured_at = EXCLUDED.captured_at
         WHERE account_identity.captured_at <= EXCLUDED.captured_at`;
 
-        // Diff-and-append into account_identity_history (mirrors D1's
-        // recordAccountIdentityChanges) -- hashed on the sanitized rows (NUL
-        // bytes already stripped above), matching identitySnapshotFromRow's
-        // own field selection.
+        // Diff-and-append into account_identity_history -- the SAME
+        // pre-computed hash sequence the D1 half consumed above, diffed
+        // against THIS store's own latest hashes (see the hyperparams sync's
+        // identical two-store reasoning).
         const latest = await sql`
         SELECT DISTINCT ON (account) account, identity_hash
         FROM account_identity_history
         ORDER BY account, id DESC`;
-        const latestByAccount = new Map(
+        const latestByAccount = new Map<unknown, unknown>(
           latest.map((row) => [row.account, row.identity_hash]),
         );
-        const now = Date.now();
-        const changedRows: Row[] = [];
-        for (const row of sanitized) {
-          const snapshot: Row = {};
-          for (const field of IDENTITY_FIELDS)
-            snapshot[field] = row[field] ?? null;
-          const hash = await identityHash(snapshot);
-          if (latestByAccount.get(row.account) === hash) continue;
-          changedRows.push({
-            account: row.account,
-            observed_at: now,
-            ...snapshot,
-            identity_hash: hash,
-          });
-          latestByAccount.set(row.account, hash);
-        }
+        const changedRows = diffIdentityHistory(
+          hashedRows,
+          latestByAccount,
+          now,
+        );
         if (changedRows.length) {
           await sql`
           INSERT INTO account_identity_history ${sql(
@@ -2175,6 +2359,8 @@ async function handleAccountIdentitySync(request: Request, env: Env) {
           ok: true,
           account_identity_written: rows.length,
           history_appended: changedRows.length,
+          stores: ["d1", "postgres"],
+          d1_statements: d1Statements,
         });
       },
     );
@@ -7445,6 +7631,212 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
   return null;
 }
 
+// --- Hyperparams + account-identity D1 read routes (box decommission;
+// migrations/d1/0009_hyperparams_identity.sql) ------------------------------
+//
+// The D1 twins of the four family reads in the Postgres dispatcher below,
+// matched BEFORE the Hyperdrive client is constructed -- the same contract as
+// matchNeuronsD1Route above, switched per-family on
+// METAGRAPH_SUBNET_HYPERPARAMS_SOURCE / METAGRAPH_ACCOUNT_IDENTITY_SOURCE
+// (the flags the main Worker's tryPostgresTier callers gate on; unset here
+// means D1, exactly like neuronsServedFromD1).
+//
+// With ONE deliberate addition over the neurons twins: a COLD tier -- the
+// route's D1 table has NO rows at all because no sync has landed since the
+// migration -- answers 503 instead of a schema-stable empty. tryPostgresTier
+// treats any non-2xx as "degrade to null", which sends the serving handler to
+// its next fallback: the lakehouse cold-tier reader
+// (src/subnet-hyperparams-cold-tier.ts / src/account-identity-cold-tier.ts),
+// the frozen pre-wipe snapshot. A schema-stable empty here would MASK that
+// snapshot with nulls for however long the first sync takes. Once one sync
+// lands the table is never empty again and this branch never fires; a row
+// merely absent from a POPULATED table serves the same schema-stable shape
+// the Postgres route serves (deregistered netuid -> null card, account with
+// no identity -> has_identity:false).
+function subnetHyperparamsServedFromD1(env: Env) {
+  return env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE !== "postgres";
+}
+
+function accountIdentityServedFromD1(env: Env) {
+  return env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE !== "postgres";
+}
+
+function d1TierCold() {
+  return json({ error: "d1 tier cold: no sync has landed yet" }, 503);
+}
+
+async function d1TableHasRows(
+  sql: D1Sql,
+  table:
+    | "subnet_hyperparams"
+    | "subnet_hyperparams_history"
+    | "account_identity"
+    | "account_identity_history",
+): Promise<boolean> {
+  const rows = await sql.unsafe(`SELECT 1 AS one FROM ${table} LIMIT 1`);
+  return rows.length > 0;
+}
+
+// Every INSERT column except netuid (already known from the WHERE clause) --
+// the same list the Postgres route below selects.
+const SUBNET_HYPERPARAMS_D1_READ_COLUMNS =
+  SUBNET_HYPERPARAMS_INSERT_COLUMNS.slice(1).join(", ");
+const SUBNET_HYPERPARAMS_HISTORY_D1_READ_COLUMNS = `id, block_number, observed_at, ${SUBNET_HYPERPARAMS_HISTORY_FIELDS.join(", ")}, hyperparams_hash`;
+const ACCOUNT_IDENTITY_D1_READ_COLUMNS =
+  ACCOUNT_IDENTITY_INSERT_COLUMNS.join(", ");
+const ACCOUNT_IDENTITY_HISTORY_D1_READ_COLUMNS = `id, observed_at, ${IDENTITY_FIELDS.join(", ")}, identity_hash`;
+
+function matchHyperparamsIdentityD1Route(
+  url: URL,
+  env: Env,
+): NeuronsD1RouteHandler | null {
+  if (subnetHyperparamsServedFromD1(env)) {
+    // GET /api/v1/subnets/:netuid/hyperparameters -- twin of the Postgres
+    // route of the same name below, latest-only single-row lookup.
+    const subnetHyperparams = url.pathname.match(
+      /^\/api\/v1\/subnets\/(\d+)\/hyperparameters$/,
+    );
+    if (subnetHyperparams) {
+      return async (sql) => {
+        const netuid = Number(subnetHyperparams[1]);
+        const rows = await sql.unsafe(
+          `SELECT ${SUBNET_HYPERPARAMS_D1_READ_COLUMNS} FROM subnet_hyperparams WHERE netuid = ? LIMIT 1`,
+          [netuid],
+        );
+        if (!rows.length && !(await d1TableHasRows(sql, "subnet_hyperparams")))
+          return d1TierCold();
+        return json(buildSubnetHyperparams(rows[0] ?? null, netuid));
+      };
+    }
+
+    // GET /api/v1/subnets/:netuid/hyperparameters/history?limit=&offset=
+    // &cursor= -- same FEED_PAGINATION bounds and (observed_at, id) keyset
+    // cursor as the Postgres route; SQLite supports the row-value comparison
+    // directly, so only the placeholder style moves.
+    const subnetHyperparamsHistory = url.pathname.match(
+      /^\/api\/v1\/subnets\/(\d+)\/hyperparameters\/history$/,
+    );
+    if (subnetHyperparamsHistory) {
+      return async (sql) => {
+        const netuid = Number(subnetHyperparamsHistory[1]);
+        const limit = clampRequestLimit(
+          url.searchParams.get("limit"),
+          FEED_PAGINATION,
+        );
+        const offset = clampRequestOffset(url.searchParams.get("offset"));
+        const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+        const rows = cursor
+          ? await sql.unsafe(
+              `SELECT ${SUBNET_HYPERPARAMS_HISTORY_D1_READ_COLUMNS}
+               FROM subnet_hyperparams_history
+               WHERE netuid = ? AND (observed_at, id) < (?, ?)
+               ORDER BY observed_at DESC, id DESC LIMIT ?`,
+              [netuid, cursor[0], cursor[1], limit],
+            )
+          : await sql.unsafe(
+              `SELECT ${SUBNET_HYPERPARAMS_HISTORY_D1_READ_COLUMNS}
+               FROM subnet_hyperparams_history
+               WHERE netuid = ?
+               ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?`,
+              [netuid, limit, offset],
+            );
+        if (
+          !rows.length &&
+          !(await d1TableHasRows(sql, "subnet_hyperparams_history"))
+        )
+          return d1TierCold();
+        const last = rows.length === limit ? rows[rows.length - 1] : null;
+        const nextCursor = last
+          ? encodeCursor([
+              numberOrNull(last.observed_at),
+              numberOrNull(last.id),
+            ])
+          : null;
+        return json(
+          buildSubnetHyperparamsHistory(rows, netuid, {
+            limit,
+            offset,
+            nextCursor,
+          }),
+        );
+      };
+    }
+  }
+
+  if (accountIdentityServedFromD1(env)) {
+    // GET /api/v1/accounts/:ss58/identity -- latest-only single-row lookup;
+    // an absent row in a populated table is has_identity:false, the common
+    // case, exactly as the Postgres route serves it.
+    const acctIdentity = url.pathname.match(
+      /^\/api\/v1\/accounts\/([^/]+)\/identity$/,
+    );
+    if (acctIdentity) {
+      return async (sql) => {
+        const ss58 = decodeURIComponent(acctIdentity[1]);
+        const rows = await sql.unsafe(
+          `SELECT ${ACCOUNT_IDENTITY_D1_READ_COLUMNS} FROM account_identity WHERE account = ?`,
+          [ss58],
+        );
+        if (!rows.length && !(await d1TableHasRows(sql, "account_identity")))
+          return d1TierCold();
+        return json(buildAccountIdentity(rows[0] ?? null, ss58));
+      };
+    }
+
+    // GET /api/v1/accounts/:ss58/identity-history?limit=&offset=&cursor=
+    const acctIdentityHistory = url.pathname.match(
+      /^\/api\/v1\/accounts\/([^/]+)\/identity-history$/,
+    );
+    if (acctIdentityHistory) {
+      return async (sql) => {
+        const ss58 = decodeURIComponent(acctIdentityHistory[1]);
+        const limit = clampRequestLimit(
+          url.searchParams.get("limit"),
+          FEED_PAGINATION,
+        );
+        const offset = clampRequestOffset(url.searchParams.get("offset"));
+        const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+        const rows = cursor
+          ? await sql.unsafe(
+              `SELECT ${ACCOUNT_IDENTITY_HISTORY_D1_READ_COLUMNS}
+               FROM account_identity_history
+               WHERE account = ? AND (observed_at, id) < (?, ?)
+               ORDER BY observed_at DESC, id DESC LIMIT ?`,
+              [ss58, cursor[0], cursor[1], limit],
+            )
+          : await sql.unsafe(
+              `SELECT ${ACCOUNT_IDENTITY_HISTORY_D1_READ_COLUMNS}
+               FROM account_identity_history
+               WHERE account = ?
+               ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?`,
+              [ss58, limit, offset],
+            );
+        if (
+          !rows.length &&
+          !(await d1TableHasRows(sql, "account_identity_history"))
+        )
+          return d1TierCold();
+        const last = rows.length === limit ? rows[rows.length - 1] : null;
+        const nextCursor = last
+          ? encodeCursor([
+              numberOrNull(last.observed_at),
+              numberOrNull(last.id),
+            ])
+          : null;
+        return json(
+          buildAccountIdentityHistory(rows, ss58, {
+            limit,
+            offset,
+            nextCursor,
+          }),
+        );
+      };
+    }
+  }
+
+  return null;
+}
+
 // The actual route dispatcher, extracted from the default export's fetch so
 // the top-level export (below) can wrap it with a PostHog trace span
 // (metagraphed#7768) without indenting this whole function. Tests import
@@ -7730,6 +8122,33 @@ async function dispatchDataApiRequest(
           );
         } catch (err) {
           console.error("data-api neurons D1 query failed:", err);
+          await captureDataApiError(err, maskRouteParams(url.pathname), env);
+          return json({ error: "data query failed" }, 502);
+        }
+      }
+    }
+
+    // Hyperparams + account-identity reads on D1 (box decommission,
+    // migrations/d1/0009) -- the same shape as the neurons block above, with
+    // the per-family flag check folded into the matcher (each family switches
+    // independently). Same catch envelope: log + masked-route capture + an
+    // opaque 502 that never leaks DB detail.
+    {
+      const hyperparamsIdentityD1Handler = matchHyperparamsIdentityD1Route(
+        url,
+        env,
+      );
+      if (hyperparamsIdentityD1Handler) {
+        if (!env.METAGRAPH_HEALTH_DB) {
+          return json({ error: "d1 binding unavailable" }, 503);
+        }
+        try {
+          return await hyperparamsIdentityD1Handler(
+            createD1Sql(env.METAGRAPH_HEALTH_DB),
+            env,
+          );
+        } catch (err) {
+          console.error("data-api hyperparams/identity D1 query failed:", err);
           await captureDataApiError(err, maskRouteParams(url.pathname), env);
           return json({ error: "data query failed" }, 502);
         }

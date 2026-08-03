@@ -566,7 +566,17 @@ const env = {
       return {
         bind(...values: unknown[]) {
           entry.values = values;
-          return entry;
+          return {
+            ...entry,
+            // The hyperparams/identity syncs READ their D1 latest-hash state
+            // through createD1Sql (prepare().bind().all()) before writing; an
+            // empty result set means "cold history" -> every row diffs as
+            // changed, which is the state this mocked suite wants.
+            async all() {
+              if (d1Failure.error) throw d1Failure.error;
+              return { results: [] };
+            },
+          };
         },
       };
     },
@@ -582,6 +592,12 @@ const env = {
   // (Writes are dual per #9157 and ignore the flag -- the D1 fake above is
   // what the sync's D1 half records into.)
   METAGRAPH_NEURONS_SOURCE: "postgres",
+  // Same contract for the hyperparams + account-identity read twins
+  // (matchHyperparamsIdentityD1Route): "postgres" keeps this mocked-postgres
+  // suite's reads on the lane it was written for; the D1 read lane is
+  // exercised for real in tests/data-api-hyperparams-identity-d1.test.ts.
+  METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
+  METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
   NEURONS_SYNC_SECRET,
   NEURON_DAILY_BACKFILL_SECRET,
   ROLLUP_SYNC_SECRET,

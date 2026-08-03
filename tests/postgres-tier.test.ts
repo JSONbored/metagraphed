@@ -53,6 +53,51 @@ test("tryPostgresTier: a DATA_API-D1 flag set to 'd1' FORWARDS to DATA_API", asy
   assert.deepEqual(result, { data: { neurons: [1] } });
 });
 
+test("tryPostgresTier: the hyperparams and account-identity flags set to 'd1' FORWARD to DATA_API", async () => {
+  // Their dispatchers (matchHyperparamsIdentityD1Route) live in DATA_API
+  // ahead of its Hyperdrive gate, same as the neurons one -- and the
+  // cold-tier fallback depends on the forward too: DATA_API 503s while its
+  // table is empty, which is what sends the serving handler on to the
+  // lakehouse cold-tier reader instead of a schema-stable mask.
+  for (const flagName of [
+    "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
+    "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
+  ] as const) {
+    let called = false;
+    const env = mockEnv({
+      [flagName]: "d1",
+      DATA_API: dataApi(async () => {
+        called = true;
+        return Response.json({ data: { ok: true } });
+      }),
+    });
+    const result = await tryPostgresTier(env, req(), flagName);
+    assert.equal(called, true, `${flagName} must forward on "d1"`);
+    assert.deepEqual(result, { data: { ok: true } });
+  }
+});
+
+test("tryPostgresTier: a non-2xx from a forwarded 'd1' flag degrades to null (the cold-tier handoff)", async () => {
+  // The D1 dispatcher answers 503 while its table is pre-first-sync empty;
+  // the null return is what lets the serving handler fall through to the
+  // lakehouse cold-tier snapshot.
+  const env = mockEnv({
+    METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "d1",
+    DATA_API: dataApi(
+      async () =>
+        new Response(JSON.stringify({ error: "d1 tier cold" }), {
+          status: 503,
+        }),
+    ),
+  });
+  const result = await tryPostgresTier(
+    env,
+    req(),
+    "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
+  );
+  assert.equal(result, null);
+});
+
 test("tryPostgresTier: 'd1' on a NON-DATA-API-D1 flag still short-circuits", async () => {
   // Health and subnet-snapshot D1 loaders live in THIS worker; forwarding
   // their "d1" to DATA_API would hit Postgres-only legs there. The allowlist

@@ -58,10 +58,10 @@ export function rowsPerStatement(columnCount: number): number {
   return Math.max(1, Math.floor(D1_PARAM_BUDGET / Math.max(1, columnCount)));
 }
 
-interface D1PreparedStatement {
+export interface D1PreparedStatement {
   bind(...values: unknown[]): D1PreparedStatement;
 }
-interface D1Like {
+export interface D1Like {
   prepare(query: string): D1PreparedStatement;
   batch(statements: D1PreparedStatement[]): Promise<unknown[]>;
 }
@@ -93,7 +93,32 @@ export function buildUpsert(
   );
 }
 
-function chunkStatements(
+/**
+ * A plain multi-row INSERT for an append-only table (the history tables have
+ * no conflict target -- their only key is the AUTOINCREMENT id, mirroring the
+ * Postgres BIGSERIAL -- so an upsert clause there would be a lie about their
+ * write semantics).
+ */
+export function buildAppendInsert(
+  table: string,
+  columns: string[],
+  rowCount: number,
+): string {
+  const tuple = `(${columns.map(() => "?").join(", ")})`;
+  return (
+    `INSERT INTO ${table} (${columns.join(", ")}) VALUES ` +
+    Array.from({ length: rowCount }, () => tuple).join(", ")
+  );
+}
+
+/**
+ * Rows -> prepared statements, chunked under the parameter budget. An empty
+ * `conflict` means the table is append-only (buildAppendInsert); a non-empty
+ * one is the upsert key (buildUpsert). Shared by this module and
+ * src/hyperparams-identity-d1-write.ts so there is exactly one place the
+ * budget arithmetic and the column-order binding live.
+ */
+export function chunkStatements(
   db: D1Like,
   table: string,
   columns: string[],
@@ -104,7 +129,9 @@ function chunkStatements(
   const statements: D1PreparedStatement[] = [];
   for (let i = 0; i < rows.length; i += perStatement) {
     const chunk = rows.slice(i, i + perStatement);
-    const sql = buildUpsert(table, columns, conflict, chunk.length);
+    const sql = conflict.length
+      ? buildUpsert(table, columns, conflict, chunk.length)
+      : buildAppendInsert(table, columns, chunk.length);
     const values = chunk.flatMap((row) =>
       columns.map((column) => row[column] ?? null),
     );
@@ -148,7 +175,7 @@ export interface NeuronSnapshotWrite {
  */
 const BATCH_SLICE = 1_000;
 
-async function batchInSlices(
+export async function batchInSlices(
   db: D1Like,
   statements: D1PreparedStatement[],
 ): Promise<void> {
