@@ -2874,7 +2874,7 @@ async function loadSubnetConviction(ctx: McpCtx, netuid: number) {
     ctx.env,
     new URL(`https://d/api/v1/subnets/${netuid}/conviction`),
   );
-  return live ? narrowConviction(live, netuid) : answer;
+  return live ? narrowConviction(live.data, netuid) : answer;
 }
 
 // The tool's projection of a conviction payload, whichever tier produced it --

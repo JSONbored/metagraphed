@@ -1525,7 +1525,11 @@ async function fetchAllEventsTier(
       context.env,
       new URL(`https://d${pathname}`),
     );
-    if (cold) return cold;
+    // `.data`, not the envelope: the dispatcher now reports which tier answered
+    // alongside the payload, and returning the wrapper here would hand every
+    // resolver a `{ data, source }` object that structurally satisfies Row and
+    // would therefore fail at runtime rather than at the type level (#9319).
+    if (cold) return cold.data;
     throw err;
   }
 }

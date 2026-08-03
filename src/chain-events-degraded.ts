@@ -152,16 +152,37 @@ export function degradedChainEventsPayload(url: URL): Row | null {
  *
  * Every one of the six now has a reader; nothing is left uncovered here.
  */
+/**
+ * A cold-tier answer and the name of the tier that produced it.
+ *
+ * The tier travels WITH the payload because `meta.source` exists to report
+ * which store answered, and only this function knows. Deriving it at the call
+ * site would mean a second copy of the path table, free to disagree -- which is
+ * exactly what happened when conviction (a live CHAIN read, #9319) was reported
+ * as `lakehouse-cold-tier` because that was the only label the caller had.
+ */
+export interface ColdTierAnswer {
+  data: Row;
+  source: string;
+}
+
+/** Every branch below except conviction reads the lakehouse. */
+const LAKEHOUSE_TIER = "lakehouse-cold-tier";
+/** Conviction reads chain storage at request time -- no captured tier exists. */
+const LIVE_CHAIN_TIER = "live-chain-storage";
+
 export async function coldTierChainEventsPayload(
   env: Env | null | undefined,
   url: URL,
-): Promise<Row | null> {
+): Promise<ColdTierAnswer | null> {
+  const lake = (data: Row | null): ColdTierAnswer | null =>
+    data ? { data, source: LAKEHOUSE_TIER } : null;
   const ownership = SUBNET_OWNERSHIP_HISTORY.exec(url.pathname);
   if (ownership) {
     // Through the composer, not the reader: MCP and GraphQL answer this route
     // from the same function, so the path table here stays the URL matcher it
     // is rather than a second place that decides what the payload contains.
-    return await answerSubnetOwnershipHistory(env, ownership[1]);
+    return lake(await answerSubnetOwnershipHistory(env, ownership[1]));
   }
   // #9146: the all-events feed. `chain.chain_events` carries every pallet and
   // method -- 895M rows genesis-to-head -- including kinds the curated
@@ -170,15 +191,17 @@ export async function coldTierChainEventsPayload(
   // unbounded port would have scanned ~2 GB per request.
   if (url.pathname === "/api/v1/chain-events") {
     const params = url.searchParams;
-    return (await loadChainEventsColdTier(env, {
-      limit: chainEventsLimit(params.get("limit")),
-      pallet: params.get("pallet"),
-      method: params.get("method"),
-      block: params.get("block"),
-      extrinsic: params.get("extrinsic"),
-      cursor: params.get("cursor"),
-      before: params.get("before"),
-    })) as Row | null;
+    return lake(
+      (await loadChainEventsColdTier(env, {
+        limit: chainEventsLimit(params.get("limit")),
+        pallet: params.get("pallet"),
+        method: params.get("method"),
+        block: params.get("block"),
+        extrinsic: params.get("extrinsic"),
+        cursor: params.get("cursor"),
+        before: params.get("before"),
+      })) as Row | null,
+    );
   }
   const lease = SUBNET_LEASE_HISTORY.exec(url.pathname);
   if (lease) {
@@ -186,14 +209,16 @@ export async function coldTierChainEventsPayload(
     // A verified-empty history is an ANSWER; only an inconclusive read keeps
     // the marked empty below.
     return found
-      ? (buildSubnetLeaseHistory(found.rows, Number(lease[1])) as Row)
+      ? lake(buildSubnetLeaseHistory(found.rows, Number(lease[1])) as Row)
       : null;
   }
   if (url.pathname === "/api/v1/chain-events/stats") {
-    return (await loadChainEventsStatsColdTier(
-      env,
-      url.searchParams.get("blocks"),
-    )) as Row | null;
+    return lake(
+      (await loadChainEventsStatsColdTier(
+        env,
+        url.searchParams.get("blocks"),
+      )) as Row | null,
+    );
   }
   const conviction = SUBNET_CONVICTION.exec(url.pathname);
   if (conviction) {
@@ -201,9 +226,10 @@ export async function coldTierChainEventsPayload(
     // because the reader talks to finney directly, exactly as /sudo/key and the
     // upgrade radar do -- see src/subnet-lock-state.ts's header for why no
     // captured tier is involved.
-    return (await loadSubnetConvictionChainTier(
+    const board = (await loadSubnetConvictionChainTier(
       Number(conviction[1]),
     )) as Row | null;
+    return board ? { data: board, source: LIVE_CHAIN_TIER } : null;
   }
   return null;
 }
