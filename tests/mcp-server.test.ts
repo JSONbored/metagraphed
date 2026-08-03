@@ -15116,6 +15116,335 @@ describe("MCP windowed-aggregate tools — projection artifact answers when Post
     const flow = await callTool("get_chain_stake_flow", {}, { env });
     assert.equal(flow.body.result.structuredContent.subnet_count, 0);
   });
+
+  // #9146 wave 2: the remaining chain-wide windowed-aggregate tools, one
+  // proof each — the cron-written artifact present, no Postgres flag set,
+  // the stored rows flow through the shared formatters into the tool result.
+
+  test("get_network_activity serves the projected daily series, trimmed like a live answer", async () => {
+    const env = archiveEnv({
+      "metagraph/projections/chain-activity.json": {
+        schema_version: 1,
+        windows: {
+          "7d": {
+            days: 7,
+            extrinsic_rows: [
+              {
+                day: "2026-08-02",
+                extrinsic_count: "100",
+                successful_extrinsics: "97",
+                unique_signers: "9",
+              },
+            ],
+            block_rows: [
+              { day: "2026-08-02", block_count: "7200", event_count: "40000" },
+            ],
+            newest_observed: NEWEST,
+          },
+        },
+      },
+    });
+    const res = await callTool("get_network_activity", {}, { env });
+    const data = res.body.result.structuredContent;
+    assert.equal(data.window, "7d");
+    assert.equal(data.day_count, 1);
+    assert.equal(data.days[0].day, "2026-08-02");
+    assert.equal(data.days[0].block_count, 7200);
+    assert.equal(data.days[0].success_rate, 0.97);
+    assert.equal(data.observed_at, new Date(NEWEST).toISOString());
+  });
+
+  test("get_chain_calls serves the projected call mix sliced to the call's limit", async () => {
+    const env = archiveEnv({
+      "metagraph/projections/chain-calls.json": {
+        schema_version: 1,
+        windows: {
+          "7d": {
+            days: 7,
+            newest_observed: NEWEST,
+            total: "200",
+            groups: {
+              module: [
+                { call_module: "Balances", count: "120" },
+                { call_module: "SubtensorModule", count: "60" },
+              ],
+              module_function: [],
+            },
+          },
+        },
+      },
+    });
+    const res = await callTool("get_chain_calls", { limit: 1 }, { env });
+    const data = res.body.result.structuredContent;
+    assert.equal(data.total_extrinsics, 200);
+    assert.equal(data.call_count, 1);
+    assert.equal(data.calls[0].call_module, "Balances");
+    assert.equal(data.calls[0].share, 120 / 200);
+  });
+
+  test("get_chain_signers serves the projected leaderboard for the requested sort", async () => {
+    const env = archiveEnv({
+      "metagraph/projections/chain-signers.json": {
+        schema_version: 1,
+        windows: {
+          "7d": {
+            days: 7,
+            newest_observed: NEWEST,
+            sorts: {
+              tx_count: [],
+              total_fee_tao: [
+                {
+                  signer: "5B",
+                  tx_count: "30",
+                  total_fee_tao: "0.9",
+                  total_tip_tao: "0",
+                  last_tx_block: "123456",
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+    const res = await callTool(
+      "get_chain_signers",
+      { sort: "total_fee_tao" },
+      { env },
+    );
+    const data = res.body.result.structuredContent;
+    assert.equal(data.sort, "total_fee_tao");
+    assert.equal(data.signer_count, 1);
+    assert.equal(data.signers[0].signer, "5B");
+    assert.equal(data.observed_at, new Date(NEWEST).toISOString());
+  });
+
+  test("get_chain_fees serves the projected fee series through the shared formatter", async () => {
+    const env = archiveEnv({
+      "metagraph/projections/chain-fees.json": {
+        schema_version: 1,
+        windows: {
+          "7d": {
+            days: 7,
+            newest_observed: NEWEST,
+            daily_rows: [
+              {
+                day: "2026-08-02",
+                extrinsic_count: "100",
+                signed_extrinsic_count: "80",
+                total_fee_tao: "1.6",
+                total_tip_tao: "0.4",
+              },
+            ],
+            median_rows: [
+              {
+                day: "2026-08-02",
+                median_fee_tao: 0.005,
+                median_tip_tao: 0.001,
+              },
+            ],
+            payer_rows: [
+              {
+                signer: "5A",
+                total_fee_tao: "0.9",
+                total_tip_tao: "0",
+                extrinsic_count: "10",
+              },
+            ],
+          },
+        },
+      },
+    });
+    const res = await callTool("get_chain_fees", {}, { env });
+    const data = res.body.result.structuredContent;
+    assert.equal(data.day_count, 1);
+    assert.equal(data.daily[0].median_fee_tao, 0.005);
+    assert.equal(data.top_fee_payers[0].signer, "5A");
+    assert.equal(data.observed_at, new Date(NEWEST).toISOString());
+  });
+
+  test("get_chain_fees with a call_module scope still degrades — the artifact declines filters", async () => {
+    const env = archiveEnv({
+      "metagraph/projections/chain-fees.json": {
+        schema_version: 1,
+        windows: {
+          "7d": {
+            days: 7,
+            newest_observed: NEWEST,
+            daily_rows: [
+              {
+                day: "2026-08-02",
+                extrinsic_count: "100",
+                signed_extrinsic_count: "80",
+                total_fee_tao: "1.6",
+                total_tip_tao: "0.4",
+              },
+            ],
+            median_rows: [],
+            payer_rows: [],
+          },
+        },
+      },
+    });
+    const res = await callTool(
+      "get_chain_fees",
+      { call_module: "Balances" },
+      { env },
+    );
+    assert.equal(res.body.result.structuredContent.day_count, 0);
+  });
+
+  test("get_chain_alpha_volume serves the projected 24h leaderboard", async () => {
+    const env = archiveEnv({
+      "metagraph/projections/chain-alpha-volume.json": {
+        schema_version: 1,
+        windows: {
+          "24h": {
+            days: 1,
+            rows: [
+              {
+                netuid: 7,
+                event_kind: "StakeAdded",
+                alpha_volume: "120",
+                tao_volume: "60",
+                event_count: "4",
+                last_observed: NEWEST,
+              },
+            ],
+          },
+        },
+      },
+    });
+    const res = await callTool("get_chain_alpha_volume", {}, { env });
+    const data = res.body.result.structuredContent;
+    assert.equal(data.window, "24h");
+    assert.equal(data.subnet_count, 1);
+    assert.equal(data.subnets[0].netuid, 7);
+    assert.equal(data.subnets[0].buy_volume_tao, 60);
+    assert.equal(data.observed_at, new Date(NEWEST).toISOString());
+  });
+
+  test("get_chain_stake_transfers serves the projected leaderboard for the requested window", async () => {
+    const env = archiveEnv({
+      "metagraph/projections/chain-stake-transfers.json": {
+        schema_version: 1,
+        windows: {
+          "30d": {
+            days: 30,
+            network: { distinct_senders: "4", newest_observed: NEWEST },
+            rows: [{ netuid: 7, transfers: "6", distinct_senders: "3" }],
+          },
+        },
+      },
+    });
+    const res = await callTool(
+      "get_chain_stake_transfers",
+      { window: "30d" },
+      { env },
+    );
+    const data = res.body.result.structuredContent;
+    assert.equal(data.window, "30d");
+    assert.equal(data.subnet_count, 1);
+    assert.equal(data.subnets[0].transfers_per_sender, 2);
+    assert.equal(data.network.distinct_senders, 4);
+    assert.equal(data.observed_at, new Date(NEWEST).toISOString());
+  });
+
+  test("get_chain_transfer_pairs serves the projected corridors sliced to the call's limit", async () => {
+    const env = archiveEnv({
+      "metagraph/projections/chain-transfer-pairs.json": {
+        schema_version: 1,
+        windows: {
+          "7d": {
+            days: 7,
+            totals: {
+              transfer_count: "10",
+              total_volume_tao: "500",
+              unique_pairs: "3",
+              top_pair_volume_tao: "300",
+              newest_observed: NEWEST,
+            },
+            sorts: {
+              volume: [
+                {
+                  from_address: "5A",
+                  to_address: "5B",
+                  volume_tao: "300",
+                  transfer_count: "4",
+                  last_block: "123456",
+                  last_observed_at: NEWEST,
+                },
+                {
+                  from_address: "5C",
+                  to_address: "5D",
+                  volume_tao: "150",
+                  transfer_count: "6",
+                  last_block: "123457",
+                  last_observed_at: NEWEST,
+                },
+              ],
+              count: [],
+            },
+          },
+        },
+      },
+    });
+    const res = await callTool(
+      "get_chain_transfer_pairs",
+      { limit: 1 },
+      { env },
+    );
+    const data = res.body.result.structuredContent;
+    assert.equal(data.sort, "volume");
+    assert.equal(data.pair_count, 1);
+    assert.equal(data.pairs[0].from, "5A");
+    assert.equal(data.top_pair_share, 300 / 500);
+    assert.equal(data.observed_at, new Date(NEWEST).toISOString());
+  });
+
+  test("get_chain_stake_moves serves the projected leaderboard through the shared builder", async () => {
+    const env = archiveEnv({
+      "metagraph/projections/chain-stake-moves.json": {
+        schema_version: 1,
+        windows: {
+          "7d": {
+            days: 7,
+            network: { distinct_movers: "5", newest_observed: NEWEST },
+            rows: [{ netuid: 3, movements: "10", distinct_movers: "2" }],
+          },
+        },
+      },
+    });
+    const res = await callTool("get_chain_stake_moves", {}, { env });
+    const data = res.body.result.structuredContent;
+    assert.equal(data.window, "7d");
+    assert.equal(data.subnet_count, 1);
+    assert.equal(data.subnets[0].netuid, 3);
+    assert.equal(data.subnets[0].movements_per_mover, 5);
+    assert.equal(data.network.distinct_movers, 5);
+    assert.equal(data.observed_at, new Date(NEWEST).toISOString());
+  });
+
+  test("a missing artifact degrades every wave-2 tool to its schema-stable empty", async () => {
+    const env = archiveEnv({});
+    const cases: [string, Record<string, unknown>, string][] = [
+      ["get_network_activity", {}, "day_count"],
+      ["get_chain_calls", {}, "call_count"],
+      ["get_chain_signers", {}, "signer_count"],
+      ["get_chain_fees", {}, "day_count"],
+      ["get_chain_alpha_volume", {}, "subnet_count"],
+      ["get_chain_stake_transfers", {}, "subnet_count"],
+      ["get_chain_transfer_pairs", {}, "pair_count"],
+      ["get_chain_stake_moves", {}, "subnet_count"],
+    ];
+    for (const [tool, args, countField] of cases) {
+      const res = await callTool(tool, args, { env });
+      assert.equal(
+        res.body.result.structuredContent[countField],
+        0,
+        `${tool}.${countField}`,
+      );
+    }
+  });
 });
 
 describe("MCP block-explorer tools (list_blocks, get_block, list_block_extrinsics, get_block_events, list_extrinsics, get_extrinsic)", () => {

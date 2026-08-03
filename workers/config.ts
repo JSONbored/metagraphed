@@ -131,7 +131,8 @@ export const EMISSION_GATE_SAMPLE_CRON = "3,13,23,33,43,53 * * * *";
 // matching a wrangler.jsonc cron entry.
 export const EMISSION_DRIFT_CHECK_CRON = "9,39 * * * *";
 // #9146: scheduled projections -- recompute the windowed-aggregate artifacts
-// (chain-transfers, chain-stake-flow) from the lakehouse. These routes cannot
+// (every lane in src/projection-lanes.ts's PROJECTION_LANES) from the
+// lakehouse. These routes cannot
 // be one-shot materialized (their windows anchor to the current date, so a
 // stored answer rots) and cannot query R2 SQL at request time (second-scale,
 // no indexes), so a cron recomputes and the readers serve R2. Twice-hourly:

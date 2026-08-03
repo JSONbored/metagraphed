@@ -30,6 +30,39 @@ import {
 } from "./chain-stake-flow.ts";
 import { CHAIN_TRANSFERS_PROJECTION_KEY } from "./chain-transfers-artifact.ts";
 import { CHAIN_STAKE_FLOW_PROJECTION_KEY } from "./chain-stake-flow-artifact.ts";
+import { ANALYTICS_WINDOWS } from "../workers/config.ts";
+import {
+  CHAIN_STAKE_MOVES_WINDOWS,
+  STAKE_MOVED_EVENT_KIND,
+} from "./chain-stake-moves.ts";
+import {
+  CHAIN_STAKE_TRANSFERS_WINDOWS,
+  STAKE_TRANSFERRED_EVENT_KIND,
+} from "./chain-stake-transfers.ts";
+import {
+  CHAIN_TRANSFER_PAIR_LIMIT_MAX,
+  CHAIN_TRANSFER_PAIR_WINDOWS,
+} from "./chain-transfer-pairs.ts";
+import {
+  CHAIN_ACTIVITY_PROJECTION_KEY,
+  epochDayIso,
+} from "./chain-activity-artifact.ts";
+import {
+  CHAIN_CALLS_LIMIT_MAX,
+  CHAIN_CALLS_PROJECTION_KEY,
+} from "./chain-calls-artifact.ts";
+import {
+  CHAIN_FEES_LIMIT_MAX,
+  CHAIN_FEES_PROJECTION_KEY,
+} from "./chain-fees-artifact.ts";
+import {
+  CHAIN_SIGNERS_LIMIT_MAX,
+  CHAIN_SIGNERS_PROJECTION_KEY,
+} from "./chain-signers-artifact.ts";
+import { CHAIN_ALPHA_VOLUME_PROJECTION_KEY } from "./chain-alpha-volume-artifact.ts";
+import { CHAIN_STAKE_TRANSFERS_PROJECTION_KEY } from "./chain-stake-transfers-artifact.ts";
+import { CHAIN_TRANSFER_PAIRS_PROJECTION_KEY } from "./chain-transfer-pairs-artifact.ts";
+import { CHAIN_STAKE_MOVES_PROJECTION_KEY } from "./chain-stake-moves-artifact.ts";
 
 /** Matches the analytics routes' day arithmetic (workers/data-api.ts's
  * ANALYTICS_DAY_MS) so a lane's cutoff is the same instant the live Postgres
@@ -172,6 +205,539 @@ async function computeChainStakeFlow(
   };
 }
 
+/** data-api renders its per-UTC-day buckets with
+ * to_char(to_timestamp(observed_at / 1000), 'YYYY-MM-DD'); R2 SQL has no
+ * proven date-render function, so the day lanes group by this integer UTC
+ * epoch-day instead — exact for the non-negative epoch-ms observed_at values
+ * the lakehouse holds (integer division truncates toward zero, which is floor
+ * for non-negatives) — and epochDayIso renders the identical 'YYYY-MM-DD'
+ * label writer-side. */
+const EPOCH_DAY_EXPR = `observed_at / ${DAY_MS}`;
+
+/** The unsigned-inherent filter data-api writes as
+ * `COUNT(*) FILTER (WHERE signer IS NOT NULL)`: the FILTER clause is
+ * unprobed in R2 SQL, and this CASE form is its textbook-equivalent
+ * expansion, not an approximation. */
+const SIGNED_COUNT_EXPR = "SUM(CASE WHEN signer IS NOT NULL THEN 1 ELSE 0 END)";
+
+/** GET /api/v1/chain/activity's four statements for one window cutoff — the
+ * same split data-api runs (base extrinsic aggregate, the per-day DISTINCT
+ * signer count in its own statement, the blocks aggregate, and the blocks
+ * freshness read), grouped by UTC epoch-day instead of a rendered string. */
+function chainActivityWindowSql(cutoff: number): string[] {
+  const extrinsics = `FROM chain.extrinsics WHERE observed_at >= ${cutoff}`;
+  const blocks = `FROM chain.blocks WHERE observed_at >= ${cutoff}`;
+  return [
+    // `success = TRUE` (not the bare `success` data-api writes) is the
+    // predicate form the extrinsics cold tier already issues against this
+    // exact column — proven, and boolean-identical.
+    `SELECT ${EPOCH_DAY_EXPR} AS day_index, COUNT(*) AS extrinsic_count, ` +
+      `SUM(CASE WHEN success = TRUE THEN 1 ELSE 0 END) AS successful_extrinsics ` +
+      `${extrinsics} GROUP BY day_index`,
+    `SELECT ${EPOCH_DAY_EXPR} AS day_index, ` +
+      `COUNT(DISTINCT signer) AS unique_signers ` +
+      `${extrinsics} GROUP BY day_index`,
+    `SELECT ${EPOCH_DAY_EXPR} AS day_index, COUNT(*) AS block_count, ` +
+      `SUM(event_count) AS event_count ${blocks} GROUP BY day_index`,
+    `SELECT MAX(observed_at) AS newest_observed ${blocks}`,
+  ];
+}
+
+/** Re-key one day-grouped result set from the integer epoch-day to data-api's
+ * 'YYYY-MM-DD' `day` string, or null when a day index is unrenderable — a
+ * malformed bucket must decline the whole compute, never mislabel a day. */
+function withDayLabels(
+  rows: Record<string, unknown>[],
+): Record<string, unknown>[] | null {
+  const out: Record<string, unknown>[] = [];
+  for (const { day_index: dayIndex, ...rest } of rows) {
+    const day = epochDayIso(dayIndex);
+    if (day === null) return null;
+    out.push({ day, ...rest });
+  }
+  return out;
+}
+
+/** GET /api/v1/chain/activity, every supported window — data-api's per-UTC-day
+ * extrinsics/blocks aggregates in R2 SQL, with the DISTINCT-signer counts
+ * merged into the extrinsic rows exactly as that route merges them before
+ * buildChainActivity. */
+async function computeChainActivity(
+  env: Env,
+): Promise<Record<string, unknown> | null> {
+  const generatedAt = Date.now();
+  const windows: Record<string, unknown> = {};
+  let rowCount = 0;
+  for (const [label, days] of Object.entries(ANALYTICS_WINDOWS)) {
+    const [baseSql, signersSql, blocksSql, freshSql] = chainActivityWindowSql(
+      generatedAt - days * DAY_MS,
+    );
+    const base = await r2SqlQuery(env, baseSql!);
+    if (base === null) return null;
+    const signers = await r2SqlQuery(env, signersSql!);
+    if (signers === null) return null;
+    const blocks = await r2SqlQuery(env, blocksSql!);
+    if (blocks === null) return null;
+    const fresh = await r2SqlQuery(env, freshSql!);
+    if (fresh === null) return null;
+    const signersByDay = new Map(
+      signers.map((row) => [String(row.day_index), row.unique_signers]),
+    );
+    const merged = base.map((row) => ({
+      ...row,
+      unique_signers: signersByDay.get(String(row.day_index)) ?? 0,
+    }));
+    const extrinsicRows = withDayLabels(merged);
+    if (extrinsicRows === null) return null;
+    const blockRows = withDayLabels(blocks);
+    if (blockRows === null) return null;
+    windows[label] = {
+      days,
+      extrinsic_rows: extrinsicRows,
+      block_rows: blockRows,
+      newest_observed: fresh[0]?.newest_observed ?? null,
+    };
+    rowCount += extrinsicRows.length + blockRows.length;
+  }
+  return {
+    schema_version: 1,
+    generated_at: new Date(generatedAt).toISOString(),
+    row_count: rowCount,
+    windows,
+  };
+}
+
+/** GET /api/v1/chain/calls' statements for one window cutoff: freshness, the
+ * grouped rows for BOTH group_by variants (each at the route's maximum limit
+ * so every smaller ?limit= is a prefix slice of the same total order), and
+ * the unfiltered full-window share denominator. The optional call_module
+ * scope is NOT precomputed — its value space is unbounded, so the reader
+ * declines filtered calls instead of approximating them. */
+function chainCallsWindowSql(cutoff: number): string[] {
+  const scope = `FROM chain.extrinsics WHERE observed_at >= ${cutoff}`;
+  return [
+    `SELECT MAX(observed_at) AS newest_observed ${scope}`,
+    `SELECT call_module, COUNT(*) AS count ${scope} ` +
+      `AND call_module IS NOT NULL GROUP BY call_module ` +
+      `ORDER BY count DESC, call_module ASC LIMIT ${CHAIN_CALLS_LIMIT_MAX}`,
+    `SELECT call_module, call_function, COUNT(*) AS count ${scope} ` +
+      `AND call_module IS NOT NULL GROUP BY call_module, call_function ` +
+      `ORDER BY count DESC, call_module ASC, call_function ASC ` +
+      `LIMIT ${CHAIN_CALLS_LIMIT_MAX}`,
+    `SELECT COUNT(*) AS total ${scope}`,
+  ];
+}
+
+/** GET /api/v1/chain/calls, every supported window and both group_by
+ * variants — data-api's call-mix breakdown with the share denominator read
+ * separately, pre-LIMIT, exactly like the live tier. */
+async function computeChainCalls(
+  env: Env,
+): Promise<Record<string, unknown> | null> {
+  const generatedAt = Date.now();
+  const windows: Record<string, unknown> = {};
+  let rowCount = 0;
+  for (const [label, days] of Object.entries(ANALYTICS_WINDOWS)) {
+    const [freshSql, moduleSql, moduleFunctionSql, totalSql] =
+      chainCallsWindowSql(generatedAt - days * DAY_MS);
+    const fresh = await r2SqlQuery(env, freshSql!);
+    if (fresh === null) return null;
+    const moduleRows = await r2SqlQuery(env, moduleSql!);
+    if (moduleRows === null) return null;
+    const moduleFunctionRows = await r2SqlQuery(env, moduleFunctionSql!);
+    if (moduleFunctionRows === null) return null;
+    const total = await r2SqlQuery(env, totalSql!);
+    if (total === null) return null;
+    windows[label] = {
+      days,
+      newest_observed: fresh[0]?.newest_observed ?? null,
+      total: total[0]?.total ?? 0,
+      groups: {
+        module: moduleRows,
+        module_function: moduleFunctionRows,
+      },
+    };
+    rowCount += moduleRows.length + moduleFunctionRows.length;
+  }
+  return {
+    schema_version: 1,
+    generated_at: new Date(generatedAt).toISOString(),
+    row_count: rowCount,
+    windows,
+  };
+}
+
+/** Postgres computes chain/fees' exact per-day medians with
+ * PERCENTILE_CONT(0.5) WITHIN GROUP; R2 SQL has no proven ordered-set
+ * aggregates, so this is the same statistic from probed primitives: rank the
+ * non-NULL values per day (PERCENTILE_CONT ignores NULLs), keep the middle
+ * one (odd count) or middle two (even count), and AVG them — which IS the
+ * 0.5-quantile linear interpolation, not an approximation of it. */
+function chainFeesMedianSql(cutoff: number, column: string): string {
+  return (
+    `WITH ranked AS (SELECT ${EPOCH_DAY_EXPR} AS day_index, ${column}, ` +
+    `ROW_NUMBER() OVER (PARTITION BY ${EPOCH_DAY_EXPR} ORDER BY ${column}) AS rn, ` +
+    `COUNT(*) OVER (PARTITION BY ${EPOCH_DAY_EXPR}) AS cnt ` +
+    `FROM chain.extrinsics WHERE observed_at >= ${cutoff} ` +
+    `AND signer IS NOT NULL AND ${column} IS NOT NULL) ` +
+    `SELECT day_index, AVG(${column}) AS median_value FROM ranked ` +
+    `WHERE rn * 2 = cnt OR rn * 2 = cnt + 1 OR rn * 2 = cnt + 2 ` +
+    `GROUP BY day_index`
+  );
+}
+
+/** GET /api/v1/chain/fees' non-median statements for one window cutoff. */
+function chainFeesWindowSql(cutoff: number): string[] {
+  const scope = `FROM chain.extrinsics WHERE observed_at >= ${cutoff}`;
+  return [
+    `SELECT ${EPOCH_DAY_EXPR} AS day_index, COUNT(*) AS extrinsic_count, ` +
+      `${SIGNED_COUNT_EXPR} AS signed_extrinsic_count, ` +
+      `SUM(COALESCE(fee_tao, 0)) AS total_fee_tao, ` +
+      `SUM(COALESCE(tip_tao, 0)) AS total_tip_tao ` +
+      `${scope} GROUP BY day_index`,
+    `SELECT signer, SUM(COALESCE(fee_tao, 0)) AS total_fee_tao, ` +
+      `SUM(COALESCE(tip_tao, 0)) AS total_tip_tao, ` +
+      `COUNT(*) AS extrinsic_count ${scope} AND signer IS NOT NULL ` +
+      `GROUP BY signer ORDER BY total_fee_tao DESC, signer ASC ` +
+      `LIMIT ${CHAIN_FEES_LIMIT_MAX}`,
+    `SELECT MAX(observed_at) AS newest_observed ${scope}`,
+  ];
+}
+
+/** GET /api/v1/chain/fees, every supported window — the per-UTC-day fee/tip
+ * series, the top-fee-payer leaderboard at the route's maximum limit, and the
+ * exact per-day medians, merged into data-api's medianRows shape (a day
+ * absent from a median column means every value was NULL, which is exactly
+ * the NULL median PERCENTILE_CONT reports). The call_module scope is not
+ * precomputed — the reader declines filtered calls. */
+async function computeChainFees(
+  env: Env,
+): Promise<Record<string, unknown> | null> {
+  const generatedAt = Date.now();
+  const windows: Record<string, unknown> = {};
+  let rowCount = 0;
+  for (const [label, days] of Object.entries(ANALYTICS_WINDOWS)) {
+    const cutoff = generatedAt - days * DAY_MS;
+    const [dailySql, payersSql, freshSql] = chainFeesWindowSql(cutoff);
+    const daily = await r2SqlQuery(env, dailySql!);
+    if (daily === null) return null;
+    const payers = await r2SqlQuery(env, payersSql!);
+    if (payers === null) return null;
+    const feeMedians = await r2SqlQuery(
+      env,
+      chainFeesMedianSql(cutoff, "fee_tao"),
+    );
+    if (feeMedians === null) return null;
+    const tipMedians = await r2SqlQuery(
+      env,
+      chainFeesMedianSql(cutoff, "tip_tao"),
+    );
+    if (tipMedians === null) return null;
+    const fresh = await r2SqlQuery(env, freshSql!);
+    if (fresh === null) return null;
+    const dailyRows = withDayLabels(daily);
+    if (dailyRows === null) return null;
+    // Merge the two per-column median passes into the one medianRows list
+    // data-api hands buildChainFees ({day, median_fee_tao, median_tip_tao}).
+    const medianByDay = new Map<
+      string,
+      { median_fee_tao?: unknown; median_tip_tao?: unknown }
+    >();
+    for (const row of feeMedians) {
+      const day = epochDayIso(row.day_index);
+      if (day === null) return null;
+      medianByDay.set(day, { median_fee_tao: row.median_value });
+    }
+    for (const row of tipMedians) {
+      const day = epochDayIso(row.day_index);
+      if (day === null) return null;
+      const entry = medianByDay.get(day) ?? {};
+      entry.median_tip_tao = row.median_value;
+      medianByDay.set(day, entry);
+    }
+    const medianRows = [...medianByDay.entries()].map(([day, medians]) => ({
+      day,
+      ...medians,
+    }));
+    windows[label] = {
+      days,
+      newest_observed: fresh[0]?.newest_observed ?? null,
+      daily_rows: dailyRows,
+      median_rows: medianRows,
+      payer_rows: payers,
+    };
+    rowCount += dailyRows.length + payers.length;
+  }
+  return {
+    schema_version: 1,
+    generated_at: new Date(generatedAt).toISOString(),
+    row_count: rowCount,
+    windows,
+  };
+}
+
+/** GET /api/v1/chain/signers' statements for one window cutoff: the separate
+ * freshness read data-api needs (grouped rows carry last_tx_block, not a
+ * network observed_at), then the leaderboard in BOTH supported sort orders at
+ * the route's maximum limit. call_module is not precomputed — the reader
+ * declines filtered calls. */
+function chainSignersWindowSql(cutoff: number): string[] {
+  const scope = `FROM chain.extrinsics WHERE observed_at >= ${cutoff}`;
+  const leaderboard = (orderBy: string) =>
+    `SELECT signer, COUNT(*) AS tx_count, ` +
+    `SUM(COALESCE(fee_tao, 0)) AS total_fee_tao, ` +
+    `SUM(COALESCE(tip_tao, 0)) AS total_tip_tao, ` +
+    `MAX(block_number) AS last_tx_block ${scope} AND signer IS NOT NULL ` +
+    `GROUP BY signer ORDER BY ${orderBy} DESC, signer ASC ` +
+    `LIMIT ${CHAIN_SIGNERS_LIMIT_MAX}`;
+  return [
+    `SELECT MAX(observed_at) AS newest_observed ${scope}`,
+    leaderboard("tx_count"),
+    leaderboard("total_fee_tao"),
+  ];
+}
+
+/** GET /api/v1/chain/signers, every supported window and both sorts. */
+async function computeChainSigners(
+  env: Env,
+): Promise<Record<string, unknown> | null> {
+  const generatedAt = Date.now();
+  const windows: Record<string, unknown> = {};
+  let rowCount = 0;
+  for (const [label, days] of Object.entries(ANALYTICS_WINDOWS)) {
+    const [freshSql, txCountSql, feeSql] = chainSignersWindowSql(
+      generatedAt - days * DAY_MS,
+    );
+    const fresh = await r2SqlQuery(env, freshSql!);
+    if (fresh === null) return null;
+    const txCountRows = await r2SqlQuery(env, txCountSql!);
+    if (txCountRows === null) return null;
+    const feeRows = await r2SqlQuery(env, feeSql!);
+    if (feeRows === null) return null;
+    windows[label] = {
+      days,
+      newest_observed: fresh[0]?.newest_observed ?? null,
+      sorts: {
+        tx_count: txCountRows,
+        total_fee_tao: feeRows,
+      },
+    };
+    rowCount += txCountRows.length + feeRows.length;
+  }
+  return {
+    schema_version: 1,
+    generated_at: new Date(generatedAt).toISOString(),
+    row_count: rowCount,
+    windows,
+  };
+}
+
+/** GET /api/v1/chain/alpha-volume — data-api's single GROUP BY netuid,
+ * event_kind aggregate over the route's fixed rolling 24h window, rows
+ * stored verbatim for buildChainAlphaVolume (which owns ranking, the network
+ * rollup, the distribution, and the limit slice). */
+async function computeChainAlphaVolume(
+  env: Env,
+): Promise<Record<string, unknown> | null> {
+  const generatedAt = Date.now();
+  const cutoff = generatedAt - DAY_MS;
+  const rows = await r2SqlQuery(
+    env,
+    `SELECT netuid, event_kind, ` +
+      `COALESCE(SUM(alpha_amount), 0) AS alpha_volume, ` +
+      `COALESCE(SUM(amount_tao), 0) AS tao_volume, ` +
+      `COUNT(*) AS event_count, MAX(observed_at) AS last_observed ` +
+      `FROM chain.account_events ` +
+      `WHERE event_kind IN ('${STAKE_ADDED_KIND}', '${STAKE_REMOVED_KIND}') ` +
+      `AND observed_at >= ${cutoff} GROUP BY netuid, event_kind`,
+  );
+  if (rows === null) return null;
+  return {
+    schema_version: 1,
+    generated_at: new Date(generatedAt).toISOString(),
+    row_count: rows.length,
+    // The route has no ?window= param; the one fixed window keeps the same
+    // envelope shape as every sibling artifact.
+    windows: { "24h": { days: 1, rows } },
+  };
+}
+
+/** The network-distinct + per-subnet statement pair shared by the
+ * stake-transfers and stake-moves lanes (data-api's exact two statements for
+ * each route — only the event kind and the count column names differ). */
+function subnetDistinctWindowSql(
+  cutoff: number,
+  eventKind: string,
+  countAlias: string,
+  distinctAlias: string,
+): { networkSql: string; subnetSql: string } {
+  const scope =
+    `FROM chain.account_events ` +
+    `WHERE event_kind = '${eventKind}' AND observed_at >= ${cutoff}`;
+  return {
+    networkSql:
+      `SELECT COUNT(DISTINCT coldkey) AS ${distinctAlias}, ` +
+      `MAX(observed_at) AS newest_observed ${scope}`,
+    subnetSql:
+      `SELECT netuid, COUNT(*) AS ${countAlias}, ` +
+      `COUNT(DISTINCT coldkey) AS ${distinctAlias} ${scope} ` +
+      `GROUP BY netuid ORDER BY ${countAlias} DESC, netuid ASC`,
+  };
+}
+
+/** One stake-transfers/stake-moves window: the network DISTINCT row, then —
+ * only when the window observed anything, data-api's exact guard — the
+ * per-subnet aggregate. Returns null on any query failure. */
+async function computeSubnetDistinctWindow(
+  env: Env,
+  sql: { networkSql: string; subnetSql: string },
+): Promise<{
+  network: Record<string, unknown> | null;
+  rows: Record<string, unknown>[];
+} | null> {
+  const networkRows = await r2SqlQuery(env, sql.networkSql);
+  if (networkRows === null) return null;
+  const network = networkRows[0] ?? null;
+  let rows: Record<string, unknown>[] = [];
+  if (network?.newest_observed != null) {
+    const subnetRows = await r2SqlQuery(env, sql.subnetSql);
+    if (subnetRows === null) return null;
+    rows = subnetRows;
+  }
+  return { network, rows };
+}
+
+/** GET /api/v1/chain/stake-transfers, every supported window — the
+ * network-wide distinct-sender row plus the per-subnet StakeTransferred
+ * aggregate, stored verbatim for buildChainStakeTransfers. */
+async function computeChainStakeTransfers(
+  env: Env,
+): Promise<Record<string, unknown> | null> {
+  const generatedAt = Date.now();
+  const windows: Record<string, unknown> = {};
+  let rowCount = 0;
+  for (const [label, days] of Object.entries(CHAIN_STAKE_TRANSFERS_WINDOWS)) {
+    const window = await computeSubnetDistinctWindow(
+      env,
+      subnetDistinctWindowSql(
+        generatedAt - days * DAY_MS,
+        STAKE_TRANSFERRED_EVENT_KIND,
+        "transfers",
+        "distinct_senders",
+      ),
+    );
+    if (window === null) return null;
+    windows[label] = { days, network: window.network, rows: window.rows };
+    rowCount += window.rows.length;
+  }
+  return {
+    schema_version: 1,
+    generated_at: new Date(generatedAt).toISOString(),
+    row_count: rowCount,
+    windows,
+  };
+}
+
+/** GET /api/v1/chain/stake-moves, every supported window — same shape as the
+ * stake-transfers lane over the StakeMoved stream. */
+async function computeChainStakeMoves(
+  env: Env,
+): Promise<Record<string, unknown> | null> {
+  const generatedAt = Date.now();
+  const windows: Record<string, unknown> = {};
+  let rowCount = 0;
+  for (const [label, days] of Object.entries(CHAIN_STAKE_MOVES_WINDOWS)) {
+    const window = await computeSubnetDistinctWindow(
+      env,
+      subnetDistinctWindowSql(
+        generatedAt - days * DAY_MS,
+        STAKE_MOVED_EVENT_KIND,
+        "movements",
+        "distinct_movers",
+      ),
+    );
+    if (window === null) return null;
+    windows[label] = { days, network: window.network, rows: window.rows };
+    rowCount += window.rows.length;
+  }
+  return {
+    schema_version: 1,
+    generated_at: new Date(generatedAt).toISOString(),
+    row_count: rowCount,
+    windows,
+  };
+}
+
+/** GET /api/v1/chain/transfer-pairs' statements for one window cutoff:
+ * data-api's CTE totals rollup, then the corridor leaderboard in BOTH
+ * supported sort orders at the route's maximum limit. The PAIR_FILTER
+ * predicate is inlined the same way data-api inlines it (it is private to
+ * src/chain-transfer-pairs.ts). */
+function chainTransferPairsWindowSql(cutoff: number): string[] {
+  const scope =
+    `FROM chain.account_events ` +
+    `WHERE event_kind = '${TRANSFER_KIND}' AND observed_at >= ${cutoff} ` +
+    `AND hotkey IS NOT NULL AND coldkey IS NOT NULL ` +
+    `AND hotkey <> '' AND coldkey <> '' AND hotkey <> coldkey ` +
+    `AND amount_tao IS NOT NULL AND amount_tao >= 0`;
+  const leaderboard = (orderBy: string) =>
+    `SELECT hotkey AS from_address, coldkey AS to_address, ` +
+    `SUM(amount_tao) AS volume_tao, COUNT(*) AS transfer_count, ` +
+    `MAX(block_number) AS last_block, ` +
+    `MAX(observed_at) AS last_observed_at ${scope} ` +
+    `GROUP BY hotkey, coldkey ORDER BY ${orderBy} ` +
+    `LIMIT ${CHAIN_TRANSFER_PAIR_LIMIT_MAX}`;
+  return [
+    `WITH pair_totals AS (SELECT hotkey, coldkey, ` +
+      `SUM(amount_tao) AS volume_tao, COUNT(*) AS transfer_count, ` +
+      `MAX(observed_at) AS last_observed ${scope} ` +
+      `GROUP BY hotkey, coldkey) ` +
+      `SELECT COALESCE(SUM(transfer_count), 0) AS transfer_count, ` +
+      `COALESCE(SUM(volume_tao), 0) AS total_volume_tao, ` +
+      `COUNT(*) AS unique_pairs, ` +
+      `COALESCE(MAX(volume_tao), 0) AS top_pair_volume_tao, ` +
+      `MAX(last_observed) AS newest_observed FROM pair_totals`,
+    leaderboard(
+      "volume_tao DESC, transfer_count DESC, hotkey ASC, coldkey ASC",
+    ),
+    leaderboard(
+      "transfer_count DESC, volume_tao DESC, hotkey ASC, coldkey ASC",
+    ),
+  ];
+}
+
+/** GET /api/v1/chain/transfer-pairs, every supported window and both sorts. */
+async function computeChainTransferPairs(
+  env: Env,
+): Promise<Record<string, unknown> | null> {
+  const generatedAt = Date.now();
+  const windows: Record<string, unknown> = {};
+  let rowCount = 0;
+  for (const [label, days] of Object.entries(CHAIN_TRANSFER_PAIR_WINDOWS)) {
+    const [totalsSql, volumeSql, countSql] = chainTransferPairsWindowSql(
+      generatedAt - days * DAY_MS,
+    );
+    const totals = await r2SqlQuery(env, totalsSql!);
+    if (totals === null) return null;
+    const volumePairs = await r2SqlQuery(env, volumeSql!);
+    if (volumePairs === null) return null;
+    const countPairs = await r2SqlQuery(env, countSql!);
+    if (countPairs === null) return null;
+    windows[label] = {
+      days,
+      totals: totals[0] ?? null,
+      sorts: { volume: volumePairs, count: countPairs },
+    };
+    rowCount += volumePairs.length + countPairs.length;
+  }
+  return {
+    schema_version: 1,
+    generated_at: new Date(generatedAt).toISOString(),
+    row_count: rowCount,
+    windows,
+  };
+}
+
 export const PROJECTION_LANES: ProjectionLane[] = [
   {
     name: "chain-transfers",
@@ -182,6 +748,46 @@ export const PROJECTION_LANES: ProjectionLane[] = [
     name: "chain-stake-flow",
     artifactKey: CHAIN_STAKE_FLOW_PROJECTION_KEY,
     compute: computeChainStakeFlow,
+  },
+  {
+    name: "chain-activity",
+    artifactKey: CHAIN_ACTIVITY_PROJECTION_KEY,
+    compute: computeChainActivity,
+  },
+  {
+    name: "chain-calls",
+    artifactKey: CHAIN_CALLS_PROJECTION_KEY,
+    compute: computeChainCalls,
+  },
+  {
+    name: "chain-fees",
+    artifactKey: CHAIN_FEES_PROJECTION_KEY,
+    compute: computeChainFees,
+  },
+  {
+    name: "chain-signers",
+    artifactKey: CHAIN_SIGNERS_PROJECTION_KEY,
+    compute: computeChainSigners,
+  },
+  {
+    name: "chain-alpha-volume",
+    artifactKey: CHAIN_ALPHA_VOLUME_PROJECTION_KEY,
+    compute: computeChainAlphaVolume,
+  },
+  {
+    name: "chain-stake-transfers",
+    artifactKey: CHAIN_STAKE_TRANSFERS_PROJECTION_KEY,
+    compute: computeChainStakeTransfers,
+  },
+  {
+    name: "chain-transfer-pairs",
+    artifactKey: CHAIN_TRANSFER_PAIRS_PROJECTION_KEY,
+    compute: computeChainTransferPairs,
+  },
+  {
+    name: "chain-stake-moves",
+    artifactKey: CHAIN_STAKE_MOVES_PROJECTION_KEY,
+    compute: computeChainStakeMoves,
   },
 ];
 

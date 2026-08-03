@@ -243,6 +243,14 @@ import {
 import { loadTopHoldersFromArtifact } from "./top-holders-artifact.ts";
 import { loadChainTransfersFromArtifact } from "./chain-transfers-artifact.ts";
 import { loadChainStakeFlowFromArtifact } from "./chain-stake-flow-artifact.ts";
+import { loadChainActivityFromArtifact } from "./chain-activity-artifact.ts";
+import { loadChainCallsFromArtifact } from "./chain-calls-artifact.ts";
+import { loadChainFeesFromArtifact } from "./chain-fees-artifact.ts";
+import { loadChainSignersFromArtifact } from "./chain-signers-artifact.ts";
+import { loadChainAlphaVolumeFromArtifact } from "./chain-alpha-volume-artifact.ts";
+import { loadChainStakeTransfersFromArtifact } from "./chain-stake-transfers-artifact.ts";
+import { loadChainTransferPairsFromArtifact } from "./chain-transfer-pairs-artifact.ts";
+import { loadChainStakeMovesFromArtifact } from "./chain-stake-moves-artifact.ts";
 import {
   handleRpcProxyRequest,
   graphqlRateLimited,
@@ -4979,7 +4987,12 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           ctx.env,
           mcpNeuronsTierRequest("/api/v1/chain/alpha-volume", { limit }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainAlphaVolume([], { limit })
+        )) ??
+        // The projection tier (#9146): the cron-recomputed lakehouse
+        // aggregate, through the same builder. See
+        // src/chain-alpha-volume-artifact.ts.
+        (await loadChainAlphaVolumeFromArtifact(ctx.env, { limit })) ??
+        buildChainAlphaVolume([], { limit })
       );
     },
   },
@@ -5125,7 +5138,12 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             limit,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainStakeMoves([], { window, limit })
+        )) ??
+        // The projection tier (#9146): the cron-recomputed lakehouse
+        // aggregate, through the same builder. See
+        // src/chain-stake-moves-artifact.ts.
+        (await loadChainStakeMovesFromArtifact(ctx.env, { window, limit })) ??
+        buildChainStakeMoves([], { window, limit })
       );
     },
   },
@@ -5174,7 +5192,15 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             limit,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildChainStakeTransfers([], { window, limit })
+        )) ??
+        // The projection tier (#9146): the cron-recomputed lakehouse
+        // aggregate, through the same builder. See
+        // src/chain-stake-transfers-artifact.ts.
+        (await loadChainStakeTransfersFromArtifact(ctx.env, {
+          window,
+          limit,
+        })) ??
+        buildChainStakeTransfers([], { window, limit })
       );
     },
   },
@@ -9102,6 +9128,16 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           }),
           "METAGRAPH_EXTRINSICS_SOURCE",
         )) ??
+        // The projection tier (#9146): the cron-recomputed lakehouse call
+        // mix, sliced to this call's limit and fed through the same
+        // formatter; a call_module scope declines. See
+        // src/chain-calls-artifact.ts.
+        (await loadChainCallsFromArtifact(ctx.env, {
+          window: label,
+          groupBy,
+          limit,
+          callModule,
+        })) ??
         buildChainCalls({
           window: label,
           groupBy,
@@ -9153,6 +9189,17 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         "METAGRAPH_EXTRINSICS_SOURCE",
       );
       if (postgres) return postgres;
+      // The projection tier (#9146): the cron-recomputed lakehouse
+      // leaderboard, sliced to this call's limit and fed through the same
+      // formatter; a call_module scope declines. See
+      // src/chain-signers-artifact.ts.
+      const projected = await loadChainSignersFromArtifact(ctx.env, {
+        window: label,
+        sort,
+        limit,
+        callModule,
+      });
+      if (projected) return projected;
       const { data } = (await loadMcpChainSigners(ctx, {
         label,
         days,
@@ -9208,6 +9255,16 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           postgres as unknown as ReturnType<typeof buildChainFees>,
           days,
         );
+      // The projection tier (#9146): the cron-recomputed lakehouse fee
+      // series, sliced to this call's limit and fed through the same
+      // formatter; a call_module scope declines. Trimmed like every other
+      // tier's answer. See src/chain-fees-artifact.ts.
+      const projected = await loadChainFeesFromArtifact(ctx.env, {
+        window: label,
+        limit,
+        callModule,
+      });
+      if (projected) return trimChainFeesToWindow(projected, days);
       return trimChainFeesToWindow(
         buildChainFees({
           window: label,
@@ -9407,6 +9464,14 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) ??
+        // The projection tier (#9146): the cron-recomputed lakehouse
+        // corridor leaderboard, sliced to this call's limit and fed through
+        // the same formatter. See src/chain-transfer-pairs-artifact.ts.
+        (await loadChainTransferPairsFromArtifact(ctx.env, {
+          window,
+          sort,
+          limit,
+        })) ??
         buildChainTransferPairs({
           window,
           sort,
@@ -9455,6 +9520,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           postgres as unknown as ReturnType<typeof buildChainActivity>,
           days,
         );
+      // The projection tier (#9146): the cron-recomputed lakehouse daily
+      // series, through the same formatter and the same trim. See
+      // src/chain-activity-artifact.ts.
+      const projected = await loadChainActivityFromArtifact(ctx.env, {
+        window: label,
+      });
+      if (projected) return trimChainActivityToWindow(projected, days);
       return trimChainActivityToWindow(
         buildChainActivity({
           window: label,

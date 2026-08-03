@@ -127,6 +127,14 @@ import {
 } from "../../src/chain-stake-flow.ts";
 import { loadChainTransfersFromArtifact } from "../../src/chain-transfers-artifact.ts";
 import { loadChainStakeFlowFromArtifact } from "../../src/chain-stake-flow-artifact.ts";
+import { loadChainActivityFromArtifact } from "../../src/chain-activity-artifact.ts";
+import { loadChainCallsFromArtifact } from "../../src/chain-calls-artifact.ts";
+import { loadChainFeesFromArtifact } from "../../src/chain-fees-artifact.ts";
+import { loadChainSignersFromArtifact } from "../../src/chain-signers-artifact.ts";
+import { loadChainAlphaVolumeFromArtifact } from "../../src/chain-alpha-volume-artifact.ts";
+import { loadChainStakeTransfersFromArtifact } from "../../src/chain-stake-transfers-artifact.ts";
+import { loadChainTransferPairsFromArtifact } from "../../src/chain-transfer-pairs-artifact.ts";
+import { loadChainStakeMovesFromArtifact } from "../../src/chain-stake-moves-artifact.ts";
 import {
   buildChainAlphaVolume,
   CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
@@ -1252,6 +1260,11 @@ export async function handleChainActivity(
           cacheRequest,
           "METAGRAPH_EXTRINSICS_SOURCE",
         )) as ReturnType<typeof buildChainActivity> | null) ??
+          // The projection tier (#9146): a cron recomputes this window's
+          // daily series from the lakehouse; the reader feeds the same
+          // formatter, and the #8242 trim below applies to it exactly as it
+          // applies to a live answer. See src/chain-activity-artifact.ts.
+          (await loadChainActivityFromArtifact(env, { window: label })) ??
           buildChainActivity({
             window: label,
             observedAt: meta?.last_run_at || null,
@@ -1339,6 +1352,17 @@ export async function handleChainCalls(
         cacheRequest,
         "METAGRAPH_EXTRINSICS_SOURCE",
       )) as ReturnType<typeof buildChainCalls> | null;
+      // The projection tier (#9146): a cron recomputes this window's call
+      // mix (both group_by variants) from the lakehouse; the reader slices
+      // to the request's limit and feeds the same formatter, declining any
+      // call_module scope. A projected answer is a real answer, so it is
+      // never marked as a fallback. See src/chain-calls-artifact.ts.
+      data ??= await loadChainCallsFromArtifact(env, {
+        window: label,
+        groupBy,
+        limit,
+        callModule: url.searchParams.get("call_module"),
+      });
       if (!data) {
         usedFallback = true;
         data = buildChainCalls({
@@ -1435,6 +1459,16 @@ export async function handleChainSigners(
           cacheRequest,
           "METAGRAPH_EXTRINSICS_SOURCE",
         )) as ReturnType<typeof buildChainSigners> | null) ??
+        // The projection tier (#9146): a cron recomputes this window's
+        // leaderboard (both sorts) from the lakehouse; the reader slices to
+        // the request's limit and feeds the same formatter, declining any
+        // call_module scope. See src/chain-signers-artifact.ts.
+        (await loadChainSignersFromArtifact(env, {
+          window: label,
+          sort,
+          limit,
+          callModule: url.searchParams.get("call_module"),
+        })) ??
         buildChainSigners({
           window: label,
           sort,
@@ -1621,6 +1655,15 @@ export async function handleChainTransferPairs(
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) as ReturnType<typeof buildChainTransferPairs> | null) ??
+        // The projection tier (#9146): a cron recomputes this window's
+        // corridor leaderboard (both sorts) from the lakehouse; the reader
+        // slices to the request's limit and feeds the same formatter. See
+        // src/chain-transfer-pairs-artifact.ts.
+        (await loadChainTransferPairsFromArtifact(env, {
+          window: label,
+          sort,
+          limit,
+        })) ??
         buildChainTransferPairs({
           window: label,
           sort,
@@ -1810,6 +1853,11 @@ export async function handleChainAlphaVolume(
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) as ReturnType<typeof buildChainAlphaVolume> | null) ??
+        // The projection tier (#9146): a cron recomputes the fixed 24h
+        // per-(netuid, event_kind) aggregate from the lakehouse; the shared
+        // builder owns ranking and the limit. See
+        // src/chain-alpha-volume-artifact.ts.
+        (await loadChainAlphaVolumeFromArtifact(env, { limit })) ??
         buildChainAlphaVolume([], {
           limit,
         } as unknown as Parameters<typeof buildChainAlphaVolume>[1]);
@@ -2442,6 +2490,14 @@ export async function handleChainStakeMoves(
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) as ReturnType<typeof buildChainStakeMoves> | null) ??
+        // The projection tier (#9146): a cron recomputes this window's
+        // network DISTINCT row + per-subnet aggregate from the lakehouse;
+        // the shared builder owns ranking, the rollup, and the limit. See
+        // src/chain-stake-moves-artifact.ts.
+        (await loadChainStakeMovesFromArtifact(env, {
+          window: label,
+          limit,
+        })) ??
         buildChainStakeMoves([], {
           window: label,
           limit,
@@ -2521,6 +2577,14 @@ export async function handleChainStakeTransfers(
           cacheRequest,
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
         )) as ReturnType<typeof buildChainStakeTransfers> | null) ??
+        // The projection tier (#9146): a cron recomputes this window's
+        // network DISTINCT row + per-subnet aggregate from the lakehouse;
+        // the shared builder owns ranking, the rollup, and the limit. See
+        // src/chain-stake-transfers-artifact.ts.
+        (await loadChainStakeTransfersFromArtifact(env, {
+          window: label,
+          limit,
+        })) ??
         buildChainStakeTransfers([], {
           window: label,
           limit,
@@ -2609,6 +2673,16 @@ export async function handleChainFees(
           "METAGRAPH_EXTRINSICS_SOURCE",
         )) as ReturnType<typeof buildChainFees> | null;
       }
+      // The projection tier (#9146): a cron recomputes this window's fee
+      // series + payer leaderboard from the lakehouse; the reader slices to
+      // the request's limit and feeds the same formatter, declining any
+      // call_module scope. The #8242 trim below applies to it exactly as it
+      // applies to a live answer. See src/chain-fees-artifact.ts.
+      data ??= await loadChainFeesFromArtifact(env, {
+        window: label,
+        limit,
+        callModule: url.searchParams.get("call_module"),
+      });
       data ??= buildChainFees({
         window: label,
         observedAt: meta?.last_run_at || null,

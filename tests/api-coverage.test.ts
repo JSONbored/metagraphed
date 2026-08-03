@@ -3390,11 +3390,30 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
     });
     assert.deepEqual(result, {
       ok: true,
-      lanes: { "chain-transfers": 0, "chain-stake-flow": 0 },
+      lanes: {
+        "chain-transfers": 0,
+        "chain-stake-flow": 0,
+        "chain-activity": 0,
+        "chain-calls": 0,
+        "chain-fees": 0,
+        "chain-signers": 0,
+        "chain-alpha-volume": 0,
+        "chain-stake-transfers": 0,
+        "chain-transfer-pairs": 0,
+        "chain-stake-moves": 0,
+      },
     });
     assert.deepEqual(puts, [
       "metagraph/projections/chain-transfers.json",
       "metagraph/projections/chain-stake-flow.json",
+      "metagraph/projections/chain-activity.json",
+      "metagraph/projections/chain-calls.json",
+      "metagraph/projections/chain-fees.json",
+      "metagraph/projections/chain-signers.json",
+      "metagraph/projections/chain-alpha-volume.json",
+      "metagraph/projections/chain-stake-transfers.json",
+      "metagraph/projections/chain-transfer-pairs.json",
+      "metagraph/projections/chain-stake-moves.json",
     ]);
   });
 
@@ -3419,12 +3438,22 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
         },
       },
     });
-    assert.deepEqual(result, {
-      ok: false,
-      lanes: { "chain-transfers": null, "chain-stake-flow": 0 },
-    });
-    // The failed lane wrote nothing — its previous artifact survives.
-    assert.deepEqual(puts, ["metagraph/projections/chain-stake-flow.json"]);
+    // Both Transfer-filtered lanes (chain-transfers, chain-transfer-pairs)
+    // failed; every other lane still ran and wrote.
+    const lanes = (result as { ok: boolean; lanes: Record<string, unknown> })
+      .lanes;
+    assert.equal((result as { ok: boolean }).ok, false);
+    assert.equal(lanes["chain-transfers"], null);
+    assert.equal(lanes["chain-transfer-pairs"], null);
+    assert.equal(lanes["chain-stake-flow"], 0);
+    assert.equal(lanes["chain-stake-moves"], 0);
+    // The failed lanes wrote nothing — their previous artifacts survive.
+    assert.ok(!puts.includes("metagraph/projections/chain-transfers.json"));
+    assert.ok(
+      !puts.includes("metagraph/projections/chain-transfer-pairs.json"),
+    );
+    assert.equal(puts.length, Object.keys(lanes).length - 2);
+    assert.ok(puts.includes("metagraph/projections/chain-stake-flow.json"));
   });
 });
 
