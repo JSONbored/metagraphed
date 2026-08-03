@@ -43,6 +43,7 @@ import {
   COMPARE_DIMENSIONS,
   COMPARE_VALIDATORS_MAX,
   currentD1ReadFailureGeneration,
+  loadLeaderboardD1Rows,
   growthRowsFromSamples,
   loadSubnetTrajectory,
   loadSubnetUptime,
@@ -601,15 +602,20 @@ async function resolveEconomicsRows(env: Env): Promise<unknown[]> {
 }
 
 /**
- * Compose the registry-leaderboards payload: the profiles projection and the
- * economics tier, folded through formatLeaderboards.
+ * Compose the registry-leaderboards payload: the profiles projection, the
+ * economics tier, and the D1 operational reads, folded through
+ * formatLeaderboards.
  *
- * D1 fully eliminated (2026-07-17): this route never had a Postgres-tier
- * mirror for the health/rpc/growth/reliability boards (surface_status/
- * subnet_snapshots/surface_uptime_daily), so those boards are always empty
- * now rather than adding new tier plumbing out of scope for D1 retirement.
- * `economicsRows` isn't D1 -- it comes from the economics tier -- so that
- * board is unaffected.
+ * D1 reads resurrected (2026-08-03): the health/rpc/growth/reliability boards
+ * come from surface_status / subnet_snapshots / surface_uptime_daily, all of
+ * which are written to D1 and populated there. Those four row sets used to be
+ * inlined as `[]`, so four of the six operational boards were permanently
+ * empty. They now come from loadLeaderboardD1Rows -- the SAME reads
+ * loadRegistryLeaderboards uses for the MCP tool, so the three surfaces cannot
+ * compose different boards.
+ *
+ * `economicsRows` was never D1 -- it comes from the economics tier -- so the
+ * economic boards are unaffected either way.
  *
  * Split out of handleLeaderboards so the GraphQL mirror
  * (Query.registry_leaderboards, #5661) reuses this exact projection.
@@ -617,24 +623,44 @@ async function resolveEconomicsRows(env: Env): Promise<unknown[]> {
 export async function composeLeaderboardsData(
   env: Env,
   { board = null, limit = 20 }: { board?: string | null; limit?: number } = {},
-): Promise<{ data: ReturnType<typeof formatLeaderboards> }> {
+): Promise<{
+  data: ReturnType<typeof formatLeaderboards>;
+  isFallback: boolean;
+}> {
   const { subnetMeta, mostComplete } = await leaderboardProfilesProjection(env);
   const economicsRows = await resolveEconomicsRows(env);
 
   const meta = await readHealthMetaKv(env);
+  const d1Generation = currentD1ReadFailureGeneration();
+  const { healthRows, rpcRows, growthSamples, reliabilityRows } =
+    await loadLeaderboardD1Rows(env.METAGRAPH_HEALTH_DB);
   const data = formatLeaderboards({
     board,
     limit,
     observedAt: meta?.last_run_at || null,
-    healthRows: [],
-    rpcRows: [],
+    healthRows,
+    rpcRows,
     mostComplete,
-    growthRows: growthRowsFromSamples([]),
-    reliabilityRows: [],
+    growthRows: growthRowsFromSamples(growthSamples),
+    reliabilityRows,
     economicsRows,
     subnetMeta,
   } as unknown as Parameters<typeof formatLeaderboards>[0]);
-  return { data };
+  return {
+    data,
+    // Only a payload whose D1 boards are genuinely empty is barred from the
+    // edge cache. Before the resurrection that was every response, so this was
+    // an unconditional bar.
+    //
+    // Tested for `prepare`, not mere presence: an env can carry a
+    // METAGRAPH_HEALTH_DB that is not a usable D1 handle, and d1All answers
+    // that with zero rows WITHOUT bumping the failure generation -- so a
+    // truthiness check would call an empty payload fresh and cache it.
+    isFallback:
+      typeof (env.METAGRAPH_HEALTH_DB as { prepare?: unknown } | undefined)
+        ?.prepare !== "function" ||
+      currentD1ReadFailureGeneration() !== d1Generation,
+  };
 }
 
 export async function handleLeaderboards(
@@ -657,7 +683,7 @@ export async function handleLeaderboards(
     return errorResponse("invalid_query", limitResult.error.message, 400);
   }
 
-  const { data } = await composeLeaderboardsData(env, {
+  const { data, isFallback } = await composeLeaderboardsData(env, {
     board: requestedBoard || null,
     limit: limitResult.limit,
   });
@@ -675,10 +701,10 @@ export async function handleLeaderboards(
     },
     "standard",
   );
-  // D1 fully eliminated (2026-07-17): the health/rpc/growth/reliability
-  // boards are always empty now (see composeLeaderboardsData) -- never
-  // edge-cache this as if it were a fresh read.
-  return markPostgresTierFallbackResponse(response);
+  // Cacheable when D1-served: only a payload whose operational boards are
+  // genuinely empty (no binding, or a D1 read failure mid-compose) is barred
+  // from the edge cache.
+  return isFallback ? markPostgresTierFallbackResponse(response) : response;
 }
 
 export function canonicalCompareCachePath(url: URL): string | null {

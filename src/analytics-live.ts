@@ -20,6 +20,7 @@ import {
   dailyLatencyColumns,
   latencyStatColumns,
   rankedChecksCte,
+  surfaceStatusAvgLatencySql,
 } from "./health-sql.ts";
 import {
   ANALYTICS_WINDOWS,
@@ -656,54 +657,136 @@ export async function loadSubnetTrajectory(
   return formatTrajectory({ netuid, rows });
 }
 
-// D1 fully eliminated (2026-07-17): surface_status/subnet_snapshots/
-// surface_uptime_daily are Postgres-only now; the health/rpc/growth/
-// reliability row sets are always empty here. `profiles`/`economicsRows`
-// aren't D1 -- they come from the registry artifact + the economics tier --
-// so those inputs are unchanged.
+/**
+ * The four D1 row sets behind the operational leaderboards, read together.
+ *
+ * Exported because two callers need exactly these reads:
+ * loadRegistryLeaderboards below (MCP) and composeLeaderboardsData in
+ * analytics-routes.ts (REST + GraphQL), which supplies its own
+ * subnetMeta/mostComplete projection and so cannot go through the loader.
+ * Sharing the reads is what keeps the three surfaces from composing different
+ * boards.
+ *
+ * Without a `db` binding every set is empty -- the schema-stable floor that
+ * has held since 2026-07-17.
+ */
+export async function loadLeaderboardD1Rows(
+  db: ObservationsReadDb | null | undefined,
+): Promise<{
+  healthRows: Record<string, unknown>[];
+  rpcRows: Record<string, unknown>[];
+  growthSamples: Record<string, unknown>[];
+  reliabilityRows: Record<string, unknown>[];
+}> {
+  const sevenDaysAgo = new Date(Date.now() - 7 * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+  // `fastest-growing` uses a short completeness window; `most-reliable` is
+  // deliberately more durable and ranks the last 30d of uptime history.
+  const thirtyDaysAgo = new Date(Date.now() - 30 * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+  const [healthRows, rpcRows, growthSamples, reliabilityRows] =
+    await Promise.all([
+      d1All(
+        db,
+        `SELECT netuid,
+                COUNT(*) AS total,
+                SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
+                ${surfaceStatusAvgLatencySql()} AS avg_latency_ms
+         FROM surface_status
+         GROUP BY netuid`,
+        [],
+      ),
+      d1All(
+        db,
+        `SELECT netuid, MIN(latency_ms) AS min_latency_ms
+         FROM surface_status
+         WHERE kind IN ('subtensor-rpc', 'subtensor-wss')
+           AND status = 'ok' AND latency_ms IS NOT NULL
+         GROUP BY netuid`,
+        [],
+      ),
+      d1All(
+        db,
+        `SELECT netuid, snapshot_date, completeness_score
+         FROM subnet_snapshots
+         WHERE snapshot_date >= ?
+         ORDER BY netuid, snapshot_date`,
+        [sevenDaysAgo],
+      ),
+      d1All(
+        db,
+        `SELECT netuid,
+                SUM(samples) AS samples,
+                SUM(ok_count) AS ok_count,
+                ${dailyLatencyColumns({ roundedAvg: true })}
+         FROM surface_uptime_daily
+         WHERE day >= ?
+         GROUP BY netuid`,
+        [thirtyDaysAgo],
+      ),
+    ]);
+  return { healthRows, rpcRows, growthSamples, reliabilityRows };
+}
+
+// D1 reads resurrected (2026-08-03, box decommission) -- the same move #9061
+// made for the health analytics loaders, which this one and loadCompareSubnets
+// below were left out of. surface_status, subnet_snapshots and
+// surface_uptime_daily are all written to D1 and populated there (635 /
+// 50,375 / 12,028 rows verified live), so four of the six operational boards
+// no longer have to be empty. `profiles`/`economicsRows` were never D1 -- they
+// come from the registry artifact and the economics tier -- so those inputs
+// are unchanged either way.
+//
+// Without a `db` binding every D1-derived board stays empty, which is the
+// schema-stable floor that has held since 2026-07-17.
 export async function loadRegistryLeaderboards({
   profiles = [],
   economicsRows = [],
   board = null,
   limit = null,
   observedAt = null,
+  db = null,
 }: {
   profiles?: Array<Record<string, unknown>>;
   economicsRows?: Array<Record<string, unknown>>;
   board?: unknown;
   limit?: unknown;
   observedAt?: unknown;
+  db?: ObservationsReadDb | null;
 } = {}): Promise<unknown> {
   const { subnetMeta, mostComplete } = profilesProjectionFromRows(profiles);
+  const { healthRows, rpcRows, growthSamples, reliabilityRows } =
+    await loadLeaderboardD1Rows(db);
   return formatLeaderboards({
     board,
     limit,
     observedAt,
-    healthRows: [],
-    rpcRows: [],
+    healthRows,
+    rpcRows,
     mostComplete,
-    growthRows: growthRowsFromSamples([]),
-    reliabilityRows: [],
+    growthRows: growthRowsFromSamples(growthSamples),
+    reliabilityRows,
     economicsRows,
     subnetMeta,
   });
 }
 
-// D1 fully eliminated (2026-07-17): surface_status is Postgres-only now, so
-// the health dimension is always empty here. `profiles`/`economicsRows`
-// aren't D1, so those inputs are unchanged.
 export async function loadCompareSubnets({
   profiles = [],
   economicsRows = [],
   netuids,
   dimensions = COMPARE_DIMENSIONS,
   observedAt = null,
+  db = null,
 }: {
   profiles?: Array<Record<string, unknown>>;
   economicsRows?: Array<Record<string, unknown>>;
   netuids: number[] | null | undefined;
   dimensions?: string[];
   observedAt?: unknown;
+  db?: ObservationsReadDb | null;
 }): Promise<unknown> {
   if (!Array.isArray(netuids) || netuids.length === 0) {
     return composeCompareData({
@@ -717,13 +800,28 @@ export async function loadCompareSubnets({
     });
   }
   const { subnetMeta, mostComplete } = profilesProjectionFromRows(profiles);
+  let healthRows: Record<string, unknown>[] | null = null;
+  if (dimensions.includes("health")) {
+    const wanted = new Set(netuids.map((netuid) => Number(netuid)));
+    const grouped = await d1All(
+      db,
+      `SELECT netuid,
+              COUNT(*) AS surface_count,
+              SUM(CASE WHEN status = 'ok' THEN 1 ELSE 0 END) AS ok_count,
+              ${surfaceStatusAvgLatencySql({ rounded: true })} AS avg_latency_ms
+       FROM surface_status
+       GROUP BY netuid`,
+      [],
+    );
+    healthRows = grouped.filter((row) => wanted.has(Number(row.netuid)));
+  }
   return composeCompareData({
     requestedNetuids: netuids,
     dimensions,
     subnetMeta,
     structureRows: mostComplete,
     economicsRows: dimensions.includes("economics") ? economicsRows : null,
-    healthRows: dimensions.includes("health") ? [] : null,
+    healthRows,
     observedAt,
   });
 }

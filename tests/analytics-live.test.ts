@@ -235,7 +235,7 @@ describe("analytics-live loaders", () => {
     assert.deepEqual(data.surfaces, []);
   });
 
-  test("loadRegistryLeaderboards keeps D1 boards empty; registry/economics boards still populate", async () => {
+  test("loadRegistryLeaderboards: no D1 binding leaves those boards empty, registry/economics still populate", async () => {
     const data = (await loadRegistryLeaderboards({
       profiles: [
         {
@@ -251,7 +251,9 @@ describe("analytics-live loaders", () => {
       observedAt: OBSERVED_AT,
     })) as Row;
     assert.ok(typeof data.boards === "object");
-    // surface_status/surface_uptime_daily-backed boards are always empty now.
+    // Without a `db` binding the surface_status/subnet_snapshots/
+    // surface_uptime_daily boards stay empty -- the floor. The populated case
+    // runs against a real SQLite database in analytics-live-d1-sqlite.test.ts.
     assert.deepEqual(data.boards.healthiest, []);
     assert.deepEqual(data.boards["fastest-rpc"], []);
     assert.deepEqual(data.boards["fastest-growing"], []);
@@ -282,7 +284,7 @@ describe("analytics-live loaders", () => {
     assert.equal("fastest-rpc" in data.boards, false);
   });
 
-  test("loadCompareSubnets health dimension is always empty (D1 retired)", async () => {
+  test("loadCompareSubnets health dimension is empty without a D1 binding", async () => {
     const data = (await loadCompareSubnets({
       profiles: [{ netuid: 1, slug: "apex", name: "Apex" }],
       economicsRows: [],

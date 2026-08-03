@@ -20031,11 +20031,10 @@ describe("graphql — registry_leaderboards (#5661, shared composer + REST-match
     }
   });
 
-  // D1 fully eliminated (2026-07-17): this route never had a Postgres-tier
-  // mirror for the health/rpc/growth/reliability boards, so composeLeaderboardsData
-  // always passes healthRows: [] now rather than adding new tier plumbing --
-  // even a "warm" D1 mock (real rows) must not change the response.
-  test("an explicit board returns only that board, always empty now that health has no D1 read", async () => {
+  // D1 reads resurrected (2026-08-03): composeLeaderboardsData reads
+  // surface_status again, so a warm D1 binding now RANKS the healthiest board
+  // instead of returning an empty list.
+  test("an explicit board returns only that board, ranked from D1", async () => {
     const env = {
       METAGRAPH_HEALTH_DB: healthDb([
         { netuid: 7, total: 4, ok_count: 2, avg_latency_ms: 90 },
@@ -20052,7 +20051,12 @@ describe("graphql — registry_leaderboards (#5661, shared composer + REST-match
     assert.equal(r.board, "healthiest");
     // Filtered response carries just the requested board, matching REST.
     assert.deepEqual(Object.keys(r.boards), ["healthiest"]);
-    assert.deepEqual(r.boards.healthiest, []);
+    // Ranked by uptime first: netuid 3 is 4/4, netuid 7 is 2/4.
+    assert.deepEqual(
+      (r.boards.healthiest as Row[]).map((entry) => entry.netuid),
+      [3, 7],
+    );
+    assert.equal((r.boards.healthiest as Row[])[0].uptime_ratio, 1);
   });
 
   test("an unknown board is a BAD_USER_INPUT error, not a silent empty board", async () => {
