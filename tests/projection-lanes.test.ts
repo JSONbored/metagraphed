@@ -1,7 +1,3 @@
-import {
-  PROJECTION_LANES_CRON,
-  PROJECTION_LANES_DAILY_CRON,
-} from "../workers/config.ts";
 // The projection framework's one hard promise is that a failed compute NEVER
 // overwrites a good artifact — so these tests assert the absence of the put
 // as sharply as its presence — and the lane computes are asserted as the
@@ -9,7 +5,6 @@ import {
 import assert from "node:assert/strict";
 import { afterEach, describe, test, vi } from "vitest";
 import {
-  lanesForCron,
   PROJECTION_LANES,
   STAKE_FLOW_PROJECTION_WINDOWS,
   runProjectionLane,
@@ -409,122 +404,6 @@ describe("blocks-summary lane compute", () => {
     assert.equal(
       await laneNamed("blocks-summary").compute(LAKE_ENV as unknown as Env),
       null,
-    );
-  });
-});
-
-describe("subnet-event-summary lane compute", () => {
-  const TOTALS = [
-    {
-      netuid: 1,
-      event_kind: "StakeAdded",
-      event_count: 10,
-      amount_tao: 5,
-      alpha_amount: 0,
-      first_block: 100,
-      last_block: 200,
-      first_observed_at: NOW - 9000,
-      last_observed_at: NOW - 1000,
-    },
-    {
-      netuid: 2,
-      event_kind: "WeightsSet",
-      event_count: 7,
-      amount_tao: 0,
-      alpha_amount: 0,
-      first_block: 110,
-      last_block: 190,
-      first_observed_at: NOW - 8000,
-      last_observed_at: NOW - 2000,
-    },
-  ];
-  const HOTKEYS = [{ netuid: 1, event_kind: "StakeAdded", n: 4 }];
-  const COLDKEYS = [{ netuid: 1, event_kind: "StakeAdded", n: 3 }];
-
-  test("distributes the distinct counts and joins them onto the totals", async () => {
-    const q = lakeFetch(TOTALS, HOTKEYS, COLDKEYS);
-    const body = (await laneNamed("subnet-event-summary").compute(
-      LAKE_ENV as unknown as Env,
-    )) as Row;
-
-    // 3 windows x 3 reads.
-    assert.equal(q.length, 9);
-    // R2 SQL rejects COUNT(DISTINCT) on this table at EVERY window -- and even
-    // without a GROUP BY -- so the identity reads must never use that form.
-    for (const sql of q) assert.doesNotMatch(sql, /COUNT\(DISTINCT/);
-    for (const sql of q) assert.doesNotMatch(sql, /APPROX_DISTINCT/);
-    assert.match(q[1]!, /GROUP BY netuid, event_kind, hotkey/);
-    assert.match(q[2]!, /GROUP BY netuid, event_kind, coldkey/);
-    // A null key is not an identity: counting one would report a phantom
-    // participant. WeightsSet carries a null hotkey in 100% of rows.
-    assert.match(q[1]!, /hotkey IS NOT NULL/);
-    assert.match(q[2]!, /coldkey IS NOT NULL/);
-    // One pass covers every subnet rather than one query per netuid.
-    assert.doesNotMatch(q[0]!, /netuid = /);
-
-    const rows = ((body.windows as Row)["7d"] as Row).rows as Row[];
-    const staked = rows.find((r) => r.event_kind === "StakeAdded")!;
-    assert.equal(staked.hotkey_count, 4);
-    assert.equal(staked.coldkey_count, 3);
-    assert.equal(staked.event_count, 10);
-  });
-
-  test("a kind with no identity rows counts zero, not undefined", async () => {
-    // WeightsSet has no hotkey rows in the stub; the join must yield 0 so the
-    // builder reads a number rather than undefined.
-    lakeFetch(TOTALS, HOTKEYS, COLDKEYS);
-    const body = (await laneNamed("subnet-event-summary").compute(
-      LAKE_ENV as unknown as Env,
-    )) as Row;
-    const rows = ((body.windows as Row)["7d"] as Row).rows as Row[];
-    const weights = rows.find((r) => r.event_kind === "WeightsSet")!;
-    assert.equal(weights.hotkey_count, 0);
-    assert.equal(weights.coldkey_count, 0);
-  });
-
-  test("coerces a non-numeric identity count to zero rather than NaN", async () => {
-    // One malformed cell must not make a subnet's hotkey_count NaN, which
-    // serializes as null and reads as "no participants".
-    lakeFetch(
-      TOTALS,
-      [{ netuid: 1, event_kind: "StakeAdded", n: "oops" }],
-      [{ netuid: 1, event_kind: "StakeAdded", n: null }],
-    );
-    const body = (await laneNamed("subnet-event-summary").compute(
-      LAKE_ENV as unknown as Env,
-    )) as Row;
-    const rows = ((body.windows as Row)["7d"] as Row).rows as Row[];
-    const staked = rows.find((r) => r.event_kind === "StakeAdded")!;
-    assert.equal(staked.hotkey_count, 0);
-    assert.equal(staked.coldkey_count, 0);
-  });
-
-  test("declines the whole compute when any of the three reads fails", async () => {
-    for (const responses of [
-      ["fail"],
-      [TOTALS, "fail"],
-      [TOTALS, HOTKEYS, "fail"],
-    ] as (unknown[] | "fail")[][]) {
-      lakeFetch(...responses);
-      assert.equal(
-        await laneNamed("subnet-event-summary").compute(
-          LAKE_ENV as unknown as Env,
-        ),
-        null,
-      );
-    }
-  });
-
-  test("runs on the DAILY cadence, never the half-hourly tick", async () => {
-    // ~8.3 GB per tick across three windows: half-hourly would be ~400 GB/day.
-    const half = lanesForCron(PROJECTION_LANES_CRON).map((l) => l.name);
-    const daily = lanesForCron(PROJECTION_LANES_DAILY_CRON).map((l) => l.name);
-    assert.ok(!half.includes("subnet-event-summary"));
-    assert.deepEqual(daily, ["subnet-event-summary"]);
-    // And no lane may appear on both, which would double-run it.
-    assert.deepEqual(
-      half.filter((n) => daily.includes(n)),
-      [],
     );
   });
 });
@@ -1456,12 +1335,7 @@ describe("runProjectionLanes", () => {
     // lane and the runner were both right and the TEST was what had to be
     // edited in lockstep. Deriving means registering a lane can only fail this
     // if the lane genuinely did not run or did not write.
-    // Only the lanes on THIS cadence: a lane declaring `intervalCron` runs on
-    // its own tick, so including it here would assert it ran when it
-    // deliberately did not.
-    const registered = lanesForCron(PROJECTION_LANES_CRON).map(
-      (lane) => lane.name,
-    );
+    const registered = PROJECTION_LANES.map((lane) => lane.name);
     const outcome = result as {
       ok: boolean;
       lanes: Record<string, number | null>;
@@ -1484,9 +1358,7 @@ describe("runProjectionLanes", () => {
     assert.equal(outcome.ok, true);
     assert.deepEqual(
       puts.map((put) => put.key).sort(),
-      lanesForCron(PROJECTION_LANES_CRON)
-        .map((lane) => lane.artifactKey)
-        .sort(),
+      PROJECTION_LANES.map((lane) => lane.artifactKey).sort(),
       "each lane writes exactly its own artifact key",
     );
   });
@@ -1509,19 +1381,14 @@ describe("runProjectionLanes", () => {
     assert.equal(result.lanes["chain-stake-flow"], 0);
     assert.equal(result.lanes["chain-stake-moves"], 0);
     assert.equal(result.lanes["blocks-summary"], 1);
-    assert.equal(
-      Object.keys(result.lanes).length,
-      lanesForCron(PROJECTION_LANES_CRON).length,
-    );
+    assert.equal(Object.keys(result.lanes).length, PROJECTION_LANES.length);
     assert.deepEqual(
       puts.map((put) => put.key),
-      lanesForCron(PROJECTION_LANES_CRON)
-        .map((lane) => lane.artifactKey)
-        .filter(
-          (key) =>
-            key !== CHAIN_TRANSFERS_PROJECTION_KEY &&
-            key !== CHAIN_TRANSFER_PAIRS_PROJECTION_KEY,
-        ),
+      PROJECTION_LANES.map((lane) => lane.artifactKey).filter(
+        (key) =>
+          key !== CHAIN_TRANSFERS_PROJECTION_KEY &&
+          key !== CHAIN_TRANSFER_PAIRS_PROJECTION_KEY,
+      ),
     );
     assert.deepEqual(
       events.map((event) => event.route),

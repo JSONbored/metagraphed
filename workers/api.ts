@@ -411,7 +411,6 @@ import {
   CHAIN_DETAIL_STALENESS_WATCHDOG_CRON,
   LIVE_ECONOMICS_REFRESH_CRON,
   PROJECTION_LANES_CRON,
-  PROJECTION_LANES_DAILY_CRON,
   FRESHNESS_WATCHDOG_STATE_KEY,
   BULK_TRENDS_PATH_PATTERN,
   ABUSE_SCAN_CRON,
@@ -1369,7 +1368,6 @@ function cronLabel(cron: string): string {
   if (cron === LAKEHOUSE_SEAM_CRON) return "lakehouse-seam-watchdog";
   if (cron === SAFE_MODE_WATCHDOG_CRON) return "safe-mode-watchdog";
   if (cron === PROJECTION_LANES_CRON) return "projection-lanes";
-  if (cron === PROJECTION_LANES_DAILY_CRON) return "projection-lanes-daily";
   if (cron === ACCOUNT_EVENTS_ROLLUP_CRON) return "account-events-rollup";
   if (cron === EMISSION_GATE_SAMPLE_CRON) return "emission-gate-sample";
   if (cron === EMISSION_DRIFT_CHECK_CRON) return "emission-drift-check";
@@ -1592,14 +1590,6 @@ async function dispatchScheduled(
     // a request-time reader. The #8998 wrapper above records the tick's
     // usage_event; lane-level failures record their own exceptions.
     return runProjectionLanes(env);
-  }
-  if (cron === PROJECTION_LANES_DAILY_CRON) {
-    // #9146: the daily half of the projection tick. A lane that declares
-    // `intervalCron` runs ONLY here -- subnet-event-summary scans ~8.3 GB
-    // across its three windows, which is fine once a day and ~400 GB/day at
-    // the half-hourly cadence. lanesForCron owns the split, so a lane cannot
-    // be double-run on both ticks.
-    return runProjectionLanes(env, {}, PROJECTION_LANES_DAILY_CRON);
   }
   if (cron === FRESHNESS_WATCHDOG_CRON) {
     // The alarm that replaces the box-side monitoring stack: notice when a
