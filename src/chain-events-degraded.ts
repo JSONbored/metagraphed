@@ -40,6 +40,7 @@ import { loadBlockChainEventsColdTier } from "./events-cold-tier.ts";
 import { buildSubnetConviction } from "./subnet-conviction.ts";
 import { buildSubnetLeaseHistory } from "./subnet-lease-history.ts";
 import { buildSubnetOwnershipHistory } from "./subnet-ownership-history.ts";
+import { loadSubnetConvictionChainTier } from "./subnet-lock-state.ts";
 import { loadSubnetOwnershipHistoryColdTier } from "./subnet-ownership-cold-tier.ts";
 import {
   loadChainEventsColdTier,
@@ -141,12 +142,15 @@ export function degradedChainEventsPayload(url: URL): Row | null {
  * against first -- putting its cold leg in this function would give it two
  * entry points that could disagree about the same block.
  *
- * The remaining four stay uncovered on purpose rather than by omission: the two
- * chain-events feeds are unfiltered scans of the 894M-row event table (the
- * shape #9146 moved to scheduled projections), conviction additionally needs
- * live UnlockRate/MaturityRate RPC reads that no lakehouse query can stand in
- * for, and lease/history reads account_events, a different stream with no
- * reader yet.
+ * Conviction is covered too, but NOT from the lakehouse -- it reads live chain
+ * storage (#9319, src/subnet-lock-state.ts). The note that stood here said
+ * conviction "additionally needs live UnlockRate/MaturityRate RPC reads that no
+ * lakehouse query can stand in for": the right observation with the wrong
+ * conclusion. Since the rates have to be read live anyway, the four lock maps
+ * are read in the same pass and the capture tier is skipped entirely -- no
+ * subnet_locks table, no migration, no producer cron.
+ *
+ * Every one of the six now has a reader; nothing is left uncovered here.
  */
 export async function coldTierChainEventsPayload(
   env: Env | null | undefined,
@@ -186,6 +190,16 @@ export async function coldTierChainEventsPayload(
     return (await loadChainEventsStatsColdTier(
       env,
       url.searchParams.get("blocks"),
+    )) as Row | null;
+  }
+  const conviction = SUBNET_CONVICTION.exec(url.pathname);
+  if (conviction) {
+    // The one branch that does not touch the lakehouse. `env` is unused here
+    // because the reader talks to finney directly, exactly as /sudo/key and the
+    // upgrade radar do -- see src/subnet-lock-state.ts's header for why no
+    // captured tier is involved.
+    return (await loadSubnetConvictionChainTier(
+      Number(conviction[1]),
     )) as Row | null;
   }
   return null;

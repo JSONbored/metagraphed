@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { afterEach, describe, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, test, vi } from "vitest";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { summarizeEvent } from "@jsonbored/chain-summaries";
 import {
@@ -4005,6 +4005,20 @@ describe("MCP subnet history/conviction tools degrade on a dead tier (#9146)", (
     ["get_subnet_conviction", "leaderboard"],
   ];
 
+  // #9319: get_subnet_conviction now has a SECOND tier behind DATA_API -- a
+  // live chain read (src/subnet-lock-state.ts). "Dead tier" therefore means
+  // dead all the way down, so the chain has to be unreachable too or these
+  // would assert against finney over the network. The other two tools never
+  // call fetch; stubbing it for the whole block keeps one shape.
+  const originalFetch = globalThis.fetch;
+  beforeEach(() => {
+    globalThis.fetch = (() =>
+      Promise.reject(new Error("no network in tests"))) as typeof fetch;
+  });
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
   function deadDataApi(mode: "5xx" | "reject") {
     return {
       fetch() {
@@ -4362,6 +4376,52 @@ describe("MCP get_subnet_lease_history (DATA_API binding)", () => {
 // get_subnet_conviction (#6638) reaches the same Postgres-backed all-events
 // tier as get_subnet_ownership_history above, so its tests mock DATA_API
 // the same way.
+describe("MCP get_subnet_conviction falls back to the live chain tier (#9319)", () => {
+  // The counterpart to the "dead tier" block above: there, nothing could
+  // answer and the marked empty stood. Here DATA_API is equally dead but the
+  // chain is reachable, so the tool serves a real board -- which is the whole
+  // point of giving this route a second tier.
+  test("answers from chain storage when DATA_API is down", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (_url: unknown, init: unknown) => {
+      const body = JSON.parse(
+        String((init as { body?: string })?.body ?? "{}"),
+      );
+      const result =
+        body.method === "chain_getHeader"
+          ? { number: "0x85d1db" }
+          : body.method === "state_getKeysPaged"
+            ? []
+            : null;
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result }));
+    }) as unknown as typeof fetch;
+    try {
+      const res = await callTool(
+        "get_subnet_conviction",
+        { netuid: 7 },
+        {
+          env: {
+            DATA_API: {
+              fetch: () =>
+                Promise.resolve(new Response("gone", { status: 502 })),
+            },
+          },
+        },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal(res.body.result.isError, false);
+      // A MEASURED empty board, not a marked one: the rates and the queried
+      // block are real, so `degraded` must be absent.
+      assert.equal(out.degraded, undefined, "the live tier answered");
+      assert.equal(out.queried_at_block, 8_770_011);
+      assert.equal(out.count, 0);
+      assert.deepEqual(out.leaderboard, []);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
 describe("MCP get_subnet_conviction (DATA_API binding)", () => {
   function makeDataApi({ payload, status = 200 }: Row = {}) {
     const calls: URL[] = [];
