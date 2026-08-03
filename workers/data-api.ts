@@ -4626,14 +4626,10 @@ async function handleAccountKeysRoute(request: Request, env: Env, url: URL) {
 //
 // validator_nominator_counts NO LONGER BELONGS TO THAT LIST. It landed on D1
 // in migrations/d1/0012, so the real read is wired below and this tier answers
-// nominator_count itself. That is exactly the resolution this comment
-// anticipated: the serving Worker's lakehouse overlay
-// (src/validator-nominator-counts-cold-tier.ts, #9146) becomes a no-op rather
-// than a conflict, because validatorHotkeysNeedingCount only collects hotkeys
-// whose count is still null and returns early when there are none. The overlay
-// stays in place while the producer backfills -- covering hotkeys D1 has not
-// received yet from the frozen mirror -- and stops firing on its own once a
-// full scan has landed.
+// nominator_count itself -- completely, since #9334 reads absence from a fresh
+// scan as a confirmed zero. The serving Worker's lakehouse overlay that covered
+// the gap in the meantime (#9146) is gone with #9337: it could only ever fire
+// on a null count, and there are none left to fill.
 type NeuronsD1RouteHandler = (sql: D1Sql, env: Env) => Promise<Response>;
 
 // The D1 twin of loadAlphaPricesByNetuid (#9051): netuid -> latest
