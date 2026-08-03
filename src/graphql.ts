@@ -262,6 +262,7 @@ import { loadBlockChainEvents } from "./data-api-mcp.ts";
 import { buildBlocksSummary } from "./blocks-summary.ts";
 import { loadBlocksSummaryFromArtifact } from "./blocks-summary-artifact.ts";
 import { buildRuntimeVersionHistory } from "./runtime-versions.ts";
+import { loadRuntimeVersionHistoryColdTier } from "./runtime-versions-cold-tier.ts";
 import { buildChainYield } from "./chain-yield.ts";
 import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.ts";
 import { loadSubnetBurn } from "./subnet-burn.ts";
@@ -4789,7 +4790,16 @@ const rootValue = {
         context.env,
         postgresTierRequest(context, "/api/v1/runtime"),
         "METAGRAPH_BLOCKS_SOURCE",
-      )) as Row | null) ?? buildRuntimeVersionHistory([]);
+      )) as Row | null) ??
+      // #9265: `chain.blocks` carries the same spec_version column, so the
+      // non-null contract below is now satisfied with the real timeline
+      // rather than only with the empty shape.
+      ((await loadRuntimeVersionHistoryColdTier(
+        context.env as unknown as Parameters<
+          typeof loadRuntimeVersionHistoryColdTier
+        >[0],
+      )) as Row | null) ??
+      buildRuntimeVersionHistory([]);
     return {
       schema_version: data.schema_version ?? 1,
       transitions: data.transitions || [],
