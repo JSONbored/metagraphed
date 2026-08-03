@@ -322,9 +322,17 @@
     // before this flip. Also caught and fixed a real bug during this pass:
     // netuid 0 (root)'s weights_rate_limit carries the chain's u64::MAX
     // "unlimited" sentinel, wider than Postgres BIGINT's signed range --
-    // widened to NUMERIC (#4843) before this flip. tryPostgresTier still
-    // falls back to D1 on any failure, so this remains a single-flag revert.
-    "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "retired",
+    // widened to NUMERIC (#4843) before this flip.
+    //
+    // FLIPPED to "d1" with the box wipe: the family lives on D1 now
+    // (migrations/d1/0009), and like METAGRAPH_NEURONS_SOURCE above the
+    // dispatcher lives in DATA_API ahead of its Hyperdrive gate, so this
+    // flag must still FORWARD there -- see DATA_API_D1_FLAGS in
+    // workers/postgres-tier.ts. "retired" would make the D1 tables
+    // unreachable. While D1 is still empty (no hourly sync landed yet)
+    // DATA_API answers 503 and the serving handler falls through to the
+    // lakehouse cold-tier snapshot, so the route never serves an empty mask.
+    "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "d1",
     // account_identity (#4832 gap-closure): FLIPPED to "postgres" 2026-07-11,
     // after a live parity pass. refresh-account-identity.yml's real
     // workflow_dispatch run synced all 455 accounts (Postgres started
@@ -335,9 +343,13 @@
     // NUL byte outright (SQLite's D1 storage silently tolerates it), 502-ing
     // the whole upsert; fixed by stripping NUL bytes before both the
     // latest-only upsert and the history hash (#4849) before this flip.
-    // tryPostgresTier still falls back to D1 on any failure, so this remains
-    // a single-flag revert.
-    "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "retired",
+    //
+    // FLIPPED to "d1" with the box wipe, same shape and same reasoning as
+    // METAGRAPH_SUBNET_HYPERPARAMS_SOURCE above (migrations/d1/0009 +
+    // DATA_API_D1_FLAGS forward + cold-tier 503 fallback while D1 is empty
+    // -- note this family's sync is DAILY, so the cold window can last up to
+    // a day unless the refresh workflow is dispatched manually post-deploy).
+    "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "d1",
     // subnet_identity_history (#4832 gap-closure, final table): FLIPPED to
     // "postgres" 2026-07-11, after a live parity pass with an unexpected
     // finding -- D1's own write path (recordSubnetIdentityChanges) had never

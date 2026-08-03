@@ -77,7 +77,16 @@ async function capturePostgresTierFallback(
 // blanket "forward on d1" would be wrong: the health and subnet-snapshot
 // flags also hold "d1", but their D1 loaders live in THIS worker and their
 // data-api legs are Postgres-only.
-const DATA_API_D1_FLAGS = new Set<string>(["METAGRAPH_NEURONS_SOURCE"]);
+const DATA_API_D1_FLAGS = new Set<string>([
+  "METAGRAPH_NEURONS_SOURCE",
+  // migrations/d1/0009: the hyperparams + account-identity dispatchers also
+  // live in DATA_API ahead of its Hyperdrive gate (matchHyperparamsIdentity-
+  // D1Route). Their cold-tier fallback depends on this forward too: DATA_API
+  // answers 503 while its table is still empty, which is what sends the
+  // serving handler on to the lakehouse cold-tier reader.
+  "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE",
+  "METAGRAPH_ACCOUNT_IDENTITY_SOURCE",
+]);
 
 export async function tryPostgresTier(
   env: Env,
