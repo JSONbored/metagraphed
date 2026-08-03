@@ -17,6 +17,7 @@
 // straight from the src/* leaf modules + config. api.ts imports the
 // handlers back and dispatches them from the router.
 
+import { loadSubnetWeightSettersColdTier } from "../../src/subnet-weight-setters-loader.ts";
 import { SS58_ADDRESS_PATTERN, resolveClientIp } from "../config.ts";
 import {
   BLOCK_PAGINATION,
@@ -241,9 +242,10 @@ import {
   DEFAULT_SUBNET_WEIGHTS_WINDOW,
 } from "../../src/subnet-weights.ts";
 import {
-  buildSubnetWeightSetters,
-  SUBNET_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
+  SUBNET_WEIGHT_SETTERS_LIMIT,
+  SUBNET_WEIGHT_SETTERS_WINDOWS,
+  buildSubnetWeightSetters,
 } from "../../src/subnet-weight-setters.ts";
 import {
   buildSubnetServing,
@@ -2596,6 +2598,17 @@ export async function handleSubnetWeightSetters(
       request,
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     )) as ReturnType<typeof buildSubnetWeightSetters> | null) ??
+    // #9267: the same WeightsSet stream the chain-wide leaderboard reads
+    // (#9251), narrowed to this subnet.
+    (await loadSubnetWeightSettersColdTier(
+      env as unknown as Parameters<typeof loadSubnetWeightSettersColdTier>[0],
+      netuid,
+      {
+        windowLabel: windowParam,
+        windowDays: SUBNET_WEIGHT_SETTERS_WINDOWS[windowParam] ?? 7,
+        limit: SUBNET_WEIGHT_SETTERS_LIMIT,
+      },
+    )) ??
     buildSubnetWeightSetters([], null, netuid, { window: windowParam });
   // account_events-derived: the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed WeightsSet event, mirroring the sibling /weights route.

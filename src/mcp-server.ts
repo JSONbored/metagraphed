@@ -35,6 +35,7 @@
 // exists to prevent for a human clicking through a browser. Revisit only via
 // a dedicated ADR amendment with its own consent model, not as an incremental
 // tool addition.
+import { loadSubnetWeightSettersColdTier } from "./subnet-weight-setters-loader.ts";
 import { z } from "zod";
 import {
   SearchSubnetsInputSchema,
@@ -1186,9 +1187,10 @@ import {
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
 } from "./account-events.ts";
 import {
-  buildSubnetWeightSetters,
-  SUBNET_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
+  SUBNET_WEIGHT_SETTERS_LIMIT,
+  SUBNET_WEIGHT_SETTERS_WINDOWS,
+  buildSubnetWeightSetters,
 } from "./subnet-weight-setters.ts";
 import {
   buildSubnetWeights,
@@ -5865,7 +5867,19 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             window,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildSubnetWeightSetters([], null, netuid, { window })
+        )) ??
+        (await loadSubnetWeightSettersColdTier(
+          ctx.env as unknown as Parameters<
+            typeof loadSubnetWeightSettersColdTier
+          >[0],
+          netuid,
+          {
+            windowLabel: window,
+            windowDays: SUBNET_WEIGHT_SETTERS_WINDOWS[window] ?? 7,
+            limit: SUBNET_WEIGHT_SETTERS_LIMIT,
+          },
+        )) ??
+        buildSubnetWeightSetters([], null, netuid, { window })
       );
     },
   },

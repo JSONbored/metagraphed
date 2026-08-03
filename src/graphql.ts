@@ -1,3 +1,4 @@
+import { loadSubnetWeightSettersColdTier } from "./subnet-weight-setters-loader.ts";
 import {
   GraphQLError,
   type GraphQLObjectType,
@@ -180,9 +181,10 @@ import {
   DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW,
 } from "./subnet-stake-transfers.ts";
 import {
-  buildSubnetWeightSetters,
-  SUBNET_WEIGHT_SETTERS_WINDOWS,
   DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW,
+  SUBNET_WEIGHT_SETTERS_LIMIT,
+  SUBNET_WEIGHT_SETTERS_WINDOWS,
+  buildSubnetWeightSetters,
 } from "./subnet-weight-setters.ts";
 import {
   buildSubnetYield,
@@ -3202,6 +3204,17 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
+      )) as Row | null) ??
+      ((await loadSubnetWeightSettersColdTier(
+        context.env as unknown as Parameters<
+          typeof loadSubnetWeightSettersColdTier
+        >[0],
+        netuid,
+        {
+          windowLabel: windowParam,
+          windowDays: SUBNET_WEIGHT_SETTERS_WINDOWS[windowParam] ?? 7,
+          limit: SUBNET_WEIGHT_SETTERS_LIMIT,
+        },
       )) as Row | null) ??
       buildSubnetWeightSetters([], null, netuid, { window: windowParam });
     return {
