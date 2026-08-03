@@ -110,6 +110,7 @@ import {
   buildAccountIdentity,
 } from "../src/account-identity.ts";
 import {
+  fillConfirmedZeros,
   nominatorCountsByHotkey,
   VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS,
 } from "../src/validator-nominator-summary.ts";
@@ -306,6 +307,7 @@ import {
   writeNominatorPositionsToD1,
 } from "../src/nominator-positions-d1-write.ts";
 import { writeValidatorNominatorCountsToD1 } from "../src/validator-nominator-counts-d1-write.ts";
+import { VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS } from "../src/validator-nominator-counts-staleness-watchdog.ts";
 import { writeChainDetailToD1 } from "../src/chain-detail-d1-write.ts";
 import {
   CHAIN_DETAIL_SYNC_MAX_BODY_BYTES,
@@ -4679,18 +4681,46 @@ async function loadAlphaPricesByNetuidD1(
 // any failure every nominator_count stays null, which is precisely the state
 // this tier served before the table existed -- so a broken read is a lost
 // enrichment, never a wrong number.
+//
+// ABSENCE MEANS ZERO, BUT ONLY FROM A FRESH SCAN (#9314). The producer emits a
+// row only for hotkeys it saw holding stake in SubtensorModule::Alpha, and it
+// has never once recorded a zero -- measured 2026-08-03, `WHERE
+// nominator_count = 0` returns nothing across 112,550 rows. So 471 of the 1,028
+// permitted validators have no row, and reading that as "unknown" understated
+// what we actually know: the producer's pass over Alpha is EXHAUSTIVE, so a
+// permitted validator absent from a completed pass genuinely has zero distinct
+// coldkeys staked to it.
+//
+// The freshness gate is what makes that inference safe rather than reckless.
+// Against a stale or truncated table the same absence means "we have not
+// looked recently", and publishing 0 for it would be a confident wrong number
+// -- the exact failure this family's own doctrine says is worse than an absent
+// one. So the zero-fill is conditioned on the scan being within the SAME
+// threshold the staleness watchdog alarms on, imported rather than restated so
+// the two can never disagree about what "fresh" means.
 async function loadNominatorCountsD1(
   sql: D1Sql,
   env: Env,
 ): Promise<Map<string, number>> {
   try {
+    // LEFT JOIN from the permitted set, not an inner read of the counts table:
+    // the rows with no match are precisely the ones the zero-fill is about, so
+    // they have to survive the query to be seen at all.
     const rows = await sql`
-      SELECT hotkey, nominator_count FROM validator_nominator_counts
-      WHERE hotkey IN (
+      SELECT n.hotkey AS hotkey,
+             c.nominator_count AS nominator_count,
+             (SELECT MAX(captured_at) FROM validator_nominator_counts) AS scan_at
+      FROM (
         SELECT DISTINCT hotkey FROM neurons
         WHERE validator_permit = 1 AND hotkey IS NOT NULL
-      )`;
-    return nominatorCountsByHotkey(rows);
+      ) n
+      LEFT JOIN validator_nominator_counts c ON c.hotkey = n.hotkey`;
+    return fillConfirmedZeros(
+      rows,
+      nominatorCountsByHotkey(rows),
+      Date.now(),
+      VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS,
+    );
   } catch (err) {
     console.error("validator_nominator_counts query failed:", err);
     await captureDataApiError(err, "validator-nominator-counts-query", env);
@@ -4698,9 +4728,9 @@ async function loadNominatorCountsD1(
   }
 }
 
-// The single-hotkey twin of the above, for /api/v1/validators/{hotkey}. Returns
-// null -- not 0 -- when the hotkey has no row, keeping "unknown" and "confirmed
-// zero" distinguishable exactly as buildValidatorDetail's own contract requires.
+// The single-hotkey twin of the above, for /api/v1/validators/{hotkey}. Same
+// rule: a real row wins, absence from a FRESH scan is a confirmed zero, and
+// absence from a stale one stays null.
 async function loadNominatorCountD1(
   sql: D1Sql,
   hotkey: string,
@@ -4708,10 +4738,18 @@ async function loadNominatorCountD1(
 ): Promise<number | null> {
   try {
     const rows = await sql.unsafe(
-      "SELECT hotkey, nominator_count FROM validator_nominator_counts WHERE hotkey = ?",
-      [hotkey],
+      "SELECT ? AS hotkey," +
+        " (SELECT nominator_count FROM validator_nominator_counts WHERE hotkey = ?) AS nominator_count," +
+        " (SELECT MAX(captured_at) FROM validator_nominator_counts) AS scan_at",
+      [hotkey, hotkey],
     );
-    return nominatorCountsByHotkey(rows).get(hotkey) ?? null;
+    const counts = fillConfirmedZeros(
+      rows,
+      nominatorCountsByHotkey(rows),
+      Date.now(),
+      VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS,
+    );
+    return counts.get(hotkey) ?? null;
   } catch (err) {
     console.error("validator_nominator_counts detail query failed:", err);
     await captureDataApiError(

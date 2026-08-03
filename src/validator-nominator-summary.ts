@@ -120,3 +120,47 @@ export function overlayNominatorCounts<T>(
     return count === undefined ? row : { ...row, nominator_count: count };
   }) as T;
 }
+
+/**
+ * Fill a confirmed ZERO for every hotkey the batch covered but the counts
+ * table has no row for -- but only when the scan behind it is fresh (#9314).
+ *
+ * The producer emits a row only for hotkeys it saw holding stake in
+ * SubtensorModule::Alpha, and it has never once recorded a zero: measured
+ * 2026-08-03, `WHERE nominator_count = 0` returned nothing across 112,550
+ * rows. So 471 of the 1,028 permitted validators had no row and read as
+ * "unknown", which understated what we actually know -- the pass over Alpha is
+ * EXHAUSTIVE, so a permitted validator missing from a completed one genuinely
+ * has zero distinct coldkeys staked to it.
+ *
+ * THE FRESHNESS GATE IS WHAT MAKES THAT INFERENCE SAFE. Against a stale or
+ * truncated table the same absence means "we have not looked recently", and
+ * publishing 0 for it would be a confident wrong number -- the failure this
+ * family's own doctrine calls worse than an absent one. `thresholdMs` is
+ * passed in rather than imported so this module stays dependency-free and the
+ * caller can hand it the same constant the staleness watchdog alarms on.
+ *
+ * `rows` carry the scan stamp on `scan_at` (a scalar subselect, so every row
+ * repeats one value). No rows, or no usable stamp, means there is no scan to
+ * trust and nothing is filled.
+ */
+export function fillConfirmedZeros(
+  rows: Row[] | null | undefined,
+  counts: Map<string, number>,
+  nowMs: number,
+  thresholdMs: number,
+): Map<string, number> {
+  const list = Array.isArray(rows) ? rows : [];
+  if (list.length === 0) return counts;
+  const scanAt = Number(list[0]?.scan_at);
+  // Number(null) is 0, so an absent stamp reads as the epoch and fails the
+  // freshness check below rather than sneaking through as a valid instant --
+  // but a non-numeric one has to be rejected explicitly.
+  if (!Number.isFinite(scanAt)) return counts;
+  if (nowMs - scanAt > thresholdMs) return counts;
+  for (const row of list) {
+    const hotkey = typeof row?.hotkey === "string" ? row.hotkey : null;
+    if (hotkey && !counts.has(hotkey)) counts.set(hotkey, 0);
+  }
+  return counts;
+}
