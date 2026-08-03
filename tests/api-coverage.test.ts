@@ -3372,14 +3372,48 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
     });
   });
 
-  test("recomputes and writes every registered lane's artifact on one tick", async () => {
-    const puts: string[] = [];
-    globalThis.fetch = (async () =>
-      ({
+  /**
+   * A lakehouse fake for a whole projection tick: every lane sees an empty
+   * result EXCEPT the blocks scan, which gets one row.
+   *
+   * blocks-summary stores a shaped card rather than rows, so an empty scan
+   * makes it decline by design -- buildBlocksSummary([]) asserts a chain with
+   * zero blocks, which is false, and persisting it would overwrite real
+   * numbers. The row-storing lanes have no such problem.
+   *
+   * Matched on the ORDER BY rather than the table name: chain-activity
+   * aggregates over chain.blocks too, and feeding IT rows would change what
+   * that lane computes.
+   */
+  function lakeFetchWithBlocks(onFail?: (sql: string) => boolean) {
+    return (async (_u: string, init: RequestInit) => {
+      const sql = String(JSON.parse(String(init?.body)).query);
+      if (onFail?.(sql)) {
+        return { ok: false, status: 500 } as unknown as Response;
+      }
+      const rows = sql.includes("ORDER BY block_number DESC")
+        ? [
+            {
+              block_number: 8_760_000,
+              author: "5A",
+              extrinsic_count: 2,
+              event_count: 4,
+              spec_version: 300,
+              observed_at: Date.now() - 12_000,
+            },
+          ]
+        : [];
+      return {
         ok: true,
         status: 200,
-        json: async () => ({ success: true, result: { rows: [] } }),
-      }) as unknown as Response) as unknown as typeof fetch;
+        json: async () => ({ success: true, result: { rows } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+  }
+
+  test("recomputes and writes every registered lane's artifact on one tick", async () => {
+    const puts: string[] = [];
+    globalThis.fetch = lakeFetchWithBlocks();
     const result = await projectionTick({
       R2_SQL_TOKEN: "cfut_test",
       METAGRAPH_ARCHIVE: {
@@ -3391,6 +3425,7 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
     assert.deepEqual(result, {
       ok: true,
       lanes: {
+        "blocks-summary": 1,
         "chain-transfers": 0,
         "chain-stake-flow": 0,
         "chain-activity": 0,
@@ -3404,6 +3439,7 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
       },
     });
     assert.deepEqual(puts, [
+      "metagraph/projections/blocks-summary.json",
       "metagraph/projections/chain-transfers.json",
       "metagraph/projections/chain-stake-flow.json",
       "metagraph/projections/chain-activity.json",
@@ -3419,17 +3455,7 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
 
   test("a failed lane reports ok:false without aborting the tick or the sibling lane", async () => {
     const puts: string[] = [];
-    globalThis.fetch = (async (_u: string, init: RequestInit) => {
-      const sql = String(JSON.parse(String(init?.body)).query);
-      if (sql.includes("'Transfer'")) {
-        return { ok: false, status: 500 } as unknown as Response;
-      }
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({ success: true, result: { rows: [] } }),
-      } as unknown as Response;
-    }) as unknown as typeof fetch;
+    globalThis.fetch = lakeFetchWithBlocks((sql) => sql.includes("'Transfer'"));
     const result = await projectionTick({
       R2_SQL_TOKEN: "cfut_test",
       METAGRAPH_ARCHIVE: {
