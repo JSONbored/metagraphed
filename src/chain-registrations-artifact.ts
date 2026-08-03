@@ -1,0 +1,89 @@
+// Network-wide registration activity served from a SCHEDULED PROJECTION
+// artifact when the Postgres tier misses (#9146).
+//
+// A PROJECTION, NOT A REQUEST-TIME READ, and that is the whole design point.
+// This is a chain-wide aggregate with no selective predicate: a COUNT(*) plus
+// two COUNT(DISTINCT hotkey) over every NeuronRegistered row in the window.
+// Measured on the live engine (2026-08-03) the per-subnet grouping alone reads
+// **186 MB** at ~67 MB/s -- roughly 2.8s. The account-scoped feeds can afford
+// a request-time lakehouse read because one address is a selective predicate
+// against a big table; this is not that shape. src/account-feeds-cold-tier.ts's
+// header draws the same line: chain-wide aggregates moved to scheduled
+// projections.
+//
+// Rows are stored VERBATIM, per the chain-* lane convention: the route's
+// ?limit= only slices the leaderboard, and buildChainRegistrations owns that
+// slice plus the network rollup and the intensity distribution. One artifact
+// therefore serves every window/limit combination the route accepts.
+
+import {
+  buildChainRegistrations,
+  CHAIN_REGISTRATIONS_WINDOWS,
+  DEFAULT_CHAIN_REGISTRATIONS_WINDOW,
+} from "./chain-registrations.ts";
+
+export const CHAIN_REGISTRATIONS_PROJECTION_KEY =
+  "metagraph/projections/chain-registrations.json";
+
+interface ArtifactBucket {
+  get(key: string): Promise<{ json(): Promise<unknown> } | null>;
+}
+
+/**
+ * The projected registration leaderboard for one window, or null when the
+ * artifact store cannot answer FAITHFULLY (unbound, missing object,
+ * unrecognized body, a window the lane did not precompute) so the caller keeps
+ * its schema-stable empty. Decline, never approximate.
+ */
+export async function loadChainRegistrationsFromArtifact(
+  env: Env | null | undefined,
+  query: { window?: string | null; limit?: number },
+): Promise<ReturnType<typeof buildChainRegistrations> | null> {
+  const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
+    ?.METAGRAPH_ARCHIVE;
+  if (!bucket?.get) return null;
+  try {
+    const object = await bucket.get(CHAIN_REGISTRATIONS_PROJECTION_KEY);
+    if (!object) return null;
+    const body = (await object.json()) as {
+      schema_version?: unknown;
+      windows?: unknown;
+    } | null;
+    // A body that is not the artifact the lane wrote is a decline, not a
+    // guess -- same contract as the sibling chain-* readers.
+    if (
+      body?.schema_version !== 1 ||
+      typeof body.windows !== "object" ||
+      body.windows === null
+    ) {
+      return null;
+    }
+    const label = query.window ?? DEFAULT_CHAIN_REGISTRATIONS_WINDOW;
+    // A window outside the route's set -- or one this artifact does not carry
+    // -- must never be answered with a DIFFERENT window's numbers.
+    if (!Object.hasOwn(CHAIN_REGISTRATIONS_WINDOWS, label)) return null;
+    const win = (body.windows as Record<string, unknown>)[label] as {
+      rows?: unknown;
+      network?: unknown;
+    } | null;
+    if (!Array.isArray(win?.rows)) return null;
+
+    // The network rollup is a SEPARATE aggregate, not a sum of the per-subnet
+    // rows: a hotkey registering on three subnets is three subnet-level
+    // registrants but one network-wide distinct registrant. Summing the rows
+    // would silently overcount, so the lane stores the real network aggregate
+    // and this hands it through untouched.
+    const network = (win.network ?? null) as {
+      distinct_registrants?: unknown;
+      newest_observed?: unknown;
+    } | null;
+
+    return buildChainRegistrations(win.rows as Record<string, unknown>[], {
+      window: label,
+      limit: query.limit,
+      networkDistinct: network ?? undefined,
+    });
+  } catch {
+    return null;
+  }
+}

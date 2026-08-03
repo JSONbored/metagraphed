@@ -70,6 +70,11 @@ import {
   buildBlocksSummary,
 } from "./blocks-summary.ts";
 import { BLOCKS_SUMMARY_PROJECTION_KEY } from "./blocks-summary-artifact.ts";
+import {
+  CHAIN_REGISTRATIONS_WINDOWS,
+  REGISTRATION_EVENT_KIND,
+} from "./chain-registrations.ts";
+import { CHAIN_REGISTRATIONS_PROJECTION_KEY } from "./chain-registrations-artifact.ts";
 
 /** Matches the analytics routes' day arithmetic (workers/data-api.ts's
  * ANALYTICS_DAY_MS) so a lane's cutoff is the same instant the live Postgres
@@ -794,11 +799,124 @@ async function computeBlocksSummary(
   };
 }
 
+/**
+ * GET /api/v1/chain/registrations, precomputed per window.
+ *
+ * THE OBVIOUS QUERY DOES NOT WORK, and that shapes this whole lane. The
+ * retired loader read
+ *   SELECT netuid, COUNT(*), COUNT(DISTINCT hotkey) ... GROUP BY netuid
+ * which R2 SQL rejects outright on the 30d window:
+ *   40015: scan budget exceeded: scanning too much data for count(DISTINCT)
+ *   with GROUP BY
+ * Verified live 2026-08-03. It succeeds on 7d and fails on 30d, which is
+ * exactly the asymmetry the route showed in production. Narrowing by
+ * block_number does not help -- the budget is spent on the DISTINCT, not the
+ * row range.
+ *
+ * So the aggregation is DISTRIBUTED, per the engine's own remedy: group by
+ * (netuid, hotkey), which carries no COUNT(DISTINCT) at all, and reduce the
+ * pairs here. That is EXACT, not approximate -- deliberately not
+ * APPROX_DISTINCT, because `distinct_registrants` is a published figure and
+ * silently approximating it would be a data defect rather than a perf choice.
+ * Measured: 30d returns 22,597 (netuid, hotkey) pairs over 32,883 events,
+ * 494 MB scanned -- fine once per tick, impossible per request.
+ *
+ * The network rollup is computed over the SAME pairs rather than summed from
+ * the per-subnet rows: one hotkey registering on three subnets is three
+ * subnet-level registrants but ONE network-wide distinct registrant.
+ *
+ * Only the reduced rows are stored (one per netuid), never the raw pairs.
+ */
+async function computeChainRegistrations(
+  env: Env,
+): Promise<Record<string, unknown> | null> {
+  const generatedAt = Date.now();
+  const windows: Record<string, unknown> = {};
+  let rowCount = 0;
+  for (const [label, days] of Object.entries(CHAIN_REGISTRATIONS_WINDOWS)) {
+    const cutoff = generatedAt - days * DAY_MS;
+    const scope =
+      `FROM chain.account_events ` +
+      `WHERE event_kind = '${REGISTRATION_EVENT_KIND}' ` +
+      `AND observed_at >= ${cutoff}`;
+
+    // Cheap gate, no DISTINCT: the window's freshness stamp, and a null means
+    // the window holds no registrations so the heavy read is worth skipping.
+    const stampRows = await r2SqlQuery(
+      env,
+      `SELECT MAX(observed_at) AS newest_observed ${scope}`,
+    );
+    if (stampRows === null) return null;
+    const newestObserved = stampRows[0]?.newest_observed ?? null;
+
+    let rows: Record<string, unknown>[] = [];
+    let networkRegistrants = 0;
+    if (newestObserved != null) {
+      const pairs = await r2SqlQuery(
+        env,
+        `SELECT netuid, hotkey, COUNT(*) AS n ${scope} GROUP BY netuid, hotkey`,
+      );
+      if (pairs === null) return null;
+
+      const perNetuid = new Map<
+        number,
+        { registrations: number; distinct_registrants: number }
+      >();
+      const networkHotkeys = new Set<string>();
+      for (const pair of pairs) {
+        const netuid = Number(pair.netuid);
+        if (!Number.isInteger(netuid)) continue;
+        const hotkey = pair.hotkey == null ? null : String(pair.hotkey);
+        const events = Number(pair.n) || 0;
+        const bucket = perNetuid.get(netuid) ?? {
+          registrations: 0,
+          distinct_registrants: 0,
+        };
+        bucket.registrations += events;
+        // Each pair IS one distinct hotkey for this netuid -- that is what
+        // grouping by (netuid, hotkey) guarantees.
+        if (hotkey !== null) bucket.distinct_registrants += 1;
+        perNetuid.set(netuid, bucket);
+        if (hotkey !== null) networkHotkeys.add(hotkey);
+      }
+      networkRegistrants = networkHotkeys.size;
+      rows = [...perNetuid.entries()]
+        .map(([netuid, bucket]) => ({ netuid, ...bucket }))
+        // The order the retired loader emitted, so the stored rows arrive at
+        // the builder already ranked.
+        .sort(
+          (a, b) => b.registrations - a.registrations || a.netuid - b.netuid,
+        );
+    }
+
+    windows[label] = {
+      days,
+      network: {
+        distinct_registrants: networkRegistrants,
+        newest_observed: newestObserved,
+      },
+      rows,
+    };
+    rowCount += rows.length;
+  }
+  return {
+    schema_version: 1,
+    generated_at: new Date(generatedAt).toISOString(),
+    row_count: rowCount,
+    windows,
+  };
+}
+
 export const PROJECTION_LANES: ProjectionLane[] = [
   {
     name: "blocks-summary",
     artifactKey: BLOCKS_SUMMARY_PROJECTION_KEY,
     compute: computeBlocksSummary,
+  },
+  {
+    name: "chain-registrations",
+    artifactKey: CHAIN_REGISTRATIONS_PROJECTION_KEY,
+    compute: computeChainRegistrations,
   },
   {
     name: "chain-transfers",

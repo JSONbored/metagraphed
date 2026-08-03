@@ -408,6 +408,147 @@ describe("blocks-summary lane compute", () => {
   });
 });
 
+describe("chain-registrations lane compute", () => {
+  const STAMP = [{ newest_observed: NOW - 1000 }];
+  // Distinct (netuid, hotkey) pairs, the shape the distributed aggregation
+  // returns. hotkey A appears on BOTH subnets on purpose: it is two
+  // subnet-level registrants but only ONE network-wide distinct registrant.
+  const PAIRS = [
+    { netuid: 5, hotkey: "A", n: 3 },
+    { netuid: 5, hotkey: "B", n: 1 },
+    { netuid: 15, hotkey: "A", n: 2 },
+  ];
+
+  test("distributes the aggregation and reduces the pairs exactly", async () => {
+    const queries = lakeFetch(STAMP, PAIRS, STAMP, PAIRS);
+    const body = (await laneNamed("chain-registrations").compute(
+      LAKE_ENV as unknown as Env,
+    )) as Row;
+
+    assert.equal(queries.length, 4, "2 windows x (stamp + pairs)");
+    // The cheap stamp first -- it gates the heavy read.
+    assert.match(queries[0]!, /MAX\(observed_at\) AS newest_observed/);
+    assert.doesNotMatch(queries[0]!, /GROUP BY/);
+    // R2 SQL rejects COUNT(DISTINCT) + GROUP BY on the 30d window (40015 scan
+    // budget), so the heavy read must never use that form.
+    assert.match(queries[1]!, /GROUP BY netuid, hotkey/);
+    assert.doesNotMatch(queries[1]!, /COUNT\(DISTINCT/);
+    assert.doesNotMatch(queries[1]!, /APPROX_DISTINCT/);
+
+    const win = (body.windows as Row)["7d"] as Row;
+    assert.deepEqual(win.rows, [
+      { netuid: 5, registrations: 4, distinct_registrants: 2 },
+      { netuid: 15, registrations: 2, distinct_registrants: 1 },
+    ]);
+    // Network distinct is over the pair set, NOT the sum of the per-subnet
+    // counts (2 + 1 = 3): hotkey A registered on both subnets.
+    assert.equal((win.network as Row).distinct_registrants, 2);
+    assert.equal((win.network as Row).newest_observed, NOW - 1000);
+  });
+
+  test("ranks rows the way the retired loader emitted them", async () => {
+    lakeFetch(STAMP, PAIRS);
+    const body = (await laneNamed("chain-registrations").compute(
+      LAKE_ENV as unknown as Env,
+    )) as Row;
+    const rows = ((body.windows as Row)["7d"] as Row).rows as Row[];
+    assert.deepEqual(
+      rows.map((r) => r.netuid),
+      [5, 15],
+      "registrations DESC, netuid ASC",
+    );
+  });
+
+  test("skips the heavy read when the window holds no registrations", async () => {
+    const queries = lakeFetch([{ newest_observed: null }]);
+    const body = (await laneNamed("chain-registrations").compute(
+      LAKE_ENV as unknown as Env,
+    )) as Row;
+    assert.equal(queries.length, 2, "one stamp per window, no pair read");
+    const win = (body.windows as Row)["7d"] as Row;
+    assert.deepEqual(win.rows, []);
+    assert.equal((win.network as Row).distinct_registrants, 0);
+  });
+
+  test("declines the whole compute when the stamp read fails", async () => {
+    lakeFetch("fail");
+    assert.equal(
+      await laneNamed("chain-registrations").compute(
+        LAKE_ENV as unknown as Env,
+      ),
+      null,
+    );
+  });
+
+  test("declines when the pair read fails after a healthy stamp", async () => {
+    // Storing the window with a real newest_observed but no rows would publish
+    // subnet_count 0 beside a live freshness stamp -- indistinguishable from a
+    // genuinely quiet window.
+    lakeFetch(STAMP, "fail");
+    assert.equal(
+      await laneNamed("chain-registrations").compute(
+        LAKE_ENV as unknown as Env,
+      ),
+      null,
+    );
+  });
+
+  test("does not count a null hotkey as a distinct registrant", async () => {
+    // account_events carries a null hotkey on some kinds (WeightsSet rows do).
+    // Counting one as a registrant would inflate both the per-subnet and the
+    // network distinct counts with a non-identity.
+    lakeFetch(STAMP, [
+      { netuid: 5, hotkey: null, n: 4 },
+      { netuid: 5, hotkey: "A", n: 1 },
+    ]);
+    const body = (await laneNamed("chain-registrations").compute(
+      LAKE_ENV as unknown as Env,
+    )) as Row;
+    const win = (body.windows as Row)["7d"] as Row;
+    // The events still count -- they happened -- but only "A" is a registrant.
+    assert.deepEqual(win.rows, [
+      { netuid: 5, registrations: 5, distinct_registrants: 1 },
+    ]);
+    assert.equal((win.network as Row).distinct_registrants, 1);
+  });
+
+  test("treats a non-numeric event count as zero rather than NaN", async () => {
+    // One malformed cell must not turn a subnet's whole registrations figure
+    // into NaN, which would serialize as null and read as 'no data'.
+    lakeFetch(STAMP, [{ netuid: 5, hotkey: "A", n: "oops" }]);
+    const body = (await laneNamed("chain-registrations").compute(
+      LAKE_ENV as unknown as Env,
+    )) as Row;
+    assert.deepEqual(((body.windows as Row)["7d"] as Row).rows, [
+      { netuid: 5, registrations: 0, distinct_registrants: 1 },
+    ]);
+  });
+
+  test("breaks a registrations tie by netuid ascending", async () => {
+    lakeFetch(STAMP, [
+      { netuid: 15, hotkey: "A", n: 2 },
+      { netuid: 5, hotkey: "B", n: 2 },
+    ]);
+    const body = (await laneNamed("chain-registrations").compute(
+      LAKE_ENV as unknown as Env,
+    )) as Row;
+    const rows = ((body.windows as Row)["7d"] as Row).rows as Row[];
+    assert.deepEqual(
+      rows.map((r) => r.netuid),
+      [5, 15],
+      "equal registrations must order by netuid ASC",
+    );
+  });
+
+  test("ignores a pair with a malformed netuid rather than counting it", async () => {
+    lakeFetch(STAMP, [{ netuid: "not-a-number", hotkey: "A", n: 9 }]);
+    const body = (await laneNamed("chain-registrations").compute(
+      LAKE_ENV as unknown as Env,
+    )) as Row;
+    assert.deepEqual(((body.windows as Row)["7d"] as Row).rows, []);
+  });
+});
+
 describe("chain-stake-flow lane compute", () => {
   test("replicates data-api's single GROUP BY aggregate per window", async () => {
     vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
@@ -1188,25 +1329,37 @@ describe("runProjectionLanes", () => {
       ...LAKE_ENV,
       METAGRAPH_ARCHIVE: bucket,
     } as unknown as Env);
-    assert.deepEqual(result, {
-      ok: true,
-      lanes: {
-        "blocks-summary": 1,
-        "chain-transfers": 0,
-        "chain-stake-flow": 0,
-        "chain-activity": 0,
-        "chain-calls": 0,
-        "chain-fees": 0,
-        "chain-signers": 0,
-        "chain-alpha-volume": 0,
-        "chain-stake-transfers": 0,
-        "chain-transfer-pairs": 0,
-        "chain-stake-moves": 0,
-      },
-    });
+    // Derived from the registry, NOT a hand-written roster -- the same change
+    // #9214 made to the sibling assertion in api-coverage.test.ts. A hardcoded
+    // list is what red-lined main when #9195 registered blocks-summary: the
+    // lane and the runner were both right and the TEST was what had to be
+    // edited in lockstep. Deriving means registering a lane can only fail this
+    // if the lane genuinely did not run or did not write.
+    const registered = PROJECTION_LANES.map((lane) => lane.name);
+    const outcome = result as {
+      ok: boolean;
+      lanes: Record<string, number | null>;
+    };
     assert.deepEqual(
-      puts.map((put) => put.key),
-      PROJECTION_LANES.map((lane) => lane.artifactKey),
+      Object.keys(outcome.lanes).sort(),
+      [...registered].sort(),
+      "every registered lane must appear in the tick summary",
+    );
+    // A lane reporting null DECLINED (compute returned null, previous artifact
+    // left in place). Name them rather than leaving the next reader to hunt.
+    const declined = registered.filter((name) => outcome.lanes[name] === null);
+    assert.deepEqual(
+      declined,
+      [],
+      `these lanes declined instead of writing: ${declined.join(", ")}. ` +
+        `If a newly registered lane declines on an empty read, give its query ` +
+        `rows in the stub above -- do not weaken this assertion.`,
+    );
+    assert.equal(outcome.ok, true);
+    assert.deepEqual(
+      puts.map((put) => put.key).sort(),
+      PROJECTION_LANES.map((lane) => lane.artifactKey).sort(),
+      "each lane writes exactly its own artifact key",
     );
   });
 
