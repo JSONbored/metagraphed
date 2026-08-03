@@ -40,8 +40,20 @@ export const NeuronSchema = z
     consensus: z.number().nullable().optional(),
     incentive: z.number().nullable().optional(),
     dividends: z.number().nullable().optional(),
-    emission_tao: z.number().nullable().optional(),
-    stake_tao: z.number().nullable().optional(),
+    emission_tao: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(
+        "This row's emission in the subnet named by the sibling `netuid`, alpha-denominated for the same reason as the sibling stake field and under the same deliberate on-chain naming (#2550/#8945). netuid 0 (root) is genuine TAO.",
+      ),
+    stake_tao: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(
+        "This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945).",
+      ),
     registered_at_block: z.int().nullable().optional(),
     is_immunity_period: z.boolean().optional(),
     // registered_at_block+immunity_period; present only while is_immunity_period
