@@ -64,6 +64,12 @@ import { CHAIN_ALPHA_VOLUME_PROJECTION_KEY } from "./chain-alpha-volume-artifact
 import { CHAIN_STAKE_TRANSFERS_PROJECTION_KEY } from "./chain-stake-transfers-artifact.ts";
 import { CHAIN_TRANSFER_PAIRS_PROJECTION_KEY } from "./chain-transfer-pairs-artifact.ts";
 import { CHAIN_STAKE_MOVES_PROJECTION_KEY } from "./chain-stake-moves-artifact.ts";
+import {
+  BLOCKS_SUMMARY_READ_COLUMNS,
+  BLOCKS_SUMMARY_SCAN_CAP,
+  buildBlocksSummary,
+} from "./blocks-summary.ts";
+import { BLOCKS_SUMMARY_PROJECTION_KEY } from "./blocks-summary-artifact.ts";
 
 /** Matches the analytics routes' day arithmetic (workers/data-api.ts's
  * ANALYTICS_DAY_MS) so a lane's cutoff is the same instant the live Postgres
@@ -754,7 +760,46 @@ async function computeChainTransferPairs(
   };
 }
 
+/**
+ * GET /api/v1/blocks/summary's card, precomputed.
+ *
+ * Reads the newest BLOCKS_SUMMARY_SCAN_CAP blocks -- the same fixed recent
+ * window loadBlocksSummary scanned in D1, and the same ORDER BY -- then shapes
+ * them with the SAME buildBlocksSummary the Postgres tier fed. Storing the
+ * shaped card rather than the rows is deliberate: the route takes no
+ * parameters, so there is exactly one output shape and nothing for a reader to
+ * re-slice.
+ *
+ * An empty lakehouse answer is NOT stored. buildBlocksSummary([]) is a zeroed
+ * card, and writing that over a good artifact would replace real numbers with
+ * a plausible-looking blank -- exactly the silent failure the all-or-nothing
+ * contract exists to prevent. The caller already holds a zeroed card as its
+ * floor; it does not need one persisted.
+ */
+async function computeBlocksSummary(
+  env: Env,
+): Promise<Record<string, unknown> | null> {
+  const generatedAt = Date.now();
+  const rows = await r2SqlQuery(
+    env,
+    `SELECT ${BLOCKS_SUMMARY_READ_COLUMNS} FROM chain.blocks ` +
+      `ORDER BY block_number DESC LIMIT ${BLOCKS_SUMMARY_SCAN_CAP}`,
+  );
+  if (rows === null || rows.length === 0) return null;
+  return {
+    schema_version: 1,
+    generated_at: new Date(generatedAt).toISOString(),
+    row_count: rows.length,
+    summary: buildBlocksSummary(rows),
+  };
+}
+
 export const PROJECTION_LANES: ProjectionLane[] = [
+  {
+    name: "blocks-summary",
+    artifactKey: BLOCKS_SUMMARY_PROJECTION_KEY,
+    compute: computeBlocksSummary,
+  },
   {
     name: "chain-transfers",
     artifactKey: CHAIN_TRANSFERS_PROJECTION_KEY,

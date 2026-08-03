@@ -12,6 +12,7 @@ import {
   type ProjectionLane,
 } from "../src/projection-lanes.ts";
 import { CHAIN_TRANSFERS_PROJECTION_KEY } from "../src/chain-transfers-artifact.ts";
+import { BLOCKS_SUMMARY_SCAN_CAP } from "../src/blocks-summary.ts";
 import { CHAIN_TRANSFER_PAIRS_PROJECTION_KEY } from "../src/chain-transfer-pairs-artifact.ts";
 import { type Row } from "./row-type.ts";
 
@@ -61,6 +62,42 @@ function lakeFetch(...responses: (unknown[] | "fail")[]) {
     } as unknown as Response;
   }) as unknown as typeof fetch;
   return queries;
+}
+
+/**
+ * A whole-engine fake for the runProjectionLanes tests: every lane sees an
+ * empty result EXCEPT the blocks scan, which gets one row.
+ *
+ * blocks-summary stores a shaped card rather than rows, so an empty scan makes
+ * it decline by design -- buildBlocksSummary([]) asserts a chain with zero
+ * blocks, which is false, and persisting it would overwrite real numbers. The
+ * row-storing lanes have no such problem: an empty window is honest for them.
+ */
+function lakeFetchWithBlocks(onFail?: (sql: string) => boolean) {
+  globalThis.fetch = (async (_u: string, init: RequestInit) => {
+    const sql = String(JSON.parse(String(init.body)).query);
+    if (onFail?.(sql)) return { ok: false, status: 500 } as unknown as Response;
+    // Matched on the ORDER BY, not just the table: chain-activity aggregates
+    // over chain.blocks too, and feeding IT rows would change what that lane
+    // computes. Only the blocks-summary scan orders by block_number.
+    const rows = sql.includes("ORDER BY block_number DESC")
+      ? [
+          {
+            block_number: 8_760_000,
+            author: "5A",
+            extrinsic_count: 2,
+            event_count: 4,
+            spec_version: 300,
+            observed_at: NOW - 12_000,
+          },
+        ]
+      : [];
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ success: true, result: { rows } }),
+    } as unknown as Response;
+  }) as unknown as typeof fetch;
 }
 
 const realFetch = globalThis.fetch;
@@ -304,6 +341,68 @@ describe("chain-transfers lane compute", () => {
     lakeFetch([], "fail");
     assert.equal(
       await laneNamed("chain-transfers").compute(LAKE_ENV as unknown as Env),
+      null,
+    );
+  });
+});
+
+describe("blocks-summary lane compute", () => {
+  const BLOCKS = [
+    {
+      block_number: 8_760_002,
+      author: "5A",
+      extrinsic_count: 4,
+      event_count: 9,
+      spec_version: 300,
+      observed_at: NOW - 12_000,
+    },
+    {
+      block_number: 8_760_001,
+      author: "5B",
+      extrinsic_count: 2,
+      event_count: 5,
+      spec_version: 300,
+      observed_at: NOW - 24_000,
+    },
+  ];
+
+  test("scans the newest blocks and stores the SHAPED card", async () => {
+    const queries = lakeFetch(BLOCKS);
+    const body = (await laneNamed("blocks-summary").compute(
+      LAKE_ENV as unknown as Env,
+    )) as Row;
+
+    assert.equal(queries.length, 1);
+    assert.match(queries[0]!, /FROM chain\.blocks/);
+    // Newest-first with the same fixed cap the D1 loader used, so the card is
+    // computed over the same window.
+    assert.match(queries[0]!, /ORDER BY block_number DESC/);
+    assert.match(queries[0]!, new RegExp(`LIMIT ${BLOCKS_SUMMARY_SCAN_CAP}`));
+
+    assert.equal(body.schema_version, 1);
+    assert.equal(body.row_count, 2);
+    // Unlike the chain-* lanes this stores the CARD, not the rows: the route
+    // takes no parameters, so there is nothing for a reader to re-slice.
+    assert.equal((body.summary as Row).block_count, 2);
+    assert.equal((body.summary as Row).distinct_authors, 2);
+    assert.equal(body.rows, undefined);
+  });
+
+  test("declines rather than storing a zeroed card over a good one", async () => {
+    // buildBlocksSummary([]) is a plausible-looking blank. Persisting it would
+    // replace real numbers with one, which is exactly the silent failure the
+    // all-or-nothing contract exists to prevent.
+    lakeFetch([]);
+    assert.equal(
+      await laneNamed("blocks-summary").compute(LAKE_ENV as unknown as Env),
+      null,
+    );
+  });
+
+  test("declines when the lakehouse query fails", async () => {
+    lakeFetch("fail");
+    assert.equal(
+      await laneNamed("blocks-summary").compute(LAKE_ENV as unknown as Env),
       null,
     );
   });
@@ -1083,7 +1182,7 @@ describe("runProjectionLanes", () => {
   });
 
   test("runs every registered lane and writes every artifact", async () => {
-    lakeFetch([]);
+    lakeFetchWithBlocks();
     const { puts, bucket } = archiveBucket();
     const result = await runProjectionLanes({
       ...LAKE_ENV,
@@ -1092,6 +1191,7 @@ describe("runProjectionLanes", () => {
     assert.deepEqual(result, {
       ok: true,
       lanes: {
+        "blocks-summary": 1,
         "chain-transfers": 0,
         "chain-stake-flow": 0,
         "chain-activity": 0,
@@ -1116,17 +1216,7 @@ describe("runProjectionLanes", () => {
     // healthy engine.
     const { puts, bucket } = archiveBucket();
     const { events, record } = exceptionRecorder();
-    globalThis.fetch = (async (_u: string, init: RequestInit) => {
-      const sql = String(JSON.parse(String(init.body)).query);
-      if (sql.includes("'Transfer'")) {
-        return { ok: false, status: 500 } as unknown as Response;
-      }
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({ success: true, result: { rows: [] } }),
-      } as unknown as Response;
-    }) as unknown as typeof fetch;
+    lakeFetchWithBlocks((sql) => sql.includes("'Transfer'"));
     const result = await runProjectionLanes(
       { ...LAKE_ENV, METAGRAPH_ARCHIVE: bucket } as unknown as Env,
       { recordException: record },
@@ -1137,6 +1227,7 @@ describe("runProjectionLanes", () => {
     // Every OTHER lane still ran and wrote.
     assert.equal(result.lanes["chain-stake-flow"], 0);
     assert.equal(result.lanes["chain-stake-moves"], 0);
+    assert.equal(result.lanes["blocks-summary"], 1);
     assert.equal(Object.keys(result.lanes).length, PROJECTION_LANES.length);
     assert.deepEqual(
       puts.map((put) => put.key),
