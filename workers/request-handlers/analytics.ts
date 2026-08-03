@@ -675,11 +675,20 @@ export async function handleBulkHealthTrends(
         "METAGRAPH_HEALTH_SOURCE",
       )) as Awaited<ReturnType<typeof loadBulkHealthTrends>>["data"] | null;
       if (!data) {
-        isFallback = true;
+        // D1-served payloads are cacheable; only a genuinely empty one is not.
+        // `isFallback` bars the edge cache, so it must mean "this payload is
+        // the schema-stable empty", not merely "the Postgres tier missed" --
+        // since 2026-08-03 a tier miss is the NORMAL path and D1 answers it
+        // with real rows. Mirrors handleSubnetUptime in analytics-routes.ts.
+        const d1Generation = currentD1ReadFailureGeneration();
         const result = await loadBulkHealthTrends({
           observedAt: meta?.last_run_at || null,
+          db: env.METAGRAPH_HEALTH_DB,
         });
         data = result.data;
+        isFallback =
+          !env.METAGRAPH_HEALTH_DB ||
+          currentD1ReadFailureGeneration() !== d1Generation;
       }
       const response = await envelopeResponse(
         cacheRequest,

@@ -7333,6 +7333,7 @@ const rootValue = {
       (
         await loadBulkHealthTrends({
           observedAt: await loadObservedAt(context),
+          db: context.env.METAGRAPH_HEALTH_DB,
         })
       ).data;
     return {
