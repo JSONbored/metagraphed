@@ -763,12 +763,9 @@ export const TRUSTED_RPC_UPSTREAM_ORIGINS = new Set([
   "wss://bittensor-finney.api.onfinality.io",
   "wss://entrypoint-finney.opentensor.ai",
   "wss://lite.chain.opentensor.ai",
-  // First-party pruned RPC node (#4965), behind a Cloudflare Tunnel --
-  // --rpc-methods=safe + node-level rate limiting at the origin, Cloudflare's
-  // own edge protection in front of that. Both HTTPS and WSS confirmed live
-  // 2026-07-14 (WSS via a real 101 Switching Protocols handshake, same bar as
-  // the testnet endpoints above), and an unsafe method (author_insertKey)
-  // confirmed rejected through the public URL, not just the private one.
-  "https://fullnode-rpc.metagraph.sh",
-  "wss://fullnode-rpc.metagraph.sh",
+  // The first-party pruned RPC node (#4965) used to be listed here. The box was
+  // decommissioned in metagraphed-infra#225 and the hostname now answers
+  // Cloudflare error 1033 / HTTP 530 on every request -- the tunnel origin is
+  // gone. Removed rather than left allowlisted: a dead entry here is one the
+  // pool can still rank, which is exactly what happened (see the PR).
 ]);
