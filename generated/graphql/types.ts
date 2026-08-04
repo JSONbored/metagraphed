@@ -2769,6 +2769,7 @@ export type Query = {
   subnet_axon_removals: SubnetAxonRemovals;
   /** Live current registration/burn cost for one subnet -- the dynamic price between the static min_burn_tao/max_burn_tao bounds, read directly from chain via RPC (not the Postgres tier). burn_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/burn. */
   subnet_burn?: Maybe<SubnetBurn>;
+  subnet_burn_history: SubnetBurnHistory;
   /** One subnet's unpromoted candidate-surface queue — the baked per-subnet /metagraph/candidates/{netuid}.json artifact the REST route and get_subnet_candidates MCP tool read. Filter with kind, provider, state, id, and confidence; sort with sort + order; and page with limit (1-100) / cursor, exactly as REST does — an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the candidates rows. Null when no candidate artifact has been baked for the netuid (rather than a GraphQL error). Distinct from candidates(...) (the filterable network-wide candidate catalog). Mirrors GET /api/v1/subnets/{netuid}/candidates. */
   subnet_candidates?: Maybe<Scalars['JSON']['output']>;
   /** Per-subnet stake and emission concentration over the current neurons snapshot: raw-UID and per-entity Gini/HHI/Nakamoto/top-K share for stake and emission, validator-only stake concentration, and a uids-per-entity Sybil signal; a subnet with no neurons resolves to a schema-stable zeroed card (metric blocks null), never null. Mirrors GET /api/v1/subnets/{netuid}/concentration. */
@@ -3765,6 +3766,12 @@ export type QuerySubnet_BurnArgs = {
 };
 
 
+export type QuerySubnet_Burn_HistoryArgs = {
+  netuid: Scalars['Int']['input'];
+  window?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QuerySubnet_CandidatesArgs = {
   confidence?: InputMaybe<Scalars['String']['input']>;
   cursor?: InputMaybe<Scalars['Int']['input']>;
@@ -4627,6 +4634,27 @@ export type SubnetBurn = {
   netuid: Scalars['Int']['output'];
   queried_at: Scalars['String']['output'];
   schema_version: Scalars['Int']['output'];
+};
+
+/** How one subnet's registration cost has MOVED (#9402). The live fields answer what it costs; this answers whether it is getting more or less expensive. Mainnet only — the series has no network dimension. */
+export type SubnetBurnHistory = {
+  __typename?: 'SubnetBurnHistory';
+  change_pct?: Maybe<Scalars['Float']['output']>;
+  /** Movement across the RETURNED window. Null when there is nothing to compare against: a single point has no change, and a change from a zero base has no percentage. */
+  change_tao?: Maybe<Scalars['Float']['output']>;
+  current_burn_tao?: Maybe<Scalars['Float']['output']>;
+  netuid: Scalars['Int']['output'];
+  point_count: Scalars['Int']['output'];
+  points: Array<SubnetBurnHistoryPoint>;
+  schema_version: Scalars['Int']['output'];
+  window?: Maybe<Scalars['String']['output']>;
+};
+
+/** One captured price. */
+export type SubnetBurnHistoryPoint = {
+  __typename?: 'SubnetBurnHistoryPoint';
+  burn_tao: Scalars['Float']['output'];
+  observed_at: Scalars['String']['output'];
 };
 
 /** Per-subnet stake & emission concentration card (#5901) over the current neurons snapshot. Metric blocks are null on a cold/empty subnet. Mirrors GET /api/v1/subnets/{netuid}/concentration. */
@@ -6071,6 +6099,8 @@ export type ResolversTypes = ResolversObject<{
   Subnet: ResolverTypeWrapper<Subnet>;
   SubnetAxonRemovals: ResolverTypeWrapper<SubnetAxonRemovals>;
   SubnetBurn: ResolverTypeWrapper<SubnetBurn>;
+  SubnetBurnHistory: ResolverTypeWrapper<SubnetBurnHistory>;
+  SubnetBurnHistoryPoint: ResolverTypeWrapper<SubnetBurnHistoryPoint>;
   SubnetConcentration: ResolverTypeWrapper<SubnetConcentration>;
   SubnetConcentrationHistory: ResolverTypeWrapper<SubnetConcentrationHistory>;
   SubnetConcentrationHistoryPoint: ResolverTypeWrapper<SubnetConcentrationHistoryPoint>;
@@ -6386,6 +6416,8 @@ export type ResolversParentTypes = ResolversObject<{
   Subnet: Subnet;
   SubnetAxonRemovals: SubnetAxonRemovals;
   SubnetBurn: SubnetBurn;
+  SubnetBurnHistory: SubnetBurnHistory;
+  SubnetBurnHistoryPoint: SubnetBurnHistoryPoint;
   SubnetConcentration: SubnetConcentration;
   SubnetConcentrationHistory: SubnetConcentrationHistory;
   SubnetConcentrationHistoryPoint: SubnetConcentrationHistoryPoint;
@@ -8612,6 +8644,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet?: Resolver<Maybe<ResolversTypes['Subnet']>, ParentType, ContextType, RequireFields<QuerySubnetArgs, 'netuid'>>;
   subnet_axon_removals?: Resolver<ResolversTypes['SubnetAxonRemovals'], ParentType, ContextType, RequireFields<QuerySubnet_Axon_RemovalsArgs, 'netuid'>>;
   subnet_burn?: Resolver<Maybe<ResolversTypes['SubnetBurn']>, ParentType, ContextType, RequireFields<QuerySubnet_BurnArgs, 'netuid'>>;
+  subnet_burn_history?: Resolver<ResolversTypes['SubnetBurnHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Burn_HistoryArgs, 'netuid'>>;
   subnet_candidates?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_CandidatesArgs, 'netuid'>>;
   subnet_concentration?: Resolver<ResolversTypes['SubnetConcentration'], ParentType, ContextType, RequireFields<QuerySubnet_ConcentrationArgs, 'netuid'>>;
   subnet_concentration_history?: Resolver<ResolversTypes['SubnetConcentrationHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Concentration_HistoryArgs, 'netuid'>>;
@@ -8978,6 +9011,22 @@ export type SubnetBurnResolvers<ContextType = GqlContext, ParentType extends Res
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   queried_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetBurnHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetBurnHistory'] = ResolversParentTypes['SubnetBurnHistory']> = ResolversObject<{
+  change_pct?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  change_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  current_burn_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  points?: Resolver<Array<ResolversTypes['SubnetBurnHistoryPoint']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SubnetBurnHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetBurnHistoryPoint'] = ResolversParentTypes['SubnetBurnHistoryPoint']> = ResolversObject<{
+  burn_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  observed_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 }>;
 
 export type SubnetConcentrationResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetConcentration'] = ResolversParentTypes['SubnetConcentration']> = ResolversObject<{
@@ -10114,6 +10163,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   Subnet?: SubnetResolvers<ContextType>;
   SubnetAxonRemovals?: SubnetAxonRemovalsResolvers<ContextType>;
   SubnetBurn?: SubnetBurnResolvers<ContextType>;
+  SubnetBurnHistory?: SubnetBurnHistoryResolvers<ContextType>;
+  SubnetBurnHistoryPoint?: SubnetBurnHistoryPointResolvers<ContextType>;
   SubnetConcentration?: SubnetConcentrationResolvers<ContextType>;
   SubnetConcentrationHistory?: SubnetConcentrationHistoryResolvers<ContextType>;
   SubnetConcentrationHistoryPoint?: SubnetConcentrationHistoryPointResolvers<ContextType>;

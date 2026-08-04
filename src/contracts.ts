@@ -1630,6 +1630,13 @@ export const PUBLIC_ARTIFACTS = [
     COMPUTED_LIVE,
   ),
   artifact(
+    "subnet-burn-history",
+    "/metagraph/subnets/{netuid}/burn-history.json",
+    "One subnet's registration-cost series (#9402) — how SubtensorModule.Burn has moved, captured every 15 minutes into D1 from the same single-call chain read /chain/burn uses. The live routes answer 'what does it cost'; this answers 'is it getting more expensive', which is the question an operator deciding where and WHEN to register actually has. ?window=24h|7d|30d|90d (default 7d), newest first, bounded. change_tao/change_pct describe the movement across the RETURNED window and are null when there is nothing to compare against — a single point has no change, and a change from a zero base has no percentage. A subnet with no recorded prices returns an empty series, never a 404.",
+    "SubnetBurnHistoryArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "chain-burn",
     "/metagraph/chain/burn.json",
     "Every subnet's live registration/burn cost in ONE response, ranked cheapest-first (#9399). The cross-subnet companion to /subnets/{netuid}/burn, which answers the same question one subnet at a time — 129 requests to compare them all. Served from a single chain read: Burn is an Identity-hashed map, so every key is derivable from its netuid and state_queryStorageAt returns them together. 120s KV cache, matching the per-subnet route (burn moves within minutes during registration bursts). A subnet whose burn is a genuine 0 is included, not dropped. subnet_count is what the chain reports exists (TotalNetworks) and read_count is how many were actually read — a gap between them means the read was partial. NOTE: there is no separate validator-permit price; permits are granted by the StakeThreshold, not purchased.",
@@ -3773,6 +3780,27 @@ export const API_ROUTES = [
     ],
   ),
   route(
+    "subnet-burn-history",
+    "GET",
+    "/api/v1/subnets/{netuid}/burn/history",
+    "/metagraph/subnets/{netuid}/burn-history.json",
+    "Fetch one subnet's registration-cost series. One subnet's registration-cost series (#9402) — how SubtensorModule.Burn has moved, captured every 15 minutes into D1 from the same single-call chain read /chain/burn uses. The live routes answer 'what does it cost'; this answers 'is it getting more expensive', which is the question an operator deciding where and WHEN to register actually has. ?window=24h|7d|30d|90d (default 7d), newest first, bounded. change_tao/change_pct describe the movement across the RETURNED window and are null when there is nothing to compare against — a single point has no change, and a change from a zero base has no percentage. A subnet with no recorded prices returns an empty series, never a 404.",
+    "short",
+    ["subnets"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["24h", "7d", "30d", "90d"] },
+      },
+    ],
+    [
+      {
+        name: "netuid",
+        schema: { type: "integer", minimum: 0, maximum: 65535 },
+      },
+    ],
+  ),
+  route(
     "chain-burn",
     "GET",
     "/api/v1/chain/burn",
@@ -5090,6 +5118,9 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // it probes a URL off the surface record, which testnet has too.
   "/api/v1/ask",
   "/api/v1/search/semantic",
+  // #9402: subnet_burn_history has no network dimension, so a testnet-addressed
+  // request would be served MAINNET prices. Declared rather than silently wrong.
+  "/api/v1/subnets/{netuid}/burn/history",
   "/api/v1/economics/trends",
   "/api/v1/health",
   "/api/v1/subnets/{netuid}/health",

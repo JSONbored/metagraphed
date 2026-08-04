@@ -139,6 +139,7 @@ import {
   handleSubnetRecycled,
   handleSubnetBurn,
   handleChainBurn,
+  handleSubnetBurnHistory,
   handleCrowdloan,
   handleCrowdloans,
   handleSubnetLease,
@@ -376,6 +377,10 @@ import {
 } from "../src/ai-search.ts";
 import { runGithubSignalsSync } from "../src/github-signals-sync.ts";
 import { runRawCaptureSync } from "../src/raw-capture-sync.ts";
+import {
+  captureSubnetBurnHistory,
+  type BurnHistoryDb,
+} from "../src/subnet-burn-history.ts";
 import { runOperationalSurfacesSync } from "../src/operational-surfaces-sync.ts";
 import { runSchemaSnapshotsSync } from "../src/schema-snapshots-sync.ts";
 import { runSurfaceVerificationSync } from "../src/surface-verification-sync.ts";
@@ -432,6 +437,7 @@ import {
   EMBEDDING_SYNC_CRON,
   GITHUB_SIGNALS_SYNC_CRON,
   RAW_CAPTURE_CRON,
+  SUBNET_BURN_CAPTURE_CRON,
   OPERATIONAL_SURFACES_SYNC_CRON,
   SCHEMA_SNAPSHOTS_SYNC_CRON,
   SURFACE_VERIFICATION_SYNC_CRON,
@@ -446,6 +452,7 @@ import {
   resolveClientIp,
   ROLLUP_TOKEN_HEADER,
   RUNTIME_VERSIONS_PATH_PATTERN,
+  SUBNET_BURN_HISTORY_PATH_PATTERN,
   SUBNET_HISTORY_PATH_PATTERN,
   SUBNET_HYPERPARAMS_PATH_PATTERN,
   SUBNET_HYPERPARAMS_HISTORY_PATH_PATTERN,
@@ -1388,6 +1395,7 @@ function cronLabel(cron: string): string {
   if (cron === EMBEDDING_SYNC_CRON) return "embedding-sync";
   if (cron === GITHUB_SIGNALS_SYNC_CRON) return "github-signals-sync";
   if (cron === RAW_CAPTURE_CRON) return "raw-capture";
+  if (cron === SUBNET_BURN_CAPTURE_CRON) return "subnet-burn-capture";
   if (cron === OPERATIONAL_SURFACES_SYNC_CRON)
     return "operational-surfaces-sync";
   if (cron === SCHEMA_SNAPSHOTS_SYNC_CRON) return "schema-snapshots-sync";
@@ -1552,6 +1560,14 @@ async function dispatchScheduled(
   }
   if (cron === EMBEDDING_SYNC_CRON) {
     return runEmbeddingSync(env, { readArtifact });
+  }
+  if (cron === SUBNET_BURN_CAPTURE_CRON) {
+    // #9402: one state_queryStorageAt covering every subnet, then one batched D1
+    // write. Never throws -- a capture lane that could take down the cron it runs on
+    // would be worse than a gap in the series.
+    return captureSubnetBurnHistory(env, {
+      db: env.METAGRAPH_HEALTH_DB as unknown as BurnHistoryDb,
+    });
   }
   if (cron === RAW_CAPTURE_CRON) {
     // Gap-free capture of raw extrinsic/event bytes into R2, replacing what
@@ -4476,6 +4492,22 @@ export async function handleRequest(
         resolved.url,
       );
     }
+    // #9402: the registration-cost series. Deliberately NOT in
+    // dispatchLiveChainRoute despite being burn-related -- that dispatcher serves
+    // the network-prefixed forms, and subnet_burn_history has no network column, so
+    // a testnet-prefixed request there would serve MAINNET prices as testnet's. It
+    // is declared mainnet-only instead, which is the mechanism for exactly this.
+    const burnHistoryMatch = SUBNET_BURN_HISTORY_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (burnHistoryMatch) {
+      return handleSubnetBurnHistory(
+        request,
+        env,
+        Number(burnHistoryMatch[1]),
+        resolved.url,
+      );
+    }
     const subnetHistoryMatch = SUBNET_HISTORY_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -5118,6 +5150,10 @@ export function isMainnetOnlyApiPath(pathname: string) {
     SUBNET_NEURON_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_VALIDATORS_PATH_PATTERN.test(pathname) ||
     SUBNET_EVENTS_PATH_PATTERN.test(pathname) ||
+    // #9402: subnet_burn_history has no network column, so a testnet-addressed
+    // request would be served MAINNET prices. Declared in MAINNET_ONLY_ROUTE_PATHS
+    // too -- this function and that list are asserted equal, in both directions.
+    SUBNET_BURN_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_IDENTITY_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_CONCENTRATION_PATH_PATTERN.test(pathname) ||

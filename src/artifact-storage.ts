@@ -58,6 +58,10 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // AI-4 analytics: also computed live from D1, never written as files.
   /^health\/percentiles\/(?:\d+|\{netuid\})\.json$/,
   /^health\/incidents\/(?:\d+|\{netuid\})\.json$/,
+  // One subnet's registration-cost series (#9402), served from the D1 rows the
+  // capture cron writes -- never a file. A baked series would freeze at build time,
+  // which is the opposite of what a series is for.
+  /^subnets\/(?:\d+|\{netuid\})\/burn-history\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/trajectory\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/uptime\.json$/,
   // Stake/emission concentration (#2106): computed live from the neurons D1 tier.

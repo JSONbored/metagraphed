@@ -82,3 +82,40 @@ export type ChainBurnArtifact = z.infer<typeof ChainBurnArtifactSchema>;
 export const ChainBurnResponseSchema = successEnvelopeSchema(
   ChainBurnArtifactSchema,
 );
+
+// GET /api/v1/subnets/{netuid}/burn/history (#9402). Modeled from
+// src/subnet-burn-history.ts's buildSubnetBurnHistory().
+export const SubnetBurnHistoryPointSchema = z
+  .object({
+    observed_at: z.iso.datetime(),
+    // A genuine 0 is a real price, so this is bounded below at 0 rather than
+    // required positive -- netuid 76 reads a true zero.
+    burn_tao: z.number().min(0),
+  })
+  .strict();
+
+export const SubnetBurnHistoryArtifactSchema = z
+  .object({
+    schema_version: z.int(),
+    netuid: z.int().min(0).max(65535),
+    window: z.string().nullable(),
+    point_count: z.int().min(0),
+    current_burn_tao: z.number().min(0).nullable(),
+    // Across the RETURNED window, so they always describe the series in hand.
+    // Null when there is nothing to compare against: a single point has no change,
+    // and a change from a zero base has no percentage (Infinity would serialize to
+    // null anyway, with nothing to say why).
+    change_tao: z.number().nullable(),
+    change_pct: z.number().nullable(),
+    points: z.array(SubnetBurnHistoryPointSchema),
+  })
+  .passthrough();
+export type SubnetBurnHistoryArtifact = z.infer<
+  typeof SubnetBurnHistoryArtifactSchema
+>;
+export const SubnetBurnHistoryResponseSchema = successEnvelopeSchema(
+  SubnetBurnHistoryArtifactSchema,
+);
+export const SubnetBurnHistoryQuerySchema = z
+  .object({ window: z.enum(["24h", "7d", "30d", "90d"]).optional() })
+  .strict();

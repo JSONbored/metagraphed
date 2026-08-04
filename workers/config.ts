@@ -53,6 +53,21 @@ export const GITHUB_SIGNALS_SYNC_CRON = "20 6 * * *";
 // src/raw-chain-capture.ts for the no-gap guarantee itself.
 export const RAW_CAPTURE_CRON = "*/5 * * * *";
 
+/**
+ * The registration-cost capture lane (#9402).
+ *
+ * Minutes 1/16/31/46 -- the ONLY 15-minute grid left that collides with none of the
+ * crons in this file and stays off the 5-minute raw-capture and 15-minute probe grids
+ * (computed from the trigger list, not guessed).
+ *
+ * One tick is a single state_queryStorageAt covering every subnet plus one batched D1
+ * write, so it is cheap. The cadence is chosen for RESOLUTION rather than cost: burn
+ * moves within minutes during a registration burst -- which is why the live route
+ * caches for only 120s -- so an hourly sample would miss exactly the events the
+ * series exists to show.
+ */
+export const SUBNET_BURN_CAPTURE_CRON = "1,16,31,46 * * * *";
+
 // The remaining three machine-data lanes (#9096), moved off their retired
 // GitHub Actions sync workflows onto Worker-native crons writing their R2
 // stores directly. Each keeps the cadence its workflow ran on, offset onto a
@@ -391,6 +406,11 @@ export const SUBNET_EVENTS_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/events$/;
 // series read from the neuron_daily rollup tier.
 export const SUBNET_NEURON_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/neurons\/(\d+)\/history$/;
+/** GET /api/v1/subnets/{netuid}/burn/history (#9402). Declared beside its siblings
+ * so the router's patterns stay in one place. */
+export const SUBNET_BURN_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/burn\/history$/;
+
 export const SUBNET_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/history$/;
 export const SUBNET_IDENTITY_HISTORY_PATH_PATTERN =
