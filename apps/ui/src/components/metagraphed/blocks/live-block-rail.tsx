@@ -143,8 +143,11 @@ export function LiveBlockRail() {
             </span>
           </div>
           <div className="mt-0.5 mg-type-data-sm text-ink-muted">
-            {formatNumber(latest.extrinsic_count ?? 0)} ext ·{" "}
-            {formatNumber(latest.event_count ?? 0)} evt
+            {/* An unknown count renders as "—", never as 0: the newest blocks
+                sit ahead of the decode sync, so `?? 0` claimed "0 evt" for
+                exactly the blocks this live rail exists to show. */}
+            {latest.extrinsic_count == null ? "—" : formatNumber(latest.extrinsic_count)} ext ·{" "}
+            {latest.event_count == null ? "—" : formatNumber(latest.event_count)} evt
           </div>
         </div>
       </div>

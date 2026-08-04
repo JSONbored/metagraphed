@@ -93,6 +93,20 @@
   // opaque id every src/unkey-client.ts call needs to scope its request to.
   "vars": {
     "UNKEY_API_ID": "api_2Dv8cVjrTSiD",
+    // Tier-source flags. These are READ by this Worker -- neuronsServedFromD1()
+    // and its two siblings in workers/data-api.ts gate on `!== "postgres"` --
+    // but they were declared only in wrangler.jsonc, which configures the MAIN
+    // Worker. `vars` is replaced wholesale on deploy, so over here they were
+    // always `undefined`: the comparison happened to yield the intended "serve
+    // from D1", and the documented 503 fall-through was unreachable.
+    //
+    // Declared here at the SAME values wrangler.jsonc carries, so the two
+    // Workers cannot disagree about which tier answers. Change them together:
+    // flipping one side alone is the split-brain this pins shut -- the main
+    // Worker would stop forwarding while this one kept serving D1.
+    "METAGRAPH_NEURONS_SOURCE": "d1",
+    "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "d1",
+    "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "d1",
   },
   // Smart placement: run the Worker close to the Hyperdrive origin (self-hosted indexer
   // box Postgres, reached via Cloudflare Tunnel) to minimize the per-request DB round-trip,

@@ -296,11 +296,40 @@ export function exceedsFrameCap(data: string | ArrayBuffer): boolean {
 // element. The HTTP proxy already refuses batches, an array containing one denied
 // call would otherwise need per-element error mapping, and no Substrate client sends
 // them over a subscription socket.
+/**
+ * A frame's JSON-RPC text, or null when it is not decodable UTF-8.
+ *
+ * Binary frames carry the SAME JSON as text ones -- jsonrpsee, Substrate's RPC
+ * server, parses `Data::Binary` exactly like `Data::Text` -- so a policy that
+ * only inspected `typeof data === "string"` was bypassed completely by sending
+ * the identical payload as an ArrayBuffer. `author_submitExtrinsic` and the
+ * `sudo_*` family were relayed to upstream providers under our IP reputation,
+ * which is the precise thing WSS_DENIED_RPC_PREFIXES exists to stop.
+ * `exceedsFrameCap` above already has an ArrayBuffer branch, so binary frames
+ * demonstrably reach this code path.
+ */
+export function rpcFrameText(data: string | ArrayBuffer): string | null {
+  if (typeof data === "string") return data;
+  try {
+    // `fatal` so invalid bytes throw instead of decoding to U+FFFD, which would
+    // turn undecodable input into a string we would then pretend to adjudicate.
+    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(
+      data,
+    );
+  } catch {
+    // Undecodable bytes are not a JSON-RPC call we can adjudicate. Forwarding
+    // matches the "forgiving in one direction only" rule below: we refuse what
+    // we can read and name, never what we merely failed to understand.
+    return null;
+  }
+}
+
 export function deniedRpcMethod(data: string | ArrayBuffer): string | null {
-  if (typeof data !== "string") return null;
+  const text = rpcFrameText(data);
+  if (text === null) return null;
   let rpc: unknown;
   try {
-    rpc = JSON.parse(data);
+    rpc = JSON.parse(text);
   } catch {
     return null;
   }
@@ -374,7 +403,10 @@ export function pipe(client: WebSocket, upstream: WebSocket): void {
     const denied = deniedRpcMethod(data);
     if (denied) {
       try {
-        client.send(rpcMethodNotAllowed(data as string, denied));
+        // Feed the DECODED text, not `data as string`: for a binary frame that
+        // cast produced an ArrayBuffer, whose JSON.parse throws, so the refusal
+        // came back with a null id the client could not correlate to its call.
+        client.send(rpcMethodNotAllowed(rpcFrameText(data) ?? "", denied));
       } catch {
         teardown(1011, "client send failed");
       }

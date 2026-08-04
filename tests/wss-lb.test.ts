@@ -433,7 +433,46 @@ for (const frame of [
   });
 }
 
-test("a binary frame is not policy-checked as text", () => {
+// This used to assert `deniedRpcMethod(new ArrayBuffer(8)) === null` under the
+// name "a binary frame is not policy-checked as text" -- encoding the bypass as
+// intended behaviour. jsonrpsee parses Data::Binary exactly like Data::Text, so
+// framing the same JSON as binary is a full escape from the policy, not a
+// different protocol.
+test("a denied method is refused when framed as BINARY, not just text", () => {
+  for (const prefix of WSS_DENIED_RPC_PREFIXES) {
+    const frame = new TextEncoder().encode(
+      `{"jsonrpc":"2.0","id":1,"method":"${prefix}anything","params":[]}`,
+    ).buffer as ArrayBuffer;
+    assert.equal(
+      deniedRpcMethod(frame),
+      `${prefix}anything`,
+      `${prefix} is enforced for text frames but bypassed by a binary frame`,
+    );
+  }
+});
+
+test("an allowed method framed as binary is still forwarded", () => {
+  const frame = new TextEncoder().encode(
+    '{"jsonrpc":"2.0","id":1,"method":"chain_getHeader"}',
+  ).buffer as ArrayBuffer;
+  assert.equal(deniedRpcMethod(frame), null);
+});
+
+test("a binary batch is refused the same way a text batch is", () => {
+  const frame = new TextEncoder().encode(
+    '[{"id":1,"method":"chain_getHeader"}]',
+  ).buffer as ArrayBuffer;
+  assert.equal(deniedRpcMethod(frame), "batch");
+});
+
+test("binary bytes that are not valid UTF-8 are forwarded, never guessed at", () => {
+  assert.equal(
+    deniedRpcMethod(new Uint8Array([0xff, 0xfe, 0xff]).buffer),
+    null,
+  );
+});
+
+test("binary bytes that decode but are not JSON are forwarded", () => {
   assert.equal(deniedRpcMethod(new ArrayBuffer(8)), null);
 });
 

@@ -234,8 +234,6 @@ import {
   clampLimit,
   clampOffset,
 } from "../workers/request-params.ts";
-import { buildSubnetIdentityHistory } from "./subnet-identity-history.ts";
-import { buildChainIdentityHistory } from "./chain-identity-history.ts";
 import {
   buildGlobalHealth,
   formatLeaderboards,
@@ -305,7 +303,6 @@ import {
 } from "./account-weight-setters.ts";
 import {
   ENTITY_LABELS_ARTIFACT,
-  buildAccountEntities,
   entityLabelsIndex,
   labelsForSs58,
 } from "./entity-labels.ts";
@@ -345,6 +342,12 @@ import {
   MAX_OHLC_WINDOW_DAYS,
 } from "./subnet-ohlc.ts";
 import { loadSubnetOhlcColdTier } from "./subnet-ohlc-cold-tier.ts";
+import { answerSubnetEvents } from "./subnet-events-answer.ts";
+import {
+  answerChainIdentityHistory,
+  answerSubnetIdentityHistory,
+} from "./identity-history-answer.ts";
+import { answerAccountEntities } from "./account-entities-answer.ts";
 import { loadValidatorNominatorsColdTier } from "./account-feeds-cold-tier.ts";
 import { loadAccountPositionsColdTier } from "./nominator-positions-cold-tier.ts";
 import { loadAccountPositionsD1 } from "./nominator-positions-hot-tier.ts";
@@ -360,7 +363,6 @@ import {
 } from "./accounts-list.ts";
 import {
   buildAccountEvents,
-  buildSubnetEvents,
   buildAccountSubnets,
   buildAccountSummary,
   buildAccountTransfers,
@@ -1387,7 +1389,20 @@ function paginate(
   let start = 0;
   if (cursor) {
     const idx = items.findIndex((item: Row) => String(keyFn(item)) === cursor);
-    if (idx >= 0) start = idx + 1;
+    // A cursor that matches no row is STALE, not absent. Leaving `start` at 0
+    // silently restarted the caller at page 1 and still emitted a next_cursor,
+    // so a client walked page 1 -> page 1 -> page 1 forever while `total` kept
+    // reporting thousands. These lists are keyed by identity (e.g. `validators`
+    // by hotkey) over rows read live and ordered by a live metric, so a row
+    // disappearing between two page fetches is ordinary, not exceptional.
+    //
+    // Terminating is the honest answer available here: the key is opaque, so
+    // there is no order to seek to an insertion point with, and the alternatives
+    // are an infinite loop or a hard error on a condition the client did nothing
+    // wrong to cause. An empty final page with next_cursor: null ends the walk
+    // cleanly; the client re-queries from the start if it wants the remainder.
+    if (idx < 0) return { page: [], total: items.length, nextCursor: null };
+    start = idx + 1;
   }
   const page = items.slice(start, start + safeLimit);
   const nextCursor =
@@ -2511,7 +2526,7 @@ const rootValue = {
     // retired (2026-07-16), so a Postgres miss/outage degrades straight to
     // the schema-stable empty timeline (entry_count 0), never a GraphQL
     // error and never a live D1 read.
-    const data =
+    const tierResult =
       ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
@@ -2520,12 +2535,16 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_SUBNET_IDENTITY_SOURCE",
-      )) as Row | null) ??
-      buildSubnetIdentityHistory([], netuid, {
-        limit: safeLimit,
-        offset: safeOffset,
-        nextCursor: null,
-      });
+      )) as Row | null) ?? null;
+    // Through the composer (src/identity-history-answer.ts) -- the lakehouse leg
+    // it owns is why this resolver no longer answers entry_count 0 while REST
+    // serves the timeline.
+    const data = await answerSubnetIdentityHistory(
+      context.env,
+      netuid,
+      tierResult,
+      { limit: safeLimit, offset: safeOffset, cursor: null },
+    );
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -2550,12 +2569,15 @@ const rootValue = {
     // D1 retirement: subnet_identity_history's D1 write path is retired
     // (2026-07-16), so a Postgres miss/outage degrades to a schema-stable
     // empty feed (count 0), never a GraphQL error.
-    const data =
+    const tierResult =
       ((await tryPostgresTier(
         context.env,
         postgresTierRequest(context, "/api/v1/chain/identity-history", params),
         "METAGRAPH_SUBNET_IDENTITY_SOURCE",
-      )) as Row | null) ?? buildChainIdentityHistory([], { limit: safeLimit });
+      )) as Row | null) ?? null;
+    const data = await answerChainIdentityHistory(context.env, tierResult, {
+      limit: safeLimit,
+    });
     return {
       schema_version: data.schema_version ?? 1,
       count: data.count ?? 0,
@@ -3177,12 +3199,18 @@ const rootValue = {
     if (block_start != null) params.set("block_start", String(block_start));
     if (block_end != null) params.set("block_end", String(block_end));
     // Same tryPostgresTier(METAGRAPH_ACCOUNT_EVENTS_SOURCE) handleSubnetEvents and
-    // the get_subnet_events MCP tool use; the account_events D1 write path is
-    // retired (#4772), so a tier miss resolves through buildSubnetEvents over an
-    // empty scan -- a schema-stable empty feed, never a GraphQL error. The events
-    // list passes through whole; graphql's default resolver reads each AccountEvent
-    // field, matching account_events' shaped rows.
-    const data =
+    // the get_subnet_events MCP tool use. The events list passes through whole;
+    // graphql's default resolver reads each AccountEvent field, matching
+    // account_events' shaped rows.
+    //
+    // The cold-tier leg below is what makes that sentence true again. #9212 added
+    // it to the REST handler only, and account_events' D1 write path is retired
+    // (#4772) so the tier above always declines -- which left this resolver
+    // falling straight to an empty buildSubnetEvents while REST served real rows
+    // from chain.account_events for the same netuid. A schema-stable empty feed
+    // is the right shape for "no events"; it is the wrong answer for "441M rows
+    // exist and nobody asked the table that holds them".
+    const tierResult =
       ((await tryPostgresTier(
         context.env,
         postgresTierRequest(
@@ -3191,12 +3219,15 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) as Row | null) ??
-      buildSubnetEvents([], netuid, {
-        limit: safeLimit,
-        offset: safeOffset,
-        nextCursor: null,
-      });
+      )) as Row | null) ?? null;
+    const data = await answerSubnetEvents(context.env, netuid, tierResult, {
+      limit: safeLimit,
+      offset: safeOffset,
+      cursor: null,
+      kind: kind ?? null,
+      blockStart: block_start ?? null,
+      blockEnd: block_end ?? null,
+    });
     return {
       schema_version: data.schema_version ?? 1,
       netuid: data.netuid ?? netuid,
@@ -6082,7 +6113,10 @@ const rootValue = {
         "METAGRAPH_SUBNET_OWNERSHIP_SOURCE",
       ),
     ]);
-    const data = ownershipData ?? buildAccountEntities(ss58, { entities: [] });
+    // Through the composer (src/account-entities-answer.ts): it owns the tier
+    // order and the empty floor, so this resolver cannot drift from REST/MCP
+    // the way it did while the lakehouse leg lived in entities.ts alone.
+    const data = await answerAccountEntities(context.env, ss58, ownershipData);
     const labels = labelsForSs58(
       entityLabelsIndex(
         entitiesArtifact.ok ? (entitiesArtifact.data as Row)?.entities : [],

@@ -92,6 +92,13 @@ export interface TieredRateLimitResult {
     remaining: number;
     resetAt: string;
   };
+  /**
+   * Set instead of `quota` when the caller asked to DEFER the spend. The
+   * per-minute limiter has already passed; this carries what the caller needs
+   * to debit the cost-weighted quota once it knows what the request costs.
+   * Only a multiplexed transport needs this -- see the `deferQuota` option.
+   */
+  quotaPending?: { accountId: string; dailyUnits: number };
   /** The verified account id when a valid API key was supplied, else null
    * (anonymous, IP-keyed). */
   accountId: string | null;
@@ -161,6 +168,8 @@ async function spendDailyQuota(
   env: Env,
   accountId: string,
   dailyUnits: number,
+  /** Explicit cost, when the pathname cannot price the work. See below. */
+  costUnitsOverride?: number,
 ): Promise<TieredRateLimitResult["quota"] & { allowed: boolean }> {
   const dataApi = (
     env as unknown as {
@@ -171,7 +180,15 @@ async function spendDailyQuota(
   const token = (env as unknown as { API_KEY_LOOKUP_INTERNAL_TOKEN?: string })
     .API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!dataApi?.fetch || !token) return null as never;
-  const { weight } = routeCost(new URL(request.url).pathname);
+  // The pathname prices the work for REST, where one path IS one operation.
+  // It cannot for a multiplexed transport: every MCP call is POST /mcp, which
+  // falls to the `edge` catch-all, so an LLM generation and an artifact read
+  // billed the same 1 unit. Such callers pass their own cost (see
+  // src/mcp-tool-cost.ts) and it wins over the pathname.
+  const { weight } =
+    typeof costUnitsOverride === "number" && Number.isFinite(costUnitsOverride)
+      ? { weight: Math.max(1, Math.trunc(costUnitsOverride)) }
+      : routeCost(new URL(request.url).pathname);
   try {
     const response = await dataApi.fetch(
       new Request("https://api.metagraph.sh/api/v1/internal/keys/quota", {
@@ -215,6 +232,26 @@ export async function applyTieredRateLimit(
   request: Request,
   env: Env,
   config: TieredRateLimitConfig,
+  /**
+   * What this request costs, when its pathname cannot say. Only the daily quota
+   * uses it; the per-minute limiter counts requests, not units.
+   */
+  {
+    costUnits,
+    deferQuota,
+  }: {
+    costUnits?: number;
+    /**
+     * Skip the daily-quota spend and hand back `quotaPending` instead.
+     *
+     * The per-minute limiter MUST stay ahead of body parsing -- a caller over
+     * its ceiling should be refused without us doing work for it, which
+     * tests/mcp-server.test.ts pins. But the cost-weighted quota cannot be
+     * priced until the body says which tools are being called. Deferring lets
+     * both hold: gate on count first, bill on cost second.
+     */
+    deferQuota?: boolean;
+  } = {},
 ): Promise<TieredRateLimitResult> {
   const authHeader = request.headers.get("authorization");
   const auth = authHeader
@@ -238,10 +275,23 @@ export async function applyTieredRateLimit(
     const limiter = (env as unknown as Record<string, RateLimit | undefined>)[
       policy.envVar
     ];
+    // `String()` unconditionally turned a null account id into the LITERAL
+    // "null" -- a single fabricated tenant that every identity-less key shared.
+    // verifyUnkeyKey returns `accountId: identity?.externalId ?? null` while
+    // `valid` stays true, so any key minted without an Unkey identity landed
+    // there. Downstream that string is an identity: resolveSurfaceCredentialIdentity
+    // accepts it and returns `account:null`, so one holder could list, delete,
+    // and use another's stored surface credentials. It also collapsed them into
+    // one rate-limit bucket and one quota row, and `Number("null")` is NaN.
+    //
+    // Every consumer of this field already guards with `if (rateLimit.accountId)`
+    // and the declared type is `string | null`, so a real null is what they were
+    // written for.
+    const accountId = auth.accountId == null ? null : String(auth.accountId);
     const result = {
       policy,
       tier: tier ?? "keyed",
-      accountId: String(auth.accountId),
+      accountId,
     };
     // #8611: the blocklist comes BEFORE any ceiling. A blocked caller is not
     // "going too fast", and spending their daily quota on requests we are about
@@ -255,7 +305,7 @@ export async function applyTieredRateLimit(
     // for up to half an hour after someone hit block. The blocklist is its own
     // small snapshot on a short TTL instead, so a block lands within one
     // BLOCKLIST_KV_TTL rather than one identity-cache lifetime.
-    const block = await loadBlockVerdict(env, auth.accountId);
+    const block = await loadBlockVerdict(env, accountId);
     if (block.blocked) {
       return { allowed: false, ...result, block };
     }
@@ -272,17 +322,34 @@ export async function applyTieredRateLimit(
       // fresh window on the new ceiling rather than inheriting the old tier's
       // partially-spent one, which would otherwise let a downgrade be dodged (or
       // an upgrade be throttled) for the rest of the window.
+      // An unattributable key falls back to its CLIENT IP rather than a shared
+      // literal: it still gets its tier's ceiling (it does hold a valid key),
+      // but it can never share a bucket with an unrelated caller.
       const { success } = await limiter.limit({
-        key: `${config.keyPrefix}:${result.tier}:${auth.accountId}`,
+        key: `${config.keyPrefix}:${result.tier}:${
+          accountId ?? `ip:${resolveClientIp(request)}`
+        }`,
       });
       if (!success) return { allowed: false, ...result };
     }
-    if (policy.dailyUnits) {
+    // The daily quota is debited against an rpc_accounts row. With no account
+    // id there is no row to debit -- the old code sent `Number("null")`, i.e.
+    // NaN, which the internal endpoint stored as a single shared `account_id:
+    // null` row every unattributable key drew down together. Skipping is the
+    // honest option: the per-minute ceiling above still bounds the caller.
+    if (policy.dailyUnits && accountId !== null && deferQuota) {
+      Object.assign(result, {
+        quotaPending: { accountId, dailyUnits: policy.dailyUnits },
+      });
+      return { allowed: true, ...result };
+    }
+    if (policy.dailyUnits && accountId !== null) {
       const quota = await spendDailyQuota(
         request,
         env,
-        String(auth.accountId),
+        accountId,
         policy.dailyUnits,
+        costUnits,
       );
       if (quota && !quota.allowed) {
         return { allowed: false, ...result, quota };
@@ -410,4 +477,26 @@ export function tieredRateLimitHeaders(
     "x-ratelimit-scope": "per-minute",
     ...(tier ? { "x-ratelimit-tier": tier } : {}),
   };
+}
+
+/**
+ * Debit a deferred daily quota once the caller knows what the request cost.
+ *
+ * Pair with `applyTieredRateLimit(..., { deferQuota: true })`. Returns the same
+ * verdict shape `result.quota` would have carried, so `tieredRejectionResponse`
+ * can label the 429 with the ceiling that actually rejected the caller.
+ */
+export async function spendDeferredDailyQuota(
+  request: Request,
+  env: Env,
+  pending: { accountId: string; dailyUnits: number },
+  costUnits: number,
+): Promise<TieredRateLimitResult["quota"] & { allowed: boolean }> {
+  return spendDailyQuota(
+    request,
+    env,
+    pending.accountId,
+    pending.dailyUnits,
+    costUnits,
+  );
 }

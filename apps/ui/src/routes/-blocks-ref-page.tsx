@@ -260,16 +260,21 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
           );
           return (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {/* `?? 0` here reported "0 events" for any block whose count is
+                  merely unknown -- true for every block newer than the decode
+                  sync's head. A count we do not have is not a count of zero,
+                  and the Success tile below already renders that distinction
+                  correctly. */}
               <StatTile
                 icon={FileText}
                 eyebrow="Extrinsics"
-                value={formatNumber(block.extrinsic_count ?? 0)}
+                value={block.extrinsic_count == null ? "—" : formatNumber(block.extrinsic_count)}
                 tooltip={BLOCK_TERM_HINTS.extrinsic}
               />
               <StatTile
                 icon={Zap}
                 eyebrow="Events"
-                value={formatNumber(block.event_count ?? 0)}
+                value={block.event_count == null ? "—" : formatNumber(block.event_count)}
                 tooltip={BLOCK_TERM_HINTS.event}
               />
               <StatTile
@@ -377,12 +382,12 @@ function ValidBlockDetail({ refValue }: { refValue: string }) {
             </FieldRow>
             <FieldRow label="Extrinsics">
               <span className="font-mono text-sm text-ink tabular-nums">
-                {formatNumber(block.extrinsic_count ?? 0)}
+                {block.extrinsic_count == null ? "—" : formatNumber(block.extrinsic_count)}
               </span>
             </FieldRow>
             <FieldRow label="Events">
               <span className="font-mono text-sm text-ink tabular-nums">
-                {formatNumber(block.event_count ?? 0)}
+                {block.event_count == null ? "—" : formatNumber(block.event_count)}
               </span>
             </FieldRow>
             <FieldRow label="Observed at">

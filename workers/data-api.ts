@@ -18,6 +18,7 @@
 // they answered before the deletion -- see dispatchDataApiRequest's own note
 // for why that matters to the forward gate.
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
+import { isPathUnder } from "./http.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
 import { maskRouteParams } from "../src/route-label.ts";
 import {
@@ -2723,16 +2724,31 @@ async function handleAlertTriggersMatchedWriteback(request: Request, env: Env) {
     // built dynamically (one `?` per already-isValidAlertTriggerId-validated
     // id), which a tagged template can't express. The first bind is the
     // shared `now` timestamp.
-    const placeholders = ids.map(() => "?").join(", ");
-    const updated = await sql.unsafe(
-      `UPDATE chain_alert_triggers
-       SET match_count = match_count + 1,
-           last_matched_at = ?
-       WHERE id IN (${placeholders})
-       RETURNING id`,
-      [now, ...ids],
-    );
-    return writeJson({ updated: updated.length });
+    //
+    // CHUNKED, because the Workers D1 binding caps a statement at 100 bound
+    // parameters. AlerterHub.evaluate() posts every matched trigger id in one
+    // call and the active-trigger load has no LIMIT, so a broad table_filter
+    // across ~100 active triggers bound 101 values, D1 threw "too many SQL
+    // variables", and the 502 lost the ENTIRE batch's match_count and
+    // last_matched_at into a console.error. 90 leaves the same margin under
+    // 100 that src/neurons-d1-write.ts uses for this exact limit; the `now`
+    // bind is what makes the ceiling 90 ids rather than 91.
+    const CHUNK = 90;
+    let updatedCount = 0;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const slice = ids.slice(i, i + CHUNK);
+      const placeholders = slice.map(() => "?").join(", ");
+      const updated = await sql.unsafe(
+        `UPDATE chain_alert_triggers
+         SET match_count = match_count + 1,
+             last_matched_at = ?
+         WHERE id IN (${placeholders})
+         RETURNING id`,
+        [now, ...slice],
+      );
+      updatedCount += updated.length;
+    }
+    return writeJson({ updated: updatedCount });
   });
 }
 
@@ -2867,16 +2883,23 @@ async function handleAlertTriggersRoute(request: Request, env: Env, url: URL) {
   const segments = url.pathname.split("/").filter(Boolean);
   // ["api", "v1", "alerts", "triggers", <id?>]
   const id = segments[4];
-  if (!id && request.method === "POST") {
+  // A trailing sub-path is NOT part of any route here, and dropping it silently
+  // let /alerts/triggers/{id}/deliveries reach the DELETE branch and destroy the
+  // trigger -- a plausible URL to try, since the sibling watch surface really
+  // does expose /watch/triggers/{id}/deliveries. `!sub` is the same guard
+  // handleWatchTriggersRoute already applies for exactly this reason; anything
+  // with a fifth segment falls through to the 405 below.
+  const sub = segments[5];
+  if (!id && !sub && request.method === "POST") {
     return handleAlertTriggerCreate(request, env);
   }
-  if (id && request.method === "GET") {
+  if (id && !sub && request.method === "GET") {
     return handleAlertTriggerGet(request, env, id);
   }
-  if (id && request.method === "PATCH") {
+  if (id && !sub && request.method === "PATCH") {
     return handleAlertTriggerUpdate(request, env, id);
   }
-  if (id && request.method === "DELETE") {
+  if (id && !sub && request.method === "DELETE") {
     return handleAlertTriggerDelete(request, env, id);
   }
   return writeJson(
@@ -6053,19 +6076,22 @@ async function dispatchDataApiRequest(
     // the exact-path-and-method checks above -- handleAlertTriggersRoute
     // does its own method dispatch, same shape as workers/api.ts's
     // handleWebhookRequest.
-    if (url.pathname.startsWith("/api/v1/alerts/triggers")) {
+    // isPathUnder, not startsWith: the unbounded prefix matched
+    // `/api/v1/alerts/triggersanything` too, and this is the side that actually
+    // reaches the create/delete handlers.
+    if (isPathUnder(url.pathname, "/api/v1/alerts/triggers")) {
       return handleAlertTriggersRoute(request, env, url);
     }
     // #8375: the Alert Center's address-scoped counterpart -- GET (list),
     // PATCH/DELETE (single trigger), GET .../deliveries (history), all
     // watch-token authorized. Same "multi-method, can't join the exact-match
     // checks" shape as handleAlertTriggersRoute just above.
-    if (url.pathname.startsWith("/api/v1/watch/triggers")) {
+    if (isPathUnder(url.pathname, "/api/v1/watch/triggers")) {
       return handleWatchTriggersRoute(request, env, url);
     }
     // #8385: the same address-scoped shape for web-push device
     // subscriptions (GET list, POST subscribe, DELETE one device).
-    if (url.pathname.startsWith("/api/v1/watch/push-subscriptions")) {
+    if (isPathUnder(url.pathname, "/api/v1/watch/push-subscriptions")) {
       return handleWatchPushSubscriptionsRoute(request, env, url);
     }
     // #8385: internal-only push-subscription resolve/prune for AlerterHub.

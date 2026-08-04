@@ -72,9 +72,34 @@ export const BLOCKS_SEAM_ENV = "ICEBERG_BLOCKS_MAX";
  */
 export const DEFAULT_BLOCKS_SEAM = 8_759_336;
 
-/** Columns blocks_head actually has. Anything else is null above the seam. */
-const D1_COLUMNS =
-  "block_number, block_hash, parent_hash, extrinsic_count, observed_at";
+// `blocks_head` carries only the core columns (block_number, block_hash,
+// parent_hash, extrinsic_count, observed_at). `spec_version` and the per-block
+// event count live in the live-follow hot tier's coverage register
+// (`chain_detail_blocks`, #9240) -- the SAME D1 database, keyed by the same
+// block_number -- so reading blocks_head alone published `event_count: null`
+// for every block above the seam even though the count was sitting one join
+// away. The UI renders that null as `0`, so a block with 320 events showed
+// "Events 0" while the same page's pallet breakdown (fed by /chain-events off
+// the hot tier) said 320.
+//
+// LEFT, never INNER: the hot tier keeps a SHORTER window than blocks_head
+// (measured 2026-08-04: chain_detail_blocks 8,769,690-8,771,490 vs blocks_head
+// 8,755,245-8,771,492). A block the hot tier has pruned past must still return
+// its core columns with an honest null count -- null means "not known here",
+// which is exactly what it meant before, just no longer for blocks the register
+// does hold.
+//
+// `event_count` is the RAW pallet-event count, matching what the lakehouse
+// column of that name means below the seam: verified on block 8,771,000, where
+// the lakehouse reports 268 and /chain-events counts 268. That is
+// `chain_event_count`, NOT `account_event_count` (the curated subset).
+const D1_SELECT =
+  "b.block_number, b.block_hash, b.parent_hash, b.extrinsic_count, " +
+  "b.observed_at, c.spec_version AS spec_version, " +
+  "c.chain_event_count AS event_count";
+const D1_FROM =
+  "blocks_head b LEFT JOIN chain_detail_blocks c " +
+  "ON c.block_number = b.block_number";
 
 interface D1Like {
   prepare(sql: string): {
@@ -167,9 +192,17 @@ export async function lakehouseHeadBlock(
 }
 
 /**
- * Whether the D1 leg can honour this query at all. Filters over columns
- * blocks_head does not carry must NOT be silently dropped, so their presence
- * disqualifies the leg rather than being ignored.
+ * Whether the D1 leg can honour this query at all. Filters over columns the
+ * leg cannot evaluate for EVERY row in its range must NOT be silently
+ * dropped, so their presence disqualifies the leg rather than being ignored.
+ *
+ * `spec_version` and `event_count` are now READABLE via the
+ * chain_detail_blocks join above, but they are still not FILTERABLE here: the
+ * hot tier's window is shorter than blocks_head's range, so a block outside it
+ * joins to null and would be silently excluded by `spec_version = ?` or
+ * `event_count >= ?` -- dropping rows the caller never excluded. Being able to
+ * report a value is not the same as being able to filter on it. `author` is
+ * carried by neither table, so it disqualifies the leg outright.
  */
 export function d1CanServe(query: BlockFeedQuery): boolean {
   return (
@@ -189,20 +222,23 @@ async function d1HeadRows(
   const db = bindings(env).METAGRAPH_HEALTH_DB;
   if (!db?.prepare || want <= 0) return null;
 
-  const where: string[] = ["block_number > ?"];
+  // Every predicate is qualified to `b`: block_number, observed_at and
+  // extrinsic_count all exist on BOTH sides of the join, so an unqualified
+  // reference is an "ambiguous column name" error, not a silent wrong answer.
+  const where: string[] = ["b.block_number > ?"];
   const params: unknown[] = [seam];
   if (cursor) {
     // The same 2-part (observed_at, block_number) seek the other tiers issue
     // for this token; SQLite row values keep it a single bound comparison.
-    where.push("(observed_at, block_number) < (?, ?)");
+    where.push("(b.observed_at, b.block_number) < (?, ?)");
     params.push(cursor[0], cursor[1]);
   }
   for (const [value, clause] of [
-    [query.blockStart, "block_number >= ?"],
-    [query.blockEnd, "block_number <= ?"],
-    [query.from, "observed_at >= ?"],
-    [query.to, "observed_at <= ?"],
-    [query.minExtrinsics, "extrinsic_count >= ?"],
+    [query.blockStart, "b.block_number >= ?"],
+    [query.blockEnd, "b.block_number <= ?"],
+    [query.from, "b.observed_at >= ?"],
+    [query.to, "b.observed_at <= ?"],
+    [query.minExtrinsics, "b.extrinsic_count >= ?"],
   ] as [unknown, string][]) {
     if (value == null) continue;
     const n = safeBlockNumber(value);
@@ -216,8 +252,8 @@ async function d1HeadRows(
   try {
     const res = await db
       .prepare(
-        `SELECT ${D1_COLUMNS} FROM blocks_head WHERE ${where.join(" AND ")}
-         ORDER BY observed_at DESC, block_number DESC LIMIT ?`,
+        `SELECT ${D1_SELECT} FROM ${D1_FROM} WHERE ${where.join(" AND ")}
+         ORDER BY b.observed_at DESC, b.block_number DESC LIMIT ?`,
       )
       .bind(...params, want)
       .all?.();
@@ -365,11 +401,11 @@ export async function loadBlockColdTier(
   if (db?.prepare && (aboveSeam || asHash !== null)) {
     try {
       const predicate =
-        asNumber !== null ? "block_number = ?" : "lower(block_hash) = ?";
+        asNumber !== null ? "b.block_number = ?" : "lower(b.block_hash) = ?";
       const value = asNumber !== null ? asNumber : asHash!;
       const res = await db
         .prepare(
-          `SELECT ${D1_COLUMNS} FROM blocks_head WHERE ${predicate} LIMIT 1`,
+          `SELECT ${D1_SELECT} FROM ${D1_FROM} WHERE ${predicate} LIMIT 1`,
         )
         .bind(value)
         .all?.();

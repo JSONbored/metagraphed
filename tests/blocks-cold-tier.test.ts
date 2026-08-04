@@ -430,11 +430,14 @@ describe("loadBlockFeedColdTier", () => {
         minExtrinsics: 2,
       } as never,
     );
-    assert.match(sql[0]!, /\(observed_at, block_number\) < \(\?, \?\)/);
-    assert.match(sql[0]!, /block_number >= \?/);
-    assert.match(sql[0]!, /block_number <= \?/);
-    assert.match(sql[0]!, /observed_at >= \?/);
-    assert.match(sql[0]!, /extrinsic_count >= \?/);
+    // Qualified to `b`: these columns exist on BOTH sides of the
+    // chain_detail_blocks join, so an unqualified predicate is an ambiguous
+    // -column error in SQLite rather than a silently wrong answer.
+    assert.match(sql[0]!, /\(b\.observed_at, b\.block_number\) < \(\?, \?\)/);
+    assert.match(sql[0]!, /b\.block_number >= \?/);
+    assert.match(sql[0]!, /b\.block_number <= \?/);
+    assert.match(sql[0]!, /b\.observed_at >= \?/);
+    assert.match(sql[0]!, /b\.extrinsic_count >= \?/);
     // Bound, never interpolated — order matters as much as presence.
     assert.deepEqual(params[0], [
       SEAM,
@@ -630,9 +633,45 @@ describe("loadBlockColdTier", () => {
       { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
       "0xABCD",
     );
-    assert.match(sql[0]!, /lower\(block_hash\) = \?/);
+    assert.match(sql[0]!, /lower\(b\.block_hash\) = \?/);
     assert.match(queries[0]!, /block_hash = '0xabcd'/);
     assert.equal(data!.block!.block_number, 42);
+  });
+
+  // The hot tier's coverage register (chain_detail_blocks) carries the two
+  // columns blocks_head lacks. Before the join, a block above the seam always
+  // published `event_count: null`, which the explorer rendered as "Events 0" --
+  // on block 8,771,446 the same page's pallet breakdown said 320.
+  test("a block the hot tier covers reports its event_count and spec_version", async () => {
+    const { db } = d1([
+      { ...headRow(SEAM + 4), spec_version: 442, event_count: 320 },
+    ]);
+    const queries = lakeFetch([]);
+    const data = await loadBlockColdTier(
+      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
+      String(SEAM + 4),
+    );
+    assert.equal(data!.block!.event_count, 320);
+    assert.equal(data!.block!.spec_version, 442);
+    // Answered entirely above the seam -- the lakehouse is never asked.
+    assert.equal(queries.length, 0);
+  });
+
+  // LEFT join: the hot tier keeps a shorter window than blocks_head, so a block
+  // it has pruned past still resolves -- with an honest null, never a zero. A
+  // count we do not have is not a count of zero.
+  test("a block the hot tier has pruned past keeps a null count, not a zero", async () => {
+    const { db } = d1([
+      { ...headRow(SEAM + 4), spec_version: null, event_count: null },
+    ]);
+    lakeFetch([]);
+    const data = await loadBlockColdTier(
+      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
+      String(SEAM + 4),
+    );
+    assert.equal(data!.block!.block_number, SEAM + 4);
+    assert.equal(data!.block!.event_count, null);
+    assert.equal(data!.block!.spec_version, null);
   });
 
   test("a hash D1 knows is served without touching the lakehouse", async () => {

@@ -15055,6 +15055,40 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
     assert.match(queries[0]!, /FROM chain\.blocks/);
   });
 
+  // #9212 wired the account_events cold tier into the REST handler ONLY, so
+  // with METAGRAPH_ACCOUNT_EVENTS_SOURCE retired this tool fell straight to the
+  // empty builder: GET /api/v1/subnets/1/events served real rows while
+  // get_subnet_events reported event_count 0 for the same netuid, with no error
+  // and no degraded marker. Asserting the QUERY as well as the rows, so a future
+  // change that returns rows without actually reading the subnet's stream fails.
+  test("get_subnet_events reads the lakehouse, not a confident zero", async () => {
+    const queries = lakeFetch([
+      {
+        block_number: 4200000,
+        event_index: 0,
+        event_kind: "StakeAdded",
+        netuid: 1,
+        hotkey: "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
+        coldkey: null,
+        uid: 7,
+        amount_tao: 1.5,
+        alpha_amount: null,
+        observed_at: 1750009000000,
+      },
+    ]);
+    const res = await callTool(
+      "get_subnet_events",
+      { netuid: 1, limit: 10 },
+      { env: LAKE_ENV },
+    );
+    const data = res.body.result.structuredContent;
+    assert.equal(data.events.length, 1);
+    assert.equal(data.event_count, 1);
+    assert.equal(data.events[0].event_kind, "StakeAdded");
+    assert.match(queries[0]!, /FROM chain\.account_events/);
+    assert.match(queries[0]!, /netuid = 1/);
+  });
+
   test("get_block resolves a height from the lakehouse", async () => {
     lakeFetch([LAKE_BLOCK]);
     const res = await callTool(

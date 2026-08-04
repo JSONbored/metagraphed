@@ -258,7 +258,12 @@ export async function loadBlockEventsColdTier(
   );
   if (rows === null) return null;
   const window = offset > 0 ? rows.slice(offset) : rows;
-  return buildBlockEvents(window, ref, height, { limit, offset });
+  // A short read PROVES the end of the block was reached, so `rows.length` is
+  // the block's true total -- free, no second query. A full read means there may
+  // be more beyond the window, so the total stays unknown and `event_count`
+  // falls back to the page length rather than inventing a ceiling.
+  const totalCount = rows.length < limit + offset ? rows.length : null;
+  return buildBlockEvents(window, ref, height, { limit, offset, totalCount });
 }
 
 /** A block hash resolved to its height, or the height itself. */

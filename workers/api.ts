@@ -43,6 +43,7 @@ import {
   errorResponse,
   exposeCustomResponseHeaders,
   ifNoneMatchSatisfied,
+  isPathUnder,
   weakEtag,
   X_METAGRAPH_ARTIFACT_RESOLUTION_HEADER,
   X_METAGRAPH_ARTIFACT_SOURCE_HEADER,
@@ -958,6 +959,17 @@ const LIVE_OVERLAY_ROUTE_IDS = new Set([
   // the data publish), falling back to the committed R2 economics.json — so it must
   // not be static-edge-cached.
   "economics",
+  // subnet-detail overlays live economics (alpha price, registration cost) from
+  // the same KV blob, plus D1 identity aliases -- see the `matched.id ===
+  // "subnet-detail"` branch below. It was missing here: this set was introduced
+  // to skip the edge cache for live overlays, and the subnet-detail overlay was
+  // added later without updating it, so isStaticEdgeCacheEligible returned true
+  // and a live alpha price could be edge-cached for 300s + 300s SWR with no
+  // invalidation. Masked today only because the generic endpoint overlay happens
+  // to fire for every currently-catalogued subnet -- which is NOT true of a
+  // newly-registered subnet with no catalogued surfaces, i.e. exactly the one
+  // whose price and registration cost move fastest.
+  "subnet-detail",
 ]);
 
 function isStaticEdgeCacheEligible(
@@ -3366,19 +3378,22 @@ export async function handleRequest(
   // above. All auth/routing/validation live in workers/data-api.ts's
   // handleAlertTriggersRoute -- this is only the DATA_API forwarding
   // boundary.
+  // isPathUnder, not startsWith: an unbounded prefix also matched
+  // `/api/v1/alerts/triggersanything`, forwarding a path that is not a route to
+  // the CRUD proxy, where an absent id + POST created a real trigger row.
   if (
-    url.pathname.startsWith("/api/v1/alerts/triggers") ||
+    isPathUnder(url.pathname, "/api/v1/alerts/triggers") ||
     // #8375: the Alert Center's address-scoped counterpart -- same generic
     // pass-through proxy (all auth/routing/validation live in
     // workers/data-api.ts's handleWatchTriggersRoute), same error-code
     // family as it's still an alert-trigger-family failure.
-    url.pathname.startsWith("/api/v1/watch/triggers") ||
+    isPathUnder(url.pathname, "/api/v1/watch/triggers") ||
     // #8808: same watch family, same generic pass-through proxy -- all
     // auth/routing/validation live in workers/data-api.ts's
     // handleWatchPushSubscriptions* handlers, this is only the DATA_API
     // forwarding boundary. CRUD accepts POST/GET/DELETE, so it must also
     // run ahead of the read-only method gate.
-    url.pathname.startsWith("/api/v1/watch/push-subscriptions")
+    isPathUnder(url.pathname, "/api/v1/watch/push-subscriptions")
   ) {
     return handleAlertTriggersProxy(request, env);
   }

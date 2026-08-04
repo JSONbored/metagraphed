@@ -207,7 +207,9 @@ import {
 import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.ts";
 import {
   applyTieredRateLimit,
+  spendDeferredDailyQuota,
   tieredRejectionResponse,
+  type RateLimitTierPolicy,
   type TieredRateLimitConfig,
 } from "../workers/tiered-rate-limit.ts";
 import { buildTierPolicies } from "./api-tiers.ts";
@@ -246,6 +248,13 @@ import {
   loadAccountEventsColdTier,
   loadBlockEventsColdTier,
 } from "./events-cold-tier.ts";
+import { answerSubnetEvents } from "./subnet-events-answer.ts";
+import { mcpBatchCostUnits } from "./mcp-tool-cost.ts";
+import {
+  answerChainIdentityHistory,
+  answerSubnetIdentityHistory,
+} from "./identity-history-answer.ts";
+import { answerAccountEntities } from "./account-entities-answer.ts";
 import {
   answerBlockDetail,
   answerExtrinsicDetail,
@@ -1276,7 +1285,6 @@ import {
   buildSubnetHistory,
   parseHistoryWindow,
 } from "./neuron-history.ts";
-import { buildSubnetIdentityHistory } from "./subnet-identity-history.ts";
 import {
   buildTurnover,
   buildTurnoverChanges,
@@ -1301,7 +1309,6 @@ import {
 import { buildBlocksSummary } from "./blocks-summary.ts";
 import { loadBlocksSummaryFromArtifact } from "./blocks-summary-artifact.ts";
 import {
-  buildChainIdentityHistory,
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
 } from "./chain-identity-history.ts";
@@ -1444,7 +1451,6 @@ import { API_ROUTES as MCP_API_ROUTES } from "./contracts.ts";
 import { loadRandomnessStatus } from "./randomness.ts";
 import {
   ENTITY_LABELS_ARTIFACT,
-  buildAccountEntities,
   entityLabelsIndex,
   labelsForSs58,
 } from "./entity-labels.ts";
@@ -3108,14 +3114,20 @@ async function loadSubnetIdentityHistoryTool(
   netuid: number,
   { limit, offset, cursor }: Row,
 ) {
-  return (
+  const tierResult =
     (await tryPostgresTier(
       ctx.env,
       mcpSubnetIdentityHistoryRequest(netuid, { limit, offset, cursor }),
       "METAGRAPH_SUBNET_IDENTITY_SOURCE",
-    )) ??
-    buildSubnetIdentityHistory([], netuid, { limit, offset, nextCursor: null })
-  );
+    )) ?? null;
+  // Through the composer (src/identity-history-answer.ts): it owns the tier
+  // order and the empty floor, so this tool cannot report entry_count 0 while
+  // REST serves the frozen verified timeline for the same netuid.
+  return answerSubnetIdentityHistory(ctx.env, netuid, tierResult, {
+    limit: Number(limit),
+    offset: offset == null ? null : Number(offset),
+    cursor: cursor ?? null,
+  });
 }
 
 // One UID's per-day time series — mirrors handleNeuronHistory. Tries the
@@ -5209,17 +5221,19 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       }
       // Mirrors REST's handleChainIdentityHistory: same tryPostgresTier
       // contract, same METAGRAPH_SUBNET_IDENTITY_SOURCE flag as the REST
-      // route (#4832), so this tool and GET /api/v1/chain/identity-history
-      // never diverge on which tier answered. D1 retirement: a Postgres
-      // miss/outage degrades to a schema-stable empty feed, never a live D1
-      // read.
-      return (
+      // route (#4832), THEN the same lakehouse cold tier. That last leg is what
+      // makes "never diverge" true: #9153 added it to entities.ts only, and with
+      // the flag retired the tier above always declines, so this tool answered
+      // count 0 while REST served the network-wide SubnetIdentitiesV3 feed.
+      const tierResult =
         (await tryPostgresTier(
           ctx.env,
           mcpChainIdentityHistoryRequest({ limit: args?.limit }),
           "METAGRAPH_SUBNET_IDENTITY_SOURCE",
-        )) ?? buildChainIdentityHistory([], { limit: args?.limit })
-      );
+        )) ?? null;
+      return answerChainIdentityHistory(ctx.env, tierResult, {
+        limit: args?.limit,
+      });
     },
   },
   {
@@ -7368,9 +7382,8 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       const netuid = requireNetuid(args);
       const kind = optionalString(args, "kind");
       requireKnownEventKind(kind);
-      // block_start/block_end/cursor are validated for REST-parity and forwarded
-      // to the Postgres tier below; the D1 fallback (buildSubnetEvents([]))
-      // never sees them since account_events is retired (#4772).
+      // block_start/block_end/cursor are validated for REST-parity and passed to
+      // BOTH the Postgres tier and the lakehouse cold tier below.
       const blockStart = optionalNonNegativeInt(args, "block_start");
       const blockEnd = optionalNonNegativeInt(args, "block_end");
       const cursor = optionalString(args, "cursor");
@@ -7378,7 +7391,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       const offset = Number.isFinite(args?.offset)
         ? Math.max(0, Math.floor(args.offset as number))
         : 0;
-      return (
+      const tierResult =
         (await tryPostgresTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/events`, {
@@ -7390,13 +7403,19 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             cursor,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ??
-        buildSubnetEvents([], netuid, {
-          limit,
-          offset,
-          nextCursor: null,
-        })
-      );
+        )) ?? null;
+      // Through the composer (src/subnet-events-answer.ts), which owns the tier
+      // order and the empty floor for REST, MCP and GraphQL alike -- the
+      // lakehouse leg it adds is why this tool no longer reports event_count 0
+      // while REST serves real rows for the same netuid.
+      return answerSubnetEvents(ctx.env, netuid, tierResult, {
+        limit,
+        offset,
+        cursor,
+        kind,
+        blockStart,
+        blockEnd,
+      });
     },
   },
   {
@@ -7844,8 +7863,11 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           "METAGRAPH_SUBNET_OWNERSHIP_SOURCE",
         ),
       ]);
-      const data =
-        ownershipData ?? buildAccountEntities(ss58, { entities: [] });
+      // Through the composer, which owns the tier order and the empty floor for
+      // all three surfaces (src/account-entities-answer.ts). The lakehouse leg
+      // it adds is why this tool no longer answers ownership_ties: [] for a
+      // coldkey that HAS won or lost a subnet.
+      const data = await answerAccountEntities(ctx.env, ss58, ownershipData);
       (data as Row).labels = labelsForSs58(
         entityLabelsIndex(
           entitiesArtifact?.ok ? entitiesArtifact.data?.entities : [],
@@ -14338,16 +14360,23 @@ async function enforceMcpRateLimit(
   rejection: Response | null;
   authTier: string;
   accountId: string | null;
+  quotaPending?: { accountId: string; dailyUnits: number };
 }> {
   // #8520: tiered rate limiting via the shared applyTieredRateLimit helper
   // (workers/tiered-rate-limit.ts), mirroring workers/api.ts's DATA checkpoint.
   // Anonymous callers keep the existing IP-keyed 100/60s ceiling unchanged; a
   // valid mg_... key gets the 5x account-keyed tier. Fails open when a binding
   // is absent (local dev/CI/pre-provision), like every limiter here.
+  // The per-minute ceiling and the blocklist run HERE, ahead of body parsing --
+  // a caller over its limit must be refused without us doing work for it. The
+  // cost-weighted daily quota cannot be priced yet (every MCP call is POST /mcp,
+  // so the pathname says nothing about what was asked for), so it is DEFERRED
+  // and spent by handleMcpRequest once the body names the tools.
   const rateLimit = await applyTieredRateLimit(
     request,
     env,
     MCP_TIERED_RATE_LIMIT,
+    { deferQuota: true },
   );
   // Fire-and-forget usage counter for the self-serve dashboard, only for a keyed
   // caller (accountId set). Matches workers/api.ts's "chain-events" label call.
@@ -14393,7 +14422,49 @@ async function enforceMcpRateLimit(
       ),
     };
   }
-  return { rejection: null, authTier, accountId };
+  return {
+    rejection: null,
+    authTier,
+    accountId,
+    quotaPending: rateLimit.quotaPending,
+  };
+}
+
+/**
+ * Debit the deferred daily quota for a parsed MCP body, or produce the refusal.
+ *
+ * Split out of enforceMcpRateLimit so the per-minute gate can stay ahead of
+ * body parsing while the COST is still charged per tool call rather than once
+ * per HTTP request.
+ */
+async function spendMcpQuota(
+  request: Request,
+  env: Env,
+  pending: { accountId: string; dailyUnits: number } | undefined,
+  body: unknown,
+  policy: RateLimitTierPolicy,
+  tier: string,
+): Promise<Response | null> {
+  if (!pending) return null;
+  const quota = await spendDeferredDailyQuota(
+    request,
+    env,
+    pending,
+    mcpBatchCostUnits(body),
+  );
+  if (!quota || quota.allowed) return null;
+  const rejection = tieredRejectionResponse(
+    { allowed: false, policy, tier, quota, accountId: pending.accountId },
+    {
+      code: "rate_limited",
+      message: "Daily MCP quota exhausted for this account.",
+    },
+  )!;
+  return jsonResponse(
+    rpcError(null, RPC_INVALID_REQUEST, rejection.message),
+    rejection.status,
+    rejection.headers,
+  );
 }
 
 function bodyTooLargeResponse() {
@@ -14659,20 +14730,17 @@ export async function handleMcpRequest(
   env: Env = {} as unknown as Env,
   deps: Row = {},
 ) {
-  const { rejection, authTier, accountId } = await enforceMcpRateLimit(
-    request,
-    env,
-    deps.executionCtx,
-  );
+  const { rejection, authTier, accountId, quotaPending } =
+    await enforceMcpRateLimit(request, env, deps.executionCtx);
   if (rejection) return rejection;
 
-  if (request.method === "GET") {
-    return handleMcpStreamRequest(request, env);
-  }
-  if (request.method === "DELETE") {
-    return handleMcpTerminateRequest(request, env);
-  }
   if (request.method !== "POST") {
+    if (request.method === "GET") {
+      return handleMcpStreamRequest(request, env);
+    }
+    if (request.method === "DELETE") {
+      return handleMcpTerminateRequest(request, env);
+    }
     return new Response(
       JSON.stringify({
         jsonrpc: JSONRPC_VERSION,
@@ -14694,6 +14762,20 @@ export async function handleMcpRequest(
 
   const { value: body, error: bodyError } = await readLimitedMcpBody(request);
   if (bodyError) return bodyError;
+
+  // The cost-weighted quota is spent HERE, not in the gate above: only now do we
+  // know which tools were asked for. This is what stops `tools/call {"ask"}`
+  // -- a Workers-AI generation -- costing 1 unit where POST /api/v1/ask costs
+  // 25, and what makes a 10-message batch cost ten calls instead of one.
+  const quotaRejection = await spendMcpQuota(
+    request,
+    env,
+    quotaPending,
+    body,
+    MCP_TIERED_RATE_LIMIT.tiers?.[authTier] ?? MCP_TIERED_RATE_LIMIT.keyed,
+    authTier,
+  );
+  if (quotaRejection) return quotaRejection;
 
   const versionError = validateMcpProtocolVersionHeader(request);
   if (versionError) return versionError;

@@ -166,10 +166,17 @@ export class McpSessionHub implements DurableObject {
     if (this.hydrated) return;
     const stored = await this.state.storage.get<
       string | string[] | number | boolean
-    >(["sessionId", "subscribedUris", "sequence", "terminated"]);
+    >(["sessionId", "subscribedUris", "pendingUris", "sequence", "terminated"]);
     this.sessionId = (stored.get("sessionId") as string | undefined) || null;
     this.subscribedUris = new Set(
       (stored.get("subscribedUris") as string[] | undefined) || [],
+    );
+    // pendingUris was the one session field never persisted or hydrated, so a
+    // DO eviction between /notify and the next GET /stream discarded the
+    // coalesced notification the flush loop exists to replay -- the client was
+    // never told the resource changed and never re-read.
+    this.pendingUris = new Set(
+      (stored.get("pendingUris") as string[] | undefined) || [],
     );
     this.sequence = (stored.get("sequence") as number | undefined) || 0;
     this.terminated =
@@ -181,6 +188,7 @@ export class McpSessionHub implements DurableObject {
     await this.state.storage.put({
       sessionId: this.sessionId,
       subscribedUris: [...this.subscribedUris],
+      pendingUris: [...this.pendingUris],
       sequence: this.sequence,
       terminated: this.terminated,
     });
@@ -377,6 +385,18 @@ export class McpSessionHub implements DurableObject {
       this.deliverNow(uri);
     } else {
       this.pendingUris.add(uri);
+      // Durable, because nothing holds this instance resident between /notify
+      // and the client's next GET /stream: /notify does not touch() and the
+      // idle alarm is 30 minutes out, so an eviction in that window used to
+      // lose the marker outright.
+      //
+      // Only the ADD is persisted, not deliverNow's delete. Losing a delete
+      // costs at most ONE duplicate notifications/resources/updated, which is
+      // harmless by construction -- the notification is a pointer, and
+      // resources/read always returns current state -- whereas losing an add
+      // means the client is never told at all. Over-delivery is recoverable,
+      // silence is not, so the write goes on the path that cannot afford loss.
+      await this.persist();
     }
     return new Response(JSON.stringify({ ok: true, delivered: true }), {
       status: 200,
@@ -385,13 +405,20 @@ export class McpSessionHub implements DurableObject {
   }
 
   deliverNow(uri: string): void {
+    // No stream to write to is a NON-delivery, and must leave the uri pending.
+    // `streamController?.enqueue(...)` made it a silent no-op that still fell
+    // through to the delete below, so once the flush loop's first enqueue threw
+    // and nulled the controller, every REMAINING pending uri was dropped
+    // instead of being kept for the next open -- the exact opposite of what the
+    // catch block is written to do.
+    if (!this.streamController) return;
     this.sequence += 1;
     const frame = formatMcpSseEvent(
       this.sequence,
       buildResourceUpdatedNotification(uri),
     );
     try {
-      this.streamController?.enqueue(new TextEncoder().encode(frame));
+      this.streamController.enqueue(new TextEncoder().encode(frame));
       this.pendingUris.delete(uri);
     } catch (error) {
       // stream already closed/errored -- leave it pending for the next open
