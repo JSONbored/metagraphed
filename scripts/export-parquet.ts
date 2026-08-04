@@ -1,3 +1,16 @@
+// RETIRED 2026-08-04 -- DOES NOT RUN, AND CANNOT.
+//
+// The estate is Cloudflare-only: every paid server was decommissioned and Postgres
+// is gone. Concretely, it existed to move Postgres into the lakehouse, reading both databases through
+// DuckDB's postgres extension on the box that hosted them. That move is complete
+// and both the box and the databases are gone.
+//
+// Kept in the tree rather than deleted, the same way metagraphed-infra keeps its box
+// roles: a future validator box may want some of this shape back, and deleting it
+// buys nothing that leaving it costs. Do not "fix" it by pointing it at a new
+// database -- if this capability is ever wanted again it should be rebuilt against
+// whatever store exists then, not resurrected against a connection string.
+
 // Nightly bulk export of core registry + chain tables to Parquet, uploaded
 // to R2 under a dated prefix + a `latest/` alias, with a discovery manifest
 // (#2538, successor to #2115's "exporter" half — see that issue's closing

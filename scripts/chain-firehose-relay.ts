@@ -1,3 +1,16 @@
+// RETIRED 2026-08-04 -- DOES NOT RUN, AND CANNOT.
+//
+// The estate is Cloudflare-only: every paid server was decommissioned and Postgres
+// is gone. Concretely, the relay ran ON the indexer box, polling its local Postgres and pushing to an
+// ingest URL. The head is now a Durable Object firehose; there is no box and no
+// Postgres to poll.
+//
+// Kept in the tree rather than deleted, the same way metagraphed-infra keeps its box
+// roles: a future validator box may want some of this shape back, and deleting it
+// buys nothing that leaving it costs. Do not "fix" it by pointing it at a new
+// database -- if this capability is ever wanted again it should be rebuilt against
+// whatever store exists then, not resurrected against a connection string.
+
 // Box-side relay for the realtime chain-event firehose (#4981, #5027, ADR
 // 0015).
 //
