@@ -53,5 +53,47 @@ export async function loadSubnetWeightSettersColdTier(
   // share computed against a summed page would grow as the page shrank.
   return buildSubnetWeightSetters(rollup.rows, rollup.totals, netuid, {
     window: windowLabel,
+    tempo: await loadSubnetTempo(env, netuid),
   });
+}
+
+/**
+ * This subnet's tempo, for the overdue verdicts (#9389).
+ *
+ * THIS LOADER IS THE ONE PRODUCTION USES. #9389 wired tempo into the sibling D1
+ * loader in src/subnet-weight-setters.ts, which no call site reaches -- REST, MCP and
+ * GraphQL all come through here. The result was a shipped feature that was inert:
+ * every published card carried `tempo: null` and `overdue: null`, so the alarm existed
+ * and could never fire. Verified against production immediately after the deploy, which
+ * is the only reason it was caught.
+ *
+ * Never fatal, for the same reason as the sibling: if the hyperparams row is missing or
+ * the read throws, the leaderboard still serves with the verdicts null. Losing the card
+ * because a cadence was unknown would trade a useful answer for no answer.
+ */
+async function loadSubnetTempo(
+  env: Parameters<typeof r2SqlQuery>[0],
+  netuid: number,
+): Promise<unknown> {
+  const db = (env as { METAGRAPH_HEALTH_DB?: D1Like } | null | undefined)
+    ?.METAGRAPH_HEALTH_DB;
+  if (!db?.prepare) return null;
+  try {
+    const res = await db
+      .prepare("SELECT tempo FROM subnet_hyperparams WHERE netuid = ?")
+      .bind(netuid)
+      .first?.();
+    return (res as { tempo?: unknown } | null)?.tempo ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** The minimal D1 surface this needs, so tests can hand it a plain object. */
+interface D1Like {
+  prepare(sql: string): {
+    bind(...values: unknown[]): {
+      first?(): Promise<unknown>;
+    };
+  };
 }
