@@ -68,3 +68,32 @@ export const VIEWPORTS = [
 export const ERROR_STATE_ALLOWED = new Set([
   "/accounts/5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9",
 ]);
+
+// route@width combinations known to render an empty list, and why.
+//
+// #9433 added an "did this route actually render?" assertion, because an
+// empty page has no overflow violations and therefore passed the sweep. It
+// works -- it immediately found /chain/extrinsics and /chain/governance
+// rendering nothing -- but it also turned main red, and the reason is the
+// FIXTURES, not the routes.
+//
+// Every HAR was recorded at a single viewport (1280). A route does not
+// request the same thing at every width: below `md` the list shells render
+// cards instead of a table, and the card path fetches endpoints the table
+// path never touches. So a fixture satisfies the width it was recorded at
+// and leaves the others with nothing to render. Re-recording these two at
+// 1280 (which #9433 did, and verified) fixes 1280 and nothing else.
+//
+// The real fix is in record-har.ts, which now records EVERY viewport into
+// one HAR. These entries come out as each route is re-recorded with it --
+// deliberately not done in this change, because re-recording all 23 fixtures
+// is a large diff that deserves its own review, and main should not stay red
+// while it happens.
+export const EMPTY_LIST_ALLOWED = new Set([
+  "/chain/extrinsics@375",
+  "/chain/extrinsics@768",
+  "/chain/extrinsics@1024",
+  "/chain/governance@375",
+  "/chain/governance@768",
+  "/chain/governance@1024",
+]);

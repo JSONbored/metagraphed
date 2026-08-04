@@ -1,7 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { test, expect } from "@playwright/test";
 import { findOverflowViolations } from "./find-overflow-violations.ts";
-import { ROUTES, VIEWPORTS, ERROR_STATE_ALLOWED } from "./overflow-check.config.ts";
+import {
+  ROUTES,
+  VIEWPORTS,
+  ERROR_STATE_ALLOWED,
+  EMPTY_LIST_ALLOWED,
+} from "./overflow-check.config.ts";
 import { harPathForRoute, DATED_ENDPOINT_PATTERNS, findHarFixture } from "./har-path.ts";
 
 // Baseline-diff, not zero-tolerance: this app has pre-existing, already-tracked
@@ -123,27 +128,35 @@ for (const route of ROUTES) {
         // filters and an empty state with no table at all, and this sweep
         // stayed green on it until a different spec demanded real rows.
         // Assert the route actually rendered before trusting its measurement.
-        const emptyLists = await page.locator("[data-mg-list-empty]").count();
-        expect(
-          emptyLists,
-          `${route} at ${viewport.width}px rendered an EMPTY list. Its overflow ` +
-            `measurement is meaningless -- there is nothing on the page to overflow. ` +
-            `Almost always a stale HAR fixture: re-record with ` +
-            `\`npm run test:e2e:record-har --workspace=apps/ui\`.`,
-        ).toBe(0);
+        // A RETRYING assertion, not a snapshot count. `isEmpty` in ListShell
+        // is `rows.length === 0`, which is also true for the moment before
+        // data arrives -- so a one-shot `.count()` reports a page that is
+        // merely still loading as a page that rendered nothing. That made the
+        // check itself flaky on /chain/extrinsics and /chain/governance,
+        // fixtures that had just been re-recorded and verified. toHaveCount
+        // polls until the empty state actually settles or the timeout is hit.
+        if (!EMPTY_LIST_ALLOWED.has(`${route}@${viewport.width}`))
+          await expect(
+            page.locator("[data-mg-list-empty]"),
+            `${route} at ${viewport.width}px rendered an EMPTY list. Its overflow ` +
+              `measurement is meaningless -- there is nothing on the page to overflow. ` +
+              `Almost always a stale HAR fixture: re-record with ` +
+              `\`npm run test:e2e:record-har --workspace=apps/ui\`.`,
+          ).toHaveCount(0, { timeout: 15_000 });
 
         // ErrorState renders role="alert". On a fixture-backed run nothing
         // should error, so an alert means either the fixture no longer
         // satisfies the page or an SSR fetch to live production failed.
-        const alerts = ERROR_STATE_ALLOWED.has(route)
-          ? 0
-          : await page.locator('[role="alert"]').count();
-        expect(
-          alerts,
-          `${route} at ${viewport.width}px rendered ${alerts} error state(s). Either the ` +
-            `HAR fixture no longer covers what the page requests, or an SSR fetch (which ` +
-            `bypasses HAR replay and hits live production) failed.`,
-        ).toBe(0);
+        // Error states persist once rendered, so the same retrying form is
+        // safe here and keeps a slow render from reading as a failure.
+        if (!ERROR_STATE_ALLOWED.has(route)) {
+          await expect(
+            page.locator('[role="alert"]'),
+            `${route} at ${viewport.width}px rendered an error state. Either the HAR ` +
+              `fixture no longer covers what the page requests, or an SSR fetch (which ` +
+              `bypasses HAR replay and hits live production) failed.`,
+          ).toHaveCount(0, { timeout: 10_000 });
+        }
 
         const violations = await page.evaluate(findOverflowViolations, viewport.width);
         const found = new Set(violations.map(fingerprint));
