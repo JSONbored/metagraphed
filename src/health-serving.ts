@@ -2020,6 +2020,29 @@ export function withSpotPrice(
   };
 }
 
+/**
+ * Map a whole economics blob's `subnets` rows through withSpotPrice.
+ *
+ * #9408 reached the subnet-detail card and the registry leaderboards, but the
+ * full-blob surfaces — REST /api/v1/economics, the MCP economics tools and
+ * GraphQL's economics root — kept serving rows without spot while declaring the
+ * field in their schemas. One blob-level helper, called at each surface's
+ * tier-merge point, closes that: whichever tier answered, the rows pass through
+ * here. Null-safe: a blob that is not an object, or has no subnets array, is
+ * returned unchanged.
+ */
+export function withSpotPricedEconomics(
+  blob: Row | null | undefined,
+): Row | null | undefined {
+  if (!blob || typeof blob !== "object") return blob;
+  const rows = blob.subnets;
+  if (!Array.isArray(rows)) return blob;
+  return {
+    ...blob,
+    subnets: (rows as Row[]).map((row) => withSpotPrice(row)),
+  };
+}
+
 export function overlaySubnetEconomics(
   detail: Row | null | undefined,
   economicsBlob: Row | null | undefined,

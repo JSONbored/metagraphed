@@ -247,6 +247,7 @@ import {
   resolveLiveEconomics,
   resolveLiveHealth,
   subnetBadgeStatus,
+  withSpotPricedEconomics,
 } from "./health-serving.ts";
 import { loadSubnetProfile } from "./profiles-mcp.ts";
 import {
@@ -1500,9 +1501,12 @@ function loadEconomics(context: GqlContext) {
       env: context.env,
       contractVersion: contractVersion(context.env),
     });
-    if (Array.isArray(live?.data?.subnets)) return live.data;
+    // Spot on every row (#9408 completion), on whichever tier answered.
+    if (Array.isArray(live?.data?.subnets)) {
+      return withSpotPricedEconomics(live.data as Row);
+    }
     const res = await readArtifact(context.env, ARTIFACT.economics);
-    return res.ok ? res.data : null;
+    return res.ok ? withSpotPricedEconomics(res.data as Row) : null;
   });
 }
 

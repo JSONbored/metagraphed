@@ -165,6 +165,32 @@ describe("network-economics — loadNetworkEconomics", () => {
     );
   });
 
+  test("every returned row carries serve-time spot_price_tao (#9408 completion)", async () => {
+    const blob = {
+      ...ECON_BLOB,
+      subnets: [
+        // Root: 1 by definition (no AMM), reserves or not.
+        { ...ECON_ROW, netuid: 0 },
+        { ...ECON_ROW, netuid: 7, tao_in_pool_tao: 100, alpha_in_pool: 400 },
+        // No reserves on the row → explicit null, never 0 (0 would read as free).
+        { ...ECON_ROW, netuid: 9 },
+      ],
+    };
+    const out = await loadNetworkEconomics(
+      makeCtx(),
+      { sort: "netuid", order: "asc" },
+      makeDeps(blob),
+    );
+    assert.deepEqual(
+      out.subnets.map((row) => [row.netuid, row.spot_price_tao]),
+      [
+        [0, 1],
+        [7, 0.25],
+        [9, null],
+      ],
+    );
+  });
+
   test("null-fills optional envelope fields and tolerates missing subnets[]", async () => {
     const out = await loadNetworkEconomics(
       makeCtx(),

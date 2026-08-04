@@ -317,6 +317,7 @@ import {
   overlaySubnetHealth,
   resolveLiveEconomics,
   resolveLiveHealth,
+  withSpotPricedEconomics,
 } from "../src/health-serving.ts";
 import {
   deriveNetuidGroupedAliases,
@@ -6377,6 +6378,12 @@ async function handleApiRequest(
   }
 
   let baseData = live ? live.data : artifact.data;
+  // Spot on every economics row (#9408 completion): the detail card and the
+  // leaderboards already derive spot_price_tao at serve time; the full blob was
+  // the one surface still without it. Both tiers pass through this point.
+  if (matched.id === "economics") {
+    baseData = withSpotPricedEconomics(baseData as Row) as typeof baseData;
+  }
   // Per-subnet economics overlay (#1308): attach the live economics row so
   // /api/v1/subnets/{netuid} carries validator/miner counts, registration, stake
   // and alpha price in one call. Null-safe — a cold/stale economics tier leaves

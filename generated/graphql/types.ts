@@ -4759,6 +4759,8 @@ export type SubnetEconomics = {
   registration_allowed?: Maybe<Scalars['Boolean']['output']>;
   registration_cost_tao?: Maybe<Scalars['Float']['output']>;
   slug?: Maybe<Scalars['String']['output']>;
+  /** The AMM spot price in TAO per alpha, derived at serve time from tao_in_pool_tao / alpha_in_pool on this row (#9408). alpha_price_tao is the chain's MOVING average; this is the mark to value a position at. Root (netuid 0) is 1 by definition; null when the reserves cannot support a price. */
+  spot_price_tao?: Maybe<Scalars['Float']['output']>;
   subnet_volume_tao?: Maybe<Scalars['Float']['output']>;
   tao_in_pool_tao?: Maybe<Scalars['Float']['output']>;
   total_stake_alpha?: Maybe<Scalars['Float']['output']>;
@@ -9109,6 +9111,7 @@ export type SubnetEconomicsResolvers<ContextType = GqlContext, ParentType extend
   registration_allowed?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   registration_cost_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   slug?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  spot_price_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   subnet_volume_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   tao_in_pool_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   total_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
