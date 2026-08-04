@@ -431,6 +431,28 @@
  * softer `bg-card/60` inset panels. Both compose var(--card), so they
  * theme automatically -- no separate dark-mode override needed.
  * ============================================================ */
+/* A table header pinned inside a bounded list viewport (ListShell's, or a
+   route that builds its own). One definition so every list agrees on where
+   the header sits and what it looks like.
+
+   `top: 0` because the viewport it pins to IS the reference -- never
+   --mg-sticky-offset, which measures the app-header stack and belongs to
+   things sticking against the PAGE. Getting that wrong is what put the
+   /subnets column labels 131px down inside their own table.
+
+   Opaque, deliberately, where these headers used to be `mg-glass` (80% where
+   backdrop-filter is supported). Glass was harmless while the headers were
+   inert and never actually overlapped anything; the moment they started
+   pinning for real, the row passing underneath read straight through the
+   column labels. Nothing shows through an opaque header. */
+.mg-table-head-pinned {
+  position: sticky;
+  top: 0;
+  z-index: var(--mg-z-sticky);
+  background: var(--card);
+  box-shadow: var(--mg-shadow-hairline);
+}
+
 .mg-glass {
   background: color-mix(in oklab, var(--card) 95%, transparent);
 }
@@ -1106,6 +1128,13 @@ html[data-density="compact"] .bg-card > table td {
 :root {
   --mg-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --mg-sticky-offset: 3.5rem;
+  /* How tall a list's bounded scroll viewport may grow before it scrolls
+     internally -- the box a sticky <thead> pins to at top: 0. Proportional
+     rather than a pixel constant so it tracks the viewport, and defined once
+     because two places need to agree on it: ListShell (every list route) and
+     /validators, which builds its own shell. When they disagreed by hand
+     nothing broke loudly -- the tables just capped at different heights. */
+  --mg-list-viewport-max: 70vh;
 }
 @media (prefers-reduced-motion: reduce) {
   .mg-fade-in,
@@ -1604,10 +1633,11 @@ html[data-density="compact"] .bg-card > table td {
 
 /* Horizontal-scroll fade mask for wide data tables — soft-clips left/right
    edges instead of hard-cutting mid-column so users see there's more to
-   scroll. The table's <thead> sticks against the page scroll (under the
-   filter bar) via --mg-sticky-offset + --mg-list-filter-offset (published by
-   ListShell), so the wrapper itself never needs to scroll vertically -- no
-   nested scrollbar. */
+   scroll. Horizontal only: ListShell nests a `max-h-[70vh] overflow-y-auto`
+   div inside this one, and THAT is the viewport a sticky <thead> pins
+   against (`top: 0`). Don't put a max-height on this element instead -- the
+   mask would then fade the pinned header's own left/right edges as it
+   travels. */
 .mg-table-scroll {
   mask-image: linear-gradient(
     to right,

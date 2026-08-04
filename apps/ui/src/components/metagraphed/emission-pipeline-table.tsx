@@ -137,7 +137,7 @@ export function EmissionPipelineTable({
       ))}
       table={
         <table className="w-full text-left text-sm">
-          <thead className="sticky top-0 z-[var(--mg-z-sticky)] mg-glass shadow-[var(--mg-shadow-hairline)]">
+          <thead className="mg-table-head-pinned">
             <tr>
               <th className="px-4 py-2.5">Subnet</th>
               <th className="px-4 py-2.5 text-right" title="Stage 1: the published price share">

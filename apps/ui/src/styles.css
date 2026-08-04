@@ -116,37 +116,18 @@
   height: 0;
 }
 
-/* A desktop subnet table fits the shell, so an overflow ancestor is both
-   unnecessary and harmful: it becomes the sticky cells' containing block.
-   Tablet retains horizontal scrolling; mobile uses the card fallback. */
-@media (min-width: 1024px) {
-  /* The desktop table header is the persistent navigation layer. Keeping the
-     filter toolbar in normal flow prevents two sticky rows from racing for a
-     ResizeObserver-derived offset as filters wrap. */
-  #subnets-list > div > div:first-child {
-    position: static;
-  }
-  #subnets-list .mg-table-scroll {
-    overflow: visible;
-  }
-  #subnets-list div:has(> .mg-table-scroll) {
-    overflow: visible;
-  }
-}
+/* The subnets table header used to be styled here, by a bespoke
+   `.mg-subnets-sticky-head` rule that pinned it with
+   `top: var(--mg-sticky-offset)` -- the app-header stack height (131px live),
+   applied inside a 504px-tall bounded scrollport, which parked the column
+   labels a third of the way down the table on top of the first three rows.
+   It also only applied at >=1024px while the table renders from 768px, so
+   tablet had no header at all.
 
-.mg-subnets-sticky-head {
-  background: var(--card);
-  box-shadow: 0 1px 0 var(--border);
-}
-@media (min-width: 1024px) {
-  .mg-subnets-sticky-head {
-    position: sticky;
-    top: var(--mg-sticky-offset, 3.5rem);
-    z-index: 10;
-    background: color-mix(in oklab, var(--card) 94%, transparent);
-    backdrop-filter: blur(8px);
-  }
-}
+   Both are gone, and so is the rule: /subnets now uses ui-kit's shared
+   `.mg-table-head-pinned`, the single definition every list table in the app
+   pins with. A second, page-specific copy of "how a table header sticks" is
+   what let these two drift apart from the rest in the first place. */
 
 /* ============================================================
  * Paint-safety invariants.

@@ -63,13 +63,17 @@ export default defineConfig({
   // that run.
   projects: [
     {
-      name: "overflow",
-      testMatch: /responsive-overflow\.spec\.ts$/,
+      // Layout-measurement sweeps: load a route, measure the rendered DOM,
+      // assert. No interaction, no hydration races, so they take the parallel
+      // phase. A spec matching NEITHER project silently never runs -- add new
+      // measurement specs to this pattern.
+      name: "measurement",
+      testMatch: /(responsive-overflow|sticky-table-header)\.spec\.ts$/,
     },
     {
       name: "interaction",
       testMatch: /(evidence-deep-link|multisig-related-error|offline)\.spec\.ts$/,
-      dependencies: ["overflow"],
+      dependencies: ["measurement"],
       // 6 tests across 3 files. Serial within the phase costs a few seconds
       // and removes the last source of self-contention for exactly the tests
       // that proved sensitive to it.
