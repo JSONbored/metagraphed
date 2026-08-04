@@ -1,27 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
+import { makeWindow } from "./test-window";
 
 const KEY = "metagraphed:compare";
-
-// An EventTarget-based fake `window` (so subscribe's add/remove/dispatch of the "storage" event work)
-// plus a Map-backed localStorage. Node provides EventTarget globally.
-function makeWindow(seed: Record<string, string> = {}) {
-  const store = new Map<string, string>(Object.entries(seed));
-  const win = new EventTarget() as EventTarget & {
-    localStorage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
-    store: Map<string, string>;
-    throwOnRead?: boolean;
-  };
-  win.store = store;
-  win.localStorage = {
-    getItem: (k: string) => {
-      if (win.throwOnRead) throw new Error("blocked");
-      return store.has(k) ? store.get(k)! : null;
-    },
-    setItem: (k: string, v: string) => void store.set(k, v),
-    removeItem: (k: string) => void store.delete(k),
-  };
-  return win;
-}
 
 // compare-selection caches raw/value + listeners at module scope, so a fresh module per case is the
 // only way to observe first-read/cache behaviour deterministically. Stub `window` before importing.

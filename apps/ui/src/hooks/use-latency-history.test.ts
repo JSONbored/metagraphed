@@ -1,33 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { mergeLatencyHistory, type LatencyPoint } from "./use-latency-history";
+import { makeWindow } from "@/lib/metagraphed/test-window";
 
 const STORAGE_KEY = "mg:endpoint-latency-history:v1";
 const MIN_INTERVAL_MS = 60_000;
 const RETENTION_MS = 1000 * 60 * 60 * 24 * 30;
 
-// Minimal browser `window` with a Map-backed localStorage, matching
-// wallet.test.ts's makeWindow.
-function makeWindow(seed: Record<string, string> = {}) {
-  const store = new Map<string, string>(Object.entries(seed));
-  const win = {
-    localStorage: {
-      getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
-      setItem: (k: string, v: string) => void store.set(k, v),
-      removeItem: (k: string) => void store.delete(k),
-      clear: () => store.clear(),
-      key: () => null,
-      get length() {
-        return store.size;
-      },
-    },
-  };
-  return { win, store };
-}
-
 // use-latency-history.ts caches (cachedRaw/cachedStore) at module scope, so
 // resetModules + a fresh dynamic import is the only way to observe a clean
 // cache per test -- same pattern as wallet.test.ts's freshWallet.
-async function freshLatencyHistory(win?: ReturnType<typeof makeWindow>["win"]) {
+async function freshLatencyHistory(win?: ReturnType<typeof makeWindow>) {
   vi.resetModules();
   if (win) vi.stubGlobal("window", win);
   return import("./use-latency-history");
@@ -46,7 +28,8 @@ afterEach(() => {
 
 describe("recordLatencyObservations (dedup, retention, endpoint cap)", () => {
   it("dedups: a second observation for the same id inside the 1-minute window is dropped", async () => {
-    const { win, store } = makeWindow();
+    const win = makeWindow();
+    const store = win.store;
     const mod = await freshLatencyHistory(win);
     mod.recordLatencyObservations([{ id: "ep-a", latency_ms: 100 }]);
     mod.recordLatencyObservations([{ id: "ep-a", latency_ms: 200 }]);
@@ -55,7 +38,8 @@ describe("recordLatencyObservations (dedup, retention, endpoint cap)", () => {
   });
 
   it("prunes points older than the 30-day retention window on the next write", async () => {
-    const { win, store } = makeWindow();
+    const win = makeWindow();
+    const store = win.store;
     const staleT = Date.now() - RETENTION_MS - 1_000;
     store.set(STORAGE_KEY, JSON.stringify({ "ep-a": [{ t: staleT, v: 999 }] }));
     const mod = await freshLatencyHistory(win);
@@ -66,7 +50,8 @@ describe("recordLatencyObservations (dedup, retention, endpoint cap)", () => {
   });
 
   it("caps a single endpoint's series to the most recent 48 points", async () => {
-    const { win, store } = makeWindow();
+    const win = makeWindow();
+    const store = win.store;
     const mod = await freshLatencyHistory(win);
     vi.useFakeTimers();
     try {
@@ -90,7 +75,8 @@ describe("recordLatencyObservations (dedup, retention, endpoint cap)", () => {
     for (let i = 1; i <= 500; i++) {
       seeded[`ep-${i}`] = [{ t: i, v: i }];
     }
-    const { win, store } = makeWindow({ [STORAGE_KEY]: JSON.stringify(seeded) });
+    const win = makeWindow({ [STORAGE_KEY]: JSON.stringify(seeded) });
+    const store = win.store;
     const mod = await freshLatencyHistory(win);
     mod.recordLatencyObservations([{ id: "ep-new", latency_ms: 42 }]);
 
@@ -106,7 +92,8 @@ describe("recordLatencyObservations (dedup, retention, endpoint cap)", () => {
   });
 
   it("ignores observations with a missing id or a non-finite latency", async () => {
-    const { win, store } = makeWindow();
+    const win = makeWindow();
+    const store = win.store;
     const mod = await freshLatencyHistory(win);
     mod.recordLatencyObservations([
       { id: "", latency_ms: 100 },
@@ -125,7 +112,7 @@ describe("recordLatencyObservations (dedup, retention, endpoint cap)", () => {
 
 describe("getSnapshot (useSyncExternalStore infinite-render regression)", () => {
   it("returns a referentially stable snapshot across calls when nothing changed", async () => {
-    const { win } = makeWindow();
+    const win = makeWindow();
     const mod = await freshLatencyHistory(win);
     mod.recordLatencyObservations([{ id: "ep-a", latency_ms: 10 }]);
     const first = mod.getSnapshot();
@@ -137,7 +124,7 @@ describe("getSnapshot (useSyncExternalStore infinite-render regression)", () => 
   });
 
   it("returns a new snapshot only after the underlying store actually changes", async () => {
-    const { win } = makeWindow();
+    const win = makeWindow();
     const mod = await freshLatencyHistory(win);
     mod.recordLatencyObservations([{ id: "ep-a", latency_ms: 10 }]);
     const before = mod.getSnapshot();

@@ -1,26 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-
-// A minimal browser `window` for the CSR paths, matching config.test.ts's makeWindow:
-// an EventTarget (so add/remove/dispatch work) plus a Map-backed localStorage.
-function makeWindow(seed: Record<string, string> = {}) {
-  const store = new Map<string, string>(Object.entries(seed));
-  const win = new EventTarget() as EventTarget & {
-    localStorage: Storage;
-    store: Map<string, string>;
-  };
-  win.store = store;
-  win.localStorage = {
-    getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
-    setItem: (k: string, v: string) => void store.set(k, v),
-    removeItem: (k: string) => void store.delete(k),
-    clear: () => store.clear(),
-    key: () => null,
-    get length() {
-      return store.size;
-    },
-  };
-  return win;
-}
+import { makeWindow } from "./test-window";
 
 const ADDR_A = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 const ADDR_B = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
