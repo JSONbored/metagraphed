@@ -287,6 +287,11 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // Network-wide weight-setter leaderboard, computed live from the account_events WeightsSet
   // stream at /api/v1/chain/weights/setters — never a file.
   /^chain\/weights\/setters\.json$/,
+  // Every subnet's live registration/burn cost, ranked (#9399), computed from ONE
+  // state_queryStorageAt against the chain at /api/v1/chain/burn — never a file. A
+  // build-time bake would serve a price the registration auction has already moved,
+  // which is the whole reason the live route caches for only 120s.
+  /^chain\/burn\.json$/,
   // Network-wide axon-serving announcement activity across every subnet, computed live from
   // the account_events AxonServed stream at /api/v1/chain/serving — never a file.
   /^chain\/serving\.json$/,
