@@ -166,6 +166,18 @@ export const NEURONS_STALENESS_WATCHDOG_CRON = "6,21,36,51 * * * *";
 // the LITERAL cron string, so this must be unique here as well as matching a
 // wrangler.jsonc `triggers.crons` entry.
 export const NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON = "8,38 * * * *";
+// #9423: the projection lanes' alarm. Two lanes stopped writing on
+// 2026-08-03 and nothing noticed for 31 hours -- the read path degrades by
+// serving the previous card, so the routes kept answering 200 off numbers 44
+// hours old under a `7d` label. Twice hourly against a four-hour threshold
+// (src/projection-staleness-watchdog.ts explains the sizing): the tick is 26
+// R2 HEADs, so a cheap cadence costs nothing and bounds detection well inside
+// the threshold. Minutes 2/32 are 21 minutes after each PROJECTION_LANES_CRON
+// tick, so a run has finished before it is judged, and they tick on none of
+// the crons in this file while staying off the */5 raw-capture and */15 probe
+// grids -- dispatch keys on the LITERAL cron string, so this must be unique
+// here as well as matching a wrangler.jsonc `triggers.crons` entry.
+export const PROJECTION_STALENESS_WATCHDOG_CRON = "2,32 * * * *";
 // #9301: the validator-nominator-counts lane's alarm -- the SIBLING of the
 // watchdog above, watching the other output of the same Alpha scan. It had the
 // same gap for the same reason: its writer targeted a Postgres that went away,

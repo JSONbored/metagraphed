@@ -24,7 +24,7 @@ import {
   LAKEHOUSE_NAMESPACES,
   projectionKey,
 } from "./chain-network.ts";
-import { isR2SqlConfigured, r2SqlQuery } from "./r2-sql.ts";
+import { isR2SqlConfigured, QUERY_TIMEOUT_MS, r2SqlQuery } from "./r2-sql.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import {
   CHAIN_TRANSFER_LIMIT_MAX,
@@ -103,6 +103,27 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** src/chain-transfers.ts keeps TRANSFER_KIND private; inlined here the same
  * way workers/data-api.ts inlines it for the identical query. */
 const TRANSFER_KIND = "Transfer";
+
+/**
+ * How long ONE lane statement may run.
+ *
+ * The request-path ceiling times four, and the multiplier is the whole point:
+ * 15 s is sized for a caller sitting on a response, and a cron has no caller.
+ * Measured 2026-08-04, `chain-transfer-pairs` was declining every tick with
+ * "The operation was aborted" -- its pair-grouping CTE had simply grown past a
+ * bound borrowed from a context it does not share, and the lane published a
+ * card nothing refreshed rather than a slow one (#9423).
+ *
+ * Four rather than "as long as it likes": the whole 26-lane run has to finish
+ * well inside its own 30-minute interval, and a statement that cannot answer
+ * in a minute is a query to fix, not to wait longer for.
+ */
+export const PROJECTION_QUERY_TIMEOUT_MS = 4 * QUERY_TIMEOUT_MS;
+
+/** Every lane statement runs on the lane bound, never the request bound. */
+function laneQuery(env: Env, sql: string) {
+  return r2SqlQuery(env, sql, { timeoutMs: PROJECTION_QUERY_TIMEOUT_MS });
+}
 
 export interface ProjectionLane {
   name: string;
@@ -192,15 +213,15 @@ async function computeChainTransfers(
     ] = transferWindowSql(generatedAt - days * DAY_MS, network);
     // Sequential on purpose: one second-scale scan in flight at a time, the
     // posture every cold-tier caller of r2SqlQuery takes.
-    const totals = await r2SqlQuery(env, totalsSql!);
+    const totals = await laneQuery(env, totalsSql!);
     if (totals === null) return null;
-    const senderCount = await r2SqlQuery(env, sendersCountSql!);
+    const senderCount = await laneQuery(env, sendersCountSql!);
     if (senderCount === null) return null;
-    const receiverCount = await r2SqlQuery(env, receiversCountSql!);
+    const receiverCount = await laneQuery(env, receiversCountSql!);
     if (receiverCount === null) return null;
-    const senders = await r2SqlQuery(env, sendersSql!);
+    const senders = await laneQuery(env, sendersSql!);
     if (senders === null) return null;
-    const receivers = await r2SqlQuery(env, receiversSql!);
+    const receivers = await laneQuery(env, receiversSql!);
     if (receivers === null) return null;
     windows[label] = {
       days,
@@ -343,13 +364,13 @@ async function computeChainActivity(
       generatedAt - days * DAY_MS,
       network,
     );
-    const base = await r2SqlQuery(env, baseSql!);
+    const base = await laneQuery(env, baseSql!);
     if (base === null) return null;
-    const signers = await r2SqlQuery(env, signersSql!);
+    const signers = await laneQuery(env, signersSql!);
     if (signers === null) return null;
-    const blocks = await r2SqlQuery(env, blocksSql!);
+    const blocks = await laneQuery(env, blocksSql!);
     if (blocks === null) return null;
-    const fresh = await r2SqlQuery(env, freshSql!);
+    const fresh = await laneQuery(env, freshSql!);
     if (fresh === null) return null;
     const signersByDay = new Map(
       signers.map((row) => [String(row.day_index), row.unique_signers]),
@@ -415,13 +436,13 @@ async function computeChainCalls(
   for (const [label, days] of Object.entries(ANALYTICS_WINDOWS)) {
     const [freshSql, moduleSql, moduleFunctionSql, totalSql] =
       chainCallsWindowSql(generatedAt - days * DAY_MS, network);
-    const fresh = await r2SqlQuery(env, freshSql!);
+    const fresh = await laneQuery(env, freshSql!);
     if (fresh === null) return null;
-    const moduleRows = await r2SqlQuery(env, moduleSql!);
+    const moduleRows = await laneQuery(env, moduleSql!);
     if (moduleRows === null) return null;
-    const moduleFunctionRows = await r2SqlQuery(env, moduleFunctionSql!);
+    const moduleFunctionRows = await laneQuery(env, moduleFunctionSql!);
     if (moduleFunctionRows === null) return null;
-    const total = await r2SqlQuery(env, totalSql!);
+    const total = await laneQuery(env, totalSql!);
     if (total === null) return null;
     windows[label] = {
       days,
@@ -499,9 +520,9 @@ async function computeChainFees(
   for (const [label, days] of Object.entries(ANALYTICS_WINDOWS)) {
     const cutoff = generatedAt - days * DAY_MS;
     const [dailySql, payersSql, freshSql] = chainFeesWindowSql(cutoff, network);
-    const daily = await r2SqlQuery(env, dailySql!);
+    const daily = await laneQuery(env, dailySql!);
     if (daily === null) return null;
-    const payers = await r2SqlQuery(env, payersSql!);
+    const payers = await laneQuery(env, payersSql!);
     if (payers === null) return null;
     const feeMedians = await r2SqlQuery(
       env,
@@ -513,7 +534,7 @@ async function computeChainFees(
       chainFeesMedianSql(cutoff, "tip_tao", network),
     );
     if (tipMedians === null) return null;
-    const fresh = await r2SqlQuery(env, freshSql!);
+    const fresh = await laneQuery(env, freshSql!);
     if (fresh === null) return null;
     const dailyRows = withDayLabels(daily);
     if (dailyRows === null) return null;
@@ -593,11 +614,11 @@ async function computeChainSigners(
       generatedAt - days * DAY_MS,
       network,
     );
-    const fresh = await r2SqlQuery(env, freshSql!);
+    const fresh = await laneQuery(env, freshSql!);
     if (fresh === null) return null;
-    const txCountRows = await r2SqlQuery(env, txCountSql!);
+    const txCountRows = await laneQuery(env, txCountSql!);
     if (txCountRows === null) return null;
-    const feeRows = await r2SqlQuery(env, feeSql!);
+    const feeRows = await laneQuery(env, feeSql!);
     if (feeRows === null) return null;
     windows[label] = {
       days,
@@ -657,18 +678,53 @@ function subnetDistinctWindowSql(
   countAlias: string,
   distinctAlias: string,
   network: ChainNetworkId,
-): { networkSql: string; subnetSql: string } {
+): {
+  newestSql: string;
+  networkSql: string;
+  subnetCountSql: string;
+  subnetDistinctSql: string;
+  countAlias: string;
+  distinctAlias: string;
+} {
   const scope =
     `FROM ${chainTable("account_events", network)} ` +
     `WHERE event_kind = '${eventKind}' AND observed_at >= ${cutoff}`;
   return {
-    networkSql:
-      `SELECT COUNT(DISTINCT coldkey) AS ${distinctAlias}, ` +
-      `MAX(observed_at) AS newest_observed ${scope}`,
-    subnetSql:
-      `SELECT netuid, COUNT(*) AS ${countAlias}, ` +
-      `COUNT(DISTINCT coldkey) AS ${distinctAlias} ${scope} ` +
+    // ONE HEAVY AGGREGATION PER STATEMENT. The chain-wide DISTINCT used to
+    // share a statement with `MAX(observed_at)`, and that pairing is what
+    // stopped these two lanes writing on 2026-08-03 -- they declined every
+    // tick for 31 hours while the routes over them served a card whose newest
+    // event was 44 hours old (#9423). Its sibling `transferWindowSql` was
+    // already split for exactly this reason, and says so: each DISTINCT alone
+    // is the heaviest scan in the family, and bundling one with anything else
+    // pushes the statement past R2 SQL's own per-query ceiling as the table
+    // grows. This is that same remedy, applied to the lane that still had the
+    // bundled shape.
+    //
+    // Only the FIRST statement's row carries `newest_observed`, so the split
+    // is invisible downstream -- see how computeSubnetDistinctWindow merges
+    // them back into one chain-wide row.
+    newestSql: `SELECT MAX(observed_at) AS newest_observed ${scope}`,
+    networkSql: `SELECT COUNT(DISTINCT coldkey) AS ${distinctAlias} ${scope}`,
+    countAlias,
+    distinctAlias,
+    // The per-subnet counts, SPLIT for the same reason. Measured 2026-08-04,
+    // this is the statement that actually 422s:
+    //
+    //   40015 scan budget exceeded: scanning too much data for
+    //   count(DISTINCT) with GROUP BY
+    //
+    // so the plain tally and the DISTINCT are issued separately and merged by
+    // netuid below. APPROX_DISTINCT is the engine's own first suggestion and
+    // is refused on purpose: `distinct_movers` is a PUBLISHED field, and an
+    // approximate answer under a name callers read as exact is worse than an
+    // honest decline.
+    subnetCountSql:
+      `SELECT netuid, COUNT(*) AS ${countAlias} ${scope} ` +
       `GROUP BY netuid ORDER BY ${countAlias} DESC, netuid ASC`,
+    subnetDistinctSql:
+      `SELECT netuid, COUNT(DISTINCT coldkey) AS ${distinctAlias} ${scope} ` +
+      `GROUP BY netuid`,
   };
 }
 
@@ -677,21 +733,72 @@ function subnetDistinctWindowSql(
  * per-subnet aggregate. Returns null on any query failure. */
 async function computeSubnetDistinctWindow(
   env: Env,
-  sql: { networkSql: string; subnetSql: string },
+  sql: {
+    newestSql: string;
+    networkSql: string;
+    subnetCountSql: string;
+    subnetDistinctSql: string;
+    countAlias: string;
+    distinctAlias: string;
+  },
 ): Promise<{
   network: Record<string, unknown> | null;
   rows: Record<string, unknown>[];
 } | null> {
-  const networkRows = await r2SqlQuery(env, sql.networkSql);
+  // The window's newest event first: cheap, and it is what decides whether the
+  // per-subnet scan is worth issuing at all (data-api's own guard).
+  const newestRows = await laneQuery(env, sql.newestSql);
+  if (newestRows === null) return null;
+  // NO ROW AT ALL is not the same as a row saying NULL. An aggregate that ran
+  // always returns exactly one row, so an empty result set means the engine
+  // gave us nothing usable -- unread, not measured -- and the chain-wide row
+  // stays null rather than claiming a zero nobody counted.
+  if (newestRows.length === 0) return { network: null, rows: [] };
+  const newest = newestRows[0]?.newest_observed ?? null;
+  // A window that observed nothing needs neither heavy scan -- and its zero is
+  // DERIVED, not guessed: `MAX(observed_at) IS NULL` means the window matched
+  // no rows at all, so the distinct count is necessarily 0. Emitting the same
+  // shape a non-empty window emits keeps a measured zero looking like one
+  // rather than degrading to "unknown", which is the whole reason the chain-
+  // wide row is stored separately from the per-subnet rows.
+  if (newest == null) {
+    return {
+      network: { [sql.distinctAlias]: 0, newest_observed: null },
+      rows: [],
+    };
+  }
+  const networkRows = await laneQuery(env, sql.networkSql);
   if (networkRows === null) return null;
   // The CHAIN-WIDE scope row, not a chain network -- the artifact key it lands
   // under is `network` and cannot be renamed, but the local is named for what
   // it holds so the two senses of the word cannot be confused here.
-  const chainWide = networkRows[0] ?? null;
+  // Merged back into the ONE chain-wide row the artifact has always carried,
+  // so splitting the statement changes nothing a reader can see.
+  const chainWide = networkRows[0]
+    ? { ...networkRows[0], newest_observed: newest }
+    : null;
   let rows: Record<string, unknown>[] = [];
-  if (chainWide?.newest_observed != null) {
-    const subnetRows = await r2SqlQuery(env, sql.subnetSql);
+  // The guard is data-api's: only scan per-subnet once the window is known to
+  // have observed something. That question now has its own cheap statement
+  // above, so it is asked of `newest` rather than of the DISTINCT row -- a
+  // DISTINCT that came back unusable must not also suppress the per-subnet
+  // scan, which is a separate read that may well have succeeded.
+  if (newest != null) {
+    const subnetRows = await laneQuery(env, sql.subnetCountSql);
     if (subnetRows === null) return null;
+    const distinctRows = await laneQuery(env, sql.subnetDistinctSql);
+    if (distinctRows === null) return null;
+    // Merged back by netuid, so the row shape the artifact has always carried
+    // is unchanged and splitting the statement is invisible to every reader.
+    const distinctByNetuid = new Map(
+      distinctRows.map((row) => [
+        String(row.netuid),
+        row[sql.distinctAlias] ?? 0,
+      ]),
+    );
+    for (const row of subnetRows) {
+      row[sql.distinctAlias] = distinctByNetuid.get(String(row.netuid)) ?? 0;
+    }
     rows = subnetRows;
   }
   return { network: chainWide, rows };
@@ -816,11 +923,11 @@ async function computeChainTransferPairs(
       generatedAt - days * DAY_MS,
       network,
     );
-    const totals = await r2SqlQuery(env, totalsSql!);
+    const totals = await laneQuery(env, totalsSql!);
     if (totals === null) return null;
-    const volumePairs = await r2SqlQuery(env, volumeSql!);
+    const volumePairs = await laneQuery(env, volumeSql!);
     if (volumePairs === null) return null;
-    const countPairs = await r2SqlQuery(env, countSql!);
+    const countPairs = await laneQuery(env, countSql!);
     if (countPairs === null) return null;
     windows[label] = {
       days,

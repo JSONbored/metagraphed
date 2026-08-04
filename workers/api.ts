@@ -352,6 +352,7 @@ import { checkEmissionDrift } from "../src/emission-drift-check.ts";
 import { refreshLiveEconomics } from "../src/live-economics-refresh.ts";
 import { runNeuronsStalenessWatchdog } from "../src/neurons-staleness-watchdog.ts";
 import { runNominatorPositionsStalenessWatchdog } from "../src/nominator-positions-staleness-watchdog.ts";
+import { runProjectionStalenessWatchdog } from "../src/projection-staleness-watchdog.ts";
 import { runValidatorNominatorCountsStalenessWatchdog } from "../src/validator-nominator-counts-staleness-watchdog.ts";
 import {
   readChainDetailHead,
@@ -426,6 +427,7 @@ import {
   EMISSION_DRIFT_CHECK_CRON,
   NEURONS_STALENESS_WATCHDOG_CRON,
   NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON,
+  PROJECTION_STALENESS_WATCHDOG_CRON,
   VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON,
   CHAIN_DETAIL_PRUNE_CRON,
   CHAIN_DETAIL_STALENESS_WATCHDOG_CRON,
@@ -1416,6 +1418,8 @@ function cronLabel(cron: string): string {
     return "neurons-staleness-watchdog";
   if (cron === NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON)
     return "nominator-positions-staleness-watchdog";
+  if (cron === PROJECTION_STALENESS_WATCHDOG_CRON)
+    return "projection-staleness-watchdog";
   if (cron === VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON)
     return "validator-nominator-counts-staleness-watchdog";
   if (cron === CHAIN_DETAIL_PRUNE_CRON) return "chain-detail-prune";
@@ -1691,6 +1695,16 @@ async function dispatchScheduled(
     // a stale verdict records one exception under
     // watchdog:neurons-staleness, which is the project's alert channel.
     return runNeuronsStalenessWatchdog(
+      env as unknown as Record<string, unknown>,
+    );
+  }
+  if (cron === PROJECTION_STALENESS_WATCHDOG_CRON) {
+    // The projection lanes' alarm (#9423). Zero alerts is the correct steady
+    // state; a stale verdict records ONE exception naming every stale lane
+    // under watchdog:projection-staleness. An ABSENT artifact alerts too --
+    // every registered lane is meant to have written on the last tick, and a
+    // route over a missing card serves its zeroed floor as though measured.
+    return runProjectionStalenessWatchdog(
       env as unknown as Record<string, unknown>,
     );
   }
