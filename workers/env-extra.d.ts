@@ -155,6 +155,11 @@ interface Env {
   CHAIN_HEAD_POLL_ENABLED?: string;
   CHAIN_HEAD_RPC_URL?: string;
   CHAIN_HEAD_POLL_INTERVAL_MS?: string;
+  /** #9417: read each block's event count from System.Events' SCALE length
+   * prefix. Defaults ON (only "false" disables) -- unlike the poll switch
+   * above, the feature it gates is a correctness fix, so an unset var in
+   * local/CI should exercise it rather than skip it. */
+  CHAIN_HEAD_EVENT_COUNT_ENABLED?: string;
   /** #8700: the raw-capture lane's testnet endpoint. Only the capture lane
    * reads it — the head poller stays mainnet-only, because `blocks_head` has
    * no network dimension yet. */
