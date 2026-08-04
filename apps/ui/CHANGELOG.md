@@ -9,6 +9,43 @@ versioning and this changelog are managed by `release-please` from
 [Conventional Commits](https://www.conventionalcommits.org/) touching
 `apps/ui/**`, independent of the backend's release cadence.
 
+## [0.15.0](https://github.com/JSONbored/metagraphed/compare/ui-v0.14.1...ui-v0.15.0) (2026-08-03)
+
+
+### Features
+
+* **api:** fields= projection on the neuron routes ([#9087](https://github.com/JSONbored/metagraphed/issues/9087)) ([59e7e0e](https://github.com/JSONbored/metagraphed/commit/59e7e0efb7038c32ece6eeb9abc0f92e44448ccf)), closes [#9082](https://github.com/JSONbored/metagraphed/issues/9082)
+* **api:** publish per-field provenance on the network singletons ([#9081](https://github.com/JSONbored/metagraphed/issues/9081)) ([57f246a](https://github.com/JSONbored/metagraphed/commit/57f246a8199a01e4fd9efcdf554b8e0a31437d81)), closes [#9078](https://github.com/JSONbored/metagraphed/issues/9078)
+* **api:** register the AI-native routes, and derive the guarantee that they stay registered ([#9101](https://github.com/JSONbored/metagraphed/issues/9101)) ([3e0b04c](https://github.com/JSONbored/metagraphed/commit/3e0b04c84ea3bbdf29f29283353a61f74c5991c1)), closes [#9092](https://github.com/JSONbored/metagraphed/issues/9092)
+* **chain:** surface the Crowdloan pallet from chain storage ([#9152](https://github.com/JSONbored/metagraphed/issues/9152)) ([0780c30](https://github.com/JSONbored/metagraphed/commit/0780c30ac5db4f6af0390d5549385f5cd4ebe215))
+* **ui:** /chain/emissions — the v440 emission-pipeline decomposition, plus a subnet panel ([#8745](https://github.com/JSONbored/metagraphed/issues/8745)) ([#9049](https://github.com/JSONbored/metagraphed/issues/9049)) ([3944892](https://github.com/JSONbored/metagraphed/commit/39448922d8a2e3cdfec38724c49c9942bc7f0eb1))
+
+
+### Bug Fixes
+
+* **api:** finish renaming the *_tao fields that hold alpha ([#9039](https://github.com/JSONbored/metagraphed/issues/9039)) ([52b6b1e](https://github.com/JSONbored/metagraphed/commit/52b6b1e16f1e9b9f8f1853f5ffe3d08d7eef6aa5))
+* **api:** stop advertising 9 routes as testnet-addressable when the router 404s them ([#9053](https://github.com/JSONbored/metagraphed/issues/9053)) ([0ac7d16](https://github.com/JSONbored/metagraphed/commit/0ac7d168244ab2575081c4c941bac21baf9c5edf))
+* **ci:** serve the e2e from dist/, the path the worker build actually emits ([#9083](https://github.com/JSONbored/metagraphed/issues/9083)) ([af1eb2c](https://github.com/JSONbored/metagraphed/commit/af1eb2c9d629b63fd411021e4c02d0961dc03bf7))
+* **ci:** stop failing the UI preview deploy on a URL that no longer exists ([#9047](https://github.com/JSONbored/metagraphed/issues/9047)) ([b584240](https://github.com/JSONbored/metagraphed/commit/b584240c90c3be27c8592ac3edb4b2fd9de31c0f))
+* **contract:** publish the limit ceiling each route actually enforces ([#9129](https://github.com/JSONbored/metagraphed/issues/9129)) ([d89ff06](https://github.com/JSONbored/metagraphed/commit/d89ff062f54e024523c3e7c9266016448890ef59)), closes [#9127](https://github.com/JSONbored/metagraphed/issues/9127)
+* **contracts:** describe the hyperparams and identity tiers as Postgres, not D1 ([#9151](https://github.com/JSONbored/metagraphed/issues/9151)) ([ca328f3](https://github.com/JSONbored/metagraphed/commit/ca328f3c5a4e23fe04f484ca69fa77d6df56e2ff))
+* **contracts:** describe the neurons tier as Postgres, not the retired D1 ([#9147](https://github.com/JSONbored/metagraphed/issues/9147)) ([83a2a05](https://github.com/JSONbored/metagraphed/commit/83a2a05853cbcc8f172bc7430548a03355934c37))
+* **deps:** update dependency @tanstack/react-virtual to ^3.14.9 ([#9209](https://github.com/JSONbored/metagraphed/issues/9209)) ([b6a2a01](https://github.com/JSONbored/metagraphed/commit/b6a2a01267b1faba19ac5e21ed17c7ba8a3c83c5))
+* **deps:** update dependency fumadocs-mdx to ^15.2.1 ([#9232](https://github.com/JSONbored/metagraphed/issues/9232)) ([69b9ea8](https://github.com/JSONbored/metagraphed/commit/69b9ea8f8266c57995c5b8127c85a98fea9d29a3))
+* **ui+api:** filter /apis server-side so the shortcuts stop truncating ([#9118](https://github.com/JSONbored/metagraphed/issues/9118)) ([481e864](https://github.com/JSONbored/metagraphed/commit/481e864c2f7cec84b581e1b227e8db7fb965ae25)), closes [#9117](https://github.com/JSONbored/metagraphed/issues/9117)
+* **ui:** give UI sourcemap releases a stable name instead of a per-deploy SHA ([#9077](https://github.com/JSONbored/metagraphed/issues/9077)) ([9a5409a](https://github.com/JSONbored/metagraphed/commit/9a5409a7e9a13eaa5392173f4d478c5cdfecd150))
+* **ui:** stop serving the whole site from the leftover workers.dev hostname ([#9034](https://github.com/JSONbored/metagraphed/issues/9034)) ([d7d4557](https://github.com/JSONbored/metagraphed/commit/d7d4557147e396a473c627946d59338c7417fbbd)), closes [#9004](https://github.com/JSONbored/metagraphed/issues/9004)
+
+
+### Performance
+
+* **ci:** run the UI e2e sweep against the production build ([#9080](https://github.com/JSONbored/metagraphed/issues/9080)) ([fb897a1](https://github.com/JSONbored/metagraphed/commit/fb897a1a3f8c55c8eccf3da60c0c1df13ef8bd7d))
+
+
+### Documentation
+
+* **contracts:** say which tier answers ownership-history and OHLC ([#9213](https://github.com/JSONbored/metagraphed/issues/9213)) ([98cb359](https://github.com/JSONbored/metagraphed/commit/98cb359d3e27f888d56ef779c3d9561f65851d2c))
+
 ## [0.14.1](https://github.com/JSONbored/metagraphed/compare/ui-v0.14.0...ui-v0.14.1) (2026-08-01)
 
 
