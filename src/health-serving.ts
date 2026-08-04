@@ -17,6 +17,7 @@ import {
   normalizeProbeStatus,
   okLatencyMs,
 } from "./health-probe-core.ts";
+import { spotPriceTao } from "./stake-quote.ts";
 import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "./kv-keys.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
 
@@ -1985,6 +1986,40 @@ export async function resolveLiveEconomics({
 // second call to /api/v1/economics. Null-safe: when the live economics store is
 // cold/stale (resolveLiveEconomics → null) or the subnet has no economics row,
 // the detail is returned unchanged (no `economics` field).
+/**
+ * Add `spot_price_tao` to one economics row, derived from the reserves it already
+ * carries (#9408).
+ *
+ * `alpha_price_tao` is the chain's MOVING price -- byte-identical to
+ * `moving_price_pinned` on the live tier, as economics-field-sources.ts spells out --
+ * and every surface that values a position was marking it at that lagging average
+ * while `tao_in_pool_tao` and `alpha_in_pool` sat unused in the same object. Measured
+ * on netuid 64: moving 0.084780302 against spot 0.084668599, +0.132%, which widens
+ * precisely when a lagging average is least useful.
+ *
+ * Derived at SERVE time rather than written by the producers, because there are two of
+ * them (the R2 bulk capture and the live-KV Worker cron) and a stored field would have
+ * to be added, backfilled and kept in step in both. The inputs are on the row either
+ * way, so the division is the whole computation and it cannot disagree between tiers.
+ *
+ * The spot itself comes from stake-quote's `spotPriceTao`, so this and the quote route
+ * cannot drift about what "spot" means -- including the root special case, where there
+ * is no AMM and the price is 1 by definition rather than a ratio of absent reserves.
+ */
+export function withSpotPrice(
+  row: Row | null | undefined,
+): Row | null | undefined {
+  if (!row || typeof row !== "object") return row;
+  return {
+    ...row,
+    spot_price_tao: spotPriceTao(
+      Number(row.netuid),
+      row.tao_in_pool_tao,
+      row.alpha_in_pool,
+    ),
+  };
+}
+
 export function overlaySubnetEconomics(
   detail: Row | null | undefined,
   economicsBlob: Row | null | undefined,
@@ -1995,7 +2030,7 @@ export function overlaySubnetEconomics(
   if (!Array.isArray(rows)) return detail;
   const row = (rows as Row[]).find((entry) => entry?.netuid === netuid);
   if (!row) return detail;
-  return { ...detail, economics: row };
+  return { ...detail, economics: withSpotPrice(row) };
 }
 
 // Overlay the live per-subnet operational rollup onto a composed overview

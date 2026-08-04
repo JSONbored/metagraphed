@@ -8139,6 +8139,7 @@
               "registration_allowed_pinned": false,
               "registration_cost_tao": 0.5,
               "slug": "example-subnet",
+              "spot_price_tao": 0.5,
               "subnet_volume_tao": 0.5,
               "subtoken_enabled": false,
               "tao_in_emission_tao": 0.5,
@@ -25420,7 +25421,8 @@
                     {
                       "type": "null"
                     }
-                  ]
+                  ],
+                  "description": "The chain's MOVING price, not spot (#9408): on the live tier this is byte-identical to moving_price_pinned, the same word at the same instant. It is the right number for emission weighting, which is what the chain uses it for — but a lagging average is the wrong mark for valuing a position, and the gap widens exactly when the market moves. Use spot_price_tao for that."
                 },
                 "block": {
                   "anyOf": [
@@ -25602,6 +25604,17 @@
                 },
                 "slug": {
                   "type": "string"
+                },
+                "spot_price_tao": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "The AMM spot price in TAO per alpha — the pool ratio at rest, derived from tao_in_pool_tao / alpha_in_pool on this row. Root (netuid 0) has no AMM and is 1 by definition. Null when the reserves cannot support a price; an empty pool has no spot, and 0 would read as free. This is the mark to value a position at; alpha_price_tao is the moving average."
                 },
                 "subnet_volume_tao": {
                   "anyOf": [
@@ -38847,7 +38860,8 @@
                   {
                     "type": "null"
                   }
-                ]
+                ],
+                "description": "The chain's MOVING price, not spot (#9408): on the live tier this is byte-identical to moving_price_pinned, the same word at the same instant. It is the right number for emission weighting, which is what the chain uses it for — but a lagging average is the wrong mark for valuing a position, and the gap widens exactly when the market moves. Use spot_price_tao for that."
               },
               "block": {
                 "anyOf": [
@@ -39029,6 +39043,17 @@
               },
               "slug": {
                 "type": "string"
+              },
+              "spot_price_tao": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The AMM spot price in TAO per alpha — the pool ratio at rest, derived from tao_in_pool_tao / alpha_in_pool on this row. Root (netuid 0) has no AMM and is 1 by definition. Null when the reserves cannot support a price; an empty pool has no spot, and 0 would read as free. This is the mark to value a position at; alpha_price_tao is the moving average."
               },
               "subnet_volume_tao": {
                 "anyOf": [

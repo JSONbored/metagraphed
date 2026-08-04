@@ -3,6 +3,7 @@ import {
   computeStakeQuote,
   STAKE_QUOTE_DIRECTIONS,
   MAX_INPUT_RESERVE_MULTIPLE,
+  spotPriceTao,
 } from "../src/stake-quote.ts";
 import type { Row } from "./row-type.ts";
 
@@ -153,5 +154,56 @@ describe("computeStakeQuote", () => {
     expect(r.ok).toBe(false);
     expect(r.status).toBe(422);
     expect(r.code).toBe("insufficient_liquidity");
+  });
+});
+
+// #9408: spot is shared with the economics row, so the two cannot drift about what
+// "spot" means. The economics block published `alpha_price_tao` -- the chain's MOVING
+// price -- with the reserves sitting unused in the same object.
+describe("spotPriceTao", () => {
+  it("is the pool ratio, and matches the real reserves", () => {
+    // Live netuid 64 reserves, 2026-08-04. The moving price on that same row was
+    // 0.084780302 -- a +0.132% divergence from this.
+    expect(spotPriceTao(64, 217938.192556005, 2574014.389018032)).toBe(
+      217938.192556005 / 2574014.389018032,
+    );
+  });
+
+  it("root is 1 by definition, not a ratio of reserves it does not have", () => {
+    expect(spotPriceTao(0, null, null)).toBe(1);
+    expect(spotPriceTao(0, 5, 5)).toBe(1);
+  });
+
+  it("an unusable pool has NO spot, rather than a free one", () => {
+    // 0 would read as "this alpha is free", which is the confident wrong answer.
+    for (const [tao, alpha] of [
+      [1, 0],
+      [1, -1],
+      [null, 1],
+      ["x", 1],
+      [1, null],
+      [undefined, 1],
+      [1, undefined],
+      [-1, 1],
+      [Number.POSITIVE_INFINITY, 1],
+      [1, Number.NaN],
+    ] as const) {
+      expect(spotPriceTao(7, tao, alpha)).toBeNull();
+    }
+  });
+
+  it("the quote route and the economics row agree by construction", () => {
+    // Same function, so a change to one cannot silently diverge from the other.
+    const quote = computeStakeQuote({
+      netuid: 64,
+      direction: "stake",
+      amount: 1000,
+      taoInPool: 217938.192556005,
+      alphaInPool: 2574014.389018032,
+    });
+    expect(quote.ok).toBe(true);
+    expect(quote.ok && quote.quote.spot_price_tao).toBe(
+      spotPriceTao(64, 217938.192556005, 2574014.389018032),
+    );
   });
 });
