@@ -319,6 +319,7 @@ function PoolsTable() {
       <EmptyState
         title="No RPC pools tracked"
         description="The proxy routes across registered pools — pool members and their eligibility appear here once registered."
+        action={{ label: "Open API", href: "/api/v1/rpc/pools", external: true }}
       />
     );
   return (
@@ -396,6 +397,7 @@ function EndpointPoolsTable() {
       <EmptyState
         title="No endpoint pools tracked"
         description="Generalized pool composition across subtensor-rpc, subtensor-wss, and archive kinds appears here once pools are scored."
+        action={{ label: "Open API", href: "/api/v1/endpoint-pools", external: true }}
       />
     );
   return (
@@ -484,6 +486,7 @@ function RpcEndpointsTable() {
       <EmptyState
         title="No RPC endpoints tracked"
         description="The base-layer Subtensor RPC/WSS registry appears here once endpoints are registered."
+        action={{ label: "Open API", href: "/api/v1/rpc/endpoints", external: true }}
       />
     );
   return (

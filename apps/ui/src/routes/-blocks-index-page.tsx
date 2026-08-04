@@ -546,6 +546,7 @@ function BlocksTable() {
                         />
                         {authorRepeat > 1 ? (
                           <span
+                            /* eslint-disable-next-line no-restricted-syntax -- micro-chip repeat badge (9px); the mg-type-* scale bottoms out at caption-lg (13px) with no nano tier, so there is no matching token (#9343 req 1 exception) */
                             className="mg-chip h-4 px-1.5 text-[9px] text-accent-text border-accent/40"
                             title={`Produced ${authorRepeat} blocks on this page`}
                           >
