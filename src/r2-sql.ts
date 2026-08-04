@@ -56,6 +56,20 @@ export function currentR2SqlFailureGeneration(): number {
 export interface R2SqlDeps {
   fetch?: typeof fetch;
   recordException?: typeof recordExceptionEvent;
+  /**
+   * Called with the engine's own explanation before a failed query returns null.
+   *
+   * Every failure mode here collapses to the same `null`, which is the right return
+   * type -- a caller must not have to distinguish a timeout from a rejection to know
+   * it has no rows. But the DIAGNOSIS is then discarded, and #9386 is what that
+   * costs: /accounts/{ss58} declined ~50% of requests for a high-activity coldkey
+   * with a typed 503 that could not say which of five concurrent reads failed, or
+   * why. The message this receives already distinguishes them -- an HTTP status, a
+   * numbered engine rejection (`40015: scan budget exceeded ...`), or an abort.
+   *
+   * Optional and side-effect-only, so no existing caller changes behaviour.
+   */
+  onError?: (detail: string) => void;
   /** Override the query ceiling. Tests use a tiny value so the abort path is
    * exercised in milliseconds rather than by waiting out the real ceiling. */
   timeoutMs?: number;
@@ -177,7 +191,16 @@ export async function r2SqlQuery(
     return Array.isArray(rows) ? (rows as Record<string, unknown>[]) : [];
   } catch (error) {
     r2SqlFailureGeneration += 1;
-    console.error("[r2-sql]", String((error as Error)?.message ?? error));
+    const detail = String((error as Error)?.message ?? error);
+    console.error("[r2-sql]", detail);
+    // Reported before the exception hop, so a caller still learns the reason even if
+    // the telemetry sink is unavailable -- the point of this seam is that the answer
+    // must not depend on another service being up.
+    try {
+      deps.onError?.(detail);
+    } catch {
+      // A caller's own reporting must never turn a declined query into a thrown one.
+    }
     await (deps.recordException ?? recordExceptionEvent)(env, {
       error,
       route: "r2-sql",

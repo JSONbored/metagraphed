@@ -7794,7 +7794,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       if (answer?.kind === "gap") {
         throw toolError(
           ACCOUNT_SUMMARY_GAP_CODE,
-          accountSummaryGapMessage(ss58),
+          accountSummaryGapMessage(ss58, answer.reasons),
         );
       }
       const data =

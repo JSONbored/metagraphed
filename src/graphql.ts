@@ -5468,8 +5468,13 @@ const rootValue = {
       ? null
       : await answerAccountSummary(context.env, ss58);
     if (answer?.kind === "gap") {
-      throw new GraphQLError(accountSummaryGapMessage(ss58), {
-        extensions: { code: ACCOUNT_SUMMARY_GAP_CODE },
+      throw new GraphQLError(accountSummaryGapMessage(ss58, answer.reasons), {
+        // #9386: the decline names which leg failed, so a client sees the same
+        // diagnosis REST and MCP get rather than a bare code.
+        extensions: {
+          code: ACCOUNT_SUMMARY_GAP_CODE,
+          reasons: answer.reasons,
+        },
       });
     }
     const data =

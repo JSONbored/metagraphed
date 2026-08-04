@@ -4423,9 +4423,12 @@ export async function handleAccount(request: Request, env: Env, ss58: string) {
   if (answer?.kind === "gap") {
     return errorResponse(
       ACCOUNT_SUMMARY_GAP_CODE,
-      accountSummaryGapMessage(ss58),
+      accountSummaryGapMessage(ss58, answer.reasons),
       503,
-      { ss58 },
+      // #9386: the decline says WHICH leg failed and what the engine said. Without
+      // it, a route failing half its requests produced a 503 whose cause could only
+      // be guessed at from outside.
+      { ss58, reasons: answer.reasons },
     );
   }
   const data =
