@@ -681,9 +681,32 @@ jobs:
 
       # Upload coverage to Codecov — the primary PR coverage gate (delta-based
       # project + patch, see codecov.yml). vitest's thresholds are now just a
-      # local backstop. Same-repo PRs and main pushes use the repository token;
-      # fork PRs use Codecov's public-repo tokenless upload path instead.
-      # Missing coverage or upload errors fail the test job.
+      # local backstop. Missing coverage or upload errors fail the test job.
+      #
+      # WHICH PATH A RUN TAKES is decided by whether it can read secrets, NOT by
+      # whether the branch lives in this repo — those are different questions and
+      # conflating them is what broke every Dependabot PR (#9300):
+      #
+      #   main pushes + ordinary same-repo PRs -> token path
+      #   fork PRs                             -> tokenless
+      #   DEPENDABOT PRs                       -> tokenless
+      #
+      # A Dependabot PR is same-repo, so it used to take the token path — but
+      # `pull_request` runs triggered by Dependabot get their own secret scope
+      # and cannot read `secrets.CODECOV_TOKEN`. It resolved to the empty string,
+      # and Codecov rejected the protected branch outright:
+      #
+      #   -> Token length: 0
+      #   error -- Commit creating failed: {"message":"Token required because
+      #            branch is protected"}
+      #
+      # With fail_ci_if_error: true that fails the whole test job, so no
+      # dependency bump could ever go green. Routing it down the same tokenless
+      # path forks already use is the honest fix: from this workflow's point of
+      # view Dependabot IS a no-secrets trigger. The alternative — granting the
+      # token in the repo's Dependabot secret scope — leaves the workflow broken
+      # by default for anyone who clones it, and silently re-breaks if that
+      # setting is ever lost.
       #
       # Explicit override_branch/commit/pr on BOTH paths below: GITHUB_SHA is the
       # ephemeral refs/pull/:N/merge commit on pull_request events, and the
@@ -702,7 +725,7 @@ jobs:
       # recur here. Bump deliberately (not blindly to whatever's newest) if pinning
       # ever needs to move.
       - name: Upload coverage to Codecov
-        if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+        if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login != 'dependabot[bot]') }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -721,8 +744,8 @@ jobs:
       # codecov-cli's own auto-detection never adds this prefix either (verified in its source), so it
       # must be supplied explicitly. override_commit/override_pr are unaffected -- that check only
       # inspects the branch string.
-      - name: Upload coverage to Codecov (fork PR tokenless)
-        if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+      - name: "Upload coverage to Codecov (tokenless: fork or Dependabot)"
+        if: ${{ github.event_name == 'pull_request' && (github.event.pull_request.head.repo.full_name != github.repository || github.event.pull_request.user.login == 'dependabot[bot]') }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           files: ./coverage/lcov.info,./coverage-mocked/lcov.info
@@ -734,7 +757,7 @@ jobs:
           fail_ci_if_error: true
 
       - name: Upload Vitest results to Codecov
-        if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        if: ${{ !cancelled() && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.user.login != 'dependabot[bot]')) }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -747,8 +770,8 @@ jobs:
           override_pr: ${{ github.event_name == 'pull_request' && github.event.pull_request.number || '' }}
           fail_ci_if_error: false
 
-      - name: Upload Vitest results to Codecov (fork PR tokenless)
-        if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+      - name: "Upload Vitest results to Codecov (tokenless: fork or Dependabot)"
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && (github.event.pull_request.head.repo.full_name != github.repository || github.event.pull_request.user.login == 'dependabot[bot]') }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           files: ./reports/junit/vitest.xml,./reports/junit/vitest-mocked.xml
