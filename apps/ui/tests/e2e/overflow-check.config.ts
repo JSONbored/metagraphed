@@ -50,3 +50,21 @@ export const VIEWPORTS = [
   { name: "desktop-md", width: 1024, height: 800 },
   { name: "desktop-lg", width: 1280, height: 800 },
 ];
+
+// Routes allowed to render an error state, and why.
+//
+// The sweep asserts a route rendered real content rather than an error card,
+// because "no new overflow violations" is also what a broken page looks like.
+// This route is the documented exception: its SSR `useSuspenseQuery` fetches
+// /api/v1/accounts/{ss58} on the SERVER, where `page.routeFromHAR` cannot
+// intercept it, so the request reaches live production on every run. When that
+// endpoint degrades (observed: 503 `account_summary_unavailable`) the page
+// renders an error card and no fixture can prevent it.
+//
+// This is an allowlist, not a fix. Removing the entry requires making SSR
+// fetches hermetic -- attempted via a loopback API stub and abandoned, because
+// workerd's outbound fetch to localhost fails under the parallel sweep far
+// more often than production does.
+export const ERROR_STATE_ALLOWED = new Set([
+  "/accounts/5GsbTgfvgCH4xdqSkiPb7EaBBFLHjWH5vfEALhJaewSFpZX9",
+]);

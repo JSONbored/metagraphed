@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { test, expect } from "@playwright/test";
 import { findOverflowViolations } from "./find-overflow-violations.ts";
-import { ROUTES, VIEWPORTS } from "./overflow-check.config.ts";
+import { ROUTES, VIEWPORTS, ERROR_STATE_ALLOWED } from "./overflow-check.config.ts";
 import { harPathForRoute, DATED_ENDPOINT_PATTERNS, findHarFixture } from "./har-path.ts";
 
 // Baseline-diff, not zero-tolerance: this app has pre-existing, already-tracked
@@ -51,9 +51,20 @@ for (const route of ROUTES) {
         page,
       }) => {
         // Replay the recorded API traffic instead of hitting live production
-        // data (this app fetches everything client-side -- no SSR loaders,
-        // confirmed empirically against the raw server-rendered HTML -- so
-        // browser-level interception is sufficient). `notFound: "fallback"`
+        // data. NOTE: this covers the BROWSER's requests only. The app also
+        // fetches during SSR -- router.tsx wires
+        // `setupRouterSsrQueryIntegration`, so a route's `useSuspenseQuery`
+        // runs on the server -- and `page.routeFromHAR` cannot intercept
+        // that. Those requests still reach live production on every run (36
+        // endpoints, measured), which is why a real 503 there can surface as
+        // an SSR error mid-sweep. An earlier version of this comment claimed
+        // "this app fetches everything client-side -- no SSR loaders,
+        // confirmed empirically"; that is not true and cost real debugging
+        // time. Pointing the build at a local stub was tried and abandoned:
+        // workerd's outbound fetch to loopback fails under the parallel
+        // sweep far more often than production ever does.
+        //
+        // `notFound: "fallback"`
         // (not "abort"): a handful of background/retry requests genuinely
         // fall outside any single recorded snapshot (react-query refetch
         // intervals keep firing after the recording window closes) --
@@ -105,6 +116,34 @@ for (const route of ROUTES) {
         // same 3-element diff every time it fired, only after fonts were
         // self-hosted). Block until the swap is guaranteed to have happened.
         await page.evaluate(() => document.fonts.ready);
+
+        // An empty page cannot overflow, so "no new violations" is also what
+        // a route that rendered NOTHING looks like. That is not theoretical:
+        // chain-extrinsics.har went stale, /chain/extrinsics rendered its
+        // filters and an empty state with no table at all, and this sweep
+        // stayed green on it until a different spec demanded real rows.
+        // Assert the route actually rendered before trusting its measurement.
+        const emptyLists = await page.locator("[data-mg-list-empty]").count();
+        expect(
+          emptyLists,
+          `${route} at ${viewport.width}px rendered an EMPTY list. Its overflow ` +
+            `measurement is meaningless -- there is nothing on the page to overflow. ` +
+            `Almost always a stale HAR fixture: re-record with ` +
+            `\`npm run test:e2e:record-har --workspace=apps/ui\`.`,
+        ).toBe(0);
+
+        // ErrorState renders role="alert". On a fixture-backed run nothing
+        // should error, so an alert means either the fixture no longer
+        // satisfies the page or an SSR fetch to live production failed.
+        const alerts = ERROR_STATE_ALLOWED.has(route)
+          ? 0
+          : await page.locator('[role="alert"]').count();
+        expect(
+          alerts,
+          `${route} at ${viewport.width}px rendered ${alerts} error state(s). Either the ` +
+            `HAR fixture no longer covers what the page requests, or an SSR fetch (which ` +
+            `bypasses HAR replay and hits live production) failed.`,
+        ).toBe(0);
 
         const violations = await page.evaluate(findOverflowViolations, viewport.width);
         const found = new Set(violations.map(fingerprint));

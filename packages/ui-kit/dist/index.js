@@ -2015,7 +2015,7 @@ function ListShell({
   isEmpty,
   isStale,
   viewportRef,
-  stickyHeader: _stickyHeader = true
+  stickyHeader = true
 }) {
   const tableCard = "rounded border border-border bg-card overflow-hidden";
   return /* @__PURE__ */ jsxs("div", { children: [
@@ -2053,10 +2053,25 @@ function ListShell({
         children: /* @__PURE__ */ jsx("div", { className: "flex flex-wrap items-center gap-2", children: filters })
       }
     ),
-    isEmpty ? empty : /* @__PURE__ */ jsxs("div", { className: isStale ? "opacity-70 transition-opacity" : void 0, children: [
+    isEmpty ? (
+      // Marked so a test can tell "this list rendered nothing" apart from
+      // "this list rendered fine". The responsive-overflow sweep only ever
+      // asserted that nothing OVERFLOWS, and an empty page cannot overflow,
+      // so a route whose fixture had gone stale rendered no rows at all and
+      // still passed -- /chain/extrinsics sat like that undetected. This
+      // attribute is what makes that state observable.
+      /* @__PURE__ */ jsx("div", { "data-mg-list-empty": "", children: empty })
+    ) : /* @__PURE__ */ jsxs("div", { className: isStale ? "opacity-70 transition-opacity" : void 0, children: [
       cards ? /* @__PURE__ */ jsx("div", { className: "md:hidden space-y-2", children: cards }) : null,
       /* @__PURE__ */ jsx("div", { className: cards ? "hidden md:block" : void 0, children: /* @__PURE__ */ jsxs("div", { className: tableCard, children: [
-        /* @__PURE__ */ jsx("div", { className: "mg-table-scroll overflow-x-auto", children: /* @__PURE__ */ jsx("div", { ref: viewportRef, className: "mg-list-viewport", children: table }) }),
+        /* @__PURE__ */ jsx("div", { className: "mg-table-scroll overflow-x-auto", children: /* @__PURE__ */ jsx(
+          "div",
+          {
+            ref: viewportRef,
+            className: stickyHeader ? "mg-list-viewport" : void 0,
+            children: table
+          }
+        ) }),
         footer
       ] }) }),
       cards && footer ? /* @__PURE__ */ jsx("div", { className: "md:hidden mt-3", children: footer }) : null

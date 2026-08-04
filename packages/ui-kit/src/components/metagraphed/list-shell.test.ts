@@ -21,8 +21,11 @@ describe("ListShell sticky table wrappers", () => {
     expect(source).toContain('"mg-table-scroll overflow-x-auto"');
     // The whole viewport contract (height cap, overflow axis, overscroll
     // containment) lives in one ui-kit class -- /validators builds its own
-    // shell and has to agree with this one.
-    expect(source).toContain('className="mg-list-viewport"');
+    // shell and has to agree with this one. Applied conditionally, because
+    // `stickyHeader={false}` must drop the bounded box too: keeping it while
+    // dropping the pin gives an inner scroll region whose header scrolls away
+    // inside it.
+    expect(source).toContain('stickyHeader ? "mg-list-viewport" : undefined');
     expect(source).not.toContain("overflow-x-clip");
     expect(source).not.toContain("overflow-y-clip");
   });

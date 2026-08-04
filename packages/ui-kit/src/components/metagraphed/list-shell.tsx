@@ -33,7 +33,7 @@ export function ListShell({
   isEmpty,
   isStale,
   viewportRef,
-  stickyHeader: _stickyHeader = true,
+  stickyHeader = true,
 }: {
   filters: ReactNode;
   cards?: ReactNode;
@@ -52,8 +52,18 @@ export function ListShell({
    * inert. There is one viewport per list, and this is how you reach it.
    */
   viewportRef?: RefObject<HTMLDivElement | null>;
-  /** Retained for API compatibility -- every table in this shell gets the
-   *  bounded viewport, so stickiness needs no per-instance opt-in. */
+  /**
+   * Pin the table header inside a bounded viewport (default). Pass `false`
+   * for a list that should simply scroll with the page, header and all.
+   *
+   * This is honoured again. It spent a while destructured to `_stickyHeader`
+   * and ignored, which was invisible only because stickiness was inert
+   * everywhere at the time -- an `overflow-x-auto` wrapper with no
+   * max-height is a containing block that never scrolls, so `sticky top-0`
+   * did nothing regardless of what any prop said. Now that headers really
+   * pin, ignoring it would silently give /surfaces -- the one caller that
+   * passes `false` -- the exact behaviour it opted out of.
+   */
   stickyHeader?: boolean;
 }) {
   const tableCard = "rounded border border-border bg-card overflow-hidden";
@@ -97,7 +107,13 @@ export function ListShell({
       </div>
 
       {isEmpty ? (
-        empty
+        // Marked so a test can tell "this list rendered nothing" apart from
+        // "this list rendered fine". The responsive-overflow sweep only ever
+        // asserted that nothing OVERFLOWS, and an empty page cannot overflow,
+        // so a route whose fixture had gone stale rendered no rows at all and
+        // still passed -- /chain/extrinsics sat like that undetected. This
+        // attribute is what makes that state observable.
+        <div data-mg-list-empty="">{empty}</div>
       ) : (
         <div className={isStale ? "opacity-70 transition-opacity" : undefined}>
           {cards ? <div className="md:hidden space-y-2">{cards}</div> : null}
@@ -112,7 +128,14 @@ export function ListShell({
                   which is exactly when a header that scrolls away starts
                   costing the reader the column labels. */}
               <div className="mg-table-scroll overflow-x-auto">
-                <div ref={viewportRef} className="mg-list-viewport">
+                {/* No bounded viewport when stickiness is opted out of:
+                    keeping the box while dropping the pin would give the
+                    worst of both -- an inner scroll region whose header
+                    scrolls away inside it. */}
+                <div
+                  ref={viewportRef}
+                  className={stickyHeader ? "mg-list-viewport" : undefined}
+                >
                   {table}
                 </div>
               </div>
