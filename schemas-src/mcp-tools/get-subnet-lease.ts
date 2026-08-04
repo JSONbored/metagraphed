@@ -4,11 +4,16 @@
 // no existing Zod schema to reuse. Modeled fresh, shallow, from the
 // hand-written literals they replace.
 import { z } from "zod";
-import { FieldSourcesSchema } from "../shared.ts";
+import { FieldSourcesSchema, McpNetworkSchema } from "../shared.ts";
 
 export const GetSubnetLeaseInputSchema = z
   .object({
     netuid: z.int().min(0),
+    // #8700: which chain to read. These routes answer from live storage, and
+    // the storage keys are twox128 hashes of pallet+item names — identical on
+    // every chain running the same runtime — so the endpoint is the only thing
+    // that varies. Absent means finney, so every existing caller is unchanged.
+    network: McpNetworkSchema.optional(),
   })
   .strict();
 export type GetSubnetLeaseInput = z.infer<typeof GetSubnetLeaseInputSchema>;

@@ -6,9 +6,16 @@
 // call that can fail on its own) -- modeled fresh, matching each hand-written
 // literal field-for-field.
 import { z } from "zod";
-import { FieldSourcesSchema } from "../shared.ts";
+import { FieldSourcesSchema, McpNetworkSchema } from "../shared.ts";
 
-export const GetNetworkParametersInputSchema = z.object({}).strict();
+export const GetNetworkParametersInputSchema = z
+  .object({
+    // #8700: which chain to read. Absent means finney, so every existing
+    // caller is unchanged. These routes answer from live storage whose keys
+    // are chain-agnostic twox128 hashes — only the endpoint varies.
+    network: McpNetworkSchema.optional(),
+  })
+  .strict();
 export type GetNetworkParametersInput = z.infer<
   typeof GetNetworkParametersInputSchema
 >;
@@ -41,7 +48,14 @@ export type GetNetworkParametersOutput = z.infer<
   typeof GetNetworkParametersOutputSchema
 >;
 
-export const GetRandomnessStatusInputSchema = z.object({}).strict();
+export const GetRandomnessStatusInputSchema = z
+  .object({
+    // #8700: which chain to read. Absent means finney, so every existing
+    // caller is unchanged. These routes answer from live storage whose keys
+    // are chain-agnostic twox128 hashes — only the endpoint varies.
+    network: McpNetworkSchema.optional(),
+  })
+  .strict();
 export type GetRandomnessStatusInput = z.infer<
   typeof GetRandomnessStatusInputSchema
 >;

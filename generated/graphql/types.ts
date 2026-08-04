@@ -2877,11 +2877,13 @@ export type QueryAccount_Axon_RemovalsArgs = {
 
 
 export type QueryAccount_BalanceArgs = {
+  network?: InputMaybe<Network>;
   ss58: Scalars['String']['input'];
 };
 
 
 export type QueryAccount_ChildrenArgs = {
+  network?: InputMaybe<Network>;
   ss58: Scalars['String']['input'];
 };
 
@@ -2951,6 +2953,7 @@ export type QueryAccount_Identity_HistoryArgs = {
 
 
 export type QueryAccount_ParentsArgs = {
+  network?: InputMaybe<Network>;
   ss58: Scalars['String']['input'];
 };
 
@@ -2985,6 +2988,7 @@ export type QueryAccount_RegistrationsArgs = {
 
 
 export type QueryAccount_Root_ClaimArgs = {
+  network?: InputMaybe<Network>;
   ss58: Scalars['String']['input'];
 };
 
@@ -3343,11 +3347,13 @@ export type QueryEvidenceArgs = {
 
 export type QueryEvm_AddressArgs = {
   h160: Scalars['String']['input'];
+  network?: InputMaybe<Network>;
 };
 
 
 export type QueryEvm_Address_MappingArgs = {
   h160: Scalars['String']['input'];
+  network?: InputMaybe<Network>;
 };
 
 
@@ -3439,6 +3445,16 @@ export type QueryIncidentsArgs = {
 };
 
 
+export type QueryNetwork_ParametersArgs = {
+  network?: InputMaybe<Network>;
+};
+
+
+export type QueryNetwork_RandomnessArgs = {
+  network?: InputMaybe<Network>;
+};
+
+
 export type QueryNeuronArgs = {
   netuid: Scalars['Int']['input'];
   uid: Scalars['Int']['input'];
@@ -3506,6 +3522,11 @@ export type QueryProvidersArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<Scalars['String']['input']>;
   sort?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryRandomness_StatusArgs = {
+  network?: InputMaybe<Network>;
 };
 
 
@@ -3709,6 +3730,7 @@ export type QuerySubnet_Axon_RemovalsArgs = {
 
 export type QuerySubnet_BurnArgs = {
   netuid: Scalars['Int']['input'];
+  network?: InputMaybe<Network>;
 };
 
 
@@ -3875,6 +3897,7 @@ export type QuerySubnet_Idle_StakeArgs = {
 
 export type QuerySubnet_LeaseArgs = {
   netuid: Scalars['Int']['input'];
+  network?: InputMaybe<Network>;
 };
 
 
@@ -3937,6 +3960,7 @@ export type QuerySubnet_PrometheusArgs = {
 
 export type QuerySubnet_RecycledArgs = {
   netuid: Scalars['Int']['input'];
+  network?: InputMaybe<Network>;
 };
 
 
@@ -4090,6 +4114,11 @@ export type QuerySudoArgs = {
   offset?: InputMaybe<Scalars['Int']['input']>;
   success?: InputMaybe<Scalars['Boolean']['input']>;
   to?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QuerySudo_KeyArgs = {
+  network?: InputMaybe<Network>;
 };
 
 
@@ -8481,8 +8510,8 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   health_trends?: Resolver<ResolversTypes['HealthTrends'], ParentType, ContextType>;
   incidents?: Resolver<ResolversTypes['GlobalIncidents'], ParentType, ContextType, Partial<QueryIncidentsArgs>>;
   lineage?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
-  network_parameters?: Resolver<Maybe<ResolversTypes['NetworkParameters']>, ParentType, ContextType>;
-  network_randomness?: Resolver<Maybe<ResolversTypes['NetworkRandomness']>, ParentType, ContextType>;
+  network_parameters?: Resolver<Maybe<ResolversTypes['NetworkParameters']>, ParentType, ContextType, Partial<QueryNetwork_ParametersArgs>>;
+  network_randomness?: Resolver<Maybe<ResolversTypes['NetworkRandomness']>, ParentType, ContextType, Partial<QueryNetwork_RandomnessArgs>>;
   neuron?: Resolver<ResolversTypes['Neuron'], ParentType, ContextType, RequireFields<QueryNeuronArgs, 'netuid' | 'uid'>>;
   neuron_history?: Resolver<ResolversTypes['NeuronHistory'], ParentType, ContextType, RequireFields<QueryNeuron_HistoryArgs, 'netuid' | 'uid'>>;
   opportunity_boards?: Resolver<ResolversTypes['OpportunityBoards'], ParentType, ContextType, Partial<QueryOpportunity_BoardsArgs>>;
@@ -8490,7 +8519,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   provider?: Resolver<Maybe<ResolversTypes['Provider']>, ParentType, ContextType, RequireFields<QueryProviderArgs, 'id'>>;
   provider_endpoints?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QueryProvider_EndpointsArgs, 'slug'>>;
   providers?: Resolver<ResolversTypes['ProviderList'], ParentType, ContextType, Partial<QueryProvidersArgs>>;
-  randomness_status?: Resolver<Maybe<ResolversTypes['NetworkRandomness']>, ParentType, ContextType>;
+  randomness_status?: Resolver<Maybe<ResolversTypes['NetworkRandomness']>, ParentType, ContextType, Partial<QueryRandomness_StatusArgs>>;
   registry_leaderboards?: Resolver<ResolversTypes['RegistryLeaderboards'], ParentType, ContextType, Partial<QueryRegistry_LeaderboardsArgs>>;
   registry_summary?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   review_adapter_candidates?: Resolver<ResolversTypes['ReviewAdapterCandidateList'], ParentType, ContextType, Partial<QueryReview_Adapter_CandidatesArgs>>;
@@ -8563,7 +8592,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_yield_history?: Resolver<ResolversTypes['SubnetYieldHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Yield_HistoryArgs, 'netuid'>>;
   subnets?: Resolver<ResolversTypes['SubnetList'], ParentType, ContextType, Partial<QuerySubnetsArgs>>;
   sudo?: Resolver<ResolversTypes['ExtrinsicList'], ParentType, ContextType, Partial<QuerySudoArgs>>;
-  sudo_key?: Resolver<Maybe<ResolversTypes['SudoKey']>, ParentType, ContextType>;
+  sudo_key?: Resolver<Maybe<ResolversTypes['SudoKey']>, ParentType, ContextType, Partial<QuerySudo_KeyArgs>>;
   surfaces?: Resolver<ResolversTypes['SurfaceList'], ParentType, ContextType, Partial<QuerySurfacesArgs>>;
   top_holders?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, Partial<QueryTop_HoldersArgs>>;
   validator?: Resolver<Maybe<ResolversTypes['Validator']>, ParentType, ContextType, RequireFields<QueryValidatorArgs, 'hotkey'>>;

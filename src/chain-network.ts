@@ -92,3 +92,25 @@ export function networkKvKey(
 export function chainNetworkId(id: string | undefined): ChainNetworkId {
   return id === "testnet" ? "testnet" : DEFAULT_CHAIN_NETWORK;
 }
+
+/**
+ * Map the MCP/GraphQL `network` vocabulary onto this module's.
+ *
+ * Those two surfaces publish the CHAIN names (`finney` / `test`, from
+ * `McpNetworkSchema`) while REST's path prefix and this module use the NETWORK
+ * names (`mainnet` / `testnet`). Both spellings are already public API, so
+ * neither can be renamed; this is the one place that reconciles them.
+ *
+ * Anything unrecognised — including `undefined` and `null` — resolves to
+ * mainnet. That is safe here ONLY because both callers validate against their
+ * published enum first (`optionalEnum` on the MCP side): this function is the
+ * translation, never the gate. Silently defaulting an unvalidated string would
+ * reintroduce #8804, where an unrecognised value took the testnet branch.
+ */
+export function chainNetworkFromChainName(
+  chain: string | null | undefined,
+): ChainNetworkId {
+  return chain === "test" || chain === "testnet"
+    ? "testnet"
+    : DEFAULT_CHAIN_NETWORK;
+}

@@ -275,3 +275,117 @@ describe("network isolation on the live routes", () => {
     }
   });
 });
+
+// #8700: REST, GraphQL and MCP must all reach the SAME chain for the same
+// network. They share the loaders, so the risk is not three different answers —
+// it is that two of the three surfaces silently ignore the argument and read
+// mainnet while reporting success, which no shape assertion would catch.
+describe("network selection is honoured on every surface", () => {
+  async function callGraphql(query: string, env: Row) {
+    const { handleGraphQLRequest } = await import("../src/graphql.ts");
+    const res = await handleGraphQLRequest(
+      new Request(`${ORIGIN}/api/v1/graphql`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query }),
+      }),
+      env as unknown as Env,
+    );
+    return JSON.parse(await res.text()) as Row;
+  }
+
+  async function callMcp(name: string, args: Row, env: Row) {
+    const { handleMcpRequest } = await import("../src/mcp-server.ts");
+    const res = await handleMcpRequest(
+      new Request(`${ORIGIN}/api/v1/mcp`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name, arguments: args },
+        }),
+      }),
+      env as unknown as Env,
+      {},
+    );
+    return JSON.parse(await res.text()) as Row;
+  }
+
+  test("GraphQL subnet_burn(network: test) reads the testnet endpoint", async () => {
+    const { env, rpcUrls, restore } = recordingEnv();
+    try {
+      await callGraphql("{ subnet_burn(netuid: 1, network: test) { netuid } }", env);
+      assert.ok(rpcUrls.length > 0, "no RPC call was made");
+      for (const url of rpcUrls) {
+        assert.ok(
+          url.startsWith(CHAIN_RPC_URLS.testnet),
+          `GraphQL testnet query read ${url}`,
+        );
+      }
+    } finally {
+      restore();
+    }
+  });
+
+  test("GraphQL without a network argument still reads finney", async () => {
+    const { env, rpcUrls, restore } = recordingEnv();
+    try {
+      await callGraphql("{ subnet_burn(netuid: 1) { netuid } }", env);
+      assert.ok(rpcUrls.length > 0, "no RPC call was made");
+      for (const url of rpcUrls) {
+        assert.ok(
+          url.startsWith(CHAIN_RPC_URLS.mainnet),
+          `default GraphQL query read ${url}`,
+        );
+      }
+    } finally {
+      restore();
+    }
+  });
+
+  test("MCP get_subnet_burn honours network, and defaults to finney", async () => {
+    for (const [args, expected] of [
+      [{ netuid: 1, network: "test" }, CHAIN_RPC_URLS.testnet],
+      [{ netuid: 1 }, CHAIN_RPC_URLS.mainnet],
+    ] as [Row, string][]) {
+      const { env, rpcUrls, restore } = recordingEnv();
+      try {
+        await callMcp("get_subnet_burn", args, env);
+        assert.ok(rpcUrls.length > 0, `no RPC call for ${JSON.stringify(args)}`);
+        for (const url of rpcUrls) {
+          assert.ok(
+            url.startsWith(expected),
+            `${JSON.stringify(args)} read ${url}, expected ${expected}`,
+          );
+        }
+      } finally {
+        restore();
+      }
+    }
+  });
+
+  test("MCP rejects an unpublished network instead of defaulting it", async () => {
+    // The #8804 shape: an unrecognised string used to take the testnet branch.
+    // chainNetworkFromChainName defaults to mainnet, so a silent default here
+    // would be *safe* but still wrong — the caller asked for something we do
+    // not serve and must be told, not quietly given finney.
+    const { env, restore } = recordingEnv();
+    try {
+      const body = await callMcp(
+        "get_subnet_burn",
+        { netuid: 1, network: "staging" },
+        env,
+      );
+      const text = JSON.stringify(body);
+      assert.match(text, /staging|invalid|enum|network/i, text.slice(0, 300));
+      assert.ok(
+        body.error != null || body.result?.isError === true,
+        `expected an error for network=staging, got ${text.slice(0, 300)}`,
+      );
+    } finally {
+      restore();
+    }
+  });
+});

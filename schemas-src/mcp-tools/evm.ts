@@ -10,7 +10,7 @@
 // here with the SAME strictness, not loosened to match the majority
 // convention.
 import { z } from "zod";
-import { FieldSourcesSchema } from "../shared.ts";
+import { FieldSourcesSchema, McpNetworkSchema } from "../shared.ts";
 
 const H160Schema = z.string().regex(/^0x[0-9a-fA-F]{40}$/);
 
@@ -36,6 +36,11 @@ export type DecodeEvmCallOutput = z.infer<typeof DecodeEvmCallOutputSchema>;
 export const GetEvmAddressMappingInputSchema = z
   .object({
     h160: H160Schema,
+    // #8700: which chain to read. These routes answer from live storage, and
+    // the storage keys are twox128 hashes of pallet+item names — identical on
+    // every chain running the same runtime — so the endpoint is the only thing
+    // that varies. Absent means finney, so every existing caller is unchanged.
+    network: McpNetworkSchema.optional(),
   })
   .strict();
 export type GetEvmAddressMappingInput = z.infer<
