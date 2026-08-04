@@ -19,6 +19,39 @@ function isFinitePositive(n: unknown): n is number {
   return typeof n === "number" && Number.isFinite(n) && n > 0;
 }
 
+/**
+ * The AMM spot price, in TAO per alpha — the pool ratio at rest.
+ *
+ * Exported so the economics row and this quote cannot disagree about what "spot"
+ * means (#9408). It was previously computed inline here only, which is why the
+ * economics block published `alpha_price_tao` — the chain's MOVING price, byte-identical
+ * to `moving_price_pinned` — with the reserves sitting beside it and no spot derived
+ * from them. Measured on netuid 64: moving 0.084780302 against spot 0.084668599, a
+ * +0.132% divergence that widens exactly when a lagging average matters most.
+ *
+ * Root (netuid 0) has no AMM: staking there is 1:1 TAO⇄TAO, so its spot is 1 by
+ * definition rather than a ratio of reserves it does not have. Null when the reserves
+ * cannot support a price — an empty pool has no spot, and 0 would read as "free".
+ */
+export function spotPriceTao(
+  netuid: number,
+  taoInPool: unknown,
+  alphaInPool: unknown,
+): number | null {
+  if (netuid === 0) return 1;
+  // null/undefined are UNREADABLE, not 0. `Number(null)` is 0, which is finite, so a
+  // bare coercion turns "this subnet's reserves are missing" into a spot of 0 -- i.e.
+  // "this alpha is free", the confident wrong answer this function exists to avoid.
+  if (taoInPool == null || alphaInPool == null) return null;
+  const tao = Number(taoInPool);
+  const alpha = Number(alphaInPool);
+  if (!Number.isFinite(tao) || !Number.isFinite(alpha) || alpha <= 0) {
+    return null;
+  }
+  // A negative reserve is not a price either -- it is a corrupt read.
+  return tao < 0 ? null : tao / alpha;
+}
+
 export interface StakeQuote {
   netuid: number;
   direction: string;
@@ -117,7 +150,9 @@ export function computeStakeQuote({
 
   // Spot price is the pool ratio; each direction below applies the
   // constant-product swap (k = tao_in · alpha_in preserved) in its stable form.
-  const spotPrice = taoInPool / alphaInPool; // TAO per alpha at rest
+  // Shared with the economics row so the two cannot drift (#9408); non-null here
+  // because the liquidity guard above already rejected an unusable pool.
+  const spotPrice = spotPriceTao(netuid, taoInPool, alphaInPool) as number;
 
   let expectedOut: number;
   let expectedOutUnit: "alpha" | "tao";

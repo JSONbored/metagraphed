@@ -92,7 +92,22 @@ export const SubnetEconomicsSchema = z
     alpha_price_change_1h: z.number().nullable().optional(),
     alpha_price_change_1m: z.number().nullable().optional(),
     alpha_price_change_7d: z.number().nullable().optional(),
-    alpha_price_tao: z.number().nullable(),
+    alpha_price_tao: z
+      .number()
+      .nullable()
+      .describe(
+        "The chain's MOVING price, not spot (#9408): on the live tier this is byte-identical to moving_price_pinned, the same word at the same instant. It is the right number for emission weighting, which is what the chain uses it for — but a lagging average is the wrong mark for valuing a position, and the gap widens exactly when the market moves. Use spot_price_tao for that.",
+      ),
+    // #9408: derived at serve time from tao_in_pool_tao / alpha_in_pool on this very
+    // row, so it cannot disagree with the reserves published beside it, and shares
+    // stake-quote's own spotPriceTao so the two routes mean the same thing by "spot".
+    spot_price_tao: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(
+        "The AMM spot price in TAO per alpha — the pool ratio at rest, derived from tao_in_pool_tao / alpha_in_pool on this row. Root (netuid 0) has no AMM and is 1 by definition. Null when the reserves cannot support a price; an empty pool has no spot, and 0 would read as free. This is the mark to value a position at; alpha_price_tao is the moving average.",
+      ),
     block: z.int().min(0).nullable().optional(),
     emission_share: z.number().min(0).max(1).nullable(),
     // Stage 5. DEFAULTS TO TRUE on chain: absent storage is enabled and 0x00

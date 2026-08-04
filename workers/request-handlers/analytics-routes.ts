@@ -62,6 +62,7 @@ import {
   formatUptime,
   LEADERBOARD_BOARDS,
   resolveLiveEconomics,
+  withSpotPrice,
 } from "../../src/health-serving.ts";
 import { DOMAIN_TAGS } from "../../src/domain-tags.ts";
 import {
@@ -593,12 +594,19 @@ async function resolveEconomicsRows(env: Env): Promise<unknown[]> {
     env,
     contractVersion: contractVersion(env),
   })) as { data?: { subnets?: unknown[] } } | null;
-  if (Array.isArray(live?.data?.subnets)) return live.data.subnets;
+  // #9408: spot is derived here, at the ONE point both tiers pass through, rather
+  // than written by either producer -- the inputs are on every row already, so a
+  // stored field would be two writers to keep in step for a division.
+  if (Array.isArray(live?.data?.subnets)) {
+    return live.data.subnets.map((row) => withSpotPrice(row as never));
+  }
   const artifact = await readArtifact(env, "/metagraph/economics.json");
   const artifactSubnets = artifact.ok
     ? (artifact.data as { subnets?: unknown[] })?.subnets
     : undefined;
-  return Array.isArray(artifactSubnets) ? artifactSubnets : [];
+  return Array.isArray(artifactSubnets)
+    ? artifactSubnets.map((row) => withSpotPrice(row as never))
+    : [];
 }
 
 /**

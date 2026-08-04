@@ -158,6 +158,12 @@ export const ECONOMICS_FIELD_SOURCES = {
   // read_at omitted deliberately: each change combines the capture-instant
   // price with a DAILY price-history rollup, so no single instant is true of
   // them. Absent means "no single instant applies", not "unknown".
+  // #9408. Arithmetic over two MEASURED reserves on this same row, so it is
+  // reconstructed rather than measured -- no storage item holds it. It shares the
+  // reserves' own instant, which is why no separate `read_at` is asserted: whichever
+  // instant tao_in_pool_tao and alpha_in_pool were read at is the instant this is
+  // true of, by construction.
+  spot_price_tao: { kind: "reconstructed", storage: null },
   alpha_price_change_1h: { kind: "reconstructed", storage: null },
   alpha_price_change_1d: { kind: "reconstructed", storage: null },
   alpha_price_change_7d: { kind: "reconstructed", storage: null },
@@ -267,6 +273,12 @@ export const ECONOMICS_FIELD_SOURCES_LIVE_KV = {
   miner_readiness: { kind: "reconstructed", storage: null },
 
   // --- price history rollup, unchanged from the R2 tier ----------------------
+  // #9408. Arithmetic over two MEASURED reserves on this same row, so it is
+  // reconstructed rather than measured -- no storage item holds it. It shares the
+  // reserves' own instant, which is why no separate `read_at` is asserted: whichever
+  // instant tao_in_pool_tao and alpha_in_pool were read at is the instant this is
+  // true of, by construction.
+  spot_price_tao: { kind: "reconstructed", storage: null },
   alpha_price_change_1h: { kind: "reconstructed", storage: null },
   alpha_price_change_1d: { kind: "reconstructed", storage: null },
   alpha_price_change_7d: { kind: "reconstructed", storage: null },

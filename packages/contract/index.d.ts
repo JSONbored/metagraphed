@@ -7832,6 +7832,7 @@ export interface components {
                 alpha_price_change_1h?: number | null;
                 alpha_price_change_1m?: number | null;
                 alpha_price_change_7d?: number | null;
+                /** @description The chain's MOVING price, not spot (#9408): on the live tier this is byte-identical to moving_price_pinned, the same word at the same instant. It is the right number for emission weighting, which is what the chain uses it for — but a lagging average is the wrong mark for valuing a position, and the gap widens exactly when the market moves. Use spot_price_tao for that. */
                 alpha_price_tao: number | null;
                 block?: number | null;
                 emission_enabled?: boolean | null;
@@ -7854,6 +7855,8 @@ export interface components {
                 registration_allowed_pinned?: boolean | null;
                 registration_cost_tao: number | null;
                 slug: string;
+                /** @description The AMM spot price in TAO per alpha — the pool ratio at rest, derived from tao_in_pool_tao / alpha_in_pool on this row. Root (netuid 0) has no AMM and is 1 by definition. Null when the reserves cannot support a price; an empty pool has no spot, and 0 would read as free. This is the mark to value a position at; alpha_price_tao is the moving average. */
+                spot_price_tao?: number | null;
                 subnet_volume_tao: number | null;
                 subtoken_enabled?: boolean | null;
                 tao_in_emission_tao?: number | null;
@@ -10329,6 +10332,7 @@ export interface components {
                 alpha_price_change_1h?: number | null;
                 alpha_price_change_1m?: number | null;
                 alpha_price_change_7d?: number | null;
+                /** @description The chain's MOVING price, not spot (#9408): on the live tier this is byte-identical to moving_price_pinned, the same word at the same instant. It is the right number for emission weighting, which is what the chain uses it for — but a lagging average is the wrong mark for valuing a position, and the gap widens exactly when the market moves. Use spot_price_tao for that. */
                 alpha_price_tao: number | null;
                 block?: number | null;
                 emission_enabled?: boolean | null;
@@ -10351,6 +10355,8 @@ export interface components {
                 registration_allowed_pinned?: boolean | null;
                 registration_cost_tao: number | null;
                 slug: string;
+                /** @description The AMM spot price in TAO per alpha — the pool ratio at rest, derived from tao_in_pool_tao / alpha_in_pool on this row. Root (netuid 0) has no AMM and is 1 by definition. Null when the reserves cannot support a price; an empty pool has no spot, and 0 would read as free. This is the mark to value a position at; alpha_price_tao is the moving average. */
+                spot_price_tao?: number | null;
                 subnet_volume_tao: number | null;
                 subtoken_enabled?: boolean | null;
                 tao_in_emission_tao?: number | null;
@@ -21175,6 +21181,7 @@ export interface operations {
                      *           "registration_allowed_pinned": false,
                      *           "registration_cost_tao": 0.5,
                      *           "slug": "example-subnet",
+                     *           "spot_price_tao": 0.5,
                      *           "subnet_volume_tao": 0.5,
                      *           "subtoken_enabled": false,
                      *           "tao_in_emission_tao": 0.5,
@@ -43624,6 +43631,7 @@ export interface operations {
                      *           "registration_allowed_pinned": false,
                      *           "registration_cost_tao": 0.5,
                      *           "slug": "example-subnet",
+                     *           "spot_price_tao": 0.5,
                      *           "subnet_volume_tao": 0.5,
                      *           "subtoken_enabled": false,
                      *           "tao_in_emission_tao": 0.5,
