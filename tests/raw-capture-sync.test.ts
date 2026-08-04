@@ -11,18 +11,36 @@ import { beforeEach, describe, test } from "vitest";
 import {
   d1Watermark,
   RAW_CAPTURE_GENESIS_FLOOR,
+  RAW_CAPTURE_LANES,
   runRawCaptureSync,
+  TESTNET_RAW_CAPTURE_GENESIS_FLOOR,
 } from "../src/raw-capture-sync.ts";
 
-const SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0006_raw_capture.sql"),
-  "utf8",
+/**
+ * The raw-capture migrations, IN ORDER — 0006 creates the table, 0013 rebuilds
+ * it with a network dimension (#8700).
+ *
+ * Applied as a chain rather than as a single final schema on purpose. D1
+ * migrations in this repo are applied BY HAND to production, so the thing worth
+ * proving is not "the end state parses" but "0013 applies cleanly on top of a
+ * live 0006 table and carries its row across" — 0013 drops and recreates the
+ * table, and a mistake there silently resets the mainnet watermark to the
+ * floor, which would re-capture ~3,000 blocks and briefly report a gap that
+ * does not exist.
+ */
+const MIGRATIONS = ["0006_raw_capture.sql", "0013_raw_capture_network.sql"].map(
+  (name) =>
+    fs.readFileSync(path.join(process.cwd(), "migrations/d1", name), "utf8"),
 );
+
+function applyMigrations(target: InstanceType<typeof DatabaseSync>) {
+  for (const sql of MIGRATIONS) target.exec(sql);
+}
 
 let db: InstanceType<typeof DatabaseSync>;
 beforeEach(() => {
   db = new DatabaseSync(":memory:");
-  db.exec(SCHEMA);
+  applyMigrations(db);
 });
 
 /** D1-shaped facade over a real SQLite database, so the watermark SQL is
@@ -47,8 +65,24 @@ function d1() {
   };
 }
 
-function rpcFetch(head: number) {
-  return (async (_u: unknown, init?: { body?: string }) => {
+/**
+ * A chain stub that answers per ENDPOINT, not globally (#8700).
+ *
+ * The lane runs mainnet and testnet in one tick against different URLs, so a
+ * URL-blind stub would give both the same head and make every single-lane
+ * assertion below ambiguous. `testnetHead` defaults BELOW the testnet floor,
+ * which makes that lane a legitimate no-op ("nothing to capture yet") rather
+ * than a mocked-away one — the mainnet assertions then mean exactly what they
+ * meant before testnet existed.
+ */
+function rpcFetch(
+  head: number,
+  testnetHead: number = TESTNET_RAW_CAPTURE_GENESIS_FLOOR - 1,
+) {
+  return (async (url: unknown, init?: { body?: string }) => {
+    const isTestnet = String(url).includes("test.finney");
+    const chainHead = isTestnet ? testnetHead : head;
+    const tag = isTestnet ? "t" : "m";
     const req = JSON.parse(init?.body ?? "{}") as {
       method: string;
       params: unknown[];
@@ -56,14 +90,16 @@ function rpcFetch(head: number) {
     const reply = (result: unknown) =>
       ({ ok: true, json: async () => ({ result }) }) as unknown as Response;
     if (req.method === "chain_getHeader")
-      return reply({ number: `0x${head.toString(16)}` });
+      return reply({ number: `0x${chainHead.toString(16)}` });
+    // Hashes are tagged per chain so a test can prove the bytes under a
+    // testnet key came from the testnet endpoint.
     if (req.method === "chain_getBlockHash")
-      return reply(`0xh${req.params[0]}`);
+      return reply(`0x${tag}h${req.params[0]}`);
     if (req.method === "chain_getBlock")
       return reply({
-        block: { header: { parentHash: "0xp" }, extrinsics: ["0xaa"] },
+        block: { header: { parentHash: `0x${tag}p` }, extrinsics: ["0xaa"] },
       });
-    return reply("0xevents");
+    return reply(`0x${tag}events`);
   }) as unknown as typeof fetch;
 }
 
@@ -122,20 +158,26 @@ describe("runRawCaptureSync — refusal paths", () => {
   });
 
   test("an RPC failure is contained and captured, never thrown at the scheduler", async () => {
-    const captures: unknown[] = [];
+    const captures: { route?: string }[] = [];
     const { env } = envWith();
     const result = await runRawCaptureSync(env as never, {
       fetchImpl: (async () => {
         throw new Error("rpc down");
       }) as unknown as typeof fetch,
-      recordException: (async () => {
-        captures.push(1);
+      recordException: (async (_e: unknown, ev: { route?: string }) => {
+        captures.push(ev);
         return true;
       }) as never,
     });
     assert.equal(result.ok, false);
     assert.match(String(result.reason), /rpc down/);
-    assert.equal(captures.length, 1);
+    // One exception PER LANE, each attributed to its own network (#8700). A
+    // single un-tagged capture would make "both chains are down" and "testnet
+    // is down" the same alert.
+    assert.deepEqual(captures.map((c) => c.route).sort(), [
+      "raw-capture-sync:mainnet",
+      "raw-capture-sync:testnet",
+    ]);
   });
 });
 
@@ -210,7 +252,8 @@ describe("runRawCaptureSync — capture", () => {
     // Head is reachable, but block floor+1 fails -- so the tick captures the
     // floor block and stops, which is the safe partial-run path.
     const failAt = RAW_CAPTURE_GENESIS_FLOOR + 1;
-    const flaky = (async (_u: unknown, init?: { body?: string }) => {
+    const flaky = (async (url: unknown, init?: { body?: string }) => {
+      const isTestnet = String(url).includes("test.finney");
       const req = JSON.parse(init?.body ?? "{}") as {
         method: string;
         params: unknown[];
@@ -220,9 +263,13 @@ describe("runRawCaptureSync — capture", () => {
           ok: true,
           json: async () => ({ result: r }),
         }) as unknown as Response;
+      // Endpoint-aware for the same reason rpcFetch is: the testnet lane must
+      // be a no-op here so `puts.size` still counts only the mainnet batch.
       if (req.method === "chain_getHeader")
         return reply({
-          number: `0x${(RAW_CAPTURE_GENESIS_FLOOR + 5).toString(16)}`,
+          number: isTestnet
+            ? `0x${(TESTNET_RAW_CAPTURE_GENESIS_FLOOR - 1).toString(16)}`
+            : `0x${(RAW_CAPTURE_GENESIS_FLOOR + 5).toString(16)}`,
         });
       if (req.method === "chain_getBlockHash") {
         if (req.params[0] === failAt)
@@ -283,5 +330,162 @@ describe("d1Watermark", () => {
       .prepare(`SELECT count(*) AS n FROM raw_capture_state`)
       .get() as Record<string, number>;
     assert.equal(count.n, 1, "single-row table stays single-row");
+  });
+});
+
+// #8700: the testnet capture lane. The property that matters is ISOLATION —
+// two chains writing block ranges into one bucket and one watermark table,
+// where a collision would silently overwrite one chain's bytes with the
+// other's and be invisible until someone decoded them.
+describe("the testnet capture lane", () => {
+  test("mainnet's R2 prefix and watermark row are untouched by testnet's", async () => {
+    const { env, puts } = envWith();
+    const result = await runRawCaptureSync(env as never, {
+      fetchImpl: rpcFetch(
+        RAW_CAPTURE_GENESIS_FLOOR + 1,
+        TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1,
+      ),
+      now: () => 5000,
+    });
+    assert.equal(result.ok, true);
+
+    const keys = [...puts.keys()].sort();
+    assert.equal(keys.length, 2, "one batch object per network");
+    // Mainnet keeps the bare prefix the decode lane already lists.
+    assert.ok(
+      keys.some((k) => k.startsWith("chain/raw/blocks/")),
+      `no mainnet key in ${keys.join(", ")}`,
+    );
+    assert.ok(
+      keys.some((k) => k.startsWith("chain/raw/testnet/blocks/")),
+      `no testnet key in ${keys.join(", ")}`,
+    );
+    // And neither is under the other's prefix.
+    assert.equal(
+      keys.filter((k) => k.startsWith("chain/raw/blocks/")).length,
+      1,
+      "testnet bytes must not land under the mainnet prefix",
+    );
+
+    // Spread to a plain object: node:sqlite returns null-prototype rows, which
+    // deepEqual rejects against object literals even when every value matches.
+    const rows = (
+      db
+        .prepare(
+          `SELECT network, last_contiguous_block FROM raw_capture_state ORDER BY network`,
+        )
+        .all() as Record<string, unknown>[]
+    ).map((row) => ({ ...row }));
+    assert.deepEqual(rows, [
+      {
+        network: "mainnet",
+        last_contiguous_block: RAW_CAPTURE_GENESIS_FLOOR + 1,
+      },
+      {
+        network: "testnet",
+        last_contiguous_block: TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1,
+      },
+    ]);
+  });
+
+  test("the bytes under a testnet key came from the testnet endpoint", async () => {
+    // The collision this guards against is not a crash — both chains produce
+    // well-formed blocks — so the only proof is provenance in the payload.
+    const { env, puts } = envWith();
+    await runRawCaptureSync(env as never, {
+      fetchImpl: rpcFetch(
+        RAW_CAPTURE_GENESIS_FLOOR,
+        TESTNET_RAW_CAPTURE_GENESIS_FLOOR,
+      ),
+      now: () => 1,
+    });
+    for (const [key, body] of puts) {
+      const first = JSON.parse(body.split("\n")[0]!) as {
+        block_hash: string;
+        events: string;
+      };
+      const expected = key.includes("/testnet/") ? "t" : "m";
+      assert.ok(
+        first.block_hash.startsWith(`0x${expected}h`),
+        `${key} holds ${first.block_hash}, which came from the wrong chain`,
+      );
+      assert.equal(first.events, `0x${expected}events`);
+    }
+  });
+
+  test("a testnet outage leaves the mainnet lane fully intact", async () => {
+    // The reason the lanes run in sequence with independent error handling.
+    const { env, puts } = envWith();
+    const result = await runRawCaptureSync(env as never, {
+      fetchImpl: (async (url: unknown, init?: { body?: string }) => {
+        if (String(url).includes("test.finney"))
+          throw new Error("testnet down");
+        return rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 1)(
+          url as never,
+          init as never,
+        );
+      }) as unknown as typeof fetch,
+      now: () => 7,
+      recordException: (async () => true) as never,
+    });
+
+    assert.equal(
+      result.ok,
+      true,
+      "mainnet succeeded, so the tick is not a failure",
+    );
+    assert.equal(result.captured, 2, "mainnet captured its full batch");
+    assert.equal(result.watermark, RAW_CAPTURE_GENESIS_FLOOR + 1);
+
+    const lanes = result.lanes ?? [];
+    const mainnet = lanes.find((lane) => lane.network === "mainnet");
+    const testnet = lanes.find((lane) => lane.network === "testnet");
+    assert.equal(mainnet?.ok, true);
+    assert.equal(testnet?.ok, false);
+    assert.match(String(testnet?.reason), /testnet down/);
+
+    // Mainnet's watermark advanced and its bytes landed, despite the sibling.
+    assert.equal(
+      (
+        db
+          .prepare(
+            `SELECT last_contiguous_block FROM raw_capture_state WHERE network = 'mainnet'`,
+          )
+          .get() as Record<string, number>
+      ).last_contiguous_block,
+      RAW_CAPTURE_GENESIS_FLOOR + 1,
+    );
+    assert.equal([...puts.keys()].length, 1);
+    assert.equal(
+      db
+        .prepare(
+          `SELECT COUNT(*) AS n FROM raw_capture_state WHERE network = 'testnet'`,
+        )
+        .get()?.n,
+      0,
+      "a failed lane must not leave a watermark claiming bytes it never wrote",
+    );
+  });
+
+  test("every declared lane has a distinct network, endpoint and floor", () => {
+    // Cheap, but it is the assertion that would have caught a copy-paste lane
+    // pointing at mainnet's endpoint under a testnet label — which writes one
+    // chain's blocks under the other's key with no error anywhere.
+    const networks = RAW_CAPTURE_LANES.map((lane) => lane.network);
+    assert.equal(new Set(networks).size, networks.length);
+    const urls = RAW_CAPTURE_LANES.map((lane) => lane.defaultRpcUrl);
+    assert.equal(new Set(urls).size, urls.length);
+    const floors = RAW_CAPTURE_LANES.map((lane) => lane.genesisFloor);
+    assert.equal(new Set(floors).size, floors.length);
+    // The combined per-tick budget must stay inside the platform's
+    // 1000-subrequest ceiling: 3 RPC calls per block plus one head fetch each.
+    const subrequests = RAW_CAPTURE_LANES.reduce(
+      (total, lane) => total + lane.maxPerTick * 3 + 1,
+      0,
+    );
+    assert.ok(
+      subrequests < 1000,
+      `a tick would issue ${subrequests} subrequests, over the Worker ceiling`,
+    );
   });
 });
