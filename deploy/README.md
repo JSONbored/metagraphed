@@ -53,12 +53,16 @@ gone entirely** — there is no longer a Railway account in the serving path.
 
 `wss.metagraph.sh` is served through a Worker zone **route** rather than a
 custom domain; `wrangler.wss-lb.jsonc`'s own comment explains why that is what
-let the move happen without a DNS propagation window. Provisioning detail lives
-in [`deploy/wss-lb/README.md`](wss-lb/README.md).
+let the move happen without a DNS propagation window.
 
-`deploy/wss-lb/railway.json` and `Dockerfile` are left in place as the retired
-service's build config — dead as deployment inputs, kept only so the Node
-service that `src/select.ts` was extracted from stays runnable and readable.
+`deploy/wss-lb/` — the retired Node service, its Dockerfile and its `railway.json`
+— was **deleted** in #9353. It had been kept "runnable and readable" as the source
+`select.ts` was extracted from, and that turned out to cost more than it was worth:
+the live Worker imported `MAX_RPC_BODY_BYTES` from the dead service's policy file
+while enforcing none of the rest of it, and a CI test guarded that the dead copy
+stayed in sync with `workers/config.ts` — so the only thing anyone verified about
+the policy was that two unused copies matched. Selection now lives beside the Worker
+at `workers/wss-lb-select.ts`, tested in `tests/wss-lb-select.test.ts`.
 
 ## Bare-metal bring-up
 
@@ -97,8 +101,8 @@ That starts:
 **Managed Railway Postgres is no longer used** — it was the interim home for
 `postgres`/`redis`/`indexer-rs` before the dedicated boxes existed; both the
 data and the live Hyperdrive binding have since moved to the indexer box's own
-Postgres. `wss-lb`'s own provisioning is documented in
-[`deploy/wss-lb/README.md`](wss-lb/README.md).
+Postgres. `wss-lb` needs no provisioning of its own any more — it is a Worker
+(`workers/wss-lb.ts`, `wrangler.wss-lb.jsonc`) on a zone route.
 
 ## Cloudflare side
 

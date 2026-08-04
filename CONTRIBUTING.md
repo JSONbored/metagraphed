@@ -24,7 +24,7 @@ npm run build
 
 `npm run build` here regenerates the root schema/OpenAPI contract and is what `worker:test` depends on — it's a separate step from `apps/ui`'s own build. If you're touching `apps/ui/`, see [apps/ui/CONTRIBUTING.md](apps/ui/CONTRIBUTING.md) for its own `npm run build --workspace=apps/ui` cycle; a PR touching both may need both.
 
-**New files are TypeScript.** All new code, script, and test files must be `.ts` — never `.mjs`/`.js`. The repo-wide TypeScript migration ([#7510](https://github.com/JSONbored/metagraphed/issues/7510)) is complete, and the `validate:no-hand-written-mjs` CI gate fails any PR that adds a `.mjs`/`.js` file under `src/`, `workers/`, `scripts/`, `tests/`, or `deploy/wss-lb/`.
+**New files are TypeScript.** All new code, script, and test files must be `.ts` — never `.mjs`/`.js`. The repo-wide TypeScript migration ([#7510](https://github.com/JSONbored/metagraphed/issues/7510)) is complete, and the `validate:no-hand-written-mjs` CI gate fails any PR that adds a `.mjs`/`.js` file under `src/`, `workers/`, `scripts/`, or `tests/`.
 
 ## Schema-first rule
 

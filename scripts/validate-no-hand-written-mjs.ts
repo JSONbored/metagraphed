@@ -9,7 +9,7 @@ import { repoRoot } from "./lib.ts";
 // can't quietly reintroduce untyped code anywhere.
 //
 // Checks GIT-TRACKED files only (`git ls-files`), not the filesystem: vendored
-// node_modules trees (e.g. deploy/wss-lb/node_modules) legitimately contain
+// node_modules trees legitimately contain
 // `.mjs`, and only a tracked file can regress the repo.
 //
 // The allowlist below is the documented escape hatch. Two kinds of entries

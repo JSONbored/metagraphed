@@ -1,5 +1,6 @@
-// WSS load balancer as a Worker (ADR 0013), replacing the Railway Node service
-// in deploy/wss-lb. Same model: refresh the healthy-endpoint pool from the live
+// WSS load balancer as a Worker (ADR 0013). It replaced a Railway Node service,
+// now deleted -- this is the only implementation. Refreshes the healthy-endpoint
+// pool from the live
 // /api/v1/rpc/pools artifact and, at CONNECT time, route each client to the
 // freshest/highest-scored upstream, failing over to the next on a failed
 // handshake.
@@ -12,10 +13,10 @@
 // websocket`. So the whole service moves, and the Railway dependency goes with
 // it.
 //
-// WHAT IS REUSED UNCHANGED. selectWssUpstreams and its helpers are pure and
-// already unit-tested (deploy/wss-lb/test/select.test.ts) -- they are imported
-// here rather than reimplemented, so the routing decision this proxy makes is
-// the same decision, tested the same way, before and after the move.
+// SELECTION lives in wss-lb-select.ts, pure and unit-tested in
+// tests/wss-lb-select.test.ts. It carried over unchanged from the Node service,
+// so the routing decision this proxy makes is the same decision, tested the same
+// way, before and after the move.
 //
 // WHAT DELIBERATELY CHANGED. The Node service tracked per-IP connection counts
 // in process memory, which only worked because it was ONE process. A Worker is
@@ -30,11 +31,18 @@
 // JSON-RPC subscription cannot be transparently moved to a different node, so
 // the honest behaviour is to close and let the client reconnect into a fresh
 // selection rather than pretend continuity we cannot provide.
-import {
-  selectWssUpstreams,
-  type PoolsArtifact,
-} from "../deploy/wss-lb/src/select.ts";
-import { MAX_RPC_BODY_BYTES } from "../deploy/wss-lb/src/rpc-policy.ts";
+//
+// WHAT WAS LOST IN THE MOVE AND IS BACK. The Node service refused disallowed RPC
+// methods before relaying them. This Worker imported only MAX_RPC_BODY_BYTES from
+// that policy and forwarded every method verbatim, so between the Railway retirement
+// and this change `author_submitExtrinsic` and `sudo_*` were proxied to five upstream
+// providers under our IP reputation on an endpoint documented as read-only. The
+// policy is now WSS_DENIED_RPC_PREFIXES in workers/config.ts -- deny-mutations rather
+// than the HTTP proxy's 11-method allowlist, because a WebSocket URL is something
+// people point a whole Substrate client at and that client cannot start without
+// state_call and storage reads. See that constant for the full reasoning.
+import { selectWssUpstreams, type PoolsArtifact } from "./wss-lb-select.ts";
+import { MAX_RPC_BODY_BYTES, WSS_DENIED_RPC_PREFIXES } from "./config.ts";
 import {
   recordExceptionEvent,
   recordUsageEvent,
@@ -275,6 +283,60 @@ export function exceedsFrameCap(data: string | ArrayBuffer): boolean {
   return new TextEncoder().encode(data).byteLength > MAX_RPC_BODY_BYTES;
 }
 
+// Is this client frame a call we refuse to relay?
+//
+// Returns the offending method name, or null to forward. Parsing is deliberately
+// forgiving in one direction only: a frame we cannot parse as a JSON-RPC object with
+// a string `method` is FORWARDED, because the upstream is the authority on its own
+// wire format and rejecting what we merely failed to understand would break clients
+// over our parser rather than over policy. A frame we CAN parse and that names a
+// denied method is refused — that is the whole check.
+//
+// Batches (a JSON array) are refused outright rather than inspected element by
+// element. The HTTP proxy already refuses batches, an array containing one denied
+// call would otherwise need per-element error mapping, and no Substrate client sends
+// them over a subscription socket.
+export function deniedRpcMethod(data: string | ArrayBuffer): string | null {
+  if (typeof data !== "string") return null;
+  let rpc: unknown;
+  try {
+    rpc = JSON.parse(data);
+  } catch {
+    return null;
+  }
+  if (Array.isArray(rpc)) return "batch";
+  if (!rpc || typeof rpc !== "object") return null;
+  const method = (rpc as { method?: unknown }).method;
+  if (typeof method !== "string") return null;
+  return WSS_DENIED_RPC_PREFIXES.some((prefix) => method.startsWith(prefix))
+    ? method
+    : null;
+}
+
+function rpcMethodNotAllowed(data: string, method: string): string {
+  let id: string | number | null = null;
+  try {
+    const parsed = JSON.parse(data) as { id?: unknown };
+    if (
+      typeof parsed.id === "string" ||
+      typeof parsed.id === "number" ||
+      parsed.id === null
+    ) {
+      id = parsed.id;
+    }
+  } catch {
+    /* already parsed once above; keep the null id rather than throw here */
+  }
+  return JSON.stringify({
+    jsonrpc: "2.0",
+    id,
+    error: {
+      code: -32601,
+      message: `RPC method is not allowed through this read-only proxy: ${method}`,
+    },
+  });
+}
+
 // Bidirectional pipe. Either side closing or erroring tears down the other --
 // a half-open socket is worse than a closed one here, because a JSON-RPC client
 // waiting on a subscription that can no longer arrive will wait forever.
@@ -303,6 +365,19 @@ export function pipe(client: WebSocket, upstream: WebSocket): void {
     // `maxPayload` had.
     if (exceedsFrameCap(data)) {
       teardown(1009, "frame exceeds max size");
+      return;
+    }
+    // A denied method is answered, not disconnected. Tearing the socket down would
+    // take every in-flight subscription on it with them, and a client that asked one
+    // question we refuse has not necessarily asked anything else wrong -- the HTTP
+    // proxy answers -32601 for the same reason.
+    const denied = deniedRpcMethod(data);
+    if (denied) {
+      try {
+        client.send(rpcMethodNotAllowed(data as string, denied));
+      } catch {
+        teardown(1011, "client send failed");
+      }
       return;
     }
     try {

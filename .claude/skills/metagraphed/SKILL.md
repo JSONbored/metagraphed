@@ -237,7 +237,7 @@ its structure, naming, and comment density. Build for the class, not the one cas
   the contract lives in `schemas/` (+ `schemas/components/`) and `src/contracts.ts`.
 - **All new code/script/test files must be `.ts`** — never `.mjs`/`.js`. The TypeScript migration
   (metagraphed#7510) is complete, and the `validate:no-hand-written-mjs` CI gate fails any PR that
-  adds a `.mjs`/`.js` file under `src/`, `workers/`, `scripts/`, `tests/`, or `deploy/wss-lb/`
+  adds a `.mjs`/`.js` file under `src/`, `workers/`, `scripts/`, or `tests/`
   (metagraphed#7521).
 - **Schema-first rule:** never hand-edit the generated contract. Edit `schemas/` →
   `npm run build` → commit `openapi.json` + generated types/clients in the same PR.

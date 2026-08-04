@@ -671,6 +671,36 @@ export const DENIED_RPC_PREFIXES = [
   "payment_",
   "contracts_",
 ];
+// The WSS proxy's policy, deliberately WIDER than the HTTP proxy's allowlist above.
+//
+// The two endpoints answer different questions. `/rpc/v1/{network}` serves single
+// JSON-RPC calls to callers who picked a method by name, so an 11-entry allowlist is
+// a reasonable contract. `wss.metagraph.sh` is a WebSocket URL people point a whole
+// Substrate CLIENT at — and every such client opens by fetching metadata and calling
+// runtime APIs through `state_call`, then reads storage. Under SAFE_RPC_METHODS none
+// of that is possible, so the allowlist would not narrow the WSS endpoint, it would
+// end it.
+//
+// So the WSS side enforces a DENY list instead: nothing that mutates chain state or
+// costs an upstream a signature. Everything else — storage reads, runtime calls,
+// metadata — is a read, which is what this endpoint advertises itself as.
+//
+// `state_call` is absent here ON PURPOSE and it is the one real judgement call: it
+// executes a runtime API, which is read-only but not free. It is also load-bearing
+// for every real client, and the per-IP connect limits plus the pool's own upstream
+// rate limits are the controls that bound it — not a method name.
+//
+// This is enforced in workers/wss-lb.ts. It was NOT enforced at all between the
+// Railway retirement and this change: the Worker imported only MAX_RPC_BODY_BYTES,
+// so `author_submitExtrinsic` and `sudo_*` were proxied to five upstream providers
+// under our IP reputation. The migration note in that file lists what deliberately
+// changed and does not mention the policy, which is how a silent drop reads.
+export const WSS_DENIED_RPC_PREFIXES = [
+  "author_",
+  "sudo_",
+  "payment_",
+  "contracts_",
+];
 // A second, narrower allowlist for the public RPC proxy (#4344/9.2, design
 // spike in docs/block-explorer-data-model.md): storage-key reads take a
 // caller-supplied key/prefix with no natural bound, unlike every SAFE_RPC_METHODS
