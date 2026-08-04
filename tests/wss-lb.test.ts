@@ -365,7 +365,11 @@ test("a submission is refused rather than proxied to an upstream", () => {
   assert.deepEqual(upstream.sent, []);
   const reply = JSON.parse(client.sent[0] as string);
   assert.equal(reply.error.code, -32601);
-  assert.equal(reply.id, 7, "the caller's id must come back or its promise hangs");
+  assert.equal(
+    reply.id,
+    7,
+    "the caller's id must come back or its promise hangs",
+  );
 });
 
 // A refused method must not take the socket down: an open subscription on the same
@@ -410,12 +414,20 @@ for (const method of [
 }
 
 test("a batch is refused rather than inspected element by element", () => {
-  assert.equal(deniedRpcMethod('[{"id":1,"method":"chain_getHeader"}]'), "batch");
+  assert.equal(
+    deniedRpcMethod('[{"id":1,"method":"chain_getHeader"}]'),
+    "batch",
+  );
 });
 
 // Forgiving in one direction only: what we cannot parse is the upstream's business,
 // and rejecting it would break clients over our parser rather than over policy.
-for (const frame of ['{"id":1}', "not json at all", '{"method":42}', '"a string"']) {
+for (const frame of [
+  '{"id":1}',
+  "not json at all",
+  '{"method":42}',
+  '"a string"',
+]) {
   test(`an unparseable or method-less frame is forwarded: ${frame}`, () => {
     assert.equal(deniedRpcMethod(frame), null);
   });

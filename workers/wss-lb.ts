@@ -41,14 +41,8 @@
 // than the HTTP proxy's 11-method allowlist, because a WebSocket URL is something
 // people point a whole Substrate client at and that client cannot start without
 // state_call and storage reads. See that constant for the full reasoning.
-import {
-  selectWssUpstreams,
-  type PoolsArtifact,
-} from "./wss-lb-select.ts";
-import {
-  MAX_RPC_BODY_BYTES,
-  WSS_DENIED_RPC_PREFIXES,
-} from "./config.ts";
+import { selectWssUpstreams, type PoolsArtifact } from "./wss-lb-select.ts";
+import { MAX_RPC_BODY_BYTES, WSS_DENIED_RPC_PREFIXES } from "./config.ts";
 import {
   recordExceptionEvent,
   recordUsageEvent,
