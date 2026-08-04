@@ -312,7 +312,19 @@ export async function loadBlockColdTier(
     network === DEFAULT_CHAIN_NETWORK
       ? bindings(env).METAGRAPH_HEALTH_DB
       : undefined;
-  const aboveSeam = asNumber !== null && asNumber > seam;
+  // "Above the seam" means "too new for the lakehouse, so D1 is the only
+  // source" — a statement that is only true on mainnet, because only mainnet
+  // HAS a D1 tier. Off mainnet the lakehouse is the sole source at every
+  // height, so nothing is ever above the seam.
+  //
+  // Guarding on the network rather than on the seam VALUE, because the value
+  // is 0 there (see resolveBlocksSeam) and `n > 0` is true for every real
+  // block — which made every testnet block short-circuit to an empty result at
+  // the `if (aboveSeam)` below, without ever reaching the lakehouse that had
+  // it. The feed did not share the bug: it uses the seam as a ceiling, not as
+  // a source switch, so the same 0 meant the right thing there.
+  const aboveSeam =
+    network === DEFAULT_CHAIN_NETWORK && asNumber !== null && asNumber > seam;
   if (db?.prepare && (aboveSeam || asHash !== null)) {
     try {
       const predicate =
