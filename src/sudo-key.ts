@@ -12,6 +12,11 @@
 // node:crypto's createHash("blake2b512") (unsupported in workerd).
 import { encodeAccountId32 } from "./ss58.ts";
 import type { FieldSources } from "./field-provenance.ts";
+import {
+  type ChainNetworkId,
+  networkKvKey,
+  rpcUrlForNetwork,
+} from "./chain-network.ts";
 
 type Row = Record<string, unknown>;
 
@@ -33,7 +38,8 @@ export const SUDO_KEY_FIELD_SOURCES = {
 export const SUDO_KEY_KV_TTL = 3600; // seconds — the sudo key changes extremely rarely
 export const SUDO_KEY_NEGATIVE_KV_TTL = 10; // seconds
 export const SUDO_KEY_RPC_TIMEOUT_MS = 5000;
-const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
+// SS58 prefix 42 is the generic Substrate format Bittensor uses on every
+// network, so the encoding is network-independent even though the key is not.
 const FINNEY_SS58_PREFIX = 42;
 
 // The one call site already validated a "0x"-prefixed 64-hex-char string via
@@ -53,8 +59,13 @@ function hexToBytes(hex: string): Uint8Array {
 // or an unset sudo key (Optional<AccountId>) — schema-stable, never throws.
 //
 // Returns the CACHEABLE body only; loadSudoKey below adds the provenance map.
-async function loadSudoKeySnapshot(env: Env): Promise<Row> {
-  const cacheKey = "sudo:key";
+async function loadSudoKeySnapshot(
+  env: Env,
+  network?: ChainNetworkId,
+): Promise<Row> {
+  // Each chain has its own sudo key — serving finney's for a testnet request
+  // would misidentify who can pause the chain a developer is testing against.
+  const cacheKey = networkKvKey("sudo:key", network);
   const kv = env?.METAGRAPH_CONTROL;
 
   if (kv?.get) {
@@ -71,7 +82,7 @@ async function loadSudoKeySnapshot(env: Env): Promise<Row> {
   let rpcOk = false;
 
   try {
-    const rpcResp = await fetch(FINNEY_RPC_URL, {
+    const rpcResp = await fetch(rpcUrlForNetwork(network), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(SUDO_KEY_RPC_TIMEOUT_MS),
@@ -125,9 +136,12 @@ async function loadSudoKeySnapshot(env: Env): Promise<Row> {
  * point all three surfaces (REST, GraphQL, MCP) inherit it from, rather than
  * three call sites kept in step by hand.
  */
-export async function loadSudoKey(env: Env): Promise<Row> {
+export async function loadSudoKey(
+  env: Env,
+  network?: ChainNetworkId,
+): Promise<Row> {
   return {
-    ...(await loadSudoKeySnapshot(env)),
+    ...(await loadSudoKeySnapshot(env, network)),
     field_sources: SUDO_KEY_FIELD_SOURCES,
   };
 }

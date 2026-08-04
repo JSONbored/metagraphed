@@ -11,6 +11,11 @@
 // (wrangler dev) with output identical to node:crypto's blake2b512.
 import { blake2b } from "@noble/hashes/blake2.js";
 import type { FieldSources } from "./field-provenance.ts";
+import {
+  type ChainNetworkId,
+  networkKvKey,
+  rpcUrlForNetwork,
+} from "./chain-network.ts";
 
 const SS58_BASE58_ALPHABET =
   "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
@@ -26,7 +31,6 @@ const SS58_PREIMAGE = new TextEncoder().encode("SS58PRE");
 export const BALANCE_KV_TTL = 60; // seconds
 export const BALANCE_NEGATIVE_KV_TTL = 10; // seconds
 export const BALANCE_RPC_TIMEOUT_MS = 5000;
-const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
 
 // System::Account(AccountId) storage prefix = twox128("System") ++ twox128("Account").
 // Hard-coded: both halves are fixed runtime constants (the pallet/storage names
@@ -230,8 +234,12 @@ export const ACCOUNT_BALANCE_FIELD_SOURCES = {
 async function loadAccountBalanceSnapshot(
   env: Env,
   ss58: string,
+  network?: ChainNetworkId,
 ): Promise<AccountBalanceResultSnapshot> {
-  const cacheKey = `balance:${ss58}`;
+  // The same address holds different balances on each chain, and a testnet
+  // developer checking whether they can afford a registration must never be
+  // shown a finney balance.
+  const cacheKey = networkKvKey(`balance:${ss58}`, network);
   const kv = env?.METAGRAPH_CONTROL;
 
   if (kv?.get) {
@@ -258,7 +266,7 @@ async function loadAccountBalanceSnapshot(
     // a violation would throw below, caught by the same try/catch as any
     // other RPC failure, leaving balance_tao null (unchanged behavior).
     const accountId = accountIdFromSs58(ss58)!;
-    const rpcResp = await fetch(FINNEY_RPC_URL, {
+    const rpcResp = await fetch(rpcUrlForNetwork(network), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(BALANCE_RPC_TIMEOUT_MS),
@@ -315,9 +323,10 @@ async function loadAccountBalanceSnapshot(
 export async function loadAccountBalance(
   env: Env,
   ss58: string,
+  network?: ChainNetworkId,
 ): Promise<AccountBalanceResult> {
   return {
-    ...(await loadAccountBalanceSnapshot(env, ss58)),
+    ...(await loadAccountBalanceSnapshot(env, ss58, network)),
     field_sources: ACCOUNT_BALANCE_FIELD_SOURCES,
   };
 }

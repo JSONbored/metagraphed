@@ -41,11 +41,15 @@ import { encodeAccountId32 } from "./ss58.ts";
 import { isFinneySs58Address } from "./account-balance.ts";
 import { storageMapPrefix, bytesToHex } from "./twox-storage-key.ts";
 import type { FieldSources } from "./field-provenance.ts";
+import {
+  type ChainNetworkId,
+  networkKvKey,
+  rpcUrlForNetwork,
+} from "./chain-network.ts";
 
 export const CHILD_HOTKEY_KV_TTL = 120; // seconds -- live chain state, same profile as subnet-lease.ts
 export const CHILD_HOTKEY_NEGATIVE_KV_TTL = 10; // seconds
 export const CHILD_HOTKEY_RPC_TIMEOUT_MS = 5000;
-const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
 // A hotkey having children/parents on more than a handful of subnets would
 // be extraordinary; this stays a single state_getKeysPaged page in every
 // realistic case while still bounding a pathological account.
@@ -115,9 +119,10 @@ async function rpcCall(
   method: string,
   params: unknown[],
   timeoutMs: number,
+  network?: ChainNetworkId,
 ): Promise<RpcCallResult> {
   try {
-    const resp = await fetch(FINNEY_RPC_URL, {
+    const resp = await fetch(rpcUrlForNetwork(network), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(timeoutMs),
@@ -251,12 +256,14 @@ async function loadDelegationEntries(
   itemName: string,
   counterpartKey: string,
   timeoutMs: number,
+  network?: ChainNetworkId,
 ): Promise<DelegationRow[] | null> {
   const prefix = accountScopedStoragePrefix(itemName, accountId);
   const keysResult = await rpcCall(
     "state_getKeysPaged",
     [prefix, MAX_NETUID_KEYS, prefix],
     timeoutMs,
+    network,
   );
   if (!keysResult.ok) return null;
   const keys = Array.isArray(keysResult.result)
@@ -265,7 +272,7 @@ async function loadDelegationEntries(
   if (keys.length === 0) return [];
 
   const valueResults = await Promise.all(
-    keys.map((key) => rpcCall("state_getStorage", [key], timeoutMs)),
+    keys.map((key) => rpcCall("state_getStorage", [key], timeoutMs, network)),
   );
 
   const rows: DelegationRow[] = [];
@@ -311,13 +318,16 @@ async function loadChildHotkeyGraph(
   itemName: string,
   counterpartKey: string,
   cacheKeyPrefix: string,
+  network?: ChainNetworkId,
 ): Promise<ChildHotkeyGraphSnapshot> {
   if (!isFinneySs58Address(ss58)) {
     throw new RangeError("ss58 must be a valid finney SS58 account address");
   }
   const accountId = accountIdFromSs58(ss58);
 
-  const cacheKey = `${cacheKeyPrefix}:${ss58}`;
+  // Delegation graphs are per-chain: the same hotkey can hold entirely
+  // different child/parent sets on testnet.
+  const cacheKey = networkKvKey(`${cacheKeyPrefix}:${ss58}`, network);
   const kv = env?.METAGRAPH_CONTROL;
   if (kv?.get) {
     try {
@@ -334,6 +344,7 @@ async function loadChildHotkeyGraph(
     itemName,
     counterpartKey,
     CHILD_HOTKEY_RPC_TIMEOUT_MS,
+    network,
   );
   const ok = rows !== null;
 
@@ -386,8 +397,16 @@ export const ACCOUNT_CHILDREN_FIELD_SOURCES = {
 async function loadAccountChildrenSnapshot(
   env: Env,
   ss58: string,
+  network?: ChainNetworkId,
 ): Promise<ChildHotkeyGraphSnapshot> {
-  return loadChildHotkeyGraph(env, ss58, "ChildKeys", "child", "children");
+  return loadChildHotkeyGraph(
+    env,
+    ss58,
+    "ChildKeys",
+    "child",
+    "children",
+    network,
+  );
 }
 
 // Query every parent hotkey currently delegating stake-weight to this
@@ -409,8 +428,16 @@ export const ACCOUNT_PARENTS_FIELD_SOURCES = {
 async function loadAccountParentsSnapshot(
   env: Env,
   ss58: string,
+  network?: ChainNetworkId,
 ): Promise<ChildHotkeyGraphSnapshot> {
-  return loadChildHotkeyGraph(env, ss58, "ParentKeys", "parent", "parents");
+  return loadChildHotkeyGraph(
+    env,
+    ss58,
+    "ParentKeys",
+    "parent",
+    "parents",
+    network,
+  );
 }
 
 /**
@@ -420,9 +447,10 @@ async function loadAccountParentsSnapshot(
 export async function loadAccountChildren(
   env: Env,
   ss58: string,
+  network?: ChainNetworkId,
 ): Promise<ChildHotkeyGraphResult> {
   return {
-    ...(await loadAccountChildrenSnapshot(env, ss58)),
+    ...(await loadAccountChildrenSnapshot(env, ss58, network)),
     field_sources: ACCOUNT_CHILDREN_FIELD_SOURCES,
   };
 }
@@ -434,9 +462,10 @@ export async function loadAccountChildren(
 export async function loadAccountParents(
   env: Env,
   ss58: string,
+  network?: ChainNetworkId,
 ): Promise<ChildHotkeyGraphResult> {
   return {
-    ...(await loadAccountParentsSnapshot(env, ss58)),
+    ...(await loadAccountParentsSnapshot(env, ss58, network)),
     field_sources: ACCOUNT_PARENTS_FIELD_SOURCES,
   };
 }

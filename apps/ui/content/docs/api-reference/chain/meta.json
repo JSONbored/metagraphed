@@ -27,6 +27,8 @@
     "chain-weights",
     "chain-yield",
     "crowdloan-detail",
-    "crowdloans"
+    "crowdloan-detail-by-network",
+    "crowdloans",
+    "crowdloans-by-network"
   ]
 }

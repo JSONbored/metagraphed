@@ -2173,7 +2173,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 118,
+    "mainnet_only_route_count": 105,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -8666,10 +8666,13 @@
       "cache": "short",
       "description": "Fetch the live TAO balance (free + reserved, in TAO) for one account, queried from the finney RPC at request time with 60s KV cache. Returns 400 on invalid ss58; balance_tao is null on RPC failure (200, consistent with blocks/extrinsics null-on-miss).",
       "id": "account-balance",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/accounts/{ss58}/balance",
       "public": true,
@@ -8682,10 +8685,13 @@
       "cache": "short",
       "description": "Fetch the live root-claim current state for one Finney ss58 account (#7229) — RootClaimType setting, per-hotkey RootClaimable rates, RootClaimed cumulative watermarks, and RootClaimableThreshold — queried from the finney RPC at request time with 120s KV cache. Returns 400 on invalid ss58; claim_type/hotkeys are null on RPC failure. Read-only display only; never submits claim_root or any other extrinsic.",
       "id": "account-root-claim",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/accounts/{ss58}/root-claim",
       "public": true,
@@ -8698,10 +8704,13 @@
       "cache": "short",
       "description": "Fetch the live child-hotkey delegation graph for one account (#6723, part of the child-hotkey delegation epic #6721) — every child hotkey this account currently delegates stake-weight to, per subnet, queried from the chain's own ChildKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph.",
       "id": "account-children",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/accounts/{ss58}/children",
       "public": true,
@@ -8714,10 +8723,13 @@
       "cache": "short",
       "description": "Fetch the live parent-hotkey delegation graph for one account (#6723, part of epic #6721) — every hotkey currently delegating stake-weight to this account, per subnet, queried from the chain's own ParentKeys storage map at request time with 120s KV cache. subnets is null on RPC failure, distinct from a confirmed empty graph.",
       "id": "account-parents",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/accounts/{ss58}/parents",
       "public": true,
@@ -8730,10 +8742,13 @@
       "cache": "short",
       "description": "Fetch the live H160 -> SS58 address mapping for one EVM address (#6725/#6728), via the AddressMapping EVM precompile's addressMapping(address), queried from the finney RPC at request time with 1h KV cache. ss58 is null on RPC failure.",
       "id": "evm-address-mapping",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/evm/address/{h160}",
       "public": true,
@@ -8746,10 +8761,13 @@
       "cache": "short",
       "description": "Fetch the current Sudo::Key holder, queried from the finney RPC at request time with 1h KV cache (re-scoped from the original Senate/Council membership framing — subtensor has no such pallet, #4310). hotkey is null on RPC failure or an unset sudo key. `field_sources` marks hotkey measured and names the storage item behind it (Sudo.Key).",
       "id": "sudo-key",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/sudo/key",
       "public": true,
@@ -8762,10 +8780,13 @@
       "cache": "short",
       "description": "Fetch live global Subtensor protocol/governance parameters (#6343) — TaoWeight, StakeThreshold, PendingChildKeyCooldown — queried from the finney RPC at request time with 300s KV cache. Each field is independently null on its own RPC failure. READ `field_sources` BEFORE CITING ANY VALUE HERE: it labels every field measured (with the storage item behind it) or reconstructed (our arithmetic), and three are reconstructed. `block_emission_tao` and `block_emission_halvings` are derived from TotalIssuance, never read from the `BlockEmission` storage item, which is stale at 1.0 TAO (#8747). `emission_gate_exponent_effective` is the runtime default (3) whenever the storage item is unset, which is its current state on finney — that 3 comes from our source tree, not from chain.",
       "id": "network-parameters",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/network/parameters",
       "public": true,
@@ -8778,10 +8799,13 @@
       "cache": "short",
       "description": "Fetch the live drand randomness-beacon status (#6730/#6731) — LastStoredRound, OldestStoredRound — queried from the finney RPC at request time with 30s KV cache. A current-state snapshot, not a history feed. Each field is independently null on its own RPC failure. `field_sources` marks the two rounds measured (Drand.LastStoredRound / Drand.OldestStoredRound) and `stored_round_span` reconstructed — it is our subtraction of them, not a retention window the beacon publishes.",
       "id": "randomness",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/network/randomness",
       "public": true,
@@ -8794,10 +8818,13 @@
       "cache": "short",
       "description": "Fetch the live cumulative TAO recycled for registration on one subnet, queried from the chain's own RAORecycledForRegistration storage map at request time with 600s KV cache. recycled_tao is null on RPC failure; a subnet with zero registrations reads back a real 0.",
       "id": "subnet-recycled",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/subnets/{netuid}/recycled",
       "public": true,
@@ -8810,10 +8837,13 @@
       "cache": "short",
       "description": "Fetch the live current registration/burn cost for one subnet (#6321) — the dynamic price between the static min_burn_tao/max_burn_tao bounds already in /subnets/{netuid}/hyperparameters, queried from the chain's own Burn storage map at request time with 120s KV cache. burn_tao is null on RPC failure; a subnet with a genuinely zero burn cost reads back a real 0.",
       "id": "subnet-burn",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/subnets/{netuid}/burn",
       "public": true,
@@ -8864,10 +8894,13 @@
       "cache": "short",
       "description": "Fetch the live subnet-lease state (#6719, part of the subnet-leasing/crowdloan-tracking epic #6717) — whether a subnet is currently under a lease and, if so, its terms + accumulated-but-undistributed alpha dividends, queried from the chain's own SubnetUidToLeaseId/SubnetLeases/AccumulatedLeaseDividends storage maps at request time with 120s KV cache. leased is null (not false) on RPC failure, distinct from a confirmed no-lease (leased:false).",
       "id": "subnet-lease",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/subnets/{netuid}/lease",
       "public": true,
@@ -8880,10 +8913,13 @@
       "cache": "short",
       "description": "List every crowdloan the chain has ever opened (#8696), with its terms and how much it raised, queried from the Crowdloan pallet's own NextCrowdloanId/Crowdloans storage at request time with 120s KV cache. Not paginated: the collection is bounded by NextCrowdloanId and fetched in one batched storage read. A dissolved crowdloan is omitted, so crowdloan_count can be lower than next_crowdloan_id. Every crowdloan on finney today is finalized, so this is a record of completed raises rather than a feed of open ones — read `finalized` and `end` rather than assuming liveness.",
       "id": "crowdloans",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/crowdloans",
       "public": true,
@@ -8896,10 +8932,13 @@
       "cache": "short",
       "description": "Fetch one crowdloan's live state (#8696) from the Crowdloan pallet's Crowdloans storage map at request time with 120s KV cache. exists is null (not false) on RPC failure, distinct from a confirmed-absent id (exists:false) — an id can be legitimately absent because dissolve removes the record while NextCrowdloanId keeps counting.",
       "id": "crowdloan-detail",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/crowdloans/{crowdloan_id}",
       "public": true,

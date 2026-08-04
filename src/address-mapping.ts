@@ -8,12 +8,18 @@
 // sibling issue's own alternative; state_getStorage has no key for a value
 // that was never stored). Frontier serves standard Ethereum JSON-RPC methods
 // over the SAME endpoint every other live-RPC module here already calls
-// (sudo-key.ts/network-parameters.ts/etc use FINNEY_RPC_URL for
-// Substrate-native methods; eth_call is the Ethereum-native sibling on that
-// identical endpoint). Mirrors src/sudo-key.ts's live-RPC + KV-cache shape.
+// (sudo-key.ts/network-parameters.ts/etc resolve it through
+// rpcUrlForNetwork() for Substrate-native methods; eth_call is the
+// Ethereum-native sibling on that identical endpoint). Mirrors
+// src/sudo-key.ts's live-RPC + KV-cache shape.
 import { encodeAccountId32 } from "./ss58.ts";
 import { functionSelector } from "./evm-precompiles.ts";
 import type { FieldSources } from "./field-provenance.ts";
+import {
+  type ChainNetworkId,
+  networkKvKey,
+  rpcUrlForNetwork,
+} from "./chain-network.ts";
 
 const ADDRESS_MAPPING_PRECOMPILE_ADDRESS =
   "0x000000000000000000000000000000000000080c";
@@ -21,7 +27,6 @@ const ADDRESS_MAPPING_SELECTOR = functionSelector("addressMapping(address)");
 export const ADDRESS_MAPPING_KV_TTL = 3600; // seconds -- deterministic given h160, never changes
 export const ADDRESS_MAPPING_NEGATIVE_KV_TTL = 10; // seconds
 export const ADDRESS_MAPPING_RPC_TIMEOUT_MS = 5000;
-const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
 const FINNEY_SS58_PREFIX = 42;
 
 // Caller shape-checks h160 with this before calling loadAddressMapping,
@@ -79,9 +84,12 @@ export const ADDRESS_MAPPING_FIELD_SOURCES = {
 async function loadAddressMappingSnapshot(
   env: Env,
   h160: string,
+  network?: ChainNetworkId,
 ): Promise<AddressMappingResultSnapshot> {
   const normalized = h160.toLowerCase();
-  const cacheKey = `evm-address-mapping:${normalized}`;
+  // The precompile is deterministic given h160, but each chain keeps its own
+  // mapping table, so the entry is still per-network.
+  const cacheKey = networkKvKey(`evm-address-mapping:${normalized}`, network);
   const kv = env?.METAGRAPH_CONTROL;
 
   if (kv?.get) {
@@ -100,7 +108,7 @@ async function loadAddressMappingSnapshot(
   try {
     const calldata =
       ADDRESS_MAPPING_SELECTOR + normalized.slice(2).padStart(64, "0");
-    const rpcResp = await fetch(FINNEY_RPC_URL, {
+    const rpcResp = await fetch(rpcUrlForNetwork(network), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(ADDRESS_MAPPING_RPC_TIMEOUT_MS),
@@ -158,9 +166,10 @@ async function loadAddressMappingSnapshot(
 export async function loadAddressMapping(
   env: Env,
   h160: string,
+  network?: ChainNetworkId,
 ): Promise<AddressMappingResult> {
   return {
-    ...(await loadAddressMappingSnapshot(env, h160)),
+    ...(await loadAddressMappingSnapshot(env, h160, network)),
     field_sources: ADDRESS_MAPPING_FIELD_SOURCES,
   };
 }

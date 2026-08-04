@@ -13,6 +13,7 @@ import type { FieldSources } from "./field-provenance.ts"; // Live subnet-owners
 // the sibling live tiers.
 
 type Row = Record<string, unknown>;
+import { rpcUrlForNetwork } from "./chain-network.ts";
 
 // exp(-dt/tau), matching the pallet's own I64F64::exp with its -40 exponent
 // floor (prevents underflow past a threshold; anything below floors to 0).
@@ -275,7 +276,6 @@ export function buildSubnetConviction(
 // call, never hardcoded as a single shared "default"), so it decodes
 // directly with no fallback needed today -- but the same fallback constant
 // is applied defensively in case it's ever cleared back to unset.
-const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
 export const CONVICTION_RATES_RPC_TIMEOUT_MS = 5000;
 // The compiled DefaultUnlockRate/DefaultMaturityRate value, used ONLY when
 // raw storage is unset (see comment above) -- not a live value itself.
@@ -302,23 +302,40 @@ function decodeLeU64Number(hex: unknown): number | null {
   return Number(value);
 }
 
+/**
+ * One JSON-RPC call, distinguishing "the chain answered" from "we never got an
+ * answer".
+ *
+ * This used to return a bare `unknown`, collapsing both cases to `null` — and
+ * the caller below reads `null` as "storage is unset, use the compiled
+ * default". So a 502, a timeout or a dropped connection published
+ * RATE_VALUE_QUERY_DEFAULT as though the chain had returned it, with no signal
+ * anywhere that the value was invented. That is the same class of error the
+ * module header warns about for a zero rate, just in the other direction:
+ * silently substituting a plausible constant for a value we do not have.
+ *
+ * `ok: false` now means the call failed and the caller must degrade to null;
+ * `ok: true, value: null` means the chain genuinely has no value stored, which
+ * is the only case where the ValueQuery default is the right answer.
+ */
 async function rpcCall(
   method: string,
   params: unknown[],
   timeoutMs: number,
-): Promise<unknown> {
+): Promise<{ ok: boolean; value: unknown }> {
   try {
-    const res = await fetch(FINNEY_RPC_URL, {
+    const res = await fetch(rpcUrlForNetwork(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(timeoutMs),
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) return { ok: false, value: undefined };
     const body = (await res.json()) as Row;
-    return body?.result ?? null;
+    if (body?.error) return { ok: false, value: undefined };
+    return { ok: true, value: body?.result ?? null };
   } catch {
-    return null;
+    return { ok: false, value: undefined };
   }
 }
 
@@ -333,10 +350,13 @@ async function fetchStorageU64Number(
   storageKey: string,
   timeoutMs: number,
 ): Promise<number | null> {
-  const raw = await rpcCall("state_getStorage", [storageKey], timeoutMs);
-  const value = decodeLeU64Number(raw);
+  const result = await rpcCall("state_getStorage", [storageKey], timeoutMs);
+  // A failed call is NOT an unset key. Returning the compiled default here
+  // would publish an invented rate during an RPC outage.
+  if (!result.ok) return null;
+  const value = decodeLeU64Number(result.value);
   if (value != null) return value;
-  if (raw === null) return RATE_VALUE_QUERY_DEFAULT;
+  if (result.value === null) return RATE_VALUE_QUERY_DEFAULT;
   return null;
 }
 
@@ -347,11 +367,9 @@ async function fetchStorageU64Number(
 // UnlockRate/MaturityRate's decay time constants are on the order of
 // hundreds of thousands of blocks.
 async function fetchCurrentBlock(timeoutMs: number): Promise<number | null> {
-  const header = (await rpcCall(
-    "chain_getHeader",
-    [],
-    timeoutMs,
-  )) as Row | null;
+  const result = await rpcCall("chain_getHeader", [], timeoutMs);
+  if (!result.ok) return null;
+  const header = result.value as Row | null;
   const hex = header?.number;
   if (typeof hex !== "string" || !/^0x[0-9a-fA-F]+$/.test(hex)) return null;
   const n = parseInt(hex, 16);
