@@ -1983,6 +1983,33 @@ describe("emission-pipeline route", () => {
     assert.equal(r2Sources.validator_count.read_at, "capture");
   });
 
+  // #9408 completion: the full economics blob was the one surface still serving
+  // rows without spot_price_tao while its schema declared the field. Both tiers
+  // pass through the same injection point, so both are asserted here.
+  test("economics rows carry serve-time spot_price_tao on both tiers", async () => {
+    const withReserves = SUBNETS.map((row, i) =>
+      i === 0 ? { ...row, tao_in_pool_tao: 100, alpha_in_pool: 400 } : row,
+    );
+    const live = await getJson(
+      "https://api.metagraph.sh/api/v1/economics",
+      envWithEconomics({ chain_state: CHAIN_STATE, subnets: withReserves }),
+    );
+    assert.equal(live.status, 200);
+    assert.equal(live.body.meta.source, "live-kv");
+    const liveRows = live.body.data.subnets;
+    assert.equal(liveRows[0].spot_price_tao, 0.25);
+    // A row without reserves is an explicit null, never omitted or zero.
+    assert.equal(liveRows[1].spot_price_tao, null);
+
+    // R2 fallback: the committed artifact's rows pass through the same point.
+    const r2 = await getJson(
+      "https://api.metagraph.sh/api/v1/economics?limit=1",
+      envWithEconomics(null),
+    );
+    assert.equal(r2.status, 200);
+    assert.notEqual(r2.body.data.subnets[0].spot_price_tao, undefined);
+  });
+
   test("serves the decomposition with its pinned block", async () => {
     const { status, body } = await getJson(
       "https://api.metagraph.sh/api/v1/chain/emission-pipeline",

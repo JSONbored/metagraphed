@@ -884,18 +884,53 @@ describe("handleGraphQLRequest — resolvers (injected data)", () => {
     const env = fixtureEnv({
       "/metagraph/economics.json": {
         subnets: [
-          { netuid: 1, name: "Root", emission_share: 0.05, miner_count: 10 },
+          {
+            netuid: 1,
+            name: "Root",
+            emission_share: 0.05,
+            miner_count: 10,
+            tao_in_pool_tao: 100,
+            alpha_in_pool: 400,
+          },
         ],
       },
     });
     const { status, body } = await gql(
-      "{ economics { total subnets { netuid name emission_share miner_count } } }",
+      "{ economics { total subnets { netuid name emission_share miner_count spot_price_tao } } }",
       env as unknown as Env,
     );
     assert.equal(status, 200);
     assert.equal(body.data.economics.total, 1);
     assert.equal(body.data.economics.subnets[0].netuid, 1);
     assert.equal(body.data.economics.subnets[0].emission_share, 0.05);
+    // #9408 completion: spot derived at serve time from the row's own reserves.
+    assert.equal(body.data.economics.subnets[0].spot_price_tao, 0.25);
+  });
+
+  test("economics rows carry spot on the live KV tier too (#9408 completion)", async () => {
+    const blob = {
+      contract_version: "test-contract",
+      captured_at: new Date(Date.now() - 60_000).toISOString(),
+      schema_version: 1,
+      summary: { with_economics_count: 1, subnet_count: 1 },
+      subnets: [
+        {
+          netuid: 7,
+          emission_share: 1,
+          tao_in_pool_tao: 50,
+          alpha_in_pool: 200,
+        },
+      ],
+    };
+    const env = fixtureEnv({}, { kv: { "economics:current": blob } });
+    env.METAGRAPH_CONTRACT_VERSION = "test-contract";
+    const { status, body } = await gql(
+      "{ economics { subnets { netuid spot_price_tao } } }",
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.data.economics.subnets[0].netuid, 7);
+    assert.equal(body.data.economics.subnets[0].spot_price_tao, 0.25);
   });
 
   test("economics exposes the network-value summary rollup (#6641)", async () => {

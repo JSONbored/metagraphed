@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { overlaySubnetEconomics } from "../src/health-serving.ts";
+import {
+  overlaySubnetEconomics,
+  withSpotPricedEconomics,
+} from "../src/health-serving.ts";
 import type { Row } from "./row-type.ts";
 
 const blob = {
@@ -51,4 +54,30 @@ test("overlaySubnetEconomics leaves detail unchanged when no row matches", () =>
 test("overlaySubnetEconomics returns a non-object detail untouched", () => {
   assert.equal(overlaySubnetEconomics(null, blob, 1), null);
   assert.equal(overlaySubnetEconomics(undefined, blob, 1), undefined);
+});
+
+test("withSpotPricedEconomics derives spot on every row (#9408 completion)", () => {
+  const out = withSpotPricedEconomics({
+    captured_at: "t",
+    subnets: [
+      // Root has no AMM: 1 by definition, reserves or not.
+      { netuid: 0, alpha_price_tao: 1 },
+      { netuid: 7, tao_in_pool_tao: 100, alpha_in_pool: 400 },
+      // Reserves that cannot support a price → explicit null, never 0.
+      { netuid: 9, tao_in_pool_tao: null, alpha_in_pool: null },
+    ],
+  }) as Row;
+  assert.equal(out.subnets[0].spot_price_tao, 1);
+  assert.equal(out.subnets[1].spot_price_tao, 0.25);
+  assert.equal(out.subnets[2].spot_price_tao, null);
+  // The rest of the blob rides along unchanged.
+  assert.equal(out.captured_at, "t");
+});
+
+test("withSpotPricedEconomics is null-safe on cold or malformed blobs", () => {
+  assert.equal(withSpotPricedEconomics(null), null);
+  assert.equal(withSpotPricedEconomics(undefined), undefined);
+  assert.deepEqual(withSpotPricedEconomics({ summary: {} }), { summary: {} });
+  const noArray = { subnets: "nope" } as unknown as Row;
+  assert.deepEqual(withSpotPricedEconomics(noArray), noArray);
 });

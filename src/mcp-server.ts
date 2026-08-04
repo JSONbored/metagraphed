@@ -1197,6 +1197,7 @@ import {
   overlaySubnetHealth,
   resolveLiveEconomics,
   resolveLiveHealth,
+  withSpotPrice,
 } from "./health-serving.ts";
 import {
   buildNeuronDetail,
@@ -2786,7 +2787,9 @@ async function loadSubnetEconomics(ctx: McpCtx, netuid: number) {
     captured_at: blob?.captured_at ?? null,
     summary: blob?.summary ?? null,
     economics:
-      blob?.subnets?.find((row: Row) => row?.netuid === netuid) ?? null,
+      withSpotPrice(
+        blob?.subnets?.find((row: Row) => row?.netuid === netuid),
+      ) ?? null,
   };
 }
 
@@ -3204,9 +3207,13 @@ async function loadEconomicsSubnetRows(ctx: McpCtx) {
     env: ctx.env,
     contractVersion: mcpContractVersion(ctx),
   });
-  if (Array.isArray(live?.data?.subnets)) return live.data.subnets;
+  if (Array.isArray(live?.data?.subnets)) {
+    return live.data.subnets.map((row: Row) => withSpotPrice(row) as Row);
+  }
   const blob = await loadArtifactData(ctx, "/metagraph/economics.json");
-  return Array.isArray(blob?.subnets) ? blob.subnets : [];
+  return Array.isArray(blob?.subnets)
+    ? blob.subnets.map((row: Row) => withSpotPrice(row) as Row)
+    : [];
 }
 
 // AI-dependent tools (semantic_search, ask) need the VECTORIZE + AI bindings and

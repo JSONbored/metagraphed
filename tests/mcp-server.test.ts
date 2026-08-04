@@ -9447,6 +9447,8 @@ describe("MCP economics + metagraph data tools", () => {
     total_stake_alpha: 1000,
     max_stake_alpha: 5000,
     alpha_price_tao: 0.06,
+    tao_in_pool_tao: 100,
+    alpha_in_pool: 400,
   };
   const ECON_BLOB = {
     contract_version: "test-contract",
@@ -9475,6 +9477,8 @@ describe("MCP economics + metagraph data tools", () => {
     assert.equal(out.netuid, 7);
     assert.equal(out.economics.open_slots, 3);
     assert.equal(out.economics.registration_cost_tao, 0.5);
+    // #9408 completion: spot derived at serve time from the row's own reserves.
+    assert.equal(out.economics.spot_price_tao, 0.25);
     assert.equal(out.summary.with_economics_count, 1);
     assert.equal(out.captured_at, FRESH_RUN);
   });
@@ -9491,6 +9495,8 @@ describe("MCP economics + metagraph data tools", () => {
     const out = res.body.result.structuredContent;
     assert.equal(out.source, "r2-fallback");
     assert.equal(out.economics.netuid, 7);
+    // Spot rides the R2 fallback tier too — same serve-time derivation.
+    assert.equal(out.economics.spot_price_tao, 0.25);
   });
 
   test("get_subnet_economics falls back to R2 when the KV blob is off-contract", async () => {

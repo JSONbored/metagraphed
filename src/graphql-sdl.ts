@@ -1100,6 +1100,8 @@ export const SDL = /* GraphQL */ `
     slug: String
     emission_share: Float
     alpha_price_tao: Float
+    "The AMM spot price in TAO per alpha, derived at serve time from tao_in_pool_tao / alpha_in_pool on this row (#9408). alpha_price_tao is the chain's MOVING average; this is the mark to value a position at. Root (netuid 0) is 1 by definition; null when the reserves cannot support a price."
+    spot_price_tao: Float
     alpha_market_cap_tao: Float
     alpha_fdv_tao: Float
     "Signed %-change in alpha_price_tao over ~1h. Always null from daily snapshots (#7227)."
