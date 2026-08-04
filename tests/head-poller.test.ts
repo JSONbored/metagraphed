@@ -4,9 +4,12 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
   fetchBlockAt,
+  fetchEventCountAt,
   fetchHeadNumber,
   heightsToEmit,
   hexToNumber,
+  scaleCompactLength,
+  SYSTEM_EVENTS_STORAGE_KEY,
 } from "../src/head-poller.ts";
 import { ChainFirehoseHub } from "../workers/chain-firehose-hub.ts";
 
@@ -60,8 +63,195 @@ test("fetchBlockAt assembles a scalar blocks payload", async () => {
     block_hash: "0xabc",
     parent_hash: "0xdef",
     extrinsic_count: 3,
+    // Opt-in (#9417): this call did not ask for the count, so no extra
+    // state_getStorage was spent and the field is an honest null.
+    event_count: null,
     observed_at: 1_000,
   });
+});
+
+// #9417 -- the count is readable WITHOUT metadata or decoding, because a SCALE
+// `Vec` carries its length as a compact prefix.
+//
+// Proven by ROUND TRIP against an encoder written to the SCALE spec, not
+// against hand-picked hex: a hand-computed vector is one typo away from
+// asserting the bug, and it only ever covers the values someone thought of.
+// The three real on-chain counts are pinned separately below.
+function encodeCompact(n: number): string {
+  if (n < 1 << 6) return "0x" + ((n << 2) & 0xff).toString(16).padStart(2, "0");
+  const bytes: number[] = [];
+  if (n < 1 << 14) {
+    const v = (n << 2) | 0b01;
+    bytes.push(v & 0xff, (v >> 8) & 0xff);
+  } else if (n < 1 << 30) {
+    const v = ((n << 2) | 0b10) >>> 0;
+    bytes.push(
+      v & 0xff,
+      (v >>> 8) & 0xff,
+      (v >>> 16) & 0xff,
+      (v >>> 24) & 0xff,
+    );
+  } else {
+    // big-integer mode: (len-4) << 2 | 0b11, then `len` LE bytes.
+    const le: number[] = [];
+    let rest = n;
+    while (rest > 0) {
+      le.push(rest % 256);
+      rest = Math.floor(rest / 256);
+    }
+    while (le.length < 4) le.push(0);
+    bytes.push(((le.length - 4) << 2) | 0b11, ...le);
+  }
+  return "0x" + bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+test("scaleCompactLength round-trips every compact mode", () => {
+  for (const n of [
+    0,
+    1,
+    63, // single-byte mode, and its boundary
+    64,
+    320,
+    268,
+    256,
+    16383, // two-byte mode (real event counts live here)
+    16384,
+    1 << 20,
+    (1 << 30) - 1, // four-byte mode, to its ceiling
+    1 << 30,
+    2 ** 32, // big-integer mode
+  ]) {
+    assert.equal(
+      scaleCompactLength(encodeCompact(n)),
+      n,
+      `round trip for ${n}`,
+    );
+  }
+});
+
+// The three blocks this feature was verified against on the live archive
+// endpoint. Pinned as bytes so a regression in the reader is caught even if
+// the encoder above were wrong in the same direction.
+test("scaleCompactLength matches the counts verified on mainnet", () => {
+  for (const [hex, count, block] of [
+    ["0x0105", 320, 8_771_446],
+    ["0x3104", 268, 8_771_000],
+    ["0x0104", 256, 8_771_459],
+  ] as const) {
+    assert.equal(scaleCompactLength(hex), count, `block ${block}`);
+  }
+});
+
+test("scaleCompactLength returns null on anything it cannot trust", () => {
+  for (const bad of [
+    undefined,
+    null,
+    42,
+    "",
+    "0x",
+    "not-hex",
+    "0xzz",
+    "0x0", // odd nibble count
+    "0x01", // two-byte mode with no second byte
+    "0x02ff", // four-byte mode, truncated
+  ]) {
+    assert.equal(
+      scaleCompactLength(bad),
+      null,
+      `${String(bad)} should be null`,
+    );
+  }
+});
+
+test("fetchEventCountAt reads System.Events at the block hash", async () => {
+  let askedKey;
+  let askedHash;
+  const n = await fetchEventCountAt(
+    "https://rpc.example",
+    "0xabc",
+    rpcFetch({
+      state_getStorage: (params) => {
+        [askedKey, askedHash] = params as [string, string];
+        return "0x0105"; // 320
+      },
+    }),
+  );
+  assert.equal(n, 320);
+  assert.equal(askedKey, SYSTEM_EVENTS_STORAGE_KEY);
+  assert.equal(askedHash, "0xabc");
+});
+
+// The count is a nice-to-have; the block row is not. Every failure mode below
+// must degrade to null rather than throw, or one bad storage read would cost
+// us the height itself.
+test("fetchEventCountAt degrades to null, never throws", async () => {
+  const rejects = (async () => {
+    throw new Error("boom");
+  }) as unknown as typeof fetch;
+  assert.equal(
+    await fetchEventCountAt("https://rpc.example", "0xabc", rejects),
+    null,
+  );
+  assert.equal(
+    await fetchEventCountAt(
+      "https://rpc.example",
+      "0xabc",
+      rpcFetch({ state_getStorage: () => "garbage" }),
+    ),
+    null,
+  );
+});
+
+// An empty key is a REAL zero -- the block genuinely emitted no events --
+// and must not be confused with the null an unreadable read produces.
+test("fetchEventCountAt reads an absent key as a real zero", async () => {
+  assert.equal(
+    await fetchEventCountAt(
+      "https://rpc.example",
+      "0xabc",
+      rpcFetch({ state_getStorage: () => null }),
+    ),
+    0,
+  );
+});
+
+test("fetchBlockAt spends the extra read only when asked", async () => {
+  const calls: string[] = [];
+  const fetchImpl = rpcFetch({
+    chain_getBlockHash: () => "0xabc",
+    chain_getBlock: () => ({
+      block: { header: { parentHash: "0xdef" }, extrinsics: [] },
+    }),
+    state_getStorage: () => "0x0105",
+  });
+  const counting = (async (url: string, init: RequestInit) => {
+    calls.push(JSON.parse(String(init.body)).method);
+    return fetchImpl(url as string, init);
+  }) as unknown as typeof fetch;
+
+  const withCount = await fetchBlockAt(
+    "https://rpc.example",
+    16,
+    counting,
+    () => 1,
+    true,
+  );
+  assert.equal(withCount.event_count, 320);
+  assert.deepEqual(calls, [
+    "chain_getBlockHash",
+    "chain_getBlock",
+    "state_getStorage",
+  ]);
+
+  calls.length = 0;
+  const without = await fetchBlockAt(
+    "https://rpc.example",
+    16,
+    counting,
+    () => 1,
+  );
+  assert.equal(without.event_count, null);
+  assert.deepEqual(calls, ["chain_getBlockHash", "chain_getBlock"]);
 });
 
 test("fetchBlockAt surfaces RPC failures rather than fabricating a block", async () => {

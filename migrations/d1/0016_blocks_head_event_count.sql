@@ -1,0 +1,25 @@
+-- blocks_head.event_count (#9417) -- the chain tip's event count, read by the
+-- head poller itself instead of waiting for the Containers indexer.
+--
+-- WHY THE POLLER CAN KNOW THIS. src/head-poller.ts's header says the
+-- extrinsics/chain_events/account_events lanes "need SCALE decoding against
+-- runtime metadata, which is the Containers indexer's job" -- true of every
+-- event's CONTENT, and not true of the COUNT. `System.Events` is a
+-- `Vec<EventRecord>`, and a SCALE `Vec` is prefixed with its compact-encoded
+-- length. Reading that prefix needs no metadata and decodes nothing: verified
+-- against the live archive endpoint at blocks 8,771,446 / 8,771,000 /
+-- 8,771,459, which read 320 / 268 / 256 and match `chain_detail_blocks`
+-- and `/chain-events` exactly.
+--
+-- WHY IT IS NULLABLE. The events read is fail-soft: a block row is essential,
+-- its count is not, so an RPC failure (or the kill switch being off) still
+-- writes the block with a null count rather than losing the height. Null keeps
+-- meaning "not known here", which is what the serving layer already renders as
+-- "—". It must never be defaulted to 0 -- a count we do not have is not a
+-- count of zero, which is the bug #9414 fixed one layer up.
+--
+-- Backfill is deliberately absent: rows below the decode watermark are already
+-- answered by the lakehouse, and rows inside the hot window are answered by
+-- chain_detail_blocks. This column only has to cover the seconds between a
+-- block being seen and being decoded.
+ALTER TABLE blocks_head ADD COLUMN event_count INTEGER;

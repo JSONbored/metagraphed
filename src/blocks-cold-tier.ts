@@ -96,7 +96,14 @@ export const DEFAULT_BLOCKS_SEAM = 8_759_336;
 const D1_SELECT =
   "b.block_number, b.block_hash, b.parent_hash, b.extrinsic_count, " +
   "b.observed_at, c.spec_version AS spec_version, " +
-  "c.chain_event_count AS event_count";
+  // COALESCE, indexer first (#9417): chain_detail_blocks' count comes from a
+  // full SCALE decode of every event, blocks_head's from the Vec length prefix
+  // the head poller reads. Both are exact and they agree; the decode is
+  // preferred purely because it is the same number the rest of the detail
+  // surface is built from. The poller's copy is what covers the seconds
+  // between a block being seen and being decoded -- the window that used to
+  // publish null and render "Events 0".
+  "COALESCE(c.chain_event_count, b.event_count) AS event_count";
 const D1_FROM =
   "blocks_head b LEFT JOIN chain_detail_blocks c " +
   "ON c.block_number = b.block_number";

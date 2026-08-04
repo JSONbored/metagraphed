@@ -460,6 +460,13 @@
     "CHAIN_HEAD_POLL_ENABLED": "true",
     "CHAIN_HEAD_RPC_URL": "https://archive.chain.opentensor.ai",
     "CHAIN_HEAD_POLL_INTERVAL_MS": "6000",
+    // #9417: read each block's event count from the System.Events SCALE length
+    // prefix, so the chain tip carries a real count instead of waiting ~30s for
+    // the Containers indexer's decode. One extra state_getStorage per block,
+    // and the whole 11-17 KB events blob returns to read a 1-4 byte prefix --
+    // flip to "false" to stop paying that immediately (blocks keep flowing;
+    // their counts just go back to arriving with the indexer).
+    "CHAIN_HEAD_EVENT_COUNT_ENABLED": "true",
     // #8700: the raw-capture lane's testnet endpoint. Declared explicitly
     // rather than left to the code default so the two chains this Worker
     // captures are both visible here — a lane whose endpoint is only knowable
