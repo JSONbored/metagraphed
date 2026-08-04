@@ -16,6 +16,7 @@ import {
 } from "../src/chain-burn.ts";
 import { ChainBurnArtifactSchema } from "../schemas-src/routes/subnet-registration-cost.ts";
 import { handleRequest } from "../workers/api.ts";
+import { handleChainBurn } from "../workers/request-handlers/entities.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // twox128("SubtensorModule") ++ twox128("Burn"), verified against the live chain.
@@ -460,6 +461,65 @@ describe("GET /api/v1/chain/burn — through the Worker router", () => {
     assert.ok(
       seen.every((u) => u.includes("test")),
       `testnet path read ${seen[0]}`,
+    );
+  });
+});
+
+describe("the live-read rate limit", () => {
+  // A cross-subnet read is 130 derived keys in one call, so it is the cheapest way
+  // for a client to hammer an upstream we do not own. Both surfaces refuse rather
+  // than forward, and both must SAY so rather than answering an empty ranking --
+  // a 200 with read_count 0 would be indistinguishable from a network with no
+  // subnets.
+  function limiter(allow: boolean) {
+    return {
+      RPC_RATE_LIMITER: { limit: async () => ({ success: allow }) },
+      METAGRAPH_CONTROL: { get: async () => null, put: async () => {} },
+    };
+  }
+
+  test("REST answers 429 with a retry hint, not an empty card", async () => {
+    const res = await handleChainBurn(
+      new Request("https://api.metagraph.sh/api/v1/chain/burn"),
+      limiter(false) as never,
+    );
+    assert.equal(res.status, 429);
+    assert.ok(
+      res.headers.get("retry-after"),
+      "a refusal must say when to come back",
+    );
+    const body = (await res.json()) as Record<string, never>;
+    assert.equal(
+      (body.error as unknown as Record<string, unknown>).code,
+      "burn_rate_limited",
+    );
+  });
+
+  test("REST serves normally when the limiter allows it", async () => {
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          jsonrpc: "2.0",
+          id: 1,
+          result:
+            body.method === "state_getStorage"
+              ? "0x0200"
+              : [{ changes: [[key(1), rao(500_000n)]] }],
+        }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    const res = await handleChainBurn(
+      new Request("https://api.metagraph.sh/api/v1/chain/burn"),
+      limiter(true) as never,
+    );
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as Record<string, never>;
+    assert.equal(
+      (body.data as unknown as Record<string, unknown>).read_count,
+      1,
     );
   });
 });
