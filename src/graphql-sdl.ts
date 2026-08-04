@@ -182,6 +182,8 @@ export const SDL = /* GraphQL */ `
       amount: Float!
       direction: String
     ): SubnetStakeQuote!
+    "What it costs to validate on one subnet and whether a permit there earns: the permit floor and the earning floor (which differ by a median of ~7x -- a permit is not income), the TAO to reach each priced against live pool reserves plus the registration burn, open validator slots, the commission (take) distribution among permit-holders, the emission-gate state, and the live StakeThreshold/TaoWeight the floors were derived against. Permitted, active and earning are three different counts and all three are returned. Every derived field is nullable and degrades with a stated reason rather than reporting a confident zero. Mirrors GET /api/v1/subnets/{netuid}/validator-economics."
+    subnet_validator_economics(netuid: Int!): SubnetValidatorEconomics!
     "One subnet's current validator set (permitted neurons) from the live metagraph snapshot, with each validator's full neuron record. A subnet with no snapshot resolves to a schema-stable empty list, never null. Mirrors GET /api/v1/subnets/{netuid}/validators."
     subnet_validators(netuid: Int!): SubnetValidatorList!
     "One subnet's chain-event activity summary over a 7d/30d/90d window (default 30d): total events, the per-kind and per-category breakdowns with hotkey/coldkey participation and TAO/alpha amounts, and a bounded newest-first recent-event list (limit 1-50, default 10). A subnet with no events resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/event-summary."
@@ -3314,6 +3316,68 @@ export const SDL = /* GraphQL */ `
     candles: [SubnetOhlcCandle!]!
     "True for root (netuid 0), whose 1:1 price makes candles meaningless, so none are emitted."
     root_excluded: Boolean!
+  }
+
+  "Permitted, active and earning are three DIFFERENT sets. Network-wide 2026-08-03: 1,523 / 1,137 / 1,117; SN83 is 64 / 8 / 7. Published separately rather than collapsed, because 'how many validators does this subnet have' has three defensible answers."
+  type ValidatorSetComposition {
+    permitted: Int!
+    active: Int!
+    earning: Int!
+  }
+
+  "How well the derived permit rule still reproduces the permits the chain actually granted. Published so a caller can see when the model has drifted rather than trusting a floor it no longer supports."
+  type ValidatorPermitModelAgreement {
+    matched: Int!
+    over_predicted: Int!
+    under_predicted: Int!
+    observed_permits: Int!
+    agreement: Float
+    publishable: Boolean!
+  }
+
+  "The commission picture across permit-holders. The sorted vector is published because the shape is the information: it is genuinely bimodal, with a cohort competing at or near zero against a median at the effective ceiling, and validators earning at both ends."
+  type ValidatorTakeDistribution {
+    median: Float
+    min: Float
+    max: Float
+    distribution: [Float!]!
+    "Median restricted to permit-holders that actually earn -- takes among validators nobody delegates to are noise."
+    median_earning: Float
+    sample_size: Int!
+  }
+
+  type SubnetValidatorEconomics {
+    schema_version: Int!
+    netuid: Int!
+    "Floors are in total_stake UNITS (alpha + tao_weight * root), the quantity the chain threshold actually tests -- not alpha alone."
+    permit_floor_units: Float
+    permit_floor_cost_tao: Float
+    "Floor cost plus the registration burn. Entry is two spends; publishing one understates it."
+    permit_entry_cost_tao: Float
+    earning_floor_units: Float
+    earning_floor_cost_tao: Float
+    earning_entry_cost_tao: Float
+    "How much more it takes to EARN than merely to hold a permit."
+    permit_to_earning_multiple: Float
+    "Root is not split: this much root clears the threshold on EVERY subnet the hotkey is registered on at once."
+    root_tao_to_clear_threshold: Float
+    max_validators: Int
+    validator_slots_open: Int
+    uids_above_threshold: Int
+    cap_binding: Boolean
+    composition: ValidatorSetComposition
+    takes: ValidatorTakeDistribution
+    min_childkey_take_ratio: Float
+    "Reported, never scored. Gate-closed subnets still emit alpha at a comparable rate and are less contested, so per unit of stake they pay MORE -- the gate is an exit-liquidity question, not an eligibility one."
+    emission_gate_open: Boolean
+    tao_inflow_per_day: Float
+    registration_cost_tao: Float
+    "Echoed so a caller never has to guess what the floor was computed against. Both are sudo-settable, so a cached copy would silently rot."
+    stake_threshold_units: Float
+    tao_weight: Float
+    model_agreement: ValidatorPermitModelAgreement
+    "Names the missing input whenever a field above was withheld, so a caller can tell 'unknown' from 'zero'."
+    degraded_reason: String
   }
 
   "A read-only hypothetical stake/unstake quote against one subnet's live AMM pool (#6979). Mirrors GET /api/v1/subnets/{netuid}/stake-quote."

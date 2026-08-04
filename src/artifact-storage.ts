@@ -83,6 +83,11 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // Constant-product stake/unstake slippage quote (#5235): computed live from
   // the economics-tier AMM pool reserves.
   /^subnets\/(?:\d+|\{netuid\})\/stake-quote\.json$/,
+  // Validator entry economics (#9323, #9327): derived per request from the neurons
+  // tier against live pool reserves and the two sudo-settable governance
+  // parameters. Never a file — a committed floor would be stale the moment either
+  // parameter moved, and both are sudo-settable.
+  /^subnets\/(?:\d+|\{netuid\})\/validator-economics\.json$/,
   // Validator weight-setting activity: computed live from the account_events WeightsSet stream.
   /^subnets\/(?:\d+|\{netuid\})\/weights\.json$/,
   // Per-subnet weight-setter leaderboard: computed live from the account_events WeightsSet stream.

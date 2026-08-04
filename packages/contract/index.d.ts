@@ -4774,6 +4774,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/validator-economics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch what it costs to become a validator on one subnet and whether a permit there earns: the permit floor and the earning floor (which differ by a median of ~7x — a permit is not income), the TAO to reach each priced against live AMM pool reserves plus the registration burn, how many validator slots are open, the commission (take) distribution across permit-holders, whether the emission gate is open and the daily TAO inflow, and the live StakeThreshold/TaoWeight the floors were computed against. Permitted, active and earning are returned as three separate counts because they are three different sets. Root stake counts toward the threshold on every registered subnet at once, so root_tao_to_clear_threshold is the cross-subnet alternative to the per-subnet alpha costs. Read-only and derived — no chain write, no custody; every derived field is nullable and degrades with a stated reason rather than a confident zero. */
+        get: operations["subnetValidatorEconomics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/validators": {
         parameters: {
             query?: never;
@@ -10900,6 +10917,42 @@ export interface components {
         };
         /** @enum {unknown} */
         SubnetType: "root" | "application";
+        SubnetValidatorEconomicsArtifact: {
+            cap_binding: boolean | null;
+            composition: components["schemas"]["ValidatorSetComposition"] | null;
+            degraded_reason: string | null;
+            earning_entry_cost_tao: number | null;
+            earning_floor_cost_tao: number | null;
+            earning_floor_units: number | null;
+            emission_gate_open: boolean | null;
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
+            max_validators: number | null;
+            min_childkey_take_ratio: number | null;
+            model_agreement: components["schemas"]["ValidatorPermitModelAgreement"] | null;
+            netuid: number;
+            permit_entry_cost_tao: number | null;
+            permit_floor_cost_tao: number | null;
+            permit_floor_units: number | null;
+            permit_to_earning_multiple: number | null;
+            registration_cost_tao: number | null;
+            root_tao_to_clear_threshold: number | null;
+            schema_version: number;
+            stake_threshold_units: number | null;
+            takes: components["schemas"]["ValidatorTakeDistribution"] | null;
+            tao_inflow_per_day: number | null;
+            tao_weight: number | null;
+            uids_above_threshold: number | null;
+            validator_slots_open: number | null;
+        };
         SubnetValidatorsArtifact: {
             block_number?: number | null;
             captured_at?: string | null;
@@ -11360,6 +11413,27 @@ export interface components {
             window: string | null;
         } & {
             [key: string]: unknown;
+        };
+        ValidatorPermitModelAgreement: {
+            agreement: number | null;
+            matched: number;
+            observed_permits: number;
+            over_predicted: number;
+            publishable: boolean;
+            under_predicted: number;
+        };
+        ValidatorSetComposition: {
+            active: number;
+            earning: number;
+            permitted: number;
+        };
+        ValidatorTakeDistribution: {
+            distribution: number[];
+            max: number | null;
+            median: number | null;
+            median_earning: number | null;
+            min: number | null;
+            sample_size: number;
         };
         VerificationArtifact: components["schemas"]["ArtifactBase"] & ({
             candidate_count: number;
@@ -47007,6 +47081,156 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["UptimeArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetValidatorEconomics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "cap_binding": false,
+                     *         "composition": {
+                     *           "active": 1,
+                     *           "earning": 1,
+                     *           "permitted": 1
+                     *         },
+                     *         "degraded_reason": "A",
+                     *         "earning_entry_cost_tao": 0.5,
+                     *         "earning_floor_cost_tao": 0.5,
+                     *         "earning_floor_units": 0.5,
+                     *         "emission_gate_open": false,
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
+                     *         "max_validators": 1,
+                     *         "min_childkey_take_ratio": 0.9966,
+                     *         "model_agreement": {
+                     *           "agreement": 0.5,
+                     *           "matched": 1,
+                     *           "observed_permits": 1,
+                     *           "over_predicted": 1,
+                     *           "publishable": false,
+                     *           "under_predicted": 1
+                     *         },
+                     *         "netuid": 7,
+                     *         "permit_entry_cost_tao": 0.5,
+                     *         "permit_floor_cost_tao": 0.5,
+                     *         "permit_floor_units": 0.5,
+                     *         "permit_to_earning_multiple": 0.5,
+                     *         "registration_cost_tao": 0.5,
+                     *         "root_tao_to_clear_threshold": 0.5,
+                     *         "schema_version": 1,
+                     *         "stake_threshold_units": 0.5,
+                     *         "takes": {
+                     *           "distribution": [
+                     *             0.5
+                     *           ],
+                     *           "max": 0.5,
+                     *           "median": 0.5,
+                     *           "median_earning": 0.5,
+                     *           "min": 0.5,
+                     *           "sample_size": 1
+                     *         },
+                     *         "tao_inflow_per_day": 0.5,
+                     *         "tao_weight": 0.5,
+                     *         "uids_above_threshold": 1,
+                     *         "validator_slots_open": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetValidatorEconomicsArtifact"];
                     };
                 };
             };

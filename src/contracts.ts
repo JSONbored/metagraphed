@@ -1243,6 +1243,13 @@ export const PUBLIC_ARTIFACTS = [
     COMPUTED_LIVE,
   ),
   artifact(
+    "subnet-validator-economics",
+    "/metagraph/subnets/{netuid}/validator-economics.json",
+    "What a validator permit costs on one subnet and whether holding one earns (#9323, #9327), computed live at /api/v1/subnets/{netuid}/validator-economics (no static file). Carries the permit floor (total_stake units needed to hold a validator permit, where total_stake is alpha + tao_weight * root — the quantity the chain threshold actually tests) and the earning floor (where the smallest permit-holder with dividends > 0 sits; median ~7x the permit floor, so a permit is not income), each priced in TAO against the subnet's live AMM pool reserves plus the registration burn. Also: validator set composition as three separate counts (permitted / active / earning — network-wide 1,523 / 1,137 / 1,117 on 2026-08-03), open slots, whether the cap actually binds (1 of 128 subnets), the take distribution across permit-holders including the full sorted vector, the emission-gate state and daily TAO inflow, and the live sudo-settable StakeThreshold/TaoWeight the floors were derived against. Root stake is not split, so root_tao_to_clear_threshold clears the threshold on every registered subnet at once. Every derived field is nullable and degrades with a stated degraded_reason rather than reporting a confident zero.",
+    "SubnetValidatorEconomicsArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "subnet-alpha-volume",
     "/metagraph/subnets/{netuid}/volume.json",
     "Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1): unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as /api/v1/subnets/{netuid}/stake-flow (no static file). Also carries a buy/sell sentiment indicator (#4339/8.2) purely derived from the alpha totals: net_volume_alpha, a bounded sentiment_ratio, and a bullish/bearish/neutral label. Fixed 24h window, not OHLC/price data (#2589's trader-feature fence).",
@@ -2869,6 +2876,17 @@ export const API_ROUTES = [
         schema: { type: "string", enum: ["stake", "unstake"] },
       },
     ],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-validator-economics",
+    "GET",
+    "/api/v1/subnets/{netuid}/validator-economics",
+    "/metagraph/subnets/{netuid}/validator-economics.json",
+    "Fetch what it costs to become a validator on one subnet and whether a permit there earns: the permit floor and the earning floor (which differ by a median of ~7x — a permit is not income), the TAO to reach each priced against live AMM pool reserves plus the registration burn, how many validator slots are open, the commission (take) distribution across permit-holders, whether the emission gate is open and the daily TAO inflow, and the live StakeThreshold/TaoWeight the floors were computed against. Permitted, active and earning are returned as three separate counts because they are three different sets. Root stake counts toward the threshold on every registered subnet at once, so root_tao_to_clear_threshold is the cross-subnet alternative to the per-subnet alpha costs. Read-only and derived — no chain write, no custody; every derived field is nullable and degrades with a stated reason rather than a confident zero.",
+    "short",
+    ["subnets", "analytics", "validators"],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -4995,6 +5013,10 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   "/api/v1/subnets/{netuid}/volume",
   "/api/v1/subnets/{netuid}/ohlc",
   "/api/v1/subnets/{netuid}/stake-quote",
+  // Mainnet-only by construction rather than policy: the floors are derived
+  // against StakeThreshold, TaoWeight and Burn read out of finney storage at
+  // request time, so a testnet-addressed question has nothing to answer from.
+  "/api/v1/subnets/{netuid}/validator-economics",
   "/api/v1/subnets/movers",
   "/api/v1/validators",
   "/api/v1/accounts",

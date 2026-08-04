@@ -10707,6 +10707,86 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
     assert.ok(/days/i.test(body.errors[0].message));
   });
 
+  test("subnet_validator_economics derives the floors across the GraphQL surface", async () => {
+    // Same composer the REST route and the MCP tool run. Wiring one surface and
+    // leaving the others to reimplement it is the parity bug #9229 taught.
+    const env = fixtureEnv(
+      {
+        "/metagraph/economics.json": {
+          generated_at: "2026-08-03T00:00:00.000Z",
+          subnets: [
+            {
+              netuid: 64,
+              tao_in_pool_tao: 1000,
+              alpha_in_pool: 100000,
+              max_validators: 64,
+              tao_in_emission_tao: 0.01,
+            },
+          ],
+        },
+      },
+      {
+        // StakeThreshold/TaoWeight are read from this KV snapshot before any live
+        // RPC, so supplying it keeps the test deterministic. Without it the
+        // resolver falls through to the chain and the assertion depends on
+        // ambient state — it passed in isolation and failed in the full suite.
+        kv: {
+          "network:parameters": {
+            stake_threshold_tao: 1000,
+            tao_weight: 0.18,
+          },
+        },
+      },
+    ) as Row;
+    env.METAGRAPH_HEALTH_DB = {
+      prepare(query: string) {
+        const isHyper = /subnet_hyperparams/.test(query);
+        return {
+          bind: () => ({
+            all: async () => ({
+              results: [
+                {
+                  uid: 0,
+                  stake_tao: 5000,
+                  validator_permit: 1,
+                  dividends: 0.5,
+                  active: 1,
+                  take: 0.18,
+                },
+              ],
+            }),
+            first: async () => (isHyper ? null : null),
+          }),
+        };
+      },
+    };
+    const { status, body } = await gql(
+      "{ subnet_validator_economics(netuid: 64) { schema_version netuid emission_gate_open tao_inflow_per_day composition { permitted active earning } takes { median sample_size distribution } degraded_reason } }",
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const e = body.data.subnet_validator_economics;
+    assert.equal(e.schema_version, 1);
+    assert.equal(e.netuid, 64);
+    // Pinned so a regression that degrades this surface fails loudly rather than
+    // quietly returning nulls that still satisfy the schema.
+    assert.equal(e.degraded_reason, null);
+    assert.equal(e.emission_gate_open, true);
+    assert.ok(Math.abs(e.tao_inflow_per_day - 72) < 1e-9);
+    assert.deepEqual(e.composition, { permitted: 1, active: 1, earning: 1 });
+    assert.equal(e.takes.sample_size, 1);
+    assert.deepEqual(e.takes.distribution, [0.18]);
+  });
+
+  test("subnet_validator_economics rejects a negative netuid", async () => {
+    const { body } = await gql(
+      "{ subnet_validator_economics(netuid: -1) { netuid } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.ok(/netuid/i.test(body.errors[0].message));
+  });
+
   test("subnet_stake_quote quotes against the live pool reserves", async () => {
     const { status, body } = await gql(
       "{ subnet_stake_quote(netuid: 64, amount: 1000) { schema_version netuid direction amount expected_out expected_out_unit spot_price_tao effective_price_tao price_impact_pct is_root } }",

@@ -603,6 +603,11 @@ import {
   GetSubnetBurnOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-recycled-burn.ts";
 import {
+  GetSubnetValidatorEconomicsInputSchema,
+  GetSubnetValidatorEconomicsOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-validator-economics.ts";
+import { buildSubnetValidatorEconomicsPayload } from "../workers/request-handlers/entities.ts";
+import {
   GetSubnetLeaseInputSchema,
   GetSubnetLeaseOutputSchema,
   GetSubnetLeaseHistoryInputSchema,
@@ -4578,6 +4583,83 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         throw toolError(result.code, result.error);
       }
       return { schema_version: 1, ...result.quote };
+    },
+  },
+  {
+    name: "get_subnet_validator_economics",
+    title: "What it costs to validate on a subnet, and whether it earns",
+    // The description is how an agent finds this, so it is written the way the
+    // question actually gets asked. Route-shaped naming ("validator economics")
+    // does not surface for "how many validators does subnet 5 have".
+    description:
+      "Answer what it costs to become a validator on one subnet and whether a " +
+      "permit there actually earns. Returns the permit floor (the stake needed to " +
+      "hold a validator permit) and the earning floor (where the smallest validator " +
+      "actually earning dividends sits) -- these differ by a median of ~7x, so a " +
+      "permit is NOT income. Also returns the TAO cost to reach each floor priced " +
+      "against the subnet's live AMM pool reserves plus the registration burn, how " +
+      "many validator slots are open, the commission (take) validators charge here " +
+      "and its full distribution, whether the emission gate is open, and the live " +
+      "StakeThreshold/TaoWeight the floors were computed against. Use it for " +
+      "'how many validators does subnet N have', 'what is the validator floor', " +
+      "'what does it cost to become a validator', 'is there room in the validator " +
+      "set', 'what commission do validators charge'. Note that permitted, active " +
+      "and earning are three DIFFERENT counts and all three are returned -- asking " +
+      "'how many validators' has three defensible answers. Root stake counts toward " +
+      "the threshold on every subnet at once, so root_tao_to_clear_threshold is the " +
+      "cross-subnet alternative to the per-subnet alpha costs. Read-only. " +
+      "Mirrors GET /api/v1/subnets/{netuid}/validator-economics.",
+    inputSchema: z.toJSONSchema(GetSubnetValidatorEconomicsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    outputSchema: z.toJSONSchema(GetSubnetValidatorEconomicsOutputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetValidatorEconomicsInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      // Same composer the REST route and the GraphQL field run — one derivation,
+      // three surfaces, so they cannot drift into different answers.
+      //
+      // The economics row has to come from THIS surface's artifact reader: MCP
+      // resolves artifacts through ctx (which carries the resource cache and the
+      // test seam), not off `env` the way a Worker request handler does. Letting
+      // the composer's default reader run here would find no reserves and no cap,
+      // and the tool would answer degraded for every subnet while REST answered
+      // correctly — the exact cross-surface disagreement #9229 warns about.
+      const { data } = await buildSubnetValidatorEconomicsPayload(
+        ctx.env,
+        netuid,
+        {
+          loadEconomicsRow: async () => {
+            // A cold economics artifact DEGRADES this answer, it does not 404 it:
+            // the artifact is an input to the derivation, not its subject, and the
+            // floors in units are still true without the reserves. loadArtifactData
+            // raises not_found for a missing artifact, which would otherwise turn a
+            // partial answer into no answer at all.
+            let blob: Record<string, unknown> | null;
+            try {
+              blob = (await loadArtifactData(
+                ctx,
+                "/metagraph/economics.json",
+              )) as Record<string, unknown> | null;
+            } catch {
+              blob = null;
+            }
+            const rows = Array.isArray(blob?.subnets)
+              ? (blob.subnets as Array<Record<string, unknown>>)
+              : [];
+            return {
+              row:
+                rows.find((entry) => Number(entry?.netuid) === netuid) ?? null,
+              generatedAt: blob?.generated_at ?? blob?.captured_at ?? null,
+            };
+          },
+        },
+      );
+      return data;
     },
   },
   {

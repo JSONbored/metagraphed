@@ -141,6 +141,10 @@ import {
 } from "../../src/entity-labels.ts";
 import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.ts";
 import { loadSubnetBurn } from "../../src/subnet-burn.ts";
+import {
+  buildValidatorEconomics,
+  type ValidatorNeuron,
+} from "../../src/validator-economics.ts";
 import { loadSubnetLease } from "../../src/subnet-lease.ts";
 import {
   isCrowdloanId,
@@ -3171,7 +3175,7 @@ async function resolveSubnetMarketCapTao(env: Env, netuid: number) {
 // stake-quote math needs — resolved from the same live-KV-then-committed-R2
 // economics tiers as resolveSubnetMarketCapTao, plus the blob's freshness stamp
 // for the response meta. Returns { row: null } when neither tier has a row.
-async function resolveSubnetEconomicsRow(env: Env, netuid: number) {
+export async function resolveSubnetEconomicsRow(env: Env, netuid: number) {
   const live = await resolveLiveEconomics({
     readHealthKv: (e) => readHealthKv(e, KV_ECONOMICS_CURRENT),
     env,
@@ -3251,6 +3255,251 @@ export async function handleSubnetStakeQuote(
     );
   }
   return envelopeResponse(request, envelopePayload, "short");
+}
+
+// Field provenance for the validator-economics route (#9323). Nearly every field here
+// is DERIVED — there is no storage item behind `permit_floor_units`, so labelling it
+// `measured` would overstate what the chain actually says. `reconstructed` is reserved
+// for exactly that, and the echoed governance parameters keep `measured` because they
+// genuinely are single reads. The precedent is /network/parameters, which already marks
+// three of its own fields reconstructed.
+const VALIDATOR_ECONOMICS_FIELD_SOURCES = {
+  permit_floor_units: { kind: "reconstructed", storage: null },
+  permit_floor_cost_tao: { kind: "reconstructed", storage: null },
+  permit_entry_cost_tao: { kind: "reconstructed", storage: null },
+  earning_floor_units: { kind: "reconstructed", storage: null },
+  earning_floor_cost_tao: { kind: "reconstructed", storage: null },
+  earning_entry_cost_tao: { kind: "reconstructed", storage: null },
+  permit_to_earning_multiple: { kind: "reconstructed", storage: null },
+  root_tao_to_clear_threshold: { kind: "reconstructed", storage: null },
+  uids_above_threshold: { kind: "reconstructed", storage: null },
+  validator_slots_open: { kind: "reconstructed", storage: null },
+  cap_binding: { kind: "reconstructed", storage: null },
+  composition: { kind: "reconstructed", storage: null },
+  takes: { kind: "measured", storage: "SubtensorModule.Delegates" },
+  model_agreement: { kind: "reconstructed", storage: null },
+  max_validators: {
+    kind: "measured",
+    storage: "SubtensorModule.MaxAllowedValidators",
+  },
+  min_childkey_take_ratio: {
+    kind: "measured",
+    storage: "SubtensorModule.MinChildkeyTake",
+  },
+  emission_gate_open: {
+    kind: "measured",
+    storage: "SubtensorModule.SubnetTaoInEmission",
+  },
+  tao_inflow_per_day: {
+    kind: "reconstructed",
+    storage: "SubtensorModule.SubnetTaoInEmission",
+  },
+  registration_cost_tao: { kind: "measured", storage: "SubtensorModule.Burn" },
+  stake_threshold_units: {
+    kind: "measured",
+    storage: "SubtensorModule.StakeThreshold",
+  },
+  tao_weight: { kind: "measured", storage: "SubtensorModule.TaoWeight" },
+} as const;
+
+// The per-UID columns the derivation needs, and no more. `stake_tao` is the metagraph's
+// `total_stake` — it ALREADY contains the root leg at tao_weight, so it is passed
+// through untouched; recombining it from legs is the #9331 bug.
+const VALIDATOR_ECONOMICS_NEURON_COLUMNS =
+  "uid, stake_tao, validator_permit, dividends, active, take";
+
+function toValidatorNeurons(
+  rows: Array<Record<string, unknown>>,
+): ValidatorNeuron[] {
+  return rows.map((row) => ({
+    uid: Number(row.uid),
+    totalStake: Number(row.stake_tao ?? 0),
+    validatorPermit: Number(row.validator_permit) === 1,
+    dividends: Number(row.dividends ?? 0),
+    active: Number(row.active) === 1,
+    // null stays null: a UID with no recorded take is excluded from the distribution
+    // rather than counted as charging 0.
+    take: row.take == null ? null : Number(row.take),
+  }));
+}
+
+// GET /api/v1/subnets/{netuid}/validator-economics (#9323, #9327): what a validator
+// permit costs on this subnet, whether holding one earns, and what the field charges.
+//
+// Reads D1 directly rather than forwarding through the DATA_API postgres tier, because
+// the derivation needs three things that only live in THIS worker: the economics-tier
+// pool reserves, the live governance parameters, and the burn. The neurons table is in
+// the same D1 the health binding already points at, so a forward would split one
+// derivation across two workers for no gain.
+//
+// Degrades field-by-field rather than 404ing. A confident 0 here reads as "free to
+// validate", which is the specific wrong answer the module exists to avoid (#9285,
+// #9114, #9121).
+// The one composition, shared by REST, MCP and GraphQL. Wiring one surface and
+// leaving the other two to reimplement it is the parity bug #9229 taught — three
+// surfaces answering the identical question with no way for a caller to tell which
+// was right. Returns the wire payload plus the artifact timestamp its meta needs.
+export async function buildSubnetValidatorEconomicsPayload(
+  env: Env,
+  netuid: number,
+  // Injection seam, same shape the watchdog family uses: the three non-D1 reads are
+  // live RPC behind caches, and a test that cannot stub them exercises only the
+  // degraded path — which would leave every real branch here unmeasured.
+  deps: {
+    loadParams?: typeof loadNetworkParameters;
+    loadBurn?: typeof loadSubnetBurn;
+    // The MCP surface reads artifacts through its own ctx reader rather than off
+    // `env`, so it MUST pass this — without it the tool silently sees no reserves
+    // and no cap, and answers degraded for every subnet.
+    loadEconomicsRow?: typeof resolveSubnetEconomicsRow;
+  } = {},
+): Promise<{ data: Record<string, unknown>; generatedAt: unknown }> {
+  const readParams = deps.loadParams ?? loadNetworkParameters;
+  const readBurn = deps.loadBurn ?? loadSubnetBurn;
+  const readEconomicsRow = deps.loadEconomicsRow ?? resolveSubnetEconomicsRow;
+  const db = env.METAGRAPH_HEALTH_DB;
+  const rows = db
+    ? ((
+        await db
+          .prepare(
+            `SELECT ${VALIDATOR_ECONOMICS_NEURON_COLUMNS} FROM neurons WHERE netuid = ? ORDER BY uid`,
+          )
+          .bind(netuid)
+          .all()
+      )?.results ?? [])
+    : [];
+
+  const hyperRow = db
+    ? await db
+        .prepare(
+          "SELECT max_validators, min_childkey_take_ratio FROM subnet_hyperparams WHERE netuid = ? LIMIT 1",
+        )
+        .bind(netuid)
+        .first()
+    : null;
+
+  const { row: economics, generatedAt } = await readEconomicsRow(env, netuid);
+  const params = await readParams(env);
+  // The burn read is live RPC behind a KV cache and is allowed to fail: without it the
+  // ENTRY costs degrade to null while the floors and their costs stay published, which
+  // is a strictly better answer than withholding the whole row.
+  let burnTao: number | null;
+  try {
+    const burn = (await readBurn(env, netuid)) as Record<string, unknown>;
+    burnTao = typeof burn?.burn_tao === "number" ? burn.burn_tao : null;
+  } catch {
+    burnTao = null;
+  }
+
+  const maxValidators =
+    hyperRow?.max_validators != null
+      ? Number(hyperRow.max_validators)
+      : economics?.max_validators != null
+        ? Number(economics.max_validators)
+        : null;
+
+  const economicsResult = buildValidatorEconomics({
+    neurons: toValidatorNeurons(rows as Array<Record<string, unknown>>),
+    maxValidators,
+    stakeThreshold: params?.stake_threshold_tao ?? null,
+    taoWeight: params?.tao_weight ?? null,
+    taoReserve:
+      economics?.tao_in_pool_tao != null
+        ? Number(economics.tao_in_pool_tao)
+        : null,
+    alphaReserve:
+      economics?.alpha_in_pool != null ? Number(economics.alpha_in_pool) : null,
+    taoInEmissionPerBlock:
+      economics?.tao_in_emission_tao != null
+        ? Number(economics.tao_in_emission_tao)
+        : null,
+    registrationCostTao: burnTao,
+    minChildkeyTakeRatio:
+      hyperRow?.min_childkey_take_ratio != null
+        ? Number(hyperRow.min_childkey_take_ratio)
+        : null,
+  });
+
+  const data = {
+    schema_version: 1,
+    netuid: Number(netuid),
+    permit_floor_units: economicsResult.permitFloorUnits,
+    permit_floor_cost_tao: economicsResult.permitFloorCostTao,
+    permit_entry_cost_tao: economicsResult.permitEntryCostTao,
+    earning_floor_units: economicsResult.earningFloorUnits,
+    earning_floor_cost_tao: economicsResult.earningFloorCostTao,
+    earning_entry_cost_tao: economicsResult.earningEntryCostTao,
+    permit_to_earning_multiple: economicsResult.permitToEarningMultiple,
+    root_tao_to_clear_threshold: economicsResult.rootTaoToClear,
+    max_validators: maxValidators,
+    validator_slots_open: economicsResult.validatorSlotsOpen,
+    uids_above_threshold: economicsResult.uidsAboveThreshold,
+    cap_binding: economicsResult.capBinding,
+    composition: economicsResult.composition,
+    takes: economicsResult.takes
+      ? {
+          median: economicsResult.takes.median,
+          min: economicsResult.takes.min,
+          max: economicsResult.takes.max,
+          distribution: economicsResult.takes.distribution,
+          median_earning: economicsResult.takes.medianEarning,
+          sample_size: economicsResult.takes.sampleSize,
+        }
+      : null,
+    min_childkey_take_ratio: economicsResult.minChildkeyTakeRatio,
+    emission_gate_open: economicsResult.emissionGateOpen,
+    tao_inflow_per_day: economicsResult.taoInflowPerDay,
+    registration_cost_tao: economicsResult.registrationCostTao,
+    stake_threshold_units: params?.stake_threshold_tao ?? null,
+    tao_weight: params?.tao_weight ?? null,
+    model_agreement: economicsResult.modelAgreement
+      ? {
+          matched: economicsResult.modelAgreement.matched,
+          over_predicted: economicsResult.modelAgreement.overPredicted,
+          under_predicted: economicsResult.modelAgreement.underPredicted,
+          observed_permits: economicsResult.modelAgreement.observedPermits,
+          agreement: economicsResult.modelAgreement.agreement,
+          publishable: economicsResult.modelAgreement.publishable,
+        }
+      : null,
+    degraded_reason: economicsResult.degradedReason,
+    field_sources: VALIDATOR_ECONOMICS_FIELD_SOURCES,
+  };
+
+  return { data, generatedAt };
+}
+
+export async function handleSubnetValidatorEconomics(
+  request: Request,
+  env: Env,
+  netuid: number,
+  url: URL,
+) {
+  const validationError = validateQueryParams(url, []);
+  if (validationError) return analyticsQueryError(validationError);
+  if (!isU16Netuid(netuid)) {
+    return errorResponse(
+      "invalid_netuid",
+      "netuid must be an integer in the u16 range 0..65535.",
+      400,
+    );
+  }
+  const { data, generatedAt } = await buildSubnetValidatorEconomicsPayload(
+    env,
+    netuid,
+  );
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/validator-economics.json`,
+        generatedAt,
+      ),
+    },
+    "short",
+  );
 }
 
 // GET /api/v1/subnets/{netuid}/volume (#4339/8.1): rolling 24h buy (StakeAdded)

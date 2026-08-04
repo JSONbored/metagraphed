@@ -50,6 +50,7 @@ import {
 import { loadProfilesList } from "./profiles-mcp.ts";
 import { contractVersion } from "../workers/responses.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
+import { buildSubnetValidatorEconomicsPayload } from "../workers/request-handlers/entities.ts";
 // #6985: GraphQL parity for the endpoint-pools/rpc-pools/endpoint-incidents REST
 // routes, reusing the same shaping functions list_endpoint_pools/list_rpc_pools/
 // list_endpoint_incidents already call for MCP parity -- not a reimplementation.
@@ -1044,6 +1045,9 @@ export const FIELD_COMPLEXITY = {
   subnet_volume: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_ohlc: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_stake_quote: RELATIONSHIP_FIELD_COMPLEXITY,
+  // Same tier as its siblings: one subnet's neuron rows plus a handful of
+  // cached reads, not a fan-out.
+  subnet_validator_economics: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_validators: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_event_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_gaps: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4032,6 +4036,24 @@ const rootValue = {
     };
   },
 
+  async subnet_validator_economics(
+    { netuid }: { netuid: number },
+    context: GqlContext,
+  ) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    // The same composer the REST route and the get_subnet_validator_economics MCP
+    // tool run — one derivation across all three surfaces, so they cannot drift
+    // into different answers for the identical question (#9229's parity lesson).
+    const { data } = await buildSubnetValidatorEconomicsPayload(
+      context.env,
+      netuid,
+    );
+    return data;
+  },
   async subnet_stake_quote(
     { netuid, amount, direction }: QuerySubnet_Stake_QuoteArgs,
     context: GqlContext,

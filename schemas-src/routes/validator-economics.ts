@@ -9,6 +9,7 @@
 // whenever a field was withheld, so a caller can tell "unknown" from "zero".
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
+import { FieldSourcesSchema } from "../shared.ts";
 
 // Permitted / active / earning are three DIFFERENT sets and are published separately
 // rather than collapsed. Network-wide 2026-08-03: 1,523 / 1,137 / 1,117; SN83 is
@@ -94,6 +95,11 @@ export const SubnetValidatorEconomicsArtifactSchema = z
 
     model_agreement: ValidatorPermitModelAgreementSchema.nullable(),
     degraded_reason: z.string().nullable(),
+    // Required by the chain-read route convention. Nearly every field here is
+    // DERIVED — there is no storage item behind `permit_floor_units` — so those
+    // carry `kind: "reconstructed", storage: null`, and `measured` is reserved for
+    // the echoed hyperparameters that genuinely are single reads.
+    field_sources: FieldSourcesSchema,
   })
   .strict();
 export type SubnetValidatorEconomicsArtifact = z.infer<

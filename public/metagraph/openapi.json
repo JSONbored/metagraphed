@@ -10646,6 +10646,86 @@
           "schema_version": 1
         }
       },
+      "SubnetValidatorEconomicsArtifactResponse": {
+        "value": {
+          "data": {
+            "cap_binding": false,
+            "composition": {
+              "active": 1,
+              "earning": 1,
+              "permitted": 1
+            },
+            "degraded_reason": "A",
+            "earning_entry_cost_tao": 0.5,
+            "earning_floor_cost_tao": 0.5,
+            "earning_floor_units": 0.5,
+            "emission_gate_open": false,
+            "field_sources": {
+              "example": {
+                "kind": "measured",
+                "storage": "example"
+              }
+            },
+            "max_validators": 1,
+            "min_childkey_take_ratio": 0.9966,
+            "model_agreement": {
+              "agreement": 0.5,
+              "matched": 1,
+              "observed_permits": 1,
+              "over_predicted": 1,
+              "publishable": false,
+              "under_predicted": 1
+            },
+            "netuid": 7,
+            "permit_entry_cost_tao": 0.5,
+            "permit_floor_cost_tao": 0.5,
+            "permit_floor_units": 0.5,
+            "permit_to_earning_multiple": 0.5,
+            "registration_cost_tao": 0.5,
+            "root_tao_to_clear_threshold": 0.5,
+            "schema_version": 1,
+            "stake_threshold_units": 0.5,
+            "takes": {
+              "distribution": [
+                0.5
+              ],
+              "max": 0.5,
+              "median": 0.5,
+              "median_earning": 0.5,
+              "min": 0.5,
+              "sample_size": 1
+            },
+            "tao_inflow_per_day": 0.5,
+            "tao_weight": 0.5,
+            "uids_above_threshold": 1,
+            "validator_slots_open": 1
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
+      },
       "SubnetValidatorsArtifactResponse": {
         "value": {
           "data": {
@@ -44781,6 +44861,316 @@
           "application"
         ]
       },
+      "SubnetValidatorEconomicsArtifact": {
+        "additionalProperties": false,
+        "properties": {
+          "cap_binding": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "composition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ValidatorSetComposition"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "degraded_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "earning_entry_cost_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "earning_floor_cost_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "earning_floor_units": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "emission_gate_open": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "field_sources": {
+            "additionalProperties": {
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "measured",
+                    "reconstructed"
+                  ],
+                  "type": "string"
+                },
+                "read_at": {
+                  "enum": [
+                    "capture",
+                    "chain_state.block"
+                  ],
+                  "type": "string"
+                },
+                "storage": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "storage"
+              ],
+              "type": "object"
+            },
+            "description": "Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5.",
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "max_validators": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min_childkey_take_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model_agreement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ValidatorPermitModelAgreement"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "netuid": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "permit_entry_cost_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "permit_floor_cost_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "permit_floor_units": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "permit_to_earning_multiple": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "registration_cost_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "root_tao_to_clear_threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "stake_threshold_units": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "takes": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ValidatorTakeDistribution"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tao_inflow_per_day": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tao_weight": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "uids_above_threshold": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "validator_slots_open": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "permit_floor_units",
+          "permit_floor_cost_tao",
+          "permit_entry_cost_tao",
+          "earning_floor_units",
+          "earning_floor_cost_tao",
+          "earning_entry_cost_tao",
+          "permit_to_earning_multiple",
+          "root_tao_to_clear_threshold",
+          "max_validators",
+          "validator_slots_open",
+          "uids_above_threshold",
+          "cap_binding",
+          "composition",
+          "takes",
+          "min_childkey_take_ratio",
+          "emission_gate_open",
+          "tao_inflow_per_day",
+          "registration_cost_tao",
+          "stake_threshold_units",
+          "tao_weight",
+          "model_agreement",
+          "degraded_reason",
+          "field_sources"
+        ],
+        "type": "object"
+      },
       "SubnetValidatorsArtifact": {
         "additionalProperties": {},
         "properties": {
@@ -47511,6 +47901,146 @@
           "offset",
           "nominator_count",
           "nominators"
+        ],
+        "type": "object"
+      },
+      "ValidatorPermitModelAgreement": {
+        "additionalProperties": false,
+        "properties": {
+          "agreement": {
+            "anyOf": [
+              {
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "matched": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "observed_permits": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "over_predicted": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "publishable": {
+            "type": "boolean"
+          },
+          "under_predicted": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "matched",
+          "over_predicted",
+          "under_predicted",
+          "observed_permits",
+          "agreement",
+          "publishable"
+        ],
+        "type": "object"
+      },
+      "ValidatorSetComposition": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "earning": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "permitted": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "permitted",
+          "active",
+          "earning"
+        ],
+        "type": "object"
+      },
+      "ValidatorTakeDistribution": {
+        "additionalProperties": false,
+        "properties": {
+          "distribution": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "median": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "median_earning": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sample_size": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "median",
+          "min",
+          "max",
+          "distribution",
+          "median_earning",
+          "sample_size"
         ],
         "type": "object"
       },
@@ -88936,6 +89466,115 @@
           "health",
           "subnets",
           "analytics"
+        ],
+        "x-metagraphed-mainnet-only": true,
+        "x-metagraphed-networks": [
+          "mainnet"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/validator-economics": {
+      "get": {
+        "operationId": "subnetValidatorEconomics",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "SubnetValidatorEconomicsArtifactResponse": {
+                    "$ref": "#/components/examples/SubnetValidatorEconomicsArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetValidatorEconomicsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch what it costs to become a validator on one subnet and whether a permit there earns: the permit floor and the earning floor (which differ by a median of ~7x — a permit is not income), the TAO to reach each priced against live AMM pool reserves plus the registration burn, how many validator slots are open, the commission (take) distribution across permit-holders, whether the emission gate is open and the daily TAO inflow, and the live StakeThreshold/TaoWeight the floors were computed against. Permitted, active and earning are returned as three separate counts because they are three different sets. Root stake counts toward the threshold on every registered subnet at once, so root_tao_to_clear_threshold is the cross-subnet alternative to the per-subnet alpha costs. Read-only and derived — no chain write, no custody; every derived field is nullable and degrades with a stated reason rather than a confident zero.",
+        "tags": [
+          "subnets",
+          "analytics",
+          "validators"
         ],
         "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [

@@ -277,6 +277,11 @@ export const SUBNET_OHLC_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/ohlc$/;
 // over the subnet's live economics-artifact pool reserves, no chain write.
 export const SUBNET_STAKE_QUOTE_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/stake-quote$/;
+// What a validator permit costs on one subnet and whether holding one earns
+// (#9323, #9327) — derived from the neurons tier against the live pool reserves
+// and the two sudo-settable governance parameters, never a cached floor.
+export const SUBNET_VALIDATOR_ECONOMICS_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/validator-economics$/;
 // Live cumulative TAO recycled for registration on one subnet (#4339/8.4),
 // queried from the chain's own RAORecycledForRegistration storage map at
 // request time — not a D1/account_events tier, no static file.
