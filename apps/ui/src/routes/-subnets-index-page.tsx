@@ -93,6 +93,7 @@ import { useWatchlist } from "@/lib/metagraphed/watchlist";
 import { LeaderboardsSection, LeaderboardsCsvExportMenu } from "./-leaderboards-page";
 import { DomainsRollup } from "@/components/metagraphed/domains-rollup";
 import type { AgentCatalogSummary, Subnet, SubnetEconomics } from "@/lib/metagraphed/types";
+import { useMeasuredRowHeight } from "@/hooks/use-measured-row-height";
 
 // #8248: fetch every active subnet in one shot instead of cursor-paginating --
 // the whole list (129 rows) is virtualized client-side, so there is no
@@ -721,10 +722,14 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
   // grid/matrix early return below) since hooks can't be conditional --
   // grid/matrix renders just never read `rowVirtualizer`'s output.
   const tableScrollRef = useRef<HTMLDivElement>(null);
+  const rowHeight = useMeasuredRowHeight(tableScrollRef, density === "compact" ? 37 : 49);
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => tableScrollRef.current,
-    estimateSize: () => (density === "compact" ? 37 : 49),
+    // Measured, not guessed -- see use-measured-row-height.ts. The literal
+    // here is only the pre-measurement seed; it read 49 against real 56px
+    // rows, which grew the scroll height by ~731px as the reader scrolled.
+    estimateSize: () => rowHeight,
     overscan: 12,
   });
   const virtualRows = rowVirtualizer.getVirtualItems();

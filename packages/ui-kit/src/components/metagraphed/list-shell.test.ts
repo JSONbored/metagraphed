@@ -18,14 +18,15 @@ describe("ListShell sticky table wrappers", () => {
     // and `sticky top-0` silently resolved to a no-op on every table in this
     // shell -- verified in a browser on /chain/blocks: computed
     // `overflow: auto/auto` with scrollHeight === clientHeight.
-    expect(source).toContain('"mg-table-scroll overflow-x-auto"');
+    // Both classes on ONE element (see the note in list-shell.tsx).
+    expect(source).toContain('"mg-table-scroll mg-list-viewport"');
     // The whole viewport contract (height cap, overflow axis, overscroll
     // containment) lives in one ui-kit class -- /validators builds its own
     // shell and has to agree with this one. Applied conditionally, because
     // `stickyHeader={false}` must drop the bounded box too: keeping it while
     // dropping the pin gives an inner scroll region whose header scrolls away
     // inside it.
-    expect(source).toContain('stickyHeader ? "mg-list-viewport" : undefined');
+    expect(source).toContain('"mg-table-scroll overflow-x-auto"');
     expect(source).not.toContain("overflow-x-clip");
     expect(source).not.toContain("overflow-y-clip");
   });
