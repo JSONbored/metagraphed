@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   buildAccountIdentity,
   loadAccountIdentity,
+  loadIdentityByColdkeyMap,
   sanitizeAccountIdentityFields,
 } from "../src/account-identity.ts";
 
@@ -147,5 +148,41 @@ describe("loadAccountIdentity", () => {
     const d1 = async () => null as unknown as Record<string, unknown>[];
     const data = await loadAccountIdentity(d1, "5Acc0");
     assert.equal(data.has_identity, false);
+  });
+});
+
+describe("loadIdentityByColdkeyMap — the bulk coldkey_identity join", () => {
+  test("keys every returned row by account and skips rows without one", async () => {
+    let seenSql = "";
+    const map = await loadIdentityByColdkeyMap(async (sql) => {
+      seenSql = sql;
+      return [
+        identityRow({ account: "5CkA", name: "Ventura Labs" }),
+        identityRow({ account: "5CkB", name: "Yuma" }),
+        identityRow({ account: null, name: "orphan" }),
+        { name: "no account at all" },
+      ];
+    });
+    // Whole-table read on purpose: no WHERE, no IN list to trip D1's
+    // 100-parameter bind cap on a full leaderboard.
+    assert.match(seenSql, /FROM account_identity$/);
+    assert.doesNotMatch(seenSql, /WHERE/);
+    assert.equal(map.size, 2);
+    assert.equal(map.get("5CkA")?.name, "Ventura Labs");
+    assert.equal(map.get("5CkB")?.name, "Yuma");
+  });
+
+  test("never throws: a failed read degrades to an empty map", async () => {
+    const map = await loadIdentityByColdkeyMap(async () => {
+      throw new Error("account_identity unavailable");
+    });
+    assert.equal(map.size, 0);
+  });
+
+  test("a non-array result degrades to an empty map too", async () => {
+    const map = await loadIdentityByColdkeyMap(
+      async () => null as unknown as Record<string, unknown>[],
+    );
+    assert.equal(map.size, 0);
   });
 });

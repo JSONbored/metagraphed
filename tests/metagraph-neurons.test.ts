@@ -1894,6 +1894,10 @@ describe("metagraph-neurons loaders", () => {
             { netuid: 2, alpha_price_tao: 1 },
           ];
         }
+        // The identity join reads account_identity in the same pass.
+        if (sql.includes("account_identity")) {
+          return [{ account: "ck-a", name: "Ventura Labs" }];
+        }
         seenSql = sql;
         seenParams = params;
         return [
@@ -1924,6 +1928,35 @@ describe("metagraph-neurons loaders", () => {
     assert.deepEqual(seenParams, []);
     assert.equal(data.validators.length, 1);
     assert.equal(data.validators[0].hotkey, "hk-a");
+    // The D1 loader joins account_identity itself now (the old #5234 posture
+    // left this Map empty and relied on a Postgres route that no longer exists).
+    assert.equal(data.validators[0].coldkey_identity.name, "Ventura Labs");
+    assert.equal(data.validators[0].coldkey_identity.has_identity, true);
+  });
+
+  test("loadGlobalValidators degrades to no-identity when the identity read fails", async () => {
+    const data = await loadGlobalValidators(async (sql) => {
+      if (sql.includes("subnet_snapshots")) {
+        return [{ netuid: 1, alpha_price_tao: 1 }];
+      }
+      if (sql.includes("account_identity")) {
+        throw new Error("account_identity unavailable");
+      }
+      return [
+        {
+          netuid: 1,
+          uid: 0,
+          hotkey: "hk-a",
+          coldkey: "ck-a",
+          stake_tao: 10,
+          emission_tao: 7,
+          validator_trust: 0.7,
+        },
+      ];
+    });
+    assert.equal(data.validators.length, 1);
+    assert.equal(data.validators[0].coldkey_identity.has_identity, false);
+    assert.equal(data.validators[0].coldkey_identity.name, null);
   });
 
   test("loadValidatorDetail queries by hotkey + validator_permit, ordered by netuid/uid", async () => {
@@ -1938,6 +1971,10 @@ describe("metagraph-neurons loaders", () => {
           { netuid: 2, alpha_price_tao: 1 },
         ];
       }
+      // Identity join, same as the leaderboard loader.
+      if (sql.includes("account_identity")) {
+        return [{ account: "ck-a", name: "Yuma" }];
+      }
       seenSql = sql;
       seenParams = params;
       return [
@@ -1950,6 +1987,7 @@ describe("metagraph-neurons loaders", () => {
     assert.deepEqual(seenParams, ["hk-a"]);
     assert.equal(data.hotkey, "hk-a");
     assert.equal(data.subnet_count, 2);
+    assert.equal(data.coldkey_identity.name, "Yuma");
   });
 });
 
