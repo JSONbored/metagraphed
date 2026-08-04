@@ -2,7 +2,9 @@
   "title": "Extrinsics",
   "pages": [
     "extrinsic-detail",
+    "extrinsic-detail-by-network",
     "extrinsics-feed",
+    "extrinsics-feed-by-network",
     "governance-config-changes",
     "sudo-calls"
   ]
