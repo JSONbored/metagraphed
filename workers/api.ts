@@ -5150,6 +5150,10 @@ export function isMainnetOnlyApiPath(pathname: string) {
     SUBNET_NEURON_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_VALIDATORS_PATH_PATTERN.test(pathname) ||
     SUBNET_EVENTS_PATH_PATTERN.test(pathname) ||
+    // #9402: subnet_burn_history has no network column, so a testnet-addressed
+    // request would be served MAINNET prices. Declared in MAINNET_ONLY_ROUTE_PATHS
+    // too -- this function and that list are asserted equal, in both directions.
+    SUBNET_BURN_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_IDENTITY_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_CONCENTRATION_PATH_PATTERN.test(pathname) ||
