@@ -53,6 +53,13 @@ export type ValidatorNeuron = {
   validatorPermit: boolean;
   dividends: number;
   active: boolean;
+  /**
+   * Commission on delegated stake (#9327). Optional because the older callers of this
+   * module do not read it; absent and null are the same thing here — a UID with no
+   * recorded take is excluded from the distribution rather than counted as charging 0,
+   * which would drag the median toward a floor nobody actually set.
+   */
+  take?: number | null;
 };
 
 /** How far `modelAgreement` may fall before a derived floor stops being publishable. */
@@ -74,14 +81,54 @@ export type SetComposition = {
   earning: number;
 };
 
+/**
+ * The commission picture across a subnet's permit-holders (#9327).
+ *
+ * Publishes the sorted vector, not just the summary, because the SHAPE is the
+ * information and it is genuinely bimodal. Measured on SN64, 2026-08-03, permit-holders
+ * charged `0, 0, 0.001, 0.01, 0.0135, 0.06, 0.09, 0.18 x9` — median 0.18, the ceiling
+ * most sit at, against a visible cohort at or near zero competing for delegation.
+ * Validators earn at both ends, so a lone median hides the entire structure.
+ */
+export type TakeDistribution = {
+  median: number | null;
+  min: number | null;
+  max: number | null;
+  /** Ascending, one entry per permit-holder that records a take. */
+  distribution: number[];
+  /**
+   * Median restricted to permit-holders that actually earn. Takes among validators
+   * nobody delegates to are noise — this is the competitive number.
+   */
+  medianEarning: number | null;
+  sampleSize: number;
+};
+
 export type ValidatorEconomics = {
   permitFloorUnits: number | null;
   permitFloorCostTao: number | null;
+  /** Floor cost plus the registration burn — what entry actually costs, not half of it. */
+  permitEntryCostTao: number | null;
   earningFloorUnits: number | null;
   earningFloorCostTao: number | null;
+  earningEntryCostTao: number | null;
+  /**
+   * How much more it takes to EARN than merely to hold a permit. Median 7.4x
+   * network-wide, p90 20.7x — the single number that says a permit is not income.
+   */
+  permitToEarningMultiple: number | null;
   rootTaoToClear: number | null;
   capBinding: boolean | null;
+  /** UIDs clearing the threshold — shows whether the cap is actually the constraint. */
+  uidsAboveThreshold: number | null;
+  validatorSlotsOpen: number | null;
   composition: SetComposition | null;
+  takes: TakeDistribution | null;
+  /** Per-subnet hyperparameter bounding what a childkey arrangement may charge (#9327). */
+  minChildkeyTakeRatio: number | null;
+  emissionGateOpen: boolean | null;
+  taoInflowPerDay: number | null;
+  registrationCostTao: number | null;
   modelAgreement: ModelAgreement | null;
   /** Non-null whenever a field above was withheld, naming which input was missing. */
   degradedReason: string | null;
@@ -294,6 +341,48 @@ export function shareOfSubnet(
   return denom > 0 ? ourUnits / denom : 0;
 }
 
+/**
+ * Median of an already-ascending vector. Even lengths average the middle pair, which is
+ * the convention the take figures elsewhere in this repo use.
+ */
+function medianOfSorted(sorted: readonly number[]): number | null {
+  if (sorted.length === 0) return null;
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1
+    ? sorted[mid]
+    : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/**
+ * Take distribution across permit-holders (#9327).
+ *
+ * Only permit-holders count: a take set by a UID with no permit is not part of the
+ * competitive field. A UID whose take is absent or non-finite is skipped rather than
+ * read as 0 — see the note on `ValidatorNeuron.take`.
+ */
+export function takeDistribution(
+  neurons: readonly ValidatorNeuron[],
+): TakeDistribution {
+  const takesOf = (rows: readonly ValidatorNeuron[]) =>
+    rows
+      .map((n) => n.take)
+      .filter((t): t is number => typeof t === "number" && Number.isFinite(t))
+      .sort((a, b) => a - b);
+
+  const permitted = neurons.filter((n) => n.validatorPermit);
+  const all = takesOf(permitted);
+  const earning = takesOf(permitted.filter((n) => n.dividends > 0));
+
+  return {
+    median: medianOfSorted(all),
+    min: all.length > 0 ? all[0] : null,
+    max: all.length > 0 ? all[all.length - 1] : null,
+    distribution: all,
+    medianEarning: medianOfSorted(earning),
+    sampleSize: all.length,
+  };
+}
+
 /** Inputs a caller must supply; each is read live rather than assumed. */
 export type EconomicsInputs = {
   neurons: readonly ValidatorNeuron[];
@@ -304,7 +393,20 @@ export type EconomicsInputs = {
   taoWeight: number | null;
   taoReserve: number | null;
   alphaReserve: number | null;
+  /**
+   * Per-block TAO injected into this subnet's pool. 0 means the emission gate is closed.
+   * Reported, never scored: gate-closed subnets still emit alpha at a comparable rate
+   * and are less contested, so per unit of stake they pay MORE. The gate is an
+   * exit-liquidity question, not an eligibility one.
+   */
+  taoInEmissionPerBlock?: number | null;
+  /** Live recycle/burn cost. Entry is two spends and publishing one understates it. */
+  registrationCostTao?: number | null;
+  minChildkeyTakeRatio?: number | null;
 };
+
+// 12s blocks.
+const BLOCKS_PER_DAY = 7200;
 
 // Compose the published shape, degrading rather than guessing.
 //
@@ -315,14 +417,37 @@ export type EconomicsInputs = {
 export function buildValidatorEconomics(
   inputs: EconomicsInputs,
 ): ValidatorEconomics {
+  const inflow =
+    typeof inputs.taoInEmissionPerBlock === "number" &&
+    Number.isFinite(inputs.taoInEmissionPerBlock)
+      ? inputs.taoInEmissionPerBlock
+      : null;
+  const burn =
+    typeof inputs.registrationCostTao === "number" &&
+    Number.isFinite(inputs.registrationCostTao)
+      ? inputs.registrationCostTao
+      : null;
+
   const blank: ValidatorEconomics = {
     permitFloorUnits: null,
     permitFloorCostTao: null,
+    permitEntryCostTao: null,
     earningFloorUnits: null,
     earningFloorCostTao: null,
+    earningEntryCostTao: null,
+    permitToEarningMultiple: null,
     rootTaoToClear: null,
     capBinding: null,
+    uidsAboveThreshold: null,
+    validatorSlotsOpen: null,
     composition: null,
+    takes: null,
+    minChildkeyTakeRatio: inputs.minChildkeyTakeRatio ?? null,
+    // Gate state and burn are READ, not derived — they stay published on every
+    // degraded path, because they are the two fields that need no model to be true.
+    emissionGateOpen: inflow === null ? null : inflow > 0,
+    taoInflowPerDay: inflow === null ? null : inflow * BLOCKS_PER_DAY,
+    registrationCostTao: burn,
     modelAgreement: null,
     degradedReason: null,
   };
@@ -346,6 +471,8 @@ export function buildValidatorEconomics(
     return {
       ...blank,
       composition,
+      // Takes are observed too, and stay published for the same reason composition does.
+      takes: takeDistribution(neurons),
       modelAgreement: agreement,
       degradedReason:
         "permit model disagrees with observed permits on this subnet",
@@ -368,14 +495,25 @@ export function buildValidatorEconomics(
           earnFloor,
         );
 
+  const withBurn = (cost: number | null) =>
+    cost === null || burn === null ? null : cost + burn;
+
   return {
+    ...blank,
     permitFloorUnits: floor,
     permitFloorCostTao: floorCost,
+    permitEntryCostTao: withBurn(floorCost),
     earningFloorUnits: earnFloor,
     earningFloorCostTao: earnCost,
+    earningEntryCostTao: withBurn(earnCost),
+    permitToEarningMultiple:
+      earnFloor === null || floor <= 0 ? null : earnFloor / floor,
     rootTaoToClear: rootTaoToClear(stakeThreshold, taoWeight),
     capBinding: capBinding(neurons, maxValidators, stakeThreshold),
+    uidsAboveThreshold: eligible(neurons, stakeThreshold).length,
+    validatorSlotsOpen: Math.max(0, maxValidators - composition.permitted),
     composition,
+    takes: takeDistribution(neurons),
     modelAgreement: agreement,
     // Reserves missing is a partial degrade: the unit floors are still true, only their
     // TAO cost is unknown. Say so rather than implying the whole row is bad.

@@ -90,6 +90,12 @@ import {
   HealthSubnetSummarySchema,
 } from "./routes/health.ts";
 import { SubnetStakeQuoteArtifactSchema } from "./routes/stake-quote.ts";
+import {
+  SubnetValidatorEconomicsArtifactSchema,
+  ValidatorSetCompositionSchema,
+  ValidatorPermitModelAgreementSchema,
+  ValidatorTakeDistributionSchema,
+} from "./routes/validator-economics.ts";
 import { SubnetAlphaVolumeArtifactSchema } from "./routes/subnet-alpha-volume.ts";
 import {
   SubnetAxonRemovalsArtifactSchema,
@@ -397,6 +403,16 @@ register(EconomicsArtifactSchema, "EconomicsArtifact");
 register(HealthSummaryArtifactSchema, "HealthSummaryArtifact");
 register(HealthSubnetSummarySchema, "HealthSubnetSummary");
 register(SubnetStakeQuoteArtifactSchema, "SubnetStakeQuoteArtifact");
+// The three sub-shapes are registered explicitly: this file's header warns that a named
+// sub-shape left unregistered is silently INLINED rather than $ref'd, which would
+// duplicate the composition/take/agreement objects into every route that carries them.
+register(ValidatorSetCompositionSchema, "ValidatorSetComposition");
+register(ValidatorPermitModelAgreementSchema, "ValidatorPermitModelAgreement");
+register(ValidatorTakeDistributionSchema, "ValidatorTakeDistribution");
+register(
+  SubnetValidatorEconomicsArtifactSchema,
+  "SubnetValidatorEconomicsArtifact",
+);
 register(SurfaceKindSchema, "SurfaceKind");
 register(SourceTierSchema, "SourceTier");
 register(ClassificationSchema, "Classification");
@@ -755,6 +771,10 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "HealthSummaryArtifact",
   "HealthSubnetSummary",
   "SubnetStakeQuoteArtifact",
+  "ValidatorSetComposition",
+  "ValidatorPermitModelAgreement",
+  "ValidatorTakeDistribution",
+  "SubnetValidatorEconomicsArtifact",
   "SurfaceKind",
   "SourceTier",
   "Classification",
