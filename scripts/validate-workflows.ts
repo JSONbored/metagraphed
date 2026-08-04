@@ -105,6 +105,29 @@ for (const workflow of workflows) {
       workflow,
       "validate workflow must detect rebuilt-but-untracked public artifacts after build",
     );
+    // The Codecov split, checked STRUCTURALLY rather than by step name.
+    //
+    // This rule used to look each step up by an exact literal
+    // ("Upload coverage to Codecov (fork PR tokenless)"), which made the step's
+    // TITLE part of the contract: renaming it to say what it now covers failed
+    // CI while changing nothing the rule cares about. A step's name is prose.
+    // What the rule is actually about is which upload carries the token, and
+    // that is readable from the steps themselves.
+    const codecovSteps = workflowSteps(content).filter((step) =>
+      step.block.includes("uses: codecov/codecov-action@"),
+    );
+    const coverageUploads = codecovSteps.filter((step) =>
+      step.block.includes("./coverage/lcov.info"),
+    );
+    const tokenless = codecovSteps.filter(
+      (step) => !step.block.includes("secrets.CODECOV_TOKEN"),
+    );
+    const tokenlessCoverage = tokenless.filter((step) =>
+      step.block.includes("./coverage/lcov.info"),
+    );
+    const tokenlessResults = tokenless.filter((step) =>
+      step.block.includes("vitest.xml"),
+    );
     check(
       content.includes(
         "github.event.pull_request.head.repo.full_name == github.repository",
@@ -112,27 +135,25 @@ for (const workflow of workflows) {
         content.includes(
           "github.event.pull_request.head.repo.full_name != github.repository",
         ) &&
-        workflowStepBlock(content, "Upload coverage to Codecov").includes(
-          "token: ${{ secrets.CODECOV_TOKEN }}",
+        // One of each: a trusted upload that carries the token, and an
+        // untrusted one that must not.
+        coverageUploads.some((step) =>
+          step.block.includes("token: ${{ secrets.CODECOV_TOKEN }}"),
         ) &&
-        !workflowStepBlock(
-          content,
-          "Upload coverage to Codecov (fork PR tokenless)",
-        ).includes("secrets.CODECOV_TOKEN") &&
-        workflowStepBlock(
-          content,
-          "Upload coverage to Codecov (fork PR tokenless)",
-        ).includes("fail_ci_if_error: true") &&
-        forkCodecovStepUsesForkBranchPrefix(
-          content,
-          "Upload coverage to Codecov (fork PR tokenless)",
+        tokenlessCoverage.length > 0 &&
+        // A tokenless upload that swallows its own failure reports nothing and
+        // hides that it reported nothing.
+        tokenlessCoverage.every((step) =>
+          step.block.includes("fail_ci_if_error: true"),
         ) &&
-        forkCodecovStepUsesForkBranchPrefix(
-          content,
-          "Upload Vitest results to Codecov (fork PR tokenless)",
+        // Codecov rejects an unprefixed branch from an untrusted upload, so
+        // both tokenless steps must send owner:branch.
+        tokenlessResults.length > 0 &&
+        [...tokenlessCoverage, ...tokenlessResults].every((step) =>
+          usesForkBranchPrefix(step.block),
         ),
       workflow,
-      "validate workflow must split Codecov coverage uploads into trusted-token and fork-tokenless paths",
+      "validate workflow must split Codecov coverage uploads into trusted-token and tokenless paths",
     );
   }
   if (
@@ -279,19 +300,40 @@ function workflowJobBlock(content: string, jobName: string): string {
   return match?.[0] || "";
 }
 
-function workflowStepBlock(content: string, stepName: string): string {
-  const marker = `- name: ${stepName}`;
-  const start = content.indexOf(marker);
-  if (start === -1) return "";
-  const next = content.indexOf("\n      - name:", start + marker.length);
-  return content.slice(start, next === -1 ? undefined : next);
+/**
+ * Every `- name:` step in a workflow, as {name, block}.
+ *
+ * Enumerated rather than looked up by literal, so a rule can select steps by
+ * what they DO -- which upload carries the token -- instead of by what they are
+ * called. Names are prose and get rewritten; the contract should not move with
+ * them. Quoted names are unwrapped, since YAML requires quoting once a name
+ * contains a colon.
+ */
+function workflowSteps(content: string): { name: string; block: string }[] {
+  const steps: { name: string; block: string }[] = [];
+  // Six spaces is the indent a step sits at inside jobs.<id>.steps. Written as {6}
+  // rather than as literal spaces so the count is readable and cannot be miscounted
+  // by eye -- which is exactly what no-regex-spaces is for.
+  const marker = /^ {6}- name: (.+)$/gm;
+  const starts: { name: string; index: number }[] = [];
+  for (const m of content.matchAll(marker)) {
+    starts.push({
+      name: m[1].trim().replace(/^["'](.*)["']$/, "$1"),
+      index: m.index ?? 0,
+    });
+  }
+  for (const [i, step] of starts.entries()) {
+    steps.push({
+      name: step.name,
+      block: content.slice(step.index, starts[i + 1]?.index),
+    });
+  }
+  return steps;
 }
 
-function forkCodecovStepUsesForkBranchPrefix(
-  content: string,
-  stepName: string,
-): boolean {
-  const block = workflowStepBlock(content, stepName);
+/** Whether an upload sends Codecov the owner-prefixed branch it requires from
+ * an untrusted (tokenless) uploader. */
+function usesForkBranchPrefix(block: string): boolean {
   return /override_branch:\s*\$\{\{\s*github\.event\.pull_request\.head\.repo\.owner\.login\s*\}\}:\$\{\{\s*github\.event\.pull_request\.head\.ref\s*\}\}/.test(
     block,
   );
