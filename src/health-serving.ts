@@ -367,6 +367,10 @@ export function overlayRpcPoolEligibility(
             latest_block: live.latest_block ?? endpoint.latest_block ?? null,
             health_source: "live-cron-prober",
             health_stale: false,
+            // 30-day observed behaviour, computed once per prober run (#9357).
+            // Null when the window holds no samples for this surface.
+            reliability_score: live.reliability_score ?? null,
+            reliability_grade: live.reliability_grade ?? null,
           }
         : // Not covered by this prober run: the row keeps the build's status, which
           // may be up to a day old. Marked stale so the comparator ranks it below an

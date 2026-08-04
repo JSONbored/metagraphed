@@ -479,6 +479,75 @@ describe("overlayRpcPoolEligibility", () => {
     assert.equal(out.best_endpoint_id, null);
   });
 
+  test("thirty days of reliability outranks one fast probe", () => {
+    // The measured case (#9357): OnFinality answered an 87-byte system_health in 241ms
+    // and took 78.6s for a 15.4 MB call, while entrypoint-finney probed at 510ms and
+    // did the same call in 8.6s. With both `ok` and the same base score, the single
+    // probe WAS the ranking.
+    const stale = {
+      id: "finney-wss",
+      endpoints: [
+        { ...baseEndpoint, id: "fast-probe-bad-neighbour", url: "wss://a" },
+        { ...baseEndpoint, id: "steady", url: "wss://b" },
+      ],
+    };
+    const live = {
+      endpoints: [
+        {
+          id: "fast-probe-bad-neighbour",
+          status: "ok",
+          latency_ms: 241,
+          reliability_score: 71,
+        },
+        { id: "steady", status: "ok", latency_ms: 510, reliability_score: 98 },
+      ],
+    };
+    const out = overlayRpcPoolEligibility(stale, live) as Row;
+    assert.equal(out.endpoints[0].id, "steady");
+    assert.equal(out.best_endpoint_id, "steady");
+  });
+
+  test("latency still decides between endpoints with no history", () => {
+    // Reliability is a refinement, not a replacement: a pool of brand-new endpoints
+    // must still order by something rather than collapsing to id order.
+    const stale = {
+      id: "finney-wss",
+      endpoints: [
+        { ...baseEndpoint, id: "slow", url: "wss://a" },
+        { ...baseEndpoint, id: "quick", url: "wss://b" },
+      ],
+    };
+    const live = {
+      endpoints: [
+        { id: "slow", status: "ok", latency_ms: 900 },
+        { id: "quick", status: "ok", latency_ms: 90 },
+      ],
+    };
+    const out = overlayRpcPoolEligibility(stale, live) as Row;
+    assert.equal(out.endpoints[0].id, "quick");
+    assert.equal(out.endpoints[0].reliability_score, null);
+  });
+
+  test("an endpoint with no history never outranks one with a record", () => {
+    // "No record" is not a neutral score. A new endpoint has not earned a position
+    // ahead of one carrying thirty days of evidence, however well it just probed.
+    const stale = {
+      id: "finney-wss",
+      endpoints: [
+        { ...baseEndpoint, id: "newcomer", url: "wss://a" },
+        { ...baseEndpoint, id: "proven", url: "wss://b" },
+      ],
+    };
+    const live = {
+      endpoints: [
+        { id: "newcomer", status: "ok", latency_ms: 10 },
+        { id: "proven", status: "ok", latency_ms: 800, reliability_score: 0 },
+      ],
+    };
+    const out = overlayRpcPoolEligibility(stale, live) as Row;
+    assert.equal(out.endpoints[0].id, "proven");
+  });
+
   test("drops endpoints only after sustained (>=2) consecutive failures", () => {
     const live = {
       endpoints: [
