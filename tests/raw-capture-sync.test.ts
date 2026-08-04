@@ -12,6 +12,8 @@ import {
   d1Watermark,
   RAW_CAPTURE_GENESIS_FLOOR,
   RAW_CAPTURE_LANES,
+  RPC_CALLS_PER_BLOCK,
+  RPC_REQUESTS_PER_MINUTE_LIMIT,
   runRawCaptureSync,
   TESTNET_RAW_CAPTURE_GENESIS_FLOOR,
 } from "../src/raw-capture-sync.ts";
@@ -480,12 +482,32 @@ describe("the testnet capture lane", () => {
     // The combined per-tick budget must stay inside the platform's
     // 1000-subrequest ceiling: 3 RPC calls per block plus one head fetch each.
     const subrequests = RAW_CAPTURE_LANES.reduce(
-      (total, lane) => total + lane.maxPerTick * 3 + 1,
+      (total, lane) => total + lane.maxPerTick * RPC_CALLS_PER_BLOCK + 1,
       0,
     );
     assert.ok(
       subrequests < 1000,
       `a tick would issue ${subrequests} subrequests, over the Worker ceiling`,
+    );
+  });
+
+  test("the testnet budget stays inside the endpoint's measured rate limit", () => {
+    // #9378. The public RPC serves ~100 requests per client per minute — proven
+    // by replaying this lane's exact call pattern until it 429'd at call 100.
+    // The lane shipped asking for 100 BLOCKS (300 calls), so two-thirds of every
+    // tick was refused: not a data bug (the no-gap guarantee retries) but 200
+    // rejected requests every five minutes at an endpoint we do not own.
+    //
+    // Asserted rather than commented because the failure is invisible in
+    // production — a throttled tick looks exactly like a slow one.
+    const testnet = RAW_CAPTURE_LANES.find(
+      (lane) => lane.network === "testnet",
+    );
+    assert.ok(testnet, "no testnet lane declared");
+    const calls = testnet.maxPerTick * RPC_CALLS_PER_BLOCK + 1;
+    assert.ok(
+      calls < RPC_REQUESTS_PER_MINUTE_LIMIT,
+      `a testnet tick issues ${calls} calls, at or over the endpoint's ${RPC_REQUESTS_PER_MINUTE_LIMIT}/min limit`,
     );
   });
 });
