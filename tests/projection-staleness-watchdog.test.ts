@@ -375,6 +375,122 @@ describe("the threshold follows the producer's cadence", () => {
   });
 });
 
+// #9330/#9340. This watchdog shipped notifying through recordExceptionEvent
+// alone -- the channel that has already discarded three outages, because
+// PostHog drops $exception once the free-tier quota is exhausted. Its healthy
+// output is silence, so without a row per tick nothing distinguishes "all 26
+// lanes were fresh" from "the watchdog has not run since the deploy".
+describe("every tick leaves a durable verdict, not just a notification", () => {
+  /** A lane_health sink that records what was written. */
+  function laneHealth() {
+    const rows: Record<string, unknown>[] = [];
+    return {
+      rows,
+      db: {
+        // Only the INSERT is recorded: recordLaneVerdict also prunes expired
+        // rows on the way through, and counting that would make this assert
+        // the number of statements rather than the number of verdicts.
+        prepare(sql: string) {
+          const isInsert = sql.startsWith("INSERT INTO lane_health");
+          return {
+            bind(...values: unknown[]) {
+              return {
+                async run() {
+                  if (isInsert) {
+                    rows.push({
+                      lane: values[0],
+                      verdict: values[1],
+                      age_ms: values[2],
+                      detail: values[3],
+                    });
+                  }
+                  return {};
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  function bucketAt(iso: string | null) {
+    return {
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          if (iso === null) return null;
+          return {
+            async json() {
+              return { schema_version: 1, generated_at: iso };
+            },
+          };
+        },
+      },
+    } as unknown as Record<string, unknown>;
+  }
+
+  test("a HEALTHY tick still writes a row", async () => {
+    const now = Date.parse("2026-08-04T17:00:00.000Z");
+    const sink = laneHealth();
+    const events: unknown[] = [];
+    await runProjectionStalenessWatchdog(
+      bucketAt(new Date(now - 12 * 60_000).toISOString()),
+      {
+        now: () => now,
+        laneHealthDb: sink.db as never,
+        recordException: (async () => {
+          events.push(1);
+          return true;
+        }) as never,
+      },
+    );
+    // Nothing was notified -- and that is exactly why the row has to exist.
+    assert.deepEqual(events, []);
+    assert.equal(sink.rows.length, 1);
+    assert.equal(sink.rows[0]!.lane, "projection-staleness");
+    assert.equal(sink.rows[0]!.verdict, "ok");
+  });
+
+  test("a stale tick records WHICH lanes, not just that something was stale", async () => {
+    const now = Date.parse("2026-08-04T17:00:00.000Z");
+    const sink = laneHealth();
+    await runProjectionStalenessWatchdog(
+      bucketAt(new Date(now - 31 * HOUR).toISOString()),
+      {
+        now: () => now,
+        laneHealthDb: sink.db as never,
+        recordException: (async () => true) as never,
+      },
+    );
+    assert.equal(sink.rows.length, 1);
+    assert.equal(sink.rows[0]!.verdict, "stale");
+    // The OLDEST age, since one stale lane is a stale fleet.
+    assert.equal(sink.rows[0]!.age_ms, 31 * HOUR);
+    assert.match(String(sink.rows[0]!.detail), /chain-/);
+  });
+
+  test("a missing lane_health table never breaks the tick", async () => {
+    // D1 migrations here are applied BY HAND, so the table can legitimately be
+    // absent. A watchdog whose alarm-recording broke its alarm would be worse
+    // than the bug it reports.
+    const now = Date.parse("2026-08-04T17:00:00.000Z");
+    const result = (await runProjectionStalenessWatchdog(
+      bucketAt(new Date(now - 12 * 60_000).toISOString()),
+      {
+        now: () => now,
+        laneHealthDb: {
+          prepare() {
+            throw new Error("no such table: lane_health");
+          },
+        } as never,
+        recordException: (async () => true) as never,
+      },
+    )) as { ok: boolean; stale: boolean };
+    assert.equal(result.ok, true);
+    assert.equal(result.stale, false);
+  });
+});
+
 describe("the watchdog cron", () => {
   // Dispatch keys on the LITERAL cron string, so a duplicate silently steals
   // the other's tick.

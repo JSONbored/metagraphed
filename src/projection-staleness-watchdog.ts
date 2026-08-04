@@ -19,6 +19,7 @@
 
 import { DEFAULT_CHAIN_NETWORK, projectionKey } from "./chain-network.ts";
 import { PROJECTION_LANES, PROJECTION_NETWORKS } from "./projection-lanes.ts";
+import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { PROJECTION_LANES_CRON } from "../workers/config.ts";
 
@@ -177,6 +178,9 @@ export interface ProjectionStalenessDeps {
   now?: () => number;
   /** Telemetry seam for tests; defaults to the real recordExceptionEvent. */
   recordException?: typeof recordExceptionEvent;
+  /** Injectable durable sink, so a test can assert the verdict was RECORDED and
+   * not merely notified -- the distinction #9330/#9340 exist about. */
+  laneHealthDb?: LaneHealthDb | null;
 }
 
 /** Every lane x every network, labelled the way the runner labels them. */
@@ -260,6 +264,36 @@ export async function runProjectionStalenessWatchdog(
       errorCode: "stale_lane",
     }).catch(() => false);
   }
+
+  // #9330/#9340: the DURABLE record, written every tick rather than only when
+  // stale. This watchdog shipped notifying through `recordExceptionEvent`
+  // alone -- the exact channel that has already discarded three outages, since
+  // PostHog drops `$exception` once the free-tier quota is exhausted and this
+  // project runs at roughly 1M events/day. A dropped notification is
+  // indistinguishable from a fleet that was fine.
+  //
+  // It matters more here than for its siblings, not less: this is the only
+  // watchdog covering 26 lanes, and its healthy output is silence. Without a
+  // row per tick there is nothing anywhere that distinguishes "every
+  // projection was fresh" from "the watchdog has not run since the deploy".
+  //
+  // Never throws -- see recordLaneVerdict.
+  await recordLaneVerdict(
+    deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as never),
+    {
+      lane: "projection-staleness",
+      verdict: verdict.stale ? "stale" : "ok",
+      // The OLDEST lane's age, since one stale lane is a stale fleet and that
+      // is the number worth keeping a history of.
+      age_ms: verdict.entries.reduce<number | null>(
+        (oldest, entry) =>
+          entry.age_ms === null ? oldest : Math.max(oldest ?? 0, entry.age_ms),
+        null,
+      ),
+      detail: verdict.stale ? verdict.stale_lanes.join(",") : null,
+      checked_at: now(),
+    },
+  );
 
   return { ok: true, ...verdict };
 }
