@@ -21,9 +21,28 @@
 // Cloudflare 1033 on every request; it won on a stale latency sample.
 //
 // Scores are therefore recomputed wherever status is, from the same refreshed row.
+import {
+  HealthStatusSchema,
+  type HealthStatus,
+} from "../schemas-src/shared.ts";
+
 // Untyped probe rows out of JSON artifacts. `unknown` rather than `any` so every
 // field access below has to state what it expects.
 type Row = Record<string, unknown>;
+
+/**
+ * A zeroed counter with one key per DECLARED health status.
+ *
+ * Derived from `HealthStatusSchema` rather than written out. Five call sites had
+ * `{ ok: 0, degraded: 0, failed: 0, unknown: 0 }` typed inline, so adding a status to
+ * the enum would have left all five silently under-counting it — and nothing would
+ * have said so, because an absent key reads as `undefined`, not as an error.
+ */
+export function emptyStatusCounts(): Record<HealthStatus, number> {
+  return Object.fromEntries(
+    HealthStatusSchema.options.map((status) => [status, 0]),
+  ) as Record<HealthStatus, number>;
+}
 
 export interface ScoreBreakdown {
   score: number;
@@ -36,7 +55,13 @@ export interface ScoreBreakdown {
 // (`Math.max(0, score)`), so a failed endpoint and a healthy-but-unmeasured one both
 // land on 0 and their relative order falls through to latency, which is exactly how a
 // dead host floated to the top.
-const HEALTH_RANK: Record<string, number> = {
+//
+// The KEYS are the `HealthStatusSchema` vocabulary and must stay exhaustive — a status
+// missing here silently sorts as `unknown`, which is the quiet kind of wrong. The
+// ORDER is a judgement (which health is better) and cannot be derived from an enum, so
+// it is written out and guarded by a test that diffs these keys against the schema's
+// own options rather than by anyone remembering to update both.
+export const HEALTH_RANK: Record<string, number> = {
   ok: 3,
   unknown: 2,
   degraded: 1,
