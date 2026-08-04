@@ -11326,16 +11326,23 @@ export interface components {
             distinct_setters: number;
             netuid: number;
             observed_at: string | null;
+            overdue_setter_count: number;
+            overdue_tempo_multiple: number;
             schema_version: number;
             setter_count: number;
             setters: {
                 first_set_at: string | null;
                 hotkey: string | null;
                 last_set_at: string | null;
+                /** @description Whether this setter is more than overdue_tempo_multiple tempos past its last weight set. NULL means not evaluated -- the subnet's tempo or this setter's last_set_at was unavailable -- which is deliberately distinct from false ('evaluated, on time'). */
+                overdue: boolean | null;
+                seconds_since_last_set: number | null;
                 share: number | null;
+                tempos_since_last_set: number | null;
                 uid: number | null;
                 weight_sets: number;
             }[];
+            tempo: number | null;
             weight_sets: number;
             window: ("7d" | "30d") | null;
         };
@@ -23966,6 +23973,8 @@ export interface operations {
                      *         "distinct_setters": 1,
                      *         "netuid": 7,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "overdue_setter_count": 1,
+                     *         "overdue_tempo_multiple": 1,
                      *         "schema_version": 1,
                      *         "setter_count": 1,
                      *         "setters": [
@@ -23973,11 +23982,15 @@ export interface operations {
                      *             "first_set_at": "2026-06-01T00:00:00.000Z",
                      *             "hotkey": "example",
                      *             "last_set_at": "2026-06-01T00:00:00.000Z",
+                     *             "overdue": false,
+                     *             "seconds_since_last_set": 1,
                      *             "share": 0.5,
+                     *             "tempos_since_last_set": 0.5,
                      *             "uid": 1,
                      *             "weight_sets": 1
                      *           }
                      *         ],
+                     *         "tempo": 1,
                      *         "weight_sets": 1,
                      *         "window": "7d"
                      *       },
@@ -49709,6 +49722,8 @@ export interface operations {
                      *         "distinct_setters": 1,
                      *         "netuid": 7,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "overdue_setter_count": 1,
+                     *         "overdue_tempo_multiple": 1,
                      *         "schema_version": 1,
                      *         "setter_count": 1,
                      *         "setters": [
@@ -49716,11 +49731,15 @@ export interface operations {
                      *             "first_set_at": "2026-06-01T00:00:00.000Z",
                      *             "hotkey": "example",
                      *             "last_set_at": "2026-06-01T00:00:00.000Z",
+                     *             "overdue": false,
+                     *             "seconds_since_last_set": 1,
                      *             "share": 0.5,
+                     *             "tempos_since_last_set": 0.5,
                      *             "uid": 1,
                      *             "weight_sets": 1
                      *           }
                      *         ],
+                     *         "tempo": 1,
                      *         "weight_sets": 1,
                      *         "window": "7d"
                      *       },

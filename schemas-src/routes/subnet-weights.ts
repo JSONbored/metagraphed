@@ -39,6 +39,17 @@ const SubnetWeightSetterSchema = z
     share: z.number().min(0).nullable(),
     first_set_at: z.string().nullable(),
     last_set_at: z.string().nullable(),
+    // #9389. Measured against the window's newest event rather than wall-clock now, so
+    // the payload is internally consistent and a stale read reports the lag it actually
+    // observed rather than one inflated by how long ago the tier answered.
+    seconds_since_last_set: z.int().min(0).nullable(),
+    tempos_since_last_set: z.number().min(0).nullable(),
+    overdue: z
+      .boolean()
+      .nullable()
+      .describe(
+        "Whether this setter is more than overdue_tempo_multiple tempos past its last weight set. NULL means not evaluated -- the subnet's tempo or this setter's last_set_at was unavailable -- which is deliberately distinct from false ('evaluated, on time').",
+      ),
   })
   .strict();
 
@@ -51,6 +62,11 @@ export const SubnetWeightSettersArtifactSchema = z
     distinct_setters: z.int().min(0),
     weight_sets: z.int().min(0),
     setter_count: z.int().min(0),
+    // The cadence the verdicts were measured against, echoed so a null `overdue` is
+    // explainable from the payload alone. Null when the subnet has no hyperparams row.
+    tempo: z.int().min(0).nullable(),
+    overdue_tempo_multiple: z.int().min(0),
+    overdue_setter_count: z.int().min(0),
     setters: z.array(SubnetWeightSetterSchema),
   })
   .strict();

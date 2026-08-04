@@ -305,3 +305,180 @@ describe("GET /api/v1/subnets/{netuid}/weights/setters", () => {
     assert.deepEqual(body.data.setters, []);
   });
 });
+
+// #9389: the overdue verdict. `weight_sets` alone hides a dead tail -- a setter can post a
+// healthy-looking count and then stop -- so the alarm is the gap between its last set and
+// the subnet's own tempo.
+describe("buildSubnetWeightSetters — overdue detection (#9389)", () => {
+  const TEMPO = 360; // blocks; * 12s = 72 min per tempo
+  const TEMPO_MS = TEMPO * 12 * 1000;
+  const NOW = 1_785_800_000_000;
+
+  function card(lastSetMs: number, tempo: unknown = TEMPO) {
+    return buildSubnetWeightSetters(
+      [
+        {
+          hotkey: "5Grw...alice",
+          uid: 3,
+          weight_sets: 45,
+          last_set: lastSetMs,
+        },
+      ],
+      { weight_sets: 45, distinct_setters: 1, newest_observed: NOW },
+      NETUID,
+      { window: "7d", tempo },
+    );
+  }
+
+  test("a setter inside the jitter band is NOT overdue", () => {
+    // One missed tempo is a restart or a slow epoch, not an outage. Alarming here is
+    // what #9330 spent a PR removing from the watchdogs.
+    const setter = (card(NOW - TEMPO_MS).setters as Row[])[0];
+    assert.equal(setter.overdue, false);
+    assert.equal(setter.tempos_since_last_set, 1);
+  });
+
+  test("the real SN8 case is caught", () => {
+    // Measured live 2026-08-04: a setter with 45 sets in the window whose last was
+    // 6.3 days earlier. The count looks healthy; the tail is dead.
+    const setter = (card(NOW - 9111 * 60 * 1000).setters as Row[])[0];
+    assert.equal(setter.overdue, true);
+    assert.equal(
+      setter.weight_sets,
+      45,
+      "the healthy-looking count is unchanged",
+    );
+    assert.ok((setter.tempos_since_last_set as number) > 100);
+  });
+
+  test("the payload counts and explains its own verdicts", () => {
+    const c = card(NOW - 10 * TEMPO_MS);
+    assert.equal(c.overdue_setter_count, 1);
+    assert.equal(c.tempo, TEMPO);
+    assert.equal(c.overdue_tempo_multiple, 3);
+  });
+
+  test("an unknown tempo leaves overdue NULL, never false", () => {
+    // "We could not evaluate" is not "on time". A false here would be a confident wrong
+    // answer about the one signal this route exists to give.
+    // Built inline rather than through card(), whose default parameter would swallow
+    // an explicit `undefined` and silently test the happy path instead.
+    for (const tempo of [null, undefined, 0, "abc", -1, 1.5e308]) {
+      const c = buildSubnetWeightSetters(
+        [
+          {
+            hotkey: "5Grw...alice",
+            uid: 3,
+            weight_sets: 45,
+            last_set: NOW - 50 * TEMPO_MS,
+          },
+        ],
+        { weight_sets: 45, distinct_setters: 1, newest_observed: NOW },
+        NETUID,
+        { window: "7d", tempo },
+      );
+      const setter = (c.setters as Row[])[0];
+      assert.equal(setter.overdue, null, `tempo=${String(tempo)}`);
+      assert.equal(setter.tempos_since_last_set, null);
+      assert.equal(c.tempo, null);
+      // An unevaluated setter is not counted as overdue.
+      assert.equal(c.overdue_setter_count, 0);
+    }
+  });
+
+  test("a setter with no last_set_at is not evaluated", () => {
+    const c = buildSubnetWeightSetters(
+      [{ hotkey: "5Grw...alice", uid: 3, weight_sets: 1, last_set: null }],
+      { weight_sets: 1, distinct_setters: 1, newest_observed: NOW },
+      NETUID,
+      { window: "7d", tempo: TEMPO },
+    );
+    assert.equal((c.setters as Row[])[0].overdue, null);
+    assert.equal(c.overdue_setter_count, 0);
+  });
+
+  test("lag is measured against the window's newest event, not wall-clock now", () => {
+    // A tier that answered an hour late must not report an extra hour of lag on every
+    // setter -- the payload has to be internally consistent.
+    const setter = (card(NOW - 2 * TEMPO_MS).setters as Row[])[0];
+    assert.equal(setter.seconds_since_last_set, (2 * TEMPO_MS) / 1000);
+  });
+
+  test("a setter that last set AFTER the window's newest event clamps to zero", () => {
+    const setter = (card(NOW + 60_000).setters as Row[])[0];
+    assert.equal(setter.seconds_since_last_set, 0);
+    assert.equal(setter.overdue, false);
+  });
+
+  test("the existing fields are untouched", () => {
+    const setter = (card(NOW - TEMPO_MS).setters as Row[])[0];
+    assert.equal(setter.hotkey, "5Grw...alice");
+    assert.equal(setter.uid, 3);
+    assert.equal(setter.weight_sets, 45);
+    assert.equal(setter.share, 1);
+  });
+});
+
+describe("loadSubnetWeightSetters — the tempo read cannot break the leaderboard (#9389)", () => {
+  const LEADER = [
+    {
+      hotkey: "5Grw...alice",
+      uid: 3,
+      weight_sets: 5,
+      first_set: 1,
+      last_set: 2,
+    },
+  ];
+  const TOTALS = [{ weight_sets: 5, distinct_setters: 1, newest_observed: 2 }];
+
+  function runner(onHyperparams: () => Promise<Row[]>) {
+    const seen: string[] = [];
+    return {
+      seen,
+      d1: async (sql: string) => {
+        seen.push(sql);
+        if (sql.includes("subnet_hyperparams")) return onHyperparams();
+        if (sql.includes("COUNT(DISTINCT")) return TOTALS;
+        return LEADER;
+      },
+    };
+  }
+
+  test("a throwing hyperparams read still serves the leaderboard", async () => {
+    // The whole card must not be lost because a cadence was unknown -- that trades a
+    // useful answer for no answer.
+    const { d1, seen } = runner(async () => {
+      throw new Error("D1_ERROR: no such table: subnet_hyperparams");
+    });
+    const card = await loadSubnetWeightSetters(d1, NETUID, {
+      windowLabel: "7d",
+      windowDays: 7,
+    });
+    assert.equal((card.setters as Row[]).length, 1);
+    assert.equal(card.tempo, null);
+    assert.equal((card.setters as Row[])[0].overdue, null);
+    assert.equal(card.overdue_setter_count, 0);
+    assert.ok(seen.some((s) => s.includes("subnet_hyperparams")));
+  });
+
+  test("a subnet with no hyperparams row leaves the verdicts unevaluated", async () => {
+    const { d1 } = runner(async () => []);
+    const card = await loadSubnetWeightSetters(d1, NETUID, {
+      windowLabel: "7d",
+      windowDays: 7,
+    });
+    assert.equal(card.tempo, null);
+    assert.equal((card.setters as Row[])[0].overdue, null);
+  });
+
+  test("a present tempo is looked up by primary key, not scanned", async () => {
+    const { d1, seen } = runner(async () => [{ tempo: 360 }]);
+    const card = await loadSubnetWeightSetters(d1, NETUID, {
+      windowLabel: "7d",
+      windowDays: 7,
+    });
+    assert.equal(card.tempo, 360);
+    const hp = seen.find((s) => s.includes("subnet_hyperparams"))!;
+    assert.match(hp, /WHERE netuid = \?/);
+  });
+});

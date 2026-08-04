@@ -26,6 +26,10 @@ const WeightSetterSchema = z
     share: z.unknown().optional(),
     first_set_at: z.string().nullable().optional(),
     last_set_at: z.string().nullable().optional(),
+    // #9389: null `overdue` means NOT EVALUATED, not "on time".
+    seconds_since_last_set: z.int().nullable().optional(),
+    tempos_since_last_set: z.number().nullable().optional(),
+    overdue: z.boolean().nullable().optional(),
   })
   .passthrough();
 
@@ -38,6 +42,9 @@ export const GetSubnetWeightSettersOutputSchema = z
     distinct_setters: z.int(),
     weight_sets: z.int(),
     setter_count: z.int(),
+    tempo: z.int().nullable().optional(),
+    overdue_tempo_multiple: z.int().optional(),
+    overdue_setter_count: z.int().optional(),
     setters: z.array(WeightSetterSchema),
   })
   .passthrough();
