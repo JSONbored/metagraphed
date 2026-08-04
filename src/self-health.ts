@@ -17,6 +17,8 @@
 // made the old /status verdict unreadable (metagraphed#8250).
 
 /** The components the poller writes. Order is display order. */
+import type { LaneHealthRecord } from "./lane-health.ts";
+
 export const SELF_HEALTH_COMPONENTS = ["api", "site", "publish"] as const;
 export type SelfHealthComponent = (typeof SELF_HEALTH_COMPONENTS)[number];
 
@@ -96,12 +98,38 @@ export interface SelfHealthComponentView {
 
 export type SelfHealthVerdict = "operational" | "degraded" | "outage";
 
+/** One lane's most recent watchdog verdict (#9330/#9340). */
+export interface SelfHealthLaneView {
+  lane: string;
+  verdict: "ok" | "stale" | "unknown";
+  age_ms: number | null;
+  detail: string | null;
+  checked_at: string | null;
+}
+
 export interface SelfHealth {
   schema_version: number;
   verdict: SelfHealthVerdict;
   components: SelfHealthComponentView[];
   /** Components with data. Zero means the poller hasn't written anything yet. */
   measured_component_count: number;
+  /**
+   * Runtime data lanes, each with its newest watchdog verdict.
+   *
+   * #9330 asked where a quota-independent verdict should live and concluded self-health
+   * was "the cheapest and most honest" home, because "is metagraphed itself healthy" is
+   * already the question this surface answers. A stalled lane is exactly that, and it
+   * was previously answerable only through PostHog — which drops `$exception` on quota,
+   * so three lanes went stale with the alarm working and nobody hearing it.
+   *
+   * Empty when the lane_health table has no rows yet, which is also its state before the
+   * migration is applied by hand. It does NOT affect `verdict`: the component verdict
+   * describes whether the API and site are answering, and folding lane staleness into it
+   * would change the meaning of a field other things already depend on.
+   */
+  lanes: SelfHealthLaneView[];
+  /** Lanes whose newest verdict is `stale`. The number to alert on. */
+  stale_lane_count: number;
   observed_at: string | null;
 }
 
@@ -186,6 +214,7 @@ function meanRatio(days: SelfHealthDay[]): number | null {
 export function buildSelfHealth(
   dailyRows: SelfHealthDailyRow[],
   latestRows: SelfHealthLatestRow[],
+  laneRows: Record<string, LaneHealthRecord> = {},
 ): SelfHealth {
   const byComponent = new Map<string, SelfHealthDailyRow[]>();
   for (const row of dailyRows) {
@@ -234,12 +263,52 @@ export function buildSelfHealth(
     return max == null || ms > max ? ms : max;
   }, null);
 
+  // Lane shaping lives in withLaneHealth alone — the REST handler has to apply it to
+  // whichever of three tiers answered, so a second copy here would be one to keep in
+  // step by hand.
+  return withLaneHealth(
+    {
+      schema_version: 1,
+      verdict: selfHealthVerdict(components),
+      components,
+      measured_component_count: components.filter((c) => c.current_ok !== null)
+        .length,
+      lanes: [],
+      stale_lane_count: 0,
+      observed_at: toIso(observedMs),
+    },
+    laneRows,
+  );
+}
+
+/**
+ * Attach lane verdicts to an already-built self-health card.
+ *
+ * Separate from `buildSelfHealth` because the card is produced by three different tiers
+ * (Postgres, the lakehouse cold tier, and the empty fallback) and the lanes come from
+ * D1 regardless of which one answered. Merging here means a degraded serving tier still
+ * reports lane health — which is the situation the caller most wants it in.
+ */
+export function withLaneHealth(
+  card: SelfHealth,
+  laneRows: Record<string, LaneHealthRecord>,
+): SelfHealth {
+  const lanes: SelfHealthLaneView[] = Object.values(laneRows)
+    .map((row) => ({
+      lane: row.lane,
+      verdict: row.verdict,
+      age_ms: row.age_ms,
+      detail: row.detail,
+      checked_at: toIso(row.checked_at),
+    }))
+    .sort(
+      (a, b) =>
+        Number(b.verdict === "stale") - Number(a.verdict === "stale") ||
+        String(a.lane).localeCompare(String(b.lane)),
+    );
   return {
-    schema_version: 1,
-    verdict: selfHealthVerdict(components),
-    components,
-    measured_component_count: components.filter((c) => c.current_ok !== null)
-      .length,
-    observed_at: toIso(observedMs),
+    ...card,
+    lanes,
+    stale_lane_count: lanes.filter((l) => l.verdict === "stale").length,
   };
 }

@@ -7455,9 +7455,19 @@
                 "uptime_90d": 0.5
               }
             ],
+            "lanes": [
+              {
+                "age_ms": 1,
+                "checked_at": "2026-06-01T00:00:00.000Z",
+                "detail": "example",
+                "lane": "example",
+                "verdict": "ok"
+              }
+            ],
             "measured_component_count": 1,
             "observed_at": "2026-06-01T00:00:00.000Z",
             "schema_version": 1,
+            "stale_lane_count": 1,
             "verdict": "operational"
           },
           "meta": {
@@ -36246,6 +36256,12 @@
             },
             "type": "array"
           },
+          "lanes": {
+            "items": {
+              "$ref": "#/components/schemas/SelfHealthLane"
+            },
+            "type": "array"
+          },
           "measured_component_count": {
             "maximum": 9007199254740991,
             "minimum": 0,
@@ -36266,6 +36282,11 @@
             "minimum": -9007199254740991,
             "type": "integer"
           },
+          "stale_lane_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
           "verdict": {
             "enum": [
               "operational",
@@ -36280,6 +36301,8 @@
           "verdict",
           "components",
           "measured_component_count",
+          "lanes",
+          "stale_lane_count",
           "observed_at"
         ],
         "type": "object"
@@ -36402,6 +36425,62 @@
           "checks",
           "ok_count",
           "uptime_ratio"
+        ],
+        "type": "object"
+      },
+      "SelfHealthLane": {
+        "additionalProperties": {},
+        "properties": {
+          "age_ms": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lane": {
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "ok",
+              "stale",
+              "unknown"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "lane",
+          "verdict",
+          "age_ms",
+          "detail",
+          "checked_at"
         ],
         "type": "object"
       },

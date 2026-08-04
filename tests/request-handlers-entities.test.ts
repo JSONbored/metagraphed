@@ -6357,6 +6357,69 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     assert.deepEqual(captures.sql, []);
   });
 
+  test("handleSelfHealth: lane verdicts ride on whichever tier answered", async () => {
+    // #9330/#9340. The lanes come from D1, not from the tier that produced the card,
+    // because the point of the change is that a lane's health stays readable when the
+    // serving tier does not -- so the live-tier card above must carry them too.
+    const { env } = dbWith({ neurons: [] });
+    env.METAGRAPH_SELF_HEALTH_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () =>
+        Response.json({ schema_version: 1, marker: "pg", components: [] }),
+    };
+    env.METAGRAPH_HEALTH_DB = {
+      prepare: () => ({
+        all: async () => ({
+          results: [
+            {
+              lane: "neurons",
+              verdict: "ok",
+              age_ms: 30_000,
+              detail: null,
+              checked_at: 1_785_800_000_000,
+            },
+            {
+              lane: "chain-detail",
+              verdict: "stale",
+              age_ms: 14_400_000,
+              detail: "hot_window.to frozen",
+              checked_at: 1_785_800_000_000,
+            },
+          ],
+        }),
+      }),
+    };
+    const body = await json(
+      await handleSelfHealth(
+        req("/api/v1/self-health"),
+        env as unknown as Env,
+        url("/api/v1/self-health"),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    // Stale first: the row an operator acts on leads.
+    assert.deepEqual(
+      body.data.lanes.map((l: { lane: string }) => l.lane),
+      ["chain-detail", "neurons"],
+    );
+    assert.equal(body.data.stale_lane_count, 1);
+  });
+
+  test("handleSelfHealth: no lane table yields an empty list, never a stale claim", async () => {
+    // D1 migrations here are applied by hand, so "the table does not exist yet" is a
+    // real production state and must not read as "every lane is fine" OR as an error.
+    const { env } = dbWith({ neurons: [] });
+    const body = await json(
+      await handleSelfHealth(
+        req("/api/v1/self-health"),
+        env as unknown as Env,
+        url("/api/v1/self-health"),
+      ),
+    );
+    assert.deepEqual(body.data.lanes, []);
+    assert.equal(body.data.stale_lane_count, 0);
+  });
+
   test("handleSelfHealth: a cold tier serves the empty shape, never a 404", async () => {
     // "We have no readings" is a real state, not a missing resource -- and a
     // status page that 404s is the worst possible status report.

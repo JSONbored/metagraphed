@@ -38,6 +38,9 @@
 
 import { z } from "zod";
 import type { StorageReadResult } from "../workers/storage.ts";
+import { loadSelfHealthColdTier } from "./self-health-cold-tier.ts";
+import { loadLatestLaneHealth } from "./lane-health.ts";
+import { withLaneHealth, type SelfHealth } from "./self-health.ts";
 import {
   GetSelfHealthInputSchema,
   GetSelfHealthOutputSchema,
@@ -121,22 +124,40 @@ async function readSelfHealthTier(env: Env): Promise<unknown | null> {
   }
 }
 
-export async function loadSelfHealth(
+/**
+ * The card, from the first tier that can answer. Lane verdicts are attached by the
+ * caller, not here, so that this stays a pure mirror of handleSelfHealth's tier chain
+ * and the two can be compared line for line.
+ */
+async function resolveSelfHealthCard(
   ctx: {
     env: Env;
     readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
   },
-  {
-    readArtifact,
-  }: {
-    readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
-  } = {},
+  readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>,
 ): Promise<unknown> {
   // 1. Live tier — what REST serves, so the three surfaces agree.
   const live = await readSelfHealthTier(ctx.env);
   if (live) return live;
 
-  // 2. Baked artifact — dev/test/fixture environments, and any future bake.
+  // 2. Lakehouse cold tier — the same one REST falls through to.
+  //
+  // #9153 gave the REST route this step and did not give it to us, and when
+  // METAGRAPH_SELF_HEALTH_SOURCE went to "retired" the live tier above stopped
+  // answering for both. REST kept serving the preserved 90-day rollup; this loader
+  // dropped straight past to the empty card. Measured 2026-08-04, the same minute:
+  // GET /api/v1/self-health returned seven days per component, `get_self_health`
+  // returned `days: []` and `uptime_90d: null` for all three.
+  //
+  // That is the THIRD time this module has served an empty card beside a working
+  // REST route (#8633 had the tiers in the wrong order, #8987 unwrapped an envelope
+  // the producer never sent). The recurring cause is a resolution chain maintained
+  // in parallel with the route's instead of shared with it, so the fix that matters
+  // is the ordering being identical here to handleSelfHealth's, tier for tier.
+  const cold = await loadSelfHealthColdTier(ctx.env);
+  if (cold) return cold;
+
+  // 3. Baked artifact — dev/test/fixture environments, and any future bake.
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, SELF_HEALTH_ARTIFACT);
   if (result?.ok) return result.data;
@@ -144,7 +165,7 @@ export async function loadSelfHealth(
   const code =
     (result as { code?: string } | undefined)?.code || "artifact_unavailable";
 
-  // 3. An ABSENT artifact is not an error: it is production's normal state,
+  // 4. An ABSENT artifact is not an error: it is production's normal state,
   //    and "we have no readings" is a real answer. Returning the schema-stable
   //    empty shape (three components, current_ok null, verdict "degraded") is
   //    precisely handleSelfHealth's own documented convention -- it never 404s
@@ -158,6 +179,35 @@ export async function loadSelfHealth(
     code,
     `Could not load ${SELF_HEALTH_ARTIFACT} (${code}).`,
   );
+}
+
+export async function loadSelfHealth(
+  ctx: {
+    env: Env;
+    readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
+  },
+  {
+    readArtifact,
+  }: {
+    readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>;
+  } = {},
+): Promise<unknown> {
+  const card = await resolveSelfHealthCard(ctx, readArtifact);
+  // #9330/#9340: the lane verdicts, attached the same way handleSelfHealth attaches
+  // them -- from D1, on top of whichever tier answered -- so an agent asking
+  // `get_self_health` sees the same lanes the REST card reports rather than a subset
+  // that depends on which tier happened to be reachable.
+  //
+  // The cast is safe by construction and no wider than what the tiers already
+  // guarantee: the live tier is shape-checked by isSelfHealthDocument, the cold tier
+  // and the empty floor are both buildSelfHealth output, and withLaneHealth only
+  // spreads the value and appends two fields.
+  const lanes = await loadLatestLaneHealth(
+    ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+      typeof loadLatestLaneHealth
+    >[0],
+  );
+  return withLaneHealth(card as SelfHealth, lanes);
 }
 
 export const GET_SELF_HEALTH_INSTRUCTIONS =

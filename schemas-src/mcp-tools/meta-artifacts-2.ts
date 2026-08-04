@@ -11,6 +11,7 @@
 // every sibling in this file, which declares an explicit list or an empty
 // array) -- a genuine, pre-existing difference, preserved as-is.
 import { z } from "zod";
+import { SelfHealthArtifactSchema } from "../routes/self-health.ts";
 import { OpenObjectSchema } from "./shared.ts";
 
 // `notes: {type:["array","string","null"], items:{type:"string"}}` -- this
@@ -67,37 +68,16 @@ export type GetBuildOutput = z.infer<typeof GetBuildOutputSchema>;
 export const GetSelfHealthInputSchema = z.object({}).strict();
 export type GetSelfHealthInput = z.infer<typeof GetSelfHealthInputSchema>;
 
-const SelfHealthDaySchema = z
-  .object({
-    day: z.string(),
-    checks: z.int(),
-    ok_count: z.int(),
-    uptime_ratio: z.number(),
-  })
-  .passthrough();
-
-const SelfHealthComponentViewSchema = z
-  .object({
-    component: z.string(),
-    current_ok: z.boolean().nullable(),
-    http_status: z.int().nullable(),
-    latency_ms: z.number().nullable(),
-    checked_at: z.string().nullable(),
-    note: z.string().nullable(),
-    days: z.array(SelfHealthDaySchema),
-    uptime_90d: z.number().nullable(),
-  })
-  .passthrough();
-
-export const GetSelfHealthOutputSchema = z
-  .object({
-    schema_version: z.int(),
-    verdict: z.string(),
-    components: z.array(SelfHealthComponentViewSchema),
-    measured_component_count: z.int(),
-    observed_at: z.string().nullable(),
-  })
-  .passthrough();
+// The output schema IS the route's schema, imported rather than restated.
+//
+// These were two hand-kept copies of one shape, and they had already drifted: this
+// copy typed `latency_ms` as a float and `verdict` as a bare string, while the route
+// bounded `uptime_ratio` to 0..1 and enumerated the three verdicts. Nothing enforced
+// agreement, so `get_self_health` published a looser contract than the REST route
+// serving the identical bytes. Sharing the definition removes the drift by
+// construction -- adding a field to the card (as #9330's `lanes` does) can no longer
+// reach one surface and miss the other.
+export const GetSelfHealthOutputSchema = SelfHealthArtifactSchema;
 export type GetSelfHealthOutput = z.infer<typeof GetSelfHealthOutputSchema>;
 
 export const GetCoverageInputSchema = z.object({}).strict();

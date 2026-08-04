@@ -43,6 +43,31 @@ export const SelfHealthComponentSchema = z
   .passthrough();
 export type SelfHealthComponent = z.infer<typeof SelfHealthComponentSchema>;
 
+// #9330/#9340: the per-lane watchdog verdicts, from the D1 `lane_health` table.
+//
+// Declared here rather than beside the component views because they answer a
+// different question. `components` is "were OUR public surfaces reachable",
+// probed from outside. `lanes` is "did each ingest lane actually write", which is
+// what the staleness watchdogs compute and what PostHog was silently dropping.
+// A lane can be dead for hours while every component reads 100% -- that is exactly
+// the 2026-08-03 chain-detail outage, and why this is not folded into the former.
+export const LANE_VERDICTS = ["ok", "stale", "unknown"] as const;
+
+export const SelfHealthLaneSchema = z
+  .object({
+    lane: z.string(),
+    // `unknown` is NOT a synonym for `ok`: the watchdog could not evaluate the
+    // lane at all, which is the same "we did not measure" that current_ok models
+    // with null above.
+    verdict: z.enum(LANE_VERDICTS),
+    // Null when the watchdog could not measure how far behind the lane was.
+    age_ms: z.int().min(0).nullable(),
+    detail: z.string().nullable(),
+    checked_at: z.string().nullable(),
+  })
+  .passthrough();
+export type SelfHealthLane = z.infer<typeof SelfHealthLaneSchema>;
+
 export const SelfHealthArtifactSchema = z
   .object({
     schema_version: z.int(),
@@ -51,6 +76,9 @@ export const SelfHealthArtifactSchema = z
     verdict: z.enum(["operational", "degraded", "outage"]),
     components: z.array(SelfHealthComponentSchema),
     measured_component_count: z.int().min(0),
+    // Stale lanes lead, then alphabetical -- the rows an operator acts on first.
+    lanes: z.array(SelfHealthLaneSchema),
+    stale_lane_count: z.int().min(0),
     observed_at: z.string().nullable(),
   })
   .passthrough();

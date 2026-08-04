@@ -27,6 +27,7 @@
 // healthy check is still legible.
 
 import { recordExceptionEvent } from "./usage-telemetry.ts";
+import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 
 /**
  * How far behind the lane may fall before this is a stall.
@@ -87,6 +88,9 @@ interface D1Like {
 }
 
 export interface ChainDetailStalenessDeps {
+  /** Injectable durable sink, so a test can assert the verdict was RECORDED and
+   * not merely notified — the distinction #9330/#9340 exist about. */
+  laneHealthDb?: LaneHealthDb | null;
   now?: () => number;
   /** Telemetry seam for tests; defaults to the real recordExceptionEvent. */
   recordException?: typeof recordExceptionEvent;
@@ -145,6 +149,21 @@ export async function runChainDetailStalenessWatchdog(
         errorCode: "stale_lane",
       }).catch(() => false);
     }
+    // #9330/#9340: the DURABLE record, written every tick rather than only when
+    // stale. PostHog stays the notification path; it is no longer the record, because
+    // a dropped $exception is indistinguishable from a lane that was fine. Writing on
+    // every tick is also what makes "the watchdog stopped running" visible at all.
+    // Never throws -- see recordLaneVerdict.
+    await recordLaneVerdict(
+      deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as never),
+      {
+        lane: "chain-detail-staleness",
+        verdict: verdict.stale ? "stale" : "ok",
+        age_ms: verdict.age_ms,
+        detail: verdict.reason ?? null,
+        checked_at: now(),
+      },
+    );
     // `ok` describes whether the TICK ran, not whether the lane is fresh.
     return { ok: true, alerted: verdict.stale, ...verdict };
   } catch (err) {
