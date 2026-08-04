@@ -4,6 +4,7 @@
 // store or watermark must be a loud no-op, never a quiet one, because a lane
 // that silently does nothing looks exactly like a healthy one.
 import assert from "node:assert/strict";
+import { RAW_CAPTURE_CRON } from "../workers/config.ts";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
@@ -12,6 +13,8 @@ import {
   d1Watermark,
   RAW_CAPTURE_GENESIS_FLOOR,
   RAW_CAPTURE_LANES,
+  cronStepMinutes,
+  pacedLaneBudget,
   RPC_CALLS_PER_BLOCK,
   RPC_REQUESTS_PER_MINUTE_LIMIT,
   runRawCaptureSync,
@@ -118,11 +121,15 @@ function envWith(over: Record<string, unknown> = {}) {
   return { env, puts };
 }
 
+/** Pacing has its own tests; every other test skips the wait. */
+const noSleep = async () => {};
+
 describe("runRawCaptureSync — refusal paths", () => {
   test("disabled is a quiet no-op, not an error", async () => {
     const captures: unknown[] = [];
     const { env } = envWith({ RAW_CAPTURE_ENABLED: undefined });
     const result = await runRawCaptureSync(env as never, {
+      sleepFn: noSleep,
       recordException: (async (...a: unknown[]) => {
         captures.push(a);
         return true;
@@ -136,6 +143,7 @@ describe("runRawCaptureSync — refusal paths", () => {
     const captures: { route?: string }[] = [];
     const { env } = envWith({ METAGRAPH_ARCHIVE: undefined });
     const result = await runRawCaptureSync(env as never, {
+      sleepFn: noSleep,
       recordException: (async (_e: unknown, ev: { route?: string }) => {
         captures.push(ev);
         return true;
@@ -150,6 +158,7 @@ describe("runRawCaptureSync — refusal paths", () => {
     const captures: unknown[] = [];
     const { env } = envWith({ METAGRAPH_HEALTH_DB: undefined });
     const result = await runRawCaptureSync(env as never, {
+      sleepFn: noSleep,
       recordException: (async () => {
         captures.push(1);
         return true;
@@ -163,6 +172,7 @@ describe("runRawCaptureSync — refusal paths", () => {
     const captures: { route?: string }[] = [];
     const { env } = envWith();
     const result = await runRawCaptureSync(env as never, {
+      sleepFn: noSleep,
       fetchImpl: (async () => {
         throw new Error("rpc down");
       }) as unknown as typeof fetch,
@@ -187,6 +197,7 @@ describe("runRawCaptureSync — capture", () => {
   test("first tick starts at the genesis floor and persists the watermark", async () => {
     const { env, puts } = envWith();
     const result = await runRawCaptureSync(env as never, {
+      sleepFn: noSleep,
       fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 2),
       now: () => 5000,
     });
@@ -206,10 +217,12 @@ describe("runRawCaptureSync — capture", () => {
   test("a second tick resumes from the persisted watermark, not the floor", async () => {
     const { env, puts } = envWith();
     await runRawCaptureSync(env as never, {
+      sleepFn: noSleep,
       fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 1),
       now: () => 1,
     });
     const second = await runRawCaptureSync(env as never, {
+      sleepFn: noSleep,
       fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 4),
       now: () => 2,
     });
@@ -221,10 +234,12 @@ describe("runRawCaptureSync — capture", () => {
   test("caught up: no work and no write", async () => {
     const { env, puts } = envWith();
     await runRawCaptureSync(env as never, {
+      sleepFn: noSleep,
       fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR),
       now: () => 1,
     });
     const again = await runRawCaptureSync(env as never, {
+      sleepFn: noSleep,
       fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR),
       now: () => 2,
     });
@@ -236,10 +251,18 @@ describe("runRawCaptureSync — capture", () => {
   test("reports lag so a backlog is observable rather than inferred", async () => {
     const { env } = envWith();
     const result = await runRawCaptureSync(env as never, {
+      sleepFn: noSleep,
       fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 10_000),
       now: () => 1,
     });
-    assert.equal(result.captured, 150, "bounded per tick");
+    // The DERIVED cap, not a literal: the budget follows the cron and the lane
+    // count, so restating it here would be the second hand-written number
+    // #9430 exists to remove.
+    assert.equal(
+      result.captured,
+      RAW_CAPTURE_LANES[0]!.maxPerTick,
+      "bounded per tick",
+    );
     assert.ok(
       (result.behind ?? 0) > 9000,
       "still far behind, and says so — the next ticks drain it",
@@ -286,6 +309,7 @@ describe("runRawCaptureSync — capture", () => {
     }) as unknown as typeof fetch;
     try {
       const result = await runRawCaptureSync(env as never, {
+        sleepFn: noSleep,
         fetchImpl: flaky,
         now: () => 9,
       });
@@ -306,6 +330,7 @@ describe("runRawCaptureSync — capture", () => {
   test("a thrown non-Error still yields a reason instead of 'undefined'", async () => {
     const { env } = envWith();
     const result = await runRawCaptureSync(env as never, {
+      sleepFn: noSleep,
       fetchImpl: (async () => {
         throw "string failure";
       }) as unknown as typeof fetch,
@@ -343,6 +368,7 @@ describe("the testnet capture lane", () => {
   test("mainnet's R2 prefix and watermark row are untouched by testnet's", async () => {
     const { env, puts } = envWith();
     const result = await runRawCaptureSync(env as never, {
+      sleepFn: noSleep,
       fetchImpl: rpcFetch(
         RAW_CAPTURE_GENESIS_FLOOR + 1,
         TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1,
@@ -395,6 +421,7 @@ describe("the testnet capture lane", () => {
     // well-formed blocks — so the only proof is provenance in the payload.
     const { env, puts } = envWith();
     await runRawCaptureSync(env as never, {
+      sleepFn: noSleep,
       fetchImpl: rpcFetch(
         RAW_CAPTURE_GENESIS_FLOOR,
         TESTNET_RAW_CAPTURE_GENESIS_FLOOR,
@@ -419,6 +446,7 @@ describe("the testnet capture lane", () => {
     // The reason the lanes run in sequence with independent error handling.
     const { env, puts } = envWith();
     const result = await runRawCaptureSync(env as never, {
+      sleepFn: noSleep,
       fetchImpl: (async (url: unknown, init?: { body?: string }) => {
         if (String(url).includes("test.finney"))
           throw new Error("testnet down");
@@ -491,23 +519,118 @@ describe("the testnet capture lane", () => {
     );
   });
 
-  test("the testnet budget stays inside the endpoint's measured rate limit", () => {
-    // #9378. The public RPC serves ~100 requests per client per minute — proven
-    // by replaying this lane's exact call pattern until it 429'd at call 100.
-    // The lane shipped asking for 100 BLOCKS (300 calls), so two-thirds of every
-    // tick was refused: not a data bug (the no-gap guarantee retries) but 200
-    // rejected requests every five minutes at an endpoint we do not own.
-    //
-    // Asserted rather than commented because the failure is invisible in
-    // production — a throttled tick looks exactly like a slow one.
-    const testnet = RAW_CAPTURE_LANES.find(
-      (lane) => lane.network === "testnet",
-    );
-    assert.ok(testnet, "no testnet lane declared");
-    const calls = testnet.maxPerTick * RPC_CALLS_PER_BLOCK + 1;
+  // This used to assert that a whole TICK fit inside one minute's allowance,
+  // and that premise is exactly what capped testnet at 32 blocks (#9430). An
+  // UNPACED tick fires its burst at network speed, so one minute bounds it
+  // however long the tick is. A paced one spends the tick, so the tick bounds
+  // it -- and what has to fit the limit is the RATE.
+  test("the paced rate across all lanes stays inside the measured limit", () => {
+    for (const lane of RAW_CAPTURE_LANES) {
+      assert.ok(lane.minGapMs > 0, `${lane.network} is not paced at all`);
+      const callsPerMinute =
+        (60_000 / lane.minGapMs) *
+        RPC_CALLS_PER_BLOCK *
+        RAW_CAPTURE_LANES.length;
+      assert.ok(
+        callsPerMinute < RPC_REQUESTS_PER_MINUTE_LIMIT,
+        `${lane.network} sustains ${callsPerMinute.toFixed(0)} calls/min across ${RAW_CAPTURE_LANES.length} lanes, at or over ${RPC_REQUESTS_PER_MINUTE_LIMIT}/min`,
+      );
+    }
+  });
+
+  test("a paced tick finishes inside its own interval", () => {
+    // Lanes run CONCURRENTLY, so the wall time is one lane's, not the sum --
+    // but it still has to leave slack for jitter and a mid-tick redeploy.
+    const intervalMs = cronStepMinutes(RAW_CAPTURE_CRON) * 60_000;
+    for (const lane of RAW_CAPTURE_LANES) {
+      const spendMs = lane.maxPerTick * lane.minGapMs;
+      assert.ok(
+        spendMs < intervalMs,
+        `${lane.network} would spend ${(spendMs / 60_000).toFixed(1)} min of a ${intervalMs / 60_000} min tick`,
+      );
+    }
+  });
+
+  // The paired positive: a budget test that only says "not too fast" is
+  // satisfied by a lane that never catches up.
+  test("the budget lets every lane outpace the chain it follows", () => {
+    const ticksPerHour = 60 / cronStepMinutes(RAW_CAPTURE_CRON);
+    for (const lane of RAW_CAPTURE_LANES) {
+      const perHour = lane.maxPerTick * ticksPerHour;
+      // Bittensor produces a block every 12 s on both chains.
+      assert.ok(
+        perHour > 3600 / 12,
+        `${lane.network} captures ${perHour}/h against a chain producing 300/h -- it can never catch up`,
+      );
+    }
+  });
+
+  test("a third network would narrow the shared allowance", () => {
+    const two = pacedLaneBudget(2, cronStepMinutes(RAW_CAPTURE_CRON));
+    const three = pacedLaneBudget(3, cronStepMinutes(RAW_CAPTURE_CRON));
+    assert.ok(three.maxBlocks < two.maxBlocks);
+    assert.ok(three.minGapMs > two.minGapMs);
+  });
+
+  test("an unreadable cron narrows the budget rather than widening it", () => {
+    assert.equal(cronStepMinutes("11,41 * * * *"), 5);
+    assert.equal(cronStepMinutes(""), 5);
+    assert.equal(cronStepMinutes("*/2 * * * *"), 2);
+  });
+});
+
+// #9430. Concurrency is what turns the shared budget into throughput -- each
+// lane gets the whole interval instead of half -- but only if isolation still
+// holds, which now comes from runLane converting failures into results rather
+// than from ordering.
+describe("the lanes run concurrently, and stay isolated", () => {
+  test("one lane's endpoint failing does not stop the other", async () => {
+    const { env } = envWith();
+    // Only the testnet endpoint fails.
+    const result = (await runRawCaptureSync(env as never, {
+      sleepFn: noSleep,
+      now: () => 1,
+      fetchImpl: (async (url: string, init: RequestInit) => {
+        if (String(url).includes("test.finney")) {
+          throw new Error("testnet endpoint down");
+        }
+        return rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 100)(
+          url as never,
+          init as never,
+        );
+      }) as never,
+    })) as { lanes?: { network: string; ok: boolean; captured?: number }[] };
+    const lanes = result.lanes ?? [];
+    const mainnet = lanes.find((l) => l.network === "mainnet");
+    const testnet = lanes.find((l) => l.network === "testnet");
+    // The POSITIVE first: mainnet actually captured. An "isolation" test where
+    // neither lane ran passes for the wrong reason.
     assert.ok(
-      calls < RPC_REQUESTS_PER_MINUTE_LIMIT,
-      `a testnet tick issues ${calls} calls, at or over the endpoint's ${RPC_REQUESTS_PER_MINUTE_LIMIT}/min limit`,
+      (mainnet?.captured ?? 0) > 0,
+      "mainnet captured nothing, so isolation proves nothing",
     );
+    assert.equal(
+      testnet?.ok,
+      false,
+      "the failing lane must report its failure",
+    );
+  });
+
+  test("both lanes are attempted in one tick", async () => {
+    const { env } = envWith();
+    const seen = new Set<string>();
+    const result = (await runRawCaptureSync(env as never, {
+      sleepFn: noSleep,
+      now: () => 1,
+      fetchImpl: (async (url: string, init: RequestInit) => {
+        seen.add(String(url).includes("test.finney") ? "testnet" : "mainnet");
+        return rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 100)(
+          url as never,
+          init as never,
+        );
+      }) as never,
+    })) as { lanes?: { network: string }[] };
+    assert.deepEqual([...seen].sort(), ["mainnet", "testnet"]);
+    assert.equal((result.lanes ?? []).length, RAW_CAPTURE_LANES.length);
   });
 });

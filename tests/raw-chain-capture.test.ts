@@ -438,3 +438,142 @@ describe("captureTick — the no-gap guarantee", () => {
     }
   });
 });
+
+// #9430. The whole point of chunked flushing is what survives an invocation
+// that does NOT finish, so these assert the durability boundary rather than
+// the happy path.
+describe("captureTick flushes in chunks", () => {
+  function chunkedDeps(opts: {
+    heights: number;
+    flushEvery?: number;
+    minGapMs?: number;
+    failAt?: number;
+  }) {
+    const puts: { key: string; lines: number }[] = [];
+    const marks: number[] = [];
+    const gaps: number[] = [];
+    return {
+      puts,
+      marks,
+      gaps,
+      deps: {
+        rpcUrl: "https://rpc.invalid",
+        genesisFloor: 100,
+        maxPerTick: opts.heights,
+        flushEvery: opts.flushEvery,
+        minGapMs: opts.minGapMs ?? 0,
+        sleepFn: async (ms: number) => {
+          gaps.push(ms);
+        },
+        store: {
+          put: async (key: string, value: string) => {
+            puts.push({ key, lines: value.trimEnd().split("\n").length });
+          },
+        },
+        watermark: {
+          read: async () => 99,
+          write: async (n: number) => {
+            marks.push(n);
+          },
+        },
+        now: () => 1,
+        fetchImpl: rpcFetch({
+          head: 100 + opts.heights,
+          ...(opts.failAt ? { failAt: opts.failAt } : {}),
+        }),
+      },
+    };
+  }
+
+  test("writes one object per chunk, and the watermark trails each", async () => {
+    const { puts, marks, deps } = chunkedDeps({ heights: 10, flushEvery: 4 });
+    const result = await captureTick(deps as never);
+    assert.equal(result.captured, 10);
+    // 4 + 4 + 2, the last being the remainder.
+    assert.deepEqual(
+      puts.map((p) => p.lines),
+      [4, 4, 2],
+    );
+    // BYTES FIRST, WATERMARK AFTER -- one mark per chunk, each naming that
+    // chunk's last block, so the watermark never claims a height whose object
+    // is not already durable.
+    assert.deepEqual(marks, [103, 107, 109]);
+    assert.equal(result.watermark, 109);
+  });
+
+  // The property the whole change rests on: a tick that dies mid-way keeps
+  // everything it flushed, and the watermark points at exactly that.
+  test("a failure keeps every flushed chunk and claims no more", async () => {
+    const { puts, marks, deps } = chunkedDeps({
+      heights: 10,
+      flushEvery: 3,
+      failAt: 106,
+    });
+    const result = await captureTick(deps as never);
+    // 100-102 and 103-105 landed; 106 failed, so nothing beyond it is claimed.
+    assert.deepEqual(
+      puts.map((p) => p.lines),
+      [3, 3],
+    );
+    assert.deepEqual(marks, [102, 105]);
+    assert.equal(result.watermark, 105);
+    assert.equal(result.stoppedAt, 106);
+    assert.equal(result.captured, 6);
+  });
+
+  test("a failure before any chunk flushes claims nothing at all", async () => {
+    const { puts, marks, deps } = chunkedDeps({
+      heights: 10,
+      flushEvery: 5,
+      failAt: 100,
+    });
+    const result = await captureTick(deps as never);
+    assert.deepEqual(puts, []);
+    assert.deepEqual(marks, []);
+    assert.equal(result.captured, 0);
+    assert.equal(result.watermark, 99, "the watermark must not move");
+  });
+
+  // A retry re-reads from the same watermark, so it rebuilds the same chunk
+  // boundaries and overwrites byte-for-byte rather than appending a duplicate.
+  test("a retry of an unflushed range reproduces the same key", async () => {
+    const first = chunkedDeps({ heights: 6, flushEvery: 3 });
+    await captureTick(first.deps as never);
+    const second = chunkedDeps({ heights: 6, flushEvery: 3 });
+    await captureTick(second.deps as never);
+    assert.deepEqual(
+      first.puts.map((p) => p.key),
+      second.puts.map((p) => p.key),
+    );
+  });
+
+  test("without flushEvery it writes once, exactly as before", async () => {
+    const { puts, marks, deps } = chunkedDeps({ heights: 7 });
+    await captureTick(deps as never);
+    assert.equal(puts.length, 1);
+    assert.equal(puts[0]!.lines, 7);
+    assert.deepEqual(marks, [106]);
+  });
+
+  test("pacing waits between blocks, never before the first", async () => {
+    const { gaps, deps } = chunkedDeps({ heights: 4, minGapMs: 4500 });
+    const result = await captureTick(deps as never);
+    assert.equal(result.captured, 4);
+    assert.deepEqual(gaps, [4500, 4500, 4500]);
+  });
+
+  test("the default sleep is a real timer, not a no-op", async () => {
+    // Every other test injects one, so without this the shipped pacing would be
+    // exercised by nothing. One millisecond: this is about the wiring.
+    const { deps } = chunkedDeps({ heights: 3, minGapMs: 20 });
+    const { sleepFn: _injected, ...shipped } = deps as Record<string, unknown>;
+    const started = Date.now();
+    const result = await captureTick(shipped as never);
+    assert.equal(result.captured, 3);
+    // Two gaps between three blocks, so at least ~40ms of real waiting.
+    assert.ok(
+      Date.now() - started >= 30,
+      "the shipped pacing did not actually wait",
+    );
+  });
+});

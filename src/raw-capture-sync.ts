@@ -22,6 +22,7 @@ import {
   type RawCaptureStore,
   type WatermarkStore,
 } from "./raw-chain-capture.ts";
+import { RAW_CAPTURE_CRON } from "../workers/config.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import {
   CHAIN_RPC_URLS,
@@ -87,37 +88,36 @@ export const RAW_CAPTURE_GENESIS_FLOOR = 8756635;
 export const TESTNET_RAW_CAPTURE_GENESIS_FLOOR = 7_700_000;
 
 /**
- * Blocks per tick, per network. Each block costs three RPC calls.
+ * The per-lane tick budget, DERIVED from the endpoint's own limit.
  *
- * Two ceilings apply, and the tighter one wins per network.
- *
- * THE PLATFORM CEILING is 1000 subrequests per invocation, and both networks
- * run in ONE invocation, so the budgets are bounded together rather than
+ * THE PLATFORM CEILING is 1000 subrequests per invocation, and every lane runs
+ * in ONE invocation, so the budgets are bounded together rather than
  * individually.
  *
- * THE ENDPOINT CEILING is ~100 requests per client per minute, measured against
- * the public testnet RPC by replaying this lane's exact call pattern (#9378):
+ * THE ENDPOINT CEILING is ~100 requests per client per minute, measured by
+ * replaying this lane's exact call pattern (#9378):
  *
  *     FAILED after 33 blocks (100 calls) in 23.0s: HTTP 429
  *
- * It is per CLIENT, not per host — probing test.chain.opentensor.ai straight
+ * It is per CLIENT, not per host -- probing test.chain.opentensor.ai straight
  * afterwards stopped after 4 blocks, because the first probe had already spent
- * the budget. So there is no sibling endpoint to spread across, and a testnet
- * tick that asks for more than ~33 blocks does not go faster; it just gets the
- * surplus refused. The original 100 here made 300 calls to have 200 rejected
- * every five minutes, against an endpoint we do not own.
+ * the budget. So there is no sibling endpoint to spread across.
  *
- * 32, not 33: 32*3 + 1 head fetch = 97 calls, leaving headroom rather than
- * landing exactly on the limit, where a single retry tips the tick into a 429.
+ * THESE USED TO BE TWO HAND-WRITTEN NUMBERS (150 mainnet, 32 testnet), and
+ * #9430 is what that cost. 32 was pinned just under the measured 429; 150 was
+ * chosen when mainnet was the only lane. Together they sustained 109 calls/min
+ * against a 100/min ceiling the moment a second lane existed -- over budget in
+ * the worst case with nothing to say so -- while testnet saturated its own cap
+ * every tick and sat ~92 hours from closing a gap the interval could close in
+ * ~16.
  *
- * Mainnet keeps its original 150. It sits at the tip in steady state (~25
- * blocks/tick, ~76 calls) so it does not approach the limit; the budget only
- * matters there for a backfill, and lowering it would slow a recovery this
- * measurement says nothing about.
+ * The limit is PER MINUTE, so that is what the budget reads. An unpaced tick is
+ * bounded by one minute's allowance however long it runs; a paced one is
+ * bounded by its own span. Both numbers below fall out of the same three
+ * measured inputs -- the ceiling, the calls per block, and the cron interval --
+ * so a cadence change or a third network moves them together instead of leaving
+ * one behind.
  */
-const MAX_BLOCKS_PER_TICK = 150;
-const TESTNET_MAX_BLOCKS_PER_TICK = 32;
-
 /**
  * Requests the public RPC serves one client per minute, measured (#9378).
  *
@@ -129,6 +129,48 @@ export const RPC_REQUESTS_PER_MINUTE_LIMIT = 100;
 
 /** RPC calls one captured block costs: hash, block body, events blob. */
 export const RPC_CALLS_PER_BLOCK = 3;
+
+const RPC_BUDGET_UTILISATION = 0.8;
+
+/**
+ * Fraction of the interval a tick may spend reading.
+ *
+ * Not all of it: cron jitter and a redeploy landing mid-tick both want slack,
+ * and a tick still running when the next fires would double the rate. Chunked
+ * flushing (see captureTick) is what makes even this much affordable -- a
+ * killed invocation now loses one chunk rather than everything it read.
+ */
+const TICK_SPEND_FRACTION = 0.8;
+
+/** Blocks per durable write. One R2 PUT each, so this trades a few writes for
+ * how much a killed invocation discards -- 25 blocks is ~2 minutes of chain. */
+const FLUSH_EVERY_BLOCKS = 25;
+
+/** The paced budget for ONE lane, given how many share the client allowance. */
+export function pacedLaneBudget(
+  laneCount: number,
+  cronMinutes: number,
+  limitPerMinute: number = RPC_REQUESTS_PER_MINUTE_LIMIT,
+): { maxBlocks: number; minGapMs: number } {
+  const callsPerMinute = (limitPerMinute * RPC_BUDGET_UTILISATION) / laneCount;
+  const blocksPerMinute = callsPerMinute / RPC_CALLS_PER_BLOCK;
+  return {
+    // Lanes run CONCURRENTLY, so each gets the whole spendable interval rather
+    // than its share of it.
+    maxBlocks: Math.max(
+      1,
+      Math.floor(blocksPerMinute * cronMinutes * TICK_SPEND_FRACTION),
+    ),
+    minGapMs: Math.ceil(60_000 / blocksPerMinute),
+  };
+}
+
+/** The `*` `/N` minute step of a cron. An unreadable cron falls back to the
+ * shipped cadence, narrowing the budget rather than widening it. */
+export function cronStepMinutes(cron: string): number {
+  const step = Number(cron.split(" ")[0]!.replace("*/", ""));
+  return Number.isInteger(step) && step > 0 ? step : 5;
+}
 
 /**
  * The capture lanes, as data.
@@ -146,7 +188,16 @@ export interface RawCaptureLane {
   defaultRpcUrl: string;
   genesisFloor: number;
   maxPerTick: number;
+  /** Gap between two blocks' reads, so the tick's span is the budget rather
+   * than one minute's allowance. */
+  minGapMs: number;
+  /** Blocks per durable write. */
+  flushEvery: number;
 }
+
+/** Every lane draws on ONE client allowance, so they share one derived
+ * budget. Declared before the table because the table needs it. */
+const LANE_BUDGET = pacedLaneBudget(2, cronStepMinutes(RAW_CAPTURE_CRON));
 
 export const RAW_CAPTURE_LANES: readonly RawCaptureLane[] = [
   {
@@ -154,7 +205,9 @@ export const RAW_CAPTURE_LANES: readonly RawCaptureLane[] = [
     rpcUrlEnv: "CHAIN_HEAD_RPC_URL",
     defaultRpcUrl: DEFAULT_RPC_URL,
     genesisFloor: RAW_CAPTURE_GENESIS_FLOOR,
-    maxPerTick: MAX_BLOCKS_PER_TICK,
+    maxPerTick: LANE_BUDGET.maxBlocks,
+    minGapMs: LANE_BUDGET.minGapMs,
+    flushEvery: FLUSH_EVERY_BLOCKS,
   },
   {
     network: "testnet",
@@ -164,7 +217,9 @@ export const RAW_CAPTURE_LANES: readonly RawCaptureLane[] = [
     // an archive endpoint means a widened floor stays possible later.
     defaultRpcUrl: CHAIN_RPC_URLS.testnet,
     genesisFloor: TESTNET_RAW_CAPTURE_GENESIS_FLOOR,
-    maxPerTick: TESTNET_MAX_BLOCKS_PER_TICK,
+    maxPerTick: LANE_BUDGET.maxBlocks,
+    minGapMs: LANE_BUDGET.minGapMs,
+    flushEvery: FLUSH_EVERY_BLOCKS,
   },
 ];
 
@@ -239,6 +294,8 @@ export async function runRawCaptureSync(
     fetchImpl?: typeof fetch;
     now?: () => number;
     recordException?: typeof recordExceptionEvent;
+    /** Injectable so a test asserts the PACING without waiting for it (#9430). */
+    sleepFn?: (ms: number) => Promise<void>;
   } = {},
 ): Promise<RawCaptureSyncResult> {
   const now = deps.now ?? Date.now;
@@ -275,24 +332,29 @@ export async function runRawCaptureSync(
 
   // Each lane is captured independently and IN ORDER, mainnet first.
   //
-  // Isolation is the whole point of the loop shape. Testnet is a best-effort
-  // secondary lane against a chain that gets wiped; a testnet RPC outage must
-  // not stop mainnet capture, and — because the mainnet lane runs first and its
-  // watermark is already durable by then — it cannot. The reverse is also true:
-  // a mainnet failure still lets testnet run, so one broken endpoint degrades
-  // one lane rather than the cron.
-  const lanes: RawCaptureLaneResult[] = [];
-  for (const lane of RAW_CAPTURE_LANES) {
-    lanes.push(
-      await runLane(lane, {
+  // CONCURRENT, not sequential (#9430). Isolation is still the whole point:
+  // testnet is a best-effort secondary lane, and a testnet RPC outage must not
+  // stop mainnet capture. `runLane` already converts every failure into a
+  // result rather than a throw, so `Promise.all` here cannot let one lane's
+  // failure reject the other's -- isolation comes from that, not from ordering.
+  //
+  // Sequential was what made the budget unusable. Each lane is paced to its own
+  // share of the per-minute allowance, so running them in parallel does not
+  // raise the combined rate at all -- it just stops each lane idling through
+  // the other's turn. Two lanes each getting the WHOLE interval instead of half
+  // is the entire throughput gain here.
+  const lanes: RawCaptureLaneResult[] = await Promise.all(
+    RAW_CAPTURE_LANES.map((lane) =>
+      runLane(lane, {
         env,
         store,
         now,
         capture,
         fetchImpl: deps.fetchImpl,
+        sleepFn: deps.sleepFn,
       }),
-    );
-  }
+    ),
+  );
 
   const mainnet = lanes.find((lane) => lane.network === "mainnet");
   // The top-level result keeps mainnet's shape verbatim: this function's return
@@ -327,6 +389,7 @@ async function runLane(
     now: () => number;
     capture: typeof recordExceptionEvent;
     fetchImpl?: typeof fetch;
+    sleepFn?: (ms: number) => Promise<void>;
   },
 ): Promise<RawCaptureLaneResult> {
   const { env, store, now, capture } = ctx;
@@ -338,7 +401,10 @@ async function runLane(
       genesisFloor: lane.genesisFloor,
       maxPerTick: lane.maxPerTick,
       network: lane.network,
+      minGapMs: lane.minGapMs,
+      flushEvery: lane.flushEvery,
       fetchImpl: ctx.fetchImpl,
+      sleepFn: ctx.sleepFn,
       now,
     });
     if (result.stoppedAt !== undefined) {
