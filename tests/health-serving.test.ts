@@ -288,6 +288,197 @@ describe("overlayRpcPoolEligibility", () => {
       { ...baseEndpoint, id: "b", url: "https://b", pool_eligible: true },
     ],
   };
+  // #9355. The overlay refreshed status/latency/eligibility but left score,
+  // score_reasons, eligible_count and best_endpoint_id as the daily build wrote them.
+  // These reproduce the live failure exactly.
+  test("recomputes the score from the refreshed status, not the build's", () => {
+    // Observed on api.metagraph.sh 2026-08-04: an endpoint serving status:"ok" while
+    // carrying a stale `status-degraded` penalty and no `status-ok` bonus, so it
+    // scored 0 while genuinely healthy.
+    const stale = {
+      id: "finney-rpc",
+      endpoints: [
+        {
+          ...baseEndpoint,
+          id: "healthy",
+          url: "https://healthy",
+          status: "degraded",
+          score: 0,
+          score_reasons: [{ reason: "status-degraded", points: -10 }],
+        },
+      ],
+    };
+    const live = {
+      endpoints: [{ id: "healthy", status: "ok", latency_ms: 100 }],
+    };
+    const out = overlayRpcPoolEligibility(stale, live) as Row;
+    const row = out.endpoints[0];
+    assert.equal(row.status, "ok");
+    assert.ok(
+      row.score > 0,
+      `a healthy endpoint must not score 0; got ${row.score}`,
+    );
+    assert.ok(
+      row.score_reasons.some((r: Row) => r.reason === "status-ok"),
+      "the refreshed reasons must credit status-ok",
+    );
+    assert.ok(
+      !row.score_reasons.some((r: Row) => r.reason === "status-degraded"),
+      "the build-time status-degraded penalty must not survive the overlay",
+    );
+  });
+
+  test("a dead endpoint never outranks a healthy one", () => {
+    // The live shape: a decommissioned host (metagraphed-infra#225, Cloudflare 1033)
+    // held a stale latency sample worth +16 and outranked four `ok` endpoints on 0.
+    const stale = {
+      id: "finney-rpc",
+      endpoints: [
+        {
+          ...baseEndpoint,
+          id: "dead",
+          url: "https://dead",
+          status: "ok",
+          latency_ms: 412,
+          score: 6,
+        },
+        {
+          ...baseEndpoint,
+          id: "healthy",
+          url: "https://healthy",
+          status: "degraded",
+          latency_ms: 986,
+          score: 0,
+        },
+      ],
+    };
+    const live = {
+      endpoints: [
+        { id: "dead", status: "degraded", latency_ms: 412 },
+        { id: "healthy", status: "ok", latency_ms: 986 },
+      ],
+    };
+    const out = overlayRpcPoolEligibility(stale, live) as Row;
+    assert.equal(
+      out.endpoints[0].id,
+      "healthy",
+      "the ok endpoint must sort above the degraded one despite worse latency",
+    );
+    assert.equal(out.best_endpoint_id, "healthy");
+  });
+
+  test("recomputes eligible_count and best_endpoint_id from the refreshed rows", () => {
+    // Live `finney-rpc` served best_endpoint_id:null while four endpoints were
+    // eligible -- the field was frozen at a build where none of them was.
+    const stale = {
+      id: "finney-rpc",
+      endpoints: [
+        { ...baseEndpoint, id: "a", url: "https://a", status: "failed" },
+        { ...baseEndpoint, id: "b", url: "https://b", status: "failed" },
+      ],
+      eligible_count: 0,
+      best_endpoint_id: null,
+    };
+    const live = {
+      endpoints: [
+        { id: "a", status: "ok", latency_ms: 50 },
+        { id: "b", status: "ok", latency_ms: 900 },
+      ],
+    };
+    const out = overlayRpcPoolEligibility(stale, live) as Row;
+    assert.equal(out.eligible_count, 2);
+    assert.equal(out.best_endpoint_id, "a", "lowest latency among equals wins");
+  });
+
+  test("an ineligible endpoint is never named best, however well it scores", () => {
+    const stale = {
+      id: "finney-rpc",
+      endpoints: [
+        {
+          ...baseEndpoint,
+          id: "gated",
+          url: "https://gated",
+          auth_required: true,
+          status: "ok",
+        },
+        { ...baseEndpoint, id: "open", url: "https://open", status: "ok" },
+      ],
+    };
+    const live = {
+      endpoints: [
+        { id: "gated", status: "ok", latency_ms: 10 },
+        { id: "open", status: "ok", latency_ms: 800 },
+      ],
+    };
+    const out = overlayRpcPoolEligibility(stale, live) as Row;
+    assert.equal(out.best_endpoint_id, "open");
+  });
+
+  test("a confirmed-healthy endpoint outranks one that was healthy yesterday", () => {
+    // A row the prober did not cover keeps the build's status, which can be up to a
+    // day old. Ranking it equal to a just-confirmed `ok` is how a host that died
+    // hours ago holds a top slot until the next rebuild.
+    const stale = {
+      id: "finney-rpc",
+      endpoints: [
+        {
+          ...baseEndpoint,
+          id: "yesterday",
+          url: "https://yesterday",
+          status: "ok",
+          latency_ms: 10,
+          score: 99,
+        },
+        {
+          ...baseEndpoint,
+          id: "confirmed",
+          url: "https://confirmed",
+          status: "ok",
+          latency_ms: 900,
+          score: 60,
+        },
+      ],
+    };
+    const live = {
+      endpoints: [{ id: "confirmed", status: "ok", latency_ms: 900 }],
+    };
+    const out = overlayRpcPoolEligibility(stale, live) as Row;
+    assert.equal(out.endpoints[0].id, "confirmed");
+    assert.equal(out.endpoints[0].health_stale, false);
+    assert.equal(out.endpoints[1].health_stale, true);
+    assert.equal(out.best_endpoint_id, "confirmed");
+  });
+
+  test("an uncovered endpoint is rescored but never promoted into eligibility", () => {
+    // Rescoring keeps every row on one scale. Re-deriving ELIGIBILITY without live
+    // data would promote an endpoint the build excluded for a reason this overlay
+    // does not model, which is widening a public pool on an absence of evidence.
+    const stale = {
+      id: "finney-rpc",
+      endpoints: [
+        {
+          ...baseEndpoint,
+          id: "excluded",
+          url: "https://excluded",
+          status: "ok",
+          latency_ms: 100,
+          score: 999,
+          pool_eligible: false,
+          pool_eligibility_reasons: ["status-degraded"],
+        },
+      ],
+    };
+    const out = overlayRpcPoolEligibility(stale, { endpoints: [] }) as Row;
+    assert.equal(out.endpoints[0].pool_eligible, false);
+    assert.notEqual(
+      out.endpoints[0].score,
+      999,
+      "the build's score must not survive on a different scale to the rest",
+    );
+    assert.equal(out.eligible_count, 0);
+    assert.equal(out.best_endpoint_id, null);
+  });
+
   test("drops endpoints only after sustained (>=2) consecutive failures", () => {
     const live = {
       endpoints: [
