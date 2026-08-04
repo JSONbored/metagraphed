@@ -1222,6 +1222,7 @@ import {
 } from "./subnet-weight-setters.ts";
 import { loadSubnetWeightsColdTier } from "./subnet-weights-loader.ts";
 import { loadSubnetEventCardColdTier } from "./subnet-event-card-loader.ts";
+import { loadSubnetAlphaVolumeFromArtifact } from "./subnet-alpha-volume-artifact.ts";
 import {
   CHAIN_SERVING_ROLLUP,
   CHAIN_STAKE_MOVES_ROLLUP,
@@ -7484,7 +7485,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/volume`),
             "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
           )
-        )?.data ?? buildAlphaVolume([], netuid, { marketCapTao })
+        )?.data ??
+        (
+          await loadSubnetAlphaVolumeFromArtifact(ctx.env, netuid, {
+            marketCapTao,
+          })
+        )?.data ??
+        buildAlphaVolume([], netuid, { marketCapTao })
       );
     },
   },
