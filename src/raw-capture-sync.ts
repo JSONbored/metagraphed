@@ -48,14 +48,28 @@ export const RAW_CAPTURE_GENESIS_FLOOR = 8756635;
  * Testnet's floor, and why it is not genesis.
  *
  * Testnet has no lakehouse behind it, so unlike mainnet there is no prior
- * export to meet — the floor is a free choice, and "genesis" is the wrong one.
- * Capturing testnet from block 1 is 7.7M blocks; at this lane's budget that is
- * months of ticks spent on a chain that is periodically WIPED, to serve history
- * whose only consumer (a subnet developer checking their own recent activity)
- * cares about the last few days.
+ * export to meet — the floor is a free choice. 7,700,000 was the height ~8,200
+ * blocks (~27h) below the testnet head when this lane was written (head
+ * 7,708,225 on 2026-08-04).
  *
- * 7,700,000 was the height ~8,200 blocks (~27h) below the testnet head when
- * this lane was written (head 7,708,225 on 2026-08-04).
+ * THE ORIGINAL REASON GIVEN HERE WAS WRONG, and is corrected rather than
+ * quietly deleted because it is the kind of claim that gets planned against.
+ * It said the floor was shallow because testnet "is periodically WIPED" and so
+ * its history has no consumer. The chain is NOT wiped. Measured 2026-08-04
+ * from `Timestamp.Now` at block 1 and at head: testnet block 1 is 2023-08-03
+ * and the height has climbed monotonically ever since — 3.00 years continuous,
+ * against mainnet's 3.38. What churns is SUBNET state (netuids deregistered
+ * and recycled), not the ledger underneath.
+ *
+ * The real constraint is throughput, not staleness. The public endpoint serves
+ * ~100 requests per client per minute (#9378), which at 3 calls per block caps
+ * this lane near 33 blocks/minute — so genesis..7,700,000 is roughly 162 DAYS
+ * of continuous capture from one client. That is why the floor is shallow, and
+ * it is a cost problem with real options (a bulk snapshot from the Foundation,
+ * a raised limit, a dedicated backfill lane) rather than a "nobody wants it"
+ * problem. Three years of continuous testnet history is genuinely useful — it
+ * covers the full testnet life of every subnet that later graduated to
+ * mainnet.
  *
  * DRAIN TIME, measured rather than hoped (#9378): the endpoint's rate limit
  * caps a tick at 32 blocks while the chain produces ~25 in the same 5 minutes,
