@@ -43,6 +43,7 @@ import {
   type BlockFeedQuery,
 } from "./r2-sql-blocks.ts";
 import { safeBlockNumber, safeHexLiteral } from "./r2-sql.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import {
   resolveDecodeWatermark,
@@ -115,9 +116,16 @@ export function blocksSeamFloor(env: unknown): number {
 export async function resolveBlocksSeam(
   env: unknown,
   deps: DecodeWatermarkDeps = {},
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<number> {
+  // Off mainnet the seam is not a boundary between two sources -- there is only
+  // one. `blocks_head` and the whole D1 hot tier are written by the mainnet
+  // firehose poller and carry no network column, so a non-mainnet request has
+  // no hot rows to reach and every block must come from the lakehouse. Zero
+  // says exactly that: nothing is above the seam.
+  if (network !== DEFAULT_CHAIN_NETWORK) return 0;
   const floor = blocksSeamFloor(env);
-  const watermark = await resolveDecodeWatermark(env, deps);
+  const watermark = await resolveDecodeWatermark(env, deps, network);
   return Math.max(floor, watermark?.decodedThrough ?? floor);
 }
 
@@ -192,6 +200,9 @@ async function d1HeadRows(
 export async function loadBlockFeedColdTier(
   env: Env | null | undefined,
   query: BlockFeedQuery,
+  /** Which chain to read (#8700). Off mainnet there is no D1 hot tier, so the
+   * whole feed comes from that network's lakehouse namespace. */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildBlockFeed> | null> {
   const limit = safeBlockNumber(query.limit);
   const offset = safeBlockNumber(query.offset ?? 0);
@@ -214,7 +225,7 @@ export async function loadBlockFeedColdTier(
     return buildBlockFeed([], { limit, offset, nextCursor: null });
   }
 
-  const seam = await resolveBlocksSeam(env);
+  const seam = await resolveBlocksSeam(env, {}, network);
   // Cursor pages never carry an offset (the cursor already narrows past prior
   // pages), mirroring data-api. Both legs are asked for the full window and
   // the slice happens once, after they are concatenated, because the rows an
@@ -222,9 +233,14 @@ export async function loadBlockFeedColdTier(
   const paged = cursor ? 0 : offset;
   const want = limit + paged;
 
-  const head = d1CanServe(query)
-    ? ((await d1HeadRows(env, query, cursor, seam, want)) ?? [])
-    : [];
+  // The D1 leg is mainnet's alone: its rows have no network dimension, so
+  // consulting it for another chain would splice mainnet blocks into that
+  // chain's feed -- indistinguishable from real ones, since both are just
+  // heights and hashes.
+  const head =
+    network === DEFAULT_CHAIN_NETWORK && d1CanServe(query)
+      ? ((await d1HeadRows(env, query, cursor, seam, want)) ?? [])
+      : [];
 
   let rows = head;
   if (rows.length < want) {
@@ -242,13 +258,22 @@ export async function loadBlockFeedColdTier(
       : null;
     // RAW rows, deliberately: they are formatted once below, together with the
     // D1 rows, so both sources go through the formatter exactly the same way.
-    const lake = await fetchBlockRowsFromR2Sql(env, {
-      ...query,
-      limit: want - rows.length,
-      offset: 0,
-      cursor: continuation ?? query.cursor,
-      ceilingBlock: lastHead ? null : seam + 1,
-    });
+    const lake = await fetchBlockRowsFromR2Sql(
+      env,
+      {
+        ...query,
+        limit: want - rows.length,
+        offset: 0,
+        cursor: continuation ?? query.cursor,
+        // The ceiling exists only to stop the lake leg re-serving rows the D1 leg
+        // already covered. Off mainnet there IS no D1 leg, so there is nothing to
+        // exclude and a ceiling would be actively wrong: the seam is 0 there, so
+        // `block_number < seam + 1` would cap the whole feed at block 0.
+        ceilingBlock:
+          network !== DEFAULT_CHAIN_NETWORK || lastHead ? null : seam + 1,
+      },
+      network,
+    );
     if (lake === null && rows.length === 0) return null;
     if (lake) rows = rows.concat(lake.rows);
   }
@@ -274,13 +299,19 @@ export async function loadBlockFeedColdTier(
 export async function loadBlockColdTier(
   env: Env | null | undefined,
   ref: string,
+  /** Which chain to read (#8700). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildBlock> | null> {
-  const seam = await resolveBlocksSeam(env);
+  const seam = await resolveBlocksSeam(env, {}, network);
   const asNumber = safeBlockNumber(ref);
   const asHash = asNumber === null ? safeHexLiteral(ref) : null;
   if (asNumber === null && asHash === null) return null;
 
-  const db = bindings(env).METAGRAPH_HEALTH_DB;
+  // Mainnet-only, for the same reason the feed's head leg is.
+  const db =
+    network === DEFAULT_CHAIN_NETWORK
+      ? bindings(env).METAGRAPH_HEALTH_DB
+      : undefined;
   const aboveSeam = asNumber !== null && asNumber > seam;
   if (db?.prepare && (aboveSeam || asHash !== null)) {
     try {
@@ -303,5 +334,5 @@ export async function loadBlockColdTier(
   // A height above the seam that D1 does not have is a genuine miss, not a
   // reason to scan the lakehouse for a block it cannot contain.
   if (aboveSeam) return buildBlock(undefined as never, ref);
-  return loadBlockFromR2Sql(env, ref);
+  return loadBlockFromR2Sql(env, ref, network);
 }

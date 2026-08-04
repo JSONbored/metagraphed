@@ -32,6 +32,7 @@
 // side costs no new binding either.
 
 import { registerModuleStateReset } from "./module-state-registry.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 
 /**
  * The published watermark object, in the bucket bound as `METAGRAPH_ARCHIVE`
@@ -42,6 +43,23 @@ import { registerModuleStateReset } from "./module-state-registry.ts";
  * this is a single mutable pointer that outlives every run.
  */
 export const DECODE_WATERMARK_KEY = "metagraph/lakehouse/decode-watermark.json";
+
+/**
+ * The watermark object for one network (#8700).
+ *
+ * MUST match `status_key` in metagraphed-infra's iceberg_r2.py — that publishes
+ * these, this reads them. Mainnet keeps the bare path unchanged because the
+ * seam watchdog and every existing reader address it directly; testnet's sits
+ * under a `testnet/` scope rather than sharing the object, which would make each
+ * network's hourly run overwrite the other's watermark.
+ */
+export function decodeWatermarkKey(
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
+): string {
+  return network === DEFAULT_CHAIN_NETWORK
+    ? DECODE_WATERMARK_KEY
+    : `metagraph/lakehouse/${network}/decode-watermark.json`;
+}
 
 /**
  * How long a resolved watermark is reused inside one isolate.
@@ -155,11 +173,12 @@ export interface DecodeWatermarkDeps {
  */
 export async function readDecodeWatermark(
   env: unknown,
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<DecodeWatermark | null> {
   const bucket = (env as WatermarkEnv | null)?.METAGRAPH_ARCHIVE;
   if (!bucket?.get) return null;
   try {
-    const object = await bucket.get(DECODE_WATERMARK_KEY);
+    const object = await bucket.get(decodeWatermarkKey(network));
     if (!object) return null;
     return parseDecodeWatermark(JSON.parse(await object.text()));
   } catch {
@@ -173,17 +192,23 @@ export async function readDecodeWatermark(
 /** Resolved value plus the moment it expires. The PROMISE is memoized, not the
  * value, so concurrent requests on a cold isolate share one R2 GET instead of
  * racing to issue several. */
-let memo: { expiresAt: number; value: Promise<DecodeWatermark | null> } | null =
-  null;
+// Keyed by network. A single memo would hand whichever network read first its
+// watermark to the OTHER for the whole TTL -- and a watermark is a block height,
+// so the result would be a seam pointing into a range that chain has never
+// decoded, with no error anywhere.
+const memo = new Map<
+  ChainNetworkId,
+  { expiresAt: number; value: Promise<DecodeWatermark | null> }
+>();
 
 registerModuleStateReset("src/decode-watermark.ts", () => {
-  memo = null;
+  memo.clear();
 });
 
 /** Drop the memo so the next resolve re-reads R2. Exported for tests and for
  * any caller that has just observed the underlying object change. */
 export function resetDecodeWatermarkCache(): void {
-  memo = null;
+  memo.clear();
 }
 
 /**
@@ -196,11 +221,13 @@ export function resetDecodeWatermarkCache(): void {
 export async function resolveDecodeWatermark(
   env: unknown,
   deps: DecodeWatermarkDeps = {},
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<DecodeWatermark | null> {
-  if (deps.fresh) return readDecodeWatermark(env);
+  if (deps.fresh) return readDecodeWatermark(env, network);
   const now = (deps.now ?? Date.now)();
-  if (memo && memo.expiresAt > now) return memo.value;
-  const value = readDecodeWatermark(env);
-  memo = { expiresAt: now + DECODE_WATERMARK_TTL_MS, value };
+  const cached = memo.get(network);
+  if (cached && cached.expiresAt > now) return cached.value;
+  const value = readDecodeWatermark(env, network);
+  memo.set(network, { expiresAt: now + DECODE_WATERMARK_TTL_MS, value });
   return value;
 }

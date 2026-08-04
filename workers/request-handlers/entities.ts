@@ -4515,6 +4515,8 @@ export async function handleAccountEvents(
   env: Env,
   ss58: string,
   url: URL,
+  /** Which chain's history to read (#8700). */
+  network?: ChainNetworkId,
 ) {
   const validationError = validateEntityQuery(url, [
     "kind",
@@ -4570,15 +4572,20 @@ export async function handleAccountEvents(
       request,
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     )) as ReturnType<typeof buildAccountEvents> | null) ??
-    (await loadAccountEventsColdTier(env, ss58, {
-      limit: parsedLimit,
-      offset: parsedOffset,
-      cursor: url.searchParams.get("cursor"),
-      kind: url.searchParams.get("kind"),
-      netuid: url.searchParams.get("netuid"),
-      blockStart: url.searchParams.get("block_start"),
-      blockEnd: url.searchParams.get("block_end"),
-    })) ??
+    (await loadAccountEventsColdTier(
+      env,
+      ss58,
+      {
+        limit: parsedLimit,
+        offset: parsedOffset,
+        cursor: url.searchParams.get("cursor"),
+        kind: url.searchParams.get("kind"),
+        netuid: url.searchParams.get("netuid"),
+        blockStart: url.searchParams.get("block_start"),
+        blockEnd: url.searchParams.get("block_end"),
+      },
+      network,
+    )) ??
     buildAccountEvents([], ss58, {
       limit: parsedLimit,
       offset: parsedOffset,
@@ -5900,7 +5907,13 @@ export async function handleCrowdloan(
 // `blocks` D1 tier (#1345 block explorer). ?limit clamp <=100, ?offset. Cold/
 // absent store → schema-stable zero (never throws). Reuses the chain-events meta
 // (source:"chain-events") since the same first-party poller fills this tier.
-export async function handleBlocks(request: Request, env: Env, url: URL) {
+export async function handleBlocks(
+  request: Request,
+  env: Env,
+  url: URL,
+  /** Which chain's history to read (#8700). */
+  network?: ChainNetworkId,
+) {
   const validationError = validateEntityQuery(url, [
     "limit",
     "offset",
@@ -5945,21 +5958,25 @@ export async function handleBlocks(request: Request, env: Env, url: URL) {
       request,
       "METAGRAPH_BLOCKS_SOURCE",
     )) as ReturnType<typeof buildBlockFeed> | null) ??
-    (await loadBlockFeedColdTier(env, {
-      limit,
-      offset,
-      cursor: url.searchParams.get("cursor"),
-      author: url.searchParams.get("author"),
-      specVersion: url.searchParams.get("spec_version"),
-      blockStart: url.searchParams.get("block_start"),
-      blockEnd: url.searchParams.get("block_end"),
-      // from/to are part of this route's contract too -- a filter the tier
-      // never receives is a filter it silently ignores.
-      from: url.searchParams.get("from"),
-      to: url.searchParams.get("to"),
-      minExtrinsics: url.searchParams.get("min_extrinsics"),
-      minEvents: url.searchParams.get("min_events"),
-    } as never)) ??
+    (await loadBlockFeedColdTier(
+      env,
+      {
+        limit,
+        offset,
+        cursor: url.searchParams.get("cursor"),
+        author: url.searchParams.get("author"),
+        specVersion: url.searchParams.get("spec_version"),
+        blockStart: url.searchParams.get("block_start"),
+        blockEnd: url.searchParams.get("block_end"),
+        // from/to are part of this route's contract too -- a filter the tier
+        // never receives is a filter it silently ignores.
+        from: url.searchParams.get("from"),
+        to: url.searchParams.get("to"),
+        minExtrinsics: url.searchParams.get("min_extrinsics"),
+        minEvents: url.searchParams.get("min_events"),
+      } as never,
+      network,
+    )) ??
     buildBlockFeed([], { limit, offset, nextCursor: null });
   if (csvRequested(url, request)) {
     return csvResponse(
@@ -6023,7 +6040,13 @@ export async function handleBlocksSummary(
 // block_number OR a 0x block_hash. Served live from the `blocks` D1 tier; an
 // unknown ref / cold store → 200 with block:null (schema-stable, mirrors the
 // neuron detail route — NEVER 404/throw).
-export async function handleBlock(request: Request, env: Env, ref: string) {
+export async function handleBlock(
+  request: Request,
+  env: Env,
+  ref: string,
+  /** Which chain's history to read (#8700). */
+  network?: ChainNetworkId,
+) {
   // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   // #9115: same lakehouse fallback as the feed above; buildBlock is shared, so
@@ -6034,7 +6057,7 @@ export async function handleBlock(request: Request, env: Env, ref: string) {
       request,
       "METAGRAPH_BLOCKS_SOURCE",
     )) as ReturnType<typeof buildBlock> | null) ??
-    (await loadBlockColdTier(env, ref)) ??
+    (await loadBlockColdTier(env, ref, network)) ??
     buildBlock(undefined, ref);
   // Finalized block detail is immutable once resolved; a cold/unknown ref stays
   // on the short profile so clients re-check when the block lands.
@@ -6096,6 +6119,8 @@ export async function handleBlockExtrinsics(
   env: Env,
   ref: string,
   url: URL,
+  /** Which chain's history to read (#8700). */
+  network?: ChainNetworkId,
 ) {
   const validationError = validateEntityQuery(url, [
     "limit",
@@ -6122,7 +6147,8 @@ export async function handleBlockExtrinsics(
     : await answerBlockDetail(env, ref, {
         hot: (height) =>
           loadBlockExtrinsicsHotTier(env, ref, height, { limit, offset }),
-        cold: () => loadBlockExtrinsicsColdTier(env, ref, { limit, offset }),
+        cold: () =>
+          loadBlockExtrinsicsColdTier(env, ref, { limit, offset }, network),
         isEmpty: isEmptyExtrinsicPayload,
       });
   if (answer?.kind === "gap") return chainDetailGapResponse(answer);
@@ -6170,6 +6196,8 @@ export async function handleBlockEvents(
   env: Env,
   ref: string,
   url: URL,
+  /** Which chain's history to read (#8700). */
+  network?: ChainNetworkId,
 ) {
   const validationError = validateEntityQuery(url, [
     "limit",
@@ -6193,7 +6221,8 @@ export async function handleBlockEvents(
     : await answerBlockDetail(env, ref, {
         hot: (height) =>
           loadBlockEventsHotTier(env, ref, height, { limit, offset }),
-        cold: () => loadBlockEventsColdTier(env, ref, { limit, offset }),
+        cold: () =>
+          loadBlockEventsColdTier(env, ref, { limit, offset }, network),
         isEmpty: isEmptyEventPayload,
       });
   if (answer?.kind === "gap") return chainDetailGapResponse(answer);
@@ -6241,7 +6270,13 @@ export async function handleBlockEvents(
 // so it's also safe to interpolate into a LIKE pattern below.
 const CALL_HASH_RE = /^0x[0-9a-fA-F]{64}$/;
 
-export async function handleExtrinsics(request: Request, env: Env, url: URL) {
+export async function handleExtrinsics(
+  request: Request,
+  env: Env,
+  url: URL,
+  /** Which chain's history to read (#8700). */
+  network?: ChainNetworkId,
+) {
   const validationError = validateEntityQuery(url, [
     "limit",
     "offset",
@@ -6301,24 +6336,28 @@ export async function handleExtrinsics(request: Request, env: Env, url: URL) {
     // only honest option -- passing it through would silently ignore the
     // filter and return every extrinsic as though it matched.
     (callHashRaw === null
-      ? await loadExtrinsicFeedColdTier(env, {
-          limit,
-          offset,
-          // Every filter this route accepts is passed through -- a filter the
-          // tier does not receive is a filter it silently ignores, which is
-          // the one failure mode worse than declining. The tier validates
-          // each one and declines the whole query on anything unsafe.
-          cursor: sp.get("cursor"),
-          signer: sp.get("signer"),
-          module: callModule,
-          callFunction: sp.get("call_function"),
-          success: successRaw === null ? null : successRaw === "true",
-          block: sp.get("block"),
-          blockStart: sp.get("block_start"),
-          blockEnd: sp.get("block_end"),
-          from: sp.get("from"),
-          to: sp.get("to"),
-        })
+      ? await loadExtrinsicFeedColdTier(
+          env,
+          {
+            limit,
+            offset,
+            // Every filter this route accepts is passed through -- a filter the
+            // tier does not receive is a filter it silently ignores, which is
+            // the one failure mode worse than declining. The tier validates
+            // each one and declines the whole query on anything unsafe.
+            cursor: sp.get("cursor"),
+            signer: sp.get("signer"),
+            module: callModule,
+            callFunction: sp.get("call_function"),
+            success: successRaw === null ? null : successRaw === "true",
+            block: sp.get("block"),
+            blockStart: sp.get("block_start"),
+            blockEnd: sp.get("block_end"),
+            from: sp.get("from"),
+            to: sp.get("to"),
+          },
+          network,
+        )
       : null) ??
     buildExtrinsicFeed([], { limit, offset, nextCursor: null });
   if (csvRequested(url, request)) {
@@ -6724,7 +6763,13 @@ export async function handleRandomnessStatus(
 // When the extrinsic resolves, the indexed account_events it emitted (#1849) are
 // embedded via a second lookup on (block_number, extrinsic_index) — bounded to 50.
 // Empty for pre-migration rows, non-ApplyExtrinsic events, or a cold store.
-export async function handleExtrinsic(request: Request, env: Env, ref: string) {
+export async function handleExtrinsic(
+  request: Request,
+  env: Env,
+  ref: string,
+  /** Which chain's history to read (#8700). */
+  network?: ChainNetworkId,
+) {
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const postgres = (await tryPostgresTier(
@@ -6739,7 +6784,7 @@ export async function handleExtrinsic(request: Request, env: Env, ref: string) {
   const answer = postgres
     ? null
     : await answerExtrinsicDetail(env, ref, () =>
-        loadExtrinsicColdTier(env, ref),
+        loadExtrinsicColdTier(env, ref, network),
       );
   if (answer?.kind === "gap") return chainDetailGapResponse(answer);
   const data =

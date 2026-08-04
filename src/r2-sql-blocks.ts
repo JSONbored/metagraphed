@@ -24,6 +24,7 @@
 
 import { buildBlock, buildBlockFeed } from "./blocks.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
+import { type ChainNetworkId, chainTable } from "./chain-network.ts";
 import {
   r2SqlQuery,
   safeBlockNumber,
@@ -85,8 +86,10 @@ export function safeAuthorLiteral(value: unknown): string | null {
 export async function loadBlockFeedFromR2Sql(
   env: Env | null | undefined,
   query: BlockFeedQuery,
+  /** Which chain's lakehouse namespace to read (#8700). */
+  network?: ChainNetworkId,
 ): Promise<ReturnType<typeof buildBlockFeed> | null> {
-  const page = await fetchBlockRowsFromR2Sql(env, query);
+  const page = await fetchBlockRowsFromR2Sql(env, query, network);
   if (page === null) return null;
   return buildBlockFeed(page.rows as never[], {
     limit: page.limit,
@@ -107,6 +110,8 @@ export async function loadBlockFeedFromR2Sql(
 export async function fetchBlockRowsFromR2Sql(
   env: Env | null | undefined,
   query: BlockFeedQuery,
+  /** Which chain's lakehouse namespace to read (#8700). */
+  network?: ChainNetworkId,
 ): Promise<{
   rows: Record<string, unknown>[];
   limit: number;
@@ -156,7 +161,7 @@ export async function fetchBlockRowsFromR2Sql(
   // prior pages), mirroring data-api's `OFFSET only when no cursor`.
   const paged = cursor ? 0 : offset;
   const sql =
-    `SELECT ${BLOCK_COLUMNS} FROM chain.blocks` +
+    `SELECT ${BLOCK_COLUMNS} FROM ${chainTable("blocks", network)}` +
     (where.length ? ` WHERE ${where.join(" AND ")}` : "") +
     // observed_at-leading, EXACTLY data-api's order: the cursor token encodes
     // this composite key, so a different order would mis-seek its tokens.
@@ -185,6 +190,8 @@ export async function fetchBlockRowsFromR2Sql(
 export async function loadBlockFromR2Sql(
   env: Env | null | undefined,
   ref: string,
+  /** Which chain's lakehouse namespace to read (#8700). */
+  network?: ChainNetworkId,
 ): Promise<ReturnType<typeof buildBlock> | null> {
   const asNumber = safeBlockNumber(ref);
   const asHash = asNumber === null ? safeHexLiteral(ref) : null;
@@ -195,7 +202,7 @@ export async function loadBlockFromR2Sql(
       : `block_hash = '${asHash}'`;
   const rows = await r2SqlQuery(
     env,
-    `SELECT ${BLOCK_COLUMNS} FROM chain.blocks WHERE ${predicate} LIMIT 1`,
+    `SELECT ${BLOCK_COLUMNS} FROM ${chainTable("blocks", network)} WHERE ${predicate} LIMIT 1`,
   );
   if (rows === null) return null;
   // A confirmed absence is an ANSWER: buildBlock(undefined, ref) is the same

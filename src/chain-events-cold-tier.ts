@@ -35,6 +35,7 @@
 // cheap, so it is passed straight through and stays exact.
 
 import { decodeCursor, encodeCursor } from "./cursor.ts";
+import { type ChainNetworkId, chainTable } from "./chain-network.ts";
 import { r2SqlQuery, safeBlockNumber, safeNameLiteral } from "./r2-sql.ts";
 import { blocksSeamFloor } from "./blocks-cold-tier.ts";
 import {
@@ -83,6 +84,8 @@ export interface ChainEventsPage {
 export async function loadChainEventsColdTier(
   env: Env | null | undefined,
   query: ChainEventsQuery,
+  /** Which chain's lakehouse namespace to read (#8700). */
+  network?: ChainNetworkId,
 ): Promise<ChainEventsPage | null> {
   const limit = safeBlockNumber(query.limit);
   if (limit === null || limit <= 0) return null;
@@ -143,7 +146,7 @@ export async function loadChainEventsColdTier(
 
   const rows = await r2SqlQuery(
     env,
-    `SELECT ${EVENT_COLUMNS} FROM chain.chain_events WHERE ${where.join(" AND ")}` +
+    `SELECT ${EVENT_COLUMNS} FROM ${chainTable("chain_events", network)} WHERE ${where.join(" AND ")}` +
       ` ORDER BY block_number DESC, event_index DESC LIMIT ${limit}`,
   );
   if (rows === null) return null;
@@ -207,6 +210,8 @@ export interface ChainEventsStats {
 export async function loadChainEventsStatsColdTier(
   env: Env | null | undefined,
   blocks?: unknown,
+  /** Which chain's lakehouse namespace to read (#8700). */
+  network?: ChainNetworkId,
 ): Promise<ChainEventsStats | null> {
   const requested = blocks == null ? null : safeBlockNumber(blocks);
   if (blocks != null && requested === null) return null;
@@ -218,7 +223,7 @@ export async function loadChainEventsStatsColdTier(
   const head = blocksSeamFloor(env);
   const rows = await r2SqlQuery(
     env,
-    `SELECT pallet, method, COUNT(*) AS count FROM chain.chain_events ` +
+    `SELECT pallet, method, COUNT(*) AS count FROM ${chainTable("chain_events", network)} ` +
       `WHERE block_number > ${head - window} ` +
       // Tie-break on the GROUP BY keys: `count` alone is non-unique, so equal
       // counts could reshuffle between requests and flip which groups survive
@@ -259,12 +264,14 @@ export async function loadChainEventsStatsColdTier(
 export async function loadSubnetLeaseHistoryColdTier(
   env: Env | null | undefined,
   netuid: number,
+  /** Which chain's lakehouse namespace to read (#8700). */
+  network?: ChainNetworkId,
 ): Promise<{ rows: Record<string, unknown>[] } | null> {
   const subnet = safeBlockNumber(netuid);
   if (subnet === null) return null;
   const rows = await r2SqlQuery(
     env,
-    `SELECT block_number FROM chain.chain_events ` +
+    `SELECT block_number FROM ${chainTable("chain_events", network)} ` +
       `WHERE method IN ('${SUBNET_LEASE_CREATED_KIND}', ` +
       `'${SUBNET_LEASE_TERMINATED_KIND}') LIMIT 1`,
   );

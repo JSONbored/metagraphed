@@ -39,6 +39,7 @@ import {
 } from "./extrinsics.ts";
 import { formatAccountEvent } from "./account-events.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
+import { type ChainNetworkId, chainTable } from "./chain-network.ts";
 import {
   r2SqlQuery,
   safeBlockNumber,
@@ -148,6 +149,8 @@ async function feedRows(
   env: Env | null | undefined,
   query: ExtrinsicFeedQuery,
   extraWhere: string[] = [],
+  /** Which chain's lakehouse namespace to read (#8700). */
+  network?: ChainNetworkId,
 ): Promise<{
   rows: Record<string, unknown>[];
   limit: number;
@@ -170,7 +173,7 @@ async function feedRows(
   const paged = decodeCursor(query.cursor, CURSOR_ARITY) ? 0 : offset;
 
   const sql =
-    `SELECT ${EXTRINSIC_COLUMNS} FROM chain.extrinsics` +
+    `SELECT ${EXTRINSIC_COLUMNS} FROM ${chainTable("extrinsics", network)}` +
     (where.length ? ` WHERE ${where.join(" AND ")}` : "") +
     ` ${FEED_ORDER} LIMIT ${limit + paged}`;
 
@@ -195,8 +198,10 @@ async function feedRows(
 export async function loadExtrinsicFeedColdTier(
   env: Env | null | undefined,
   query: ExtrinsicFeedQuery,
+  /** Which chain's lakehouse namespace to read (#8700). */
+  network?: ChainNetworkId,
 ): Promise<ReturnType<typeof buildExtrinsicFeed> | null> {
-  const page = await feedRows(env, query);
+  const page = await feedRows(env, query, [], network);
   if (page === null) return null;
   return buildExtrinsicFeed(page.rows, {
     limit: page.limit,
@@ -210,13 +215,16 @@ export async function loadBlockExtrinsicsColdTier(
   env: Env | null | undefined,
   ref: string,
   page: { limit: number; offset?: number | null },
+  /** Which chain's lakehouse namespace to read (#8700). */
+  network?: ChainNetworkId,
 ): Promise<ReturnType<typeof buildBlockExtrinsics> | null> {
-  const height = await resolveBlockHeight(env, ref);
+  const height = await resolveBlockHeight(env, ref, network);
   if (height === null) return null;
   const rows = await feedRows(
     env,
     { limit: page.limit, offset: page.offset ?? 0 },
     [`block_number = ${height}`],
+    network,
   );
   if (rows === null) return null;
   return buildBlockExtrinsics(rows.rows, ref, rows.nextCursor, {
@@ -236,17 +244,24 @@ export async function loadAccountExtrinsicsColdTier(
     blockStart?: unknown;
     blockEnd?: unknown;
   },
+  /** Which chain's lakehouse namespace to read (#8700). */
+  network?: ChainNetworkId,
 ): Promise<ReturnType<typeof buildAccountExtrinsics> | null> {
   // An unusable address is a decline, not an unfiltered scan of every signer.
   if (safeSs58Literal(ss58) === null) return null;
-  const rows = await feedRows(env, {
-    limit: page.limit,
-    offset: page.offset ?? 0,
-    cursor: page.cursor,
-    signer: ss58,
-    blockStart: page.blockStart,
-    blockEnd: page.blockEnd,
-  });
+  const rows = await feedRows(
+    env,
+    {
+      limit: page.limit,
+      offset: page.offset ?? 0,
+      cursor: page.cursor,
+      signer: ss58,
+      blockStart: page.blockStart,
+      blockEnd: page.blockEnd,
+    },
+    [],
+    network,
+  );
   if (rows === null) return null;
   return buildAccountExtrinsics(rows.rows, ss58, {
     limit: rows.limit,
@@ -259,6 +274,8 @@ export async function loadAccountExtrinsicsColdTier(
 async function resolveBlockHeight(
   env: Env | null | undefined,
   ref: string,
+  /** Which chain's lakehouse namespace to read (#8700). */
+  network?: ChainNetworkId,
 ): Promise<number | null> {
   const asNumber = safeBlockNumber(ref);
   if (asNumber !== null) return asNumber;
@@ -266,7 +283,7 @@ async function resolveBlockHeight(
   if (asHash === null) return null;
   const rows = await r2SqlQuery(
     env,
-    `SELECT block_number FROM chain.blocks WHERE block_hash = '${asHash}' LIMIT 1`,
+    `SELECT block_number FROM ${chainTable("blocks", network)} WHERE block_hash = '${asHash}' LIMIT 1`,
   );
   if (rows === null) return null;
   return safeBlockNumber(rows[0]?.block_number);
@@ -279,6 +296,8 @@ async function resolveBlockHeight(
 export async function loadExtrinsicColdTier(
   env: Env | null | undefined,
   ref: string,
+  /** Which chain's lakehouse namespace to read (#8700). */
+  network?: ChainNetworkId,
 ): Promise<ReturnType<typeof buildExtrinsic> | null> {
   let predicate: string;
 
@@ -296,7 +315,7 @@ export async function loadExtrinsicColdTier(
 
   const rows = await r2SqlQuery(
     env,
-    `SELECT ${EXTRINSIC_COLUMNS} FROM chain.extrinsics WHERE ${predicate} LIMIT 1`,
+    `SELECT ${EXTRINSIC_COLUMNS} FROM ${chainTable("extrinsics", network)} WHERE ${predicate} LIMIT 1`,
   );
   if (rows === null) return null;
   const row = rows[0];
@@ -310,7 +329,7 @@ export async function loadExtrinsicColdTier(
   if (block !== null && index !== null) {
     const found = await r2SqlQuery(
       env,
-      `SELECT ${EVENT_COLUMNS} FROM chain.account_events ` +
+      `SELECT ${EVENT_COLUMNS} FROM ${chainTable("account_events", network)} ` +
         `WHERE block_number = ${block} AND extrinsic_index = ${index} ` +
         `ORDER BY event_index LIMIT ${MAX_EMBEDDED_EVENTS}`,
     );

@@ -40,6 +40,7 @@ import {
   type ChainEventApi,
 } from "./chain-detail-hot-tier.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
+import { type ChainNetworkId, chainTable } from "./chain-network.ts";
 import {
   r2SqlQuery,
   safeBlockNumber,
@@ -77,6 +78,8 @@ export async function loadAccountEventsColdTier(
   env: Env | null | undefined,
   ss58: string,
   query: AccountEventsQuery,
+  /** Which chain's lakehouse namespace to read (#8700). */
+  network?: ChainNetworkId,
 ): Promise<ReturnType<typeof buildAccountEvents> | null> {
   const limit = safeBlockNumber(query.limit);
   const offset = safeBlockNumber(query.offset ?? 0);
@@ -117,7 +120,7 @@ export async function loadAccountEventsColdTier(
   const paged = cursor ? 0 : offset;
   const rows = await r2SqlQuery(
     env,
-    `SELECT ${EVENT_COLUMNS} FROM chain.account_events WHERE ${where.join(" AND ")}` +
+    `SELECT ${EVENT_COLUMNS} FROM ${chainTable("account_events", network)} WHERE ${where.join(" AND ")}` +
       ` ORDER BY observed_at DESC, block_number DESC, event_index DESC` +
       ` LIMIT ${limit + paged}`,
   );
@@ -170,6 +173,8 @@ export async function loadSubnetEventsColdTier(
   env: Env | null | undefined,
   netuid: number,
   query: SubnetEventsQuery,
+  /** Which chain's lakehouse namespace to read (#8700). */
+  network?: ChainNetworkId,
 ): Promise<ReturnType<typeof buildSubnetEvents> | null> {
   const limit = safeBlockNumber(query.limit);
   const offset = safeBlockNumber(query.offset ?? 0);
@@ -207,7 +212,7 @@ export async function loadSubnetEventsColdTier(
   const paged = cursor ? 0 : offset;
   const rows = await r2SqlQuery(
     env,
-    `SELECT ${EVENT_COLUMNS} FROM chain.account_events WHERE ${where.join(" AND ")}` +
+    `SELECT ${EVENT_COLUMNS} FROM ${chainTable("account_events", network)} WHERE ${where.join(" AND ")}` +
       ` ORDER BY observed_at DESC, block_number DESC, event_index DESC` +
       ` LIMIT ${limit + paged}`,
   );
@@ -234,18 +239,20 @@ export async function loadBlockEventsColdTier(
   env: Env | null | undefined,
   ref: string,
   page: { limit: number; offset?: number | null },
+  /** Which chain's lakehouse namespace to read (#8700). */
+  network?: ChainNetworkId,
 ): Promise<ReturnType<typeof buildBlockEvents> | null> {
   const limit = safeBlockNumber(page.limit);
   const offset = safeBlockNumber(page.offset ?? 0);
   if (limit === null || offset === null || limit <= 0) return null;
   if (offset > OFFSET_EMULATION_CAP) return null;
 
-  const height = await resolveBlockHeight(env, ref);
+  const height = await resolveBlockHeight(env, ref, network);
   if (height === null) return null;
 
   const rows = await r2SqlQuery(
     env,
-    `SELECT ${EVENT_COLUMNS} FROM chain.account_events ` +
+    `SELECT ${EVENT_COLUMNS} FROM ${chainTable("account_events", network)} ` +
       `WHERE block_number = ${height} ` +
       `ORDER BY event_index ASC LIMIT ${limit + offset}`,
   );
@@ -258,6 +265,8 @@ export async function loadBlockEventsColdTier(
 async function resolveBlockHeight(
   env: Env | null | undefined,
   ref: string,
+  /** Which chain's lakehouse namespace to read (#8700). */
+  network?: ChainNetworkId,
 ): Promise<number | null> {
   const asNumber = safeBlockNumber(ref);
   if (asNumber !== null) return asNumber;
@@ -265,7 +274,7 @@ async function resolveBlockHeight(
   if (asHash === null) return null;
   const rows = await r2SqlQuery(
     env,
-    `SELECT block_number FROM chain.blocks WHERE block_hash = '${asHash}' LIMIT 1`,
+    `SELECT block_number FROM ${chainTable("blocks", network)} WHERE block_hash = '${asHash}' LIMIT 1`,
   );
   if (rows === null) return null;
   return safeBlockNumber(rows[0]?.block_number);
@@ -307,13 +316,15 @@ export interface BlockChainEventsColdResult {
 export async function loadBlockChainEventsColdTier(
   env: Env | null | undefined,
   ref: string,
+  /** Which chain's lakehouse namespace to read (#8700). */
+  network?: ChainNetworkId,
 ): Promise<BlockChainEventsColdResult | null> {
-  const height = await resolveBlockHeight(env, ref);
+  const height = await resolveBlockHeight(env, ref, network);
   if (height === null) return null;
 
   const rows = await r2SqlQuery(
     env,
-    `SELECT ${CHAIN_EVENT_COLUMNS} FROM chain.chain_events ` +
+    `SELECT ${CHAIN_EVENT_COLUMNS} FROM ${chainTable("chain_events", network)} ` +
       `WHERE block_number = ${height} ORDER BY event_index ASC`,
   );
   if (rows === null) return null;

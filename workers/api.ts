@@ -499,6 +499,7 @@ import { buildNetworksPayload } from "../src/network-capabilities.ts";
 import { NETWORK_PUBLISHED_ARTIFACT_PATHS } from "../src/network-artifacts.ts";
 import { chainNetworkId } from "../src/chain-network.ts";
 import { LIVE_CHAIN_ROUTE_PATHS } from "../src/live-chain-routes.ts";
+import { CHAIN_HISTORY_ROUTE_PATHS } from "../src/chain-history-routes.ts";
 import {
   subnetNewsItems,
   type ChainEventRow,
@@ -3301,7 +3302,10 @@ export async function handleRequest(
           networks: NETWORKS,
           isMainnetOnly: isMainnetOnlyApiPath,
           publishedArtifacts: NETWORK_PUBLISHED_ARTIFACT_PATHS,
-          liveChainRoutes: LIVE_CHAIN_ROUTE_PATHS,
+          nonArtifactRoutes: [
+            ...LIVE_CHAIN_ROUTE_PATHS,
+            ...CHAIN_HISTORY_ROUTE_PATHS,
+          ],
         }),
         meta: { contract_version: contractVersion(env) },
       },
@@ -4849,54 +4853,16 @@ export async function handleRequest(
     if (accountMatch) {
       return handleAccount(request, env, accountMatch[1]);
     }
-    // Block-explorer routes (#1345): computed live from the `blocks` D1 tier.
-    // Sub-resource (#1845) before detail before the feed; each pattern is anchored.
-    const blockExtrinsicsMatch = BLOCK_EXTRINSICS_PATH_PATTERN.exec(
-      resolved.url.pathname,
+    // Block-explorer routes (#1345), dispatched from the table shared with the
+    // /{network}/-prefixed path (#8700) so the two cannot drift. On the bare
+    // path this resolves to mainnet, exactly as before.
+    const chainHistoryResponse = await dispatchChainHistoryRoute(
+      request,
+      env,
+      resolved.url,
+      ctx,
     );
-    if (blockExtrinsicsMatch) {
-      return handleBlockExtrinsics(
-        request,
-        env,
-        blockExtrinsicsMatch[1],
-        resolved.url,
-      );
-    }
-    const blockEventsMatch = BLOCK_EVENTS_PATH_PATTERN.exec(
-      resolved.url.pathname,
-    );
-    if (blockEventsMatch) {
-      return handleBlockEvents(request, env, blockEventsMatch[1], resolved.url);
-    }
-    // Exact-match the block-production summary BEFORE the {ref} detail pattern so
-    // "summary" is never parsed as a block reference. Edge-cached like the sibling
-    // live analytics routes (busts on the prober tick).
-    if (resolved.url.pathname === "/api/v1/blocks/summary") {
-      return withEdgeCache(request, ctx, env, "blocks-summary", () =>
-        handleBlocksSummary(request, env, resolved.url),
-      );
-    }
-    const blockDetailMatch = BLOCK_DETAIL_PATH_PATTERN.exec(
-      resolved.url.pathname,
-    );
-    if (blockDetailMatch) {
-      return handleBlock(request, env, blockDetailMatch[1]);
-    }
-    if (BLOCKS_FEED_PATH_PATTERN.test(resolved.url.pathname)) {
-      return handleBlocks(request, env, resolved.url);
-    }
-    // Block-explorer extrinsic routes (#1345 second slice): computed live from the
-    // `extrinsics` D1 tier. Detail (more specific) before the feed; each pattern
-    // is anchored.
-    const extrinsicDetailMatch = EXTRINSIC_DETAIL_PATH_PATTERN.exec(
-      resolved.url.pathname,
-    );
-    if (extrinsicDetailMatch) {
-      return handleExtrinsic(request, env, extrinsicDetailMatch[1]);
-    }
-    if (EXTRINSICS_FEED_PATH_PATTERN.test(resolved.url.pathname)) {
-      return handleExtrinsics(request, env, resolved.url);
-    }
+    if (chainHistoryResponse) return chainHistoryResponse;
     if (SUDO_CALLS_PATH_PATTERN.test(resolved.url.pathname)) {
       return handleSudo(request, env, resolved.url);
     }
@@ -5221,20 +5187,19 @@ export function isMainnetOnlyApiPath(pathname: string) {
     ACCOUNT_DEREGISTRATIONS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_PROMETHEUS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_AXON_REMOVALS_PATH_PATTERN.test(pathname) ||
-    BLOCKS_FEED_PATH_PATTERN.test(pathname) ||
-    BLOCK_DETAIL_PATH_PATTERN.test(pathname) ||
-    BLOCK_EXTRINSICS_PATH_PATTERN.test(pathname) ||
-    BLOCK_EVENTS_PATH_PATTERN.test(pathname) ||
     // The three chain-events routes were missing entirely. They read the same
     // finney-only Postgres tier as their neighbours above, but because they
     // dispatch through handleChainEventsProxy rather than tryPostgresTier they
     // were never added here -- so on testnet they fell through to an R2 miss
     // instead of the documented 404.
+    //
+    // Still mainnet-only after #8700 opened blocks and extrinsics: they reach
+    // the lakehouse through chain-events-degraded.ts, which has not been given
+    // the network dimension the four cold-tier readers now have. Opening them
+    // before that would serve mainnet's chain events under a testnet path.
     pathname === "/api/v1/chain-events" ||
     pathname === "/api/v1/chain-events/stats" ||
     BLOCK_CHAIN_EVENTS_PATH_PATTERN.test(pathname) ||
-    EXTRINSICS_FEED_PATH_PATTERN.test(pathname) ||
-    EXTRINSIC_DETAIL_PATH_PATTERN.test(pathname) ||
     SUDO_CALLS_PATH_PATTERN.test(pathname) ||
     GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN.test(pathname) ||
     RUNTIME_VERSIONS_PATH_PATTERN.test(pathname)
@@ -5337,6 +5302,84 @@ async function dispatchLiveChainRoute(
   }
   if (RANDOMNESS_PATH_PATTERN.test(pathname)) {
     return handleRandomnessStatus(request, env, chain);
+  }
+  return null;
+}
+
+/**
+ * The chain-HISTORY routes (#8700), as one table both dispatch paths use.
+ *
+ * These answer from the R2 lakehouse (and, on mainnet only, the D1 hot tier
+ * above the seam) rather than from live chain state, so unlike
+ * dispatchLiveChainRoute they depend on a decode lane having run for that
+ * network. `chain_testnet` is populated by the same decode-r2 container that
+ * fills `chain`, mainnet-first and isolated.
+ *
+ * Same reason for being a table rather than a second copy of these branches:
+ * bare `/api/v1/blocks` and `/api/v1/testnet/blocks` must resolve to the same
+ * handler with a different network, and nothing else.
+ *
+ * Returns `null` when nothing matched, so the caller continues its own
+ * dispatch. Ordering within the table IS load-bearing here, unlike the live
+ * table: `/blocks/summary` must be matched before the `{ref}` detail pattern,
+ * or "summary" parses as a block reference.
+ */
+async function dispatchChainHistoryRoute(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: Ctx = {},
+  network: typeof DEFAULT_NETWORK = DEFAULT_NETWORK,
+): Promise<Response | null> {
+  const chain = chainNetworkId(network.id);
+  const { pathname } = url;
+
+  // Sub-resource (#1845) before detail before the feed; each pattern is anchored.
+  const blockExtrinsicsMatch = BLOCK_EXTRINSICS_PATH_PATTERN.exec(pathname);
+  if (blockExtrinsicsMatch) {
+    return handleBlockExtrinsics(
+      request,
+      env,
+      blockExtrinsicsMatch[1],
+      url,
+      chain,
+    );
+  }
+  const blockEventsMatch = BLOCK_EVENTS_PATH_PATTERN.exec(pathname);
+  if (blockEventsMatch) {
+    return handleBlockEvents(request, env, blockEventsMatch[1], url, chain);
+  }
+  // Exact-match the block-production summary BEFORE the {ref} detail pattern so
+  // "summary" is never parsed as a block reference. Edge-cached like the sibling
+  // live analytics routes (busts on the prober tick).
+  //
+  // Deliberately takes NO network: it stays mainnet-only, gated separately in
+  // isMainnetOnlyApiPath, so this branch is unreachable off mainnet and the
+  // absent argument cannot leak. It is cross-subnet block-production analytics
+  // (author decentralization, spec-version spread), which #8700's subset test
+  // — "what does a subnet developer validating their own subnet need?" — does
+  // not clear. If it is ever opened, it needs the network threaded FIRST;
+  // reaching this branch without one would serve mainnet's analytics under a
+  // testnet path.
+  if (pathname === "/api/v1/blocks/summary") {
+    return withEdgeCache(request, ctx, env, "blocks-summary", () =>
+      handleBlocksSummary(request, env, url),
+    );
+  }
+  const blockDetailMatch = BLOCK_DETAIL_PATH_PATTERN.exec(pathname);
+  if (blockDetailMatch) {
+    return handleBlock(request, env, blockDetailMatch[1], chain);
+  }
+  if (BLOCKS_FEED_PATH_PATTERN.test(pathname)) {
+    return handleBlocks(request, env, url, chain);
+  }
+  // Detail (more specific) before the feed; each pattern is anchored.
+  const extrinsicDetailMatch = EXTRINSIC_DETAIL_PATH_PATTERN.exec(pathname);
+  if (extrinsicDetailMatch) {
+    return handleExtrinsic(request, env, extrinsicDetailMatch[1], chain);
+  }
+  if (EXTRINSICS_FEED_PATH_PATTERN.test(pathname)) {
+    return handleExtrinsics(request, env, url, chain);
   }
   return null;
 }
@@ -5454,6 +5497,15 @@ async function handleNetworkScopedRequest(
       network,
     );
     if (liveChainResponse) return liveChainResponse;
+
+    const chainHistoryResponse = await dispatchChainHistoryRoute(
+      request,
+      env,
+      resolved.url,
+      ctx,
+      network,
+    );
+    if (chainHistoryResponse) return chainHistoryResponse;
 
     return handleApiRequest(request, env, resolved.url, network, ctx);
   }

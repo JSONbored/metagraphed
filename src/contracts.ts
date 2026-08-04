@@ -5048,15 +5048,22 @@ const DATA_NETWORK_ALIASES = ["finney", "mainnet", "test", "testnet"];
  * either direction. A hand-copied version of this list was wrong by 77 entries
  * on the first attempt, which is exactly why it is proven rather than trusted.
  *
- * 105 of 188 routes. The count dropped by 13 in #8700: the live chain-storage
- * routes (burn, recycled, lease, crowdloans, balance, root-claim, children,
- * parents, sudo key, EVM address mapping, network parameters, randomness) are
- * now served on every network with chain state, because their storage keys are
- * chain-agnostic and testnet runs the same runtime. What remains is mainnet-
- * only because of the DATA behind it — the D1/lakehouse chain-history tiers,
- * the curated registry and the AI indexes — which is a real constraint rather
- * than a hardcoded endpoint. Indexing testnet history is the remaining half of
- * #8700.
+ * 99 of 188 routes. #8700 took 19 out, in two steps.
+ *
+ * First the 13 LIVE chain-storage routes (burn, recycled, lease, crowdloans,
+ * balance, root-claim, children, parents, sudo key, EVM address mapping,
+ * network parameters, randomness): their storage keys are chain-agnostic
+ * twox128 hashes and testnet runs the same runtime, so only the endpoint was
+ * ever mainnet-specific.
+ *
+ * Then the 6 chain-HISTORY routes (blocks, extrinsics and their
+ * sub-resources), once the decode lane began filling `chain_testnet` beside
+ * `chain` and the cold-tier readers learned which namespace to read.
+ *
+ * What remains is mainnet-only because of the DATA behind it — the curated
+ * registry, the AI indexes, the D1 hot tier, and the analytics and chain-events
+ * families whose readers have no network dimension yet — which is a real
+ * constraint rather than a hardcoded endpoint.
  */
 export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // The AI-native layer (#9092). The embedded corpus and the retrieval index
@@ -5126,16 +5133,10 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   "/api/v1/accounts/{ss58}/subnets/{netuid}/history",
   "/api/v1/accounts/{ss58}/identity",
   "/api/v1/accounts/{ss58}/identity-history",
-  "/api/v1/blocks",
   "/api/v1/blocks/summary",
-  "/api/v1/blocks/{ref}",
-  "/api/v1/blocks/{ref}/extrinsics",
-  "/api/v1/blocks/{ref}/events",
   "/api/v1/chain-events",
   "/api/v1/chain-events/stats",
   "/api/v1/blocks/{ref}/chain-events",
-  "/api/v1/extrinsics",
-  "/api/v1/extrinsics/{hash}",
   "/api/v1/sudo",
   "/api/v1/governance/config-changes",
   "/api/v1/runtime",
