@@ -17,6 +17,12 @@
 // (one lane's throw never skips the next) and each failure records exactly
 // one exception under `projection:<name>` so a silently dead lane is visible.
 
+import {
+  type ChainNetworkId,
+  chainTable,
+  DEFAULT_CHAIN_NETWORK,
+  LAKEHOUSE_NAMESPACES,
+} from "./chain-network.ts";
 import { isR2SqlConfigured, r2SqlQuery } from "./r2-sql.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import {
@@ -111,7 +117,10 @@ export interface ProjectionLane {
    * or null when the lakehouse could not answer EVERY query — a partial
    * artifact would serve one window's fresh numbers next to another's
    * garbage, so all-or-nothing is the only honest contract. */
-  compute(env: Env): Promise<Record<string, unknown> | null>;
+  compute(
+    env: Env,
+    network: ChainNetworkId,
+  ): Promise<Record<string, unknown> | null>;
   /**
    * Optional: fan ONE computed body out across several R2 keys, as
    * `key -> body`. Defaults to `{ [artifactKey]: body }`.
@@ -132,9 +141,9 @@ export interface ProjectionLane {
 /** Every value a lane inlines below is a module constant or a computed
  * integer — never caller input — per src/r2-sql.ts's no-bound-params
  * contract. */
-function transferWindowSql(cutoff: number): string[] {
+function transferWindowSql(cutoff: number, network: ChainNetworkId): string[] {
   const scope =
-    `FROM chain.account_events ` +
+    `FROM ${chainTable("account_events", network)} ` +
     `WHERE event_kind = '${TRANSFER_KIND}' AND observed_at >= ${cutoff}`;
   // The same five statements workers/data-api.ts issues for this route, in
   // the same split: the two DISTINCT counts were separated there because each
@@ -167,6 +176,7 @@ function transferWindowSql(cutoff: number): string[] {
  * queries, windows computed from this run's generated_at. */
 async function computeChainTransfers(
   env: Env,
+  network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
   const generatedAt = Date.now();
   const windows: Record<string, unknown> = {};
@@ -178,7 +188,7 @@ async function computeChainTransfers(
       receiversCountSql,
       sendersSql,
       receiversSql,
-    ] = transferWindowSql(generatedAt - days * DAY_MS);
+    ] = transferWindowSql(generatedAt - days * DAY_MS, network);
     // Sequential on purpose: one second-scale scan in flight at a time, the
     // posture every cold-tier caller of r2SqlQuery takes.
     const totals = await r2SqlQuery(env, totalsSql!);
@@ -233,6 +243,7 @@ export const STAKE_FLOW_PROJECTION_WINDOWS: Record<string, number> = {
 
 async function computeChainStakeFlow(
   env: Env,
+  network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
   const generatedAt = Date.now();
   const windows: Record<string, unknown> = {};
@@ -243,7 +254,7 @@ async function computeChainStakeFlow(
       env,
       `SELECT netuid, event_kind, COALESCE(SUM(amount_tao), 0) AS total_tao, ` +
         `COUNT(*) AS event_count, MAX(observed_at) AS last_observed ` +
-        `FROM chain.account_events ` +
+        `FROM ${chainTable("account_events", network)} ` +
         `WHERE event_kind IN ('${STAKE_ADDED_KIND}', '${STAKE_REMOVED_KIND}') ` +
         `AND observed_at >= ${cutoff} GROUP BY netuid, event_kind`,
     );
@@ -278,9 +289,12 @@ const SIGNED_COUNT_EXPR = "SUM(CASE WHEN signer IS NOT NULL THEN 1 ELSE 0 END)";
  * same split data-api runs (base extrinsic aggregate, the per-day DISTINCT
  * signer count in its own statement, the blocks aggregate, and the blocks
  * freshness read), grouped by UTC epoch-day instead of a rendered string. */
-function chainActivityWindowSql(cutoff: number): string[] {
-  const extrinsics = `FROM chain.extrinsics WHERE observed_at >= ${cutoff}`;
-  const blocks = `FROM chain.blocks WHERE observed_at >= ${cutoff}`;
+function chainActivityWindowSql(
+  cutoff: number,
+  network: ChainNetworkId,
+): string[] {
+  const extrinsics = `FROM ${chainTable("extrinsics", network)} WHERE observed_at >= ${cutoff}`;
+  const blocks = `FROM ${chainTable("blocks", network)} WHERE observed_at >= ${cutoff}`;
   return [
     // `success = TRUE` (not the bare `success` data-api writes) is the
     // predicate form the extrinsics cold tier already issues against this
@@ -318,6 +332,7 @@ function withDayLabels(
  * buildChainActivity. */
 async function computeChainActivity(
   env: Env,
+  network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
   const generatedAt = Date.now();
   const windows: Record<string, unknown> = {};
@@ -325,6 +340,7 @@ async function computeChainActivity(
   for (const [label, days] of Object.entries(ANALYTICS_WINDOWS)) {
     const [baseSql, signersSql, blocksSql, freshSql] = chainActivityWindowSql(
       generatedAt - days * DAY_MS,
+      network,
     );
     const base = await r2SqlQuery(env, baseSql!);
     if (base === null) return null;
@@ -367,8 +383,11 @@ async function computeChainActivity(
  * the unfiltered full-window share denominator. The optional call_module
  * scope is NOT precomputed — its value space is unbounded, so the reader
  * declines filtered calls instead of approximating them. */
-function chainCallsWindowSql(cutoff: number): string[] {
-  const scope = `FROM chain.extrinsics WHERE observed_at >= ${cutoff}`;
+function chainCallsWindowSql(
+  cutoff: number,
+  network: ChainNetworkId,
+): string[] {
+  const scope = `FROM ${chainTable("extrinsics", network)} WHERE observed_at >= ${cutoff}`;
   return [
     `SELECT MAX(observed_at) AS newest_observed ${scope}`,
     `SELECT call_module, COUNT(*) AS count ${scope} ` +
@@ -387,13 +406,14 @@ function chainCallsWindowSql(cutoff: number): string[] {
  * separately, pre-LIMIT, exactly like the live tier. */
 async function computeChainCalls(
   env: Env,
+  network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
   const generatedAt = Date.now();
   const windows: Record<string, unknown> = {};
   let rowCount = 0;
   for (const [label, days] of Object.entries(ANALYTICS_WINDOWS)) {
     const [freshSql, moduleSql, moduleFunctionSql, totalSql] =
-      chainCallsWindowSql(generatedAt - days * DAY_MS);
+      chainCallsWindowSql(generatedAt - days * DAY_MS, network);
     const fresh = await r2SqlQuery(env, freshSql!);
     if (fresh === null) return null;
     const moduleRows = await r2SqlQuery(env, moduleSql!);
@@ -427,12 +447,16 @@ async function computeChainCalls(
  * non-NULL values per day (PERCENTILE_CONT ignores NULLs), keep the middle
  * one (odd count) or middle two (even count), and AVG them — which IS the
  * 0.5-quantile linear interpolation, not an approximation of it. */
-function chainFeesMedianSql(cutoff: number, column: string): string {
+function chainFeesMedianSql(
+  cutoff: number,
+  column: string,
+  network: ChainNetworkId,
+): string {
   return (
     `WITH ranked AS (SELECT ${EPOCH_DAY_EXPR} AS day_index, ${column}, ` +
     `ROW_NUMBER() OVER (PARTITION BY ${EPOCH_DAY_EXPR} ORDER BY ${column}) AS rn, ` +
     `COUNT(*) OVER (PARTITION BY ${EPOCH_DAY_EXPR}) AS cnt ` +
-    `FROM chain.extrinsics WHERE observed_at >= ${cutoff} ` +
+    `FROM ${chainTable("extrinsics", network)} WHERE observed_at >= ${cutoff} ` +
     `AND signer IS NOT NULL AND ${column} IS NOT NULL) ` +
     `SELECT day_index, AVG(${column}) AS median_value FROM ranked ` +
     `WHERE rn * 2 = cnt OR rn * 2 = cnt + 1 OR rn * 2 = cnt + 2 ` +
@@ -441,8 +465,8 @@ function chainFeesMedianSql(cutoff: number, column: string): string {
 }
 
 /** GET /api/v1/chain/fees' non-median statements for one window cutoff. */
-function chainFeesWindowSql(cutoff: number): string[] {
-  const scope = `FROM chain.extrinsics WHERE observed_at >= ${cutoff}`;
+function chainFeesWindowSql(cutoff: number, network: ChainNetworkId): string[] {
+  const scope = `FROM ${chainTable("extrinsics", network)} WHERE observed_at >= ${cutoff}`;
   return [
     `SELECT ${EPOCH_DAY_EXPR} AS day_index, COUNT(*) AS extrinsic_count, ` +
       `${SIGNED_COUNT_EXPR} AS signed_extrinsic_count, ` +
@@ -466,25 +490,26 @@ function chainFeesWindowSql(cutoff: number): string[] {
  * precomputed — the reader declines filtered calls. */
 async function computeChainFees(
   env: Env,
+  network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
   const generatedAt = Date.now();
   const windows: Record<string, unknown> = {};
   let rowCount = 0;
   for (const [label, days] of Object.entries(ANALYTICS_WINDOWS)) {
     const cutoff = generatedAt - days * DAY_MS;
-    const [dailySql, payersSql, freshSql] = chainFeesWindowSql(cutoff);
+    const [dailySql, payersSql, freshSql] = chainFeesWindowSql(cutoff, network);
     const daily = await r2SqlQuery(env, dailySql!);
     if (daily === null) return null;
     const payers = await r2SqlQuery(env, payersSql!);
     if (payers === null) return null;
     const feeMedians = await r2SqlQuery(
       env,
-      chainFeesMedianSql(cutoff, "fee_tao"),
+      chainFeesMedianSql(cutoff, "fee_tao", network),
     );
     if (feeMedians === null) return null;
     const tipMedians = await r2SqlQuery(
       env,
-      chainFeesMedianSql(cutoff, "tip_tao"),
+      chainFeesMedianSql(cutoff, "tip_tao", network),
     );
     if (tipMedians === null) return null;
     const fresh = await r2SqlQuery(env, freshSql!);
@@ -535,8 +560,11 @@ async function computeChainFees(
  * network observed_at), then the leaderboard in BOTH supported sort orders at
  * the route's maximum limit. call_module is not precomputed — the reader
  * declines filtered calls. */
-function chainSignersWindowSql(cutoff: number): string[] {
-  const scope = `FROM chain.extrinsics WHERE observed_at >= ${cutoff}`;
+function chainSignersWindowSql(
+  cutoff: number,
+  network: ChainNetworkId,
+): string[] {
+  const scope = `FROM ${chainTable("extrinsics", network)} WHERE observed_at >= ${cutoff}`;
   const leaderboard = (orderBy: string) =>
     `SELECT signer, COUNT(*) AS tx_count, ` +
     `SUM(COALESCE(fee_tao, 0)) AS total_fee_tao, ` +
@@ -554,6 +582,7 @@ function chainSignersWindowSql(cutoff: number): string[] {
 /** GET /api/v1/chain/signers, every supported window and both sorts. */
 async function computeChainSigners(
   env: Env,
+  network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
   const generatedAt = Date.now();
   const windows: Record<string, unknown> = {};
@@ -561,6 +590,7 @@ async function computeChainSigners(
   for (const [label, days] of Object.entries(ANALYTICS_WINDOWS)) {
     const [freshSql, txCountSql, feeSql] = chainSignersWindowSql(
       generatedAt - days * DAY_MS,
+      network,
     );
     const fresh = await r2SqlQuery(env, freshSql!);
     if (fresh === null) return null;
@@ -592,6 +622,7 @@ async function computeChainSigners(
  * rollup, the distribution, and the limit slice). */
 async function computeChainAlphaVolume(
   env: Env,
+  network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
   const generatedAt = Date.now();
   const cutoff = generatedAt - DAY_MS;
@@ -601,7 +632,7 @@ async function computeChainAlphaVolume(
       `COALESCE(SUM(alpha_amount), 0) AS alpha_volume, ` +
       `COALESCE(SUM(amount_tao), 0) AS tao_volume, ` +
       `COUNT(*) AS event_count, MAX(observed_at) AS last_observed ` +
-      `FROM chain.account_events ` +
+      `FROM ${chainTable("account_events", network)} ` +
       `WHERE event_kind IN ('${STAKE_ADDED_KIND}', '${STAKE_REMOVED_KIND}') ` +
       `AND observed_at >= ${cutoff} GROUP BY netuid, event_kind`,
   );
@@ -624,9 +655,10 @@ function subnetDistinctWindowSql(
   eventKind: string,
   countAlias: string,
   distinctAlias: string,
+  network: ChainNetworkId,
 ): { networkSql: string; subnetSql: string } {
   const scope =
-    `FROM chain.account_events ` +
+    `FROM ${chainTable("account_events", network)} ` +
     `WHERE event_kind = '${eventKind}' AND observed_at >= ${cutoff}`;
   return {
     networkSql:
@@ -651,14 +683,17 @@ async function computeSubnetDistinctWindow(
 } | null> {
   const networkRows = await r2SqlQuery(env, sql.networkSql);
   if (networkRows === null) return null;
-  const network = networkRows[0] ?? null;
+  // The CHAIN-WIDE scope row, not a chain network -- the artifact key it lands
+  // under is `network` and cannot be renamed, but the local is named for what
+  // it holds so the two senses of the word cannot be confused here.
+  const chainWide = networkRows[0] ?? null;
   let rows: Record<string, unknown>[] = [];
-  if (network?.newest_observed != null) {
+  if (chainWide?.newest_observed != null) {
     const subnetRows = await r2SqlQuery(env, sql.subnetSql);
     if (subnetRows === null) return null;
     rows = subnetRows;
   }
-  return { network, rows };
+  return { network: chainWide, rows };
 }
 
 /** GET /api/v1/chain/stake-transfers, every supported window — the
@@ -666,6 +701,7 @@ async function computeSubnetDistinctWindow(
  * aggregate, stored verbatim for buildChainStakeTransfers. */
 async function computeChainStakeTransfers(
   env: Env,
+  network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
   const generatedAt = Date.now();
   const windows: Record<string, unknown> = {};
@@ -678,6 +714,7 @@ async function computeChainStakeTransfers(
         STAKE_TRANSFERRED_EVENT_KIND,
         "transfers",
         "distinct_senders",
+        network,
       ),
     );
     if (window === null) return null;
@@ -696,6 +733,7 @@ async function computeChainStakeTransfers(
  * stake-transfers lane over the StakeMoved stream. */
 async function computeChainStakeMoves(
   env: Env,
+  network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
   const generatedAt = Date.now();
   const windows: Record<string, unknown> = {};
@@ -708,6 +746,7 @@ async function computeChainStakeMoves(
         STAKE_MOVED_EVENT_KIND,
         "movements",
         "distinct_movers",
+        network,
       ),
     );
     if (window === null) return null;
@@ -727,9 +766,12 @@ async function computeChainStakeMoves(
  * supported sort orders at the route's maximum limit. The PAIR_FILTER
  * predicate is inlined the same way data-api inlines it (it is private to
  * src/chain-transfer-pairs.ts). */
-function chainTransferPairsWindowSql(cutoff: number): string[] {
+function chainTransferPairsWindowSql(
+  cutoff: number,
+  network: ChainNetworkId,
+): string[] {
   const scope =
-    `FROM chain.account_events ` +
+    `FROM ${chainTable("account_events", network)} ` +
     `WHERE event_kind = '${TRANSFER_KIND}' AND observed_at >= ${cutoff} ` +
     `AND hotkey IS NOT NULL AND coldkey IS NOT NULL ` +
     `AND hotkey <> '' AND coldkey <> '' AND hotkey <> coldkey ` +
@@ -763,6 +805,7 @@ function chainTransferPairsWindowSql(cutoff: number): string[] {
 /** GET /api/v1/chain/transfer-pairs, every supported window and both sorts. */
 async function computeChainTransferPairs(
   env: Env,
+  network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
   const generatedAt = Date.now();
   const windows: Record<string, unknown> = {};
@@ -770,6 +813,7 @@ async function computeChainTransferPairs(
   for (const [label, days] of Object.entries(CHAIN_TRANSFER_PAIR_WINDOWS)) {
     const [totalsSql, volumeSql, countSql] = chainTransferPairsWindowSql(
       generatedAt - days * DAY_MS,
+      network,
     );
     const totals = await r2SqlQuery(env, totalsSql!);
     if (totals === null) return null;
@@ -810,11 +854,12 @@ async function computeChainTransferPairs(
  */
 async function computeBlocksSummary(
   env: Env,
+  network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
   const generatedAt = Date.now();
   const rows = await r2SqlQuery(
     env,
-    `SELECT ${BLOCKS_SUMMARY_READ_COLUMNS} FROM chain.blocks ` +
+    `SELECT ${BLOCKS_SUMMARY_READ_COLUMNS} FROM ${chainTable("blocks", network)} ` +
       `ORDER BY block_number DESC LIMIT ${BLOCKS_SUMMARY_SCAN_CAP}`,
   );
   if (rows === null || rows.length === 0) return null;
@@ -856,6 +901,7 @@ async function computeBlocksSummary(
  */
 async function computeChainRegistrations(
   env: Env,
+  network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
   const generatedAt = Date.now();
   const windows: Record<string, unknown> = {};
@@ -863,7 +909,7 @@ async function computeChainRegistrations(
   for (const [label, days] of Object.entries(CHAIN_REGISTRATIONS_WINDOWS)) {
     const cutoff = generatedAt - days * DAY_MS;
     const scope =
-      `FROM chain.account_events ` +
+      `FROM ${chainTable("account_events", network)} ` +
       `WHERE event_kind = '${REGISTRATION_EVENT_KIND}' ` +
       `AND observed_at >= ${cutoff}`;
 
@@ -973,6 +1019,7 @@ const DEREGISTRATION_READ_COLUMNS =
  */
 async function computeChainDeregistrations(
   env: Env,
+  network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
   const generatedAt = Date.now();
   const lookbackDays = Math.max(
@@ -980,7 +1027,7 @@ async function computeChainDeregistrations(
   );
   const rows = await r2SqlQuery(
     env,
-    `SELECT ${DEREGISTRATION_READ_COLUMNS} FROM chain.account_events ` +
+    `SELECT ${DEREGISTRATION_READ_COLUMNS} FROM ${chainTable("account_events", network)} ` +
       `WHERE event_kind = '${REGISTRATION_EVENT_KIND}' ` +
       `AND observed_at >= ${generatedAt - lookbackDays * DAY_MS}`,
   );
@@ -1118,6 +1165,43 @@ interface ProjectionBucket {
   put(key: string, value: string): Promise<unknown>;
 }
 
+/**
+ * Which chains the lanes run for.
+ *
+ * DERIVED from the lakehouse namespace map rather than listed again: a network
+ * that has a namespace has decoded tables, and a network that has decoded
+ * tables is exactly one these lanes can project. A second hand-written list
+ * would let a chain gain a decode lane and silently never get its artifacts.
+ */
+export const PROJECTION_NETWORKS = Object.keys(
+  LAKEHOUSE_NAMESPACES,
+) as ChainNetworkId[];
+
+/**
+ * Where one network's projection artifact lives.
+ *
+ * MAINNET KEEPS ITS KEY UNCHANGED, the same asymmetry `networkKvKey` uses for
+ * the KV cache and `chainTable` for the lakehouse namespace: every artifact
+ * already written stays readable, and a mainnet request after this change
+ * reads exactly the object it read before. Testnet gets its own keyspace, so a
+ * testnet card can never be served to a mainnet caller no matter what a reader
+ * does with it afterwards.
+ *
+ * The insertion point is after the `metagraph/projections/` prefix rather than
+ * at the front of the key, so the projections stay one prefix in the bucket
+ * and a listing still groups them.
+ */
+export function projectionKey(
+  artifactKey: string,
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
+): string {
+  if (network === DEFAULT_CHAIN_NETWORK) return artifactKey;
+  const prefix = "metagraph/projections/";
+  return artifactKey.startsWith(prefix)
+    ? `${prefix}${network}/${artifactKey.slice(prefix.length)}`
+    : `${network}/${artifactKey}`;
+}
+
 export interface ProjectionLaneDeps {
   recordException?: typeof recordExceptionEvent;
 }
@@ -1139,8 +1223,14 @@ export async function runProjectionLane(
   env: Env,
   lane: ProjectionLane,
   deps: ProjectionLaneDeps = {},
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ProjectionLaneResult> {
   const record = deps.recordException ?? recordExceptionEvent;
+  // One label for logs, telemetry and the result map, so a failing testnet lane
+  // is not reported under the mainnet lane's name -- which would make an
+  // exception on the secondary chain look like an outage on the primary.
+  const label =
+    network === DEFAULT_CHAIN_NETWORK ? lane.name : `${lane.name}:${network}`;
   const bucket = (env as { METAGRAPH_ARCHIVE?: ProjectionBucket } | null)
     ?.METAGRAPH_ARCHIVE;
   if (!bucket?.put) {
@@ -1148,24 +1238,24 @@ export async function runProjectionLane(
     // refuse before spending second-scale queries on an answer that would be
     // dropped (raw-capture-sync's posture).
     return {
-      name: lane.name,
+      name: label,
       ok: false,
       rows: null,
       reason: "r2_binding_missing",
     };
   }
   try {
-    const body = await lane.compute(env);
+    const body = await lane.compute(env, network);
     if (body === null) {
       console.error(
-        `[projection:${lane.name}] compute declined; previous artifact left in place`,
+        `[projection:${label}] compute declined; previous artifact left in place`,
       );
       await record(env, {
-        error: new Error(`projection lane ${lane.name}: compute declined`),
-        route: `projection:${lane.name}`,
+        error: new Error(`projection lane ${label}: compute declined`),
+        route: `projection:${label}`,
       });
       return {
-        name: lane.name,
+        name: label,
         ok: false,
         rows: null,
         reason: "compute_declined",
@@ -1175,11 +1265,11 @@ export async function runProjectionLane(
       ? lane.split(body)
       : { [lane.artifactKey]: body };
     for (const [key, value] of Object.entries(objects)) {
-      await bucket.put(key, JSON.stringify(value));
+      await bucket.put(projectionKey(key, network), JSON.stringify(value));
     }
     const rows = (body as { row_count?: unknown }).row_count;
     return {
-      name: lane.name,
+      name: label,
       ok: true,
       rows: typeof rows === "number" ? rows : null,
     };
@@ -1187,11 +1277,11 @@ export async function runProjectionLane(
     // A throwing store is the same decline as a failed compute: the previous
     // artifact survives, and the NEXT lane still runs.
     console.error(
-      `[projection:${lane.name}]`,
+      `[projection:${label}]`,
       String((error as Error)?.message ?? error),
     );
-    await record(env, { error, route: `projection:${lane.name}` });
-    return { name: lane.name, ok: false, rows: null, reason: "lane_failed" };
+    await record(env, { error, route: `projection:${label}` });
+    return { name: label, ok: false, rows: null, reason: "lane_failed" };
   }
 }
 
@@ -1222,10 +1312,17 @@ export async function runProjectionLanes(
   }
   const lanes: Record<string, number | null> = {};
   let ok = true;
-  for (const lane of PROJECTION_LANES) {
-    const result = await runProjectionLane(env, lane, deps);
-    lanes[lane.name] = result.rows;
-    ok = ok && result.ok;
+  for (const network of PROJECTION_NETWORKS) {
+    for (const lane of PROJECTION_LANES) {
+      const result = await runProjectionLane(env, lane, deps, network);
+      lanes[result.name] = result.rows;
+      // MAINNET DECIDES THE VERDICT. A testnet lane that cannot answer -- its
+      // decode lane is younger and its tables can genuinely be empty for a
+      // window -- must not report the whole tick as failed, or the signal that
+      // mainnet is broken stops meaning anything. Its own decline is still
+      // logged and recorded under its own `:testnet` route label.
+      if (network === DEFAULT_CHAIN_NETWORK) ok = ok && result.ok;
+    }
   }
   return { ok, lanes };
 }

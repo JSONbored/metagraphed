@@ -14,7 +14,11 @@ import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import { tieredRejectionResponse } from "../workers/tiered-rate-limit.ts";
 import { API_ROUTES, compileRoutePattern } from "../src/contracts.ts";
 import * as workerConfig from "../workers/config.ts";
-import { PROJECTION_LANES } from "../src/projection-lanes.ts";
+import {
+  PROJECTION_LANES,
+  PROJECTION_NETWORKS,
+  projectionKey,
+} from "../src/projection-lanes.ts";
 import { type AnyFn, type Row } from "./row-type.ts";
 import type { RpcEndpoint } from "../workers/request-handlers/rpc-proxy.ts";
 
@@ -3458,7 +3462,14 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
     // to be edited in lockstep. Deriving means registering a lane can never
     // again break this by omission -- it can only fail if the lane genuinely
     // did not run or did not write, which is what this test is for.
-    const registered = PROJECTION_LANES.map((lane) => lane.name);
+    // Every lane x every network (#9412): mainnet keeps the bare lane name,
+    // each other chain is suffixed, so a testnet failure is never reported
+    // under the mainnet lane's name.
+    const registered = PROJECTION_NETWORKS.flatMap((network) =>
+      PROJECTION_LANES.map((lane) =>
+        network === "mainnet" ? lane.name : `${lane.name}:${network}`,
+      ),
+    );
     const outcome = result as {
       ok: boolean;
       lanes: Record<string, number | null>;
@@ -3482,13 +3493,15 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
     assert.equal(outcome.ok, true);
     assert.deepEqual(
       puts.sort(),
-      [
-        ...PROJECTION_LANES.map((lane) => lane.artifactKey),
-        // The one lane that fans its single computed body across two objects
-        // (src/chain-deregistrations-artifact.ts's header says why).
-        "metagraph/projections/chain-deregistrations-by-hotkey.json",
-      ].sort(),
-      "each lane writes its own artifact key, plus any it declares a split for",
+      PROJECTION_NETWORKS.flatMap((network) =>
+        [
+          ...PROJECTION_LANES.map((lane) => lane.artifactKey),
+          // The one lane that fans its single computed body across two objects
+          // (src/chain-deregistrations-artifact.ts's header says why).
+          "metagraph/projections/chain-deregistrations-by-hotkey.json",
+        ].map((key) => projectionKey(key, network)),
+      ).sort(),
+      "each lane writes its own artifact key per network, plus any split it declares",
     );
   });
 
@@ -3530,9 +3543,21 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
     assert.ok(
       !puts.includes("metagraph/projections/chain-transfer-pairs.json"),
     );
-    // -2 failed lanes, +1 for the chain-deregistrations split's second object.
-    assert.equal(puts.length, Object.keys(lanes).length - 2 + 1);
+    // The Transfer filter is network-agnostic, so BOTH chains' copies of those
+    // two lanes fail: two per network, plus one extra object for the
+    // chain-deregistrations split on each.
+    const failedPerNetwork = 2;
+    const splitExtraPerNetwork = 1;
+    assert.equal(
+      puts.length,
+      Object.keys(lanes).length -
+        failedPerNetwork * PROJECTION_NETWORKS.length +
+        splitExtraPerNetwork * PROJECTION_NETWORKS.length,
+    );
     assert.ok(puts.includes("metagraph/projections/chain-stake-flow.json"));
+    // And mainnet's verdict is what set ok:false -- the testnet copies of the
+    // same two lanes failed too, but they never decide the tick.
+    assert.equal(lanes["chain-transfers:testnet"], null);
   });
 });
 
