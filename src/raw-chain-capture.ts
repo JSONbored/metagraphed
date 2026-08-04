@@ -223,11 +223,34 @@ export async function captureTick(deps: {
   /** Which chain these bytes came from. Decides the R2 key prefix only —
    * everything else here is chain-agnostic, because capture never decodes. */
   network?: ChainNetworkId;
+  /**
+   * Minimum gap between two blocks' reads, so a tick's calls are SPREAD across
+   * it rather than fired as fast as the network allows.
+   *
+   * The endpoint's limit is per MINUTE, so an unpaced tick is bounded by one
+   * minute's allowance however long the tick runs -- which is what pinned the
+   * testnet cap at 32 blocks (#9430). Pacing makes the tick's own span the
+   * budget instead. Zero (the default) keeps the previous behaviour exactly.
+   */
+  minGapMs?: number;
+  /** Blocks per durable write. Smaller means less work lost to an invocation
+   * killed mid-tick, at one R2 PUT each. */
+  flushEvery?: number;
   fetchImpl?: typeof fetch;
   now?: () => number;
+  /** Injectable so a test asserts the PACING without waiting for it. A real
+   * timer is not dependable under the shared-registry pass (#9123). */
+  sleepFn?: (ms: number) => Promise<void>;
 }): Promise<CaptureResult> {
   const fetchImpl = deps.fetchImpl ?? fetch;
   const now = deps.now ?? Date.now;
+  const minGapMs = deps.minGapMs ?? 0;
+  // Default is the whole tick, so a caller that has not opted in writes once
+  // exactly as before.
+  const flushEvery = deps.flushEvery ?? Number.POSITIVE_INFINITY;
+  const sleepFn =
+    deps.sleepFn ??
+    ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const stored = await deps.watermark.read();
   // An unset watermark starts just below the floor, so the first tick captures
   // the floor block itself rather than skipping it.
@@ -257,12 +280,41 @@ export async function captureTick(deps: {
     };
   }
 
-  const blocks: RawBlockCapture[] = [];
+  // FLUSHED IN CHUNKS, NOT AT THE END. Holding a whole tick in memory and
+  // writing once meant a tick could only be as long as we were willing to lose
+  // -- an invocation killed by a redeploy discarded everything it had read. So
+  // a paced tick, which is the only way to use a per-MINUTE budget across a
+  // five-minute interval, was unaffordable (#9430).
+  //
+  // The no-gap guarantee is unchanged, and rests on the same ordering it always
+  // did: bytes durable FIRST, watermark only after. The watermark therefore
+  // never claims a height whose object is missing, so a retry re-reads exactly
+  // the range that did not land -- from the same `lastContiguous`, producing
+  // the same chunk boundaries and the same key, overwriting byte-for-byte
+  // rather than appending a duplicate.
+  const flush = async (batch: RawBlockCapture[]) => {
+    const first = batch[0]!.block_number;
+    const last = batch[batch.length - 1]!.block_number;
+    await deps.store.put(
+      rawBatchKey(first, last, deps.network),
+      batch.map((b) => JSON.stringify(b)).join("\n") + "\n",
+    );
+    // Only now -- the bytes are durable, so the watermark may claim them.
+    await deps.watermark.write(last);
+    return last;
+  };
+
+  let pending: RawBlockCapture[] = [];
+  let captured = 0;
+  let watermark = lastContiguous;
   let stoppedAt: number | undefined;
   let reason: string | undefined;
-  for (const height of heights) {
+  for (const [index, height] of heights.entries()) {
+    // BEFORE the read, and never before the first: the gap belongs between two
+    // blocks' bursts, so pacing never delays a tick that captures one block.
+    if (index > 0 && minGapMs > 0) await sleepFn(minGapMs);
     try {
-      blocks.push(await fetchRawBlock(deps.rpcUrl, height, fetchImpl, now));
+      pending.push(await fetchRawBlock(deps.rpcUrl, height, fetchImpl, now));
     } catch (error) {
       // Stop at the FIRST failure and keep the prefix. Continuing past it
       // would create exactly the hole this module exists to prevent.
@@ -270,9 +322,20 @@ export async function captureTick(deps: {
       reason = String((error as Error)?.message ?? error);
       break;
     }
+    if (pending.length >= flushEvery) {
+      watermark = await flush(pending);
+      captured += pending.length;
+      pending = [];
+    }
+  }
+  // Whatever the last chunk holds, including everything when the tick stopped
+  // early: the prefix before a failure is still good data.
+  if (pending.length > 0) {
+    watermark = await flush(pending);
+    captured += pending.length;
   }
 
-  if (blocks.length === 0) {
+  if (captured === 0) {
     return {
       captured: 0,
       watermark: lastContiguous,
@@ -282,21 +345,10 @@ export async function captureTick(deps: {
     };
   }
 
-  const first = blocks[0]!.block_number;
-  const last = blocks[blocks.length - 1]!.block_number;
-  // One object per contiguous batch, keyed by its range: a retry of the same
-  // range overwrites byte-for-byte rather than appending a duplicate.
-  await deps.store.put(
-    rawBatchKey(first, last, deps.network),
-    blocks.map((b) => JSON.stringify(b)).join("\n") + "\n",
-  );
-  // Only now — the bytes are durable, so the watermark may claim them.
-  await deps.watermark.write(last);
-
   return {
-    captured: blocks.length,
-    watermark: last,
-    behind: head - last,
+    captured,
+    watermark,
+    behind: head - watermark,
     stoppedAt,
     reason,
   };
