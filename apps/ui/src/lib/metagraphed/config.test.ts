@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { sanitizeApiBase } from "./config";
+import { makeWindow } from "./test-window";
 
 // sanitizeApiBase is the XSS taint barrier: a persisted / user-supplied API base
 // must never reach an href as an executable URL. Only http(s) origins pass.
@@ -39,41 +40,6 @@ describe("sanitizeApiBase", () => {
     expect(sanitizeApiBase("HTTPS://api.metagraph.sh")).toBe("HTTPS://api.metagraph.sh");
   });
 });
-
-// A minimal browser `window` for the CSR paths: an EventTarget (so add/remove/dispatch work) plus a
-// Map-backed localStorage. Node 22 provides EventTarget + CustomEvent globally, so setApiBase's
-// `new CustomEvent(...)` + `window.dispatchEvent(...)` broadcast exercises for real.
-function makeWindow(seed: Record<string, string> = {}, hostname?: string) {
-  const store = new Map<string, string>(Object.entries(seed));
-  const win = new EventTarget() as EventTarget & {
-    localStorage: Storage;
-    store: Map<string, string>;
-    location?: { hostname: string; href: string; assign: (url: string) => void };
-    assigned: string[];
-  };
-  win.store = store;
-  // Only attach a location when a case opts in, so the existing cases keep
-  // exercising the no-location path (config.ts must never assume a DOM).
-  win.assigned = [];
-  if (hostname !== undefined) {
-    win.location = {
-      hostname,
-      href: `https://${hostname}/subnets?view=table`,
-      assign: (url: string) => void win.assigned.push(url),
-    };
-  }
-  win.localStorage = {
-    getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
-    setItem: (k: string, v: string) => void store.set(k, v),
-    removeItem: (k: string) => void store.delete(k),
-    clear: () => store.clear(),
-    key: () => null,
-    get length() {
-      return store.size;
-    },
-  };
-  return win;
-}
 
 // A fresh module instance per case: config.ts caches the base/network at module scope (and reads
 // `window` at import time via `API_BASE = getApiBase()`), so resetModules + a re-import is the only
