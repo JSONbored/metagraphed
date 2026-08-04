@@ -4791,6 +4791,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/validator-economics/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch whether validating on one subnet is getting cheaper or more expensive: a daily series of the observed permit floor and earning floor in alpha, the validator set composition as three separate counts, and the emission-gate state with daily TAO inflow, over a 7d/30d/90d window (default 30d), newest first. A floor that has doubled means the subnet is filling up and entering now buys a contested position; a falling earning floor means it is emptying out — the same snapshot value, opposite decisions. Set-composition drift is what usually explains a floor change, which is why both ship together. TAO cost is deliberately excluded: a historical cost needs the pool reserves as they were, and reconstructing one from today's reserves would be wrong. */
+        get: operations["subnetValidatorEconomicsHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/validators": {
         parameters: {
             query?: never;
@@ -10970,6 +10987,22 @@ export interface components {
             uids_above_threshold: number | null;
             validator_slots_open: number | null;
         };
+        SubnetValidatorEconomicsHistoryArtifact: {
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
+            netuid: number;
+            points: components["schemas"]["ValidatorEconomicsHistoryPoint"][];
+            schema_version: number;
+            window: string;
+        };
         SubnetValidatorsArtifact: {
             block_number?: number | null;
             captured_at?: string | null;
@@ -11397,6 +11430,16 @@ export interface components {
         ValidatorEconomicsExclusion: {
             netuid: number;
             reason: string;
+        };
+        ValidatorEconomicsHistoryPoint: {
+            earning_floor_alpha: number | null;
+            emission_gate_open: boolean | null;
+            permit_floor_alpha: number | null;
+            snapshot_date: string;
+            tao_inflow_per_day: number | null;
+            validators_active: number;
+            validators_earning: number;
+            validators_permitted: number;
         };
         ValidatorEconomicsRankingArtifact: {
             excluded: components["schemas"]["ValidatorEconomicsExclusion"][];
@@ -47274,6 +47317,130 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetValidatorEconomicsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetValidatorEconomicsHistory: {
+        parameters: {
+            query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
+                window?: "7d" | "30d" | "90d";
+            };
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
+                     *         "netuid": 7,
+                     *         "points": [
+                     *           {
+                     *             "earning_floor_alpha": 0.5,
+                     *             "emission_gate_open": false,
+                     *             "permit_floor_alpha": 0.5,
+                     *             "snapshot_date": "example",
+                     *             "tao_inflow_per_day": 0.5,
+                     *             "validators_active": 1,
+                     *             "validators_earning": 1,
+                     *             "validators_permitted": 1
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetValidatorEconomicsHistoryArtifact"];
                     };
                 };
             };

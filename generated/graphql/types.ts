@@ -2828,6 +2828,8 @@ export type Query = {
   subnet_uptime: SubnetUptime;
   /** What it costs to validate on one subnet and whether a permit there earns: the permit floor and the earning floor (which differ by a median of ~7x -- a permit is not income), the TAO to reach each priced against live pool reserves plus the registration burn, open validator slots, the commission (take) distribution among permit-holders, the emission-gate state, and the live StakeThreshold/TaoWeight the floors were derived against. Permitted, active and earning are three different counts and all three are returned. Every derived field is nullable and degrades with a stated reason rather than reporting a confident zero. Mirrors GET /api/v1/subnets/{netuid}/validator-economics. */
   subnet_validator_economics: SubnetValidatorEconomics;
+  /** Whether validating on one subnet is getting cheaper or more expensive: a daily series of the OBSERVED permit floor and earning floor in alpha (the smallest stake that actually held a permit, and that actually earned, each day), validator set composition as three separate counts, and the emission-gate state with daily TAO inflow. window accepts 7d, 30d or 90d (default 30d). TAO cost is deliberately absent from the series -- a historical cost needs the pool reserves as they were, and reconstructing one from today's reserves would be wrong; alpha floors are unambiguous. Mirrors GET /api/v1/subnets/{netuid}/validator-economics/history. */
+  subnet_validator_economics_history: SubnetValidatorEconomicsHistory;
   /** One subnet's current validator set (permitted neurons) from the live metagraph snapshot, with each validator's full neuron record. A subnet with no snapshot resolves to a schema-stable empty list, never null. Mirrors GET /api/v1/subnets/{netuid}/validators. */
   subnet_validators: SubnetValidatorList;
   /** One subnet's rolling 24h alpha trading volume from the StakeAdded/StakeRemoved trade stream: buy/sell volume in alpha and TAO, trade counts, net flow, a buy-vs-sell sentiment ratio, and volume-to-market-cap ratio. A subnet with no trades resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/volume. */
@@ -3997,6 +3999,12 @@ export type QuerySubnet_UptimeArgs = {
 
 export type QuerySubnet_Validator_EconomicsArgs = {
   netuid: Scalars['Int']['input'];
+};
+
+
+export type QuerySubnet_Validator_Economics_HistoryArgs = {
+  netuid: Scalars['Int']['input'];
+  window?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -5266,6 +5274,15 @@ export type SubnetValidatorEconomics = {
   validator_slots_open?: Maybe<Scalars['Int']['output']>;
 };
 
+export type SubnetValidatorEconomicsHistory = {
+  __typename?: 'SubnetValidatorEconomicsHistory';
+  netuid: Scalars['Int']['output'];
+  /** Newest first. */
+  points: Array<ValidatorEconomicsHistoryPoint>;
+  schema_version: Scalars['Int']['output'];
+  window: Scalars['String']['output'];
+};
+
 /** One subnet's current validator set (#6979). Mirrors GET /api/v1/subnets/{netuid}/validators' data envelope. */
 export type SubnetValidatorList = {
   __typename?: 'SubnetValidatorList';
@@ -5556,6 +5573,19 @@ export type ValidatorEconomicsExclusion = {
   __typename?: 'ValidatorEconomicsExclusion';
   netuid: Scalars['Int']['output'];
   reason: Scalars['String']['output'];
+};
+
+/** One day's observed economics. The floors are read off the snapshot, not re-derived: StakeThreshold is sudo-settable, so re-running today's threshold against an old day would show a flat line across a governance change that actually moved the floor. */
+export type ValidatorEconomicsHistoryPoint = {
+  __typename?: 'ValidatorEconomicsHistoryPoint';
+  earning_floor_alpha?: Maybe<Scalars['Float']['output']>;
+  emission_gate_open?: Maybe<Scalars['Boolean']['output']>;
+  permit_floor_alpha?: Maybe<Scalars['Float']['output']>;
+  snapshot_date: Scalars['String']['output'];
+  tao_inflow_per_day?: Maybe<Scalars['Float']['output']>;
+  validators_active: Scalars['Int']['output'];
+  validators_earning: Scalars['Int']['output'];
+  validators_permitted: Scalars['Int']['output'];
 };
 
 export type ValidatorEconomicsRanking = {
@@ -6009,6 +6039,7 @@ export type ResolversTypes = ResolversObject<{
   SubnetTurnoverChanges: ResolverTypeWrapper<SubnetTurnoverChanges>;
   SubnetUptime: ResolverTypeWrapper<SubnetUptime>;
   SubnetValidatorEconomics: ResolverTypeWrapper<SubnetValidatorEconomics>;
+  SubnetValidatorEconomicsHistory: ResolverTypeWrapper<SubnetValidatorEconomicsHistory>;
   SubnetValidatorList: ResolverTypeWrapper<SubnetValidatorList>;
   SubnetVolume: ResolverTypeWrapper<SubnetVolume>;
   SubnetWeightSetter: ResolverTypeWrapper<SubnetWeightSetter>;
@@ -6031,6 +6062,7 @@ export type ResolversTypes = ResolversObject<{
   Validator: ResolverTypeWrapper<Validator>;
   ValidatorComparison: ResolverTypeWrapper<ValidatorComparison>;
   ValidatorEconomicsExclusion: ResolverTypeWrapper<ValidatorEconomicsExclusion>;
+  ValidatorEconomicsHistoryPoint: ResolverTypeWrapper<ValidatorEconomicsHistoryPoint>;
   ValidatorEconomicsRanking: ResolverTypeWrapper<ValidatorEconomicsRanking>;
   ValidatorHistory: ResolverTypeWrapper<ValidatorHistory>;
   ValidatorHistoryPoint: ResolverTypeWrapper<ValidatorHistoryPoint>;
@@ -6320,6 +6352,7 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetTurnoverChanges: SubnetTurnoverChanges;
   SubnetUptime: SubnetUptime;
   SubnetValidatorEconomics: SubnetValidatorEconomics;
+  SubnetValidatorEconomicsHistory: SubnetValidatorEconomicsHistory;
   SubnetValidatorList: SubnetValidatorList;
   SubnetVolume: SubnetVolume;
   SubnetWeightSetter: SubnetWeightSetter;
@@ -6342,6 +6375,7 @@ export type ResolversParentTypes = ResolversObject<{
   Validator: Validator;
   ValidatorComparison: ValidatorComparison;
   ValidatorEconomicsExclusion: ValidatorEconomicsExclusion;
+  ValidatorEconomicsHistoryPoint: ValidatorEconomicsHistoryPoint;
   ValidatorEconomicsRanking: ValidatorEconomicsRanking;
   ValidatorHistory: ValidatorHistory;
   ValidatorHistoryPoint: ValidatorHistoryPoint;
@@ -8520,6 +8554,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_turnover?: Resolver<ResolversTypes['SubnetTurnover'], ParentType, ContextType, RequireFields<QuerySubnet_TurnoverArgs, 'netuid'>>;
   subnet_uptime?: Resolver<ResolversTypes['SubnetUptime'], ParentType, ContextType, RequireFields<QuerySubnet_UptimeArgs, 'netuid'>>;
   subnet_validator_economics?: Resolver<ResolversTypes['SubnetValidatorEconomics'], ParentType, ContextType, RequireFields<QuerySubnet_Validator_EconomicsArgs, 'netuid'>>;
+  subnet_validator_economics_history?: Resolver<ResolversTypes['SubnetValidatorEconomicsHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Validator_Economics_HistoryArgs, 'netuid'>>;
   subnet_validators?: Resolver<ResolversTypes['SubnetValidatorList'], ParentType, ContextType, RequireFields<QuerySubnet_ValidatorsArgs, 'netuid'>>;
   subnet_volume?: Resolver<ResolversTypes['SubnetVolume'], ParentType, ContextType, RequireFields<QuerySubnet_VolumeArgs, 'netuid'>>;
   subnet_weight_setters?: Resolver<ResolversTypes['SubnetWeightSetters'], ParentType, ContextType, RequireFields<QuerySubnet_Weight_SettersArgs, 'netuid'>>;
@@ -9409,6 +9444,13 @@ export type SubnetValidatorEconomicsResolvers<ContextType = GqlContext, ParentTy
   validator_slots_open?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
+export type SubnetValidatorEconomicsHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetValidatorEconomicsHistory'] = ResolversParentTypes['SubnetValidatorEconomicsHistory']> = ResolversObject<{
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  points?: Resolver<Array<ResolversTypes['ValidatorEconomicsHistoryPoint']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  window?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
 export type SubnetValidatorListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetValidatorList'] = ResolversParentTypes['SubnetValidatorList']> = ResolversObject<{
   block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -9640,6 +9682,17 @@ export type ValidatorComparisonResolvers<ContextType = GqlContext, ParentType ex
 export type ValidatorEconomicsExclusionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorEconomicsExclusion'] = ResolversParentTypes['ValidatorEconomicsExclusion']> = ResolversObject<{
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type ValidatorEconomicsHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorEconomicsHistoryPoint'] = ResolversParentTypes['ValidatorEconomicsHistoryPoint']> = ResolversObject<{
+  earning_floor_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  emission_gate_open?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  permit_floor_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  snapshot_date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  tao_inflow_per_day?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  validators_active?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  validators_earning?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  validators_permitted?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type ValidatorEconomicsRankingResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorEconomicsRanking'] = ResolversParentTypes['ValidatorEconomicsRanking']> = ResolversObject<{
@@ -9996,6 +10049,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetTurnoverChanges?: SubnetTurnoverChangesResolvers<ContextType>;
   SubnetUptime?: SubnetUptimeResolvers<ContextType>;
   SubnetValidatorEconomics?: SubnetValidatorEconomicsResolvers<ContextType>;
+  SubnetValidatorEconomicsHistory?: SubnetValidatorEconomicsHistoryResolvers<ContextType>;
   SubnetValidatorList?: SubnetValidatorListResolvers<ContextType>;
   SubnetVolume?: SubnetVolumeResolvers<ContextType>;
   SubnetWeightSetter?: SubnetWeightSetterResolvers<ContextType>;
@@ -10018,6 +10072,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   Validator?: ValidatorResolvers<ContextType>;
   ValidatorComparison?: ValidatorComparisonResolvers<ContextType>;
   ValidatorEconomicsExclusion?: ValidatorEconomicsExclusionResolvers<ContextType>;
+  ValidatorEconomicsHistoryPoint?: ValidatorEconomicsHistoryPointResolvers<ContextType>;
   ValidatorEconomicsRanking?: ValidatorEconomicsRankingResolvers<ContextType>;
   ValidatorHistory?: ValidatorHistoryResolvers<ContextType>;
   ValidatorHistoryPoint?: ValidatorHistoryPointResolvers<ContextType>;

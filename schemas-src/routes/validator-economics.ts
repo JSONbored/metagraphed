@@ -167,3 +167,54 @@ export const ValidatorEconomicsRankingQuerySchema = z
 export type ValidatorEconomicsRankingQuery = z.infer<
   typeof ValidatorEconomicsRankingQuerySchema
 >;
+
+// GET /api/v1/subnets/{netuid}/validator-economics/history (#9326).
+//
+// The floors here are OBSERVED, not re-derived — the smallest stake that actually
+// held a permit that day. `StakeThreshold` is sudo-settable, so re-running today's
+// threshold against a historical snapshot would report what the floor WOULD have
+// been under today's rules and show a flat line across a governance change that
+// actually moved it.
+//
+// Cost fields are deliberately absent: a historical TAO cost needs the pool reserves
+// as they were, priced at the time, and reconstructing one from today's reserves
+// would be wrong in exactly the way the moving-price trap catches elsewhere. Alpha
+// floors are unambiguous; cost is a present-tense question the per-subnet route
+// answers.
+//
+// `cap_binding` is absent for a different reason: `subnet_snapshots` carries no
+// historical `max_validators`, and applying today's cap to an old snapshot would
+// manufacture a transition that never happened. Omitted rather than published as a
+// permanently-null field.
+export const ValidatorEconomicsHistoryPointSchema = z
+  .object({
+    snapshot_date: z.string(),
+    permit_floor_alpha: z.number().nullable(),
+    earning_floor_alpha: z.number().nullable(),
+    validators_permitted: z.int().min(0),
+    validators_active: z.int().min(0),
+    validators_earning: z.int().min(0),
+    emission_gate_open: z.boolean().nullable(),
+    tao_inflow_per_day: z.number().nullable(),
+  })
+  .strict();
+
+export const SubnetValidatorEconomicsHistoryArtifactSchema = z
+  .object({
+    schema_version: z.int(),
+    netuid: z.int().min(0),
+    window: z.string(),
+    points: z.array(ValidatorEconomicsHistoryPointSchema),
+    field_sources: FieldSourcesSchema,
+  })
+  .strict();
+export type SubnetValidatorEconomicsHistoryArtifact = z.infer<
+  typeof SubnetValidatorEconomicsHistoryArtifactSchema
+>;
+
+export const SubnetValidatorEconomicsHistoryResponseSchema =
+  successEnvelopeSchema(SubnetValidatorEconomicsHistoryArtifactSchema);
+
+export const SubnetValidatorEconomicsHistoryQuerySchema = z
+  .object({ window: z.string().optional() })
+  .strict();

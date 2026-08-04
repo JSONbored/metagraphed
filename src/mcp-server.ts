@@ -607,9 +607,16 @@ import {
   GetSubnetValidatorEconomicsOutputSchema,
   ListValidatorEconomicsInputSchema,
   ListValidatorEconomicsOutputSchema,
+  GetSubnetValidatorEconomicsHistoryInputSchema,
+  GetSubnetValidatorEconomicsHistoryOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-validator-economics.ts";
 import {
+  DEFAULT_VALIDATOR_ECONOMICS_HISTORY_WINDOW,
+  VALIDATOR_ECONOMICS_HISTORY_WINDOWS,
+} from "./validator-economics.ts";
+import {
   buildSubnetValidatorEconomicsPayload,
+  buildSubnetValidatorEconomicsHistoryPayload,
   buildValidatorEconomicsRankingPayload,
 } from "../workers/request-handlers/entities.ts";
 import {
@@ -4663,6 +4670,55 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             };
           },
         },
+      );
+      return data;
+    },
+  },
+  {
+    name: "get_subnet_validator_economics_history",
+    title: "Is it getting cheaper or more expensive to validate on this subnet",
+    description:
+      "Answer whether validating on one subnet is getting cheaper or more " +
+      "expensive over time. Returns a daily series of the OBSERVED permit floor " +
+      "and earning floor in alpha (the smallest stake that actually held a " +
+      "permit, and that actually earned, on each day), the validator set " +
+      "composition as three separate counts, and the emission-gate state with " +
+      "daily TAO inflow. window accepts 7d, 30d or 90d (default 30d). A floor " +
+      "that has doubled means the subnet is filling up and entering now buys a " +
+      "contested position; a falling earning floor means it is emptying out -- " +
+      "same snapshot value, opposite decisions. Set-composition drift is what " +
+      "usually explains a floor change, which is why both ship together. " +
+      "TAO cost is deliberately NOT in the series: a historical cost needs the " +
+      "pool reserves as they were, and reconstructing one from today's reserves " +
+      "would be wrong; alpha floors are unambiguous. Read-only. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/validator-economics/history.",
+    inputSchema: z.toJSONSchema(GetSubnetValidatorEconomicsHistoryInputSchema, {
+      target: "draft-2020-12",
+    }),
+    outputSchema: z.toJSONSchema(
+      GetSubnetValidatorEconomicsHistoryOutputSchema,
+      { target: "draft-2020-12" },
+    ),
+    async handler(
+      args: z.infer<typeof GetSubnetValidatorEconomicsHistoryInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      const windowLabel =
+        optionalString(args, "window") ??
+        DEFAULT_VALIDATOR_ECONOMICS_HISTORY_WINDOW;
+      if (!Object.hasOwn(VALIDATOR_ECONOMICS_HISTORY_WINDOWS, windowLabel)) {
+        throw toolError(
+          "invalid_window",
+          `window must be one of: ${Object.keys(VALIDATOR_ECONOMICS_HISTORY_WINDOWS).join(", ")}`,
+        );
+      }
+      // Reads the daily rollups off the same D1 the REST route uses, so no ctx
+      // artifact seam is needed here.
+      const { data } = await buildSubnetValidatorEconomicsHistoryPayload(
+        ctx.env,
+        netuid,
+        windowLabel,
       );
       return data;
     },

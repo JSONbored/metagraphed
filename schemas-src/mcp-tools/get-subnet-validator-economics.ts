@@ -8,6 +8,7 @@ import { z } from "zod";
 import {
   SubnetValidatorEconomicsArtifactSchema,
   ValidatorEconomicsRankingArtifactSchema,
+  SubnetValidatorEconomicsHistoryArtifactSchema,
 } from "../routes/validator-economics.ts";
 
 export const GetSubnetValidatorEconomicsInputSchema = z
@@ -46,3 +47,17 @@ export const ListValidatorEconomicsOutputSchema =
 export type ListValidatorEconomicsOutput = z.infer<
   typeof ListValidatorEconomicsOutputSchema
 >;
+
+// get_subnet_validator_economics_history (#9326).
+export const GetSubnetValidatorEconomicsHistoryInputSchema = z
+  .object({
+    netuid: z.int().min(0),
+    window: z.string().optional(),
+  })
+  .strict();
+export type GetSubnetValidatorEconomicsHistoryInput = z.infer<
+  typeof GetSubnetValidatorEconomicsHistoryInputSchema
+>;
+
+export const GetSubnetValidatorEconomicsHistoryOutputSchema =
+  SubnetValidatorEconomicsHistoryArtifactSchema.passthrough();

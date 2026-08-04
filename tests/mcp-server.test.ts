@@ -9669,6 +9669,62 @@ describe("MCP economics + metagraph data tools", () => {
     );
   });
 
+  test("get_subnet_validator_economics_history serves the observed series", async () => {
+    const db = {
+      prepare(query: string) {
+        const isEmission = /subnet_snapshots/.test(query);
+        return {
+          bind: () => ({
+            all: async () => ({
+              results: isEmission
+                ? [{ snapshot_date: "2026-08-01", tao_in_emission_tao: 0.01 }]
+                : [
+                    {
+                      snapshot_date: "2026-08-01",
+                      stake_tao: 4200,
+                      validator_permit: 1,
+                      dividends: 0.5,
+                      active: 1,
+                    },
+                  ],
+            }),
+          }),
+        };
+      },
+    };
+    const res = await callTool(
+      "get_subnet_validator_economics_history",
+      { netuid: 64, window: "7d" },
+      {
+        deps: makeDeps({}, {}),
+        env: { METAGRAPH_HEALTH_DB: db } as unknown as Env,
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 64);
+    assert.equal(out.window, "7d");
+    const points = out.points as Array<Record<string, unknown>>;
+    assert.equal(points.length, 1);
+    // Observed off the snapshot, not re-derived from today's threshold.
+    assert.equal(points[0].permit_floor_alpha, 4200);
+    assert.equal(points[0].validators_permitted, 1);
+    assert.equal(points[0].emission_gate_open, true);
+  });
+
+  test("get_subnet_validator_economics_history rejects an unsupported window", async () => {
+    const res = await callTool(
+      "get_subnet_validator_economics_history",
+      { netuid: 64, window: "1y" },
+      { deps: makeDeps({}, {}), env: {} as unknown as Env },
+    );
+    assert.equal(res.body.result.isError, true);
+    // The message names the supported set, so an agent can correct the call
+    // without a second round trip.
+    assert.ok(
+      res.body.result.content[0].text.includes("window must be one of"),
+    );
+  });
+
   test("list_validator_economics ranks subnets across the MCP surface", async () => {
     // The ranking reads economics through ctx like its per-subnet sibling, so
     // this exercises the real derivation rather than a degraded stub.

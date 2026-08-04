@@ -91,6 +91,9 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // Cross-subnet cost-to-validate ranking (#9324): derived per request from one
   // neuron scan against live reserves and the governance parameters. Never a file.
   /^validators\/economics\.json$/,
+  // Observed validator-economics series (#9326): folded per request from the
+  // daily rollups, never a file.
+  /^subnets\/(?:\d+|\{netuid\})\/validator-economics-history\.json$/,
   // Validator weight-setting activity: computed live from the account_events WeightsSet stream.
   /^subnets\/(?:\d+|\{netuid\})\/weights\.json$/,
   // Per-subnet weight-setter leaderboard: computed live from the account_events WeightsSet stream.

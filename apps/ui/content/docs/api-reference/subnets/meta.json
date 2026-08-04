@@ -59,6 +59,7 @@
     "subnet-trajectory",
     "subnet-turnover",
     "subnet-validator-economics",
+    "subnet-validator-economics-history",
     "subnet-validators",
     "subnet-weight-setters",
     "subnet-weight-setters-by-network",

@@ -143,6 +143,10 @@ import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.ts";
 import { loadSubnetBurn } from "../../src/subnet-burn.ts";
 import {
   buildValidatorEconomics,
+  buildValidatorEconomicsHistory,
+  DEFAULT_VALIDATOR_ECONOMICS_HISTORY_WINDOW,
+  VALIDATOR_ECONOMICS_HISTORY_ROW_CAP,
+  VALIDATOR_ECONOMICS_HISTORY_WINDOWS,
   groupNeuronsByNetuid,
   rankValidatorEconomics,
   VALIDATOR_ECONOMICS_SORTS,
@@ -3522,6 +3526,127 @@ export async function handleSubnetValidatorEconomics(
         env,
         `/metagraph/subnets/${netuid}/validator-economics.json`,
         generatedAt,
+      ),
+    },
+    "short",
+  );
+}
+
+// Provenance for the history series. Every field here is OBSERVED off a daily
+// snapshot rather than derived from a live parameter, which is exactly why the
+// series is trustworthy across a governance change — see the schema header.
+const VALIDATOR_ECONOMICS_HISTORY_FIELD_SOURCES = {
+  permit_floor_alpha: { kind: "measured", storage: "SubtensorModule.Alpha" },
+  earning_floor_alpha: { kind: "measured", storage: "SubtensorModule.Alpha" },
+  validators_permitted: {
+    kind: "measured",
+    storage: "SubtensorModule.ValidatorPermit",
+  },
+  validators_active: { kind: "measured", storage: "SubtensorModule.Active" },
+  validators_earning: {
+    kind: "measured",
+    storage: "SubtensorModule.Dividends",
+  },
+  emission_gate_open: {
+    kind: "measured",
+    storage: "SubtensorModule.SubnetTaoInEmission",
+  },
+  tao_inflow_per_day: {
+    kind: "reconstructed",
+    storage: "SubtensorModule.SubnetTaoInEmission",
+  },
+} as const;
+
+// GET /api/v1/subnets/{netuid}/validator-economics/history (#9326): the observed
+// floors and set composition over time, so "is it getting more expensive to
+// validate here" is answerable. Reads the daily rollups, not the live tier.
+export async function buildSubnetValidatorEconomicsHistoryPayload(
+  env: Env,
+  netuid: number,
+  windowLabel: string,
+): Promise<{ data: Record<string, unknown> }> {
+  const days = VALIDATOR_ECONOMICS_HISTORY_WINDOWS[windowLabel];
+  const cutoff = new Date(Date.now() - days * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  const db = env.METAGRAPH_HEALTH_DB;
+
+  const neuronRows = db
+    ? ((
+        await db
+          .prepare(
+            "SELECT snapshot_date, stake_tao, validator_permit, dividends, active " +
+              "FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? " +
+              "ORDER BY snapshot_date DESC LIMIT ?",
+          )
+          .bind(netuid, cutoff, VALIDATOR_ECONOMICS_HISTORY_ROW_CAP)
+          .all()
+      )?.results ?? [])
+    : [];
+
+  const emissionRows = db
+    ? ((
+        await db
+          .prepare(
+            "SELECT snapshot_date, tao_in_emission_tao FROM subnet_snapshots " +
+              "WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC",
+          )
+          .bind(netuid, cutoff)
+          .all()
+      )?.results ?? [])
+    : [];
+
+  return {
+    data: {
+      schema_version: 1,
+      netuid: Number(netuid),
+      window: windowLabel,
+      points: buildValidatorEconomicsHistory(
+        neuronRows as never,
+        emissionRows as never,
+      ),
+      field_sources: VALIDATOR_ECONOMICS_HISTORY_FIELD_SOURCES,
+    },
+  };
+}
+
+export async function handleSubnetValidatorEconomicsHistory(
+  request: Request,
+  env: Env,
+  netuid: number,
+  url: URL,
+) {
+  const validationError = validateEntityQuery(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  if (!isU16Netuid(netuid)) {
+    return errorResponse(
+      "invalid_netuid",
+      "netuid must be an integer in the u16 range 0..65535.",
+      400,
+    );
+  }
+  const windowLabel =
+    url.searchParams.get("window") ||
+    DEFAULT_VALIDATOR_ECONOMICS_HISTORY_WINDOW;
+  if (!Object.hasOwn(VALIDATOR_ECONOMICS_HISTORY_WINDOWS, windowLabel)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: `window must be one of: ${Object.keys(VALIDATOR_ECONOMICS_HISTORY_WINDOWS).join(", ")}`,
+    });
+  }
+  const { data } = await buildSubnetValidatorEconomicsHistoryPayload(
+    env,
+    netuid,
+    windowLabel,
+  );
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/validator-economics-history.json`,
+        null,
       ),
     },
     "short",

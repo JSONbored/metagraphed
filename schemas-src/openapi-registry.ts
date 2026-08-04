@@ -97,6 +97,8 @@ import {
   ValidatorTakeDistributionSchema,
   ValidatorEconomicsExclusionSchema,
   ValidatorEconomicsRankingArtifactSchema,
+  ValidatorEconomicsHistoryPointSchema,
+  SubnetValidatorEconomicsHistoryArtifactSchema,
 } from "./routes/validator-economics.ts";
 import { SubnetAlphaVolumeArtifactSchema } from "./routes/subnet-alpha-volume.ts";
 import {
@@ -419,6 +421,14 @@ register(ValidatorEconomicsExclusionSchema, "ValidatorEconomicsExclusion");
 register(
   ValidatorEconomicsRankingArtifactSchema,
   "ValidatorEconomicsRankingArtifact",
+);
+register(
+  ValidatorEconomicsHistoryPointSchema,
+  "ValidatorEconomicsHistoryPoint",
+);
+register(
+  SubnetValidatorEconomicsHistoryArtifactSchema,
+  "SubnetValidatorEconomicsHistoryArtifact",
 );
 register(SurfaceKindSchema, "SurfaceKind");
 register(SourceTierSchema, "SourceTier");
@@ -784,6 +794,8 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "SubnetValidatorEconomicsArtifact",
   "ValidatorEconomicsExclusion",
   "ValidatorEconomicsRankingArtifact",
+  "ValidatorEconomicsHistoryPoint",
+  "SubnetValidatorEconomicsHistoryArtifact",
   "SurfaceKind",
   "SourceTier",
   "Classification",

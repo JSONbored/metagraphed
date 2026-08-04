@@ -460,6 +460,32 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/subnets/7/validator-economics/history?window=7d",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(body.data.window, "7d");
+      assert.equal(Array.isArray(body.data.points), true);
+      for (const point of body.data.points as Row[]) {
+        assert.equal(typeof point.snapshot_date, "string");
+        // Alpha floors are nullable (a day with no permit-holders has no floor)
+        // but the counts are always real numbers.
+        for (const key of ["permit_floor_alpha", "earning_floor_alpha"]) {
+          assert.ok(
+            point[key] === null || typeof point[key] === "number",
+            `${key} must be a number or null`,
+          );
+        }
+        for (const key of [
+          "validators_permitted",
+          "validators_active",
+          "validators_earning",
+        ]) {
+          assert.equal(typeof point[key], "number", key);
+        }
+      }
+    },
+  ],
+  [
     "/api/v1/validators/economics?limit=5",
     (body) => {
       // The ranking's own contract: a stated sort/order, a total that counts

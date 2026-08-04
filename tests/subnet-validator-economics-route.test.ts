@@ -5,6 +5,8 @@ import {
   buildValidatorEconomicsRankingPayload,
   handleSubnetValidatorEconomics,
   handleValidatorEconomicsRanking,
+  buildSubnetValidatorEconomicsHistoryPayload,
+  handleSubnetValidatorEconomicsHistory,
 } from "../workers/request-handlers/entities.ts";
 import { handleRequest } from "../workers/api.ts";
 
@@ -724,5 +726,184 @@ describe("validator-economics routing", () => {
       {},
     );
     assert.equal(res.status, 400);
+  });
+});
+
+describe("buildSubnetValidatorEconomicsHistoryPayload", () => {
+  function historyEnv(neuronRows: Row[], emissionRows: Row[] = []) {
+    const sql: string[] = [];
+    const binds: unknown[][] = [];
+    return {
+      sql,
+      binds,
+      env: {
+        METAGRAPH_HEALTH_DB: {
+          prepare(query: string) {
+            sql.push(query);
+            const isEmission = /subnet_snapshots/.test(query);
+            return {
+              bind(...args: unknown[]) {
+                binds.push(args);
+                return {
+                  all: async () => ({
+                    results: isEmission ? emissionRows : neuronRows,
+                  }),
+                };
+              },
+            };
+          },
+        },
+      } as never,
+    };
+  }
+
+  const dayRow = (snapshot_date: string, over: Row = {}): Row => ({
+    snapshot_date,
+    stake_tao: 5000,
+    validator_permit: 1,
+    dividends: 0.5,
+    active: 1,
+    ...over,
+  });
+
+  test("reads the daily rollups, bounded by the window and a row cap", async () => {
+    const { env, sql, binds } = historyEnv([dayRow("2026-08-01")]);
+    await buildSubnetValidatorEconomicsHistoryPayload(env, 7, "7d");
+    assert.match(
+      sql[0],
+      /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \?/,
+    );
+    assert.match(sql[0], /LIMIT \?/);
+    assert.equal(binds[0][0], 7);
+    // The cutoff is a date string, not a timestamp — snapshot_date is TEXT.
+    assert.match(String(binds[0][1]), /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal(typeof binds[0][2], "number");
+  });
+
+  test("joins the emission series from subnet_snapshots", async () => {
+    const { env, sql } = historyEnv(
+      [dayRow("2026-08-01")],
+      [{ snapshot_date: "2026-08-01", tao_in_emission_tao: 0.01 }],
+    );
+    const { data } = await buildSubnetValidatorEconomicsHistoryPayload(
+      env,
+      7,
+      "30d",
+    );
+    assert.match(sql[1], /FROM subnet_snapshots/);
+    const points = data.points as Row[];
+    assert.equal(points[0].emission_gate_open, true);
+  });
+
+  test("echoes the window it actually served", async () => {
+    const { env } = historyEnv([dayRow("2026-08-01")]);
+    const { data } = await buildSubnetValidatorEconomicsHistoryPayload(
+      env,
+      7,
+      "90d",
+    );
+    assert.equal(data.window, "90d");
+    assert.equal(data.netuid, 7);
+  });
+
+  test("labels the series as observed rather than derived", async () => {
+    const { env } = historyEnv([dayRow("2026-08-01")]);
+    const { data } = await buildSubnetValidatorEconomicsHistoryPayload(
+      env,
+      7,
+      "30d",
+    );
+    const sources = data.field_sources as Record<string, Row>;
+    // These come straight off a snapshot, unlike the live route's derived floors.
+    assert.equal(sources.permit_floor_alpha.kind, "measured");
+    assert.equal(sources.validators_permitted.kind, "measured");
+  });
+
+  test("degrades to an empty series when the D1 binding is absent", async () => {
+    const { data } = await buildSubnetValidatorEconomicsHistoryPayload(
+      {} as never,
+      7,
+      "30d",
+    );
+    assert.deepEqual(data.points, []);
+  });
+
+  test("tolerates a result set with no rows array", async () => {
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare: () => ({ bind: () => ({ all: async () => ({}) }) }),
+      },
+    } as never;
+    const { data } = await buildSubnetValidatorEconomicsHistoryPayload(
+      env,
+      7,
+      "30d",
+    );
+    assert.deepEqual(data.points, []);
+  });
+});
+
+describe("handleSubnetValidatorEconomicsHistory", () => {
+  const call = (path: string, env: unknown) => {
+    const url = new URL("https://api.metagraph.sh" + path);
+    return handleSubnetValidatorEconomicsHistory(
+      new Request(url.toString()),
+      env as never,
+      Number(url.pathname.split("/")[4]),
+      url,
+    );
+  };
+  const env = {} as never;
+
+  test("rejects an unsupported window by name", async () => {
+    const res = await call(
+      "/api/v1/subnets/7/validator-economics/history?window=1y",
+      env,
+    );
+    assert.equal(res.status, 400);
+    const body = (await res.json()) as Row;
+    assert.match(String((body.error as Row).message), /window must be one of/);
+  });
+
+  test("rejects an unknown query parameter", async () => {
+    const res = await call(
+      "/api/v1/subnets/7/validator-economics/history?sort=cost",
+      env,
+    );
+    assert.equal(res.status, 400);
+  });
+
+  test("rejects a netuid outside the u16 range", async () => {
+    const res = await call(
+      "/api/v1/subnets/99999/validator-economics/history",
+      env,
+    );
+    assert.equal(res.status, 400);
+    const body = (await res.json()) as Row;
+    assert.equal((body.error as Row).code, "invalid_netuid");
+  });
+
+  test("defaults the window and returns the standard envelope", async () => {
+    const res = await call(
+      "/api/v1/subnets/7/validator-economics/history",
+      env,
+    );
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as Row;
+    assert.equal(body.ok, true);
+    assert.equal((body.data as Row).window, "30d");
+  });
+
+  test("is reachable through the router", async () => {
+    const res = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/subnets/7/validator-economics/history?window=7d",
+      ),
+      {} as never,
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as Row;
+    assert.equal((body.data as Row).window, "7d");
   });
 });

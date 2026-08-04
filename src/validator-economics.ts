@@ -691,3 +691,168 @@ export function groupNeuronsByNetuid(
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// History (#9326). A floor is a point-in-time number; the decision it informs is
+// a trend one. A subnet whose permit floor has doubled in a month is filling up,
+// and entering it now buys a contested position; one whose earning floor is
+// falling is emptying out. Same snapshot value, opposite decisions.
+// ---------------------------------------------------------------------------
+
+/**
+ * One day's observed economics for a subnet.
+ *
+ * The floors here are OBSERVED, not re-derived: `permitFloorAlpha` is the
+ * smallest stake that actually held a permit that day, read off the snapshot.
+ *
+ * That is deliberate and it matters. `StakeThreshold` is sudo-settable, so
+ * re-running TODAY's threshold against a historical snapshot would report what
+ * the floor would have been under today's rules, not what it was — and a series
+ * built that way would show a flat floor across a governance change that actually
+ * moved it. History is a record of what happened, not a re-run of the model.
+ */
+export type ValidatorEconomicsHistoryPoint = {
+  snapshot_date: string;
+  permit_floor_alpha: number | null;
+  earning_floor_alpha: number | null;
+  validators_permitted: number;
+  validators_active: number;
+  validators_earning: number;
+  emission_gate_open: boolean | null;
+  tao_inflow_per_day: number | null;
+};
+
+type HistoryRow = {
+  snapshot_date: unknown;
+  stake_tao: unknown;
+  validator_permit: unknown;
+  dividends: unknown;
+  active: unknown;
+};
+
+type HistoryEmissionRow = {
+  snapshot_date: unknown;
+  tao_in_emission_tao: unknown;
+};
+
+function numeric(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * Fold per-UID daily rows into one point per snapshot date.
+ *
+ * Cost fields are deliberately absent from the series. A historical TAO cost needs
+ * the pool reserves AS THEY WERE, priced at the time; reconstructing one from
+ * today's reserves would be wrong in exactly the way the moving-price trap already
+ * catches elsewhere. Alpha floors are unambiguous; cost is a present-tense question,
+ * and the per-subnet route answers it.
+ */
+export function buildValidatorEconomicsHistory(
+  rows: readonly HistoryRow[],
+  emissionRows: readonly HistoryEmissionRow[] = [],
+): ValidatorEconomicsHistoryPoint[] {
+  const emissionByDate = new Map<string, number | null>();
+  for (const row of emissionRows) {
+    const date = String(row.snapshot_date);
+    const raw = row.tao_in_emission_tao;
+    emissionByDate.set(
+      date,
+      raw === null || raw === undefined || !Number.isFinite(Number(raw))
+        ? null
+        : Number(raw),
+    );
+  }
+
+  const byDate = new Map<
+    string,
+    {
+      permitFloor: number | null;
+      earningFloor: number | null;
+      permitted: number;
+      active: number;
+      earning: number;
+    }
+  >();
+
+  for (const row of rows) {
+    const date = String(row.snapshot_date);
+    let point = byDate.get(date);
+    if (!point) {
+      point = {
+        permitFloor: null,
+        earningFloor: null,
+        permitted: 0,
+        active: 0,
+        earning: 0,
+      };
+      byDate.set(date, point);
+    }
+    // Only permit-holders shape a floor: a UID with no permit says nothing about
+    // what holding one required.
+    if (numeric(row.validator_permit) !== 1) continue;
+    const stake = numeric(row.stake_tao);
+    point.permitted += 1;
+    if (numeric(row.active) === 1) point.active += 1;
+    if (point.permitFloor === null || stake < point.permitFloor) {
+      point.permitFloor = stake;
+    }
+    if (numeric(row.dividends) > 0) {
+      point.earning += 1;
+      if (point.earningFloor === null || stake < point.earningFloor) {
+        point.earningFloor = stake;
+      }
+    }
+  }
+
+  // A date present only in the emission series still deserves a point: a gate
+  // close on a day the neuron snapshot missed is exactly the transition this
+  // series exists to make visible.
+  for (const date of emissionByDate.keys()) {
+    if (!byDate.has(date)) {
+      byDate.set(date, {
+        permitFloor: null,
+        earningFloor: null,
+        permitted: 0,
+        active: 0,
+        earning: 0,
+      });
+    }
+  }
+
+  return [...byDate.entries()]
+    .map(([snapshot_date, point]) => {
+      const inflow = emissionByDate.has(snapshot_date)
+        ? (emissionByDate.get(snapshot_date) ?? null)
+        : null;
+      return {
+        snapshot_date,
+        permit_floor_alpha: point.permitFloor,
+        earning_floor_alpha: point.earningFloor,
+        validators_permitted: point.permitted,
+        validators_active: point.active,
+        validators_earning: point.earning,
+        emission_gate_open: inflow === null ? null : inflow > 0,
+        tao_inflow_per_day: inflow === null ? null : inflow * BLOCKS_PER_DAY,
+      };
+    })
+    .sort((a, b) => b.snapshot_date.localeCompare(a.snapshot_date));
+}
+
+/** Windows the history route accepts, matching its sibling history routes. */
+export const VALIDATOR_ECONOMICS_HISTORY_WINDOWS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+};
+export const DEFAULT_VALIDATOR_ECONOMICS_HISTORY_WINDOW = "30d";
+
+/**
+ * Safety valve on the raw per-UID daily read.
+ *
+ * ~256 UIDs x 90d is ~23k rows; this leaves head room so a full window is never
+ * silently truncated mid-day, which would report a partial day as a real drop in
+ * the permitted count — a trend artefact indistinguishable from a real one.
+ */
+export const VALIDATOR_ECONOMICS_HISTORY_ROW_CAP = 40_000;

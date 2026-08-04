@@ -680,6 +680,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-validator-economics-history",
+      "path": "/metagraph/subnets/{netuid}/validator-economics-history.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetValidatorEconomicsHistoryArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "validator-economics-ranking",
       "path": "/metagraph/validators/economics.json",
       "retirement": null,
@@ -2164,7 +2173,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 117,
+    "mainnet_only_route_count": 118,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -7089,6 +7098,34 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/validator-economics-history.json",
+      "cache": "short",
+      "description": "Fetch whether validating on one subnet is getting cheaper or more expensive: a daily series of the observed permit floor and earning floor in alpha, the validator set composition as three separate counts, and the emission-gate state with daily TAO inflow, over a 7d/30d/90d window (default 30d), newest first. A floor that has doubled means the subnet is filling up and entering now buys a contested position; a falling earning floor means it is emptying out — the same snapshot value, opposite decisions. Set-composition drift is what usually explains a floor change, which is why both ship together. TAO cost is deliberately excluded: a historical cost needs the pool reserves as they were, and reconstructing one from today's reserves would be wrong.",
+      "id": "subnet-validator-economics-history",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/validator-economics/history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d"
+            ],
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/validators/economics.json",

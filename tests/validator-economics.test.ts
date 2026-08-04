@@ -17,6 +17,7 @@ import {
   spotPriceTao,
   subnetStakeTotal,
   takeDistribution,
+  buildValidatorEconomicsHistory,
   rankValidatorEconomics,
   groupNeuronsByNetuid,
   type ValidatorEconomicsRow,
@@ -820,5 +821,174 @@ describe("groupNeuronsByNetuid", () => {
 
   test("an empty scan groups to an empty map", () => {
     assert.equal(groupNeuronsByNetuid([]).size, 0);
+  });
+});
+
+// #9326: the history series. The floors here are OBSERVED off each snapshot, and
+// the tests pin that explicitly — re-deriving them from today's sudo-settable
+// threshold would show a flat line across a governance change that moved the floor.
+describe("buildValidatorEconomicsHistory", () => {
+  const day = (snapshot_date: string, over: Record<string, unknown> = {}) => ({
+    snapshot_date,
+    stake_tao: 5000,
+    validator_permit: 1,
+    dividends: 0.5,
+    active: 1,
+    ...over,
+  });
+
+  test("folds per-UID rows into one point per day, newest first", () => {
+    const points = buildValidatorEconomicsHistory([
+      day("2026-08-01"),
+      day("2026-08-01", { stake_tao: 3000 }),
+      day("2026-08-02"),
+    ]);
+    assert.deepEqual(
+      points.map((p) => p.snapshot_date),
+      ["2026-08-02", "2026-08-01"],
+    );
+    assert.equal(points[1].validators_permitted, 2);
+  });
+
+  test("the permit floor is the smallest stake that ACTUALLY held a permit", () => {
+    const points = buildValidatorEconomicsHistory([
+      day("2026-08-01", { stake_tao: 9000 }),
+      day("2026-08-01", { stake_tao: 1200 }),
+      // Below both, but holds no permit — it says nothing about what holding one
+      // required, so it must not drag the floor down.
+      day("2026-08-01", { stake_tao: 5, validator_permit: 0 }),
+    ]);
+    assert.equal(points[0].permit_floor_alpha, 1200);
+  });
+
+  test("the earning floor only counts permit-holders that earned", () => {
+    const points = buildValidatorEconomicsHistory([
+      day("2026-08-01", { stake_tao: 9000, dividends: 0.5 }),
+      day("2026-08-01", { stake_tao: 2000, dividends: 0 }),
+    ]);
+    assert.equal(points[0].permit_floor_alpha, 2000);
+    assert.equal(
+      points[0].earning_floor_alpha,
+      9000,
+      "the earner, not the cheaper",
+    );
+    assert.equal(points[0].validators_earning, 1);
+  });
+
+  test("a day where nobody earned reports a null earning floor, not a zero", () => {
+    const points = buildValidatorEconomicsHistory([
+      day("2026-08-01", { dividends: 0 }),
+    ]);
+    assert.equal(points[0].earning_floor_alpha, null);
+    assert.equal(points[0].permit_floor_alpha, 5000);
+  });
+
+  test("a day with no permit-holders at all has no floor", () => {
+    const points = buildValidatorEconomicsHistory([
+      day("2026-08-01", { validator_permit: 0 }),
+    ]);
+    assert.equal(points[0].permit_floor_alpha, null);
+    assert.equal(points[0].validators_permitted, 0);
+  });
+
+  test("counts permitted, active and earning separately per day", () => {
+    const points = buildValidatorEconomicsHistory([
+      day("2026-08-01", { active: 1, dividends: 0.5 }),
+      day("2026-08-01", { active: 1, dividends: 0 }),
+      day("2026-08-01", { active: 0, dividends: 0 }),
+    ]);
+    assert.equal(points[0].validators_permitted, 3);
+    assert.equal(points[0].validators_active, 2);
+    assert.equal(points[0].validators_earning, 1);
+  });
+
+  test("joins the emission series to derive the gate and daily inflow", () => {
+    const points = buildValidatorEconomicsHistory(
+      [day("2026-08-01"), day("2026-08-02")],
+      [
+        { snapshot_date: "2026-08-01", tao_in_emission_tao: 0.01 },
+        { snapshot_date: "2026-08-02", tao_in_emission_tao: 0 },
+      ],
+    );
+    const [aug2, aug1] = points;
+    assert.equal(aug1.emission_gate_open, true);
+    assert.ok(Math.abs((aug1.tao_inflow_per_day ?? 0) - 72) < 1e-9);
+    assert.equal(
+      aug2.emission_gate_open,
+      false,
+      "a gate CLOSE is the transition",
+    );
+    assert.equal(aug2.tao_inflow_per_day, 0);
+  });
+
+  test("a day with no emission row is unknown, not closed", () => {
+    const points = buildValidatorEconomicsHistory([day("2026-08-01")], []);
+    assert.equal(points[0].emission_gate_open, null);
+    assert.equal(points[0].tao_inflow_per_day, null);
+  });
+
+  test("a null emission value is unknown rather than a closed gate", () => {
+    const points = buildValidatorEconomicsHistory(
+      [day("2026-08-01")],
+      [{ snapshot_date: "2026-08-01", tao_in_emission_tao: null }],
+    );
+    assert.equal(points[0].emission_gate_open, null);
+  });
+
+  test("keeps a day the neuron snapshot missed but the emission series recorded", () => {
+    // A gate close on a day with no neuron rows is exactly the transition this
+    // series exists to make visible; dropping it would hide it.
+    const points = buildValidatorEconomicsHistory(
+      [day("2026-08-01")],
+      [
+        { snapshot_date: "2026-08-01", tao_in_emission_tao: 0.01 },
+        { snapshot_date: "2026-08-02", tao_in_emission_tao: 0 },
+      ],
+    );
+    assert.equal(points.length, 2);
+    assert.equal(points[0].snapshot_date, "2026-08-02");
+    assert.equal(points[0].validators_permitted, 0);
+    assert.equal(points[0].emission_gate_open, false);
+  });
+
+  test("the earning floor is order-independent within a day", () => {
+    // Row order is not guaranteed, so the floor has to be the minimum either way:
+    // a cheaper earner arriving late must lower it, and a dearer one arriving
+    // late must NOT raise it.
+    const descending = buildValidatorEconomicsHistory([
+      day("2026-08-01", { stake_tao: 9000, dividends: 0.5 }),
+      day("2026-08-01", { stake_tao: 2500, dividends: 0.5 }),
+    ]);
+    assert.equal(descending[0].earning_floor_alpha, 2500);
+
+    const ascending = buildValidatorEconomicsHistory([
+      day("2026-08-01", { stake_tao: 2500, dividends: 0.5 }),
+      day("2026-08-01", { stake_tao: 9000, dividends: 0.5 }),
+    ]);
+    assert.equal(
+      ascending[0].earning_floor_alpha,
+      2500,
+      "a dearer earner must not raise the floor",
+    );
+  });
+
+  test("coerces a non-numeric stake to zero rather than propagating NaN", () => {
+    // A NaN floor would compare false against everything and silently vanish
+    // from the series rather than failing loudly.
+    const points = buildValidatorEconomicsHistory([
+      day("2026-08-01", { stake_tao: "not-a-number" }),
+    ]);
+    assert.equal(points[0].permit_floor_alpha, 0);
+  });
+
+  test("an empty read yields an empty series, not an error", () => {
+    assert.deepEqual(buildValidatorEconomicsHistory([]), []);
+  });
+
+  test("coerces non-numeric stake to zero rather than propagating NaN", () => {
+    const points = buildValidatorEconomicsHistory([
+      day("2026-08-01", { stake_tao: null }),
+    ]);
+    assert.equal(points[0].permit_floor_alpha, 0);
   });
 });

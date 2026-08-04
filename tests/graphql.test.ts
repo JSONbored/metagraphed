@@ -10779,6 +10779,75 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
     assert.deepEqual(e.takes.distribution, [0.18]);
   });
 
+  test("subnet_validator_economics_history serves the observed series", async () => {
+    const env = fixtureEnv({}) as Row;
+    env.METAGRAPH_HEALTH_DB = {
+      prepare(query: string) {
+        const isEmission = /subnet_snapshots/.test(query);
+        return {
+          bind: () => ({
+            all: async () => ({
+              results: isEmission
+                ? [{ snapshot_date: "2026-08-01", tao_in_emission_tao: 0 }]
+                : [
+                    {
+                      snapshot_date: "2026-08-01",
+                      stake_tao: 4200,
+                      validator_permit: 1,
+                      dividends: 0.5,
+                      active: 1,
+                    },
+                  ],
+            }),
+          }),
+        };
+      },
+    };
+    const { status, body } = await gql(
+      '{ subnet_validator_economics_history(netuid: 64, window: "7d") { netuid window points { snapshot_date permit_floor_alpha earning_floor_alpha validators_permitted emission_gate_open } } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const h = body.data.subnet_validator_economics_history;
+    assert.equal(h.netuid, 64);
+    assert.equal(h.window, "7d");
+    assert.equal(h.points[0].permit_floor_alpha, 4200);
+    assert.equal(h.points[0].earning_floor_alpha, 4200);
+    assert.equal(h.points[0].validators_permitted, 1);
+    // A closed gate is a real observation, not an absent one.
+    assert.equal(h.points[0].emission_gate_open, false);
+  });
+
+  test("subnet_validator_economics_history defaults the window when omitted", async () => {
+    const env = fixtureEnv({}) as Row;
+    env.METAGRAPH_HEALTH_DB = {
+      prepare: () => ({ bind: () => ({ all: async () => ({ results: [] }) }) }),
+    };
+    const { body } = await gql(
+      "{ subnet_validator_economics_history(netuid: 64) { window points { snapshot_date } } }",
+      env,
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.subnet_validator_economics_history.window, "30d");
+  });
+
+  test("subnet_validator_economics_history rejects an unsupported window", async () => {
+    const { body } = await gql(
+      '{ subnet_validator_economics_history(netuid: 64, window: "1y") { window } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.match(body.errors[0].message, /window must be one of/);
+  });
+
+  test("subnet_validator_economics_history rejects a negative netuid", async () => {
+    const { body } = await gql(
+      "{ subnet_validator_economics_history(netuid: -1) { window } }",
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.match(body.errors[0].message, /netuid/i);
+  });
+
   test("validator_economics ranks subnets across the GraphQL surface", async () => {
     const env = fixtureEnv(
       {

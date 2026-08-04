@@ -134,6 +134,7 @@ import {
   handleSubnetStakeQuote,
   handleSubnetValidatorEconomics,
   handleValidatorEconomicsRanking,
+  handleSubnetValidatorEconomicsHistory,
   handleSubnetRecycled,
   handleSubnetBurn,
   handleCrowdloan,
@@ -463,6 +464,7 @@ import {
   SUBNET_STAKE_QUOTE_PATH_PATTERN,
   SUBNET_VALIDATOR_ECONOMICS_PATH_PATTERN,
   VALIDATOR_ECONOMICS_RANKING_PATH,
+  SUBNET_VALIDATOR_ECONOMICS_HISTORY_PATH_PATTERN,
   SUBNET_RECYCLED_PATH_PATTERN,
   SUBNET_BURN_PATH_PATTERN,
   CROWDLOANS_PATH_PATTERN,
@@ -4195,6 +4197,27 @@ export async function handleRequest(
         () => handleValidatorEconomicsRanking(request, env, resolved.url),
       );
     }
+    // Checked before the plain per-subnet pattern: /validator-economics/history
+    // would otherwise fall through to a 404, since that pattern is anchored.
+    const validatorEconomicsHistoryMatch =
+      SUBNET_VALIDATOR_ECONOMICS_HISTORY_PATH_PATTERN.exec(
+        resolved.url.pathname,
+      );
+    if (validatorEconomicsHistoryMatch) {
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "subnet-validator-economics-history",
+        () =>
+          handleSubnetValidatorEconomicsHistory(
+            request,
+            env,
+            Number(validatorEconomicsHistoryMatch[1]),
+            resolved.url,
+          ),
+      );
+    }
     const validatorEconomicsMatch =
       SUBNET_VALIDATOR_ECONOMICS_PATH_PATTERN.exec(resolved.url.pathname);
     if (validatorEconomicsMatch) {
@@ -5228,6 +5251,7 @@ export function isMainnetOnlyApiPath(pathname: string) {
     // TaoWeight and Burn out of finney storage at request time.
     SUBNET_VALIDATOR_ECONOMICS_PATH_PATTERN.test(pathname) ||
     pathname === VALIDATOR_ECONOMICS_RANKING_PATH ||
+    SUBNET_VALIDATOR_ECONOMICS_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_RECYCLED_PATH_PATTERN.test(pathname) ||
     SUBNET_BURN_PATH_PATTERN.test(pathname) ||
     SUBNET_LEASE_PATH_PATTERN.test(pathname) ||

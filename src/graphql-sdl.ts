@@ -190,6 +190,11 @@ export const SDL = /* GraphQL */ `
       emission_gate_open: Boolean
       cap_binding: Boolean
     ): ValidatorEconomicsRanking!
+    "Whether validating on one subnet is getting cheaper or more expensive: a daily series of the OBSERVED permit floor and earning floor in alpha (the smallest stake that actually held a permit, and that actually earned, each day), validator set composition as three separate counts, and the emission-gate state with daily TAO inflow. window accepts 7d, 30d or 90d (default 30d). TAO cost is deliberately absent from the series -- a historical cost needs the pool reserves as they were, and reconstructing one from today's reserves would be wrong; alpha floors are unambiguous. Mirrors GET /api/v1/subnets/{netuid}/validator-economics/history."
+    subnet_validator_economics_history(
+      netuid: Int!
+      window: String
+    ): SubnetValidatorEconomicsHistory!
     "What it costs to validate on one subnet and whether a permit there earns: the permit floor and the earning floor (which differ by a median of ~7x -- a permit is not income), the TAO to reach each priced against live pool reserves plus the registration burn, open validator slots, the commission (take) distribution among permit-holders, the emission-gate state, and the live StakeThreshold/TaoWeight the floors were derived against. Permitted, active and earning are three different counts and all three are returned. Every derived field is nullable and degrades with a stated reason rather than reporting a confident zero. Mirrors GET /api/v1/subnets/{netuid}/validator-economics."
     subnet_validator_economics(netuid: Int!): SubnetValidatorEconomics!
     "One subnet's current validator set (permitted neurons) from the live metagraph snapshot, with each validator's full neuron record. A subnet with no snapshot resolves to a schema-stable empty list, never null. Mirrors GET /api/v1/subnets/{netuid}/validators."
@@ -3372,6 +3377,26 @@ export const SDL = /* GraphQL */ `
     stake_threshold_units: Float
     tao_weight: Float
     root_tao_to_clear_threshold: Float
+  }
+
+  "One day's observed economics. The floors are read off the snapshot, not re-derived: StakeThreshold is sudo-settable, so re-running today's threshold against an old day would show a flat line across a governance change that actually moved the floor."
+  type ValidatorEconomicsHistoryPoint {
+    snapshot_date: String!
+    permit_floor_alpha: Float
+    earning_floor_alpha: Float
+    validators_permitted: Int!
+    validators_active: Int!
+    validators_earning: Int!
+    emission_gate_open: Boolean
+    tao_inflow_per_day: Float
+  }
+
+  type SubnetValidatorEconomicsHistory {
+    schema_version: Int!
+    netuid: Int!
+    window: String!
+    "Newest first."
+    points: [ValidatorEconomicsHistoryPoint!]!
   }
 
   type SubnetValidatorEconomics {

@@ -1252,6 +1252,13 @@ export const PUBLIC_ARTIFACTS = [
     COMPUTED_LIVE,
   ),
   artifact(
+    "subnet-validator-economics-history",
+    "/metagraph/subnets/{netuid}/validator-economics-history.json",
+    "The OBSERVED validator-economics series for one subnet (#9326), computed live at /api/v1/subnets/{netuid}/validator-economics/history (no static file). A daily point carries the permit floor and earning floor in ALPHA — the smallest stake that actually held a permit, and that actually earned dividends, on that day — plus the validator set composition as three separate counts and the emission-gate state with daily TAO inflow, over a 7d/30d/90d window (default 30d). The floors are read off each snapshot rather than re-derived: StakeThreshold is sudo-settable, so re-running today's threshold against a historical day would report what the floor WOULD have been under today's rules and show a flat line across a governance change that actually moved it. TAO cost is deliberately excluded from the series — a historical cost needs the pool reserves as they were, priced at the time, and reconstructing one from today's reserves would be wrong; alpha floors are unambiguous and cost is a present-tense question the per-subnet route answers. `cap_binding` is likewise absent: subnet_snapshots carries no historical max_validators, and applying today's cap to an old snapshot would manufacture a transition that never happened.",
+    "SubnetValidatorEconomicsHistoryArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "validator-economics-ranking",
     "/metagraph/validators/economics.json",
     "Every subnet ranked by what it costs to become an EARNING validator there (#9324), computed live at /api/v1/validators/economics (no static file). One row per subnet carrying the same fields as /api/v1/subnets/{netuid}/validator-economics, sortable by earning_floor_cost_tao (default, cheapest first), permit_floor_cost_tao, permit_to_earning_multiple, tao_inflow_per_day or validator_headroom, and filterable on emission_gate_open / cap_binding — omitting a filter means BOTH, which is not the same as false. Every subnet the ranking drops appears in `excluded` with a reason, so an omitted subnet is distinguishable from an absent one. Derived from ONE cross-subnet neuron scan plus one economics-artifact read rather than 128 per-subnet round trips. The registration burn is deliberately excluded from the ranking: it is a live per-subnet chain read with no cached tier and is immaterial to the order (~0.15 TAO against floor costs of tens to hundreds), so the per-subnet route reports the true entry cost instead.",
@@ -2896,6 +2903,22 @@ export const API_ROUTES = [
     "short",
     ["subnets", "analytics", "validators"],
     [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-validator-economics-history",
+    "GET",
+    "/api/v1/subnets/{netuid}/validator-economics/history",
+    "/metagraph/subnets/{netuid}/validator-economics-history.json",
+    "Fetch whether validating on one subnet is getting cheaper or more expensive: a daily series of the observed permit floor and earning floor in alpha, the validator set composition as three separate counts, and the emission-gate state with daily TAO inflow, over a 7d/30d/90d window (default 30d), newest first. A floor that has doubled means the subnet is filling up and entering now buys a contested position; a falling earning floor means it is emptying out — the same snapshot value, opposite decisions. Set-composition drift is what usually explains a floor change, which is why both ship together. TAO cost is deliberately excluded: a historical cost needs the pool reserves as they were, and reconstructing one from today's reserves would be wrong.",
+    "short",
+    ["subnets", "analytics", "validators"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: ["7d", "30d", "90d"] },
+      },
+    ],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -5057,6 +5080,7 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // against StakeThreshold, TaoWeight and Burn read out of finney storage at
   // request time, so a testnet-addressed question has nothing to answer from.
   "/api/v1/subnets/{netuid}/validator-economics",
+  "/api/v1/subnets/{netuid}/validator-economics/history",
   "/api/v1/validators/economics",
   "/api/v1/subnets/movers",
   "/api/v1/validators",

@@ -52,9 +52,14 @@ import { contractVersion } from "../workers/responses.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
 import {
   buildSubnetValidatorEconomicsPayload,
+  buildSubnetValidatorEconomicsHistoryPayload,
   buildValidatorEconomicsRankingPayload,
 } from "../workers/request-handlers/entities.ts";
-import { VALIDATOR_ECONOMICS_SORTS } from "./validator-economics.ts";
+import {
+  DEFAULT_VALIDATOR_ECONOMICS_HISTORY_WINDOW,
+  VALIDATOR_ECONOMICS_HISTORY_WINDOWS,
+  VALIDATOR_ECONOMICS_SORTS,
+} from "./validator-economics.ts";
 // #6985: GraphQL parity for the endpoint-pools/rpc-pools/endpoint-incidents REST
 // routes, reusing the same shaping functions list_endpoint_pools/list_rpc_pools/
 // list_endpoint_incidents already call for MCP parity -- not a reimplementation.
@@ -1054,6 +1059,7 @@ export const FIELD_COMPLEXITY = {
   subnet_validator_economics: RELATIONSHIP_FIELD_COMPLEXITY,
   // A full cross-subnet scan, so it costs more than a single-subnet lookup.
   validator_economics: LIVE_RPC_FIELD_COMPLEXITY,
+  subnet_validator_economics_history: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_validators: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_event_summary: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_gaps: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -4042,6 +4048,29 @@ const rootValue = {
     };
   },
 
+  async subnet_validator_economics_history(
+    { netuid, window }: { netuid: number; window?: string | null },
+    context: GqlContext,
+  ) {
+    if (!Number.isInteger(netuid) || netuid < 0) {
+      throw new GraphQLError("netuid must be a non-negative integer.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const windowLabel = window ?? DEFAULT_VALIDATOR_ECONOMICS_HISTORY_WINDOW;
+    if (!Object.hasOwn(VALIDATOR_ECONOMICS_HISTORY_WINDOWS, windowLabel)) {
+      throw new GraphQLError(
+        `window must be one of: ${Object.keys(VALIDATOR_ECONOMICS_HISTORY_WINDOWS).join(", ")}`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const { data } = await buildSubnetValidatorEconomicsHistoryPayload(
+      context.env,
+      netuid,
+      windowLabel,
+    );
+    return data;
+  },
   async validator_economics(
     args: {
       sort?: string | null;
