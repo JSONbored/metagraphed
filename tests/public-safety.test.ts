@@ -908,13 +908,12 @@ describe("extended target-root coverage (scripts, deploy)", () => {
     }
   });
 
-  // This file is not scripts/worker-test.ts or a deploy/wss-lb/test/*.test.mjs
-  // file (the two known, verified-safe test fixtures that get a file-level
-  // exemption below), so an ordinary loopback URL with an arbitrary port/path
-  // here must still be flagged -- proving the fix for those two files' false
-  // positives didn't become a blanket "any 127.0.0.1 is fine" relaxation, which
-  // would defeat the userinfo-smuggling bypass protection "flags local
-  // subtensor allowlist prefix bypass attempts" (above) exists to guard.
+  // This file is not scripts/worker-test.ts (the one known, verified-safe test
+  // fixture that gets a file-level exemption below), so an ordinary loopback URL
+  // with an arbitrary port/path here must still be flagged -- proving the fix for
+  // that file's false positives didn't become a blanket "any 127.0.0.1 is fine"
+  // relaxation, which would defeat the userinfo-smuggling bypass protection "flags
+  // local subtensor allowlist prefix bypass attempts" (above) exists to guard.
   const LOOPBACK_LINES = [
     "http://127.0.0.1:5173/healthz",
     "ws://localhost:9944/some/other/path",
@@ -934,22 +933,20 @@ describe("extended target-root coverage (scripts, deploy)", () => {
     }
   });
 
-  test("exempts the two known-safe local-server test files, but not an arbitrary third file", () => {
-    // scripts/worker-test.ts and deploy/wss-lb/test/*.test.mjs are, by
-    // inspection, entirely either (a) a local test server bootstrapped on
-    // 127.0.0.1, or (b) an explicit "these must be rejected" unsafe-URL array
-    // -- verified content, not a blanket file-type exemption. Asserts against
-    // the real files in the shared scan, since the exemption is keyed by exact
-    // path.
+  test("exempts the one known-safe local-server test file, but not an arbitrary second file", () => {
+    // scripts/worker-test.ts is, by inspection, entirely either (a) a local test
+    // server bootstrapped on 127.0.0.1, or (b) an explicit "these must be rejected"
+    // unsafe-URL array -- verified content, not a blanket file-type exemption.
+    // Asserts against the real file in the shared scan, since the exemption is keyed
+    // by exact path.
+    //
+    // deploy/wss-lb/test/*.test.ts was the second exempted path until the Railway
+    // service was deleted (#9353); its select tests moved to tests/ and carry no
+    // private URLs at all.
     assert.equal(
       scanOutput.includes("scripts/worker-test.ts:"),
       false,
       `scripts/worker-test.ts's own unsafe-URL test fixtures must not be flagged; got:\n${scanOutput}`,
-    );
-    assert.equal(
-      scanOutput.includes("deploy/wss-lb/test/"),
-      false,
-      `deploy/wss-lb/test/'s own local-server bootstrapping must not be flagged; got:\n${scanOutput}`,
     );
   });
 

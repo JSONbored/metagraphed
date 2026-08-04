@@ -22,7 +22,7 @@ in the epic inherits them:
    are _deliberately_ read-only-enforced at three independent layers: the
    HTTP proxy's method allowlist (`SAFE_RPC_METHODS`,
    `workers/config.ts:327-339`), `wss-lb`'s own copy of that allowlist
-   (`deploy/wss-lb/src/rpc-policy.ts:1-49`), and a hard-coded
+   (`workers/config.ts`'s `DENIED_RPC_PREFIXES`/`WSS_DENIED_RPC_PREFIXES`), and a hard-coded
    `DENIED_RPC_PREFIXES` blocking `author_` as defense-in-depth
    (`workers/config.ts:360-366`). `author_submitExtrinsic` appears nowhere
    in this repo except test fixtures asserting it's rejected

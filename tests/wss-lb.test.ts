@@ -1,8 +1,8 @@
 // Unit tests for the WSS load balancer Worker (workers/wss-lb.ts), which
-// replaces the Railway Node service in deploy/wss-lb.
+// replaced the Railway Node service, deleted in #9353.
 //
 // The routing DECISION (selectWssUpstreams) is already covered by
-// deploy/wss-lb/test/select.test.ts and is imported unchanged, so it is not
+// tests/wss-lb-select.test.ts and is imported unchanged, so it is not
 // re-tested here. What is new -- and what these cover -- is the Worker-shaped
 // boundary around it: which HTTP status each failure mode produces, and that a
 // failed handshake falls through to the next candidate rather than aborting the
@@ -15,6 +15,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "vitest";
 import {
+  deniedRpcMethod,
   dialUpstream,
   exceedsFrameCap,
   handleWssLbRequest,
@@ -23,7 +24,11 @@ import {
   pipe,
   type WssLbEnv,
 } from "../workers/wss-lb.ts";
-import { MAX_RPC_BODY_BYTES } from "../deploy/wss-lb/src/rpc-policy.ts";
+import {
+  DENIED_RPC_PREFIXES,
+  MAX_RPC_BODY_BYTES,
+  WSS_DENIED_RPC_PREFIXES,
+} from "../workers/config.ts";
 
 const POOLS = {
   pools: [
@@ -342,6 +347,106 @@ test("pipe closes with 1009 on an oversized client frame", () => {
   assert.deepEqual(upstream.sent, []);
   assert.equal(client.closedWith?.code, 1009);
   assert.equal(upstream.closedWith?.code, 1009);
+});
+
+// ---------------------------------------------------------------------------
+// The read-only policy (#9353). It was enforced by the Railway service, dropped
+// silently in the Worker migration, and is back. Every test below fails against
+// the version that forwarded everything.
+// ---------------------------------------------------------------------------
+
+test("a submission is refused rather than proxied to an upstream", () => {
+  const client = new PipeSocket();
+  const upstream = new PipeSocket();
+  pipe(client as unknown as WebSocket, upstream as unknown as WebSocket);
+  client.emit("message", {
+    data: '{"jsonrpc":"2.0","id":7,"method":"author_submitExtrinsic","params":["0x00"]}',
+  });
+  assert.deepEqual(upstream.sent, []);
+  const reply = JSON.parse(client.sent[0] as string);
+  assert.equal(reply.error.code, -32601);
+  assert.equal(reply.id, 7, "the caller's id must come back or its promise hangs");
+});
+
+// A refused method must not take the socket down: an open subscription on the same
+// connection is unrelated to the one call we declined.
+test("a refused method leaves the connection open", () => {
+  const client = new PipeSocket();
+  const upstream = new PipeSocket();
+  pipe(client as unknown as WebSocket, upstream as unknown as WebSocket);
+  client.emit("message", { data: '{"id":1,"method":"sudo_sudo"}' });
+  assert.equal(client.closedWith, null);
+  assert.equal(upstream.closedWith, null);
+  client.emit("message", { data: '{"id":2,"method":"chain_getHeader"}' });
+  assert.deepEqual(upstream.sent, ['{"id":2,"method":"chain_getHeader"}']);
+});
+
+for (const method of [
+  "author_submitExtrinsic",
+  "author_submitAndWatchExtrinsic",
+  "sudo_sudo",
+  "payment_queryInfo",
+  "contracts_call",
+]) {
+  test(`${method} is denied`, () => {
+    assert.equal(deniedRpcMethod(`{"id":1,"method":"${method}"}`), method);
+  });
+}
+
+// The deliberate widening: a WebSocket URL is something people point a whole
+// Substrate client at, and no such client can start without these. Denying them
+// would not narrow the endpoint, it would end it.
+for (const method of [
+  "state_call",
+  "state_getStorage",
+  "state_getMetadata",
+  "state_getKeysPaged",
+  "chain_subscribeNewHeads",
+  "system_health",
+]) {
+  test(`${method} is allowed through the WSS proxy`, () => {
+    assert.equal(deniedRpcMethod(`{"id":1,"method":"${method}"}`), null);
+  });
+}
+
+test("a batch is refused rather than inspected element by element", () => {
+  assert.equal(deniedRpcMethod('[{"id":1,"method":"chain_getHeader"}]'), "batch");
+});
+
+// Forgiving in one direction only: what we cannot parse is the upstream's business,
+// and rejecting it would break clients over our parser rather than over policy.
+for (const frame of ['{"id":1}', "not json at all", '{"method":42}', '"a string"']) {
+  test(`an unparseable or method-less frame is forwarded: ${frame}`, () => {
+    assert.equal(deniedRpcMethod(frame), null);
+  });
+}
+
+test("a binary frame is not policy-checked as text", () => {
+  assert.equal(deniedRpcMethod(new ArrayBuffer(8)), null);
+});
+
+// The gap that let this ship: the sync test asserts the two policy COPIES match,
+// and nothing asserted either was applied. This is the missing half.
+test("the worker enforces the policy it declares", () => {
+  for (const prefix of WSS_DENIED_RPC_PREFIXES) {
+    assert.equal(
+      deniedRpcMethod(`{"id":1,"method":"${prefix}anything"}`),
+      `${prefix}anything`,
+      `${prefix} is declared denied but is not enforced`,
+    );
+  }
+});
+
+// Mutating prefixes must never be droppable from the WSS list by a later edit that
+// only meant to widen the read surface.
+test("every mutating prefix the HTTP proxy denies is also denied on WSS", () => {
+  for (const prefix of DENIED_RPC_PREFIXES) {
+    if (prefix === "state_call") continue; // deliberately allowed, see config.ts
+    assert.ok(
+      WSS_DENIED_RPC_PREFIXES.includes(prefix),
+      `${prefix} is denied on HTTP but not on WSS`,
+    );
+  }
 });
 
 // The upstream direction is deliberately uncapped (responses come from our own

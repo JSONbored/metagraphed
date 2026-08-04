@@ -691,7 +691,7 @@ export async function forwardBatch(
    forwarding) is delegated to the pure functions above and unit-tested
    directly (see tests/chain-firehose-relay.test.ts). This file is
    intentionally outside vitest.config.ts's coverage.include, matching every
-   other standalone deploy/-tier process in this repo (e.g. deploy/wss-lb,
+   other standalone deploy/-tier process in this repo (e.g.
    tested via `node --test` instead) -- see that config's own comment for the
    convention. */
 async function main(): Promise<void> {

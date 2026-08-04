@@ -561,7 +561,7 @@ public/metagraph/<x>.json` that names neither the cause nor the fix; and `src/ar
 - **`pipeline:check`** is only trustworthy in isolation after a clean `npm run build`.
 - **`validate.yml`'s `actions/setup-node` steps set `cache-dependency-path: package-lock.json`
   explicitly.** Without it, `setup-node`'s cache key hashes every `package-lock.json` in the tree
-  (root + `deploy/wss-lb`), so a change to the latter would invalidate the CI npm cache even though
+  (root only, since #9353 deleted the second), so a stray lockfile would invalidate the CI npm cache even though
   `npm ci` in `validate.yml` only ever reads the root lockfile. `packages/client` is an npm workspace
   with no lockfile of its own — its version bumps land in the root lockfile, already covered by this
   path. If you ever add a new `actions/setup-node` step to a workflow in this repo, set this

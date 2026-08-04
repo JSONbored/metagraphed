@@ -412,21 +412,20 @@ function isGeneratedWorkerTypes(relativePath: string): boolean {
   return GENERATED_WORKER_TYPES_PATHS.has(relativePath);
 }
 
-// scripts/worker-test.ts and deploy/wss-lb/test/*.test.ts both, by
-// inspection, build their entire private/loopback-URL content out of two
-// classes: (a) an explicit "these must be rejected" array of unsafe URLs
-// (127.0.0.1/10.0.0.2/169.254.169.254 -- proof the proxy blocks them, worker-
-// test.ts) or (b) a local test server bootstrapped on 127.0.0.1 (the
-// generalized loopback allow above already covers this half; this exemption
-// exists for (a), the non-loopback ranges that allow can't touch). Unlike the
-// generalized loopback allow, this is a HARD-pattern file-level exemption --
-// narrower in scope (this ONE pattern, these TWO known test files only, not
-// every pattern or every test file) rather than a shape/range relaxation,
-// since a non-loopback private IP is still real signal everywhere else.
-const UNSAFE_URL_REJECTION_FIXTURE_PATTERNS = [
-  /^scripts\/worker-test\.ts$/,
-  /^deploy\/wss-lb\/test\/[^/]+\.test\.ts$/,
-];
+// scripts/worker-test.ts builds its entire private/loopback-URL content out of an
+// explicit "these must be rejected" array of unsafe URLs
+// (127.0.0.1/10.0.0.2/169.254.169.254 -- proof the proxy blocks them). The
+// generalized loopback allow above already covers a local test server on
+// 127.0.0.1; this exemption exists for the non-loopback ranges that allow cannot
+// touch. Unlike that allow, this is a HARD-pattern file-level exemption -- narrower
+// in scope (this ONE pattern, this ONE known file, not every pattern or every test
+// file) rather than a shape/range relaxation, since a non-loopback private IP is
+// still real signal everywhere else.
+//
+// deploy/wss-lb/test/*.test.ts was the second entry until the Railway service was
+// deleted (#9353). Removed with it rather than left as a pattern matching nothing:
+// a dead exemption is an exemption nobody re-derives before widening.
+const UNSAFE_URL_REJECTION_FIXTURE_PATTERNS = [/^scripts\/worker-test\.ts$/];
 function isUnsafeUrlRejectionFixture(relativePath: string): boolean {
   return UNSAFE_URL_REJECTION_FIXTURE_PATTERNS.some((pattern) =>
     pattern.test(relativePath),

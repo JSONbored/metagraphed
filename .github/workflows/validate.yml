@@ -324,9 +324,9 @@ jobs:
           node-version: 22.23.2
           cache: npm
           # Without this, setup-node's cache key hashes EVERY package-lock.json
-          # in the tree (root + deploy/wss-lb), so a change to the latter's
-          # lockfile would invalidate this job's cache even though `npm ci`
-          # here only ever reads the root lockfile. packages/client is an npm
+          # in the tree, so a lockfile anywhere else would invalidate this job's
+          # cache even though `npm ci` here only ever reads the root one.
+          # packages/client is an npm
           # workspace (#3066) with no lockfile of its own anymore — its version
           # bumps land in the root lockfile, which this path already covers.
           cache-dependency-path: package-lock.json
@@ -597,8 +597,8 @@ jobs:
         run: npm run validate:migrations
 
       # Permanent lock on the TS migration (#7510/#7521): no hand-written
-      # .mjs/.js may reappear under src/, workers/, scripts/, tests/, or
-      # deploy/wss-lb/. Runs unconditionally (no DOCS_ONLY skip) — it reads
+      # .mjs/.js may reappear under src/, workers/, scripts/ or tests/.
+      # Runs unconditionally (no DOCS_ONLY skip) — it reads
       # only `git ls-files` output, costs well under a second, and a skip
       # predicate would itself be a hole (a "docs-only" PR can still add a
       # tracked .mjs file).

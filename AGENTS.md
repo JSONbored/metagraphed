@@ -49,7 +49,7 @@ devcontainer-aware environment, use it instead of installing Node/Playwright you
    only** (never hand-set); one focused change per PR. **All new code/script/test files are `.ts`,
    never `.mjs`/`.js`** — the TypeScript migration (#7510) is complete and the
    `validate:no-hand-written-mjs` CI gate auto-fails any PR adding a `.mjs`/`.js` file under `src/`,
-   `workers/`, `scripts/`, `tests/`, or `deploy/wss-lb/`. **UI/frontend work now lives in this repo**
+   `workers/`, `scripts/`, or `tests/`. **UI/frontend work now lives in this repo**
    at `apps/ui/` (folded in from the former `metagraphed-ui` repo via monorepo consolidation,
    2026-07) — any PR touching visual output (routes, components, styles) **requires a before/after
    screenshot table and is always held for manual review**, regardless of AI-review confidence; a

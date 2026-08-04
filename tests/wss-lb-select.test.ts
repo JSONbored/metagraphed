@@ -1,7 +1,11 @@
-// Pure-logic tests for the WSS LB upstream selection. Zero deps — run with:
-//   node --test deploy/wss-lb/test/
+// Pure-logic tests for the WSS LB upstream selection.
+//
+// Moved here with the module when the Railway service was deleted (#9353). It ran
+// under `node --test` there because that container had no vitest; in this repo the
+// runner for tests/ is vitest, and a lone node:test file would be collected and
+// then fail on the missing globals rather than quietly opting out.
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 
 import {
   isWssUpstream,
@@ -10,7 +14,7 @@ import {
   type Pool,
   type PoolEndpoint,
   type PoolsArtifact,
-} from "../src/select.ts";
+} from "../workers/wss-lb-select.ts";
 
 // A pool endpoint (the /api/v1/rpc/pools endpoints[] shape).
 const ep = (over: Partial<PoolEndpoint> = {}): PoolEndpoint => ({
