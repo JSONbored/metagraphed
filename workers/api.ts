@@ -138,6 +138,7 @@ import {
   handleSubnetValidatorEconomicsHistory,
   handleSubnetRecycled,
   handleSubnetBurn,
+  handleChainBurn,
   handleCrowdloan,
   handleCrowdloans,
   handleSubnetLease,
@@ -5201,6 +5202,12 @@ async function dispatchLiveChainRoute(
   const burnMatch = SUBNET_BURN_PATH_PATTERN.exec(pathname);
   if (burnMatch) {
     return handleSubnetBurn(request, env, Number(burnMatch[1]), chain);
+  }
+  // #9399: the cross-subnet ranking. Beside its per-subnet sibling so the two live
+  // burn reads stay visibly related, and matched on an exact path so it can never
+  // shadow the {netuid} pattern above.
+  if (pathname === "/api/v1/chain/burn") {
+    return handleChainBurn(request, env, chain);
   }
   // Tested before the DATA_API forwarding gate, which only matches the longer
   // .../lease/history suffix — disjoint regexes, but the more specific one

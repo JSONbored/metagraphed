@@ -372,6 +372,48 @@ describe("network selection is honoured on every surface", () => {
     }
   });
 
+  test("GraphQL chain_burn reads the network it was asked for (#9399)", async () => {
+    for (const [query, expected] of [
+      ["{ chain_burn(network: test) { read_count } }", CHAIN_RPC_URLS.testnet],
+      ["{ chain_burn { read_count } }", CHAIN_RPC_URLS.mainnet],
+    ] as [string, string][]) {
+      const { env, rpcUrls, restore } = recordingEnv();
+      try {
+        await callGraphql(query, env);
+        assert.ok(rpcUrls.length > 0, `no RPC call for ${query}`);
+        for (const url of rpcUrls) {
+          assert.ok(url.startsWith(expected), `${query} read ${url}`);
+        }
+      } finally {
+        restore();
+      }
+    }
+  });
+
+  test("MCP get_chain_burn honours network, and defaults to finney (#9399)", async () => {
+    for (const [args, expected] of [
+      [{ network: "test" }, CHAIN_RPC_URLS.testnet],
+      [{}, CHAIN_RPC_URLS.mainnet],
+    ] as [Row, string][]) {
+      const { env, rpcUrls, restore } = recordingEnv();
+      try {
+        await callMcp("get_chain_burn", args, env);
+        assert.ok(
+          rpcUrls.length > 0,
+          `no RPC call for ${JSON.stringify(args)}`,
+        );
+        for (const url of rpcUrls) {
+          assert.ok(
+            url.startsWith(expected),
+            `read ${url}, expected ${expected}`,
+          );
+        }
+      } finally {
+        restore();
+      }
+    }
+  });
+
   test("MCP rejects an unpublished network instead of defaulting it", async () => {
     // The #8804 shape: an unrecognised string used to take the testnet branch.
     // chainNetworkFromChainName defaults to mainnet, so a silent default here

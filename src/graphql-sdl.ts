@@ -917,6 +917,7 @@ export const SDL = /* GraphQL */ `
     subnet_recycled(netuid: Int!, network: Network): SubnetRecycled
     "Live current registration/burn cost for one subnet -- the dynamic price between the static min_burn_tao/max_burn_tao bounds, read directly from chain via RPC (not the Postgres tier). burn_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/burn."
     subnet_burn(netuid: Int!, network: Network): SubnetBurn
+    chain_burn(network: Network): ChainBurn
     "One subnet's validator/neuron-set turnover (entered/exited/retention/0-100 stability) between the boundary snapshots of a 7d/30d/90d/1y/all window (default 30d), from neuron_daily. comparable is false and the churn metrics zeroed on a single-snapshot or cold store, never null. Mirrors GET /api/v1/subnets/{netuid}/turnover."
     subnet_turnover(
       netuid: Int!
@@ -3595,6 +3596,26 @@ export const SDL = /* GraphQL */ `
     queried_at: String!
     "Per-field { kind, storage } map: burn_tao is measured, read from SubtensorModule.Burn. ADR 0023 decision 5, generalised in #9078/#9104."
     field_sources: JSON!
+  }
+
+  "Every subnet's live registration/burn cost in one read, ranked cheapest-first (#9399). The cross-subnet companion to subnet_burn. NOTE: there is no separate validator-permit price — permits are granted by the stake threshold, not bought."
+  type ChainBurn {
+    schema_version: Int!
+    queried_at: String
+    "What the chain reports exists (SubtensorModule.TotalNetworks), kept separate from read_count: a gap between them means the read was partial."
+    subnet_count: Int
+    read_count: Int!
+    cheapest_burn_tao: Float
+    dearest_burn_tao: Float
+    median_burn_tao: Float
+    subnets: [ChainBurnEntry!]!
+    field_sources: JSON!
+  }
+
+  "One subnet's registration cost. A genuine 0 is included, not dropped — it is the cheapest registration on the network."
+  type ChainBurnEntry {
+    netuid: Int!
+    burn_tao: Float!
   }
 
   "One subnet's validator/neuron-set turnover between a window's boundary snapshots. The churn metrics are zeroed and the retentions/stability null on a single-snapshot or cold store (schema-stable). Mirrors GET /api/v1/subnets/{netuid}/turnover's default scorecard."

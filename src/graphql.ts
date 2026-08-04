@@ -286,6 +286,7 @@ import { loadRuntimeVersionHistoryColdTier } from "./runtime-versions-cold-tier.
 import { buildChainYield } from "./chain-yield.ts";
 import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.ts";
 import { loadSubnetBurn } from "./subnet-burn.ts";
+import { loadChainBurn } from "./chain-burn.ts";
 import { chainNetworkFromChainName } from "./chain-network.ts";
 import { loadSubnetLease } from "./subnet-lease.ts";
 import { loadAccountBalance, isFinneySs58Address } from "./account-balance.ts";
@@ -648,6 +649,7 @@ import type {
   QueryChain_Stake_TransfersArgs,
   QueryChain_Transfer_PairsArgs,
   QueryChain_TransfersArgs,
+  QueryChain_BurnArgs,
   QueryChain_TurnoverArgs,
   QueryChain_Weight_SettersArgs,
   QueryChain_WeightsArgs,
@@ -8247,6 +8249,14 @@ const rootValue = {
       netuid,
       chainNetworkFromChainName(network),
     );
+  },
+
+  async chain_burn({ network }: QueryChain_BurnArgs, context: GqlContext) {
+    // #9399. Live chain RPC, not a tier -- reuses loadChainBurn's own KV cache and
+    // TTL, matching REST's handleChainBurn exactly. A failed read yields an empty
+    // ranking with read_count 0 rather than a GraphQL error, so the field stays
+    // schema-stable like its per-subnet sibling.
+    return loadChainBurn(context.env, chainNetworkFromChainName(network));
   },
 
   async subnet_turnover(

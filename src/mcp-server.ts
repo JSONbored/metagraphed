@@ -609,7 +609,9 @@ import {
   GetSubnetRecycledInputSchema,
   GetSubnetRecycledOutputSchema,
   GetSubnetBurnInputSchema,
+  GetChainBurnInputSchema,
   GetSubnetBurnOutputSchema,
+  GetChainBurnOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-recycled-burn.ts";
 import {
   GetSubnetValidatorEconomicsInputSchema,
@@ -1423,6 +1425,7 @@ import { buildAccountIdentity } from "./account-identity.ts";
 import { buildAccountIdentityHistory } from "./account-identity-history.ts";
 import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.ts";
 import { loadSubnetBurn } from "./subnet-burn.ts";
+import { loadChainBurn } from "./chain-burn.ts";
 import { loadSubnetLease } from "./subnet-lease.ts";
 // coldTierChainEventsPayload is still reached for CONVICTION (#9319), which
 // has no composer of its own. The ownership-history branch no longer comes
@@ -7710,6 +7713,41 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_chain_burn",
+    title: "Get every subnet's live registration cost, ranked",
+    description:
+      "Fetch EVERY subnet's live registration/burn cost in one call, ranked " +
+      "cheapest-first (#9399) -- the cross-subnet companion to get_subnet_burn, " +
+      "which answers the same question one subnet at a time. Use this to find " +
+      "where registration is currently cheapest. A subnet whose burn is a genuine " +
+      "0 is included, not dropped. subnet_count is what the chain reports exists " +
+      "and read_count is how many were read; a gap means the read was partial. " +
+      "NOTE: there is no separate validator-permit price -- permits are granted " +
+      "by the stake threshold, not bought. Mirrors GET /api/v1/chain/burn.",
+    inputSchema: z.toJSONSchema(GetChainBurnInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof GetChainBurnInputSchema>, ctx: McpCtx) {
+      if (ctx.env.RPC_RATE_LIMITER?.limit) {
+        const { success } = await ctx.env.RPC_RATE_LIMITER.limit({
+          key: `chain-burn:mcp:${ctx.clientIp}`,
+        });
+        if (!success) {
+          throw toolError(
+            "rate_limited",
+            "Too many live burn-cost requests from this client; slow down.",
+          );
+        }
+      }
+      return loadChainBurn(
+        ctx.env,
+        chainNetworkFromChainName(
+          optionalEnum(args, "network", MCP_NETWORK_VALUES),
+        ),
+      );
+    },
+  },
+  {
     name: "get_subnet_lease",
     title: "Get a subnet's live lease state",
     description:
@@ -12660,6 +12698,9 @@ const TOOL_OUTPUT_SCHEMAS = {
     target: "draft-2020-12",
   }),
   get_subnet_recycled: z.toJSONSchema(GetSubnetRecycledOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_chain_burn: z.toJSONSchema(GetChainBurnOutputSchema, {
     target: "draft-2020-12",
   }),
   get_subnet_burn: z.toJSONSchema(GetSubnetBurnOutputSchema, {

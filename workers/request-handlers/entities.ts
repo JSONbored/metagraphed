@@ -149,6 +149,7 @@ import {
 } from "../../src/entity-labels.ts";
 import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.ts";
 import { loadSubnetBurn } from "../../src/subnet-burn.ts";
+import { loadChainBurn } from "../../src/chain-burn.ts";
 import {
   buildValidatorEconomics,
   buildValidatorEconomicsHistory,
@@ -5747,6 +5748,47 @@ export async function handleSubnetBurn(
   }
 
   const data = await loadSubnetBurn(env, netuid, network);
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/chain/burn (#9399): EVERY subnet's live registration cost in one
+// response, ranked cheapest-first.
+//
+// The per-subnet sibling above answers "what does netuid N cost"; an operator's first
+// question is "where is registration cheapest right now", and through that route it
+// takes 129 requests. Served from ONE chain read -- Burn is Identity-hashed, so the
+// keys are derivable and state_queryStorageAt returns them together (see
+// src/chain-burn.ts). Same live-RPC + KV-cache + rate-limit shape as its sibling.
+export async function handleChainBurn(
+  request: Request,
+  env: Env,
+  network?: ChainNetworkId,
+) {
+  if (env.RPC_RATE_LIMITER?.limit) {
+    const { success } = await env.RPC_RATE_LIMITER.limit({
+      key: networkKvKey(`chain-burn:${resolveClientIp(request)}`, network),
+    });
+    if (!success) {
+      return errorResponse(
+        "burn_rate_limited",
+        "Too many live burn-cost requests from this client; slow down.",
+        429,
+        {},
+        {
+          "retry-after": String(BALANCE_RATE_LIMIT.windowSeconds),
+          "x-ratelimit-limit": String(BALANCE_RATE_LIMIT.limit),
+          "x-ratelimit-policy": `${BALANCE_RATE_LIMIT.limit};w=${BALANCE_RATE_LIMIT.windowSeconds}`,
+          "x-ratelimit-remaining": "0",
+        },
+      );
+    }
+  }
+
+  const data = await loadChainBurn(env, network);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },

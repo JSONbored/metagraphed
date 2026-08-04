@@ -109,6 +109,8 @@ import {
 } from "./routes/subnet-activity.ts";
 import {
   SubnetBurnArtifactSchema,
+  ChainBurnArtifactSchema,
+  ChainBurnEntrySchema,
   SubnetRecycledArtifactSchema,
 } from "./routes/subnet-registration-cost.ts";
 import {
@@ -452,6 +454,10 @@ register(SubnetDeregistrationsArtifactSchema, "SubnetDeregistrationsArtifact");
 register(SubnetRegistrationsArtifactSchema, "SubnetRegistrationsArtifact");
 register(SubnetServingArtifactSchema, "SubnetServingArtifact");
 register(SubnetBurnArtifactSchema, "SubnetBurnArtifact");
+// Registered for the same reason as the sibling nested shapes: a named sub-shape
+// referenced only from an array gets inlined rather than $ref'd.
+register(ChainBurnEntrySchema, "ChainBurnEntry");
+register(ChainBurnArtifactSchema, "ChainBurnArtifact");
 register(SubnetRecycledArtifactSchema, "SubnetRecycledArtifact");
 register(AccountEventSchema, "AccountEvent");
 register(SubnetEventsArtifactSchema, "SubnetEventsArtifact");

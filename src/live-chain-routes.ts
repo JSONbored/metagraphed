@@ -32,6 +32,10 @@ export const LIVE_CHAIN_ROUTE_PATHS: readonly string[] = [
   "/api/v1/accounts/{ss58}/children",
   "/api/v1/accounts/{ss58}/parents",
   "/api/v1/accounts/{ss58}/root-claim",
+  // #9399. Answers on every network -- it reads whichever chain the prefix selects,
+  // like its per-subnet sibling below. Listing it is what makes the capability matrix
+  // report it as served rather than as a route that exists and is not offered.
+  "/api/v1/chain/burn",
   "/api/v1/crowdloans",
   "/api/v1/crowdloans/{crowdloan_id}",
   "/api/v1/evm/address/{h160}",
