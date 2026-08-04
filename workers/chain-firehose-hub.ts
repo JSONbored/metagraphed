@@ -300,7 +300,20 @@ export function chainFirehoseMatchesNetuid(
   netuid: number | null,
 ): boolean {
   if (netuid === null) return true;
+  // ABSENT and NULL are different facts and must not be collapsed.
+  //
+  // Absent (`undefined`) means the topic carries no subnet dimension at all --
+  // a `blocks` payload has no netuid key -- so a netuid filter has nothing to
+  // say about it and the row is delivered, as before.
   if (payload == null || payload.netuid === undefined) return true;
+  // Explicitly null means THIS event has no subnet: account_events.netuid is a
+  // nullable column and enqueue_chain_firehose()'s jsonb_build_object emits the
+  // key as null rather than dropping it. That is not a match for any specific
+  // netuid, and it especially is not a match for 0 -- which is where it landed,
+  // because the guard above only tested `undefined` and left `Number(null) === 0`
+  // to decide. netuid 0 is a real, actively-used subscription target, so every
+  // subnet-less Transfer was being pushed to root subscribers as if it were theirs.
+  if (payload.netuid === null) return false;
   return Number(payload.netuid) === netuid;
 }
 

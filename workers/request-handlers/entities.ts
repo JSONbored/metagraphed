@@ -144,7 +144,6 @@ import { loadNetworkParameters } from "../../src/network-parameters.ts";
 import { loadRandomnessStatus } from "../../src/randomness.ts";
 import {
   ENTITY_LABELS_ARTIFACT,
-  buildAccountEntities,
   entityLabelsIndex,
   labelsForSs58,
 } from "../../src/entity-labels.ts";
@@ -190,8 +189,12 @@ import {
 import {
   loadAccountEventsColdTier,
   loadBlockEventsColdTier,
-  loadSubnetEventsColdTier,
 } from "../../src/events-cold-tier.ts";
+import { answerSubnetEvents } from "../../src/subnet-events-answer.ts";
+import {
+  answerChainIdentityHistory,
+  answerSubnetIdentityHistory,
+} from "../../src/identity-history-answer.ts";
 import {
   answerBlockDetail,
   answerExtrinsicDetail,
@@ -220,14 +223,10 @@ import {
   loadSubnetHyperparamsHistoryColdTier,
 } from "../../src/subnet-hyperparams-cold-tier.ts";
 import {
-  loadChainIdentityHistoryColdTier,
-  loadSubnetIdentityHistoryColdTier,
-} from "../../src/subnet-identity-cold-tier.ts";
-import {
   loadAccountIdentityColdTier,
   loadAccountIdentityHistoryColdTier,
 } from "../../src/account-identity-cold-tier.ts";
-import { loadAccountEntitiesColdTier } from "../../src/subnet-ownership-cold-tier.ts";
+import { answerAccountEntities } from "../../src/account-entities-answer.ts";
 import { loadSelfHealthColdTier } from "../../src/self-health-cold-tier.ts";
 import { loadLatestLaneHealth } from "../../src/lane-health.ts";
 import { withLaneHealth } from "../../src/self-health.ts";
@@ -1632,20 +1631,20 @@ export async function handleSubnetIdentityHistory(
   ]);
   if (validationError) return analyticsQueryError(validationError);
   const { limit, offset } = parsePagination(url, FEED_PAGINATION);
-  const data =
+  const identityTier =
     ((await tryPostgresTier(
       env,
       request,
       "METAGRAPH_SUBNET_IDENTITY_SOURCE",
-    )) as ReturnType<typeof buildSubnetIdentityHistory> | null) ??
-    // Lakehouse cold tier: same formatter, data-api's exact cursor token, so
-    // a page started on one tier finishes correctly on the other.
-    (await loadSubnetIdentityHistoryColdTier(env, netuid, {
-      limit,
-      offset,
-      cursor: url.searchParams.get("cursor"),
-    })) ??
-    buildSubnetIdentityHistory([], netuid, { limit, offset, nextCursor: null });
+    )) as Record<string, unknown> | null) ?? null;
+  // Through the composer (src/identity-history-answer.ts): same formatter and
+  // data-api's exact cursor token, so a page started on one tier finishes
+  // correctly on the other -- and MCP/GraphQL now reach it by the same route.
+  const data = (await answerSubnetIdentityHistory(env, netuid, identityTier, {
+    limit,
+    offset,
+    cursor: url.searchParams.get("cursor"),
+  })) as unknown as ReturnType<typeof buildSubnetIdentityHistory>;
   // CSV mirrors handleSubnetHyperparamsHistory: the page is already
   // limit/offset/cursor-bounded, so the CSV path carries the identical page the
   // JSON path would. Cold store -> empty entries -> header-only CSV.
@@ -1903,16 +1902,18 @@ export async function handleChainIdentityHistory(
   // (2026-07-16, syncSubnetIdentityToPostgres is the sole writer now), so a
   // Postgres miss/outage degrades to a schema-stable empty feed, never a
   // live D1 read.
-  const data =
+  const chainIdentityTier =
     ((await tryPostgresTier(
       env,
       request,
       "METAGRAPH_SUBNET_IDENTITY_SOURCE",
-    )) as ReturnType<typeof buildChainIdentityHistory> | null) ??
-    // Lakehouse cold tier (src/subnet-identity-cold-tier.ts): the frozen
-    // verified history through the SAME formatter as the Postgres tier.
-    (await loadChainIdentityHistoryColdTier(env, { limit })) ??
-    buildChainIdentityHistory([], { limit });
+    )) as Record<string, unknown> | null) ?? null;
+  // Through the composer (src/identity-history-answer.ts): the frozen verified
+  // history through the SAME formatter as the Postgres tier, for all three
+  // surfaces rather than this one.
+  const data = (await answerChainIdentityHistory(env, chainIdentityTier, {
+    limit,
+  })) as unknown as ReturnType<typeof buildChainIdentityHistory>;
   return envelopeResponse(
     request,
     {
@@ -4486,13 +4487,11 @@ export async function handleAccountEntities(
       "METAGRAPH_SUBNET_OWNERSHIP_SOURCE" as keyof Env,
     ),
   ]);
-  const data =
-    ownershipData ??
-    // Lakehouse cold tier (src/subnet-ownership-cold-tier.ts): the SAME
-    // SubnetOwnerChanged stream from chain.chain_events, through the SAME
-    // formatter -- the labels join below applies identically to every tier.
-    (await loadAccountEntitiesColdTier(env, coldkey)) ??
-    buildAccountEntities(coldkey, { entities: [] });
+  // Through the composer (src/account-entities-answer.ts), which owns the tier
+  // order and the empty floor for REST, MCP and GraphQL alike. It used to live
+  // here only, which is exactly why the other two surfaces published an empty
+  // ownership half. The labels join below applies identically to every tier.
+  const data = await answerAccountEntities(env, coldkey, ownershipData);
   const artifactEntities = entitiesArtifact.ok
     ? ((entitiesArtifact.data as Record<string, unknown> | undefined)
         ?.entities as Array<Record<string, unknown>> | undefined)
@@ -5367,25 +5366,23 @@ export async function handleSubnetEvents(
   // The tier is still tried first and the cold read is awaited only on a miss:
   // it scans the largest table in the lakehouse, so it must not run when the
   // tier can answer.
-  const data =
+  const tierResult =
     ((await tryPostgresTier(
       env,
       request,
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-    )) as ReturnType<typeof buildSubnetEvents> | null) ??
-    (await loadSubnetEventsColdTier(env, Number(netuid), {
-      limit: parsedLimit,
-      offset: parsedOffset,
-      cursor: url.searchParams.get("cursor"),
-      kind,
-      blockStart: blockStart.value,
-      blockEnd: blockEnd.value,
-    })) ??
-    buildSubnetEvents([], Number(netuid), {
-      limit: parsedLimit,
-      offset: parsedOffset,
-      nextCursor: null,
-    });
+    )) as Record<string, unknown> | null) ?? null;
+  // Through the composer (src/subnet-events-answer.ts). This cascade used to
+  // live here only, which is precisely why MCP and GraphQL published
+  // event_count 0 for subnets this route served real rows for.
+  const data = (await answerSubnetEvents(env, Number(netuid), tierResult, {
+    limit: parsedLimit,
+    offset: parsedOffset,
+    cursor: url.searchParams.get("cursor"),
+    kind,
+    blockStart: blockStart.value,
+    blockEnd: blockEnd.value,
+  })) as unknown as ReturnType<typeof buildSubnetEvents>;
   if (csvRequested(url, request)) {
     return csvResponse(
       data.events as unknown[],

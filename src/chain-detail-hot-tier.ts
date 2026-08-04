@@ -227,7 +227,17 @@ export async function loadBlockEventsHotTier(
     [height, limit, offset],
   );
   if (rows === null) return null;
-  return buildBlockEvents(rows, ref, height, { limit, offset });
+  // The block's TRUE event total, from the coverage register the sync writes
+  // alongside these rows -- an indexed primary-key lookup, not a scan. Without
+  // it `event_count` was just this page's length, so it tracked `limit` instead
+  // of the block.
+  const totals = await query(
+    env,
+    "SELECT account_event_count FROM chain_detail_blocks WHERE block_number = ? LIMIT 1",
+    [height],
+  );
+  const totalCount = safeBlockNumber(totals?.[0]?.account_event_count);
+  return buildBlockEvents(rows, ref, height, { limit, offset, totalCount });
 }
 
 export interface ChainEventApi {

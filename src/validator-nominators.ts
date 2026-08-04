@@ -157,6 +157,14 @@ function resolveCount(
   pageLength: number,
   alreadyPaged: boolean,
 ): number | null {
+  // `null` is the cold tier's explicit "the count query failed, this total is
+  // UNKNOWN" (see loadValidatorNominatorsColdTier, whose own comment reads
+  // "Null is a real state; a page size dressed as a total is not"). It has to be
+  // rejected BEFORE Number(), because Number(null) is 0 -- which sailed through
+  // the isFinite check below and published a failed count as a confident zero,
+  // the exact outcome the null was introduced to prevent. `undefined` still
+  // falls through to the pageLength/null branch as every other caller expects.
+  if (totalCount === null) return alreadyPaged ? null : pageLength;
   const n = Math.trunc(Number(totalCount));
   if (Number.isFinite(n) && n >= 0) return n;
   return alreadyPaged ? null : pageLength;

@@ -1026,8 +1026,17 @@ describe("handleGraphQLRequest — coverage edge cases", () => {
     assert.ok("subnet" in body.data);
   });
 
-  // Cursor not found in items → start stays 0 (no crash).
-  test("subnets with an unresolvable cursor returns first page", async () => {
+  // A stale cursor terminates the walk instead of silently restarting it.
+  //
+  // This test previously asserted `items.length === 2` under the name "returns
+  // first page", with the comment "start stays 0 (no crash)" -- i.e. it was
+  // pinning crash-safety and incidentally captured the restart. The restart is
+  // the defect: paginate() still emitted a next_cursor alongside that first
+  // page, so a client following cursors walked page 1 -> page 1 -> page 1
+  // forever while `total` kept reporting the full count. Lists keyed by
+  // identity over live rows (validators by hotkey) hit this whenever a row
+  // disappears mid-walk.
+  test("subnets with an unresolvable cursor ends the walk, never restarts it", async () => {
     const env = fixtureEnv({
       "/metagraph/subnets.json": {
         subnets: [
@@ -1037,11 +1046,17 @@ describe("handleGraphQLRequest — coverage edge cases", () => {
       },
     });
     const { status, body } = await gql(
-      '{ subnets(cursor: "999") { items { netuid } total } }',
+      '{ subnets(cursor: "999") { items { netuid } total next_cursor } }',
       env as unknown as Env,
     );
     assert.equal(status, 200);
-    assert.equal(body.data.subnets.items.length, 2);
+    // Still a 200 with a schema-stable shape -- a vanished row is an ordinary
+    // race, not a client error.
+    assert.equal(body.data.subnets.items.length, 0);
+    // `total` still reports reality; only the page is empty.
+    assert.equal(body.data.subnets.total, 2);
+    // The loop-breaker: no cursor is handed back, so the walk cannot repeat.
+    assert.equal(body.data.subnets.next_cursor, null);
   });
 
   // Data keys missing from artifact (subnets array absent → empty list).

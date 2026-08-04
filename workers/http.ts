@@ -88,6 +88,23 @@ export function linkHeader(links: Array<{ uri: string; rel: string }>): string {
   return links.map(({ uri, rel }) => `<${uri}>; rel="${rel}"`).join(", ");
 }
 
+/**
+ * Does `pathname` name `base` itself, or something nested under it?
+ *
+ * A bare `pathname.startsWith(base)` has no path-segment boundary, so
+ * `/api/v1/alerts/triggers` also matched `/api/v1/alerts/triggersanything` --
+ * which reached the alert-trigger CRUD proxy and let a POST to a path that is
+ * not a route create a real trigger row. It also makes any future sibling route
+ * sharing the prefix unreachable by construction, since this test swallows it
+ * first.
+ *
+ * `base` is given WITHOUT a trailing slash; both `/base` and `/base/...` match,
+ * and `/basex` does not.
+ */
+export function isPathUnder(pathname: string, base: string): boolean {
+  return pathname === base || pathname.startsWith(`${base}/`);
+}
+
 export function errorResponse(
   code: string,
   message: string,

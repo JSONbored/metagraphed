@@ -721,16 +721,45 @@ export function buildBlockEvents(
   rows: Array<Record<string, unknown>> | null | undefined,
   ref: unknown,
   blockNumber: number | null,
-  { limit, offset }: { limit?: number | null; offset?: number | null } = {},
+  {
+    limit,
+    offset,
+    totalCount,
+  }: {
+    limit?: number | null;
+    offset?: number | null;
+    /**
+     * The block's TOTAL event count, when the caller knows it.
+     *
+     * `event_count` used to be `events.length` unconditionally -- the size of
+     * the page, published under a name every consumer reads as the block's
+     * total. Measured on block 8,771,446: ?limit=5 said 5, ?limit=100 said 100,
+     * ?limit=320 said 237, so no page size revealed the real number and a
+     * client could not tell when it had seen everything.
+     *
+     * Callers pass this only when they actually know it (the hot tier reads it
+     * from the coverage register; the cold tier derives it when its page ran
+     * short of the requested window, which proves the end was reached). When it
+     * is genuinely unknown the page length is still the honest best answer for
+     * a non-nullable field, and behaviour is unchanged.
+     */
+    totalCount?: number | null;
+  } = {},
 ): BlockEventsResult {
   const events = (rows || [])
     .map(formatAccountEvent)
     .filter((e): e is AccountEvent => Boolean(e));
+  const known =
+    typeof totalCount === "number" &&
+    Number.isFinite(totalCount) &&
+    totalCount >= 0
+      ? Math.trunc(totalCount)
+      : null;
   return {
     schema_version: 1,
     ref: ref ?? null,
     block_number: blockNumber ?? null,
-    event_count: events.length,
+    event_count: known ?? events.length,
     limit: limit ?? null,
     offset: offset ?? null,
     events,

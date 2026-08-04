@@ -32,9 +32,23 @@ export async function handleSavedQueryRequest(
       { allow: "GET, HEAD, OPTIONS" },
     );
   }
-  const queryId = decodeURIComponent(
-    url.pathname.slice(SAVED_QUERIES_PATH_PREFIX.length),
-  );
+  // decodeURIComponent throws URIError on a malformed escape ("%ZZ"), and this
+  // call sits OUTSIDE the try below -- withUsageTelemetry has try/finally with
+  // no catch and the Worker entry does not wrap either, so the throw escaped as
+  // a bare 1101/500 instead of the error envelope every other route returns.
+  // decodeSlugPathSegment in workers/api.ts catches URIError for the same reason.
+  let queryId: string;
+  try {
+    queryId = decodeURIComponent(
+      url.pathname.slice(SAVED_QUERIES_PATH_PREFIX.length),
+    );
+  } catch {
+    return errorResponse(
+      "not_found",
+      "GET /api/v1/queries/{id} requires a valid, percent-decodable query id.",
+      404,
+    );
+  }
   if (!queryId) {
     return errorResponse(
       "not_found",
