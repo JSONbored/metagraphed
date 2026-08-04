@@ -15458,17 +15458,22 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
   });
 
   test("get_validator_nominators serves the nominator list from the lakehouse", async () => {
-    const queries = lakeFetch([
-      {
-        coldkey: "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F",
-        staked_tao: 40,
-        unstaked_tao: 5,
-        event_count: 4,
-        last_observed: 1785544524000,
-        net_staked_tao: 35,
-        gross_staked_tao: 45,
-      },
-    ]);
+    const queries = lakeFetch(
+      [
+        {
+          coldkey: "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F",
+          staked_tao: 40,
+          unstaked_tao: 5,
+          event_count: 4,
+          last_observed: 1785544524000,
+          net_staked_tao: 35,
+          gross_staked_tao: 45,
+        },
+      ],
+      // #9393: the loader now also reads the TRUE distinct-coldkey count, because the
+      // scan above is bounded by LIMIT and its length is the page size, not the total.
+      [{ c: 1 }],
+    );
     const res = await callTool(
       "get_validator_nominators",
       { hotkey: LAKE_EXTRINSIC.signer, sort: "last_activity" },

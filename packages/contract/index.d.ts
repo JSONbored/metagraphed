@@ -11742,9 +11742,12 @@ export interface components {
         ValidatorHistoryArtifact: {
             hotkey: string;
             netuid: number | null;
+            /** @description take_last_changed_date + TxDelegateTakeRateLimit (216,000 blocks / 30.00 days, read from the chain's runtime metadata default). NULL when no change is resolvable in the retained window, which is SHORTER than the rate limit — so 'no change seen' cannot be resolved to 'eligible now'. */
+            next_take_change_eligible_date: string | null;
             point_count: number;
             points: {
                 consensus?: number | null;
+                dividend_efficiency?: number | null;
                 dividends?: number | null;
                 emission_alpha?: number | null;
                 netuid?: number | null;
@@ -11753,6 +11756,7 @@ export interface components {
                 snapshot_date: string;
                 /** @description Native alpha, NOT converted to TAO — the unit the subnet actually emits in, and what an operator compares day over day. The TAO-priced equivalents remain total_stake_tao/total_emission_tao on the same point. */
                 stake_alpha?: number | null;
+                stake_share?: number | null;
                 subnet_count: number | null;
                 take?: number | null;
                 total_emission_tao: number | null;
@@ -11764,14 +11768,20 @@ export interface components {
                 validator_trust?: number | null;
             }[];
             schema_version: number;
+            take_change_observable: boolean;
+            take_last_changed_date: string | null;
+            take_u16: number | null;
             window: string | null;
         } & {
             [key: string]: unknown;
         };
         ValidatorNominatorsArtifact: {
+            concentration_complete: boolean;
             hotkey: string;
             limit: number;
-            nominator_count: number;
+            /** @description Distinct delegating coldkeys in the window. NULL when the rows are a page and the true total could not be read (#9393) — it is deliberately not the page size, which is what this reported before and which tracked ?limit. */
+            nominator_count: number | null;
+            nominator_gini: number | null;
             nominators: {
                 coldkey: string;
                 event_count: number;
@@ -11785,6 +11795,8 @@ export interface components {
             schema_version: number;
             /** @enum {string} */
             sort: "net_staked" | "gross_staked" | "last_activity";
+            top_nominator_share: number | null;
+            top5_nominator_share: number | null;
             window: string | null;
         } & {
             [key: string]: unknown;
@@ -51059,6 +51071,7 @@ export interface operations {
                      *       "data": {
                      *         "hotkey": "example",
                      *         "netuid": 7,
+                     *         "next_take_change_eligible_date": "example",
                      *         "point_count": 1,
                      *         "points": [
                      *           {
@@ -51070,6 +51083,9 @@ export interface operations {
                      *           }
                      *         ],
                      *         "schema_version": 1,
+                     *         "take_change_observable": false,
+                     *         "take_last_changed_date": "example",
+                     *         "take_u16": 1,
                      *         "window": "30d"
                      *       },
                      *       "meta": {
@@ -51180,9 +51196,11 @@ export interface operations {
                     /**
                      * @example {
                      *       "data": {
+                     *         "concentration_complete": false,
                      *         "hotkey": "example",
                      *         "limit": 1,
                      *         "nominator_count": 1,
+                     *         "nominator_gini": 0.5,
                      *         "nominators": [
                      *           {
                      *             "coldkey": "example",
@@ -51197,6 +51215,8 @@ export interface operations {
                      *         "offset": 1,
                      *         "schema_version": 1,
                      *         "sort": "net_staked",
+                     *         "top_nominator_share": 0.5,
+                     *         "top5_nominator_share": 0.5,
                      *         "window": "30d"
                      *       },
                      *       "meta": {

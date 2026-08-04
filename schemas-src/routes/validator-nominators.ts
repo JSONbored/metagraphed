@@ -31,7 +31,19 @@ export const ValidatorNominatorsArtifactSchema = z
     sort: z.enum(["net_staked", "gross_staked", "last_activity"]),
     limit: z.int().min(0).max(100),
     offset: z.int().min(0),
-    nominator_count: z.int().min(0),
+    nominator_count: z
+      .int()
+      .min(0)
+      .nullable()
+      .describe(
+        "Distinct delegating coldkeys in the window. NULL when the rows are a page and the true total could not be read (#9393) — it is deliberately not the page size, which is what this reported before and which tracked ?limit.",
+      ),
+    // #9390: how concentrated the delegated stake is. Null unless the rows in hand are
+    // the whole set -- a top-holder share computed over one page describes the page.
+    concentration_complete: z.boolean(),
+    top_nominator_share: z.number().min(0).max(1).nullable(),
+    top5_nominator_share: z.number().min(0).max(1).nullable(),
+    nominator_gini: z.number().min(0).max(1).nullable(),
     nominators: z.array(ValidatorNominatorEntrySchema),
   })
   .passthrough();

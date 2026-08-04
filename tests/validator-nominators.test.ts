@@ -110,7 +110,10 @@ describe("buildValidatorNominators", () => {
         },
       ],
       HOTKEY,
-      { totalCount: 5, limit: 2, offset: 2 },
+      // alreadyPaged: the SQL applied LIMIT/OFFSET, so the builder must not slice
+      // again. Split from totalCount by #9393 -- the two used to be one signal, which
+      // is why a page length could be published as the total.
+      { totalCount: 5, limit: 2, offset: 2, alreadyPaged: true },
     ) as Row;
     assert.equal(d.nominator_count, 5);
     assert.deepEqual(
@@ -439,5 +442,88 @@ describe("GET /api/v1/validators/{hotkey}/nominators via the Worker", () => {
       env,
     );
     assert.equal(unsupported.res.status, 400);
+  });
+});
+
+// #9393 + #9390: the count must be the real total, and concentration must not be
+// computed over a page and passed off as describing the validator.
+describe("buildValidatorNominators — count and concentration", () => {
+  function nominators(...amounts: number[]) {
+    return amounts.map((amount, i) => added(`ck-${i}`, amount));
+  }
+
+  test("a page reports an UNKNOWN total rather than its own length", () => {
+    // The #9393 defect exactly: nominator_count tracked ?limit (20 with limit=20,
+    // 100 with limit=100) for a validator whose detail card reported 2,474.
+    const d = buildValidatorNominators(nominators(10, 5), HOTKEY, {
+      alreadyPaged: true,
+    }) as Row;
+    assert.equal(d.nominator_count, null);
+    assert.equal(d.concentration_complete, false);
+    assert.equal(d.top_nominator_share, null);
+  });
+
+  test("a page with a known total reports the total, not the page", () => {
+    const d = buildValidatorNominators(nominators(10, 5), HOTKEY, {
+      alreadyPaged: true,
+      totalCount: 2474,
+    }) as Row;
+    assert.equal(d.nominator_count, 2474);
+    // 2 rows describing 2,474 nominators cannot support a concentration claim.
+    assert.equal(d.concentration_complete, false);
+    assert.equal(d.nominator_gini, null);
+  });
+
+  test("concentration is computed only when the rows ARE the whole set", () => {
+    const d = buildValidatorNominators(
+      nominators(50, 30, 10, 5, 3, 2),
+      HOTKEY,
+      {
+        alreadyPaged: true,
+        totalCount: 6,
+      },
+    ) as Row;
+    assert.equal(d.concentration_complete, true);
+    // 50 of 100 total
+    assert.equal(d.top_nominator_share, 0.5);
+    // 50+30+10+5+3 = 98 of 100
+    assert.equal(d.top5_nominator_share, 0.98);
+    assert.ok((d.nominator_gini as number) > 0);
+  });
+
+  test("one nominator is not reported as perfectly EQUAL", () => {
+    // Gini's formula yields 0 at n=1, which reads as perfect equality when the truth
+    // is perfect concentration. Null is the honest answer.
+    const d = buildValidatorNominators(nominators(50), HOTKEY, {
+      alreadyPaged: true,
+      totalCount: 1,
+    }) as Row;
+    assert.equal(d.top_nominator_share, 1);
+    assert.equal(d.nominator_gini, null);
+  });
+
+  test("net-negative nominators do not push shares past 1", () => {
+    // A coldkey that withdrew more than it added in the window has negative net stake;
+    // leaving it in the denominator would inflate everyone else past 100%.
+    const d = buildValidatorNominators(
+      [added("ck-a", 50), removed("ck-b", 20)],
+      HOTKEY,
+      { alreadyPaged: true, totalCount: 2 },
+    ) as Row;
+    assert.ok((d.top_nominator_share as number) <= 1);
+  });
+
+  test("the in-memory paging path is unchanged", () => {
+    // Every caller but the cold tier passes the full set and lets the builder page.
+    const d = buildValidatorNominators(nominators(10, 5, 1), HOTKEY, {
+      limit: 2,
+    }) as Row;
+    assert.equal(
+      d.nominator_count,
+      3,
+      "the total, since these ARE all the rows",
+    );
+    assert.equal((d.nominators as Row[]).length, 2, "still paged here");
+    assert.equal(d.concentration_complete, true);
   });
 });

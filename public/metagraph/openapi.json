@@ -11454,6 +11454,7 @@
           "data": {
             "hotkey": "example",
             "netuid": 7,
+            "next_take_change_eligible_date": "example",
             "point_count": 1,
             "points": [
               {
@@ -11465,6 +11466,9 @@
               }
             ],
             "schema_version": 1,
+            "take_change_observable": false,
+            "take_last_changed_date": "example",
+            "take_u16": 1,
             "window": "30d"
           },
           "meta": {
@@ -11496,9 +11500,11 @@
       "ValidatorNominatorsArtifactResponse": {
         "value": {
           "data": {
+            "concentration_complete": false,
             "hotkey": "example",
             "limit": 1,
             "nominator_count": 1,
+            "nominator_gini": 0.5,
             "nominators": [
               {
                 "coldkey": "example",
@@ -11513,6 +11519,8 @@
             "offset": 1,
             "schema_version": 1,
             "sort": "net_staked",
+            "top_nominator_share": 0.5,
+            "top5_nominator_share": 0.5,
             "window": "30d"
           },
           "meta": {
@@ -48275,6 +48283,17 @@
               }
             ]
           },
+          "next_take_change_eligible_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "take_last_changed_date + TxDelegateTakeRateLimit (216,000 blocks / 30.00 days, read from the chain's runtime metadata default). NULL when no change is resolvable in the retained window, which is SHORTER than the rate limit — so 'no change seen' cannot be resolved to 'eligible now'."
+          },
           "point_count": {
             "maximum": 9007199254740991,
             "minimum": 0,
@@ -48287,6 +48306,17 @@
                 "consensus": {
                   "anyOf": [
                     {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "dividend_efficiency": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
                       "type": "number"
                     },
                     {
@@ -48359,6 +48389,17 @@
                     }
                   ],
                   "description": "Native alpha, NOT converted to TAO — the unit the subnet actually emits in, and what an operator compares day over day. The TAO-priced equivalents remain total_stake_tao/total_emission_tao on the same point."
+                },
+                "stake_share": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "subnet_count": {
                   "anyOf": [
@@ -48453,6 +48494,31 @@
             "minimum": -9007199254740991,
             "type": "integer"
           },
+          "take_change_observable": {
+            "type": "boolean"
+          },
+          "take_last_changed_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "take_u16": {
+            "anyOf": [
+              {
+                "maximum": 65535,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "window": {
             "anyOf": [
               {
@@ -48469,6 +48535,10 @@
           "hotkey",
           "window",
           "netuid",
+          "take_u16",
+          "take_last_changed_date",
+          "next_take_change_eligible_date",
+          "take_change_observable",
           "point_count",
           "points"
         ],
@@ -48477,6 +48547,9 @@
       "ValidatorNominatorsArtifact": {
         "additionalProperties": {},
         "properties": {
+          "concentration_complete": {
+            "type": "boolean"
+          },
           "hotkey": {
             "type": "string"
           },
@@ -48486,9 +48559,29 @@
             "type": "integer"
           },
           "nominator_count": {
-            "maximum": 9007199254740991,
-            "minimum": 0,
-            "type": "integer"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Distinct delegating coldkeys in the window. NULL when the rows are a page and the true total could not be read (#9393) — it is deliberately not the page size, which is what this reported before and which tracked ?limit."
+          },
+          "nominator_gini": {
+            "anyOf": [
+              {
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "nominators": {
             "items": {
@@ -48559,6 +48652,30 @@
             ],
             "type": "string"
           },
+          "top_nominator_share": {
+            "anyOf": [
+              {
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "top5_nominator_share": {
+            "anyOf": [
+              {
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "window": {
             "anyOf": [
               {
@@ -48578,6 +48695,10 @@
           "limit",
           "offset",
           "nominator_count",
+          "concentration_complete",
+          "top_nominator_share",
+          "top5_nominator_share",
+          "nominator_gini",
           "nominators"
         ],
         "type": "object"

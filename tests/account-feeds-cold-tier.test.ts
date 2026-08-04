@@ -732,7 +732,7 @@ describe("loadValidatorNominatorsColdTier", () => {
   }
 
   test("carries the retired Postgres projection and predicate verbatim", async () => {
-    const q = sqlFetch([nominatorRow(OTHER, 20)]);
+    const q = sqlFetch([nominatorRow(OTHER, 20)], [{ c: 1 }]);
     const res = await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
       limit: 20,
       window: "30d",
@@ -757,7 +757,7 @@ describe("loadValidatorNominatorsColdTier", () => {
   });
 
   test("rewrites the kind IN-list as an OR, never leaning on IN", async () => {
-    const q = sqlFetch([nominatorRow(OTHER, 5)]);
+    const q = sqlFetch([nominatorRow(OTHER, 5)], [{ c: 1 }]);
     await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, { limit: 5 });
     assert.match(
       q[0]!,
@@ -772,7 +772,7 @@ describe("loadValidatorNominatorsColdTier", () => {
       ["gross_staked", "gross_staked_tao DESC, coldkey ASC"],
       ["last_activity", "last_observed DESC, coldkey ASC"],
     ] as const) {
-      const q = sqlFetch([nominatorRow(OTHER, 5)]);
+      const q = sqlFetch([nominatorRow(OTHER, 5)], [{ c: 1 }]);
       const res = await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
         limit: 5,
         sort,
@@ -785,7 +785,7 @@ describe("loadValidatorNominatorsColdTier", () => {
   test("declines a sort it cannot express rather than serving the default order", async () => {
     // Silently substituting net_staked under the caller's requested label
     // would be a wrong answer wearing the right label.
-    const q = sqlFetch([nominatorRow(OTHER, 5)]);
+    const q = sqlFetch([nominatorRow(OTHER, 5)], [{ c: 1 }]);
     assert.equal(
       await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
         limit: 5,
@@ -818,7 +818,7 @@ describe("loadValidatorNominatorsColdTier", () => {
   });
 
   test("declines past the offset-emulation cap rather than paging wrongly", async () => {
-    const q = sqlFetch([nominatorRow(OTHER, 5)]);
+    const q = sqlFetch([nominatorRow(OTHER, 5)], [{ c: 1 }]);
     assert.equal(
       await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
         limit: 5,
@@ -830,7 +830,7 @@ describe("loadValidatorNominatorsColdTier", () => {
   });
 
   test("narrows on an exact coldkey, and declines an unusable one", async () => {
-    const q = sqlFetch([nominatorRow(OTHER, 5)]);
+    const q = sqlFetch([nominatorRow(OTHER, 5)], [{ c: 1 }]);
     await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
       limit: 5,
       coldkey: OTHER,
@@ -838,7 +838,7 @@ describe("loadValidatorNominatorsColdTier", () => {
     assert.match(q[0]!, new RegExp(`coldkey = '${OTHER}'`));
 
     // A filter that cannot be inlined must not widen to every nominator.
-    const bad = sqlFetch([nominatorRow(OTHER, 5)]);
+    const bad = sqlFetch([nominatorRow(OTHER, 5)], [{ c: 1 }]);
     assert.equal(
       await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
         limit: 5,
@@ -852,15 +852,18 @@ describe("loadValidatorNominatorsColdTier", () => {
   test("coalesces null sums to zero, as data-api's COALESCE did", async () => {
     // Without this the builder skips the group entirely, losing a nominator a
     // healthy read did return.
-    sqlFetch([
-      {
-        coldkey: OTHER,
-        staked_tao: null,
-        unstaked_tao: null,
-        event_count: 2,
-        last_observed: 1_785_000_000_000,
-      },
-    ]);
+    sqlFetch(
+      [
+        {
+          coldkey: OTHER,
+          staked_tao: null,
+          unstaked_tao: null,
+          event_count: 2,
+          last_observed: 1_785_000_000_000,
+        },
+      ],
+      [{ c: 1 }],
+    );
     const res = await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
       limit: 5,
     });
@@ -872,7 +875,7 @@ describe("loadValidatorNominatorsColdTier", () => {
   });
 
   test("falls back to the default window for an unknown label", async () => {
-    sqlFetch([nominatorRow(OTHER, 5)]);
+    sqlFetch([nominatorRow(OTHER, 5)], [{ c: 1 }]);
     const res = await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
       limit: 5,
       window: "1y",
@@ -881,7 +884,7 @@ describe("loadValidatorNominatorsColdTier", () => {
   });
 
   test("a validator with no nominators answers an empty list, not a decline", async () => {
-    sqlFetch([]);
+    sqlFetch([], [{ c: 0 }]);
     const res = await loadValidatorNominatorsColdTier(TOKEN as never, ADDR, {
       limit: 5,
     });
@@ -890,7 +893,7 @@ describe("loadValidatorNominatorsColdTier", () => {
   });
 
   test("declines an unusable hotkey, limit or offset rather than scanning", async () => {
-    const q = sqlFetch([]);
+    const q = sqlFetch([], [{ c: 0 }]);
     assert.equal(
       await loadValidatorNominatorsColdTier(TOKEN as never, "not-an-ss58", {
         limit: 5,
