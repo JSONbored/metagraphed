@@ -127,23 +127,28 @@ export function buildNetworkCapabilities(input: {
    */
   publishedArtifacts: readonly string[];
   /**
-   * Route templates answered from live chain storage instead of an artifact.
+   * Route templates served on a network WITHOUT publishing an artifact.
    *
-   * The third term in the availability rule (#8700). These routes publish no
-   * artifact — they read `state_getStorage` at request time — so testing them
-   * against `publishedArtifacts` alone reports them unserved while the router
-   * answers them 200. Under-reporting is as harmful here as over-reporting:
-   * this document is how an agent decides a route is not worth calling.
+   * The third term in the availability rule (#8700). Two kinds qualify and both
+   * belong here: live chain-storage routes (`state_getStorage` at request time)
+   * and chain-history routes (that network's Iceberg namespace). Neither writes
+   * an R2 artifact, so testing them against `publishedArtifacts` alone reports
+   * them unserved while the router answers them 200.
+   *
+   * Under-reporting is as harmful as over-reporting: this document is how an
+   * agent decides a route is not worth calling, so a false "unserved" sends it
+   * away from something that works.
    */
-  liveChainRoutes?: readonly string[];
+  nonArtifactRoutes?: readonly string[];
   localNote?: string;
 }): NetworkCapability[] {
   const { routes, networks, isMainnetOnly } = input;
   const published = new Set(input.publishedArtifacts);
-  const liveChain = new Set(input.liveChainRoutes ?? []);
+  const servedWithoutArtifact = new Set(input.nonArtifactRoutes ?? []);
   const servesOffMainnet = (route: RouteLike & { artifact_path?: string }) =>
     !isMainnetOnly(route.path) &&
-    (published.has(route.artifact_path ?? "") || liveChain.has(route.path));
+    (published.has(route.artifact_path ?? "") ||
+      servedWithoutArtifact.has(route.path));
   const mainnetOnly = routes.filter((route) => !servesOffMainnet(route));
   const universal = routes.filter(servesOffMainnet);
 
@@ -251,7 +256,7 @@ export function buildNetworksPayload(input: {
   >;
   isMainnetOnly: (path: string) => boolean;
   publishedArtifacts: readonly string[];
-  liveChainRoutes?: readonly string[];
+  nonArtifactRoutes?: readonly string[];
 }): {
   schema_version: 1;
   default_network: string;

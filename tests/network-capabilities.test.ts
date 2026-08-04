@@ -27,6 +27,7 @@ import {
   NETWORK_PUBLISHED_ARTIFACT_PATHS,
 } from "../src/network-artifacts.ts";
 import { LIVE_CHAIN_ROUTE_PATHS } from "../src/live-chain-routes.ts";
+import { CHAIN_HISTORY_ROUTE_PATHS } from "../src/chain-history-routes.ts";
 
 const NETWORKS = {
   mainnet: { id: "mainnet", chain: "finney", prefix: "", isDefault: true },
@@ -47,7 +48,10 @@ function matrix() {
     networks: NETWORKS,
     isMainnetOnly: isMainnetOnlyApiPath,
     publishedArtifacts: NETWORK_PUBLISHED_ARTIFACT_PATHS,
-    liveChainRoutes: LIVE_CHAIN_ROUTE_PATHS,
+    nonArtifactRoutes: [
+      ...LIVE_CHAIN_ROUTE_PATHS,
+      ...CHAIN_HISTORY_ROUTE_PATHS,
+    ],
   });
 }
 
@@ -207,7 +211,10 @@ describe("the matrix is derived, not copied", () => {
       networks: NETWORKS,
       isMainnetOnly: isMainnetOnlyApiPath,
       publishedArtifacts: [],
-      liveChainRoutes: LIVE_CHAIN_ROUTE_PATHS,
+      nonArtifactRoutes: [
+        ...LIVE_CHAIN_ROUTE_PATHS,
+        ...CHAIN_HISTORY_ROUTE_PATHS,
+      ],
     }).find((network) => network.id === "testnet");
     const liveFamilies = [
       ...(liveOnly?.served_families ?? []),

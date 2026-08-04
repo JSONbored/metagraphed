@@ -333,10 +333,14 @@ describe("multi-network routing prefix (Phase 1)", () => {
   test("D1-backed live routes 404 under testnet with a mainnet-only message", async () => {
     const env = createLocalArtifactEnv();
     for (const path of [
-      "/api/v1/testnet/blocks",
+      // NOTE: /blocks, /blocks/{ref} and /extrinsics used to be asserted here.
+      // #8700 opened them once the decode lane began filling `chain_testnet`;
+      // their testnet coverage lives in tests/chain-history-networks.test.ts.
+      // /blocks/summary stays: it is cross-subnet block-production analytics
+      // (author decentralization, spec spread), which #8700's subset test --
+      // "what does a subnet developer validating their own subnet need?" --
+      // does not clear.
       "/api/v1/testnet/blocks/summary",
-      "/api/v1/testnet/blocks/12345",
-      "/api/v1/testnet/extrinsics",
       // Sudo-call feed reads the same mainnet-only extrinsics D1 tier (#4310/2.2).
       "/api/v1/testnet/sudo",
       // Same for the AdminUtils config-change feed (#4310/2.3).
@@ -416,7 +420,10 @@ describe("multi-network routing prefix (Phase 1)", () => {
       ["GET", "/api/v1/testnet/graphql"],
       ["POST", "/api/v1/testnet/graphql"],
       ["POST", "/api/v1/testnet/ask"],
-      ["GET", "/api/v1/testnet/blocks"],
+      // /blocks is served on testnet since #8700; /blocks/summary is the
+      // block-family route that is still mainnet-only, so it carries the
+      // method-independence assertion now.
+      ["GET", "/api/v1/testnet/blocks/summary"],
     ]) {
       const { res, body } = await get(env, path, { method });
       assert.equal(res.status, 404, `${method} ${path}`);

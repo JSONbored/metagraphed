@@ -82,6 +82,40 @@ export function networkKvKey(
 }
 
 /**
+ * Iceberg namespace holding a network's decoded chain tables.
+ *
+ * MUST match `Network::iceberg_namespace` in metagraphed-infra's
+ * services/indexer-rs/src/network.rs — that is the writer, this is the reader,
+ * and a disagreement is a silent empty result rather than an error: R2 SQL
+ * answers `FROM chain_testnet.blocks` against a namespace that does not exist
+ * with a failure the cold tier turns into a schema-stable empty, which looks
+ * exactly like "this chain has no blocks yet".
+ *
+ * Mainnet stays `chain`, unprefixed, because every table already written and
+ * every existing reader spells it that way.
+ */
+export const LAKEHOUSE_NAMESPACES: Readonly<Record<ChainNetworkId, string>> = {
+  mainnet: "chain",
+  testnet: "chain_testnet",
+};
+
+/**
+ * A fully-qualified lakehouse table for one network, e.g. `chain.blocks` or
+ * `chain_testnet.extrinsics`.
+ *
+ * Every `FROM` clause in the cold tier goes through this rather than embedding
+ * the namespace, so a reader cannot be network-aware in its WHERE clause and
+ * mainnet-only in its FROM — which would read the wrong chain while looking
+ * completely correct.
+ */
+export function chainTable(
+  table: string,
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
+): string {
+  return `${LAKEHOUSE_NAMESPACES[network] ?? LAKEHOUSE_NAMESPACES[DEFAULT_CHAIN_NETWORK]}.${table}`;
+}
+
+/**
  * Narrow a router network id to one that has chain state.
  *
  * `handleNetworkScopedRequest` carries `{ id: "mainnet" | "testnet" | "local" }`.
