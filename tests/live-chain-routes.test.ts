@@ -316,7 +316,10 @@ describe("network selection is honoured on every surface", () => {
   test("GraphQL subnet_burn(network: test) reads the testnet endpoint", async () => {
     const { env, rpcUrls, restore } = recordingEnv();
     try {
-      await callGraphql("{ subnet_burn(netuid: 1, network: test) { netuid } }", env);
+      await callGraphql(
+        "{ subnet_burn(netuid: 1, network: test) { netuid } }",
+        env,
+      );
       assert.ok(rpcUrls.length > 0, "no RPC call was made");
       for (const url of rpcUrls) {
         assert.ok(
@@ -353,7 +356,10 @@ describe("network selection is honoured on every surface", () => {
       const { env, rpcUrls, restore } = recordingEnv();
       try {
         await callMcp("get_subnet_burn", args, env);
-        assert.ok(rpcUrls.length > 0, `no RPC call for ${JSON.stringify(args)}`);
+        assert.ok(
+          rpcUrls.length > 0,
+          `no RPC call for ${JSON.stringify(args)}`,
+        );
         for (const url of rpcUrls) {
           assert.ok(
             url.startsWith(expected),
