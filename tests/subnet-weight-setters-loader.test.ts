@@ -162,3 +162,81 @@ describe("all three subnet weight-setter surfaces go through the one loader", ()
     }
   });
 });
+
+// #9389 shipped the overdue verdicts wired into the sibling D1 loader, which NO call
+// site reaches -- REST, MCP and GraphQL all come through the cold tier. The published
+// card carried tempo: null and overdue: null on every subnet, so the alarm existed and
+// could never fire. These tests exist so that cannot recur silently.
+describe("loadSubnetWeightSettersColdTier — the overdue verdicts reach production", () => {
+  function tempoDb(tempo: unknown, { throws = false } = {}) {
+    const seen: unknown[][] = [];
+    return {
+      seen,
+      METAGRAPH_HEALTH_DB: {
+        prepare: (sql: string) => ({
+          bind: (...values: unknown[]) => ({
+            first: async () => {
+              seen.push([sql, ...values]);
+              if (throws) throw new Error("D1_ERROR: no such table");
+              return tempo === undefined ? null : { tempo };
+            },
+          }),
+        }),
+      },
+    };
+  }
+
+  test("the tempo is read and the verdicts are evaluated", async () => {
+    const engine = fakeEngine();
+    const env = tempoDb(360);
+    const data = await loadSubnetWeightSettersColdTier(env as never, 7, {
+      windowDays: 7,
+      windowLabel: "7d",
+      query: engine.query as never,
+    });
+    assert.equal((data as Row).tempo, 360, "the card must carry the cadence");
+    assert.equal(
+      (data!.setters as Array<Row>)[0].overdue !== null,
+      true,
+      "a setter with a known tempo must be evaluated, not left null",
+    );
+    assert.equal(env.seen.length, 1, "one lookup, by primary key");
+    assert.match(String(env.seen[0][0]), /WHERE netuid = \?/);
+    assert.equal(env.seen[0][1], 7, "scoped to the requested subnet");
+  });
+
+  test("a missing hyperparams row leaves the verdicts null, not the card", async () => {
+    const engine = fakeEngine();
+    const data = await loadSubnetWeightSettersColdTier(
+      tempoDb(undefined) as never,
+      7,
+      { windowDays: 7, windowLabel: "7d", query: engine.query as never },
+    );
+    assert.ok(data, "the leaderboard still serves");
+    assert.equal((data as Row).tempo, null);
+    assert.equal((data!.setters as Array<Row>)[0].overdue, null);
+  });
+
+  test("a throwing tempo read cannot break the leaderboard", async () => {
+    const engine = fakeEngine();
+    const data = await loadSubnetWeightSettersColdTier(
+      tempoDb(360, { throws: true }) as never,
+      7,
+      { windowDays: 7, windowLabel: "7d", query: engine.query as never },
+    );
+    assert.ok(data);
+    assert.equal((data as Row).tempo, null);
+    assert.equal((data!.setters as Array<Row>).length > 0, true);
+  });
+
+  test("no D1 binding at all is survived", async () => {
+    const engine = fakeEngine();
+    const data = await loadSubnetWeightSettersColdTier({} as never, 7, {
+      windowDays: 7,
+      windowLabel: "7d",
+      query: engine.query as never,
+    });
+    assert.ok(data);
+    assert.equal((data as Row).tempo, null);
+  });
+});
