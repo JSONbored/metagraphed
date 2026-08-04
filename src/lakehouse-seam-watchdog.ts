@@ -34,6 +34,12 @@
 // them duplicated as a repository secret, plus a third-party trigger hop, to
 // ask a question the Worker can ask itself.
 import { r2SqlQuery } from "./r2-sql.ts";
+import { recordExceptionEvent } from "./usage-telemetry.ts";
+import {
+  recordLaneVerdict,
+  type LaneHealthDb,
+  type LaneHealthRecord,
+} from "./lane-health.ts";
 import { blocksSeamFloor } from "./blocks-cold-tier.ts";
 import {
   DECODE_WATERMARK_KEY,
@@ -247,14 +253,35 @@ async function capturedThrough(env: unknown): Promise<number | null> {
  * tick that cannot run is one missed report, not an outage, and a cron that
  * throws is a cron nobody can read the result of.
  */
+/** This watchdog's lane name in `lane_health`, and on the self-health card. */
+const LAKEHOUSE_SEAM_LANE = "lakehouse-seam";
+
+/** One verdict minus the fields recordVerdict fills in for every call. */
+type LaneVerdictInput = Omit<LaneHealthRecord, "lane" | "checked_at">;
+
 export async function runLakehouseSeamWatchdog(
   env: Parameters<typeof r2SqlQuery>[0],
   // Injectable so the MEASURED path is testable without a lakehouse. Same seam
   // as r2-sql.ts's scheduleAbort and webhooks.ts's sleepFn: a branch that can
   // only run against live infrastructure is a branch nothing verifies.
-  deps: { query?: typeof r2SqlQuery; now?: () => number } = {},
+  deps: {
+    query?: typeof r2SqlQuery;
+    now?: () => number;
+    laneHealthDb?: LaneHealthDb;
+    recordExceptionEvent?: typeof recordExceptionEvent;
+  } = {},
 ): Promise<Record<string, unknown>> {
   const query = deps.query ?? r2SqlQuery;
+  const laneHealthDb =
+    deps.laneHealthDb ??
+    ((env as { METAGRAPH_HEALTH_DB?: LaneHealthDb })?.METAGRAPH_HEALTH_DB as
+      LaneHealthDb | undefined);
+  const recordVerdict = (verdict: LaneVerdictInput) =>
+    recordLaneVerdict(laneHealthDb, {
+      lane: LAKEHOUSE_SEAM_LANE,
+      ...verdict,
+      checked_at: (deps.now ?? Date.now)(),
+    });
   const rows = await query(
     env,
     "SELECT min(block_number) AS lo, max(block_number) AS hi, count(*) AS n FROM chain.blocks",
@@ -263,6 +290,15 @@ export async function runLakehouseSeamWatchdog(
   // a query fails. Unconfigured is not a fault -- self-hosters and CI have no
   // lakehouse -- so it is reported as skipped rather than as drift.
   if (rows === null) {
+    // ...but it is equally not a MEASUREMENT, and `unknown` is the vocabulary's
+    // own word for that. Recording it is what distinguishes a lakehouse this
+    // watchdog cannot reach from a seam it checked and found correct -- before
+    // this, both produced exactly nothing.
+    await recordVerdict({
+      verdict: "unknown",
+      age_ms: null,
+      detail: "lakehouse_unavailable",
+    });
     return {
       ok: false,
       skipped: true,
@@ -283,6 +319,43 @@ export async function runLakehouseSeamWatchdog(
     hi: num(row?.hi),
     count: num(row?.n),
     now: (deps.now ?? Date.now)(),
+  });
+
+  // #9440: NOTIFY on drift, and RECORD on every tick.
+  //
+  // This watchdog previously did neither. It computed `reasons` correctly and
+  // returned them to `handleScheduled`, whose return value
+  // workers/api.entry.ts discards -- so a drifted decode seam was measured
+  // every tick and reported to nobody, on any channel. Its siblings have had
+  // the notification half since #9330 and the durable half since #9340/#9431;
+  // this one was simply never wired to either.
+  if (reasons.length > 0) {
+    const record = deps.recordExceptionEvent ?? recordExceptionEvent;
+    await record(env as never, {
+      error: new Error(`lakehouse decode seam drifted: ${reasons.join(", ")}`),
+      route: "watchdog:lakehouse-seam",
+      errorCode: "stale_lane",
+    }).catch(() => false);
+  }
+
+  // PostHog is the notification path, never the record: it drops $exception
+  // once the free-tier quota is exhausted, which is the failure lane_health
+  // exists for (see src/lane-health.ts). Written on EVERY tick, because a
+  // healthy seam's output is silence and silence cannot be told from a
+  // watchdog that stopped running.
+  //
+  // Never throws -- see recordLaneVerdict.
+  await recordVerdict({
+    verdict: reasons.length > 0 ? "stale" : "ok",
+    // Null, and not for want of trying: this watchdog measures a seam in
+    // BLOCK NUMBERS (how far the published watermark trails what the lakehouse
+    // holds), and there is no clock reading that converts to it honestly. The
+    // per-lane watchdogs report an age because their lag genuinely is a
+    // duration; inventing one here would put a fabricated number in the column
+    // triage reads. The distances live in `detail`, which carries the reasons
+    // verbatim.
+    age_ms: null,
+    detail: reasons.length > 0 ? reasons.join(",") : null,
   });
 
   return {

@@ -25,7 +25,10 @@ import {
   triggerMatchesEvent,
   type EvaluatorAlertTrigger,
 } from "../src/alert-triggers.ts";
-import { recordUsageEvent } from "../src/usage-telemetry.ts";
+import {
+  recordExceptionEvent,
+  recordUsageEvent,
+} from "../src/usage-telemetry.ts";
 import { buildDeregRiskSnapshot } from "../src/dereg-risk.ts";
 import {
   mapBounded,
@@ -487,6 +490,7 @@ export class AlerterHub implements DurableObject {
       // awaits this indirectly via evaluate().
       return;
     }
+    const refreshStartedAt = Date.now();
     try {
       const upstream = await this.env.DATA_API.fetch(
         "https://data-api.internal/api/v1/internal/alert-triggers-active",
@@ -498,7 +502,18 @@ export class AlerterHub implements DurableObject {
           signal: AbortSignal.timeout(ALERT_TRIGGER_REFRESH_TIMEOUT_MS),
         },
       );
-      if (!upstream.ok) return;
+      // #9440: the same silent-stale-cache failure as the catch below, through
+      // a different door -- a 500 from DATA_API left the cache untouched and
+      // said nothing. Reported identically, since from the hub's side the two
+      // are the same event: the refresh did not happen.
+      if (!upstream.ok) {
+        this.emitTelemetry({
+          route: "alerter-hub:trigger-refresh",
+          ok: false,
+          durationMs: Date.now() - refreshStartedAt,
+        });
+        return;
+      }
       const body = (await upstream.json()) as { triggers?: Trigger[] };
       if (Array.isArray(body?.triggers)) {
         this.triggers = body.triggers;
@@ -521,7 +536,24 @@ export class AlerterHub implements DurableObject {
       }
     } catch {
       // Best-effort refresh -- keep serving the stale cache rather than
-      // throwing out of evaluate().
+      // throwing out of evaluate(). That degradation is correct and stays.
+      //
+      // #9440: what was NOT correct is that it was silent. A hub whose trigger
+      // cache stops refreshing keeps evaluating every chain event against
+      // whatever it last loaded, forever, and looks perfectly healthy doing it
+      // -- deliveries still fire, so even the failures-only delivery event
+      // stays quiet. Triggers created, edited or deactivated after the failure
+      // simply never take effect, and nothing anywhere says so.
+      //
+      // Naturally bounded to one event per ALERTER_HUB_TRIGGER_CACHE_TTL_MS
+      // (5 min) per hub, because that TTL is what gates the refresh attempt --
+      // so this cannot scale with chain activity the way a per-evaluation
+      // event would.
+      this.emitTelemetry({
+        route: "alerter-hub:trigger-refresh",
+        ok: false,
+        durationMs: Date.now() - refreshStartedAt,
+      });
     }
     // #6746/#6747: only fetch the metric snapshot when at least one ACTIVE
     // trigger actually has a condition -- the overwhelming common case
@@ -872,11 +904,29 @@ export class AlerterHub implements DurableObject {
           headers: { "content-type": "application/json" },
         });
       }
-      const result = await this.evaluate(payload);
-      return new Response(JSON.stringify(result), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      });
+      // #9440: evaluate() throwing was, until now, entirely unrecorded on
+      // BOTH sides of this boundary -- this class imported no exception
+      // capture at all, and ChainFirehoseHub's ping swallowed the rejection
+      // (workers/chain-firehose-hub.ts). So a hub failing before it reached
+      // any delivery produced nothing: not a delivery-failure event (none was
+      // attempted), not an exception, nothing. Alerting stopped silently.
+      //
+      // Rethrown after capture: the caller's own timeout/catch still decides
+      // what the firehose does about it, which must not change.
+      try {
+        const result = await this.evaluate(payload);
+        return new Response(JSON.stringify(result), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      } catch (error) {
+        await recordExceptionEvent(this.env, {
+          error,
+          route: "alerter-hub:evaluate",
+          errorCode: "internal_error",
+        }).catch(() => false);
+        throw error;
+      }
     }
     return new Response("not found", { status: 404 });
   }

@@ -43,8 +43,11 @@ import {
   parseChainFirehoseTopics,
   validateChainEventsSubscribePayload,
   validateChainFirehoseIngestPayload,
+  shouldEmitAlerterUnreachable,
+  ALERTER_UNREACHABLE_EVENT_WINDOW_MS,
 } from "../workers/chain-firehose-hub.ts";
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.ts";
+import { resetModuleState } from "../src/module-state-registry.ts";
 import { mockEnv, type Row } from "./row-type.ts";
 
 // SseClientEntry/ChainEventSubscriberEntry aren't exported from the source
@@ -2231,4 +2234,46 @@ test("#8997: telemetry never fails a connection operation", () => {
   } finally {
     globalThis.fetch = original;
   }
+});
+
+// --- #9440: reporting an unreachable AlerterHub ------------------------------
+//
+// broadcast() pings AlerterHub once per chain event, and that ping's catch was
+// bare. It was the outer half of an end-to-end blind spot: AlerterHub records
+// only failed DELIVERIES, so a hub that is unreachable, timing out, or
+// throwing before it reaches a trigger delivers nothing and reports nothing --
+// and this side swallowed the evidence. Alerting could stop completely with no
+// signal on either side of the boundary.
+//
+// The guard is what keeps reporting it affordable: an unbounded capture here
+// would emit thousands per hour during exactly the incident it exists to
+// report, on a project already over its PostHog allowance (#9004).
+
+test("#9440: the alerter-unreachable guard admits once per window", () => {
+  // The guard is isolate-global by design (that is what bounds the cost), so
+  // a test asserting its window has to start from a known state -- earlier
+  // tests in this file drive broadcast() against hubs with no ALERTER_HUB
+  // binding and legitimately trip it.
+  resetModuleState();
+  const t0 = 1_000_000;
+  assert.equal(shouldEmitAlerterUnreachable(t0), true);
+  assert.equal(shouldEmitAlerterUnreachable(t0 + 1), false);
+  assert.equal(
+    shouldEmitAlerterUnreachable(t0 + ALERTER_UNREACHABLE_EVENT_WINDOW_MS - 1),
+    false,
+  );
+  // One event per window is enough to say "alerting is down"; the duration of
+  // the outage is visible from the run of them.
+  assert.equal(
+    shouldEmitAlerterUnreachable(t0 + ALERTER_UNREACHABLE_EVENT_WINDOW_MS),
+    true,
+  );
+});
+
+test("#9440: the guard's state does not leak across test files", () => {
+  // Registered with the module-state registry, so a burst in one file cannot
+  // suppress the first capture in the next -- the cross-file channel that
+  // registry exists to close.
+  resetModuleState();
+  assert.equal(shouldEmitAlerterUnreachable(1), true);
 });

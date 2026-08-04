@@ -32,6 +32,11 @@ import {
   shouldSampleTrace,
 } from "../src/tracing.ts";
 import {
+  recordLaneVerdict,
+  type LaneHealthDb,
+  type LaneVerdict,
+} from "../src/lane-health.ts";
+import {
   applyQueryFilters,
   canonicalListSearch,
   paginationLinkHeader,
@@ -789,17 +794,28 @@ export async function runUpgradeRadarScan(env: Env, ctx?: Ctx) {
 export async function runFreshnessWatchdog(
   env: Env,
   ctx?: Ctx,
-  deps: { readArtifact?: ArtifactReader } = {},
+  deps: { readArtifact?: ArtifactReader; laneHealthDb?: LaneHealthDb } = {},
 ) {
   const startedAt = Date.now();
   const readArtifactFn = (deps.readArtifact ??
     (readArtifact as unknown as ArtifactReader)) as ArtifactReader;
+  const laneHealthDb = deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as never);
   try {
     const artifact = (await readArtifactFn(
       env,
       "/metagraph/freshness.json",
     )) as { sources?: unknown } | null;
-    if (!artifact) return { ok: false, reason: "artifact_unavailable" };
+    if (!artifact) {
+      // #9440: `unknown` is the vocabulary's own word for "the watchdog could
+      // not evaluate the lane", and it is NOT a synonym for ok. Without this
+      // row, a watchdog that cannot read its own artifact is indistinguishable
+      // from one reporting everything fresh -- both produce silence.
+      await recordFreshnessLaneVerdict(laneHealthDb, {
+        verdict: "unknown",
+        detail: "artifact_unavailable",
+      });
+      return { ok: false, reason: "artifact_unavailable" };
+    }
 
     const verdict = evaluateFreshness(artifact.sources, Date.now());
     // No KV means no memory of what was already reported. Report anyway rather
@@ -829,6 +845,38 @@ export async function runFreshnessWatchdog(
       }
     }
 
+    // #9440: the DURABLE record, written on EVERY tick rather than only when
+    // shouldReport decides this verdict is worth notifying about.
+    //
+    // That distinction is the whole bug. `shouldReport` deliberately
+    // suppresses a repeat of the same signature, so a lane that has been
+    // critical for six hours notifies once and then goes quiet -- correct for
+    // a notification, useless as a record. Everything this watchdog computed
+    // (which sources are stale, which are critical, how many were checked)
+    // existed only in the return value, and workers/api.entry.ts discards
+    // what `scheduled` returns. It was measured, then dropped.
+    //
+    // Never throws -- see recordLaneVerdict.
+    await recordFreshnessLaneVerdict(laneHealthDb, {
+      // `critical` is a subset of `stale`, so the latter alone decides the
+      // verdict; severity lives in `detail` and in the notification.
+      verdict: verdict.stale.length > 0 ? "stale" : "ok",
+      // The names, not the counts: "which source" is the first question asked
+      // of a stale verdict, and the count is derivable from it.
+      detail:
+        verdict.stale.length > 0
+          ? // The ids, not the entries: a stale entry is an object, and
+            // joining those yields a row of "[object Object]". Critical
+            // sources are a SUBSET of stale (critical = stale filtered by
+            // behavior+required), so listing stale alone covers both without
+            // repeating any id.
+            verdict.stale
+              .slice(0, FRESHNESS_LANE_DETAIL_LIMIT)
+              .map((entry) => entry.id)
+              .join(",")
+          : null,
+    });
+
     return {
       ok: true,
       checked: verdict.checked,
@@ -842,9 +890,44 @@ export async function runFreshnessWatchdog(
       stale: verdict.stale.slice(0, 10),
     };
   } catch {
-    // A tick that cannot run is one missed report, not an outage.
+    // A tick that cannot run is one missed report, not an outage -- but it is
+    // still a tick that produced no measurement, and saying so is the point of
+    // the `unknown` verdict. Before this, an unreachable watchdog and a
+    // healthy one were both silent.
+    await recordFreshnessLaneVerdict(laneHealthDb, {
+      verdict: "unknown",
+      detail: "unreachable",
+    });
     return { ok: false, reason: "unreachable" };
   }
+}
+
+// Same bound the alert body uses, for the same reason: a total publish stall
+// makes every source stale at once, and a row listing all of them is one
+// nobody reads.
+const FRESHNESS_LANE_DETAIL_LIMIT = 10;
+
+/**
+ * One freshness verdict, in the shape src/lane-health.ts stores. Wrapped
+ * because this watchdog records from four places (no artifact, stale, ok,
+ * unreachable) and the lane name and clock must be identical across all of
+ * them -- a lane whose name varies by branch is a lane the self-health card
+ * reads as several.
+ */
+function recordFreshnessLaneVerdict(
+  db: LaneHealthDb | null | undefined,
+  { verdict, detail }: { verdict: LaneVerdict; detail: string | null },
+) {
+  return recordLaneVerdict(db, {
+    lane: "freshness",
+    verdict,
+    // This watchdog evaluates each source against the policy that source
+    // declares for itself, so there is no single fleet-wide age to report --
+    // unlike the per-lane watchdogs, whose age_ms is one lane's own lag.
+    age_ms: null,
+    detail,
+    checked_at: Date.now(),
+  });
 }
 
 // #8704: per-subnet chain news for the subnet feed.

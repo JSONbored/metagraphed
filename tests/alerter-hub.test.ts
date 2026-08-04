@@ -2025,3 +2025,161 @@ test("#8997: telemetry never fails the evaluation", async () => {
     globalThis.fetch = original;
   }
 });
+
+// --- #9440: trigger-refresh failure telemetry --------------------------------
+//
+// #8997 gave this class delivery telemetry, which covers "an endpoint is
+// broken". It does not cover the quieter and worse failure: a hub whose
+// trigger cache stops refreshing keeps evaluating every chain event against
+// whatever it last loaded, forever. Deliveries still fire, so the
+// failures-only delivery event stays silent, and triggers created, edited or
+// deactivated after the failure simply never take effect.
+//
+// Bounded by ALERTER_HUB_TRIGGER_CACHE_TTL_MS (5 min), which gates the refresh
+// attempt itself -- so unlike a per-evaluation event this cannot scale with
+// chain activity.
+
+test("#9440: a THROWN trigger refresh emits one usage_event", async () => {
+  const cap = captureTelemetry();
+  try {
+    const hub = new AlerterHub(
+      STATE,
+      mockEnv({
+        ...TELEMETRY_ENV,
+        DATA_API: fakeDataApi(async () => {
+          throw new Error("data-api unreachable");
+        }),
+        ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+      }),
+    );
+    await hub.refreshTriggers();
+
+    const usage = cap.posted.filter(
+      (p) => (p.body as Row).event === "usage_event",
+    );
+    assert.equal(usage.length, 1);
+    const props = (usage[0].body as Row).properties as Row;
+    assert.equal(props.route, "alerter-hub:trigger-refresh");
+    assert.equal(props.ok, false);
+  } finally {
+    cap.restore();
+  }
+});
+
+test("#9440: a NON-2XX trigger refresh is reported identically", async () => {
+  // The same silent-stale-cache failure through a different door: a 500 left
+  // the cache untouched and said nothing. From the hub's side the two are the
+  // same event -- the refresh did not happen.
+  const cap = captureTelemetry();
+  try {
+    const hub = new AlerterHub(
+      STATE,
+      mockEnv({
+        ...TELEMETRY_ENV,
+        DATA_API: fakeDataApi(
+          async () => new Response("nope", { status: 500 }),
+        ),
+        ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+      }),
+    );
+    await hub.refreshTriggers();
+
+    const usage = cap.posted.filter(
+      (p) => (p.body as Row).event === "usage_event",
+    );
+    assert.equal(usage.length, 1);
+    assert.equal(
+      ((usage[0].body as Row).properties as Row).route,
+      "alerter-hub:trigger-refresh",
+    );
+    // The stale cache is still served -- the degradation is correct and stays.
+    assert.equal(hub.triggersLoadedAt, 0);
+  } finally {
+    cap.restore();
+  }
+});
+
+test("#9440: a SUCCESSFUL trigger refresh emits nothing", async () => {
+  const cap = captureTelemetry();
+  try {
+    const hub = new AlerterHub(
+      STATE,
+      mockEnv({
+        ...TELEMETRY_ENV,
+        DATA_API: fakeDataApi(
+          async () =>
+            new Response(JSON.stringify({ triggers: [] }), { status: 200 }),
+        ),
+        ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
+      }),
+    );
+    await hub.refreshTriggers();
+
+    assert.deepEqual(
+      cap.posted.filter((p) => (p.body as Row).event === "usage_event"),
+      [],
+    );
+  } finally {
+    cap.restore();
+  }
+});
+
+// --- #9440: evaluate() faults reach PostHog ----------------------------------
+//
+// This class imported no exception capture at all, and ChainFirehoseHub's
+// ping swallowed the rejection -- so a hub failing BEFORE it reached any
+// delivery produced nothing on either side of the boundary: no
+// delivery-failure event (none was attempted), no exception. Alerting stopped
+// silently.
+
+test("#9440: a thrown evaluate() is captured and still propagates", async () => {
+  const cap = captureTelemetry();
+  try {
+    const hub = new AlerterHub(STATE, mockEnv(TELEMETRY_ENV));
+    // Force the fault inside evaluate() itself.
+    hub.evaluate = async () => {
+      throw new Error("evaluate exploded");
+    };
+    await assert.rejects(
+      hub.fetch(
+        new Request("https://alerter-hub.internal/evaluate", {
+          method: "POST",
+          body: JSON.stringify({ table: "account_events", netuid: 7 }),
+        }),
+      ),
+      /evaluate exploded/,
+    );
+
+    const exceptions = cap.posted.filter(
+      (p) => (p.body as Row).event === "$exception",
+    );
+    assert.equal(exceptions.length, 1);
+    const props = (exceptions[0].body as Row).properties as Row;
+    assert.equal(props.route, "alerter-hub:evaluate");
+    assert.equal(props.error_code, "internal_error");
+  } finally {
+    cap.restore();
+  }
+});
+
+test("#9440: a successful evaluate() captures nothing", async () => {
+  const cap = captureTelemetry();
+  try {
+    const hub = new AlerterHub(STATE, mockEnv(TELEMETRY_ENV));
+    hub.triggers = [];
+    hub.triggersLoadedAt = Date.now();
+    const res = await hub.fetch(
+      new Request("https://alerter-hub.internal/evaluate", {
+        method: "POST",
+        body: JSON.stringify({ table: "account_events", netuid: 7 }),
+      }),
+    );
+    assert.equal(res.status, 200);
+    assert.deepEqual(
+      cap.posted.filter((p) => (p.body as Row).event === "$exception"),
+      [],
+    );
+  } finally {
+    cap.restore();
+  }
+});

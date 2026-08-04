@@ -32,6 +32,7 @@
 // that the monitor is broken. The summary line prints every run for that
 // reason, matching check-emission-drift.ts.
 import { bytesToHex, storageMapPrefix } from "../src/twox-storage-key.ts";
+import { recordExceptionEvent } from "./usage-telemetry.ts";
 
 /** Public archive RPC. A var, not a secret: the endpoint is public. */
 export const SAFE_MODE_RPC_URL_DEFAULT = "https://archive.chain.opentensor.ai";
@@ -148,9 +149,13 @@ async function safeModeExtrinsics(
  */
 export async function runSafeModeWatchdog(
   env: Record<string, unknown> | null | undefined,
-  deps: { fetchImpl?: Fetcher } = {},
+  deps: {
+    fetchImpl?: Fetcher;
+    recordExceptionEvent?: typeof recordExceptionEvent;
+  } = {},
 ): Promise<Record<string, unknown>> {
   const doFetch = deps.fetchImpl ?? fetch;
+  const record = deps.recordExceptionEvent ?? recordExceptionEvent;
   const rpcUrl = String(env?.SAFE_MODE_RPC_URL || SAFE_MODE_RPC_URL_DEFAULT);
   const apiBase = String(env?.SAFE_MODE_API_BASE || SAFE_MODE_API_BASE_DEFAULT);
   try {
@@ -165,6 +170,24 @@ export async function runSafeModeWatchdog(
       enteredUntil: entered,
       extrinsics,
     });
+    // #9440: this watchdog reported on NO channel at all. It computed
+    // `reasons` correctly and returned them to handleScheduled, whose return
+    // value workers/api.entry.ts discards -- so the chain entering SafeMode,
+    // the single most consequential event this repo watches for, was detected
+    // every tick and told to nobody.
+    //
+    // Notification only, deliberately no lane_health row: that table backs the
+    // PUBLIC self-health card, whose vocabulary is ok/stale/unknown and whose
+    // consumers read a non-ok lane as "our data is behind". SafeMode is a
+    // CHAIN condition, not a staleness of ours -- filing it as a stale lane
+    // would publish a false statement about our own freshness.
+    if (reasons.length > 0) {
+      await record(env as never, {
+        error: new Error(`SafeMode watchdog: ${reasons.join(", ")}`),
+        route: "watchdog:safe-mode",
+        errorCode: "safe_mode_active",
+      }).catch(() => false);
+    }
     return {
       // `ok` describes whether the TICK ran, not whether SafeMode is quiet.
       ok: true,
@@ -173,6 +196,15 @@ export async function runSafeModeWatchdog(
       ...summary,
     };
   } catch (err) {
+    // A tick that cannot run is one missed report -- but an UNREACHABLE
+    // SafeMode monitor is itself worth reporting, because its silence is
+    // indistinguishable from "the chain is fine". That equivalence is the
+    // whole reason this monitor exists.
+    await record(env as never, {
+      error: err,
+      route: "watchdog:safe-mode",
+      errorCode: "watchdog_unreachable",
+    }).catch(() => false);
     return {
       ok: false,
       reason: "unreachable",

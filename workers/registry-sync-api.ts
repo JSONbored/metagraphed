@@ -554,8 +554,19 @@ export default {
     // low-traffic write path -- see captureRegistrySyncError's own comment),
     // so the span is awaited directly rather than scheduled via waitUntil,
     // same tradeoff already accepted for error capture on this Worker.
+    // #9440: capture uncaught faults REGARDLESS of trace sampling, and
+    // outside the sampled block -- tracing is off by default and this config
+    // sets no rate, so an error capture nested inside the sampled path would
+    // fire exactly never. captureRegistrySyncError already covers the write
+    // path's own catch (:543); this covers everything that escapes it, which
+    // until now reached only Cloudflare's logs.
     if (!shouldSampleTrace(env)) {
-      return dispatchRegistrySyncRequest(request, env);
+      try {
+        return await dispatchRegistrySyncRequest(request, env);
+      } catch (error) {
+        await captureRegistrySyncError(error, env);
+        throw error;
+      }
     }
     const startedAt = Date.now();
     const route = "registry-sync";
@@ -566,6 +577,7 @@ export default {
       return response;
     } catch (error) {
       ok = false;
+      await captureRegistrySyncError(error, env);
       throw error;
     } finally {
       await recordTraceSpan(env, {

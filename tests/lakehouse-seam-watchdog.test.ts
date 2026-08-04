@@ -511,3 +511,115 @@ describe("the cron wiring", () => {
     );
   });
 });
+
+// ---- reporting the verdict (#9440) ----
+//
+// This watchdog previously reported on NO channel at all: it computed
+// `reasons` correctly and returned them to handleScheduled, whose return value
+// workers/api.entry.ts discards. A drifted decode seam was measured every tick
+// and told to nobody. Its siblings have had the notification half since #9330
+// and the durable half since #9340/#9431.
+describe("the watchdog's own reporting", () => {
+  function spies() {
+    const rows: Record<string, unknown>[] = [];
+    const captures: Record<string, unknown>[] = [];
+    return {
+      rows,
+      captures,
+      deps: {
+        laneHealthDb: {
+          prepare: (sql: string) => ({
+            bind: (...values: unknown[]) => ({
+              run: async () => {
+                if (sql.startsWith("INSERT")) {
+                  rows.push({
+                    lane: values[0],
+                    verdict: values[1],
+                    age_ms: values[2],
+                    detail: values[3],
+                  });
+                }
+              },
+            }),
+          }),
+        } as never,
+        recordExceptionEvent: (async (_env: unknown, event: unknown) => {
+          captures.push(event as Record<string, unknown>);
+          return true;
+        }) as never,
+      },
+    };
+  }
+
+  test("a healthy tick records ok and notifies nobody", async () => {
+    const s = spies();
+    await runLakehouseSeamWatchdog(
+      env({
+        body: { decoded_through: HI, updated_at: "2026-08-03T11:40:00Z" },
+      }) as never,
+      { query: measured(), now: () => NOW, ...s.deps },
+    );
+    assert.equal(s.rows.length, 1, "a row per tick, healthy or not");
+    assert.equal(s.rows[0].lane, "lakehouse-seam");
+    assert.equal(s.rows[0].verdict, "ok");
+    assert.equal(s.rows[0].detail, null);
+    assert.deepEqual(s.captures, [], "a healthy seam pages no one");
+  });
+
+  test("a drifted tick both notifies and records", async () => {
+    const s = spies();
+    await runLakehouseSeamWatchdog(
+      env({
+        body: { decoded_through: HI, updated_at: "2026-08-01T00:00:00Z" },
+      }) as never,
+      { query: measured(), now: () => NOW, ...s.deps },
+    );
+    assert.equal(s.captures.length, 1);
+    assert.equal(s.captures[0].route, "watchdog:lakehouse-seam");
+    assert.equal(s.captures[0].errorCode, "stale_lane");
+    assert.match(
+      (s.captures[0].error as Error).message,
+      /lakehouse decode seam drifted/,
+    );
+    assert.equal(s.rows.length, 1);
+    assert.equal(s.rows[0].verdict, "stale");
+    assert.ok(String(s.rows[0].detail).length > 0);
+    // Measured in BLOCK NUMBERS, not time -- inventing a duration here would
+    // put a fabricated number in the column triage reads.
+    assert.equal(s.rows[0].age_ms, null);
+  });
+
+  test("an unreachable lakehouse records `unknown`, never silence", async () => {
+    const s = spies();
+    const result = await runLakehouseSeamWatchdog({} as never, s.deps);
+    assert.equal(result.skipped, true);
+    assert.equal(s.rows.length, 1);
+    // Not a synonym for ok: nothing was measured. Before this, a lakehouse
+    // this watchdog cannot reach and a seam it checked and found correct both
+    // produced exactly nothing.
+    assert.equal(s.rows[0].verdict, "unknown");
+    assert.equal(s.rows[0].detail, "lakehouse_unavailable");
+    assert.deepEqual(s.captures, [], "unreachable is not drift");
+  });
+
+  test("a lane_health write that fails never breaks the tick", async () => {
+    // D1 migrations here are applied by hand, so "no such table" is a real
+    // production state until someone applies one.
+    const result = await runLakehouseSeamWatchdog(
+      env({
+        body: { decoded_through: HI, updated_at: "2026-08-03T11:40:00Z" },
+      }) as never,
+      {
+        query: measured(),
+        now: () => NOW,
+        laneHealthDb: {
+          prepare: () => {
+            throw new Error("no such table: lane_health");
+          },
+        } as never,
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.drifted, false);
+  });
+});

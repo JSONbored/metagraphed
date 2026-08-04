@@ -64,6 +64,7 @@ import {
   schema as chainEventsGraphqlSchema,
 } from "../src/graphql.ts";
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "./mcp-session-hub.ts";
+import { registerModuleStateReset } from "../src/module-state-registry.ts";
 
 export const CHAIN_FIREHOSE_INGEST_TOKEN_HEADER = "x-chain-firehose-sync-token";
 
@@ -106,6 +107,35 @@ export const CHAIN_FIREHOSE_MAX_INGEST_BATCH_SIZE = 10;
 // evaluate() cycle, but a real ceiling so a slow/stuck evaluator can no
 // longer stall handleIngest()'s response to the box-side relay indefinitely.
 export const ALERTER_HUB_EVALUATE_TIMEOUT_MS = 15_000;
+
+// #9440: how often an unreachable AlerterHub may be reported from here.
+//
+// broadcast() runs once per chain event, so this is the one capture in this
+// file whose natural rate is the chain's, not a user's. The window makes the
+// cost of reporting an alerting outage independent of how long it lasts --
+// the same shape, and the same reasoning, as shouldEmitCondition in
+// workers/wss-lb.ts.
+export const ALERTER_UNREACHABLE_EVENT_WINDOW_MS = 5 * 60 * 1000;
+
+let alerterUnreachableLastSentMs: number | null = null;
+
+registerModuleStateReset("workers/chain-firehose-hub.ts", () => {
+  alerterUnreachableLastSentMs = null;
+});
+
+/** True at most once per window per isolate. Exported for tests. */
+export function shouldEmitAlerterUnreachable(
+  nowMs: number = Date.now(),
+): boolean {
+  if (
+    alerterUnreachableLastSentMs !== null &&
+    nowMs - alerterUnreachableLastSentMs < ALERTER_UNREACHABLE_EVENT_WINDOW_MS
+  ) {
+    return false;
+  }
+  alerterUnreachableLastSentMs = nowMs;
+  return true;
+}
 
 // Per-field string length bound -- generous over every string field the
 // trigger actually emits (call_module/call_function/pallet/method/signer/
@@ -1699,7 +1729,25 @@ export class ChainFirehoseHub implements DurableObject {
           signal: AbortSignal.timeout(ALERTER_HUB_EVALUATE_TIMEOUT_MS),
         });
       } catch {
-        // best-effort -- see the comment above
+        // Still best-effort for the BROADCAST -- see the comment above; a slow
+        // or dead alerter must never block the firehose.
+        //
+        // #9440: but it is no longer silent. This bare catch was the outer half
+        // of an end-to-end blind spot: AlerterHub records only failed
+        // DELIVERIES, so a hub that is unreachable, timing out, or throwing
+        // before it ever reaches a trigger delivers nothing and reports
+        // nothing -- and this side swallowed the evidence. Alerting could stop
+        // completely with no signal on either side of the boundary.
+        //
+        // Rate-bounded because broadcast() runs once per chain event: an
+        // unbounded capture here would emit thousands per hour during exactly
+        // the incident it exists to report, which is how a project ~33x over
+        // its PostHog allowance (#9004) loses the rest of its telemetry too.
+        // One event per window per isolate is enough to say "alerting is
+        // down"; the duration of the outage is visible from the run of them.
+        if (shouldEmitAlerterUnreachable()) {
+          this.emitTelemetry("alerter-unreachable", false);
+        }
       }
     }
   }
