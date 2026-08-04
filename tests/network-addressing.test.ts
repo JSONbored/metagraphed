@@ -14,6 +14,7 @@
 // 100-line predicate, cannot be kept correct by reading it.
 
 import assert from "node:assert/strict";
+import { concretePath } from "./concrete-path.ts";
 import { describe, test } from "vitest";
 import {
   API_ROUTES,
@@ -50,30 +51,6 @@ import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
  * holds this honest: a substituted path the router matches nothing for now
  * fails the suite instead of quietly producing a wrong answer.
  */
-function concretePath(template: string): string {
-  const ss58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
-  return (
-    template
-      .replace("{netuid}", "1")
-      .replace("{ss58}", ss58)
-      .replace("{hotkey}", ss58)
-      .replace("{h160}", "0x0000000000000000000000000000000000000000")
-      // A BLOCK ref: a block number. Never the "<block>-<index>" form, which
-      // belongs to extrinsics and matches no blocks route.
-      .replace("{ref}", "5870000")
-      // An EXTRINSIC ref in its canonical composite form (the guaranteed
-      // -present id; the 0x hash is best-effort/nullable).
-      .replace("{hash}", "5870000-3")
-      // A neuron uid is numeric, and an ISO date is a date. Both fell through
-      // to the catch-all "x" below and matched nothing, for the same reason
-      // {ref} and {hash} did.
-      .replace(/\{uid\}/g, "0")
-      // A crowdloan id is a u32 (#8696) — numeric, same reason as {uid}.
-      .replace("{crowdloan_id}", "0")
-      .replace("{date}", "2026-08-01")
-      .replace(/\{[^}]+\}/g, "x")
-  );
-}
 
 describe("network alias set (#8698)", () => {
   test("the contract's alias list matches the router's NETWORKS map", async () => {

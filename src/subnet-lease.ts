@@ -41,13 +41,17 @@ import {
   twox64ConcatU16StorageKey,
   twox64ConcatU32StorageKey,
 } from "./twox-storage-key.ts";
+import {
+  type ChainNetworkId,
+  networkKvKey,
+  rpcUrlForNetwork,
+} from "./chain-network.ts";
 
 type Row = Record<string, unknown>;
 
 export const SUBNET_LEASE_KV_TTL = 120; // seconds -- same freshness profile as subnet-burn.ts
 export const SUBNET_LEASE_NEGATIVE_KV_TTL = 10; // seconds
 export const SUBNET_LEASE_RPC_TIMEOUT_MS = 5000;
-const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
 
 interface StorageFetchResult {
   ok: boolean;
@@ -60,9 +64,10 @@ interface StorageFetchResult {
 async function fetchStorageRaw(
   storageKey: string,
   timeoutMs: number,
+  network?: ChainNetworkId,
 ): Promise<StorageFetchResult> {
   try {
-    const rpcResp = await fetch(FINNEY_RPC_URL, {
+    const rpcResp = await fetch(rpcUrlForNetwork(network), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(timeoutMs),
@@ -201,12 +206,17 @@ export const SUBNET_LEASE_FIELD_SOURCES = {
   lease: { kind: "measured", storage: "SubtensorModule.SubnetLeases" },
 } as const satisfies FieldSources;
 
-async function loadSubnetLeaseSnapshot(env: Env, netuid: number): Promise<Row> {
+async function loadSubnetLeaseSnapshot(
+  env: Env,
+  netuid: number,
+  network?: ChainNetworkId,
+): Promise<Row> {
   if (!isU16Netuid(netuid)) {
     throw new RangeError("netuid must be an integer in the u16 range 0..65535");
   }
 
-  const cacheKey = `lease:${netuid}`;
+  // Leases are per-chain: the same netuid is a different subnet on testnet.
+  const cacheKey = networkKvKey(`lease:${netuid}`, network);
   const kv = env?.METAGRAPH_CONTROL;
 
   if (kv?.get) {
@@ -230,7 +240,7 @@ async function loadSubnetLeaseSnapshot(env: Env, netuid: number): Promise<Row> {
     "SubnetUidToLeaseId",
     netuid,
   );
-  const leaseIdResult = await fetchStorageRaw(leaseIdKey, timeout);
+  const leaseIdResult = await fetchStorageRaw(leaseIdKey, timeout, network);
 
   let leaseId: number | null = null;
   if (leaseIdResult.ok) {
@@ -258,8 +268,8 @@ async function loadSubnetLeaseSnapshot(env: Env, netuid: number): Promise<Row> {
       leaseId,
     );
     const [leaseResult, dividendsResult] = await Promise.all([
-      fetchStorageRaw(leaseKey, timeout),
-      fetchStorageRaw(dividendsKey, timeout),
+      fetchStorageRaw(leaseKey, timeout, network),
+      fetchStorageRaw(dividendsKey, timeout, network),
     ]);
 
     const decoded =
@@ -326,9 +336,13 @@ async function loadSubnetLeaseSnapshot(env: Env, netuid: number): Promise<Row> {
  * GraphQL and MCP all inherit it from one point rather than three call sites
  * kept in step by hand (#9108).
  */
-export async function loadSubnetLease(env: Env, netuid: number): Promise<Row> {
+export async function loadSubnetLease(
+  env: Env,
+  netuid: number,
+  network?: ChainNetworkId,
+): Promise<Row> {
   return {
-    ...(await loadSubnetLeaseSnapshot(env, netuid)),
+    ...(await loadSubnetLeaseSnapshot(env, netuid, network)),
     field_sources: SUBNET_LEASE_FIELD_SOURCES,
   };
 }

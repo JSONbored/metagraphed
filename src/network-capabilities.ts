@@ -1,6 +1,6 @@
 // Per-network capability matrix (#8699).
 //
-// 102 of our 178 routes 404 under a network prefix. The 404 body is honest —
+// 105 of our 188 routes 404 under a network prefix. The 404 body is honest —
 // "{path} is only available on mainnet, not the testnet network" — but it is
 // discoverable only by making the request and failing.
 //
@@ -10,8 +10,11 @@
 // broken tool rather than an unsupported network. This module makes the absence
 // of data legible in advance.
 //
-// It adds no data and moves no boundary — #8700 decides where the boundary
-// goes. This states where it currently is.
+// It adds no data and moves no boundary itself — it states where the boundary
+// currently is. #8700 moved that boundary for the first time, taking the live
+// chain-storage routes off the mainnet-only side, and this matrix followed
+// automatically because it is derived: the only change needed here was
+// teaching it that a route can be served without publishing an artifact.
 //
 // ── DERIVED, NEVER HAND-MAINTAINED ─────────────────────────────────────────
 //
@@ -123,12 +126,24 @@ export function buildNetworkCapabilities(input: {
    * because nothing ever wrote its testnet artifact.
    */
   publishedArtifacts: readonly string[];
+  /**
+   * Route templates answered from live chain storage instead of an artifact.
+   *
+   * The third term in the availability rule (#8700). These routes publish no
+   * artifact — they read `state_getStorage` at request time — so testing them
+   * against `publishedArtifacts` alone reports them unserved while the router
+   * answers them 200. Under-reporting is as harmful here as over-reporting:
+   * this document is how an agent decides a route is not worth calling.
+   */
+  liveChainRoutes?: readonly string[];
   localNote?: string;
 }): NetworkCapability[] {
   const { routes, networks, isMainnetOnly } = input;
   const published = new Set(input.publishedArtifacts);
+  const liveChain = new Set(input.liveChainRoutes ?? []);
   const servesOffMainnet = (route: RouteLike & { artifact_path?: string }) =>
-    !isMainnetOnly(route.path) && published.has(route.artifact_path ?? "");
+    !isMainnetOnly(route.path) &&
+    (published.has(route.artifact_path ?? "") || liveChain.has(route.path));
   const mainnetOnly = routes.filter((route) => !servesOffMainnet(route));
   const universal = routes.filter(servesOffMainnet);
 
@@ -215,7 +230,12 @@ export function buildNetworkCapabilities(input: {
       partial_families: universalFamilies.filter((entry) =>
         partialKeys.has(entry.family),
       ),
-      note: "Chain-derived data is indexed for mainnet only, so chain, account and validator families are unavailable here. Registry data (subnets, surfaces, coverage) is served on every network.",
+      // Accurate as of #8700, and deliberately specific about WHICH kind of
+      // chain data is missing. The previous wording said registry data
+      // including "surfaces" was served on every network, which was wrong --
+      // /api/v1/testnet/surfaces has always 404'd, because the testnet build
+      // emits native-chain registry artifacts only, not curated ones.
+      note: "Live chain state (burn, balances, network parameters, sudo key, crowdloans) is read from this network's own RPC and served here. Indexed chain HISTORY -- blocks, extrinsics, events and the analytics built on them -- is indexed for mainnet only, so those families and the curated-registry families (surfaces, profiles, endpoints, health) are unavailable.",
     };
   });
 }
@@ -231,6 +251,7 @@ export function buildNetworksPayload(input: {
   >;
   isMainnetOnly: (path: string) => boolean;
   publishedArtifacts: readonly string[];
+  liveChainRoutes?: readonly string[];
 }): {
   schema_version: 1;
   default_network: string;

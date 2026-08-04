@@ -34,6 +34,11 @@
 // "RAORecycledForRegistration", [netuid])) across netuid 0/1/4/101/65535.
 
 import type { FieldSources } from "./field-provenance.ts";
+import {
+  type ChainNetworkId,
+  networkKvKey,
+  rpcUrlForNetwork,
+} from "./chain-network.ts";
 
 type Row = Record<string, unknown>;
 
@@ -41,7 +46,6 @@ export const RECYCLED_KV_TTL = 600; // seconds — a registration-count counter,
 export const RECYCLED_NEGATIVE_KV_TTL = 10; // seconds
 export const RECYCLED_RPC_TIMEOUT_MS = 5000;
 export const MAX_U16_NETUID = 65535;
-const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
 
 // twox128("SubtensorModule") ++ twox128("RAORecycledForRegistration").
 const RECYCLED_STORAGE_KEY_PREFIX =
@@ -113,12 +117,15 @@ export const SUBNET_RECYCLED_FIELD_SOURCES = {
 async function loadSubnetRecycledSnapshot(
   env: Env,
   netuid: number,
+  network?: ChainNetworkId,
 ): Promise<Row> {
   if (!isU16Netuid(netuid)) {
     throw new RangeError("netuid must be an integer in the u16 range 0..65535");
   }
 
-  const cacheKey = `recycled:${netuid}`;
+  // Per-chain counter: testnet netuids do not correspond to mainnet ones, so
+  // the two must never share a cache entry.
+  const cacheKey = networkKvKey(`recycled:${netuid}`, network);
   const kv = env?.METAGRAPH_CONTROL;
 
   if (kv?.get) {
@@ -137,7 +144,7 @@ async function loadSubnetRecycledSnapshot(
   try {
     const storageKey =
       RECYCLED_STORAGE_KEY_PREFIX + netuidStorageKeySuffix(netuid);
-    const rpcResp = await fetch(FINNEY_RPC_URL, {
+    const rpcResp = await fetch(rpcUrlForNetwork(network), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(RECYCLED_RPC_TIMEOUT_MS),
@@ -198,9 +205,10 @@ async function loadSubnetRecycledSnapshot(
 export async function loadSubnetRecycled(
   env: Env,
   netuid: number,
+  network?: ChainNetworkId,
 ): Promise<Row> {
   return {
-    ...(await loadSubnetRecycledSnapshot(env, netuid)),
+    ...(await loadSubnetRecycledSnapshot(env, netuid, network)),
     field_sources: SUBNET_RECYCLED_FIELD_SOURCES,
   };
 }

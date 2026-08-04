@@ -720,15 +720,40 @@ describe("the crowdloan routes", () => {
 
   // Both routes read finney storage directly, so they must be mainnet-only —
   // a testnet-prefixed request has nothing to answer from.
-  test("the routes are mainnet-only", async () => {
+  test("the routes serve testnet's own crowdloans, from the testnet RPC", async () => {
+    // Was asserted mainnet-only because src/crowdloans.ts hardcoded the finney
+    // endpoint. The Crowdloan pallet is present and identical on testnet, with
+    // its own NextCrowdloanId sequence, so #8700 reads whichever chain was
+    // asked for. Asserting the endpoint rather than the body: both chains
+    // return a well-formed 200, so only the URL distinguishes a correct answer
+    // from finney's numbers served under a testnet path.
     const env = mockEnv({ METAGRAPH_CONTROL: kvStub() }) as unknown as Env;
-    for (const path of [
-      "/api/v1/testnet/crowdloans",
-      "/api/v1/testnet/crowdloans/1",
-    ]) {
-      const res = await handleRequest(req(path), env);
-      assert.equal(res.status, 404, path);
-    }
+    const seen: string[] = [];
+    await withFetchStub(
+      async (url: unknown) => {
+        seen.push(String(url));
+        return {
+          ok: true,
+          json: async () => ({ jsonrpc: "2.0", id: 1, result: null }),
+        };
+      },
+      async () => {
+        for (const path of [
+          "/api/v1/testnet/crowdloans",
+          "/api/v1/testnet/crowdloans/1",
+        ]) {
+          const res = await handleRequest(req(path), env);
+          assert.equal(res.status, 200, path);
+        }
+        assert.ok(seen.length > 0, "no RPC call was made");
+        for (const url of seen) {
+          assert.ok(
+            url.startsWith("https://test.finney.opentensor.ai"),
+            `testnet request read from ${url}`,
+          );
+        }
+      },
+    );
   });
 });
 

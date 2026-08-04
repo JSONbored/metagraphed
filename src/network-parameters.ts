@@ -28,11 +28,15 @@
 
 import { blockEmissionForIssuance } from "./block-emission.ts";
 import type { FieldSources } from "./field-provenance.ts";
+import {
+  type ChainNetworkId,
+  networkKvKey,
+  rpcUrlForNetwork,
+} from "./chain-network.ts";
 
 export const NETWORK_PARAMETERS_KV_TTL = 300; // seconds -- governance-adjustable, changes rarely but not never
 export const NETWORK_PARAMETERS_NEGATIVE_KV_TTL = 10; // seconds
 export const NETWORK_PARAMETERS_RPC_TIMEOUT_MS = 5000;
-const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
 
 // twox128("SubtensorModule") ++ twox128("TaoWeight").
 const TAO_WEIGHT_STORAGE_KEY =
@@ -71,6 +75,31 @@ export const EMISSION_GATE_EXPONENT_STORAGE_KEY =
  */
 export const DEFAULT_EMISSION_GATE_EXPONENT = 3;
 
+/**
+ * `DefaultPendingChildKeyCooldown` — 7200 blocks (one day at 12s).
+ *
+ * Read straight out of the runtime metadata's declared fallback for
+ * `SubtensorModule.PendingChildKeyCooldown` (`0x201c000000000000`, LE u64), and
+ * identical on finney and testnet as of spec 441.
+ *
+ * It is SET on finney and ABSENT on testnet, which is why this had to become
+ * explicit for #8700: the previous implicit zero would have told a testnet
+ * developer their child-key changes take effect immediately.
+ */
+export const DEFAULT_PENDING_CHILDKEY_COOLDOWN_BLOCKS = 7200n;
+
+/**
+ * `DefaultEmissionBarQuantile` — 0.61, as U64F64 bits.
+ *
+ * Same provenance as the cooldown above (metadata fallback
+ * `0x00285c8fc2f5289c…`), same finney-set / testnet-absent split. Serving the
+ * declared default rather than `null` also keeps the whole response off the
+ * 10s negative TTL: `rpcOk` below requires every field to be non-null, so an
+ * unset quantile would have pinned testnet to negative caching forever and
+ * re-hit the RPC on every single request.
+ */
+export const DEFAULT_EMISSION_BAR_QUANTILE_BITS = 0x9c28f5c28f5c2800n;
+
 export const TOTAL_ISSUANCE_STORAGE_KEY =
   "0x658faa385070e074c85bf6b568cf055557c875e4cff74148e4628f264b974c80";
 
@@ -106,15 +135,28 @@ function u64f64ToFloat(bits: bigint): number {
 }
 
 // One raw state_getStorage read, decoded to a BigInt. null on any failure
-// (non-ok response, timeout, malformed result); a genuinely unset storage
-// result (raw null) reads as a real 0n, not a failure -- mirrors subnet-
-// recycled.mjs's / subnet-burn.ts's own unset-storage handling.
+// (non-ok response, timeout, malformed result).
+//
+// An absent key is NOT a failure and NOT necessarily a zero. Every item read
+// here is declared `modifier: Default` in the runtime metadata, which means the
+// chain's own accessor returns the item's declared default when nothing is
+// stored -- so the true on-chain value of an absent key is that default, and
+// `whenUnset` is how each call site states it.
+//
+// This defaulted to 0n implicitly before #8700, which was invisible on finney
+// because every item here happens to be set there. It is not set on testnet:
+// `PendingChildKeyCooldown` is absent, and reading it as 0 would publish "no
+// cooldown" for a chain whose real cooldown is 7200 blocks -- a silently
+// plausible wrong answer, the same trap #8742 documented for the emission gate
+// exponent.
 async function fetchStorageU64(
   storageKey: string,
   timeoutMs: number,
+  network?: ChainNetworkId,
+  whenUnset: bigint = 0n,
 ): Promise<bigint | null> {
   try {
-    const rpcResp = await fetch(FINNEY_RPC_URL, {
+    const rpcResp = await fetch(rpcUrlForNetwork(network), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(timeoutMs),
@@ -130,7 +172,7 @@ async function fetchStorageU64(
     const raw = rpcBody?.result;
     const bits = decodeLeU64(raw);
     if (bits != null) return bits;
-    if (raw === null) return 0n;
+    if (raw === null) return whenUnset;
     return null;
   } catch {
     return null;
@@ -194,9 +236,10 @@ type StorageU128Result =
 async function fetchStorageU128(
   storageKey: string,
   timeoutMs: number,
+  network?: ChainNetworkId,
 ): Promise<StorageU128Result> {
   try {
-    const rpcResp = await fetch(FINNEY_RPC_URL, {
+    const rpcResp = await fetch(rpcUrlForNetwork(network), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(timeoutMs),
@@ -315,8 +358,11 @@ export interface NetworkParameters extends NetworkParametersSnapshot {
 // for the full TTL.
 async function loadNetworkParametersSnapshot(
   env: Env,
+  network?: ChainNetworkId,
 ): Promise<NetworkParametersSnapshot> {
-  const cacheKey = "network:parameters";
+  // Governance parameters are set independently per chain, so testnet must not
+  // read finney's cached snapshot (or write over it).
+  const cacheKey = networkKvKey("network:parameters", network);
   const kv = env?.METAGRAPH_CONTROL;
 
   if (kv?.get) {
@@ -340,30 +386,45 @@ async function loadNetworkParametersSnapshot(
     emissionBarQuantileResult,
     emissionGateExponentResult,
   ] = await Promise.all([
-    fetchStorageU64(TAO_WEIGHT_STORAGE_KEY, NETWORK_PARAMETERS_RPC_TIMEOUT_MS),
+    // TaoWeight, StakeThreshold and TotalIssuance all declare a 0 default, so
+    // they keep fetchStorageU64's implicit whenUnset. Only the cooldown does
+    // not -- passing its default explicitly is the whole point of #8700's
+    // unset-storage fix.
+    fetchStorageU64(
+      TAO_WEIGHT_STORAGE_KEY,
+      NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
+      network,
+    ),
     fetchStorageU64(
       STAKE_THRESHOLD_STORAGE_KEY,
       NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
+      network,
     ),
     fetchStorageU64(
       PENDING_CHILDKEY_COOLDOWN_STORAGE_KEY,
       NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
+      network,
+      DEFAULT_PENDING_CHILDKEY_COOLDOWN_BLOCKS,
     ),
     fetchStorageU64(
       TOTAL_ISSUANCE_STORAGE_KEY,
       NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
+      network,
     ),
     fetchStorageU128(
       EMISSION_GATE_BAR_STORAGE_KEY,
       NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
+      network,
     ),
     fetchStorageU128(
       EMISSION_BAR_QUANTILE_STORAGE_KEY,
       NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
+      network,
     ),
     fetchStorageU128(
       EMISSION_GATE_EXPONENT_STORAGE_KEY,
       NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
+      network,
     ),
   ]);
 
@@ -379,14 +440,29 @@ async function loadNetworkParametersSnapshot(
   // computed against it is wrong by 2x (#8747).
   const emission = blockEmissionForIssuance(totalIssuanceRao);
 
+  // Declared default is a literal zero (`0x00…00`), so an unset read resolves
+  // to 0 for the same reason the quantile resolves to 0.61: `modifier: Default`
+  // means the chain hands back the fallback. Distinct from `failed`, which
+  // stays null — "the gate is off" and "we could not read the gate" are not the
+  // same answer, and collapsing them is what the state machine exists to avoid.
   const emissionGateBar =
     emissionGateBarResult.state === "value"
       ? u64f64U128ToFloat(emissionGateBarResult.bits)
-      : null;
+      : emissionGateBarResult.state === "unset"
+        ? 0
+        : null;
+  // Unset resolves to the runtime's declared default (0.61), not to null: the
+  // item is `modifier: Default`, so an absent key means the chain is USING that
+  // default, not that the value is unknown. finney has it set and is unaffected;
+  // testnet has it absent, where null would both under-report the gate and --
+  // because rpcOk below requires every field -- pin the whole response to the
+  // 10s negative TTL on every request.
   const emissionBarQuantile =
     emissionBarQuantileResult.state === "value"
       ? u64f64U128ToFloat(emissionBarQuantileResult.bits)
-      : null;
+      : emissionBarQuantileResult.state === "unset"
+        ? u64f64U128ToFloat(DEFAULT_EMISSION_BAR_QUANTILE_BITS)
+        : null;
   // Raw stays null when the item is unset -- that is the honest reading, and
   // the effective value carries the runtime default alongside it rather than
   // in place of it (#8742 trap 2).
@@ -455,9 +531,10 @@ async function loadNetworkParametersSnapshot(
  */
 export async function loadNetworkParameters(
   env: Env,
+  network?: ChainNetworkId,
 ): Promise<NetworkParameters> {
   return {
-    ...(await loadNetworkParametersSnapshot(env)),
+    ...(await loadNetworkParametersSnapshot(env, network)),
     field_sources: NETWORK_PARAMETERS_FIELD_SOURCES,
   };
 }

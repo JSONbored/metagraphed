@@ -5048,8 +5048,15 @@ const DATA_NETWORK_ALIASES = ["finney", "mainnet", "test", "testnet"];
  * either direction. A hand-copied version of this list was wrong by 77 entries
  * on the first attempt, which is exactly why it is proven rather than trusted.
  *
- * 113 of 183 routes: most of the API is mainnet-only today, because we do not
- * index testnet chain data (#8700 is the issue that would change that).
+ * 105 of 188 routes. The count dropped by 13 in #8700: the live chain-storage
+ * routes (burn, recycled, lease, crowdloans, balance, root-claim, children,
+ * parents, sudo key, EVM address mapping, network parameters, randomness) are
+ * now served on every network with chain state, because their storage keys are
+ * chain-agnostic and testnet runs the same runtime. What remains is mainnet-
+ * only because of the DATA behind it — the D1/lakehouse chain-history tiers,
+ * the curated registry and the AI indexes — which is a real constraint rather
+ * than a hardcoded endpoint. Indexing testnet history is the remaining half of
+ * #8700.
  */
 export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // The AI-native layer (#9092). The embedded corpus and the retrieval index
@@ -5119,19 +5126,6 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   "/api/v1/accounts/{ss58}/subnets/{netuid}/history",
   "/api/v1/accounts/{ss58}/identity",
   "/api/v1/accounts/{ss58}/identity-history",
-  "/api/v1/accounts/{ss58}/balance",
-  "/api/v1/accounts/{ss58}/root-claim",
-  "/api/v1/accounts/{ss58}/children",
-  "/api/v1/accounts/{ss58}/parents",
-  "/api/v1/evm/address/{h160}",
-  "/api/v1/sudo/key",
-  "/api/v1/network/parameters",
-  "/api/v1/network/randomness",
-  "/api/v1/subnets/{netuid}/recycled",
-  "/api/v1/subnets/{netuid}/burn",
-  "/api/v1/subnets/{netuid}/lease",
-  "/api/v1/crowdloans",
-  "/api/v1/crowdloans/{crowdloan_id}",
   "/api/v1/blocks",
   "/api/v1/blocks/summary",
   "/api/v1/blocks/{ref}",

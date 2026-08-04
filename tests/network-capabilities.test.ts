@@ -9,7 +9,9 @@
 //   2. Every family reported unserved actually 404s there.
 //   3. The matrix is derived: change the predicate and the output changes.
 
+import path from "node:path";
 import assert from "node:assert/strict";
+import { concretePath } from "./concrete-path.ts";
 import { describe, test } from "vitest";
 import {
   buildNetworkCapabilities,
@@ -18,8 +20,13 @@ import {
 } from "../src/network-capabilities.ts";
 import { API_ROUTES } from "../src/contracts.ts";
 import { handleRequest, isMainnetOnlyApiPath } from "../workers/api.ts";
-import { createLocalArtifactEnv } from "../scripts/lib.ts";
-import { NETWORK_PUBLISHED_ARTIFACT_PATHS } from "../src/network-artifacts.ts";
+import { createLocalArtifactEnv, repoRoot } from "../scripts/lib.ts";
+import { buildNetworkRegistry } from "../scripts/build-network-registry.ts";
+import {
+  NETWORK_COMPUTED_ARTIFACT_PATHS,
+  NETWORK_PUBLISHED_ARTIFACT_PATHS,
+} from "../src/network-artifacts.ts";
+import { LIVE_CHAIN_ROUTE_PATHS } from "../src/live-chain-routes.ts";
 
 const NETWORKS = {
   mainnet: { id: "mainnet", chain: "finney", prefix: "", isDefault: true },
@@ -34,23 +41,13 @@ const NETWORKS = {
   local: { id: "local", chain: "local", prefix: "local", isDefault: false },
 };
 
-function concretePath(template: string): string {
-  const ss58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
-  return template
-    .replace("{netuid}", "1")
-    .replace("{ss58}", ss58)
-    .replace("{hotkey}", ss58)
-    .replace("{h160}", "0x0000000000000000000000000000000000000000")
-    .replace("{ref}", "1-0")
-    .replace(/\{[^}]+\}/g, "x");
-}
-
 function matrix() {
   return buildNetworksPayload({
     routes: API_ROUTES,
     networks: NETWORKS,
     isMainnetOnly: isMainnetOnlyApiPath,
     publishedArtifacts: NETWORK_PUBLISHED_ARTIFACT_PATHS,
+    liveChainRoutes: LIVE_CHAIN_ROUTE_PATHS,
   });
 }
 
@@ -190,7 +187,8 @@ describe("the matrix is derived, not copied", () => {
       "mainnet-only families must stay unserved even when everything is published",
     );
 
-    // Publish nothing: nothing serves, whatever the predicate says.
+    // Publish nothing AND declare no live-chain routes: nothing serves,
+    // whatever the predicate says.
     const nothingPublished = buildNetworkCapabilities({
       routes: API_ROUTES,
       networks: NETWORKS,
@@ -198,6 +196,45 @@ describe("the matrix is derived, not copied", () => {
       publishedArtifacts: [],
     }).find((network) => network.id === "testnet");
     assert.equal(nothingPublished?.served_families.length, 0);
+
+    // The third condition (#8700) is independent of the other two: with no
+    // artifacts published at all, the live-chain routes still serve, because
+    // they answer from chain state rather than from R2. Without this term the
+    // matrix under-reports — it calls a working route unserved, which sends an
+    // agent away from a route that would have answered.
+    const liveOnly = buildNetworkCapabilities({
+      routes: API_ROUTES,
+      networks: NETWORKS,
+      isMainnetOnly: isMainnetOnlyApiPath,
+      publishedArtifacts: [],
+      liveChainRoutes: LIVE_CHAIN_ROUTE_PATHS,
+    }).find((network) => network.id === "testnet");
+    const liveFamilies = [
+      ...(liveOnly?.served_families ?? []),
+      ...(liveOnly?.partial_families ?? []),
+    ].map((entry) => entry.family);
+    assert.ok(
+      liveFamilies.includes("crowdloans"),
+      "the live-chain term must serve crowdloans even with nothing published",
+    );
+    assert.ok(
+      liveFamilies.includes("network"),
+      "the live-chain term must serve network/parameters with nothing published",
+    );
+
+    // And dropping it alone narrows the matrix — proving it is load-bearing
+    // rather than additive decoration.
+    const withoutLive = buildNetworkCapabilities({
+      routes: API_ROUTES,
+      networks: NETWORKS,
+      isMainnetOnly: isMainnetOnlyApiPath,
+      publishedArtifacts: NETWORK_PUBLISHED_ARTIFACT_PATHS,
+    }).find((network) => network.id === "testnet");
+    assert.ok(
+      (withoutLive?.unserved_families.length ?? 0) >
+        (real.unserved_families.length ?? 0),
+      "removing the live-chain term must widen the unserved set",
+    );
   });
 
   test("the served set matches what the build actually writes", () => {
@@ -228,6 +265,29 @@ describe("the matrix is derived, not copied", () => {
     for (const family of ["surfaces", "profiles", "endpoints", "providers"]) {
       assert.ok(!served.has(family), `${family} must not be reported served`);
     }
+  });
+
+  test("the published list equals what the emitter actually writes", async () => {
+    // #8700. Until now this coupling was asserted only in prose:
+    // build-network-registry.ts imported NETWORK_PUBLISHED_ARTIFACT_PATHS and
+    // immediately `void`ed it, so the claim that "the emitter and the
+    // capability matrix cannot disagree" was enforced by nothing. Adding a
+    // fifth artifact family to the build without listing it here would have
+    // left the matrix reporting a published route as unserved, and the
+    // reverse would have promised a route that 404s.
+    const result = await buildNetworkRegistry({
+      prefix: "testnet",
+      snapshotPath: path.join(repoRoot, "registry/native/test-subnets.json"),
+    });
+    const written = [...(result.written_artifact_paths as string[])].sort();
+    const expected = NETWORK_PUBLISHED_ARTIFACT_PATHS.filter(
+      (artifactPath) => !NETWORK_COMPUTED_ARTIFACT_PATHS.includes(artifactPath),
+    ).sort();
+    assert.deepEqual(
+      written,
+      expected,
+      "buildNetworkRegistry writes a different artifact set than NETWORK_PUBLISHED_ARTIFACT_PATHS declares",
+    );
   });
 });
 

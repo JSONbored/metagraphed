@@ -497,6 +497,8 @@ import { evaluateUpgradeRadarScan } from "../src/upgrade-radar.ts";
 import { evaluateFreshness, shouldReport } from "../src/freshness-watchdog.ts";
 import { buildNetworksPayload } from "../src/network-capabilities.ts";
 import { NETWORK_PUBLISHED_ARTIFACT_PATHS } from "../src/network-artifacts.ts";
+import { chainNetworkId } from "../src/chain-network.ts";
+import { LIVE_CHAIN_ROUTE_PATHS } from "../src/live-chain-routes.ts";
 import {
   subnetNewsItems,
   type ChainEventRow,
@@ -3299,6 +3301,7 @@ export async function handleRequest(
           networks: NETWORKS,
           isMainnetOnly: isMainnetOnlyApiPath,
           publishedArtifacts: NETWORK_PUBLISHED_ARTIFACT_PATHS,
+          liveChainRoutes: LIVE_CHAIN_ROUTE_PATHS,
         }),
         meta: { contract_version: contractVersion(env) },
       },
@@ -4237,46 +4240,15 @@ export async function handleRequest(
           ),
       );
     }
-    const recycledMatch = SUBNET_RECYCLED_PATH_PATTERN.exec(
-      resolved.url.pathname,
+    // Live chain-storage routes (#8700), dispatched from the single table
+    // shared with the /{network}/-prefixed path so the two cannot drift. On
+    // the bare path this resolves to mainnet, exactly as before.
+    const liveChainResponse = await dispatchLiveChainRoute(
+      request,
+      env,
+      resolved.url,
     );
-    if (recycledMatch) {
-      // Live RPC + KV-cache route (like /accounts/{ss58}/balance and
-      // /sudo/key) — not D1-backed, so no withEdgeCache here.
-      return handleSubnetRecycled(request, env, Number(recycledMatch[1]));
-    }
-    const burnMatch = SUBNET_BURN_PATH_PATTERN.exec(resolved.url.pathname);
-    if (burnMatch) {
-      // Live RPC + KV-cache route (#6321), same shape as SUBNET_RECYCLED
-      // just above — a different storage item, not D1-backed either.
-      return handleSubnetBurn(request, env, Number(burnMatch[1]));
-    }
-    const leaseMatch = SUBNET_LEASE_PATH_PATTERN.exec(resolved.url.pathname);
-    if (leaseMatch) {
-      // Live RPC + KV-cache route (#6719), same shape as SUBNET_BURN just
-      // above. Tested BEFORE the DATA_API forwarding gate further up already
-      // ran (that gate only matches .../lease/history, a longer suffix), so
-      // this never shadows it.
-      return handleSubnetLease(request, env, Number(leaseMatch[1]));
-    }
-    // Live RPC + KV-cache routes (#8696), same shape as SUBNET_LEASE above.
-    // The detail pattern is tested first: /crowdloans/{id} and /crowdloans are
-    // disjoint regexes, but keeping the more specific one first matches the
-    // ordering convention every other pair in this router uses.
-    const crowdloanDetailMatch = CROWDLOAN_DETAIL_PATH_PATTERN.exec(
-      resolved.url.pathname,
-    );
-    if (crowdloanDetailMatch) {
-      return handleCrowdloan(
-        request,
-        env,
-        Number(crowdloanDetailMatch[1]),
-        resolved.url,
-      );
-    }
-    if (CROWDLOANS_PATH_PATTERN.test(resolved.url.pathname)) {
-      return handleCrowdloans(request, env, resolved.url);
-    }
+    if (liveChainResponse) return liveChainResponse;
     const weightSettersMatch = SUBNET_WEIGHT_SETTERS_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -4873,30 +4845,6 @@ export async function handleRequest(
         resolved.url,
       );
     }
-    const accountBalanceMatch = ACCOUNT_BALANCE_PATH_PATTERN.exec(
-      resolved.url.pathname,
-    );
-    if (accountBalanceMatch) {
-      return handleAccountBalance(request, env, accountBalanceMatch[1]);
-    }
-    const accountRootClaimMatch = ACCOUNT_ROOT_CLAIM_PATH_PATTERN.exec(
-      resolved.url.pathname,
-    );
-    if (accountRootClaimMatch) {
-      return handleAccountRootClaim(request, env, accountRootClaimMatch[1]);
-    }
-    const accountChildrenMatch = ACCOUNT_CHILDREN_PATH_PATTERN.exec(
-      resolved.url.pathname,
-    );
-    if (accountChildrenMatch) {
-      return handleAccountChildren(request, env, accountChildrenMatch[1]);
-    }
-    const accountParentsMatch = ACCOUNT_PARENTS_PATH_PATTERN.exec(
-      resolved.url.pathname,
-    );
-    if (accountParentsMatch) {
-      return handleAccountParents(request, env, accountParentsMatch[1]);
-    }
     const accountMatch = ACCOUNT_PATH_PATTERN.exec(resolved.url.pathname);
     if (accountMatch) {
       return handleAccount(request, env, accountMatch[1]);
@@ -4948,21 +4896,6 @@ export async function handleRequest(
     }
     if (EXTRINSICS_FEED_PATH_PATTERN.test(resolved.url.pathname)) {
       return handleExtrinsics(request, env, resolved.url);
-    }
-    if (SUDO_KEY_PATH_PATTERN.test(resolved.url.pathname)) {
-      return handleSudoKey(request, env);
-    }
-    const evmAddressMappingMatch = EVM_ADDRESS_MAPPING_PATH_PATTERN.exec(
-      resolved.url.pathname,
-    );
-    if (evmAddressMappingMatch) {
-      return handleEvmAddressMapping(request, env, evmAddressMappingMatch[1]);
-    }
-    if (NETWORK_PARAMETERS_PATH_PATTERN.test(resolved.url.pathname)) {
-      return handleNetworkParameters(request, env);
-    }
-    if (RANDOMNESS_PATH_PATTERN.test(resolved.url.pathname)) {
-      return handleRandomnessStatus(request, env);
     }
     if (SUDO_CALLS_PATH_PATTERN.test(resolved.url.pathname)) {
       return handleSudo(request, env, resolved.url);
@@ -5168,6 +5101,16 @@ export async function handleRequest(
 // against the router's real behaviour instead of restated. tests/
 // network-addressing.test.ts asserts every API_ROUTES entry's flag equals this
 // predicate's verdict, so adding a route here without annotating it fails CI.
+//
+// What is NOT here any more (#8700): the live chain-storage routes. They were
+// listed as "mainnet-only by construction" because each module hardcoded the
+// finney URL — construction we controlled, and changed. Their storage keys are
+// twox128 hashes of pallet+item names, so they are chain-agnostic, and testnet
+// runs the same runtime (spec 441, same 28 pallets, same declared defaults).
+// They now resolve their endpoint through rpcUrlForNetwork() and are served on
+// every network with chain state. The remaining entries are mainnet-only
+// because of the DATA behind them (D1 tiers, curated registry, AI indexes),
+// which is a real constraint rather than a hardcoded constant.
 export function isMainnetOnlyApiPath(pathname: string) {
   return (
     pathname === "/api/v1/events" ||
@@ -5247,19 +5190,13 @@ export function isMainnetOnlyApiPath(pathname: string) {
     SUBNET_ALPHA_VOLUME_PATH_PATTERN.test(pathname) ||
     SUBNET_OHLC_PATH_PATTERN.test(pathname) ||
     SUBNET_STAKE_QUOTE_PATH_PATTERN.test(pathname) ||
-    // Mainnet-only by construction, not policy: it reads StakeThreshold,
-    // TaoWeight and Burn out of finney storage at request time.
+    // Mainnet-only because it joins the D1 `neurons` tier, which is indexed
+    // for finney only. Its live half (StakeThreshold/TaoWeight/Burn) became
+    // network-aware in #8700 -- the storage reads are no longer what pins this
+    // route to mainnet, the per-UID data behind them is.
     SUBNET_VALIDATOR_ECONOMICS_PATH_PATTERN.test(pathname) ||
     pathname === VALIDATOR_ECONOMICS_RANKING_PATH ||
     SUBNET_VALIDATOR_ECONOMICS_HISTORY_PATH_PATTERN.test(pathname) ||
-    SUBNET_RECYCLED_PATH_PATTERN.test(pathname) ||
-    SUBNET_BURN_PATH_PATTERN.test(pathname) ||
-    SUBNET_LEASE_PATH_PATTERN.test(pathname) ||
-    // #8696: both crowdloan routes read finney storage directly (src/
-    // crowdloans.ts hardcodes the finney RPC), so they are mainnet-only by
-    // construction, not by policy.
-    CROWDLOANS_PATH_PATTERN.test(pathname) ||
-    CROWDLOAN_DETAIL_PATH_PATTERN.test(pathname) ||
     SUBNET_YIELD_PATH_PATTERN.test(pathname) ||
     SUBNET_PERFORMANCE_PATH_PATTERN.test(pathname) ||
     SUBNET_IDLE_STAKE_PATH_PATTERN.test(pathname) ||
@@ -5284,10 +5221,6 @@ export function isMainnetOnlyApiPath(pathname: string) {
     ACCOUNT_DEREGISTRATIONS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_PROMETHEUS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_AXON_REMOVALS_PATH_PATTERN.test(pathname) ||
-    ACCOUNT_BALANCE_PATH_PATTERN.test(pathname) ||
-    ACCOUNT_ROOT_CLAIM_PATH_PATTERN.test(pathname) ||
-    ACCOUNT_CHILDREN_PATH_PATTERN.test(pathname) ||
-    ACCOUNT_PARENTS_PATH_PATTERN.test(pathname) ||
     BLOCKS_FEED_PATH_PATTERN.test(pathname) ||
     BLOCK_DETAIL_PATH_PATTERN.test(pathname) ||
     BLOCK_EXTRINSICS_PATH_PATTERN.test(pathname) ||
@@ -5303,13 +5236,109 @@ export function isMainnetOnlyApiPath(pathname: string) {
     EXTRINSICS_FEED_PATH_PATTERN.test(pathname) ||
     EXTRINSIC_DETAIL_PATH_PATTERN.test(pathname) ||
     SUDO_CALLS_PATH_PATTERN.test(pathname) ||
-    SUDO_KEY_PATH_PATTERN.test(pathname) ||
-    EVM_ADDRESS_MAPPING_PATH_PATTERN.test(pathname) ||
-    NETWORK_PARAMETERS_PATH_PATTERN.test(pathname) ||
-    RANDOMNESS_PATH_PATTERN.test(pathname) ||
     GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN.test(pathname) ||
     RUNTIME_VERSIONS_PATH_PATTERN.test(pathname)
   );
+}
+
+/**
+ * The live chain-storage routes (#8700), as ONE table both dispatch paths use.
+ *
+ * Every route here answers from `state_getStorage` (or the EVM precompile) at
+ * request time rather than from an artifact or a D1 tier, which is what makes
+ * them servable on any network with chain state: the storage keys are twox128
+ * hashes of pallet+item names, identical across chains running the same
+ * runtime.
+ *
+ * This is a single table rather than two dispatch blocks specifically so the
+ * bare mainnet path and the /{network}/-prefixed path cannot diverge. Before
+ * #8700 the network path had no live routes at all; adding a second copy of
+ * these eleven branches would have created exactly the kind of drift the
+ * mainnet-only annotation test exists to catch, one layer lower where nothing
+ * would have caught it.
+ *
+ * Returns `null` when nothing matched, so the caller continues its own
+ * dispatch. Every pattern is anchored and mutually disjoint, so the order
+ * within this table is not load-bearing.
+ */
+async function dispatchLiveChainRoute(
+  request: Request,
+  env: Env,
+  url: URL,
+  network: typeof DEFAULT_NETWORK = DEFAULT_NETWORK,
+): Promise<Response | null> {
+  const chain = chainNetworkId(network.id);
+  const { pathname } = url;
+
+  const recycledMatch = SUBNET_RECYCLED_PATH_PATTERN.exec(pathname);
+  if (recycledMatch) {
+    return handleSubnetRecycled(request, env, Number(recycledMatch[1]), chain);
+  }
+  const burnMatch = SUBNET_BURN_PATH_PATTERN.exec(pathname);
+  if (burnMatch) {
+    return handleSubnetBurn(request, env, Number(burnMatch[1]), chain);
+  }
+  // Tested before the DATA_API forwarding gate, which only matches the longer
+  // .../lease/history suffix — disjoint regexes, but the more specific one
+  // first matches the ordering convention the rest of this router uses.
+  const leaseMatch = SUBNET_LEASE_PATH_PATTERN.exec(pathname);
+  if (leaseMatch) {
+    return handleSubnetLease(request, env, Number(leaseMatch[1]), chain);
+  }
+  const crowdloanDetailMatch = CROWDLOAN_DETAIL_PATH_PATTERN.exec(pathname);
+  if (crowdloanDetailMatch) {
+    return handleCrowdloan(
+      request,
+      env,
+      Number(crowdloanDetailMatch[1]),
+      url,
+      chain,
+    );
+  }
+  if (CROWDLOANS_PATH_PATTERN.test(pathname)) {
+    return handleCrowdloans(request, env, url, chain);
+  }
+  const accountBalanceMatch = ACCOUNT_BALANCE_PATH_PATTERN.exec(pathname);
+  if (accountBalanceMatch) {
+    return handleAccountBalance(request, env, accountBalanceMatch[1], chain);
+  }
+  const accountRootClaimMatch = ACCOUNT_ROOT_CLAIM_PATH_PATTERN.exec(pathname);
+  if (accountRootClaimMatch) {
+    return handleAccountRootClaim(
+      request,
+      env,
+      accountRootClaimMatch[1],
+      chain,
+    );
+  }
+  const accountChildrenMatch = ACCOUNT_CHILDREN_PATH_PATTERN.exec(pathname);
+  if (accountChildrenMatch) {
+    return handleAccountChildren(request, env, accountChildrenMatch[1], chain);
+  }
+  const accountParentsMatch = ACCOUNT_PARENTS_PATH_PATTERN.exec(pathname);
+  if (accountParentsMatch) {
+    return handleAccountParents(request, env, accountParentsMatch[1], chain);
+  }
+  if (SUDO_KEY_PATH_PATTERN.test(pathname)) {
+    return handleSudoKey(request, env, chain);
+  }
+  const evmAddressMappingMatch =
+    EVM_ADDRESS_MAPPING_PATH_PATTERN.exec(pathname);
+  if (evmAddressMappingMatch) {
+    return handleEvmAddressMapping(
+      request,
+      env,
+      evmAddressMappingMatch[1],
+      chain,
+    );
+  }
+  if (NETWORK_PARAMETERS_PATH_PATTERN.test(pathname)) {
+    return handleNetworkParameters(request, env, chain);
+  }
+  if (RANDOMNESS_PATH_PATTERN.test(pathname)) {
+    return handleRandomnessStatus(request, env, chain);
+  }
+  return null;
 }
 
 // Handles an explicit /{network}/-prefixed request (URL already prefix-stripped).
@@ -5412,6 +5441,20 @@ async function handleNetworkScopedRequest(
         { network: network.id },
       );
     }
+    // Live chain-storage routes (#8700). These are answered from the network's
+    // own RPC rather than from an R2 artifact, so they are dispatched here
+    // instead of falling through to handleApiRequest, which only knows how to
+    // read artifacts. Everything below reaches the SAME handler the bare
+    // mainnet path uses — the only difference is the network argument, so the
+    // two paths cannot drift in shape, only in which chain they read.
+    const liveChainResponse = await dispatchLiveChainRoute(
+      request,
+      env,
+      resolved.url,
+      network,
+    );
+    if (liveChainResponse) return liveChainResponse;
+
     return handleApiRequest(request, env, resolved.url, network, ctx);
   }
 

@@ -27,11 +27,15 @@
 // 500000 rao, matching Subtensor.recycle(1) exactly).
 
 import { isU16Netuid } from "./subnet-recycled.ts";
+import {
+  type ChainNetworkId,
+  networkKvKey,
+  rpcUrlForNetwork,
+} from "./chain-network.ts";
 
 export const BURN_KV_TTL = 120; // seconds — moves within minutes during registration bursts
 export const BURN_NEGATIVE_KV_TTL = 10; // seconds
 export const BURN_RPC_TIMEOUT_MS = 5000;
-const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
 
 // twox128("SubtensorModule") ++ twox128("Burn").
 const BURN_STORAGE_KEY_PREFIX =
@@ -90,12 +94,20 @@ export const SUBNET_BURN_FIELD_SOURCES = {
   burn_tao: { kind: "measured", storage: "SubtensorModule.Burn" },
 } as const satisfies FieldSources;
 
-async function loadSubnetBurnSnapshot(env: Env, netuid: number): Promise<Row> {
+async function loadSubnetBurnSnapshot(
+  env: Env,
+  netuid: number,
+  network?: ChainNetworkId,
+): Promise<Row> {
   if (!isU16Netuid(netuid)) {
     throw new RangeError("netuid must be an integer in the u16 range 0..65535");
   }
 
-  const cacheKey = `burn:${netuid}`;
+  // Testnet runs its own registration auction with its own subnets — netuid 400
+  // has a real burn value there and does not exist on finney at all — so the
+  // cache key must carry the network or one chain's price would be served as
+  // the other's.
+  const cacheKey = networkKvKey(`burn:${netuid}`, network);
   const kv = env?.METAGRAPH_CONTROL;
 
   if (kv?.get) {
@@ -113,7 +125,7 @@ async function loadSubnetBurnSnapshot(env: Env, netuid: number): Promise<Row> {
 
   try {
     const storageKey = BURN_STORAGE_KEY_PREFIX + netuidStorageKeySuffix(netuid);
-    const rpcResp = await fetch(FINNEY_RPC_URL, {
+    const rpcResp = await fetch(rpcUrlForNetwork(network), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(BURN_RPC_TIMEOUT_MS),
@@ -170,9 +182,13 @@ async function loadSubnetBurnSnapshot(env: Env, netuid: number): Promise<Row> {
  * rest of its life. It is also the single point REST, GraphQL and MCP all
  * inherit it from, rather than three call sites kept in step by hand.
  */
-export async function loadSubnetBurn(env: Env, netuid: number): Promise<Row> {
+export async function loadSubnetBurn(
+  env: Env,
+  netuid: number,
+  network?: ChainNetworkId,
+): Promise<Row> {
   return {
-    ...(await loadSubnetBurnSnapshot(env, netuid)),
+    ...(await loadSubnetBurnSnapshot(env, netuid, network)),
     field_sources: SUBNET_BURN_FIELD_SOURCES,
   };
 }

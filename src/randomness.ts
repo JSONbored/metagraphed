@@ -18,11 +18,15 @@
 // twox-storage-key.ts output at write time -- see tests/randomness.test.ts.
 
 import type { FieldSources } from "./field-provenance.ts";
+import {
+  type ChainNetworkId,
+  networkKvKey,
+  rpcUrlForNetwork,
+} from "./chain-network.ts";
 
 export const RANDOMNESS_KV_TTL = 30; // seconds -- pulses land ~3s apart, but this is a snapshot, not a feed
 export const RANDOMNESS_NEGATIVE_KV_TTL = 10; // seconds
 export const RANDOMNESS_RPC_TIMEOUT_MS = 5000;
-const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
 
 // twox128("Drand") ++ twox128("LastStoredRound").
 const LAST_STORED_ROUND_STORAGE_KEY =
@@ -53,9 +57,10 @@ function decodeLeU64(hex: unknown): bigint | null {
 async function fetchStorageU64(
   storageKey: string,
   timeoutMs: number,
+  network?: ChainNetworkId,
 ): Promise<bigint | null> {
   try {
-    const rpcResp = await fetch(FINNEY_RPC_URL, {
+    const rpcResp = await fetch(rpcUrlForNetwork(network), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(timeoutMs),
@@ -115,8 +120,12 @@ export interface RandomnessStatus extends RandomnessSnapshot {
 // same endpoint, matching network-parameters.ts's own batched-but-
 // independent-failure shape. Positive-caches only when both succeed, so a
 // partial failure doesn't cache a stale-looking result for the full TTL.
-async function loadRandomnessSnapshot(env: Env): Promise<RandomnessSnapshot> {
-  const cacheKey = "network:randomness";
+async function loadRandomnessSnapshot(
+  env: Env,
+  network?: ChainNetworkId,
+): Promise<RandomnessSnapshot> {
+  // Drand rounds differ per chain -- testnet stores its own pulse history.
+  const cacheKey = networkKvKey("network:randomness", network);
   const kv = env?.METAGRAPH_CONTROL;
 
   if (kv?.get) {
@@ -132,8 +141,16 @@ async function loadRandomnessSnapshot(env: Env): Promise<RandomnessSnapshot> {
 
   const queriedAt = new Date().toISOString();
   const [lastStoredRoundBits, oldestStoredRoundBits] = await Promise.all([
-    fetchStorageU64(LAST_STORED_ROUND_STORAGE_KEY, RANDOMNESS_RPC_TIMEOUT_MS),
-    fetchStorageU64(OLDEST_STORED_ROUND_STORAGE_KEY, RANDOMNESS_RPC_TIMEOUT_MS),
+    fetchStorageU64(
+      LAST_STORED_ROUND_STORAGE_KEY,
+      RANDOMNESS_RPC_TIMEOUT_MS,
+      network,
+    ),
+    fetchStorageU64(
+      OLDEST_STORED_ROUND_STORAGE_KEY,
+      RANDOMNESS_RPC_TIMEOUT_MS,
+      network,
+    ),
   ]);
 
   const lastStoredRound =
@@ -182,9 +199,10 @@ async function loadRandomnessSnapshot(env: Env): Promise<RandomnessSnapshot> {
  */
 export async function loadRandomnessStatus(
   env: Env,
+  network?: ChainNetworkId,
 ): Promise<RandomnessStatus> {
   return {
-    ...(await loadRandomnessSnapshot(env)),
+    ...(await loadRandomnessSnapshot(env, network)),
     field_sources: RANDOMNESS_FIELD_SOURCES,
   };
 }

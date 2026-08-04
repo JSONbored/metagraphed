@@ -704,15 +704,35 @@ describe("GET /api/v1/accounts/{ss58}/children and /parents via the Worker", () 
     assert.equal(res.status, 404);
   });
 
-  test("testnet has no variant (mainnet-only live RPC route)", async () => {
-    const restore = stubFetch(async () => ({ ok: false }));
+  test("testnet serves its own chain state, from the testnet RPC", async () => {
+    // Previously asserted 404 as a "mainnet-only live RPC route". That was a
+    // property of our hardcoded endpoint, not of the chain — testnet exposes
+    // the same storage item at the same twox128 address under the same runtime
+    // (spec 441). #8700 points the read at the requested network; the endpoint
+    // it actually reads is the assertion that matters, since a wrong one would
+    // still return 200 with the other chain's numbers.
+    const seen: string[] = [];
+    const restore = stubFetch(async (url: unknown) => {
+      seen.push(String(url));
+      return {
+        ok: true,
+        json: async () => ({ jsonrpc: "2.0", id: 1, result: null }),
+      };
+    });
     try {
       const res = await handleRequest(
         req(`/api/v1/testnet/accounts/${KNOWN_SS58}/children`),
-        {} as unknown as Env,
+        mockEnv() as unknown as Env,
         {},
       );
-      assert.equal(res.status, 404);
+      assert.equal(res.status, 200);
+      assert.ok(seen.length > 0, "no RPC call was made");
+      for (const url of seen) {
+        assert.ok(
+          url.startsWith("https://test.finney.opentensor.ai"),
+          `testnet request read from ${url}`,
+        );
+      }
     } finally {
       restore();
     }

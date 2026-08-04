@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { buildSubnetConviction } from "../src/subnet-conviction.ts";
-import type { Row } from "./row-type.ts";
+import {
+  buildSubnetConviction,
+  fetchConvictionRates,
+} from "../src/subnet-conviction.ts";
+import type { Row, AnyFn } from "./row-type.ts";
 
 // Real-shaped subnet_locks row (post-sync shape: conviction_bits is a
 // decimal-string u128, matching what the Postgres NUMERIC column and
@@ -196,6 +199,125 @@ describe("buildSubnetConviction — ranking and king", () => {
     assert.equal(
       (data.leaderboard as Row[])[0].hotkey,
       "5E6yHkmZmSpBT5aa2rNZcmeYa1y3N9jw1h7g53oNPzMUpnqG",
+    );
+  });
+});
+
+// fetchConvictionRates was entirely untested before #8700 — every path through
+// it, including the RPC call itself, was uncovered. It is the source of the
+// `now`/`unlockRate`/`maturityRate` inputs the whole decay model above depends
+// on, and its ValueQuery-default handling is called out in the module header as
+// a correctness trap ("a zero decay-rate constant would be a serious
+// correctness bug"), so leaving it unexercised was the wrong place to have a
+// gap.
+describe("fetchConvictionRates — live rate + tip fetch", () => {
+  function withFetchStub(stub: AnyFn, fn: AnyFn) {
+    const orig = globalThis.fetch;
+    globalThis.fetch = stub as typeof fetch;
+    return Promise.resolve(fn()).finally(() => {
+      globalThis.fetch = orig;
+    });
+  }
+
+  const UNLOCK_RATE_KEY =
+    "0x658faa385070e074c85bf6b568cf05554c758f6a2be5bef862df918db3e8cadb";
+  const MATURITY_RATE_KEY =
+    "0x658faa385070e074c85bf6b568cf0555fee4fedba075f0cd6daea164181ed3cb";
+
+  // 934866 and 311622 as 8-byte little-endian u64.
+  const UNLOCK_RATE_RAW = "0xd2430e0000000000";
+  const MATURITY_RATE_RAW = "0x46c1040000000000";
+
+  function rpcStub(byKey: Record<string, unknown>, header: unknown) {
+    return async (_url: unknown, init: Row) => {
+      const body = JSON.parse(init.body);
+      // A real node returns an explicit null for an absent key; `undefined`
+      // would be a stub artefact and would exercise the malformed path instead
+      // of the unset path this suite is distinguishing.
+      const result =
+        body.method === "chain_getHeader"
+          ? header
+          : (byKey[body.params[0]] ?? null);
+      return {
+        ok: true,
+        json: async () => ({ jsonrpc: "2.0", id: 1, result }),
+      };
+    };
+  }
+
+  test("decodes both rates and the current block from live storage", async () => {
+    await withFetchStub(
+      rpcStub(
+        {
+          [UNLOCK_RATE_KEY]: UNLOCK_RATE_RAW,
+          [MATURITY_RATE_KEY]: MATURITY_RATE_RAW,
+        },
+        { number: "0x83f1ad" },
+      ),
+      async () => {
+        const rates = await fetchConvictionRates();
+        assert.equal(rates.unlockRate, 934866);
+        assert.equal(rates.maturityRate, 311622);
+        assert.equal(rates.now, 0x83f1ad);
+      },
+    );
+  });
+
+  test("unset storage yields the ValueQuery default, NOT zero", async () => {
+    // The trap the module header names: a zero rate makes exp_decay collapse
+    // every lock to nothing on every call.
+    await withFetchStub(rpcStub({}, { number: "0x10" }), async () => {
+      const rates = await fetchConvictionRates();
+      assert.equal(rates.unlockRate, 934866);
+      assert.equal(rates.maturityRate, 934866);
+    });
+  });
+
+  test("each value is independently null on its own failure", async () => {
+    await withFetchStub(
+      rpcStub(
+        {
+          [UNLOCK_RATE_KEY]: UNLOCK_RATE_RAW,
+          [MATURITY_RATE_KEY]: "0xgarbage",
+        },
+        { number: "not-hex" },
+      ),
+      async () => {
+        const rates = await fetchConvictionRates();
+        assert.equal(rates.unlockRate, 934866);
+        assert.equal(rates.maturityRate, null);
+        assert.equal(rates.now, null);
+      },
+    );
+  });
+
+  test("an RPC transport failure leaves every field null, without throwing", async () => {
+    await withFetchStub(
+      async () => {
+        throw new Error("connection reset");
+      },
+      async () => {
+        const rates = await fetchConvictionRates();
+        assert.deepEqual(rates, {
+          unlockRate: null,
+          maturityRate: null,
+          now: null,
+        });
+      },
+    );
+  });
+
+  test("a non-ok RPC response is a failure, not an unset read", async () => {
+    // A 502 must not be mistaken for "storage is unset" — that would publish
+    // the compiled default as though it were the chain's answer.
+    await withFetchStub(
+      async () => ({ ok: false }),
+      async () => {
+        const rates = await fetchConvictionRates();
+        assert.equal(rates.unlockRate, null);
+        assert.equal(rates.maturityRate, null);
+        assert.equal(rates.now, null);
+      },
     );
   });
 });

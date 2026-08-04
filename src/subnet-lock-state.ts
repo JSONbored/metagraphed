@@ -69,8 +69,7 @@ import {
   u16LeBytes,
   bytesToHex,
 } from "./twox-storage-key.ts";
-
-const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
+import { rpcUrlForNetwork } from "./chain-network.ts";
 
 export const SUBNET_CONVICTION_RPC_TIMEOUT_MS = 5000;
 
@@ -128,7 +127,7 @@ export interface ChainRpc {
 /** Injectable for tests; the default hits finney and never throws. */
 export const defaultChainRpc: ChainRpc = async (method, params) => {
   try {
-    const resp = await fetch(FINNEY_RPC_URL, {
+    const resp = await fetch(rpcUrlForNetwork(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(SUBNET_CONVICTION_RPC_TIMEOUT_MS),

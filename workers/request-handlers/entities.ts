@@ -18,6 +18,7 @@
 // handlers back and dispatches them from the router.
 
 import { loadSubnetWeightSettersColdTier } from "../../src/subnet-weight-setters-loader.ts";
+import { type ChainNetworkId, networkKvKey } from "../../src/chain-network.ts";
 import { SS58_ADDRESS_PATTERN, resolveClientIp } from "../config.ts";
 import {
   BLOCK_PAGINATION,
@@ -5373,6 +5374,7 @@ export async function handleAccountBalance(
   request: Request,
   env: Env,
   ss58: string,
+  network?: ChainNetworkId,
 ) {
   if (!isFinneySs58Address(ss58)) {
     return errorResponse(
@@ -5384,7 +5386,7 @@ export async function handleAccountBalance(
 
   if (env.RPC_RATE_LIMITER?.limit) {
     const { success } = await env.RPC_RATE_LIMITER.limit({
-      key: `balance:${resolveClientIp(request)}`,
+      key: networkKvKey(`balance:${resolveClientIp(request)}`, network),
     });
     if (!success) {
       return errorResponse(
@@ -5402,7 +5404,7 @@ export async function handleAccountBalance(
     }
   }
 
-  const data = await loadAccountBalance(env, ss58);
+  const data = await loadAccountBalance(env, ss58, network);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },
@@ -5418,6 +5420,7 @@ export async function handleAccountRootClaim(
   request: Request,
   env: Env,
   ss58: string,
+  network?: ChainNetworkId,
 ) {
   if (!isFinneySs58Address(ss58)) {
     return errorResponse(
@@ -5429,7 +5432,7 @@ export async function handleAccountRootClaim(
 
   if (env.RPC_RATE_LIMITER?.limit) {
     const { success } = await env.RPC_RATE_LIMITER.limit({
-      key: `root-claim:${resolveClientIp(request)}`,
+      key: networkKvKey(`root-claim:${resolveClientIp(request)}`, network),
     });
     if (!success) {
       return errorResponse(
@@ -5447,7 +5450,7 @@ export async function handleAccountRootClaim(
     }
   }
 
-  const data = await loadAccountRootClaim(env, ss58);
+  const data = await loadAccountRootClaim(env, ss58, network);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },
@@ -5465,6 +5468,7 @@ export async function handleAccountChildren(
   request: Request,
   env: Env,
   ss58: string,
+  network?: ChainNetworkId,
 ) {
   if (!isFinneySs58Address(ss58)) {
     return errorResponse(
@@ -5476,7 +5480,7 @@ export async function handleAccountChildren(
 
   if (env.RPC_RATE_LIMITER?.limit) {
     const { success } = await env.RPC_RATE_LIMITER.limit({
-      key: `children:${resolveClientIp(request)}`,
+      key: networkKvKey(`children:${resolveClientIp(request)}`, network),
     });
     if (!success) {
       return errorResponse(
@@ -5494,7 +5498,7 @@ export async function handleAccountChildren(
     }
   }
 
-  const data = await loadAccountChildren(env, ss58);
+  const data = await loadAccountChildren(env, ss58, network);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },
@@ -5509,6 +5513,7 @@ export async function handleAccountParents(
   request: Request,
   env: Env,
   ss58: string,
+  network?: ChainNetworkId,
 ) {
   if (!isFinneySs58Address(ss58)) {
     return errorResponse(
@@ -5520,7 +5525,7 @@ export async function handleAccountParents(
 
   if (env.RPC_RATE_LIMITER?.limit) {
     const { success } = await env.RPC_RATE_LIMITER.limit({
-      key: `parents:${resolveClientIp(request)}`,
+      key: networkKvKey(`parents:${resolveClientIp(request)}`, network),
     });
     if (!success) {
       return errorResponse(
@@ -5538,7 +5543,7 @@ export async function handleAccountParents(
     }
   }
 
-  const data = await loadAccountParents(env, ss58);
+  const data = await loadAccountParents(env, ss58, network);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },
@@ -5558,6 +5563,7 @@ export async function handleSubnetRecycled(
   request: Request,
   env: Env,
   netuid: number,
+  network?: ChainNetworkId,
 ) {
   if (!isU16Netuid(netuid)) {
     return errorResponse(
@@ -5569,7 +5575,7 @@ export async function handleSubnetRecycled(
 
   if (env.RPC_RATE_LIMITER?.limit) {
     const { success } = await env.RPC_RATE_LIMITER.limit({
-      key: `recycled:${resolveClientIp(request)}`,
+      key: networkKvKey(`recycled:${resolveClientIp(request)}`, network),
     });
     if (!success) {
       return errorResponse(
@@ -5587,7 +5593,7 @@ export async function handleSubnetRecycled(
     }
   }
 
-  const data = await loadSubnetRecycled(env, netuid);
+  const data = await loadSubnetRecycled(env, netuid, network);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },
@@ -5604,6 +5610,7 @@ export async function handleSubnetBurn(
   request: Request,
   env: Env,
   netuid: number,
+  network?: ChainNetworkId,
 ) {
   if (!isU16Netuid(netuid)) {
     return errorResponse(
@@ -5615,7 +5622,7 @@ export async function handleSubnetBurn(
 
   if (env.RPC_RATE_LIMITER?.limit) {
     const { success } = await env.RPC_RATE_LIMITER.limit({
-      key: `burn:${resolveClientIp(request)}`,
+      key: networkKvKey(`burn:${resolveClientIp(request)}`, network),
     });
     if (!success) {
       return errorResponse(
@@ -5633,7 +5640,7 @@ export async function handleSubnetBurn(
     }
   }
 
-  const data = await loadSubnetBurn(env, netuid);
+  const data = await loadSubnetBurn(env, netuid, network);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },
@@ -5653,6 +5660,7 @@ export async function handleSubnetLease(
   request: Request,
   env: Env,
   netuid: number,
+  network?: ChainNetworkId,
 ) {
   if (!isU16Netuid(netuid)) {
     return errorResponse(
@@ -5664,7 +5672,7 @@ export async function handleSubnetLease(
 
   if (env.RPC_RATE_LIMITER?.limit) {
     const { success } = await env.RPC_RATE_LIMITER.limit({
-      key: `lease:${resolveClientIp(request)}`,
+      key: networkKvKey(`lease:${resolveClientIp(request)}`, network),
     });
     if (!success) {
       return errorResponse(
@@ -5682,7 +5690,7 @@ export async function handleSubnetLease(
     }
   }
 
-  const data = await loadSubnetLease(env, netuid);
+  const data = await loadSubnetLease(env, netuid, network);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },
@@ -5698,10 +5706,11 @@ async function crowdloanRateLimitResponse(
   request: Request,
   env: Env,
   scope: string,
+  network?: ChainNetworkId,
 ): Promise<Response | null> {
   if (!env.RPC_RATE_LIMITER?.limit) return null;
   const { success } = await env.RPC_RATE_LIMITER.limit({
-    key: `${scope}:${resolveClientIp(request)}`,
+    key: networkKvKey(`${scope}:${resolveClientIp(request)}`, network),
   });
   if (success) return null;
   return errorResponse(
@@ -5725,14 +5734,24 @@ async function crowdloanRateLimitResponse(
 // and the whole set is one batched storage read, so a page cursor would cost
 // more than it saves. See src/crowdloans.ts's header for why this is a
 // storage read rather than an extrinsics feed.
-export async function handleCrowdloans(request: Request, env: Env, url: URL) {
+export async function handleCrowdloans(
+  request: Request,
+  env: Env,
+  url: URL,
+  network?: ChainNetworkId,
+) {
   const validationError = validateEntityQuery(url, []);
   if (validationError) return analyticsQueryError(validationError);
 
-  const limited = await crowdloanRateLimitResponse(request, env, "crowdloans");
+  const limited = await crowdloanRateLimitResponse(
+    request,
+    env,
+    "crowdloans",
+    network,
+  );
   if (limited) return limited;
 
-  const data = await loadCrowdloans(env);
+  const data = await loadCrowdloans(env, network);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },
@@ -5749,6 +5768,7 @@ export async function handleCrowdloan(
   env: Env,
   crowdloanId: number,
   url: URL,
+  network?: ChainNetworkId,
 ) {
   const validationError = validateEntityQuery(url, []);
   if (validationError) return analyticsQueryError(validationError);
@@ -5761,10 +5781,15 @@ export async function handleCrowdloan(
     );
   }
 
-  const limited = await crowdloanRateLimitResponse(request, env, "crowdloan");
+  const limited = await crowdloanRateLimitResponse(
+    request,
+    env,
+    "crowdloan",
+    network,
+  );
   if (limited) return limited;
 
-  const data = await loadCrowdloan(env, crowdloanId);
+  const data = await loadCrowdloan(env, crowdloanId, network);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },
@@ -6488,8 +6513,12 @@ export async function handleRuntime(request: Request, env: Env, url: URL) {
 // exists for this route (unlike /accounts/{ss58}/balance), so it doesn't need
 // that route's rate limiter. hotkey is null on RPC failure or an unset sudo
 // key (schema-stable, never throws).
-export async function handleSudoKey(request: Request, env: Env) {
-  const data = await loadSudoKey(env);
+export async function handleSudoKey(
+  request: Request,
+  env: Env,
+  network?: ChainNetworkId,
+) {
+  const data = await loadSudoKey(env, network);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },
@@ -6508,6 +6537,7 @@ export async function handleEvmAddressMapping(
   request: Request,
   env: Env,
   h160: string,
+  network?: ChainNetworkId,
 ) {
   if (!H160_PATTERN.test(h160)) {
     return errorResponse(
@@ -6519,7 +6549,10 @@ export async function handleEvmAddressMapping(
 
   if (env.RPC_RATE_LIMITER?.limit) {
     const { success } = await env.RPC_RATE_LIMITER.limit({
-      key: `evm-address-mapping:${resolveClientIp(request)}`,
+      key: networkKvKey(
+        `evm-address-mapping:${resolveClientIp(request)}`,
+        network,
+      ),
     });
     if (!success) {
       return errorResponse(
@@ -6534,7 +6567,7 @@ export async function handleEvmAddressMapping(
     }
   }
 
-  const data = await loadAddressMapping(env, h160);
+  const data = await loadAddressMapping(env, h160, network);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },
@@ -6549,8 +6582,12 @@ export async function handleEvmAddressMapping(
 // params, no dedicated rate limiter -- neither is a per-caller-scoped
 // resource). Every field is independently null on RPC failure
 // (schema-stable, never throws).
-export async function handleNetworkParameters(request: Request, env: Env) {
-  const data = await loadNetworkParameters(env);
+export async function handleNetworkParameters(
+  request: Request,
+  env: Env,
+  network?: ChainNetworkId,
+) {
+  const data = await loadNetworkParameters(env, network);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },
@@ -6564,8 +6601,12 @@ export async function handleNetworkParameters(request: Request, env: Env) {
 // as handleNetworkParameters just above (no path params, no dedicated rate
 // limiter). Every field is independently null on RPC failure
 // (schema-stable, never throws).
-export async function handleRandomnessStatus(request: Request, env: Env) {
-  const data = await loadRandomnessStatus(env);
+export async function handleRandomnessStatus(
+  request: Request,
+  env: Env,
+  network?: ChainNetworkId,
+) {
+  const data = await loadRandomnessStatus(env, network);
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },

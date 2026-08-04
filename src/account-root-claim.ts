@@ -24,11 +24,15 @@ import { encodeAccountId32 } from "./ss58.ts";
 import { isFinneySs58Address } from "./account-balance.ts";
 import { storageMapPrefix, bytesToHex } from "./twox-storage-key.ts";
 import type { FieldSources } from "./field-provenance.ts";
+import {
+  type ChainNetworkId,
+  networkKvKey,
+  rpcUrlForNetwork,
+} from "./chain-network.ts";
 
 export const ROOT_CLAIM_KV_TTL = 120; // seconds
 export const ROOT_CLAIM_NEGATIVE_KV_TTL = 10; // seconds
 export const ROOT_CLAIM_RPC_TIMEOUT_MS = 5000;
-const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
 const I96F32_SCALE = 2n ** 32n;
 const I96F32_BYTES = 16;
 const ACCOUNT_ID_BYTES = 32;
@@ -112,9 +116,10 @@ async function rpcCall(
   method: string,
   params: unknown[],
   timeoutMs: number,
+  network?: ChainNetworkId,
 ): Promise<{ ok: boolean; result: unknown }> {
   try {
-    const resp = await fetch(FINNEY_RPC_URL, {
+    const resp = await fetch(rpcUrlForNetwork(network), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(timeoutMs),
@@ -317,8 +322,9 @@ export function decodeU128(hex: string | null | undefined): string | null {
 async function fetchStorage(
   key: string,
   timeoutMs: number,
+  network?: ChainNetworkId,
 ): Promise<{ ok: boolean; hex: string | null | undefined }> {
-  const result = await rpcCall("state_getStorage", [key], timeoutMs);
+  const result = await rpcCall("state_getStorage", [key], timeoutMs, network);
   if (!result.ok) return { ok: false, hex: undefined };
   return {
     ok: true,
@@ -374,12 +380,13 @@ export const ACCOUNT_ROOT_CLAIM_FIELD_SOURCES = {
 async function loadAccountRootClaimSnapshot(
   env: Env,
   ss58: string,
+  network?: ChainNetworkId,
 ): Promise<AccountRootClaimResultSnapshot> {
   if (!isFinneySs58Address(ss58)) {
     throw new RangeError("ss58 must be a valid finney SS58 account address");
   }
 
-  const cacheKey = `root-claim:${ss58}`;
+  const cacheKey = networkKvKey(`root-claim:${ss58}`, network);
   const kv = env?.METAGRAPH_CONTROL;
   if (kv?.get) {
     try {
@@ -395,9 +402,21 @@ async function loadAccountRootClaimSnapshot(
   const timeoutMs = ROOT_CLAIM_RPC_TIMEOUT_MS;
 
   const [claimTypeRaw, stakingHotkeysRaw, ownedHotkeysRaw] = await Promise.all([
-    fetchStorage(accountScopedKey("RootClaimType", coldAccountId), timeoutMs),
-    fetchStorage(accountScopedKey("StakingHotkeys", coldAccountId), timeoutMs),
-    fetchStorage(accountScopedKey("OwnedHotkeys", coldAccountId), timeoutMs),
+    fetchStorage(
+      accountScopedKey("RootClaimType", coldAccountId),
+      timeoutMs,
+      network,
+    ),
+    fetchStorage(
+      accountScopedKey("StakingHotkeys", coldAccountId),
+      timeoutMs,
+      network,
+    ),
+    fetchStorage(
+      accountScopedKey("OwnedHotkeys", coldAccountId),
+      timeoutMs,
+      network,
+    ),
   ]);
 
   if (!claimTypeRaw.ok || !stakingHotkeysRaw.ok || !ownedHotkeysRaw.ok) {
@@ -455,6 +474,7 @@ async function loadAccountRootClaimSnapshot(
       const claimableRaw = await fetchStorage(
         accountScopedKey("RootClaimable", hotAccountId),
         timeoutMs,
+        network,
       );
       if (!claimableRaw.ok) return null;
       const rates = decodeClaimableMap(claimableRaw.hex);
@@ -466,8 +486,9 @@ async function loadAccountRootClaimSnapshot(
             fetchStorage(
               claimedKey(row.netuid, hotAccountId, coldAccountId),
               timeoutMs,
+              network,
             ),
-            fetchStorage(thresholdKey(row.netuid), timeoutMs),
+            fetchStorage(thresholdKey(row.netuid), timeoutMs, network),
           ]);
           if (!claimedRaw.ok || !thresholdRaw.ok) return null;
           const claimed = decodeU128(claimedRaw.hex);
@@ -537,9 +558,10 @@ async function loadAccountRootClaimSnapshot(
 export async function loadAccountRootClaim(
   env: Env,
   ss58: string,
+  network?: ChainNetworkId,
 ): Promise<AccountRootClaimResult> {
   return {
-    ...(await loadAccountRootClaimSnapshot(env, ss58)),
+    ...(await loadAccountRootClaimSnapshot(env, ss58, network)),
     field_sources: ACCOUNT_ROOT_CLAIM_FIELD_SOURCES,
   };
 }

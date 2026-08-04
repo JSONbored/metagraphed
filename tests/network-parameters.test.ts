@@ -219,7 +219,17 @@ describe("loadNetworkParameters", () => {
     });
   });
 
-  test("a genuinely unset storage result (raw null) reads as a real 0, not a failure", async () => {
+  test("an unset storage result resolves to the item's RUNTIME DEFAULT, not to zero", async () => {
+    // #8700. Every item read here is `modifier: Default` in the runtime
+    // metadata, so an absent key means the chain is returning its declared
+    // fallback -- not that the value is zero, and not that the read failed.
+    //
+    // This test previously asserted 0 for all three. That was right for two of
+    // them by coincidence (TaoWeight and StakeThreshold both declare a 0
+    // default) and WRONG for the cooldown, whose declared default is 7200
+    // blocks. It went unnoticed because all three are set on finney; testnet
+    // leaves the cooldown unset, where the old behaviour published "child-key
+    // changes take effect immediately" for a chain with a one-day cooldown.
     await withFetchStub(
       async () => ({
         ok: true,
@@ -227,9 +237,45 @@ describe("loadNetworkParameters", () => {
       }),
       async () => {
         const data = await loadNetworkParameters(mockEnv());
+        // Declared default 0 — unchanged.
         assert.equal(data.tao_weight, 0);
         assert.equal(data.stake_threshold_tao, 0);
-        assert.equal(data.pending_childkey_cooldown_blocks, 0);
+        // Declared default 0x201c000000000000 = 7200. The fix.
+        assert.equal(
+          data.pending_childkey_cooldown_blocks,
+          GOLDEN_COOLDOWN_BLOCKS,
+        );
+        // Declared default 0x00285c8fc2f5289c… = 0.61 as U64F64. Serving null
+        // here would also have poisoned rpcOk, pinning the whole response to
+        // the 10s negative TTL on every single testnet request.
+        assert.equal(data.emission_bar_quantile, 0.61);
+      },
+    );
+  });
+
+  test("an all-unset read still positive-caches, rather than hammering the RPC", async () => {
+    // The operational half of the fix above. `rpcOk` requires every field to be
+    // non-null; with the quantile resolving to null on an unset read, a chain
+    // that leaves it unset would never positive-cache, so every request would
+    // go to the RPC with a 10s negative entry behind it.
+    const puts: Row[] = [];
+    const env = mockEnv({
+      METAGRAPH_CONTROL: {
+        get: async () => null,
+        put: async (_key: string, _value: string, options: Row) => {
+          puts.push(options);
+        },
+      },
+    });
+    await withFetchStub(
+      async () => ({
+        ok: true,
+        json: async () => ({ jsonrpc: "2.0", id: 1, result: null }),
+      }),
+      async () => {
+        await loadNetworkParameters(env);
+        assert.equal(puts.length, 1);
+        assert.equal(puts[0].expirationTtl, NETWORK_PARAMETERS_KV_TTL);
       },
     );
   });
@@ -504,16 +550,36 @@ describe("GET /api/v1/network/parameters via the Worker", () => {
     );
   });
 
-  test("testnet has no variant (mainnet-only live RPC route)", async () => {
+  test("testnet serves its own parameters from its own RPC", async () => {
+    // This used to assert a 404, on the grounds that the route was a
+    // "mainnet-only live RPC route". That was a property of our code (a
+    // hardcoded finney URL), not of the chain: testnet exposes the same
+    // storage items at the same twox128 addresses under the same runtime.
+    // #8700 pointed the read at the requested network, so it answers -- and
+    // the endpoint it answers from is the assertion that matters.
+    const seen: string[] = [];
     await withFetchStub(
-      async () => ({ ok: false }),
+      async (url: unknown) => {
+        seen.push(String(url));
+        return {
+          ok: true,
+          json: async () => ({ jsonrpc: "2.0", id: 1, result: null }),
+        };
+      },
       async () => {
         const res = await handleRequest(
           req("/api/v1/testnet/network/parameters"),
-          {} as unknown as Env,
+          mockEnv() as unknown as Env,
           {},
         );
-        assert.equal(res.status, 404);
+        assert.equal(res.status, 200);
+        assert.ok(seen.length > 0, "no RPC call was made");
+        for (const url of seen) {
+          assert.ok(
+            url.startsWith("https://test.finney.opentensor.ai"),
+            `testnet request read from ${url}`,
+          );
+        }
       },
     );
   });

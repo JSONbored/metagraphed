@@ -341,8 +341,12 @@ describe("multi-network routing prefix (Phase 1)", () => {
       "/api/v1/testnet/sudo",
       // Same for the AdminUtils config-change feed (#4310/2.3).
       "/api/v1/testnet/governance/config-changes",
-      // The live Sudo::Key RPC read is fixed to finney, no testnet variant (#4310/2.4).
-      "/api/v1/testnet/sudo/key",
+      // NOTE: /api/v1/testnet/sudo/key used to be asserted here, on the
+      // grounds that "the live Sudo::Key RPC read is fixed to finney". That
+      // was true of our code, not of the chain — testnet has its own sudo key
+      // at the same storage address. #8700 pointed the read at the requested
+      // network, so it now serves; its testnet coverage lives in
+      // tests/live-chain-routes.test.ts alongside the other twelve.
       // The spec-version transition timeline reads the same mainnet-only
       // blocks D1 tier as /api/v1/blocks (#4316/3.1).
       "/api/v1/testnet/runtime",

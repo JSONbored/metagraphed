@@ -54,13 +54,17 @@ import {
   storageMapPrefix,
   twox64ConcatU32StorageKey,
 } from "./twox-storage-key.ts";
+import {
+  type ChainNetworkId,
+  networkKvKey,
+  rpcUrlForNetwork,
+} from "./chain-network.ts";
 
 type Row = Record<string, unknown>;
 
 export const CROWDLOANS_KV_TTL = 120; // seconds -- same freshness profile as subnet-lease.ts
 export const CROWDLOANS_NEGATIVE_KV_TTL = 10; // seconds
 export const CROWDLOANS_RPC_TIMEOUT_MS = 5000;
-const FINNEY_RPC_URL = "https://entrypoint-finney.opentensor.ai:443";
 
 // A crowdloan id is a u32 on-chain. Anything outside that range can never
 // name a record, so it is a client error rather than an empty result.
@@ -92,8 +96,9 @@ interface StorageFetchResult {
 async function fetchStorageRaw(
   storageKey: string,
   timeoutMs: number,
+  network?: ChainNetworkId,
 ): Promise<StorageFetchResult> {
-  return rpcCall("state_getStorage", [storageKey], timeoutMs);
+  return rpcCall("state_getStorage", [storageKey], timeoutMs, network);
 }
 
 // Batched multi-key read: ONE round trip for every crowdloan record, instead
@@ -103,11 +108,13 @@ async function fetchStorageRaw(
 async function fetchStorageBatch(
   storageKeys: string[],
   timeoutMs: number,
+  network?: ChainNetworkId,
 ): Promise<Map<string, string> | null> {
   const result = await rpcCall(
     "state_queryStorageAt",
     [storageKeys],
     timeoutMs,
+    network,
   );
   if (!result.ok || !Array.isArray(result.raw)) return null;
   const first = (result.raw as Row[])[0];
@@ -128,9 +135,10 @@ async function rpcCall(
   method: string,
   params: unknown[],
   timeoutMs: number,
+  network?: ChainNetworkId,
 ): Promise<StorageFetchResult> {
   try {
-    const rpcResp = await fetch(FINNEY_RPC_URL, {
+    const rpcResp = await fetch(rpcUrlForNetwork(network), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(timeoutMs),
@@ -311,8 +319,12 @@ function decodeNextCrowdloanId(result: StorageFetchResult): number | null {
   return readU32LE(bytes, 0);
 }
 
-async function loadCrowdloansSnapshot(env: Env): Promise<Row> {
-  const cacheKey = "crowdloans:index";
+async function loadCrowdloansSnapshot(
+  env: Env,
+  network?: ChainNetworkId,
+): Promise<Row> {
+  // Each chain runs its own crowdloans, numbered from its own NextCrowdloanId.
+  const cacheKey = networkKvKey("crowdloans:index", network);
   const kv = env?.METAGRAPH_CONTROL;
 
   if (kv?.get) {
@@ -328,7 +340,7 @@ async function loadCrowdloansSnapshot(env: Env): Promise<Row> {
   const timeout = CROWDLOANS_RPC_TIMEOUT_MS;
 
   const nextId = decodeNextCrowdloanId(
-    await fetchStorageRaw(nextCrowdloanIdKey(), timeout),
+    await fetchStorageRaw(nextCrowdloanIdKey(), timeout, network),
   );
 
   const crowdloans: Row[] = [];
@@ -340,7 +352,7 @@ async function loadCrowdloansSnapshot(env: Env): Promise<Row> {
   } else if (nextId !== null) {
     const ids = [...Array(Math.min(nextId, MAX_CROWDLOANS_FANOUT)).keys()];
     const keys = ids.map(crowdloanKey);
-    const byKey = await fetchStorageBatch(keys, timeout);
+    const byKey = await fetchStorageBatch(keys, timeout, network);
     if (byKey) {
       for (const id of ids) {
         const decoded = decodeCrowdloan(byKey.get(keys[id].toLowerCase()));
@@ -373,14 +385,18 @@ async function loadCrowdloansSnapshot(env: Env): Promise<Row> {
   return payload;
 }
 
-async function loadCrowdloanSnapshot(env: Env, id: number): Promise<Row> {
+async function loadCrowdloanSnapshot(
+  env: Env,
+  id: number,
+  network?: ChainNetworkId,
+): Promise<Row> {
   if (!isCrowdloanId(id)) {
     throw new RangeError(
       "crowdloan_id must be an integer in the u32 range 0..4294967295",
     );
   }
 
-  const cacheKey = `crowdloan:${id}`;
+  const cacheKey = networkKvKey(`crowdloan:${id}`, network);
   const kv = env?.METAGRAPH_CONTROL;
 
   if (kv?.get) {
@@ -396,6 +412,7 @@ async function loadCrowdloanSnapshot(env: Env, id: number): Promise<Row> {
   const result = await fetchStorageRaw(
     crowdloanKey(id),
     CROWDLOANS_RPC_TIMEOUT_MS,
+    network,
   );
 
   // `exists: null` (not false) on RPC failure — distinct from a confirmed
@@ -448,16 +465,23 @@ async function loadCrowdloanSnapshot(env: Env, id: number): Promise<Row> {
  * every consumer inherits it from one point (#9108) — same split as
  * subnet-lease.ts.
  */
-export async function loadCrowdloans(env: Env): Promise<Row> {
+export async function loadCrowdloans(
+  env: Env,
+  network?: ChainNetworkId,
+): Promise<Row> {
   return {
-    ...(await loadCrowdloansSnapshot(env)),
+    ...(await loadCrowdloansSnapshot(env, network)),
     field_sources: CROWDLOANS_FIELD_SOURCES,
   };
 }
 
-export async function loadCrowdloan(env: Env, id: number): Promise<Row> {
+export async function loadCrowdloan(
+  env: Env,
+  id: number,
+  network?: ChainNetworkId,
+): Promise<Row> {
   return {
-    ...(await loadCrowdloanSnapshot(env, id)),
+    ...(await loadCrowdloanSnapshot(env, id, network)),
     field_sources: CROWDLOAN_FIELD_SOURCES,
   };
 }

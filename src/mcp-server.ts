@@ -1424,6 +1424,7 @@ import { loadNetworkParameters } from "./network-parameters.ts";
 import { loadUpgradeRadar } from "./upgrade-radar.ts";
 import { buildNetworksPayload } from "./network-capabilities.ts";
 import { NETWORK_PUBLISHED_ARTIFACT_PATHS } from "./network-artifacts.ts";
+import { LIVE_CHAIN_ROUTE_PATHS } from "./live-chain-routes.ts";
 // #8699: the router's own network map and mainnet-only predicate. Imported
 // rather than restated so the MCP tool and the REST route cannot disagree
 // about what testnet serves -- a wrong capability matrix is worse than none.
@@ -9408,6 +9409,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         networks: MCP_NETWORKS,
         isMainnetOnly: isMainnetOnlyApiPath,
         publishedArtifacts: NETWORK_PUBLISHED_ARTIFACT_PATHS,
+        liveChainRoutes: LIVE_CHAIN_ROUTE_PATHS,
       });
     },
   },

@@ -18,9 +18,14 @@ import { fileURLToPath } from "node:url";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { buildEconomicsArtifact } from "./lib/economics-artifacts.ts";
 // #8699: the published-artifact list lives in src/ because the Worker imports
-// it at runtime and this module has a top-level await.
-import { NETWORK_PUBLISHED_ARTIFACT_PATHS } from "../src/network-artifacts.ts";
-void NETWORK_PUBLISHED_ARTIFACT_PATHS;
+// it at runtime and this module has a top-level await. #8700 made the coupling
+// real: this module used to `void` the import to satisfy the linter, so the
+// header's claim that "the emitter and the capability matrix cannot disagree"
+// was documentation only. buildNetworkRegistry now reports the artifact
+// templates it wrote, and tests/network-capabilities.test.ts asserts that set
+// against this list -- so adding an artifact family here without publishing it
+// in the matrix (or the reverse) fails CI instead of silently skewing what we
+// tell agents is available.
 import {
   artifactOutputPath,
   backfilledIdentityUrl,
@@ -333,6 +338,15 @@ export async function buildNetworkRegistry({
   return {
     network: snapshot.network,
     prefix,
+    // The artifact TEMPLATES this build wrote, in the same {netuid}-placeholder
+    // form NETWORK_PUBLISHED_ARTIFACT_PATHS uses, so the two are comparable
+    // without a transform that could itself drift.
+    written_artifact_paths: [
+      "/metagraph/subnets.json",
+      "/metagraph/subnets/{netuid}.json",
+      "/metagraph/coverage.json",
+      "/metagraph/economics.json",
+    ],
     subnet_count: subnets.length,
     economics_row_count: Array.isArray(economics.subnets)
       ? economics.subnets.length

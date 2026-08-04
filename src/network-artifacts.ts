@@ -28,3 +28,15 @@ export const NETWORK_PUBLISHED_ARTIFACT_PATHS: readonly string[] = [
   // reports it as served — it is the one route guaranteed on every network.
   "/metagraph/networks.json",
 ];
+
+/**
+ * The entries above that are NOT written by buildNetworkRegistry.
+ *
+ * Exists so the emitter↔matrix equality test can subtract them precisely
+ * rather than hard-coding "all but the last one". Anything computed live and
+ * answered before the network gate belongs here; anything else must be a real
+ * file the build writes, or the matrix is promising a 404.
+ */
+export const NETWORK_COMPUTED_ARTIFACT_PATHS: readonly string[] = [
+  "/metagraph/networks.json",
+];
