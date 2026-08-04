@@ -422,3 +422,69 @@ test("#8997: telemetry never fails the subscription", async () => {
     globalThis.fetch = original;
   }
 });
+
+// #9446: this class imported ONLY recordUsageEvent, and that event is emitted
+// after a handler returns -- so a handler that threw produced neither a usage
+// event nor an $exception. A subscription hub that has started rejecting every
+// subscribe looked, from telemetry, exactly like one nobody is subscribing to.
+test("fetch: a thrown handler is captured as an $exception and still propagates", async () => {
+  const posted: Row[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    posted.push({ url, body: JSON.parse(String(init?.body ?? "{}")) });
+    return new Response("{}", { status: 200 });
+  }) as unknown as typeof fetch;
+  try {
+    const hub = new SubnetStatusHub(stubState(), {
+      POSTHOG_PROJECT_TOKEN: "phc_test_token",
+    } as unknown as Env);
+    // A body that is not JSON makes handleSubscribe's request.json() throw --
+    // an unhandled fault, not a validated rejection.
+    await assert.rejects(
+      hub.fetch(
+        new Request("https://subnet-status-hub.internal/mcp-subscribe", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: "not json",
+        }),
+      ),
+    );
+
+    const exceptions = posted.filter(
+      (p) => (p.body as Row).event === "$exception",
+    );
+    assert.equal(exceptions.length, 1);
+    const properties = (exceptions[0].body as Row).properties as Row;
+    assert.equal(properties.route, "subnet-status-hub:fetch");
+    assert.equal(properties.error_code, "internal_error");
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("fetch: a healthy request captures nothing", async () => {
+  const posted: Row[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    posted.push({ url, body: JSON.parse(String(init?.body ?? "{}")) });
+    return new Response("{}", { status: 200 });
+  }) as unknown as typeof fetch;
+  try {
+    const hub = new SubnetStatusHub(stubState(), {
+      POSTHOG_PROJECT_TOKEN: "phc_test_token",
+    } as unknown as Env);
+    const res = await hub.fetch(
+      jsonRequest("https://subnet-status-hub.internal/mcp-subscribe", {
+        sessionId: "session-ok",
+        netuid: 7,
+      }),
+    );
+    assert.equal(res.status, 200);
+    assert.deepEqual(
+      posted.filter((p) => (p.body as Row).event === "$exception"),
+      [],
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
+});

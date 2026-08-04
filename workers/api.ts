@@ -1244,6 +1244,36 @@ function maskUsageRouteParams(pathname: string) {
   return maskRouteParams(pathname);
 }
 
+// #9446: the caller's tier, for the usage_event `auth_tier` dimension.
+//
+// `authTier` has been declared on UsageEvent since #8993 and populated ONLY on
+// the MCP path, so on REST -- the surface with 99% of the traffic -- the
+// question the tier system exists to answer ("what share of usage is
+// authenticated, and on which tier") had no data behind it at all.
+//
+// A WeakMap keyed on the Request, rather than a new parameter threaded from
+// four gate sites up through handleRequest to this wrapper. The gate already
+// resolves the tier (applyTieredRateLimit returns it and every caller
+// discarded it); this carries that answer back out without reshaping the
+// signature of every function in between, which is the same reasoning the MCP
+// side used when it put authTier on its ctx rather than passing it down.
+//
+// WeakMap and not a Map: the key is the request object itself, so an entry
+// becomes collectable the moment the request is done. There is nothing to
+// evict, nothing to size, and no way for one request's tier to be read by
+// another -- the failure mode a keyed cache would have.
+const requestAuthTier = new WeakMap<Request, string>();
+
+/**
+ * Record the tier a request authenticated on, for its usage event.
+ *
+ * Called from the tiered-rate-limit gates, which are the only places that
+ * verify a key. Exported for tests.
+ */
+export function markRequestAuthTier(request: Request, tier: unknown): void {
+  if (typeof tier === "string" && tier) requestAuthTier.set(request, tier);
+}
+
 /**
  * Who made this request, for the usage_event `client` dimension.
  *
@@ -1378,6 +1408,12 @@ export async function withUsageTelemetry(
     throw error;
   } finally {
     const endedAt = Date.now();
+    // Read AFTER the handler, since the gate that resolves it runs inside.
+    // Absent for a route with no tiered gate, which is the honest answer --
+    // those routes did not check a key, so "anonymous" would be a claim the
+    // request never actually made. Same omitted-not-defaulted contract every
+    // other optional dimension here follows.
+    const authTier = requestAuthTier.get(request);
     scheduleUsageEvent(env, ctx, record, {
       route,
       ok,
@@ -1386,6 +1422,7 @@ export async function withUsageTelemetry(
       ...(statusClass ? { statusClass } : {}),
       ...(client ? { client } : {}),
       ...(errorCode ? { errorCode } : {}),
+      ...(authTier ? { authTier } : {}),
     });
     // metagraphed#7768: PostHog distributed tracing (alpha), one root span
     // per request -- replaces @sentry/cloudflare's automatic withSentry() HTTP
@@ -2146,6 +2183,7 @@ export async function handleChainEventsFamily(
     env,
     DATA_TIERED_RATE_LIMIT,
   );
+  markRequestAuthTier(request, rateLimit.tier);
   // #8609: recorded for BOTH outcomes, BEFORE the rejection return, with the
   // flag derived from the gate's own verdict -- so a 429 lands in
   // rejected_count instead of request_count. Recording after the return would
@@ -6983,6 +7021,7 @@ async function webhookSubscriptionRateLimited(
     env,
     WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT,
   );
+  markRequestAuthTier(request, rateLimit.tier);
   // #8609: recorded before the rejection return so a throttled request is
   // counted as a rejection rather than not counted at all.
   if (rateLimit.accountId) {
@@ -7408,6 +7447,7 @@ async function handleSemanticSearchRequest(
     env,
     AI_TIERED_RATE_LIMIT,
   );
+  markRequestAuthTier(request, rateLimit.tier);
   if (!rateLimit.allowed) {
     return aiRateLimitedResponse(rateLimit);
   }
@@ -7460,6 +7500,7 @@ async function handleAskRequest(request: Request, env: Env, ctx?: Ctx) {
     env,
     AI_TIERED_RATE_LIMIT,
   );
+  markRequestAuthTier(request, rateLimit.tier);
   if (!rateLimit.allowed) {
     return aiRateLimitedResponse(rateLimit);
   }

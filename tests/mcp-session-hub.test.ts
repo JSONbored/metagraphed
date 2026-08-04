@@ -996,3 +996,68 @@ test("#8997: telemetry never fails the session operation", async () => {
     globalThis.fetch = original;
   }
 });
+
+// #9446: a DO alarm that throws is retried by the platform and recorded
+// NOWHERE -- there is no request to fail and no caller to notice, and this
+// file's one capture site covers `deliver` only. An alarm stuck in a retry
+// loop was therefore indistinguishable from a hub with no sessions to expire,
+// which is the state it is in almost all the time.
+test("alarm: a thrown expiry is captured as an $exception and still propagates", async () => {
+  const posted: Row[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    posted.push({ url, body: JSON.parse(String(init?.body ?? "{}")) });
+    return new Response("{}", { status: 200 });
+  }) as unknown as typeof fetch;
+  try {
+    // Storage that throws on read: hydrate() is the first thing alarm() does.
+    const brokenState = {
+      storage: {
+        get: async () => {
+          throw new Error("storage unreachable");
+        },
+        put: async () => {},
+        deleteAll: async () => {},
+        setAlarm: async () => {},
+      },
+    } as unknown as DurableObjectState;
+    const hub = new McpSessionHub(
+      brokenState,
+      mockEnv({ POSTHOG_PROJECT_TOKEN: "phc_test_token" }),
+    );
+
+    await assert.rejects(hub.alarm(), /storage unreachable/);
+
+    const exceptions = posted.filter(
+      (p) => (p.body as Row).event === "$exception",
+    );
+    assert.equal(exceptions.length, 1);
+    const properties = (exceptions[0].body as Row).properties as Row;
+    assert.equal(properties.route, "mcp-session-hub:alarm");
+    assert.equal(properties.error_code, "internal_error");
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("alarm: a healthy expiry captures nothing", async () => {
+  const posted: Row[] = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    posted.push({ url, body: JSON.parse(String(init?.body ?? "{}")) });
+    return new Response("{}", { status: 200 });
+  }) as unknown as typeof fetch;
+  try {
+    const hub = new McpSessionHub(
+      stubState(),
+      mockEnv({ POSTHOG_PROJECT_TOKEN: "phc_test_token" }),
+    );
+    await hub.alarm();
+    assert.deepEqual(
+      posted.filter((p) => (p.body as Row).event === "$exception"),
+      [],
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
+});

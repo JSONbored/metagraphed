@@ -33,6 +33,7 @@ import type {
   AiGenerationEvent,
   ExceptionEvent,
   McpToolCallEvent,
+  RecordUsageEventDeps,
   UsageEvent,
 } from "../src/usage-telemetry.ts";
 
@@ -393,6 +394,11 @@ describe("recordMcpToolCallEvent", () => {
       $mcp_duration_ms: 12,
       $mcp_tool_name: "get_subnet",
       $session_id: "sess-1",
+      // #9446: the deployment dimension every capture now carries.
+      // No CF_VERSION_METADATA binding in this env, so it reads as a
+      // local/undeployed isolate -- the production shape is asserted in
+      // the resolveDeployment block.
+      environment: "development",
     });
   });
 
@@ -691,6 +697,11 @@ describe("recordMcpInitializeEvent", () => {
       $mcp_client_name_source: "client_info",
       $mcp_client_version: "1.2.3",
       $session_id: "sess-1",
+      // #9446: the deployment dimension every capture now carries.
+      // No CF_VERSION_METADATA binding in this env, so it reads as a
+      // local/undeployed isolate -- the production shape is asserted in
+      // the resolveDeployment block.
+      environment: "development",
     });
   });
 
@@ -701,7 +712,13 @@ describe("recordMcpInitializeEvent", () => {
       {},
       { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
     );
-    assert.deepEqual(calls[0].body.properties, {});
+    // #9446: `environment` is the deployment dimension every capture now
+    // carries; no CF_VERSION_METADATA binding here, so it reads as a
+    // local/undeployed isolate. Everything the caller omitted is still
+    // absent, which is what this test is actually about.
+    assert.deepEqual(calls[0].body.properties, {
+      environment: "development",
+    });
   });
 
   test("defaults to the platform fetch when none is injected", async () => {
@@ -1711,6 +1728,11 @@ describe("recordMcpToolsListEvent", () => {
       $mcp_server_name: "metagraphed",
       $mcp_server_version: "1.78.12",
       $session_id: "sess-9",
+      // #9446: the deployment dimension every capture now carries.
+      // No CF_VERSION_METADATA binding in this env, so it reads as a
+      // local/undeployed isolate -- the production shape is asserted in
+      // the resolveDeployment block.
+      environment: "development",
     });
   });
 
@@ -2017,6 +2039,11 @@ describe("recordAiDegradedEvent", () => {
     assert.deepEqual(calls[0].body.properties, {
       reason: "rate_limited",
       surface: "ask",
+      // #9446: the deployment dimension every capture now carries.
+      // No CF_VERSION_METADATA binding in this env, so it reads as a
+      // local/undeployed isolate -- the production shape is asserted in
+      // the resolveDeployment block.
+      environment: "development",
     });
   });
 
@@ -2027,7 +2054,14 @@ describe("recordAiDegradedEvent", () => {
       { reason: "ai_disabled" },
       deps,
     );
-    assert.deepEqual(calls[0].body.properties, { reason: "ai_disabled" });
+    // #9446: `environment` is the deployment dimension every capture now
+    // carries; no CF_VERSION_METADATA binding here, so it reads as a
+    // local/undeployed isolate. `surface` is still absent, which is what
+    // this test is actually about.
+    assert.deepEqual(calls[0].body.properties, {
+      reason: "ai_disabled",
+      environment: "development",
+    });
   });
 
   test("rejects an event with no reason", async () => {
@@ -2621,5 +2655,114 @@ describe("MCP protocol events are exempt from usage_event sampling", () => {
     // Unsampled captures omit sample_rate entirely, so a weighted aggregate
     // (sum(1/coalesce(sample_rate,1))) counts them exactly once.
     assert.equal("sample_rate" in (calls[0].body as Row).properties, false);
+  });
+});
+
+// #9446: EVERY capture this module posts carries the deployment dimensions.
+//
+// #9434 added them by editing two recorders, which is how the other six
+// shipped without: a live query showed usage_event and $exception tagged
+// `production` with a real release id while every $mcp_* event carried null.
+// The dimension is only useful if it is on all of them -- a breakdown by
+// environment silently drops whichever family forgot.
+//
+// Written as one table over the whole family rather than six separate
+// assertions so a NEWLY ADDED recorder that forgets is a failing test here,
+// not a gap discovered months later in production data.
+describe("every recorder stamps the deployment dimensions", () => {
+  const DEPLOYED = {
+    [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token",
+    CF_VERSION_METADATA: { id: "dep-9", tag: "v9" },
+  };
+
+  // Typed against the recorders' real signatures rather than Row, so the
+  // table cannot drift from what they actually accept.
+  const recorders: Array<
+    [string, (env: Env, deps: RecordUsageEventDeps) => Promise<unknown>]
+  > = [
+    [
+      "usage_event",
+      (env, deps) =>
+        recordUsageEvent(env, { route: "r", ok: true, durationMs: 1 }, deps),
+    ],
+    [
+      "$exception",
+      (env, deps) =>
+        recordExceptionEvent(env, { error: new Error("x"), route: "r" }, deps),
+    ],
+    [
+      "$mcp_tool_call",
+      (env, deps) =>
+        recordMcpToolCallEvent(
+          env,
+          { toolName: "get_subnet", isError: false, durationMs: 5 },
+          deps,
+        ),
+    ],
+    [
+      "$mcp_initialize",
+      (env, deps) => recordMcpInitializeEvent(env, { clientName: "c" }, deps),
+    ],
+    [
+      "$mcp_tools_list",
+      (env, deps) => recordMcpToolsListEvent(env, { toolCount: 3 }, deps),
+    ],
+    [
+      "ai_degraded",
+      (env, deps) =>
+        recordAiDegradedEvent(env, { reason: "ai_disabled" }, deps),
+    ],
+    [
+      "$ai_embedding",
+      (env, deps) =>
+        recordAiEmbeddingEvent(
+          env,
+          { provider: "p", model: "m", latencyMs: 1, isError: false },
+          deps,
+        ),
+    ],
+    [
+      "$ai_generation",
+      (env, deps) =>
+        recordAiGenerationEvent(
+          env,
+          { provider: "p", model: "m", latencyMs: 1, isError: false },
+          deps,
+        ),
+    ],
+  ];
+
+  for (const [eventName, invoke] of recorders) {
+    test(`${eventName} carries environment and release`, async () => {
+      const calls: Row[] = [];
+      await invoke(mockEnv(DEPLOYED), {
+        fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
+      });
+
+      assert.equal(calls.length, 1, "the recorder posted nothing");
+      assert.equal((calls[0].body as Row).event, eventName);
+      const properties = (calls[0].body as Row).properties as Row;
+      assert.equal(properties.environment, "production");
+      assert.equal(properties.release, "v9");
+    });
+  }
+
+  test("the table covers every exported recorder in this module", async () => {
+    // The assertion that makes the table self-maintaining: a new recordX
+    // export that is not listed above fails HERE, rather than shipping a
+    // family with no environment on it. Reads the module's own exports, so it
+    // cannot drift from what actually exists.
+    const module = (await import("../src/usage-telemetry.ts")) as Record<
+      string,
+      unknown
+    >;
+    const exported = Object.keys(module)
+      .filter((name) => /^record[A-Z]/.test(name))
+      .sort();
+    assert.equal(
+      exported.length,
+      recorders.length,
+      `recorders covered: ${recorders.length}, exported: ${exported.join(", ")}`,
+    );
   });
 });

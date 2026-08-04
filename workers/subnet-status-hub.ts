@@ -1,4 +1,7 @@
-import { recordUsageEvent } from "../src/usage-telemetry.ts";
+import {
+  recordExceptionEvent,
+  recordUsageEvent,
+} from "../src/usage-telemetry.ts";
 
 // SubnetStatusHub -- singleton Durable Object (idFromName("global")) that
 // owns the inverted netuid → MCP-session index for
@@ -173,6 +176,32 @@ export class SubnetStatusHub implements DurableObject {
   }
 
   async fetch(request: Request): Promise<Response> {
+    // #9446: this class had no exception capture at all -- it imported only
+    // recordUsageEvent, and that event is emitted AFTER a handler returns, so
+    // a handler that threw produced neither a usage event nor an $exception.
+    // A subscription hub that has started rejecting every subscribe looks,
+    // from telemetry, exactly like one nobody is subscribing to.
+    //
+    // Rethrown unchanged: the DO's caller decides what a failure means, and
+    // this only makes the failure visible.
+    try {
+      return await this.dispatch(request);
+    } catch (error) {
+      // Awaited bare: recordExceptionEvent is contractually
+      // no-throw (it swallows transport failures and returns
+      // false), so a `.catch` here would be an unreachable
+      // handler -- a branch no test can cover, which is worse
+      // than no branch. Same call shape as src/graphql.ts.
+      await recordExceptionEvent(this.env, {
+        error,
+        route: "subnet-status-hub:fetch",
+        errorCode: "internal_error",
+      });
+      throw error;
+    }
+  }
+
+  private async dispatch(request: Request): Promise<Response> {
     await this.hydrate();
     const url = new URL(request.url);
     const startedAt = Date.now();
