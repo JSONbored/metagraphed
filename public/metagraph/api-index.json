@@ -2173,7 +2173,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 99,
+    "mainnet_only_route_count": 96,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -8873,7 +8873,7 @@
     {
       "artifact_path": "/metagraph/subnets/{netuid}/conviction.json",
       "cache": "short",
-      "description": "Fetch the live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) — who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. Companion to /ownership-history (that's the event log of past flips; this is the current standings). Rolls the periodically-captured subnet_locks snapshot forward using the CURRENT live-queried unlock_rate/maturity_rate — never a hardcoded figure, both are independently governance-adjustable and confirmed to differ from each other. Served live from the Postgres-backed all-events tier (ADR 0013), no static file. A subnet with no active challengers/owner lock returns an empty leaderboard, not an error — that's the common case.",
+      "description": "Fetch the live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) — who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. Companion to /ownership-history (that's the event log of past flips; this is the current standings). Rolls the current lock state forward using the CURRENT live-queried unlock_rate/maturity_rate — never a hardcoded figure, both are independently governance-adjustable and confirmed to differ from each other. Read from chain storage at request time, no static file. A subnet with no active challengers/owner lock returns an empty leaderboard, not an error — that's the common case.",
       "id": "subnet-conviction",
       "mainnet_only": false,
       "method": "GET",
@@ -8949,7 +8949,7 @@
     {
       "artifact_path": "/metagraph/subnets/{netuid}/lease/history.json",
       "cache": "short",
-      "description": "Fetch every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing. Served live from the Postgres-backed all-events tier (ADR 0013), no static file. A subnet that has never been leased returns an empty lease_events array, not an error — that's the common case.",
+      "description": "Fetch every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing. Served live from the chain_events lakehouse table, no static file. A subnet that has never been leased returns an empty lease_events array, not an error — that's the common case.",
       "id": "subnet-lease-history",
       "mainnet_only": false,
       "method": "GET",
@@ -9180,12 +9180,15 @@
     {
       "artifact_path": "/metagraph/chain-events.json",
       "cache": "short",
-      "description": "Fetch the recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013) — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars; ?method requires ?pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless block_number.event_index keyset cursor and ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). Pass ?format=csv to download the page as CSV. Served live (no static file); empty (count:0, events:[]) before the all-events backfill runs.",
+      "description": "Fetch the recent all-events feed (newest first) from the chain_events lakehouse table — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless block_number.event_index keyset cursor and ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). Pass ?format=csv to download the page as CSV. Each page reads one bounded block window below its ceiling, so a short page still carries a continuation rather than ending the feed. Served live, no static file.",
       "id": "chain-events-feed",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/chain-events",
       "public": true,
@@ -9260,12 +9263,15 @@
     {
       "artifact_path": "/metagraph/chain-events/stats.json",
       "cache": "short",
-      "description": "Fetch the chain-activity aggregate — the pallet.method event distribution over the most recent N blocks — from the Postgres-backed all-events tier (ADR 0013). ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Backs the get_chain_activity MCP tool. Served live (no static file); empty (groups:0, activity:[]) before the all-events backfill runs.",
+      "description": "Fetch the chain-activity aggregate — the pallet.method event distribution over the most recent N blocks the decode lane has published — from the chain_events lakehouse table. ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Backs the get_chain_activity MCP tool. Served live, no static file.",
       "id": "chain-events-stats",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/chain-events/stats",
       "public": true,
@@ -9287,10 +9293,13 @@
       "cache": "short",
       "description": "Fetch EVERY raw pallet-level event in one block (by numeric block_number; event_index ascending), served live from the live-follow hot tier above the decode seam and the chain_events lakehouse at or below it (no static file). This is the complete stream, so its count matches the block header's own event_count; /api/v1/blocks/{ref}/events is deliberately a SUBSET of it -- the curated account-attributed projection, which is smaller by design and not a loss. A block neither tier can read declines with a typed 503 (block_detail_unavailable) rather than an empty list, because count:0 is indistinguishable from a block that emitted nothing.",
       "id": "block-chain-events",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/blocks/{ref}/chain-events",
       "public": true,

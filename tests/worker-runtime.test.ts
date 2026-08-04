@@ -5,6 +5,11 @@ import { CONTRACT_VERSION } from "../src/contracts.ts";
 import worker, { handleRequest, recordApiKeyUsage } from "../workers/api.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import { jsonBody, type Row } from "./row-type.ts";
+import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import {
+  decodeWatermarkKey,
+  resetDecodeWatermarkCache,
+} from "../src/decode-watermark.ts";
 
 const env = createLocalArtifactEnv() as Row;
 
@@ -281,40 +286,76 @@ describe("Worker runtime", () => {
     assert.equal(fetchCalls, 1);
   });
 
-  test("rewraps the DATA_API chain-events body in the canonical envelope", async () => {
-    const response = await handleRequest(
-      new Request("https://metagraph.sh/api/v1/chain-events/stats?blocks=500"),
-      {
+  /**
+   * The chain-events family's tier, as it actually is.
+   *
+   * These used to stub DATA_API, which is what let them pass while the route was
+   * broken in production: the binding's Postgres store was destroyed (#9186 /
+   * #9193) so the real one could only 503, and a stub that answers 200 asserts
+   * the code's assumption rather than the world. #8700 removed the forward, so
+   * the tier under test is R2 SQL plus the published decode watermark that gives
+   * page one its ceiling.
+   *
+   * Returns the queries issued, so a test can assert the tier was READ and not
+   * merely that some envelope came back.
+   */
+  function lakehouseEnv(rows: Row[], extra: Row = {}) {
+    const queries: string[] = [];
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      queries.push(JSON.parse(String(init.body)).query);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    resetDecodeWatermarkCache();
+    return {
+      queries,
+      env: {
         ...env,
-        DATA_API: {
-          fetch() {
-            // The data Worker returns a BARE body (no envelope).
-            return new Response(
-              JSON.stringify({
-                window_blocks: 500,
-                groups: 1,
-                activity: [{ pallet: "System", method: "Event", count: 3 }],
-              }),
-              { status: 200, headers: { "content-type": "application/json" } },
-            );
+        [R2_SQL_TOKEN_ENV]: "cfut_test",
+        METAGRAPH_ARCHIVE: {
+          async get(key: string) {
+            if (key !== decodeWatermarkKey("mainnet")) return null;
+            return {
+              async text() {
+                return JSON.stringify({ decoded_through: 8_771_082 });
+              },
+            };
           },
         },
+        ...extra,
       } as unknown as Env,
+    };
+  }
+
+  test("rewraps the tier's bare rows in the canonical envelope", async () => {
+    const { env: testEnv, queries } = lakehouseEnv([
+      { pallet: "System", method: "Event", count: 3 },
+    ]);
+    const response = await handleRequest(
+      new Request("https://metagraph.sh/api/v1/chain-events/stats?blocks=500"),
+      testEnv,
       {},
     );
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("access-control-allow-origin"), "*");
     assert.ok(response.headers.get("etag"));
+    assert.equal(queries.length, 1, "the lakehouse was never queried");
     const body = await response.json();
     assert.equal(body.ok, true);
     assert.equal(body.schema_version, 1);
     assert.equal(body.data.window_blocks, 500);
     assert.equal(body.data.activity[0].pallet, "System");
-    assert.equal(body.meta.source, "data-worker-postgres");
+    assert.equal(body.meta.source, "lakehouse-cold-tier");
   });
 
-  test("caches a chain-events GET at the edge and skips a second DATA_API fetch (#6767)", async () => {
-    let dataCalls = 0;
+  test("caches a chain-events GET at the edge and skips a second tier read (#6767)", async () => {
+    // THE CACHE WAS DEAD IN PRODUCTION until #8700. It was written only
+    // `if (upstreamOk)` on a DATA_API forward that always 503'd, so every
+    // request paid a full 18.6 MB R2 SQL scan. This asserts the tier is read
+    // ONCE across two identical requests, against the real tier.
     const store = new Map();
     globalWithCaches.caches = {
       default: {
@@ -328,49 +369,40 @@ describe("Worker runtime", () => {
       },
     };
     try {
-      const testEnv = {
-        ...env,
-        DATA_API: {
-          fetch() {
-            dataCalls += 1;
-            return new Response(
-              JSON.stringify({ window_blocks: 500, activity: [] }),
-              { status: 200, headers: { "content-type": "application/json" } },
-            );
-          },
-        },
-      };
+      const { env: testEnv, queries } = lakehouseEnv([
+        { pallet: "System", method: "Event", count: 3 },
+      ]);
       const waited: Promise<unknown>[] = [];
       const ctx = { waitUntil: (p: Promise<unknown>) => waited.push(p) };
       const url = "https://metagraph.sh/api/v1/chain-events/stats?blocks=500";
-      const first = await handleRequest(
-        new Request(url),
-        testEnv as unknown as Env,
-        ctx,
-      );
+      const first = await handleRequest(new Request(url), testEnv, ctx);
       assert.equal(first.status, 200);
-      assert.equal(dataCalls, 1);
+      assert.equal(queries.length, 1);
       // The cache.put is scheduled via ctx.waitUntil, not awaited inline --
       // drain it before the second request expects a warm cache.
       await Promise.all(waited);
       assert.equal(store.size, 1);
 
-      const second = await handleRequest(
-        new Request(url),
-        testEnv as unknown as Env,
-        ctx,
-      );
+      const second = await handleRequest(new Request(url), testEnv, ctx);
       assert.equal(second.status, 200);
-      assert.equal(dataCalls, 1, "second request must not re-fetch DATA_API");
+      assert.equal(
+        queries.length,
+        1,
+        "second request must not re-read the tier",
+      );
       const body = await second.json();
       assert.equal(body.data.window_blocks, 500);
+      // The tier label survives the cache: it travels WITH the payload, so a
+      // hit cannot report a different store than the miss did.
+      assert.equal(body.meta.source, "lakehouse-cold-tier");
     } finally {
       globalWithCaches.caches = undefined;
     }
   });
 
-  test("never caches a failed DATA_API response, degraded or not (#6767)", async () => {
-    let dataCalls = 0;
+  // The cache key carries the network, so the two chains cannot share an entry.
+  // Their block numbers overlap, so a leak would be well-formed and invisible.
+  test("a testnet request never receives the mainnet cache entry", async () => {
     const store = new Map();
     globalWithCaches.caches = {
       default: {
@@ -384,29 +416,76 @@ describe("Worker runtime", () => {
       },
     };
     try {
-      const testEnv = {
-        ...env,
-        DATA_API: {
-          fetch() {
-            dataCalls += 1;
-            return new Response(JSON.stringify({ error: "boom" }), {
-              status: 502,
-            });
-          },
-        },
-      };
+      const { env: testEnv, queries } = lakehouseEnv([
+        { pallet: "System", method: "Event", count: 3 },
+      ]);
       const waited: Promise<unknown>[] = [];
       const ctx = { waitUntil: (p: Promise<unknown>) => waited.push(p) };
-      const url = "https://metagraph.sh/api/v1/chain-events/stats?blocks=1";
-      const response = await handleRequest(
-        new Request(url),
-        testEnv as unknown as Env,
+      await handleRequest(
+        new Request(
+          "https://metagraph.sh/api/v1/chain-events/stats?blocks=500",
+        ),
+        testEnv,
         ctx,
       );
-      // #9146: a failed tier now degrades to the schema-stable empty rather
-      // than 502-ing. The CACHE invariant is unchanged and is the load-bearing
-      // half of this test -- a degraded empty must never be cached either, or
-      // one transient upstream blip pins zeros in for the whole TTL.
+      await Promise.all(waited);
+      assert.equal(store.size, 1);
+      const testnet = await handleRequest(
+        new Request(
+          "https://metagraph.sh/api/v1/testnet/chain-events/stats?blocks=500",
+        ),
+        testEnv,
+        ctx,
+      );
+      assert.equal(testnet.status, 200);
+      // Testnet publishes no watermark in this env, so its reader declines and
+      // the floor answers -- which is only observable because the mainnet entry
+      // was NOT handed to it.
+      assert.equal(
+        testnet.headers.get("x-metagraph-degraded"),
+        "tier_unavailable",
+      );
+      assert.equal(queries.length, 1, "testnet must not reuse mainnet's read");
+    } finally {
+      globalWithCaches.caches = undefined;
+    }
+  });
+
+  test("never caches a failed tier read, degraded or not (#6767)", async () => {
+    const store = new Map();
+    globalWithCaches.caches = {
+      default: {
+        async match(request: Request) {
+          const cached = store.get(request.url);
+          return cached ? cached.clone() : undefined;
+        },
+        async put(request: Request, response: Response) {
+          store.set(request.url, response.clone());
+        },
+      },
+    };
+    try {
+      let reads = 0;
+      globalThis.fetch = (async () => {
+        reads += 1;
+        throw new Error("r2 sql unreachable");
+      }) as unknown as typeof fetch;
+      resetDecodeWatermarkCache();
+      const testEnv = {
+        ...env,
+        [R2_SQL_TOKEN_ENV]: "cfut_test",
+      } as unknown as Env;
+      const waited: Promise<unknown>[] = [];
+      const ctx = { waitUntil: (p: Promise<unknown>) => waited.push(p) };
+      const response = await handleRequest(
+        new Request("https://metagraph.sh/api/v1/chain-events/stats?blocks=1"),
+        testEnv,
+        ctx,
+      );
+      // #9146: a failed tier degrades to the schema-stable empty rather than
+      // erroring. The CACHE invariant is the load-bearing half here -- a
+      // degraded empty must never be cached, or one blip pins zeros in for the
+      // whole TTL.
       assert.equal(response.status, 200);
       assert.equal(
         response.headers.get("x-metagraph-degraded"),
@@ -418,119 +497,84 @@ describe("Worker runtime", () => {
         0,
         "neither an error NOR a degraded empty may be cached",
       );
-      assert.equal(dataCalls, 1);
+      assert.ok(reads > 0, "the tier must have been attempted");
     } finally {
       globalWithCaches.caches = undefined;
     }
   });
 
-  test("routes /api/v1/subnets/:netuid/ownership-history through the same DATA_API chain-events proxy (#6637)", async () => {
-    let requestedPath = null;
+  test("routes /api/v1/subnets/:netuid/ownership-history through the same tier (#6637)", async () => {
+    const { env: testEnv, queries } = lakehouseEnv([]);
     const response = await handleRequest(
       new Request("https://metagraph.sh/api/v1/subnets/7/ownership-history"),
-      {
-        ...env,
-        DATA_API: {
-          fetch(request: Request) {
-            requestedPath = new URL(request.url).pathname;
-            // The data Worker returns a BARE body (no envelope), same as
-            // every other chain-events-tier route.
-            return new Response(
-              JSON.stringify({
-                schema_version: 1,
-                netuid: 7,
-                count: 0,
-                ownership_changes: [],
-              }),
-              { status: 200, headers: { "content-type": "application/json" } },
-            );
-          },
-        },
-      } as unknown as Env,
+      testEnv,
       {},
     );
-    assert.equal(requestedPath, "/api/v1/subnets/7/ownership-history");
     assert.equal(response.status, 200);
+    assert.ok(queries.length > 0, "the lakehouse was never queried");
+    // Two tables: the raw event stream and the captured ownership projection.
+    for (const q of queries) assert.match(q, /FROM chain\.\w+/);
     const body = await response.json();
     assert.equal(body.ok, true);
     assert.equal(body.data.netuid, 7);
     assert.deepEqual(body.data.ownership_changes, []);
-    assert.equal(body.meta.source, "data-worker-postgres");
+    assert.equal(body.meta.source, "lakehouse-cold-tier");
   });
 
-  test("routes /api/v1/subnets/:netuid/conviction through the same DATA_API chain-events proxy (#6638)", async () => {
-    let requestedPath = null;
+  test("routes /api/v1/subnets/:netuid/conviction through the LIVE chain tier (#6638)", async () => {
+    // The one member of the family that is not a lakehouse read: it queries
+    // chain storage at request time (#9319), and `meta.source` has to say so.
+    const calls: string[] = [];
+    globalThis.fetch = (async (_u: unknown, init: unknown) => {
+      const body = JSON.parse(
+        String((init as { body?: string })?.body ?? "{}"),
+      );
+      calls.push(String(body.method));
+      const result =
+        body.method === "chain_getHeader"
+          ? { number: "0x85d1db" }
+          : body.method === "state_getKeysPaged"
+            ? []
+            : null;
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result }));
+    }) as unknown as typeof fetch;
     const response = await handleRequest(
       new Request("https://metagraph.sh/api/v1/subnets/1/conviction"),
-      {
-        ...env,
-        DATA_API: {
-          fetch(request: Request) {
-            requestedPath = new URL(request.url).pathname;
-            return new Response(
-              JSON.stringify({
-                schema_version: 1,
-                netuid: 1,
-                queried_at_block: 8647076,
-                unlock_rate: 934866,
-                maturity_rate: 311622,
-                king: null,
-                count: 0,
-                leaderboard: [],
-              }),
-              { status: 200, headers: { "content-type": "application/json" } },
-            );
-          },
-        },
-      } as unknown as Env,
+      env as unknown as Env,
       {},
     );
-    assert.equal(requestedPath, "/api/v1/subnets/1/conviction");
     assert.equal(response.status, 200);
+    assert.ok(calls.length > 0, "the chain was never read");
     const body = await response.json();
     assert.equal(body.ok, true);
     assert.equal(body.data.netuid, 1);
     assert.deepEqual(body.data.leaderboard, []);
-    assert.equal(body.meta.source, "data-worker-postgres");
+    assert.equal(body.meta.source, "live-chain-storage");
   });
 
   const CHAIN_EVENTS_CSV_HEADER =
     "block_number,event_index,pallet,method,phase,extrinsic_index,observed_at";
 
-  test("serializes the DATA_API chain-events feed to CSV on ?format=csv", async () => {
+  test("serializes the chain-events feed to CSV on ?format=csv", async () => {
+    const { env: testEnv, queries } = lakehouseEnv([
+      {
+        block_number: 8454388,
+        event_index: 3,
+        pallet: "Balances",
+        method: "Transfer",
+        args: '{"from":"5A","to":"5B"}',
+        phase: "ApplyExtrinsic",
+        extrinsic_index: 2,
+        observed_at: 1751500800000,
+      },
+    ]);
     const response = await handleRequest(
       new Request("https://metagraph.sh/api/v1/chain-events?format=csv"),
-      {
-        ...env,
-        DATA_API: {
-          fetch() {
-            // The data Worker returns a BARE feed body (no envelope).
-            return new Response(
-              JSON.stringify({
-                count: 1,
-                next_before: null,
-                next_cursor: null,
-                events: [
-                  {
-                    block_number: 8454388,
-                    event_index: 3,
-                    pallet: "Balances",
-                    method: "Transfer",
-                    args: { from: "5A", to: "5B" },
-                    phase: "ApplyExtrinsic",
-                    extrinsic_index: 2,
-                    observed_at: 1751500800000,
-                  },
-                ],
-              }),
-              { status: 200, headers: { "content-type": "application/json" } },
-            );
-          },
-        },
-      } as unknown as Env,
+      testEnv,
       {},
     );
     assert.equal(response.status, 200);
+    assert.equal(queries.length, 1, "the lakehouse was never queried");
     assert.match(response.headers.get("content-type"), /text\/csv/);
     assert.match(
       response.headers.get("content-disposition") ?? "",
@@ -543,26 +587,17 @@ describe("Worker runtime", () => {
     assert.equal(cells[0], "8454388"); // block_number
     assert.equal(cells[2], "Balances"); // pallet
     assert.equal(cells[3], "Transfer"); // method
-    // The nested `args` object is intentionally not a CSV column.
+    // The nested `args` value is intentionally not a CSV column.
     assert.equal(cells.length, CHAIN_EVENTS_CSV_HEADER.split(",").length);
   });
 
   test("emits a header-only chain-events CSV when the feed is empty", async () => {
+    const { env: testEnv } = lakehouseEnv([]);
     const response = await handleRequest(
       new Request(
         "https://metagraph.sh/api/v1/chain-events?pallet=Balances&format=csv",
       ),
-      {
-        ...env,
-        DATA_API: {
-          fetch() {
-            return new Response(JSON.stringify({ count: 0, events: [] }), {
-              status: 200,
-              headers: { "content-type": "application/json" },
-            });
-          },
-        },
-      } as unknown as Env,
+      testEnv,
       {},
     );
     assert.equal(response.status, 200);
@@ -570,28 +605,37 @@ describe("Worker runtime", () => {
     assert.equal((await response.text()).trim(), CHAIN_EVENTS_CSV_HEADER);
   });
 
-  test("emits a header-only chain-events CSV when the upstream body omits events", async () => {
-    // Defensive path: if the data tier returns a body with no `events` array
-    // (degraded/partial), the CSV export must still yield a header-only file
-    // rather than throw — this exercises the `Array.isArray(...) ? … : []` guard.
-    const response = await handleRequest(
-      new Request("https://metagraph.sh/api/v1/chain-events?format=csv"),
-      {
-        ...env,
-        DATA_API: {
-          fetch() {
-            return new Response(JSON.stringify({ count: 0 }), {
-              status: 200,
-              headers: { "content-type": "application/json" },
-            });
-          },
+  test("emits a header-only chain-events CSV when the cached payload has no events", async () => {
+    // Defensive path for the `Array.isArray(...) ? … : []` guard. It is
+    // reachable through the CACHE: an entry written by an earlier deploy in a
+    // different payload shape outlives that deploy by its whole TTL, and a CSV
+    // export must yield a header-only file rather than throw on it.
+    globalWithCaches.caches = {
+      default: {
+        async match() {
+          return new Response(
+            JSON.stringify({
+              data: { count: 0 },
+              source: "lakehouse-cold-tier",
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          );
         },
-      } as unknown as Env,
-      {},
-    );
-    assert.equal(response.status, 200);
-    assert.match(response.headers.get("content-type"), /text\/csv/);
-    assert.equal((await response.text()).trim(), CHAIN_EVENTS_CSV_HEADER);
+        async put() {},
+      },
+    };
+    try {
+      const response = await handleRequest(
+        new Request("https://metagraph.sh/api/v1/chain-events?format=csv"),
+        { ...env, [R2_SQL_TOKEN_ENV]: "cfut_test" } as unknown as Env,
+        {},
+      );
+      assert.equal(response.status, 200);
+      assert.match(response.headers.get("content-type"), /text\/csv/);
+      assert.equal((await response.text()).trim(), CHAIN_EVENTS_CSV_HEADER);
+    } finally {
+      globalWithCaches.caches = undefined;
+    }
   });
 
   test("chain-events rejects a typo'd filter instead of serving unfiltered data", async () => {
@@ -673,42 +717,26 @@ describe("Worker runtime", () => {
     assert.equal((await response.json()).ok, true);
   });
 
-  test("forwards a GET to DATA_API for a HEAD chain-events probe (not a 405)", async () => {
-    // DATA_API is GET-only. A HEAD probe must still get the bodiless 200 that
-    // every other GET route returns for HEAD — not the data Worker's 405 — so
-    // the proxy forwards a GET on its behalf and envelopeResponse strips the body.
-    let forwardedMethod = null;
+  test("a HEAD chain-events probe gets the bodiless 200, not a 405", async () => {
+    // This used to need a workaround: DATA_API was GET-only, so the proxy had
+    // to forward a GET on HEAD's behalf or the probe got the data Worker's 405
+    // instead of the bodiless 200 every other GET route gives. With the
+    // forward gone the tier is read directly and envelopeResponse strips the
+    // body -- the guarantee is the same, the workaround is not needed.
+    const { env: testEnv, queries } = lakehouseEnv([
+      { pallet: "System", method: "Event", count: 3 },
+    ]);
     const response = await handleRequest(
-      new Request("https://metagraph.sh/api/v1/chain-events", {
+      new Request("https://metagraph.sh/api/v1/chain-events/stats", {
         method: "HEAD",
       }),
-      {
-        ...env,
-        DATA_API: {
-          fetch(req: Request) {
-            forwardedMethod = req.method;
-            if (req.method !== "GET") {
-              return new Response(
-                JSON.stringify({ error: "method not allowed" }),
-                {
-                  status: 405,
-                  headers: { "content-type": "application/json" },
-                },
-              );
-            }
-            return new Response(
-              JSON.stringify({ window_blocks: 500, groups: 0, activity: [] }),
-              { status: 200, headers: { "content-type": "application/json" } },
-            );
-          },
-        },
-      } as unknown as Env,
+      testEnv,
       {},
     );
-    assert.equal(forwardedMethod, "GET");
     assert.equal(response.status, 200);
     assert.equal(await response.text(), "");
     assert.ok(response.headers.get("etag"));
+    assert.equal(queries.length, 1, "the tier must still be read for HEAD");
   });
 
   test("degrades a DATA_API upstream 5xx instead of erroring", async () => {

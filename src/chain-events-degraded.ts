@@ -38,6 +38,7 @@ import {
 } from "./chain-detail-hot-tier.ts";
 import { loadBlockChainEventsColdTier } from "./events-cold-tier.ts";
 import { buildSubnetConviction } from "./subnet-conviction.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { buildSubnetLeaseHistory } from "./subnet-lease-history.ts";
 import { buildSubnetOwnershipHistory } from "./subnet-ownership-history.ts";
 import {
@@ -46,6 +47,7 @@ import {
 } from "./subnet-lock-state.ts";
 import { answerSubnetOwnershipHistory } from "./subnet-ownership-answer.ts";
 import {
+  type ChainEventsQuery,
   loadChainEventsColdTier,
   loadChainEventsStatsColdTier,
   loadSubnetLeaseHistoryColdTier,
@@ -177,11 +179,20 @@ const LIVE_CHAIN_TIER = "live-chain-storage";
 export async function coldTierChainEventsPayload(
   env: Env | null | undefined,
   url: URL,
+  /** Which chain to read (#8700). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ColdTierAnswer | null> {
   const lake = (data: Row | null): ColdTierAnswer | null =>
     data ? { data, source: LAKEHOUSE_TIER } : null;
+  // Branches whose reader has no network dimension yet DECLINE off mainnet
+  // rather than answering from `chain.*`. Returning null sends the caller to
+  // its documented empty/404; silently reading mainnet would hand back another
+  // chain's history under a testnet path, which is well-formed and therefore
+  // undetectable downstream.
+  const mainnetOnlyBranch = network !== DEFAULT_CHAIN_NETWORK;
   const ownership = SUBNET_OWNERSHIP_HISTORY.exec(url.pathname);
   if (ownership) {
+    if (mainnetOnlyBranch) return null;
     // Through the composer, not the reader: MCP and GraphQL answer this route
     // from the same function, so the path table here stays the URL matcher it
     // is rather than a second place that decides what the payload contains.
@@ -193,22 +204,21 @@ export async function coldTierChainEventsPayload(
   // The reader bounds each page to a block window; see its header for why an
   // unbounded port would have scanned ~2 GB per request.
   if (url.pathname === "/api/v1/chain-events") {
-    const params = url.searchParams;
     return lake(
-      (await loadChainEventsColdTier(env, {
-        limit: chainEventsLimit(params.get("limit")),
-        pallet: params.get("pallet"),
-        method: params.get("method"),
-        block: params.get("block"),
-        extrinsic: params.get("extrinsic"),
-        cursor: params.get("cursor"),
-        before: params.get("before"),
-      })) as Row | null,
+      (await loadChainEventsColdTier(
+        env,
+        chainEventsQueryFromUrl(url),
+        network,
+      )) as Row | null,
     );
   }
   const lease = SUBNET_LEASE_HISTORY.exec(url.pathname);
   if (lease) {
-    const found = await loadSubnetLeaseHistoryColdTier(env, Number(lease[1]));
+    const found = await loadSubnetLeaseHistoryColdTier(
+      env,
+      Number(lease[1]),
+      network,
+    );
     // A verified-empty history is an ANSWER; only an inconclusive read keeps
     // the marked empty below.
     return found
@@ -220,11 +230,13 @@ export async function coldTierChainEventsPayload(
       (await loadChainEventsStatsColdTier(
         env,
         url.searchParams.get("blocks"),
+        network,
       )) as Row | null,
     );
   }
   const conviction = SUBNET_CONVICTION.exec(url.pathname);
   if (conviction) {
+    if (mainnetOnlyBranch) return null;
     // The one branch that does not touch the lakehouse: it reads chain storage
     // directly, exactly as /sudo/key and the upgrade radar do -- see
     // src/subnet-lock-state.ts's header for why no captured tier is involved.
@@ -238,6 +250,26 @@ export async function coldTierChainEventsPayload(
     return board ? { data: board, source: LIVE_CHAIN_TIER } : null;
   }
   return null;
+}
+
+/**
+ * The feed query this URL names, in the reader's own shape.
+ *
+ * One builder, because the router validates the query and the reader executes
+ * it: two copies of this extraction would let a value be rejected that the
+ * reader never saw, or accepted that it cannot express.
+ */
+export function chainEventsQueryFromUrl(url: URL): ChainEventsQuery {
+  const params = url.searchParams;
+  return {
+    limit: chainEventsLimit(params.get("limit")),
+    pallet: params.get("pallet"),
+    method: params.get("method"),
+    block: params.get("block"),
+    extrinsic: params.get("extrinsic"),
+    cursor: params.get("cursor"),
+    before: params.get("before"),
+  };
 }
 
 /** The feed's page size, clamped to the same 1-100 range data-api enforced. */
@@ -283,24 +315,21 @@ export interface BlockChainEventsPayload {
 export async function hotTierBlockChainEvents(
   env: Env | null | undefined,
   url: URL,
+  /** Which chain to read (#8700). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ChainDetailAnswer<BlockChainEventsPayload> | null> {
   const block = BLOCK_CHAIN_EVENTS.exec(url.pathname);
   if (!block) return null;
-  return answerBlockDetail<BlockChainEventsPayload>(env, block[1]!, {
-    hot: (height) => loadBlockChainEventsHotTier(env, height),
-    cold: () => loadBlockChainEventsColdTier(env, block[1]!),
-    isEmpty: isEmptyChainEventPayload,
-  });
-}
-
-/**
- * Whether an upstream status should degrade rather than surface.
- *
- * Only the tier's own failures (5xx) and unreachability degrade. A 4xx is the
- * CALLER's error -- a bad cursor, an out-of-range limit -- and turning that
- * into an empty 200 would hide a bug in their request behind a payload that
- * looks merely uneventful.
- */
-export function shouldDegrade(status: number): boolean {
-  return status >= 500;
+  return answerBlockDetail<BlockChainEventsPayload>(
+    env,
+    block[1]!,
+    {
+      hot: (height) => loadBlockChainEventsHotTier(env, height),
+      cold: () => loadBlockChainEventsColdTier(env, block[1]!, network),
+      isEmpty: isEmptyChainEventPayload,
+    },
+    // The tiering itself is network-aware: off mainnet there is no D1 hot leg
+    // to route against, so `hot` above is never reached.
+    network,
+  );
 }

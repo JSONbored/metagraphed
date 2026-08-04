@@ -33,10 +33,46 @@ import { loadExtrinsicFeedColdTier } from "../src/extrinsics-cold-tier.ts";
 import { loadChainEventsColdTier } from "../src/chain-events-cold-tier.ts";
 import { loadAccountEventsColdTier } from "../src/events-cold-tier.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
-import { resetDecodeWatermarkCache } from "../src/decode-watermark.ts";
+import {
+  decodeWatermarkKey,
+  resetDecodeWatermarkCache,
+} from "../src/decode-watermark.ts";
 import { mockEnv } from "./row-type.ts";
 
 const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
+
+/**
+ * A lakehouse env that also PUBLISHES a decode watermark for both networks.
+ *
+ * The chain-events readers anchor page one on the watermark rather than on the
+ * mainnet seam constant (#8700), so a network with no published watermark
+ * declines outright -- correct behaviour, and it would make the namespace
+ * assertion below vacuous. Both lanes publish in production; this mirrors that.
+ */
+const WATERMARKS: Record<string, number> = {
+  mainnet: 8_771_082,
+  testnet: 7_700_842,
+};
+
+function decodedEnv() {
+  resetDecodeWatermarkCache();
+  return mockEnv({
+    ...TOKEN,
+    METAGRAPH_ARCHIVE: {
+      async get(key: string) {
+        const network = Object.keys(WATERMARKS).find(
+          (n) => key === decodeWatermarkKey(n as "mainnet" | "testnet"),
+        );
+        if (!network) return null;
+        return {
+          async text() {
+            return JSON.stringify({ decoded_through: WATERMARKS[network] });
+          },
+        };
+      },
+    },
+  });
+}
 const SS58 = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
 
 /** Captures the SQL actually sent — the assertion surface for every case here. */
@@ -113,8 +149,7 @@ describe("every chain-history reader targets its network's namespace", () => {
     ],
     [
       "chain events",
-      (network) =>
-        loadChainEventsColdTier(mockEnv(TOKEN), { limit: 5 }, network),
+      (network) => loadChainEventsColdTier(decodedEnv(), { limit: 5 }, network),
     ],
     [
       "account events",
@@ -322,15 +357,20 @@ describe("the chain-history route list is derived from the router", () => {
 
   test("it does not claim routes that are still mainnet-only", () => {
     // /blocks/summary is the trap: same family, same prefix, still gated —
-    // because it is cross-subnet analytics rather than one subnet's history.
-    for (const template of [
-      "/api/v1/blocks/summary",
-      "/api/v1/chain-events",
-      "/api/v1/blocks/{ref}/chain-events",
-    ]) {
+    // because it is cross-subnet analytics over an artifact the decode lane
+    // does not produce, rather than one chain's own history. Its two former
+    // neighbours here (the chain-events feed and one block's chain-events) came
+    // OFF the gate in #8700 once their readers took the network dimension.
+    for (const template of ["/api/v1/blocks/summary"]) {
       assert.ok(
         !isChainHistoryRouteTemplate(template),
         `${template} is still mainnet-only but the list claims it`,
+      );
+      // The paired positive: an exclusion assertion is only meaningful while
+      // the thing excluded is genuinely still gated.
+      assert.ok(
+        isMainnetOnlyApiPath(concretePath(template)),
+        `${template} must still be gated for that claim to mean anything`,
       );
     }
   });

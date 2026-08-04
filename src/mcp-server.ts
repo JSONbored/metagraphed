@@ -2779,7 +2779,7 @@ async function loadSubnetEconomics(ctx: McpCtx, netuid: number) {
 // DATA_API path, now reused by GraphQL's chain_events_stats field too.
 
 // One page of the raw recent chain-events feed (newest first) from the
-// Postgres-backed all-events tier via the DATA_API binding — the same path
+// the chain_events lakehouse tier — the same path
 // loadChainActivity uses for the stats aggregate. Optional pallet/method/block/
 // extrinsic filters + an opaque keyset cursor; the data Worker validates the
 // filter combo and returns 400, surfaced here as a clean invalid_params error.
@@ -9687,19 +9687,25 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const blockNumber = requireNonNegativeInt(args, "block_number");
-      return loadBlockChainEvents(ctx, blockNumber);
+      return loadBlockChainEvents(
+        ctx,
+        blockNumber,
+        chainNetworkFromChainName(
+          optionalEnum(args, "network", MCP_NETWORK_VALUES),
+        ),
+      );
     },
   },
   {
     name: "get_extrinsic_chain_events",
     title: "Get raw chain events emitted by one extrinsic",
     description:
-      "Fetch raw pallet.method events one extrinsic emitted from the Postgres-backed " +
-      "all-events tier (newest first). ref must be the composite id " +
+      "Fetch raw pallet.method events one extrinsic emitted from the all-events " +
+      "lakehouse tier (newest first). ref must be the composite id " +
       "'block_number-extrinsic_index' (e.g. '4200000-3'). Page with limit (1-200, " +
       "default 50) or follow next_cursor for deeper pages. Distinct from the curated " +
-      "account_events embedded in get_extrinsic. Requires the all-events data Worker " +
-      "(tier_unavailable in preview deploys). Mirrors GET /api/v1/chain-events?block=&extrinsic=.",
+      "account_events embedded in get_extrinsic. Pass network to read testnet's " +
+      "decoded history instead of mainnet's. Mirrors GET /api/v1/chain-events?block=&extrinsic=.",
     inputSchema: z.toJSONSchema(GetExtrinsicChainEventsInputSchema, {
       target: "draft-2020-12",
     }),
@@ -9709,10 +9715,14 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     ) {
       const ref = requireString(args, "ref");
       const cursor = optionalString(args, "cursor");
-      return loadExtrinsicChainEvents(ctx, ref, {
-        limit: args?.limit,
-        cursor: cursor ?? undefined,
-      });
+      return loadExtrinsicChainEvents(
+        ctx,
+        ref,
+        { limit: args?.limit, cursor: cursor ?? undefined },
+        chainNetworkFromChainName(
+          optionalEnum(args, "network", MCP_NETWORK_VALUES),
+        ),
+      );
     },
   },
   {
@@ -9724,7 +9734,8 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "over the most recent `blocks` blocks. Use it to see what the chain has " +
       "been doing lately — which pallets and calls dominate recent traffic — " +
       "before drilling into specific blocks (get_block) or extrinsics " +
-      "(list_extrinsics). Mirrors GET /api/v1/chain-events/stats.",
+      "(list_extrinsics). Pass network to aggregate testnet's decoded history " +
+      "instead of mainnet's. Mirrors GET /api/v1/chain-events/stats.",
     inputSchema: z.toJSONSchema(GetChainActivityInputSchema, {
       target: "draft-2020-12",
     }),
@@ -9733,7 +9744,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const blocks = optionalBlocksWindow(args);
-      return loadChainActivity(ctx, blocks);
+      return loadChainActivity(
+        ctx,
+        blocks,
+        chainNetworkFromChainName(
+          optionalEnum(args, "network", MCP_NETWORK_VALUES),
+        ),
+      );
     },
   },
   {
@@ -9743,11 +9760,12 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "Fetch the raw recent decoded chain-events feed (newest first) from the " +
       "all-events tier: each event's block, event index, pallet, method, decoded " +
       "args, phase, and emitting extrinsic index. Optionally filter by pallet, " +
-      "method (needs pallet unless block is set), block, or one extrinsic's events " +
-      "(extrinsic needs block); page with limit (1-200, default 50), the opaque " +
+      "method, block, or one extrinsic's events (extrinsic needs block); page with " +
+      "limit (1-200, default 50), the opaque " +
       "keyset cursor, or the legacy before=block_number cursor. The event-level " +
       "companion to list_extrinsics and get_chain_activity (the pallet.method " +
-      "distribution). Mirrors GET /api/v1/chain-events.",
+      "distribution). Pass network to read testnet's decoded history instead of " +
+      "mainnet's. Mirrors GET /api/v1/chain-events.",
     inputSchema: z.toJSONSchema(ListChainEventsInputSchema, {
       target: "draft-2020-12",
     }),
@@ -9755,15 +9773,21 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       args: z.infer<typeof ListChainEventsInputSchema>,
       ctx: McpCtx,
     ) {
-      return loadChainEventsFeed(ctx, {
-        pallet: optionalString(args, "pallet"),
-        method: optionalString(args, "method"),
-        block: args?.block,
-        extrinsic: args?.extrinsic,
-        cursor: optionalString(args, "cursor"),
-        before: args?.before,
-        limit: args?.limit,
-      });
+      return loadChainEventsFeed(
+        ctx,
+        {
+          pallet: optionalString(args, "pallet"),
+          method: optionalString(args, "method"),
+          block: args?.block,
+          extrinsic: args?.extrinsic,
+          cursor: optionalString(args, "cursor"),
+          before: args?.before,
+          limit: args?.limit,
+        },
+        chainNetworkFromChainName(
+          optionalEnum(args, "network", MCP_NETWORK_VALUES),
+        ),
+      );
     },
   },
   {

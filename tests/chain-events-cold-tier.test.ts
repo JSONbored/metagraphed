@@ -18,7 +18,12 @@ import {
   loadSubnetLeaseHistoryColdTier,
 } from "../src/chain-events-cold-tier.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { ChainEventsFeedArtifactSchema } from "../schemas-src/routes/chain-events.ts";
 import { DEFAULT_BLOCKS_SEAM } from "../src/blocks-cold-tier.ts";
+import {
+  decodeWatermarkKey,
+  resetDecodeWatermarkCache,
+} from "../src/decode-watermark.ts";
 
 const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" } as unknown as Env;
 
@@ -314,5 +319,204 @@ describe("loadSubnetLeaseHistoryColdTier", () => {
         status: 500,
       }) as unknown as Response) as unknown as typeof fetch;
     assert.equal(await loadSubnetLeaseHistoryColdTier(TOKEN, 1), null);
+  });
+});
+
+// #8700: THE CEILING IS READ, NOT ASSUMED.
+//
+// Both readers used to anchor page one on `blocksSeamFloor` -- a CONSTANT. The
+// decoder appends past it every hour, so in production the feed's newest event
+// stayed pinned at block 8,759,336 while the lakehouse held 11,746 blocks more,
+// and `/chain-events/stats`, published as "the most recent N blocks",
+// aggregated a window receding further into history every day.
+//
+// Every test here asserts the POSITIVE: the query was issued, and the ceiling
+// in it is the watermark's. An "it does not use the constant" assertion alone
+// passes just as well on a reader that returns nothing at all.
+describe("the page-one ceiling tracks the published decode watermark", () => {
+  const AHEAD = DEFAULT_BLOCKS_SEAM + 11_746;
+
+  /** An env whose archive publishes `decoded_through` for one network. */
+  function watermarkEnv(
+    body: unknown,
+    network: "mainnet" | "testnet" = "mainnet",
+  ) {
+    resetDecodeWatermarkCache();
+    return {
+      ...TOKEN,
+      METAGRAPH_ARCHIVE: {
+        async get(key: string) {
+          if (key !== decodeWatermarkKey(network) || body === undefined) {
+            return null;
+          }
+          return {
+            async text() {
+              return JSON.stringify(body);
+            },
+          };
+        },
+      },
+    } as unknown as Env;
+  }
+
+  test("the feed reads down from the watermark, not the seam constant", async () => {
+    const q = sqlFetch([eventRow(AHEAD, 4)]);
+    const page = await loadChainEventsColdTier(
+      watermarkEnv({ decoded_through: AHEAD }),
+      { limit: 50 },
+    );
+    assert.equal(q.length, 1, "the lakehouse was never queried");
+    assert.match(q[0]!, new RegExp(`block_number <= ${AHEAD}\\b`));
+    assert.match(
+      q[0]!,
+      new RegExp(`block_number >= ${AHEAD - CHAIN_EVENTS_BLOCK_WINDOW}\\b`),
+    );
+    assert.equal(page?.events[0]!.block_number, AHEAD);
+  });
+
+  test("the stats window ends at the watermark", async () => {
+    const q = sqlFetch([
+      { pallet: "System", method: "ExtrinsicSuccess", count: 9 },
+    ]);
+    const stats = await loadChainEventsStatsColdTier(
+      watermarkEnv({ decoded_through: AHEAD }),
+      500,
+    );
+    assert.equal(q.length, 1, "the lakehouse was never queried");
+    assert.match(q[0]!, new RegExp(`block_number > ${AHEAD - 500}\\b`));
+    assert.equal(stats?.groups, 1);
+  });
+
+  // The fail-safe `resolveBlocksSeam` also makes: a watermark that is missing,
+  // unreadable or BEHIND the floor cannot pull the ceiling below history the
+  // lakehouse is known to hold.
+  test("a missing or regressed watermark keeps mainnet's floor", async () => {
+    for (const body of [undefined, { decoded_through: 1 }, { nope: true }]) {
+      const q = sqlFetch([eventRow(DEFAULT_BLOCKS_SEAM, 1)]);
+      const page = await loadChainEventsColdTier(watermarkEnv(body), {
+        limit: 50,
+      });
+      assert.equal(q.length, 1, "the lakehouse was never queried");
+      assert.match(
+        q[0]!,
+        new RegExp(`block_number <= ${DEFAULT_BLOCKS_SEAM}\\b`),
+        `for ${JSON.stringify(body)}`,
+      );
+      assert.equal(page?.count, 1);
+    }
+  });
+
+  // Off mainnet there is no floor to fall back on: ICEBERG_BLOCKS_MAX is
+  // mainnet's own exodus boundary, 1.06M blocks ABOVE testnet's capture range,
+  // so applying it would silently scan a window that chain has never had.
+  test("testnet reads its own namespace at its own watermark", async () => {
+    const q = sqlFetch([eventRow(7_700_842, 2)]);
+    const page = await loadChainEventsColdTier(
+      watermarkEnv({ decoded_through: 7_700_842 }, "testnet"),
+      { limit: 50 },
+      "testnet",
+    );
+    assert.equal(q.length, 1, "the lakehouse was never queried");
+    assert.match(q[0]!, /FROM chain_testnet\.chain_events\b/);
+    assert.match(q[0]!, /block_number <= 7700842\b/);
+    assert.equal(page?.events[0]!.block_number, 7_700_842);
+  });
+
+  test("a network with no published watermark declines rather than guessing", async () => {
+    for (const load of [
+      () =>
+        loadChainEventsColdTier(
+          watermarkEnv(undefined, "testnet"),
+          { limit: 50 },
+          "testnet",
+        ),
+      () =>
+        loadChainEventsStatsColdTier(
+          watermarkEnv(undefined, "testnet"),
+          500,
+          "testnet",
+        ),
+    ]) {
+      const q = sqlFetch([]);
+      assert.equal(await load(), null);
+      assert.equal(q.length, 0, "declining must not issue a query at all");
+    }
+  });
+
+  // A cursor or `before` carries its own ceiling, so paging never needs the
+  // watermark -- and must keep working on a network that has none.
+  test("a cursor page needs no watermark at all", async () => {
+    const q = sqlFetch([eventRow(7_700_500, 1)]);
+    const page = await loadChainEventsColdTier(
+      watermarkEnv(undefined, "testnet"),
+      { limit: 50, before: 7_700_501 },
+      "testnet",
+    );
+    assert.equal(q.length, 1, "the lakehouse was never queried");
+    assert.match(q[0]!, /block_number <= 7700500\b/);
+    assert.equal(page?.count, 1);
+  });
+});
+
+// The feed's rows go through the SAME formatter as the D1 hot tier and
+// /blocks/{n}/chain-events, so a caller cannot tell which tier answered.
+//
+// Serving the raw lakehouse rows was a live contract break, not a cosmetic
+// one: `chain_events.args` is TEXT in Iceberg, so the published feed carried a
+// JSON STRING where its own schema declares an object, and `summary` -- which
+// every sibling tier computes -- was absent. Measured against production
+// 2026-08-04 before the fix.
+describe("the feed publishes the same event shape as its sibling tiers", () => {
+  const RAW = {
+    block_number: 8_759_336,
+    event_index: 294,
+    pallet: "System",
+    method: "ExtrinsicSuccess",
+    // TEXT, exactly as Iceberg hands it back.
+    args: '{"dispatch_info":{"class":{"name":"Normal","values":[]}}}',
+    phase: "ApplyExtrinsic",
+    extrinsic_index: 21,
+    observed_at: 1_785_708_540_000,
+  };
+
+  test("args is decoded, not the raw JSON text the column holds", async () => {
+    sqlFetch([RAW]);
+    const page = await loadChainEventsColdTier(TOKEN, { limit: 50 });
+    const event = page?.events[0] as Record<string, unknown>;
+    assert.ok(event, "the feed returned no event to check");
+    assert.notEqual(
+      typeof event.args,
+      "string",
+      "args must be decoded, not the raw column text",
+    );
+    assert.equal(
+      (event.args as Record<string, unknown>).dispatch_info !== undefined,
+      true,
+    );
+  });
+
+  test("summary is computed, as it is on every other tier", async () => {
+    sqlFetch([RAW]);
+    const page = await loadChainEventsColdTier(TOKEN, { limit: 50 });
+    const event = page?.events[0] as Record<string, unknown>;
+    assert.ok("summary" in event, "summary must be present, not merely null");
+    assert.equal(typeof event.summary, "string");
+  });
+
+  // additionalProperties:false, so an unformatted row fails this outright.
+  test("a page parses against its own published schema", async () => {
+    sqlFetch([RAW]);
+    const page = await loadChainEventsColdTier(TOKEN, { limit: 50 });
+    assert.ok(ChainEventsFeedArtifactSchema.parse(page));
+  });
+
+  // Paging reads the RAW rows, so a row the formatter cannot handle must not
+  // strand the cursor -- which is why the cursor is built before formatting.
+  test("the cursor survives a row the formatter cannot decode", async () => {
+    sqlFetch([{ ...RAW, args: "not json" }]);
+    const page = await loadChainEventsColdTier(TOKEN, { limit: 1 });
+    assert.equal(page?.next_before, 8_759_336);
+    assert.equal(page?.next_cursor, "1785708540000.8759336.294");
+    assert.equal((page?.events[0] as Record<string, unknown>).args, null);
   });
 });

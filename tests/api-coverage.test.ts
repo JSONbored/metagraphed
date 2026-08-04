@@ -671,25 +671,26 @@ describe("/health readiness", () => {
     assert.match(res.headers.get("cache-control"), /max-age=/);
   });
 
+  /** A D1 stub over the two aggregates the heartbeat reads (#8700). */
+  function healthDb(row: { head: unknown; latest: unknown } | null) {
+    return {
+      prepare() {
+        return {
+          async first() {
+            return row;
+          },
+        };
+      },
+    };
+  }
+
   test("reports chain-event index freshness (#1361, #5357)", async () => {
     const atMs = Date.now() - 18_000; // latest indexed event ~18s ago
-    const requestedUrls: string[] = [];
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: makeKv({
         "metagraph:latest": { published_at: new Date().toISOString() },
       }),
-      DATA_API: {
-        async fetch(request: Request) {
-          requestedUrls.push(request.url);
-          return new Response(
-            JSON.stringify({
-              count: 1,
-              events: [{ block_number: 8461200, observed_at: atMs }],
-            }),
-            { status: 200 },
-          );
-        },
-      },
+      METAGRAPH_HEALTH_DB: healthDb({ head: 8461200, latest: atMs }),
     });
     const res = await handleRequest(req("/health"), env as unknown as Env, {});
     assert.equal(res.status, 200);
@@ -702,51 +703,37 @@ describe("/health readiness", () => {
       `age_seconds out of range: ${body.chain_events.age_seconds}`,
     );
     assert.ok(body.chain_events.latest_event_at.startsWith("20"));
-    assert.deepEqual(
-      requestedUrls.map((u) => new URL(u).pathname + new URL(u).search),
-      ["/api/v1/chain-events?limit=1"],
-    );
   });
 
-  test("chain_events treats blank or zero observed_at as absent (#1361, #5357)", async () => {
-    for (const at of ["", "   ", 0, "0"]) {
+  // Number(null) and Number("") are both 0, which would publish an age of 56
+  // years rather than "no heartbeat".
+  test("chain_events treats a blank or zero timestamp as absent (#1361, #5357)", async () => {
+    for (const at of ["", "   ", 0, "0", null]) {
       const env = createLocalArtifactEnv({
         METAGRAPH_CONTROL: makeKv({
           "metagraph:latest": { published_at: new Date().toISOString() },
         }),
-        DATA_API: {
-          async fetch() {
-            return new Response(
-              JSON.stringify({
-                count: 1,
-                events: [{ block_number: 8461200, observed_at: at }],
-              }),
-              { status: 200 },
-            );
-          },
-        },
+        METAGRAPH_HEALTH_DB: healthDb({ head: 8461200, latest: at }),
       });
       const body = await (
         await handleRequest(req("/health"), env as unknown as Env, {})
       ).json();
-      assert.equal(body.chain_events.latest_indexed_block, 8461200);
+      assert.equal(
+        body.chain_events.latest_indexed_block,
+        null,
+        `for ${JSON.stringify(at)}`,
+      );
       assert.equal(body.chain_events.latest_event_at, null);
       assert.equal(body.chain_events.age_seconds, null);
     }
   });
 
-  test("chain_events is schema-stable nulls when the event tier is cold (#1361, #5357)", async () => {
+  test("chain_events is schema-stable nulls when the lane is cold (#1361, #5357)", async () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: makeKv({
         "metagraph:latest": { published_at: new Date().toISOString() },
       }),
-      DATA_API: {
-        async fetch() {
-          return new Response(JSON.stringify({ count: 0, events: [] }), {
-            status: 200,
-          }); // empty chain_events tier
-        },
-      },
+      METAGRAPH_HEALTH_DB: healthDb({ head: null, latest: null }),
     });
     const res = await handleRequest(req("/health"), env as unknown as Env, {});
     assert.equal(res.status, 200);
@@ -756,7 +743,7 @@ describe("/health readiness", () => {
     assert.equal(body.chain_events.age_seconds, null);
   });
 
-  test("chain_events is null when no DATA_API is bound (#1361, #5357)", async () => {
+  test("chain_events is null when no D1 health binding exists (#1361, #5357)", async () => {
     const env = {
       ASSETS: {
         async fetch() {
@@ -768,14 +755,18 @@ describe("/health readiness", () => {
     assert.equal((await res.json()).chain_events, null);
   });
 
-  test("chain_events is schema-stable nulls when DATA_API returns a non-2xx response (#5357)", async () => {
+  test("chain_events is schema-stable nulls when the D1 read throws (#5357)", async () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: makeKv({
         "metagraph:latest": { published_at: new Date().toISOString() },
       }),
-      DATA_API: {
-        async fetch() {
-          return new Response("upstream error", { status: 500 });
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            async first(): Promise<unknown> {
+              throw new Error("d1 unavailable");
+            },
+          };
         },
       },
     });

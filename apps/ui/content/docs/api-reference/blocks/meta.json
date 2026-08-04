@@ -2,6 +2,7 @@
   "title": "Blocks",
   "pages": [
     "block-chain-events",
+    "block-chain-events-by-network",
     "block-detail",
     "block-detail-by-network",
     "block-events",

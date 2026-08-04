@@ -4683,19 +4683,26 @@ const rootValue = {
       cursor,
       before,
       limit,
+      network,
     }: QueryChain_EventsArgs,
     context: GqlContext,
   ) {
     try {
-      const data = await loadChainEventsFeed(mcpCtx(context), {
-        pallet,
-        method,
-        block,
-        extrinsic,
-        cursor,
-        before,
-        limit,
-      });
+      const data = await loadChainEventsFeed(
+        mcpCtx(context),
+        {
+          pallet,
+          method,
+          block,
+          extrinsic,
+          cursor,
+          before,
+          limit,
+        },
+        // Already validated against the published Network enum by the GraphQL
+        // layer itself, so this is the translation and never the gate.
+        chainNetworkFromChainName(network),
+      );
       // loadChainEventsFeed always returns count/next_*/events (array); map
       // sparse event rows so every GraphQL field is present.
       return {
@@ -4741,7 +4748,7 @@ const rootValue = {
   // get_chain_activity applies) then loadChainActivity — both relocated to
   // data-api-mcp.ts beside loadChainEventsFeed.
   async chain_events_stats(
-    { blocks }: QueryChain_Events_StatsArgs,
+    { blocks, network }: QueryChain_Events_StatsArgs,
     context: GqlContext,
   ) {
     let window;
@@ -4757,7 +4764,11 @@ const rootValue = {
       });
     }
     try {
-      return await loadChainActivity(mcpCtx(context), window);
+      return await loadChainActivity(
+        mcpCtx(context),
+        window,
+        chainNetworkFromChainName(network),
+      );
     } catch {
       // A cold/unbound/rate-limited tier degrades to a schema-stable empty
       // aggregate (echoing the validated window), never a GraphQL error —
@@ -5121,14 +5132,18 @@ const rootValue = {
     return data;
   },
 
-  // Reuses loadBlockChainEvents unchanged (the get_block_chain_events tool's own
-  // loader); it throws invalid_params on a bad block_number and tier_unavailable
-  // where the all-events Worker is absent -- both surface as normal GraphQL errors.
+  // Reuses loadBlockChainEvents (the get_block_chain_events tool's own loader);
+  // it throws invalid_params on a bad block_number and tier_unavailable where
+  // the tiers do not cover the height -- both surface as normal GraphQL errors.
   block_chain_events(
-    { block_number: blockNumber }: QueryBlock_Chain_EventsArgs,
+    { block_number: blockNumber, network }: QueryBlock_Chain_EventsArgs,
     context: GqlContext,
   ) {
-    return loadBlockChainEvents(mcpCtx(context), blockNumber);
+    return loadBlockChainEvents(
+      mcpCtx(context),
+      blockNumber,
+      chainNetworkFromChainName(network),
+    );
   },
 
   async validators(

@@ -1,9 +1,24 @@
-// MCP helpers for the Postgres-backed all-events tier (ADR 0013), reached through
-// the DATA_API service binding — the same path REST proxy routes use. Keeps the
-// postgres.js driver out of the main Worker bundle.
+// MCP helpers for the all-events tier -- the same store REST's chain-events
+// family reads, reached the same way.
+//
+// It used to be Postgres behind the DATA_API service binding (ADR 0013). That
+// store was destroyed (#9186 unbound HYPERDRIVE, #9193 deleted the reader), and
+// because REST had a lakehouse ladder below its forward while MCP and GraphQL
+// did not, REST kept serving while `list_chain_events` and `get_chain_activity`
+// answered `tier_unavailable` in production -- one broken surface hidden behind
+// a working one. #8700 points all three at the lakehouse readers.
+//
+// What still goes through DATA_API here is everything backed by D1 (user state,
+// the neurons families); that binding is alive, just not for chain events.
 
 import { chainDetailGapMessage } from "./chain-detail-hot-tier.ts";
 import { hotTierBlockChainEvents } from "./chain-events-degraded.ts";
+import {
+  chainEventsQueryError,
+  loadChainEventsColdTier,
+  loadChainEventsStatsColdTier,
+} from "./chain-events-cold-tier.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 
 interface DataApiToolError extends Error {
   toolError: true;
@@ -56,21 +71,32 @@ export interface DataApiMcpContext {
   clientIp?: string | null;
 }
 
+/**
+ * The per-client data-tier rate limit.
+ *
+ * Its own function because it gates the CALLER, not the store: the chain-events
+ * loaders below read the lakehouse rather than DATA_API, and leaving the limit
+ * inside `dataApiFetchJson` would have quietly exempted them the moment they
+ * stopped making that call.
+ */
+async function enforceDataRateLimit(ctx: DataApiMcpContext): Promise<void> {
+  if (!ctx.env?.DATA_RATE_LIMITER?.limit) return;
+  const { success } = await ctx.env.DATA_RATE_LIMITER.limit({
+    key: `data:${ctx.clientIp}`,
+  });
+  if (!success) {
+    throwToolError(
+      "data_rate_limited",
+      "Too many data API requests from this client; slow down.",
+    );
+  }
+}
+
 export async function dataApiFetchJson(
   ctx: DataApiMcpContext,
   pathAndQuery: string,
 ): Promise<unknown> {
-  if (ctx.env?.DATA_RATE_LIMITER?.limit) {
-    const { success } = await ctx.env.DATA_RATE_LIMITER.limit({
-      key: `data:${ctx.clientIp}`,
-    });
-    if (!success) {
-      throwToolError(
-        "data_rate_limited",
-        "Too many data API requests from this client; slow down.",
-      );
-    }
-  }
+  await enforceDataRateLimit(ctx);
 
   const dataApi = ctx.env?.DATA_API;
   if (!dataApi?.fetch) {
@@ -123,6 +149,7 @@ export async function dataApiFetchJson(
 export async function loadBlockChainEvents(
   ctx: DataApiMcpContext,
   blockNumber: number,
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<{
   schema_version: 1;
   block_number: unknown;
@@ -135,34 +162,42 @@ export async function loadBlockChainEvents(
       "block_number must be a non-negative integer.",
     );
   }
-  // #9208: the hot tier owns everything above the decode seam, so ask it before
-  // the DATA_API leg -- which, for a recent block, can only answer 503. A gap
-  // between the two tiers DECLINES here exactly as it does over REST: an agent
-  // handed `events: []` for a block with 400 of them will reason from it, and
-  // will not think to retry in an hour the way a person clicking a page might.
-  const hot = await hotTierBlockChainEvents(
+  await enforceDataRateLimit(ctx);
+  // #9208: the D1 hot tier owns everything above the decode seam and the
+  // lakehouse everything at or below it -- the SAME tiered read REST's
+  // /blocks/{n}/chain-events performs, through the same function, so the two
+  // surfaces cannot disagree about a block. A gap between the tiers DECLINES
+  // here exactly as it does over REST: an agent handed `events: []` for a block
+  // with 400 of them will reason from it, and will not think to retry in an
+  // hour the way a person clicking a page might.
+  //
+  // There is no DATA_API leg below this any more (#8700). There used to be, and
+  // for every block the tiers could not cover it could only answer 503 -- its
+  // Postgres store was destroyed in #9186/#9193.
+  const answer = await hotTierBlockChainEvents(
     ctx.env,
     new URL(`https://data.invalid/api/v1/blocks/${blockNumber}/chain-events`),
+    network,
   );
-  if (hot?.kind === "gap")
-    throwToolError("block_detail_unavailable", chainDetailGapMessage(hot));
-  if (hot?.kind === "answer") {
-    return {
-      schema_version: 1,
-      block_number: hot.data.block_number,
-      event_count: hot.data.count,
-      events: hot.data.events,
-    };
+  if (answer?.kind === "gap")
+    throwToolError("block_detail_unavailable", chainDetailGapMessage(answer));
+  // A MISS is not an empty block. Neither tier covers this height -- above the
+  // chain head, below the decoded floor, or the store is unreachable -- and
+  // saying so is what the DATA_API leg's 503 used to say. Returning
+  // `events: []` would be indistinguishable from a genuinely quiet block, which
+  // is the whole failure #9260 exists about.
+  if (!answer || answer.kind !== "answer") {
+    throwToolError(
+      "tier_unavailable",
+      "The all-events tier does not cover this block. Try again shortly, or " +
+        "check that the height is within this network's decoded range.",
+    );
   }
-  const data = (await dataApiFetchJson(
-    ctx,
-    `/api/v1/blocks/${blockNumber}/chain-events`,
-  )) as { block_number?: unknown; events?: unknown } | null | undefined;
   return {
     schema_version: 1,
-    block_number: data?.block_number ?? blockNumber,
-    event_count: eventCountFromDataApi(data),
-    events: Array.isArray(data?.events) ? data.events : [],
+    block_number: answer.data.block_number,
+    event_count: answer.data.count,
+    events: answer.data.events,
   };
 }
 
@@ -172,6 +207,7 @@ export async function loadExtrinsicChainEvents(
   ctx: DataApiMcpContext,
   ref: unknown,
   { limit, cursor }: { limit?: unknown; cursor?: unknown } = {},
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<{
   schema_version: 1;
   ref: unknown;
@@ -196,29 +232,42 @@ export async function loadExtrinsicChainEvents(
     );
   }
   const lim = clampChainEventsLimit(limit);
-  let path =
-    `/api/v1/chain-events?block=${blockNumber}` +
-    `&extrinsic=${extrinsicIndex}&limit=${lim}`;
-  if (cursor) path += `&cursor=${encodeURIComponent(String(cursor))}`;
-  const data = (await dataApiFetchJson(ctx, path)) as
-    { next_cursor?: unknown; events?: unknown } | null | undefined;
+  // Through the feed loader rather than a hand-built query: a single-block,
+  // single-extrinsic lookup is the SAME read with two filters, and composing it
+  // here kept a second copy of the limit/cursor semantics alive that could
+  // drift from the feed's.
+  const page = await loadChainEventsFeed(
+    ctx,
+    {
+      block: blockNumber,
+      extrinsic: extrinsicIndex,
+      limit: lim,
+      cursor: cursor ?? undefined,
+    },
+    network,
+  );
   return {
     schema_version: 1,
     ref,
     block_number: blockNumber,
     extrinsic_index: extrinsicIndex,
     limit: lim,
-    event_count: eventCountFromDataApi(data),
-    next_cursor: data?.next_cursor ?? null,
-    events: Array.isArray(data?.events) ? data.events : [],
+    event_count: eventCountFromDataApi(page),
+    next_cursor: page.next_cursor ?? null,
+    events: page.events,
   };
 }
 
-// One page of the raw recent chain-events feed (newest first) — same DATA_API
-// path REST's /api/v1/chain-events proxy and MCP list_chain_events use.
-// Optional pallet/method/block/extrinsic filters + opaque keyset cursor (or
-// legacy before=block_number); the data Worker validates the filter combo and
-// returns 400, surfaced here as invalid_params.
+/**
+ * One page of the raw recent chain-events feed (newest first) -- the same
+ * lakehouse reader REST's /api/v1/chain-events serves from, so the two surfaces
+ * cannot disagree about what the feed contains.
+ *
+ * Optional pallet/method/block/extrinsic filters plus an opaque keyset cursor
+ * (or the legacy before=block_number). A filter the reader cannot express
+ * safely makes it DECLINE rather than silently widen the feed to everything,
+ * which surfaces here as invalid_params.
+ */
 export async function loadChainEventsFeed(
   ctx: DataApiMcpContext,
   {
@@ -238,40 +287,49 @@ export async function loadChainEventsFeed(
     before?: unknown;
     limit?: unknown;
   } = {},
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<{
   count: unknown;
   next_before: unknown;
   next_cursor: unknown;
   events: unknown[];
 }> {
-  const parts: string[] = [];
-  if (pallet != null)
-    parts.push(`pallet=${encodeURIComponent(String(pallet))}`);
-  if (method != null)
-    parts.push(`method=${encodeURIComponent(String(method))}`);
-  if (block != null) parts.push(`block=${encodeURIComponent(String(block))}`);
-  if (extrinsic != null)
-    parts.push(`extrinsic=${encodeURIComponent(String(extrinsic))}`);
-  if (cursor != null)
-    parts.push(`cursor=${encodeURIComponent(String(cursor))}`);
-  else if (before != null)
-    parts.push(`before=${encodeURIComponent(String(before))}`);
-  if (limit != null) parts.push(`limit=${encodeURIComponent(String(limit))}`);
-  const qs = parts.length ? `?${parts.join("&")}` : "";
-  const data = (await dataApiFetchJson(ctx, `/api/v1/chain-events${qs}`)) as
-    | {
-        count?: unknown;
-        next_before?: unknown;
-        next_cursor?: unknown;
-        events?: unknown;
-      }
-    | null
-    | undefined;
+  await enforceDataRateLimit(ctx);
+  const query = {
+    // Clamped to THIS surface's published 1-200 bound, not REST's 1-100: both
+    // are already public API, and the reader takes the caller's word.
+    limit: clampChainEventsLimit(limit),
+    pallet,
+    method,
+    block,
+    extrinsic,
+    // A cursor supersedes `before`, exactly as the REST route composes them.
+    cursor,
+    before: cursor == null ? before : undefined,
+  };
+  // A filter this tier cannot express is the CALLER's error, distinct from an
+  // unreachable tier -- the reader returns null for both, so the two are told
+  // apart here rather than reported as one.
+  const invalid = chainEventsQueryError(query);
+  if (invalid) {
+    throwToolError(
+      "invalid_params",
+      `Argument \`${invalid}\` is not a usable value for this feed.`,
+    );
+  }
+  const page = await loadChainEventsColdTier(ctx.env, query, network);
+  if (!page) {
+    throwToolError(
+      "tier_unavailable",
+      "The all-events tier could not answer this query. A filter may be " +
+        "unusable, or the lakehouse may be unreachable; try again shortly.",
+    );
+  }
   return {
-    count: data?.count ?? 0,
-    next_before: data?.next_before ?? null,
-    next_cursor: data?.next_cursor ?? null,
-    events: Array.isArray(data?.events) ? data.events : [],
+    count: page.count,
+    next_before: page.next_before,
+    next_cursor: page.next_cursor,
+    events: page.events,
   };
 }
 
@@ -294,25 +352,31 @@ export function optionalBlocksWindow(
   return Math.min(value, 5000);
 }
 
-// Chain-activity aggregate (pallet.method event distribution) over the most
-// recent N blocks, from the Postgres-backed all-events tier via the DATA_API
-// binding — the same path REST's /api/v1/chain-events/stats proxy uses, and the
-// stats sibling of loadChainEventsFeed's raw feed above. Shared by MCP's
-// get_chain_activity and GraphQL's chain_events_stats.
+/**
+ * Chain-activity aggregate (pallet.method event distribution) over the most
+ * recent N blocks -- the stats sibling of `loadChainEventsFeed` above, reading
+ * the same lakehouse table REST's /api/v1/chain-events/stats does.
+ *
+ * "Most recent" means the most recent that network's decode lane has published,
+ * which is why the reader resolves the window's top from the watermark rather
+ * than from a constant (#8700).
+ */
 export async function loadChainActivity(
   ctx: DataApiMcpContext,
   blocks: number,
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<{ window_blocks: unknown; groups: unknown; activity: unknown[] }> {
-  const data = (await dataApiFetchJson(
-    ctx,
-    `/api/v1/chain-events/stats?blocks=${blocks}`,
-  )) as
-    | { window_blocks?: unknown; groups?: unknown; activity?: unknown }
-    | null
-    | undefined;
+  await enforceDataRateLimit(ctx);
+  const stats = await loadChainEventsStatsColdTier(ctx.env, blocks, network);
+  if (!stats) {
+    throwToolError(
+      "tier_unavailable",
+      "The all-events tier could not answer this aggregate. Try again shortly.",
+    );
+  }
   return {
-    window_blocks: data?.window_blocks ?? blocks,
-    groups: data?.groups ?? 0,
-    activity: Array.isArray(data?.activity) ? data.activity : [],
+    window_blocks: stats.window_blocks,
+    groups: stats.groups,
+    activity: stats.activity,
   };
 }

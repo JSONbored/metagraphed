@@ -1,7 +1,9 @@
 // The all-events feed served from the lakehouse (#9146).
 //
 // `chain.chain_events` is the COMPLETE event stream -- every pallet and method,
-// 895,485,314 rows spanning blocks 1 -> 8,759,336 -- as opposed to
+// 895,485,314 rows from block 1 up to wherever the decode lane has reached
+// (8,759,336 when this was written; the ledger moves it, which is why the
+// ceiling below is read rather than assumed) -- as opposed to
 // `chain.account_events`, which decode.rs curates down to three pallets and
 // only the variants with an `extract()` arm. Some kinds exist ONLY here:
 // `PrometheusServed` has 18,041 rows in this table and none in the curated one.
@@ -34,10 +36,11 @@
 // `block=` needs no window at all: it is a single-block lookup and already
 // cheap, so it is passed straight through and stays exact.
 
+import { formatChainEvent } from "./chain-detail-hot-tier.ts";
 import { decodeCursor, encodeCursor } from "./cursor.ts";
 import { type ChainNetworkId, chainTable } from "./chain-network.ts";
 import { r2SqlQuery, safeBlockNumber, safeNameLiteral } from "./r2-sql.ts";
-import { blocksSeamFloor } from "./blocks-cold-tier.ts";
+import { lakehouseHeadBlock } from "./blocks-cold-tier.ts";
 import {
   SUBNET_LEASE_CREATED_KIND,
   SUBNET_LEASE_TERMINATED_KIND,
@@ -75,6 +78,66 @@ export interface ChainEventsPage {
   next_before: number | null;
   next_cursor: string | null;
   events: Record<string, unknown>[];
+}
+
+/**
+ * Lakehouse rows -> the published event shape.
+ *
+ * THE SAME FORMATTER the D1 hot tier and `/blocks/{n}/chain-events` use, and
+ * for the reason that module states: a caller must not be able to tell which
+ * tier answered. Serving the raw rows instead was a live contract break --
+ * `chain_events.args` is TEXT in Iceberg, so the feed published a JSON STRING
+ * where `ChainEventsFeedArtifact` declares an object, and omitted `summary`
+ * entirely while every sibling tier produced it.
+ *
+ * Cursor fields are read off the RAW rows below, not these: `observed_at` is
+ * the cursor's first component and the formatter is free to null it, which
+ * would break paging at exactly the rows it cannot format.
+ */
+function formatEvents(rows: Record<string, unknown>[]) {
+  return rows.map((row) => formatChainEvent(row) ?? row) as Record<
+    string,
+    unknown
+  >[];
+}
+
+/**
+ * The parameter whose VALUE this tier cannot express, or null when the query is
+ * usable.
+ *
+ * Split out because `loadChainEventsColdTier` returns null for two unrelated
+ * reasons -- an unusable filter (the CALLER's error) and an unreachable tier
+ * (ours) -- and collapsing them costs real fidelity: MCP surfaced the first as
+ * `invalid_params` and GraphQL as BAD_USER_INPUT while the feed still went
+ * through a store that answered 400. Reading it from the same guards the query
+ * builder uses is what keeps the two from drifting apart.
+ */
+export function chainEventsQueryError(query: ChainEventsQuery): string | null {
+  const limit = safeBlockNumber(query.limit);
+  if (limit === null || limit <= 0) return "limit";
+  for (const [value, name] of [
+    [query.pallet, "pallet"],
+    [query.method, "method"],
+  ] as [unknown, string][]) {
+    if (value != null && safeNameLiteral(value) === null) return name;
+  }
+  for (const [value, name] of [
+    [query.block, "block"],
+    [query.extrinsic, "extrinsic"],
+  ] as [unknown, string][]) {
+    if (value != null && safeBlockNumber(value) === null) return name;
+  }
+  // `before` is only read when no cursor supersedes it, so an unusable one is
+  // inert -- and rejecting it there would break a caller paging by cursor who
+  // still echoes its old `before`.
+  if (
+    query.before != null &&
+    !decodeCursor(query.cursor, CURSOR_ARITY) &&
+    safeBlockNumber(query.before) === null
+  ) {
+    return "before";
+  }
+  return null;
 }
 
 /**
@@ -126,12 +189,21 @@ export async function loadChainEventsColdTier(
     if (extrinsic !== null) where.push(`extrinsic_index = ${extrinsic}`);
   } else {
     // The ceiling this page reads down from. A cursor seeks strictly below its
-    // own row; `before` is the legacy block-exclusive form.
+    // own row, `before` is the legacy block-exclusive form, and page 1 reads
+    // down from the TOP OF THE LAKEHOUSE.
+    //
+    // That top is READ, not assumed. It used to be `blocksSeamFloor` -- a
+    // CONSTANT -- which is what left this feed's newest event pinned at block
+    // 8,759,336 while the decoder appended 7,200 blocks a day past it, and
+    // which would have anchored testnet at 0. A network whose head is not
+    // knowable DECLINES: no ceiling can be justified, and guessing one scans
+    // the wrong window while looking perfectly healthy.
     const ceiling = cursor
       ? (cursor[1] as number)
       : before !== null
         ? before - 1
-        : blocksSeamFloor(env);
+        : await lakehouseHeadBlock(env, {}, network);
+    if (ceiling === null) return null;
     if (!Number.isFinite(ceiling) || ceiling < 0) {
       return { count: 0, next_before: null, next_cursor: null, events: [] };
     }
@@ -161,7 +233,7 @@ export async function loadChainEventsColdTier(
         safeBlockNumber(last.block_number),
         safeBlockNumber(last.event_index),
       ]),
-      events: rows,
+      events: formatEvents(rows),
     };
   }
 
@@ -176,7 +248,7 @@ export async function loadChainEventsColdTier(
     count: rows.length,
     next_before: exhausted ? null : floor,
     next_cursor: null,
-    events: rows,
+    events: formatEvents(rows),
   };
 }
 
@@ -220,7 +292,11 @@ export async function loadChainEventsStatsColdTier(
       ? CHAIN_EVENTS_STATS_BLOCKS_DEFAULT
       : Math.min(requested, CHAIN_EVENTS_STATS_BLOCKS_MAX);
 
-  const head = blocksSeamFloor(env);
+  // "The most recent N blocks" means the most recent the LAKEHOUSE holds. The
+  // seam floor is a constant, so this window used to recede further into
+  // history every day while still being published as recent.
+  const head = await lakehouseHeadBlock(env, {}, network);
+  if (head === null) return null;
   const rows = await r2SqlQuery(
     env,
     `SELECT pallet, method, COUNT(*) AS count FROM ${chainTable("chain_events", network)} ` +

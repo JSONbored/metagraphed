@@ -205,7 +205,7 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // from RPC at request time, never a static file.
   /^subnets\/(?:\d+|\{netuid\})\/burn\.json$/,
   // Subnet ownership-change history (#6637): served live from the
-  // Postgres-backed all-events tier (ADR 0013), never a static file.
+  // the chain_events lakehouse tier, never a static file.
   /^subnets\/(?:\d+|\{netuid\})\/ownership-history\.json$/,
   // Subnet conviction leaderboard (#6638): served live from the Postgres-
   // backed all-events tier + a live RPC rate lookup, never a static file.
@@ -327,7 +327,7 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // Network-wide validator-set turnover across every subnet, computed live from the
   // neuron_daily D1 rollup at /api/v1/chain/turnover — never a file.
   /^chain\/turnover\.json$/,
-  // Postgres-backed all-events tier (ADR 0013): the recent-events feed, the
+  // the chain_events lakehouse tier: the recent-events feed, the
   // per-block all-events list, and the activity-stats aggregate are served live
   // by the dedicated data Worker at /api/v1/chain-events* — never written as
   // files. R2-only so the contract maps a schema without the build expecting a

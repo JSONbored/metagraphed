@@ -43,6 +43,7 @@ import { buildBlockExtrinsics, buildExtrinsic } from "./extrinsics.ts";
 import { buildBlockEvents, formatAccountEvent } from "./account-events.ts";
 import { decodeChainEventArgs } from "./chain-event-args.ts";
 import { resolveBlocksSeam } from "./blocks-cold-tier.ts";
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { safeBlockNumber } from "./r2-sql.ts";
 import { summarizeEvent } from "@jsonbored/chain-summaries";
 
@@ -424,9 +425,23 @@ export async function answerBlockDetail<T>(
     cold: () => Promise<T | null>;
     isEmpty: (data: T) => boolean;
   },
+  /** Which chain this ref belongs to (#8700). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ChainDetailAnswer<T>> {
-  const seam = await resolveBlocksSeam(env);
+  // Off mainnet the seam is 0 -- `blocks_head` and the whole D1 hot tier are
+  // written by the mainnet firehose poller and carry no network column -- so
+  // every block comes from that chain's lakehouse. Taking the network HERE
+  // rather than leaving each caller to guard its own hot leg is what stops a
+  // testnet ref from being resolved against mainnet's D1 by `resolveHotRef`
+  // below, which no per-caller guard would have caught.
+  const seam = await resolveBlocksSeam(env, {}, network);
   const numeric = safeBlockNumber(ref);
+  if (network !== DEFAULT_CHAIN_NETWORK) {
+    const cold = await ops.cold();
+    return cold
+      ? { kind: "answer", data: cold, tier: "cold" }
+      : { kind: "miss" };
+  }
 
   // At or below the seam the lakehouse is authoritative and complete, so the
   // hot tier is not consulted at all -- one source per block, the property

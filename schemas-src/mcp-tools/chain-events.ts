@@ -4,10 +4,14 @@
 // covered pilot routes -- no existing Zod schema to reuse. Modeled fresh,
 // matching each hand-written literal field-for-field.
 import { z } from "zod";
+import { McpNetworkSchema } from "../shared.ts";
 
 export const GetBlockChainEventsInputSchema = z
   .object({
     block_number: z.int().min(0),
+    // #8700: which chain's history to read. The same published finney/test
+    // enum every network-aware tool takes.
+    network: McpNetworkSchema.optional(),
   })
   .strict();
 export type GetBlockChainEventsInput = z.infer<
@@ -54,6 +58,7 @@ export const GetExtrinsicChainEventsInputSchema = z
     ref: z.string(),
     limit: z.int().min(1).max(200).optional(),
     cursor: z.string().optional(),
+    network: McpNetworkSchema.optional(),
   })
   .strict();
 export type GetExtrinsicChainEventsInput = z.infer<

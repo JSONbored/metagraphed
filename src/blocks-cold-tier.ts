@@ -130,6 +130,43 @@ export async function resolveBlocksSeam(
 }
 
 /**
+ * The newest block this network's lakehouse can answer for, or null when that
+ * is not knowable.
+ *
+ * NOT the seam, and the distinction is the whole reason this exists.
+ * `resolveBlocksSeam` answers "where do the two block sources MEET", so off
+ * mainnet it is 0 -- there is one source and nothing sits above it. A reader
+ * with no hot leg at all needs the opposite fact: how far UP that single source
+ * reaches.
+ *
+ * The chain-events feed and its stats aggregate are exactly those readers, and
+ * both anchored on `blocksSeamFloor` -- a CONSTANT. So the all-events feed's
+ * newest event stayed pinned at block 8,759,336 while the decoder appended
+ * 7,200 blocks a day past it (11,746 blocks stale when measured, 2026-08-04),
+ * and `/chain-events/stats`, documented as "the most recent N blocks",
+ * aggregated a fixed window receding further into history every day. The same
+ * anchor would have put testnet at 0.
+ *
+ * Mainnet keeps the configured floor as a FAIL-SAFE MINIMUM, the same guarantee
+ * `resolveBlocksSeam` makes: a missing, unreadable or regressed watermark
+ * cannot pull the ceiling below history the lakehouse is known to hold. Off
+ * mainnet there is no such floor to fall back on -- `ICEBERG_BLOCKS_MAX` is
+ * mainnet's own exodus boundary and means nothing on another chain -- so an
+ * unreadable watermark yields null and the caller declines rather than picking
+ * a window it cannot justify.
+ */
+export async function lakehouseHeadBlock(
+  env: unknown,
+  deps: DecodeWatermarkDeps = {},
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
+): Promise<number | null> {
+  const watermark = await resolveDecodeWatermark(env, deps, network);
+  const decodedThrough = watermark?.decodedThrough ?? null;
+  if (network !== DEFAULT_CHAIN_NETWORK) return decodedThrough;
+  return Math.max(blocksSeamFloor(env), decodedThrough ?? 0);
+}
+
+/**
  * Whether the D1 leg can honour this query at all. Filters over columns
  * blocks_head does not carry must NOT be silently dropped, so their presence
  * disqualifies the leg rather than being ignored.
