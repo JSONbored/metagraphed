@@ -25,6 +25,8 @@ import {
   MIN_INCIDENT_SAMPLES,
 } from "../src/health-serving.ts";
 import { computeReliability, scoreFromStats } from "../src/reliability.ts";
+import { HEALTH_RANK } from "../src/endpoint-score.ts";
+import { HealthStatusSchema } from "../schemas-src/shared.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { handleRequest } from "../workers/api.ts";
 import { mockEnv, type Row } from "./row-type.ts";
@@ -546,6 +548,15 @@ describe("overlayRpcPoolEligibility", () => {
     };
     const out = overlayRpcPoolEligibility(stale, live) as Row;
     assert.equal(out.endpoints[0].id, "proven");
+  });
+
+  // Avoids hand-maintaining two lists: a status added to the zod enum without a rank
+  // here would sort as `unknown` and nothing would say so.
+  test("every declared health status has an explicit rank", () => {
+    assert.deepEqual(
+      Object.keys(HEALTH_RANK).sort(),
+      [...HealthStatusSchema.options].sort(),
+    );
   });
 
   test("drops endpoints only after sustained (>=2) consecutive failures", () => {

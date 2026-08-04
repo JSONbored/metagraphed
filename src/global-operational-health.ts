@@ -2,6 +2,8 @@
 // Live-only: KV health:current → Postgres tier (D1 fully eliminated,
 // 2026-07-17), with an explicit unknown payload when the live store is cold
 // (never a stale baked fallback).
+import { emptyStatusCounts } from "./endpoint-score.ts";
+import type { HealthStatus } from "../schemas-src/shared.ts";
 
 import { z } from "zod";
 import { buildGlobalHealth, resolveLiveHealth } from "./health-serving.ts";
@@ -19,7 +21,7 @@ export interface UnknownGlobalHealth {
   health_source: "unavailable";
   global: {
     surface_count: 0;
-    status_counts: { ok: 0; degraded: 0; failed: 0; unknown: 0 };
+    status_counts: Record<HealthStatus, number>;
   };
   subnets: [];
 }
@@ -36,7 +38,7 @@ export function unknownGlobalHealth(
     health_source: "unavailable",
     global: {
       surface_count: 0,
-      status_counts: { ok: 0, degraded: 0, failed: 0, unknown: 0 },
+      status_counts: emptyStatusCounts(),
     },
     subnets: [],
   };

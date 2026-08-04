@@ -57,6 +57,7 @@ import {
   loadEndpointReliability,
   type EndpointReliability,
 } from "./endpoint-reliability.ts";
+import { emptyStatusCounts } from "./endpoint-score.ts";
 import type { ObservationsReadDb } from "./analytics-live.ts";
 export const OPERATIONAL_SURFACES_PATH = "/metagraph/operational-surfaces.json";
 
@@ -422,7 +423,7 @@ export async function loadOperationalSurfaces(env: Env): Promise<Row[]> {
 }
 
 function summarizeGroup(rows: Row[]): Row {
-  const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
+  const counts = emptyStatusCounts();
   let lastChecked = 0;
   let lastOk = 0;
   const latencies: number[] = [];
@@ -622,7 +623,7 @@ export async function runHealthProber(
     env,
   );
 
-  const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
+  const counts = emptyStatusCounts();
   for (const row of probed)
     counts[normalizeProbeStatus(row.status) as keyof typeof counts] += 1;
   const durationMs = now() - runAt;
@@ -664,7 +665,7 @@ async function persistToKv(
   reliability: Record<string, EndpointReliability> = {},
 ): Promise<Row | null> {
   if (!kv?.put) return null;
-  const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
+  const counts = emptyStatusCounts();
   for (const row of probed)
     counts[normalizeProbeStatus(row.status) as keyof typeof counts] += 1;
 
