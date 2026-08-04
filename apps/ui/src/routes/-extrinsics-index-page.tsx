@@ -266,7 +266,7 @@ function ExtrinsicsTable() {
       ))}
       table={
         <table className="w-full text-left text-sm">
-          <thead className="sticky top-0 z-[var(--mg-z-sticky)] mg-glass shadow-[var(--mg-shadow-hairline)]">
+          <thead className="mg-table-head-pinned">
             <tr>
               <th className="px-4 py-2.5">Hash</th>
               <th className="px-4 py-2.5">Block</th>

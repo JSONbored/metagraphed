@@ -215,6 +215,13 @@
   --mg-z-progress: 60;
   --mg-z-skip-link: 100;
 }
+.mg-table-head-pinned {
+  position: sticky;
+  top: 0;
+  z-index: var(--mg-z-sticky);
+  background: var(--card);
+  box-shadow: var(--mg-shadow-hairline);
+}
 .mg-glass {
   background: color-mix(in oklab, var(--card) 95%, transparent);
 }
@@ -770,6 +777,7 @@ html[data-density=compact] .bg-card > table td {
 :root {
   --mg-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --mg-sticky-offset: 3.5rem;
+  --mg-list-viewport-max: 70vh;
 }
 @media (prefers-reduced-motion: reduce) {
   .mg-fade-in,

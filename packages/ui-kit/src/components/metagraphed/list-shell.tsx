@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { type ReactNode, type RefObject } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { classNames } from "@/lib/format";
 import { Skeleton } from "./skeleton";
@@ -18,10 +12,17 @@ import { Skeleton } from "./skeleton";
  *   fallback for tabular data.
  * - `table` renders on viewports >= md with horizontal scroll for overflow.
  *
- * The table's <thead> sticks against the *page* scroll (offset by the
- * app header + this filter bar) rather than an internal bounded viewport,
- * so there is no nested vertical scrollbar. The wrapper only scrolls
- * horizontally when a wide table overflows on narrow viewports.
+ * The table's <thead> sticks against the bounded viewport this shell puts
+ * around it, so consumers pin their header with `sticky top-0` and nothing
+ * else. That is the ONE pattern -- a <thead> cannot stick against the page
+ * from in here, and every attempt to make it do so has been inert: an
+ * `overflow-x: auto` wrapper computes `overflow-y` to `auto` too (CSS
+ * Overflow 3 §3: a non-`visible` value on one axis coerces the other), so
+ * this wrapper is unavoidably the header's scroll container. Without a
+ * max-height it simply never scrolls, and `sticky top-0` resolved to a
+ * no-op on /chain/blocks, /chain/extrinsics, and three component tables --
+ * headers that read as sticky in the markup but scrolled away in the
+ * browser. Bounding the wrapper is what makes the declaration real.
  */
 export function ListShell({
   filters,
@@ -31,6 +32,7 @@ export function ListShell({
   empty,
   isEmpty,
   isStale,
+  viewportRef,
   stickyHeader: _stickyHeader = true,
 }: {
   filters: ReactNode;
@@ -41,45 +43,44 @@ export function ListShell({
   isEmpty?: boolean;
   /** Subtly dim loaded content while a background refetch is in flight. */
   isStale?: boolean;
-  /** Retained for API compatibility -- header stickiness is now always
-   *  page-scroll relative and needs no per-instance opt-in. */
+  /**
+   * Handle on the bounded viewport, for a virtualizer's `getScrollElement`.
+   *
+   * Exists so a virtualized route doesn't hand-roll a second bounded div
+   * inside this one just to own a ref -- /subnets did exactly that and ended
+   * up with two nested `max-h-[70vh]` scrollers, the outer one permanently
+   * inert. There is one viewport per list, and this is how you reach it.
+   */
+  viewportRef?: RefObject<HTMLDivElement | null>;
+  /** Retained for API compatibility -- every table in this shell gets the
+   *  bounded viewport, so stickiness needs no per-instance opt-in. */
   stickyHeader?: boolean;
 }) {
-  // Measure the filter bar and publish its height as --mg-list-filter-offset
-  // on the root wrapper so the table's <thead> can stick just below it.
-  const rootRef = useRef<HTMLDivElement>(null);
-  const filterRef = useRef<HTMLDivElement>(null);
-  const [filterH, setFilterH] = useState(0);
-  useLayoutEffect(() => {
-    const el = filterRef.current;
-    if (!el) return;
-    setFilterH(Math.round(el.getBoundingClientRect().height));
-  }, []);
-  useEffect(() => {
-    const el = filterRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver((entries) => {
-      const h = Math.round(
-        entries[0]?.contentRect.height ?? el.getBoundingClientRect().height,
-      );
-      setFilterH((prev) => (prev === h ? prev : h));
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
   const tableCard = "rounded border border-border bg-card overflow-hidden";
   return (
-    <div
-      ref={rootRef}
-      style={{ ["--mg-list-filter-offset" as string]: `${filterH}px` }}
-    >
+    <div>
       <div
-        ref={filterRef}
         className={classNames(
-          // Sticky filter bar. Offset reads --mg-sticky-offset (published by
-          // AppShell to match real header + ticker height) with a fallback.
-          "sticky z-[var(--mg-z-raised)] -mx-4 md:mx-0 mb-3",
+          // Sticky below `md`, in normal flow at and above it. Offset reads
+          // --mg-sticky-offset (published by AppShell to match real header +
+          // ticker height) with a fallback.
+          //
+          // The breakpoint is the same one that swaps cards for the table,
+          // and that is the whole reason for it: a page-sticky filter bar and
+          // a table header pinned inside a bounded viewport are in different
+          // scroll contexts, so once the page scrolls far enough for the
+          // table's top to pass under this bar, the bar covers the header --
+          // the column labels disappear again, by a different mechanism than
+          // the one they were just fixed for. Below `md` there is no table
+          // (cards render instead), nothing to cover, and a filter bar that
+          // follows a long list is genuinely useful, so it stays pinned.
+          //
+          // /subnets reached this conclusion first and encoded it as a
+          // page-specific override in apps/ui/src/styles.css
+          // (`#subnets-list > div > div:first-child { position: static }`,
+          // at >=1024px only, which is why tablet still showed the overlap).
+          // That override is deleted; this is the general rule.
+          "sticky md:static z-[var(--mg-z-raised)] -mx-4 md:mx-0 mb-3",
           "bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80",
           "border-b border-border md:border md:rounded md:bg-card",
           "px-3 py-2 md:p-2.5",
@@ -102,7 +103,29 @@ export function ListShell({
           {cards ? <div className="md:hidden space-y-2">{cards}</div> : null}
           <div className={cards ? "hidden md:block" : undefined}>
             <div className={tableCard}>
-              <div className="mg-table-scroll overflow-x-auto">{table}</div>
+              {/* Two nested wrappers, one axis each. The outer keeps the
+                  edge-fade mask and thin horizontal scrollbar that
+                  .mg-table-scroll styles; the inner is the bounded viewport
+                  the <thead> pins against. `max-h` (not `h`) means a short
+                  table is untouched -- the cap only engages once the list is
+                  taller than the screen, which is exactly when a header that
+                  scrolls away starts costing the reader the column labels. */}
+              <div className="mg-table-scroll overflow-x-auto">
+                <div
+                  ref={viewportRef}
+                  // Token WITH a fallback, matching how the rest of the app
+                  // reads --mg-sticky-offset. A bare `var(--x)` that fails to
+                  // resolve computes `max-height: none` -- no cap, so the
+                  // viewport is unbounded, so the sticky <thead> is inert
+                  // again. That is this exact bug, reintroduced silently by
+                  // the thing meant to prevent it, and it is not theoretical:
+                  // it happened once already here, and every list route in
+                  // the e2e sweep went red at once. The literal is the floor.
+                  className="max-h-[var(--mg-list-viewport-max,70vh)] overflow-y-auto"
+                >
+                  {table}
+                </div>
+              </div>
               {footer}
             </div>
           </div>

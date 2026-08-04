@@ -1127,6 +1127,9 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
         isEmpty={rows.length === 0}
         isStale={isFetching}
         empty={emptyNode}
+        // react-virtual measures against ListShell's bounded viewport -- the
+        // same element .mg-table-head-pinned pins to at top: 0.
+        viewportRef={tableScrollRef}
         cards={[
           ...mobileRows.map((s) => (
             <Link
@@ -1218,449 +1221,441 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
           const firstPad = compact ? "pl-3 pr-1 py-1.5" : "pl-4 pr-1 py-2.5";
           const monoSize = compact ? "mg-type-data" : "mg-type-caption";
           return (
-            // #8248: bounded, internally-scrolling virtualized region -- this
-            // div (not the page) is the sticky-header containing block and
-            // the scroll viewport react-virtual measures against. Nested one
-            // level inside ListShell's own `.mg-table-scroll` horizontal-
-            // scroll wrapper, so it doesn't interact with that wrapper's
-            // existing page-sticky CSS override (#subnets-list
-            // div:has(> .mg-table-scroll) { overflow: visible }), which only
-            // ever targeted `.mg-table-scroll`'s own ancestors.
-            <div ref={tableScrollRef} className="max-h-[70vh] overflow-y-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr>
-                    <th
-                      className={classNames(firstPad, "mg-subnets-sticky-head w-6")}
-                      aria-label="Watch"
+            // #8248's bounded, internally-scrolling virtualized region now
+            // comes from ListShell itself (`viewportRef` above), rather than
+            // a second `max-h-[70vh] overflow-y-auto` div declared here. Both
+            // existed for a while: this one owned tableScrollRef, ListShell's
+            // owned the sticky <thead>, and the outer of the two could never
+            // scroll because the inner capped its content at the same 70vh.
+            // One viewport, one ref, one thing the header pins against.
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr>
+                  <th
+                    className={classNames(firstPad, "mg-table-head-pinned w-6")}
+                    aria-label="Watch"
+                  />
+                  <th
+                    className={classNames(firstPad, "mg-table-head-pinned w-6")}
+                    aria-label="Compare"
+                  />
+                  <th
+                    className={classNames(cellPad, "mg-table-head-pinned")}
+                    aria-sort={ariaSort(search.sort === "netuid", search.order)}
+                  >
+                    <SortHeader
+                      label="UID"
+                      field="netuid"
+                      active={search.sort === "netuid"}
+                      order={search.order}
+                      onSort={onSort}
                     />
-                    <th
-                      className={classNames(firstPad, "mg-subnets-sticky-head w-6")}
-                      aria-label="Compare"
+                  </th>
+                  <th
+                    className={classNames(cellPad, "mg-table-head-pinned")}
+                    aria-sort={ariaSort(search.sort === "name", search.order)}
+                  >
+                    <SortHeader
+                      label="Name"
+                      field="name"
+                      active={search.sort === "name"}
+                      order={search.order}
+                      onSort={onSort}
                     />
+                  </th>
+                  {columns.isVisible("symbol") ? (
                     <th
-                      className={classNames(cellPad, "mg-subnets-sticky-head")}
-                      aria-sort={ariaSort(search.sort === "netuid", search.order)}
+                      className={classNames(cellPad, "mg-table-head-pinned")}
+                      aria-sort={ariaSort(search.sort === "symbol", search.order)}
                     >
                       <SortHeader
-                        label="UID"
-                        field="netuid"
-                        active={search.sort === "netuid"}
+                        label="Symbol"
+                        field="symbol"
+                        active={search.sort === "symbol"}
                         order={search.order}
                         onSort={onSort}
                       />
                     </th>
+                  ) : null}
+                  {columns.isVisible("curation") ? (
                     <th
-                      className={classNames(cellPad, "mg-subnets-sticky-head")}
-                      aria-sort={ariaSort(search.sort === "name", search.order)}
+                      className={classNames(cellPad, "mg-table-head-pinned")}
+                      aria-sort={ariaSort(search.sort === "curation_level", search.order)}
+                      title="Source: how this subnet's registry entry was curated — native chain data, machine-verified, maintainer-reviewed, adapter-backed, community-seeded, or an unverified candidate."
                     >
                       <SortHeader
-                        label="Name"
-                        field="name"
-                        active={search.sort === "name"}
+                        label="Source"
+                        field="curation_level"
+                        active={search.sort === "curation_level"}
                         order={search.order}
                         onSort={onSort}
                       />
                     </th>
-                    {columns.isVisible("symbol") ? (
-                      <th
-                        className={classNames(cellPad, "mg-subnets-sticky-head")}
-                        aria-sort={ariaSort(search.sort === "symbol", search.order)}
-                      >
-                        <SortHeader
-                          label="Symbol"
-                          field="symbol"
-                          active={search.sort === "symbol"}
-                          order={search.order}
-                          onSort={onSort}
-                        />
-                      </th>
-                    ) : null}
-                    {columns.isVisible("curation") ? (
-                      <th
-                        className={classNames(cellPad, "mg-subnets-sticky-head")}
-                        aria-sort={ariaSort(search.sort === "curation_level", search.order)}
-                        title="Source: how this subnet's registry entry was curated — native chain data, machine-verified, maintainer-reviewed, adapter-backed, community-seeded, or an unverified candidate."
-                      >
-                        <SortHeader
-                          label="Source"
-                          field="curation_level"
-                          active={search.sort === "curation_level"}
-                          order={search.order}
-                          onSort={onSort}
-                        />
-                      </th>
-                    ) : null}
-                    {columns.isVisible("surfaces") ? (
-                      <th
-                        className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
-                        aria-sort={ariaSort(search.sort === "surfaces_count", search.order)}
-                        title="Verified public surfaces registered for this subnet (APIs, docs, dashboards, data artifacts, SSE streams)."
-                      >
-                        <SortHeader
-                          label="Surfaces"
-                          field="surfaces_count"
-                          active={search.sort === "surfaces_count"}
-                          order={search.order}
-                          onSort={onSort}
-                          align="right"
-                        />
-                      </th>
-                    ) : null}
-                    {columns.isVisible("readiness") ? (
-                      <th
-                        className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
-                        aria-sort={ariaSort(search.sort === "integration_readiness", search.order)}
-                        title="Profile: how complete this subnet's public-interface profile is (buildable → emerging → identity-only → dormant), based on registered surfaces and evidence."
-                      >
-                        <SortHeader
-                          label="Profile"
-                          field="integration_readiness"
-                          active={search.sort === "integration_readiness"}
-                          order={search.order}
-                          onSort={onSort}
-                          align="right"
-                        />
-                      </th>
-                    ) : null}
-                    {columns.isVisible("registration") ? (
-                      <th
-                        className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
-                        aria-sort={ariaSort(search.sort === "registration_cost_tao", search.order)}
-                        title="Current recycle/burn cost (in TAO) to register a new UID on this subnet. Dimmed when registration is closed."
-                      >
-                        <SortHeader
-                          label="Reg. cost"
-                          field="registration_cost_tao"
-                          active={search.sort === "registration_cost_tao"}
-                          order={search.order}
-                          onSort={onSort}
-                          align="right"
-                        />
-                      </th>
-                    ) : null}
-                    {columns.isVisible("emission") ? (
-                      <th
-                        className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
-                        aria-sort={ariaSort(search.sort === "emission_share", search.order)}
-                        // #8746: stage-1 price share, not TAO received.
-                        title="Stage 1 of the v440 emission pipeline: share of alpha price, not the share of TAO this subnet receives."
-                      >
-                        <SortHeader
-                          label="Emission"
-                          field="emission_share"
-                          active={search.sort === "emission_share"}
-                          order={search.order}
-                          onSort={onSort}
-                          align="right"
-                        />
-                      </th>
-                    ) : null}
-                    {columns.isVisible("alphaPrice") ? (
-                      <th
-                        className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
-                        aria-sort={ariaSort(search.sort === "alpha_price_tao", search.order)}
-                      >
-                        <SortHeader
-                          label="Alpha price"
-                          field="alpha_price_tao"
-                          active={search.sort === "alpha_price_tao"}
-                          order={search.order}
-                          onSort={onSort}
-                          align="right"
-                        />
-                      </th>
-                    ) : null}
-                    {columns.isVisible("priceChange") ? (
-                      <th
-                        className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
-                        title={`Alpha price change over the selected trend window (${trendWindow})`}
-                      >
-                        <span className="mg-type-caption font-normal text-ink-muted">
-                          {trendWindow} %
-                        </span>
-                      </th>
-                    ) : null}
-                    {columns.isVisible("totalStake") ? (
-                      <th
-                        className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
-                        aria-sort={ariaSort(search.sort === "total_stake_tao", search.order)}
-                      >
-                        <SortHeader
-                          label="Total stake"
-                          field="total_stake_tao"
-                          active={search.sort === "total_stake_tao"}
-                          order={search.order}
-                          onSort={onSort}
-                          align="right"
-                        />
-                      </th>
-                    ) : null}
-                    {columns.isVisible("marketCap") ? (
-                      <th
-                        className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
-                        aria-sort={ariaSort(search.sort === "alpha_market_cap_tao", search.order)}
-                      >
-                        <SortHeader
-                          label="Market cap"
-                          field="alpha_market_cap_tao"
-                          active={search.sort === "alpha_market_cap_tao"}
-                          order={search.order}
-                          onSort={onSort}
-                          align="right"
-                        />
-                      </th>
-                    ) : null}
-                    {columns.isVisible("updated") ? (
-                      <th
-                        className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
-                        aria-sort={ariaSort(search.sort === "updated_at", search.order)}
-                      >
-                        <SortHeader
-                          label="Updated"
-                          field="updated_at"
-                          active={search.sort === "updated_at"}
-                          order={search.order}
-                          onSort={onSort}
-                          align="right"
-                        />
-                      </th>
-                    ) : null}
-                    {columns.isVisible("health") ? (
-                      <th
-                        className={classNames(
-                          cellPad,
-                          "mg-subnets-sticky-head mg-type-micro text-ink-muted font-normal text-left",
-                        )}
-                      >
-                        Health
-                      </th>
-                    ) : null}
-                    {columns.isVisible("age") ? (
-                      <th
-                        className={classNames(cellPad, "mg-subnets-sticky-head text-right")}
-                        aria-sort={ariaSort(search.sort === "registered_at_block", search.order)}
-                        title="Time since this subnet's registration block."
-                      >
-                        <SortHeader
-                          label="Age"
-                          field="registered_at_block"
-                          active={search.sort === "registered_at_block"}
-                          order={search.order}
-                          onSort={onSort}
-                          align="right"
-                        />
-                      </th>
-                    ) : null}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {/* #8248: top spacer -- stands in for the height of every row
+                  ) : null}
+                  {columns.isVisible("surfaces") ? (
+                    <th
+                      className={classNames(cellPad, "mg-table-head-pinned text-right")}
+                      aria-sort={ariaSort(search.sort === "surfaces_count", search.order)}
+                      title="Verified public surfaces registered for this subnet (APIs, docs, dashboards, data artifacts, SSE streams)."
+                    >
+                      <SortHeader
+                        label="Surfaces"
+                        field="surfaces_count"
+                        active={search.sort === "surfaces_count"}
+                        order={search.order}
+                        onSort={onSort}
+                        align="right"
+                      />
+                    </th>
+                  ) : null}
+                  {columns.isVisible("readiness") ? (
+                    <th
+                      className={classNames(cellPad, "mg-table-head-pinned text-right")}
+                      aria-sort={ariaSort(search.sort === "integration_readiness", search.order)}
+                      title="Profile: how complete this subnet's public-interface profile is (buildable → emerging → identity-only → dormant), based on registered surfaces and evidence."
+                    >
+                      <SortHeader
+                        label="Profile"
+                        field="integration_readiness"
+                        active={search.sort === "integration_readiness"}
+                        order={search.order}
+                        onSort={onSort}
+                        align="right"
+                      />
+                    </th>
+                  ) : null}
+                  {columns.isVisible("registration") ? (
+                    <th
+                      className={classNames(cellPad, "mg-table-head-pinned text-right")}
+                      aria-sort={ariaSort(search.sort === "registration_cost_tao", search.order)}
+                      title="Current recycle/burn cost (in TAO) to register a new UID on this subnet. Dimmed when registration is closed."
+                    >
+                      <SortHeader
+                        label="Reg. cost"
+                        field="registration_cost_tao"
+                        active={search.sort === "registration_cost_tao"}
+                        order={search.order}
+                        onSort={onSort}
+                        align="right"
+                      />
+                    </th>
+                  ) : null}
+                  {columns.isVisible("emission") ? (
+                    <th
+                      className={classNames(cellPad, "mg-table-head-pinned text-right")}
+                      aria-sort={ariaSort(search.sort === "emission_share", search.order)}
+                      // #8746: stage-1 price share, not TAO received.
+                      title="Stage 1 of the v440 emission pipeline: share of alpha price, not the share of TAO this subnet receives."
+                    >
+                      <SortHeader
+                        label="Emission"
+                        field="emission_share"
+                        active={search.sort === "emission_share"}
+                        order={search.order}
+                        onSort={onSort}
+                        align="right"
+                      />
+                    </th>
+                  ) : null}
+                  {columns.isVisible("alphaPrice") ? (
+                    <th
+                      className={classNames(cellPad, "mg-table-head-pinned text-right")}
+                      aria-sort={ariaSort(search.sort === "alpha_price_tao", search.order)}
+                    >
+                      <SortHeader
+                        label="Alpha price"
+                        field="alpha_price_tao"
+                        active={search.sort === "alpha_price_tao"}
+                        order={search.order}
+                        onSort={onSort}
+                        align="right"
+                      />
+                    </th>
+                  ) : null}
+                  {columns.isVisible("priceChange") ? (
+                    <th
+                      className={classNames(cellPad, "mg-table-head-pinned text-right")}
+                      title={`Alpha price change over the selected trend window (${trendWindow})`}
+                    >
+                      <span className="mg-type-caption font-normal text-ink-muted">
+                        {trendWindow} %
+                      </span>
+                    </th>
+                  ) : null}
+                  {columns.isVisible("totalStake") ? (
+                    <th
+                      className={classNames(cellPad, "mg-table-head-pinned text-right")}
+                      aria-sort={ariaSort(search.sort === "total_stake_tao", search.order)}
+                    >
+                      <SortHeader
+                        label="Total stake"
+                        field="total_stake_tao"
+                        active={search.sort === "total_stake_tao"}
+                        order={search.order}
+                        onSort={onSort}
+                        align="right"
+                      />
+                    </th>
+                  ) : null}
+                  {columns.isVisible("marketCap") ? (
+                    <th
+                      className={classNames(cellPad, "mg-table-head-pinned text-right")}
+                      aria-sort={ariaSort(search.sort === "alpha_market_cap_tao", search.order)}
+                    >
+                      <SortHeader
+                        label="Market cap"
+                        field="alpha_market_cap_tao"
+                        active={search.sort === "alpha_market_cap_tao"}
+                        order={search.order}
+                        onSort={onSort}
+                        align="right"
+                      />
+                    </th>
+                  ) : null}
+                  {columns.isVisible("updated") ? (
+                    <th
+                      className={classNames(cellPad, "mg-table-head-pinned text-right")}
+                      aria-sort={ariaSort(search.sort === "updated_at", search.order)}
+                    >
+                      <SortHeader
+                        label="Updated"
+                        field="updated_at"
+                        active={search.sort === "updated_at"}
+                        order={search.order}
+                        onSort={onSort}
+                        align="right"
+                      />
+                    </th>
+                  ) : null}
+                  {columns.isVisible("health") ? (
+                    <th
+                      className={classNames(
+                        cellPad,
+                        "mg-table-head-pinned mg-type-micro text-ink-muted font-normal text-left",
+                      )}
+                    >
+                      Health
+                    </th>
+                  ) : null}
+                  {columns.isVisible("age") ? (
+                    <th
+                      className={classNames(cellPad, "mg-table-head-pinned text-right")}
+                      aria-sort={ariaSort(search.sort === "registered_at_block", search.order)}
+                      title="Time since this subnet's registration block."
+                    >
+                      <SortHeader
+                        label="Age"
+                        field="registered_at_block"
+                        active={search.sort === "registered_at_block"}
+                        order={search.order}
+                        onSort={onSort}
+                        align="right"
+                      />
+                    </th>
+                  ) : null}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {/* #8248: top spacer -- stands in for the height of every row
                     above the rendered slice, so real `<tr>`s never need
                     absolute positioning (which would drop them out of table
                     row-group layout and break column alignment). */}
-                  {virtualPaddingTop > 0 ? (
-                    <tr aria-hidden>
-                      <td colSpan={20} style={{ height: virtualPaddingTop }} />
-                    </tr>
-                  ) : null}
-                  {virtualRows.map((vRow) => {
-                    const s = rows[vRow.index];
-                    return (
-                      <tr
-                        key={s.netuid}
-                        data-index={vRow.index}
-                        ref={rowVirtualizer.measureElement}
-                        className="mg-row-accent hover:bg-surface/40"
-                      >
-                        <td className={classNames(firstPad, "align-middle")}>
-                          <button
-                            type="button"
-                            onClick={() => watchlist.toggle(s.netuid)}
-                            aria-pressed={watchlist.isWatched(s.netuid)}
-                            aria-label={
-                              watchlist.isWatched(s.netuid)
-                                ? `Remove SN${s.netuid} from watchlist`
-                                : `Add SN${s.netuid} to watchlist`
-                            }
-                            className="mg-tap-target flex items-center justify-center rounded p-1 text-ink-muted hover:text-ink-strong"
+                {virtualPaddingTop > 0 ? (
+                  <tr aria-hidden>
+                    <td colSpan={20} style={{ height: virtualPaddingTop }} />
+                  </tr>
+                ) : null}
+                {virtualRows.map((vRow) => {
+                  const s = rows[vRow.index];
+                  return (
+                    <tr
+                      key={s.netuid}
+                      data-index={vRow.index}
+                      ref={rowVirtualizer.measureElement}
+                      className="mg-row-accent hover:bg-surface/40"
+                    >
+                      <td className={classNames(firstPad, "align-middle")}>
+                        <button
+                          type="button"
+                          onClick={() => watchlist.toggle(s.netuid)}
+                          aria-pressed={watchlist.isWatched(s.netuid)}
+                          aria-label={
+                            watchlist.isWatched(s.netuid)
+                              ? `Remove SN${s.netuid} from watchlist`
+                              : `Add SN${s.netuid} to watchlist`
+                          }
+                          className="mg-tap-target flex items-center justify-center rounded p-1 text-ink-muted hover:text-ink-strong"
+                        >
+                          <Star
+                            className={classNames(
+                              "size-3.5",
+                              watchlist.isWatched(s.netuid) && "fill-accent text-accent",
+                            )}
+                          />
+                        </button>
+                      </td>
+                      <td className={classNames(firstPad, "align-middle")}>
+                        <CompareToggle netuid={s.netuid} />
+                      </td>
+                      <td className={classNames(cellPad, "font-mono text-ink-muted", monoSize)}>
+                        <EntityHoverCard kind="subnet" netuid={s.netuid}>
+                          <Link
+                            to="/subnets/$netuid"
+                            params={{ netuid: s.netuid }}
+                            className="hover:text-ink-strong"
                           >
-                            <Star
-                              className={classNames(
-                                "size-3.5",
-                                watchlist.isWatched(s.netuid) && "fill-accent text-accent",
-                              )}
-                            />
-                          </button>
-                        </td>
-                        <td className={classNames(firstPad, "align-middle")}>
-                          <CompareToggle netuid={s.netuid} />
-                        </td>
-                        <td className={classNames(cellPad, "font-mono text-ink-muted", monoSize)}>
-                          <EntityHoverCard kind="subnet" netuid={s.netuid}>
-                            <Link
-                              to="/subnets/$netuid"
-                              params={{ netuid: s.netuid }}
-                              className="hover:text-ink-strong"
-                            >
-                              {String(s.netuid).padStart(3, "0")}
-                            </Link>
-                          </EntityHoverCard>
-                          {/* #6643: age-in-days, estimated from the already-fetched
+                            {String(s.netuid).padStart(3, "0")}
+                          </Link>
+                        </EntityHoverCard>
+                        {/* #6643: age-in-days, estimated from the already-fetched
                         registered_at_block/block delta -- no new backend call. */}
-                          <div className="mg-type-caption font-sans text-ink-muted/70 whitespace-nowrap">
-                            {formatSubnetAge(subnetAgeDays(s.registered_at_block, s.block))}
-                          </div>
-                        </td>
-                        <td className={cellPad}>
-                          <EntityHoverCard kind="subnet" netuid={s.netuid}>
-                            <Link
-                              to="/subnets/$netuid"
-                              params={{ netuid: s.netuid }}
-                              className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline"
-                            >
-                              <BrandIcon
-                                url={s.website}
-                                repoUrl={s.repo}
-                                iconUrl={s.icon_url}
-                                netuid={s.netuid}
-                                name={s.name}
-                                fallback={s.netuid}
-                                size={compact ? 18 : 20}
-                              />
-                              <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
-                            </Link>
-                          </EntityHoverCard>
-                        </td>
-                        {columns.isVisible("symbol") ? (
-                          <td className={classNames(cellPad, "mg-type-data text-ink-muted")}>
-                            {s.symbol ?? "—"}
-                          </td>
-                        ) : null}
-                        {columns.isVisible("curation") ? (
-                          <td className={cellPad}>
-                            <ProvenanceChip level={s.curation_level} />
-                          </td>
-                        ) : null}
-                        {columns.isVisible("surfaces") ? (
-                          <td className={classNames(cellPad, "text-right")}>
-                            <SurfacesCell subnet={s} density={density} />
-                          </td>
-                        ) : null}
-                        {columns.isVisible("readiness") ? (
-                          <td className={classNames(cellPad, "text-right")}>
-                            <ReadinessGauge
-                              score={s.integration_readiness}
-                              tier={s.readiness_tier}
-                              details={s.service_kinds}
-                              compact={compact}
+                        <div className="mg-type-caption font-sans text-ink-muted/70 whitespace-nowrap">
+                          {formatSubnetAge(subnetAgeDays(s.registered_at_block, s.block))}
+                        </div>
+                      </td>
+                      <td className={cellPad}>
+                        <EntityHoverCard kind="subnet" netuid={s.netuid}>
+                          <Link
+                            to="/subnets/$netuid"
+                            params={{ netuid: s.netuid }}
+                            className="inline-flex items-center gap-2 font-medium text-ink-strong hover:underline"
+                          >
+                            <BrandIcon
+                              url={s.website}
+                              repoUrl={s.repo}
+                              iconUrl={s.icon_url}
+                              netuid={s.netuid}
+                              name={s.name}
+                              fallback={s.netuid}
+                              size={compact ? 18 : 20}
                             />
-                          </td>
-                        ) : null}
-                        {columns.isVisible("registration") ? (
-                          <td
-                            className={classNames(
-                              cellPad,
-                              "text-right mg-type-data tabular-nums",
-                              // #3364: dim the cost only when registration is explicitly
-                              // closed. `registration_allowed === undefined` (economics
-                              // entry present but flag absent, or no entry at all) keeps
-                              // the neutral tone — do NOT read it as "open".
-                              s.registration_allowed === false ? "text-ink-muted" : "text-ink",
-                            )}
-                            title={
-                              s.registration_allowed === false
-                                ? "Registration currently closed"
-                                : s.registration_allowed === true
-                                  ? "Registration open"
-                                  : undefined
-                            }
-                          >
-                            {formatTao(s.registration_cost_tao)}
-                          </td>
-                        ) : null}
-                        {columns.isVisible("emission") ? (
-                          <td
-                            className={classNames(cellPad, "text-right mg-type-data tabular-nums")}
-                          >
-                            <EmissionCell share={s.emission_share} />
-                          </td>
-                        ) : null}
-                        {columns.isVisible("alphaPrice") ? (
-                          <FinancialTrendCell
-                            netuid={s.netuid}
-                            field="alpha_price_tao"
-                            current={s.alpha_price_tao}
-                            digits={4}
-                            compact={compact}
-                            usdPerTao={taoUsd}
-                            window={trendWindow}
-                          />
-                        ) : null}
-                        {columns.isVisible("priceChange") ? (
-                          <PctChangeCell
-                            netuid={s.netuid}
-                            current={s.alpha_price_tao}
-                            window={trendWindow}
+                            <span className="truncate">{s.name ?? `Subnet ${s.netuid}`}</span>
+                          </Link>
+                        </EntityHoverCard>
+                      </td>
+                      {columns.isVisible("symbol") ? (
+                        <td className={classNames(cellPad, "mg-type-data text-ink-muted")}>
+                          {s.symbol ?? "—"}
+                        </td>
+                      ) : null}
+                      {columns.isVisible("curation") ? (
+                        <td className={cellPad}>
+                          <ProvenanceChip level={s.curation_level} />
+                        </td>
+                      ) : null}
+                      {columns.isVisible("surfaces") ? (
+                        <td className={classNames(cellPad, "text-right")}>
+                          <SurfacesCell subnet={s} density={density} />
+                        </td>
+                      ) : null}
+                      {columns.isVisible("readiness") ? (
+                        <td className={classNames(cellPad, "text-right")}>
+                          <ReadinessGauge
+                            score={s.integration_readiness}
+                            tier={s.readiness_tier}
+                            details={s.service_kinds}
                             compact={compact}
                           />
-                        ) : null}
-                        {columns.isVisible("totalStake") ? (
-                          <FinancialTrendCell
-                            netuid={s.netuid}
-                            field="total_stake_tao"
-                            current={s.total_stake_tao}
-                            compact={compact}
-                            window={trendWindow}
-                            symbol={s.netuid === 0 ? "τ" : (s.symbol ?? "α")}
-                          />
-                        ) : null}
-                        {columns.isVisible("marketCap") ? (
-                          <FinancialTrendCell
-                            netuid={s.netuid}
-                            field="alpha_market_cap_tao"
-                            current={s.alpha_market_cap_tao}
-                            compact={compact}
-                            usdPerTao={taoUsd}
-                            window={trendWindow}
-                          />
-                        ) : null}
-                        {columns.isVisible("updated") ? (
-                          <td
-                            className={classNames(
-                              cellPad,
-                              "text-right mg-type-data text-ink-muted",
-                            )}
-                          >
-                            <TimeAgo at={s.updated_at ?? s.freshness} />
-                          </td>
-                        ) : null}
-                        {columns.isVisible("health") ? (
-                          <td className={cellPad}>
-                            <HealthPill state={s.health} />
-                          </td>
-                        ) : null}
-                        {columns.isVisible("age") ? (
-                          <td
-                            className={classNames(
-                              cellPad,
-                              "text-right mg-type-data tabular-nums text-ink-muted",
-                            )}
-                          >
-                            {formatSubnetAge(subnetAgeDays(s.registered_at_block, s.block))}
-                          </td>
-                        ) : null}
-                      </tr>
-                    );
-                  })}
-                  {virtualPaddingBottom > 0 ? (
-                    <tr aria-hidden>
-                      <td colSpan={20} style={{ height: virtualPaddingBottom }} />
+                        </td>
+                      ) : null}
+                      {columns.isVisible("registration") ? (
+                        <td
+                          className={classNames(
+                            cellPad,
+                            "text-right mg-type-data tabular-nums",
+                            // #3364: dim the cost only when registration is explicitly
+                            // closed. `registration_allowed === undefined` (economics
+                            // entry present but flag absent, or no entry at all) keeps
+                            // the neutral tone — do NOT read it as "open".
+                            s.registration_allowed === false ? "text-ink-muted" : "text-ink",
+                          )}
+                          title={
+                            s.registration_allowed === false
+                              ? "Registration currently closed"
+                              : s.registration_allowed === true
+                                ? "Registration open"
+                                : undefined
+                          }
+                        >
+                          {formatTao(s.registration_cost_tao)}
+                        </td>
+                      ) : null}
+                      {columns.isVisible("emission") ? (
+                        <td className={classNames(cellPad, "text-right mg-type-data tabular-nums")}>
+                          <EmissionCell share={s.emission_share} />
+                        </td>
+                      ) : null}
+                      {columns.isVisible("alphaPrice") ? (
+                        <FinancialTrendCell
+                          netuid={s.netuid}
+                          field="alpha_price_tao"
+                          current={s.alpha_price_tao}
+                          digits={4}
+                          compact={compact}
+                          usdPerTao={taoUsd}
+                          window={trendWindow}
+                        />
+                      ) : null}
+                      {columns.isVisible("priceChange") ? (
+                        <PctChangeCell
+                          netuid={s.netuid}
+                          current={s.alpha_price_tao}
+                          window={trendWindow}
+                          compact={compact}
+                        />
+                      ) : null}
+                      {columns.isVisible("totalStake") ? (
+                        <FinancialTrendCell
+                          netuid={s.netuid}
+                          field="total_stake_tao"
+                          current={s.total_stake_tao}
+                          compact={compact}
+                          window={trendWindow}
+                          symbol={s.netuid === 0 ? "τ" : (s.symbol ?? "α")}
+                        />
+                      ) : null}
+                      {columns.isVisible("marketCap") ? (
+                        <FinancialTrendCell
+                          netuid={s.netuid}
+                          field="alpha_market_cap_tao"
+                          current={s.alpha_market_cap_tao}
+                          compact={compact}
+                          usdPerTao={taoUsd}
+                          window={trendWindow}
+                        />
+                      ) : null}
+                      {columns.isVisible("updated") ? (
+                        <td
+                          className={classNames(cellPad, "text-right mg-type-data text-ink-muted")}
+                        >
+                          <TimeAgo at={s.updated_at ?? s.freshness} />
+                        </td>
+                      ) : null}
+                      {columns.isVisible("health") ? (
+                        <td className={cellPad}>
+                          <HealthPill state={s.health} />
+                        </td>
+                      ) : null}
+                      {columns.isVisible("age") ? (
+                        <td
+                          className={classNames(
+                            cellPad,
+                            "text-right mg-type-data tabular-nums text-ink-muted",
+                          )}
+                        >
+                          {formatSubnetAge(subnetAgeDays(s.registered_at_block, s.block))}
+                        </td>
+                      ) : null}
                     </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
+                  );
+                })}
+                {virtualPaddingBottom > 0 ? (
+                  <tr aria-hidden>
+                    <td colSpan={20} style={{ height: virtualPaddingBottom }} />
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
           );
         })()}
       />

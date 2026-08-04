@@ -1,7 +1,7 @@
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import * as React3 from 'react';
-import { createContext, forwardRef, useId, useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect, useContext } from 'react';
+import { createContext, forwardRef, useId, useState, useMemo, useCallback, useRef, useEffect, useContext } from 'react';
 import * as AccordionPrimitive from '@radix-ui/react-accordion';
 import { ChevronDown, X, Search, Check, ArrowUp, Copy, Rows3, Rows2, Download, Info, AlertCircle, RefreshCw, Link, Link2, Share2, ChevronLeft, ChevronRight, Clock, Inbox, ExternalLink as ExternalLink$1, List, LayoutGrid, Grid3x3, ChevronUp, Globe, BookOpen, Github, LayoutDashboard, Columns3, RotateCcw, AlertTriangle, Filter, Loader2, MoreHorizontal, Lock } from 'lucide-react';
 import { jsx, jsxs, Fragment } from 'react/jsx-runtime';
@@ -2014,64 +2014,61 @@ function ListShell({
   empty,
   isEmpty,
   isStale,
+  viewportRef,
   stickyHeader: _stickyHeader = true
 }) {
-  const rootRef = useRef(null);
-  const filterRef = useRef(null);
-  const [filterH, setFilterH] = useState(0);
-  useLayoutEffect(() => {
-    const el = filterRef.current;
-    if (!el) return;
-    setFilterH(Math.round(el.getBoundingClientRect().height));
-  }, []);
-  useEffect(() => {
-    const el = filterRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver((entries) => {
-      const h = Math.round(
-        entries[0]?.contentRect.height ?? el.getBoundingClientRect().height
-      );
-      setFilterH((prev) => prev === h ? prev : h);
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
   const tableCard = "rounded border border-border bg-card overflow-hidden";
-  return /* @__PURE__ */ jsxs(
-    "div",
-    {
-      ref: rootRef,
-      style: { ["--mg-list-filter-offset"]: `${filterH}px` },
-      children: [
-        /* @__PURE__ */ jsx(
+  return /* @__PURE__ */ jsxs("div", { children: [
+    /* @__PURE__ */ jsx(
+      "div",
+      {
+        className: classNames(
+          // Sticky below `md`, in normal flow at and above it. Offset reads
+          // --mg-sticky-offset (published by AppShell to match real header +
+          // ticker height) with a fallback.
+          //
+          // The breakpoint is the same one that swaps cards for the table,
+          // and that is the whole reason for it: a page-sticky filter bar and
+          // a table header pinned inside a bounded viewport are in different
+          // scroll contexts, so once the page scrolls far enough for the
+          // table's top to pass under this bar, the bar covers the header --
+          // the column labels disappear again, by a different mechanism than
+          // the one they were just fixed for. Below `md` there is no table
+          // (cards render instead), nothing to cover, and a filter bar that
+          // follows a long list is genuinely useful, so it stays pinned.
+          //
+          // /subnets reached this conclusion first and encoded it as a
+          // page-specific override in apps/ui/src/styles.css
+          // (`#subnets-list > div > div:first-child { position: static }`,
+          // at >=1024px only, which is why tablet still showed the overlap).
+          // That override is deleted; this is the general rule.
+          "sticky md:static z-[var(--mg-z-raised)] -mx-4 md:mx-0 mb-3",
+          "bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80",
+          "border-b border-border md:border md:rounded md:bg-card",
+          "px-3 py-2 md:p-2.5"
+        ),
+        style: {
+          top: "calc(var(--mg-sticky-offset, 3.5rem) + var(--mg-tabs-h, 0px))"
+        },
+        children: /* @__PURE__ */ jsx("div", { className: "flex flex-wrap items-center gap-2", children: filters })
+      }
+    ),
+    isEmpty ? empty : /* @__PURE__ */ jsxs("div", { className: isStale ? "opacity-70 transition-opacity" : void 0, children: [
+      cards ? /* @__PURE__ */ jsx("div", { className: "md:hidden space-y-2", children: cards }) : null,
+      /* @__PURE__ */ jsx("div", { className: cards ? "hidden md:block" : void 0, children: /* @__PURE__ */ jsxs("div", { className: tableCard, children: [
+        /* @__PURE__ */ jsx("div", { className: "mg-table-scroll overflow-x-auto", children: /* @__PURE__ */ jsx(
           "div",
           {
-            ref: filterRef,
-            className: classNames(
-              // Sticky filter bar. Offset reads --mg-sticky-offset (published by
-              // AppShell to match real header + ticker height) with a fallback.
-              "sticky z-[var(--mg-z-raised)] -mx-4 md:mx-0 mb-3",
-              "bg-paper/95 backdrop-blur supports-[backdrop-filter]:bg-paper/80",
-              "border-b border-border md:border md:rounded md:bg-card",
-              "px-3 py-2 md:p-2.5"
-            ),
-            style: {
-              top: "calc(var(--mg-sticky-offset, 3.5rem) + var(--mg-tabs-h, 0px))"
-            },
-            children: /* @__PURE__ */ jsx("div", { className: "flex flex-wrap items-center gap-2", children: filters })
+            ref: viewportRef,
+            className: "max-h-[var(--mg-list-viewport-max,70vh)] overflow-y-auto",
+            children: table
           }
-        ),
-        isEmpty ? empty : /* @__PURE__ */ jsxs("div", { className: isStale ? "opacity-70 transition-opacity" : void 0, children: [
-          cards ? /* @__PURE__ */ jsx("div", { className: "md:hidden space-y-2", children: cards }) : null,
-          /* @__PURE__ */ jsx("div", { className: cards ? "hidden md:block" : void 0, children: /* @__PURE__ */ jsxs("div", { className: tableCard, children: [
-            /* @__PURE__ */ jsx("div", { className: "mg-table-scroll overflow-x-auto", children: table }),
-            footer
-          ] }) }),
-          cards && footer ? /* @__PURE__ */ jsx("div", { className: "md:hidden mt-3", children: footer }) : null
-        ] })
-      ]
-    }
-  );
+        ) }),
+        footer
+      ] }) }),
+      cards && footer ? /* @__PURE__ */ jsx("div", { className: "md:hidden mt-3", children: footer }) : null
+    ] })
+  ] });
 }
 function LoadMore({
   hasMore,
