@@ -19,11 +19,10 @@ describe("ListShell sticky table wrappers", () => {
     // shell -- verified in a browser on /chain/blocks: computed
     // `overflow: auto/auto` with scrollHeight === clientHeight.
     expect(source).toContain('"mg-table-scroll overflow-x-auto"');
-    // The cap is a token, not a literal -- /validators builds its own shell
-    // and has to agree with this one.
-    expect(source).toContain(
-      '"max-h-[var(--mg-list-viewport-max,70vh)] overflow-y-auto"',
-    );
+    // The whole viewport contract (height cap, overflow axis, overscroll
+    // containment) lives in one ui-kit class -- /validators builds its own
+    // shell and has to agree with this one.
+    expect(source).toContain('className="mg-list-viewport"');
     expect(source).not.toContain("overflow-x-clip");
     expect(source).not.toContain("overflow-y-clip");
   });

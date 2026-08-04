@@ -27,7 +27,7 @@ import { harPathForRoute, DATED_ENDPOINT_PATTERNS, findHarFixture } from "./har-
 // header landed -- an inert sticky header trivially satisfies
 // "header top === container top" at rest, so measuring alone would have
 // called the broken tree green.
-const ROUTES = ["/chain/blocks", "/chain/extrinsics", "/validators"];
+const ROUTES = ["/subnets", "/chain/blocks", "/chain/extrinsics", "/validators"];
 
 // Both sides of the `md` breakpoint where ListShell swaps cards for a table.
 // 768 is not decoration: /subnets shipped with its sticky rule gated to
@@ -39,6 +39,15 @@ const VIEWPORTS = [
   { name: "desktop", width: 1280, height: 800 },
 ];
 
+// Playwright's default is 30s per test, and these do not fit in it: the
+// settle sequence (goto, up to 5s for networkidle or a 2s fallback, fonts)
+// runs before a table wait that has to tolerate /chain/extrinsics taking
+// ~10s to paint. Under load that total exceeded 30s and reported as
+// "Test timeout of 30000ms exceeded" pointing at the toBeVisible line --
+// which reads like the table never rendered, when the budget simply ran out.
+// The waits are all for conditions, so fast routes still finish fast.
+test.describe.configure({ timeout: 60_000 });
+
 /** Runs in the page. Scrolls every sticky <thead>'s container and reports where it landed. */
 function measureStickyHeaders() {
   const results: {
@@ -46,11 +55,21 @@ function measureStickyHeaders() {
     scrollRange: number;
     headerHeight: number;
     containerScrolls: boolean;
+    overscroll: string;
     scrolledBy: number;
     drift: number;
   }[] = [];
 
-  for (const thead of Array.from(document.querySelectorAll("thead"))) {
+  for (const head of Array.from(document.querySelectorAll("thead"))) {
+    // Which element carries `position: sticky` differs by table: ListShell
+    // routes put it on the <thead>, /subnets puts it on each <th> (the class
+    // is applied per column cell). Measure whichever one actually sticks --
+    // reading only <thead> reported /subnets as having no sticky header at
+    // all, which is a false negative, not a pass.
+    const thead: HTMLElement =
+      getComputedStyle(head).position === "sticky"
+        ? head
+        : ((head.querySelector("th") as HTMLElement | null) ?? head);
     if (getComputedStyle(thead).position !== "sticky") continue;
 
     let node = thead.parentElement;
@@ -74,6 +93,7 @@ function measureStickyHeaders() {
         scrollRange: 0,
         headerHeight: 0,
         containerScrolls: false,
+        overscroll: "",
         scrolledBy: 0,
         drift: 0,
       });
@@ -97,6 +117,7 @@ function measureStickyHeaders() {
 
     results.push({
       container: container.className || container.tagName,
+      overscroll: getComputedStyle(container).overscrollBehaviorY,
       scrollRange: Math.round(scrollRange),
       headerHeight: Math.round(headerHeight),
       containerScrolls,
@@ -173,6 +194,16 @@ for (const route of ROUTES) {
               `nothing and the labels scroll away with the page. Give the wrapper a ` +
               `max-height, or drop the sticky declaration instead of leaving it inert.`,
           ).toBe(true);
+
+          expect(
+            h.overscroll,
+            `${route} at ${viewport.width}px: the table viewport ("${h.container}") has ` +
+              `overscroll-behavior-y: ${h.overscroll}. On \`auto\`, scrolling past the last ` +
+              `row chains to the PAGE, which drags the viewport -- and the header pinned to ` +
+              `its top -- up under the app header while the reader is still looking at rows. ` +
+              `The header is still correctly pinned; it is just off-screen with its own ` +
+              `scrollport. Use \`contain\`.`,
+          ).toBe("contain");
 
           expect(
             h.drift,

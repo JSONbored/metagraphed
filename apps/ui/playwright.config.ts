@@ -26,25 +26,35 @@ export default defineConfig({
   // that lose their races when four Chromium instances saturate four cores.
   // The `projects` split below is what makes this number usable.
   //
-  // ...but 4 also destabilises the SERVER, which is a different failure from the
-  // test races above and is not fixed by the projects split. Observed three times
-  // across main and a feature branch: the `wrangler dev` process backing
-  // `webServer` exits ~20 page-loads in with a bare `✘ [ERROR]` and an empty
-  // message, after which every navigation fails ERR_EMPTY_RESPONSE ->
-  // ERR_CONNECTION_REFUSED. It reads as a different "overflow" failure each run
-  // because the reported test is merely whichever route was in flight.
+  // A separate SERVER failure used to be blamed on this number too: the
+  // `wrangler dev` process backing `webServer` exits partway through a run with
+  // a bare `✘ [ERROR]` and an empty message, after which every navigation fails
+  // ERR_EMPTY_RESPONSE -> ERR_CONNECTION_REFUSED. It reads as a different
+  // "overflow" failure each run because the reported test is merely whichever
+  // route was in flight.
   //
-  // CI drops to 2 -- what Playwright's own default would have picked on a 4-core
-  // runner -- because 88 of the 94 tests are independent page loads against ONE
-  // unsupervised server process, and halving the concurrent load is the only lever
-  // available from this side. It is a MITIGATION, not a diagnosis: the crash
-  // reason goes to a wrangler log file that CI now uploads on failure (see the
-  // "Upload e2e server + report artifacts on failure" step in validate.yml).
-  // Restore 4 once that log identifies the actual cause.
+  // That cause is now KNOWN, from the wrangler log CI uploads on failure (the
+  // "Upload e2e server + report artifacts on failure" step in validate.yml,
+  // which had been capturing it all along):
   //
-  // Local stays at 4: the crash has never reproduced off-CI (92/92 passing across
-  // repeated local runs, and 352 concurrent requests against the same built worker
-  // without a single drop), so slowing the local loop would buy nothing.
+  //   Error in ProxyController: Error inside ProxyWorker
+  //     cause: { message: 'Network connection lost.' }
+  //
+  // wrangler escalates a dropped ProxyWorker connection to a fatal error and
+  // exits. It is upstream, it is not load-dependent, and worker count was never
+  // the lever -- it reproduces on main at 2 workers. Browser automation drops
+  // connections as a matter of course (a navigation supersedes in-flight
+  // requests, a context closes with requests outstanding), so the trigger is
+  // ordinary. tests/e2e/serve-e2e.ts supervises the process and restarts it, so
+  // a crash costs the tests in flight rather than every test after it.
+  //
+  // CI stays at 2 for the reason that remains real: the three navigation and
+  // hydration tests in the `interaction` project deterministically lose their
+  // races when four Chromium instances saturate four cores.
+  //
+  // Local stays at 4: those races have never reproduced off-CI (repeated full
+  // local runs passing, and 352 concurrent requests against the same built
+  // worker without a single drop), so slowing the local loop would buy nothing.
   workers: process.env.CI ? 2 : 4,
   use: {
     baseURL: `http://localhost:${PORT}`,
@@ -63,20 +73,31 @@ export default defineConfig({
   // that run.
   projects: [
     {
-      // Layout-measurement sweeps: load a route, measure the rendered DOM,
-      // assert. No interaction, no hydration races, so they take the parallel
-      // phase. A spec matching NEITHER project silently never runs -- add new
-      // measurement specs to this pattern.
-      name: "measurement",
-      testMatch: /(responsive-overflow|sticky-table-header)\.spec\.ts$/,
+      name: "overflow",
+      testMatch: /responsive-overflow\.spec\.ts$/,
     },
     {
+      // NOTE: a spec matching NEITHER project silently never runs. New specs
+      // must be added to one of these patterns.
+      //
+      // sticky-table-header is a measurement sweep like the overflow one, not
+      // an interaction test, and on pure test character it belongs in the
+      // parallel phase above. It runs here instead, deliberately: the
+      // `webServer` crash documented at the top of this file (bare
+      // `✘ [ERROR]`, then ERR_CONNECTION_REFUSED for the rest of the run) is
+      // load-related and unfixed from this side, and the overflow phase is
+      // already 88 independent page loads against that one unsupervised
+      // process. Adding 6 more to it traded a real increase in flake odds for
+      // ~20s of wall time. Here they cost that 20s and add nothing to the
+      // peak.
       name: "interaction",
-      testMatch: /(evidence-deep-link|multisig-related-error|offline)\.spec\.ts$/,
-      dependencies: ["measurement"],
-      // 6 tests across 3 files. Serial within the phase costs a few seconds
-      // and removes the last source of self-contention for exactly the tests
-      // that proved sensitive to it.
+      testMatch:
+        /(evidence-deep-link|multisig-related-error|offline|sticky-table-header)\.spec\.ts$/,
+      dependencies: ["overflow"],
+      // Serial within the phase costs a few seconds and removes the last
+      // source of self-contention for exactly the tests that proved sensitive
+      // to it -- which now includes sticky-table-header: /chain/extrinsics
+      // needs ~10s to paint its table and failed only under 4 workers.
       fullyParallel: false,
     },
   ],
@@ -107,7 +128,15 @@ export default defineConfig({
     // CI and production use) emits dist/. Testing against the former locally
     // passed while CI had only the latter. `build:worker` exists so those two
     // env vars are never the thing you forgot.
-    command: `npx wrangler dev -c dist/server/wrangler.json --port ${PORT} --local`,
+    // Supervised, not bare `wrangler dev` -- see tests/e2e/serve-e2e.ts. The
+    // dev server exits partway through a run and the port stops answering for
+    // every test after it; the supervisor restarts it so that costs a retry
+    // instead of the suite. The cause is now known and is upstream (the
+    // wrangler log CI uploads on failure says ProxyController got
+    // "Network connection lost" from the ProxyWorker), so the note above
+    // about restoring 4 workers once that log identifies it is settled:
+    // worker count was never the cause, and this is the mitigation.
+    command: `node tests/e2e/serve-e2e.ts ${PORT}`,
     cwd: import.meta.dirname,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,

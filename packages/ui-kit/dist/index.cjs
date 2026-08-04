@@ -2085,14 +2085,7 @@ function ListShell({
     isEmpty ? empty : /* @__PURE__ */ jsxRuntime.jsxs("div", { className: isStale ? "opacity-70 transition-opacity" : void 0, children: [
       cards ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "md:hidden space-y-2", children: cards }) : null,
       /* @__PURE__ */ jsxRuntime.jsx("div", { className: cards ? "hidden md:block" : void 0, children: /* @__PURE__ */ jsxRuntime.jsxs("div", { className: tableCard, children: [
-        /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-table-scroll overflow-x-auto", children: /* @__PURE__ */ jsxRuntime.jsx(
-          "div",
-          {
-            ref: viewportRef,
-            className: "max-h-[var(--mg-list-viewport-max,70vh)] overflow-y-auto",
-            children: table
-          }
-        ) }),
+        /* @__PURE__ */ jsxRuntime.jsx("div", { className: "mg-table-scroll overflow-x-auto", children: /* @__PURE__ */ jsxRuntime.jsx("div", { ref: viewportRef, className: "mg-list-viewport", children: table }) }),
         footer
       ] }) }),
       cards && footer ? /* @__PURE__ */ jsxRuntime.jsx("div", { className: "md:hidden mt-3", children: footer }) : null

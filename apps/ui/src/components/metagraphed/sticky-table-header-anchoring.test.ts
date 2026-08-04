@@ -37,15 +37,13 @@ describe("sticky table header anchoring", () => {
     // hands that ref to the shell instead, so the element the virtualizer
     // measures and the element the header pins to are the same one.
     expect(subnetsPage).toContain("viewportRef={tableScrollRef}");
-    expect(subnetsPage).not.toContain("max-h-[var(--mg-list-viewport-max,70vh)]");
-    expect(listShell).toContain(
-      'className="max-h-[var(--mg-list-viewport-max,70vh)] overflow-y-auto"',
-    );
+    expect(subnetsPage).not.toContain("mg-list-viewport");
+    expect(listShell).toContain('className="mg-list-viewport"');
     // The cap must carry a literal fallback. A bare var() that fails to
     // resolve computes `max-height: none`, which silently unbounds the
     // viewport and makes every sticky header in the app inert again --
     // observed once, in this repo, mid-fix.
-    expect(listShell).toContain("--mg-list-viewport-max,70vh");
+    expect(kitStyles).toContain("max-height: var(--mg-list-viewport-max, 70vh)");
     expect(kitStyles).toContain("--mg-list-viewport-max: 70vh");
   });
 

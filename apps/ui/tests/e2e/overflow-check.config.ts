@@ -3,6 +3,13 @@
 //
 export const ROUTES = [
   "/",
+  // The subnets INDEX, distinct from /subnets/1 below. It was missing from
+  // this matrix, which is why a sticky-header bug that put the column labels
+  // a third of the way down the table sat here unnoticed -- the sweep covered
+  // the detail page and never loaded the list. Its HAR also backs
+  // sticky-table-header.spec.ts; that spec resolves fixtures through
+  // harPathForRoute, so a route being listed here is what makes one exist.
+  "/subnets",
   "/subnets/1",
   "/endpoints",
   "/status",
