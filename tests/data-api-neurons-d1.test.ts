@@ -246,11 +246,23 @@ function insertDaily(overrides: Row = {}) {
   );
 }
 
+/**
+ * A snapshot whose SPOT price is `price`.
+ *
+ * Positions are marked at spot -- tao_in_pool_tao / alpha_in_pool -- rather than at
+ * alpha_price_tao, which is the chain's moving average (#9408). So a fixture that sets
+ * only the latter no longer expresses a price at all. The reserves here are written to
+ * divide exactly to `price`, and alpha_price_tao is set to a DELIBERATELY DIFFERENT
+ * value so any code that regresses to reading it fails loudly instead of passing on a
+ * coincidence.
+ */
 function insertPrice(netuid: number, snapshotDate: string, price: number) {
+  const alphaInPool = 1_000_000;
   db.prepare(
-    `INSERT INTO subnet_snapshots (netuid, snapshot_date, alpha_price_tao)
-     VALUES (?, ?, ?)`,
-  ).run(netuid, snapshotDate, price);
+    `INSERT INTO subnet_snapshots
+       (netuid, snapshot_date, alpha_price_tao, tao_in_pool_tao, alpha_in_pool)
+     VALUES (?, ?, ?, ?, ?)`,
+  ).run(netuid, snapshotDate, price * 2, price * alphaInPool, alphaInPool);
 }
 
 const one = (sql: string, ...params: unknown[]) =>
@@ -1357,7 +1369,7 @@ test("a NULL alpha_price_tao snapshot and a NULL-hotkey daily row are carried an
   });
   // Latest snapshot for netuid 7 carries an explicitly NULL price.
   db.prepare(
-    "INSERT INTO subnet_snapshots (netuid, snapshot_date, alpha_price_tao) VALUES (7, ?, NULL)",
+    "INSERT INTO subnet_snapshots (netuid, snapshot_date, alpha_price_tao, tao_in_pool_tao, alpha_in_pool) VALUES (7, ?, NULL, NULL, NULL)",
   ).run(dayAgo(0));
   // A permitted daily row with no hotkey: the baseline fold must skip it.
   insertDaily({

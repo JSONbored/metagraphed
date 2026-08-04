@@ -17,6 +17,7 @@
 // TAO/USD index cron. Routes whose store is gone still answer exactly what
 // they answered before the deletion -- see dispatchDataApiRequest's own note
 // for why that matters to the forward gate.
+import { spotPriceTao } from "../src/stake-quote.ts";
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 import { isPathUnder } from "./http.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
@@ -4757,17 +4758,40 @@ async function loadAlphaPricesByNetuidD1(
 ): Promise<Map<number, number | null>> {
   try {
     const rows = await sql`
-      SELECT s.netuid AS netuid, s.alpha_price_tao AS alpha_price_tao
+      SELECT s.netuid AS netuid, s.alpha_price_tao AS alpha_price_tao,
+        s.tao_in_pool_tao AS tao_in_pool_tao, s.alpha_in_pool AS alpha_in_pool
       FROM subnet_snapshots s
       JOIN (
         SELECT netuid, MAX(snapshot_date) AS snapshot_date
         FROM subnet_snapshots GROUP BY netuid
       ) latest
         ON latest.netuid = s.netuid AND latest.snapshot_date = s.snapshot_date`;
+    // #9408 follow-up: mark at SPOT, derived from the reserves on this same row,
+    // rather than at alpha_price_tao -- which is the chain's MOVING price, byte-
+    // identical to moving_price_pinned on the live tier.
+    //
+    // The difference is not academic. Measured on netuid 64's own snapshots:
+    //
+    //   2026-08-04  moving 0.084773044  spot 0.084866808   (-0.11%)
+    //   2026-08-03  moving 0.084084102  spot 0.085180046   (-1.29%)
+    //
+    // A lagging average is the wrong mark for "what is this position worth", and it
+    // lags hardest exactly when the market has moved. The reserves were already being
+    // selected past -- the spot is one division away.
+    //
+    // spotPriceTao is shared with /stake-quote and the economics card, so all three
+    // mean the same thing by "spot", including root's 1:1 (no AMM, price 1 by
+    // definition). It returns null for an unusable pool rather than 0, and the map's
+    // existing contract already excludes a null-priced membership from the totals --
+    // which under-reports rather than mis-denominates, the same trade as before.
     return new Map(
       rows.map((row) => [
         Number(row.netuid),
-        row.alpha_price_tao == null ? null : Number(row.alpha_price_tao),
+        spotPriceTao(
+          Number(row.netuid),
+          row.tao_in_pool_tao,
+          row.alpha_in_pool,
+        ),
       ]),
     );
   } catch (err) {
@@ -4899,7 +4923,7 @@ async function loadRealizedStakeBaselinesD1(
         const text =
           `WITH daily AS (
             SELECT nd.hotkey AS hotkey, nd.snapshot_date AS snapshot_date,
-              SUM(nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END) AS stake_tao
+              SUM(nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.tao_in_pool_tao / s.alpha_in_pool END) AS stake_tao
             FROM neuron_daily nd
             LEFT JOIN subnet_snapshots s
               ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
@@ -5084,8 +5108,8 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
               nd.dividends AS dividends, nd.take AS take,
               nd.validator_permit AS validator_permit,
               s.total_stake_tao AS subnet_total_stake,
-              nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END AS total_stake_tao,
-              nd.emission_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END AS total_emission_tao
+              nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.tao_in_pool_tao / s.alpha_in_pool END AS total_stake_tao,
+              nd.emission_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.tao_in_pool_tao / s.alpha_in_pool END AS total_emission_tao
             FROM neuron_daily nd
             LEFT JOIN subnet_snapshots s
               ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
@@ -5099,8 +5123,8 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
               nd.dividends AS dividends, nd.take AS take,
               nd.validator_permit AS validator_permit,
               s.total_stake_tao AS subnet_total_stake,
-              nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END AS total_stake_tao,
-              nd.emission_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END AS total_emission_tao
+              nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.tao_in_pool_tao / s.alpha_in_pool END AS total_stake_tao,
+              nd.emission_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.tao_in_pool_tao / s.alpha_in_pool END AS total_emission_tao
             FROM neuron_daily nd
             LEFT JOIN subnet_snapshots s
               ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
@@ -5120,8 +5144,8 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
       const rows = cutoff
         ? await sql`
           SELECT nd.snapshot_date AS snapshot_date, COUNT(DISTINCT nd.netuid) AS subnet_count,
-            SUM(nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END) AS total_stake_tao,
-            SUM(nd.emission_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END) AS total_emission_tao
+            SUM(nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.tao_in_pool_tao / s.alpha_in_pool END) AS total_stake_tao,
+            SUM(nd.emission_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.tao_in_pool_tao / s.alpha_in_pool END) AS total_emission_tao
           FROM neuron_daily nd
           LEFT JOIN subnet_snapshots s
             ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
@@ -5129,8 +5153,8 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
           GROUP BY nd.snapshot_date ORDER BY nd.snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
         : await sql`
           SELECT nd.snapshot_date AS snapshot_date, COUNT(DISTINCT nd.netuid) AS subnet_count,
-            SUM(nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END) AS total_stake_tao,
-            SUM(nd.emission_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END) AS total_emission_tao
+            SUM(nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.tao_in_pool_tao / s.alpha_in_pool END) AS total_stake_tao,
+            SUM(nd.emission_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.tao_in_pool_tao / s.alpha_in_pool END) AS total_emission_tao
           FROM neuron_daily nd
           LEFT JOIN subnet_snapshots s
             ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
