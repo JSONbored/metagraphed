@@ -94,7 +94,8 @@ export function isHealthStale(endpoint: Row): boolean {
 }
 
 /**
- * Pool ordering: healthiest class, then freshness, then score, then latency, then id.
+ * Pool ordering: healthiest class, then freshness, then RELIABILITY, then score, then
+ * latency, then id.
  *
  * The health class leads because the score clamps at zero and therefore cannot express
  * "worse than nothing" — see HEALTH_RANK.
@@ -105,6 +106,19 @@ export function isHealthStale(endpoint: Row): boolean {
  * `ok` confirmed fifteen minutes ago, and ranking them equal is how a host that died
  * hours ago keeps a top slot until the next rebuild. Same class, confirmed first.
  *
+ * Reliability comes before SCORE, not merely before latency, because the score's own
+ * `latency` term is the signal being demoted — leaving score ahead would rank on that
+ * single probe by another route and preserve the defect exactly. Measured 2026-08-04,
+ * one probe made the pool prefer the endpoint that was 9x SLOWER on real traffic
+ * (241ms probe / 78.6s for a 15.4 MB call, versus 510ms / 8.6s). Thirty days of
+ * observed uptime-and-latency is a better answer to "which of these is a good
+ * neighbour" than the last fifteen minutes.
+ *
+ * Score keeps its place beneath reliability: its non-latency terms (archive support,
+ * method support, an observed tip height) are capability signals, and they are the
+ * right tie-break between two endpoints whose records are equally good. Latency
+ * survives below that, for endpoints with no history at all (#9357).
+ *
  * `id` last keeps the order total and stable, so an artifact rebuild with unchanged
  * inputs produces byte-identical output.
  */
@@ -112,9 +126,18 @@ export function comparePoolEndpoints(a: Row, b: Row): number {
   return (
     healthRank(b.status) - healthRank(a.status) ||
     Number(isHealthStale(a)) - Number(isHealthStale(b)) ||
+    reliabilityRank(b) - reliabilityRank(a) ||
     ((b.score as number) || 0) - ((a.score as number) || 0) ||
     ((a.latency_ms as number) ?? 999999) -
       ((b.latency_ms as number) ?? 999999) ||
     String(a.id).localeCompare(String(b.id))
   );
+}
+
+// An endpoint with no history sorts as -1, BELOW a measured score of 0. A new endpoint
+// has not earned a position; treating "no record" as a neutral score would let it tie
+// something with thirty days of evidence behind it.
+function reliabilityRank(endpoint: Row): number {
+  const score = endpoint.reliability_score;
+  return typeof score === "number" && Number.isFinite(score) ? score : -1;
 }

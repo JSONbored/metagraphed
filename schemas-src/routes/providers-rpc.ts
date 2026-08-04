@@ -198,6 +198,15 @@ const RpcPoolEndpointSchema = z
     score_reasons: z.array(EndpointScoreReasonSchema).optional(),
     pool_eligible: z.boolean(),
     pool_eligibility_reasons: z.array(z.string()).optional(),
+    // 30-day observed uptime-and-latency for this endpoint, computed once per
+    // prober run from the surface_uptime_daily rollup and injected at SERVE time
+    // by overlayRpcPoolEligibility (#9357). It ranks the pool ahead of `score`,
+    // because `score`'s own latency term comes from a single 87-byte probe --
+    // which had the pool preferring an upstream 9x slower on real traffic.
+    // Null when the window holds no samples for this surface: "no record" is not
+    // a neutral score, and a new endpoint does not outrank a proven one.
+    reliability_score: z.int().min(0).max(100).nullable().optional(),
+    reliability_grade: z.string().nullable().optional(),
     archive_support: z.boolean().nullable().optional(),
     latency_ms: z.int().min(0).nullable().optional(),
     observed_at: z.string().nullable(),

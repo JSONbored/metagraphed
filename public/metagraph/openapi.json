@@ -26939,6 +26939,28 @@
               }
             ]
           },
+          "reliability_grade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reliability_score": {
+            "anyOf": [
+              {
+                "maximum": 100,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "rpc_method_count": {
             "anyOf": [
               {
@@ -34774,6 +34796,28 @@
                 },
                 "public_safe": {
                   "type": "boolean"
+                },
+                "reliability_grade": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "reliability_score": {
+                  "anyOf": [
+                    {
+                      "maximum": 100,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "score": {
                   "maximum": 9007199254740991,

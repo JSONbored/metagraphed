@@ -53,6 +53,11 @@ import {
 // Re-export so existing importers (workers/api.ts, mcp-server, discovery) keep
 // resolving the KV health keys through the prober; the names now live in kv-keys.
 export { KV_HEALTH_CURRENT, KV_HEALTH_META, KV_HEALTH_RPC_POOL };
+import {
+  loadEndpointReliability,
+  type EndpointReliability,
+} from "./endpoint-reliability.ts";
+import type { ObservationsReadDb } from "./analytics-live.ts";
 export const OPERATIONAL_SURFACES_PATH = "/metagraph/operational-surfaces.json";
 
 type Row = Record<string, unknown>;
@@ -588,7 +593,17 @@ export async function runHealthProber(
   sanitizeRpcLatestBlocks(probed);
 
   const priorCurrent = await readHealthCurrentSnapshot(kv);
-  const nextCurrent = await persistToKv(kv, probed, runAt);
+  // One D1 read per run (#9357). The pool used to break ties on a single probe's
+  // latency, which -- when every candidate is `ok`, the normal case -- WAS the ranking,
+  // taken against an 87-byte response. Measured, that preferred the slowest upstream in
+  // the pool by ~9x on real traffic. This ranks on 30 days of observed behaviour from a
+  // rollup we already keep. A failed read yields {} and the comparator falls back to
+  // the single-probe latency it used before.
+  const reliability = await loadEndpointReliability(
+    env.METAGRAPH_HEALTH_DB as unknown as ObservationsReadDb,
+    runAt,
+  );
+  const nextCurrent = await persistToKv(kv, probed, runAt, reliability);
   const changedNetuids = diffChangedSubnetNetuids(priorCurrent, nextCurrent);
   // Best-effort: never fail the probe sweep because a status subscriber
   // notify couldn't land (#6034).
@@ -646,6 +661,7 @@ async function persistToKv(
   kv: KVNamespace | undefined,
   probed: Row[],
   runAt: number,
+  reliability: Record<string, EndpointReliability> = {},
 ): Promise<Row | null> {
   if (!kv?.put) return null;
   const counts = { ok: 0, degraded: 0, failed: 0, unknown: 0 };
@@ -704,6 +720,12 @@ async function persistToKv(
       last_ok: iso(row.last_ok_ms),
       consecutive_failures: row.consecutive_failures,
       pool_eligible: row.status === "ok",
+      // Null when the window holds no samples for this surface -- a new endpoint has
+      // no record, and inventing a neutral score for it would let it tie a proven one.
+      reliability_score:
+        reliability[String(row.surface_key ?? row.surface_id)]?.score ?? null,
+      reliability_grade:
+        reliability[String(row.surface_key ?? row.surface_id)]?.grade ?? null,
     }))
     .sort((a, b) => (a.id as string).localeCompare(b.id as string));
   const rpcPool: Row = {

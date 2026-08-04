@@ -7718,6 +7718,8 @@ export interface components {
             /** @enum {string} */
             publication_state: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
             rate_limit_notes?: string | null;
+            reliability_grade?: string | null;
+            reliability_score?: number | null;
             rpc_method_count?: number | null;
             score: number;
             score_reasons?: components["schemas"]["EndpointScoreReason"][];
@@ -9233,6 +9235,8 @@ export interface components {
                 pool_eligible: boolean;
                 provider: string;
                 public_safe?: boolean;
+                reliability_grade?: string | null;
+                reliability_score?: number | null;
                 score: number;
                 score_reasons?: components["schemas"]["EndpointScoreReason"][];
                 status: components["schemas"]["HealthStatus"];
