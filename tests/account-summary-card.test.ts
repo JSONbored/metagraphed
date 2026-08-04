@@ -213,4 +213,24 @@ describe("accountSummaryGapMessage", () => {
     assert.match(message, new RegExp(`/api/v1/accounts/${SS58}/events`));
     assert.equal(ACCOUNT_SUMMARY_GAP_CODE, "account_summary_unavailable");
   });
+
+  test("carries the engine's own explanation when there is one (#9386)", () => {
+    // MCP has no status codes and no structured error meta, so the cause has to ride
+    // in the message or that surface diagnoses worse than REST and GraphQL do.
+    const message = accountSummaryGapMessage(SS58, [
+      "summary-groups: r2 sql: 40015: scan budget exceeded",
+      "recent-feed: r2 sql: HTTP 429",
+    ]);
+    assert.match(message, /Cause: /);
+    assert.match(message, /40015: scan budget exceeded/);
+    assert.match(message, /HTTP 429/, "every failed leg, not just the first");
+  });
+
+  test("says nothing about a cause it does not have", () => {
+    // An empty reason list is a real state -- a leg can return no usable row without
+    // raising -- and a dangling "Cause:" would imply a diagnosis that was never made.
+    const message = accountSummaryGapMessage(SS58, []);
+    assert.doesNotMatch(message, /Cause: /);
+    assert.equal(message, accountSummaryGapMessage(SS58));
+  });
 });

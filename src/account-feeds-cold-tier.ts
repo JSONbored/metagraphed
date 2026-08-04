@@ -796,6 +796,29 @@ export async function loadCounterpartyRelationshipColdTier(
  * Reproducing the probe rather than reusing the aggregate's own count is what
  * lets an account with EXACTLY CAP events still report exact totals.
  */
+/**
+ * What the summary read returns.
+ *
+ * A decline carries WHY (#9386). The route used to fail ~50% of requests for a
+ * high-activity coldkey with a typed 503 that named no cause, and the reason was
+ * discarded here: every failure mode collapsed to a bare `null`. `declined` lists one
+ * entry per leg that failed, each carrying the engine's own explanation, so an
+ * operator reading the 503 learns whether it was a timeout, a scan-budget rejection or
+ * an HTTP error -- without needing Worker-side visibility to guess.
+ *
+ * An empty `declined` on a decline is still possible and still honest: it means a leg
+ * returned no usable row without raising.
+ */
+export type AccountSummaryColdTierResult =
+  | {
+      agg: Record<string, unknown>;
+      kinds: Array<Record<string, unknown>>;
+      scanned: number;
+      recent: Array<Record<string, unknown>>;
+      declined?: undefined;
+    }
+  | { declined: string[] };
+
 export async function loadAccountSummaryColdTier(
   env: Env | null | undefined,
   ss58: string,
@@ -806,16 +829,13 @@ export async function loadAccountSummaryColdTier(
     recentLimit?: number;
     query?: typeof r2SqlQuery;
   } = {},
-): Promise<{
-  agg: Record<string, unknown> | null;
-  kinds: Array<Record<string, unknown>>;
-  scanned: number | null;
-  recent: Array<Record<string, unknown>>;
-} | null> {
+): Promise<AccountSummaryColdTierResult> {
   const addr = safeSs58Literal(ss58);
-  if (addr === null) return null;
+  if (addr === null) return { declined: ["input: unusable ss58"] };
   const limit = safeBlockNumber(recentLimit);
-  if (limit === null || limit <= 0) return null;
+  if (limit === null || limit <= 0) {
+    return { declined: ["input: unusable recent limit"] };
+  }
 
   const where = `(hotkey = '${addr}' OR coldkey = '${addr}')`;
   // The newest CAP events, named once so the three reads that share it cannot
@@ -825,72 +845,132 @@ export async function loadAccountSummaryColdTier(
     `FROM chain.account_events WHERE ${where} ` +
     `ORDER BY block_number DESC LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP}`;
 
-  const [aggRows, subnetRows, kindRows, probeRows, recentRows] =
-    await Promise.all([
-      query(
-        env,
-        `WITH scan AS (${scan}) SELECT count(*) AS c, ` +
-          `min(block_number) AS fb, max(block_number) AS lb, ` +
-          `min(observed_at) AS fo, max(observed_at) AS lo FROM scan`,
-      ),
-      // The distinct-subnet count rides in its own GROUP BY query rather than as
-      // a `count(DISTINCT netuid)` beside the aggregates above, because R2 SQL
-      // REJECTS the ungrouped form outright:
-      //
-      //   40015: scan budget exceeded: scanning too much data for
-      //   count(DISTINCT) without GROUP BY
-      //
-      // and a rejected query declines the whole reader, which is what made
-      // /api/v1/accounts/{ss58} and get_account_snapshot publish a card of zeros
-      // for an address whose own /events feed returned rows.
-      //
-      // THE CTE'S `LIMIT` DOES NOT BOUND THE BUDGET. `scan` caps at
-      // ACCOUNT_EVENT_SUMMARY_SCAN_CAP rows, so this reads as an aggregate over
-      // 5,000 rows and looks obviously safe -- but the engine costs the
-      // count(DISTINCT) against the underlying scan, not the materialized cap.
-      // Wrapping a distinct in a bounded CTE is not a workaround; only GROUP BY
-      // is.
-      query(
-        env,
-        `WITH scan AS (${scan}) SELECT count(*) AS sc` +
-          ` FROM (SELECT netuid FROM scan GROUP BY netuid)`,
-      ),
-      query(
-        env,
-        `WITH scan AS (${scan}) SELECT event_kind AS kind, count(*) AS count ` +
-          `FROM scan GROUP BY event_kind`,
-      ),
-      // CAP + 1 so "exactly CAP" is distinguishable from "more than CAP".
-      query(
-        env,
-        `SELECT count(*) AS c FROM (SELECT block_number FROM chain.account_events ` +
-          `WHERE ${where} LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1})`,
-      ),
-      query(
-        env,
-        `SELECT ${EVENT_COLUMNS} FROM chain.account_events WHERE ${where} ` +
-          `${FEED_ORDER} LIMIT ${limit}`,
-      ),
-    ]);
+  // THREE READS, NOT FIVE (#9386).
+  //
+  // This route declined ~50% of requests for a high-activity coldkey, and its shape
+  // was the reason: five concurrent broad scans of `chain.account_events`, with
+  // `Promise.all` + an all-or-nothing check, so the success probability was the
+  // PRODUCT of five and the cost was five scans of an unpartitioned table. A single
+  // `count(*) WHERE hotkey = ...` there reports ~3,390 R2 requests.
+  //
+  // The first three all aggregated the SAME `scan` CTE at different groupings, so one
+  // `GROUP BY event_kind, netuid` yields all of them exactly -- see foldSummaryGroups
+  // for the derivation and why each one is equivalent rather than approximate. The
+  // result is bounded by the CTE: at most ACCOUNT_EVENT_SUMMARY_SCAN_CAP groups.
+  //
+  // The remaining two cannot fold in. The cap probe deliberately scans CAP+1 rows
+  // WITHOUT the CTE (that is how "exactly CAP" is told from "more than CAP"), and the
+  // recent feed selects whole rows in a different order.
+  const failures: string[] = [];
+  const track = (leg: string) => (detail: string) => {
+    failures.push(`${leg}: ${detail}`);
+  };
+
+  const [groupRows, probeRows, recentRows] = await Promise.all([
+    query(
+      env,
+      `WITH scan AS (${scan}) SELECT event_kind AS kind, netuid AS netuid, ` +
+        `count(*) AS count, min(block_number) AS fb, max(block_number) AS lb, ` +
+        `min(observed_at) AS fo, max(observed_at) AS lo ` +
+        `FROM scan GROUP BY event_kind, netuid`,
+      { onError: track("summary-groups") },
+    ),
+    // CAP + 1 so "exactly CAP" is distinguishable from "more than CAP".
+    query(
+      env,
+      `SELECT count(*) AS c FROM (SELECT block_number FROM chain.account_events ` +
+        `WHERE ${where} LIMIT ${ACCOUNT_EVENT_SUMMARY_SCAN_CAP + 1})`,
+      { onError: track("scan-probe") },
+    ),
+    query(
+      env,
+      `SELECT ${EVENT_COLUMNS} FROM chain.account_events WHERE ${where} ` +
+        `${FEED_ORDER} LIMIT ${limit}`,
+      { onError: track("recent-feed") },
+    ),
+  ]);
 
   // Any half missing is a decline: a card mixing measured aggregates with a
   // zeroed probe would silently flip event_scan_capped and publish a first_seen
   // that is really a window floor.
-  if (!aggRows || !subnetRows || !kindRows || !probeRows || !recentRows)
-    return null;
-  const aggRow = aggRows[0] ?? null;
-  const subnetCount = subnetRows[0]?.sc;
+  if (!groupRows || !probeRows || !recentRows) {
+    return { declined: failures };
+  }
   const scanned = probeRows[0]?.c;
-  if (aggRow === null || subnetCount === undefined || scanned === undefined)
-    return null;
-  // Recombined under the key the caller already reads, so only where the
-  // number comes from changed.
-  const agg = { ...aggRow, sc: subnetCount };
+  if (scanned === undefined) {
+    return { declined: [...failures, "scan-probe: no count row"] };
+  }
+  const folded = foldSummaryGroups(groupRows);
 
   return {
-    agg,
-    kinds: kindRows,
+    agg: folded.agg,
+    kinds: folded.kinds,
     scanned: Number(scanned),
     recent: recentRows,
   };
+}
+
+/**
+ * Fold `GROUP BY event_kind, netuid` rows back into the three shapes the three
+ * separate queries used to return. Each derivation is EXACT, not an approximation:
+ *
+ *  - `c` was `count(*)` over the CTE; every scanned row lands in exactly one
+ *    (kind, netuid) group, so the group counts sum to it.
+ *  - `fb`/`lb`/`fo`/`lo` were `min`/`max` over the CTE. SQL's min/max ignore NULLs,
+ *    so a group whose column is entirely NULL reports NULL, and the fold skips those
+ *    the same way -- an all-NULL column therefore stays NULL rather than becoming 0.
+ *  - `sc` was `count(*) FROM (SELECT netuid FROM scan GROUP BY netuid)`. SQL GROUP BY
+ *    treats NULL as its OWN group, so a NULL netuid counted as one distinct value and
+ *    must still count here. That is why this counts distinct netuid KEYS rather than
+ *    filtering nulls out, which would quietly shrink the number by one.
+ *  - `kinds` was `GROUP BY event_kind`; summing each kind's rows across netuids
+ *    reproduces it, NULL kind included, for the same reason.
+ */
+export function foldSummaryGroups(rows: Record<string, unknown>[]): {
+  agg: Record<string, unknown>;
+  kinds: Record<string, unknown>[];
+} {
+  let count = 0;
+  let fb: number | null = null;
+  let lb: number | null = null;
+  let fo: number | null = null;
+  let lo: number | null = null;
+  // Keyed by the raw cell so NULL stays a distinct key rather than colliding with a
+  // literal "null" string a subnet could never actually have.
+  const netuids = new Set<unknown>();
+  const kinds = new Map<unknown, number>();
+
+  for (const row of rows) {
+    const n = Number(row?.count);
+    const rowCount = Number.isFinite(n) ? n : 0;
+    count += rowCount;
+    netuids.add(row?.netuid ?? null);
+    kinds.set(
+      row?.kind ?? null,
+      (kinds.get(row?.kind ?? null) ?? 0) + rowCount,
+    );
+    fb = minOf(fb, row?.fb);
+    lb = maxOf(lb, row?.lb);
+    fo = minOf(fo, row?.fo);
+    lo = maxOf(lo, row?.lo);
+  }
+
+  return {
+    agg: { c: count, fb, lb, fo, lo, sc: netuids.size },
+    kinds: [...kinds].map(([kind, c]) => ({ kind, count: c })),
+  };
+}
+
+/** SQL `min` semantics: NULLs are skipped, never treated as 0. */
+function minOf(current: number | null, value: unknown): number | null {
+  const n = Number(value);
+  if (value == null || !Number.isFinite(n)) return current;
+  return current === null || n < current ? n : current;
+}
+
+/** SQL `max` semantics: NULLs are skipped, never treated as 0. */
+function maxOf(current: number | null, value: unknown): number | null {
+  const n = Number(value);
+  if (value == null || !Number.isFinite(n)) return current;
+  return current === null || n > current ? n : current;
 }

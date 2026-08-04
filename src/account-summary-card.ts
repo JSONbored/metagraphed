@@ -92,21 +92,33 @@ export async function loadAccountRegistrationsD1(
 export type AccountSummaryAnswer =
   /** Both legs answered; `data` is the assembled card. */
   | { kind: "answer"; data: AccountSummaryResult }
-  /** A tier that exists could not answer -- decline, do not zero the card. */
-  | { kind: "gap" }
+  /**
+   * A tier that exists could not answer -- decline, do not zero the card.
+   *
+   * `reasons` carries one entry per leg that failed, each with the engine's own
+   * explanation (#9386). It can be empty and still be a genuine decline: a leg may
+   * return no usable row without raising.
+   */
+  | { kind: "gap"; reasons: string[] }
   /** No tier to ask. The caller keeps its schema-stable empty. */
   | { kind: "miss" };
 
 /** The one message every declining surface emits for this route, so REST, MCP
  * and GraphQL diagnose identically rather than in three dialects. */
-export function accountSummaryGapMessage(ss58: string): string {
-  return (
+export function accountSummaryGapMessage(
+  ss58: string,
+  reasons: readonly string[] = [],
+): string {
+  const base =
     `The event history for ${ss58} could not be read right now, so this ` +
     `summary would report zero events, zero event kinds and no registrations ` +
     `for an account that may have many. This is a tier failure, not an ` +
     `account without activity -- retry shortly, or read ` +
-    `/api/v1/accounts/${ss58}/events for the same stream.`
-  );
+    `/api/v1/accounts/${ss58}/events for the same stream.`;
+  // #9386: the cause rides in the message so MCP -- which has no status codes and no
+  // structured error meta -- diagnoses as precisely as REST and GraphQL do. That is
+  // the same reason this message is shared at all rather than written three times.
+  return reasons.length ? `${base} Cause: ${reasons.join("; ")}.` : base;
 }
 
 /** The typed code that decline carries on every surface. */
@@ -134,12 +146,21 @@ export async function answerAccountSummary(
     loadAccountSummaryColdTier(env, ss58),
     loadAccountRegistrationsD1(env, ss58),
   ]);
-  if (cold && registrations) {
+  if (!cold.declined && registrations) {
     return {
       kind: "answer",
       data: buildAccountSummary(ss58, { ...cold, registrations }),
     };
   }
-  if (registrations === null || isR2SqlConfigured(env)) return { kind: "gap" };
+  if (registrations === null || isR2SqlConfigured(env)) {
+    // #9386: carry WHY. This decline used to be a bare `{ kind: "gap" }`, so a route
+    // failing half its requests produced a typed 503 that named no cause and left the
+    // mechanism -- timeout, scan budget, HTTP error -- to be guessed at from outside.
+    const reasons = [
+      ...(cold.declined ?? []),
+      ...(registrations === null ? ["registrations: D1 read failed"] : []),
+    ];
+    return { kind: "gap", reasons };
+  }
   return { kind: "miss" };
 }

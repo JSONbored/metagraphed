@@ -12,6 +12,8 @@ import {
   R2_SQL_TOKEN_ENV,
   safeBlockNumber,
   safeHexLiteral,
+  safeSs58Literal,
+  safeNameLiteral,
 } from "../src/r2-sql.ts";
 import { mockEnv } from "./row-type.ts";
 
@@ -367,5 +369,76 @@ describe("a rejected query says WHY the engine refused it", () => {
   test("a long body is bounded rather than logged whole", async () => {
     const logged = await errorFrom(textFetch("x".repeat(5000)));
     assert.ok(logged.length < 400, String(logged.length));
+  });
+});
+
+// R2 SQL takes NO bound parameters, so every value that reaches a query is inlined
+// into a string. These two guards are therefore the whole injection boundary for the
+// lakehouse readers, and they were exercised only indirectly through their callers.
+describe("the inline-literal guards", () => {
+  test("safeSs58Literal accepts real addresses at every length Substrate uses", () => {
+    for (const ok of [
+      "5E2LP6EnZ54m3wS8s1yPvD5c3xo71kQroBw7aUVK32TKeZ5u", // 48
+      "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+      "1".repeat(47),
+      "1".repeat(49),
+    ]) {
+      assert.equal(safeSs58Literal(ok), ok, ok.slice(0, 12));
+    }
+  });
+
+  test("safeSs58Literal refuses anything that could close the quote", () => {
+    for (const bad of [
+      "'; DROP TABLE chain.account_events --",
+      "5E2LP6EnZ54m3wS8s1yPvD5c3xo71kQroBw7aUVK32TKeZ5u' OR '1'='1",
+      "5E2LP6' UNION SELECT 1 --",
+      "1".repeat(46), // too short
+      "1".repeat(50), // too long
+      "", // empty
+      "5E2LP6EnZ54m3wS8s1yPvD5c3xo71kQroBw7aUVK32TKeZ0I", // 0 and I are not base58
+      null,
+      42,
+      {},
+      ["5E2LP6EnZ54m3wS8s1yPvD5c3xo71kQroBw7aUVK32TKeZ5u"],
+    ]) {
+      assert.equal(
+        safeSs58Literal(bad),
+        null,
+        JSON.stringify(bad)?.slice(0, 40),
+      );
+    }
+  });
+
+  test("safeNameLiteral accepts the identifiers the chain actually emits", () => {
+    for (const ok of [
+      "Transfer",
+      "StakeAdded",
+      "SubtensorModule",
+      "a",
+      "A_1",
+      "a".repeat(64),
+    ]) {
+      assert.equal(safeNameLiteral(ok), ok, ok.slice(0, 20));
+    }
+  });
+
+  test("safeNameLiteral refuses quotes, spaces, leading digits and overlong names", () => {
+    for (const bad of [
+      "Transfer'; DROP TABLE x --",
+      "Stake Added", // a space
+      "1Transfer", // must start with a letter
+      "_Transfer",
+      "Transfer-Kind", // hyphen is not in the set
+      "a".repeat(65), // one past the ceiling
+      "",
+      null,
+      7,
+    ]) {
+      assert.equal(
+        safeNameLiteral(bad),
+        null,
+        JSON.stringify(bad)?.slice(0, 40),
+      );
+    }
   });
 });
