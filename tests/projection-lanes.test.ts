@@ -1193,48 +1193,72 @@ describe("chain-stake-transfers lane compute", () => {
   test("replicates data-api's DISTINCT row + guarded per-subnet aggregate per window", async () => {
     vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
     const queries = lakeFetch(
-      // 7d: the network row observed activity, so the subnet query runs.
-      [{ distinct_senders: "4", newest_observed: NOW - 1000 }],
-      [{ netuid: 7, transfers: "6", distinct_senders: "3" }],
-      // 30d: a network row with NO newest_observed — data-api's guard skips
-      // the subnet query entirely.
-      [{ distinct_senders: "0", newest_observed: null }],
+      // 7d: newest first, then the chain-wide DISTINCT, then the per-subnet
+      // tally, then the per-subnet DISTINCT. Four statements because each
+      // heavy aggregation stands alone (#9423).
+      [{ newest_observed: NOW - 1000 }],
+      [{ distinct_senders: "4" }],
+      [{ netuid: 7, transfers: "6" }],
+      [{ netuid: 7, distinct_senders: "3" }],
+      // 30d: no newest_observed at all — the window observed nothing, so none
+      // of the heavy scans are issued.
+      [{ newest_observed: null }],
     );
     const body = (await laneNamed("chain-stake-transfers").compute(
       LAKE_ENV as unknown as Env,
       "mainnet",
     )) as Row;
-    // Three statements, not four: the guarded window issued only its
-    // network read.
-    assert.equal(queries.length, 3);
+    // Five statements: four for the active window, one for the empty one.
+    // The empty window costs a single cheap MAX() and stops there.
+    assert.equal(queries.length, 5);
     const cutoff7d = NOW - 7 * DAY_MS;
     assert.match(queries[0]!, /FROM chain\.account_events/);
     assert.match(queries[0]!, /event_kind = 'StakeTransferred'/);
     assert.match(queries[0]!, new RegExp(`observed_at >= ${cutoff7d}`));
-    assert.match(queries[0]!, /COUNT\(DISTINCT coldkey\) AS distinct_senders/);
-    assert.match(
-      queries[1]!,
-      /GROUP BY netuid ORDER BY transfers DESC, netuid ASC/,
-    );
+    assert.match(queries[0]!, /MAX\(observed_at\) AS newest_observed/);
+    // ONE heavy aggregation per statement: the DISTINCT stands alone, which is
+    // the shape its sibling transferWindowSql already used and the shape these
+    // two lanes lacked when they stopped writing for 31 hours (#9423).
+    assert.match(queries[1]!, /COUNT\(DISTINCT coldkey\) AS distinct_senders/);
+    assert.doesNotMatch(queries[1]!, /MAX\(observed_at\)/);
     assert.match(
       queries[2]!,
+      /GROUP BY netuid ORDER BY transfers DESC, netuid ASC/,
+    );
+    // The per-subnet DISTINCT is the statement that actually 422s in
+    // production (40015, count(DISTINCT) with GROUP BY), so it stands alone
+    // too -- and never with APPROX_DISTINCT, which the engine suggests and
+    // this lane refuses because distinct_senders is a published field.
+    assert.match(queries[3]!, /COUNT\(DISTINCT coldkey\) AS distinct_senders/);
+    assert.doesNotMatch(queries[3]!, /COUNT\(\*\)/);
+    assert.doesNotMatch(queries[3]!, /APPROX_DISTINCT/i);
+    assert.match(
+      queries[4]!,
       new RegExp(`observed_at >= ${NOW - 30 * DAY_MS}`),
     );
 
     assert.equal(body.schema_version, 1);
     assert.equal(body.row_count, 1);
+    // Merged back into the one chain-wide row the artifact has always carried,
+    // so the split is invisible to every reader.
     assert.deepEqual((body.windows as Row)["7d"], {
       days: 7,
       network: { distinct_senders: "4", newest_observed: NOW - 1000 },
       rows: [{ netuid: 7, transfers: "6", distinct_senders: "3" }],
     });
+    // An empty window keeps its MEASURED zero rather than degrading to
+    // "unknown": MAX(observed_at) IS NULL means no rows matched, so the
+    // distinct count is necessarily 0 -- derived, not guessed.
     assert.deepEqual((body.windows as Row)["30d"], {
       days: 30,
-      network: { distinct_senders: "0", newest_observed: null },
+      network: { distinct_senders: 0, newest_observed: null },
       rows: [],
     });
   });
 
+  // NO ROW AT ALL, as distinct from a row saying NULL: an aggregate that ran
+  // returns exactly one row, so an empty result set is unread rather than a
+  // measured empty window, and must not be published as a zero.
   test("an empty network result stores a null network row", async () => {
     lakeFetch([]);
     const body = (await laneNamed("chain-stake-transfers").compute(
@@ -1273,22 +1297,29 @@ describe("chain-stake-moves lane compute", () => {
   test("replicates data-api's DISTINCT row + per-subnet aggregate over StakeMoved", async () => {
     vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
     const queries = lakeFetch(
-      [{ distinct_movers: "5", newest_observed: NOW - 1000 }],
-      [{ netuid: 3, movements: "10", distinct_movers: "2" }],
+      [{ newest_observed: NOW - 1000 }],
+      [{ distinct_movers: "5" }],
+      [{ netuid: 3, movements: "10" }],
+      [{ netuid: 3, distinct_movers: "2" }],
       [],
     );
     const body = (await laneNamed("chain-stake-moves").compute(
       LAKE_ENV as unknown as Env,
       "mainnet",
     )) as Row;
-    assert.equal(queries.length, 3);
+    assert.equal(queries.length, 5);
     assert.match(queries[0]!, /event_kind = 'StakeMoved'/);
-    assert.match(queries[0]!, /COUNT\(DISTINCT coldkey\) AS distinct_movers/);
-    assert.match(queries[1]!, /COUNT\(\*\) AS movements/);
+    assert.match(queries[0]!, /MAX\(observed_at\) AS newest_observed/);
+    // The DISTINCT stands alone (#9423) -- one heavy aggregation per statement.
+    assert.match(queries[1]!, /COUNT\(DISTINCT coldkey\) AS distinct_movers/);
+    assert.doesNotMatch(queries[1]!, /MAX\(observed_at\)/);
+    assert.match(queries[2]!, /COUNT\(\*\) AS movements/);
     assert.match(
-      queries[1]!,
+      queries[2]!,
       /GROUP BY netuid ORDER BY movements DESC, netuid ASC/,
     );
+    assert.match(queries[3]!, /COUNT\(DISTINCT coldkey\) AS distinct_movers/);
+    assert.doesNotMatch(queries[3]!, /COUNT\(\*\)/);
 
     assert.equal(body.schema_version, 1);
     assert.equal(body.row_count, 1);
@@ -1817,5 +1848,78 @@ describe("projection lanes are network-scoped end to end", () => {
         }
       }
     }
+  });
+});
+
+// The chain-wide DISTINCT returning no row at all, as distinct from a row of
+// zero: the statement ran but gave nothing usable, so the artifact must not
+// publish a count nobody produced (#9423).
+describe("a chain-wide DISTINCT that returns nothing is unread, not zero", () => {
+  test("the window stores a null chain-wide row", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    lakeFetch(
+      [{ newest_observed: NOW - 1000 }],
+      [],
+      [{ netuid: 3, movements: "10", distinct_movers: "2" }],
+      [{ newest_observed: null }],
+    );
+    const body = (await laneNamed("chain-stake-moves").compute(
+      LAKE_ENV as unknown as Env,
+      "mainnet",
+    )) as Row;
+    assert.equal((body.windows as Row)["7d"].network, null);
+    // The per-subnet rows still landed -- one missing aggregate does not
+    // discard the scan that succeeded.
+    assert.equal((body.windows as Row)["7d"].rows.length, 1);
+  });
+});
+
+// The per-subnet DISTINCT is a SEPARATE statement now, so its rows have to be
+// merged back onto the tally by netuid. A netuid the DISTINCT scan did not
+// return is a real zero -- the tally already proved the subnet has rows in the
+// window, so "no distinct row" means no distinct coldkeys were counted, not
+// that the count is unknown.
+describe("the split per-subnet aggregates merge back by netuid", () => {
+  test("each subnet keeps its own distinct count", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    lakeFetch(
+      [{ newest_observed: NOW - 1000 }],
+      [{ distinct_movers: "9" }],
+      [
+        { netuid: 3, movements: "10" },
+        { netuid: 7, movements: "4" },
+      ],
+      // Deliberately out of order, and missing netuid 7 entirely.
+      [{ netuid: 3, distinct_movers: "2" }],
+      [{ newest_observed: null }],
+    );
+    const body = (await laneNamed("chain-stake-moves").compute(
+      LAKE_ENV as unknown as Env,
+      "mainnet",
+    )) as Row;
+    const rows = (body.windows as Row)["7d"].rows as Row[];
+    assert.deepEqual(rows, [
+      { netuid: 3, movements: "10", distinct_movers: "2" },
+      { netuid: 7, movements: "4", distinct_movers: 0 },
+    ]);
+  });
+
+  test("a failed per-subnet DISTINCT declines the whole compute", async () => {
+    vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    lakeFetch(
+      [{ newest_observed: NOW - 1000 }],
+      [{ distinct_movers: "9" }],
+      [{ netuid: 3, movements: "10" }],
+      "fail",
+    );
+    // All-or-nothing: half an aggregate published as though whole would show
+    // every subnet's distinct count as zero.
+    assert.equal(
+      await laneNamed("chain-stake-moves").compute(
+        LAKE_ENV as unknown as Env,
+        "mainnet",
+      ),
+      null,
+    );
   });
 });

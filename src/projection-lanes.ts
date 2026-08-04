@@ -657,18 +657,53 @@ function subnetDistinctWindowSql(
   countAlias: string,
   distinctAlias: string,
   network: ChainNetworkId,
-): { networkSql: string; subnetSql: string } {
+): {
+  newestSql: string;
+  networkSql: string;
+  subnetCountSql: string;
+  subnetDistinctSql: string;
+  countAlias: string;
+  distinctAlias: string;
+} {
   const scope =
     `FROM ${chainTable("account_events", network)} ` +
     `WHERE event_kind = '${eventKind}' AND observed_at >= ${cutoff}`;
   return {
-    networkSql:
-      `SELECT COUNT(DISTINCT coldkey) AS ${distinctAlias}, ` +
-      `MAX(observed_at) AS newest_observed ${scope}`,
-    subnetSql:
-      `SELECT netuid, COUNT(*) AS ${countAlias}, ` +
-      `COUNT(DISTINCT coldkey) AS ${distinctAlias} ${scope} ` +
+    // ONE HEAVY AGGREGATION PER STATEMENT. The chain-wide DISTINCT used to
+    // share a statement with `MAX(observed_at)`, and that pairing is what
+    // stopped these two lanes writing on 2026-08-03 -- they declined every
+    // tick for 31 hours while the routes over them served a card whose newest
+    // event was 44 hours old (#9423). Its sibling `transferWindowSql` was
+    // already split for exactly this reason, and says so: each DISTINCT alone
+    // is the heaviest scan in the family, and bundling one with anything else
+    // pushes the statement past R2 SQL's own per-query ceiling as the table
+    // grows. This is that same remedy, applied to the lane that still had the
+    // bundled shape.
+    //
+    // Only the FIRST statement's row carries `newest_observed`, so the split
+    // is invisible downstream -- see how computeSubnetDistinctWindow merges
+    // them back into one chain-wide row.
+    newestSql: `SELECT MAX(observed_at) AS newest_observed ${scope}`,
+    networkSql: `SELECT COUNT(DISTINCT coldkey) AS ${distinctAlias} ${scope}`,
+    countAlias,
+    distinctAlias,
+    // The per-subnet counts, SPLIT for the same reason. Measured 2026-08-04,
+    // this is the statement that actually 422s:
+    //
+    //   40015 scan budget exceeded: scanning too much data for
+    //   count(DISTINCT) with GROUP BY
+    //
+    // so the plain tally and the DISTINCT are issued separately and merged by
+    // netuid below. APPROX_DISTINCT is the engine's own first suggestion and
+    // is refused on purpose: `distinct_movers` is a PUBLISHED field, and an
+    // approximate answer under a name callers read as exact is worse than an
+    // honest decline.
+    subnetCountSql:
+      `SELECT netuid, COUNT(*) AS ${countAlias} ${scope} ` +
       `GROUP BY netuid ORDER BY ${countAlias} DESC, netuid ASC`,
+    subnetDistinctSql:
+      `SELECT netuid, COUNT(DISTINCT coldkey) AS ${distinctAlias} ${scope} ` +
+      `GROUP BY netuid`,
   };
 }
 
@@ -677,21 +712,73 @@ function subnetDistinctWindowSql(
  * per-subnet aggregate. Returns null on any query failure. */
 async function computeSubnetDistinctWindow(
   env: Env,
-  sql: { networkSql: string; subnetSql: string },
+  sql: {
+    newestSql: string;
+    networkSql: string;
+    subnetCountSql: string;
+    subnetDistinctSql: string;
+    countAlias: string;
+    distinctAlias: string;
+  },
 ): Promise<{
   network: Record<string, unknown> | null;
   rows: Record<string, unknown>[];
 } | null> {
+  // The window's newest event first: cheap, and it is what decides whether the
+  // per-subnet scan is worth issuing at all (data-api's own guard).
+  const newestRows = await r2SqlQuery(env, sql.newestSql);
+  if (newestRows === null) return null;
+  // NO ROW AT ALL is not the same as a row saying NULL. An aggregate that ran
+  // always returns exactly one row, so an empty result set means the engine
+  // gave us nothing usable -- unread, not measured -- and the chain-wide row
+  // stays null rather than claiming a zero nobody counted.
+  if (newestRows.length === 0) return { network: null, rows: [] };
+  const newest = newestRows[0]?.newest_observed ?? null;
+  // A window that observed nothing needs neither heavy scan -- and its zero is
+  // DERIVED, not guessed: `MAX(observed_at) IS NULL` means the window matched
+  // no rows at all, so the distinct count is necessarily 0. Emitting the same
+  // shape a non-empty window emits keeps a measured zero looking like one
+  // rather than degrading to "unknown", which is the whole reason the chain-
+  // wide row is stored separately from the per-subnet rows.
+  if (newest == null) {
+    return {
+      network: { [sql.distinctAlias]: 0, newest_observed: null },
+      rows: [],
+    };
+  }
   const networkRows = await r2SqlQuery(env, sql.networkSql);
   if (networkRows === null) return null;
   // The CHAIN-WIDE scope row, not a chain network -- the artifact key it lands
   // under is `network` and cannot be renamed, but the local is named for what
   // it holds so the two senses of the word cannot be confused here.
-  const chainWide = networkRows[0] ?? null;
+  // Merged back into the ONE chain-wide row the artifact has always carried,
+  // so splitting the statement changes nothing a reader can see.
+  const chainWide = networkRows[0]
+    ? { ...networkRows[0], newest_observed: newest }
+    : null;
   let rows: Record<string, unknown>[] = [];
-  if (chainWide?.newest_observed != null) {
-    const subnetRows = await r2SqlQuery(env, sql.subnetSql);
+  // The guard is data-api's: only scan per-subnet once the window is known to
+  // have observed something. That question now has its own cheap statement
+  // above, so it is asked of `newest` rather than of the DISTINCT row -- a
+  // DISTINCT that came back unusable must not also suppress the per-subnet
+  // scan, which is a separate read that may well have succeeded.
+  if (newest != null) {
+    const subnetRows = await r2SqlQuery(env, sql.subnetCountSql);
     if (subnetRows === null) return null;
+    const distinctRows = await r2SqlQuery(env, sql.subnetDistinctSql);
+    if (distinctRows === null) return null;
+    // Merged back by netuid, so the row shape the artifact has always carried
+    // is unchanged and splitting the statement is invisible to every reader.
+    const distinctByNetuid = new Map(
+      distinctRows.map((row) => [
+        String(row.netuid),
+        row[sql.distinctAlias] ?? 0,
+      ]),
+    );
+    for (const row of subnetRows) {
+      row[sql.distinctAlias] =
+        distinctByNetuid.get(String(row.netuid)) ?? 0;
+    }
     rows = subnetRows;
   }
   return { network: chainWide, rows };
