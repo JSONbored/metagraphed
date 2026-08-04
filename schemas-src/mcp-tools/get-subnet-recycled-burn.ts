@@ -9,11 +9,16 @@
 // this tool's existing required set. Modeled fresh instead, matching each
 // hand-written literal exactly.
 import { z } from "zod";
-import { FieldSourcesSchema } from "../shared.ts";
+import { FieldSourcesSchema, McpNetworkSchema } from "../shared.ts";
 
 export const GetSubnetRecycledInputSchema = z
   .object({
     netuid: z.int().min(0),
+    // #8700: which chain to read. These routes answer from live storage, and
+    // the storage keys are twox128 hashes of pallet+item names — identical on
+    // every chain running the same runtime — so the endpoint is the only thing
+    // that varies. Absent means finney, so every existing caller is unchanged.
+    network: McpNetworkSchema.optional(),
   })
   .strict();
 export type GetSubnetRecycledInput = z.infer<
@@ -37,6 +42,11 @@ export type GetSubnetRecycledOutput = z.infer<
 export const GetSubnetBurnInputSchema = z
   .object({
     netuid: z.int().min(0),
+    // #8700: which chain to read. These routes answer from live storage, and
+    // the storage keys are twox128 hashes of pallet+item names — identical on
+    // every chain running the same runtime — so the endpoint is the only thing
+    // that varies. Absent means finney, so every existing caller is unchanged.
+    network: McpNetworkSchema.optional(),
   })
   .strict();
 export type GetSubnetBurnInput = z.infer<typeof GetSubnetBurnInputSchema>;

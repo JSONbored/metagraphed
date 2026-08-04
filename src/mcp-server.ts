@@ -1434,6 +1434,7 @@ import { loadUpgradeRadar } from "./upgrade-radar.ts";
 import { buildNetworksPayload } from "./network-capabilities.ts";
 import { NETWORK_PUBLISHED_ARTIFACT_PATHS } from "./network-artifacts.ts";
 import { LIVE_CHAIN_ROUTE_PATHS } from "./live-chain-routes.ts";
+import { chainNetworkFromChainName } from "./chain-network.ts";
 // #8699: the router's own network map and mainnet-only predicate. Imported
 // rather than restated so the MCP tool and the REST route cannot disagree
 // about what testnet serves -- a wrong capability matrix is worse than none.
@@ -7632,7 +7633,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           );
         }
       }
-      return loadSubnetRecycled(ctx.env, netuid);
+      return loadSubnetRecycled(
+        ctx.env,
+        netuid,
+        chainNetworkFromChainName(
+          optionalEnum(args, "network", MCP_NETWORK_VALUES),
+        ),
+      );
     },
   },
   {
@@ -7666,7 +7673,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           );
         }
       }
-      return loadSubnetBurn(ctx.env, netuid);
+      return loadSubnetBurn(
+        ctx.env,
+        netuid,
+        chainNetworkFromChainName(
+          optionalEnum(args, "network", MCP_NETWORK_VALUES),
+        ),
+      );
     },
   },
   {
@@ -7708,7 +7721,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           );
         }
       }
-      return loadSubnetLease(ctx.env, netuid);
+      return loadSubnetLease(
+        ctx.env,
+        netuid,
+        chainNetworkFromChainName(
+          optionalEnum(args, "network", MCP_NETWORK_VALUES),
+        ),
+      );
     },
   },
   {
@@ -7862,7 +7881,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           );
         }
       }
-      return loadAccountBalance(ctx.env, ss58);
+      return loadAccountBalance(
+        ctx.env,
+        ss58,
+        chainNetworkFromChainName(
+          optionalEnum(args, "network", MCP_NETWORK_VALUES),
+        ),
+      );
     },
   },
   {
@@ -7901,7 +7926,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           );
         }
       }
-      return loadAccountRootClaim(ctx.env, ss58);
+      return loadAccountRootClaim(
+        ctx.env,
+        ss58,
+        chainNetworkFromChainName(
+          optionalEnum(args, "network", MCP_NETWORK_VALUES),
+        ),
+      );
     },
   },
   {
@@ -7941,7 +7972,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           );
         }
       }
-      return loadAccountChildren(ctx.env, ss58);
+      return loadAccountChildren(
+        ctx.env,
+        ss58,
+        chainNetworkFromChainName(
+          optionalEnum(args, "network", MCP_NETWORK_VALUES),
+        ),
+      );
     },
   },
   {
@@ -7979,7 +8016,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           );
         }
       }
-      return loadAccountParents(ctx.env, ss58);
+      return loadAccountParents(
+        ctx.env,
+        ss58,
+        chainNetworkFromChainName(
+          optionalEnum(args, "network", MCP_NETWORK_VALUES),
+        ),
+      );
     },
   },
   {
@@ -9359,8 +9402,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     inputSchema: z.toJSONSchema(GetSudoKeyInputSchema, {
       target: "draft-2020-12",
     }),
-    async handler(_args: unknown, ctx: McpCtx) {
-      return loadSudoKey(ctx.env);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadSudoKey(
+        ctx.env,
+        chainNetworkFromChainName(
+          optionalEnum(args, "network", MCP_NETWORK_VALUES),
+        ),
+      );
     },
   },
   {
@@ -9383,8 +9431,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     inputSchema: z.toJSONSchema(GetNetworkParametersInputSchema, {
       target: "draft-2020-12",
     }),
-    async handler(_args: unknown, ctx: McpCtx) {
-      return loadNetworkParameters(ctx.env);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadNetworkParameters(
+        ctx.env,
+        chainNetworkFromChainName(
+          optionalEnum(args, "network", MCP_NETWORK_VALUES),
+        ),
+      );
     },
   },
   {
@@ -9404,8 +9457,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     inputSchema: z.toJSONSchema(GetRandomnessStatusInputSchema, {
       target: "draft-2020-12",
     }),
-    async handler(_args: unknown, ctx: McpCtx) {
-      return loadRandomnessStatus(ctx.env);
+    async handler(args: Row, ctx: McpCtx) {
+      return loadRandomnessStatus(
+        ctx.env,
+        chainNetworkFromChainName(
+          optionalEnum(args, "network", MCP_NETWORK_VALUES),
+        ),
+      );
     },
   },
   {
@@ -12273,7 +12331,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           "Argument `h160` must be a 20-byte 0x-prefixed hex address.",
         );
       }
-      return loadAddressMapping(ctx.env, args.h160);
+      return loadAddressMapping(
+        ctx.env,
+        args.h160,
+        chainNetworkFromChainName(
+          optionalEnum(args, "network", MCP_NETWORK_VALUES),
+        ),
+      );
     },
   },
 ];

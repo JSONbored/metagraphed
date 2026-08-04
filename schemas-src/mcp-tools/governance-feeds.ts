@@ -9,7 +9,7 @@
 // equal (see list_accounts/get_top_holders in #8070).
 import { z } from "zod";
 import { ExtrinsicItemSchema } from "./shared.ts";
-import { FieldSourcesSchema } from "../shared.ts";
+import { FieldSourcesSchema, McpNetworkSchema } from "../shared.ts";
 
 export const GetSudoInputSchema = z
   .object({
@@ -39,7 +39,14 @@ export const GetSudoOutputSchema = z
   .passthrough();
 export type GetSudoOutput = z.infer<typeof GetSudoOutputSchema>;
 
-export const GetSudoKeyInputSchema = z.object({}).strict();
+export const GetSudoKeyInputSchema = z
+  .object({
+    // #8700: which chain to read. Absent means finney, so every existing
+    // caller is unchanged. These routes answer from live storage whose keys
+    // are chain-agnostic twox128 hashes — only the endpoint varies.
+    network: McpNetworkSchema.optional(),
+  })
+  .strict();
 export type GetSudoKeyInput = z.infer<typeof GetSudoKeyInputSchema>;
 
 export const GetSudoKeyOutputSchema = z

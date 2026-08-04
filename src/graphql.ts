@@ -288,6 +288,7 @@ import { loadRuntimeVersionHistoryColdTier } from "./runtime-versions-cold-tier.
 import { buildChainYield } from "./chain-yield.ts";
 import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.ts";
 import { loadSubnetBurn } from "./subnet-burn.ts";
+import { chainNetworkFromChainName } from "./chain-network.ts";
 import { loadSubnetLease } from "./subnet-lease.ts";
 import { loadAccountBalance, isFinneySs58Address } from "./account-balance.ts";
 import { loadAccountRootClaim } from "./account-root-claim.ts";
@@ -692,6 +693,10 @@ import type {
   QuerySource_SnapshotsArgs,
   QuerySubnetArgs,
   QuerySudoArgs,
+  QuerySudo_KeyArgs,
+  QueryNetwork_ParametersArgs,
+  QueryNetwork_RandomnessArgs,
+  QueryRandomness_StatusArgs,
   QuerySubnet_Axon_RemovalsArgs,
   QuerySubnet_BurnArgs,
   QuerySubnet_CandidatesArgs,
@@ -1920,13 +1925,21 @@ const VALID_PROVIDER_ID = /^[A-Za-z0-9._:-]+$/;
 // itself is live chain RPC, not the Postgres tier, reusing loadAddressMapping's
 // own KV cache/TTL, matching REST's /evm/address/{h160} handler exactly; ss58 is
 // null on an unresolved mapping (schema-stable), never a GraphQL error.
-function resolveEvmAddressMapping(h160: string, context: GqlContext) {
+function resolveEvmAddressMapping(
+  h160: string,
+  context: GqlContext,
+  network?: string | null,
+) {
   if (typeof h160 !== "string" || !H160_PATTERN.test(h160)) {
     throw new GraphQLError("h160 must be a 20-byte 0x-prefixed hex address.", {
       extensions: { code: "BAD_USER_INPUT" },
     });
   }
-  return loadAddressMapping(context.env, h160);
+  return loadAddressMapping(
+    context.env,
+    h160,
+    chainNetworkFromChainName(network),
+  );
 }
 
 // Row-erased (types-epic D, #7862, batches #8158-#8166 -- see PR #8005 for
@@ -8123,7 +8136,7 @@ const rootValue = {
   },
 
   async subnet_recycled(
-    { netuid }: QuerySubnet_RecycledArgs,
+    { netuid, network }: QuerySubnet_RecycledArgs,
     context: GqlContext,
   ) {
     if (!isU16Netuid(netuid)) {
@@ -8137,10 +8150,17 @@ const rootValue = {
     // stays null on RPC failure (schema-stable), never a GraphQL error.
     // loadSubnetRecycled always sets schema_version/netuid/queried_at
     // unconditionally, so no `??` fallback is needed for those.
-    return loadSubnetRecycled(context.env, netuid);
+    return loadSubnetRecycled(
+      context.env,
+      netuid,
+      chainNetworkFromChainName(network),
+    );
   },
 
-  async subnet_burn({ netuid }: QuerySubnet_BurnArgs, context: GqlContext) {
+  async subnet_burn(
+    { netuid, network }: QuerySubnet_BurnArgs,
+    context: GqlContext,
+  ) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError(
         "netuid must be an integer in the u16 range 0..65535.",
@@ -8152,7 +8172,11 @@ const rootValue = {
     // stays null on RPC failure (schema-stable), never a GraphQL error.
     // loadSubnetBurn always sets schema_version/netuid/queried_at
     // unconditionally, so no `??` fallback is needed for those.
-    return loadSubnetBurn(context.env, netuid);
+    return loadSubnetBurn(
+      context.env,
+      netuid,
+      chainNetworkFromChainName(network),
+    );
   },
 
   async subnet_turnover(
@@ -8283,7 +8307,10 @@ const rootValue = {
     };
   },
 
-  async subnet_lease({ netuid }: QuerySubnet_LeaseArgs, context: GqlContext) {
+  async subnet_lease(
+    { netuid, network }: QuerySubnet_LeaseArgs,
+    context: GqlContext,
+  ) {
     if (!isU16Netuid(netuid)) {
       throw new GraphQLError(
         "netuid must be an integer in the u16 range 0..65535.",
@@ -8294,11 +8321,15 @@ const rootValue = {
     // KV cache/TTL, matching REST's handleSubnetLease and MCP's
     // get_subnet_lease exactly. leased/lease stay null on RPC failure
     // (schema-stable), never a GraphQL error.
-    return loadSubnetLease(context.env, netuid);
+    return loadSubnetLease(
+      context.env,
+      netuid,
+      chainNetworkFromChainName(network),
+    );
   },
 
   async account_balance(
-    { ss58 }: QueryAccount_BalanceArgs,
+    { ss58, network }: QueryAccount_BalanceArgs,
     context: GqlContext,
   ) {
     if (!isFinneySs58Address(ss58)) {
@@ -8311,11 +8342,15 @@ const rootValue = {
     // stays null on RPC failure (schema-stable), never a GraphQL error.
     // loadAccountBalance always sets schema_version/ss58/queried_at
     // unconditionally, so no `??` fallback is needed for those.
-    return loadAccountBalance(context.env, ss58);
+    return loadAccountBalance(
+      context.env,
+      ss58,
+      chainNetworkFromChainName(network),
+    );
   },
 
   async account_root_claim(
-    { ss58 }: QueryAccount_Root_ClaimArgs,
+    { ss58, network }: QueryAccount_Root_ClaimArgs,
     context: GqlContext,
   ) {
     if (!isFinneySs58Address(ss58)) {
@@ -8326,11 +8361,15 @@ const rootValue = {
     // Live chain RPC — reuses loadAccountRootClaim's KV cache/TTL, matching
     // REST's handleAccountRootClaim. claim_type/hotkeys stay null on RPC
     // failure (schema-stable), never a GraphQL error. Read-only.
-    return loadAccountRootClaim(context.env, ss58);
+    return loadAccountRootClaim(
+      context.env,
+      ss58,
+      chainNetworkFromChainName(network),
+    );
   },
 
   async account_children(
-    { ss58 }: QueryAccount_ChildrenArgs,
+    { ss58, network }: QueryAccount_ChildrenArgs,
     context: GqlContext,
   ) {
     if (!isFinneySs58Address(ss58)) {
@@ -8343,11 +8382,15 @@ const rootValue = {
     // null on RPC failure (schema-stable), distinct from a confirmed-empty [].
     // loadAccountChildren always sets schema_version/account/queried_at
     // unconditionally, so no `??` fallback is needed for those.
-    return loadAccountChildren(context.env, ss58);
+    return loadAccountChildren(
+      context.env,
+      ss58,
+      chainNetworkFromChainName(network),
+    );
   },
 
   async account_parents(
-    { ss58 }: QueryAccount_ParentsArgs,
+    { ss58, network }: QueryAccount_ParentsArgs,
     context: GqlContext,
   ) {
     if (!isFinneySs58Address(ss58)) {
@@ -8360,52 +8403,76 @@ const rootValue = {
     // null on RPC failure (schema-stable), distinct from a confirmed-empty [].
     // loadAccountParents always sets schema_version/account/queried_at
     // unconditionally, so no `??` fallback is needed for those.
-    return loadAccountParents(context.env, ss58);
+    return loadAccountParents(
+      context.env,
+      ss58,
+      chainNetworkFromChainName(network),
+    );
   },
 
-  async sudo_key(_args: unknown, context: GqlContext) {
+  async sudo_key({ network }: QuerySudo_KeyArgs, context: GqlContext) {
     // Live chain RPC, not the Postgres tier -- reuses loadSudoKey's own KV
     // cache/TTL, matching REST's sudo/key handler exactly. hotkey stays null
     // on RPC failure or a renounced sudo (schema-stable), never a GraphQL
     // error. loadSudoKey always sets schema_version/queried_at
     // unconditionally, so no `??` fallback is needed for those.
-    return loadSudoKey(context.env);
+    return loadSudoKey(context.env, chainNetworkFromChainName(network));
   },
 
-  async network_parameters(_args: unknown, context: GqlContext) {
+  async network_parameters(
+    { network }: QueryNetwork_ParametersArgs,
+    context: GqlContext,
+  ) {
     // Live chain RPC, not the Postgres tier -- reuses loadNetworkParameters'
     // own KV cache/TTL, matching REST's /network/parameters handler exactly.
     // Each field stays independently null on its own RPC failure
     // (schema-stable), never a GraphQL error. loadNetworkParameters always
     // sets schema_version/queried_at unconditionally, so no `??` fallback is
     // needed for those.
-    return loadNetworkParameters(context.env);
+    return loadNetworkParameters(
+      context.env,
+      chainNetworkFromChainName(network),
+    );
   },
-  async network_randomness(_args: unknown, context: GqlContext) {
+  async network_randomness(
+    { network }: QueryNetwork_RandomnessArgs,
+    context: GqlContext,
+  ) {
     // Live chain RPC, not the Postgres tier -- reuses loadRandomnessStatus'
     // own KV cache/TTL, matching REST's /network/randomness handler exactly.
     // Each round field stays independently null on RPC failure (schema-stable),
     // never a GraphQL error; schema_version/queried_at are always set.
-    return loadRandomnessStatus(context.env);
+    return loadRandomnessStatus(
+      context.env,
+      chainNetworkFromChainName(network),
+    );
   },
   // #7649: the get_randomness_status-aligned name for the same beacon snapshot
   // -- a thin delegate so MCP tool names and GraphQL fields line up. Identical
   // loader, KV cache/TTL, and independently-null RPC-failure behavior; nothing
   // re-implemented.
-  async randomness_status(_args: unknown, context: GqlContext) {
-    return rootValue.network_randomness(_args, context);
+  async randomness_status(
+    args: QueryRandomness_StatusArgs,
+    context: GqlContext,
+  ) {
+    // Delegates, so the network argument rides along untouched — the two
+    // fields must never diverge on which chain they read.
+    return rootValue.network_randomness(args, context);
   },
-  async evm_address({ h160 }: QueryEvm_AddressArgs, context: GqlContext) {
-    return resolveEvmAddressMapping(h160, context);
+  async evm_address(
+    { h160, network }: QueryEvm_AddressArgs,
+    context: GqlContext,
+  ) {
+    return resolveEvmAddressMapping(h160, context, network);
   },
   // Same resolver as evm_address, under the get_evm_address_mapping tool name so
   // MCP and GraphQL agree; delegating rather than duplicating keeps the two
   // fields from ever drifting apart.
   async evm_address_mapping(
-    { h160 }: QueryEvm_Address_MappingArgs,
+    { h160, network }: QueryEvm_Address_MappingArgs,
     context: GqlContext,
   ) {
-    return resolveEvmAddressMapping(h160, context);
+    return resolveEvmAddressMapping(h160, context, network);
   },
 };
 
