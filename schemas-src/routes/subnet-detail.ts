@@ -297,6 +297,15 @@ export const EndpointResourceSchema = z
     rpc_method_count: z.int().min(0).nullable().optional(),
     score: z.int().min(0),
     score_reasons: z.array(EndpointScoreReasonSchema).optional(),
+    // 30-day observed uptime-and-latency for this endpoint, computed once per
+    // prober run from the surface_uptime_daily rollup and injected at SERVE time
+    // by overlayRpcPoolEligibility (#9357). It ranks the pool ahead of `score`,
+    // because `score`'s own latency term comes from a single 87-byte probe --
+    // which had the pool preferring an upstream 9x slower on real traffic.
+    // Null when the window holds no samples for this surface: "no record" is not
+    // a neutral score, and a new endpoint does not outrank a proven one.
+    reliability_score: z.int().min(0).max(100).nullable().optional(),
+    reliability_grade: z.string().nullable().optional(),
     source_urls: z.array(z.url()).optional(),
     status: HealthStatusSchema,
     subnet_name: z.string().optional(),
