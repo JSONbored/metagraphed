@@ -38,7 +38,10 @@ describe("sticky table header anchoring", () => {
     // measures and the element the header pins to are the same one.
     expect(subnetsPage).toContain("viewportRef={tableScrollRef}");
     expect(subnetsPage).not.toContain("mg-list-viewport");
-    expect(listShell).toContain('className="mg-list-viewport"');
+    // Conditional, not a literal: `stickyHeader={false}` drops the bounded
+    // box along with the pin, so a list that opts out page-scrolls entirely
+    // rather than getting a scroll region whose header scrolls away inside it.
+    expect(listShell).toContain('stickyHeader ? "mg-list-viewport" : undefined');
     // The cap must carry a literal fallback. A bare var() that fails to
     // resolve computes `max-height: none`, which silently unbounds the
     // viewport and makes every sticky header in the app inert again --
