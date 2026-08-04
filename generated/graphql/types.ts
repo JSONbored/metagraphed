@@ -2826,6 +2826,10 @@ export type Query = {
   subnet_turnover: SubnetTurnover;
   /** One subnet's long-term daily uptime history for its operational surfaces from the live surface_uptime_daily rollup: per-surface day series, window-wide uptime ratios, and reliability scores for the requested window (90d or 1y, default 90d). Optional min_samples drops day rows whose daily probe count is below the threshold (including zero-sample 'unknown' days). A subnet with no history resolves to a schema-stable empty card (surfaces []), never null. Mirrors GET /api/v1/subnets/{netuid}/uptime. */
   subnet_uptime: SubnetUptime;
+  /** What it costs to validate on one subnet and whether a permit there earns: the permit floor and the earning floor (which differ by a median of ~7x -- a permit is not income), the TAO to reach each priced against live pool reserves plus the registration burn, open validator slots, the commission (take) distribution among permit-holders, the emission-gate state, and the live StakeThreshold/TaoWeight the floors were derived against. Permitted, active and earning are three different counts and all three are returned. Every derived field is nullable and degrades with a stated reason rather than reporting a confident zero. Mirrors GET /api/v1/subnets/{netuid}/validator-economics. */
+  subnet_validator_economics: SubnetValidatorEconomics;
+  /** Whether validating on one subnet is getting cheaper or more expensive: a daily series of the OBSERVED permit floor and earning floor in alpha (the smallest stake that actually held a permit, and that actually earned, each day), validator set composition as three separate counts, and the emission-gate state with daily TAO inflow. window accepts 7d, 30d or 90d (default 30d). TAO cost is deliberately absent from the series -- a historical cost needs the pool reserves as they were, and reconstructing one from today's reserves would be wrong; alpha floors are unambiguous. Mirrors GET /api/v1/subnets/{netuid}/validator-economics/history. */
+  subnet_validator_economics_history: SubnetValidatorEconomicsHistory;
   /** One subnet's current validator set (permitted neurons) from the live metagraph snapshot, with each validator's full neuron record. A subnet with no snapshot resolves to a schema-stable empty list, never null. Mirrors GET /api/v1/subnets/{netuid}/validators. */
   subnet_validators: SubnetValidatorList;
   /** One subnet's rolling 24h alpha trading volume from the StakeAdded/StakeRemoved trade stream: buy/sell volume in alpha and TAO, trade counts, net flow, a buy-vs-sell sentiment ratio, and volume-to-market-cap ratio. A subnet with no trades resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/volume. */
@@ -2850,6 +2854,8 @@ export type Query = {
   top_holders?: Maybe<Scalars['JSON']['output']>;
   /** One validator's cross-subnet aggregate by hotkey; a hotkey with no validator_permit=1 rows resolves to a schema-stable zeroed aggregate, never null. Mirrors GET /api/v1/validators/{hotkey}. */
   validator?: Maybe<Validator>;
+  /** Rank every subnet by what it costs to become an EARNING validator there: the same fields as subnet_validator_economics, one row per subnet, sortable by earning_floor_cost_tao (default, cheapest first), permit_floor_cost_tao, permit_to_earning_multiple, tao_inflow_per_day or validator_headroom, and filterable on emission_gate_open / cap_binding (omitting a filter means BOTH, which is not the same as false). Every subnet the ranking drops is returned in the excluded list with a reason. The registration burn is excluded from the ranking -- it is a live per-subnet read and immaterial to the order. Mirrors GET /api/v1/validators/economics. */
+  validator_economics: ValidatorEconomicsRanking;
   /** One validator's cross-subnet staked-over-time history: one point per day (window: 7d/30d/90d/1y/all, default 30d), summed across every subnet it validates in, plus a rewards-per-1000-TAO rate. A hotkey with no matching neuron_daily rows resolves to a schema-stable empty-points card, never null. Mirrors GET /api/v1/validators/{hotkey}/history. */
   validator_history: ValidatorHistory;
   /** One validator's nominator leaderboard over a 7d/30d/90d window (default 30d): every coldkey that staked to or unstaked from this hotkey in the window, with its staked/unstaked/net/gross TAO, event count, and last-activity time, ranked by sort (net_staked | gross_staked | last_activity, default net_staked), paginated with limit (1-2000, default 20)/offset. An unsupported window/sort or an out-of-range limit/offset is a GraphQL error, not a silently substituted default; a hotkey with no nominators resolves to a schema-stable empty list, never null and never a GraphQL error. Mirrors GET /api/v1/validators/{hotkey}/nominators. */
@@ -3991,6 +3997,17 @@ export type QuerySubnet_UptimeArgs = {
 };
 
 
+export type QuerySubnet_Validator_EconomicsArgs = {
+  netuid: Scalars['Int']['input'];
+};
+
+
+export type QuerySubnet_Validator_Economics_HistoryArgs = {
+  netuid: Scalars['Int']['input'];
+  window?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QuerySubnet_ValidatorsArgs = {
   netuid: Scalars['Int']['input'];
 };
@@ -4096,6 +4113,15 @@ export type QueryTop_HoldersArgs = {
 
 export type QueryValidatorArgs = {
   hotkey: Scalars['String']['input'];
+};
+
+
+export type QueryValidator_EconomicsArgs = {
+  cap_binding?: InputMaybe<Scalars['Boolean']['input']>;
+  emission_gate_open?: InputMaybe<Scalars['Boolean']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -5213,6 +5239,50 @@ export type SubnetUptime = {
   window?: Maybe<Scalars['String']['output']>;
 };
 
+export type SubnetValidatorEconomics = {
+  __typename?: 'SubnetValidatorEconomics';
+  cap_binding?: Maybe<Scalars['Boolean']['output']>;
+  composition?: Maybe<ValidatorSetComposition>;
+  /** Names the missing input whenever a field above was withheld, so a caller can tell 'unknown' from 'zero'. */
+  degraded_reason?: Maybe<Scalars['String']['output']>;
+  earning_entry_cost_tao?: Maybe<Scalars['Float']['output']>;
+  earning_floor_cost_tao?: Maybe<Scalars['Float']['output']>;
+  earning_floor_units?: Maybe<Scalars['Float']['output']>;
+  /** Reported, never scored. Gate-closed subnets still emit alpha at a comparable rate and are less contested, so per unit of stake they pay MORE -- the gate is an exit-liquidity question, not an eligibility one. */
+  emission_gate_open?: Maybe<Scalars['Boolean']['output']>;
+  max_validators?: Maybe<Scalars['Int']['output']>;
+  min_childkey_take_ratio?: Maybe<Scalars['Float']['output']>;
+  model_agreement?: Maybe<ValidatorPermitModelAgreement>;
+  netuid: Scalars['Int']['output'];
+  /** Floor cost plus the registration burn. Entry is two spends; publishing one understates it. */
+  permit_entry_cost_tao?: Maybe<Scalars['Float']['output']>;
+  permit_floor_cost_tao?: Maybe<Scalars['Float']['output']>;
+  /** Floors are in total_stake UNITS (alpha + tao_weight * root), the quantity the chain threshold actually tests -- not alpha alone. */
+  permit_floor_units?: Maybe<Scalars['Float']['output']>;
+  /** How much more it takes to EARN than merely to hold a permit. */
+  permit_to_earning_multiple?: Maybe<Scalars['Float']['output']>;
+  registration_cost_tao?: Maybe<Scalars['Float']['output']>;
+  /** Root is not split: this much root clears the threshold on EVERY subnet the hotkey is registered on at once. */
+  root_tao_to_clear_threshold?: Maybe<Scalars['Float']['output']>;
+  schema_version: Scalars['Int']['output'];
+  /** Echoed so a caller never has to guess what the floor was computed against. Both are sudo-settable, so a cached copy would silently rot. */
+  stake_threshold_units?: Maybe<Scalars['Float']['output']>;
+  takes?: Maybe<ValidatorTakeDistribution>;
+  tao_inflow_per_day?: Maybe<Scalars['Float']['output']>;
+  tao_weight?: Maybe<Scalars['Float']['output']>;
+  uids_above_threshold?: Maybe<Scalars['Int']['output']>;
+  validator_slots_open?: Maybe<Scalars['Int']['output']>;
+};
+
+export type SubnetValidatorEconomicsHistory = {
+  __typename?: 'SubnetValidatorEconomicsHistory';
+  netuid: Scalars['Int']['output'];
+  /** Newest first. */
+  points: Array<ValidatorEconomicsHistoryPoint>;
+  schema_version: Scalars['Int']['output'];
+  window: Scalars['String']['output'];
+};
+
 /** One subnet's current validator set (#6979). Mirrors GET /api/v1/subnets/{netuid}/validators' data envelope. */
 export type SubnetValidatorList = {
   __typename?: 'SubnetValidatorList';
@@ -5498,6 +5568,41 @@ export type ValidatorComparison = {
   validators: Array<ComparedValidator>;
 };
 
+/** One subnet the ranking dropped, and why, so that a caller can tell an omitted subnet from an absent one without re-deriving the ranking. */
+export type ValidatorEconomicsExclusion = {
+  __typename?: 'ValidatorEconomicsExclusion';
+  netuid: Scalars['Int']['output'];
+  reason: Scalars['String']['output'];
+};
+
+/** One day's observed economics. The floors are read off the snapshot, not re-derived: StakeThreshold is sudo-settable, so re-running today's threshold against an old day would show a flat line across a governance change that actually moved the floor. */
+export type ValidatorEconomicsHistoryPoint = {
+  __typename?: 'ValidatorEconomicsHistoryPoint';
+  earning_floor_alpha?: Maybe<Scalars['Float']['output']>;
+  emission_gate_open?: Maybe<Scalars['Boolean']['output']>;
+  permit_floor_alpha?: Maybe<Scalars['Float']['output']>;
+  snapshot_date: Scalars['String']['output'];
+  tao_inflow_per_day?: Maybe<Scalars['Float']['output']>;
+  validators_active: Scalars['Int']['output'];
+  validators_earning: Scalars['Int']['output'];
+  validators_permitted: Scalars['Int']['output'];
+};
+
+export type ValidatorEconomicsRanking = {
+  __typename?: 'ValidatorEconomicsRanking';
+  excluded: Array<ValidatorEconomicsExclusion>;
+  order: Scalars['String']['output'];
+  root_tao_to_clear_threshold?: Maybe<Scalars['Float']['output']>;
+  rows: Array<SubnetValidatorEconomics>;
+  schema_version: Scalars['Int']['output'];
+  sort: Scalars['String']['output'];
+  /** Echoed once for the whole ranking: every row's floors were derived against exactly these values, and both are sudo-settable. */
+  stake_threshold_units?: Maybe<Scalars['Float']['output']>;
+  tao_weight?: Maybe<Scalars['Float']['output']>;
+  /** Rows matching the filters, BEFORE limit/offset -- so a caller can page without re-counting. */
+  total: Scalars['Int']['output'];
+};
+
 /** One validator's cross-subnet staked-over-time history. Mirrors GET /api/v1/validators/{hotkey}/history. */
 export type ValidatorHistory = {
   __typename?: 'ValidatorHistory';
@@ -5528,6 +5633,25 @@ export type ValidatorList = {
   total: Scalars['Int']['output'];
 };
 
+/** How well the derived permit rule still reproduces the permits the chain actually granted. Published so a caller can see when the model has drifted rather than trusting a floor it no longer supports. */
+export type ValidatorPermitModelAgreement = {
+  __typename?: 'ValidatorPermitModelAgreement';
+  agreement?: Maybe<Scalars['Float']['output']>;
+  matched: Scalars['Int']['output'];
+  observed_permits: Scalars['Int']['output'];
+  over_predicted: Scalars['Int']['output'];
+  publishable: Scalars['Boolean']['output'];
+  under_predicted: Scalars['Int']['output'];
+};
+
+/** Permitted, active and earning are three DIFFERENT sets. Network-wide 2026-08-03: 1,523 / 1,137 / 1,117; SN83 is 64 / 8 / 7. Published separately rather than collapsed, because 'how many validators does this subnet have' has three defensible answers. */
+export type ValidatorSetComposition = {
+  __typename?: 'ValidatorSetComposition';
+  active: Scalars['Int']['output'];
+  earning: Scalars['Int']['output'];
+  permitted: Scalars['Int']['output'];
+};
+
 export type ValidatorSubnet = {
   __typename?: 'ValidatorSubnet';
   emission_tao?: Maybe<Scalars['Float']['output']>;
@@ -5535,6 +5659,18 @@ export type ValidatorSubnet = {
   stake_tao?: Maybe<Scalars['Float']['output']>;
   uid?: Maybe<Scalars['Int']['output']>;
   validator_trust?: Maybe<Scalars['Float']['output']>;
+};
+
+/** The commission picture across permit-holders. The sorted vector is published because the shape is the information: it is genuinely bimodal, with a cohort competing at or near zero against a median at the effective ceiling, and validators earning at both ends. */
+export type ValidatorTakeDistribution = {
+  __typename?: 'ValidatorTakeDistribution';
+  distribution: Array<Scalars['Float']['output']>;
+  max?: Maybe<Scalars['Float']['output']>;
+  median?: Maybe<Scalars['Float']['output']>;
+  /** Median restricted to permit-holders that actually earn -- takes among validators nobody delegates to are noise. */
+  median_earning?: Maybe<Scalars['Float']['output']>;
+  min?: Maybe<Scalars['Float']['output']>;
+  sample_size: Scalars['Int']['output'];
 };
 
 /** Distribution of the per-neuron emission/stake return rate across the network. */
@@ -5902,6 +6038,8 @@ export type ResolversTypes = ResolversObject<{
   SubnetTurnover: ResolverTypeWrapper<SubnetTurnover>;
   SubnetTurnoverChanges: ResolverTypeWrapper<SubnetTurnoverChanges>;
   SubnetUptime: ResolverTypeWrapper<SubnetUptime>;
+  SubnetValidatorEconomics: ResolverTypeWrapper<SubnetValidatorEconomics>;
+  SubnetValidatorEconomicsHistory: ResolverTypeWrapper<SubnetValidatorEconomicsHistory>;
   SubnetValidatorList: ResolverTypeWrapper<SubnetValidatorList>;
   SubnetVolume: ResolverTypeWrapper<SubnetVolume>;
   SubnetWeightSetter: ResolverTypeWrapper<SubnetWeightSetter>;
@@ -5923,10 +6061,16 @@ export type ResolversTypes = ResolversObject<{
   UptimeSurface: ResolverTypeWrapper<UptimeSurface>;
   Validator: ResolverTypeWrapper<Validator>;
   ValidatorComparison: ResolverTypeWrapper<ValidatorComparison>;
+  ValidatorEconomicsExclusion: ResolverTypeWrapper<ValidatorEconomicsExclusion>;
+  ValidatorEconomicsHistoryPoint: ResolverTypeWrapper<ValidatorEconomicsHistoryPoint>;
+  ValidatorEconomicsRanking: ResolverTypeWrapper<ValidatorEconomicsRanking>;
   ValidatorHistory: ResolverTypeWrapper<ValidatorHistory>;
   ValidatorHistoryPoint: ResolverTypeWrapper<ValidatorHistoryPoint>;
   ValidatorList: ResolverTypeWrapper<ValidatorList>;
+  ValidatorPermitModelAgreement: ResolverTypeWrapper<ValidatorPermitModelAgreement>;
+  ValidatorSetComposition: ResolverTypeWrapper<ValidatorSetComposition>;
   ValidatorSubnet: ResolverTypeWrapper<ValidatorSubnet>;
+  ValidatorTakeDistribution: ResolverTypeWrapper<ValidatorTakeDistribution>;
   YieldDistribution: ResolverTypeWrapper<YieldDistribution>;
 }>;
 
@@ -6207,6 +6351,8 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetTurnover: SubnetTurnover;
   SubnetTurnoverChanges: SubnetTurnoverChanges;
   SubnetUptime: SubnetUptime;
+  SubnetValidatorEconomics: SubnetValidatorEconomics;
+  SubnetValidatorEconomicsHistory: SubnetValidatorEconomicsHistory;
   SubnetValidatorList: SubnetValidatorList;
   SubnetVolume: SubnetVolume;
   SubnetWeightSetter: SubnetWeightSetter;
@@ -6228,10 +6374,16 @@ export type ResolversParentTypes = ResolversObject<{
   UptimeSurface: UptimeSurface;
   Validator: Validator;
   ValidatorComparison: ValidatorComparison;
+  ValidatorEconomicsExclusion: ValidatorEconomicsExclusion;
+  ValidatorEconomicsHistoryPoint: ValidatorEconomicsHistoryPoint;
+  ValidatorEconomicsRanking: ValidatorEconomicsRanking;
   ValidatorHistory: ValidatorHistory;
   ValidatorHistoryPoint: ValidatorHistoryPoint;
   ValidatorList: ValidatorList;
+  ValidatorPermitModelAgreement: ValidatorPermitModelAgreement;
+  ValidatorSetComposition: ValidatorSetComposition;
   ValidatorSubnet: ValidatorSubnet;
+  ValidatorTakeDistribution: ValidatorTakeDistribution;
   YieldDistribution: YieldDistribution;
 }>;
 
@@ -8401,6 +8553,8 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_trajectory?: Resolver<ResolversTypes['SubnetTrajectory'], ParentType, ContextType, RequireFields<QuerySubnet_TrajectoryArgs, 'netuid'>>;
   subnet_turnover?: Resolver<ResolversTypes['SubnetTurnover'], ParentType, ContextType, RequireFields<QuerySubnet_TurnoverArgs, 'netuid'>>;
   subnet_uptime?: Resolver<ResolversTypes['SubnetUptime'], ParentType, ContextType, RequireFields<QuerySubnet_UptimeArgs, 'netuid'>>;
+  subnet_validator_economics?: Resolver<ResolversTypes['SubnetValidatorEconomics'], ParentType, ContextType, RequireFields<QuerySubnet_Validator_EconomicsArgs, 'netuid'>>;
+  subnet_validator_economics_history?: Resolver<ResolversTypes['SubnetValidatorEconomicsHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Validator_Economics_HistoryArgs, 'netuid'>>;
   subnet_validators?: Resolver<ResolversTypes['SubnetValidatorList'], ParentType, ContextType, RequireFields<QuerySubnet_ValidatorsArgs, 'netuid'>>;
   subnet_volume?: Resolver<ResolversTypes['SubnetVolume'], ParentType, ContextType, RequireFields<QuerySubnet_VolumeArgs, 'netuid'>>;
   subnet_weight_setters?: Resolver<ResolversTypes['SubnetWeightSetters'], ParentType, ContextType, RequireFields<QuerySubnet_Weight_SettersArgs, 'netuid'>>;
@@ -8413,6 +8567,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   surfaces?: Resolver<ResolversTypes['SurfaceList'], ParentType, ContextType, Partial<QuerySurfacesArgs>>;
   top_holders?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, Partial<QueryTop_HoldersArgs>>;
   validator?: Resolver<Maybe<ResolversTypes['Validator']>, ParentType, ContextType, RequireFields<QueryValidatorArgs, 'hotkey'>>;
+  validator_economics?: Resolver<ResolversTypes['ValidatorEconomicsRanking'], ParentType, ContextType, Partial<QueryValidator_EconomicsArgs>>;
   validator_history?: Resolver<ResolversTypes['ValidatorHistory'], ParentType, ContextType, RequireFields<QueryValidator_HistoryArgs, 'hotkey'>>;
   validator_nominators?: Resolver<ResolversTypes['NominatorList'], ParentType, ContextType, RequireFields<QueryValidator_NominatorsArgs, 'hotkey'>>;
   validators?: Resolver<ResolversTypes['ValidatorList'], ParentType, ContextType, Partial<QueryValidatorsArgs>>;
@@ -9262,6 +9417,40 @@ export type SubnetUptimeResolvers<ContextType = GqlContext, ParentType extends R
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
+export type SubnetValidatorEconomicsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetValidatorEconomics'] = ResolversParentTypes['SubnetValidatorEconomics']> = ResolversObject<{
+  cap_binding?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  composition?: Resolver<Maybe<ResolversTypes['ValidatorSetComposition']>, ParentType, ContextType>;
+  degraded_reason?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  earning_entry_cost_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  earning_floor_cost_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  earning_floor_units?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  emission_gate_open?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  max_validators?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  min_childkey_take_ratio?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  model_agreement?: Resolver<Maybe<ResolversTypes['ValidatorPermitModelAgreement']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  permit_entry_cost_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  permit_floor_cost_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  permit_floor_units?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  permit_to_earning_multiple?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  registration_cost_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  root_tao_to_clear_threshold?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  stake_threshold_units?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  takes?: Resolver<Maybe<ResolversTypes['ValidatorTakeDistribution']>, ParentType, ContextType>;
+  tao_inflow_per_day?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  tao_weight?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  uids_above_threshold?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  validator_slots_open?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+}>;
+
+export type SubnetValidatorEconomicsHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetValidatorEconomicsHistory'] = ResolversParentTypes['SubnetValidatorEconomicsHistory']> = ResolversObject<{
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  points?: Resolver<Array<ResolversTypes['ValidatorEconomicsHistoryPoint']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  window?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
 export type SubnetValidatorListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetValidatorList'] = ResolversParentTypes['SubnetValidatorList']> = ResolversObject<{
   block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -9490,6 +9679,34 @@ export type ValidatorComparisonResolvers<ContextType = GqlContext, ParentType ex
   validators?: Resolver<Array<ResolversTypes['ComparedValidator']>, ParentType, ContextType>;
 }>;
 
+export type ValidatorEconomicsExclusionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorEconomicsExclusion'] = ResolversParentTypes['ValidatorEconomicsExclusion']> = ResolversObject<{
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type ValidatorEconomicsHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorEconomicsHistoryPoint'] = ResolversParentTypes['ValidatorEconomicsHistoryPoint']> = ResolversObject<{
+  earning_floor_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  emission_gate_open?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  permit_floor_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  snapshot_date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  tao_inflow_per_day?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  validators_active?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  validators_earning?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  validators_permitted?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type ValidatorEconomicsRankingResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorEconomicsRanking'] = ResolversParentTypes['ValidatorEconomicsRanking']> = ResolversObject<{
+  excluded?: Resolver<Array<ResolversTypes['ValidatorEconomicsExclusion']>, ParentType, ContextType>;
+  order?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  root_tao_to_clear_threshold?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  rows?: Resolver<Array<ResolversTypes['SubnetValidatorEconomics']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  sort?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  stake_threshold_units?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  tao_weight?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type ValidatorHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorHistory'] = ResolversParentTypes['ValidatorHistory']> = ResolversObject<{
   hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -9515,12 +9732,36 @@ export type ValidatorListResolvers<ContextType = GqlContext, ParentType extends 
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type ValidatorPermitModelAgreementResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorPermitModelAgreement'] = ResolversParentTypes['ValidatorPermitModelAgreement']> = ResolversObject<{
+  agreement?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  matched?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  observed_permits?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  over_predicted?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  publishable?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  under_predicted?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type ValidatorSetCompositionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorSetComposition'] = ResolversParentTypes['ValidatorSetComposition']> = ResolversObject<{
+  active?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  earning?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  permitted?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type ValidatorSubnetResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorSubnet'] = ResolversParentTypes['ValidatorSubnet']> = ResolversObject<{
   emission_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   uid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   validator_trust?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type ValidatorTakeDistributionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorTakeDistribution'] = ResolversParentTypes['ValidatorTakeDistribution']> = ResolversObject<{
+  distribution?: Resolver<Array<ResolversTypes['Float']>, ParentType, ContextType>;
+  max?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  median?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  median_earning?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  min?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  sample_size?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type YieldDistributionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['YieldDistribution'] = ResolversParentTypes['YieldDistribution']> = ResolversObject<{
@@ -9807,6 +10048,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetTurnover?: SubnetTurnoverResolvers<ContextType>;
   SubnetTurnoverChanges?: SubnetTurnoverChangesResolvers<ContextType>;
   SubnetUptime?: SubnetUptimeResolvers<ContextType>;
+  SubnetValidatorEconomics?: SubnetValidatorEconomicsResolvers<ContextType>;
+  SubnetValidatorEconomicsHistory?: SubnetValidatorEconomicsHistoryResolvers<ContextType>;
   SubnetValidatorList?: SubnetValidatorListResolvers<ContextType>;
   SubnetVolume?: SubnetVolumeResolvers<ContextType>;
   SubnetWeightSetter?: SubnetWeightSetterResolvers<ContextType>;
@@ -9828,10 +10071,16 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   UptimeSurface?: UptimeSurfaceResolvers<ContextType>;
   Validator?: ValidatorResolvers<ContextType>;
   ValidatorComparison?: ValidatorComparisonResolvers<ContextType>;
+  ValidatorEconomicsExclusion?: ValidatorEconomicsExclusionResolvers<ContextType>;
+  ValidatorEconomicsHistoryPoint?: ValidatorEconomicsHistoryPointResolvers<ContextType>;
+  ValidatorEconomicsRanking?: ValidatorEconomicsRankingResolvers<ContextType>;
   ValidatorHistory?: ValidatorHistoryResolvers<ContextType>;
   ValidatorHistoryPoint?: ValidatorHistoryPointResolvers<ContextType>;
   ValidatorList?: ValidatorListResolvers<ContextType>;
+  ValidatorPermitModelAgreement?: ValidatorPermitModelAgreementResolvers<ContextType>;
+  ValidatorSetComposition?: ValidatorSetCompositionResolvers<ContextType>;
   ValidatorSubnet?: ValidatorSubnetResolvers<ContextType>;
+  ValidatorTakeDistribution?: ValidatorTakeDistributionResolvers<ContextType>;
   YieldDistribution?: YieldDistributionResolvers<ContextType>;
 }>;
 

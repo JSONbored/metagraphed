@@ -132,6 +132,9 @@ import {
   handleSubnetAlphaVolume,
   handleSubnetOhlc,
   handleSubnetStakeQuote,
+  handleSubnetValidatorEconomics,
+  handleValidatorEconomicsRanking,
+  handleSubnetValidatorEconomicsHistory,
   handleSubnetRecycled,
   handleSubnetBurn,
   handleCrowdloan,
@@ -459,6 +462,9 @@ import {
   SUBNET_ALPHA_VOLUME_PATH_PATTERN,
   SUBNET_OHLC_PATH_PATTERN,
   SUBNET_STAKE_QUOTE_PATH_PATTERN,
+  SUBNET_VALIDATOR_ECONOMICS_PATH_PATTERN,
+  VALIDATOR_ECONOMICS_RANKING_PATH,
+  SUBNET_VALIDATOR_ECONOMICS_HISTORY_PATH_PATTERN,
   SUBNET_RECYCLED_PATH_PATTERN,
   SUBNET_BURN_PATH_PATTERN,
   CROWDLOANS_PATH_PATTERN,
@@ -4180,6 +4186,57 @@ export async function handleRequest(
         ctx,
       );
     }
+    if (resolved.url.pathname === VALIDATOR_ECONOMICS_RANKING_PATH) {
+      // Edge-cached: the answer depends only on the query, and the underlying
+      // scan is the most expensive read in this family.
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "validator-economics-ranking",
+        () => handleValidatorEconomicsRanking(request, env, resolved.url),
+      );
+    }
+    // Checked before the plain per-subnet pattern: /validator-economics/history
+    // would otherwise fall through to a 404, since that pattern is anchored.
+    const validatorEconomicsHistoryMatch =
+      SUBNET_VALIDATOR_ECONOMICS_HISTORY_PATH_PATTERN.exec(
+        resolved.url.pathname,
+      );
+    if (validatorEconomicsHistoryMatch) {
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "subnet-validator-economics-history",
+        () =>
+          handleSubnetValidatorEconomicsHistory(
+            request,
+            env,
+            Number(validatorEconomicsHistoryMatch[1]),
+            resolved.url,
+          ),
+      );
+    }
+    const validatorEconomicsMatch =
+      SUBNET_VALIDATOR_ECONOMICS_PATH_PATTERN.exec(resolved.url.pathname);
+    if (validatorEconomicsMatch) {
+      // Edge-cached like the deterministic sibling analytics routes: the answer
+      // depends only on the netuid, not on any query param.
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "subnet-validator-economics",
+        () =>
+          handleSubnetValidatorEconomics(
+            request,
+            env,
+            Number(validatorEconomicsMatch[1]),
+            resolved.url,
+          ),
+      );
+    }
     const recycledMatch = SUBNET_RECYCLED_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -5190,6 +5247,11 @@ export function isMainnetOnlyApiPath(pathname: string) {
     SUBNET_ALPHA_VOLUME_PATH_PATTERN.test(pathname) ||
     SUBNET_OHLC_PATH_PATTERN.test(pathname) ||
     SUBNET_STAKE_QUOTE_PATH_PATTERN.test(pathname) ||
+    // Mainnet-only by construction, not policy: it reads StakeThreshold,
+    // TaoWeight and Burn out of finney storage at request time.
+    SUBNET_VALIDATOR_ECONOMICS_PATH_PATTERN.test(pathname) ||
+    pathname === VALIDATOR_ECONOMICS_RANKING_PATH ||
+    SUBNET_VALIDATOR_ECONOMICS_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_RECYCLED_PATH_PATTERN.test(pathname) ||
     SUBNET_BURN_PATH_PATTERN.test(pathname) ||
     SUBNET_LEASE_PATH_PATTERN.test(pathname) ||

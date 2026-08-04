@@ -182,6 +182,21 @@ export const SDL = /* GraphQL */ `
       amount: Float!
       direction: String
     ): SubnetStakeQuote!
+    "Rank every subnet by what it costs to become an EARNING validator there: the same fields as subnet_validator_economics, one row per subnet, sortable by earning_floor_cost_tao (default, cheapest first), permit_floor_cost_tao, permit_to_earning_multiple, tao_inflow_per_day or validator_headroom, and filterable on emission_gate_open / cap_binding (omitting a filter means BOTH, which is not the same as false). Every subnet the ranking drops is returned in the excluded list with a reason. The registration burn is excluded from the ranking -- it is a live per-subnet read and immaterial to the order. Mirrors GET /api/v1/validators/economics."
+    validator_economics(
+      sort: String
+      limit: Int
+      offset: Int
+      emission_gate_open: Boolean
+      cap_binding: Boolean
+    ): ValidatorEconomicsRanking!
+    "Whether validating on one subnet is getting cheaper or more expensive: a daily series of the OBSERVED permit floor and earning floor in alpha (the smallest stake that actually held a permit, and that actually earned, each day), validator set composition as three separate counts, and the emission-gate state with daily TAO inflow. window accepts 7d, 30d or 90d (default 30d). TAO cost is deliberately absent from the series -- a historical cost needs the pool reserves as they were, and reconstructing one from today's reserves would be wrong; alpha floors are unambiguous. Mirrors GET /api/v1/subnets/{netuid}/validator-economics/history."
+    subnet_validator_economics_history(
+      netuid: Int!
+      window: String
+    ): SubnetValidatorEconomicsHistory!
+    "What it costs to validate on one subnet and whether a permit there earns: the permit floor and the earning floor (which differ by a median of ~7x -- a permit is not income), the TAO to reach each priced against live pool reserves plus the registration burn, open validator slots, the commission (take) distribution among permit-holders, the emission-gate state, and the live StakeThreshold/TaoWeight the floors were derived against. Permitted, active and earning are three different counts and all three are returned. Every derived field is nullable and degrades with a stated reason rather than reporting a confident zero. Mirrors GET /api/v1/subnets/{netuid}/validator-economics."
+    subnet_validator_economics(netuid: Int!): SubnetValidatorEconomics!
     "One subnet's current validator set (permitted neurons) from the live metagraph snapshot, with each validator's full neuron record. A subnet with no snapshot resolves to a schema-stable empty list, never null. Mirrors GET /api/v1/subnets/{netuid}/validators."
     subnet_validators(netuid: Int!): SubnetValidatorList!
     "One subnet's chain-event activity summary over a 7d/30d/90d window (default 30d): total events, the per-kind and per-category breakdowns with hotkey/coldkey participation and TAO/alpha amounts, and a bounded newest-first recent-event list (limit 1-50, default 10). A subnet with no events resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/event-summary."
@@ -3314,6 +3329,108 @@ export const SDL = /* GraphQL */ `
     candles: [SubnetOhlcCandle!]!
     "True for root (netuid 0), whose 1:1 price makes candles meaningless, so none are emitted."
     root_excluded: Boolean!
+  }
+
+  "Permitted, active and earning are three DIFFERENT sets. Network-wide 2026-08-03: 1,523 / 1,137 / 1,117; SN83 is 64 / 8 / 7. Published separately rather than collapsed, because 'how many validators does this subnet have' has three defensible answers."
+  type ValidatorSetComposition {
+    permitted: Int!
+    active: Int!
+    earning: Int!
+  }
+
+  "How well the derived permit rule still reproduces the permits the chain actually granted. Published so a caller can see when the model has drifted rather than trusting a floor it no longer supports."
+  type ValidatorPermitModelAgreement {
+    matched: Int!
+    over_predicted: Int!
+    under_predicted: Int!
+    observed_permits: Int!
+    agreement: Float
+    publishable: Boolean!
+  }
+
+  "The commission picture across permit-holders. The sorted vector is published because the shape is the information: it is genuinely bimodal, with a cohort competing at or near zero against a median at the effective ceiling, and validators earning at both ends."
+  type ValidatorTakeDistribution {
+    median: Float
+    min: Float
+    max: Float
+    distribution: [Float!]!
+    "Median restricted to permit-holders that actually earn -- takes among validators nobody delegates to are noise."
+    median_earning: Float
+    sample_size: Int!
+  }
+
+  "One subnet the ranking dropped, and why, so that a caller can tell an omitted subnet from an absent one without re-deriving the ranking."
+  type ValidatorEconomicsExclusion {
+    netuid: Int!
+    reason: String!
+  }
+
+  type ValidatorEconomicsRanking {
+    schema_version: Int!
+    sort: String!
+    order: String!
+    "Rows matching the filters, BEFORE limit/offset -- so a caller can page without re-counting."
+    total: Int!
+    rows: [SubnetValidatorEconomics!]!
+    excluded: [ValidatorEconomicsExclusion!]!
+    "Echoed once for the whole ranking: every row's floors were derived against exactly these values, and both are sudo-settable."
+    stake_threshold_units: Float
+    tao_weight: Float
+    root_tao_to_clear_threshold: Float
+  }
+
+  "One day's observed economics. The floors are read off the snapshot, not re-derived: StakeThreshold is sudo-settable, so re-running today's threshold against an old day would show a flat line across a governance change that actually moved the floor."
+  type ValidatorEconomicsHistoryPoint {
+    snapshot_date: String!
+    permit_floor_alpha: Float
+    earning_floor_alpha: Float
+    validators_permitted: Int!
+    validators_active: Int!
+    validators_earning: Int!
+    emission_gate_open: Boolean
+    tao_inflow_per_day: Float
+  }
+
+  type SubnetValidatorEconomicsHistory {
+    schema_version: Int!
+    netuid: Int!
+    window: String!
+    "Newest first."
+    points: [ValidatorEconomicsHistoryPoint!]!
+  }
+
+  type SubnetValidatorEconomics {
+    schema_version: Int!
+    netuid: Int!
+    "Floors are in total_stake UNITS (alpha + tao_weight * root), the quantity the chain threshold actually tests -- not alpha alone."
+    permit_floor_units: Float
+    permit_floor_cost_tao: Float
+    "Floor cost plus the registration burn. Entry is two spends; publishing one understates it."
+    permit_entry_cost_tao: Float
+    earning_floor_units: Float
+    earning_floor_cost_tao: Float
+    earning_entry_cost_tao: Float
+    "How much more it takes to EARN than merely to hold a permit."
+    permit_to_earning_multiple: Float
+    "Root is not split: this much root clears the threshold on EVERY subnet the hotkey is registered on at once."
+    root_tao_to_clear_threshold: Float
+    max_validators: Int
+    validator_slots_open: Int
+    uids_above_threshold: Int
+    cap_binding: Boolean
+    composition: ValidatorSetComposition
+    takes: ValidatorTakeDistribution
+    min_childkey_take_ratio: Float
+    "Reported, never scored. Gate-closed subnets still emit alpha at a comparable rate and are less contested, so per unit of stake they pay MORE -- the gate is an exit-liquidity question, not an eligibility one."
+    emission_gate_open: Boolean
+    tao_inflow_per_day: Float
+    registration_cost_tao: Float
+    "Echoed so a caller never has to guess what the floor was computed against. Both are sudo-settable, so a cached copy would silently rot."
+    stake_threshold_units: Float
+    tao_weight: Float
+    model_agreement: ValidatorPermitModelAgreement
+    "Names the missing input whenever a field above was withheld, so a caller can tell 'unknown' from 'zero'."
+    degraded_reason: String
   }
 
   "A read-only hypothetical stake/unstake quote against one subnet's live AMM pool (#6979). Mirrors GET /api/v1/subnets/{netuid}/stake-quote."

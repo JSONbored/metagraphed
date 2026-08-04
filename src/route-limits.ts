@@ -39,6 +39,17 @@ export const GLOBAL_VALIDATOR_LIMIT_MAX = 2000;
 export const MOVERS_LIMIT_DEFAULT = 20;
 export const MOVERS_LIMIT_MAX = 100;
 
+/**
+ * `/api/v1/validators/economics` -- cross-subnet cost-to-validate ranking (#9324).
+ *
+ * The max is deliberately above the current subnet count: the whole point of the
+ * route is "across ALL subnets, where is it cheapest to earn", and a ceiling that
+ * silently truncated the answer would make the ranking wrong rather than merely
+ * short. One row per subnet, so this is bounded by the network, not by a scan.
+ */
+export const VALIDATOR_ECONOMICS_LIMIT_DEFAULT = 50;
+export const VALIDATOR_ECONOMICS_LIMIT_MAX = 512;
+
 /** `/api/v1/chain/turnover` -- network-wide turnover leaderboard. */
 export const CHAIN_TURNOVER_LIMIT_DEFAULT = 20;
 export const CHAIN_TURNOVER_LIMIT_MAX = 100;

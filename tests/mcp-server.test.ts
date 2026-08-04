@@ -9556,6 +9556,290 @@ describe("MCP economics + metagraph data tools", () => {
   };
   const STAKE_QUOTE_BLOB = { subnets: [STAKE_QUOTE_POOL_ROW] };
 
+  test("get_subnet_validator_economics answers across the MCP surface", async () => {
+    // The agent-facing twin of the REST route, running the SAME composer — so an
+    // agent and an HTTP caller cannot get different answers to the identical
+    // question (#9229's parity lesson).
+    const db = {
+      prepare(query: string) {
+        const isHyper = /subnet_hyperparams/.test(query);
+        return {
+          bind: () => ({
+            all: async () => ({
+              results: [
+                {
+                  uid: 0,
+                  stake_tao: 5000,
+                  validator_permit: 1,
+                  dividends: 0.5,
+                  active: 1,
+                  take: 0.18,
+                },
+                {
+                  uid: 1,
+                  stake_tao: 900,
+                  validator_permit: 0,
+                  dividends: 0,
+                  active: 0,
+                  take: null,
+                },
+              ],
+            }),
+            first: async () => (isHyper ? null : null),
+          }),
+        };
+      },
+    };
+    const res = await callTool(
+      "get_subnet_validator_economics",
+      { netuid: 64 },
+      {
+        deps: makeDeps(
+          {
+            "/metagraph/economics.json": {
+              subnets: [
+                {
+                  netuid: 64,
+                  tao_in_pool_tao: 1000,
+                  alpha_in_pool: 100000,
+                  max_validators: 64,
+                  tao_in_emission_tao: 0.01,
+                },
+              ],
+            },
+          },
+          {},
+        ),
+        env: {
+          METAGRAPH_HEALTH_DB: db,
+          // StakeThreshold/TaoWeight are read from this KV snapshot before any
+          // live RPC. Supplying it keeps the test deterministic — without it the
+          // tool falls through to the chain, which passes in isolation and fails
+          // in the full suite depending on ambient state.
+          METAGRAPH_CONTROL: {
+            get: async () => ({
+              stake_threshold_tao: 1000,
+              tao_weight: 0.18,
+            }),
+          },
+        } as unknown as Env,
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.schema_version, 1);
+    assert.equal(out.netuid, 64);
+    // StakeThreshold/TaoWeight are live chain reads with no seam through
+    // callTool, so this exercises the DEGRADED path — which is exactly the
+    // contract worth pinning here: the tool still answers, the derived floors
+    // are withheld rather than guessed, and the reason is stated.
+    // The reserves and the cap come through ctx's artifact reader, so this is the
+    // REAL derivation, not a degraded stub: uid 0 clears the 1,000 threshold and
+    // uid 1 does not.
+    assert.equal(out.degraded_reason, null);
+    assert.equal(out.max_validators, 64);
+    assert.equal(out.uids_above_threshold, 1);
+    assert.equal(out.cap_binding, false);
+    assert.equal(out.validator_slots_open, 63);
+    // Permitted / active / earning are three different sets and all three are
+    // published rather than collapsed into one "validator count".
+    assert.deepEqual(out.composition, {
+      permitted: 1,
+      active: 1,
+      earning: 1,
+    });
+    // Only permit-holders with a recorded take enter the distribution, so uid 1's
+    // null take is skipped rather than counted as charging 0.
+    assert.equal(out.takes.sample_size, 1);
+    assert.deepEqual(out.takes.distribution, [0.18]);
+    assert.equal(out.takes.median, 0.18);
+    // The gate is read straight from the economics row: 0.01 TAO/block * 7200.
+    assert.equal(out.emission_gate_open, true);
+    assert.ok(Math.abs((out.tao_inflow_per_day as number) - 72) < 1e-9);
+    // The floor is the threshold where the cap is open, priced against the pool.
+    assert.equal(out.permit_floor_units, 1000);
+    assert.ok(
+      Math.abs((out.permit_floor_cost_tao as number) - 1000 / 99) < 1e-6,
+      "1000 * 1000 / (100000 - 1000)",
+    );
+    // field_sources rides along so an agent can tell a derived field from a
+    // measured one without a second call.
+    assert.equal(
+      (out.field_sources as Row).permit_floor_units.kind,
+      "reconstructed",
+    );
+  });
+
+  test("get_subnet_validator_economics_history serves the observed series", async () => {
+    const db = {
+      prepare(query: string) {
+        const isEmission = /subnet_snapshots/.test(query);
+        return {
+          bind: () => ({
+            all: async () => ({
+              results: isEmission
+                ? [{ snapshot_date: "2026-08-01", tao_in_emission_tao: 0.01 }]
+                : [
+                    {
+                      snapshot_date: "2026-08-01",
+                      stake_tao: 4200,
+                      validator_permit: 1,
+                      dividends: 0.5,
+                      active: 1,
+                    },
+                  ],
+            }),
+          }),
+        };
+      },
+    };
+    const res = await callTool(
+      "get_subnet_validator_economics_history",
+      { netuid: 64, window: "7d" },
+      {
+        deps: makeDeps({}, {}),
+        env: { METAGRAPH_HEALTH_DB: db } as unknown as Env,
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 64);
+    assert.equal(out.window, "7d");
+    const points = out.points as Array<Record<string, unknown>>;
+    assert.equal(points.length, 1);
+    // Observed off the snapshot, not re-derived from today's threshold.
+    assert.equal(points[0].permit_floor_alpha, 4200);
+    assert.equal(points[0].validators_permitted, 1);
+    assert.equal(points[0].emission_gate_open, true);
+  });
+
+  test("get_subnet_validator_economics_history rejects an unsupported window", async () => {
+    const res = await callTool(
+      "get_subnet_validator_economics_history",
+      { netuid: 64, window: "1y" },
+      { deps: makeDeps({}, {}), env: {} as unknown as Env },
+    );
+    assert.equal(res.body.result.isError, true);
+    // The message names the supported set, so an agent can correct the call
+    // without a second round trip.
+    assert.ok(
+      res.body.result.content[0].text.includes("window must be one of"),
+    );
+  });
+
+  test("list_validator_economics ranks subnets across the MCP surface", async () => {
+    // The ranking reads economics through ctx like its per-subnet sibling, so
+    // this exercises the real derivation rather than a degraded stub.
+    const db = {
+      prepare() {
+        return {
+          all: async () => ({
+            results: [
+              {
+                netuid: 5,
+                uid: 0,
+                stake_tao: 5000,
+                validator_permit: 1,
+                dividends: 0.5,
+                active: 1,
+                take: 0.18,
+              },
+              {
+                netuid: 7,
+                uid: 0,
+                stake_tao: 5000,
+                validator_permit: 1,
+                dividends: 0.5,
+                active: 1,
+                take: 0.02,
+              },
+            ],
+          }),
+        };
+      },
+    };
+    const res = await callTool(
+      "list_validator_economics",
+      { sort: "earning_floor_cost_tao" },
+      {
+        deps: makeDeps(
+          {
+            "/metagraph/economics.json": {
+              subnets: [
+                {
+                  netuid: 5,
+                  tao_in_pool_tao: 1000,
+                  alpha_in_pool: 100000,
+                  max_validators: 64,
+                  tao_in_emission_tao: 0.01,
+                },
+                {
+                  // A thinner pool, so the SAME floor costs more here — this is
+                  // what the ranking is for.
+                  netuid: 7,
+                  tao_in_pool_tao: 5000,
+                  alpha_in_pool: 100000,
+                  max_validators: 64,
+                  tao_in_emission_tao: 0.01,
+                },
+              ],
+            },
+          },
+          {},
+        ),
+        env: {
+          METAGRAPH_HEALTH_DB: db,
+          METAGRAPH_CONTROL: {
+            get: async () => ({
+              stake_threshold_tao: 1000,
+              tao_weight: 0.18,
+            }),
+          },
+        } as unknown as Env,
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.sort, "earning_floor_cost_tao");
+    assert.equal(out.order, "asc");
+    assert.equal(out.total, 2);
+    // netuid 5's pool is 5x deeper, so reaching the same floor costs less there.
+    assert.deepEqual(
+      (out.rows as Array<Record<string, unknown>>).map((r) => r.netuid),
+      [5, 7],
+    );
+    assert.deepEqual(out.excluded, []);
+    assert.equal(out.stake_threshold_units, 1000);
+  });
+
+  test("get_subnet_validator_economics degrades when the economics artifact is cold", async () => {
+    // The reader must survive an artifact that is absent or carries no subnets
+    // array — a cold R2 must read as "unknown", never as a zero-cost subnet.
+    const db = {
+      prepare() {
+        return {
+          bind: () => ({
+            all: async () => ({ results: [] }),
+            first: async () => null,
+          }),
+        };
+      },
+    };
+    const res = await callTool(
+      "get_subnet_validator_economics",
+      { netuid: 64 },
+      {
+        deps: makeDeps({}, {}),
+        env: { METAGRAPH_HEALTH_DB: db } as unknown as Env,
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.netuid, 64);
+    assert.equal(out.permit_floor_units, null);
+    assert.equal(out.max_validators, null);
+    // Unknown, NOT closed: conflating them would tell an operator a subnet pays
+    // nothing when we simply did not look.
+    assert.equal(out.emission_gate_open, null);
+    assert.equal(typeof out.degraded_reason, "string");
+  });
+
   test("get_subnet_stake_quote quotes a stake against the live pool reserves", async () => {
     const res = await callTool(
       "get_subnet_stake_quote",

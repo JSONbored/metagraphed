@@ -460,6 +460,118 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/subnets/7/validator-economics/history?window=7d",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      assert.equal(body.data.window, "7d");
+      assert.equal(Array.isArray(body.data.points), true);
+      for (const point of body.data.points as Row[]) {
+        assert.equal(typeof point.snapshot_date, "string");
+        // Alpha floors are nullable (a day with no permit-holders has no floor)
+        // but the counts are always real numbers.
+        for (const key of ["permit_floor_alpha", "earning_floor_alpha"]) {
+          assert.ok(
+            point[key] === null || typeof point[key] === "number",
+            `${key} must be a number or null`,
+          );
+        }
+        for (const key of [
+          "validators_permitted",
+          "validators_active",
+          "validators_earning",
+        ]) {
+          assert.equal(typeof point[key], "number", key);
+        }
+      }
+    },
+  ],
+  [
+    "/api/v1/validators/economics?limit=5",
+    (body) => {
+      // The ranking's own contract: a stated sort/order, a total that counts
+      // matches BEFORE the page, and an `excluded` list so an omitted subnet is
+      // distinguishable from an absent one.
+      assert.equal(typeof body.data.sort, "string");
+      assert.ok(["asc", "desc"].includes(body.data.order as string));
+      assert.equal(typeof body.data.total, "number");
+      assert.equal(Array.isArray(body.data.rows), true);
+      assert.equal(Array.isArray(body.data.excluded), true);
+      assert.ok(
+        (body.data.rows as unknown[]).length <= 5,
+        "limit must bound the page",
+      );
+      // Every row carries the per-subnet shape, so a caller reading both
+      // surfaces never reconciles two vocabularies for the same fields.
+      for (const row of body.data.rows as Row[]) {
+        assert.equal(typeof row.netuid, "number");
+        assert.ok("permit_floor_units" in row);
+        assert.ok("degraded_reason" in row);
+      }
+      // The governance parameters every row was derived against, echoed once.
+      for (const key of [
+        "stake_threshold_units",
+        "tao_weight",
+        "root_tao_to_clear_threshold",
+      ]) {
+        assert.ok(
+          body.data[key] === null || typeof body.data[key] === "number",
+          `${key} must be a number or null`,
+        );
+      }
+    },
+  ],
+  [
+    "/api/v1/subnets/7/validator-economics",
+    (body) => {
+      assert.equal(body.data.netuid, 7);
+      // Every derived field is nullable by contract, so the assertion is on the
+      // TYPE-OR-NULL rather than on a value — a CI run against a cold tier must
+      // not fail, but a field that starts returning a string or an object here
+      // still must. `degraded_reason` is what distinguishes null-because-unknown
+      // from null-because-zero, so it is asserted present as a key.
+      for (const key of [
+        "permit_floor_units",
+        "permit_floor_cost_tao",
+        "permit_entry_cost_tao",
+        "earning_floor_units",
+        "earning_entry_cost_tao",
+        "permit_to_earning_multiple",
+        "root_tao_to_clear_threshold",
+        "tao_inflow_per_day",
+        "registration_cost_tao",
+        "stake_threshold_units",
+        "tao_weight",
+      ]) {
+        assert.ok(
+          body.data[key] === null || typeof body.data[key] === "number",
+          `${key} must be a number or null`,
+        );
+      }
+      for (const key of ["cap_binding", "emission_gate_open"]) {
+        assert.ok(
+          body.data[key] === null || typeof body.data[key] === "boolean",
+          `${key} must be a boolean or null`,
+        );
+      }
+      assert.ok("degraded_reason" in body.data);
+      // Permitted / active / earning are three different sets and the route's
+      // whole point is publishing all three — a regression that collapses them
+      // would drop keys rather than change a value.
+      if (body.data.composition !== null) {
+        for (const key of ["permitted", "active", "earning"]) {
+          assert.equal(typeof (body.data.composition as Row)[key], "number");
+        }
+      }
+      if (body.data.takes !== null) {
+        assert.equal(
+          Array.isArray((body.data.takes as Row).distribution),
+          true,
+        );
+        assert.equal(typeof (body.data.takes as Row).sample_size, "number");
+      }
+    },
+  ],
+  [
     "/api/v1/subnets/7/weights?window=30d",
     (body) => {
       assert.equal(body.data.netuid, 7);

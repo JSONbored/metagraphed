@@ -16,6 +16,11 @@ import {
   shareOfSubnet,
   spotPriceTao,
   subnetStakeTotal,
+  takeDistribution,
+  buildValidatorEconomicsHistory,
+  rankValidatorEconomics,
+  groupNeuronsByNetuid,
+  type ValidatorEconomicsRow,
   type ValidatorNeuron,
 } from "../src/validator-economics.ts";
 
@@ -377,5 +382,613 @@ describe("buildValidatorEconomics", () => {
       null,
       "nobody earning is a fact, not a degrade",
     );
+  });
+});
+
+// #9327: the take distribution. Every assertion here is on a VALUE rather than a
+// shape — a median that silently shifts is exactly the kind of wrong answer that
+// looks like a right one at the call site.
+describe("takeDistribution", () => {
+  test("summarises the takes of permit-holders", () => {
+    const out = takeDistribution([
+      n(0, { validatorPermit: true, take: 0.18 }),
+      n(1, { validatorPermit: true, take: 0 }),
+      n(2, { validatorPermit: true, take: 0.09 }),
+    ]);
+    assert.deepEqual(out.distribution, [0, 0.09, 0.18], "ascending");
+    assert.equal(out.median, 0.09);
+    assert.equal(out.min, 0);
+    assert.equal(out.max, 0.18);
+    assert.equal(out.sampleSize, 3);
+  });
+
+  test("averages the middle pair on an even sample", () => {
+    const out = takeDistribution([
+      n(0, { validatorPermit: true, take: 0 }),
+      n(1, { validatorPermit: true, take: 0.1 }),
+      n(2, { validatorPermit: true, take: 0.2 }),
+      n(3, { validatorPermit: true, take: 0.3 }),
+    ]);
+    assert.equal(out.median, 0.15000000000000002);
+  });
+
+  test("ignores UIDs that hold no permit", () => {
+    // A take set by a UID with no permit is not part of the competitive field.
+    const out = takeDistribution([
+      n(0, { validatorPermit: true, take: 0.18 }),
+      n(1, { validatorPermit: false, take: 0 }),
+    ]);
+    assert.deepEqual(out.distribution, [0.18]);
+    assert.equal(out.sampleSize, 1);
+  });
+
+  test("skips a missing take rather than counting it as zero", () => {
+    // Counting an absent take as 0 would drag the median toward a floor nobody set.
+    const out = takeDistribution([
+      n(0, { validatorPermit: true, take: 0.18 }),
+      n(1, { validatorPermit: true, take: null }),
+      n(2, { validatorPermit: true }),
+    ]);
+    assert.deepEqual(out.distribution, [0.18]);
+    assert.equal(out.median, 0.18);
+    assert.equal(out.sampleSize, 1);
+  });
+
+  test("skips a non-finite take", () => {
+    const out = takeDistribution([
+      n(0, { validatorPermit: true, take: Number.NaN }),
+      n(1, { validatorPermit: true, take: 0.05 }),
+    ]);
+    assert.deepEqual(out.distribution, [0.05]);
+  });
+
+  test("reports nulls, never zeros, when nobody records a take", () => {
+    // A 0 here would read as "everyone validates for free" — the same
+    // confident-zero this whole module degrades to avoid.
+    const out = takeDistribution([n(0, { validatorPermit: true })]);
+    assert.equal(out.median, null);
+    assert.equal(out.min, null);
+    assert.equal(out.max, null);
+    assert.equal(out.medianEarning, null);
+    assert.equal(out.sampleSize, 0);
+    assert.deepEqual(out.distribution, []);
+  });
+
+  test("separates the earning cohort's median from the whole field's", () => {
+    // The bimodal case that motivates publishing both: a cohort competing at zero
+    // that nobody delegates to, against an earning cohort at the ceiling.
+    const out = takeDistribution([
+      n(0, { validatorPermit: true, take: 0, dividends: 0 }),
+      n(1, { validatorPermit: true, take: 0, dividends: 0 }),
+      n(2, { validatorPermit: true, take: 0.18, dividends: 0.5 }),
+      n(3, { validatorPermit: true, take: 0.18, dividends: 0.4 }),
+    ]);
+    assert.equal(out.median, 0.09, "the whole field straddles both modes");
+    assert.equal(out.medianEarning, 0.18, "only the earners");
+  });
+});
+
+describe("buildValidatorEconomics — entry costs, gate and takes (#9323, #9327)", () => {
+  const feeBase = {
+    maxValidators: 64,
+    stakeThreshold: 1000,
+    taoWeight: 0.18,
+    taoReserve: 1000,
+    alphaReserve: 100_000,
+  };
+  const field = (): ValidatorNeuron[] => [
+    n(0, {
+      totalStake: 5000,
+      validatorPermit: true,
+      dividends: 0.5,
+      active: true,
+      take: 0.18,
+    }),
+    n(1, {
+      totalStake: 2000,
+      validatorPermit: true,
+      dividends: 0,
+      active: true,
+      take: 0,
+    }),
+    n(2, { totalStake: 900 }),
+  ];
+
+  test("adds the registration burn to the floor cost", () => {
+    // Entry is two spends. 1000 units against a 1000/100k pool costs
+    // 1000*1000/(100000-1000) = 10.101..., plus a 2.5 burn.
+    const out = buildValidatorEconomics({
+      ...feeBase,
+      neurons: field(),
+      registrationCostTao: 2.5,
+    });
+    assert.ok(Math.abs((out.permitFloorCostTao ?? 0) - 10.1010101) < 1e-6);
+    assert.ok(Math.abs((out.permitEntryCostTao ?? 0) - 12.6010101) < 1e-6);
+  });
+
+  test("withholds the entry cost when the burn is unreadable, keeping the floor cost", () => {
+    // The burn read is live RPC and allowed to fail. Publishing the floor cost as
+    // if it were the entry cost would understate what entry actually costs.
+    const out = buildValidatorEconomics({ ...feeBase, neurons: field() });
+    assert.ok(out.permitFloorCostTao !== null, "the floor cost is still true");
+    assert.equal(out.permitEntryCostTao, null);
+    assert.equal(out.earningEntryCostTao, null);
+    assert.equal(out.registrationCostTao, null);
+  });
+
+  test("reports the permit-to-earning multiple", () => {
+    const out = buildValidatorEconomics({ ...feeBase, neurons: field() });
+    // Only uid 0 earns, at 5000, against a 1000 floor.
+    assert.equal(out.earningFloorUnits, 5000);
+    assert.equal(out.permitToEarningMultiple, 5);
+  });
+
+  test("counts the eligible UIDs and the open slots", () => {
+    const out = buildValidatorEconomics({ ...feeBase, neurons: field() });
+    assert.equal(out.uidsAboveThreshold, 2, "uid 2 is below the threshold");
+    assert.equal(out.validatorSlotsOpen, 62);
+  });
+
+  test("derives the gate state and daily inflow from the per-block emission", () => {
+    const out = buildValidatorEconomics({
+      ...feeBase,
+      neurons: field(),
+      taoInEmissionPerBlock: 0.01,
+    });
+    assert.equal(out.emissionGateOpen, true);
+    assert.ok(Math.abs((out.taoInflowPerDay ?? 0) - 72) < 1e-9, "0.01 * 7200");
+  });
+
+  test("reports a closed gate as closed, not as unknown", () => {
+    const out = buildValidatorEconomics({
+      ...feeBase,
+      neurons: field(),
+      taoInEmissionPerBlock: 0,
+    });
+    assert.equal(out.emissionGateOpen, false);
+    assert.equal(out.taoInflowPerDay, 0);
+  });
+
+  test("leaves the gate unknown when the emission was not read", () => {
+    // null is not the same as a closed gate, and conflating them would tell an
+    // operator a subnet pays nothing when we simply did not look.
+    const out = buildValidatorEconomics({ ...feeBase, neurons: field() });
+    assert.equal(out.emissionGateOpen, null);
+    assert.equal(out.taoInflowPerDay, null);
+  });
+
+  test("keeps the gate, burn and takes published on a degraded row", () => {
+    // These are READ, not derived — they need no model to be true, so a model
+    // failure must not withhold them.
+    const out = buildValidatorEconomics({
+      ...feeBase,
+      neurons: [],
+      taoInEmissionPerBlock: 0.01,
+      registrationCostTao: 2.5,
+      minChildkeyTakeRatio: 0,
+    });
+    assert.equal(out.degradedReason, "no metagraph rows for this subnet");
+    assert.equal(out.emissionGateOpen, true);
+    assert.equal(out.registrationCostTao, 2.5);
+    assert.equal(out.minChildkeyTakeRatio, 0);
+  });
+
+  test("publishes takes even when the permit model has drifted", () => {
+    // A drifted model invalidates the derived FLOORS, not the observed takes.
+    const drifted = [
+      n(0, { totalStake: 10, validatorPermit: true, take: 0.18 }),
+      n(1, { totalStake: 20, validatorPermit: true, take: 0.02 }),
+      n(2, { totalStake: 5000, validatorPermit: false }),
+    ];
+    const out = buildValidatorEconomics({ ...feeBase, neurons: drifted });
+    assert.ok((out.modelAgreement?.agreement ?? 1) < MIN_PUBLISHABLE_AGREEMENT);
+    assert.equal(out.permitFloorUnits, null, "the floor is not publishable");
+    assert.equal(out.takes?.sampleSize, 2, "the takes still are");
+    assert.ok(Math.abs((out.takes?.median ?? 0) - 0.1) < 1e-12);
+  });
+
+  test("passes the childkey take floor straight through", () => {
+    const out = buildValidatorEconomics({
+      ...feeBase,
+      neurons: field(),
+      minChildkeyTakeRatio: 0,
+    });
+    assert.equal(out.minChildkeyTakeRatio, 0);
+  });
+});
+
+// #9324: the cross-subnet ranking. The assertions are on ORDER and on what was
+// EXCLUDED — a ranking that silently drops a subnet is worse than one that is
+// merely wrong, because nothing in the output says so.
+function row(
+  netuid: number,
+  over: Partial<ValidatorEconomicsRow> = {},
+): ValidatorEconomicsRow {
+  return {
+    netuid,
+    maxValidators: 64,
+    permitFloorUnits: 1000,
+    permitFloorCostTao: 10,
+    permitEntryCostTao: null,
+    earningFloorUnits: 5000,
+    earningFloorCostTao: 50,
+    earningEntryCostTao: null,
+    permitToEarningMultiple: 5,
+    rootTaoToClear: 5555.5,
+    capBinding: false,
+    uidsAboveThreshold: 3,
+    validatorSlotsOpen: 60,
+    composition: { permitted: 4, active: 3, earning: 2 },
+    takes: null,
+    minChildkeyTakeRatio: null,
+    emissionGateOpen: true,
+    taoInflowPerDay: 72,
+    registrationCostTao: null,
+    modelAgreement: null,
+    degradedReason: null,
+    ...over,
+  };
+}
+
+describe("rankValidatorEconomics", () => {
+  test("ranks cheapest-to-earn first by default", () => {
+    const out = rankValidatorEconomics([
+      row(1, { earningFloorCostTao: 300 }),
+      row(2, { earningFloorCostTao: 20 }),
+      row(3, { earningFloorCostTao: 100 }),
+    ]);
+    assert.deepEqual(
+      out.rows.map((r) => r.netuid),
+      [2, 3, 1],
+    );
+    assert.equal(out.sort, "earning_floor_cost_tao");
+    assert.equal(out.order, "asc");
+    assert.equal(out.total, 3);
+  });
+
+  test("sorts the more-is-better keys descending", () => {
+    const out = rankValidatorEconomics(
+      [
+        row(1, { taoInflowPerDay: 10 }),
+        row(2, { taoInflowPerDay: 500 }),
+        row(3, { taoInflowPerDay: 90 }),
+      ],
+      { sort: "tao_inflow_per_day" },
+    );
+    assert.deepEqual(
+      out.rows.map((r) => r.netuid),
+      [2, 3, 1],
+    );
+    assert.equal(out.order, "desc");
+  });
+
+  test("ranks by open validator slots when asked for headroom", () => {
+    const out = rankValidatorEconomics(
+      [row(1, { validatorSlotsOpen: 2 }), row(2, { validatorSlotsOpen: 40 })],
+      { sort: "validator_headroom" },
+    );
+    assert.deepEqual(
+      out.rows.map((r) => r.netuid),
+      [2, 1],
+    );
+  });
+
+  test("ranks by the permit-to-earning multiple", () => {
+    const out = rankValidatorEconomics(
+      [
+        row(1, { permitToEarningMultiple: 30 }),
+        row(2, { permitToEarningMultiple: 2 }),
+      ],
+      { sort: "permit_to_earning_multiple" },
+    );
+    assert.deepEqual(
+      out.rows.map((r) => r.netuid),
+      [2, 1],
+    );
+  });
+
+  test("ranks by the permit floor cost", () => {
+    const out = rankValidatorEconomics(
+      [row(1, { permitFloorCostTao: 90 }), row(2, { permitFloorCostTao: 3 })],
+      { sort: "permit_floor_cost_tao" },
+    );
+    assert.deepEqual(
+      out.rows.map((r) => r.netuid),
+      [2, 1],
+    );
+  });
+
+  test("falls back to the default sort rather than erroring on an unknown one", () => {
+    // The handler rejects a bad sort before reaching here; this is the belt to
+    // that braces, so a caller that bypasses the handler still gets an ordering.
+    const out = rankValidatorEconomics([row(1)], { sort: "nonsense" });
+    assert.equal(out.sort, "earning_floor_cost_tao");
+  });
+
+  test("excludes an unpriceable subnet with a reason instead of ranking it first", () => {
+    // A null cost sorted as 0 would put the one subnet we CANNOT price at the
+    // top of a list titled "cheapest".
+    const out = rankValidatorEconomics([
+      row(1, { earningFloorCostTao: null }),
+      row(2, { earningFloorCostTao: 50 }),
+    ]);
+    assert.deepEqual(
+      out.rows.map((r) => r.netuid),
+      [2],
+    );
+    assert.deepEqual(out.excluded, [
+      { netuid: 1, reason: "earning_floor_cost_tao is unavailable" },
+    ]);
+    assert.equal(out.total, 1, "total counts what survived the filters");
+  });
+
+  test("filters on the emission gate, and says which subnets that dropped", () => {
+    const out = rankValidatorEconomics(
+      [row(1, { emissionGateOpen: false }), row(2, { emissionGateOpen: true })],
+      { emissionGateOpen: true },
+    );
+    assert.deepEqual(
+      out.rows.map((r) => r.netuid),
+      [2],
+    );
+    assert.deepEqual(out.excluded, [
+      { netuid: 1, reason: "emission_gate_open is false" },
+    ]);
+  });
+
+  test("an absent gate filter means BOTH, not false", () => {
+    // The tri-state matters: a closed gate is a candidate, not a disqualifier —
+    // those subnets are less contested and pay more per unit of stake.
+    const out = rankValidatorEconomics([
+      row(1, { emissionGateOpen: false }),
+      row(2, { emissionGateOpen: true }),
+    ]);
+    assert.equal(out.rows.length, 2);
+    assert.deepEqual(out.excluded, []);
+  });
+
+  test("filters on cap_binding", () => {
+    const out = rankValidatorEconomics(
+      [row(1, { capBinding: true }), row(2, { capBinding: false })],
+      { capBinding: true },
+    );
+    assert.deepEqual(
+      out.rows.map((r) => r.netuid),
+      [1],
+    );
+    assert.deepEqual(out.excluded, [
+      { netuid: 2, reason: "cap_binding is false" },
+    ]);
+  });
+
+  test("breaks ties by netuid so paging is stable across runs", () => {
+    // Without this, offset pagination silently drops or repeats rows between
+    // two requests against identical chain state.
+    const out = rankValidatorEconomics([
+      row(9, { earningFloorCostTao: 10 }),
+      row(3, { earningFloorCostTao: 10 }),
+      row(6, { earningFloorCostTao: 10 }),
+    ]);
+    assert.deepEqual(
+      out.rows.map((r) => r.netuid),
+      [3, 6, 9],
+    );
+  });
+
+  test("pages with limit and offset over the ranked order", () => {
+    const rows = [10, 20, 30, 40, 50].map((cost, i) =>
+      row(i + 1, { earningFloorCostTao: cost }),
+    );
+    const page = rankValidatorEconomics(rows, { limit: 2, offset: 2 });
+    assert.deepEqual(
+      page.rows.map((r) => r.netuid),
+      [3, 4],
+    );
+    assert.equal(page.total, 5, "total is the match count, not the page size");
+  });
+
+  test("a negative offset is clamped rather than wrapping the slice", () => {
+    const out = rankValidatorEconomics([row(1), row(2)], { offset: -5 });
+    assert.equal(out.rows.length, 2);
+  });
+
+  test("an empty input ranks to an empty list, not an error", () => {
+    const out = rankValidatorEconomics([]);
+    assert.deepEqual(out.rows, []);
+    assert.equal(out.total, 0);
+  });
+});
+
+describe("groupNeuronsByNetuid", () => {
+  test("buckets one flat cross-subnet scan by netuid", () => {
+    const grouped = groupNeuronsByNetuid([
+      { netuid: 5, ...n(0, { totalStake: 100 }) },
+      { netuid: 7, ...n(0, { totalStake: 200 }) },
+      { netuid: 5, ...n(1, { totalStake: 300 }) },
+    ]);
+    assert.deepEqual([...grouped.keys()], [5, 7]);
+    assert.equal(grouped.get(5)?.length, 2);
+    assert.equal(grouped.get(7)?.length, 1);
+    assert.equal(grouped.get(5)?.[1].totalStake, 300);
+  });
+
+  test("carries the take through so the distribution survives grouping", () => {
+    const grouped = groupNeuronsByNetuid([
+      { netuid: 5, ...n(0, { validatorPermit: true, take: 0.18 }) },
+    ]);
+    assert.equal(grouped.get(5)?.[0].take, 0.18);
+  });
+
+  test("an empty scan groups to an empty map", () => {
+    assert.equal(groupNeuronsByNetuid([]).size, 0);
+  });
+});
+
+// #9326: the history series. The floors here are OBSERVED off each snapshot, and
+// the tests pin that explicitly — re-deriving them from today's sudo-settable
+// threshold would show a flat line across a governance change that moved the floor.
+describe("buildValidatorEconomicsHistory", () => {
+  const day = (snapshot_date: string, over: Record<string, unknown> = {}) => ({
+    snapshot_date,
+    stake_tao: 5000,
+    validator_permit: 1,
+    dividends: 0.5,
+    active: 1,
+    ...over,
+  });
+
+  test("folds per-UID rows into one point per day, newest first", () => {
+    const points = buildValidatorEconomicsHistory([
+      day("2026-08-01"),
+      day("2026-08-01", { stake_tao: 3000 }),
+      day("2026-08-02"),
+    ]);
+    assert.deepEqual(
+      points.map((p) => p.snapshot_date),
+      ["2026-08-02", "2026-08-01"],
+    );
+    assert.equal(points[1].validators_permitted, 2);
+  });
+
+  test("the permit floor is the smallest stake that ACTUALLY held a permit", () => {
+    const points = buildValidatorEconomicsHistory([
+      day("2026-08-01", { stake_tao: 9000 }),
+      day("2026-08-01", { stake_tao: 1200 }),
+      // Below both, but holds no permit — it says nothing about what holding one
+      // required, so it must not drag the floor down.
+      day("2026-08-01", { stake_tao: 5, validator_permit: 0 }),
+    ]);
+    assert.equal(points[0].permit_floor_alpha, 1200);
+  });
+
+  test("the earning floor only counts permit-holders that earned", () => {
+    const points = buildValidatorEconomicsHistory([
+      day("2026-08-01", { stake_tao: 9000, dividends: 0.5 }),
+      day("2026-08-01", { stake_tao: 2000, dividends: 0 }),
+    ]);
+    assert.equal(points[0].permit_floor_alpha, 2000);
+    assert.equal(
+      points[0].earning_floor_alpha,
+      9000,
+      "the earner, not the cheaper",
+    );
+    assert.equal(points[0].validators_earning, 1);
+  });
+
+  test("a day where nobody earned reports a null earning floor, not a zero", () => {
+    const points = buildValidatorEconomicsHistory([
+      day("2026-08-01", { dividends: 0 }),
+    ]);
+    assert.equal(points[0].earning_floor_alpha, null);
+    assert.equal(points[0].permit_floor_alpha, 5000);
+  });
+
+  test("a day with no permit-holders at all has no floor", () => {
+    const points = buildValidatorEconomicsHistory([
+      day("2026-08-01", { validator_permit: 0 }),
+    ]);
+    assert.equal(points[0].permit_floor_alpha, null);
+    assert.equal(points[0].validators_permitted, 0);
+  });
+
+  test("counts permitted, active and earning separately per day", () => {
+    const points = buildValidatorEconomicsHistory([
+      day("2026-08-01", { active: 1, dividends: 0.5 }),
+      day("2026-08-01", { active: 1, dividends: 0 }),
+      day("2026-08-01", { active: 0, dividends: 0 }),
+    ]);
+    assert.equal(points[0].validators_permitted, 3);
+    assert.equal(points[0].validators_active, 2);
+    assert.equal(points[0].validators_earning, 1);
+  });
+
+  test("joins the emission series to derive the gate and daily inflow", () => {
+    const points = buildValidatorEconomicsHistory(
+      [day("2026-08-01"), day("2026-08-02")],
+      [
+        { snapshot_date: "2026-08-01", tao_in_emission_tao: 0.01 },
+        { snapshot_date: "2026-08-02", tao_in_emission_tao: 0 },
+      ],
+    );
+    const [aug2, aug1] = points;
+    assert.equal(aug1.emission_gate_open, true);
+    assert.ok(Math.abs((aug1.tao_inflow_per_day ?? 0) - 72) < 1e-9);
+    assert.equal(
+      aug2.emission_gate_open,
+      false,
+      "a gate CLOSE is the transition",
+    );
+    assert.equal(aug2.tao_inflow_per_day, 0);
+  });
+
+  test("a day with no emission row is unknown, not closed", () => {
+    const points = buildValidatorEconomicsHistory([day("2026-08-01")], []);
+    assert.equal(points[0].emission_gate_open, null);
+    assert.equal(points[0].tao_inflow_per_day, null);
+  });
+
+  test("a null emission value is unknown rather than a closed gate", () => {
+    const points = buildValidatorEconomicsHistory(
+      [day("2026-08-01")],
+      [{ snapshot_date: "2026-08-01", tao_in_emission_tao: null }],
+    );
+    assert.equal(points[0].emission_gate_open, null);
+  });
+
+  test("keeps a day the neuron snapshot missed but the emission series recorded", () => {
+    // A gate close on a day with no neuron rows is exactly the transition this
+    // series exists to make visible; dropping it would hide it.
+    const points = buildValidatorEconomicsHistory(
+      [day("2026-08-01")],
+      [
+        { snapshot_date: "2026-08-01", tao_in_emission_tao: 0.01 },
+        { snapshot_date: "2026-08-02", tao_in_emission_tao: 0 },
+      ],
+    );
+    assert.equal(points.length, 2);
+    assert.equal(points[0].snapshot_date, "2026-08-02");
+    assert.equal(points[0].validators_permitted, 0);
+    assert.equal(points[0].emission_gate_open, false);
+  });
+
+  test("the earning floor is order-independent within a day", () => {
+    // Row order is not guaranteed, so the floor has to be the minimum either way:
+    // a cheaper earner arriving late must lower it, and a dearer one arriving
+    // late must NOT raise it.
+    const descending = buildValidatorEconomicsHistory([
+      day("2026-08-01", { stake_tao: 9000, dividends: 0.5 }),
+      day("2026-08-01", { stake_tao: 2500, dividends: 0.5 }),
+    ]);
+    assert.equal(descending[0].earning_floor_alpha, 2500);
+
+    const ascending = buildValidatorEconomicsHistory([
+      day("2026-08-01", { stake_tao: 2500, dividends: 0.5 }),
+      day("2026-08-01", { stake_tao: 9000, dividends: 0.5 }),
+    ]);
+    assert.equal(
+      ascending[0].earning_floor_alpha,
+      2500,
+      "a dearer earner must not raise the floor",
+    );
+  });
+
+  test("coerces a non-numeric stake to zero rather than propagating NaN", () => {
+    // A NaN floor would compare false against everything and silently vanish
+    // from the series rather than failing loudly.
+    const points = buildValidatorEconomicsHistory([
+      day("2026-08-01", { stake_tao: "not-a-number" }),
+    ]);
+    assert.equal(points[0].permit_floor_alpha, 0);
+  });
+
+  test("an empty read yields an empty series, not an error", () => {
+    assert.deepEqual(buildValidatorEconomicsHistory([]), []);
+  });
+
+  test("coerces non-numeric stake to zero rather than propagating NaN", () => {
+    const points = buildValidatorEconomicsHistory([
+      day("2026-08-01", { stake_tao: null }),
+    ]);
+    assert.equal(points[0].permit_floor_alpha, 0);
   });
 });

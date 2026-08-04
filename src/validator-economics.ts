@@ -53,6 +53,13 @@ export type ValidatorNeuron = {
   validatorPermit: boolean;
   dividends: number;
   active: boolean;
+  /**
+   * Commission on delegated stake (#9327). Optional because the older callers of this
+   * module do not read it; absent and null are the same thing here — a UID with no
+   * recorded take is excluded from the distribution rather than counted as charging 0,
+   * which would drag the median toward a floor nobody actually set.
+   */
+  take?: number | null;
 };
 
 /** How far `modelAgreement` may fall before a derived floor stops being publishable. */
@@ -74,14 +81,54 @@ export type SetComposition = {
   earning: number;
 };
 
+/**
+ * The commission picture across a subnet's permit-holders (#9327).
+ *
+ * Publishes the sorted vector, not just the summary, because the SHAPE is the
+ * information and it is genuinely bimodal. Measured on SN64, 2026-08-03, permit-holders
+ * charged `0, 0, 0.001, 0.01, 0.0135, 0.06, 0.09, 0.18 x9` — median 0.18, the ceiling
+ * most sit at, against a visible cohort at or near zero competing for delegation.
+ * Validators earn at both ends, so a lone median hides the entire structure.
+ */
+export type TakeDistribution = {
+  median: number | null;
+  min: number | null;
+  max: number | null;
+  /** Ascending, one entry per permit-holder that records a take. */
+  distribution: number[];
+  /**
+   * Median restricted to permit-holders that actually earn. Takes among validators
+   * nobody delegates to are noise — this is the competitive number.
+   */
+  medianEarning: number | null;
+  sampleSize: number;
+};
+
 export type ValidatorEconomics = {
   permitFloorUnits: number | null;
   permitFloorCostTao: number | null;
+  /** Floor cost plus the registration burn — what entry actually costs, not half of it. */
+  permitEntryCostTao: number | null;
   earningFloorUnits: number | null;
   earningFloorCostTao: number | null;
+  earningEntryCostTao: number | null;
+  /**
+   * How much more it takes to EARN than merely to hold a permit. Median 7.4x
+   * network-wide, p90 20.7x — the single number that says a permit is not income.
+   */
+  permitToEarningMultiple: number | null;
   rootTaoToClear: number | null;
   capBinding: boolean | null;
+  /** UIDs clearing the threshold — shows whether the cap is actually the constraint. */
+  uidsAboveThreshold: number | null;
+  validatorSlotsOpen: number | null;
   composition: SetComposition | null;
+  takes: TakeDistribution | null;
+  /** Per-subnet hyperparameter bounding what a childkey arrangement may charge (#9327). */
+  minChildkeyTakeRatio: number | null;
+  emissionGateOpen: boolean | null;
+  taoInflowPerDay: number | null;
+  registrationCostTao: number | null;
   modelAgreement: ModelAgreement | null;
   /** Non-null whenever a field above was withheld, naming which input was missing. */
   degradedReason: string | null;
@@ -294,6 +341,48 @@ export function shareOfSubnet(
   return denom > 0 ? ourUnits / denom : 0;
 }
 
+/**
+ * Median of an already-ascending vector. Even lengths average the middle pair, which is
+ * the convention the take figures elsewhere in this repo use.
+ */
+function medianOfSorted(sorted: readonly number[]): number | null {
+  if (sorted.length === 0) return null;
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 1
+    ? sorted[mid]
+    : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/**
+ * Take distribution across permit-holders (#9327).
+ *
+ * Only permit-holders count: a take set by a UID with no permit is not part of the
+ * competitive field. A UID whose take is absent or non-finite is skipped rather than
+ * read as 0 — see the note on `ValidatorNeuron.take`.
+ */
+export function takeDistribution(
+  neurons: readonly ValidatorNeuron[],
+): TakeDistribution {
+  const takesOf = (rows: readonly ValidatorNeuron[]) =>
+    rows
+      .map((n) => n.take)
+      .filter((t): t is number => typeof t === "number" && Number.isFinite(t))
+      .sort((a, b) => a - b);
+
+  const permitted = neurons.filter((n) => n.validatorPermit);
+  const all = takesOf(permitted);
+  const earning = takesOf(permitted.filter((n) => n.dividends > 0));
+
+  return {
+    median: medianOfSorted(all),
+    min: all.length > 0 ? all[0] : null,
+    max: all.length > 0 ? all[all.length - 1] : null,
+    distribution: all,
+    medianEarning: medianOfSorted(earning),
+    sampleSize: all.length,
+  };
+}
+
 /** Inputs a caller must supply; each is read live rather than assumed. */
 export type EconomicsInputs = {
   neurons: readonly ValidatorNeuron[];
@@ -304,7 +393,20 @@ export type EconomicsInputs = {
   taoWeight: number | null;
   taoReserve: number | null;
   alphaReserve: number | null;
+  /**
+   * Per-block TAO injected into this subnet's pool. 0 means the emission gate is closed.
+   * Reported, never scored: gate-closed subnets still emit alpha at a comparable rate
+   * and are less contested, so per unit of stake they pay MORE. The gate is an
+   * exit-liquidity question, not an eligibility one.
+   */
+  taoInEmissionPerBlock?: number | null;
+  /** Live recycle/burn cost. Entry is two spends and publishing one understates it. */
+  registrationCostTao?: number | null;
+  minChildkeyTakeRatio?: number | null;
 };
+
+// 12s blocks.
+const BLOCKS_PER_DAY = 7200;
 
 // Compose the published shape, degrading rather than guessing.
 //
@@ -315,14 +417,37 @@ export type EconomicsInputs = {
 export function buildValidatorEconomics(
   inputs: EconomicsInputs,
 ): ValidatorEconomics {
+  const inflow =
+    typeof inputs.taoInEmissionPerBlock === "number" &&
+    Number.isFinite(inputs.taoInEmissionPerBlock)
+      ? inputs.taoInEmissionPerBlock
+      : null;
+  const burn =
+    typeof inputs.registrationCostTao === "number" &&
+    Number.isFinite(inputs.registrationCostTao)
+      ? inputs.registrationCostTao
+      : null;
+
   const blank: ValidatorEconomics = {
     permitFloorUnits: null,
     permitFloorCostTao: null,
+    permitEntryCostTao: null,
     earningFloorUnits: null,
     earningFloorCostTao: null,
+    earningEntryCostTao: null,
+    permitToEarningMultiple: null,
     rootTaoToClear: null,
     capBinding: null,
+    uidsAboveThreshold: null,
+    validatorSlotsOpen: null,
     composition: null,
+    takes: null,
+    minChildkeyTakeRatio: inputs.minChildkeyTakeRatio ?? null,
+    // Gate state and burn are READ, not derived — they stay published on every
+    // degraded path, because they are the two fields that need no model to be true.
+    emissionGateOpen: inflow === null ? null : inflow > 0,
+    taoInflowPerDay: inflow === null ? null : inflow * BLOCKS_PER_DAY,
+    registrationCostTao: burn,
     modelAgreement: null,
     degradedReason: null,
   };
@@ -346,6 +471,8 @@ export function buildValidatorEconomics(
     return {
       ...blank,
       composition,
+      // Takes are observed too, and stay published for the same reason composition does.
+      takes: takeDistribution(neurons),
       modelAgreement: agreement,
       degradedReason:
         "permit model disagrees with observed permits on this subnet",
@@ -368,14 +495,25 @@ export function buildValidatorEconomics(
           earnFloor,
         );
 
+  const withBurn = (cost: number | null) =>
+    cost === null || burn === null ? null : cost + burn;
+
   return {
+    ...blank,
     permitFloorUnits: floor,
     permitFloorCostTao: floorCost,
+    permitEntryCostTao: withBurn(floorCost),
     earningFloorUnits: earnFloor,
     earningFloorCostTao: earnCost,
+    earningEntryCostTao: withBurn(earnCost),
+    permitToEarningMultiple:
+      earnFloor === null || floor <= 0 ? null : earnFloor / floor,
     rootTaoToClear: rootTaoToClear(stakeThreshold, taoWeight),
     capBinding: capBinding(neurons, maxValidators, stakeThreshold),
+    uidsAboveThreshold: eligible(neurons, stakeThreshold).length,
+    validatorSlotsOpen: Math.max(0, maxValidators - composition.permitted),
     composition,
+    takes: takeDistribution(neurons),
     modelAgreement: agreement,
     // Reserves missing is a partial degrade: the unit floors are still true, only their
     // TAO cost is unknown. Say so rather than implying the whole row is bad.
@@ -383,3 +521,338 @@ export function buildValidatorEconomics(
       floorCost === null ? "pool reserves unavailable — costs withheld" : null,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Cross-subnet ranking (#9324): "across all of them, where is it cheapest to
+// become an EARNING validator". The per-subnet answer cannot be assembled into
+// this by a caller without reimplementing the ranking, and the inputs it depends
+// on — execution price against live reserves, the live StakeThreshold, the
+// emission gate — move independently, so a client that cached any of them would
+// rank wrongly with no way to know.
+// ---------------------------------------------------------------------------
+
+/**
+ * One subnet's row in the ranking: its economics, the netuid that owns them, and the
+ * cap they were derived against.
+ *
+ * `maxValidators` is carried rather than looked up again at serialisation time — a
+ * second lookup would re-derive a value the derivation already consumed, and its
+ * null arm is unreachable anyway (a subnet with no cap degrades and never survives
+ * the ranking), so it reads as a live branch that can never be exercised.
+ */
+export type ValidatorEconomicsRow = ValidatorEconomics & {
+  netuid: number;
+  maxValidators: number | null;
+};
+
+/**
+ * The sortable keys, as a closed set.
+ *
+ * Deliberately does NOT include the burn-inclusive entry costs. The current
+ * registration burn is a live per-subnet chain read (`SubtensorModule.Burn`) with
+ * no cached tier, so ranking on it would mean ~128 live reads per request. It is
+ * also immaterial to the ORDER — measured 2026-08-03, the burn runs ~0.15 TAO
+ * against floor costs of tens to hundreds — so excluding it changes the ranking
+ * essentially never, while pretending to include it would be either slow or stale.
+ * The per-subnet route reads it live and reports the true entry cost.
+ */
+export const VALIDATOR_ECONOMICS_SORTS = [
+  "earning_floor_cost_tao",
+  "permit_floor_cost_tao",
+  "permit_to_earning_multiple",
+  "tao_inflow_per_day",
+  "validator_headroom",
+] as const;
+export type ValidatorEconomicsSort = (typeof VALIDATOR_ECONOMICS_SORTS)[number];
+
+/** Ascending for costs (cheapest first), descending for the "more is better" keys. */
+const DESCENDING_SORTS = new Set<string>([
+  "tao_inflow_per_day",
+  "validator_headroom",
+]);
+
+function sortValue(row: ValidatorEconomicsRow, sort: string): number | null {
+  if (sort === "validator_headroom") return row.validatorSlotsOpen;
+  if (sort === "permit_to_earning_multiple") return row.permitToEarningMultiple;
+  if (sort === "tao_inflow_per_day") return row.taoInflowPerDay;
+  if (sort === "permit_floor_cost_tao") return row.permitFloorCostTao;
+  return row.earningFloorCostTao;
+}
+
+export type ValidatorEconomicsRankingOptions = {
+  sort?: ValidatorEconomicsSort | string;
+  /** When set, keep only subnets whose gate matches. Unset means "both". */
+  emissionGateOpen?: boolean | null;
+  capBinding?: boolean | null;
+  limit?: number;
+  offset?: number;
+};
+
+export type ValidatorEconomicsRanking = {
+  rows: ValidatorEconomicsRow[];
+  total: number;
+  /** Subnets dropped by a filter or by having no sortable value, with the reason. */
+  excluded: Array<{ netuid: number; reason: string }>;
+  sort: string;
+  order: "asc" | "desc";
+};
+
+/**
+ * Rank subnets by cost-to-earn, reporting what it excluded and why.
+ *
+ * A subnet with no value for the chosen sort is EXCLUDED with a reason rather than
+ * sorted as 0 or as infinity: an unpriceable pool is not the cheapest subnet on the
+ * network, and a degraded row is not a free one. "Why is SN45 not in this list" is
+ * the question the output gets asked next, and a ranking that cannot answer it gets
+ * overridden by hand.
+ */
+export function rankValidatorEconomics(
+  rows: readonly ValidatorEconomicsRow[],
+  options: ValidatorEconomicsRankingOptions = {},
+): ValidatorEconomicsRanking {
+  const sort = VALIDATOR_ECONOMICS_SORTS.includes(
+    options.sort as ValidatorEconomicsSort,
+  )
+    ? (options.sort as ValidatorEconomicsSort)
+    : VALIDATOR_ECONOMICS_SORTS[0];
+  const order: "asc" | "desc" = DESCENDING_SORTS.has(sort) ? "desc" : "asc";
+
+  const excluded: Array<{ netuid: number; reason: string }> = [];
+  const kept: ValidatorEconomicsRow[] = [];
+
+  for (const row of rows) {
+    if (
+      options.emissionGateOpen != null &&
+      row.emissionGateOpen !== options.emissionGateOpen
+    ) {
+      excluded.push({
+        netuid: row.netuid,
+        reason: `emission_gate_open is ${row.emissionGateOpen}`,
+      });
+      continue;
+    }
+    if (options.capBinding != null && row.capBinding !== options.capBinding) {
+      excluded.push({
+        netuid: row.netuid,
+        reason: `cap_binding is ${row.capBinding}`,
+      });
+      continue;
+    }
+    if (sortValue(row, sort) === null) {
+      excluded.push({ netuid: row.netuid, reason: `${sort} is unavailable` });
+      continue;
+    }
+    kept.push(row);
+  }
+
+  // Ties broken by netuid so two runs against identical chain state produce an
+  // identical page — an unstable order makes a diff between runs unreadable and
+  // makes offset pagination silently drop or repeat rows.
+  kept.sort((a, b) => {
+    const av = sortValue(a, sort) as number;
+    const bv = sortValue(b, sort) as number;
+    if (av !== bv) return order === "asc" ? av - bv : bv - av;
+    return a.netuid - b.netuid;
+  });
+
+  const offset = Math.max(0, options.offset ?? 0);
+  const limit = options.limit ?? kept.length;
+  return {
+    rows: kept.slice(offset, offset + limit),
+    total: kept.length,
+    excluded,
+    sort,
+    order,
+  };
+}
+
+/**
+ * Group a flat cross-subnet neuron scan into per-netuid buckets.
+ *
+ * One scan and one grouping rather than 128 per-subnet reads — the same shape
+ * `chain-yield` uses over this table.
+ */
+export function groupNeuronsByNetuid(
+  rows: ReadonlyArray<{ netuid: number } & ValidatorNeuron>,
+): Map<number, ValidatorNeuron[]> {
+  const out = new Map<number, ValidatorNeuron[]>();
+  for (const row of rows) {
+    const bucket = out.get(row.netuid);
+    const neuron: ValidatorNeuron = {
+      uid: row.uid,
+      totalStake: row.totalStake,
+      validatorPermit: row.validatorPermit,
+      dividends: row.dividends,
+      active: row.active,
+      take: row.take,
+    };
+    if (bucket) bucket.push(neuron);
+    else out.set(row.netuid, [neuron]);
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// History (#9326). A floor is a point-in-time number; the decision it informs is
+// a trend one. A subnet whose permit floor has doubled in a month is filling up,
+// and entering it now buys a contested position; one whose earning floor is
+// falling is emptying out. Same snapshot value, opposite decisions.
+// ---------------------------------------------------------------------------
+
+/**
+ * One day's observed economics for a subnet.
+ *
+ * The floors here are OBSERVED, not re-derived: `permitFloorAlpha` is the
+ * smallest stake that actually held a permit that day, read off the snapshot.
+ *
+ * That is deliberate and it matters. `StakeThreshold` is sudo-settable, so
+ * re-running TODAY's threshold against a historical snapshot would report what
+ * the floor would have been under today's rules, not what it was — and a series
+ * built that way would show a flat floor across a governance change that actually
+ * moved it. History is a record of what happened, not a re-run of the model.
+ */
+export type ValidatorEconomicsHistoryPoint = {
+  snapshot_date: string;
+  permit_floor_alpha: number | null;
+  earning_floor_alpha: number | null;
+  validators_permitted: number;
+  validators_active: number;
+  validators_earning: number;
+  emission_gate_open: boolean | null;
+  tao_inflow_per_day: number | null;
+};
+
+type HistoryRow = {
+  snapshot_date: unknown;
+  stake_tao: unknown;
+  validator_permit: unknown;
+  dividends: unknown;
+  active: unknown;
+};
+
+type HistoryEmissionRow = {
+  snapshot_date: unknown;
+  tao_in_emission_tao: unknown;
+};
+
+function numeric(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * Fold per-UID daily rows into one point per snapshot date.
+ *
+ * Cost fields are deliberately absent from the series. A historical TAO cost needs
+ * the pool reserves AS THEY WERE, priced at the time; reconstructing one from
+ * today's reserves would be wrong in exactly the way the moving-price trap already
+ * catches elsewhere. Alpha floors are unambiguous; cost is a present-tense question,
+ * and the per-subnet route answers it.
+ */
+export function buildValidatorEconomicsHistory(
+  rows: readonly HistoryRow[],
+  emissionRows: readonly HistoryEmissionRow[] = [],
+): ValidatorEconomicsHistoryPoint[] {
+  const emissionByDate = new Map<string, number | null>();
+  for (const row of emissionRows) {
+    const date = String(row.snapshot_date);
+    const raw = row.tao_in_emission_tao;
+    emissionByDate.set(
+      date,
+      raw === null || raw === undefined || !Number.isFinite(Number(raw))
+        ? null
+        : Number(raw),
+    );
+  }
+
+  const byDate = new Map<
+    string,
+    {
+      permitFloor: number | null;
+      earningFloor: number | null;
+      permitted: number;
+      active: number;
+      earning: number;
+    }
+  >();
+
+  for (const row of rows) {
+    const date = String(row.snapshot_date);
+    let point = byDate.get(date);
+    if (!point) {
+      point = {
+        permitFloor: null,
+        earningFloor: null,
+        permitted: 0,
+        active: 0,
+        earning: 0,
+      };
+      byDate.set(date, point);
+    }
+    // Only permit-holders shape a floor: a UID with no permit says nothing about
+    // what holding one required.
+    if (numeric(row.validator_permit) !== 1) continue;
+    const stake = numeric(row.stake_tao);
+    point.permitted += 1;
+    if (numeric(row.active) === 1) point.active += 1;
+    if (point.permitFloor === null || stake < point.permitFloor) {
+      point.permitFloor = stake;
+    }
+    if (numeric(row.dividends) > 0) {
+      point.earning += 1;
+      if (point.earningFloor === null || stake < point.earningFloor) {
+        point.earningFloor = stake;
+      }
+    }
+  }
+
+  // A date present only in the emission series still deserves a point: a gate
+  // close on a day the neuron snapshot missed is exactly the transition this
+  // series exists to make visible.
+  for (const date of emissionByDate.keys()) {
+    if (!byDate.has(date)) {
+      byDate.set(date, {
+        permitFloor: null,
+        earningFloor: null,
+        permitted: 0,
+        active: 0,
+        earning: 0,
+      });
+    }
+  }
+
+  return [...byDate.entries()]
+    .map(([snapshot_date, point]) => {
+      const inflow = emissionByDate.has(snapshot_date)
+        ? (emissionByDate.get(snapshot_date) ?? null)
+        : null;
+      return {
+        snapshot_date,
+        permit_floor_alpha: point.permitFloor,
+        earning_floor_alpha: point.earningFloor,
+        validators_permitted: point.permitted,
+        validators_active: point.active,
+        validators_earning: point.earning,
+        emission_gate_open: inflow === null ? null : inflow > 0,
+        tao_inflow_per_day: inflow === null ? null : inflow * BLOCKS_PER_DAY,
+      };
+    })
+    .sort((a, b) => b.snapshot_date.localeCompare(a.snapshot_date));
+}
+
+/** Windows the history route accepts, matching its sibling history routes. */
+export const VALIDATOR_ECONOMICS_HISTORY_WINDOWS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+};
+export const DEFAULT_VALIDATOR_ECONOMICS_HISTORY_WINDOW = "30d";
+
+/**
+ * Safety valve on the raw per-UID daily read.
+ *
+ * ~256 UIDs x 90d is ~23k rows; this leaves head room so a full window is never
+ * silently truncated mid-day, which would report a partial day as a real drop in
+ * the permitted count — a trend artefact indistinguishable from a real one.
+ */
+export const VALIDATOR_ECONOMICS_HISTORY_ROW_CAP = 40_000;

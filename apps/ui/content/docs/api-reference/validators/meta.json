@@ -4,6 +4,7 @@
     "compare-validators",
     "global-validators",
     "validator-detail",
+    "validator-economics-ranking",
     "validator-history",
     "validator-nominators"
   ]
