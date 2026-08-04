@@ -11741,14 +11741,27 @@ export interface components {
         };
         ValidatorHistoryArtifact: {
             hotkey: string;
+            netuid: number | null;
             point_count: number;
             points: {
+                consensus?: number | null;
+                dividends?: number | null;
+                emission_alpha?: number | null;
+                netuid?: number | null;
+                rewards_per_1000_alpha?: number | null;
                 rewards_per_1000_tao: number | null;
                 snapshot_date: string;
+                /** @description Native alpha, NOT converted to TAO — the unit the subnet actually emits in, and what an operator compares day over day. The TAO-priced equivalents remain total_stake_tao/total_emission_tao on the same point. */
+                stake_alpha?: number | null;
                 subnet_count: number | null;
+                take?: number | null;
                 total_emission_tao: number | null;
                 /** @description TAO-priced at this point's OWN snapshot_date (#9051): each day's cross-subnet total converts each membership through that day's alpha_price_tao (root at 1:1), so the series is a true TAO-value history. A day-row with no matching price is excluded from that day's sum. */
                 total_stake_tao: number | null;
+                uid?: number | null;
+                /** @description Whether the permit was held that day. The scoped series reports a lost permit rather than dropping the day, so 'lost the permit' stays distinguishable from 'no data'. */
+                validator_permit?: boolean | null;
+                validator_trust?: number | null;
             }[];
             schema_version: number;
             window: string | null;
@@ -51045,6 +51058,7 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "hotkey": "example",
+                     *         "netuid": 7,
                      *         "point_count": 1,
                      *         "points": [
                      *           {

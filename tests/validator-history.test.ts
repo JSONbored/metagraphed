@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { buildValidatorHistory } from "../src/validator-history.ts";
+import { ValidatorHistoryArtifactSchema } from "../schemas-src/routes/validator-history.ts";
 import type { Row } from "./row-type.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
@@ -228,5 +229,118 @@ describe("GET /api/v1/validators/{hotkey}/history via the Worker", () => {
     const body = await res.json();
     assert.deepEqual(body.data.points, []);
     assert.equal(body.data.point_count, 0);
+  });
+});
+
+// #9383: the per-subnet scope. The unscoped series is unchanged — every assertion
+// above still holds — and the scoped one answers the questions the totals hide.
+describe("buildValidatorHistory — scoped to one subnet (#9383)", () => {
+  const scopedRow = {
+    snapshot_date: "2026-08-04",
+    subnet_count: 1,
+    netuid: 64,
+    uid: 12,
+    stake_alpha: 2120377.1,
+    emission_alpha: 80.6312,
+    validator_trust: 1,
+    consensus: 0.4321,
+    dividends: 0.54627,
+    take: 0.18,
+    validator_permit: 1,
+    total_stake_tao: 179750.8,
+    total_emission_tao: 6.83,
+  };
+
+  test("carries the per-subnet facts the totals hide", () => {
+    const card = buildValidatorHistory([scopedRow], HOTKEY, {
+      window: "30d",
+      netuid: 64,
+    });
+    assert.equal(card.netuid, 64);
+    const point = (card.points as Row[])[0];
+    assert.equal(point.netuid, 64);
+    assert.equal(point.uid, 12);
+    assert.equal(point.validator_trust, 1);
+    assert.equal(point.consensus, 0.4321);
+    assert.equal(point.dividends, 0.54627);
+    assert.equal(point.take, 0.18);
+    assert.equal(point.validator_permit, true);
+  });
+
+  test("alpha is reported as alpha, beside the TAO conversion", () => {
+    // #8945 is the standing reminder: an alpha value in a `*_tao` field is how
+    // this goes wrong. Both units are present and they are NOT equal.
+    const point = (
+      buildValidatorHistory([scopedRow], HOTKEY, { netuid: 64 }).points as Row[]
+    )[0];
+    assert.equal(point.stake_alpha, 2120377.1);
+    assert.equal(point.emission_alpha, 80.6312);
+    assert.equal(point.total_stake_tao, 179750.8);
+    assert.notEqual(point.stake_alpha, point.total_stake_tao);
+    // The alpha-denominated reward rate, computed from the alpha pair rather
+    // than borrowed from the TAO one.
+    assert.equal(
+      point.rewards_per_1000_alpha,
+      Math.round((80.6312 / 2120377.1) * 1000 * 1e6) / 1e6,
+    );
+  });
+
+  test("a lost permit is reported, not dropped", () => {
+    // The scoped query deliberately omits the `validator_permit = 1` filter: a day
+    // the permit was lost is the event an operator most needs, and filtering it
+    // makes it indistinguishable from a day the poller missed.
+    const point = (
+      buildValidatorHistory([{ ...scopedRow, validator_permit: 0 }], HOTKEY, {
+        netuid: 64,
+      }).points as Row[]
+    )[0];
+    assert.equal(point.validator_permit, false);
+    assert.equal(point.snapshot_date, "2026-08-04");
+  });
+
+  test("the unscoped series does NOT invent cross-subnet vTrust", () => {
+    // Averaging vTrust across subnets would report a validator with 1.0 on one
+    // subnet and 0.2 on another as "0.6", erasing the one signal that matters.
+    const card = buildValidatorHistory([scopedRow], HOTKEY, { window: "30d" });
+    assert.equal(card.netuid, null);
+    const point = (card.points as Row[])[0];
+    assert.ok(!("validator_trust" in point));
+    assert.ok(!("consensus" in point));
+    assert.ok(!("stake_alpha" in point));
+    // The cross-subnet fields it DOES own are untouched.
+    assert.equal(point.total_stake_tao, 179750.8);
+    assert.equal(point.subnet_count, 1);
+  });
+
+  test("both shapes satisfy the published response schema", () => {
+    // The point schema is .strict(), so an undeclared field fails the contract.
+    for (const netuid of [64, null]) {
+      const card = buildValidatorHistory([scopedRow], HOTKEY, {
+        window: "30d",
+        netuid,
+      });
+      const parsed = ValidatorHistoryArtifactSchema.safeParse(card);
+      assert.equal(
+        parsed.success,
+        true,
+        parsed.success
+          ? ""
+          : `netuid=${netuid}: ${JSON.stringify(parsed.error.issues)}`,
+      );
+    }
+  });
+
+  test("a null-heavy scoped row degrades to nulls, never to zeroes", () => {
+    const point = (
+      buildValidatorHistory(
+        [{ snapshot_date: "2026-08-04", netuid: 64 }],
+        HOTKEY,
+        { netuid: 64 },
+      ).points as Row[]
+    )[0];
+    assert.equal(point.validator_trust, null);
+    assert.equal(point.stake_alpha, null);
+    assert.equal(point.validator_permit, null);
+    assert.equal(point.rewards_per_1000_alpha, null);
   });
 });

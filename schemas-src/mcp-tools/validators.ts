@@ -223,6 +223,9 @@ export const GetValidatorHistoryInputSchema = z
   .object({
     hotkey: Ss58Schema,
     window: z.enum(["7d", "30d", "90d", "1y", "all"]).optional(),
+    // #9383: scopes the series to one subnet and switches the points to the
+    // per-subnet shape (vTrust, consensus, dividends, take, native alpha).
+    netuid: z.int().min(0).max(65535).optional(),
   })
   .strict();
 export type GetValidatorHistoryInput = z.infer<
@@ -234,6 +237,20 @@ const ValidatorHistoryPointSchema = z
   .object({
     snapshot_date: z.string().nullable().optional(),
     subnet_count: z.int().nullable().optional(),
+    // Present only when the request scoped a netuid. Absent (not null) on the
+    // unscoped series, because vTrust/consensus/dividends/take are per-subnet
+    // facts and a cross-subnet average of them is a number the chain never
+    // computes -- see subnetScopedFields in src/validator-history.ts.
+    netuid: z.int().nullable().optional(),
+    uid: z.int().nullable().optional(),
+    stake_alpha: z.number().nullable().optional(),
+    emission_alpha: z.number().nullable().optional(),
+    validator_trust: z.number().nullable().optional(),
+    consensus: z.number().nullable().optional(),
+    dividends: z.number().nullable().optional(),
+    take: z.number().nullable().optional(),
+    validator_permit: z.boolean().nullable().optional(),
+    rewards_per_1000_alpha: z.number().nullable().optional(),
     total_stake_tao: z.unknown().optional(),
     total_emission_tao: z.unknown().optional(),
     rewards_per_1000_tao: z.number().nullable().optional(),

@@ -1496,13 +1496,19 @@ export async function handleValidatorHistory(
   hotkey: string,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateQueryParams(url, ["window", "netuid"]);
   if (validationError) return analyticsQueryError(validationError);
   const labelResult = parseHistoryWindow(url.searchParams.get("window"));
   if ("error" in labelResult) return analyticsQueryError(labelResult.error);
   const { label } = labelResult;
-  // #4909 D1 retirement: neuron_daily's D1 write path is retired (#4772) and the
-  // table is dropped in production, so a D1 query here would always miss.
+  // #9383: `netuid` scopes the series to one subnet and switches the points to the
+  // per-subnet shape. Rejected here rather than coerced, so a typo'd netuid is a 400
+  // instead of a silently unscoped series that looks like an answer.
+  const netuidResult = parseNonNegativeIntParam(
+    url.searchParams.get("netuid"),
+    "netuid",
+  );
+  if ("error" in netuidResult) return analyticsQueryError(netuidResult.error);
   const data =
     ((await tryPostgresTier(
       env,
@@ -1511,6 +1517,7 @@ export async function handleValidatorHistory(
     )) as ReturnType<typeof buildValidatorHistory> | null) ??
     buildValidatorHistory([], hotkey, {
       window: label,
+      netuid: netuidResult.value,
     });
   return envelopeResponse(
     request,

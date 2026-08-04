@@ -11453,6 +11453,7 @@
         "value": {
           "data": {
             "hotkey": "example",
+            "netuid": 7,
             "point_count": 1,
             "points": [
               {
@@ -48262,6 +48263,18 @@
           "hotkey": {
             "type": "string"
           },
+          "netuid": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "point_count": {
             "maximum": 9007199254740991,
             "minimum": 0,
@@ -48271,6 +48284,58 @@
             "items": {
               "additionalProperties": false,
               "properties": {
+                "consensus": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "dividends": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "emission_alpha": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "netuid": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "rewards_per_1000_alpha": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "rewards_per_1000_tao": {
                   "anyOf": [
                     {
@@ -48284,12 +48349,33 @@
                 "snapshot_date": {
                   "type": "string"
                 },
+                "stake_alpha": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Native alpha, NOT converted to TAO — the unit the subnet actually emits in, and what an operator compares day over day. The TAO-priced equivalents remain total_stake_tao/total_emission_tao on the same point."
+                },
                 "subnet_count": {
                   "anyOf": [
                     {
                       "maximum": 9007199254740991,
                       "minimum": 0,
                       "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "take": {
+                  "anyOf": [
+                    {
+                      "type": "number"
                     },
                     {
                       "type": "null"
@@ -48316,6 +48402,39 @@
                     }
                   ],
                   "description": "TAO-priced at this point's OWN snapshot_date (#9051): each day's cross-subnet total converts each membership through that day's alpha_price_tao (root at 1:1), so the series is a true TAO-value history. A day-row with no matching price is excluded from that day's sum."
+                },
+                "uid": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "validator_permit": {
+                  "anyOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Whether the permit was held that day. The scoped series reports a lost permit rather than dropping the day, so 'lost the permit' stays distinguishable from 'no data'."
+                },
+                "validator_trust": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [
@@ -48349,6 +48468,7 @@
           "schema_version",
           "hotkey",
           "window",
+          "netuid",
           "point_count",
           "points"
         ],
