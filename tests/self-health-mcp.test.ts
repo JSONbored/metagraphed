@@ -43,6 +43,16 @@ const SAMPLE_SELF_HEALTH = {
     },
   ],
   measured_component_count: 1,
+  lanes: [
+    {
+      lane: "chain-detail",
+      verdict: "stale",
+      age_ms: 14_400_000,
+      detail: "hot_window.to frozen at 8,765,682",
+      checked_at: "2026-07-01T00:00:00.000Z",
+    },
+  ],
+  stale_lane_count: 1,
   observed_at: "2026-07-01T00:00:00.000Z",
 };
 
@@ -316,6 +326,110 @@ describe("self-health-mcp", () => {
       GET_SELF_HEALTH_OUTPUT_SCHEMA,
     );
     assert.ok(validate(SAMPLE_SELF_HEALTH));
+  });
+
+  // #9330/#9340 + the cold-tier parity gap found live on 2026-08-04.
+  //
+  // These belong together because the second bug is what made the first invisible on
+  // this surface: with METAGRAPH_SELF_HEALTH_SOURCE at "retired" the live tier never
+  // answers, so everything an agent sees comes from the tiers below it.
+  describe("parity with the REST route", () => {
+    function coldTierEnv(rows: Record<string, unknown>[]) {
+      // r2SqlQuery reaches the lakehouse over fetch; a token makes it "configured".
+      const env = mockEnv() as unknown as Row;
+      env.R2_SQL_TOKEN = "test-token";
+      env.METAGRAPH_SELF_HEALTH_SOURCE = "retired";
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = (async () =>
+        new Response(JSON.stringify({ success: true, result: { rows } }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        })) as typeof fetch;
+      return {
+        env: env as unknown as Env,
+        restore: () => {
+          globalThis.fetch = originalFetch;
+        },
+      };
+    }
+
+    const NOT_FOUND = (async () => ({
+      ok: false,
+      code: "artifact_not_found",
+    })) as unknown as ReadArtifact;
+
+    test("serves the lakehouse rollup instead of an empty card", async () => {
+      // The live regression: REST returned seven days per component while this loader
+      // returned days: [] and uptime_90d: null for all three, because #9153 gave the
+      // cold tier to the route and not to us.
+      const { env, restore } = coldTierEnv([
+        { day: "2026-08-01", component: "api", checks: 1440, ok_count: 1439 },
+        { day: "2026-08-02", component: "api", checks: 482, ok_count: 482 },
+      ]);
+      try {
+        const result = (await loadSelfHealth({
+          env,
+          readArtifact: NOT_FOUND,
+        })) as Row;
+        const api = (result.components as Row[]).find(
+          (c) => c.component === "api",
+        ) as Row;
+        assert.equal((api.days as unknown[]).length, 2);
+        assert.ok((api.uptime_90d as number) > 0.99);
+      } finally {
+        restore();
+      }
+    });
+
+    test("an unreachable lakehouse still yields the empty card, not an error", async () => {
+      const env = mockEnv() as unknown as Row;
+      env.METAGRAPH_SELF_HEALTH_SOURCE = "retired";
+      const result = (await loadSelfHealth({
+        env: env as unknown as Env,
+        readArtifact: NOT_FOUND,
+      })) as Row;
+      assert.equal((result.components as unknown[]).length, 3);
+      assert.equal(result.measured_component_count, 0);
+    });
+
+    test("lane verdicts reach the MCP card, not only the REST one", async () => {
+      const env = mockEnv() as unknown as Row;
+      env.METAGRAPH_SELF_HEALTH_SOURCE = "retired";
+      env.METAGRAPH_HEALTH_DB = {
+        prepare: () => ({
+          all: async () => ({
+            results: [
+              {
+                lane: "chain-detail",
+                verdict: "stale",
+                age_ms: 14_400_000,
+                detail: "frozen",
+                checked_at: 1_785_800_000_000,
+              },
+            ],
+          }),
+        }),
+      };
+      const result = (await loadSelfHealth({
+        env: env as unknown as Env,
+        readArtifact: NOT_FOUND,
+      })) as Row;
+      assert.deepEqual(
+        (result.lanes as Row[]).map((l) => l.lane),
+        ["chain-detail"],
+      );
+      assert.equal(result.stale_lane_count, 1);
+    });
+
+    test("the MCP output schema IS the route schema, so they cannot drift", async () => {
+      // These were two hand-kept copies and had already drifted (latency_ms typed as a
+      // float here, an int on the route; verdict a bare string here, an enum there).
+      const { SelfHealthArtifactSchema } =
+        await import("../schemas-src/routes/self-health.ts");
+      const { GetSelfHealthOutputSchema } =
+        await import("../schemas-src/mcp-tools/meta-artifacts-2.ts");
+      assert.equal(GetSelfHealthOutputSchema, SelfHealthArtifactSchema);
+    });
   });
 
   test("MCP server exports wire get_self_health", () => {

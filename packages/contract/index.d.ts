@@ -9778,9 +9778,11 @@ export interface components {
         };
         SelfHealthArtifact: {
             components: components["schemas"]["SelfHealthComponent"][];
+            lanes: components["schemas"]["SelfHealthLane"][];
             measured_component_count: number;
             observed_at: string | null;
             schema_version: number;
+            stale_lane_count: number;
             /** @enum {string} */
             verdict: "operational" | "degraded" | "outage";
         } & {
@@ -9803,6 +9805,16 @@ export interface components {
             day: string;
             ok_count: number;
             uptime_ratio: number;
+        } & {
+            [key: string]: unknown;
+        };
+        SelfHealthLane: {
+            age_ms: number | null;
+            checked_at: string | null;
+            detail: string | null;
+            lane: string;
+            /** @enum {string} */
+            verdict: "ok" | "stale" | "unknown";
         } & {
             [key: string]: unknown;
         };
@@ -42076,9 +42088,19 @@ export interface operations {
                      *             "uptime_90d": 0.5
                      *           }
                      *         ],
+                     *         "lanes": [
+                     *           {
+                     *             "age_ms": 1,
+                     *             "checked_at": "2026-06-01T00:00:00.000Z",
+                     *             "detail": "example",
+                     *             "lane": "example",
+                     *             "verdict": "ok"
+                     *           }
+                     *         ],
                      *         "measured_component_count": 1,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
+                     *         "stale_lane_count": 1,
                      *         "verdict": "operational"
                      *       },
                      *       "meta": {

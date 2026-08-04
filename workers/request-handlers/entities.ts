@@ -229,6 +229,8 @@ import {
 } from "../../src/account-identity-cold-tier.ts";
 import { loadAccountEntitiesColdTier } from "../../src/subnet-ownership-cold-tier.ts";
 import { loadSelfHealthColdTier } from "../../src/self-health-cold-tier.ts";
+import { loadLatestLaneHealth } from "../../src/lane-health.ts";
+import { withLaneHealth } from "../../src/self-health.ts";
 import { loadTopHoldersFromArtifact } from "../../src/top-holders-artifact.ts";
 import { buildBlocksSummary } from "../../src/blocks-summary.ts";
 import { loadBlocksSummaryFromArtifact } from "../../src/blocks-summary-artifact.ts";
@@ -1946,14 +1948,24 @@ export async function handleSelfHealth(request: Request, env: Env, url: URL) {
     // so current_ok stays null ("unmeasured") rather than a synthesized tick.
     (await loadSelfHealthColdTier(env)) ??
     buildSelfHealth([], []);
+  // #9330/#9340: the lane verdicts ride alongside whichever tier answered above.
+  // They come from D1 rather than from that tier, because the point of the change is
+  // that a lane's health must be readable without depending on the analytics vendor --
+  // or, here, on which serving tier happened to be reachable.
+  const lanes = await loadLatestLaneHealth(
+    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+      typeof loadLatestLaneHealth
+    >[0],
+  );
+  const withLanes = withLaneHealth(data, lanes);
   return envelopeResponse(
     request,
     {
-      data,
+      data: withLanes,
       meta: await metagraphMeta(
         env,
         "/metagraph/self-health.json",
-        data.observed_at,
+        withLanes.observed_at,
       ),
     },
     "short",

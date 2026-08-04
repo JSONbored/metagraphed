@@ -285,6 +285,7 @@ import {
   SelfHealthArtifactSchema,
   SelfHealthComponentSchema,
   SelfHealthDaySchema,
+  SelfHealthLaneSchema,
 } from "./routes/self-health.ts";
 import { CompareArtifactSchema } from "./routes/compare.ts";
 import {
@@ -550,6 +551,9 @@ register(ChainYieldArtifactSchema, "ChainYieldArtifact");
 // -- an unregistered named sub-shape is inlined rather than $ref'd.
 register(SelfHealthDaySchema, "SelfHealthDay");
 register(SelfHealthComponentSchema, "SelfHealthComponent");
+// Registered for the same reason as its siblings above: a named sub-shape that is
+// only referenced from a nested array gets silently inlined rather than $ref'd.
+register(SelfHealthLaneSchema, "SelfHealthLane");
 register(SelfHealthArtifactSchema, "SelfHealthArtifact");
 
 // Batch 3 (#8057) additions.

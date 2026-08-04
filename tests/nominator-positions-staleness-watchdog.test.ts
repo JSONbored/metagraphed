@@ -304,7 +304,20 @@ describe("the cron string is unique and wired", () => {
     )) as { ok: boolean; alerted: boolean };
     assert.equal(result.ok, true);
     assert.equal(result.alerted, false);
-    assert.equal(queries.length, 1);
-    assert.match(queries[0]!, /FROM nominator_positions/);
+    // Asserted by SHAPE rather than by count: the tick now also writes its verdict to
+    // lane_health (#9330/#9340), so a bare `queries.length === 1` would have to be
+    // bumped on every added statement and would stop saying anything about which
+    // statement ran. Exactly one read of the lane, and it is the right read.
+    const reads = queries.filter((q: string) =>
+      q.includes("FROM nominator_positions"),
+    );
+    assert.equal(reads.length, 1);
+    assert.match(reads[0]!, /FROM nominator_positions/);
+    // The durable record is the whole point of the change: a healthy tick must be
+    // recorded too, or "the watchdog stopped running" stays invisible.
+    const writes = queries.filter((q: string) =>
+      q.includes("INSERT INTO lane_health"),
+    );
+    assert.equal(writes.length, 1);
   });
 });
