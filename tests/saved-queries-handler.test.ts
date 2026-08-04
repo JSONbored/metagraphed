@@ -45,6 +45,25 @@ describe("handleSavedQueryRequest", () => {
     assert.equal(body.meta.contract_version.length > 0, true);
   });
 
+  // #9414: decodeURIComponent sat OUTSIDE the try, so a malformed escape threw
+  // a URIError that escaped the Worker entirely -- withUsageTelemetry has
+  // try/finally with no catch and the entry does not wrap either, so the
+  // request died as a bare 1101/500 instead of an error envelope.
+  test("a malformed percent-escape is an envelope, not an unhandled throw", async () => {
+    for (const bad of ["%ZZ", "%E0%A4%A", "%"]) {
+      const body = await json(
+        await handleSavedQueryRequest(
+          req(`/api/v1/queries/${bad}`),
+          mockEnv(),
+          new URL(`https://api.metagraph.sh/api/v1/queries/${bad}`),
+        ),
+        404,
+      );
+      assert.equal(body.ok, false, `${bad} should answer, not throw`);
+      assert.equal(body.error.code, "not_found");
+    }
+  });
+
   test("404s on an unknown query id", async () => {
     const body = await json(
       await handleSavedQueryRequest(

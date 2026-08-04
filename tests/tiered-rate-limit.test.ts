@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   applyTieredRateLimit,
+  spendDeferredDailyQuota,
   tieredRateLimitHeaders,
   tieredRejectionResponse,
 } from "../workers/tiered-rate-limit.ts";
@@ -750,6 +751,68 @@ describe("daily quotas (#8608)", () => {
 
   const ok = (body: Row) => async () =>
     new Response(JSON.stringify(body), { status: 200 });
+
+  // #9414: a multiplexed transport (POST /mcp) cannot be priced by pathname --
+  // every call shares one -- so it defers the spend until the body names the
+  // tools, then debits through spendDeferredDailyQuota.
+  test("deferQuota hands back the pending handle instead of spending", async () => {
+    const { env, spends } = envWith("paid", ok({ allowed: true }));
+    const result = await applyTieredRateLimit(req(), env, CONFIG, {
+      deferQuota: true,
+    });
+    assert.equal(result.allowed, true);
+    // Nothing debited yet -- that is the whole point of deferring.
+    assert.deepEqual(spends, []);
+    assert.equal(result.quota, undefined);
+    assert.deepEqual(result.quotaPending, {
+      accountId: "42",
+      dailyUnits: 1000,
+    });
+  });
+
+  test("spendDeferredDailyQuota debits the deferred cost, not one flat unit", async () => {
+    const { env, spends } = envWith(
+      "paid",
+      ok({
+        allowed: true,
+        used: 50,
+        limit: 1000,
+        remaining: 950,
+        resetAt: "x",
+      }),
+    );
+    const verdict = await spendDeferredDailyQuota(
+      req(),
+      env,
+      { accountId: "42", dailyUnits: 1000 },
+      50,
+    );
+    assert.equal(verdict.allowed, true);
+    assert.equal(verdict.remaining, 950);
+    // The cost travelled through verbatim: a 10-message batch of 5-unit tools.
+    assert.equal((spends[0] as { body: { cost: number } }).body.cost, 50);
+  });
+
+  test("a deferred spend can still refuse, and reports which ceiling did", async () => {
+    const { env } = envWith(
+      "paid",
+      ok({
+        allowed: false,
+        used: 1000,
+        limit: 1000,
+        remaining: 0,
+        resetAt: "x",
+      }),
+    );
+    const verdict = await spendDeferredDailyQuota(
+      req(),
+      env,
+      { accountId: "42", dailyUnits: 1000 },
+      25,
+    );
+    assert.equal(verdict.allowed, false);
+    assert.equal(verdict.remaining, 0);
+  });
 
   test("a tier with NO dailyUnits never touches the quota store", async () => {
     // free must not pay the round trip, and today's keyed callers gain no cap.
