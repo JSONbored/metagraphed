@@ -67,7 +67,7 @@ import { MCP_CHAIN_STREAM_RESOURCE_URI } from "./mcp-session-hub.ts";
 
 export const CHAIN_FIREHOSE_INGEST_TOKEN_HEADER = "x-chain-firehose-sync-token";
 
-// Matches deploy/postgres/schema.sql's notify_chain_firehose() trigger --
+// Matched the retired notify_chain_firehose() Postgres trigger (#9426) --
 // the only four tables it ever fires `table:` for. account_events (#4984
 // prerequisite) carries netuid/hotkey/coldkey/amount_tao directly, unlike
 // the other three -- the alerter's trigger conditions need those columns
@@ -87,8 +87,8 @@ export const CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES = 16_000;
 // costs by REQUEST, not payload size -- one POST always consumes exactly one
 // unit of the Workers Rate Limiting binding, regardless of body size. Batching
 // N rows into a single request's array body therefore multiplies effective
-// throughput by N WITHOUT touching that rate limit or chain-firehose-relay's
-// own conservative client-side pacing at all -- the actual lever #6451's two
+// throughput by N WITHOUT touching that rate limit or the retired relay's own
+// conservative client-side pacing at all -- the actual lever #6451's two
 // incident rounds established as dangerous to touch carelessly. 10 comfortably
 // closes the ~3.5-4x production/ingest gap #6672 measured (~3,600-3,700
 // rows/min production vs. ~960-1,200 rows/min single-payload-per-request
@@ -482,7 +482,7 @@ export function formatChainFirehoseSseResetFrame(): string {
 // operation like ws.send()/deserializeAttachment() above, which broadcast()
 // already guards individually -- threw a bare Cloudflare "internal error"
 // under concurrent load (16 occurrences in the same second, lining up with
-// chain-firehose-relay's CHAIN_FIREHOSE_FORWARD_CONCURRENCY=16 hitting this
+// the retired relay's CHAIN_FIREHOSE_FORWARD_CONCURRENCY=16 hitting this
 // same DO instance's broadcast() at once). Unguarded, that crashed the whole
 // broadcast() call -- losing SSE/GraphQL/MCP/alerter delivery too, not just
 // the WS population -- and surfaced to the relay as a 500 requiring a full

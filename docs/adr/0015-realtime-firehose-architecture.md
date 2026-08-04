@@ -1,5 +1,10 @@
 # ADR 0015 — Realtime firehose architecture: Postgres outbox tee, not an indexer push
 
+> **Superseded 2026-08-04 (metagraphed#9426).** Postgres is decommissioned and the estate
+> is Cloudflare-only — Workers, D1, R2 and Durable Objects. `deploy/postgres/schema.sql`,
+> the Postgres migrations and the migration runner referenced below no longer exist.
+> This ADR is kept unedited as the record of the decision as it was made.
+
 - **Status:** Accepted
 - **Date:** 2026-07-12
 - **Relates to:** #2114 (Durable Object firehose, the epic this ADR scopes),

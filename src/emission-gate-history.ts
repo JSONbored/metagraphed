@@ -3,8 +3,7 @@
 // Append-on-change, never overwrite-per-refresh: a row exists only where a
 // value actually moved, so the table IS the change log rather than a sampling
 // of one. That decision lives here as a pure function so it is testable without
-// a database, the same shape scripts/apply-migrations.ts uses for
-// pendingMigrations.
+// a database.
 //
 // Three things this gets right that a naive differ would not:
 //

@@ -1,5 +1,10 @@
 # ADR 0024 — First-party TAO/USD index: posture, venue criteria, and published methodology
 
+> **Superseded 2026-08-04 (metagraphed#9426).** Postgres is decommissioned and the estate
+> is Cloudflare-only — Workers, D1, R2 and Durable Objects. `deploy/postgres/schema.sql`,
+> the Postgres migrations and the migration runner referenced below no longer exist.
+> This ADR is kept unedited as the record of the decision as it was made.
+
 - **Status:** Superseded by [ADR 0025](0025-on-chain-tao-usd-index.md) — #8599's
   survey established that every surveyed venue explicitly prohibits this use, so the
   CEX basis below was replaced by an on-chain one. The reasoning here is retained as

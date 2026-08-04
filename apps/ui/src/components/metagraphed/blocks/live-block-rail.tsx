@@ -22,7 +22,7 @@ import type { Block } from "@/lib/metagraphed/types";
  * subscribes to the chain firehose's `blocks` topic (ADR 0015) so a new
  * block usually lands well under that 12s ceiling -- the poll interval is
  * the floor, not the only path in. The firehose's own `blocks` payload
- * (deploy/postgres/schema.sql's enqueue_chain_firehose()) omits `author`,
+ * (the retired enqueue_chain_firehose() trigger) omits `author`,
  * which this rail displays, so an event triggers a real refetch rather than
  * assembling a `Block` from a partial payload.
  */

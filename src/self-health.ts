@@ -43,8 +43,7 @@ export interface SelfHealthDailyRow {
  * the coercion below. Typing it as a bare number and comparing directly would
  * do a lexicographic compare on the newest-tick pick and silently null out
  * every timestamp in `toIso`, since Number.isFinite("1785...") is false.
- * Confirmed against the generated row type (generated/db/public/SelfHealthChecks.ts,
- * `checked_at_ms: string & {...}`) and the existing BIGINT fixtures in
+ * Confirmed against the existing BIGINT fixtures in
  * tests/data-api.test.ts (`block_number: "123"`).
  */
 export interface SelfHealthLatestRow {

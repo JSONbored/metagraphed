@@ -138,7 +138,7 @@ async function main(): Promise<void> {
 }
 
 // Importable for tests (the chunker is the part with real edge cases); only
-// runs the sync when invoked directly, matching apply-migrations.ts's guard.
+// runs the sync only when invoked directly, not on import.
 const { fileURLToPath } = await import("node:url");
 if (process.argv[1] && process.argv[1] === fileURLToPath(import.meta.url)) {
   main().catch((err) => {
