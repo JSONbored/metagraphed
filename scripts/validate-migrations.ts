@@ -2,36 +2,26 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { repoRoot } from "./lib.ts";
 
-// Guard the Postgres migration sequence: each file must be `NNNN_snake_case.sql`
+// Guard the D1 migration sequence: each file must be `NNNN_snake_case.sql`
 // with a unique 4-digit prefix, ascending and gap-free. Two migrations once
 // shared `0007` (0007_neurons from #1303 + 0007_latency_percentiles from #1331),
 // which desynced name-keyed migration tracking. The prefix is the canonical
 // ordering key, so a duplicate or a gap is a latent apply-drift bug, and this
 // guard fails closed so it can never recur.
 //
-// WHY THE SEQUENCE NO LONGER STARTS AT 0001. This rule was written when the
-// FILES were the sequence, under D1. #6477 retired the D1 binding and deleted
-// all 81 migration files; #6486 kept the directory alive with a .gitkeep so
-// this script would not ENOENT. But the live Postgres `schema_migrations`
-// table still records 0001-0044 as applied (the box was adopted with
-// apply-migrations.ts's own `--bootstrap-through 0044`), so the DATABASE is now
-// the sequence and the files are its tail.
+// WHY THE SEQUENCE STARTS AT 0001 AGAIN. This guard used to enforce a floor of 0044,
+// because the live Postgres `schema_migrations` table recorded 0001-0044 as applied and
+// a file numbered below that was SILENTLY SKIPPED by apply-migrations.ts -- CI green, PR
+// merged, table never created, discovered later as a runtime error (#5348/#5353; a
+// missing table 502'd an entire epic).
 //
-// Requiring the first file to be 0001 therefore left no legal move. `0001`
-// passes this check and is then SILENTLY SKIPPED by apply-migrations.ts,
-// because that version is already recorded -- CI green, PR merged, table never
-// created, discovered later as the runtime error that script's own header
-// documents from three separate incidents (#5348/#5353; a missing table 502'd
-// the entire alerter epic). `0045` applies correctly but fails this check.
+// Postgres is gone (#9426) and that table went with it. migrations/d1 is applied by
+// wrangler, which consults no version table, so there is no watermark to sit above and
+// the sequence legitimately begins at 0001.
 //
-// So the floor is the watermark, not 1: the next migration is 0045, and the
-// sequence stays gap-free from wherever it resumes.
-/**
- * The highest version recorded on the live box by the D1-era bootstrap. A new
- * migration must sit ABOVE it, or apply-migrations.ts will treat it as already
- * applied and skip it without a word.
- */
-export const RETIRED_D1_WATERMARK = 44;
+// The guarantee that survives is the one that always mattered: prefixes unique,
+// ascending and gap-free. It matters MORE here, because D1 migrations are applied BY
+// HAND -- there is no apply step that would notice a duplicate on the way past.
 
 /**
  * Every problem with a set of migration filenames, as messages.
@@ -65,14 +55,6 @@ export function migrationSequenceErrors(files: readonly string[]): string[] {
   }
 
   numbers.sort((a, b) => a - b);
-  if (numbers.length > 0 && numbers[0] <= RETIRED_D1_WATERMARK) {
-    errors.push(
-      `migration prefix ${String(numbers[0]).padStart(4, "0")} (${seen.get(numbers[0])}) is at or below ` +
-        `the retired D1 watermark ${String(RETIRED_D1_WATERMARK).padStart(4, "0")} — ` +
-        `the live schema_migrations table already records it, so apply-migrations.ts would skip it silently. ` +
-        `Number the next migration ${String(RETIRED_D1_WATERMARK + 1).padStart(4, "0")}.`,
-    );
-  }
   for (let i = 1; i < numbers.length; i += 1) {
     const expected = numbers[i - 1] + 1;
     if (numbers[i] !== expected) {
@@ -89,7 +71,11 @@ export function migrationSequenceErrors(files: readonly string[]): string[] {
 
 // Only run when invoked directly, not when imported for the helper above.
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const migrationsRoot = path.join(repoRoot, "migrations");
+  // migrations/d1, not migrations/. Postgres is gone (#9426) and its migrations went
+  // with it, but this guarantee matters MORE on D1: those migrations are applied BY
+  // HAND, so a duplicate prefix is not caught by an apply step that would have
+  // noticed. The rule and the failure mode are identical -- only the directory moved.
+  const migrationsRoot = path.join(repoRoot, "migrations", "d1");
   const files = (await fs.readdir(migrationsRoot)).filter((name) =>
     name.endsWith(".sql"),
   );
