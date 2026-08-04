@@ -110,6 +110,7 @@ import {
   ACCOUNT_IDENTITY_INSERT_COLUMNS,
   IDENTITY_FIELDS,
   buildAccountIdentity,
+  loadIdentityByColdkeyMap,
 } from "../src/account-identity.ts";
 import {
   fillConfirmedZeros,
@@ -5215,11 +5216,13 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
     };
   }
 
-  // GET /api/v1/validators?sort=&limit=. The nominator-count, tempo and
-  // identity joins keep their Postgres loaders' degraded values (no D1
-  // homes); prices and realized-return baselines port for real. The serving
-  // Worker fills nominator_count over this response from the lakehouse (#9146)
-  // -- see this dispatcher's header.
+  // GET /api/v1/validators?sort=&limit=. Prices, realized-return baselines,
+  // nominator counts, tempos AND the coldkey_identity join are all D1-native
+  // now. Identity was the last straggler: this dispatcher shipped with
+  // identityByColdkey: new Map() while "the Postgres-backed route" did the
+  // join -- and when Postgres was removed, every operator name on /validators
+  // silently vanished. account_identity IS actively written in D1 (the
+  // account-identity-sync path above), so the join reads it directly.
   if (url.pathname === "/api/v1/validators") {
     return async (sql, env) => {
       const sortParam = url.searchParams.get("sort");
@@ -5240,6 +5243,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         priceByNetuid,
         nominatorCounts,
         tempos,
+        identityByColdkey,
       ] = await Promise.all([
         sql`
           SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at, take
@@ -5249,6 +5253,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         loadAlphaPricesByNetuidD1(sql, env),
         loadNominatorCountsD1(sql, env),
         loadSubnetTemposD1(sql, env),
+        loadIdentityByColdkeyMap((s, p) => sql.unsafe(s, p)),
       ]);
       return json(
         buildGlobalValidators(rows, {
@@ -5256,7 +5261,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
           limit,
           priceByNetuid,
           featuredHotkeys: new Set(),
-          identityByColdkey: new Map(),
+          identityByColdkey,
           nominatorCounts,
           tempoByNetuid: tempos,
           realizedStakeByHotkey,
@@ -5272,20 +5277,27 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
   if (validatorDetail) {
     return async (sql, env) => {
       const hotkey = decodeURIComponent(validatorDetail[1]);
-      const [rows, realizedByHotkey, priceByNetuid, nominatorCount, tempos] =
-        await Promise.all([
-          sql.unsafe(
-            `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = 1 ORDER BY netuid ASC, uid ASC`,
-            [hotkey],
-          ),
-          loadRealizedStakeBaselinesD1(sql, { hotkey }, env),
-          loadAlphaPricesByNetuidD1(sql, env),
-          loadNominatorCountD1(sql, hotkey, env),
-          loadSubnetTemposD1(sql, env),
-        ]);
+      const [
+        rows,
+        realizedByHotkey,
+        priceByNetuid,
+        nominatorCount,
+        tempos,
+        identityByColdkey,
+      ] = await Promise.all([
+        sql.unsafe(
+          `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = 1 ORDER BY netuid ASC, uid ASC`,
+          [hotkey],
+        ),
+        loadRealizedStakeBaselinesD1(sql, { hotkey }, env),
+        loadAlphaPricesByNetuidD1(sql, env),
+        loadNominatorCountD1(sql, hotkey, env),
+        loadSubnetTemposD1(sql, env),
+        loadIdentityByColdkeyMap((s, p) => sql.unsafe(s, p)),
+      ]);
       return json(
         buildValidatorDetail(rows, hotkey, {
-          identityByColdkey: new Map(),
+          identityByColdkey,
           priceByNetuid,
           nominatorCount,
           tempoByNetuid: tempos,

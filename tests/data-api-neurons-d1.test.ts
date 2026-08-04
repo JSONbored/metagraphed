@@ -581,12 +581,24 @@ test("GET /api/v1/subnets/:netuid/validators ranks by stake with the uid tiebrea
 
 // --- Global validators + detail ----------------------------------------------
 
+// The coldkey-identity join reads account_identity in the same database.
+// Regression pin for the post-Postgres blackout: the dispatcher used to pass
+// identityByColdkey: new Map(), so every operator name vanished when the
+// Postgres route (which did the join) was removed.
+function insertIdentity(account: string, name: string) {
+  db.prepare(
+    `INSERT INTO account_identity (account, name, url, github, image, discord, description, additional, captured_at)
+     VALUES (?, ?, NULL, NULL, NULL, NULL, NULL, NULL, ?)`,
+  ).run(account, name, Date.now());
+}
+
 test("GET /api/v1/validators serves the leaderboard from D1 with real prices and realized-return baselines", async () => {
   // Current state: one validator on root (price 1) with stake 200.
   insertNeuron({
     netuid: 0,
     uid: 0,
     hotkey: "5Val",
+    coldkey: "5ColdVal",
     stake_tao: 200,
     validator_permit: 1,
   });
@@ -600,6 +612,7 @@ test("GET /api/v1/validators serves the leaderboard from D1 with real prices and
     validator_permit: 1,
     snapshot_date: dayAgo(1),
   });
+  insertIdentity("5ColdVal", "Ventura Labs");
   const res = await call(req("/api/v1/validators"));
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
@@ -612,6 +625,11 @@ test("GET /api/v1/validators serves the leaderboard from D1 with real prices and
     null,
     "the baseline window resolved from neuron_daily on D1",
   );
+  // The identity join is live again: the coldkey's account_identity row
+  // surfaces as coldkey_identity, not the degraded has_identity:false shape.
+  const identity = entry.coldkey_identity as Row;
+  assert.equal(identity.has_identity, true);
+  assert.equal(identity.name, "Ventura Labs");
 });
 
 test("GET /api/v1/validators honors an explicit sort and clamps a bogus limit", async () => {
@@ -663,6 +681,7 @@ test("GET /api/v1/validators/:hotkey aggregates one hotkey across subnets with p
     validator_permit: 1,
   });
   insertPrice(7, dayAgo(0), 0.5);
+  insertIdentity("5Cold7-0", "Yuma");
   const res = await call(req("/api/v1/validators/5Val"));
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
@@ -670,6 +689,8 @@ test("GET /api/v1/validators/:hotkey aggregates one hotkey across subnets with p
   assert.equal(body.subnet_count, 2);
   // root 100 * 1 + netuid-7 100 * 0.5
   assert.equal(body.total_stake_tao, 150);
+  // Detail carries the same identity join as the leaderboard.
+  assert.equal((body.coldkey_identity as Row).name, "Yuma");
 });
 
 // --- nominator_count, joined from D1 (#9146) ---------------------------------

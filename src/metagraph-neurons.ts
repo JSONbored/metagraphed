@@ -5,7 +5,11 @@
 // Pure + exported for tests; the Worker handlers run the D1 or Postgres query
 // and call these builders.
 
-import { buildAccountIdentity, IDENTITY_FIELDS } from "./account-identity.ts";
+import {
+  buildAccountIdentity,
+  IDENTITY_FIELDS,
+  loadIdentityByColdkeyMap,
+} from "./account-identity.ts";
 import { NeuronSchema } from "../schemas-src/routes/subnet-metagraph.ts";
 import {
   parseFieldsParam,
@@ -1033,12 +1037,12 @@ export async function loadD1AlphaPricesByNetuid(
   }
 }
 
-// No identityByColdkey passed here (#5234): account_identity's D1 write path
-// is retired -- Postgres is the only actively-written copy -- so this D1
-// fallback deliberately serves a stable coldkey_identity:{has_identity:false,
-// ...} shape rather than joining a frozen/stale D1 copy. The live route
-// (workers/data-api.ts's /api/v1/validators, Postgres-backed) is what
-// actually joins.
+// The identity join reads D1's account_identity directly. The old #5234
+// posture ("D1 write path is retired -- the Postgres-backed route is what
+// actually joins") stopped being true when Postgres was removed: D1 became
+// the only path and every operator name silently vanished from /validators.
+// account_identity is actively written in D1 (the account-identity-sync
+// path), so it is joined here like any other side table.
 export async function loadGlobalValidators(
   d1: D1Runner,
   {
@@ -1046,7 +1050,7 @@ export async function loadGlobalValidators(
     limit = GLOBAL_VALIDATOR_LIMIT_DEFAULT,
   }: { sort?: string; limit?: unknown } = {},
 ): Promise<Row> {
-  const [rows, priceByNetuid] = await Promise.all([
+  const [rows, priceByNetuid, identityByColdkey] = await Promise.all([
     d1(
       "SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, " +
         "stake_tao, block_number, captured_at FROM neurons " +
@@ -1055,8 +1059,14 @@ export async function loadGlobalValidators(
       [],
     ),
     loadD1AlphaPricesByNetuid(d1),
+    loadIdentityByColdkeyMap(d1),
   ]);
-  return buildGlobalValidators(rows, { sort, limit, priceByNetuid });
+  return buildGlobalValidators(rows, {
+    sort,
+    limit,
+    priceByNetuid,
+    identityByColdkey,
+  });
 }
 
 export async function loadNeuron(
@@ -1236,19 +1246,23 @@ export function buildValidatorDetail(
   };
 }
 
-// No identityByColdkey passed here either -- see loadGlobalValidators' comment.
+// Identity joined here too -- see loadGlobalValidators' comment.
 export async function loadValidatorDetail(
   d1: D1Runner,
   hotkey: unknown,
 ): Promise<Row> {
-  const [rows, priceByNetuid] = await Promise.all([
+  const [rows, priceByNetuid, identityByColdkey] = await Promise.all([
     d1(
       `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = 1 ORDER BY netuid ASC, uid ASC`,
       [hotkey],
     ),
     loadD1AlphaPricesByNetuid(d1),
+    loadIdentityByColdkeyMap(d1),
   ]);
-  return buildValidatorDetail(rows, hotkey, { priceByNetuid });
+  return buildValidatorDetail(rows, hotkey, {
+    priceByNetuid,
+    identityByColdkey,
+  });
 }
 
 // The buildValidatorDetail fields a stake-decision comparison actually reads
