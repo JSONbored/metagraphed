@@ -401,6 +401,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/{network}/chain/burn": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch every subnet's live registration/burn cost in one response, ranked cheapest-first (#9399). Every subnet's live registration/burn cost in ONE response, ranked cheapest-first (#9399). The cross-subnet companion to /subnets/{netuid}/burn, which answers the same question one subnet at a time — 129 requests to compare them all. Served from a single chain read: Burn is an Identity-hashed map, so every key is derivable from its netuid and state_queryStorageAt returns them together. 120s KV cache, matching the per-subnet route (burn moves within minutes during registration bursts). A subnet whose burn is a genuine 0 is included, not dropped. subnet_count is what the chain reports exists (TotalNetworks) and read_count is how many were actually read — a gap between them means the read was partial. NOTE: there is no separate validator-permit price; permits are granted by the StakeThreshold, not purchased.
+         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         */
+        get: operations["chainBurnByNetwork"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/{network}/chain/emission-pipeline": {
         parameters: {
             query?: never;
@@ -2618,6 +2638,23 @@ export interface paths {
         };
         /** Fetch network-wide axon-removal activity over a 7d or 30d window across the subnets with observed removal activity (subnets with no AxonInfoRemoved events are absent): a per-subnet leaderboard (AxonInfoRemoved event count, distinct removers, and average removals per remover) ranked by total removals, a network rollup with the true distinct remover count (a hotkey removing an axon on several subnets counts once) and total removals, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-teardown intensity. `limit` caps the leaderboard (default 20, max 100). The teardown-side companion to the axon-announcement GET /api/v1/chain/serving and the network-wide companion to GET /api/v1/subnets/{netuid}/axon-removals. Read from the account_events AxonInfoRemoved stream, which the runtime has never populated; an empty block is marked `degraded` rather than published as a measured zero. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only). */
         get: operations["chainAxonRemovals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/chain/burn": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch every subnet's live registration/burn cost in one response, ranked cheapest-first (#9399). Every subnet's live registration/burn cost in ONE response, ranked cheapest-first (#9399). The cross-subnet companion to /subnets/{netuid}/burn, which answers the same question one subnet at a time — 129 requests to compare them all. Served from a single chain read: Burn is an Identity-hashed map, so every key is derivable from its netuid and state_queryStorageAt returns them together. 120s KV cache, matching the per-subnet route (burn moves within minutes during registration bursts). A subnet whose burn is a genuine 0 is included, not dropped. subnet_count is what the chain reports exists (TotalNetworks) and read_count is how many were actually read — a gap between them means the read was partial. NOTE: there is no separate validator-permit price; permits are granted by the StakeThreshold, not purchased. */
+        get: operations["chainBurn"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6841,6 +6878,32 @@ export interface components {
                 removals_per_remover: number | null;
             }[];
             window: ("7d" | "30d") | null;
+        };
+        ChainBurnArtifact: {
+            cheapest_burn_tao: number | null;
+            dearest_burn_tao: number | null;
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
+            median_burn_tao: number | null;
+            queried_at: string | null;
+            read_count: number;
+            schema_version: number;
+            subnet_count: number | null;
+            subnets: components["schemas"]["ChainBurnEntry"][];
+        } & {
+            [key: string]: unknown;
+        };
+        ChainBurnEntry: {
+            burn_tao: number;
+            netuid: number;
         };
         ChainCallsArtifact: {
             call_count: number;
@@ -14635,6 +14698,126 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainEventsStatsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainBurnByNetwork: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
+                network: "finney" | "mainnet" | "test" | "testnet";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "cheapest_burn_tao": 0.5,
+                     *         "dearest_burn_tao": 0.5,
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
+                     *         "median_burn_tao": 0.5,
+                     *         "queried_at": "2026-06-01T00:00:00.000Z",
+                     *         "read_count": 1,
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "burn_tao": 0.5,
+                     *             "netuid": 7
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainBurnArtifact"];
                     };
                 };
             };
@@ -31432,6 +31615,123 @@ export interface operations {
                      *     1,4,40,10
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainBurn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "cheapest_burn_tao": 0.5,
+                     *         "dearest_burn_tao": 0.5,
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
+                     *         "median_burn_tao": 0.5,
+                     *         "queried_at": "2026-06-01T00:00:00.000Z",
+                     *         "read_count": 1,
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "burn_tao": 0.5,
+                     *             "netuid": 7
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainBurnArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

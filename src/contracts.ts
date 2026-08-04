@@ -1630,6 +1630,13 @@ export const PUBLIC_ARTIFACTS = [
     COMPUTED_LIVE,
   ),
   artifact(
+    "chain-burn",
+    "/metagraph/chain/burn.json",
+    "Every subnet's live registration/burn cost in ONE response, ranked cheapest-first (#9399). The cross-subnet companion to /subnets/{netuid}/burn, which answers the same question one subnet at a time — 129 requests to compare them all. Served from a single chain read: Burn is an Identity-hashed map, so every key is derivable from its netuid and state_queryStorageAt returns them together. 120s KV cache, matching the per-subnet route (burn moves within minutes during registration bursts). A subnet whose burn is a genuine 0 is included, not dropped. subnet_count is what the chain reports exists (TotalNetworks) and read_count is how many were actually read — a gap between them means the read was partial. NOTE: there is no separate validator-permit price; permits are granted by the StakeThreshold, not purchased.",
+    "ChainBurnArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "subnet-ownership-history",
     "/metagraph/subnets/{netuid}/ownership-history.json",
     "Every ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302) — see docs/conviction-lock-mechanism.md for the on-chain mechanism: a permissionless, conviction-weighted contest that runs continuously for every subnet, where ownership transfers automatically once a challenger's rolled conviction overtakes the incumbent owner's (no vote, no owner cooperation required). Records carry a `source`: `chain-event` (decoded from the chain_events SubnetOwnerChanged stream, block-stamped) or `owner-observation` (inferred from two consecutive owner captures, so observed_at is when the change was noticed and block_number is null). Served live from the all-events tier (ADR 0013), falling to the R2 lakehouse reader when that tier cannot answer, no static file. A subnet that has never changed hands returns an empty ownership_changes array, not an error.",
@@ -3764,6 +3771,17 @@ export const API_ROUTES = [
         schema: { type: "integer", minimum: 0, maximum: 65535 },
       },
     ],
+  ),
+  route(
+    "chain-burn",
+    "GET",
+    "/api/v1/chain/burn",
+    "/metagraph/chain/burn.json",
+    "Fetch every subnet's live registration/burn cost in one response, ranked cheapest-first (#9399). Every subnet's live registration/burn cost in ONE response, ranked cheapest-first (#9399). The cross-subnet companion to /subnets/{netuid}/burn, which answers the same question one subnet at a time — 129 requests to compare them all. Served from a single chain read: Burn is an Identity-hashed map, so every key is derivable from its netuid and state_queryStorageAt returns them together. 120s KV cache, matching the per-subnet route (burn moves within minutes during registration bursts). A subnet whose burn is a genuine 0 is included, not dropped. subnet_count is what the chain reports exists (TotalNetworks) and read_count is how many were actually read — a gap between them means the read was partial. NOTE: there is no separate validator-permit price; permits are granted by the StakeThreshold, not purchased.",
+    "short",
+    ["chain"],
+    [],
+    [],
   ),
   route(
     "subnet-ownership-history",

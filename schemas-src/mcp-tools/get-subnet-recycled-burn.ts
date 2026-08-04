@@ -62,3 +62,28 @@ export const GetSubnetBurnOutputSchema = z
   })
   .passthrough();
 export type GetSubnetBurnOutput = z.infer<typeof GetSubnetBurnOutputSchema>;
+
+// #9399: the cross-subnet ranking. No netuid -- that is the point of it.
+export const GetChainBurnInputSchema = z
+  .object({
+    network: McpNetworkSchema.optional(),
+  })
+  .strict();
+export type GetChainBurnInput = z.infer<typeof GetChainBurnInputSchema>;
+
+export const GetChainBurnOutputSchema = z
+  .object({
+    schema_version: z.int().optional(),
+    queried_at: z.string().nullable(),
+    subnet_count: z.int().nullable(),
+    read_count: z.int(),
+    cheapest_burn_tao: z.number().nullable(),
+    dearest_burn_tao: z.number().nullable(),
+    median_burn_tao: z.number().nullable(),
+    subnets: z.array(
+      z.object({ netuid: z.int(), burn_tao: z.number() }).passthrough(),
+    ),
+    field_sources: FieldSourcesSchema,
+  })
+  .passthrough();
+export type GetChainBurnOutput = z.infer<typeof GetChainBurnOutputSchema>;

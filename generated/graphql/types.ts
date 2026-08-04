@@ -934,6 +934,28 @@ export type ChainAxonRemovalsSubnet = {
   removals_per_remover?: Maybe<Scalars['Float']['output']>;
 };
 
+/** Every subnet's live registration/burn cost in one read, ranked cheapest-first (#9399). The cross-subnet companion to subnet_burn. NOTE: there is no separate validator-permit price — permits are granted by the stake threshold, not bought. */
+export type ChainBurn = {
+  __typename?: 'ChainBurn';
+  cheapest_burn_tao?: Maybe<Scalars['Float']['output']>;
+  dearest_burn_tao?: Maybe<Scalars['Float']['output']>;
+  field_sources: Scalars['JSON']['output'];
+  median_burn_tao?: Maybe<Scalars['Float']['output']>;
+  queried_at?: Maybe<Scalars['String']['output']>;
+  read_count: Scalars['Int']['output'];
+  schema_version: Scalars['Int']['output'];
+  /** What the chain reports exists (SubtensorModule.TotalNetworks), kept separate from read_count: a gap between them means the read was partial. */
+  subnet_count?: Maybe<Scalars['Int']['output']>;
+  subnets: Array<ChainBurnEntry>;
+};
+
+/** One subnet's registration cost. A genuine 0 is included, not dropped — it is the cheapest registration on the network. */
+export type ChainBurnEntry = {
+  __typename?: 'ChainBurnEntry';
+  burn_tao: Scalars['Float']['output'];
+  netuid: Scalars['Int']['output'];
+};
+
 /** One row of the extrinsic call-mix breakdown -- a call_module (plus call_function when group_by=module_function), its extrinsic count over the window, and its share of the window total (null when the window has no extrinsics). */
 export type ChainCall = {
   __typename?: 'ChainCall';
@@ -2576,6 +2598,7 @@ export type Query = {
   chain_alpha_volume: ChainAlphaVolume;
   /** Network-wide axon-removal (teardown) leaderboard over a 7d/30d window (default 7d): subnets ranked by AxonInfoRemoved events with each's distinct-remover count and removals-per-remover teardown intensity, plus a network rollup and the per-subnet intensity spread, summed live from the account_events stream. The teardown counterpart of chain_serving's announcements -- where neurons are tearing endpoints down. limit caps the leaderboard (default 20, max 100). A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/chain/axon-removals. */
   chain_axon_removals: ChainAxonRemovals;
+  chain_burn?: Maybe<ChainBurn>;
   /** Extrinsic call-mix breakdown over a 7d/30d window (default 7d): the extrinsic count and share per call_module, or per call_module+call_function when group_by is module_function (default module), optionally scoped to a single call_module, ranked by count (limit default 50, max 100). Computed live from the extrinsics tier; a cold store yields a schema-stable empty breakdown, never a GraphQL error. Mirrors GET /api/v1/chain/calls. */
   chain_calls: ChainCalls;
   /** Network-wide stake & emission decentralization across every subnet's neurons at once: the raw stake/emission distribution, the same two lenses collapsed per controlling entity (an operator running hotkeys in ten subnets counts once, not ten times), and the permitted-validator stake distribution -- each as gini/HHI/Nakamoto/top-share/entropy. uids_per_entity is the network consolidation signal (1.0 = every UID a distinct owner). Current snapshot only (no window/params). Every metric block is null (never a GraphQL error) on a cold store. The network analog of subnet concentration. Mirrors GET /api/v1/chain/concentration. */
@@ -3117,6 +3140,11 @@ export type QueryChain_Alpha_VolumeArgs = {
 export type QueryChain_Axon_RemovalsArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
   window?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryChain_BurnArgs = {
+  network?: InputMaybe<Network>;
 };
 
 
@@ -5887,6 +5915,8 @@ export type ResolversTypes = ResolversObject<{
   ChainAxonRemovalsIntensityDistribution: ResolverTypeWrapper<ChainAxonRemovalsIntensityDistribution>;
   ChainAxonRemovalsNetwork: ResolverTypeWrapper<ChainAxonRemovalsNetwork>;
   ChainAxonRemovalsSubnet: ResolverTypeWrapper<ChainAxonRemovalsSubnet>;
+  ChainBurn: ResolverTypeWrapper<ChainBurn>;
+  ChainBurnEntry: ResolverTypeWrapper<ChainBurnEntry>;
   ChainCall: ResolverTypeWrapper<ChainCall>;
   ChainCalls: ResolverTypeWrapper<ChainCalls>;
   ChainConcentration: ResolverTypeWrapper<ChainConcentration>;
@@ -6202,6 +6232,8 @@ export type ResolversParentTypes = ResolversObject<{
   ChainAxonRemovalsIntensityDistribution: ChainAxonRemovalsIntensityDistribution;
   ChainAxonRemovalsNetwork: ChainAxonRemovalsNetwork;
   ChainAxonRemovalsSubnet: ChainAxonRemovalsSubnet;
+  ChainBurn: ChainBurn;
+  ChainBurnEntry: ChainBurnEntry;
   ChainCall: ChainCall;
   ChainCalls: ChainCalls;
   ChainConcentration: ChainConcentration;
@@ -7187,6 +7219,23 @@ export type ChainAxonRemovalsSubnetResolvers<ContextType = GqlContext, ParentTyp
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   removals?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   removals_per_remover?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type ChainBurnResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainBurn'] = ResolversParentTypes['ChainBurn']> = ResolversObject<{
+  cheapest_burn_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  dearest_burn_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  field_sources?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  median_burn_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  queried_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  read_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  subnet_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  subnets?: Resolver<Array<ResolversTypes['ChainBurnEntry']>, ParentType, ContextType>;
+}>;
+
+export type ChainBurnEntryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainBurnEntry'] = ResolversParentTypes['ChainBurnEntry']> = ResolversObject<{
+  burn_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type ChainCallResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainCall'] = ResolversParentTypes['ChainCall']> = ResolversObject<{
@@ -8477,6 +8526,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   chain_activity?: Resolver<ResolversTypes['ChainActivity'], ParentType, ContextType, Partial<QueryChain_ActivityArgs>>;
   chain_alpha_volume?: Resolver<ResolversTypes['ChainAlphaVolume'], ParentType, ContextType, Partial<QueryChain_Alpha_VolumeArgs>>;
   chain_axon_removals?: Resolver<ResolversTypes['ChainAxonRemovals'], ParentType, ContextType, Partial<QueryChain_Axon_RemovalsArgs>>;
+  chain_burn?: Resolver<Maybe<ResolversTypes['ChainBurn']>, ParentType, ContextType, Partial<QueryChain_BurnArgs>>;
   chain_calls?: Resolver<ResolversTypes['ChainCalls'], ParentType, ContextType, Partial<QueryChain_CallsArgs>>;
   chain_concentration?: Resolver<ResolversTypes['ChainConcentration'], ParentType, ContextType>;
   chain_deregistrations?: Resolver<ResolversTypes['ChainDeregistrations'], ParentType, ContextType, Partial<QueryChain_DeregistrationsArgs>>;
@@ -9913,6 +9963,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ChainAxonRemovalsIntensityDistribution?: ChainAxonRemovalsIntensityDistributionResolvers<ContextType>;
   ChainAxonRemovalsNetwork?: ChainAxonRemovalsNetworkResolvers<ContextType>;
   ChainAxonRemovalsSubnet?: ChainAxonRemovalsSubnetResolvers<ContextType>;
+  ChainBurn?: ChainBurnResolvers<ContextType>;
+  ChainBurnEntry?: ChainBurnEntryResolvers<ContextType>;
   ChainCall?: ChainCallResolvers<ContextType>;
   ChainCalls?: ChainCallsResolvers<ContextType>;
   ChainConcentration?: ChainConcentrationResolvers<ContextType>;
