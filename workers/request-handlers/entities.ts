@@ -330,6 +330,7 @@ import {
   STAKE_FLOW_DIRECTIONS,
 } from "../../src/stake-flow.ts";
 import { buildAlphaVolume } from "../../src/alpha-volume.ts";
+import { loadSubnetAlphaVolumeFromArtifact } from "../../src/subnet-alpha-volume-artifact.ts";
 import {
   buildSubnetOhlc,
   OHLC_INTERVALS,
@@ -3946,10 +3947,17 @@ export async function handleSubnetAlphaVolume(
   )) as {
     data: ReturnType<typeof buildAlphaVolume>;
     generatedAt: string | null;
-  } | null) ?? {
-    data: buildAlphaVolume([], Number(netuid), { marketCapTao }),
-    generatedAt: null,
-  };
+  } | null) ??
+    // #9371: the projection tier its chain-wide sibling has had since #9146. The
+    // Postgres tier is "retired" and declines unconditionally, so this card reported
+    // 0 for every subnet while /chain/alpha-volume carried the same subnet's real
+    // volume in its own per-subnet breakdown -- from these very rows.
+    (await loadSubnetAlphaVolumeFromArtifact(env, Number(netuid), {
+      marketCapTao,
+    })) ?? {
+      data: buildAlphaVolume([], Number(netuid), { marketCapTao }),
+      generatedAt: null,
+    };
   return envelopeResponse(
     request,
     {

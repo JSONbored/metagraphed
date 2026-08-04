@@ -1,6 +1,7 @@
 import { loadSubnetWeightSettersColdTier } from "./subnet-weight-setters-loader.ts";
 import { loadSubnetWeightsColdTier } from "./subnet-weights-loader.ts";
 import { loadSubnetEventCardColdTier } from "./subnet-event-card-loader.ts";
+import { loadSubnetAlphaVolumeFromArtifact } from "./subnet-alpha-volume-artifact.ts";
 import {
   CHAIN_SERVING_ROLLUP,
   CHAIN_STAKE_MOVES_ROLLUP,
@@ -4030,6 +4031,11 @@ const rootValue = {
     );
     const data =
       (tier?.data as Row | undefined) ??
+      (
+        await loadSubnetAlphaVolumeFromArtifact(context.env, netuid, {
+          marketCapTao,
+        })
+      )?.data ??
       buildAlphaVolume([], netuid, { marketCapTao });
     return {
       schema_version: data.schema_version ?? 1,
