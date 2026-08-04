@@ -45,6 +45,13 @@ const NOMINATOR_COUNTS_SCHEMA = fs.readFileSync(
   path.join(process.cwd(), "migrations/d1/0012_validator_nominator_counts.sql"),
   "utf8",
 );
+// subnet_hyperparams -- the tempo join target apy_estimate needs (#9342). Same
+// reason as the two above: the real database carries it and the leaderboard's
+// read joins against it.
+const HYPERPARAMS_SCHEMA = fs.readFileSync(
+  path.join(process.cwd(), "migrations/d1/0009_hyperparams_identity.sql"),
+  "utf8",
+);
 
 let db: InstanceType<typeof DatabaseSync>;
 
@@ -257,7 +264,16 @@ beforeEach(() => {
   db.exec(NEURONS_READ_INDEXES);
   db.exec(OBSERVATIONS_SCHEMA);
   db.exec(NOMINATOR_COUNTS_SCHEMA);
+  db.exec(HYPERPARAMS_SCHEMA);
 });
+
+// netuid -> tempo(blocks), the row apy_estimate annualizes against. Values are
+// the real chain ones (SubtensorModule::Tempo): root 100, netuid 1 is 99.
+function insertTempo(netuid: number, tempo: number | null) {
+  db.prepare(
+    "INSERT INTO subnet_hyperparams (netuid, tempo, captured_at) VALUES (?, ?, ?)",
+  ).run(netuid, tempo as never, Date.now());
+}
 
 // --- POST /api/v1/internal/neurons-sync: the D1 write lane -------------------
 
@@ -1341,4 +1357,196 @@ test("a missing subnet_snapshots table degrades prices and baselines, never the 
   // 1:1), and the baseline map degraded to empty -> realized returns null.
   assert.equal(entry.total_stake_tao, 0);
   assert.equal(entry.realized_return_1d, null);
+});
+
+// --- apy_estimate (#9342) ----------------------------------------------------
+//
+// The computation was always correct; both handlers passed `tempoByNetuid:
+// new Map()`, so every lookup missed and apy_estimate was `null` on EVERY served
+// response. These pin the wiring, not the maths -- each one fails against the
+// empty-map placeholder.
+
+test("GET /api/v1/validators resolves apy_estimate from the subnet_hyperparams tempo", async () => {
+  insertTempo(1, 99);
+  // A non-root membership needs a price or it is excluded from the totals
+  // entirely, before apy is ever reached.
+  insertPrice(1, dayAgo(0), 0.5);
+  insertNeuron({
+    netuid: 1,
+    uid: 0,
+    hotkey: "5Apy",
+    stake_tao: 100,
+    emission_tao: 1,
+    validator_permit: 1,
+  });
+  const res = await call(req("/api/v1/validators"));
+  assert.equal(res.status, 200);
+  const entry = ((await res.json()) as Row).validators as Row[];
+  assert.notEqual(
+    entry[0].apy_estimate,
+    null,
+    "an empty tempo map made this unconditionally null",
+  );
+  assert.equal(entry[0].apy_estimate_eligible_subnet_count, 1);
+});
+
+test("GET /api/v1/validators/:hotkey resolves apy_estimate too", async () => {
+  // The detail route had the same placeholder as the leaderboard, so fixing one
+  // and not the other would leave the two surfaces disagreeing about the same
+  // validator.
+  insertTempo(1, 99);
+  insertPrice(1, dayAgo(0), 0.5);
+  insertNeuron({
+    netuid: 1,
+    uid: 0,
+    hotkey: "5Apy",
+    stake_tao: 100,
+    emission_tao: 1,
+    validator_permit: 1,
+  });
+  const res = await call(req("/api/v1/validators/5Apy"));
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.notEqual(body.apy_estimate, null);
+  assert.equal(body.apy_estimate_eligible_subnet_count, 1);
+});
+
+test("a shorter tempo annualizes to a higher apy for the same emission", async () => {
+  // The tempo has to actually reach the maths, not merely be non-empty: more
+  // epochs per year on the same per-epoch emission means more annual yield.
+  insertTempo(1, 99);
+  insertTempo(2, 990);
+  insertPrice(1, dayAgo(0), 0.5);
+  insertPrice(2, dayAgo(0), 0.5);
+  insertNeuron({
+    netuid: 1,
+    uid: 0,
+    hotkey: "5Fast",
+    stake_tao: 100,
+    emission_tao: 1,
+    validator_permit: 1,
+  });
+  insertNeuron({
+    netuid: 2,
+    uid: 0,
+    hotkey: "5Slow",
+    stake_tao: 100,
+    emission_tao: 1,
+    validator_permit: 1,
+  });
+  const res = await call(req("/api/v1/validators"));
+  const rows = ((await res.json()) as Row).validators as Row[];
+  const fast = rows.find((r) => r.hotkey === "5Fast") as Row;
+  const slow = rows.find((r) => r.hotkey === "5Slow") as Row;
+  assert.ok(
+    (fast.apy_estimate as number) > (slow.apy_estimate as number),
+    "10x the tempo must be ~1/10th the apy",
+  );
+});
+
+test("root counts toward apy_estimate — it is a real network with a real tempo", async () => {
+  // Verified against finney: NetworksAdded(0) is true and Tempo(0) is 100, so a
+  // root membership is not a capture artefact. Excluding it would drop the
+  // position of exactly the validators whose stake is mostly on root.
+  insertTempo(0, 100);
+  insertNeuron({
+    netuid: 0,
+    uid: 0,
+    hotkey: "5Root",
+    stake_tao: 500,
+    emission_tao: 2,
+    validator_permit: 1,
+  });
+  const res = await call(req("/api/v1/validators"));
+  const entry = (((await res.json()) as Row).validators as Row[])[0];
+  assert.notEqual(entry.apy_estimate, null);
+  assert.equal(entry.apy_estimate_eligible_subnet_count, 1);
+});
+
+test("a membership whose tempo is missing is excluded, not defaulted", async () => {
+  // netuid 2 has no hyperparams row at all, so only netuid 1 is eligible -- the
+  // count is what says so, and a fabricated default would hide it.
+  insertTempo(1, 99);
+  insertPrice(1, dayAgo(0), 0.5);
+  insertPrice(2, dayAgo(0), 0.5);
+  insertNeuron({
+    netuid: 1,
+    uid: 0,
+    hotkey: "5Mix",
+    stake_tao: 100,
+    emission_tao: 1,
+    validator_permit: 1,
+  });
+  insertNeuron({
+    netuid: 2,
+    uid: 0,
+    hotkey: "5Mix",
+    stake_tao: 100,
+    emission_tao: 1,
+    validator_permit: 1,
+  });
+  const res = await call(req("/api/v1/validators"));
+  const entry = (((await res.json()) as Row).validators as Row[])[0];
+  assert.equal(entry.apy_estimate_eligible_subnet_count, 1);
+});
+
+test("a zero tempo is treated as unresolved rather than an infinite yield", async () => {
+  // tempo=0 would divide into an infinite epochsPerYear; tempoByNetuid drops it,
+  // so the row is excluded and apy_estimate stays null.
+  insertTempo(1, 0);
+  insertNeuron({
+    netuid: 1,
+    uid: 0,
+    hotkey: "5Zero",
+    stake_tao: 100,
+    emission_tao: 1,
+    validator_permit: 1,
+  });
+  const res = await call(req("/api/v1/validators"));
+  const entry = (((await res.json()) as Row).validators as Row[])[0];
+  assert.equal(entry.apy_estimate, null);
+  assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
+});
+
+test("apy_estimate stays null when the hyperparams table is cold", async () => {
+  // The degrade contract: no tempo rows at all means no APY opinion, which is
+  // what a caller got unconditionally before the read was wired.
+  insertNeuron({
+    netuid: 1,
+    uid: 0,
+    hotkey: "5Cold",
+    stake_tao: 100,
+    emission_tao: 1,
+    validator_permit: 1,
+  });
+  const res = await call(req("/api/v1/validators"));
+  const entry = (((await res.json()) as Row).validators as Row[])[0];
+  assert.equal(entry.apy_estimate, null);
+  assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
+});
+
+test("a missing subnet_hyperparams table degrades apy_estimate, never the validators route", async () => {
+  // Same degrade contract as the subnet_snapshots case above: the tempo read is
+  // an ENRICHMENT, so losing it costs the APY opinion and nothing else. A throw
+  // that escaped here would take down the whole leaderboard over a side table.
+  db.exec("DROP TABLE subnet_hyperparams");
+  insertPrice(1, dayAgo(0), 0.5);
+  insertNeuron({
+    netuid: 1,
+    uid: 0,
+    hotkey: "5Val",
+    stake_tao: 100,
+    emission_tao: 1,
+    validator_permit: 1,
+  });
+  const res = await call(req("/api/v1/validators"));
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.equal(body.validator_count, 1, "the route still serves");
+  const entry = (body.validators as Row[])[0];
+  // 100 alpha priced at 0.5 = 50 TAO. The point is that it is unchanged by the
+  // missing tempo table -- the stake path and the APY path are independent.
+  assert.equal(entry.total_stake_tao, 50, "the stake total is unaffected");
+  assert.equal(entry.apy_estimate, null, "only the APY opinion is lost");
+  assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
 });

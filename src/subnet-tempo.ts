@@ -1,8 +1,13 @@
 // Subnet tempo lookup (#2551) -- netuid -> tempo(blocks), sourced from
-// subnet_hyperparams (migration 0036). Read/join lands here, mirroring
-// src/validator-nominator-summary.ts's role for nominator_count; the read
-// path lives in workers/data-api.ts (loadSubnetTempos), joined into
-// buildGlobalValidators/buildValidatorDetail's apy_estimate by netuid.
+// subnet_hyperparams, which lives on D1 (migrations/d1/0009) and carries a tempo
+// for every subnet. Mirrors src/validator-nominator-summary.ts's role for
+// nominator_count; the read path is `loadSubnetTemposD1` in workers/data-api.ts,
+// joined into buildGlobalValidators/buildValidatorDetail's apy_estimate by netuid.
+//
+// #9342: that read did not exist for two releases. Both validator handlers passed
+// an empty Map, so every lookup missed and apy_estimate was unconditionally null
+// on the served responses -- indistinguishable from a genuinely unresolved tempo,
+// which is the failure mode the null was designed to express.
 
 type Row = Record<string, unknown>;
 
