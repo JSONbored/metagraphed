@@ -6,18 +6,19 @@ import assert from "node:assert/strict";
 import { afterEach, describe, test, vi } from "vitest";
 import {
   PROJECTION_LANES,
+  PROJECTION_NETWORKS,
+  projectionKey,
   STAKE_FLOW_PROJECTION_WINDOWS,
   runProjectionLane,
   runProjectionLanes,
   type ProjectionLane,
 } from "../src/projection-lanes.ts";
-import { CHAIN_TRANSFERS_PROJECTION_KEY } from "../src/chain-transfers-artifact.ts";
 import { BLOCKS_SUMMARY_SCAN_CAP } from "../src/blocks-summary.ts";
-import { CHAIN_TRANSFER_PAIRS_PROJECTION_KEY } from "../src/chain-transfer-pairs-artifact.ts";
 import {
   CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY,
   CHAIN_DEREGISTRATIONS_PROJECTION_KEY,
 } from "../src/chain-deregistrations-artifact.ts";
+import { LAKEHOUSE_NAMESPACES } from "../src/chain-network.ts";
 import { type Row } from "./row-type.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -283,6 +284,7 @@ describe("chain-transfers lane compute", () => {
     );
     const body = (await laneNamed("chain-transfers").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
     assert.equal(queries.length, 10);
     const cutoff7d = NOW - 7 * DAY_MS;
@@ -337,6 +339,7 @@ describe("chain-transfers lane compute", () => {
     lakeFetch([], [], "fail");
     const body = await laneNamed("chain-transfers").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     );
     assert.equal(body, null);
   });
@@ -344,22 +347,34 @@ describe("chain-transfers lane compute", () => {
   test("a failure in the leaderboard statements declines too", async () => {
     lakeFetch([], [], [], "fail");
     assert.equal(
-      await laneNamed("chain-transfers").compute(LAKE_ENV as unknown as Env),
+      await laneNamed("chain-transfers").compute(
+        LAKE_ENV as unknown as Env,
+        "mainnet",
+      ),
       null,
     );
     lakeFetch([], [], [], [], "fail");
     assert.equal(
-      await laneNamed("chain-transfers").compute(LAKE_ENV as unknown as Env),
+      await laneNamed("chain-transfers").compute(
+        LAKE_ENV as unknown as Env,
+        "mainnet",
+      ),
       null,
     );
     lakeFetch("fail");
     assert.equal(
-      await laneNamed("chain-transfers").compute(LAKE_ENV as unknown as Env),
+      await laneNamed("chain-transfers").compute(
+        LAKE_ENV as unknown as Env,
+        "mainnet",
+      ),
       null,
     );
     lakeFetch([], "fail");
     assert.equal(
-      await laneNamed("chain-transfers").compute(LAKE_ENV as unknown as Env),
+      await laneNamed("chain-transfers").compute(
+        LAKE_ENV as unknown as Env,
+        "mainnet",
+      ),
       null,
     );
   });
@@ -389,6 +404,7 @@ describe("blocks-summary lane compute", () => {
     const queries = lakeFetch(BLOCKS);
     const body = (await laneNamed("blocks-summary").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
 
     assert.equal(queries.length, 1);
@@ -413,7 +429,10 @@ describe("blocks-summary lane compute", () => {
     // all-or-nothing contract exists to prevent.
     lakeFetch([]);
     assert.equal(
-      await laneNamed("blocks-summary").compute(LAKE_ENV as unknown as Env),
+      await laneNamed("blocks-summary").compute(
+        LAKE_ENV as unknown as Env,
+        "mainnet",
+      ),
       null,
     );
   });
@@ -421,7 +440,10 @@ describe("blocks-summary lane compute", () => {
   test("declines when the lakehouse query fails", async () => {
     lakeFetch("fail");
     assert.equal(
-      await laneNamed("blocks-summary").compute(LAKE_ENV as unknown as Env),
+      await laneNamed("blocks-summary").compute(
+        LAKE_ENV as unknown as Env,
+        "mainnet",
+      ),
       null,
     );
   });
@@ -442,6 +464,7 @@ describe("chain-registrations lane compute", () => {
     const queries = lakeFetch(STAMP, PAIRS, STAMP, PAIRS);
     const body = (await laneNamed("chain-registrations").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
 
     assert.equal(queries.length, 4, "2 windows x (stamp + pairs)");
@@ -469,6 +492,7 @@ describe("chain-registrations lane compute", () => {
     lakeFetch(STAMP, PAIRS);
     const body = (await laneNamed("chain-registrations").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
     const rows = ((body.windows as Row)["7d"] as Row).rows as Row[];
     assert.deepEqual(
@@ -482,6 +506,7 @@ describe("chain-registrations lane compute", () => {
     const queries = lakeFetch([{ newest_observed: null }]);
     const body = (await laneNamed("chain-registrations").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
     assert.equal(queries.length, 2, "one stamp per window, no pair read");
     const win = (body.windows as Row)["7d"] as Row;
@@ -494,6 +519,7 @@ describe("chain-registrations lane compute", () => {
     assert.equal(
       await laneNamed("chain-registrations").compute(
         LAKE_ENV as unknown as Env,
+        "mainnet",
       ),
       null,
     );
@@ -507,6 +533,7 @@ describe("chain-registrations lane compute", () => {
     assert.equal(
       await laneNamed("chain-registrations").compute(
         LAKE_ENV as unknown as Env,
+        "mainnet",
       ),
       null,
     );
@@ -522,6 +549,7 @@ describe("chain-registrations lane compute", () => {
     ]);
     const body = (await laneNamed("chain-registrations").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
     const win = (body.windows as Row)["7d"] as Row;
     // The events still count -- they happened -- but only "A" is a registrant.
@@ -537,6 +565,7 @@ describe("chain-registrations lane compute", () => {
     lakeFetch(STAMP, [{ netuid: 5, hotkey: "A", n: "oops" }]);
     const body = (await laneNamed("chain-registrations").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
     assert.deepEqual(((body.windows as Row)["7d"] as Row).rows, [
       { netuid: 5, registrations: 0, distinct_registrants: 1 },
@@ -550,6 +579,7 @@ describe("chain-registrations lane compute", () => {
     ]);
     const body = (await laneNamed("chain-registrations").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
     const rows = ((body.windows as Row)["7d"] as Row).rows as Row[];
     assert.deepEqual(
@@ -563,6 +593,7 @@ describe("chain-registrations lane compute", () => {
     lakeFetch(STAMP, [{ netuid: "not-a-number", hotkey: "A", n: 9 }]);
     const body = (await laneNamed("chain-registrations").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
     assert.deepEqual(((body.windows as Row)["7d"] as Row).rows, []);
   });
@@ -590,6 +621,7 @@ describe("chain-stake-flow lane compute", () => {
     const queries = lakeFetch(ROWS, []);
     const body = (await laneNamed("chain-stake-flow").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
     // One query per PROJECTED window -- the union of the chain route's set and
     // the per-subnet route's, since both are served from this one artifact.
@@ -625,12 +657,18 @@ describe("chain-stake-flow lane compute", () => {
   test("a failed window declines the whole compute", async () => {
     lakeFetch("fail");
     assert.equal(
-      await laneNamed("chain-stake-flow").compute(LAKE_ENV as unknown as Env),
+      await laneNamed("chain-stake-flow").compute(
+        LAKE_ENV as unknown as Env,
+        "mainnet",
+      ),
       null,
     );
     lakeFetch([], "fail");
     assert.equal(
-      await laneNamed("chain-stake-flow").compute(LAKE_ENV as unknown as Env),
+      await laneNamed("chain-stake-flow").compute(
+        LAKE_ENV as unknown as Env,
+        "mainnet",
+      ),
       null,
     );
   });
@@ -669,6 +707,7 @@ describe("chain-activity lane compute", () => {
     );
     const body = (await laneNamed("chain-activity").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
     assert.equal(queries.length, 8);
     const cutoff7d = NOW - 7 * DAY_MS;
@@ -738,7 +777,10 @@ describe("chain-activity lane compute", () => {
     ] as ("fail" | unknown[])[][]) {
       lakeFetch(...responses);
       assert.equal(
-        await laneNamed("chain-activity").compute(LAKE_ENV as unknown as Env),
+        await laneNamed("chain-activity").compute(
+          LAKE_ENV as unknown as Env,
+          "mainnet",
+        ),
         null,
       );
     }
@@ -748,13 +790,19 @@ describe("chain-activity lane compute", () => {
     // In the extrinsic rows...
     lakeFetch([{ day_index: "bogus", extrinsic_count: "1" }], [], [], []);
     assert.equal(
-      await laneNamed("chain-activity").compute(LAKE_ENV as unknown as Env),
+      await laneNamed("chain-activity").compute(
+        LAKE_ENV as unknown as Env,
+        "mainnet",
+      ),
       null,
     );
     // ...and in the block rows.
     lakeFetch([], [], [{ day_index: -5, block_count: "1" }], []);
     assert.equal(
-      await laneNamed("chain-activity").compute(LAKE_ENV as unknown as Env),
+      await laneNamed("chain-activity").compute(
+        LAKE_ENV as unknown as Env,
+        "mainnet",
+      ),
       null,
     );
   });
@@ -783,6 +831,7 @@ describe("chain-calls lane compute", () => {
     );
     const body = (await laneNamed("chain-calls").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
     assert.equal(queries.length, 8);
     const cutoff7d = NOW - 7 * DAY_MS;
@@ -843,7 +892,10 @@ describe("chain-calls lane compute", () => {
     ] as ("fail" | unknown[])[][]) {
       lakeFetch(...responses);
       assert.equal(
-        await laneNamed("chain-calls").compute(LAKE_ENV as unknown as Env),
+        await laneNamed("chain-calls").compute(
+          LAKE_ENV as unknown as Env,
+          "mainnet",
+        ),
         null,
       );
     }
@@ -891,6 +943,7 @@ describe("chain-fees lane compute", () => {
     );
     const body = (await laneNamed("chain-fees").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
     assert.equal(queries.length, 10);
     const cutoff7d = NOW - 7 * DAY_MS;
@@ -975,7 +1028,10 @@ describe("chain-fees lane compute", () => {
     ] as ("fail" | unknown[])[][]) {
       lakeFetch(...responses);
       assert.equal(
-        await laneNamed("chain-fees").compute(LAKE_ENV as unknown as Env),
+        await laneNamed("chain-fees").compute(
+          LAKE_ENV as unknown as Env,
+          "mainnet",
+        ),
         null,
       );
     }
@@ -985,19 +1041,28 @@ describe("chain-fees lane compute", () => {
     // In the daily series...
     lakeFetch([{ day_index: null, extrinsic_count: "1" }], [], [], [], []);
     assert.equal(
-      await laneNamed("chain-fees").compute(LAKE_ENV as unknown as Env),
+      await laneNamed("chain-fees").compute(
+        LAKE_ENV as unknown as Env,
+        "mainnet",
+      ),
       null,
     );
     // ...in the fee medians...
     lakeFetch([], [], [{ day_index: "bogus", median_value: 1 }], [], []);
     assert.equal(
-      await laneNamed("chain-fees").compute(LAKE_ENV as unknown as Env),
+      await laneNamed("chain-fees").compute(
+        LAKE_ENV as unknown as Env,
+        "mainnet",
+      ),
       null,
     );
     // ...and in the tip medians.
     lakeFetch([], [], [], [{ day_index: -1, median_value: 1 }], []);
     assert.equal(
-      await laneNamed("chain-fees").compute(LAKE_ENV as unknown as Env),
+      await laneNamed("chain-fees").compute(
+        LAKE_ENV as unknown as Env,
+        "mainnet",
+      ),
       null,
     );
   });
@@ -1026,6 +1091,7 @@ describe("chain-signers lane compute", () => {
     );
     const body = (await laneNamed("chain-signers").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
     assert.equal(queries.length, 6);
     const cutoff7d = NOW - 7 * DAY_MS;
@@ -1064,7 +1130,10 @@ describe("chain-signers lane compute", () => {
     )[][]) {
       lakeFetch(...responses);
       assert.equal(
-        await laneNamed("chain-signers").compute(LAKE_ENV as unknown as Env),
+        await laneNamed("chain-signers").compute(
+          LAKE_ENV as unknown as Env,
+          "mainnet",
+        ),
         null,
       );
     }
@@ -1087,6 +1156,7 @@ describe("chain-alpha-volume lane compute", () => {
     const queries = lakeFetch(ROWS);
     const body = (await laneNamed("chain-alpha-volume").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
     assert.equal(queries.length, 1);
     assert.match(queries[0]!, /FROM chain\.account_events/);
@@ -1110,7 +1180,10 @@ describe("chain-alpha-volume lane compute", () => {
   test("a failed query declines the compute", async () => {
     lakeFetch("fail");
     assert.equal(
-      await laneNamed("chain-alpha-volume").compute(LAKE_ENV as unknown as Env),
+      await laneNamed("chain-alpha-volume").compute(
+        LAKE_ENV as unknown as Env,
+        "mainnet",
+      ),
       null,
     );
   });
@@ -1129,6 +1202,7 @@ describe("chain-stake-transfers lane compute", () => {
     );
     const body = (await laneNamed("chain-stake-transfers").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
     // Three statements, not four: the guarded window issued only its
     // network read.
@@ -1165,6 +1239,7 @@ describe("chain-stake-transfers lane compute", () => {
     lakeFetch([]);
     const body = (await laneNamed("chain-stake-transfers").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
     assert.deepEqual((body.windows as Row)["7d"], {
       days: 7,
@@ -1178,6 +1253,7 @@ describe("chain-stake-transfers lane compute", () => {
     assert.equal(
       await laneNamed("chain-stake-transfers").compute(
         LAKE_ENV as unknown as Env,
+        "mainnet",
       ),
       null,
     );
@@ -1186,6 +1262,7 @@ describe("chain-stake-transfers lane compute", () => {
     assert.equal(
       await laneNamed("chain-stake-transfers").compute(
         LAKE_ENV as unknown as Env,
+        "mainnet",
       ),
       null,
     );
@@ -1202,6 +1279,7 @@ describe("chain-stake-moves lane compute", () => {
     );
     const body = (await laneNamed("chain-stake-moves").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
     assert.equal(queries.length, 3);
     assert.match(queries[0]!, /event_kind = 'StakeMoved'/);
@@ -1229,7 +1307,10 @@ describe("chain-stake-moves lane compute", () => {
   test("a failed statement declines the whole compute", async () => {
     lakeFetch("fail");
     assert.equal(
-      await laneNamed("chain-stake-moves").compute(LAKE_ENV as unknown as Env),
+      await laneNamed("chain-stake-moves").compute(
+        LAKE_ENV as unknown as Env,
+        "mainnet",
+      ),
       null,
     );
   });
@@ -1265,6 +1346,7 @@ describe("chain-transfer-pairs lane compute", () => {
     );
     const body = (await laneNamed("chain-transfer-pairs").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
     assert.equal(queries.length, 6);
     const cutoff7d = NOW - 7 * DAY_MS;
@@ -1319,6 +1401,7 @@ describe("chain-transfer-pairs lane compute", () => {
       assert.equal(
         await laneNamed("chain-transfer-pairs").compute(
           LAKE_ENV as unknown as Env,
+          "mainnet",
         ),
         null,
       );
@@ -1354,7 +1437,15 @@ describe("runProjectionLanes", () => {
     // lane and the runner were both right and the TEST was what had to be
     // edited in lockstep. Deriving means registering a lane can only fail this
     // if the lane genuinely did not run or did not write.
-    const registered = PROJECTION_LANES.map((lane) => lane.name);
+    // Every lane x every network (#9412): mainnet keeps its bare name, each
+    // other chain is suffixed, so a failing testnet lane is never reported
+    // under the mainnet lane's name. Derived from BOTH registries rather than
+    // written out, for the reason the note above gives.
+    const registered = PROJECTION_NETWORKS.flatMap((network) =>
+      PROJECTION_LANES.map((lane) =>
+        network === "mainnet" ? lane.name : `${lane.name}:${network}`,
+      ),
+    );
     const outcome = result as {
       ok: boolean;
       lanes: Record<string, number | null>;
@@ -1377,14 +1468,25 @@ describe("runProjectionLanes", () => {
     assert.equal(outcome.ok, true);
     assert.deepEqual(
       puts.map((put) => put.key).sort(),
-      [
-        ...PROJECTION_LANES.map((lane) => lane.artifactKey),
-        // The one lane that fans its single computed body across two objects
-        // (src/chain-deregistrations-artifact.ts's header says why).
-        CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY,
-      ].sort(),
-      "each lane writes its own artifact key, plus any it declares a split for",
+      PROJECTION_NETWORKS.flatMap((network) =>
+        [
+          ...PROJECTION_LANES.map((lane) => lane.artifactKey),
+          // The one lane that fans its single computed body across two objects
+          // (src/chain-deregistrations-artifact.ts's header says why).
+          CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY,
+        ].map((key) => projectionKey(key, network)),
+      ).sort(),
+      "each lane writes its own artifact key per network, plus any split it declares",
     );
+    // MAINNET'S KEYS ARE UNPREFIXED. Every artifact written before #9412 stays
+    // readable and a mainnet request reads the object it read before -- the
+    // asymmetry networkKvKey and chainTable already use.
+    for (const lane of PROJECTION_LANES) {
+      assert.ok(
+        puts.some((put) => put.key === lane.artifactKey),
+        `${lane.name} must still write its unprefixed mainnet key`,
+      );
+    }
   });
 
   test("one failed lane never skips the next — failures are isolated", async () => {
@@ -1405,23 +1507,79 @@ describe("runProjectionLanes", () => {
     assert.equal(result.lanes["chain-stake-flow"], 0);
     assert.equal(result.lanes["chain-stake-moves"], 0);
     assert.equal(result.lanes["blocks-summary"], 1);
-    assert.equal(Object.keys(result.lanes).length, PROJECTION_LANES.length);
+    assert.equal(
+      Object.keys(result.lanes).length,
+      PROJECTION_LANES.length * PROJECTION_NETWORKS.length,
+    );
     assert.deepEqual(
       puts.map((put) => put.key),
-      PROJECTION_LANES.flatMap((lane) =>
-        lane.artifactKey === CHAIN_DEREGISTRATIONS_PROJECTION_KEY
-          ? [lane.artifactKey, CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY]
-          : [lane.artifactKey],
+      PROJECTION_NETWORKS.flatMap((network) =>
+        PROJECTION_LANES.flatMap((lane) =>
+          (lane.artifactKey === CHAIN_DEREGISTRATIONS_PROJECTION_KEY
+            ? [lane.artifactKey, CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY]
+            : [lane.artifactKey]
+          ).map((key) => projectionKey(key, network)),
+        ),
       ).filter(
         (key) =>
-          key !== CHAIN_TRANSFERS_PROJECTION_KEY &&
-          key !== CHAIN_TRANSFER_PAIRS_PROJECTION_KEY,
+          // The two lanes stubbed to fail write nothing, on EITHER network.
+          !key.endsWith("chain-transfers.json") &&
+          !key.endsWith("chain-transfer-pairs.json"),
       ),
     );
+    // Each network reports its OWN failure under its own route label, so a
+    // testnet decline never lands in the mainnet lane's telemetry -- which
+    // would make an outage on the secondary chain page as one on the primary.
     assert.deepEqual(
       events.map((event) => event.route),
-      ["projection:chain-transfers", "projection:chain-transfer-pairs"],
+      PROJECTION_NETWORKS.flatMap((network) =>
+        ["chain-transfers", "chain-transfer-pairs"].map((lane) =>
+          network === "mainnet"
+            ? `projection:${lane}`
+            : `projection:${lane}:${network}`,
+        ),
+      ),
     );
+  });
+
+  // A testnet lane's decline is REPORTED but must not fail the tick: its decode
+  // lane is younger and its tables can genuinely be empty for a window, so
+  // letting it set `ok: false` would drain the meaning out of the one signal
+  // that says mainnet is broken.
+  test("only mainnet decides the tick verdict", async () => {
+    // EVERY testnet query fails; every mainnet one succeeds.
+    lakeFetchWithBlocks((sql) => sql.includes("chain_testnet."));
+    const { puts, bucket } = archiveBucket();
+    const seen: string[] = [];
+    const result = await runProjectionLanes(
+      { ...LAKE_ENV, METAGRAPH_ARCHIVE: bucket } as unknown as Env,
+      {
+        recordException: (async (_env: unknown, event: { route?: string }) => {
+          seen.push(String(event.route));
+          return true;
+        }) as never,
+      },
+    );
+    assert.equal(result.ok, true, "a testnet decline must not fail the tick");
+    // Reported, not swallowed: every testnet lane records under its own label.
+    assert.ok(seen.length > 0, "the testnet declines must still be recorded");
+    assert.ok(
+      seen.every((route) => route.endsWith(":testnet")),
+      `only testnet lanes should have declined: ${seen.join(", ")}`,
+    );
+    // And mainnet's artifacts still landed, unprefixed.
+    for (const lane of PROJECTION_LANES) {
+      assert.ok(
+        puts.some((put) => put.key === lane.artifactKey),
+        `${lane.name} must still write its mainnet artifact`,
+      );
+      assert.ok(
+        !puts.some(
+          (put) => put.key === projectionKey(lane.artifactKey, "testnet"),
+        ),
+        `${lane.name} must not write a testnet artifact from a failed read`,
+      );
+    }
   });
 });
 
@@ -1461,6 +1619,7 @@ describe("chain-deregistrations lane compute", () => {
     const queries = lakeFetch(REGS);
     const body = (await laneNamed("chain-deregistrations").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
 
     // One query for two windows. The 7d window is derived from the same rows,
@@ -1489,6 +1648,7 @@ describe("chain-deregistrations lane compute", () => {
     lakeFetch(REGS);
     const body = (await laneNamed("chain-deregistrations").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
     const win = (body.windows as Row)["7d"] as Row;
     assert.deepEqual(win.rows, [
@@ -1513,6 +1673,7 @@ describe("chain-deregistrations lane compute", () => {
     lakeFetch(REGS);
     const body = (await laneNamed("chain-deregistrations").compute(
       LAKE_ENV as unknown as Env,
+      "mainnet",
     )) as Row;
     const derivation = ((body.windows as Row)["7d"] as Row).derivation as Row;
     assert.equal(derivation.method, "uid-reuse");
@@ -1528,6 +1689,7 @@ describe("chain-deregistrations lane compute", () => {
     assert.equal(
       await laneNamed("chain-deregistrations").compute(
         LAKE_ENV as unknown as Env,
+        "mainnet",
       ),
       null,
     );
@@ -1538,6 +1700,7 @@ describe("chain-deregistrations lane compute", () => {
     assert.equal(
       await laneNamed("chain-deregistrations").compute(
         LAKE_ENV as unknown as Env,
+        "mainnet",
       ),
       null,
     );
@@ -1589,5 +1752,70 @@ describe("lane registry", () => {
       wrangler.includes(`"${PROJECTION_LANES_CRON}"`),
       `wrangler.jsonc declares no "${PROJECTION_LANES_CRON}" cron, so no projection ever recomputes`,
     );
+  });
+});
+
+// #9412: the lanes read the network's OWN namespace and write to its own key.
+// Every assertion below is paired with the positive -- the query was issued,
+// and here is the namespace in it -- because "it does not read chain.*" passes
+// perfectly on a lane that reads nothing at all.
+describe("projection lanes are network-scoped end to end", () => {
+  test("projectionKey leaves mainnet alone and namespaces every other chain", () => {
+    const key = "metagraph/projections/blocks-summary.json";
+    assert.equal(projectionKey(key), key, "mainnet must stay unprefixed");
+    assert.equal(projectionKey(key, "mainnet"), key);
+    assert.equal(
+      projectionKey(key, "testnet"),
+      "metagraph/projections/testnet/blocks-summary.json",
+      "the network goes INSIDE the projections prefix, so a listing still groups them",
+    );
+    // A key that is not under the projections prefix still gets scoped rather
+    // than passed through: an unscoped key would be one object two chains
+    // overwrite in turn, each serving the other's numbers.
+    assert.equal(
+      projectionKey("metagraph/other/thing.json", "testnet"),
+      "testnet/metagraph/other/thing.json",
+    );
+  });
+
+  test("the network list is derived from the lakehouse namespaces", () => {
+    // Not a second hand-written roster: a chain that gains a decode namespace
+    // is exactly a chain these lanes can project, and listing them separately
+    // would let one gain tables and silently never get artifacts.
+    assert.deepEqual(
+      [...PROJECTION_NETWORKS].sort(),
+      Object.keys(LAKEHOUSE_NAMESPACES).sort(),
+    );
+  });
+
+  test("every lane reads its own namespace, and never the other's", async () => {
+    for (const network of PROJECTION_NETWORKS) {
+      const expected = LAKEHOUSE_NAMESPACES[network];
+      const foreign = Object.values(LAKEHOUSE_NAMESPACES).filter(
+        (ns) => ns !== expected,
+      );
+      for (const lane of PROJECTION_LANES) {
+        const queries = lakeFetch([]);
+        await lane.compute(LAKE_ENV as unknown as Env, network);
+        assert.ok(
+          queries.length > 0,
+          `${lane.name} on ${network} issued no query at all`,
+        );
+        for (const sql of queries) {
+          assert.match(
+            sql,
+            new RegExp(`FROM ${expected}\\.\\w+`),
+            `${lane.name} on ${network} read the wrong namespace: ${sql}`,
+          );
+          for (const other of foreign) {
+            assert.doesNotMatch(
+              sql,
+              new RegExp(`FROM ${other}\\.\\w+`),
+              `${lane.name} on ${network} still reads ${other}: ${sql}`,
+            );
+          }
+        }
+      }
+    }
   });
 });
