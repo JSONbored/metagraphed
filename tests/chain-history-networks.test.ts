@@ -244,6 +244,61 @@ describe("the D1 hot tier is mainnet's alone", () => {
       }
     });
   });
+  test("a testnet block inside the decoded range is RETURNED, not blanked", async () => {
+    // The bug this pins (#9394 shipped it, caught in production): the detail
+    // path reads `aboveSeam` as "too new for the lakehouse, D1 only". With the
+    // off-mainnet seam of 0, every real block is > 0, so every testnet block
+    // short-circuited to an empty result before reaching the lakehouse that
+    // held it.
+    //
+    // The existing tests missed it because they asserted what must NOT happen
+    // (no D1 query) rather than what must: that a block comes back. A negative
+    // assertion passes perfectly on a function that returns nothing at all.
+    const row = {
+      block_number: 7_700_500,
+      block_hash: "0xtestnetblockhash",
+      parent_hash: "0xparent",
+      author: null,
+      extrinsic_count: 8,
+      event_count: 20,
+      spec_version: 441,
+      observed_at: 1_700_000_000_000,
+    };
+    resetDecodeWatermarkCache();
+    await withSql([row], async (queries) => {
+      const block = (await loadBlockColdTier(
+        mockEnv(TOKEN),
+        "7700500",
+        "testnet",
+      )) as Record<string, unknown> | null;
+      assert.ok(queries.length > 0, "the lakehouse was never queried");
+      assert.ok(
+        queries.some((q) => q.includes("chain_testnet.blocks")),
+        `queried the wrong namespace: ${queries.join(" | ")}`,
+      );
+      const inner = (block?.block ?? block) as Record<string, unknown> | null;
+      assert.equal(
+        inner?.block_hash,
+        "0xtestnetblockhash",
+        `expected the row back, got ${JSON.stringify(block)}`,
+      );
+    });
+  });
+
+  test("a mainnet block above the seam still short-circuits, unchanged", async () => {
+    // The other direction: making the detail path network-aware must not stop
+    // mainnet treating a too-new height as a D1-only miss, which is what keeps
+    // it from scanning the lakehouse for a block it cannot contain.
+    resetDecodeWatermarkCache();
+    await withSql([], async (queries) => {
+      await loadBlockColdTier(mockEnv(TOKEN), "99999999");
+      assert.deepEqual(
+        queries,
+        [],
+        "mainnet scanned the lakehouse for a block above its seam",
+      );
+    });
+  });
 });
 
 // The list feeds the capability matrix, so it must match the router in BOTH
