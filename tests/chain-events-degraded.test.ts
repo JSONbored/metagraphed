@@ -1,17 +1,23 @@
-// The six DATA_API-proxied routes have no METAGRAPH_*_SOURCE flag, so they
+// The six chain-events family routes have no METAGRAPH_*_SOURCE flag, so they
 // never had the degrade path every flagged tier has. When the Postgres box was
 // decommissioned all six answered 502 in production — the one response shape
 // this API never emits for a cold tier. These assert the floor: a tier failure
 // yields the contract's own empty, marked degraded, never an error.
+//
+// #8700 removed the DATA_API forward that used to sit above the ladder (its
+// store was destroyed in #9186/#9193, so it could only 503), which makes the
+// lakehouse the primary tier rather than the fallback. What "the tier failed"
+// means therefore changed — an unreachable R2 SQL door, not a 5xx from a
+// service binding — and these exercise it through the reader that now owns it.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   coldTierChainEventsPayload,
   degradedChainEventsPayload,
-  shouldDegrade,
+  hotTierBlockChainEvents,
 } from "../src/chain-events-degraded.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
-import { dataApiFailureResponse, handleRequest } from "../workers/api.ts";
+import { handleChainEventsFamily, handleRequest } from "../workers/api.ts";
 import { BlockChainEventsArtifactSchema } from "../schemas-src/routes/block-chain-events.ts";
 import {
   ChainEventsFeedArtifactSchema,
@@ -27,45 +33,32 @@ function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
-/** DATA_API stub: `mode` picks which of the four failure paths to exercise. */
-function envWith(
-  mode: "ok" | "5xx" | "4xx" | "4xx-bare" | "unreadable" | "reject" | "none",
-) {
-  if (mode === "none") {
-    return mockEnv({ DATA_API: undefined }) as unknown as Env;
-  }
-  return mockEnv({
-    DATA_API: {
-      async fetch() {
-        if (mode === "reject") throw new Error("service binding rejected");
-        if (mode === "unreadable") {
-          return new Response("<html>gateway</html>", { status: 200 });
-        }
-        if (mode === "5xx") {
-          return new Response(JSON.stringify({ error: "postgres is gone" }), {
-            status: 500,
-          });
-        }
-        if (mode === "4xx") {
-          return new Response(JSON.stringify({ error: "bad cursor" }), {
-            status: 400,
-          });
-        }
-        if (mode === "4xx-bare") {
-          // Non-2xx with no string `error` field — the upstream shape that
-          // falls back to this proxy's own generic message.
-          return new Response(JSON.stringify({}), { status: 400 });
-        }
-        return new Response(
-          JSON.stringify({ count: 1, events: [{ block_number: 1 }] }),
-          { status: 200 },
-        );
-      },
-    },
-  }) as unknown as Env;
+/**
+ * Lakehouse stub: `mode` picks which tier state to exercise.
+ *
+ * These are the states that remain now that the family reads R2 SQL directly:
+ * the door answers, the door is unreachable, or no token is configured at all.
+ * The old modes were DATA_API's (5xx / unreadable body / binding rejected /
+ * binding absent) and describe a hop this family no longer makes.
+ */
+function envWith(mode: "ok" | "down" | "unconfigured") {
+  globalThis.fetch = (async () => {
+    if (mode === "down") throw new Error("r2 sql unreachable");
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        success: true,
+        result: { rows: [{ block_number: 1, event_index: 0 }] },
+      }),
+    } as unknown as Response;
+  }) as unknown as typeof fetch;
+  return mockEnv(
+    mode === "unconfigured" ? {} : { [R2_SQL_TOKEN_ENV]: "cfut_test" },
+  ) as unknown as Env;
 }
 
-const PROXIED = [
+const FAMILY = [
   "/api/v1/chain-events",
   "/api/v1/chain-events/stats",
   "/api/v1/blocks/8700000/chain-events",
@@ -76,7 +69,7 @@ const PROXIED = [
 
 describe("degradedChainEventsPayload", () => {
   test("every proxied route has a schema-stable empty", () => {
-    for (const path of PROXIED) {
+    for (const path of FAMILY) {
       const payload = degradedChainEventsPayload(
         new URL(`https://api.metagraph.sh${path}`),
       );
@@ -306,7 +299,7 @@ describe("coldTierChainEventsPayload", () => {
   ];
   test("a route with no cold-tier reader yields null", async () => {
     const env = lakehouse([OWNERSHIP_ROW]);
-    for (const path of PROXIED.filter(
+    for (const path of FAMILY.filter(
       (p) => !COVERED.some((c) => p.endsWith(c) || p === c),
     )) {
       assert.equal(
@@ -375,30 +368,17 @@ describe("coldTierChainEventsPayload", () => {
   });
 });
 
-describe("shouldDegrade", () => {
-  test("only the tier's own failures degrade", () => {
-    assert.equal(shouldDegrade(500), true);
-    assert.equal(shouldDegrade(502), true);
-    assert.equal(shouldDegrade(503), true);
-    assert.equal(shouldDegrade(400), false);
-    assert.equal(shouldDegrade(404), false);
-    assert.equal(shouldDegrade(429), false);
-  });
-});
-
-describe("dataApiFailureResponse", () => {
+describe("handleChainEventsFamily", () => {
   // Unreachable through the router — the gate admits only paths the payload
   // map covers — so this is the only place the fallback is observable, and it
   // is the branch that keeps an unmapped seventh route from serving an empty
   // that satisfies no schema.
   test("an unmapped path keeps its original error", async () => {
-    const res = await dataApiFailureResponse(
+    const res = await handleChainEventsFamily(
       req("/api/v1/subnets/1/metagraph"),
       mockEnv({}) as unknown as Env,
       new URL("https://api.metagraph.sh/api/v1/subnets/1/metagraph"),
-      "data_tier_unavailable",
-      "nope",
-      503,
+      {},
     );
     assert.equal(res.status, 503);
     const body = (await res.json()) as Row;
@@ -407,13 +387,11 @@ describe("dataApiFailureResponse", () => {
   });
 
   test("a mapped path degrades and names the failed tier, not the live one", async () => {
-    const res = await dataApiFailureResponse(
+    const res = await handleChainEventsFamily(
       req("/api/v1/chain-events"),
-      mockEnv({}) as unknown as Env,
+      envWith("unconfigured"),
       new URL("https://api.metagraph.sh/api/v1/chain-events"),
-      "data_query_failed",
-      "boom",
-      500,
+      {},
     );
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("x-metagraph-degraded"), "tier_unavailable");
@@ -443,13 +421,11 @@ describe("dataApiFailureResponse", () => {
           },
         }),
       }) as unknown as Response) as unknown as typeof fetch;
-    const res = await dataApiFailureResponse(
+    const res = await handleChainEventsFamily(
       req("/api/v1/subnets/7/ownership-history"),
       mockEnv({ [R2_SQL_TOKEN_ENV]: "cfut_test" }) as unknown as Env,
       new URL("https://api.metagraph.sh/api/v1/subnets/7/ownership-history"),
-      "data_query_failed",
-      "boom",
-      500,
+      {},
     );
     assert.equal(res.status, 200);
     assert.equal(res.headers.get("x-metagraph-degraded"), null);
@@ -459,10 +435,10 @@ describe("dataApiFailureResponse", () => {
   });
 });
 
-describe("the proxied routes degrade instead of erroring", () => {
-  for (const mode of ["5xx", "unreadable", "reject", "none"] as const) {
+describe("the family degrades instead of erroring", () => {
+  for (const mode of ["down", "unconfigured"] as const) {
     test(`every route answers 200 + degraded when the tier ${mode}s`, async () => {
-      for (const path of PROXIED) {
+      for (const path of FAMILY) {
         const res = await handleRequest(req(path), envWith(mode));
         assert.equal(res.status, 200, `${path} under ${mode}`);
         assert.equal(
@@ -477,29 +453,19 @@ describe("the proxied routes degrade instead of erroring", () => {
   }
 
   // The distinction that keeps this from hiding real bugs: a caller error
-  // stays a caller error.
-  test("a 4xx from the tier is still surfaced, not swallowed", async () => {
+  // stays a caller error. It used to arrive as a 4xx from DATA_API; with the
+  // tier read directly, the surviving caller-error path is the declared-param
+  // gate, and it must NOT be swallowed into a degraded 200.
+  test("a caller error is surfaced, not swallowed into an empty", async () => {
     const res = await handleRequest(
-      req("/api/v1/chain-events"),
-      envWith("4xx"),
+      req("/api/v1/chain-events?palet=Balances"),
+      envWith("ok"),
     );
     assert.equal(res.status, 400);
+    assert.equal(res.headers.get("x-metagraph-degraded"), null);
     const body = (await res.json()) as Row;
     assert.equal(body.ok, false);
-    assert.equal((body.error as Row).code, "data_query_failed");
-  });
-
-  test("an upstream error with no message falls back to a generic one", async () => {
-    const res = await handleRequest(
-      req("/api/v1/chain-events"),
-      envWith("4xx-bare"),
-    );
-    assert.equal(res.status, 400);
-    const body = (await res.json()) as Row;
-    assert.match(
-      String((body.error as Row).message),
-      /all-events data tier returned an error/,
-    );
+    assert.equal((body.error as Row).code, "invalid_query");
   });
 
   test("a healthy tier is untouched", async () => {
@@ -508,5 +474,138 @@ describe("the proxied routes degrade instead of erroring", () => {
     assert.equal(res.headers.get("x-metagraph-degraded"), null);
     const body = (await res.json()) as Row;
     assert.equal((body.data as Row).count, 1);
+  });
+});
+
+// The two branches whose readers have NO network dimension decline explicitly
+// off mainnet rather than falling through to `chain.*`. Silently reading
+// mainnet would hand back another chain's history under a testnet path --
+// well-formed, and therefore undetectable by anything downstream.
+//
+// Neither route is dispatched on the /{network}/ path today, so this is the
+// guard that keeps opening one from leaking by default rather than by review.
+describe("branches with no network-aware reader decline off mainnet", () => {
+  test("ownership-history declines on testnet instead of reading mainnet", async () => {
+    const env = envWith("ok");
+    assert.equal(
+      await coldTierChainEventsPayload(
+        env,
+        new URL("https://api.metagraph.sh/api/v1/subnets/7/ownership-history"),
+        "testnet",
+      ),
+      null,
+    );
+    // The paired positive: the same call on mainnet DOES answer, so the decline
+    // above is the network dimension and not a broken reader.
+    assert.ok(
+      await coldTierChainEventsPayload(
+        env,
+        new URL("https://api.metagraph.sh/api/v1/subnets/7/ownership-history"),
+      ),
+      "ownership-history must still answer on mainnet",
+    );
+  });
+
+  test("conviction declines on testnet instead of reading finney", async () => {
+    // Conviction is the one member that reads live CHAIN storage rather than
+    // the lakehouse, so its mainnet control needs an RPC-shaped stub.
+    globalThis.fetch = (async (_url: unknown, init: unknown) => {
+      const body = JSON.parse(
+        String((init as { body?: string })?.body ?? "{}"),
+      );
+      const result =
+        body.method === "chain_getHeader"
+          ? { number: "0x85d1db" }
+          : body.method === "state_getKeysPaged"
+            ? []
+            : null;
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result }));
+    }) as unknown as typeof fetch;
+    const url = new URL("https://api.metagraph.sh/api/v1/subnets/7/conviction");
+    assert.equal(
+      await coldTierChainEventsPayload({} as never, url, "testnet"),
+      null,
+    );
+    assert.ok(
+      await coldTierChainEventsPayload({} as never, url),
+      "conviction must still answer on mainnet",
+    );
+  });
+});
+
+// The lakehouse leg answers every non-mainnet block, whatever the seam says.
+// answerBlockDetail owns that rule so a testnet ref is never resolved against
+// mainnet's D1 by resolveHotRef -- a leak no per-caller hot-leg guard catches.
+describe("block chain-events routes to the lakehouse off mainnet", () => {
+  test("a testnet block reads chain_testnet, and the D1 tier is never asked", async () => {
+    const queries: string[] = [];
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      queries.push(JSON.parse(String(init.body)).query);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          result: {
+            rows: [
+              {
+                block_number: 7_700_500,
+                event_index: 0,
+                pallet: "System",
+                method: "ExtrinsicSuccess",
+                args: "{}",
+                phase: "ApplyExtrinsic",
+                extrinsic_index: 0,
+                observed_at: 1,
+              },
+            ],
+          },
+        }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    let d1Reads = 0;
+    const env = mockEnv({
+      [R2_SQL_TOKEN_ENV]: "cfut_test",
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          d1Reads += 1;
+          return {
+            async first() {
+              return null;
+            },
+            async all() {
+              return { results: [] };
+            },
+          };
+        },
+      },
+    }) as unknown as Env;
+    const answer = await hotTierBlockChainEvents(
+      env,
+      new URL("https://api.metagraph.sh/api/v1/blocks/7700500/chain-events"),
+      "testnet",
+    );
+    assert.equal(answer?.kind, "answer");
+    assert.equal(answer?.tier, "cold");
+    assert.ok(queries.length > 0, "the lakehouse was never queried");
+    for (const q of queries) assert.match(q, /\bchain_testnet\.\w+/);
+    assert.equal(d1Reads, 0, "the mainnet D1 tier must not be consulted");
+  });
+});
+
+// Off mainnet there is no second source to fall back to, so a lakehouse read
+// that FAILS is a miss, not an empty block. The distinction is the whole point
+// of #9260: `events: []` for a block with 400 of them reads as a quiet chain.
+describe("a failed testnet read is a miss, not an empty block", () => {
+  test("the block declines rather than reporting zero events", async () => {
+    globalThis.fetch = (async () => {
+      throw new Error("r2 sql unreachable");
+    }) as unknown as typeof fetch;
+    const answer = await hotTierBlockChainEvents(
+      mockEnv({ [R2_SQL_TOKEN_ENV]: "cfut_test" }) as unknown as Env,
+      new URL("https://api.metagraph.sh/api/v1/blocks/7700500/chain-events"),
+      "testnet",
+    );
+    assert.equal(answer?.kind, "miss");
   });
 });

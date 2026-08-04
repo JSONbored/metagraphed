@@ -672,7 +672,7 @@ export const SDL = /* GraphQL */ `
       from: String
       to: String
     ): ExtrinsicList!
-    "Paginated all-events feed (newest first) from the Postgres-backed all-events tier: each event's block, event index, pallet, method, decoded args, phase, and emitting extrinsic index. Filter by pallet/method/block/extrinsic; page with limit (1-200, default 50) and the opaque keyset cursor (or legacy before=block_number). An invalid filter combo is a GraphQL BAD_USER_INPUT error; a cold/unbound tier resolves to a schema-stable empty feed, never a GraphQL error. Reads the raw all-events tier -- distinct from account_events/subnet_events (the curated account-attributed streams, a different data source) and from Subscription.chainEvents (live WebSocket firehose). Mirrors GET /api/v1/chain-events."
+    "Paginated all-events feed (newest first) from the chain_events lakehouse table: each event's block, event index, pallet, method, decoded args, phase, and emitting extrinsic index. Filter by pallet/method/block/extrinsic; page with limit (1-200, default 50) and the opaque keyset cursor (or legacy before=block_number). An invalid filter combo is a GraphQL BAD_USER_INPUT error; a cold/unbound tier resolves to a schema-stable empty feed, never a GraphQL error. Reads the raw all-events tier -- distinct from account_events/subnet_events (the curated account-attributed streams, a different data source) and from Subscription.chainEvents (live WebSocket firehose). Pass network to read testnet's decoded history instead of mainnet's. Mirrors GET /api/v1/chain-events."
     chain_events(
       pallet: String
       method: String
@@ -681,9 +681,10 @@ export const SDL = /* GraphQL */ `
       cursor: String
       before: Int
       limit: Int
+      network: Network
     ): ChainEventsFeed!
-    "Chain-activity aggregate over the most recent N blocks (the blocks arg, 1-5000, default 1000, a stray large value silently capped) from the Postgres-backed all-events tier: the pallet.method event distribution, each with its count, busiest first. A non-positive/non-integer blocks is a GraphQL BAD_USER_INPUT error; a cold/unbound tier resolves to a schema-stable empty aggregate, never a GraphQL error. The aggregate sibling of chain_events (the raw feed). Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity)."
-    chain_events_stats(blocks: Int): ChainEventsStats!
+    "Chain-activity aggregate over the most recent N blocks the decode lane has published (the blocks arg, 1-5000, default 1000, a stray large value silently capped) from the chain_events lakehouse table: the pallet.method event distribution, each with its count, busiest first. A non-positive/non-integer blocks is a GraphQL BAD_USER_INPUT error; a cold/unbound tier resolves to a schema-stable empty aggregate, never a GraphQL error. The aggregate sibling of chain_events (the raw feed). Pass network to aggregate testnet's decoded history instead of mainnet's. Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity)."
+    chain_events_stats(blocks: Int, network: Network): ChainEventsStats!
     "One extrinsic by hash or composite block_number-extrinsic_index ref; extrinsic is null when the ref doesn't resolve (schema-stable, never a GraphQL error). Mirrors GET /api/v1/extrinsics/{ref}."
     extrinsic(ref: String!): ExtrinsicDetail
     "Subtensor's root-origin hyperparameter/network-config change feed (newest first) -- the extrinsics feed fixed to call_module=AdminUtils, so it takes no signer/call_module filter. Same ExtrinsicList shape as extrinsics. Mirrors GET /api/v1/governance/config-changes."
@@ -720,7 +721,7 @@ export const SDL = /* GraphQL */ `
     "The decoded, account-attributed chain events in one block by ref, in read order (event_index ASC), paginated with limit (1-1000, default 100)/offset. Returns block_number:null + events:[] for an unknown ref or cold store, never a GraphQL error. Mirrors GET /api/v1/blocks/{ref}/events."
     block_events(ref: String!, limit: Int, offset: Int): BlockEvents!
     "Every raw pallet.method event in one block from the Postgres all-events tier (ADR 0013), by numeric block_number, in read order. Distinct from block_events (the curated account-attributed D1 stream); requires the all-events data Worker, so it is a GraphQL error where that tier is unavailable (e.g. preview deploys). Mirrors GET /api/v1/blocks/{block_number}/chain-events."
-    block_chain_events(block_number: Int!): BlockChainEvents!
+    block_chain_events(block_number: Int!, network: Network): BlockChainEvents!
     "Block-production summary over the recent-block window -- counts, inter-block timing, throughput, and author-concentration. Every aggregate is null (never a GraphQL error) when the retired-D1 store is cold. Mirrors GET /api/v1/blocks/summary."
     blocks_summary: BlocksSummary!
     "Site-wide runtime spec-version transition timeline: the earliest known block at each distinct spec_version observed (ascending), the current spec_version, and where coverage starts. The empty shape (transition_count 0, current_spec_version null) is schema-stable, never a GraphQL error, when the store has no reading yet. Mirrors GET /api/v1/runtime."
@@ -2292,7 +2293,7 @@ export const SDL = /* GraphQL */ `
     order: String
   }
 
-  "Paginated all-events feed from the Postgres-backed all-events tier. Mirrors GET /api/v1/chain-events (and MCP list_chain_events). Distinct from Subscription.chainEvents."
+  "Paginated all-events feed from the chain_events lakehouse table. Mirrors GET /api/v1/chain-events (and MCP list_chain_events). Distinct from Subscription.chainEvents."
   type ChainEventsFeed {
     count: Int!
     next_before: Int
@@ -2314,7 +2315,7 @@ export const SDL = /* GraphQL */ `
     summary: String
   }
 
-  "Chain-activity aggregate (pallet.method event distribution) over the most recent N blocks from the Postgres-backed all-events tier. The aggregate sibling of ChainEventsFeed. Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity)."
+  "Chain-activity aggregate (pallet.method event distribution) over the most recent N blocks from the chain_events lakehouse table. The aggregate sibling of ChainEventsFeed. Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity)."
   type ChainEventsStats {
     window_blocks: Int!
     groups: Int!

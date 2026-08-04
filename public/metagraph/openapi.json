@@ -50929,6 +50929,132 @@
         ]
       }
     },
+    "/api/v1/{network}/blocks/{ref}/chain-events": {
+      "get": {
+        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "operationId": "blockChainEventsByNetwork",
+        "parameters": [
+          {
+            "description": "Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`.",
+            "in": "path",
+            "name": "network",
+            "required": true,
+            "schema": {
+              "enum": [
+                "finney",
+                "mainnet",
+                "test",
+                "testnet"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "ref",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "BlockChainEventsArtifactResponse": {
+                    "$ref": "#/components/examples/BlockChainEventsArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/BlockChainEventsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch EVERY raw pallet-level event in one block (by numeric block_number; event_index ascending), served live from the live-follow hot tier above the decode seam and the chain_events lakehouse at or below it (no static file). This is the complete stream, so its count matches the block header's own event_count; /api/v1/blocks/{ref}/events is deliberately a SUBSET of it -- the curated account-attributed projection, which is smaller by design and not a loss. A block neither tier can read declines with a typed 503 (block_detail_unavailable) rather than an empty list, because count:0 is indistinguishable from a block that emitted nothing.",
+        "tags": [
+          "blocks",
+          "chain",
+          "analytics"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
+        ]
+      }
+    },
     "/api/v1/{network}/blocks/{ref}/events": {
       "get": {
         "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
@@ -51609,6 +51735,341 @@
         "summary": "List unpromoted candidate surfaces.",
         "tags": [
           "candidates"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
+        ]
+      }
+    },
+    "/api/v1/{network}/chain-events": {
+      "get": {
+        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "operationId": "chainEventsFeedByNetwork",
+        "parameters": [
+          {
+            "description": "Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`.",
+            "in": "path",
+            "name": "network",
+            "required": true,
+            "schema": {
+              "enum": [
+                "finney",
+                "mainnet",
+                "test",
+                "testnet"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "pallet",
+            "required": false,
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "method",
+            "required": false,
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "block",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "extrinsic",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque keyset pagination token. Echo the `next_cursor` from the previous response back VERBATIM -- it encodes an internal sort position, not a row number, so it must never be constructed, incremented, parsed or compared. Omit it for the first page; a response with no `next_cursor` is the last page.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "description": "Opaque block_number.event_index cursor returned as next_cursor; both parts are non-negative safe integers.",
+              "maxLength": 33,
+              "pattern": "^\\d+\\.\\d+$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Maximum number of rows to return in one page (at most 200). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope.",
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "enum": [
+                "json",
+                "csv"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ChainEventsFeedArtifactResponse": {
+                    "$ref": "#/components/examples/ChainEventsFeedArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChainEventsFeedArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "text/csv": {
+                "examples": {
+                  "ChainEventsFeedCsv": {
+                    "$ref": "#/components/examples/ChainEventsFeedCsv"
+                  }
+                },
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope, or route rows as text/csv when CSV is requested.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the recent all-events feed (newest first) from the chain_events lakehouse table — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless block_number.event_index keyset cursor and ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). Pass ?format=csv to download the page as CSV. Each page reads one bounded block window below its ceiling, so a short page still carries a continuation rather than ending the feed. Served live, no static file.",
+        "tags": [
+          "chain",
+          "analytics"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
+        ]
+      }
+    },
+    "/api/v1/{network}/chain-events/stats": {
+      "get": {
+        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "operationId": "chainEventsStatsByNetwork",
+        "parameters": [
+          {
+            "description": "Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`.",
+            "in": "path",
+            "name": "network",
+            "required": true,
+            "schema": {
+              "enum": [
+                "finney",
+                "mainnet",
+                "test",
+                "testnet"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "blocks",
+            "required": false,
+            "schema": {
+              "maximum": 5000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ChainEventsStatsArtifactResponse": {
+                    "$ref": "#/components/examples/ChainEventsStatsArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChainEventsStatsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the chain-activity aggregate — the pallet.method event distribution over the most recent N blocks the decode lane has published — from the chain_events lakehouse table. ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Backs the get_chain_activity MCP tool. Served live, no static file.",
+        "tags": [
+          "chain",
+          "analytics"
         ],
         "x-metagraphed-networks": [
           "finney",
@@ -61610,7 +62071,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) — who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. Companion to /ownership-history (that's the event log of past flips; this is the current standings). Rolls the periodically-captured subnet_locks snapshot forward using the CURRENT live-queried unlock_rate/maturity_rate — never a hardcoded figure, both are independently governance-adjustable and confirmed to differ from each other. Served live from the Postgres-backed all-events tier (ADR 0013), no static file. A subnet with no active challengers/owner lock returns an empty leaderboard, not an error — that's the common case.",
+        "summary": "Fetch the live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) — who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. Companion to /ownership-history (that's the event log of past flips; this is the current standings). Rolls the current lock state forward using the CURRENT live-queried unlock_rate/maturity_rate — never a hardcoded figure, both are independently governance-adjustable and confirmed to differ from each other. Read from chain storage at request time, no static file. A subnet with no active challengers/owner lock returns an empty leaderboard, not an error — that's the common case.",
         "tags": [
           "subnets"
         ],
@@ -63120,7 +63581,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing. Served live from the Postgres-backed all-events tier (ADR 0013), no static file. A subnet that has never been leased returns an empty lease_events array, not an error — that's the common case.",
+        "summary": "Fetch every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing. Served live from the chain_events lakehouse table, no static file. A subnet that has never been leased returns an empty lease_events array, not an error — that's the common case.",
         "tags": [
           "subnets"
         ],
@@ -69900,9 +70361,11 @@
           "chain",
           "analytics"
         ],
-        "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [
-          "mainnet"
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
         ]
       }
     },
@@ -70807,14 +71270,16 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the recent all-events feed (newest first) from the Postgres-backed all-events tier (ADR 0013) — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars; ?method requires ?pallet unless ?block is set); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless block_number.event_index keyset cursor and ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). Pass ?format=csv to download the page as CSV. Served live (no static file); empty (count:0, events:[]) before the all-events backfill runs.",
+        "summary": "Fetch the recent all-events feed (newest first) from the chain_events lakehouse table — every raw pallet.method event, distinct from the curated account-attributed stream. ?pallet / ?method narrow by event id (1-64 ASCII identifier chars); ?block (+ optional ?extrinsic) scopes to one block or extrinsic; ?cursor is the lossless block_number.event_index keyset cursor and ?before is the legacy block_number-only cursor; ?limit caps the page (<=200, default 50). Pass ?format=csv to download the page as CSV. Each page reads one bounded block window below its ceiling, so a short page still carries a continuation rather than ending the feed. Served live, no static file.",
         "tags": [
           "chain",
           "analytics"
         ],
-        "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [
-          "mainnet"
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
         ]
       }
     },
@@ -70916,14 +71381,16 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the chain-activity aggregate — the pallet.method event distribution over the most recent N blocks — from the Postgres-backed all-events tier (ADR 0013). ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Backs the get_chain_activity MCP tool. Served live (no static file); empty (groups:0, activity:[]) before the all-events backfill runs.",
+        "summary": "Fetch the chain-activity aggregate — the pallet.method event distribution over the most recent N blocks the decode lane has published — from the chain_events lakehouse table. ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Backs the get_chain_activity MCP tool. Served live, no static file.",
         "tags": [
           "chain",
           "analytics"
         ],
-        "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [
-          "mainnet"
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
         ]
       }
     },
@@ -87587,7 +88054,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch the live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) — who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. Companion to /ownership-history (that's the event log of past flips; this is the current standings). Rolls the periodically-captured subnet_locks snapshot forward using the CURRENT live-queried unlock_rate/maturity_rate — never a hardcoded figure, both are independently governance-adjustable and confirmed to differ from each other. Served live from the Postgres-backed all-events tier (ADR 0013), no static file. A subnet with no active challengers/owner lock returns an empty leaderboard, not an error — that's the common case.",
+        "summary": "Fetch the live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) — who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. Companion to /ownership-history (that's the event log of past flips; this is the current standings). Rolls the current lock state forward using the CURRENT live-queried unlock_rate/maturity_rate — never a hardcoded figure, both are independently governance-adjustable and confirmed to differ from each other. Read from chain storage at request time, no static file. A subnet with no active challengers/owner lock returns an empty leaderboard, not an error — that's the common case.",
         "tags": [
           "subnets"
         ],
@@ -90241,7 +90708,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing. Served live from the Postgres-backed all-events tier (ADR 0013), no static file. A subnet that has never been leased returns an empty lease_events array, not an error — that's the common case.",
+        "summary": "Fetch every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing. Served live from the chain_events lakehouse table, no static file. A subnet that has never been leased returns an empty lease_events array, not an error — that's the common case.",
         "tags": [
           "subnets"
         ],

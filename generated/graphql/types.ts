@@ -1077,7 +1077,7 @@ export type ChainEventRow = {
   summary?: Maybe<Scalars['String']['output']>;
 };
 
-/** Paginated all-events feed from the Postgres-backed all-events tier. Mirrors GET /api/v1/chain-events (and MCP list_chain_events). Distinct from Subscription.chainEvents. */
+/** Paginated all-events feed from the chain_events lakehouse table. Mirrors GET /api/v1/chain-events (and MCP list_chain_events). Distinct from Subscription.chainEvents. */
 export type ChainEventsFeed = {
   __typename?: 'ChainEventsFeed';
   count: Scalars['Int']['output'];
@@ -1086,7 +1086,7 @@ export type ChainEventsFeed = {
   next_cursor?: Maybe<Scalars['String']['output']>;
 };
 
-/** Chain-activity aggregate (pallet.method event distribution) over the most recent N blocks from the Postgres-backed all-events tier. The aggregate sibling of ChainEventsFeed. Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity). */
+/** Chain-activity aggregate (pallet.method event distribution) over the most recent N blocks from the chain_events lakehouse table. The aggregate sibling of ChainEventsFeed. Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity). */
 export type ChainEventsStats = {
   __typename?: 'ChainEventsStats';
   activity: Array<ChainEventsStatsRow>;
@@ -2582,9 +2582,9 @@ export type Query = {
   chain_concentration: ChainConcentration;
   /** Network-wide neuron-deregistration leaderboard over a 7d/30d window (default 7d): subnets ranked by deregistration events with each's distinct-hotkey count and deregistrations-per-hotkey churn intensity, plus a network rollup and the per-subnet intensity spread, DERIVED from UID reuse in the NeuronRegistered stream by a scheduled projection -- NeuronDeregistered has never been emitted by the runtime (#9307). The network-wide, exit-side counterpart of subnet_deregistrations -- where neurons are being pushed out. limit caps the leaderboard (default 20, max 100). A window nothing derived carries a degraded block rather than a confident zero. Mirrors GET /api/v1/chain/deregistrations. */
   chain_deregistrations: ChainDeregistrations;
-  /** Paginated all-events feed (newest first) from the Postgres-backed all-events tier: each event's block, event index, pallet, method, decoded args, phase, and emitting extrinsic index. Filter by pallet/method/block/extrinsic; page with limit (1-200, default 50) and the opaque keyset cursor (or legacy before=block_number). An invalid filter combo is a GraphQL BAD_USER_INPUT error; a cold/unbound tier resolves to a schema-stable empty feed, never a GraphQL error. Reads the raw all-events tier -- distinct from account_events/subnet_events (the curated account-attributed streams, a different data source) and from Subscription.chainEvents (live WebSocket firehose). Mirrors GET /api/v1/chain-events. */
+  /** Paginated all-events feed (newest first) from the chain_events lakehouse table: each event's block, event index, pallet, method, decoded args, phase, and emitting extrinsic index. Filter by pallet/method/block/extrinsic; page with limit (1-200, default 50) and the opaque keyset cursor (or legacy before=block_number). An invalid filter combo is a GraphQL BAD_USER_INPUT error; a cold/unbound tier resolves to a schema-stable empty feed, never a GraphQL error. Reads the raw all-events tier -- distinct from account_events/subnet_events (the curated account-attributed streams, a different data source) and from Subscription.chainEvents (live WebSocket firehose). Pass network to read testnet's decoded history instead of mainnet's. Mirrors GET /api/v1/chain-events. */
   chain_events: ChainEventsFeed;
-  /** Chain-activity aggregate over the most recent N blocks (the blocks arg, 1-5000, default 1000, a stray large value silently capped) from the Postgres-backed all-events tier: the pallet.method event distribution, each with its count, busiest first. A non-positive/non-integer blocks is a GraphQL BAD_USER_INPUT error; a cold/unbound tier resolves to a schema-stable empty aggregate, never a GraphQL error. The aggregate sibling of chain_events (the raw feed). Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity). */
+  /** Chain-activity aggregate over the most recent N blocks the decode lane has published (the blocks arg, 1-5000, default 1000, a stray large value silently capped) from the chain_events lakehouse table: the pallet.method event distribution, each with its count, busiest first. A non-positive/non-integer blocks is a GraphQL BAD_USER_INPUT error; a cold/unbound tier resolves to a schema-stable empty aggregate, never a GraphQL error. The aggregate sibling of chain_events (the raw feed). Pass network to aggregate testnet's decoded history instead of mainnet's. Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity). */
   chain_events_stats: ChainEventsStats;
   /** Per-UTC-day network fee/tip series over a 7d/30d window (default 7d): each day's extrinsic count and total/avg/median fee + tip in TAO, plus the top fee-paying signers (limit default 25, max 100), optionally scoped to a single call_module. Computed live from the extrinsics tier; a cold store yields a schema-stable empty series, never a GraphQL error. Mirrors GET /api/v1/chain/fees. */
   chain_fees: ChainFees;
@@ -3057,6 +3057,7 @@ export type QueryBlockArgs = {
 
 export type QueryBlock_Chain_EventsArgs = {
   block_number: Scalars['Int']['input'];
+  network?: InputMaybe<Network>;
 };
 
 
@@ -3140,12 +3141,14 @@ export type QueryChain_EventsArgs = {
   extrinsic?: InputMaybe<Scalars['Int']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   method?: InputMaybe<Scalars['String']['input']>;
+  network?: InputMaybe<Network>;
   pallet?: InputMaybe<Scalars['String']['input']>;
 };
 
 
 export type QueryChain_Events_StatsArgs = {
   blocks?: InputMaybe<Scalars['Int']['input']>;
+  network?: InputMaybe<Network>;
 };
 
 

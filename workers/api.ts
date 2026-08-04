@@ -320,11 +320,13 @@ import {
   overlayPreviouslyKnownAs,
 } from "../src/subnet-identity-history.ts";
 import { tryPostgresTier } from "./postgres-tier.ts";
+import { chainEventsQueryError } from "../src/chain-events-cold-tier.ts";
 import {
+  type ColdTierAnswer,
+  chainEventsQueryFromUrl,
   coldTierChainEventsPayload,
   degradedChainEventsPayload,
   hotTierBlockChainEvents,
-  shouldDegrade,
 } from "../src/chain-events-degraded.ts";
 import { markPostgresTierFallbackResponse } from "./request-handlers/analytics.ts";
 import { loadGlobalOperationalHealth } from "../src/global-operational-health.ts";
@@ -347,7 +349,10 @@ import { refreshLiveEconomics } from "../src/live-economics-refresh.ts";
 import { runNeuronsStalenessWatchdog } from "../src/neurons-staleness-watchdog.ts";
 import { runNominatorPositionsStalenessWatchdog } from "../src/nominator-positions-staleness-watchdog.ts";
 import { runValidatorNominatorCountsStalenessWatchdog } from "../src/validator-nominator-counts-staleness-watchdog.ts";
-import { runChainDetailStalenessWatchdog } from "../src/chain-detail-staleness-watchdog.ts";
+import {
+  readChainDetailHead,
+  runChainDetailStalenessWatchdog,
+} from "../src/chain-detail-staleness-watchdog.ts";
 import { pruneChainDetail } from "../src/chain-detail-prune.ts";
 import { runRpcUsageStalenessWatchdog } from "../src/rpc-usage-staleness-watchdog.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
@@ -497,7 +502,7 @@ import { evaluateUpgradeRadarScan } from "../src/upgrade-radar.ts";
 import { evaluateFreshness, shouldReport } from "../src/freshness-watchdog.ts";
 import { buildNetworksPayload } from "../src/network-capabilities.ts";
 import { NETWORK_PUBLISHED_ARTIFACT_PATHS } from "../src/network-artifacts.ts";
-import { chainNetworkId } from "../src/chain-network.ts";
+import { type ChainNetworkId, chainNetworkId } from "../src/chain-network.ts";
 import { LIVE_CHAIN_ROUTE_PATHS } from "../src/live-chain-routes.ts";
 import { CHAIN_HISTORY_ROUTE_PATHS } from "../src/chain-history-routes.ts";
 import {
@@ -1864,121 +1869,65 @@ async function fetchDataApiOrUnreachable(
   }
 }
 
-async function chainEventsProxyCacheKey(env: Env, url: URL) {
-  return new Request(
-    `https://edge-cache.metagraph.sh/chain-events-proxy/${encodeURIComponent(
-      contractVersion(env),
-    )}${url.pathname}${url.search}`,
-  );
-}
-
-// #9146: the ONE place a DATA_API failure becomes a response.
-//
-// Four call sites used to build their own error (binding absent, binding
-// rejected, unreadable body, upstream non-2xx) and all four returned an error
-// the moment the Postgres box died -- these six routes are the only ones with
-// no METAGRAPH_*_SOURCE flag, so they never had the degrade path every flagged
-// tier has. Collapsed into one function so the degrade decision is made once
-// rather than remembered four times.
-//
-// `source` names the tier that FAILED rather than the one that answered: the
-// body is not data-worker-postgres output, and labelling it so would make a
-// degraded empty indistinguishable from a measured one.
-//
-// Exported for tests: the null-payload branch is unreachable through the
-// router (the gate admits only paths this map covers, asserted in
-// tests/chain-events-degraded.test.ts), so it is only observable here.
-export async function dataApiFailureResponse(
-  request: Request,
+/**
+ * Edge-cache key for one chain-events family answer.
+ *
+ * NETWORK-SCOPED, because the `/{network}/` prefix is stripped before dispatch:
+ * mainnet and testnet reach this handler with byte-identical pathnames, so a
+ * key built from the path alone would serve a testnet page to the next mainnet
+ * caller. The two chains' block numbers overlap, so nothing downstream -- not
+ * the envelope, not the caller -- could tell that had happened.
+ */
+async function chainEventsCacheKey(
   env: Env,
   url: URL,
-  code: string,
-  message: string,
-  status: number,
-): Promise<Response> {
-  // #9208/#9260: the TIERED block-detail read first, ahead of both the generic
-  // lakehouse leg and the empty. /blocks/{n}/chain-events is the one route here
-  // a user reaches by clicking a block, so it routes hot above the decode seam,
-  // lakehouse at or below it, and DECLINES for the gap between them rather than
-  // degrading to an `events: []` no caller can tell from a quiet block.
-  const hot = await hotTierBlockChainEvents(env, url);
-  if (hot?.kind === "gap") return chainDetailGapResponse(hot);
-  if (hot?.kind === "answer") {
-    return envelopeResponse(
-      request,
-      {
-        data: hot.data,
-        meta: {
-          artifact_path: url.pathname,
-          cache: "short",
-          contract_version: contractVersion(env),
-          // Name the tier that ACTUALLY served. Labelling a lakehouse row as
-          // the hot tier's would make the one thing this meta exists to report
-          // -- which store answered -- a guess.
-          source:
-            hot.tier === "cold"
-              ? "lakehouse-cold-tier"
-              : "chain-detail-hot-tier",
-        },
-      },
-      "short",
-    );
-  }
-  // The lakehouse next: a DATA_API failure is only the END of the road for a
-  // route with no cold-tier reader. /subnets/{netuid}/ownership-history has
-  // one, so it serves real SubnetOwnerChanged rows here instead of the empty
-  // below -- unmarked and cacheable, because these are current rows, not a
-  // degradation. `source` names the tier that actually answered.
-  const cold = await coldTierChainEventsPayload(env, url);
-  if (cold) {
-    return envelopeResponse(
-      request,
-      {
-        data: cold.data,
-        meta: {
-          artifact_path: url.pathname,
-          cache: "short",
-          contract_version: contractVersion(env),
-          // From the dispatcher, not hardcoded here: conviction reads live
-          // chain storage rather than the lakehouse, and this used to report
-          // every cold answer as `lakehouse-cold-tier` regardless (#9319).
-          source: cold.source,
-        },
-      },
-      "short",
-    );
-  }
-  const data = degradedChainEventsPayload(url);
-  // A path this map does not cover keeps its original error rather than
-  // serving a payload that satisfies no schema.
-  if (!data) return errorResponse(code, message, status);
-  const response = await envelopeResponse(
-    request,
-    {
-      data,
-      meta: {
-        artifact_path: url.pathname,
-        cache: "short",
-        contract_version: contractVersion(env),
-        source: "data-worker-unavailable",
-      },
-    },
-    "short",
+  network: ChainNetworkId,
+) {
+  return new Request(
+    `https://edge-cache.metagraph.sh/chain-events/${encodeURIComponent(
+      contractVersion(env),
+    )}/${network}${url.pathname}${url.search}`,
   );
-  return markPostgresTierFallbackResponse(response);
 }
 
-async function handleChainEventsProxy(
+/**
+ * The chain-events family: the all-events feed, its stats aggregate, one
+ * block's raw events, and the three per-subnet histories that read the same
+ * store.
+ *
+ * NOT A PROXY ANY MORE (#8700). All six used to be forwarded to the DATA_API
+ * service binding first, with the lakehouse ladder below as a FAILURE path.
+ * That binding's Postgres store is gone -- #9186 unbound HYPERDRIVE, #9193
+ * deleted the reader behind it -- so the forward was a subrequest that could
+ * only 503. Measured in production 2026-08-04: every one of the six reports a
+ * ladder-produced `meta.source`, and the proxy's own `data-worker-postgres`
+ * label is unreachable.
+ *
+ * The round-trip that cannot succeed was the obvious cost. The expensive one
+ * was silent: the edge cache was written only `if (upstreamOk)`, so it was
+ * never written, never read, and every request paid a full R2 SQL scan
+ * (18.6 MB for one feed page). The ladder is the primary path now and ITS
+ * answers are what get cached.
+ *
+ * It is also what lets the family serve off mainnet at all. DATA_API has no
+ * network dimension, so forwarding a testnet request there would have answered
+ * it with mainnet's events under a testnet path -- well-formed, and therefore
+ * undetectable by anything downstream.
+ */
+/* Exported for tests: the unmapped-path branch is unreachable through the
+ * router, which admits only paths the payload map covers. */
+export async function handleChainEventsFamily(
   request: Request,
   env: Env,
   url: URL,
   ctx: Ctx,
+  network: typeof DEFAULT_NETWORK = DEFAULT_NETWORK,
 ) {
   // Reject a parameter this route does not declare, BEFORE the cache lookup
-  // (#9149). This proxy forwards path+search verbatim and DATA_API ignores what
-  // it does not recognise, so `?palet=Balances` used to return the UNFILTERED
-  // feed as a 200 -- and `?pallet=Balances&methd=Transfer` was worse, applying
-  // one filter and dropping the other, which looks filtered.
+  // (#9149). Readers ignore what they do not recognise, so `?palet=Balances`
+  // used to return the UNFILTERED feed as a 200 -- and
+  // `?pallet=Balances&methd=Transfer` was worse, applying one filter and
+  // dropping the other, which looks filtered.
   //
   // Ahead of the cache on purpose: the key is built from the full search
   // string, so an unknown param would otherwise mint a fresh cache entry per
@@ -1986,73 +1935,108 @@ async function handleChainEventsProxy(
   //
   // The allow-list is derived from API_ROUTES rather than written out here, so
   // it cannot drift from the contract the way #9127's ceiling did.
+  // #8386: tiered -- a caller with a valid mg_... API key gets the `keyed`
+  // policy (DATA_RATE_LIMITER_KEYED, 5x the anonymous ceiling, keyed by
+  // accountId), everyone else gets the anonymous DATA_RATE_LIMITER policy
+  // (60/60s, keyed by IP; tests/tiered-rate-limit.test.ts +
+  // tests/api-anonymous-limits.test.ts prove neither was reduced).
+  //
+  // HERE rather than at the two dispatch sites: this family is reached from
+  // both the bare path and the /{network}/ one, and a gate written at one of
+  // them is a gate the other silently skips.
+  const rateLimit = await applyTieredRateLimit(
+    request,
+    env,
+    DATA_TIERED_RATE_LIMIT,
+  );
+  // #8609: recorded for BOTH outcomes, BEFORE the rejection return, with the
+  // flag derived from the gate's own verdict -- so a 429 lands in
+  // rejected_count instead of request_count. Recording after the return would
+  // mean throttled requests were never counted at all, which is the gap that
+  // issue exists to close.
+  if (rateLimit.accountId) {
+    recordApiKeyUsage(
+      env,
+      ctx,
+      rateLimit.accountId,
+      "chain-events",
+      !rateLimit.allowed,
+    );
+  }
+  if (!rateLimit.allowed) {
+    // #8611: a blocked account gets 403 + reason code, not a 429 that invites
+    // the retry storm a block exists to stop.
+    const rejection = tieredRejectionResponse(rateLimit, {
+      code: "data_rate_limited",
+      message: "Too many data API requests from this client; slow down.",
+    })!;
+    return errorResponse(
+      rejection.code,
+      rejection.message,
+      rejection.status,
+      {},
+      rejection.headers,
+    );
+  }
+
   const unknownParam = validateDeclaredQueryParams(url, url.pathname);
   // Same error builder the other 136 routes use, so the body, code and
   // `parameter` field are identical rather than merely similar.
   if (unknownParam) return analyticsQueryError(unknownParam);
-  if (!env.DATA_API) {
-    return dataApiFailureResponse(
-      request,
-      env,
-      url,
-      "data_tier_unavailable",
-      "The all-events data tier is not bound to this deployment.",
-      503,
-    );
+  // A DECLARED parameter whose value the tier cannot express is still the
+  // caller's error, and the reader cannot report it as one -- it returns null
+  // for an unusable filter and for an unreachable door alike, so degrading here
+  // would hide a typo'd filter behind an empty feed that looks measured. MCP
+  // raises the same condition as `invalid_params` and GraphQL as
+  // BAD_USER_INPUT, off this one shared check.
+  if (url.pathname === "/api/v1/chain-events") {
+    const badValue = chainEventsQueryError(chainEventsQueryFromUrl(url));
+    if (badValue) {
+      return analyticsQueryError({
+        parameter: badValue,
+        message: `${badValue} is not a usable value for this feed.`,
+      });
+    }
   }
+
+  const chain = chainNetworkId(network.id);
   const cache =
     request.method === "GET" || request.method === "HEAD"
       ? globalWithCaches.caches?.default
       : null;
-  const cacheKey = cache ? await chainEventsProxyCacheKey(env, url) : null;
-  let body;
-  let upstreamOk = true;
-  let upstreamStatus = 200;
+  const cacheKey = cache ? await chainEventsCacheKey(env, url, chain) : null;
   const cacheHit = cacheKey ? await cache.match(cacheKey) : null;
-  if (cacheHit) {
-    body = await cacheHit.json();
-  } else {
-    // DATA_API is GET-only (it 405s any other method), so a HEAD probe must be
-    // forwarded as a GET or it would return a 405 error envelope instead of the
-    // bodiless 200 that HEAD yields on every other GET route (and that this route's
-    // own CORS preflight advertises). envelopeResponse(request, …) below still
-    // strips the body for HEAD, so the client gets the correct empty 200.
-    const fetched = await fetchDataApiOrUnreachable(
-      env,
-      request.method === "HEAD"
-        ? new Request(request.url, { method: "GET", headers: request.headers })
-        : request,
-    );
-    if ("unreachable" in fetched) {
-      return dataApiFailureResponse(
-        request,
-        env,
-        url,
-        "data_tier_unavailable",
-        "The all-events data tier is unreachable.",
-        503,
-      );
-    }
-    const upstream = fetched.upstream;
-    try {
-      body = await upstream.json();
-    } catch {
-      return dataApiFailureResponse(
-        request,
-        env,
-        url,
-        "data_tier_unavailable",
-        "The all-events data tier returned an unreadable response.",
-        502,
-      );
-    }
-    upstreamOk = upstream.ok;
-    upstreamStatus = upstream.status;
-    if (cacheKey && upstreamOk) {
+  // The tier travels WITH the payload through the cache, so a hit reports the
+  // same `meta.source` the miss did rather than guessing one back.
+  let answer = cacheHit ? ((await cacheHit.json()) as ColdTierAnswer) : null;
+
+  if (!answer) {
+    // #9208/#9260: the TIERED block-detail read first. /blocks/{n}/chain-events
+    // is the one route here a user reaches by clicking a block, so it routes
+    // hot above the decode seam, lakehouse at or below it, and DECLINES for the
+    // gap between them rather than degrading to an `events: []` no caller can
+    // tell from a quiet block. A gap is transient by definition and is returned
+    // WITHOUT being cached.
+    const hot = await hotTierBlockChainEvents(env, url, chain);
+    if (hot?.kind === "gap") return chainDetailGapResponse(hot);
+    answer =
+      hot?.kind === "answer"
+        ? {
+            data: hot.data as unknown as ColdTierAnswer["data"],
+            // Name the tier that ACTUALLY served. Labelling a lakehouse row as
+            // the hot tier's would make the one thing this meta exists to
+            // report -- which store answered -- a guess.
+            source:
+              hot.tier === "cold"
+                ? "lakehouse-cold-tier"
+                : "chain-detail-hot-tier",
+          }
+        : await coldTierChainEventsPayload(env, url, chain);
+    if (answer && cacheKey) {
       ctx?.waitUntil?.(
         cache.put(
           cacheKey,
-          new Response(JSON.stringify(body), {
+          new Response(JSON.stringify(answer), {
             status: 200,
             headers: {
               "content-type": "application/json",
@@ -2063,34 +2047,46 @@ async function handleChainEventsProxy(
       );
     }
   }
-  if (!upstreamOk) {
-    // Only the TIER's own failures degrade. A 4xx is the caller's error -- a
-    // bad cursor, an out-of-range limit -- and turning that into an empty 200
-    // would hide a bug in their request behind a payload that merely looks
-    // uneventful.
-    const message =
-      typeof body?.error === "string"
-        ? body.error
-        : "The all-events data tier returned an error.";
-    if (shouldDegrade(upstreamStatus)) {
-      return dataApiFailureResponse(
-        request,
-        env,
-        url,
-        "data_query_failed",
-        message,
-        upstreamStatus,
+
+  if (!answer) {
+    // Nothing could answer: the schema-stable empty, MARKED, so a caller can
+    // tell it from a measured one and the edge cache refuses it.
+    const data = degradedChainEventsPayload(url);
+    // A path this map does not cover keeps an error rather than serving a
+    // payload that satisfies no schema. Unreachable through the router -- the
+    // dispatch admits only paths the map covers, asserted in
+    // tests/chain-events-degraded.test.ts -- so it is observable only in tests.
+    if (!data) {
+      return errorResponse(
+        "data_tier_unavailable",
+        "The chain-events tier could not answer this route.",
+        503,
       );
     }
-    return errorResponse("data_query_failed", message, upstreamStatus);
+    const response = await envelopeResponse(
+      request,
+      {
+        data,
+        meta: {
+          artifact_path: url.pathname,
+          cache: "short",
+          contract_version: contractVersion(env),
+          source: "data-worker-unavailable",
+        },
+      },
+      "short",
+    );
+    return markPostgresTierFallbackResponse(response);
   }
+
   // CSV download of the page: the /api/v1/chain-events feed exposes `events`, so
   // serialize that array to text/csv when negotiated. The stats/blocks paths this
-  // proxy also serves have no top-level row array, so their CSV request falls
+  // handler also serves have no top-level row array, so their CSV request falls
   // through to the JSON envelope (a header-only export would be meaningless).
   if (url.pathname === "/api/v1/chain-events" && csvRequested(url, request)) {
+    const events = (answer.data as { events?: unknown }).events;
     return csvResponse(
-      Array.isArray(body?.events) ? body.events : [],
+      Array.isArray(events) ? events : [],
       "chain-events",
       "short",
       request,
@@ -2100,12 +2096,15 @@ async function handleChainEventsProxy(
   return envelopeResponse(
     request,
     {
-      data: body,
+      data: answer.data,
       meta: {
         artifact_path: url.pathname,
         cache: "short",
         contract_version: contractVersion(env),
-        source: "data-worker-postgres",
+        // From the dispatcher, not hardcoded here: conviction reads live chain
+        // storage rather than the lakehouse, and this used to report every cold
+        // answer as `lakehouse-cold-tier` regardless (#9319).
+        source: answer.source,
       },
     },
     "short",
@@ -2117,7 +2116,7 @@ async function handleChainEventsProxy(
 // method as-is: POST/GET/PATCH/DELETE all reach
 // workers/data-api.ts's handleAlertTriggersRoute, which owns all
 // auth (creation token / per-trigger owner token) and routing itself --
-// mirrors handleChainEventsProxy's envelope-translation shape above, just
+// mirrors handleChainEventsFamily's envelope-translation shape above, just
 // generalized past GET.
 // Distinct error code per upstream failure condition instead of collapsing
 // every non-2xx into one generic `alert_trigger_request_failed`, following the
@@ -3341,17 +3340,10 @@ export async function handleRequest(
     return handleRpcProxyRequest(request, env, url, ctx);
   }
 
-  // Postgres-backed all-events tier (ADR 0013): the dedicated data Worker (DATA_API
-  // service binding) serves chain_events + deep history via Hyperdrive, keeping the
-  // postgres.js driver out of this Worker's bundle. 503 if the binding is absent
-  // (e.g. a preview deploy without the data Worker).
-  //
-  // #8386: tiered via applyTieredRateLimit -- a caller with a valid mg_...
-  // API key gets the `keyed` policy (DATA_RATE_LIMITER_KEYED, 5x the
-  // anonymous ceiling, keyed by accountId), everyone else gets the
-  // unchanged anonymous DATA_RATE_LIMITER policy (60/60s, keyed by IP,
-  // regression-tested in tests/tiered-rate-limit.test.ts +
-  // tests/api-anonymous-limits.test.ts to prove this PR doesn't reduce it).
+  // The chain-events family (ADR 0013's all-events tier, now lakehouse-served).
+  // The tiered rate limit and usage accounting live INSIDE the handler rather
+  // than here, so the /{network}/-prefixed dispatch cannot reach the same
+  // routes ungated -- see handleChainEventsFamily.
   if (
     url.pathname === "/api/v1/chain-events" ||
     url.pathname === "/api/v1/chain-events/stats" ||
@@ -3360,42 +3352,7 @@ export async function handleRequest(
     /^\/api\/v1\/subnets\/\d+\/conviction$/.test(url.pathname) ||
     /^\/api\/v1\/subnets\/\d+\/lease\/history$/.test(url.pathname)
   ) {
-    const rateLimit = await applyTieredRateLimit(
-      request,
-      env,
-      DATA_TIERED_RATE_LIMIT,
-    );
-    // #8609: recorded for BOTH outcomes, BEFORE the rejection return, with the
-    // flag derived from the gate's own verdict -- so a 429 lands in
-    // rejected_count instead of request_count. Recording after the return would
-    // mean throttled requests were never counted at all, which is the gap this
-    // issue exists to close. One call rather than a duplicate block at each
-    // rejection site: the call site already has everything it needs.
-    if (rateLimit.accountId) {
-      recordApiKeyUsage(
-        env,
-        ctx,
-        rateLimit.accountId,
-        "chain-events",
-        !rateLimit.allowed,
-      );
-    }
-    if (!rateLimit.allowed) {
-      // #8611: a blocked account gets 403 + reason code, not a 429 that
-      // invites the retry storm a block exists to stop.
-      const rejection = tieredRejectionResponse(rateLimit, {
-        code: "data_rate_limited",
-        message: "Too many data API requests from this client; slow down.",
-      })!;
-      return errorResponse(
-        rejection.code,
-        rejection.message,
-        rejection.status,
-        {},
-        rejection.headers,
-      );
-    }
-    return handleChainEventsProxy(request, env, url, ctx);
+    return handleChainEventsFamily(request, env, url, ctx);
   }
 
   // Change-feed webhooks: subscription management accepts POST/DELETE/GET, so it
@@ -3585,7 +3542,7 @@ export async function handleRequest(
   }
   // The public realtime firehose transport (#4982, ADR 0015) -- SSE by
   // default, WebSocket on an Upgrade header, same path either way. Runs
-  // early (like /rpc/v1/ and the chain-events proxy above) since a WebSocket
+  // early (like /rpc/v1/ and the chain-events family above) since a WebSocket
   // upgrade request must never be routed through JSON-response machinery.
   if (url.pathname === "/api/v1/chain/stream") {
     return handleChainFirehoseStream(request, env, url);
@@ -5187,19 +5144,6 @@ export function isMainnetOnlyApiPath(pathname: string) {
     ACCOUNT_DEREGISTRATIONS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_PROMETHEUS_PATH_PATTERN.test(pathname) ||
     ACCOUNT_AXON_REMOVALS_PATH_PATTERN.test(pathname) ||
-    // The three chain-events routes were missing entirely. They read the same
-    // finney-only Postgres tier as their neighbours above, but because they
-    // dispatch through handleChainEventsProxy rather than tryPostgresTier they
-    // were never added here -- so on testnet they fell through to an R2 miss
-    // instead of the documented 404.
-    //
-    // Still mainnet-only after #8700 opened blocks and extrinsics: they reach
-    // the lakehouse through chain-events-degraded.ts, which has not been given
-    // the network dimension the four cold-tier readers now have. Opening them
-    // before that would serve mainnet's chain events under a testnet path.
-    pathname === "/api/v1/chain-events" ||
-    pathname === "/api/v1/chain-events/stats" ||
-    BLOCK_CHAIN_EVENTS_PATH_PATTERN.test(pathname) ||
     SUDO_CALLS_PATH_PATTERN.test(pathname) ||
     GOVERNANCE_CONFIG_CHANGES_PATH_PATTERN.test(pathname) ||
     RUNTIME_VERSIONS_PATH_PATTERN.test(pathname)
@@ -5380,6 +5324,16 @@ async function dispatchChainHistoryRoute(
   }
   if (EXTRINSICS_FEED_PATH_PATTERN.test(pathname)) {
     return handleExtrinsics(request, env, url, chain);
+  }
+  // The chain-events family (#8700). Routed through the same handler the bare
+  // path uses, so parameter validation, cache key and tier labelling are
+  // identical on both -- only the chain differs.
+  if (
+    pathname === "/api/v1/chain-events" ||
+    pathname === "/api/v1/chain-events/stats" ||
+    BLOCK_CHAIN_EVENTS_PATH_PATTERN.test(pathname)
+  ) {
+    return handleChainEventsFamily(request, env, url, ctx, network);
   }
   return null;
 }
@@ -5873,20 +5827,29 @@ export async function readEconomicsCurrentKv(
   return value as Row | null;
 }
 
-// Chain-events index heartbeat read. Memoized per-isolate at a short TTL so
-// repeated /health probes on warm isolates don't issue a billed Postgres query
-// (via the DATA_API service binding) per request. Null results are not cached
-// (cold/unbound store stays re-queried). Keyed on env so tests / multi-binding
-// callers never cross-read.
+// Chain-event index heartbeat. Memoized per-isolate at a short TTL so repeated
+// /health probes on a warm isolate do not re-query per request; a null result
+// is NOT memoized, so a cold or unbound store stays re-queried.
 //
-// This used to query D1's `account_events` table directly, but that table was
-// fully dropped by #4772 (D1 chain-data write-path retirement) — the live
-// chain_events tier now lives in Postgres, reached through the DATA_API
-// service binding, the same way handleChainEventsProxy (above) and
-// dataApiFetchJson (src/data-api-mcp.ts) already read it (#5357).
+// READS D1, NOT DATA_API (#8700). This asked the DATA_API binding for
+// `/api/v1/chain-events?limit=1` and took the newest row's block+timestamp. That
+// binding's Postgres store was destroyed (#9186/#9193), so the call could only
+// 503 and the health payload published `chain_events: {null, null, null}` --
+// "the index has no heartbeat at all" -- every time, verified live 2026-08-04.
+//
+// D1's `chain_detail_blocks` is the right source rather than merely a working
+// one: this field documents itself as the LIVE-FOLLOW streamer's heartbeat
+// (~12-30s while it runs), and that lane is exactly what fills this table. The
+// lakehouse feed would answer too, but it is the wrong clock -- an hourly decode
+// lane -- and every probe would pay a bounded-window R2 SQL scan for it.
+// tests/health-chain-events-cache.test.ts holds the memo behaviour.
 export const CHAIN_EVENTS_DB_TTL_MS = 30_000;
 let chainEventsDbMemo: { env: Env | null; value: unknown; expiresAt: number } =
   { env: null, value: null, expiresAt: 0 };
+
+registerModuleStateReset("workers/api.ts:chainEventsDbMemo", () => {
+  chainEventsDbMemo = { env: null, value: null, expiresAt: 0 };
+});
 
 export async function readChainEventsDb(
   env: Env,
@@ -5895,21 +5858,18 @@ export async function readChainEventsDb(
   if (chainEventsDbMemo.env === env && now < chainEventsDbMemo.expiresAt) {
     return chainEventsDbMemo.value as Row | null;
   }
-  if (!env?.DATA_API?.fetch) return null;
   let value = null;
   try {
-    const response = await env.DATA_API.fetch(
-      new Request("https://d/api/v1/chain-events?limit=1"),
+    // THROUGH THE WATCHDOG'S OWN READER, not a second copy of its SQL: this
+    // endpoint publishes the number and the watchdog alerts on it, and two
+    // queries would drift apart silently, each looking correct alone.
+    const head = await readChainDetailHead(
+      env as unknown as Record<string, unknown>,
     );
-    if (response.ok) {
-      const body = (await response.json()) as Row;
-      const row = Array.isArray(body?.events) ? body.events[0] : null;
-      if (row) {
-        value = {
-          block: row.block_number ?? null,
-          at: row.observed_at ?? null,
-        };
-      }
+    // A blank or zero timestamp is ABSENT, not the epoch: Number(null) is 0,
+    // which would publish an age of 56 years instead of "no heartbeat".
+    if (head.latestObservedAtMs && head.latestObservedAtMs > 0) {
+      value = { block: head.headBlock, at: head.latestObservedAtMs };
     }
   } catch {
     value = null;
@@ -6575,6 +6535,7 @@ async function handleHealthRequest(request: Request, env: Env) {
     r2: Boolean(env.METAGRAPH_ARCHIVE?.get),
     kv: Boolean(env.METAGRAPH_CONTROL?.get),
     data_api: Boolean(env.DATA_API?.fetch),
+    health_db: Boolean(env.METAGRAPH_HEALTH_DB?.prepare),
   };
 
   // Data freshness — the event-driven data publish (ADR 0007) advances the KV
@@ -6618,7 +6579,7 @@ async function handleHealthRequest(request: Request, env: Env) {
   // observability (does NOT gate the HTTP status, like operational_health);
   // best-effort + null on a cold/unbound store.
   let chainEvents = null;
-  if (bindings.data_api) {
+  if (bindings.health_db) {
     const chainEventsRow = await readChainEventsDb(env);
     const chainEventsAtMs = chainEventsRow ? Number(chainEventsRow.at) : NaN;
     // Blank/zero observed_at cells coerce via Number("") → 0; treat as absent

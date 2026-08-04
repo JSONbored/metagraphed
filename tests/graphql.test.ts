@@ -9,6 +9,8 @@ import {
 } from "graphql";
 import { describe, test, vi } from "vitest";
 import * as listQuery from "../workers/list-query.ts";
+import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { resetDecodeWatermarkCache } from "../src/decode-watermark.ts";
 import * as subnetCandidatesMcp from "../src/subnet-candidates-mcp.ts";
 import * as subnetEndpointsMcp from "../src/subnet-endpoints-mcp.ts";
 import * as subnetEvidenceMcp from "../src/subnet-evidence-mcp.ts";
@@ -2590,22 +2592,50 @@ describe("graphql — block_extrinsics / block_events / block_chain_events (#697
   });
 
   test("block_chain_events: resolves the all-events tier by block_number", async () => {
-    const env = {
-      DATA_API: dataApi(
-        Response.json({
-          block_number: 9,
-          event_count: 2,
-          events: [
-            { event_index: 0, pallet: "System", method: "ExtrinsicSuccess" },
-            { event_index: 1, pallet: "Balances", method: "Transfer" },
-          ],
+    // The lakehouse leg, which is what answers a block at or below the seam
+    // (#8700 removed the DATA_API forward its store no longer backs).
+    const queries: string[] = [];
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      queries.push(JSON.parse(String(init.body)).query);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          result: {
+            rows: [
+              {
+                block_number: 9,
+                event_index: 0,
+                pallet: "System",
+                method: "ExtrinsicSuccess",
+                args: "{}",
+                phase: "ApplyExtrinsic",
+                extrinsic_index: 0,
+                observed_at: 1,
+              },
+              {
+                block_number: 9,
+                event_index: 1,
+                pallet: "Balances",
+                method: "Transfer",
+                args: "{}",
+                phase: "ApplyExtrinsic",
+                extrinsic_index: 0,
+                observed_at: 1,
+              },
+            ],
+          },
         }),
-      ),
-    };
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    resetDecodeWatermarkCache();
+    const env = { [R2_SQL_TOKEN_ENV]: "cfut_test" } as unknown as Env;
     const { status, body } = await gql(
       "{ block_chain_events(block_number: 9) { block_number event_count events } }",
-      env as unknown as Env,
+      env,
     );
+    assert.ok(queries.length > 0, "the lakehouse was never queried");
     assert.equal(status, 200);
     assert.equal(body.data.block_chain_events.block_number, 9);
     assert.equal(body.data.block_chain_events.event_count, 2);
@@ -23213,9 +23243,26 @@ describe("graphql — evidence", () => {
 });
 
 // #7171: GraphQL parity for GET /api/v1/chain-events (Query feed).
-describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
-  function dataApi(response: Row) {
-    return { fetch: async () => response };
+describe("graphql — chain_events (#7171, lakehouse all-events feed)", () => {
+  // The tier this feed reads (#8700). It was DATA_API-backed Postgres until
+  // that store was destroyed (#9186/#9193) -- and because GraphQL had no ladder
+  // below the forward, this field resolved an empty feed in production while
+  // REST kept serving. Stubbing the store that actually answers is the point.
+  function lakehouse(rows: Row[] = []) {
+    const calls: string[] = [];
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      calls.push(JSON.parse(String(init.body)).query);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    resetDecodeWatermarkCache();
+    return {
+      calls,
+      env: { [R2_SQL_TOKEN_ENV]: "cfut_test" } as unknown as Env,
+    };
   }
 
   test("cold/unbound tier returns a schema-stable empty feed, never an error", async () => {
@@ -23232,28 +23279,19 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
     });
   });
 
-  test("resolves DATA_API rows and maps event fields", async () => {
-    const env = {
-      DATA_API: dataApi(
-        Response.json({
-          count: 1,
-          next_before: 100,
-          next_cursor: "1.100.0",
-          events: [
-            {
-              block_number: 100,
-              event_index: 0,
-              pallet: "SubtensorModule",
-              method: "WeightsSet",
-              args: { netuid: 7 },
-              phase: "ApplyExtrinsic",
-              extrinsic_index: 2,
-              observed_at: 1_720_000_000_000,
-            },
-          ],
-        }),
-      ),
-    };
+  test("resolves lakehouse rows and maps event fields", async () => {
+    const { env } = lakehouse([
+      {
+        block_number: 100,
+        event_index: 0,
+        pallet: "SubtensorModule",
+        method: "WeightsSet",
+        args: '{"netuid":[7]}',
+        phase: "ApplyExtrinsic",
+        extrinsic_index: 2,
+        observed_at: 1_720_000_000_000,
+      },
+    ]);
     const { status, body } = await gql(
       `{ chain_events {
           count next_before next_cursor
@@ -23261,57 +23299,45 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
             block_number event_index pallet method args phase extrinsic_index observed_at
           }
         } }`,
-      env as unknown as Env,
+      env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
     assert.equal(body.data.chain_events.count, 1);
-    assert.equal(body.data.chain_events.next_cursor, "1.100.0");
-    assert.equal(body.data.chain_events.next_before, 100);
     const event = body.data.chain_events.events[0];
     assert.equal(event.pallet, "SubtensorModule");
     assert.equal(event.method, "WeightsSet");
-    assert.deepEqual(event.args, { netuid: 7 });
+    // Decoded from the column's TEXT, not passed through as a raw string.
+    assert.equal(typeof event.args, "object");
     assert.equal(event.observed_at, 1_720_000_000_000);
   });
 
   test("exposes the action-sentence summary field, and null for an unmatched pallet.method (#8525)", async () => {
-    const env = {
-      DATA_API: dataApi(
-        Response.json({
-          count: 2,
-          next_before: 100,
-          next_cursor: "1.100.1",
-          events: [
-            {
-              block_number: 100,
-              event_index: 0,
-              pallet: "System",
-              method: "ExtrinsicSuccess",
-              args: {},
-              phase: "ApplyExtrinsic",
-              extrinsic_index: 2,
-              observed_at: 1_720_000_000_000,
-              summary: "Extrinsic executed successfully.",
-            },
-            {
-              block_number: 100,
-              event_index: 1,
-              pallet: "NoSuchPallet",
-              method: "NoSuchEvent",
-              args: {},
-              phase: "ApplyExtrinsic",
-              extrinsic_index: 2,
-              observed_at: 1_720_000_000_000,
-              summary: null,
-            },
-          ],
-        }),
-      ),
-    };
+    const { env } = lakehouse([
+      {
+        block_number: 100,
+        event_index: 0,
+        pallet: "System",
+        method: "ExtrinsicSuccess",
+        args: "{}",
+        phase: "ApplyExtrinsic",
+        extrinsic_index: 2,
+        observed_at: 1_720_000_000_000,
+      },
+      {
+        block_number: 100,
+        event_index: 1,
+        pallet: "NoSuchPallet",
+        method: "NoSuchEvent",
+        args: "{}",
+        phase: "ApplyExtrinsic",
+        extrinsic_index: 2,
+        observed_at: 1_720_000_000_000,
+      },
+    ]);
     const { status, body } = await gql(
       "{ chain_events { events { pallet summary } } }",
-      env as unknown as Env,
+      env,
     );
     assert.equal(status, 200);
     const [templated, unmatched] = body.data.chain_events.events;
@@ -23321,53 +23347,41 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
 
   test("a block+extrinsic lookup resolves that extrinsic's emitted events", async () => {
     // The get_extrinsic_chain_events use case (#7647): the raw pallet.method
-    // events one specific extrinsic emitted, scoped by ?block=&extrinsic=.
-    let capturedUrl: URL | undefined;
-    const env = {
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            count: 2,
-            next_before: null,
-            next_cursor: null,
-            events: [
-              {
-                block_number: 9,
-                event_index: 4,
-                pallet: "SubtensorModule",
-                method: "StakeAdded",
-                args: { netuid: 3 },
-                phase: "ApplyExtrinsic",
-                extrinsic_index: 1,
-                observed_at: 1_720_000_000_000,
-              },
-              {
-                block_number: 9,
-                event_index: 5,
-                pallet: "System",
-                method: "ExtrinsicSuccess",
-                args: {},
-                phase: "ApplyExtrinsic",
-                extrinsic_index: 1,
-                observed_at: 1_720_000_000_000,
-              },
-            ],
-          });
-        },
+    // events one specific extrinsic emitted, scoped to that block and index.
+    const { env, calls } = lakehouse([
+      {
+        block_number: 9,
+        event_index: 4,
+        pallet: "SubtensorModule",
+        method: "StakeAdded",
+        args: '{"netuid":[3]}',
+        phase: "ApplyExtrinsic",
+        extrinsic_index: 1,
+        observed_at: 1_720_000_000_000,
       },
-    };
+      {
+        block_number: 9,
+        event_index: 5,
+        pallet: "System",
+        method: "ExtrinsicSuccess",
+        args: "{}",
+        phase: "ApplyExtrinsic",
+        extrinsic_index: 1,
+        observed_at: 1_720_000_000_000,
+      },
+    ]);
     const { status, body } = await gql(
       `{ chain_events(block: 9, extrinsic: 1) {
           count
           events { block_number event_index pallet method extrinsic_index }
         } }`,
-      env as unknown as Env,
+      env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.equal(capturedUrl!.searchParams.get("block"), "9");
-    assert.equal(capturedUrl!.searchParams.get("extrinsic"), "1");
+    assert.equal(calls.length, 1, "the lakehouse was never queried");
+    assert.match(calls[0]!, /block_number = 9\b/);
+    assert.match(calls[0]!, /extrinsic_index = 1\b/);
     assert.equal(body.data.chain_events.count, 2);
     const events = body.data.chain_events.events;
     assert.equal(events.length, 2);
@@ -23380,19 +23394,10 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
   });
 
   test("a block+extrinsic pair that emitted nothing resolves the schema-stable empty feed, never an error", async () => {
-    const env = {
-      DATA_API: dataApi(
-        Response.json({
-          count: 0,
-          next_before: null,
-          next_cursor: null,
-          events: [],
-        }),
-      ),
-    };
+    const { env } = lakehouse([]);
     const { status, body } = await gql(
       "{ chain_events(block: 9, extrinsic: 3) { count next_cursor next_before events { pallet } } }",
-      env as unknown as Env,
+      env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -23404,108 +23409,77 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
     });
   });
 
-  test("forwards filter args as query params, including legacy before", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            count: 0,
-            next_before: null,
-            next_cursor: null,
-            events: [],
-          });
-        },
-      },
-    };
+  test("every filter arg reaches the query, including the legacy before", async () => {
+    const { env, calls } = lakehouse([]);
     await gql(
       '{ chain_events(pallet: "SubtensorModule", method: "WeightsSet", block: 9, extrinsic: 1, before: 8, limit: 25) { count } }',
-      env as unknown as Env,
+      env,
     );
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain-events");
-    assert.equal(capturedUrl!.searchParams.get("pallet"), "SubtensorModule");
-    assert.equal(capturedUrl!.searchParams.get("method"), "WeightsSet");
-    assert.equal(capturedUrl!.searchParams.get("block"), "9");
-    assert.equal(capturedUrl!.searchParams.get("extrinsic"), "1");
-    assert.equal(capturedUrl!.searchParams.get("before"), "8");
-    assert.equal(capturedUrl!.searchParams.get("limit"), "25");
+    assert.equal(calls.length, 1, "the lakehouse was never queried");
+    // A filter that is accepted but never reaches the WHERE clause serves an
+    // unfiltered feed that looks filtered -- the failure this guards.
+    assert.match(calls[0]!, /pallet = 'SubtensorModule'/);
+    assert.match(calls[0]!, /method = 'WeightsSet'/);
+    assert.match(calls[0]!, /block_number = 9\b/);
+    assert.match(calls[0]!, /extrinsic_index = 1\b/);
+    assert.match(calls[0]!, /LIMIT 25\b/);
   });
 
   test("prefers cursor over before when both are set", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            count: 0,
-            next_before: null,
-            next_cursor: null,
-            events: [],
-          });
-        },
-      },
-    };
+    const { env, calls } = lakehouse([]);
     await gql('{ chain_events(cursor: "1.2.3", before: 99) { count } }', env);
-    assert.equal(capturedUrl!.searchParams.get("cursor"), "1.2.3");
-    assert.equal(capturedUrl!.searchParams.get("before"), null);
+    // The cursor's own block is the ceiling; `before: 99` would have made it 98.
+    assert.match(calls[0]!, /block_number <= 2\b/);
+    assert.doesNotMatch(calls[0]!, /block_number <= 98\b/);
   });
 
-  test("a DATA_API 400 is BAD_USER_INPUT, not an empty feed", async () => {
-    const env = {
-      DATA_API: dataApi(
-        new Response(JSON.stringify({ error: "method requires pallet" }), {
-          status: 400,
-        }),
-      ),
-    };
+  test("a filter the tier cannot express is BAD_USER_INPUT, not an empty feed", async () => {
+    // It used to arrive as a 400 from the data Worker. The reader returns null
+    // for an unusable filter and for an unreachable door alike, so the two are
+    // told apart by a shared validator rather than by the store's status code.
+    const { env, calls } = lakehouse([]);
     const { status, body } = await gql(
-      '{ chain_events(method: "WeightsSet") { count } }',
-      env as unknown as Env,
+      '{ chain_events(method: "not a method name") { count } }',
+      env,
     );
     assert.equal(status, 200);
     assert.ok(
       body.errors.find((e: Row) => e.extensions?.code === "BAD_USER_INPUT"),
     );
-    assert.match(body.errors[0].message, /method requires pallet/);
+    assert.match(body.errors[0].message, /method/);
     assert.equal(body.data?.chain_events ?? null, null);
+    assert.equal(calls.length, 0, "an unusable filter must not be queried");
   });
 
-  test("a partial DATA_API body degrades to resolver defaults", async () => {
-    const env = {
-      DATA_API: dataApi(Response.json({})),
-    };
+  test("an empty window still hands back a continuation, not an end-of-feed", async () => {
+    // A SHORT PAGE IS NOT THE END. Each page scans one bounded block window, so
+    // a sparse filter can match nothing here and plenty below; dropping the
+    // continuation would truncate the feed silently.
+    const { env } = lakehouse([]);
     const { status, body } = await gql(
       "{ chain_events { count next_before next_cursor events { pallet } } }",
-      env as unknown as Env,
+      env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.deepEqual(body.data.chain_events, {
-      count: 0,
-      next_before: null,
-      next_cursor: null,
-      events: [],
-    });
+    assert.equal(body.data.chain_events.count, 0);
+    assert.deepEqual(body.data.chain_events.events, []);
+    assert.equal(body.data.chain_events.next_cursor, null);
+    assert.ok(
+      (body.data.chain_events.next_before as number) > 0,
+      "an unfilled window must still point at the next one",
+    );
   });
 
   test("sparse event rows fill null defaults", async () => {
-    const env = {
-      DATA_API: dataApi(
-        Response.json({
-          count: 1,
-          events: [{}],
-        }),
-      ),
-    };
+    const { env } = lakehouse([{}]);
     const { status, body } = await gql(
       `{ chain_events {
           events {
             block_number event_index pallet method args phase extrinsic_index observed_at
           }
         } }`,
-      env as unknown as Env,
+      env,
     );
     assert.equal(status, 200);
     assert.deepEqual(body.data.chain_events.events[0], {
@@ -23521,26 +23495,24 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
   });
 
   test("a data_rate_limited loader failure degrades to an empty feed", async () => {
+    const { env: base, calls } = lakehouse([{ pallet: "X" }]);
     const env = {
-      DATA_API: dataApi(
-        Response.json({ count: 99, events: [{ pallet: "X" }] }),
-      ),
+      ...base,
       DATA_RATE_LIMITER: {
         async limit() {
           return { success: false };
         },
       },
-    };
+    } as unknown as Env;
     const { status, body } = await gql(
       "{ chain_events { count events { pallet } } }",
-      env as unknown as Env,
+      env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    assert.deepEqual(body.data.chain_events, {
-      count: 0,
-      events: [],
-    });
+    assert.deepEqual(body.data.chain_events, { count: 0, events: [] });
+    // The limit gates the caller, so the tier is never touched.
+    assert.equal(calls.length, 0);
   });
 
   test("is priced at the relationship-field complexity weight", () => {
@@ -23551,7 +23523,23 @@ describe("graphql — chain_events (#7171, DATA_API all-events feed)", () => {
 // #7432: GraphQL parity for GET /api/v1/chain-events/stats (the aggregate
 // sibling of chain_events), reusing the loadChainActivity + optionalBlocksWindow
 // that MCP get_chain_activity already calls, both relocated to data-api-mcp.ts.
-describe("graphql — chain_events_stats (#7432, DATA_API all-events aggregate)", () => {
+describe("graphql — chain_events_stats (#7432, lakehouse all-events aggregate)", () => {
+  function lakehouse(rows: Row[] = []) {
+    const calls: string[] = [];
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      calls.push(JSON.parse(String(init.body)).query);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    resetDecodeWatermarkCache();
+    return {
+      calls,
+      env: { [R2_SQL_TOKEN_ENV]: "cfut_test" } as unknown as Env,
+    };
+  }
   function dataApi(response: Row) {
     return { fetch: async () => response };
   }
@@ -23571,33 +23559,21 @@ describe("graphql — chain_events_stats (#7432, DATA_API all-events aggregate)"
     });
   });
 
-  test("resolves the pallet.method aggregate from DATA_API", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            window_blocks: 1000,
-            groups: 2,
-            activity: [
-              { pallet: "SubtensorModule", method: "WeightsSet", count: 42 },
-              { pallet: "System", method: "ExtrinsicSuccess", count: 7 },
-            ],
-          });
-        },
-      },
-    };
+  test("resolves the pallet.method aggregate from the lakehouse", async () => {
+    const { env, calls } = lakehouse([
+      { pallet: "SubtensorModule", method: "WeightsSet", count: 42 },
+      { pallet: "System", method: "ExtrinsicSuccess", count: 7 },
+    ]);
     const { status, body } = await gql(
       "{ chain_events_stats { window_blocks groups activity { pallet method count } } }",
-      env as unknown as Env,
+      env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
-    // Same DATA_API path REST's /chain-events/stats proxy uses; omitted blocks
-    // defaults to 1000.
-    assert.equal(capturedUrl!.pathname, "/api/v1/chain-events/stats");
-    assert.equal(capturedUrl!.searchParams.get("blocks"), "1000");
+    assert.equal(calls.length, 1, "the lakehouse was never queried");
+    // Omitted blocks defaults to a 1000-block window, and the window ENDS at
+    // the seam floor here because this env publishes no decode watermark.
+    assert.match(calls[0]!, /block_number > 8758336\b/);
     assert.equal(body.data.chain_events_stats.window_blocks, 1000);
     assert.equal(body.data.chain_events_stats.groups, 2);
     assert.equal(body.data.chain_events_stats.activity.length, 2);
@@ -23608,58 +23584,34 @@ describe("graphql — chain_events_stats (#7432, DATA_API all-events aggregate)"
     });
   });
 
-  test("forwards an explicit blocks window as a query param", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({ window_blocks: 250, groups: 0, activity: [] });
-        },
-      },
-    };
+  test("an explicit blocks window reaches the query", async () => {
+    const { env, calls } = lakehouse([]);
     const { body } = await gql(
       "{ chain_events_stats(blocks: 250) { window_blocks } }",
-      env as unknown as Env,
+      env,
     );
-    assert.equal(capturedUrl!.searchParams.get("blocks"), "250");
+    assert.match(calls[0]!, /block_number > 8759086\b/);
     assert.equal(body.data.chain_events_stats.window_blocks, 250);
   });
 
   test("clamps an over-cap blocks window to 5000", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            window_blocks: 5000,
-            groups: 0,
-            activity: [],
-          });
-        },
-      },
-    };
-    await gql("{ chain_events_stats(blocks: 99999) { window_blocks } }", env);
-    assert.equal(capturedUrl!.searchParams.get("blocks"), "5000");
+    const { env, calls } = lakehouse([]);
+    const { body } = await gql(
+      "{ chain_events_stats(blocks: 99999) { window_blocks } }",
+      env,
+    );
+    assert.match(calls[0]!, /block_number > 8754336\b/);
+    assert.equal(body.data.chain_events_stats.window_blocks, 5000);
   });
 
   test("treats an explicit null blocks as the default window", async () => {
-    let capturedUrl: URL | undefined;
-    const env = {
-      DATA_API: {
-        fetch: async (req: Request) => {
-          capturedUrl = new URL(req.url);
-          return Response.json({
-            window_blocks: 1000,
-            groups: 0,
-            activity: [],
-          });
-        },
-      },
-    };
-    await gql("{ chain_events_stats(blocks: null) { window_blocks } }", env);
-    assert.equal(capturedUrl!.searchParams.get("blocks"), "1000");
+    const { env, calls } = lakehouse([]);
+    const { body } = await gql(
+      "{ chain_events_stats(blocks: null) { window_blocks } }",
+      env,
+    );
+    assert.match(calls[0]!, /block_number > 8758336\b/);
+    assert.equal(body.data.chain_events_stats.window_blocks, 1000);
   });
 
   test("a non-positive / non-integer blocks is BAD_USER_INPUT, not an aggregate", async () => {

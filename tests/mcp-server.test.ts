@@ -13,6 +13,10 @@ import {
   markMcpTierDegraded,
 } from "../src/mcp-server.ts";
 import { currentPostgresTierFallbackGeneration } from "../workers/postgres-tier.ts";
+import {
+  decodeWatermarkKey,
+  resetDecodeWatermarkCache,
+} from "../src/decode-watermark.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
 import * as profilesMcp from "../src/profiles-mcp.ts";
 import * as healthHistoryMcp from "../src/health-history-mcp.ts";
@@ -3561,82 +3565,84 @@ describe("MCP tools (injected deps)", () => {
   });
 });
 
-// get_chain_activity reaches the Postgres-backed all-events tier through the
-// DATA_API service binding (the same binding the REST /chain-events/stats proxy
-// uses), so its tests mock that binding via env rather than the injected deps.
-describe("MCP get_chain_activity (DATA_API binding)", () => {
-  // A stub DATA_API binding: records the requested URL and returns the supplied
-  // stats payload (or a non-OK response when `status` is given).
-  function makeDataApi({ payload, status = 200 }: Row = {}) {
-    const calls: URL[] = [];
+// get_chain_activity reads the all-events tier -- the SAME lakehouse table
+// REST's /chain-events/stats serves from (#8700). It used to reach a Postgres
+// store through the DATA_API binding; that store was destroyed (#9186/#9193),
+// and because MCP had no ladder below the forward the tool answered
+// `tier_unavailable` in production while REST kept working.
+describe("MCP get_chain_activity (lakehouse tier)", () => {
+  // A stub R2 SQL door: records the SQL issued and returns the supplied rows.
+  // `fail` makes the door unreachable, the tier's one failure mode.
+  function makeLakehouse({ rows = [], fail = false }: Row = {}) {
+    const calls: string[] = [];
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      calls.push(JSON.parse(String(init.body)).query);
+      if (fail) throw new Error("r2 sql unreachable");
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    resetDecodeWatermarkCache();
     return {
       calls,
-      fetch(request: Request) {
-        calls.push(new URL(request.url));
-        return Promise.resolve(
-          new Response(status === 200 ? JSON.stringify(payload) : "err", {
-            status,
-            headers: { "content-type": "application/json" },
-          }),
-        );
+      env: {
+        [R2_SQL_TOKEN_ENV]: "cfut_test",
+        METAGRAPH_ARCHIVE: {
+          async get(key: string) {
+            if (key !== decodeWatermarkKey("mainnet")) return null;
+            return {
+              async text() {
+                return JSON.stringify({ decoded_through: 8_771_082 });
+              },
+            };
+          },
+        },
       },
     };
   }
 
-  test("returns the pallet.method aggregate from the data Worker", async () => {
-    const dataApi = makeDataApi({
-      payload: {
-        window_blocks: 1000,
-        groups: 2,
-        activity: [
-          { pallet: "SubtensorModule", method: "set_weights", count: 42 },
-          { pallet: "System", method: "ExtrinsicSuccess", count: 7 },
-        ],
-      },
+  test("returns the pallet.method aggregate from the lakehouse", async () => {
+    const lake = makeLakehouse({
+      rows: [
+        { pallet: "SubtensorModule", method: "set_weights", count: 42 },
+        { pallet: "System", method: "ExtrinsicSuccess", count: 7 },
+      ],
     });
-    const res = await callTool(
-      "get_chain_activity",
-      {},
-      { env: { DATA_API: dataApi } },
-    );
+    const res = await callTool("get_chain_activity", {}, { env: lake.env });
     const out = res.body.result.structuredContent;
     assert.equal(res.body.result.isError, false);
     assert.equal(out.window_blocks, 1000);
     assert.equal(out.groups, 2);
     assert.equal(out.activity.length, 2);
     assert.equal(out.activity[0].pallet, "SubtensorModule");
-    // Default window is 1000 blocks when `blocks` is omitted.
-    assert.equal(
-      dataApi.calls[0].searchParams.get("blocks"),
-      "1000",
-      "omitted blocks must default to 1000",
-    );
+    // Default window is 1000 blocks when `blocks` is omitted, ending at the
+    // published watermark rather than at a constant.
+    assert.equal(lake.calls.length, 1, "the lakehouse was never queried");
+    assert.match(lake.calls[0]!, /block_number > 8770082\b/);
   });
 
-  test("passes an explicit blocks window through to the data Worker", async () => {
-    const dataApi = makeDataApi({
-      payload: { window_blocks: 250, groups: 0, activity: [] },
-    });
+  test("passes an explicit blocks window through to the query", async () => {
+    const lake = makeLakehouse();
     const res = await callTool(
       "get_chain_activity",
       { blocks: 250 },
-      { env: { DATA_API: dataApi } },
+      { env: lake.env },
     );
     assert.equal(res.body.result.isError, false);
-    assert.equal(dataApi.calls[0].searchParams.get("blocks"), "250");
+    assert.match(lake.calls[0]!, /block_number > 8770832\b/);
   });
 
-  test("applies the data API limiter before fetching chain activity", async () => {
-    const dataApi = makeDataApi({
-      payload: { window_blocks: 1000, groups: 0, activity: [] },
-    });
+  test("applies the data API limiter before reading the tier", async () => {
+    const lake = makeLakehouse();
     const limiterKeys: string[] = [];
     const res = await callTool(
       "get_chain_activity",
       {},
       {
         env: {
-          DATA_API: dataApi,
+          ...lake.env,
           DATA_RATE_LIMITER: {
             async limit({ key }: { key: string }) {
               limiterKeys.push(key);
@@ -3649,13 +3655,13 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /Too many data API requests/);
     assert.deepEqual(limiterKeys, ["data:anonymous"]);
-    assert.equal(dataApi.calls.length, 0);
+    // The limit gates the CALLER, not the store: moving the read off DATA_API
+    // must not exempt it.
+    assert.equal(lake.calls.length, 0);
   });
 
   test("charges the data API limiter for each batched chain activity call", async () => {
-    const dataApi = makeDataApi({
-      payload: { window_blocks: 1000, groups: 0, activity: [] },
-    });
+    const lake = makeLakehouse();
     const limiterKeys: string[] = [];
     const res = await rpc(
       [
@@ -3674,7 +3680,7 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
       ],
       {
         env: {
-          DATA_API: dataApi,
+          ...lake.env,
           DATA_RATE_LIMITER: {
             async limit({ key }: { key: string }) {
               limiterKeys.push(key);
@@ -3687,19 +3693,13 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
     assert.equal(res.status, 200);
     assert.equal(res.body.length, 2);
     assert.deepEqual(limiterKeys, ["data:anonymous", "data:anonymous"]);
-    assert.equal(dataApi.calls.length, 2);
+    assert.equal(lake.calls.length, 2);
   });
 
   test("clamps an over-cap blocks window to 5000", async () => {
-    const dataApi = makeDataApi({
-      payload: { window_blocks: 5000, groups: 0, activity: [] },
-    });
-    await callTool(
-      "get_chain_activity",
-      { blocks: 99999 },
-      { env: { DATA_API: dataApi } },
-    );
-    assert.equal(dataApi.calls[0].searchParams.get("blocks"), "5000");
+    const lake = makeLakehouse();
+    await callTool("get_chain_activity", { blocks: 99999 }, { env: lake.env });
+    assert.match(lake.calls[0]!, /block_number > 8766082\b/);
   });
 
   test("rejects a non-positive / non-integer blocks argument", async () => {
@@ -3707,156 +3707,142 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
       const res = await callTool(
         "get_chain_activity",
         { blocks },
-        { env: { DATA_API: makeDataApi() } },
+        { env: makeLakehouse().env },
       );
       assert.equal(res.body.result.isError, true, `blocks=${blocks}`);
       assert.ok(res.body.result.content[0].text.includes("blocks"));
     }
   });
 
-  test("errors cleanly when the DATA_API binding is absent", async () => {
+  test("errors cleanly when the lakehouse is unconfigured", async () => {
     const res = await callTool("get_chain_activity", {}, { env: {} });
     assert.equal(res.body.result.isError, true);
     assert.ok(
-      res.body.result.content[0].text.includes("all-events data tier"),
+      res.body.result.content[0].text.includes("all-events tier"),
       "must surface a clear tier-unavailable message",
     );
   });
 
-  test("errors cleanly when the data Worker returns a non-OK response", async () => {
-    const dataApi = makeDataApi({ status: 502 });
-    const res = await callTool(
-      "get_chain_activity",
-      {},
-      { env: { DATA_API: dataApi } },
-    );
+  test("errors cleanly when the lakehouse door is unreachable", async () => {
+    const lake = makeLakehouse({ fail: true });
+    const res = await callTool("get_chain_activity", {}, { env: lake.env });
     assert.equal(res.body.result.isError, true);
-    assert.ok(res.body.result.content[0].text.includes("502"));
+    assert.ok(res.body.result.content[0].text.includes("all-events tier"));
   });
 
-  test("list_chain_events returns the raw event feed and forwards filters", async () => {
-    const dataApi = makeDataApi({
-      payload: {
-        count: 1,
-        next_before: 4199999,
-        next_cursor: "cursor-xyz",
-        events: [
-          {
-            block_number: 4200000,
-            event_index: 3,
-            pallet: "SubtensorModule",
-            method: "WeightsSet",
-            args: [{ name: "netuid", value: 7 }],
-            phase: "ApplyExtrinsic",
-            extrinsic_index: 2,
-            observed_at: 1750009000000,
-          },
-        ],
-      },
+  test("list_chain_events returns the event feed and applies its filters", async () => {
+    const lake = makeLakehouse({
+      rows: [
+        {
+          block_number: 4200000,
+          event_index: 3,
+          pallet: "SubtensorModule",
+          method: "WeightsSet",
+          args: '{"netuid":[7]}',
+          phase: "ApplyExtrinsic",
+          extrinsic_index: 2,
+          observed_at: 1750009000000,
+        },
+      ],
     });
     const res = await callTool(
       "list_chain_events",
       { pallet: "SubtensorModule", method: "WeightsSet", limit: 10 },
-      { env: { DATA_API: dataApi } },
+      { env: lake.env },
     );
     const out = res.body.result.structuredContent;
     assert.equal(res.body.result.isError, false);
     assert.equal(out.count, 1);
-    assert.equal(out.next_cursor, "cursor-xyz");
     assert.equal(out.events[0].pallet, "SubtensorModule");
     assert.equal(out.events[0].method, "WeightsSet");
-    // The feed read hits /chain-events and forwards the filters + limit.
-    assert.equal(dataApi.calls[0].pathname, "/api/v1/chain-events");
-    assert.equal(
-      dataApi.calls[0].searchParams.get("pallet"),
-      "SubtensorModule",
-    );
-    assert.equal(dataApi.calls[0].searchParams.get("method"), "WeightsSet");
-    assert.equal(dataApi.calls[0].searchParams.get("limit"), "10");
+    // A filter that reached the WHERE clause, not one dropped on the way: a
+    // silently unfiltered feed is a wrong answer that looks like a working one.
+    assert.equal(lake.calls.length, 1, "the lakehouse was never queried");
+    assert.match(lake.calls[0]!, /pallet = 'SubtensorModule'/);
+    assert.match(lake.calls[0]!, /method = 'WeightsSet'/);
+    assert.match(lake.calls[0]!, /LIMIT 10\b/);
   });
 
   test("list_chain_events surfaces the action-sentence summary field, null for an unmatched pallet.method (#8525)", async () => {
-    const dataApi = makeDataApi({
-      payload: {
-        count: 2,
-        next_before: 4199999,
-        next_cursor: "cursor-xyz",
-        events: [
-          {
-            block_number: 4200000,
-            event_index: 3,
-            pallet: "System",
-            method: "ExtrinsicSuccess",
-            args: {},
-            phase: "ApplyExtrinsic",
-            extrinsic_index: 2,
-            observed_at: 1750009000000,
-            summary: "Extrinsic executed successfully.",
-          },
-          {
-            block_number: 4200000,
-            event_index: 4,
-            pallet: "NoSuchPallet",
-            method: "NoSuchEvent",
-            args: {},
-            phase: "ApplyExtrinsic",
-            extrinsic_index: 2,
-            observed_at: 1750009000000,
-            summary: null,
-          },
-        ],
-      },
+    const lake = makeLakehouse({
+      rows: [
+        {
+          block_number: 4200000,
+          event_index: 3,
+          pallet: "System",
+          method: "ExtrinsicSuccess",
+          args: "{}",
+          phase: "ApplyExtrinsic",
+          extrinsic_index: 2,
+          observed_at: 1750009000000,
+        },
+        {
+          block_number: 4200000,
+          event_index: 4,
+          pallet: "NoSuchPallet",
+          method: "NoSuchEvent",
+          args: "{}",
+          phase: "ApplyExtrinsic",
+          extrinsic_index: 2,
+          observed_at: 1750009000000,
+        },
+      ],
     });
     const res = await callTool(
       "list_chain_events",
       { limit: 10 },
-      { env: { DATA_API: dataApi } },
+      { env: lake.env },
     );
     const out = res.body.result.structuredContent;
+    // Computed server-side from the DECODED args, by the same formatter every
+    // other tier uses -- not a column the store hands back.
     assert.equal(out.events[0].summary, "Extrinsic executed successfully.");
     assert.equal(out.events[1].summary, null);
   });
 
-  test("list_chain_events surfaces a data-Worker 400 as an invalid_params error", async () => {
-    const dataApi = {
-      calls: [] as URL[],
-      fetch(request: Request) {
-        this.calls.push(new URL(request.url));
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              error: "method filter requires pallet unless block is specified",
-            }),
-            { status: 400, headers: { "content-type": "application/json" } },
-          ),
-        );
-      },
-    };
+  test("list_chain_events declines a filter it cannot express, as invalid_params", async () => {
+    // The reader DECLINES an unusable filter rather than dropping it; silently
+    // widening a filtered feed to everything would be the worse failure.
+    const lake = makeLakehouse();
     const res = await callTool(
       "list_chain_events",
-      { method: "WeightsSet" },
-      { env: { DATA_API: dataApi } },
+      { pallet: "Balances'; DROP TABLE" },
+      { env: lake.env },
     );
     assert.equal(res.body.result.isError, true);
-    assert.match(res.body.result.content[0].text, /requires pallet/);
+    // invalid_params, NOT tier_unavailable: the reader returns null for an
+    // unusable filter and for an unreachable door alike, so telling the two
+    // apart is a shared validator's job rather than the store's status code.
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "invalid_params",
+    );
+    assert.match(res.body.result.content[0].text, /pallet/);
+    assert.equal(
+      lake.calls.length,
+      0,
+      "an unusable filter must not be queried",
+    );
   });
 
-  test("list_chain_events errors cleanly when the DATA_API binding is absent", async () => {
+  test("list_chain_events errors cleanly when the lakehouse is unconfigured", async () => {
     const res = await callTool("list_chain_events", {}, { env: {} });
     assert.equal(res.body.result.isError, true);
-    assert.match(res.body.result.content[0].text, /all-events data tier/);
+    assert.match(res.body.result.content[0].text, /all-events tier/);
   });
 
-  test("list_chain_events applies the data API limiter before fetching", async () => {
-    const dataApi = makeDataApi({ payload: { count: 0, events: [] } });
+  test("list_chain_events applies the data API limiter before reading", async () => {
+    const lake = makeLakehouse();
+    const limiterKeys: string[] = [];
     const res = await callTool(
       "list_chain_events",
       {},
       {
         env: {
-          DATA_API: dataApi,
+          ...lake.env,
           DATA_RATE_LIMITER: {
-            async limit() {
+            async limit({ key }: { key: string }) {
+              limiterKeys.push(key);
               return { success: false };
             },
           },
@@ -3865,122 +3851,46 @@ describe("MCP get_chain_activity (DATA_API binding)", () => {
     );
     assert.equal(res.body.result.isError, true);
     assert.match(res.body.result.content[0].text, /Too many data API requests/);
-    assert.equal(dataApi.calls.length, 0);
+    assert.deepEqual(limiterKeys, ["data:anonymous"]);
+    assert.equal(lake.calls.length, 0);
   });
 
-  test("list_chain_events forwards block/extrinsic/cursor and degrades to an empty feed", async () => {
-    // An empty data-Worker body exercises the count/next/events fallbacks, and the
-    // block/extrinsic/cursor filters cover the remaining query-param branches.
-    const dataApi = makeDataApi({ payload: {} });
+  test("list_chain_events scopes to one block+extrinsic and answers an empty feed", async () => {
+    const lake = makeLakehouse({ rows: [] });
     const res = await callTool(
       "list_chain_events",
-      { block: 4200000, extrinsic: 2, cursor: "abc", limit: 25 },
-      { env: { DATA_API: dataApi } },
+      { block: 4200000, extrinsic: 2, cursor: "1750009000000.4200000.3" },
+      { env: lake.env },
     );
-    const out = res.body.result.structuredContent;
     assert.equal(res.body.result.isError, false);
-    assert.equal(out.count, 0);
-    assert.equal(out.next_before, null);
-    assert.equal(out.next_cursor, null);
-    assert.deepEqual(out.events, []);
-    const q = dataApi.calls[0].searchParams;
-    assert.equal(q.get("block"), "4200000");
-    assert.equal(q.get("extrinsic"), "2");
-    assert.equal(q.get("cursor"), "abc");
-    assert.equal(q.get("limit"), "25");
+    assert.deepEqual(res.body.result.structuredContent.events, []);
+    assert.match(lake.calls[0]!, /block_number = 4200000\b/);
+    assert.match(lake.calls[0]!, /extrinsic_index = 2\b/);
   });
 
-  test("list_chain_events forwards the legacy before cursor (#7895)", async () => {
-    const dataApi = makeDataApi({
-      payload: {
-        count: 1,
-        next_before: 4199990,
-        next_cursor: "4199990.0",
-        events: [
-          {
-            block_number: 4199995,
-            event_index: 0,
-            pallet: "System",
-            method: "ExtrinsicSuccess",
-          },
-        ],
-      },
-    });
-    const res = await callTool(
-      "list_chain_events",
-      { before: 4200000, limit: 10 },
-      { env: { DATA_API: dataApi } },
-    );
-    const out = res.body.result.structuredContent;
-    assert.equal(res.body.result.isError, false);
-    assert.equal(out.count, 1);
-    assert.equal(out.next_before, 4199990);
-    assert.equal(out.events[0].block_number, 4199995);
-    const q = dataApi.calls[0].searchParams;
-    assert.equal(q.get("before"), "4200000");
-    assert.equal(q.get("limit"), "10");
-    assert.equal(q.get("cursor"), null);
+  test("list_chain_events honours the legacy before cursor (#7895)", async () => {
+    const lake = makeLakehouse({ rows: [] });
+    await callTool("list_chain_events", { before: 4200000 }, { env: lake.env });
+    // `before` is block-EXCLUSIVE, so the ceiling is one below it.
+    assert.match(lake.calls[0]!, /block_number <= 4199999\b/);
   });
 
   test("list_chain_events prefers cursor over before when both are set (#7895)", async () => {
-    const dataApi = makeDataApi({ payload: { count: 0, events: [] } });
+    const lake = makeLakehouse({ rows: [] });
     await callTool(
       "list_chain_events",
-      { cursor: "1.2.3", before: 99, limit: 5 },
-      { env: { DATA_API: dataApi } },
+      { cursor: "1750009000000.4100000.3", before: 4200000 },
+      { env: lake.env },
     );
-    const q = dataApi.calls[0].searchParams;
-    assert.equal(q.get("cursor"), "1.2.3");
-    assert.equal(q.get("before"), null);
-    assert.equal(q.get("limit"), "5");
+    assert.match(lake.calls[0]!, /block_number <= 4100000\b/);
+    assert.doesNotMatch(lake.calls[0]!, /block_number <= 4199999\b/);
   });
 
-  test("list_chain_events surfaces a non-400 data-Worker error as tier_unavailable", async () => {
-    const dataApi = makeDataApi({ status: 503 });
-    const res = await callTool(
-      "list_chain_events",
-      {},
-      { env: { DATA_API: dataApi } },
-    );
+  test("list_chain_events surfaces an unreachable tier as tier_unavailable", async () => {
+    const lake = makeLakehouse({ fail: true });
+    const res = await callTool("list_chain_events", {}, { env: lake.env });
     assert.equal(res.body.result.isError, true);
-    assert.match(res.body.result.content[0].text, /all-events data tier/);
-    assert.match(res.body.result.content[0].text, /503/);
-  });
-
-  test("list_chain_events errors cleanly when the data Worker fetch throws", async () => {
-    const dataApi = {
-      calls: [] as URL[],
-      fetch() {
-        return Promise.reject(new Error("socket hang up"));
-      },
-    };
-    const res = await callTool(
-      "list_chain_events",
-      {},
-      { env: { DATA_API: dataApi } },
-    );
-    assert.equal(res.body.result.isError, true);
-    assert.match(res.body.result.content[0].text, /could not be reached/);
-  });
-
-  test("list_chain_events falls back to a default message on a non-JSON 400 body", async () => {
-    const dataApi = {
-      calls: [] as URL[],
-      fetch(request: Request) {
-        this.calls.push(new URL(request.url));
-        return Promise.resolve(new Response("not json", { status: 400 }));
-      },
-    };
-    const res = await callTool(
-      "list_chain_events",
-      { method: "WeightsSet" },
-      { env: { DATA_API: dataApi } },
-    );
-    assert.equal(res.body.result.isError, true);
-    assert.match(
-      res.body.result.content[0].text,
-      /Invalid request to the all-events data tier/,
-    );
+    assert.match(res.body.result.content[0].text, /all-events tier/);
   });
 });
 
@@ -16550,16 +16460,35 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
     count: 1,
     events: [
       {
+        block_number: 123,
         event_index: 0,
         pallet: "System",
         method: "ExtrinsicSuccess",
-        args: { x: 1 },
+        // TEXT, as the lakehouse column holds it.
+        args: '{"x":1}',
         phase: "ApplyExtrinsic",
         extrinsic_index: 2,
         observed_at: 100,
       },
     ],
   };
+  /** The R2 SQL door: get_extrinsic_chain_events reads the lakehouse feed
+   * (#8700), not DATA_API. Records the SQL so a filter can be shown to have
+   * reached the WHERE clause rather than merely been accepted. */
+  function makeExtrinsicLakehouse({ rows = [] }: Row = {}) {
+    const calls: string[] = [];
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      calls.push(JSON.parse(String(init.body)).query);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    resetDecodeWatermarkCache();
+    return { calls, env: { [R2_SQL_TOKEN_ENV]: "cfut_test" } };
+  }
+
   const DATA_API_EXTRINSIC_CHAIN_EVENTS_PAYLOAD = {
     count: 1,
     next_before: 123,
@@ -16595,29 +16524,30 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
   }
 
   test("get_block_chain_events returns raw events for a block", async () => {
-    const dataApi = makeDataApi({
-      payload: {
-        block_number: 4200000,
-        count: 1,
-        events: [
-          {
-            event_index: 0,
-            pallet: "Balances",
-            method: "Transfer",
-            observed_at: 1,
-          },
-        ],
-      },
+    const lake = makeExtrinsicLakehouse({
+      rows: [
+        {
+          block_number: 4_200_000,
+          event_index: 0,
+          pallet: "Balances",
+          method: "Transfer",
+          args: "{}",
+          phase: "ApplyExtrinsic",
+          extrinsic_index: 1,
+          observed_at: 1,
+        },
+      ],
     });
     const res = await callTool(
       "get_block_chain_events",
       { block_number: 4200000 },
-      { env: { DATA_API: dataApi } },
+      { env: lake.env },
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.event_count, 1);
     assert.equal(out.events[0].pallet, "Balances");
-    assert.match(dataApi.calls[0].pathname, /\/blocks\/4200000\/chain-events$/);
+    assert.ok(lake.calls.length > 0, "the lakehouse was never queried");
+    assert.match(lake.calls[0]!, /block_number = 4200000\b/);
   });
 
   test("get_block_chain_events surfaces the action-sentence summary field, null for an unmatched event (#8525)", async () => {
@@ -16625,160 +16555,182 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
       account: "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
       free_balance: 1_000_000_000,
     };
-    const dataApi = makeDataApi({
-      payload: {
-        block_number: 4200000,
-        count: 2,
-        events: [
-          {
-            event_index: 0,
-            pallet: "Balances",
-            method: "Endowed",
-            args: endowedArgs,
-            observed_at: 1,
-            summary: summarizeEvent("Balances", "Endowed", endowedArgs),
-          },
-          {
-            event_index: 1,
-            pallet: "NoSuchPallet",
-            method: "NoSuchEvent",
-            observed_at: 1,
-            summary: null,
-          },
-        ],
-      },
+    const lake = makeExtrinsicLakehouse({
+      rows: [
+        {
+          block_number: 4_200_000,
+          event_index: 0,
+          pallet: "Balances",
+          method: "Endowed",
+          // TEXT, exactly as the lakehouse column holds it -- the summary is
+          // computed from the DECODED form, never the raw one.
+          args: JSON.stringify(endowedArgs),
+          phase: "ApplyExtrinsic",
+          extrinsic_index: 1,
+          observed_at: 1,
+        },
+        {
+          block_number: 4_200_000,
+          event_index: 1,
+          pallet: "NoSuchPallet",
+          method: "NoSuchEvent",
+          args: "{}",
+          phase: "ApplyExtrinsic",
+          extrinsic_index: 1,
+          observed_at: 1,
+        },
+      ],
     });
     const res = await callTool(
       "get_block_chain_events",
       { block_number: 4200000 },
-      { env: { DATA_API: dataApi } },
+      { env: lake.env },
     );
     const out = res.body.result.structuredContent;
     assert.equal(
       out.events[0].summary,
-      "5Grwva…GKutQY was endowed with 1.00 τ.",
+      summarizeEvent("Balances", "Endowed", endowedArgs),
     );
     assert.equal(out.events[1].summary, null);
   });
 
-  test("get_block_chain_events round-trips the DATA_API block chain-events contract", async () => {
-    const dataApi = makeDataApi({
-      payload: DATA_API_BLOCK_CHAIN_EVENTS_PAYLOAD,
+  test("get_block_chain_events round-trips the published event contract", async () => {
+    const lake = makeExtrinsicLakehouse({
+      rows: DATA_API_BLOCK_CHAIN_EVENTS_PAYLOAD.events,
     });
     const res = await callTool(
       "get_block_chain_events",
       { block_number: 123 },
-      { env: { DATA_API: dataApi } },
+      { env: lake.env },
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.block_number, 123);
     assert.equal(out.event_count, 1);
-    assert.deepEqual(out.events, DATA_API_BLOCK_CHAIN_EVENTS_PAYLOAD.events);
+    assert.equal(out.events[0].pallet, "System");
     assert.equal(typeof out.events[0].observed_at, "number");
   });
 
-  test("get_extrinsic_chain_events forwards block+extrinsic filters", async () => {
-    const dataApi = makeDataApi({ payload: { count: 0, events: [] } });
+  test("get_block_chain_events reads its network's own namespace", async () => {
+    const lake = makeExtrinsicLakehouse({
+      rows: [
+        {
+          block_number: 7_700_500,
+          event_index: 0,
+          pallet: "System",
+          method: "ExtrinsicSuccess",
+          args: "{}",
+          phase: "ApplyExtrinsic",
+          extrinsic_index: 0,
+          observed_at: 1,
+        },
+      ],
+    });
+    const res = await callTool(
+      "get_block_chain_events",
+      { block_number: 7700500, network: "test" },
+      { env: lake.env },
+    );
+    assert.equal(res.body.result.isError, false);
+    assert.ok(lake.calls.length > 0, "the lakehouse was never queried");
+    for (const q of lake.calls) assert.match(q, /\bchain_testnet\.\w+/);
+    assert.equal(res.body.result.structuredContent.event_count, 1);
+  });
+
+  test("get_extrinsic_chain_events scopes the read to that block+extrinsic", async () => {
+    const lake = makeExtrinsicLakehouse({ rows: [] });
     const res = await callTool(
       "get_extrinsic_chain_events",
       { ref: "4200000-3" },
-      { env: { DATA_API: dataApi } },
+      { env: lake.env },
     );
     assert.equal(res.body.result.isError, false);
-    assert.equal(dataApi.calls[0].searchParams.get("block"), "4200000");
-    assert.equal(dataApi.calls[0].searchParams.get("extrinsic"), "3");
-    assert.equal(dataApi.calls[0].searchParams.get("limit"), "50");
+    assert.equal(lake.calls.length, 1, "the lakehouse was never queried");
+    assert.match(lake.calls[0]!, /block_number = 4200000\b/);
+    assert.match(lake.calls[0]!, /extrinsic_index = 3\b/);
+    assert.match(lake.calls[0]!, /LIMIT 50\b/);
     assert.deepEqual(res.body.result.structuredContent.events, []);
   });
 
-  test("get_extrinsic_chain_events round-trips the DATA_API chain-events feed contract", async () => {
-    const dataApi = makeDataApi({
-      payload: DATA_API_EXTRINSIC_CHAIN_EVENTS_PAYLOAD,
+  test("get_extrinsic_chain_events round-trips the published event contract", async () => {
+    const lake = makeExtrinsicLakehouse({
+      rows: [
+        {
+          block_number: 123,
+          event_index: 0,
+          pallet: "System",
+          method: "ExtrinsicSuccess",
+          args: '{"x":1}',
+          phase: "ApplyExtrinsic",
+          extrinsic_index: 2,
+          observed_at: 100,
+        },
+      ],
     });
     const res = await callTool(
       "get_extrinsic_chain_events",
       { ref: "5870000-3" },
-      { env: { DATA_API: dataApi } },
+      { env: lake.env },
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.event_count, 1);
-    assert.equal(out.next_cursor, "123.0");
-    assert.deepEqual(
-      out.events,
-      DATA_API_EXTRINSIC_CHAIN_EVENTS_PAYLOAD.events,
-    );
+    assert.equal(out.events[0].pallet, "System");
+    // Decoded, not the raw column text -- the same formatter every tier uses.
+    assert.equal(typeof out.events[0].args, "object");
     assert.equal(typeof out.events[0].observed_at, "number");
-    assert.equal(dataApi.calls[0].searchParams.get("block"), "5870000");
-    assert.equal(dataApi.calls[0].searchParams.get("extrinsic"), "3");
+    assert.match(lake.calls[0]!, /block_number = 5870000\b/);
+    assert.match(lake.calls[0]!, /extrinsic_index = 3\b/);
   });
 
   test("get_extrinsic_chain_events surfaces the action-sentence summary field (#8525)", async () => {
-    const dataApi = makeDataApi({
-      payload: {
-        count: 1,
-        next_before: null,
-        next_cursor: null,
-        events: [
-          {
-            block_number: 123,
-            event_index: 0,
-            pallet: "System",
-            method: "ExtrinsicSuccess",
-            args: {},
-            phase: "ApplyExtrinsic",
-            extrinsic_index: 2,
-            observed_at: 100,
-            summary: "Extrinsic executed successfully.",
-          },
-        ],
-      },
+    const lake = makeExtrinsicLakehouse({
+      rows: [
+        {
+          block_number: 123,
+          event_index: 0,
+          pallet: "System",
+          method: "ExtrinsicSuccess",
+          args: "{}",
+          phase: "ApplyExtrinsic",
+          extrinsic_index: 2,
+          observed_at: 100,
+        },
+      ],
     });
     const res = await callTool(
       "get_extrinsic_chain_events",
       { ref: "123-2" },
-      { env: { DATA_API: dataApi } },
+      { env: lake.env },
     );
     const out = res.body.result.structuredContent;
     assert.equal(out.events[0].summary, "Extrinsic executed successfully.");
   });
 
-  test("get_extrinsic_chain_events follows next_cursor on a follow-up page", async () => {
-    const calls: Row[] = [];
-    const dataApi = {
-      calls,
-      fetch(request: Request) {
-        calls.push(new URL(request.url));
-        const cursor = new URL(request.url).searchParams.get("cursor");
-        const payload = cursor
-          ? {
-              count: 1,
-              events: [{ pallet: "System", method: "ExtrinsicSuccess" }],
-            }
-          : { count: 0, next_cursor: "4200000.9", events: [] };
-        return Promise.resolve(
-          new Response(JSON.stringify(payload), {
-            status: 200,
-            headers: { "content-type": "application/json" },
-          }),
-        );
-      },
-    };
-    const first = await callTool(
+  test("get_extrinsic_chain_events resumes from a cursor on a follow-up page", async () => {
+    const lake = makeExtrinsicLakehouse({
+      rows: [
+        {
+          block_number: 4200000,
+          event_index: 9,
+          pallet: "System",
+          method: "ExtrinsicSuccess",
+          args: "{}",
+          phase: "ApplyExtrinsic",
+          extrinsic_index: 3,
+          observed_at: 100,
+        },
+      ],
+    });
+    const res = await callTool(
       "get_extrinsic_chain_events",
-      { ref: "4200000-3", limit: 10 },
-      { env: { DATA_API: dataApi } },
+      { ref: "4200000-3", cursor: "100.4200000.12" },
+      { env: lake.env },
     );
-    assert.equal(first.body.result.isError, false);
-    assert.equal(first.body.result.structuredContent.next_cursor, "4200000.9");
-    const second = await callTool(
-      "get_extrinsic_chain_events",
-      { ref: "4200000-3", cursor: "4200000.9" },
-      { env: { DATA_API: dataApi } },
-    );
-    assert.equal(second.body.result.isError, false);
-    assert.equal(calls[1].searchParams.get("cursor"), "4200000.9");
+    assert.equal(res.body.result.isError, false);
+    // A single-block lookup is exact, so the cursor narrows WITHIN the block
+    // rather than moving a window.
+    assert.match(lake.calls[0]!, /block_number = 4200000\b/);
     assert.equal(
-      second.body.result.structuredContent.events[0].method,
+      res.body.result.structuredContent.events[0].method,
       "ExtrinsicSuccess",
     );
   });
@@ -16810,26 +16762,26 @@ describe("MCP all-events tier tools (get_block_chain_events, get_extrinsic_chain
       ajv.compile(
         listToolDefinitions().find((t: Row) => t.name === name)!.outputSchema,
       );
-    const dataApi = makeDataApi({
-      payload: DATA_API_BLOCK_CHAIN_EVENTS_PAYLOAD,
+    const blockLake = makeExtrinsicLakehouse({
+      rows: DATA_API_BLOCK_CHAIN_EVENTS_PAYLOAD.events,
     });
     const blockRes = await callTool(
       "get_block_chain_events",
       { block_number: 123 },
-      { env: { DATA_API: dataApi } },
+      { env: blockLake.env },
     );
     assert.ok(
       validatorFor("get_block_chain_events")(
         blockRes.body.result.structuredContent,
       ),
     );
-    const extrinsicDataApi = makeDataApi({
-      payload: DATA_API_EXTRINSIC_CHAIN_EVENTS_PAYLOAD,
+    const extrinsicLake = makeExtrinsicLakehouse({
+      rows: DATA_API_EXTRINSIC_CHAIN_EVENTS_PAYLOAD.events,
     });
     const extrinsicRes = await callTool(
       "get_extrinsic_chain_events",
       { ref: "5870000-3", limit: 10 },
-      { env: { DATA_API: extrinsicDataApi } },
+      { env: extrinsicLake.env },
     );
     assert.ok(
       validatorFor("get_extrinsic_chain_events")(

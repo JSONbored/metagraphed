@@ -26,8 +26,11 @@
 export const CHAIN_HISTORY_ROUTE_PATHS: readonly string[] = [
   "/api/v1/blocks",
   "/api/v1/blocks/{ref}",
+  "/api/v1/blocks/{ref}/chain-events",
   "/api/v1/blocks/{ref}/events",
   "/api/v1/blocks/{ref}/extrinsics",
+  "/api/v1/chain-events",
+  "/api/v1/chain-events/stats",
   "/api/v1/extrinsics",
   "/api/v1/extrinsics/{hash}",
 ];

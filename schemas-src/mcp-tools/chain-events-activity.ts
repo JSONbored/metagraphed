@@ -8,12 +8,17 @@
 // the shared parseAnalyticsWindow() runtime helper rather than an
 // Object.hasOwn() check -- modeled the same way here, no shared constant.
 import { z } from "zod";
+import { McpNetworkSchema } from "../shared.ts";
 
 const WINDOWS_2 = ["7d", "30d"] as const;
 
 export const GetChainActivityInputSchema = z
   .object({
     blocks: z.int().min(1).max(5000).optional(),
+    // #8700: which chain's decoded history to aggregate. The same published
+    // finney/test enum every network-aware tool takes, so one vocabulary
+    // covers the whole surface.
+    network: McpNetworkSchema.optional(),
   })
   .strict();
 export type GetChainActivityInput = z.infer<typeof GetChainActivityInputSchema>;
@@ -48,6 +53,7 @@ export const ListChainEventsInputSchema = z
     cursor: z.string().optional(),
     before: z.int().min(0).optional(),
     limit: z.int().min(1).max(200).optional(),
+    network: McpNetworkSchema.optional(),
   })
   .strict();
 export type ListChainEventsInput = z.infer<typeof ListChainEventsInputSchema>;

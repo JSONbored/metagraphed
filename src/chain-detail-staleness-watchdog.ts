@@ -87,6 +87,32 @@ interface D1Like {
   prepare(sql: string): { first(): Promise<unknown> };
 }
 
+/**
+ * The live-follow lane's head, as one read.
+ *
+ * Exported because /health publishes the SAME two aggregates as its chain-event
+ * heartbeat (#8700). Two copies of this SQL would let the number this endpoint
+ * reports and the number the watchdog alerts on drift apart -- and they would
+ * drift silently, since each looks correct on its own.
+ */
+export async function readChainDetailHead(
+  env: Record<string, unknown> | null | undefined,
+): Promise<{ latestObservedAtMs: number | null; headBlock: number | null }> {
+  const db = (env as { METAGRAPH_HEALTH_DB?: D1Like } | null | undefined)
+    ?.METAGRAPH_HEALTH_DB;
+  if (!db?.prepare) return { latestObservedAtMs: null, headBlock: null };
+  const row = (await db
+    .prepare(
+      "SELECT MAX(observed_at) AS latest, MAX(block_number) AS head " +
+        "FROM chain_detail_blocks",
+    )
+    .first()) as { latest?: unknown; head?: unknown } | null;
+  return {
+    latestObservedAtMs: toInt(row?.latest),
+    headBlock: toInt(row?.head),
+  };
+}
+
 export interface ChainDetailStalenessDeps {
   /** Injectable durable sink, so a test can assert the verdict was RECORDED and
    * not merely notified — the distinction #9330/#9340 exist about. */
@@ -121,15 +147,9 @@ export async function runChainDetailStalenessWatchdog(
     CHAIN_DETAIL_STALENESS_THRESHOLD_MS;
 
   try {
-    const row = (await db
-      .prepare(
-        "SELECT MAX(observed_at) AS latest, MAX(block_number) AS head " +
-          "FROM chain_detail_blocks",
-      )
-      .first()) as { latest?: unknown; head?: unknown } | null;
+    const head = await readChainDetailHead(env);
     const verdict = evaluateChainDetailStaleness({
-      latestObservedAtMs: toInt(row?.latest),
-      headBlock: toInt(row?.head),
+      ...head,
       nowMs: now(),
       thresholdMs,
     });
