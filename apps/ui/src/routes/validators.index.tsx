@@ -17,6 +17,11 @@ export const validatorsSearchSchema = z.object({
   // A search param (not component state) so a filtered view is shareable and
   // survives a reload.
   watched: fallback(z.boolean(), false).default(false),
+  // Cluster an operator's keys adjacent under its best-ranked row, so a team
+  // running several validators (Ventura Labs, Yuma, …) reads as one entry
+  // with a ×N chip instead of the same name repeated at every rank. On by
+  // default; the toggle exists for anyone who wants the raw flat ranking.
+  grouped: fallback(z.boolean(), true).default(true),
   sort: fallback(z.string(), "total_stake_tao").default("total_stake_tao"),
   // #5344: bring Validators up to the canonical ranked-list interaction model
   // (Subnets) — a sort DIRECTION toggled by clicking a column header, and a row

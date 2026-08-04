@@ -26,11 +26,21 @@ const TD_NUM = `${TD_BASE} text-right tabular-nums`;
  * fixed (12 headers over 9 cells, columns showing another column's data) is
  * structurally impossible here. `header` values are unique (asserted in tests).
  */
+/**
+ * Optional per-row render context. `group` is present when the page has
+ * operator grouping on: `index` 0 is the group's anchor row (carries the
+ * operator name and, when the group has several keys, the ×N chip); later
+ * indexes are continuation rows rendered without repeating the name.
+ */
+export interface ValidatorCellContext {
+  group?: { size: number; index: number };
+}
+
 export interface ValidatorColumn {
   header: string;
   thClassName: string;
   tdClassName: string;
-  cell: (v: GlobalValidator) => ReactNode;
+  cell: (v: GlobalValidator, ctx?: ValidatorCellContext) => ReactNode;
   /** #8251: sorting is client-side over the full fetched set now, so any
    *  numeric row field is a valid key — this names the `GlobalValidator`
    *  field the column ranks by. Columns without one (identity, derived-on-
@@ -94,30 +104,50 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     header: "Operator",
     thClassName: TH_BASE,
     tdClassName: TD_BASE,
-    cell: (v) => (
-      <div className="flex items-center gap-1.5 min-w-0">
-        {v.featured ? <SponsoredBadge /> : null}
-        <Link
-          to="/validators/$hotkey"
-          params={{ hotkey: v.hotkey }}
-          className="flex min-w-0 items-center gap-2 hover:underline"
-          title={v.hotkey}
-        >
-          <ValidatorIdentityChip hotkey={v.hotkey} identity={v.coldkey_identity} size={20} />
-        </Link>
-        {/* Own AddressDisplay outside the operator Link (not inside it) --
-            AddressDisplay's CopyButton doesn't stop click propagation, so
-            nesting it inside the /validators/$hotkey Link above would make a
-            copy click also navigate away. */}
-        <AddressDisplay
-          ss58={v.hotkey}
-          fallback={<>{v.hotkey}</>}
-          compact
-          linkToAccount={false}
-          valueClassName="shrink-0 font-mono mg-type-data-sm text-ink-muted"
-        />
-      </div>
-    ),
+    cell: (v, ctx) => {
+      const group = ctx?.group;
+      // A continuation row of a multi-key operator: same operator as the row
+      // above, so the name is not repeated — the icon + hotkey identify the
+      // key, and the indent reads as "still the same operator".
+      const continuation = group != null && group.size > 1 && group.index > 0;
+      return (
+        <div className={classNames("flex items-center gap-1.5 min-w-0", continuation && "pl-6")}>
+          {v.featured ? <SponsoredBadge /> : null}
+          <Link
+            to="/validators/$hotkey"
+            params={{ hotkey: v.hotkey }}
+            className="flex min-w-0 items-center gap-2 hover:underline"
+            title={v.hotkey}
+          >
+            <ValidatorIdentityChip
+              hotkey={v.hotkey}
+              identity={v.coldkey_identity}
+              size={20}
+              showName={!continuation}
+            />
+          </Link>
+          {group != null && group.size > 1 && group.index === 0 ? (
+            <span
+              className="shrink-0 rounded-full border border-border bg-surface px-1.5 mg-type-caption tabular-nums text-ink-muted"
+              title={`This operator runs ${group.size} validator keys — grouped under its best-ranked one`}
+            >
+              ×{group.size}
+            </span>
+          ) : null}
+          {/* Own AddressDisplay outside the operator Link (not inside it) --
+              AddressDisplay's CopyButton doesn't stop click propagation, so
+              nesting it inside the /validators/$hotkey Link above would make a
+              copy click also navigate away. */}
+          <AddressDisplay
+            ss58={v.hotkey}
+            fallback={<>{v.hotkey}</>}
+            compact
+            linkToAccount={false}
+            valueClassName="shrink-0 font-mono mg-type-data-sm text-ink-muted"
+          />
+        </div>
+      );
+    },
   },
   {
     ...numeric("Take"),

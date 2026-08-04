@@ -26,6 +26,7 @@ import { validatorsQuery } from "@/lib/metagraphed/queries";
 import { buildUrl } from "@/lib/metagraphed/client";
 import { formatNumber, isStaleFreshness, classNames } from "@/lib/metagraphed/format";
 import { matchesQuery, sortBy } from "@/lib/metagraphed/url-state";
+import { groupByOperator } from "@/lib/metagraphed/group-validators";
 import { useWatchlist } from "@/lib/metagraphed/watchlist";
 import { ValidatorSubnetHeatmap } from "@/components/metagraphed/charts/validator-subnet-heatmap";
 import { ValidatorCardList } from "@/components/metagraphed/validator-card-list";
@@ -107,6 +108,7 @@ function ValidatorsDirectory({
   const navigate = useNavigate({ from: "/validators/" });
   const sort = search.sort || "total_stake_tao";
   const order = search.order ?? "desc";
+  const grouped = search.grouped ?? true;
   // One canonical fetch regardless of the URL's sort/filter state — the query
   // key never changes with UI state, so sorting/searching re-uses the cached
   // full set instead of refetching.
@@ -139,7 +141,7 @@ function ValidatorsDirectory({
 
   // Client-side search + sort over the full set. Watched rows pin to the top
   // within the current sort (stable partition, not a separate list).
-  const rows = useMemo(() => {
+  const sortedRows = useMemo(() => {
     const filtered = all.filter(
       (v) =>
         matchesQuery([v.hotkey, v.coldkey, v.coldkey_identity?.name], search.q) &&
@@ -155,6 +157,15 @@ function ValidatorsDirectory({
     for (const v of sorted) (watchlist.isWatched(v.hotkey) ? watched : rest).push(v);
     return [...watched, ...rest];
   }, [all, search.q, search.watched, sort, order, watchlist]);
+
+  // Cluster an operator's keys adjacent under its best-ranked row (default on):
+  // one "Ventura Labs ×3" entry instead of the same name repeated at three
+  // ranks. Per-key rows survive untouched — nothing is summed across keys.
+  const { rows, groupInfo } = useMemo(() => {
+    if (!grouped) return { rows: sortedRows, groupInfo: null };
+    const { list, info } = groupByOperator(sortedRows);
+    return { rows: list, groupInfo: info };
+  }, [sortedRows, grouped]);
 
   // #8251: virtualized table body — the same padding-row technique the
   // /subnets table established (#8314): only the visible slice mounts as real
@@ -194,6 +205,20 @@ function ValidatorsDirectory({
         />
         {/* #8256: only offered once something is starred -- an always-visible
             filter that can only ever return nothing is furniture. */}
+        <button
+          type="button"
+          onClick={() => setSearch({ grouped: !grouped })}
+          aria-pressed={grouped}
+          title="Cluster an operator's validator keys under one entry"
+          className={classNames(
+            "inline-flex min-h-9 items-center gap-1.5 rounded border px-2.5 py-1 mg-type-caption font-medium transition-colors",
+            grouped
+              ? "border-accent/40 bg-accent/10 text-accent-text"
+              : "border-border bg-card text-ink-muted hover:border-accent/40 hover:text-ink-strong",
+          )}
+        >
+          Group by operator
+        </button>
         {watchlist.count > 0 ? (
           <button
             type="button"
@@ -309,7 +334,7 @@ function ValidatorsDirectory({
                         </td>
                         {VALIDATOR_COLUMNS.map((col) => (
                           <td key={col.header} className={col.tdClassName}>
-                            {col.cell(v)}
+                            {col.cell(v, { group: groupInfo?.get(v.hotkey) })}
                           </td>
                         ))}
                       </tr>
