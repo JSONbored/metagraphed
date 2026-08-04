@@ -311,7 +311,10 @@ function workflowJobBlock(content: string, jobName: string): string {
  */
 function workflowSteps(content: string): { name: string; block: string }[] {
   const steps: { name: string; block: string }[] = [];
-  const marker = /^      - name: (.+)$/gm;
+  // Six spaces is the indent a step sits at inside jobs.<id>.steps. Written as {6}
+  // rather than as literal spaces so the count is readable and cannot be miscounted
+  // by eye -- which is exactly what no-regex-spaces is for.
+  const marker = /^ {6}- name: (.+)$/gm;
   const starts: { name: string; index: number }[] = [];
   for (const m of content.matchAll(marker)) {
     starts.push({
