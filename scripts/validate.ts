@@ -43,42 +43,81 @@ import {
   loadGithubSignals,
 } from "./github-signals.ts";
 
-const providerKinds = new Set([
-  "subnet-team",
-  "infrastructure-provider",
-  "data-provider",
-  "docs-provider",
-  "registry",
-]);
+// ---------------------------------------------------------------------------
+// Enum vocabularies, READ FROM the JSON Schemas this file validates against.
+//
+// These were hand-written `new Set([...])` literals restating enums that
+// schemas/subnet-manifest.schema.json and provider.schema.json already declare -- a
+// third copy, alongside src/contracts.ts's QUERY_ENUMS (which at least has
+// scripts/validate-schema-enums.ts diffing it against the published OpenAPI). Nothing
+// checked these: a value ADDED to a schema kept failing here as "invalid kind" until
+// someone remembered the second list existed, and a value REMOVED from a schema kept
+// passing.
+//
+// Reading them out of the schema removes the copy rather than guarding it. `schemaEnum`
+// THROWS when the path or its `enum` is missing, so a schema refactor that moves one of
+// these surfaces as a loud startup failure rather than as a silently empty Set that
+// rejects every real record.
+const subnetManifestSchema = await readJson(
+  path.join(repoRoot, "schemas/subnet-manifest.schema.json"),
+);
+const providerSchema = await readJson(
+  path.join(repoRoot, "schemas/provider.schema.json"),
+);
 
-const authorities = new Set([
-  "official",
-  "provider-claimed",
-  "community",
-  "registry-observed",
-]);
+function schemaEnum(
+  document: unknown,
+  pointer: string[],
+  label: string,
+): Set<string> {
+  let node: unknown = document;
+  for (const key of pointer) {
+    node = (node as Record<string, unknown> | undefined)?.[key];
+  }
+  const values = (node as { enum?: unknown } | undefined)?.enum;
+  if (!Array.isArray(values) || values.length === 0) {
+    throw new Error(
+      `${label}: no enum at ${pointer.join("/")} -- the schema moved, and this ` +
+        "validator would otherwise silently reject every record",
+    );
+  }
+  return new Set(values.map(String));
+}
 
-const subnetStatuses = new Set(["active", "inactive", "unknown"]);
+const providerKinds = schemaEnum(
+  providerSchema,
+  ["properties", "kind"],
+  "provider.kind",
+);
 
-const surfaceKinds = new Set([
-  "archive",
-  "subtensor-rpc",
-  "subtensor-wss",
-  "subnet-api",
-  "openapi",
-  "sse",
-  "sdk",
-  "example",
-  "website",
-  "source-repo",
-  "dashboard",
-  "repo-registry",
-  "docs",
-  "data-artifact",
-]);
+const authorities = schemaEnum(
+  subnetManifestSchema,
+  ["$defs", "surface", "properties", "authority"],
+  "surface.authority",
+);
 
-const probeMethods = new Set(["GET", "HEAD", "JSON-RPC", "WSS-RPC"]);
-const probeExpectations = new Set(["json", "html", "sse", "any"]);
+const subnetStatuses = schemaEnum(
+  subnetManifestSchema,
+  ["properties", "status"],
+  "subnet.status",
+);
+
+const surfaceKinds = schemaEnum(
+  subnetManifestSchema,
+  ["$defs", "surface", "properties", "kind"],
+  "surface.kind",
+);
+
+const probeMethods = schemaEnum(
+  subnetManifestSchema,
+  ["$defs", "probe", "properties", "method"],
+  "probe.method",
+);
+const probeExpectations = schemaEnum(
+  subnetManifestSchema,
+  ["$defs", "probe", "properties", "expect"],
+  "probe.expect",
+);
 const coverageLevels = new Set(["native-only", "manifested", "probed"]);
 const subnetTypes = new Set(["root", "application"]);
 const nativeNameQualities = new Set(["chain", "placeholder", "empty"]);
@@ -90,14 +129,11 @@ const candidateStates = new Set([
   "stale",
   "rejected",
 ]);
-const curationLevels = new Set([
-  "native",
-  "candidate-discovered",
-  "community-seeded",
-  "machine-verified",
-  "maintainer-reviewed",
-  "adapter-backed",
-]);
+const curationLevels = schemaEnum(
+  subnetManifestSchema,
+  ["$defs", "curation", "properties", "level"],
+  "curation.level",
+);
 const reviewStates = new Set([
   "unreviewed",
   "machine-generated",
