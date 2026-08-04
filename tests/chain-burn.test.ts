@@ -15,6 +15,8 @@ import {
   CHAIN_BURN_MAX_NETUIDS,
 } from "../src/chain-burn.ts";
 import { ChainBurnArtifactSchema } from "../schemas-src/routes/subnet-registration-cost.ts";
+import { handleRequest } from "../workers/api.ts";
+import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 // twox128("SubtensorModule") ++ twox128("Burn"), verified against the live chain.
 const PREFIX =
@@ -380,6 +382,84 @@ describe("loadChainBurn — the edges of the chain read", () => {
     assert.deepEqual(
       (card.subnets as Array<{ netuid: number }>).map((s) => s.netuid),
       [2, 5, 9],
+    );
+  });
+});
+
+describe("GET /api/v1/chain/burn — through the Worker router", () => {
+  function chainStub(seen: string[] = []) {
+    globalThis.fetch = (async (u: string, init: RequestInit) => {
+      seen.push(String(u));
+      const body = JSON.parse(String(init.body));
+      const result =
+        body.method === "state_getStorage"
+          ? "0x0200" // TotalNetworks = 2
+          : [
+              {
+                changes: [
+                  [key(1), rao(500_000n)],
+                  [key(0), rao(0n)],
+                ],
+              },
+            ];
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ jsonrpc: "2.0", id: 1, result }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    return seen;
+  }
+
+  async function get(path: string) {
+    chainStub();
+    const res = await handleRequest(
+      new Request(`https://api.metagraph.sh${path}`),
+      createLocalArtifactEnv() as never,
+      { waitUntil() {}, passThroughOnException() {} } as never,
+    );
+    return { res, body: (await res.json()) as Record<string, never> };
+  }
+
+  test("serves the ranked card", async () => {
+    const { res, body } = await get("/api/v1/chain/burn");
+    assert.equal(res.status, 200);
+    const data = body.data as unknown as Record<string, unknown>;
+    assert.equal(data.subnet_count, 2);
+    assert.deepEqual(data.subnets, [
+      { netuid: 0, burn_tao: 0 },
+      { netuid: 1, burn_tao: 0.0005 },
+    ]);
+    assert.ok(data.field_sources);
+  });
+
+  test("the /{network}/ prefixed form reaches the same route", async () => {
+    // The contract auto-publishes /api/v1/{network}/chain/burn alongside the bare
+    // path, and resolveNetworkPrefix strips the segment before dispatch -- so an
+    // exact-path match serves both. Asserted rather than assumed, because the
+    // alternative is a documented route that 404s.
+    const { res, body } = await get("/api/v1/testnet/chain/burn");
+    assert.equal(res.status, 200);
+    assert.equal(
+      (body.data as unknown as Record<string, unknown>).subnet_count,
+      2,
+    );
+  });
+
+  test("the prefixed form reads the network's OWN chain, not mainnet's", async () => {
+    // Testnet runs its own registration auction; serving finney's prices under a
+    // testnet path would be a confident wrong answer about what registration costs.
+    const seen: string[] = [];
+    chainStub(seen);
+    await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/testnet/chain/burn"),
+      createLocalArtifactEnv() as never,
+      { waitUntil() {}, passThroughOnException() {} } as never,
+    );
+    assert.ok(seen.length > 0, "the chain was read");
+    assert.ok(
+      seen.every((u) => u.includes("test")),
+      `testnet path read ${seen[0]}`,
     );
   });
 });

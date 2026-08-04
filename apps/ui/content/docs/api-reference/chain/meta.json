@@ -4,6 +4,8 @@
     "chain-activity",
     "chain-alpha-volume",
     "chain-axon-removals",
+    "chain-burn",
+    "chain-burn-by-network",
     "chain-calls",
     "chain-concentration",
     "chain-deregistrations",

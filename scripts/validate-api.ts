@@ -1202,6 +1202,30 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/chain/burn",
+    (body) => {
+      // #9399. The two counts stay separate on purpose: subnet_count is what the
+      // chain reports exists, read_count is how many were read, and a gap between
+      // them is how a partial read announces itself.
+      assert.equal("subnet_count" in body.data, true);
+      assert.equal(typeof body.data.read_count, "number");
+      assert.equal(Array.isArray(body.data.subnets), true);
+      // Ranked cheapest-first, and a genuine zero burn is a real entry rather than
+      // an absence -- so this asserts ordering, not truthiness.
+      const burns = body.data.subnets.map(
+        (s: { burn_tao: number }) => s.burn_tao,
+      );
+      assert.deepEqual(
+        burns,
+        [...burns].sort((a, b) => a - b),
+      );
+      for (const entry of body.data.subnets) {
+        assert.equal(typeof entry.netuid, "number");
+        assert.equal(typeof entry.burn_tao, "number");
+      }
+    },
+  ],
+  [
     "/api/v1/subnets/7/ownership-history",
     (body) => {
       assert.equal(body.data.netuid, 7);
