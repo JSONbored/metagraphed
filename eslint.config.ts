@@ -75,7 +75,6 @@ export default tseslint.config(
       // C, #7861) -- regenerated wholesale from the live schema, never hand-
       // edited; Kanel's own boilerplate (e.g. an empty marker interface for a
       // function with no return columns) trips rules meant for hand-written code.
-      "generated/db/**",
       "registry/candidates/generated/**",
       "registry/subnets/generated/**",
       "registry/verification/**",
