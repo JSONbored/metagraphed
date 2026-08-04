@@ -429,9 +429,19 @@ test("a body stream that errors mid-read still records ok:false on the trace spa
   } finally {
     globalThis.fetch = original;
   }
-  expect(posted.length).toBe(1);
-  const span = posted[0].body.resourceSpans[0].scopeSpans[0].spans[0];
+  // #9440: an uncaught fault now posts TWO things -- the span this test was
+  // written for, and an $exception carrying the stack. Selected by shape
+  // rather than by index so neither assertion depends on POST ordering.
+  const spans = posted.filter((p) => p.body.resourceSpans);
+  expect(spans.length).toBe(1);
+  const span = spans[0].body.resourceSpans[0].scopeSpans[0].spans[0];
   expect(span.status.code).toBe(2); // ERROR
+
+  const exceptions = posted.filter((p) => p.body.event === "$exception");
+  expect(exceptions.length).toBe(1);
+  expect(exceptions[0].body.properties.route).toBe(
+    "/api/v1/internal/neurons-sync",
+  );
 });
 
 // POST /api/v1/internal/backfill-neuron-daily -- deep-history ingest for

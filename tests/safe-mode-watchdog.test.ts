@@ -249,3 +249,92 @@ describe("SafeMode alerting rule (#8696)", () => {
     assert.equal(result.detail, "socket closed");
   });
 });
+
+// ---- reporting (#9440) ----
+//
+// This watchdog reported on NO channel. It computed `reasons` correctly and
+// returned them to handleScheduled, whose return value workers/api.entry.ts
+// discards -- so the chain entering SafeMode, the most consequential event this
+// repo watches for, was detected every tick and told to nobody.
+describe("the watchdog's own reporting", () => {
+  function captureSpy() {
+    const captures: Record<string, unknown>[] = [];
+    return {
+      captures,
+      recordExceptionEvent: (async (_env: unknown, event: unknown) => {
+        captures.push(event as Record<string, unknown>);
+        return true;
+      }) as never,
+    };
+  }
+
+  const quietChain = (async (url: string) =>
+    String(url).includes("/api/v1/extrinsics")
+      ? new Response(JSON.stringify({ ok: true, data: { extrinsics: [] } }), {
+          status: 200,
+        })
+      : new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: null }), {
+          status: 200,
+        })) as unknown as typeof fetch;
+
+  const pausedChain = (async (url: string) =>
+    String(url).includes("/api/v1/extrinsics")
+      ? new Response(JSON.stringify({ ok: true, data: { extrinsics: [] } }), {
+          status: 200,
+        })
+      : new Response(
+          JSON.stringify({ jsonrpc: "2.0", id: 1, result: "0x1234" }),
+          { status: 200 },
+        )) as unknown as typeof fetch;
+
+  test("an ACTIVE pause is reported, not merely returned", async () => {
+    const spy = captureSpy();
+    const result = await runSafeModeWatchdog(null, {
+      fetchImpl: pausedChain,
+      recordExceptionEvent: spy.recordExceptionEvent,
+    });
+    assert.equal(result.alerted, true);
+    assert.equal(spy.captures.length, 1);
+    assert.equal(spy.captures[0].route, "watchdog:safe-mode");
+    assert.equal(spy.captures[0].errorCode, "safe_mode_active");
+    assert.match((spy.captures[0].error as Error).message, /SafeMode watchdog/);
+  });
+
+  test("a quiet chain reports nothing", async () => {
+    const spy = captureSpy();
+    const result = await runSafeModeWatchdog(null, {
+      fetchImpl: quietChain,
+      recordExceptionEvent: spy.recordExceptionEvent,
+    });
+    assert.equal(result.alerted, false);
+    assert.deepEqual(spy.captures, [], "a quiet chain pages no one");
+  });
+
+  test("an unreachable tick reports itself", async () => {
+    // The monitor's silence is indistinguishable from "the chain is fine",
+    // and that equivalence is the whole reason it exists -- so a tick that
+    // cannot run has to say so rather than returning quietly.
+    const spy = captureSpy();
+    const result = await runSafeModeWatchdog(null, {
+      fetchImpl: (async () => {
+        throw new Error("rpc unreachable");
+      }) as unknown as typeof fetch,
+      recordExceptionEvent: spy.recordExceptionEvent,
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, "unreachable");
+    assert.equal(spy.captures.length, 1);
+    assert.equal(spy.captures[0].errorCode, "watchdog_unreachable");
+  });
+
+  test("a capture that fails never breaks the tick", async () => {
+    const result = await runSafeModeWatchdog(null, {
+      fetchImpl: pausedChain,
+      recordExceptionEvent: (async () => {
+        throw new Error("posthog unreachable");
+      }) as never,
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.alerted, true);
+  });
+});

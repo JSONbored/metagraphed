@@ -227,6 +227,53 @@ async function captureDataApiError(
 
 export { captureDataApiError as captureDataApiErrorForTest };
 
+/**
+ * The low-cardinality route label for this request, or a Worker-level fallback
+ * when the URL cannot be parsed (#9440).
+ *
+ * A malformed URL must not turn one fault into two, so this never throws --
+ * the route dimension degrades to naming the Worker rather than vanishing,
+ * which is the dimension that was missing entirely before.
+ */
+function maskedDataApiRoute(request: Request): string {
+  try {
+    return maskRouteParams(new URL(request.url).pathname);
+  } catch {
+    return "data-api";
+  }
+}
+
+/**
+ * Capture a fault that escaped every handled path, from the Worker's own
+ * `fetch` entry (#9440).
+ *
+ * Separate from captureDataApiError because the ROUTE is derived differently:
+ * the handled sites each name the lane they belong to, while here the only
+ * thing known about the fault is which URL was being served -- masked, since a
+ * span/exception label keyed on a raw pathname is unaggregatable (#9001).
+ *
+ * Scheduled through waitUntil when a context exists so an already-failing
+ * request is not also made slower; awaited otherwise so a direct call (tests,
+ * a binding invocation with no ctx) still records.
+ */
+async function captureUncaughtDataApiError(
+  error: unknown,
+  route: string,
+  env: Env,
+  ctx: ExecutionContext | undefined,
+): Promise<void> {
+  const pending = recordExceptionEvent(env, {
+    error,
+    route,
+    errorCode: "internal_error",
+  }).catch(() => false);
+  if (typeof ctx?.waitUntil === "function") {
+    ctx.waitUntil(pending);
+    return;
+  }
+  await pending;
+}
+
 const ANALYTICS_DAY_MS = 24 * 60 * 60 * 1000;
 
 // The resolved window label to pass into a build* function's `{ window }` option,
@@ -6423,8 +6470,28 @@ export default {
     // leaderboard/chain-events Postgres queries the original rollout's
     // tracesSampleRate comment called out as the highest-value place to have
     // span visibility.
+    // #9440: the uncaught-fault capture runs REGARDLESS of trace sampling,
+    // and outside the sampled block below, because tracing is off by default
+    // on this Worker (its config sets no rate at all) -- so putting error
+    // capture inside the sampled path would mean an unhandled fault here is
+    // recorded exactly never. captureDataApiError covers the ~18 handled
+    // sites; this covers everything that escapes them, which is the class
+    // that has no stack anywhere today.
+    //
+    // Same shape as withUsageTelemetry's catch in workers/api.ts: observe and
+    // rethrow, never handle.
     if (!shouldSampleTrace(env)) {
-      return dispatchDataApiRequest(request, env);
+      try {
+        return await dispatchDataApiRequest(request, env);
+      } catch (error) {
+        await captureUncaughtDataApiError(
+          error,
+          maskedDataApiRoute(request),
+          env,
+          ctx,
+        );
+        throw error;
+      }
     }
     const startedAt = Date.now();
     // #9001: masked, like the $exception route above. A span NAME is the
@@ -6432,7 +6499,7 @@ export default {
     // per-route latency unaggregatable -- `/api/v1/subnets/123/conviction`
     // and `/api/v1/subnets/124/conviction` would never be compared.
     // workers/api.ts has always used the low-cardinality route id here.
-    const route = maskRouteParams(new URL(request.url).pathname);
+    const route = maskedDataApiRoute(request);
     let ok = true;
     try {
       const response = await dispatchDataApiRequest(request, env);
@@ -6440,6 +6507,7 @@ export default {
       return response;
     } catch (error) {
       ok = false;
+      await captureUncaughtDataApiError(error, route, env, ctx);
       throw error;
     } finally {
       const endedAt = Date.now();

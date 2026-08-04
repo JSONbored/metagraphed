@@ -317,3 +317,134 @@ test("waitUntil receives the telemetry write when a context is present", async (
   assert.equal(res.reported, true);
   assert.equal(scheduled.length, 1);
 });
+
+// ---- the durable record (#9440) ----
+//
+// shouldReport deliberately suppresses a repeat of the same signature, so a
+// lane critical for six hours notifies once and then goes quiet -- correct for
+// a notification, useless as a record. Everything this watchdog computed lived
+// only in the return value, and workers/api.entry.ts discards what `scheduled`
+// returns: measured every tick, then dropped. These pin the row per tick.
+
+function laneHealthSpy() {
+  const rows: Record<string, unknown>[] = [];
+  return {
+    rows,
+    db: {
+      prepare: (sql: string) => ({
+        bind: (...values: unknown[]) => ({
+          run: async () => {
+            // Only the INSERT carries a verdict; recordLaneVerdict also issues
+            // a retention DELETE on the way through.
+            if (sql.startsWith("INSERT")) {
+              rows.push({
+                lane: values[0],
+                verdict: values[1],
+                age_ms: values[2],
+                detail: values[3],
+              });
+            }
+          },
+        }),
+      }),
+    },
+  };
+}
+
+test("records an ok verdict on a tick that found nothing stale", async () => {
+  const spy = laneHealthSpy();
+  await runFreshnessWatchdog(envWith(undefined), undefined, {
+    // Timestamped against the REAL clock, not the NOW fixture the pure
+    // evaluateFreshness tests use: this path calls Date.now() itself, so a
+    // fixture-dated source reads as stale by however long ago the fixture is.
+    readArtifact: (async () => ({
+      sources: [source({ timestamp: new Date().toISOString() })],
+    })) as never,
+    laneHealthDb: spy.db as never,
+  });
+  assert.equal(spy.rows.length, 1);
+  assert.equal(spy.rows[0].lane, "freshness");
+  assert.equal(spy.rows[0].verdict, "ok");
+  assert.equal(spy.rows[0].detail, null);
+});
+
+test("records a stale verdict naming the sources, not just a count", async () => {
+  const spy = laneHealthSpy();
+  await runFreshnessWatchdog(envWith(undefined), undefined, {
+    readArtifact: (async () => staleArtifact) as never,
+    laneHealthDb: spy.db as never,
+  });
+  assert.equal(spy.rows.length, 1);
+  assert.equal(spy.rows[0].verdict, "stale");
+  // "which source" is the first question asked of a stale verdict, and the
+  // count is derivable from the names -- not the other way round.
+  assert.ok(String(spy.rows[0].detail).includes("a"));
+});
+
+test("records a row on EVERY tick, including one shouldReport suppresses", async () => {
+  const spy = laneHealthSpy();
+  const signature = evaluateFreshness(
+    staleArtifact.sources,
+    Date.now(),
+  ).signature;
+  const res = (await runFreshnessWatchdog(
+    envWith({ get: async () => signature, put: async () => {} }),
+    undefined,
+    {
+      readArtifact: (async () => staleArtifact) as never,
+      laneHealthDb: spy.db as never,
+    },
+  )) as Record<string, unknown>;
+  // The notification is correctly suppressed as a repeat...
+  assert.equal(res.reported, false);
+  // ...and the record is written anyway. This is the case the whole change
+  // exists for: a stall in its sixth hour notifies nobody and must still be
+  // visible somewhere.
+  assert.equal(spy.rows.length, 1);
+  assert.equal(spy.rows[0].verdict, "stale");
+});
+
+test("records `unknown` when the artifact cannot be read", async () => {
+  const spy = laneHealthSpy();
+  const res = (await runFreshnessWatchdog(envWith(undefined), undefined, {
+    readArtifact: (async () => null) as never,
+    laneHealthDb: spy.db as never,
+  })) as Record<string, unknown>;
+  assert.equal(res.ok, false);
+  assert.equal(spy.rows.length, 1);
+  // NOT a synonym for ok: the watchdog could not evaluate the lane at all.
+  // Without this row, a watchdog that cannot read its own artifact and one
+  // reporting everything fresh both produce silence.
+  assert.equal(spy.rows[0].verdict, "unknown");
+  assert.equal(spy.rows[0].detail, "artifact_unavailable");
+});
+
+test("records `unknown` when the tick throws outright", async () => {
+  const spy = laneHealthSpy();
+  const res = (await runFreshnessWatchdog(envWith(undefined), undefined, {
+    readArtifact: (async () => {
+      throw new Error("R2 unreachable");
+    }) as never,
+    laneHealthDb: spy.db as never,
+  })) as Record<string, unknown>;
+  assert.equal(res.ok, false);
+  assert.equal(spy.rows.length, 1);
+  assert.equal(spy.rows[0].verdict, "unknown");
+  assert.equal(spy.rows[0].detail, "unreachable");
+});
+
+test("a lane_health write that fails never breaks the tick", async () => {
+  // D1 migrations here are applied by hand, so an unapplied migration means
+  // "no such table" on a live deployment. A watchdog whose alarm-recording
+  // broke its alarm would be worse than the bug being fixed.
+  const res = (await runFreshnessWatchdog(envWith(undefined), undefined, {
+    readArtifact: (async () => staleArtifact) as never,
+    laneHealthDb: {
+      prepare: () => {
+        throw new Error("no such table: lane_health");
+      },
+    } as never,
+  })) as Record<string, unknown>;
+  assert.equal(res.ok, true);
+  assert.equal(res.stale_count, 1);
+});

@@ -675,9 +675,17 @@ test("a body stream that errors mid-read still records ok:false on the trace spa
   } finally {
     globalThis.fetch = original;
   }
-  expect(calls.length).toBe(1);
-  const span = calls[0].body.resourceSpans[0].scopeSpans[0].spans[0];
+  // #9440: an uncaught fault now posts TWO things -- the span this test was
+  // written for, and an $exception carrying the stack. Selected by shape
+  // rather than by index so neither assertion depends on POST ordering.
+  const spans = calls.filter((c) => c.body.resourceSpans);
+  expect(spans.length).toBe(1);
+  const span = spans[0].body.resourceSpans[0].scopeSpans[0].spans[0];
   expect(span.status.code).toBe(2); // ERROR
+
+  const exceptions = calls.filter((c) => c.body.event === "$exception");
+  expect(exceptions.length).toBe(1);
+  expect(exceptions[0].body.properties.route).toBe("registry-sync");
 });
 
 // Hyperdrive's connection-retry tests (METAGRAPHED-7) are gone with Hyperdrive:
