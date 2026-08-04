@@ -30,7 +30,7 @@
 // This is a MITIGATION, not a diagnosis of a bug in our code, and it is
 // deliberately noisy -- each restart prints, so "wrangler is crashing a lot"
 // stays visible in the log rather than being silently papered over.
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { connect } from "node:net";
 
 const port = process.argv[2];
@@ -74,24 +74,37 @@ function portFree(): Promise<boolean> {
  * watching the orphan keep serving 200s on the port while three restarts
  * failed to bind.
  *
- * So: the child is spawned into its OWN process group, the whole group is
- * reaped on an unexpected exit, and the restart waits for the port to
- * actually come free rather than assuming it has.
+ * Killing whatever still holds the port is the cleanup, deliberately NOT
+ * `detached: true` + a process-group kill. That was the first attempt and it
+ * is worse than the problem: a detached child sits outside the group
+ * Playwright terminates on teardown, so wrangler and workerd SURVIVE the run
+ * (measured: 2 of each still alive after the suite exited) still holding the
+ * step's stdio. In CI the job then never finishes -- it waits forever on a
+ * pipe nothing will close. The child therefore stays in this process's group
+ * where Playwright can reap it, and orphans are handled by port instead.
  */
 async function waitForPortFree(): Promise<boolean> {
   for (let i = 0; i < 30; i++) {
     if (await portFree()) return true;
+    // Give a graceful exit a moment before resorting to force.
+    if (i === 4) killPortHolders();
     await new Promise((r) => setTimeout(r, 500));
   }
   return false;
 }
 
-function reapGroup(pid: number | undefined): void {
-  if (pid === undefined) return;
-  try {
-    process.kill(-pid, "SIGKILL");
-  } catch {
-    // Already gone, or never had a group -- nothing to clean up.
+function killPortHolders(): void {
+  const found = spawnSync("lsof", ["-ti", `tcp:${port}`], { encoding: "utf8" });
+  if (found.error || found.status !== 0) return; // No lsof, or nothing listening.
+  for (const line of found.stdout.split("\n")) {
+    const pid = Number(line.trim());
+    if (!Number.isInteger(pid) || pid <= 0 || pid === process.pid) continue;
+    try {
+      process.kill(pid, "SIGKILL");
+      console.error(`[e2e-server] killed stray process ${pid} still holding port ${port}`);
+    } catch {
+      // Exited between the lookup and the signal.
+    }
   }
 }
 
@@ -100,13 +113,12 @@ function start(): void {
   child = spawn(
     "npx",
     ["wrangler", "dev", "-c", "dist/server/wrangler.json", "--port", port, "--local"],
-    { stdio: "inherit", detached: true },
+    { stdio: "inherit" },
   );
 
   child.on("exit", async (code, signal) => {
     if (shuttingDown) return;
     const uptimeMs = Date.now() - startedAt;
-    reapGroup(child?.pid);
     if (!(await waitForPortFree())) {
       console.error(
         `[e2e-server] wrangler exited but port ${port} is still held after 15s -- ` +
@@ -144,12 +156,15 @@ function start(): void {
   });
 }
 
-// Playwright signals the supervisor at the end of the run; the group kill is
-// what stops `workerd` being left behind holding the port for the next one.
+// Playwright signals the supervisor at the end of the run. Stop supervising
+// first, so the child's exit isn't mistaken for a crash and restarted into a
+// run that is already over, then make sure nothing is left on the port for
+// the next run to trip over.
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, () => {
     shuttingDown = true;
-    reapGroup(child?.pid);
+    child?.kill(signal);
+    killPortHolders();
     process.exit(0);
   });
 }

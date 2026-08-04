@@ -39,6 +39,15 @@ const VIEWPORTS = [
   { name: "desktop", width: 1280, height: 800 },
 ];
 
+// Playwright's default is 30s per test, and these do not fit in it: the
+// settle sequence (goto, up to 5s for networkidle or a 2s fallback, fonts)
+// runs before a table wait that has to tolerate /chain/extrinsics taking
+// ~10s to paint. Under load that total exceeded 30s and reported as
+// "Test timeout of 30000ms exceeded" pointing at the toBeVisible line --
+// which reads like the table never rendered, when the budget simply ran out.
+// The waits are all for conditions, so fast routes still finish fast.
+test.describe.configure({ timeout: 60_000 });
+
 /** Runs in the page. Scrolls every sticky <thead>'s container and reports where it landed. */
 function measureStickyHeaders() {
   const results: {
