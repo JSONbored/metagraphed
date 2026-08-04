@@ -7253,14 +7253,42 @@ describe("MCP query_graphql (#5591 — GraphQL bridge tool)", () => {
     assert.equal(out.data.subnet_serving.schema_version, 1);
   });
 
-  test("surfaces GraphQL validation errors as a populated errors[] (never bypassing the schema)", async () => {
+  // #9430: a query that produced NO data and only errors is a failed call, and
+  // must be reported as one. Returning it normally made every failure of this
+  // tool a success in telemetry -- dispatchTool derives isError from whether
+  // the handler threw, so $mcp_tool_call carried is_error:false and
+  // usage_event carried ok:true on a query that resolved to nothing. This
+  // tool's failure rate was structurally unmeasurable while every other
+  // tool's was not.
+  test("reports a rejected query as a tool error, not a silent success", async () => {
     const res = await callTool("query_graphql", {
       query: "{ definitely_not_a_real_field }",
     });
-    const out = res.body.result.structuredContent;
+    assert.equal(res.body.result.isError, true);
+    // The error detail still reaches the agent -- nothing is hidden by
+    // raising, the failure is merely no longer invisible.
+    assert.ok(
+      /definitely_not_a_real_field/.test(res.body.result.content[0].text),
+    );
+    // A query the schema rejected is the CALLER's error. The code drives
+    // $mcp_error_type, so it must not file a caller typo under `internal`.
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "invalid_graphql_query",
+    );
+  });
+
+  test("a successful query is unaffected — errors[] stays part of the contract", async () => {
+    // The guard keys on `data === null`, not on `errors.length`, so a partial
+    // success (data present alongside field-level errors) is still returned
+    // for the agent to read rather than raised. Calling that an error would be
+    // the opposite mistake, and this pins the boundary from the success side.
+    const res = await callTool("query_graphql", { query: "{ __typename }" });
     assert.equal(res.body.result.isError ?? false, false);
-    assert.equal(out.data, null);
-    assert.ok(Array.isArray(out.errors) && out.errors.length > 0);
+    assert.deepEqual(res.body.result.structuredContent, {
+      data: { __typename: "Query" },
+      errors: [],
+    });
   });
 
   test("a query that exceeds the complexity cap is rejected, proving the cap is reused", async () => {
@@ -7272,26 +7300,33 @@ describe("MCP query_graphql (#5591 — GraphQL bridge tool)", () => {
       (_unused, i) => `a${i}: subnet_serving(netuid: ${i}) { netuid }`,
     ).join(" ");
     const res = await callTool("query_graphql", { query: `{ ${aliases} }` });
-    const out = res.body.result.structuredContent;
-    assert.equal(res.body.result.isError ?? false, false);
-    assert.ok(Array.isArray(out.errors) && out.errors.length > 0);
-    assert.ok(/complex/i.test(JSON.stringify(out.errors)));
+    // #9430: reported as a tool error (the cap rejected it, so there is no
+    // data) — the cap is still proven to apply, which is what this test is for.
+    assert.equal(res.body.result.isError, true);
+    assert.ok(/complex/i.test(res.body.result.content[0].text));
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "invalid_graphql_query",
+    );
   });
 
-  test("surfaces a non-2xx handler response (oversized query -> 413) as { data: null, errors[] }, never thrown", async () => {
+  test("surfaces a non-2xx handler response (oversized query -> 413) as a caller error", async () => {
     // Pins the invariant the handler relies on: every handleGraphQLRequest path,
     // including the non-2xx query-too-large (>16KB) response, returns a JSON
-    // errors[] body -- so the bridge shapes it into { data, errors } rather than
-    // throwing or dropping the error detail.
+    // errors[] body -- so the bridge reads the error detail out of it rather
+    // than dropping it.
     // Padded with a GraphQL comment (non-whitespace, so requireString's trim
     // leaves it) to exceed GRAPHQL_MAX_QUERY_BYTES (16KB) -> the handler's 413.
     const oversized = `{ __typename }\n#${"x".repeat(17000)}`;
     const res = await callTool("query_graphql", { query: oversized });
-    const out = res.body.result.structuredContent;
-    assert.equal(res.body.result.isError ?? false, false);
-    assert.equal(out.data, null);
-    assert.ok(Array.isArray(out.errors) && out.errors.length > 0);
-    assert.ok(/too large/i.test(JSON.stringify(out.errors)));
+    assert.equal(res.body.result.isError, true);
+    assert.ok(/too large/i.test(res.body.result.content[0].text));
+    // A non-2xx means the handler rejected the REQUEST, so this is the
+    // caller's error and must not be filed under `internal`.
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "invalid_graphql_query",
+    );
   });
 
   test("applies the GraphQL rate limiter, surfacing a throttle as an error (never bypassing it)", async () => {

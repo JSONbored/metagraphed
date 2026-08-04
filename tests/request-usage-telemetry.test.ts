@@ -24,13 +24,22 @@ function req(pathname = "/api/v1/subnets", init?: RequestInit) {
 // to waitUntil, so a test can assert on both without touching PostHog.
 function recorder({ result = true as boolean | (() => unknown) } = {}) {
   const events: Row[] = [];
+  // #9430: exceptions are collected separately from usage events. Injected
+  // rather than left to the real recorder because CONFIGURED_ENV carries a
+  // token, so an un-stubbed capture would POST to PostHog from the suite.
+  const exceptions: Row[] = [];
   return {
     events,
+    exceptions,
     recordUsageEvent(env: unknown, event: unknown) {
       events.push({ env, event });
       return typeof result === "function" ? result() : result;
     },
-  } as unknown as WTDeps & { events: Row[] };
+    recordExceptionEvent(env: unknown, event: unknown) {
+      exceptions.push({ env, event });
+      return true;
+    },
+  } as unknown as WTDeps & { events: Row[]; exceptions: Row[] };
 }
 
 function fakeCtx() {
@@ -75,21 +84,26 @@ describe("usageRouteLabel", () => {
   // protected resource and that authentication buys throughput rather than
   // reach — and the next question that invites is "does anyone actually
   // authenticate?", which was unanswerable.
-  test("labels the OAuth auth surface", () => {
+  test("labels the app-served half of the OAuth auth surface", () => {
     assert.equal(label("/authorize"), "oauth-authorize");
     assert.equal(label("/oauth/callback/github"), "oauth-callback");
-    assert.equal(
-      label("/.well-known/oauth-protected-resource"),
-      "oauth-protected-resource",
-    );
-    assert.equal(
-      label("/.well-known/oauth-protected-resource/mcp"),
-      "oauth-protected-resource",
-    );
-    assert.equal(
-      label("/.well-known/oauth-authorization-server"),
-      "oauth-authorization-server",
-    );
+  });
+
+  // #9430: the discovery documents are NOT labelled, because this Worker never
+  // serves them. workers/api.entry.ts routes everything except a bare no-token
+  // /mcp through @cloudflare/workers-oauth-provider, which answers its own
+  // discovery endpoints (and /oauth/token, /oauth/register) internally and only
+  // then falls through to the default handler — so these paths never reach
+  // withUsageTelemetry at all.
+  //
+  // They WERE declared here and asserted by the previous version of this very
+  // test, which is how three permanently-dead labels survived: asserting
+  // usageRouteLabel directly proves what the function returns, never that a
+  // request reaches it. The label is only real if the request arrives.
+  test("does NOT label the discovery documents the OAuth library answers", () => {
+    assert.equal(label("/.well-known/oauth-protected-resource"), null);
+    assert.equal(label("/.well-known/oauth-protected-resource/mcp"), null);
+    assert.equal(label("/.well-known/oauth-authorization-server"), null);
   });
 
   // A CLOSED LIST, not a `/.well-known/` prefix. A prefix would also sweep in
@@ -524,6 +538,101 @@ describe("withUsageTelemetry", () => {
 
     assert.equal(spy.events.length, 1);
     assert.equal(spy.events[0].event.ok, false);
+  });
+
+  // #9430: an uncaught throw used to produce that ok:false usage event and
+  // NOTHING else — no stack, no PostHog Issue. This wrapper had try/finally
+  // with no catch, and workers/api.entry.ts dropped Sentry's withSentry()
+  // wrap (#7766) without replacing it, so the most severe class of failure
+  // this Worker has was also the least diagnosable.
+  test("captures an uncaught throw as an $exception with the route", async () => {
+    const spy = recorder();
+    const ctx = fakeCtx();
+    await assert.rejects(
+      withUsageTelemetry(
+        req("/api/v1/subnets/74"),
+        CONFIGURED_ENV as unknown as Env,
+        ctx,
+        async () => {
+          throw new Error("handler exploded");
+        },
+        spy,
+      ),
+      /handler exploded/,
+    );
+
+    assert.equal(spy.exceptions.length, 1);
+    const { env, event } = spy.exceptions[0];
+    assert.equal(env, CONFIGURED_ENV);
+    assert.equal((event.error as Error).message, "handler exploded");
+    // The same low-cardinality label the usage event carries, so the capture
+    // fingerprints as `<route>:<type>` exactly like every hand-placed REST
+    // capture site already does.
+    assert.equal(event.route, "subnet-detail");
+    assert.equal(event.errorCode, "internal_error");
+    // Drained through waitUntil alongside the usage event, never awaited on a
+    // path that is already failing.
+    assert.equal(ctx.scheduled.length, 2);
+  });
+
+  test("captures nothing when the handler returns a 5xx rather than throwing", async () => {
+    // A 5xx is already reported as ok:false with an error code and has no
+    // stack to add; capturing it here would duplicate every handled error the
+    // route layer deliberately turned into a response.
+    const spy = recorder();
+    await withUsageTelemetry(
+      req(),
+      CONFIGURED_ENV as unknown as Env,
+      fakeCtx(),
+      async () => new Response("nope", { status: 503 }),
+      spy,
+    );
+
+    assert.equal(spy.events[0].event.ok, false);
+    assert.deepEqual(spy.exceptions, []);
+  });
+
+  test("does not capture when the deployment is unconfigured", async () => {
+    const spy = recorder();
+    await assert.rejects(
+      withUsageTelemetry(
+        req(),
+        {} as unknown as Env,
+        fakeCtx(),
+        async () => {
+          throw new Error("handler exploded");
+        },
+        spy,
+      ),
+      /handler exploded/,
+    );
+
+    // The early return for an unconfigured deployment happens before the
+    // try/catch, so the throw propagates with no telemetry of either kind.
+    assert.deepEqual(spy.events, []);
+    assert.deepEqual(spy.exceptions, []);
+  });
+
+  test("propagates the original throw when the exception recorder itself fails", async () => {
+    const spy = recorder();
+    (spy as unknown as Row).recordExceptionEvent = () => {
+      throw new Error("recorder exploded");
+    };
+
+    await assert.rejects(
+      withUsageTelemetry(
+        req(),
+        CONFIGURED_ENV as unknown as Env,
+        fakeCtx(),
+        async () => {
+          throw new Error("handler exploded");
+        },
+        spy,
+      ),
+      // The HANDLER's error, not the recorder's — telemetry must never
+      // replace the fault it is describing.
+      /handler exploded/,
+    );
   });
 
   // The regression the issue asks for: a telemetry failure must never become a

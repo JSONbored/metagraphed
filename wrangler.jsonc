@@ -317,6 +317,25 @@
     // Re-derive from measurement -- not estimate -- when traffic shape moves.
     "POSTHOG_USAGE_SAMPLE_RATE": "0.05",
     "POSTHOG_USAGE_SAMPLE_RATES": "{\"block-detail\":0.01}",
+    // #9430: $exception storm guard -- at most one capture per fingerprint
+    // per minute per isolate, with the suppressed count carried on the next
+    // event that gets through (src/usage-telemetry.ts).
+    //
+    // Sampling above deliberately never touches FAILURES, which left
+    // $exception with nothing in front of it, and one fault in a hot path
+    // duly spent a month of quota in four days: `wallet-auth-keys` captured
+    // 871,649 events against a dropped table (2026-07-29 -> 08-02) -- a
+    // single Issue, 87% of the entire month's 1M allowance, one occurrence
+    // per request. Since exhausting the tier DROPS events indiscriminately,
+    // that storm's real cost was the error inbox and the alerts it took down
+    // with it, not the events themselves.
+    //
+    // 60s is sized to diagnosis, not to volume: a recurring fault's hundredth
+    // occurrence in a minute carries the same type, message and stack as its
+    // first. The same storm under this guard is ~5.7K events instead of 872K,
+    // still reports continuously for all four days, and still says how many
+    // occurrences it stood for.
+    "POSTHOG_EXCEPTION_STORM_WINDOW_MS": "60000",
     // subnet_hyperparams (#4832 gap-closure): FLIPPED to "postgres" 2026-07-11,
     // after a live parity pass. refresh-subnet-hyperparams.yml's real
     // workflow_dispatch run synced all 129 subnets (Postgres started

@@ -2,11 +2,15 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   POSTHOG_CAPTURE_PATH,
+  POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV,
   POSTHOG_HOST_ENV,
   POSTHOG_PROJECT_TOKEN_ENV,
   USAGE_EVENT_DISTINCT_ID,
   USAGE_EVENT_NAME,
+  admitExceptionCapture,
+  MCP_PROTOCOL_ROUTE_PREFIX,
   classifyMcpErrorType,
+  resolveDeployment,
   isUsageTelemetryConfigured,
   recordAiDegradedEvent,
   recordAiEmbeddingEvent,
@@ -265,6 +269,11 @@ describe("recordUsageEvent — configured", () => {
         mcp_tool: "get_subnet",
         ok: true,
         duration_ms: 42,
+        // #9430: no CF_VERSION_METADATA binding in this env, which is what a
+        // local `wrangler dev` isolate looks like — so the deployment reads
+        // as development with no release. The production shape is asserted in
+        // the resolveDeployment block below.
+        environment: "development",
       },
     });
   });
@@ -2364,5 +2373,253 @@ describe("usage_event sampling (free-tier budget)", () => {
     );
     assert.equal(recorded, false);
     assert.equal(calls.length, 0);
+  });
+});
+
+// #9430: the deployment dimensions. Every event this module emits was
+// previously indistinguishable from every other deployment's, so a local
+// `wrangler dev` isolate captured into the same PostHog project as production
+// with nothing on the wire to separate them.
+describe("resolveDeployment", () => {
+  test("development when the version-metadata binding is absent", () => {
+    assert.deepEqual(resolveDeployment(mockEnv()), {
+      environment: "development",
+    });
+    assert.deepEqual(resolveDeployment(undefined), {
+      environment: "development",
+    });
+  });
+
+  test("development when the binding is present but carries no id", () => {
+    assert.deepEqual(resolveDeployment(mockEnv({ CF_VERSION_METADATA: {} })), {
+      environment: "development",
+    });
+    assert.deepEqual(
+      resolveDeployment(mockEnv({ CF_VERSION_METADATA: { id: "   " } })),
+      { environment: "development" },
+    );
+  });
+
+  test("production with the id as release when no tag is set", () => {
+    assert.deepEqual(
+      resolveDeployment(
+        mockEnv({ CF_VERSION_METADATA: { id: "abc-123", tag: "" } }),
+      ),
+      { environment: "production", release: "abc-123" },
+    );
+  });
+
+  test("prefers the human-meaningful tag over the UUID id", () => {
+    assert.deepEqual(
+      resolveDeployment(
+        mockEnv({ CF_VERSION_METADATA: { id: "abc-123", tag: "v2026.08.04" } }),
+      ),
+      { environment: "production", release: "v2026.08.04" },
+    );
+  });
+
+  test("stamps environment and release onto a usage_event", async () => {
+    const calls: Row[] = [];
+    await recordUsageEvent(
+      mockEnv({
+        [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token",
+        CF_VERSION_METADATA: { id: "dep-1", tag: "v9" },
+      }),
+      { route: "subnets", ok: true, durationMs: 3 },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const properties = (calls[0].body as Row).properties;
+    assert.equal(properties.environment, "production");
+    assert.equal(properties.release, "v9");
+    // PostHog Error Tracking reads its own release field; both come from one
+    // resolution so a release filter behaves identically on either event.
+    assert.deepEqual(properties.$exception_releases, ["v9"]);
+  });
+
+  test("stamps environment and release onto an $exception", async () => {
+    const calls: Row[] = [];
+    await recordExceptionEvent(
+      mockEnv({
+        [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token",
+        CF_VERSION_METADATA: { id: "dep-2" },
+      }),
+      { error: new Error("boom"), route: "subnets" },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const properties = (calls[0].body as Row).properties;
+    assert.equal(properties.environment, "production");
+    assert.equal(properties.release, "dep-2");
+  });
+
+  test("omits release entirely off a real deployment", async () => {
+    const calls: Row[] = [];
+    await recordUsageEvent(
+      mockEnv({ [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" }),
+      { route: "subnets", ok: true, durationMs: 3 },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const properties = (calls[0].body as Row).properties;
+    assert.equal(properties.environment, "development");
+    assert.equal("release" in properties, false);
+    assert.equal("$exception_releases" in properties, false);
+  });
+});
+
+// #9430: the $exception storm guard. `wallet-auth-keys` captured 871,649
+// events in four days against a 1M/MONTH tier -- one Issue, 87% of the
+// allowance, one occurrence per request -- and because exhausting the tier
+// drops events indiscriminately, it took the error inbox down with it.
+describe("admitExceptionCapture", () => {
+  const windowed = (ms: string) =>
+    mockEnv({
+      [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token",
+      [POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV]: ms,
+    });
+
+  test("admits everything when the window is unset — the default", () => {
+    const env = mockEnv({ [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token" });
+    assert.equal(admitExceptionCapture(env, "route:Error", 0), 0);
+    assert.equal(admitExceptionCapture(env, "route:Error", 1), 0);
+    assert.equal(admitExceptionCapture(env, "route:Error", 2), 0);
+  });
+
+  test("a blank, zero, negative or malformed window disables the guard", () => {
+    for (const value of ["", "   ", "0", "-1", "abc"]) {
+      const env = windowed(value);
+      assert.equal(admitExceptionCapture(env, `k-${value}:Error`, 0), 0);
+      assert.equal(admitExceptionCapture(env, `k-${value}:Error`, 1), 0);
+    }
+  });
+
+  test("admits the first occurrence and throttles the rest of the window", () => {
+    const env = windowed("60000");
+    assert.equal(admitExceptionCapture(env, "a:Error", 1_000), 0);
+    assert.equal(admitExceptionCapture(env, "a:Error", 2_000), null);
+    assert.equal(admitExceptionCapture(env, "a:Error", 60_000), null);
+  });
+
+  test("reports how many it suppressed on the next admitted capture", () => {
+    const env = windowed("60000");
+    assert.equal(admitExceptionCapture(env, "b:Error", 0), 0);
+    for (let i = 1; i <= 5; i += 1) {
+      assert.equal(admitExceptionCapture(env, "b:Error", i), null);
+    }
+    // The window elapsed: the next one is admitted and carries the 5 it stood
+    // in for, so a storm's VOLUME survives the throttling that caps its cost.
+    assert.equal(admitExceptionCapture(env, "b:Error", 60_001), 5);
+    // ...and the counter resets with the new window.
+    assert.equal(admitExceptionCapture(env, "b:Error", 120_002), 0);
+  });
+
+  test("throttles per fingerprint, so a second fault is never masked", () => {
+    const env = windowed("60000");
+    assert.equal(admitExceptionCapture(env, "c:Error", 0), 0);
+    assert.equal(admitExceptionCapture(env, "c:Error", 1), null);
+    // A DIFFERENT route+type is a different diagnosis and must report
+    // immediately — the failure mode that makes a permanent per-isolate
+    // suppression (data-api's schema-drift set) wrong for the general case.
+    assert.equal(admitExceptionCapture(env, "d:TypeError", 2), 0);
+  });
+
+  test("suppresses the duplicate capture end-to-end, and says so on resume", async () => {
+    const calls: Row[] = [];
+    const env = windowed("60000");
+    const fetchImpl = fakeFetch({ onCall: (call) => calls.push(call) });
+    const event = { error: new Error("boom"), route: "storm" };
+
+    assert.equal(
+      await recordExceptionEvent(env, event, { fetch: fetchImpl }),
+      true,
+    );
+    // Same route + same error type = same PostHog Issue, so the second adds
+    // no diagnosis. Reported as not-recorded, exactly like a sampled-out
+    // usage_event.
+    assert.equal(
+      await recordExceptionEvent(env, event, { fetch: fetchImpl }),
+      false,
+    );
+    assert.equal(calls.length, 1);
+    assert.equal(
+      "suppressed_occurrences" in (calls[0].body as Row).properties,
+      false,
+      "the ordinary case keeps its exact pre-existing payload",
+    );
+  });
+});
+
+// #9430: the MCP surface is never sampled — the whole surface, not just the
+// one event that happens to carry a tool name.
+describe("MCP protocol events are exempt from usage_event sampling", () => {
+  const sampled = {
+    [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token",
+    [POSTHOG_USAGE_SAMPLE_RATE_ENV]: "0.05",
+  };
+
+  test("every mcp: protocol route resolves to rate 1", () => {
+    // scheduleMcpProtocolUsageEvent (src/mcp-server.ts) sets `route` and never
+    // `mcpTool`, so the pre-existing mcpTool exemption did not cover these and
+    // 95% of them were dropped.
+    for (const method of [
+      "ping",
+      "resources/read",
+      "resources/subscribe",
+      "prompts/get",
+      "notifications/initialized",
+      "unknown",
+    ]) {
+      assert.equal(
+        resolveUsageSampleRate(mockEnv(sampled), {
+          route: `${MCP_PROTOCOL_ROUTE_PREFIX}${method}`,
+          ok: true,
+          durationMs: 1,
+        }),
+        1,
+        `mcp:${method} must not be sampled`,
+      );
+    }
+  });
+
+  test("a per-route override cannot re-sample the MCP surface", () => {
+    assert.equal(
+      resolveUsageSampleRate(
+        mockEnv({
+          ...sampled,
+          [POSTHOG_USAGE_SAMPLE_RATES_ENV]: '{"mcp:ping":0.01}',
+        }),
+        { route: "mcp:ping", ok: true, durationMs: 1 },
+      ),
+      1,
+    );
+  });
+
+  test("a REST route that merely CONTAINS mcp is still sampled", () => {
+    // The exemption is a namespace prefix, not a substring match — a route
+    // label like `subnet-mcp:detail` is REST traffic and must keep its rate.
+    assert.equal(
+      resolveUsageSampleRate(mockEnv(sampled), {
+        route: "subnet-mcp:detail",
+        ok: true,
+        durationMs: 1,
+      }),
+      0.05,
+    );
+  });
+
+  test("captures an mcp: event that a 0.05 rate would otherwise have dropped", async () => {
+    const calls: Row[] = [];
+    const recorded = await recordUsageEvent(
+      mockEnv(sampled),
+      { route: "mcp:ping", ok: true, durationMs: 2 },
+      {
+        fetch: fakeFetch({ onCall: (call) => calls.push(call) }),
+        // Above 0.05: this event would be sampled out if the gate applied.
+        random: () => 0.99,
+      },
+    );
+    assert.equal(recorded, true);
+    assert.equal(calls.length, 1);
+    // Unsampled captures omit sample_rate entirely, so a weighted aggregate
+    // (sum(1/coalesce(sample_rate,1))) counts them exactly once.
+    assert.equal("sample_rate" in (calls[0].body as Row).properties, false);
   });
 });
