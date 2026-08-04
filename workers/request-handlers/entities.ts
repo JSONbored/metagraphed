@@ -19,6 +19,13 @@
 
 import { loadSubnetWeightSettersColdTier } from "../../src/subnet-weight-setters-loader.ts";
 import { loadSubnetWeightsColdTier } from "../../src/subnet-weights-loader.ts";
+import { loadSubnetEventCardColdTier } from "../../src/subnet-event-card-loader.ts";
+import {
+  CHAIN_SERVING_ROLLUP,
+  CHAIN_STAKE_MOVES_ROLLUP,
+  CHAIN_STAKE_TRANSFERS_ROLLUP,
+  CHAIN_REGISTRATIONS_ROLLUP,
+} from "../../src/chain-event-rollup-cold-tier.ts";
 import { type ChainNetworkId, networkKvKey } from "../../src/chain-network.ts";
 import { SS58_ADDRESS_PATTERN, resolveClientIp } from "../config.ts";
 import {
@@ -2711,6 +2718,19 @@ export async function handleSubnetServing(
       request,
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     )) as ReturnType<typeof buildSubnetServing> | null) ??
+    // #9369: the cold tier this card never had. METAGRAPH_ACCOUNT_EVENTS_SOURCE
+    // is "retired", so the tier above declines unconditionally and this was the
+    // only thing left -- a confident 0 for every subnet.
+    (await loadSubnetEventCardColdTier(
+      env as unknown as Parameters<typeof loadSubnetEventCardColdTier>[0],
+      CHAIN_SERVING_ROLLUP,
+      netuid,
+      buildSubnetServing,
+      {
+        windowLabel: windowParam,
+        windowDays: SUBNET_SERVING_WINDOWS[windowParam] ?? 7,
+      },
+    )) ??
     buildSubnetServing(null, netuid, { window: windowParam });
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed AxonServed event, mirroring the sibling stake-flow route.
@@ -2828,6 +2848,19 @@ export async function handleSubnetStakeMoves(
       request,
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     )) as ReturnType<typeof buildSubnetStakeMoves> | null) ??
+    // #9369: the cold tier this card never had. METAGRAPH_ACCOUNT_EVENTS_SOURCE
+    // is "retired", so the tier above declines unconditionally and this was the
+    // only thing left -- a confident 0 for every subnet.
+    (await loadSubnetEventCardColdTier(
+      env as unknown as Parameters<typeof loadSubnetEventCardColdTier>[0],
+      CHAIN_STAKE_MOVES_ROLLUP,
+      netuid,
+      buildSubnetStakeMoves,
+      {
+        windowLabel: windowParam,
+        windowDays: SUBNET_STAKE_MOVES_WINDOWS[windowParam] ?? 7,
+      },
+    )) ??
     buildSubnetStakeMoves(null, netuid, { window: windowParam });
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed StakeMoved event, mirroring the sibling stake-flow route.
@@ -2888,6 +2921,19 @@ export async function handleSubnetStakeTransfers(
       request,
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     )) as ReturnType<typeof buildSubnetStakeTransfers> | null) ??
+    // #9369: the cold tier this card never had. METAGRAPH_ACCOUNT_EVENTS_SOURCE
+    // is "retired", so the tier above declines unconditionally and this was the
+    // only thing left -- a confident 0 for every subnet.
+    (await loadSubnetEventCardColdTier(
+      env as unknown as Parameters<typeof loadSubnetEventCardColdTier>[0],
+      CHAIN_STAKE_TRANSFERS_ROLLUP,
+      netuid,
+      buildSubnetStakeTransfers,
+      {
+        windowLabel: windowParam,
+        windowDays: SUBNET_STAKE_TRANSFERS_WINDOWS[windowParam] ?? 7,
+      },
+    )) ??
     buildSubnetStakeTransfers(null, netuid, { window: windowParam });
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed StakeTransferred event, mirroring the sibling stake-moves route.
@@ -2947,6 +2993,19 @@ export async function handleSubnetRegistrations(
       request,
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     )) as ReturnType<typeof buildSubnetRegistrations> | null) ??
+    // #9369: the cold tier this card never had. METAGRAPH_ACCOUNT_EVENTS_SOURCE
+    // is "retired", so the tier above declines unconditionally and this was the
+    // only thing left -- a confident 0 for every subnet.
+    (await loadSubnetEventCardColdTier(
+      env as unknown as Parameters<typeof loadSubnetEventCardColdTier>[0],
+      CHAIN_REGISTRATIONS_ROLLUP,
+      netuid,
+      buildSubnetRegistrations,
+      {
+        windowLabel: windowParam,
+        windowDays: SUBNET_REGISTRATIONS_WINDOWS[windowParam] ?? 7,
+      },
+    )) ??
     buildSubnetRegistrations(null, netuid, { window: windowParam });
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed NeuronRegistered event, mirroring the sibling stake-flow route.
