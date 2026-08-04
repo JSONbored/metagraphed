@@ -18,6 +18,7 @@
 // handlers back and dispatches them from the router.
 
 import { loadSubnetWeightSettersColdTier } from "../../src/subnet-weight-setters-loader.ts";
+import { loadSubnetWeightsColdTier } from "../../src/subnet-weights-loader.ts";
 import { type ChainNetworkId, networkKvKey } from "../../src/chain-network.ts";
 import { SS58_ADDRESS_PATTERN, resolveClientIp } from "../config.ts";
 import {
@@ -2572,6 +2573,18 @@ export async function handleSubnetWeights(
       request,
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     )) as ReturnType<typeof buildSubnetWeights> | null) ??
+    // The cold tier its own /weights/setters sibling has had since #9267. Without
+    // it this card answered a confident 0 for every subnet once the Postgres box
+    // went away, while the leaderboard it summarises read 14 setters / 2,750 sets
+    // from the same stream.
+    (await loadSubnetWeightsColdTier(
+      env as unknown as Parameters<typeof loadSubnetWeightsColdTier>[0],
+      netuid,
+      {
+        windowLabel: windowParam,
+        windowDays: SUBNET_WEIGHTS_WINDOWS[windowParam] ?? 7,
+      },
+    )) ??
     buildSubnetWeights(null, netuid, { window: windowParam });
   // account_events-derived, so the meta reports the event-stream source (accountMeta) with
   // generated_at the newest observed WeightsSet event, mirroring the sibling stake-flow route.

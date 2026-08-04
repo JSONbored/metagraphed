@@ -1220,6 +1220,7 @@ import {
   SUBNET_WEIGHT_SETTERS_WINDOWS,
   buildSubnetWeightSetters,
 } from "./subnet-weight-setters.ts";
+import { loadSubnetWeightsColdTier } from "./subnet-weights-loader.ts";
 import {
   buildSubnetWeights,
   SUBNET_WEIGHTS_WINDOWS,
@@ -6079,7 +6080,16 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             window,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildSubnetWeights(null, netuid, { window })
+        )) ??
+        (await loadSubnetWeightsColdTier(
+          ctx.env as unknown as Parameters<typeof loadSubnetWeightsColdTier>[0],
+          netuid,
+          {
+            windowLabel: window,
+            windowDays: SUBNET_WEIGHTS_WINDOWS[window] ?? 7,
+          },
+        )) ??
+        buildSubnetWeights(null, netuid, { window })
       );
     },
   },
