@@ -154,7 +154,7 @@ async function loadBlockVerdict(
  * the DATA_API service binding -- the same authenticated internal path
  * workers/api.ts's recordApiKeyUsage already uses on every keyed request, so
  * this adds a round trip on a proven connection rather than a new dependency.
- * See deploy/postgres/schema.sql's own comment for why that beat a Durable
+ * The retired Postgres schema recorded why that beat a Durable
  * Object and Redis.
  *
  * Returns null when the binding or shared secret is absent, and on any

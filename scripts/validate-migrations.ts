@@ -11,7 +11,8 @@ import { repoRoot } from "./lib.ts";
 //
 // WHY THE SEQUENCE STARTS AT 0001 AGAIN. This guard used to enforce a floor of 0044,
 // because the live Postgres `schema_migrations` table recorded 0001-0044 as applied and
-// a file numbered below that was SILENTLY SKIPPED by apply-migrations.ts -- CI green, PR
+// a file numbered below that was SILENTLY SKIPPED by the Postgres migration runner --
+// CI green, PR
 // merged, table never created, discovered later as a runtime error (#5348/#5353; a
 // missing table 502'd an entire epic).
 //
@@ -27,8 +28,7 @@ import { repoRoot } from "./lib.ts";
  * Every problem with a set of migration filenames, as messages.
  *
  * Pulled out of the top-level script so the rule is testable without a
- * directory of fixture files -- the same reason apply-migrations.ts exports
- * pendingMigrations rather than deciding inline.
+ * directory of fixture files.
  */
 export function migrationSequenceErrors(files: readonly string[]): string[] {
   const errors: string[] = [];

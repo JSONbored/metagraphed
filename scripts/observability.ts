@@ -5,9 +5,8 @@
 // entrypoints' own headers), plus a couple of Cloudflare-publish-side build
 // steps that fit the same "short-lived batch script" shape. Used by
 // refresh-economics.ts, refresh-native-snapshot.ts,
-// backfill-registry-postgres.ts, discover-testnet-surfaces.ts,
-// export-parquet.ts, reconcile-neurons.ts, sync-registry-to-postgres.ts, and
-// refresh-og-image.ts so all eight report to the same consolidated PostHog
+// discover-testnet-surfaces.ts and refresh-og-image.ts so they report to the
+// same consolidated PostHog
 // project (metagraphed-infra#158/#160's consolidation).
 //
 // metagraphed#7766: Sentry fully removed here (was parallel-run alongside

@@ -1,5 +1,17 @@
 # Deployment — the `metagraphed-core` self-hosted topology (ADR 0014)
 
+> **RETIRED 2026-08-04 — this describes infrastructure that no longer exists.**
+>
+> Every paid server was decommissioned and the estate is **Cloudflare-only**: Workers,
+> D1, R2 (lakehouse + artifacts), KV and Durable Objects. There is no Postgres, no
+> archive node, no indexer box, and no firehose relay. `deploy/postgres/schema.sql` and
+> the Postgres migration runner were deleted in metagraphed#9426; the box-side Ansible
+> roles remain in `metagraphed-infra` but nothing runs them.
+>
+> Kept as the record of what the self-hosted topology WAS. A single validator box is
+> expected once the Ventura Labs contract lands, likely carrying a fullnode RPC, and some
+> of this shape may be wanted again — so read it as history, not as instructions.
+
 The architecture and rationale live in
 [`docs/adr/0014-chain-data-infrastructure-and-postgres-cutover.md`](../docs/adr/0014-chain-data-infrastructure-and-postgres-cutover.md)
 — it supersedes ADR 0013's Railway/D1 topology in full. The realtime firehose

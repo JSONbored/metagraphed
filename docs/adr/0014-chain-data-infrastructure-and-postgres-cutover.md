@@ -1,5 +1,11 @@
 # ADR 0014 — Chain-data infrastructure: the real self-hosted core, D1's reliability crisis, and the Postgres serving cutover
 
+> **Superseded 2026-08-04 (metagraphed#9426).** This ADR decided the cutover TO Postgres.
+> Postgres has since been decommissioned entirely and the estate is Cloudflare-only —
+> Workers, D1, R2 (lakehouse + artifacts), KV and Durable Objects. `deploy/postgres/`,
+> the Postgres migrations and the migration runner are all deleted. Kept unedited as the
+> record of the decision as it was made.
+
 - **Status:** Accepted — supersedes ADR 0010 (chain-direct block explorer), ADR
   0012 (chain-data ingestion), and ADR 0013 (hybrid deployment topology) in
   full, and supersedes ADR 0006 (provenance-tiered storage)'s D1/dynamic-data

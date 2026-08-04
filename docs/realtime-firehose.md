@@ -1,5 +1,11 @@
 # Realtime chain-event firehose (#2114, ADR 0015)
 
+> **Partly historical (2026-08-04).** The ingest half of this document describes a
+> Postgres `AFTER INSERT` trigger that was retired with Postgres itself (#9426). The
+> Durable Object hub, the SSE/GraphQL/MCP fan-out and the rate-limiting design below are
+> all still live — only the row _source_ changed, from a Postgres trigger to the head
+> poller writing D1 and the lakehouse.
+
 The `chain_firehose_outbox` table is a compact, best-effort stream source for
 every row landing in `blocks`/`extrinsics`/`chain_events`/`account_events`
 (the last added for #4984 -- see below), decoupled from `indexer-rs`'s own
@@ -12,7 +18,7 @@ retired `metagraphed-streamer`'s exact failure mode, documented in ADR 0014).
 ```
 indexer-rs → (writes, as it always has) → Postgres
                                               │
-                              AFTER INSERT trigger (deploy/postgres/schema.sql)
+                              AFTER INSERT trigger (retired Postgres, #9426)
                                               │
                                  INSERT chain_firehose_outbox(payload)
                                               │
@@ -29,7 +35,7 @@ at commit time. Ordinary local database failures (for example disk exhaustion)
 remain database failures; relay, Cloudflare, or Durable Object outages only
 leave outbox rows pending.
 
-## The trigger (`deploy/postgres/schema.sql`)
+## The trigger (retired with Postgres, #9426)
 
 `enqueue_chain_firehose()` is a single `plpgsql` function, reused by three
 `AFTER INSERT ... FOR EACH ROW` triggers (one per table), each passed its
@@ -313,7 +319,7 @@ Landed in three parts, each its own PR (matching every other piece of this
 epic):
 
 **Part 1 (live): trigger storage + CRUD.** A new `chain_alert_triggers`
-Postgres table (`deploy/postgres/schema.sql`) and public CRUD routes at
+Postgres table (retired, #9426) and public CRUD routes at
 `/api/v1/alerts/triggers` (`workers/data-api.ts`, proxied through
 `workers/api.ts`). Ownership is a bearer `owner_token` (returned once, at
 creation) -- matching the webhook-subscription secret model, since no

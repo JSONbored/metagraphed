@@ -127,7 +127,7 @@ for a live one): perfect parity, both extrinsic and event content, exact order.
 Per-neuron metagraph state is now served from Postgres (`neurons`/`neuron_daily`, ADR 0014's
 #4771 cutover, flipped 2026-07-10) — the ADR-0013-era `economics_history` table was superseded
 by folding economics columns into D1's/Postgres's `subnet_snapshots` (migration 0008) instead,
-and has been removed from `deploy/postgres/schema.sql` as dead schema. Check D1's route list in
+and was removed as dead schema before Postgres itself was retired (#9426). Check D1's route list in
 `workers/config.ts` before assuming a chain-data tier is missing, the two can diverge.
 
 The one confirmed, unfiled capture gap is **subnet hyperparameters** — no pipeline captures

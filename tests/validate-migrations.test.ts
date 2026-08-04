@@ -1,11 +1,13 @@
 // Tests for scripts/validate-migrations.ts's sequence rule.
 //
-// The case that matters most is `0001`. Before this rule changed, that was the
-// ONLY number this validator accepted — and apply-migrations.ts silently skips
-// it, because the live schema_migrations table already records 0001-0044 from
-// the D1-era bootstrap. CI green, PR merged, table never created. That is not
-// hypothetical: apply-migrations.ts's own header documents three incidents
-// (#5348/#5353) where a missing table surfaced as a production 502.
+// The rule guards migrations/d1, and `0001` is legal there. It was NOT legal under
+// Postgres: the live schema_migrations table recorded 0001-0044, so a file numbered
+// below that was silently skipped by the migration runner — CI green, PR merged, table
+// never created, surfacing later as a production 502 (#5348/#5353, three incidents).
+//
+// Postgres is gone (#9426) and wrangler consults no version table, so the floor went
+// with the reason for it. What survives is the part that always mattered, and it matters
+// MORE now: D1 migrations are applied BY HAND, so nothing else would catch a duplicate.
 
 import { describe, expect, it } from "vitest";
 import { migrationSequenceErrors } from "../scripts/validate-migrations.ts";

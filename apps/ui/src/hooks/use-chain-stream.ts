@@ -69,7 +69,7 @@ export function chainStreamEventMatchesFilters(
 /**
  * True when a firehose `account_events` payload belongs to the given subnet
  * (#8445). `account_events` rows carry `netuid` directly on the payload
- * (`deploy/postgres/schema.sql`'s `enqueue_chain_firehose()`), unlike
+ * (the retired `enqueue_chain_firehose()` trigger), unlike
  * `chain_events`, which doesn't -- so subnet-scoped filtering has to use this
  * topic rather than extending `chainStreamEventMatchesFilters`.
  */

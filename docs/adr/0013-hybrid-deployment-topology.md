@@ -1,5 +1,10 @@
 # ADR 0013 — Hybrid deployment topology: Cloudflare edge · Railway core · Postgres migration
 
+> **Superseded 2026-08-04 (metagraphed#9426).** Postgres is decommissioned and the estate
+> is Cloudflare-only — Workers, D1, R2 and Durable Objects. `deploy/postgres/schema.sql`,
+> the Postgres migrations and the migration runner referenced below no longer exist.
+> This ADR is kept unedited as the record of the decision as it was made.
+
 - **Status:** Superseded by [ADR 0014](0014-chain-data-infrastructure-and-postgres-cutover.md).
   This ADR's own inline amendments (below) already tracked three real pivots
   since ratification (Railway retirement, the Rust rewrite, the node-tier

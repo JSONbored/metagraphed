@@ -147,7 +147,7 @@ const OWNER_OBSERVATION_COLUMNS = "owner_coldkey, captured_at";
  * answers an empty history for 127 of the 128 subnets the poller has ever
  * watched. `chain.subnet_ownership_history` is the poller's own record of who
  * it observed owning each subnet, appended only when the observed owner
- * CHANGES (see deploy/postgres/schema.sql's note on the writer) -- so a subnet
+ * CHANGES -- so a subnet
  * with two rows changed hands between them whether or not the chain emitted an
  * event for it, and three did (measured 2026-08-03).
  *

@@ -8,7 +8,7 @@
 // SubnetLeaseDividendsDistributed / Contributed / Withdrew are deliberately
 // EXCLUDED here even though #6718 captures all five kinds: none of those
 // three carry a netuid on their account_events row, and
-// deploy/postgres/schema.sql's account_events table has no lease_id column
+// the account_events table has no lease_id column
 // to join back through either -- SubnetLeaseDividendsDistributed's own
 // on-chain event is only {lease_id, contributor, alpha} (no netuid), and
 // Contributed/Withdrew are Crowdloan-pallet events keyed by crowdloan_id,

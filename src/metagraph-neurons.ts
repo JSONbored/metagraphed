@@ -243,7 +243,7 @@ interface ImmunityWindow {
 // proven toBlockNumber / toTaoOrNull null-guards in account-events.ts
 // (#2487).
 // featuredHotkeys (optional) is a Set of hotkeys from the featured_validators
-// side table (#5166; see deploy/postgres/schema.sql for why that's a separate
+// side table (#5166 recorded why that's a separate
 // hotkey-keyed table rather than a `neurons` column). Only passed by the
 // validator-list builders below -- buildSubnetMetagraph/buildNeuronDetail/
 // buildValidatorDetail never pass one, so `featured` is simply omitted from
