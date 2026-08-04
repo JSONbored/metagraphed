@@ -70,6 +70,24 @@ export const CHAIN_WEIGHTS_ROLLUP: ChainEventRollupSpec = {
   distinctColumn: "uid",
 };
 
+// StakeMoved / StakeTransferred carry a real hotkey (unlike WeightsSet), so both
+// count distinct participants by hotkey. Added for the per-subnet summary cards, whose
+// chain-wide siblings were already serving 674 movers across 128 subnets and 430 senders
+// across 126 while the per-subnet cards answered 0 (#9369).
+export const CHAIN_STAKE_MOVES_ROLLUP: ChainEventRollupSpec = {
+  eventKind: "StakeMoved",
+  countField: "movements",
+  distinctField: "distinct_movers",
+  distinctColumn: "hotkey",
+};
+
+export const CHAIN_STAKE_TRANSFERS_ROLLUP: ChainEventRollupSpec = {
+  eventKind: "StakeTransferred",
+  countField: "transfers",
+  distinctField: "distinct_senders",
+  distinctColumn: "hotkey",
+};
+
 export const CHAIN_REGISTRATIONS_ROLLUP: ChainEventRollupSpec = {
   eventKind: "NeuronRegistered",
   countField: "registrations",

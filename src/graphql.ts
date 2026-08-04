@@ -1,5 +1,12 @@
 import { loadSubnetWeightSettersColdTier } from "./subnet-weight-setters-loader.ts";
 import { loadSubnetWeightsColdTier } from "./subnet-weights-loader.ts";
+import { loadSubnetEventCardColdTier } from "./subnet-event-card-loader.ts";
+import {
+  CHAIN_SERVING_ROLLUP,
+  CHAIN_STAKE_MOVES_ROLLUP,
+  CHAIN_STAKE_TRANSFERS_ROLLUP,
+  CHAIN_REGISTRATIONS_ROLLUP,
+} from "./chain-event-rollup-cold-tier.ts";
 import {
   GraphQLError,
   type GraphQLObjectType,
@@ -2299,6 +2306,18 @@ const rootValue = {
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
+      (await loadSubnetEventCardColdTier(
+        context.env as unknown as Parameters<
+          typeof loadSubnetEventCardColdTier
+        >[0],
+        CHAIN_REGISTRATIONS_ROLLUP,
+        netuid,
+        buildSubnetRegistrations,
+        {
+          windowLabel: windowParam,
+          windowDays: SUBNET_REGISTRATIONS_WINDOWS[windowParam] ?? 7,
+        },
+      )) ??
       buildSubnetRegistrations(null, netuid, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
@@ -2390,6 +2409,18 @@ const rootValue = {
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
+      (await loadSubnetEventCardColdTier(
+        context.env as unknown as Parameters<
+          typeof loadSubnetEventCardColdTier
+        >[0],
+        CHAIN_SERVING_ROLLUP,
+        netuid,
+        buildSubnetServing,
+        {
+          windowLabel: windowParam,
+          windowDays: SUBNET_SERVING_WINDOWS[windowParam] ?? 7,
+        },
+      )) ??
       buildSubnetServing(null, netuid, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
@@ -2933,6 +2964,18 @@ const rootValue = {
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
+      (await loadSubnetEventCardColdTier(
+        context.env as unknown as Parameters<
+          typeof loadSubnetEventCardColdTier
+        >[0],
+        CHAIN_STAKE_MOVES_ROLLUP,
+        netuid,
+        buildSubnetStakeMoves,
+        {
+          windowLabel: windowParam,
+          windowDays: SUBNET_STAKE_MOVES_WINDOWS[windowParam] ?? 7,
+        },
+      )) ??
       buildSubnetStakeMoves(null, netuid, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
@@ -2974,6 +3017,18 @@ const rootValue = {
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
+      (await loadSubnetEventCardColdTier(
+        context.env as unknown as Parameters<
+          typeof loadSubnetEventCardColdTier
+        >[0],
+        CHAIN_STAKE_TRANSFERS_ROLLUP,
+        netuid,
+        buildSubnetStakeTransfers,
+        {
+          windowLabel: windowParam,
+          windowDays: SUBNET_STAKE_TRANSFERS_WINDOWS[windowParam] ?? 7,
+        },
+      )) ??
       buildSubnetStakeTransfers(null, netuid, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,

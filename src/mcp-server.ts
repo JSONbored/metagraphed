@@ -1221,6 +1221,13 @@ import {
   buildSubnetWeightSetters,
 } from "./subnet-weight-setters.ts";
 import { loadSubnetWeightsColdTier } from "./subnet-weights-loader.ts";
+import { loadSubnetEventCardColdTier } from "./subnet-event-card-loader.ts";
+import {
+  CHAIN_SERVING_ROLLUP,
+  CHAIN_STAKE_MOVES_ROLLUP,
+  CHAIN_STAKE_TRANSFERS_ROLLUP,
+  CHAIN_REGISTRATIONS_ROLLUP,
+} from "./chain-event-rollup-cold-tier.ts";
 import {
   buildSubnetWeights,
   SUBNET_WEIGHTS_WINDOWS,
@@ -6176,7 +6183,20 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             window,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildSubnetRegistrations(null, netuid, { window })
+        )) ??
+        (await loadSubnetEventCardColdTier(
+          ctx.env as unknown as Parameters<
+            typeof loadSubnetEventCardColdTier
+          >[0],
+          CHAIN_REGISTRATIONS_ROLLUP,
+          netuid,
+          buildSubnetRegistrations,
+          {
+            windowLabel: window,
+            windowDays: SUBNET_REGISTRATIONS_WINDOWS[window] ?? 7,
+          },
+        )) ??
+        buildSubnetRegistrations(null, netuid, { window })
       );
     },
   },
@@ -6213,7 +6233,20 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             window,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildSubnetStakeMoves(null, netuid, { window })
+        )) ??
+        (await loadSubnetEventCardColdTier(
+          ctx.env as unknown as Parameters<
+            typeof loadSubnetEventCardColdTier
+          >[0],
+          CHAIN_STAKE_MOVES_ROLLUP,
+          netuid,
+          buildSubnetStakeMoves,
+          {
+            windowLabel: window,
+            windowDays: SUBNET_STAKE_MOVES_WINDOWS[window] ?? 7,
+          },
+        )) ??
+        buildSubnetStakeMoves(null, netuid, { window })
       );
     },
   },
@@ -6251,7 +6284,20 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             window,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildSubnetStakeTransfers(null, netuid, { window })
+        )) ??
+        (await loadSubnetEventCardColdTier(
+          ctx.env as unknown as Parameters<
+            typeof loadSubnetEventCardColdTier
+          >[0],
+          CHAIN_STAKE_TRANSFERS_ROLLUP,
+          netuid,
+          buildSubnetStakeTransfers,
+          {
+            windowLabel: window,
+            windowDays: SUBNET_STAKE_TRANSFERS_WINDOWS[window] ?? 7,
+          },
+        )) ??
+        buildSubnetStakeTransfers(null, netuid, { window })
       );
     },
   },
@@ -6328,7 +6374,20 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             window,
           }),
           "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-        )) ?? buildSubnetServing(null, netuid, { window })
+        )) ??
+        (await loadSubnetEventCardColdTier(
+          ctx.env as unknown as Parameters<
+            typeof loadSubnetEventCardColdTier
+          >[0],
+          CHAIN_SERVING_ROLLUP,
+          netuid,
+          buildSubnetServing,
+          {
+            windowLabel: window,
+            windowDays: SUBNET_SERVING_WINDOWS[window] ?? 7,
+          },
+        )) ??
+        buildSubnetServing(null, netuid, { window })
       );
     },
   },
