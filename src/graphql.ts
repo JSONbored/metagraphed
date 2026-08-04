@@ -1,4 +1,5 @@
 import { loadSubnetWeightSettersColdTier } from "./subnet-weight-setters-loader.ts";
+import { loadSubnetWeightsColdTier } from "./subnet-weights-loader.ts";
 import {
   GraphQLError,
   type GraphQLObjectType,
@@ -2881,6 +2882,16 @@ const rootValue = {
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
+      (await loadSubnetWeightsColdTier(
+        context.env as unknown as Parameters<
+          typeof loadSubnetWeightsColdTier
+        >[0],
+        netuid,
+        {
+          windowLabel: windowParam,
+          windowDays: SUBNET_WEIGHTS_WINDOWS[windowParam] ?? 7,
+        },
+      )) ??
       buildSubnetWeights(null, netuid, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
