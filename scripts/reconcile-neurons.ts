@@ -1,3 +1,17 @@
+// RETIRED 2026-08-04 -- DOES NOT RUN, AND CANNOT.
+//
+// The estate is Cloudflare-only: every paid server was decommissioned and Postgres
+// is gone. Concretely, neurons are D1-native and the lane has a SINGLE producer by design -- a second
+// writer loses UIDs to the prune. Reconciling from outside that lane is not a
+// thing to restore; NEURONS_STALENESS_WATCHDOG_CRON covers the freshness question
+// this script was reached for.
+//
+// Kept in the tree rather than deleted, the same way metagraphed-infra keeps its box
+// roles: a future validator box may want some of this shape back, and deleting it
+// buys nothing that leaving it costs. Do not "fix" it by pointing it at a new
+// database -- if this capability is ever wanted again it should be rebuilt against
+// whatever store exists then, not resurrected against a connection string.
+
 // Drift-detection reconciler (#5776, successor to #2115's "reconciler" half
 // -- see #2538 for the sibling "exporter" half, which this deliberately
 // does NOT share a job with: exporting is a bulk dump, reconciling needs a

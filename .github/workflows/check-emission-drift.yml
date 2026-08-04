@@ -6,12 +6,29 @@ name: Check emission drift
 # underneath it, and the runtime ships every two to three days. This is the
 # other half.
 #
-# MOVED OFF THE INDEXER BOX. This ran as a ~30-minute systemd timer there. It is
-# the only one of the box's four remaining refresh jobs that can move as-is,
-# because it is the only one that needs no database: it reads chain state and
-# alerts, and writes nothing. The other three (emission-gate-sample,
-# reconcile-neurons, export-parquet) all require DATABASE_URL and are blocked on
-# the chain-data tier's own migration.
+# MOVED OFF THE INDEXER BOX. This ran as a ~30-minute systemd timer there. It was
+# the only one of the box's four remaining refresh jobs that could move as-is,
+# because it is the only one that needed no database: it reads chain state and
+# alerts, and writes nothing.
+#
+# THE OTHER THREE ARE RETIRED, NOT BLOCKED. An earlier note here said
+# emission-gate-sample, reconcile-neurons and export-parquet were "blocked on the
+# chain-data tier's own migration". That migration is done and Postgres is gone --
+# the estate is Cloudflare-only -- so there is nothing left to unblock, and the
+# note was sending readers to look for work that will never exist. What actually
+# became of each:
+#
+#   emission-gate-sample -> RUNS, as EMISSION_GATE_SAMPLE_CRON in workers/config.ts
+#   reconcile-neurons    -> obsolete. Neurons are D1-native and the lane has a
+#                           single producer by design; a second writer would lose
+#                           UIDs to the prune, so reconciling from outside it is
+#                           not a thing to restore.
+#   export-parquet       -> obsolete. It existed to move Postgres into the
+#                           lakehouse, and that move is complete.
+#
+# The scripts stay in the tree, unrun, the same way the box roles do in
+# metagraphed-infra: a future validator box may want some of this shape back, and
+# deleting them buys nothing that leaving them costs.
 #
 # Zero alerts is the correct steady state and means the reconstruction still
 # holds -- not that the monitor is broken. The script prints a summary line every
