@@ -55,9 +55,16 @@ export const RAW_CAPTURE_GENESIS_FLOOR = 8756635;
  * cares about the last few days.
  *
  * 7,700,000 was the height ~8,200 blocks (~27h) below the testnet head when
- * this lane was written (head 7,708,225 on 2026-08-04). Starting one day back
- * gives the lane a short, bounded backfill that drains in a few hours and then
- * tracks the tip, rather than a backlog that never closes.
+ * this lane was written (head 7,708,225 on 2026-08-04).
+ *
+ * DRAIN TIME, measured rather than hoped (#9378): the endpoint's rate limit
+ * caps a tick at 32 blocks while the chain produces ~25 in the same 5 minutes,
+ * so the backlog closes at ~7 blocks/tick — about **four days**, not the "few
+ * hours" this comment originally claimed. It does converge, and the lane tracks
+ * the tip once it has. The floor is deliberately NOT raised to shorten that:
+ * the watermark is already past it, so moving it up would leave the blocks in
+ * between permanently uncaptured, which is the one outcome this lane exists to
+ * prevent.
  *
  * Blocks below this are not captured, and that is a recorded decision rather
  * than a gap: `/api/v1/testnet/blocks` reports its own floor, so a caller can
@@ -68,14 +75,46 @@ export const TESTNET_RAW_CAPTURE_GENESIS_FLOOR = 7_700_000;
 /**
  * Blocks per tick, per network. Each block costs three RPC calls.
  *
- * Both networks run in ONE invocation, so these are bounded together against
- * the platform's 1000-subrequest ceiling, not individually: 150*3 + 100*3 + two
- * head fetches = 752, leaving headroom for the R2 puts and D1 writes. Mainnet
- * keeps its original 150 — it is the lane with a real backlog to drain and an
- * existing cadence that is known to out-run the chain.
+ * Two ceilings apply, and the tighter one wins per network.
+ *
+ * THE PLATFORM CEILING is 1000 subrequests per invocation, and both networks
+ * run in ONE invocation, so the budgets are bounded together rather than
+ * individually.
+ *
+ * THE ENDPOINT CEILING is ~100 requests per client per minute, measured against
+ * the public testnet RPC by replaying this lane's exact call pattern (#9378):
+ *
+ *     FAILED after 33 blocks (100 calls) in 23.0s: HTTP 429
+ *
+ * It is per CLIENT, not per host — probing test.chain.opentensor.ai straight
+ * afterwards stopped after 4 blocks, because the first probe had already spent
+ * the budget. So there is no sibling endpoint to spread across, and a testnet
+ * tick that asks for more than ~33 blocks does not go faster; it just gets the
+ * surplus refused. The original 100 here made 300 calls to have 200 rejected
+ * every five minutes, against an endpoint we do not own.
+ *
+ * 32, not 33: 32*3 + 1 head fetch = 97 calls, leaving headroom rather than
+ * landing exactly on the limit, where a single retry tips the tick into a 429.
+ *
+ * Mainnet keeps its original 150. It sits at the tip in steady state (~25
+ * blocks/tick, ~76 calls) so it does not approach the limit; the budget only
+ * matters there for a backfill, and lowering it would slow a recovery this
+ * measurement says nothing about.
  */
 const MAX_BLOCKS_PER_TICK = 150;
-const TESTNET_MAX_BLOCKS_PER_TICK = 100;
+const TESTNET_MAX_BLOCKS_PER_TICK = 32;
+
+/**
+ * Requests the public RPC serves one client per minute, measured (#9378).
+ *
+ * Exported so the budget above is checked against it by a test rather than by a
+ * comment — a raised `maxPerTick` that silently re-crosses this limit is the
+ * exact regression #9378 was.
+ */
+export const RPC_REQUESTS_PER_MINUTE_LIMIT = 100;
+
+/** RPC calls one captured block costs: hash, block body, events blob. */
+export const RPC_CALLS_PER_BLOCK = 3;
 
 /**
  * The capture lanes, as data.
