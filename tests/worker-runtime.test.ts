@@ -668,6 +668,27 @@ describe("Worker runtime", () => {
     assert.equal(body.meta.parameter, "methd");
   });
 
+  // The other kind of caller error: a DECLARED parameter whose VALUE the tier
+  // cannot express. The reader returns null for that and for an unreachable
+  // door alike, so degrading here would hide a typo'd filter behind an empty
+  // feed that looks measured -- and the tier must not be read at all.
+  test("chain-events rejects an unusable filter VALUE, not just an unknown name", async () => {
+    const { env: testEnv, queries } = lakehouseEnv([]);
+    const response = await handleRequest(
+      new Request(
+        "https://metagraph.sh/api/v1/chain-events?pallet=Balances%3B%20DROP",
+      ),
+      testEnv,
+      {},
+    );
+    assert.equal(response.status, 400);
+    const body = await response.json();
+    assert.equal(body.ok, false);
+    assert.equal(body.error.code, "invalid_query");
+    assert.equal(body.meta.parameter, "pallet");
+    assert.equal(queries.length, 0, "an unusable filter must not be queried");
+  });
+
   test("chain-events still serves a request whose params are all declared", async () => {
     // The other direction: a validator that rejected real parameters would
     // break the route more visibly than the bug it replaced.

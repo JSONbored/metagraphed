@@ -18,6 +18,7 @@ import {
   loadSubnetLeaseHistoryColdTier,
 } from "../src/chain-events-cold-tier.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { chainEventsQueryError } from "../src/chain-events-cold-tier.ts";
 import { ChainEventsFeedArtifactSchema } from "../schemas-src/routes/chain-events.ts";
 import { DEFAULT_BLOCKS_SEAM } from "../src/blocks-cold-tier.ts";
 import {
@@ -518,5 +519,71 @@ describe("the feed publishes the same event shape as its sibling tiers", () => {
     assert.equal(page?.next_before, 8_759_336);
     assert.equal(page?.next_cursor, "1785708540000.8759336.294");
     assert.equal((page?.events[0] as Record<string, unknown>).args, null);
+  });
+});
+
+// The caller-error half of the reader's `null`. It returns null for an unusable
+// FILTER and for an unreachable door alike, and the two are different answers:
+// one is a 400 the caller can fix, the other a degraded empty they should
+// retry. Everything below reads the same guards the query builder uses, so the
+// validator cannot start accepting what the builder still rejects.
+describe("chainEventsQueryError names the unusable parameter", () => {
+  test("a usable query is null", () => {
+    assert.equal(chainEventsQueryError({ limit: 50 }), null);
+    assert.equal(
+      chainEventsQueryError({
+        limit: 50,
+        pallet: "SubtensorModule",
+        method: "WeightsSet",
+        block: 8_759_336,
+        extrinsic: 2,
+        before: 8_759_000,
+      }),
+      null,
+    );
+  });
+
+  test("each parameter is named by its own guard", () => {
+    for (const [query, expected] of [
+      [{ limit: 0 }, "limit"],
+      [{ limit: "many" }, "limit"],
+      [{ limit: 50, pallet: "not a pallet name" }, "pallet"],
+      [{ limit: 50, method: "Weights'; DROP" }, "method"],
+      [{ limit: 50, block: "soon" }, "block"],
+      [{ limit: 50, extrinsic: -1 }, "extrinsic"],
+      [{ limit: 50, before: "yesterday" }, "before"],
+    ] as [Record<string, unknown>, string][]) {
+      assert.equal(
+        chainEventsQueryError(query as never),
+        expected,
+        JSON.stringify(query),
+      );
+    }
+  });
+
+  // A cursor supersedes `before`, so an unusable one is inert -- rejecting it
+  // would break a caller paging by cursor who still echoes their stale `before`.
+  test("an unusable before is inert once a cursor supersedes it", () => {
+    assert.equal(
+      chainEventsQueryError({
+        limit: 50,
+        cursor: "1785708540000.8759336.294",
+        before: "yesterday",
+      } as never),
+      null,
+    );
+  });
+});
+
+// formatEvents falls back to the RAW row when the formatter declines. It only
+// declines on a non-object row, which R2 SQL will not produce -- but the feed
+// must not drop a row it cannot format, because a silently shorter page is
+// indistinguishable from a quieter chain.
+describe("an unformattable row is passed through, never dropped", () => {
+  test("the page keeps its count when a row cannot be formatted", async () => {
+    sqlFetch([null as unknown as Record<string, unknown>]);
+    const page = await loadChainEventsColdTier(TOKEN, { limit: 50 });
+    assert.equal(page?.count, 1, "the row must survive, unformatted");
+    assert.equal(page?.events.length, 1);
   });
 });

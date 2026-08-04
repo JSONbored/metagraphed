@@ -14,6 +14,7 @@ import { describe, test } from "vitest";
 import {
   coldTierChainEventsPayload,
   degradedChainEventsPayload,
+  hotTierBlockChainEvents,
 } from "../src/chain-events-degraded.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
 import { handleChainEventsFamily, handleRequest } from "../workers/api.ts";
@@ -473,5 +474,138 @@ describe("the family degrades instead of erroring", () => {
     assert.equal(res.headers.get("x-metagraph-degraded"), null);
     const body = (await res.json()) as Row;
     assert.equal((body.data as Row).count, 1);
+  });
+});
+
+// The two branches whose readers have NO network dimension decline explicitly
+// off mainnet rather than falling through to `chain.*`. Silently reading
+// mainnet would hand back another chain's history under a testnet path --
+// well-formed, and therefore undetectable by anything downstream.
+//
+// Neither route is dispatched on the /{network}/ path today, so this is the
+// guard that keeps opening one from leaking by default rather than by review.
+describe("branches with no network-aware reader decline off mainnet", () => {
+  test("ownership-history declines on testnet instead of reading mainnet", async () => {
+    const env = envWith("ok");
+    assert.equal(
+      await coldTierChainEventsPayload(
+        env,
+        new URL("https://api.metagraph.sh/api/v1/subnets/7/ownership-history"),
+        "testnet",
+      ),
+      null,
+    );
+    // The paired positive: the same call on mainnet DOES answer, so the decline
+    // above is the network dimension and not a broken reader.
+    assert.ok(
+      await coldTierChainEventsPayload(
+        env,
+        new URL("https://api.metagraph.sh/api/v1/subnets/7/ownership-history"),
+      ),
+      "ownership-history must still answer on mainnet",
+    );
+  });
+
+  test("conviction declines on testnet instead of reading finney", async () => {
+    // Conviction is the one member that reads live CHAIN storage rather than
+    // the lakehouse, so its mainnet control needs an RPC-shaped stub.
+    globalThis.fetch = (async (_url: unknown, init: unknown) => {
+      const body = JSON.parse(
+        String((init as { body?: string })?.body ?? "{}"),
+      );
+      const result =
+        body.method === "chain_getHeader"
+          ? { number: "0x85d1db" }
+          : body.method === "state_getKeysPaged"
+            ? []
+            : null;
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result }));
+    }) as unknown as typeof fetch;
+    const url = new URL("https://api.metagraph.sh/api/v1/subnets/7/conviction");
+    assert.equal(
+      await coldTierChainEventsPayload({} as never, url, "testnet"),
+      null,
+    );
+    assert.ok(
+      await coldTierChainEventsPayload({} as never, url),
+      "conviction must still answer on mainnet",
+    );
+  });
+});
+
+// The lakehouse leg answers every non-mainnet block, whatever the seam says.
+// answerBlockDetail owns that rule so a testnet ref is never resolved against
+// mainnet's D1 by resolveHotRef -- a leak no per-caller hot-leg guard catches.
+describe("block chain-events routes to the lakehouse off mainnet", () => {
+  test("a testnet block reads chain_testnet, and the D1 tier is never asked", async () => {
+    const queries: string[] = [];
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      queries.push(JSON.parse(String(init.body)).query);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          result: {
+            rows: [
+              {
+                block_number: 7_700_500,
+                event_index: 0,
+                pallet: "System",
+                method: "ExtrinsicSuccess",
+                args: "{}",
+                phase: "ApplyExtrinsic",
+                extrinsic_index: 0,
+                observed_at: 1,
+              },
+            ],
+          },
+        }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    let d1Reads = 0;
+    const env = mockEnv({
+      [R2_SQL_TOKEN_ENV]: "cfut_test",
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          d1Reads += 1;
+          return {
+            async first() {
+              return null;
+            },
+            async all() {
+              return { results: [] };
+            },
+          };
+        },
+      },
+    }) as unknown as Env;
+    const answer = await hotTierBlockChainEvents(
+      env,
+      new URL("https://api.metagraph.sh/api/v1/blocks/7700500/chain-events"),
+      "testnet",
+    );
+    assert.equal(answer?.kind, "answer");
+    assert.equal(answer?.tier, "cold");
+    assert.ok(queries.length > 0, "the lakehouse was never queried");
+    for (const q of queries) assert.match(q, /\bchain_testnet\.\w+/);
+    assert.equal(d1Reads, 0, "the mainnet D1 tier must not be consulted");
+  });
+});
+
+// Off mainnet there is no second source to fall back to, so a lakehouse read
+// that FAILS is a miss, not an empty block. The distinction is the whole point
+// of #9260: `events: []` for a block with 400 of them reads as a quiet chain.
+describe("a failed testnet read is a miss, not an empty block", () => {
+  test("the block declines rather than reporting zero events", async () => {
+    globalThis.fetch = (async () => {
+      throw new Error("r2 sql unreachable");
+    }) as unknown as typeof fetch;
+    const answer = await hotTierBlockChainEvents(
+      mockEnv({ [R2_SQL_TOKEN_ENV]: "cfut_test" }) as unknown as Env,
+      new URL("https://api.metagraph.sh/api/v1/blocks/7700500/chain-events"),
+      "testnet",
+    );
+    assert.equal(answer?.kind, "miss");
   });
 });
