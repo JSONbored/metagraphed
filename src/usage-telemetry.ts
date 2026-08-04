@@ -30,6 +30,7 @@
 // see zero behavior change. Never throws.
 
 import { ErrorTracking } from "@posthog/core";
+import { z } from "zod";
 
 import { registerModuleStateReset } from "./module-state-registry.ts";
 
@@ -117,6 +118,11 @@ let usageSampleRatesParsed: Record<string, number> = {};
 registerModuleStateReset("src/usage-telemetry.ts", () => {
   usageSampleRatesRaw = undefined;
   usageSampleRatesParsed = {};
+  // The $exception storm guard's per-fingerprint window (declared below).
+  // Without this a burst in one test file would throttle the first capture of
+  // the next file, which is precisely the cross-file channel this registry
+  // exists to close.
+  exceptionThrottle.clear();
 });
 
 function parseRate(value: unknown): number | undefined {
@@ -158,9 +164,23 @@ function usageSampleRatesByRoute(
   return parsed;
 }
 
+/**
+ * Route-label namespace for the MCP protocol methods (`mcp:initialize`,
+ * `mcp:ping`, `mcp:resources/read`, ...).
+ *
+ * Declared HERE and imported by the minting site
+ * (scheduleMcpProtocolUsageEvent, src/mcp-server.ts) rather than written as a
+ * literal in both: the sampling exemption below and the label that has to
+ * match it are one decision, and a copy of the string in each file is a
+ * silent divergence waiting to happen -- exactly the failure this exemption
+ * is fixing, where the intent lived in one file and the implementation in
+ * another.
+ */
+export const MCP_PROTOCOL_ROUTE_PREFIX = "mcp:";
+
 /** The sample rate that applies to one usage event: 1 for anything never
- * sampled (failures, MCP tool calls), otherwise the route override, otherwise
- * the deployment default. */
+ * sampled (failures, every MCP surface), otherwise the route override,
+ * otherwise the deployment default. */
 export function resolveUsageSampleRate(
   env: Env | null | undefined,
   event: UsageEvent,
@@ -168,6 +188,20 @@ export function resolveUsageSampleRate(
   if (event.ok === false) return 1;
   if (sanitizeLabel(event.mcpTool) !== undefined) return 1;
   const route = sanitizeLabel(event.route);
+  // The `mcpTool` check above exempts tools/call and nothing else, because
+  // that is the only MCP event that carries a tool name. Every OTHER MCP
+  // protocol method -- ping, resources/read, prompts/get, the notifications --
+  // arrives here with `route: "mcp:<method>"` and no `mcpTool`, so it fell
+  // through to the REST default and was sampled at 5%: 95% of the MCP
+  // protocol surface dropped, by accident, while this module's own header
+  // says MCP is "the product's core signal" and must not be sampled.
+  //
+  // The whole MCP surface is ~2K events/day against a REST firehose three
+  // orders of magnitude larger, so exempting it costs nothing the sampling
+  // was introduced to save.
+  if (route !== undefined && route.startsWith(MCP_PROTOCOL_ROUTE_PREFIX)) {
+    return 1;
+  }
   if (route !== undefined) {
     const override = usageSampleRatesByRoute(env)[route];
     if (override !== undefined) return override;
@@ -179,6 +213,81 @@ export function resolveUsageSampleRate(
 
 // Cap free-form string fields so a buggy caller can't ship unbounded payloads.
 const MAX_LABEL_CHARS = 256;
+
+// ─── deployment dimensions (environment / release) ──────────────────────────
+//
+// Every event this module emits was, until now, indistinguishable from every
+// other deployment's: there was no environment and no version on the wire. Two
+// concrete consequences, both observed in the live project:
+//
+//   1. A `wrangler dev` session on a developer's machine captures into the
+//      SAME PostHog project as production. Error Tracking showed issues whose
+//      stack frames resolve to `.wrangler/tmp/dev-*` paths inside a local
+//      worktree, interleaved with real production faults and counted in the
+//      same Issue. Nothing in the payload could separate them.
+//   2. A regression could not be pinned to the deploy that introduced it,
+//      which is exactly what $mcp_server_version already buys on the MCP
+//      events -- the other surfaces simply never got the equivalent.
+//
+// CF_VERSION_METADATA is Cloudflare's own `version_metadata` binding (declared
+// in wrangler.jsonc since the Worker was set up, and until now never read by
+// anything). A real deployment always carries a version id; a local
+// `wrangler dev` isolate has no deployed version to report. That asymmetry is
+// the environment signal, so this needs no new var to configure and no
+// per-deployment step someone can forget -- which a plain `vars` entry could
+// not achieve anyway, since `wrangler dev` reads the same wrangler.jsonc and
+// would inherit whatever it said.
+//
+// The failure mode if that asymmetry ever stops holding is deliberately
+// benign: an event is labelled `production` when it wasn't, which is exactly
+// the status quo this replaces -- never the reverse (a real production fault
+// hidden under a `development` label).
+
+/** PostHog property carrying which deployment emitted an event. */
+export type DeploymentEnvironment = "production" | "development";
+
+/**
+ * Resolve the environment/release pair for this isolate. Never throws: an
+ * absent or malformed binding degrades to `development` with no release,
+ * because a telemetry dimension must never be the thing that breaks a request.
+ *
+ * Typed `Partial<WorkerVersionMetadata>` against Cloudflare's own generated
+ * binding type (workers/worker-configuration.d.ts) rather than a hand-written
+ * shape -- but PARTIAL, because the generated type describes the binding as it
+ * exists on a real deployment, and the case this function exists to detect is
+ * precisely the one where it does not.
+ */
+export function resolveDeployment(env: Env | null | undefined): {
+  environment: DeploymentEnvironment;
+  release?: string;
+} {
+  const metadata = (env as Record<string, unknown> | null | undefined)
+    ?.CF_VERSION_METADATA as Partial<WorkerVersionMetadata> | undefined;
+  const id = sanitizeLabel(metadata?.id);
+  if (id === undefined) return { environment: "development" };
+  // Prefer the human-meaningful tag when the deployment set one; the id is a
+  // UUID and is always present, so it is the dependable fallback.
+  const tag = sanitizeLabel(metadata?.tag);
+  return { environment: "production", release: tag ?? id };
+}
+
+/** Stamp environment/release onto any outgoing property bag. Shared by every
+ * recorder here so a breakdown behaves identically whichever event it starts
+ * from -- the same discipline assignMcpAttribution already applies. */
+function assignDeployment(
+  properties: Record<string, unknown>,
+  env: Env | null | undefined,
+): void {
+  const { environment, release } = resolveDeployment(env);
+  properties.environment = environment;
+  if (release !== undefined) {
+    properties.release = release;
+    // PostHog Error Tracking reads `$exception_releases` for its own
+    // release-filtering UI; carrying both means the generic `release`
+    // dimension works on usage/AI events too, from one resolution.
+    properties.$exception_releases = [release];
+  }
+}
 
 /** REST/GraphQL route path (no query string / bodies) or MCP tool name (no
  * arguments / response content); ok/durationMs describe the outcome. */
@@ -360,6 +469,11 @@ export async function recordUsageEvent(
       // see this module's sampling header for the weighted-aggregate query.
       properties.sample_rate = sampleRate;
     }
+
+    // Applied after the sampling gate so a dropped event costs no work, and
+    // outside usageEventProperties so that function stays a pure projection of
+    // its UsageEvent argument (it is exported and asserted as one).
+    assignDeployment(properties, env);
 
     const doFetch = deps.fetch ?? globalThis.fetch;
     const response = await doFetch(
@@ -963,6 +1077,110 @@ export interface ExceptionEvent {
   errorCode?: string;
 }
 
+// ─── $exception storm guard ────────────────────────────────────────────────
+//
+// One fault in a hot path can spend a MONTH of quota in a day, and this
+// project has already had it happen: a single Issue
+// (`wallet-auth-keys:PostgresError`, "relation api_key_usage_daily does not
+// exist") captured 871,649 events over four days -- one per request against a
+// dropped table -- while the free tier is 1M events/MONTH. Because PostHog
+// drops events indiscriminately once quota is exhausted, an $exception storm
+// does not merely cost money: it takes down the error inbox and the alerts
+// that exist to report the very outage causing it. Sampling protects
+// `usage_event` (see this module's sampling header) and deliberately never
+// touches failures -- so nothing at all stood in front of this.
+//
+// A recurring fault needs to be REPORTED, not COUNTED. One occurrence per
+// fingerprint per window carries the same diagnosis (same type, same message,
+// same stack) as a hundred thousand, so this throttles per fingerprint and
+// carries the suppressed count on the next event that gets through. That
+// preserves the volume signal -- which is what a storm guard that merely
+// dropped would destroy -- while capping the cost at one event per
+// fingerprint per window.
+//
+// Deliberately a TIME window rather than data-api's permanent per-isolate set
+// (shouldSkipDriftCapture, workers/data-api.ts): schema drift is a fixed
+// condition where the second occurrence genuinely adds nothing for the life of
+// the isolate, whereas a general fault can stop and restart, and a permanent
+// suppression would hide the restart forever. Same shape and reasoning as
+// shouldEmitCondition in workers/wss-lb.ts, which throttles its availability
+// events on exactly this model.
+//
+// OFF UNLESS EXPLICITLY CONFIGURED, for exactly the reason
+// POSTHOG_USAGE_SAMPLE_RATE and POSTHOG_TRACES_SAMPLE_RATE are (see their own
+// comments above and in src/tracing.ts): a guard that silently drops the
+// second capture of a fingerprint cannot be no-op'd by
+// isUsageTelemetryConfigured the way every other behavior here can, so an
+// on-by-default window would change the observed call count of any test that
+// captures the same route+type twice with a real token -- 13 of them in the
+// existing suite the moment this was tried on-by-default. Requiring an
+// explicit window keeps every call-count assertion deterministic by
+// construction (no test sets this var) while the deployed Worker sets it once,
+// in wrangler.jsonc, where the storm this exists to stop actually happens.
+
+/** Per-fingerprint $exception throttle window in ms, as a wrangler var (e.g.
+ * "60000"). Unset or 0 disables the guard entirely. */
+export const POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV =
+  "POSTHOG_EXCEPTION_STORM_WINDOW_MS";
+
+// The var's contract as a schema rather than a typeof/Number/isFinite ladder:
+// wrangler vars arrive as strings, every invalid shape means the same thing
+// (guard off), and `.catch` states that once instead of at each branch. 0 is
+// the disabled sentinel, so an absent, blank, malformed, zero or negative
+// value all converge on it by construction.
+const ExceptionStormWindowSchema = z.coerce
+  .number()
+  .finite()
+  .positive()
+  .catch(0);
+
+function exceptionStormWindowMs(env: Env | null | undefined): number {
+  const raw = env?.[POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV as keyof Env];
+  // z.coerce.number() maps "" and null to 0, which .positive() then rejects
+  // into the same disabled sentinel -- but undefined coerces to NaN, so the
+  // schema covers every case without a pre-check.
+  return ExceptionStormWindowSchema.parse(raw);
+}
+
+interface ExceptionThrottleState {
+  windowStartedAtMs: number;
+  suppressed: number;
+}
+
+// Reset alongside the sample-rate memo below, under this module's single
+// registry key -- the validator keys on the module path, so one module
+// registers one reset covering all of its state.
+const exceptionThrottle = new Map<string, ExceptionThrottleState>();
+
+/**
+ * Decide whether this fingerprint may emit now. Returns the number of
+ * occurrences suppressed since the last emission when it may (0 when this is
+ * the first sighting), or null when it must be throttled.
+ *
+ * Exported for tests: the branch that suppresses a storm is the entire point
+ * of this code, and recordExceptionEvent is a no-op without a token, so
+ * "was it throttled" is otherwise indistinguishable from "was it a no-op".
+ * Same reasoning as captureDataApiError's boolean return.
+ */
+export function admitExceptionCapture(
+  env: Env | null | undefined,
+  fingerprint: string,
+  nowMs: number = Date.now(),
+): number | null {
+  const windowMs = exceptionStormWindowMs(env);
+  if (windowMs === 0) return 0;
+  const state = exceptionThrottle.get(fingerprint);
+  if (state === undefined || nowMs - state.windowStartedAtMs >= windowMs) {
+    exceptionThrottle.set(fingerprint, {
+      windowStartedAtMs: nowMs,
+      suppressed: 0,
+    });
+    return state?.suppressed ?? 0;
+  }
+  state.suppressed += 1;
+  return null;
+}
+
 /**
  * Collapse volatile identifiers in an exception message so PostHog's Error
  * Tracking groups occurrences of the SAME fault into one Issue.
@@ -1049,18 +1267,30 @@ export async function recordExceptionEvent(
     const { type, entry } = exceptionListEntry(event.error);
     const route = sanitizeLabel(event.route);
     const mcpTool = sanitizeLabel(event.mcpTool);
+    // A stable string groups every occurrence of "this site threw this
+    // error type" into one PostHog issue -- matching the route/mcp_tool
+    // tag Sentry already gets at these sites, so the two dashboards read
+    // consistently. Falls back to "unknown" only if neither is supplied.
+    const fingerprint = `${route ?? mcpTool ?? "unknown"}:${type}`;
+
+    // Throttled on the same key PostHog groups by, so a storm of one fault
+    // costs one event per window while a genuinely new fault is never delayed.
+    const suppressed = admitExceptionCapture(env, fingerprint);
+    if (suppressed === null) return false;
+
     const properties: Record<string, unknown> = {
       $exception_list: [entry],
-      // A stable string groups every occurrence of "this site threw this
-      // error type" into one PostHog issue -- matching the route/mcp_tool
-      // tag Sentry already gets at these sites, so the two dashboards read
-      // consistently. Falls back to "unknown" only if neither is supplied.
-      $exception_fingerprint: `${route ?? mcpTool ?? "unknown"}:${type}`,
+      $exception_fingerprint: fingerprint,
     };
+    // Only on the events that follow a throttled burst, so the ordinary case
+    // keeps its exact existing payload and every pre-existing query is
+    // unaffected -- the same "omitted, not defaulted" contract as sample_rate.
+    if (suppressed > 0) properties.suppressed_occurrences = suppressed;
     if (route !== undefined) properties.route = route;
     if (mcpTool !== undefined) properties.mcp_tool = mcpTool;
     const errorCode = sanitizeLabel(event.errorCode);
     if (errorCode !== undefined) properties.error_code = errorCode;
+    assignDeployment(properties, env);
 
     const doFetch = deps.fetch ?? globalThis.fetch;
     const response = await doFetch(

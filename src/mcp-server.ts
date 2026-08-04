@@ -189,6 +189,7 @@ import {
   GetEmissionPipelineOutputSchema,
 } from "../schemas-src/mcp-tools/get-emission-pipeline.ts";
 import {
+  MCP_PROTOCOL_ROUTE_PREFIX,
   isUsageTelemetryConfigured,
   recordAiDegradedEvent,
   recordExceptionEvent,
@@ -3457,6 +3458,54 @@ function requireString(args: Row, key: string) {
     );
   }
   return value.trim();
+}
+
+// How many GraphQL error messages a failed query_graphql call reports, and how
+// long each may be. A rejected query can carry one error per invalid field, so
+// this is bounded on both axes -- the tool-error message is for a human/agent
+// to read, not a transcript, and it also becomes an $exception message.
+const MAX_GRAPHQL_ERROR_SUMMARY = 3;
+const MAX_GRAPHQL_ERROR_MESSAGE_CHARS = 200;
+
+// The one field of the GraphQL error shape this summary reads. Parsed with
+// zod like every other boundary in this file rather than cast-and-hope: the
+// payload crosses a Response.json() boundary, so it is `unknown` in the honest
+// sense, and `catch` gives the malformed case a defined value instead of an
+// inline typeof ladder.
+const GraphqlErrorEntrySchema = z
+  .object({
+    message: z
+      .string()
+      .trim()
+      .min(1)
+      .transform((message) => message.slice(0, MAX_GRAPHQL_ERROR_MESSAGE_CHARS))
+      .catch("(no message)"),
+  })
+  .catch({ message: "(no message)" });
+
+// The GraphQL-over-HTTP response envelope, as read back through
+// Response.json(). Deliberately looser than QueryGraphqlOutputSchema (which
+// describes what this TOOL returns): `data` is legitimately `null` on a failed
+// query, which that schema's `.optional()` does not admit, and the error
+// entries are only ever summarized, never re-published. `.catch` keeps a
+// malformed envelope from throwing inside a path whose whole job is reporting
+// that something already went wrong.
+const GraphqlResponsePayloadSchema = z
+  .object({
+    data: z.unknown().optional(),
+    errors: z.array(z.unknown()).catch([]).optional(),
+  })
+  .passthrough()
+  .catch({});
+
+/** Flatten a GraphQL errors[] into one bounded, human-readable line. */
+function summarizeGraphqlErrors(errors: unknown[]): string {
+  const messages = errors
+    .slice(0, MAX_GRAPHQL_ERROR_SUMMARY)
+    .map((entry) => GraphqlErrorEntrySchema.parse(entry).message)
+    .join("; ");
+  const remaining = errors.length - MAX_GRAPHQL_ERROR_SUMMARY;
+  return remaining > 0 ? `${messages} (+${remaining} more)` : messages;
 }
 
 // A trimmed optional string, or null when absent/blank — for free-form filters
@@ -11353,15 +11402,58 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       // The POST path of handleGraphQLRequest always returns a JSON body -- the
       // execution result on success, or an errors[] envelope on a parse /
       // validation / depth-complexity failure -- so no non-JSON guard is needed.
-      const payload = await response.json();
       // A malformed/oversized query is a non-2xx with a populated errors[]; a
       // valid query that resolves to GraphQL-level errors is a 200 with errors[].
       // Both are surfaced to the agent as { data, errors } rather than thrown,
       // so it can read partial data and the error detail together.
-      return {
-        data: (payload as Row | null)?.data ?? null,
-        errors: (payload as Row | null)?.errors ?? [],
-      };
+      const payload = GraphqlResponsePayloadSchema.parse(await response.json());
+      const data = payload.data ?? null;
+      const errors = payload.errors ?? [];
+      // #9430: returning normally here made EVERY outcome of this tool a
+      // success in telemetry. dispatchTool derives isError from whether the
+      // handler threw, so a query that resolved to nothing but errors emitted
+      // $mcp_tool_call{$mcp_is_error:false} and usage_event{ok:true} -- this
+      // tool's failures were structurally invisible, and its real failure rate
+      // unmeasurable, while every other tool's was not.
+      //
+      // Only a TOTAL failure is raised: partial success (data present
+      // alongside field-level errors) is a legitimate GraphQL result the agent
+      // should read, and calling it an error would be the opposite mistake.
+      // The detail still reaches the agent -- toolError carries it in the
+      // message -- so nothing is hidden by raising here.
+      // A rejected REQUEST -- unparseable, too deep, too complex, over the
+      // byte cap -- is a non-2xx, and is the caller's error. The code decides
+      // the $mcp_error_type bucket (classifyMcpErrorType,
+      // src/usage-telemetry.ts), so `invalid_` files it under `validation`
+      // rather than burying every caller typo in `internal`.
+      if (!response.ok) {
+        throw toolError(
+          "invalid_graphql_query",
+          `GraphQL query rejected: ${summarizeGraphqlErrors(errors)}`,
+        );
+      }
+      // A genuine RESOLVER fault is a spec-mandated 200 with a populated
+      // errors[], which status alone cannot distinguish from a success.
+      // handleGraphQLRequest already draws that line -- it separates a raw
+      // exception from a deliberate GraphQLError and reports the former on
+      // `x-metagraph-error-code` (src/graphql.ts's genuineFaults) -- so read
+      // ITS verdict rather than re-deriving one here from the payload shape.
+      //
+      // Reusing that header is also what makes the two surfaces AGREE: the
+      // REST wrapper keys `ok:false` on this exact value
+      // (withUsageTelemetry, workers/api.ts), so the same query over REST and
+      // over MCP now classifies identically instead of counting as a failure
+      // on one and a success on the other.
+      if (
+        response.headers.get("x-metagraph-error-code") ===
+        "graphql_execution_error"
+      ) {
+        throw toolError(
+          "graphql_execution_error",
+          `GraphQL query failed: ${summarizeGraphqlErrors(errors)}`,
+        );
+      }
+      return { data, errors };
     },
   },
   {
@@ -13842,7 +13934,10 @@ function scheduleMcpProtocolUsageEvent(
   if (MCP_SELF_INSTRUMENTED_METHODS.has(method)) return;
   scheduleToolUsageEvent(ctx, {
     // Namespaced so a protocol method can never collide with a REST route id.
-    route: `mcp:${mcpMethodLabel(method)}`,
+    // The prefix comes from src/usage-telemetry.ts because that module's
+    // sampling gate keys on it to exempt the MCP surface -- the label and the
+    // exemption must be the same string by construction, not by convention.
+    route: `${MCP_PROTOCOL_ROUTE_PREFIX}${mcpMethodLabel(method)}`,
     ok,
     durationMs,
     client: ctx?.clientName,

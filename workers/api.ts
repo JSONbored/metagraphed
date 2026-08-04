@@ -1048,12 +1048,29 @@ const GRAPHQL_USAGE_ROUTE = "graphql";
 // client, and the two OAuth metadata documents are fetched once per client that
 // speaks the spec -- so this is a bounded addition, unlike the crawler-facing
 // discovery documents deliberately left out.
+//
+// #9430: the three DISCOVERY entries this map used to declare
+// (/.well-known/oauth-authorization-server,
+// /.well-known/oauth-protected-resource and its /mcp variant) were dead
+// labels. workers/api.entry.ts hands every request except a bare no-token
+// /mcp to `oauthProvider.fetch`, and @cloudflare/workers-oauth-provider
+// answers its own discovery documents, /oauth/token and /oauth/register
+// internally -- only then falling through to the default handler. So those
+// paths never reach withUsageTelemetry and never could: the labels described
+// traffic this Worker does not serve, and #8996's stated goal ("does anyone
+// actually authenticate?") was answered with three permanent zeroes.
+//
+// tests/request-usage-telemetry.test.ts asserted them by calling
+// usageRouteLabel directly, which is why nothing caught it -- a label test
+// that never routes a request cannot tell a live label from a dead one.
+//
+// The two that remain are genuinely app-served: the library delegates
+// /authorize to the default handler (it has no consent UI of its own) and
+// /oauth/callback/github is not a library endpoint at all. Both are confirmed
+// live in production telemetry.
 const AUTH_SURFACE_ROUTES: Record<string, string> = {
   "/authorize": "oauth-authorize",
   "/oauth/callback/github": "oauth-callback",
-  "/.well-known/oauth-protected-resource": "oauth-protected-resource",
-  "/.well-known/oauth-protected-resource/mcp": "oauth-protected-resource",
-  "/.well-known/oauth-authorization-server": "oauth-authorization-server",
 };
 
 export function usageRouteLabel(url: URL) {
@@ -1190,9 +1207,13 @@ export async function withUsageTelemetry(
   env: Env,
   ctx: Ctx,
   handle: () => Promise<Response>,
-  deps: { recordUsageEvent?: typeof recordUsageEvent } = {},
+  deps: {
+    recordUsageEvent?: typeof recordUsageEvent;
+    recordExceptionEvent?: typeof recordExceptionEvent;
+  } = {},
 ) {
   const record = deps.recordUsageEvent ?? recordUsageEvent;
+  const recordException = deps.recordExceptionEvent ?? recordExceptionEvent;
   if (!isUsageTelemetryConfigured(env)) {
     return handle();
   }
@@ -1246,6 +1267,31 @@ export async function withUsageTelemetry(
       ok = false;
     }
     return response;
+  } catch (error) {
+    // #9430: until now this wrapper was try/finally with NO catch, and
+    // workers/api.entry.ts dropped Sentry's withSentry() wrap without
+    // replacing it (#7766) -- so an uncaught throw anywhere in the REST
+    // pipeline produced a usage_event with ok:false and NOTHING ELSE. No
+    // stack, no PostHog Issue, no message: the single most severe class of
+    // failure this Worker can have was also the least diagnosable, and
+    // src/usage-telemetry.ts's own header documented the hole rather than
+    // closing it ("a truly uncaught throw has no dedicated $exception capture
+    // of its own ... just without a stack trace").
+    //
+    // Rethrown unchanged: this observes the failure, it does not handle it.
+    // The runtime still produces its own 1101/500 exactly as before, and the
+    // finally block below still records the same ok:false usage event -- so
+    // the only behavioral difference is that the stack now reaches PostHog.
+    //
+    // `route` is already resolved and low-cardinality, giving the capture the
+    // same fingerprint grouping (`<route>:<type>`) every hand-placed REST
+    // capture site already gets.
+    scheduleExceptionEvent(env, ctx, recordException, {
+      error,
+      route,
+      errorCode: "internal_error",
+    });
+    throw error;
   } finally {
     const endedAt = Date.now();
     scheduleUsageEvent(env, ctx, record, {
@@ -1276,6 +1322,28 @@ export async function withUsageTelemetry(
         attributes: { route, error_code: errorCode },
       });
     }
+  }
+}
+
+/**
+ * Hand an exception to the recorder without ever blocking or failing the
+ * response. Mirrors scheduleUsageEvent/scheduleTraceSpan exactly -- telemetry
+ * must never surface into the request path, least of all on a path that is
+ * already failing.
+ */
+function scheduleExceptionEvent(
+  env: Env,
+  ctx: Ctx,
+  record: typeof recordExceptionEvent,
+  event: Parameters<typeof recordExceptionEvent>[1],
+) {
+  try {
+    const pending = Promise.resolve(record(env, event)).catch(() => false);
+    if (typeof ctx?.waitUntil === "function") {
+      ctx.waitUntil(pending);
+    }
+  } catch {
+    // Telemetry must never surface into the request path.
   }
 }
 
