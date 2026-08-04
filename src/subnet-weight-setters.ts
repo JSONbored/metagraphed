@@ -80,6 +80,96 @@ function toIso(value: unknown): string | null {
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
+/**
+ * Nominal seconds per block. Subtensor targets 12s and this repo already reasons in it
+ * throughout (chain-detail-prune, the staleness watchdogs, the events cold tier).
+ *
+ * It is NOMINAL on purpose. `tempo` is expressed in blocks and `last_set_at` is a
+ * wall-clock stamp, so converting between them requires a block time, and the chain's
+ * real one drifts. That drift is why the overdue rule below is a coarse multiple of
+ * tempo rather than a tight deadline: a rule that fired on a few seconds of block-time
+ * drift would be noise, and noise in an alarm is worse than no alarm.
+ */
+export const NOMINAL_BLOCK_SECONDS = 12;
+
+/**
+ * How many tempos a setter may fall behind before it is reported overdue.
+ *
+ * ONE missed tempo is ordinary: a restart, a slow epoch, a few seconds of block-time
+ * drift against the nominal 12s above. Alarming on it would page an operator for a
+ * healthy validator, which is the failure #9330 spent a whole PR removing from the
+ * watchdogs — a threshold has to sit above its producer's own cadence.
+ *
+ * THREE is comfortably above that jitter and still far below the cases this exists to
+ * catch. Measured live on 2026-08-04, SN8 had two setters past it: one ~6 tempos behind
+ * and one ~126 tempos (6.3 days) behind, the latter having set weights 45 times earlier
+ * in the same window — a healthy-looking count with a dead tail, which is precisely what
+ * `weight_sets` alone hides.
+ */
+export const OVERDUE_TEMPO_MULTIPLE = 3;
+
+/**
+ * A usable `tempo`, or null.
+ *
+ * Bounded to the u16 the chain actually stores it in, not merely "finite and positive".
+ * An unbounded check accepts 1.5e308, which is finite, positive, and makes every setter
+ * read as 0 tempos behind — i.e. a confident `overdue: false` for the entire subnet,
+ * derived from a value that cannot exist. Zero is excluded for the same reason: it is
+ * not a cadence, and dividing by it would report Infinity tempos behind.
+ */
+const MAX_TEMPO_BLOCKS = 65535;
+
+function toTempoBlocks(value: unknown): number | null {
+  const n = Number(value);
+  if (!Number.isSafeInteger(n)) return null;
+  return n > 0 && n <= MAX_TEMPO_BLOCKS ? n : null;
+}
+
+/**
+ * How far behind one setter is, in tempos, and whether that is overdue.
+ *
+ * Every field is null when it cannot be computed — an unknown tempo, an unreadable
+ * `last_set_at`, or an `observed_at` this window never saw. `overdue: null` means "not
+ * evaluated", which is deliberately distinct from `false` ("evaluated, on time"): the
+ * whole point of the change is to tell an operator something, and a silent `false` for a
+ * setter we could not measure would be the confident-wrong-answer this repo keeps
+ * removing.
+ */
+interface OverdueView {
+  seconds_since_last_set: number | null;
+  tempos_since_last_set: number | null;
+  /** null = not evaluated; false = evaluated and on time. */
+  overdue: boolean | null;
+}
+
+function overdueView(
+  lastSetMs: number | null,
+  observedMs: number | null,
+  tempo: number | null,
+): OverdueView {
+  if (lastSetMs == null || observedMs == null || tempo == null) {
+    return {
+      seconds_since_last_set: null,
+      tempos_since_last_set: null,
+      overdue: null,
+    };
+  }
+  // Measured against the window's own newest event, not wall-clock now: the payload is
+  // then internally consistent, and a stale read reports the lag it actually observed
+  // rather than one inflated by how long ago the tier answered.
+  const elapsedSeconds = Math.max(
+    0,
+    Math.round((observedMs - lastSetMs) / 1000),
+  );
+  const tempoSeconds = tempo * NOMINAL_BLOCK_SECONDS;
+  const tempos = Math.round((elapsedSeconds / tempoSeconds) * 100) / 100;
+  return {
+    seconds_since_last_set: elapsedSeconds,
+    tempos_since_last_set: tempos,
+    overdue: tempos > OVERDUE_TEMPO_MULTIPLE,
+  };
+}
+
 // Shape the leaderboard from the per-setter aggregate rows plus the subnet-wide totals row.
 // `rows` are already ordered by activity (newest-first tiebreak); `totals` carries weight_sets
 // (COUNT(*)), distinct_setters (COUNT(DISTINCT identity)) and newest_observed (MAX). Each
@@ -89,12 +179,22 @@ export function buildSubnetWeightSetters(
   rows: Row[] | null | undefined,
   totals: Row | null | undefined,
   netuid: unknown,
-  { window }: { window?: string } = {},
+  { window, tempo }: { window?: string; tempo?: unknown } = {},
 ): Row {
   const list = Array.isArray(rows) ? rows : [];
   const totalSets = toCount(totals?.weight_sets);
+  // #9389: the subnet's own cadence, which turns `last_set_at` from a fact into a
+  // verdict. Absent (no hyperparams row) leaves every overdue field null rather than
+  // defaulting to some assumed tempo -- subnets set their own, and guessing one would
+  // manufacture alarms on the subnets we know least about.
+  const tempoBlocks = toTempoBlocks(tempo);
+  const observedMs = Number(totals?.newest_observed);
+  const observed =
+    Number.isFinite(observedMs) && observedMs > 0 ? observedMs : null;
+
   const setters = list.map((row) => {
     const weightSets = toCount(row?.weight_sets);
+    const lastMs = Number(row?.last_set);
     return {
       hotkey: toHotkey(row?.hotkey),
       uid: toUid(row?.uid),
@@ -102,6 +202,11 @@ export function buildSubnetWeightSetters(
       share: totalSets > 0 ? round(weightSets / totalSets) : null,
       first_set_at: toIso(row?.first_set),
       last_set_at: toIso(row?.last_set),
+      ...overdueView(
+        Number.isFinite(lastMs) && lastMs > 0 ? lastMs : null,
+        observed,
+        tempoBlocks,
+      ),
     };
   });
   return {
@@ -112,6 +217,12 @@ export function buildSubnetWeightSetters(
     distinct_setters: toCount(totals?.distinct_setters),
     weight_sets: totalSets,
     setter_count: setters.length,
+    // Echoed so a consumer can see WHICH cadence the verdict was measured against, and
+    // so a null overdue is explainable from the payload alone rather than by guessing.
+    tempo: tempoBlocks,
+    overdue_tempo_multiple: OVERDUE_TEMPO_MULTIPLE,
+    // Counts only setters actually evaluated; `null` overdue rows are not "on time".
+    overdue_setter_count: setters.filter((s) => s.overdue === true).length,
     setters,
   };
 }
@@ -146,7 +257,19 @@ export async function loadSubnetWeightSetters(
       "FROM account_events WHERE netuid = ? AND event_kind = ? AND observed_at >= ?",
     [netuid, WEIGHTS_EVENT_KIND, cutoff],
   );
+  // #9389: this subnet's own tempo, from the same D1 the reads above use. A third
+  // single-row indexed lookup by primary key, not a scan -- and it is deliberately NOT
+  // fatal: if the hyperparams row is missing the leaderboard still serves, with the
+  // overdue fields null. Losing the whole card because a cadence was unknown would trade
+  // a useful answer for no answer.
+  const tempo = await d1(
+    "SELECT tempo FROM subnet_hyperparams WHERE netuid = ?",
+    [netuid],
+  )
+    .then((hp) => hp?.[0]?.tempo ?? null)
+    .catch(() => null);
   return buildSubnetWeightSetters(rows, totals?.[0] ?? null, netuid, {
     window: windowLabel,
+    tempo,
   });
 }

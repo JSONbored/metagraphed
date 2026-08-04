@@ -10874,6 +10874,8 @@
             "distinct_setters": 1,
             "netuid": 7,
             "observed_at": "2026-06-01T00:00:00.000Z",
+            "overdue_setter_count": 1,
+            "overdue_tempo_multiple": 1,
             "schema_version": 1,
             "setter_count": 1,
             "setters": [
@@ -10881,11 +10883,15 @@
                 "first_set_at": "2026-06-01T00:00:00.000Z",
                 "hotkey": "example",
                 "last_set_at": "2026-06-01T00:00:00.000Z",
+                "overdue": false,
+                "seconds_since_last_set": 1,
                 "share": 0.5,
+                "tempos_since_last_set": 0.5,
                 "uid": 1,
                 "weight_sets": 1
               }
             ],
+            "tempo": 1,
             "weight_sets": 1,
             "window": "7d"
           },
@@ -45844,6 +45850,16 @@
               }
             ]
           },
+          "overdue_setter_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "overdue_tempo_multiple": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
           "schema_version": {
             "maximum": 9007199254740991,
             "minimum": -9007199254740991,
@@ -45888,7 +45904,41 @@
                     }
                   ]
                 },
+                "overdue": {
+                  "anyOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Whether this setter is more than overdue_tempo_multiple tempos past its last weight set. NULL means not evaluated -- the subnet's tempo or this setter's last_set_at was unavailable -- which is deliberately distinct from false ('evaluated, on time')."
+                },
+                "seconds_since_last_set": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "share": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "tempos_since_last_set": {
                   "anyOf": [
                     {
                       "minimum": 0,
@@ -45923,11 +45973,26 @@
                 "weight_sets",
                 "share",
                 "first_set_at",
-                "last_set_at"
+                "last_set_at",
+                "seconds_since_last_set",
+                "tempos_since_last_set",
+                "overdue"
               ],
               "type": "object"
             },
             "type": "array"
+          },
+          "tempo": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "weight_sets": {
             "maximum": 9007199254740991,
@@ -45957,6 +46022,9 @@
           "distinct_setters",
           "weight_sets",
           "setter_count",
+          "tempo",
+          "overdue_tempo_multiple",
+          "overdue_setter_count",
           "setters"
         ],
         "type": "object"
