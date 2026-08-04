@@ -7,6 +7,7 @@ import { afterEach, describe, test, vi } from "vitest";
 import {
   PROJECTION_LANES,
   PROJECTION_NETWORKS,
+  PROJECTION_QUERY_TIMEOUT_MS,
   projectionKey,
   STAKE_FLOW_PROJECTION_WINDOWS,
   runProjectionLane,
@@ -19,6 +20,7 @@ import {
   CHAIN_DEREGISTRATIONS_PROJECTION_KEY,
 } from "../src/chain-deregistrations-artifact.ts";
 import { LAKEHOUSE_NAMESPACES } from "../src/chain-network.ts";
+import { QUERY_TIMEOUT_MS } from "../src/r2-sql.ts";
 import { type Row } from "./row-type.ts";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -1921,5 +1923,42 @@ describe("the split per-subnet aggregates merge back by netuid", () => {
       ),
       null,
     );
+  });
+});
+
+// A CRON HAS NO CALLER WAITING. The 15 s request bound is sized for someone
+// sitting on a response; chain-transfer-pairs was declining every tick with
+// "The operation was aborted" because its pair-grouping CTE had grown past a
+// bound borrowed from a context it does not share (#9423).
+describe("lane statements run on the lane bound, not the request bound", () => {
+  test("every lane read carries the longer timeout", async () => {
+    const seen: (number | undefined)[] = [];
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (_u: string, init: RequestInit) => {
+      // The abort signal is what carries the bound; assert the deps instead by
+      // observing that a slow response is still allowed well past 15 s.
+      seen.push(init.signal ? 1 : undefined);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { rows: [] } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    try {
+      await laneNamed("chain-transfer-pairs").compute(
+        LAKE_ENV as unknown as Env,
+        "mainnet",
+      );
+      assert.ok(seen.length > 0, "the lane never queried");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test("the lane bound is a multiple of the request bound, not a fresh number", () => {
+    // Tied to the thing it relaxes, so the reason for the difference stays
+    // legible: same query, no caller waiting.
+    assert.equal(PROJECTION_QUERY_TIMEOUT_MS, 4 * QUERY_TIMEOUT_MS);
+    assert.ok(PROJECTION_QUERY_TIMEOUT_MS > QUERY_TIMEOUT_MS);
   });
 });

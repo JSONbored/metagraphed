@@ -38,7 +38,7 @@ const DEFAULT_WAREHOUSE = "metagraphed-lakehouse";
 /** Hard ceiling per query. Deliberately well above the ~2.2s worst case
  * measured above, so an ordinary heavy scan is not mistaken for a fault,
  * while a genuinely stuck query still cannot pin a request open. */
-const QUERY_TIMEOUT_MS = 15_000;
+export const QUERY_TIMEOUT_MS = 15_000;
 
 // Same contract as the Postgres tier's fallback generation: a caller can
 // snapshot this before a read and compare after, so a degraded (empty) answer
