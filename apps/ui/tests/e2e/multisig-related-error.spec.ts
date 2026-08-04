@@ -29,6 +29,22 @@ const isRelatedCalls = (url: string) =>
   url.includes("/api/v1/extrinsics?") && url.includes("call_hash=");
 
 /**
+ * Every assertion here waits on the same chain: navigate, hydrate, run the
+ * related-calls query, render the section. Measured end-to-end at ~4.8s on an
+ * otherwise-idle machine — against Playwright's 5s default, that is not a margin,
+ * it is a coin flip, and it flaked 1 run in 3 locally before this was pinned.
+ *
+ * The error-path test below already carried an explicit 20s timeout for the same
+ * reason (its query retries 3x with backoff first, so it lands nearer 11s). This
+ * constant makes the SUCCESS path honest about the same cost instead of leaving it
+ * on a default that happens to be just barely enough.
+ *
+ * Raising it costs nothing when the app is healthy: these are `expect().toBeVisible`
+ * polls that resolve as soon as the element appears, so a passing run is unchanged.
+ */
+const RENDER_TIMEOUT_MS = 20_000;
+
+/**
  * Stubs every api.metagraph.sh request so nothing hits live data, then lets the
  * caller decide how the related-calls lookup resolves. Routes are matched
  * last-registered-first, so the specific handlers below win over the catch-all.
@@ -57,7 +73,7 @@ async function openExtrinsic(
   // The client retries a failed query 3x with backoff (router.tsx), so give the
   // error state time to settle rather than asserting on a mid-retry skeleton.
   const section = page.locator("section#multisig-chain");
-  await expect(section).toBeVisible();
+  await expect(section).toBeVisible({ timeout: RENDER_TIMEOUT_MS });
 }
 
 test.describe("#6426 Related Multisig calls error state", () => {
@@ -74,7 +90,7 @@ test.describe("#6426 Related Multisig calls error state", () => {
     // The client retries a failed query 3x with backoff before isError flips
     // (router.tsx), so allow well past that window rather than the 5s default.
     await expect(section.getByText("Couldn't load related Multisig calls")).toBeVisible({
-      timeout: 20_000,
+      timeout: RENDER_TIMEOUT_MS,
     });
     // The whole point: a fetch failure must NOT read as "no related calls".
     await expect(
@@ -94,7 +110,7 @@ test.describe("#6426 Related Multisig calls error state", () => {
     const section = page.locator("section#multisig-chain");
     await expect(
       section.getByText("No other extrinsics reference this call_hash yet."),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: RENDER_TIMEOUT_MS });
     await expect(section.getByText("Couldn't load related Multisig calls")).toHaveCount(0);
   });
 });

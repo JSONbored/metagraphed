@@ -25,7 +25,27 @@ export default defineConfig({
   // them is in the overflow sweep. They are navigation/hydration assertions
   // that lose their races when four Chromium instances saturate four cores.
   // The `projects` split below is what makes this number usable.
-  workers: 4,
+  //
+  // ...but 4 also destabilises the SERVER, which is a different failure from the
+  // test races above and is not fixed by the projects split. Observed three times
+  // across main and a feature branch: the `wrangler dev` process backing
+  // `webServer` exits ~20 page-loads in with a bare `✘ [ERROR]` and an empty
+  // message, after which every navigation fails ERR_EMPTY_RESPONSE ->
+  // ERR_CONNECTION_REFUSED. It reads as a different "overflow" failure each run
+  // because the reported test is merely whichever route was in flight.
+  //
+  // CI drops to 2 -- what Playwright's own default would have picked on a 4-core
+  // runner -- because 88 of the 94 tests are independent page loads against ONE
+  // unsupervised server process, and halving the concurrent load is the only lever
+  // available from this side. It is a MITIGATION, not a diagnosis: the crash
+  // reason goes to a wrangler log file that CI now uploads on failure (see the
+  // "Upload e2e server + report artifacts on failure" step in validate.yml).
+  // Restore 4 once that log identifies the actual cause.
+  //
+  // Local stays at 4: the crash has never reproduced off-CI (92/92 passing across
+  // repeated local runs, and 352 concurrent requests against the same built worker
+  // without a single drop), so slowing the local loop would buy nothing.
+  workers: process.env.CI ? 2 : 4,
   use: {
     baseURL: `http://localhost:${PORT}`,
   },
