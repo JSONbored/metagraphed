@@ -31,6 +31,7 @@ import { API_BASE, DEFAULT_API_BASE } from "@/lib/metagraphed/config";
 import { isStaleFreshness, classNames } from "@/lib/metagraphed/format";
 import { APIS_HUB_PAGE_STEP, nextListLimit } from "@/lib/metagraphed/list-page-window";
 import { SearchInput, ResetFiltersButton } from "@/components/metagraphed/table-controls";
+import { ShareButton } from "@jsonbored/ui-kit";
 import type { SchemaInfo } from "@/lib/metagraphed/types";
 import { ApisTabActions } from "./-apis-hub";
 
@@ -192,6 +193,7 @@ function SchemasHero() {
         >
           Browse reference
         </Link>
+        <ShareButton />
       </ApisTabActions>
       <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
         {[

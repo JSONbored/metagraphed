@@ -263,6 +263,12 @@ const RATCHETED_DIRS = [
   "src/hooks/**/*.{ts,tsx}",
   "src/lib/**/*.{ts,tsx}",
   "src/components/**/*.{ts,tsx}",
+  // #9343: the last tier promoted, and the largest (107 files). Every real
+  // design-token hit under src/routes/** was already suppressed with the
+  // documented pattern citing #8554/#8717; the one that was not is the 9px
+  // repeat badge in -blocks-index-page.tsx, now suppressed the same way. With
+  // routes at error tier the ratchet covers the whole of src/.
+  "src/routes/**/*.{ts,tsx}",
 ];
 
 export default tseslint.config(
