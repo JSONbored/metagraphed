@@ -7220,7 +7220,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "Fetch one validator's cross-subnet staked-over-time history: one point " +
       "per day, summed across every subnet it validates in, plus a rewards-per-" +
       "1000-TAO rate. Choose the window (7d, 30d, 90d, 1y, all; default 30d). " +
-      "Mirrors GET /api/v1/validators/{hotkey}/history.",
+      "Pass netuid to scope the series to ONE subnet, which adds that subnet's " +
+      "daily alpha earnings, vTrust, consensus, dividends, take and whether the " +
+      "validator permit was held that day. Mirrors GET /api/v1/validators/" +
+      "{hotkey}/history.",
     inputSchema: z.toJSONSchema(GetValidatorHistoryInputSchema, {
       target: "draft-2020-12",
     }),
@@ -7230,14 +7233,18 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     ) {
       const hotkey = requireHotkey(args);
       const { label } = requireHistoryWindow(args);
+      // #9383 parity: the same netuid scope the REST route takes, forwarded as a
+      // query param so both surfaces hit one query rather than two.
+      const netuid = args.netuid ?? null;
       return (
         (await tryPostgresTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/validators/${hotkey}/history`, {
             window: label,
+            ...(netuid == null ? {} : { netuid: String(netuid) }),
           }),
           "METAGRAPH_NEURONS_SOURCE",
-        )) ?? buildValidatorHistory([], hotkey, { window: label })
+        )) ?? buildValidatorHistory([], hotkey, { window: label, netuid })
       );
     },
   },

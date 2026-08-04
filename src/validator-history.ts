@@ -46,11 +46,52 @@ function rewardsPer1000Tao(
 // DESC LIMIT MAX_HISTORY_POINTS`), one point per snapshot_date. Null-safe:
 // no rows (cold store / empty window) yields a zeroed, empty-point card,
 // matching the sibling history routes.
+/** A rate/score column: kept as a plain finite number, or null when absent. */
+function toRateOrNull(v: unknown): number | null {
+  const n = toFiniteOrNull(v);
+  return n == null ? null : Math.round(n * 1e6) / 1e6;
+}
+
+/**
+ * The per-subnet fields, added only when the series is scoped to one netuid.
+ *
+ * vTrust, consensus, dividends and take are per-(hotkey, netuid) facts. Summing or
+ * averaging them across subnets would produce a number the chain never computes --
+ * a validator with 1.0 vTrust on one subnet and 0.2 on another does not have "0.6
+ * vTrust", it has a problem on the second subnet, which is exactly the signal an
+ * average would erase. So the unscoped series deliberately omits them rather than
+ * inventing a cross-subnet reading (#9383).
+ */
+function subnetScopedFields(r: Row): Row {
+  const stakeAlpha = roundTaoOrNull(r.stake_alpha);
+  const emissionAlpha = roundTaoOrNull(r.emission_alpha);
+  return {
+    netuid: toNonNegativeInt(r.netuid),
+    uid: toNonNegativeInt(r.uid),
+    // Native alpha, NOT converted. For every subnet but root this is the unit the
+    // chain actually emits in, and it is what an operator compares day over day.
+    // Named `_alpha` because #8945 is the standing reminder of what happens when an
+    // alpha value is carried in a `*_tao` field.
+    stake_alpha: stakeAlpha,
+    emission_alpha: emissionAlpha,
+    validator_trust: toRateOrNull(r.validator_trust),
+    consensus: toRateOrNull(r.consensus),
+    dividends: toRateOrNull(r.dividends),
+    take: toRateOrNull(r.take),
+    // Recorded rather than filtered. A day the permit was lost is a real event an
+    // operator needs to see; dropping the row would make it indistinguishable from
+    // a day the poller missed.
+    validator_permit: r.validator_permit == null ? null : !!r.validator_permit,
+    rewards_per_1000_alpha: rewardsPer1000Tao(stakeAlpha, emissionAlpha),
+  };
+}
+
 export function buildValidatorHistory(
   rows: Row[] | null | undefined,
   hotkey: unknown,
-  { window }: { window?: unknown } = {},
+  { window, netuid }: { window?: unknown; netuid?: number | null } = {},
 ): Row {
+  const scoped = netuid != null;
   const points = (Array.isArray(rows) ? rows : [])
     .filter((r) => r && typeof r === "object")
     .map((r) => {
@@ -65,11 +106,15 @@ export function buildValidatorHistory(
           totalStakeTao,
           totalEmissionTao,
         ),
+        ...(scoped ? subnetScopedFields(r) : {}),
       };
     });
   return {
     schema_version: 1,
     hotkey,
+    // Null rather than absent when unscoped, so the field's presence never has to
+    // be probed to know which shape the points carry.
+    netuid: scoped ? netuid : null,
     window: window ?? null,
     point_count: points.length,
     points,

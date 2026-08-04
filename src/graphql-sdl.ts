@@ -739,7 +739,11 @@ export const SDL = /* GraphQL */ `
       offset: Int
     ): NominatorList!
     "One validator's cross-subnet staked-over-time history: one point per day (window: 7d/30d/90d/1y/all, default 30d), summed across every subnet it validates in, plus a rewards-per-1000-TAO rate. A hotkey with no matching neuron_daily rows resolves to a schema-stable empty-points card, never null. Mirrors GET /api/v1/validators/{hotkey}/history."
-    validator_history(hotkey: String!, window: String): ValidatorHistory!
+    validator_history(
+      hotkey: String!
+      window: String
+      netuid: Int
+    ): ValidatorHistory!
     "Site-wide accounts leaderboard -- every currently-registered hotkey, aggregated cross-subnet from the current neurons snapshot. Mirrors GET /api/v1/accounts."
     accounts(sort: String, limit: Int): AccountList!
     "One account's cross-subnet event-history summary by ss58 address; an address with no matching account_events rows resolves to a schema-stable zero summary, never null. Mirrors GET /api/v1/accounts/{ss58}."
@@ -3960,17 +3964,33 @@ export const SDL = /* GraphQL */ `
     schema_version: Int!
     hotkey: String!
     window: String
+    "The subnet this series was scoped to, or null for the cross-subnet rollup."
+    netuid: Int
     point_count: Int!
     points: [ValidatorHistoryPoint!]!
   }
 
-  "One day's cross-subnet rollup for a validator hotkey, summed across every subnet it validates in that day."
+  "One day's rollup for a validator hotkey. Cross-subnet (summed across every subnet it validates in) unless the query scoped a netuid, in which case the per-subnet fields below are populated too."
   type ValidatorHistoryPoint {
     snapshot_date: String!
     subnet_count: Int
     total_stake_tao: Float
     total_emission_tao: Float
     rewards_per_1000_tao: Float
+    "The scoped subnet. Null on the unscoped cross-subnet series."
+    netuid: Int
+    uid: Int
+    "Native alpha, not converted to TAO — the unit the subnet actually emits in."
+    stake_alpha: Float
+    emission_alpha: Float
+    "Per-subnet facts, null unless the query scoped a netuid: a cross-subnet average of these is a number the chain never computes."
+    validator_trust: Float
+    consensus: Float
+    dividends: Float
+    take: Float
+    "Whether the permit was held that day. Scoped queries report a lost permit rather than dropping the day."
+    validator_permit: Boolean
+    rewards_per_1000_alpha: Float
   }
 
   "One neuron's live metagraph detail card (#5900). Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}: neuron is null when that UID is absent from the latest snapshot."

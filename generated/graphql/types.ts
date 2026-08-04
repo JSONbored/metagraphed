@@ -4156,6 +4156,7 @@ export type QueryValidator_EconomicsArgs = {
 
 export type QueryValidator_HistoryArgs = {
   hotkey: Scalars['String']['input'];
+  netuid?: InputMaybe<Scalars['Int']['input']>;
   window?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -5636,20 +5637,36 @@ export type ValidatorEconomicsRanking = {
 export type ValidatorHistory = {
   __typename?: 'ValidatorHistory';
   hotkey: Scalars['String']['output'];
+  /** The subnet this series was scoped to, or null for the cross-subnet rollup. */
+  netuid?: Maybe<Scalars['Int']['output']>;
   point_count: Scalars['Int']['output'];
   points: Array<ValidatorHistoryPoint>;
   schema_version: Scalars['Int']['output'];
   window?: Maybe<Scalars['String']['output']>;
 };
 
-/** One day's cross-subnet rollup for a validator hotkey, summed across every subnet it validates in that day. */
+/** One day's rollup for a validator hotkey. Cross-subnet (summed across every subnet it validates in) unless the query scoped a netuid, in which case the per-subnet fields below are populated too. */
 export type ValidatorHistoryPoint = {
   __typename?: 'ValidatorHistoryPoint';
+  consensus?: Maybe<Scalars['Float']['output']>;
+  dividends?: Maybe<Scalars['Float']['output']>;
+  emission_alpha?: Maybe<Scalars['Float']['output']>;
+  /** The scoped subnet. Null on the unscoped cross-subnet series. */
+  netuid?: Maybe<Scalars['Int']['output']>;
+  rewards_per_1000_alpha?: Maybe<Scalars['Float']['output']>;
   rewards_per_1000_tao?: Maybe<Scalars['Float']['output']>;
   snapshot_date: Scalars['String']['output'];
+  /** Native alpha, not converted to TAO — the unit the subnet actually emits in. */
+  stake_alpha?: Maybe<Scalars['Float']['output']>;
   subnet_count?: Maybe<Scalars['Int']['output']>;
+  take?: Maybe<Scalars['Float']['output']>;
   total_emission_tao?: Maybe<Scalars['Float']['output']>;
   total_stake_tao?: Maybe<Scalars['Float']['output']>;
+  uid?: Maybe<Scalars['Int']['output']>;
+  /** Whether the permit was held that day. Scoped queries report a lost permit rather than dropping the day. */
+  validator_permit?: Maybe<Scalars['Boolean']['output']>;
+  /** Per-subnet facts, null unless the query scoped a netuid: a cross-subnet average of these is a number the chain never computes. */
+  validator_trust?: Maybe<Scalars['Float']['output']>;
 };
 
 export type ValidatorList = {
@@ -9738,6 +9755,7 @@ export type ValidatorEconomicsRankingResolvers<ContextType = GqlContext, ParentT
 
 export type ValidatorHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorHistory'] = ResolversParentTypes['ValidatorHistory']> = ResolversObject<{
   hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  netuid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   points?: Resolver<Array<ResolversTypes['ValidatorHistoryPoint']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -9745,11 +9763,21 @@ export type ValidatorHistoryResolvers<ContextType = GqlContext, ParentType exten
 }>;
 
 export type ValidatorHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorHistoryPoint'] = ResolversParentTypes['ValidatorHistoryPoint']> = ResolversObject<{
+  consensus?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  dividends?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  emission_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  netuid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  rewards_per_1000_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   rewards_per_1000_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   snapshot_date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   subnet_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  take?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   total_emission_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   total_stake_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  uid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  validator_permit?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  validator_trust?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type ValidatorListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorList'] = ResolversParentTypes['ValidatorList']> = ResolversObject<{

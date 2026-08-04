@@ -5305,7 +5305,7 @@ const rootValue = {
   },
 
   async validator_history(
-    { hotkey, window }: QueryValidator_HistoryArgs,
+    { hotkey, window, netuid }: QueryValidator_HistoryArgs,
     context: GqlContext,
   ) {
     // Same parseHistoryWindow REST's handleValidatorHistory uses, so accepted
@@ -5320,6 +5320,17 @@ const rootValue = {
     const { label } = windowResult;
     const params = new URLSearchParams();
     params.set("window", label);
+    // #9383: the same optional netuid scope the REST route and the MCP tool take.
+    // Validated as a u16 here for the reason the sibling resolvers do it -- a bad
+    // netuid is an input error, not a silently unscoped series that looks like data.
+    if (netuid != null) {
+      if (!isU16Netuid(netuid)) {
+        throw new GraphQLError("netuid must be a u16 subnet id (0-65535).", {
+          extensions: { code: "BAD_USER_INPUT" },
+        });
+      }
+      params.set("netuid", String(netuid));
+    }
     // Same tryPostgresTier(METAGRAPH_NEURONS_SOURCE) -> buildValidatorHistory
     // fallback contract handleValidatorHistory uses; a hotkey with no
     // neuron_daily rows in the window is a schema-stable empty-points card,
@@ -5333,11 +5344,16 @@ const rootValue = {
           params,
         ),
         "METAGRAPH_NEURONS_SOURCE",
-      )) as Row | null) ?? buildValidatorHistory([], hotkey, { window: label });
+      )) as Row | null) ??
+      buildValidatorHistory([], hotkey, {
+        window: label,
+        netuid: netuid ?? null,
+      });
     return {
       schema_version: data.schema_version ?? 1,
       hotkey: data.hotkey ?? hotkey,
       window: data.window ?? label,
+      netuid: (data.netuid as number | null) ?? null,
       point_count: data.point_count ?? 0,
       points: data.points || [],
     };

@@ -4990,6 +4990,68 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         HISTORY_WINDOWS,
         DEFAULT_HISTORY_WINDOW,
       );
+      // #9383: scoped to one subnet, the per-(hotkey, netuid) columns become
+      // well-defined and are returned alongside the totals. Two things change
+      // besides the projection: alpha is reported natively (the TAO conversion is
+      // kept too, so the point is comparable with the unscoped series), and the
+      // `validator_permit = 1` filter is dropped -- a day the permit was lost is
+      // the event an operator most needs to see, and filtering it away makes it
+      // look identical to a day the poller missed.
+      // Same normalisation the account-family routes use for their own netuid
+      // filter: absent/blank is "unscoped", and anything that is not a
+      // non-negative safe integer is treated as absent rather than guessed at.
+      // The public handler rejects a malformed value with a 400 before it ever
+      // reaches here; this is the tier's own floor.
+      const rawNetuid = url.searchParams.get("netuid");
+      const parsedNetuid =
+        rawNetuid == null || rawNetuid.trim() === "" ? null : Number(rawNetuid);
+      const netuid =
+        parsedNetuid != null &&
+        Number.isSafeInteger(parsedNetuid) &&
+        parsedNetuid >= 0
+          ? parsedNetuid
+          : null;
+      if (netuid != null) {
+        const scopedRows = cutoff
+          ? await sql`
+            SELECT nd.snapshot_date AS snapshot_date, 1 AS subnet_count,
+              nd.netuid AS netuid, nd.uid AS uid,
+              nd.stake_tao AS stake_alpha, nd.emission_tao AS emission_alpha,
+              nd.validator_trust AS validator_trust, nd.consensus AS consensus,
+              nd.dividends AS dividends, nd.take AS take,
+              nd.validator_permit AS validator_permit,
+              nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END AS total_stake_tao,
+              nd.emission_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END AS total_emission_tao
+            FROM neuron_daily nd
+            LEFT JOIN subnet_snapshots s
+              ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
+            WHERE nd.hotkey = ${hotkey} AND nd.netuid = ${netuid} AND nd.snapshot_date >= ${cutoff}
+            ORDER BY nd.snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
+          : await sql`
+            SELECT nd.snapshot_date AS snapshot_date, 1 AS subnet_count,
+              nd.netuid AS netuid, nd.uid AS uid,
+              nd.stake_tao AS stake_alpha, nd.emission_tao AS emission_alpha,
+              nd.validator_trust AS validator_trust, nd.consensus AS consensus,
+              nd.dividends AS dividends, nd.take AS take,
+              nd.validator_permit AS validator_permit,
+              nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END AS total_stake_tao,
+              nd.emission_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END AS total_emission_tao
+            FROM neuron_daily nd
+            LEFT JOIN subnet_snapshots s
+              ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
+            WHERE nd.hotkey = ${hotkey} AND nd.netuid = ${netuid}
+            ORDER BY nd.snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`;
+        return json(
+          buildValidatorHistory(scopedRows, hotkey, {
+            window: windowLabelFor(
+              url,
+              HISTORY_WINDOWS,
+              DEFAULT_HISTORY_WINDOW,
+            ),
+            netuid,
+          }),
+        );
+      }
       const rows = cutoff
         ? await sql`
           SELECT nd.snapshot_date AS snapshot_date, COUNT(DISTINCT nd.netuid) AS subnet_count,

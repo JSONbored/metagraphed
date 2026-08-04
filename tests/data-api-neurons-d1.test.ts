@@ -1055,6 +1055,83 @@ test("GET /api/v1/validators/:hotkey/history prices each day at its own snapshot
   assert.equal(all.status, 200);
 });
 
+test("GET /api/v1/validators/:hotkey/history?netuid= scopes to one subnet (#9383)", async () => {
+  const day = dayAgo(1);
+  insertDaily({
+    netuid: 0,
+    uid: 0,
+    hotkey: "5Val",
+    validator_permit: 1,
+    stake_tao: 100,
+    emission_tao: 10,
+    snapshot_date: day,
+  });
+  insertDaily({
+    netuid: 7,
+    uid: 1,
+    hotkey: "5Val",
+    validator_permit: 1,
+    stake_tao: 100,
+    emission_tao: 10,
+    validator_trust: 0.75,
+    consensus: 0.4,
+    dividends: 0.25,
+    take: 0.18,
+    snapshot_date: day,
+  });
+  insertPrice(7, day, 0.5);
+
+  const res = await call(req("/api/v1/validators/5Val/history?netuid=7"));
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.equal(body.netuid, 7);
+  const points = body.points as Row[];
+  assert.equal(points.length, 1, "root's row for the same day is excluded");
+  assert.equal(points[0].netuid, 7);
+  assert.equal(points[0].uid, 1);
+  // Alpha stays alpha; the TAO figure is the same value priced at 0.5.
+  assert.equal(points[0].stake_alpha, 100);
+  assert.equal(points[0].emission_alpha, 10);
+  assert.equal(points[0].total_stake_tao, 50);
+  assert.equal(points[0].total_emission_tao, 5);
+  // The per-subnet facts the unscoped rollup sums away.
+  assert.equal(points[0].validator_trust, 0.75);
+  assert.equal(points[0].consensus, 0.4);
+  assert.equal(points[0].dividends, 0.25);
+  assert.equal(points[0].take, 0.18);
+  assert.equal(points[0].validator_permit, true);
+});
+
+test("GET /api/v1/validators/:hotkey/history?netuid= reports a lost permit (#9383)", async () => {
+  // The unscoped query filters validator_permit = 1, which turns a lost permit
+  // into an absent day -- indistinguishable from a day the poller missed. Scoped,
+  // the day is returned with the permit false.
+  const day = dayAgo(1);
+  insertDaily({
+    netuid: 7,
+    uid: 1,
+    hotkey: "5NoPermit",
+    validator_permit: 0,
+    stake_tao: 100,
+    emission_tao: 0,
+    snapshot_date: day,
+  });
+  insertPrice(7, day, 0.5);
+
+  const unscoped = (await (
+    await call(req("/api/v1/validators/5NoPermit/history"))
+  ).json()) as Row;
+  assert.equal((unscoped.points as Row[]).length, 0, "filtered out unscoped");
+  assert.equal(unscoped.netuid, null);
+
+  const scoped = (await (
+    await call(req("/api/v1/validators/5NoPermit/history?netuid=7"))
+  ).json()) as Row;
+  const points = scoped.points as Row[];
+  assert.equal(points.length, 1);
+  assert.equal(points[0].validator_permit, false);
+});
+
 test("GET /api/v1/subnets/:netuid/{concentration,performance,yield}/history serve windowed day series", async () => {
   insertDaily({ uid: 0, snapshot_date: dayAgo(1) });
   insertDaily({ uid: 1, snapshot_date: dayAgo(1) });
