@@ -63,20 +63,31 @@ export default defineConfig({
   // that run.
   projects: [
     {
-      // Layout-measurement sweeps: load a route, measure the rendered DOM,
-      // assert. No interaction, no hydration races, so they take the parallel
-      // phase. A spec matching NEITHER project silently never runs -- add new
-      // measurement specs to this pattern.
-      name: "measurement",
-      testMatch: /(responsive-overflow|sticky-table-header)\.spec\.ts$/,
+      name: "overflow",
+      testMatch: /responsive-overflow\.spec\.ts$/,
     },
     {
+      // NOTE: a spec matching NEITHER project silently never runs. New specs
+      // must be added to one of these patterns.
+      //
+      // sticky-table-header is a measurement sweep like the overflow one, not
+      // an interaction test, and on pure test character it belongs in the
+      // parallel phase above. It runs here instead, deliberately: the
+      // `webServer` crash documented at the top of this file (bare
+      // `✘ [ERROR]`, then ERR_CONNECTION_REFUSED for the rest of the run) is
+      // load-related and unfixed from this side, and the overflow phase is
+      // already 88 independent page loads against that one unsupervised
+      // process. Adding 6 more to it traded a real increase in flake odds for
+      // ~20s of wall time. Here they cost that 20s and add nothing to the
+      // peak.
       name: "interaction",
-      testMatch: /(evidence-deep-link|multisig-related-error|offline)\.spec\.ts$/,
-      dependencies: ["measurement"],
-      // 6 tests across 3 files. Serial within the phase costs a few seconds
-      // and removes the last source of self-contention for exactly the tests
-      // that proved sensitive to it.
+      testMatch:
+        /(evidence-deep-link|multisig-related-error|offline|sticky-table-header)\.spec\.ts$/,
+      dependencies: ["overflow"],
+      // Serial within the phase costs a few seconds and removes the last
+      // source of self-contention for exactly the tests that proved sensitive
+      // to it -- which now includes sticky-table-header: /chain/extrinsics
+      // needs ~10s to paint its table and failed only under 4 workers.
       fullyParallel: false,
     },
   ],

@@ -105,24 +105,14 @@ export function ListShell({
             <div className={tableCard}>
               {/* Two nested wrappers, one axis each. The outer keeps the
                   edge-fade mask and thin horizontal scrollbar that
-                  .mg-table-scroll styles; the inner is the bounded viewport
-                  the <thead> pins against. `max-h` (not `h`) means a short
-                  table is untouched -- the cap only engages once the list is
-                  taller than the screen, which is exactly when a header that
-                  scrolls away starts costing the reader the column labels. */}
+                  .mg-table-scroll styles; the inner (.mg-list-viewport) is
+                  the bounded viewport the <thead> pins against. The cap is
+                  `max-height`, not `height`, so a short table is untouched --
+                  it only engages once the list is taller than the screen,
+                  which is exactly when a header that scrolls away starts
+                  costing the reader the column labels. */}
               <div className="mg-table-scroll overflow-x-auto">
-                <div
-                  ref={viewportRef}
-                  // Token WITH a fallback, matching how the rest of the app
-                  // reads --mg-sticky-offset. A bare `var(--x)` that fails to
-                  // resolve computes `max-height: none` -- no cap, so the
-                  // viewport is unbounded, so the sticky <thead> is inert
-                  // again. That is this exact bug, reintroduced silently by
-                  // the thing meant to prevent it, and it is not theoretical:
-                  // it happened once already here, and every list route in
-                  // the e2e sweep went red at once. The literal is the floor.
-                  className="max-h-[var(--mg-list-viewport-max,70vh)] overflow-y-auto"
-                >
+                <div ref={viewportRef} className="mg-list-viewport">
                   {table}
                 </div>
               </div>

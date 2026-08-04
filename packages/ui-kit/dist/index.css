@@ -215,6 +215,11 @@
   --mg-z-progress: 60;
   --mg-z-skip-link: 100;
 }
+.mg-list-viewport {
+  max-height: var(--mg-list-viewport-max, 70vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 .mg-table-head-pinned {
   position: sticky;
   top: 0;

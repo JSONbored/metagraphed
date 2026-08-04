@@ -233,10 +233,7 @@ function ValidatorsDirectory({
               overflow-y-auto div keeps tableScrollRef for react-virtual's
               vertical scroll measurement. */}
           <div className="mg-table-scroll overflow-x-auto">
-            <div
-              ref={tableScrollRef}
-              className="max-h-[var(--mg-list-viewport-max,70vh)] overflow-y-auto"
-            >
+            <div ref={tableScrollRef} className="mg-list-viewport">
               <table
                 className={classNames(
                   "w-full text-left text-sm",

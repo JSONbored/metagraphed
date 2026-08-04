@@ -431,6 +431,28 @@
  * softer `bg-card/60` inset panels. Both compose var(--card), so they
  * theme automatically -- no separate dark-mode override needed.
  * ============================================================ */
+/* The bounded viewport a long list's table scrolls inside, and the element
+   `.mg-table-head-pinned` pins to. One class so ListShell and any route that
+   builds its own shell (/validators) cannot disagree about it.
+
+   `overscroll-behavior: contain` is load-bearing, not polish. Without it,
+   scrolling past the last row CHAINS to the page, which drags the table --
+   and the header pinned to its top -- up underneath the app header while the
+   reader is still looking at rows. The header is correctly pinned the whole
+   time; it is just off-screen with the top of its own scrollport. Containing
+   the scroll means reaching the end of the table stops there, so the header
+   stays put for as long as the table is what you are reading. (The page
+   still scrolls normally from anywhere outside the table.)
+
+   The height cap reads a token with a literal fallback: a bare var() that
+   fails to resolve computes `max-height: none`, unbounding the viewport and
+   making every sticky header in the app inert again. */
+.mg-list-viewport {
+  max-height: var(--mg-list-viewport-max, 70vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 /* A table header pinned inside a bounded list viewport (ListShell's, or a
    route that builds its own). One definition so every list agrees on where
    the header sits and what it looks like.
