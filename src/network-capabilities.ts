@@ -235,12 +235,18 @@ export function buildNetworkCapabilities(input: {
       partial_families: universalFamilies.filter((entry) =>
         partialKeys.has(entry.family),
       ),
-      // Accurate as of #8700, and deliberately specific about WHICH kind of
-      // chain data is missing. The previous wording said registry data
-      // including "surfaces" was served on every network, which was wrong --
-      // /api/v1/testnet/surfaces has always 404'd, because the testnet build
-      // emits native-chain registry artifacts only, not curated ones.
-      note: "Live chain state (burn, balances, network parameters, sudo key, crowdloans) is read from this network's own RPC and served here. Indexed chain HISTORY -- blocks, extrinsics, events and the analytics built on them -- is indexed for mainnet only, so those families and the curated-registry families (surfaces, profiles, endpoints, health) are unavailable.",
+      // DESCRIBES THE SHAPE, NOT A ROUTE LIST. The previous wording enumerated
+      // what was missing -- "blocks, extrinsics, events and the analytics built
+      // on them are indexed for mainnet only" -- and every one of those became
+      // false as #9394, #9411 and #9422 opened them, while the note kept
+      // telling callers not to ask. A summary that lists specifics goes stale
+      // the moment the specifics move; `served_families`, `unserved_families`
+      // and `partial_families` beside it are the precise answer and are
+      // derived, so this says only what remains true by construction.
+      //
+      // The test in tests/network-capabilities.test.ts holds it to that: a
+      // family this note calls unavailable must not appear as served.
+      note: "Live chain state (burn, balances, network parameters, sudo key, crowdloans) is read from this network's own RPC. Indexed chain history and the analytics over it are served wherever this network's own decode lane has run -- see served_families for exactly which, and partial_families for those where only some routes qualify. The curated-registry families (surfaces, profiles, endpoints, health) are mainnet-only: they are built from curation this network has no equivalent of, not from chain data.",
     };
   });
 }

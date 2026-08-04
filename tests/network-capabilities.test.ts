@@ -28,6 +28,7 @@ import {
 } from "../src/network-artifacts.ts";
 import { LIVE_CHAIN_ROUTE_PATHS } from "../src/live-chain-routes.ts";
 import { CHAIN_HISTORY_ROUTE_PATHS } from "../src/chain-history-routes.ts";
+import { PROJECTION_ROUTE_PATHS } from "../src/projection-routes.ts";
 
 const NETWORKS = {
   mainnet: { id: "mainnet", chain: "finney", prefix: "", isDefault: true },
@@ -51,6 +52,7 @@ function matrix() {
     nonArtifactRoutes: [
       ...LIVE_CHAIN_ROUTE_PATHS,
       ...CHAIN_HISTORY_ROUTE_PATHS,
+      ...PROJECTION_ROUTE_PATHS,
     ],
   });
 }
@@ -349,5 +351,74 @@ describe("GET /api/v1/networks never 404s", () => {
     assert.deepEqual(mainnet?.aliases, ["finney", "mainnet"]);
     const testnet = payload.networks.find((n) => n.id === "testnet");
     assert.deepEqual(testnet?.aliases, ["test", "testnet"]);
+  });
+});
+
+// The note is prose beside three derived lists, and prose drifts. It claimed
+// "blocks, extrinsics, events and the analytics built on them are indexed for
+// mainnet only" for weeks after #9394/#9411/#9422 opened every one of them --
+// telling callers not to ask for routes that answer. This is what stops that
+// recurring: whatever the note names as unavailable must actually be absent
+// from served_families.
+describe("the note cannot contradict the families beside it", () => {
+  test("no family the note calls mainnet-only is actually served", () => {
+    const payload = matrix() as unknown as {
+      networks: {
+        id: string;
+        note: string | null;
+        served_families: { family: string }[];
+        partial_families?: { family: string }[];
+      }[];
+    };
+    // Only the data-serving networks carry this note; `local` has its own
+    // setup pointer and no family lists to contradict.
+    const withNotes = payload.networks.filter(
+      (n) => n.served_families.length > 0 && (n.note ?? "").length > 0,
+    );
+    assert.ok(withNotes.length > 0, "no network carries a note to check");
+    for (const network of withNotes) {
+      const note = (network.note ?? "").toLowerCase();
+      const served = new Set([
+        ...network.served_families.map((f) => f.family),
+        ...(network.partial_families ?? []).map((f) => f.family),
+      ]);
+      // Families the note explicitly names as mainnet-only.
+      const claimed = ["surfaces", "profiles", "endpoints", "health"].filter(
+        (family) =>
+          note.includes(family) && /mainnet-only|unavailable/.test(note),
+      );
+      assert.ok(
+        claimed.length > 0,
+        `${network.id}: the note names no unavailable family, so this assertion proves nothing`,
+      );
+      for (const family of claimed) {
+        assert.ok(
+          !served.has(family),
+          `${network.id}: the note calls "${family}" mainnet-only, but it is served`,
+        );
+      }
+    }
+  });
+
+  // The paired positive: the note must not go the other way either, dismissing
+  // a whole area the network genuinely serves.
+  test("the note does not deny chain history a network actually serves", () => {
+    const payload = matrix() as unknown as {
+      networks: {
+        id: string;
+        note: string | null;
+        served_families: { family: string }[];
+      }[];
+    };
+    const testnet = payload.networks.find((n) => n.id === "testnet");
+    if (!testnet?.note) return;
+    const served = new Set(testnet.served_families.map((f) => f.family));
+    if (served.has("blocks") || served.has("extrinsics")) {
+      assert.doesNotMatch(
+        testnet.note,
+        /indexed for mainnet only/i,
+        "the note denies indexed history this network serves",
+      );
+    }
   });
 });

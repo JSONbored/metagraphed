@@ -119,8 +119,16 @@ export const CHAIN_NETWORKS: ChainNetwork[] = [
     id: "testnet",
     label: "Testnet",
     prefix: "testnet",
+    // WRITTEN AS A SHAPE, NOT AN INVENTORY. This said "native chain registry
+    // only (identities; no curated services/health)" for weeks after testnet
+    // gained live chain state, blocks, extrinsics, chain events and the
+    // analytics over them -- steering people away from the very thing that had
+    // just shipped. The API's own /api/v1/networks carries the precise answer
+    // (served_families / partial_families / unserved_families); this is the
+    // one-line orientation beside the selector, so it says only what stays
+    // true as routes are added.
     description:
-      "Bittensor testnet — native chain registry only (identities; no curated services/health).",
+      "Bittensor testnet — this chain's own state and indexed history. No curated registry (services, health, schemas): that is mainnet-only.",
   },
 ];
 
