@@ -114,6 +114,7 @@ import {
   nominatorCountsByHotkey,
   VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS,
 } from "../src/validator-nominator-summary.ts";
+import { tempoByNetuid } from "../src/subnet-tempo.ts";
 import { NOMINATOR_POSITION_INSERT_COLUMNS } from "../src/account-nominator-positions.ts";
 import {
   identityHash,
@@ -4617,12 +4618,20 @@ async function handleAccountKeysRoute(request: Request, env: Env, url: URL) {
 //
 // Cross-tier joins: subnet_snapshots has a live D1 home (migrations/d1/
 // 0002_observations.sql), so the alpha_price_tao joins/loads port for real.
-// The remaining enrichment side tables (featured_validators,
-// subnet_hyperparams' tempo/immunity_period, account_identity) have NO D1 home
-// yet -- their families are frozen or port separately -- so the twins pass each
-// builder the degraded value the retired Postgres loader's own catch branch
-// produced (empty set/map, null), rather than issuing a query that can only
-// ever throw. Wire the real reads in when those tables land on D1.
+// The remaining enrichment side tables (featured_validators, account_identity)
+// have NO D1 home yet -- their families are frozen or port separately -- so the
+// twins pass each builder the degraded value the retired Postgres loader's own
+// catch branch produced (empty set/map, null), rather than issuing a query that
+// can only ever throw. Wire the real reads in when those tables land on D1.
+//
+// subnet_hyperparams' TEMPO no longer belongs to that list either (#9342). It
+// landed on D1 in migrations/d1/0009 and is populated for every subnet, but both
+// validator handlers kept passing `tempoByNetuid: new Map()` -- the placeholder
+// this comment told them to pass. An empty map means every lookup misses, and
+// accumulateApyRow skips a membership whose tempo is unresolved, so apy_estimate
+// was `null` and apy_estimate_eligible_subnet_count was 0 on EVERY served
+// response. A degraded placeholder that outlives the gap it stood in for reads
+// exactly like a real absence, which is why it survived this long.
 //
 // validator_nominator_counts NO LONGER BELONGS TO THAT LIST. It landed on D1
 // in migrations/d1/0012, so the real read is wired below and this tier answers
@@ -4636,6 +4645,49 @@ type NeuronsD1RouteHandler = (sql: D1Sql, env: Env) => Promise<Response>;
 // alpha_price_tao. Group-wise-MAX join instead of DISTINCT ON, same
 // degrade-to-empty-map failure contract (every non-root row is then excluded
 // from the totals rather than counted 1:1).
+// netuid -> tempo(blocks) from the subnet_hyperparams D1 tier (#9342), for
+// accumulateApyRow to annualize each membership's emission_tao.
+//
+// Same degrade-to-empty-map contract as its siblings: a cold or absent table
+// yields an empty map, every lookup misses, and apy_estimate serves as null --
+// which is exactly what a caller got unconditionally before this was wired.
+// tempoByNetuid() drops tempo=0 rather than storing it, since a zero-length
+// epoch divides into an infinite epochsPerYear downstream.
+//
+// ROOT IS INCLUDED, deliberately, and that is verified against the chain rather
+// than inferred from our capture. subnet_hyperparams holds 129 rows -- netuid 0
+// plus the 128 real subnets -- and reading finney storage directly confirms root
+// is a genuine network with a genuine tempo, not a capture artefact:
+//
+//   SubtensorModule::NetworksAdded(0) = true
+//   SubtensorModule::Tempo(0)  = 100     (ours: 100)
+//   SubtensorModule::Tempo(1)  = 99      (ours: 99)
+//   SubtensorModule::Tempo(64) = 360     (ours: 360)
+//
+// It is kept because every sibling enrichment in this same builder already treats
+// a root membership as real: loadAlphaPricesByNetuidD1 gives netuid 0 a price of
+// 1, and the leaderboard counts a root-only validator. Dropping root would make
+// apy_estimate silently ignore the root position of exactly the large validators
+// whose stake is mostly there.
+//
+// The one wart is the OUTPUT field's name, `apy_estimate_eligible_subnet_count`,
+// which counts root among "subnets" when root is not one. That name predates this
+// fix and renaming a published field is a contract change, not a bug fix -- so it
+// is left alone and called out rather than quietly redefined here.
+async function loadSubnetTemposD1(
+  sql: D1Sql,
+  env: Env,
+): Promise<Map<number, number>> {
+  try {
+    const rows = await sql`SELECT netuid, tempo FROM subnet_hyperparams`;
+    return tempoByNetuid(rows as Array<Record<string, unknown>>);
+  } catch (err) {
+    console.error("subnet_hyperparams tempo query failed:", err);
+    await captureDataApiError(err, "subnet-hyperparams-tempo-query", env);
+    return new Map();
+  }
+}
+
 async function loadAlphaPricesByNetuidD1(
   sql: D1Sql,
   env: Env,
@@ -4984,16 +5036,22 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         limitParam <= GLOBAL_VALIDATOR_LIMIT_MAX
           ? limitParam
           : GLOBAL_VALIDATOR_LIMIT_DEFAULT;
-      const [rows, realizedStakeByHotkey, priceByNetuid, nominatorCounts] =
-        await Promise.all([
-          sql`
+      const [
+        rows,
+        realizedStakeByHotkey,
+        priceByNetuid,
+        nominatorCounts,
+        tempos,
+      ] = await Promise.all([
+        sql`
           SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at, take
           FROM neurons WHERE validator_permit = 1 AND hotkey IS NOT NULL
           ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
-          loadRealizedStakeBaselinesD1(sql, {}, env),
-          loadAlphaPricesByNetuidD1(sql, env),
-          loadNominatorCountsD1(sql, env),
-        ]);
+        loadRealizedStakeBaselinesD1(sql, {}, env),
+        loadAlphaPricesByNetuidD1(sql, env),
+        loadNominatorCountsD1(sql, env),
+        loadSubnetTemposD1(sql, env),
+      ]);
       return json(
         buildGlobalValidators(rows, {
           sort,
@@ -5002,7 +5060,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
           featuredHotkeys: new Set(),
           identityByColdkey: new Map(),
           nominatorCounts,
-          tempoByNetuid: new Map(),
+          tempoByNetuid: tempos,
           realizedStakeByHotkey,
         }),
       );
@@ -5016,7 +5074,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
   if (validatorDetail) {
     return async (sql, env) => {
       const hotkey = decodeURIComponent(validatorDetail[1]);
-      const [rows, realizedByHotkey, priceByNetuid, nominatorCount] =
+      const [rows, realizedByHotkey, priceByNetuid, nominatorCount, tempos] =
         await Promise.all([
           sql.unsafe(
             `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = 1 ORDER BY netuid ASC, uid ASC`,
@@ -5025,13 +5083,14 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
           loadRealizedStakeBaselinesD1(sql, { hotkey }, env),
           loadAlphaPricesByNetuidD1(sql, env),
           loadNominatorCountD1(sql, hotkey, env),
+          loadSubnetTemposD1(sql, env),
         ]);
       return json(
         buildValidatorDetail(rows, hotkey, {
           identityByColdkey: new Map(),
           priceByNetuid,
           nominatorCount,
-          tempoByNetuid: new Map(),
+          tempoByNetuid: tempos,
           realizedStake: realizedByHotkey.get(hotkey) ?? null,
         }),
       );
