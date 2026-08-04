@@ -12,6 +12,8 @@ import {
   GLOBAL_VALIDATOR_LIMIT_MAX,
   MOVERS_LIMIT_DEFAULT,
   MOVERS_LIMIT_MAX,
+  VALIDATOR_ECONOMICS_LIMIT_DEFAULT,
+  VALIDATOR_ECONOMICS_LIMIT_MAX,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
   TOP_HOLDERS_LIMIT_DEFAULT,
@@ -1247,6 +1249,13 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/subnets/{netuid}/validator-economics.json",
     "What a validator permit costs on one subnet and whether holding one earns (#9323, #9327), computed live at /api/v1/subnets/{netuid}/validator-economics (no static file). Carries the permit floor (total_stake units needed to hold a validator permit, where total_stake is alpha + tao_weight * root — the quantity the chain threshold actually tests) and the earning floor (where the smallest permit-holder with dividends > 0 sits; median ~7x the permit floor, so a permit is not income), each priced in TAO against the subnet's live AMM pool reserves plus the registration burn. Also: validator set composition as three separate counts (permitted / active / earning — network-wide 1,523 / 1,137 / 1,117 on 2026-08-03), open slots, whether the cap actually binds (1 of 128 subnets), the take distribution across permit-holders including the full sorted vector, the emission-gate state and daily TAO inflow, and the live sudo-settable StakeThreshold/TaoWeight the floors were derived against. Root stake is not split, so root_tao_to_clear_threshold clears the threshold on every registered subnet at once. Every derived field is nullable and degrades with a stated degraded_reason rather than reporting a confident zero.",
     "SubnetValidatorEconomicsArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
+    "validator-economics-ranking",
+    "/metagraph/validators/economics.json",
+    "Every subnet ranked by what it costs to become an EARNING validator there (#9324), computed live at /api/v1/validators/economics (no static file). One row per subnet carrying the same fields as /api/v1/subnets/{netuid}/validator-economics, sortable by earning_floor_cost_tao (default, cheapest first), permit_floor_cost_tao, permit_to_earning_multiple, tao_inflow_per_day or validator_headroom, and filterable on emission_gate_open / cap_binding — omitting a filter means BOTH, which is not the same as false. Every subnet the ranking drops appears in `excluded` with a reason, so an omitted subnet is distinguishable from an absent one. Derived from ONE cross-subnet neuron scan plus one economics-artifact read rather than 128 per-subnet round trips. The registration burn is deliberately excluded from the ranking: it is a live per-subnet chain read with no cached tier and is immaterial to the order (~0.15 TAO against floor costs of tens to hundreds), so the per-subnet route reports the true entry cost instead.",
+    "ValidatorEconomicsRankingArtifact",
     COMPUTED_LIVE,
   ),
   artifact(
@@ -2888,6 +2897,37 @@ export const API_ROUTES = [
     ["subnets", "analytics", "validators"],
     [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "validator-economics-ranking",
+    "GET",
+    "/api/v1/validators/economics",
+    "/metagraph/validators/economics.json",
+    `Fetch every subnet ranked by what it costs to become an EARNING validator there. One row per subnet with the same fields as /api/v1/subnets/{netuid}/validator-economics: the permit floor and the earning floor (which differ by a median of ~7x — a permit is not income), their TAO cost against live pool reserves, validator set composition as three separate counts, open slots, the take distribution, and the emission-gate state. Sort by earning_floor_cost_tao (default, cheapest first), permit_floor_cost_tao, permit_to_earning_multiple, tao_inflow_per_day or validator_headroom; filter on emission_gate_open or cap_binding, where omitting a filter means BOTH rather than false. limit caps the page (default ${VALIDATOR_ECONOMICS_LIMIT_DEFAULT}, max ${VALIDATOR_ECONOMICS_LIMIT_MAX}). Every subnet the ranking drops is returned in \`excluded\` with a reason. The registration burn is excluded from the ranking — it is a live per-subnet read and immaterial to the order; the per-subnet route reports the true entry cost.`,
+    "short",
+    ["validators", "subnets", "analytics"],
+    [
+      { name: "sort", schema: { type: "string" } },
+      {
+        name: "limit",
+        schema: {
+          type: "integer",
+          minimum: 1,
+          maximum: VALIDATOR_ECONOMICS_LIMIT_MAX,
+        },
+      },
+      {
+        name: "offset",
+        schema: {
+          type: "integer",
+          minimum: 0,
+          maximum: VALIDATOR_ECONOMICS_LIMIT_MAX,
+        },
+      },
+      { name: "emission_gate_open", schema: { type: "boolean" } },
+      { name: "cap_binding", schema: { type: "boolean" } },
+    ],
+    [],
   ),
   route(
     "subnet-movers",
@@ -5017,6 +5057,7 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // against StakeThreshold, TaoWeight and Burn read out of finney storage at
   // request time, so a testnet-addressed question has nothing to answer from.
   "/api/v1/subnets/{netuid}/validator-economics",
+  "/api/v1/validators/economics",
   "/api/v1/subnets/movers",
   "/api/v1/validators",
   "/api/v1/accounts",

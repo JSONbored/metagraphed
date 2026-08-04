@@ -88,6 +88,9 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // parameters. Never a file — a committed floor would be stale the moment either
   // parameter moved, and both are sudo-settable.
   /^subnets\/(?:\d+|\{netuid\})\/validator-economics\.json$/,
+  // Cross-subnet cost-to-validate ranking (#9324): derived per request from one
+  // neuron scan against live reserves and the governance parameters. Never a file.
+  /^validators\/economics\.json$/,
   // Validator weight-setting activity: computed live from the account_events WeightsSet stream.
   /^subnets\/(?:\d+|\{netuid\})\/weights\.json$/,
   // Per-subnet weight-setter leaderboard: computed live from the account_events WeightsSet stream.

@@ -829,6 +829,17 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Every subnet ranked by what it costs to become an EARNING validator there (#9324), computed live at /api/v1/validators/economics (no static file). One row per subnet carrying the same fields as /api/v1/subnets/{netuid}/validator-economics, sortable by earning_floor_cost_tao (default, cheapest first), permit_floor_cost_tao, permit_to_earning_multiple, tao_inflow_per_day or validator_headroom, and filterable on emission_gate_open / cap_binding — omitting a filter means BOTH, which is not the same as false. Every subnet the ranking drops appears in `excluded` with a reason, so an omitted subnet is distinguishable from an absent one. Derived from ONE cross-subnet neuron scan plus one economics-artifact read rather than 128 per-subnet round trips. The registration burn is deliberately excluded from the ranking: it is a live per-subnet chain read with no cached tier and is immaterial to the order (~0.15 TAO against floor costs of tens to hundreds), so the per-subnet route reports the true entry cost instead.",
+      "id": "validator-economics-ranking",
+      "path": "/metagraph/validators/economics.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ValidatorEconomicsRankingArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Rolling 24h buy/sell alpha volume for one subnet (#4339/8.1): unsigned totals (never netted) in both alpha and TAO for StakeAdded (buy) vs StakeRemoved (sell), plus event counts, summed live from the same account_events stream as /api/v1/subnets/{netuid}/stake-flow (no static file). Also carries a buy/sell sentiment indicator (#4339/8.2) purely derived from the alpha totals: net_volume_alpha, a bounded sentiment_ratio, and a bullish/bearish/neutral label. Fixed 24h window, not OHLC/price data (#2589's trader-feature fence).",
       "id": "subnet-alpha-volume",
       "path": "/metagraph/subnets/{netuid}/volume.json",
@@ -2556,7 +2567,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 116,
+    "mainnet_only_route_count": 117,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },

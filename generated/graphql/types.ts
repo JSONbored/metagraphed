@@ -2852,6 +2852,8 @@ export type Query = {
   top_holders?: Maybe<Scalars['JSON']['output']>;
   /** One validator's cross-subnet aggregate by hotkey; a hotkey with no validator_permit=1 rows resolves to a schema-stable zeroed aggregate, never null. Mirrors GET /api/v1/validators/{hotkey}. */
   validator?: Maybe<Validator>;
+  /** Rank every subnet by what it costs to become an EARNING validator there: the same fields as subnet_validator_economics, one row per subnet, sortable by earning_floor_cost_tao (default, cheapest first), permit_floor_cost_tao, permit_to_earning_multiple, tao_inflow_per_day or validator_headroom, and filterable on emission_gate_open / cap_binding (omitting a filter means BOTH, which is not the same as false). Every subnet the ranking drops is returned in the excluded list with a reason. The registration burn is excluded from the ranking -- it is a live per-subnet read and immaterial to the order. Mirrors GET /api/v1/validators/economics. */
+  validator_economics: ValidatorEconomicsRanking;
   /** One validator's cross-subnet staked-over-time history: one point per day (window: 7d/30d/90d/1y/all, default 30d), summed across every subnet it validates in, plus a rewards-per-1000-TAO rate. A hotkey with no matching neuron_daily rows resolves to a schema-stable empty-points card, never null. Mirrors GET /api/v1/validators/{hotkey}/history. */
   validator_history: ValidatorHistory;
   /** One validator's nominator leaderboard over a 7d/30d/90d window (default 30d): every coldkey that staked to or unstaked from this hotkey in the window, with its staked/unstaked/net/gross TAO, event count, and last-activity time, ranked by sort (net_staked | gross_staked | last_activity, default net_staked), paginated with limit (1-2000, default 20)/offset. An unsupported window/sort or an out-of-range limit/offset is a GraphQL error, not a silently substituted default; a hotkey with no nominators resolves to a schema-stable empty list, never null and never a GraphQL error. Mirrors GET /api/v1/validators/{hotkey}/nominators. */
@@ -4103,6 +4105,15 @@ export type QueryTop_HoldersArgs = {
 
 export type QueryValidatorArgs = {
   hotkey: Scalars['String']['input'];
+};
+
+
+export type QueryValidator_EconomicsArgs = {
+  cap_binding?: InputMaybe<Scalars['Boolean']['input']>;
+  emission_gate_open?: InputMaybe<Scalars['Boolean']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -5540,6 +5551,28 @@ export type ValidatorComparison = {
   validators: Array<ComparedValidator>;
 };
 
+/** One subnet the ranking dropped, and why, so that a caller can tell an omitted subnet from an absent one without re-deriving the ranking. */
+export type ValidatorEconomicsExclusion = {
+  __typename?: 'ValidatorEconomicsExclusion';
+  netuid: Scalars['Int']['output'];
+  reason: Scalars['String']['output'];
+};
+
+export type ValidatorEconomicsRanking = {
+  __typename?: 'ValidatorEconomicsRanking';
+  excluded: Array<ValidatorEconomicsExclusion>;
+  order: Scalars['String']['output'];
+  root_tao_to_clear_threshold?: Maybe<Scalars['Float']['output']>;
+  rows: Array<SubnetValidatorEconomics>;
+  schema_version: Scalars['Int']['output'];
+  sort: Scalars['String']['output'];
+  /** Echoed once for the whole ranking: every row's floors were derived against exactly these values, and both are sudo-settable. */
+  stake_threshold_units?: Maybe<Scalars['Float']['output']>;
+  tao_weight?: Maybe<Scalars['Float']['output']>;
+  /** Rows matching the filters, BEFORE limit/offset -- so a caller can page without re-counting. */
+  total: Scalars['Int']['output'];
+};
+
 /** One validator's cross-subnet staked-over-time history. Mirrors GET /api/v1/validators/{hotkey}/history. */
 export type ValidatorHistory = {
   __typename?: 'ValidatorHistory';
@@ -5997,6 +6030,8 @@ export type ResolversTypes = ResolversObject<{
   UptimeSurface: ResolverTypeWrapper<UptimeSurface>;
   Validator: ResolverTypeWrapper<Validator>;
   ValidatorComparison: ResolverTypeWrapper<ValidatorComparison>;
+  ValidatorEconomicsExclusion: ResolverTypeWrapper<ValidatorEconomicsExclusion>;
+  ValidatorEconomicsRanking: ResolverTypeWrapper<ValidatorEconomicsRanking>;
   ValidatorHistory: ResolverTypeWrapper<ValidatorHistory>;
   ValidatorHistoryPoint: ResolverTypeWrapper<ValidatorHistoryPoint>;
   ValidatorList: ResolverTypeWrapper<ValidatorList>;
@@ -6306,6 +6341,8 @@ export type ResolversParentTypes = ResolversObject<{
   UptimeSurface: UptimeSurface;
   Validator: Validator;
   ValidatorComparison: ValidatorComparison;
+  ValidatorEconomicsExclusion: ValidatorEconomicsExclusion;
+  ValidatorEconomicsRanking: ValidatorEconomicsRanking;
   ValidatorHistory: ValidatorHistory;
   ValidatorHistoryPoint: ValidatorHistoryPoint;
   ValidatorList: ValidatorList;
@@ -8495,6 +8532,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   surfaces?: Resolver<ResolversTypes['SurfaceList'], ParentType, ContextType, Partial<QuerySurfacesArgs>>;
   top_holders?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, Partial<QueryTop_HoldersArgs>>;
   validator?: Resolver<Maybe<ResolversTypes['Validator']>, ParentType, ContextType, RequireFields<QueryValidatorArgs, 'hotkey'>>;
+  validator_economics?: Resolver<ResolversTypes['ValidatorEconomicsRanking'], ParentType, ContextType, Partial<QueryValidator_EconomicsArgs>>;
   validator_history?: Resolver<ResolversTypes['ValidatorHistory'], ParentType, ContextType, RequireFields<QueryValidator_HistoryArgs, 'hotkey'>>;
   validator_nominators?: Resolver<ResolversTypes['NominatorList'], ParentType, ContextType, RequireFields<QueryValidator_NominatorsArgs, 'hotkey'>>;
   validators?: Resolver<ResolversTypes['ValidatorList'], ParentType, ContextType, Partial<QueryValidatorsArgs>>;
@@ -9599,6 +9637,23 @@ export type ValidatorComparisonResolvers<ContextType = GqlContext, ParentType ex
   validators?: Resolver<Array<ResolversTypes['ComparedValidator']>, ParentType, ContextType>;
 }>;
 
+export type ValidatorEconomicsExclusionResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorEconomicsExclusion'] = ResolversParentTypes['ValidatorEconomicsExclusion']> = ResolversObject<{
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type ValidatorEconomicsRankingResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorEconomicsRanking'] = ResolversParentTypes['ValidatorEconomicsRanking']> = ResolversObject<{
+  excluded?: Resolver<Array<ResolversTypes['ValidatorEconomicsExclusion']>, ParentType, ContextType>;
+  order?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  root_tao_to_clear_threshold?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  rows?: Resolver<Array<ResolversTypes['SubnetValidatorEconomics']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  sort?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  stake_threshold_units?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  tao_weight?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type ValidatorHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorHistory'] = ResolversParentTypes['ValidatorHistory']> = ResolversObject<{
   hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -9962,6 +10017,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   UptimeSurface?: UptimeSurfaceResolvers<ContextType>;
   Validator?: ValidatorResolvers<ContextType>;
   ValidatorComparison?: ValidatorComparisonResolvers<ContextType>;
+  ValidatorEconomicsExclusion?: ValidatorEconomicsExclusionResolvers<ContextType>;
+  ValidatorEconomicsRanking?: ValidatorEconomicsRankingResolvers<ContextType>;
   ValidatorHistory?: ValidatorHistoryResolvers<ContextType>;
   ValidatorHistoryPoint?: ValidatorHistoryPointResolvers<ContextType>;
   ValidatorList?: ValidatorListResolvers<ContextType>;

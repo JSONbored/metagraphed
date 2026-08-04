@@ -9669,6 +9669,90 @@ describe("MCP economics + metagraph data tools", () => {
     );
   });
 
+  test("list_validator_economics ranks subnets across the MCP surface", async () => {
+    // The ranking reads economics through ctx like its per-subnet sibling, so
+    // this exercises the real derivation rather than a degraded stub.
+    const db = {
+      prepare() {
+        return {
+          all: async () => ({
+            results: [
+              {
+                netuid: 5,
+                uid: 0,
+                stake_tao: 5000,
+                validator_permit: 1,
+                dividends: 0.5,
+                active: 1,
+                take: 0.18,
+              },
+              {
+                netuid: 7,
+                uid: 0,
+                stake_tao: 5000,
+                validator_permit: 1,
+                dividends: 0.5,
+                active: 1,
+                take: 0.02,
+              },
+            ],
+          }),
+        };
+      },
+    };
+    const res = await callTool(
+      "list_validator_economics",
+      { sort: "earning_floor_cost_tao" },
+      {
+        deps: makeDeps(
+          {
+            "/metagraph/economics.json": {
+              subnets: [
+                {
+                  netuid: 5,
+                  tao_in_pool_tao: 1000,
+                  alpha_in_pool: 100000,
+                  max_validators: 64,
+                  tao_in_emission_tao: 0.01,
+                },
+                {
+                  // A thinner pool, so the SAME floor costs more here — this is
+                  // what the ranking is for.
+                  netuid: 7,
+                  tao_in_pool_tao: 5000,
+                  alpha_in_pool: 100000,
+                  max_validators: 64,
+                  tao_in_emission_tao: 0.01,
+                },
+              ],
+            },
+          },
+          {},
+        ),
+        env: {
+          METAGRAPH_HEALTH_DB: db,
+          METAGRAPH_CONTROL: {
+            get: async () => ({
+              stake_threshold_tao: 1000,
+              tao_weight: 0.18,
+            }),
+          },
+        } as unknown as Env,
+      },
+    );
+    const out = res.body.result.structuredContent;
+    assert.equal(out.sort, "earning_floor_cost_tao");
+    assert.equal(out.order, "asc");
+    assert.equal(out.total, 2);
+    // netuid 5's pool is 5x deeper, so reaching the same floor costs less there.
+    assert.deepEqual(
+      (out.rows as Array<Record<string, unknown>>).map((r) => r.netuid),
+      [5, 7],
+    );
+    assert.deepEqual(out.excluded, []);
+    assert.equal(out.stake_threshold_units, 1000);
+  });
+
   test("get_subnet_validator_economics degrades when the economics artifact is cold", async () => {
     // The reader must survive an artifact that is absent or carries no subnets
     // array — a cold R2 must read as "unknown", never as a zero-cost subnet.

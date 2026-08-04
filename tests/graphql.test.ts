@@ -10779,6 +10779,134 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
     assert.deepEqual(e.takes.distribution, [0.18]);
   });
 
+  test("validator_economics ranks subnets across the GraphQL surface", async () => {
+    const env = fixtureEnv(
+      {
+        "/metagraph/economics.json": {
+          generated_at: "2026-08-03T00:00:00.000Z",
+          subnets: [
+            {
+              netuid: 5,
+              tao_in_pool_tao: 1000,
+              alpha_in_pool: 100000,
+              max_validators: 64,
+              tao_in_emission_tao: 0.01,
+            },
+            {
+              netuid: 7,
+              tao_in_pool_tao: 5000,
+              alpha_in_pool: 100000,
+              max_validators: 64,
+              tao_in_emission_tao: 0,
+            },
+          ],
+        },
+      },
+      {
+        kv: {
+          "network:parameters": {
+            stake_threshold_tao: 1000,
+            tao_weight: 0.18,
+          },
+        },
+      },
+    ) as Row;
+    env.METAGRAPH_HEALTH_DB = {
+      prepare() {
+        return {
+          all: async () => ({
+            results: [5, 7].map((netuid) => ({
+              netuid,
+              uid: 0,
+              stake_tao: 5000,
+              validator_permit: 1,
+              dividends: 0.5,
+              active: 1,
+              take: 0.18,
+            })),
+          }),
+        };
+      },
+    };
+    const { status, body } = await gql(
+      '{ validator_economics(sort: "earning_floor_cost_tao") { sort order total stake_threshold_units rows { netuid earning_floor_cost_tao } excluded { netuid reason } } }',
+      env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    const r = body.data.validator_economics;
+    assert.equal(r.sort, "earning_floor_cost_tao");
+    assert.equal(r.order, "asc");
+    assert.equal(r.total, 2);
+    assert.equal(r.stake_threshold_units, 1000);
+    assert.deepEqual(
+      r.rows.map((x: Row) => x.netuid),
+      [5, 7],
+    );
+  });
+
+  test("validator_economics filters on the emission gate and reports what it dropped", async () => {
+    const env = fixtureEnv(
+      {
+        "/metagraph/economics.json": {
+          subnets: [
+            {
+              netuid: 5,
+              tao_in_pool_tao: 1000,
+              alpha_in_pool: 100000,
+              max_validators: 64,
+              tao_in_emission_tao: 0,
+            },
+          ],
+        },
+      },
+      {
+        kv: {
+          "network:parameters": {
+            stake_threshold_tao: 1000,
+            tao_weight: 0.18,
+          },
+        },
+      },
+    ) as Row;
+    env.METAGRAPH_HEALTH_DB = {
+      prepare() {
+        return {
+          all: async () => ({
+            results: [
+              {
+                netuid: 5,
+                uid: 0,
+                stake_tao: 5000,
+                validator_permit: 1,
+                dividends: 0.5,
+                active: 1,
+                take: 0.18,
+              },
+            ],
+          }),
+        };
+      },
+    };
+    const { body } = await gql(
+      "{ validator_economics(emission_gate_open: true) { total excluded { netuid reason } } }",
+      env,
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.validator_economics.total, 0);
+    assert.deepEqual(body.data.validator_economics.excluded, [
+      { netuid: 5, reason: "emission_gate_open is false" },
+    ]);
+  });
+
+  test("validator_economics rejects an unsupported sort", async () => {
+    const { body } = await gql(
+      '{ validator_economics(sort: "nonsense") { total } }',
+    );
+    assert.ok(body.errors, "expected a GraphQL error");
+    assert.match(body.errors[0].message, /sort must be one of/);
+  });
+
   test("subnet_validator_economics rejects a negative netuid", async () => {
     const { body } = await gql(
       "{ subnet_validator_economics(netuid: -1) { netuid } }",

@@ -182,6 +182,14 @@ export const SDL = /* GraphQL */ `
       amount: Float!
       direction: String
     ): SubnetStakeQuote!
+    "Rank every subnet by what it costs to become an EARNING validator there: the same fields as subnet_validator_economics, one row per subnet, sortable by earning_floor_cost_tao (default, cheapest first), permit_floor_cost_tao, permit_to_earning_multiple, tao_inflow_per_day or validator_headroom, and filterable on emission_gate_open / cap_binding (omitting a filter means BOTH, which is not the same as false). Every subnet the ranking drops is returned in the excluded list with a reason. The registration burn is excluded from the ranking -- it is a live per-subnet read and immaterial to the order. Mirrors GET /api/v1/validators/economics."
+    validator_economics(
+      sort: String
+      limit: Int
+      offset: Int
+      emission_gate_open: Boolean
+      cap_binding: Boolean
+    ): ValidatorEconomicsRanking!
     "What it costs to validate on one subnet and whether a permit there earns: the permit floor and the earning floor (which differ by a median of ~7x -- a permit is not income), the TAO to reach each priced against live pool reserves plus the registration burn, open validator slots, the commission (take) distribution among permit-holders, the emission-gate state, and the live StakeThreshold/TaoWeight the floors were derived against. Permitted, active and earning are three different counts and all three are returned. Every derived field is nullable and degrades with a stated reason rather than reporting a confident zero. Mirrors GET /api/v1/subnets/{netuid}/validator-economics."
     subnet_validator_economics(netuid: Int!): SubnetValidatorEconomics!
     "One subnet's current validator set (permitted neurons) from the live metagraph snapshot, with each validator's full neuron record. A subnet with no snapshot resolves to a schema-stable empty list, never null. Mirrors GET /api/v1/subnets/{netuid}/validators."
@@ -3344,6 +3352,26 @@ export const SDL = /* GraphQL */ `
     "Median restricted to permit-holders that actually earn -- takes among validators nobody delegates to are noise."
     median_earning: Float
     sample_size: Int!
+  }
+
+  "One subnet the ranking dropped, and why, so that a caller can tell an omitted subnet from an absent one without re-deriving the ranking."
+  type ValidatorEconomicsExclusion {
+    netuid: Int!
+    reason: String!
+  }
+
+  type ValidatorEconomicsRanking {
+    schema_version: Int!
+    sort: String!
+    order: String!
+    "Rows matching the filters, BEFORE limit/offset -- so a caller can page without re-counting."
+    total: Int!
+    rows: [SubnetValidatorEconomics!]!
+    excluded: [ValidatorEconomicsExclusion!]!
+    "Echoed once for the whole ranking: every row's floors were derived against exactly these values, and both are sudo-settable."
+    stake_threshold_units: Float
+    tao_weight: Float
+    root_tao_to_clear_threshold: Float
   }
 
   type SubnetValidatorEconomics {

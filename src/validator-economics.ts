@@ -521,3 +521,173 @@ export function buildValidatorEconomics(
       floorCost === null ? "pool reserves unavailable — costs withheld" : null,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Cross-subnet ranking (#9324): "across all of them, where is it cheapest to
+// become an EARNING validator". The per-subnet answer cannot be assembled into
+// this by a caller without reimplementing the ranking, and the inputs it depends
+// on — execution price against live reserves, the live StakeThreshold, the
+// emission gate — move independently, so a client that cached any of them would
+// rank wrongly with no way to know.
+// ---------------------------------------------------------------------------
+
+/**
+ * One subnet's row in the ranking: its economics, the netuid that owns them, and the
+ * cap they were derived against.
+ *
+ * `maxValidators` is carried rather than looked up again at serialisation time — a
+ * second lookup would re-derive a value the derivation already consumed, and its
+ * null arm is unreachable anyway (a subnet with no cap degrades and never survives
+ * the ranking), so it reads as a live branch that can never be exercised.
+ */
+export type ValidatorEconomicsRow = ValidatorEconomics & {
+  netuid: number;
+  maxValidators: number | null;
+};
+
+/**
+ * The sortable keys, as a closed set.
+ *
+ * Deliberately does NOT include the burn-inclusive entry costs. The current
+ * registration burn is a live per-subnet chain read (`SubtensorModule.Burn`) with
+ * no cached tier, so ranking on it would mean ~128 live reads per request. It is
+ * also immaterial to the ORDER — measured 2026-08-03, the burn runs ~0.15 TAO
+ * against floor costs of tens to hundreds — so excluding it changes the ranking
+ * essentially never, while pretending to include it would be either slow or stale.
+ * The per-subnet route reads it live and reports the true entry cost.
+ */
+export const VALIDATOR_ECONOMICS_SORTS = [
+  "earning_floor_cost_tao",
+  "permit_floor_cost_tao",
+  "permit_to_earning_multiple",
+  "tao_inflow_per_day",
+  "validator_headroom",
+] as const;
+export type ValidatorEconomicsSort = (typeof VALIDATOR_ECONOMICS_SORTS)[number];
+
+/** Ascending for costs (cheapest first), descending for the "more is better" keys. */
+const DESCENDING_SORTS = new Set<string>([
+  "tao_inflow_per_day",
+  "validator_headroom",
+]);
+
+function sortValue(row: ValidatorEconomicsRow, sort: string): number | null {
+  if (sort === "validator_headroom") return row.validatorSlotsOpen;
+  if (sort === "permit_to_earning_multiple") return row.permitToEarningMultiple;
+  if (sort === "tao_inflow_per_day") return row.taoInflowPerDay;
+  if (sort === "permit_floor_cost_tao") return row.permitFloorCostTao;
+  return row.earningFloorCostTao;
+}
+
+export type ValidatorEconomicsRankingOptions = {
+  sort?: ValidatorEconomicsSort | string;
+  /** When set, keep only subnets whose gate matches. Unset means "both". */
+  emissionGateOpen?: boolean | null;
+  capBinding?: boolean | null;
+  limit?: number;
+  offset?: number;
+};
+
+export type ValidatorEconomicsRanking = {
+  rows: ValidatorEconomicsRow[];
+  total: number;
+  /** Subnets dropped by a filter or by having no sortable value, with the reason. */
+  excluded: Array<{ netuid: number; reason: string }>;
+  sort: string;
+  order: "asc" | "desc";
+};
+
+/**
+ * Rank subnets by cost-to-earn, reporting what it excluded and why.
+ *
+ * A subnet with no value for the chosen sort is EXCLUDED with a reason rather than
+ * sorted as 0 or as infinity: an unpriceable pool is not the cheapest subnet on the
+ * network, and a degraded row is not a free one. "Why is SN45 not in this list" is
+ * the question the output gets asked next, and a ranking that cannot answer it gets
+ * overridden by hand.
+ */
+export function rankValidatorEconomics(
+  rows: readonly ValidatorEconomicsRow[],
+  options: ValidatorEconomicsRankingOptions = {},
+): ValidatorEconomicsRanking {
+  const sort = VALIDATOR_ECONOMICS_SORTS.includes(
+    options.sort as ValidatorEconomicsSort,
+  )
+    ? (options.sort as ValidatorEconomicsSort)
+    : VALIDATOR_ECONOMICS_SORTS[0];
+  const order: "asc" | "desc" = DESCENDING_SORTS.has(sort) ? "desc" : "asc";
+
+  const excluded: Array<{ netuid: number; reason: string }> = [];
+  const kept: ValidatorEconomicsRow[] = [];
+
+  for (const row of rows) {
+    if (
+      options.emissionGateOpen != null &&
+      row.emissionGateOpen !== options.emissionGateOpen
+    ) {
+      excluded.push({
+        netuid: row.netuid,
+        reason: `emission_gate_open is ${row.emissionGateOpen}`,
+      });
+      continue;
+    }
+    if (options.capBinding != null && row.capBinding !== options.capBinding) {
+      excluded.push({
+        netuid: row.netuid,
+        reason: `cap_binding is ${row.capBinding}`,
+      });
+      continue;
+    }
+    if (sortValue(row, sort) === null) {
+      excluded.push({ netuid: row.netuid, reason: `${sort} is unavailable` });
+      continue;
+    }
+    kept.push(row);
+  }
+
+  // Ties broken by netuid so two runs against identical chain state produce an
+  // identical page — an unstable order makes a diff between runs unreadable and
+  // makes offset pagination silently drop or repeat rows.
+  kept.sort((a, b) => {
+    const av = sortValue(a, sort) as number;
+    const bv = sortValue(b, sort) as number;
+    if (av !== bv) return order === "asc" ? av - bv : bv - av;
+    return a.netuid - b.netuid;
+  });
+
+  const offset = Math.max(0, options.offset ?? 0);
+  const limit = options.limit ?? kept.length;
+  return {
+    rows: kept.slice(offset, offset + limit),
+    total: kept.length,
+    excluded,
+    sort,
+    order,
+  };
+}
+
+/**
+ * Group a flat cross-subnet neuron scan into per-netuid buckets.
+ *
+ * One scan and one grouping rather than 128 per-subnet reads — the same shape
+ * `chain-yield` uses over this table.
+ */
+export function groupNeuronsByNetuid(
+  rows: ReadonlyArray<{ netuid: number } & ValidatorNeuron>,
+): Map<number, ValidatorNeuron[]> {
+  const out = new Map<number, ValidatorNeuron[]>();
+  for (const row of rows) {
+    const bucket = out.get(row.netuid);
+    const neuron: ValidatorNeuron = {
+      uid: row.uid,
+      totalStake: row.totalStake,
+      validatorPermit: row.validatorPermit,
+      dividends: row.dividends,
+      active: row.active,
+      take: row.take,
+    };
+    if (bucket) bucket.push(neuron);
+    else out.set(row.netuid, [neuron]);
+  }
+  return out;
+}

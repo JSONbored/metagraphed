@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   buildSubnetValidatorEconomicsPayload,
+  buildValidatorEconomicsRankingPayload,
   handleSubnetValidatorEconomics,
+  handleValidatorEconomicsRanking,
 } from "../workers/request-handlers/entities.ts";
+import { handleRequest } from "../workers/api.ts";
 
 // The composer for GET /api/v1/subnets/{netuid}/validator-economics (#9323, #9327).
 //
@@ -409,5 +412,317 @@ describe("handleSubnetValidatorEconomics", () => {
     assert.equal(body.ok, true);
     assert.equal((body.data as Row).netuid, 7);
     assert.equal(typeof body.meta, "object");
+  });
+});
+
+// #9324: the cross-subnet ranking composer. One scan, one artifact read, grouped
+// per netuid — the branches worth driving are the ones where a tier is cold for
+// SOME subnets but not others, which is the normal steady state, not an edge case.
+describe("buildValidatorEconomicsRankingPayload", () => {
+  const scanRow = (netuid: number, uid: number, over: Row = {}): Row => ({
+    netuid,
+    uid,
+    stake_tao: 5000,
+    validator_permit: 1,
+    dividends: 0.5,
+    active: 1,
+    take: 0.18,
+    ...over,
+  });
+
+  function rankEnv(scan: Row[]) {
+    const sql: string[] = [];
+    return {
+      sql,
+      env: {
+        METAGRAPH_HEALTH_DB: {
+          prepare(query: string) {
+            sql.push(query);
+            return { all: async () => ({ results: scan }) };
+          },
+        },
+      } as never,
+    };
+  }
+
+  const economicsFor = (rows: Row[]) => async () => ({
+    rows,
+    generatedAt: "2026-08-03T00:00:00.000Z",
+  });
+
+  const rankDeps = (rows: Row[]) => ({
+    loadParams: (async () => ({
+      stake_threshold_tao: 1000,
+      tao_weight: 0.18,
+    })) as never,
+    loadEconomics: economicsFor(rows) as never,
+  });
+
+  const pool = (netuid: number, over: Row = {}): Row => ({
+    netuid,
+    tao_in_pool_tao: 1000,
+    alpha_in_pool: 100_000,
+    max_validators: 64,
+    tao_in_emission_tao: 0.01,
+    ...over,
+  });
+
+  test("excludes root from the scan — it is not a weight-copy target", () => {
+    const { env, sql } = rankEnv([]);
+    return buildValidatorEconomicsRankingPayload(env, {}, rankDeps([])).then(
+      () => {
+        assert.match(sql[0], /WHERE netuid != 0/);
+        assert.match(sql[0], /ORDER BY netuid, uid/);
+      },
+    );
+  });
+
+  test("derives one row per subnet from a single grouped scan", async () => {
+    const { env } = rankEnv([
+      scanRow(5, 0),
+      scanRow(5, 1, { stake_tao: 4000 }),
+      scanRow(7, 0),
+    ]);
+    const { data } = await buildValidatorEconomicsRankingPayload(
+      env,
+      {},
+      rankDeps([pool(5), pool(7)]),
+    );
+    assert.equal(data.total, 2);
+    assert.deepEqual((data.rows as Row[]).map((r) => r.netuid).sort(), [5, 7]);
+  });
+
+  test("echoes the governance parameters once for the whole ranking", async () => {
+    const { env } = rankEnv([scanRow(5, 0)]);
+    const { data } = await buildValidatorEconomicsRankingPayload(
+      env,
+      {},
+      rankDeps([pool(5)]),
+    );
+    assert.equal(data.stake_threshold_units, 1000);
+    assert.equal(data.tao_weight, 0.18);
+    assert.ok(
+      Math.abs((data.root_tao_to_clear_threshold as number) - 1000 / 0.18) <
+        1e-9,
+    );
+  });
+
+  test("leaves the root figure null when tao_weight is unusable", async () => {
+    const { env } = rankEnv([scanRow(5, 0)]);
+    const { data } = await buildValidatorEconomicsRankingPayload(
+      env,
+      {},
+      {
+        loadParams: (async () => ({
+          stake_threshold_tao: 1000,
+          tao_weight: 0,
+        })) as never,
+        loadEconomics: economicsFor([pool(5)]) as never,
+      },
+    );
+    assert.equal(data.root_tao_to_clear_threshold, null);
+  });
+
+  test("survives a params read returning nothing", async () => {
+    const { env } = rankEnv([scanRow(5, 0)]);
+    const { data } = await buildValidatorEconomicsRankingPayload(
+      env,
+      {},
+      {
+        loadParams: (async () => null) as never,
+        loadEconomics: economicsFor([pool(5)]) as never,
+      },
+    );
+    assert.equal(data.stake_threshold_units, null);
+    assert.equal(data.root_tao_to_clear_threshold, null);
+  });
+
+  test("a subnet missing from the economics artifact is excluded, not priced at zero", async () => {
+    // The normal steady state: a freshly registered subnet is in `neurons`
+    // before it lands in the economics capture.
+    const { env } = rankEnv([scanRow(5, 0), scanRow(99, 0)]);
+    const { data } = await buildValidatorEconomicsRankingPayload(
+      env,
+      {},
+      rankDeps([pool(5)]),
+    );
+    assert.deepEqual(
+      (data.rows as Row[]).map((r) => r.netuid),
+      [5],
+    );
+    assert.deepEqual(data.excluded, [
+      { netuid: 99, reason: "earning_floor_cost_tao is unavailable" },
+    ]);
+  });
+
+  test("degrades every subnet rather than guessing when the D1 binding is absent", async () => {
+    const { data } = await buildValidatorEconomicsRankingPayload(
+      {} as never,
+      {},
+      rankDeps([pool(5)]),
+    );
+    assert.equal(data.total, 0);
+    assert.deepEqual(data.rows, []);
+  });
+
+  test("passes the sort and filters through to the ranking", async () => {
+    const { env } = rankEnv([scanRow(5, 0), scanRow(7, 0)]);
+    const { data } = await buildValidatorEconomicsRankingPayload(
+      env,
+      { sort: "tao_inflow_per_day", emissionGateOpen: false },
+      rankDeps([pool(5), pool(7)]),
+    );
+    assert.equal(data.sort, "tao_inflow_per_day");
+    assert.equal(data.order, "desc");
+    // Both subnets have an open gate, so filtering for closed drops both.
+    assert.equal(data.total, 0);
+    assert.equal((data.excluded as Row[]).length, 2);
+  });
+
+  test("keeps a subnet whose economics row omits the cap, reporting it as unknown", async () => {
+    // A capture that landed the subnet but not its cap: the row still ranks on
+    // the fields it HAS, and the cap reads unknown rather than being invented.
+    const { env } = rankEnv([scanRow(5, 0)]);
+    const { data } = await buildValidatorEconomicsRankingPayload(
+      env,
+      {},
+      rankDeps([pool(5, { max_validators: null })]),
+    );
+    // No cap means no floor derivation, so the row is excluded from a
+    // cost-ranked list rather than ranked on a number that does not exist.
+    assert.equal(data.total, 0);
+    assert.deepEqual(data.excluded, [
+      { netuid: 5, reason: "earning_floor_cost_tao is unavailable" },
+    ]);
+  });
+
+  test("tolerates a scan result carrying no rows array", async () => {
+    // Same D1 shape guard the per-subnet composer has: `.all()` is not
+    // guaranteed to carry `results`.
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare: () => ({ all: async () => ({}) }),
+      },
+    } as never;
+    const { data } = await buildValidatorEconomicsRankingPayload(
+      env,
+      {},
+      rankDeps([pool(5)]),
+    );
+    assert.equal(data.total, 0);
+    assert.deepEqual(data.rows, []);
+  });
+
+  test("carries the artifact timestamp for the envelope meta", async () => {
+    const { env } = rankEnv([scanRow(5, 0)]);
+    const { generatedAt } = await buildValidatorEconomicsRankingPayload(
+      env,
+      {},
+      rankDeps([pool(5)]),
+    );
+    assert.equal(generatedAt, "2026-08-03T00:00:00.000Z");
+  });
+});
+
+describe("handleValidatorEconomicsRanking", () => {
+  const call = (qs: string, env: unknown) => {
+    const url = new URL(
+      "https://api.metagraph.sh/api/v1/validators/economics" + qs,
+    );
+    return handleValidatorEconomicsRanking(
+      new Request(url.toString()),
+      env as never,
+      url,
+    );
+  };
+  const env = { METAGRAPH_ARCHIVE: { get: async () => null } } as never;
+
+  test("rejects an unsupported sort by name", async () => {
+    const res = await call("?sort=nonsense", env);
+    assert.equal(res.status, 400);
+    const body = (await res.json()) as Row;
+    // The message names the supported set, so a caller can correct the request
+    // without reading the docs.
+    assert.match(
+      String((body.error as Row).message),
+      /nonsense.*earning_floor_cost_tao/s,
+    );
+  });
+
+  test("rejects an unknown query parameter", async () => {
+    const res = await call("?window=30d", env);
+    assert.equal(res.status, 400);
+    const body = (await res.json()) as Row;
+    assert.equal((body.error as Row).code, "invalid_query");
+  });
+
+  test("rejects a limit above the published ceiling", async () => {
+    const res = await call("?limit=100000", env);
+    assert.equal(res.status, 400);
+  });
+
+  test("rejects a negative offset", async () => {
+    const res = await call("?offset=-1", env);
+    assert.equal(res.status, 400);
+  });
+
+  test("accepts a supported sort and returns the standard envelope", async () => {
+    const res = await call("?sort=validator_headroom&limit=5", env);
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as Row;
+    assert.equal(body.ok, true);
+    assert.equal((body.data as Row).sort, "validator_headroom");
+  });
+
+  test("treats an absent filter as BOTH and an explicit false as false", async () => {
+    const bothRes = await call("", env);
+    assert.equal(bothRes.status, 200);
+    const falseRes = await call("?emission_gate_open=false", env);
+    assert.equal(falseRes.status, 200);
+  });
+});
+
+// Router-level: the two routes have to be REACHABLE, not merely implemented. A
+// handler that works but is never dispatched is the same as no handler, and the
+// per-route unit tests above cannot tell the difference.
+describe("validator-economics routing", () => {
+  const routerEnv = {
+    METAGRAPH_ARCHIVE: { get: async () => null },
+  } as never;
+
+  test("dispatches the per-subnet route", async () => {
+    const res = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/subnets/7/validator-economics",
+      ),
+      routerEnv,
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as Row;
+    assert.equal((body.data as Row).netuid, 7);
+  });
+
+  test("dispatches the cross-subnet ranking", async () => {
+    const res = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/validators/economics"),
+      routerEnv,
+      {},
+    );
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as Row;
+    assert.equal(typeof (body.data as Row).sort, "string");
+    assert.equal(Array.isArray((body.data as Row).rows), true);
+  });
+
+  test("the ranking's query validation applies through the router too", async () => {
+    const res = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/validators/economics?sort=nonsense",
+      ),
+      routerEnv,
+      {},
+    );
+    assert.equal(res.status, 400);
   });
 });

@@ -17,6 +17,9 @@ import {
   spotPriceTao,
   subnetStakeTotal,
   takeDistribution,
+  rankValidatorEconomics,
+  groupNeuronsByNetuid,
+  type ValidatorEconomicsRow,
   type ValidatorNeuron,
 } from "../src/validator-economics.ts";
 
@@ -590,5 +593,232 @@ describe("buildValidatorEconomics — entry costs, gate and takes (#9323, #9327)
       minChildkeyTakeRatio: 0,
     });
     assert.equal(out.minChildkeyTakeRatio, 0);
+  });
+});
+
+// #9324: the cross-subnet ranking. The assertions are on ORDER and on what was
+// EXCLUDED — a ranking that silently drops a subnet is worse than one that is
+// merely wrong, because nothing in the output says so.
+function row(
+  netuid: number,
+  over: Partial<ValidatorEconomicsRow> = {},
+): ValidatorEconomicsRow {
+  return {
+    netuid,
+    maxValidators: 64,
+    permitFloorUnits: 1000,
+    permitFloorCostTao: 10,
+    permitEntryCostTao: null,
+    earningFloorUnits: 5000,
+    earningFloorCostTao: 50,
+    earningEntryCostTao: null,
+    permitToEarningMultiple: 5,
+    rootTaoToClear: 5555.5,
+    capBinding: false,
+    uidsAboveThreshold: 3,
+    validatorSlotsOpen: 60,
+    composition: { permitted: 4, active: 3, earning: 2 },
+    takes: null,
+    minChildkeyTakeRatio: null,
+    emissionGateOpen: true,
+    taoInflowPerDay: 72,
+    registrationCostTao: null,
+    modelAgreement: null,
+    degradedReason: null,
+    ...over,
+  };
+}
+
+describe("rankValidatorEconomics", () => {
+  test("ranks cheapest-to-earn first by default", () => {
+    const out = rankValidatorEconomics([
+      row(1, { earningFloorCostTao: 300 }),
+      row(2, { earningFloorCostTao: 20 }),
+      row(3, { earningFloorCostTao: 100 }),
+    ]);
+    assert.deepEqual(
+      out.rows.map((r) => r.netuid),
+      [2, 3, 1],
+    );
+    assert.equal(out.sort, "earning_floor_cost_tao");
+    assert.equal(out.order, "asc");
+    assert.equal(out.total, 3);
+  });
+
+  test("sorts the more-is-better keys descending", () => {
+    const out = rankValidatorEconomics(
+      [
+        row(1, { taoInflowPerDay: 10 }),
+        row(2, { taoInflowPerDay: 500 }),
+        row(3, { taoInflowPerDay: 90 }),
+      ],
+      { sort: "tao_inflow_per_day" },
+    );
+    assert.deepEqual(
+      out.rows.map((r) => r.netuid),
+      [2, 3, 1],
+    );
+    assert.equal(out.order, "desc");
+  });
+
+  test("ranks by open validator slots when asked for headroom", () => {
+    const out = rankValidatorEconomics(
+      [row(1, { validatorSlotsOpen: 2 }), row(2, { validatorSlotsOpen: 40 })],
+      { sort: "validator_headroom" },
+    );
+    assert.deepEqual(
+      out.rows.map((r) => r.netuid),
+      [2, 1],
+    );
+  });
+
+  test("ranks by the permit-to-earning multiple", () => {
+    const out = rankValidatorEconomics(
+      [
+        row(1, { permitToEarningMultiple: 30 }),
+        row(2, { permitToEarningMultiple: 2 }),
+      ],
+      { sort: "permit_to_earning_multiple" },
+    );
+    assert.deepEqual(
+      out.rows.map((r) => r.netuid),
+      [2, 1],
+    );
+  });
+
+  test("ranks by the permit floor cost", () => {
+    const out = rankValidatorEconomics(
+      [row(1, { permitFloorCostTao: 90 }), row(2, { permitFloorCostTao: 3 })],
+      { sort: "permit_floor_cost_tao" },
+    );
+    assert.deepEqual(
+      out.rows.map((r) => r.netuid),
+      [2, 1],
+    );
+  });
+
+  test("falls back to the default sort rather than erroring on an unknown one", () => {
+    // The handler rejects a bad sort before reaching here; this is the belt to
+    // that braces, so a caller that bypasses the handler still gets an ordering.
+    const out = rankValidatorEconomics([row(1)], { sort: "nonsense" });
+    assert.equal(out.sort, "earning_floor_cost_tao");
+  });
+
+  test("excludes an unpriceable subnet with a reason instead of ranking it first", () => {
+    // A null cost sorted as 0 would put the one subnet we CANNOT price at the
+    // top of a list titled "cheapest".
+    const out = rankValidatorEconomics([
+      row(1, { earningFloorCostTao: null }),
+      row(2, { earningFloorCostTao: 50 }),
+    ]);
+    assert.deepEqual(
+      out.rows.map((r) => r.netuid),
+      [2],
+    );
+    assert.deepEqual(out.excluded, [
+      { netuid: 1, reason: "earning_floor_cost_tao is unavailable" },
+    ]);
+    assert.equal(out.total, 1, "total counts what survived the filters");
+  });
+
+  test("filters on the emission gate, and says which subnets that dropped", () => {
+    const out = rankValidatorEconomics(
+      [row(1, { emissionGateOpen: false }), row(2, { emissionGateOpen: true })],
+      { emissionGateOpen: true },
+    );
+    assert.deepEqual(
+      out.rows.map((r) => r.netuid),
+      [2],
+    );
+    assert.deepEqual(out.excluded, [
+      { netuid: 1, reason: "emission_gate_open is false" },
+    ]);
+  });
+
+  test("an absent gate filter means BOTH, not false", () => {
+    // The tri-state matters: a closed gate is a candidate, not a disqualifier —
+    // those subnets are less contested and pay more per unit of stake.
+    const out = rankValidatorEconomics([
+      row(1, { emissionGateOpen: false }),
+      row(2, { emissionGateOpen: true }),
+    ]);
+    assert.equal(out.rows.length, 2);
+    assert.deepEqual(out.excluded, []);
+  });
+
+  test("filters on cap_binding", () => {
+    const out = rankValidatorEconomics(
+      [row(1, { capBinding: true }), row(2, { capBinding: false })],
+      { capBinding: true },
+    );
+    assert.deepEqual(
+      out.rows.map((r) => r.netuid),
+      [1],
+    );
+    assert.deepEqual(out.excluded, [
+      { netuid: 2, reason: "cap_binding is false" },
+    ]);
+  });
+
+  test("breaks ties by netuid so paging is stable across runs", () => {
+    // Without this, offset pagination silently drops or repeats rows between
+    // two requests against identical chain state.
+    const out = rankValidatorEconomics([
+      row(9, { earningFloorCostTao: 10 }),
+      row(3, { earningFloorCostTao: 10 }),
+      row(6, { earningFloorCostTao: 10 }),
+    ]);
+    assert.deepEqual(
+      out.rows.map((r) => r.netuid),
+      [3, 6, 9],
+    );
+  });
+
+  test("pages with limit and offset over the ranked order", () => {
+    const rows = [10, 20, 30, 40, 50].map((cost, i) =>
+      row(i + 1, { earningFloorCostTao: cost }),
+    );
+    const page = rankValidatorEconomics(rows, { limit: 2, offset: 2 });
+    assert.deepEqual(
+      page.rows.map((r) => r.netuid),
+      [3, 4],
+    );
+    assert.equal(page.total, 5, "total is the match count, not the page size");
+  });
+
+  test("a negative offset is clamped rather than wrapping the slice", () => {
+    const out = rankValidatorEconomics([row(1), row(2)], { offset: -5 });
+    assert.equal(out.rows.length, 2);
+  });
+
+  test("an empty input ranks to an empty list, not an error", () => {
+    const out = rankValidatorEconomics([]);
+    assert.deepEqual(out.rows, []);
+    assert.equal(out.total, 0);
+  });
+});
+
+describe("groupNeuronsByNetuid", () => {
+  test("buckets one flat cross-subnet scan by netuid", () => {
+    const grouped = groupNeuronsByNetuid([
+      { netuid: 5, ...n(0, { totalStake: 100 }) },
+      { netuid: 7, ...n(0, { totalStake: 200 }) },
+      { netuid: 5, ...n(1, { totalStake: 300 }) },
+    ]);
+    assert.deepEqual([...grouped.keys()], [5, 7]);
+    assert.equal(grouped.get(5)?.length, 2);
+    assert.equal(grouped.get(7)?.length, 1);
+    assert.equal(grouped.get(5)?.[1].totalStake, 300);
+  });
+
+  test("carries the take through so the distribution survives grouping", () => {
+    const grouped = groupNeuronsByNetuid([
+      { netuid: 5, ...n(0, { validatorPermit: true, take: 0.18 }) },
+    ]);
+    assert.equal(grouped.get(5)?.[0].take, 0.18);
+  });
+
+  test("an empty scan groups to an empty map", () => {
+    assert.equal(groupNeuronsByNetuid([]).size, 0);
   });
 });

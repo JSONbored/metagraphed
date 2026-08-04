@@ -605,8 +605,13 @@ import {
 import {
   GetSubnetValidatorEconomicsInputSchema,
   GetSubnetValidatorEconomicsOutputSchema,
+  ListValidatorEconomicsInputSchema,
+  ListValidatorEconomicsOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-validator-economics.ts";
-import { buildSubnetValidatorEconomicsPayload } from "../workers/request-handlers/entities.ts";
+import {
+  buildSubnetValidatorEconomicsPayload,
+  buildValidatorEconomicsRankingPayload,
+} from "../workers/request-handlers/entities.ts";
 import {
   GetSubnetLeaseInputSchema,
   GetSubnetLeaseOutputSchema,
@@ -4654,6 +4659,71 @@ export const MCP_TOOLS: McpToolDefinition[] = [
             return {
               row:
                 rows.find((entry) => Number(entry?.netuid) === netuid) ?? null,
+              generatedAt: blob?.generated_at ?? blob?.captured_at ?? null,
+            };
+          },
+        },
+      );
+      return data;
+    },
+  },
+  {
+    name: "list_validator_economics",
+    title: "Rank subnets by what it costs to become an earning validator",
+    description:
+      "Answer 'across all subnets, where is it cheapest to become an EARNING " +
+      "validator'. Returns one row per subnet with the same fields as " +
+      "get_subnet_validator_economics -- permit floor, earning floor, their TAO " +
+      "cost against live pool reserves, validator set composition, open slots, " +
+      "take distribution, emission gate -- ranked and filterable. sort accepts " +
+      "earning_floor_cost_tao (default, cheapest first), permit_floor_cost_tao, " +
+      "permit_to_earning_multiple, tao_inflow_per_day, or validator_headroom. " +
+      "Filter with emission_gate_open or cap_binding; omitting a filter means " +
+      "BOTH, which is not the same as false. Every subnet the ranking drops is " +
+      "returned in `excluded` with a reason, so 'why is SN45 not in this list' " +
+      "is answerable from the response. Use it for 'find me a subnet worth " +
+      "validating on', 'where is validating cheapest', 'which subnets have room " +
+      "in the validator set'. The registration burn is excluded from the ranking " +
+      "-- it is a live per-subnet read and immaterial to the order; " +
+      "get_subnet_validator_economics reports the true entry cost for one subnet. " +
+      "Read-only. Mirrors GET /api/v1/validators/economics.",
+    inputSchema: z.toJSONSchema(ListValidatorEconomicsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    outputSchema: z.toJSONSchema(ListValidatorEconomicsOutputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof ListValidatorEconomicsInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const { data } = await buildValidatorEconomicsRankingPayload(
+        ctx.env,
+        {
+          sort: args?.sort,
+          limit: args?.limit,
+          offset: args?.offset,
+          emissionGateOpen: args?.emission_gate_open ?? null,
+          capBinding: args?.cap_binding ?? null,
+        },
+        {
+          // Same reason as the per-subnet tool: MCP resolves artifacts through
+          // ctx, not off `env`, so the default env-based reader would find no
+          // reserves and rank every subnet as unpriceable.
+          loadEconomics: async () => {
+            let blob: Record<string, unknown> | null;
+            try {
+              blob = (await loadArtifactData(
+                ctx,
+                "/metagraph/economics.json",
+              )) as Record<string, unknown> | null;
+            } catch {
+              blob = null;
+            }
+            return {
+              rows: Array.isArray(blob?.subnets)
+                ? (blob.subnets as Array<Record<string, unknown>>)
+                : [],
               generatedAt: blob?.generated_at ?? blob?.captured_at ?? null,
             };
           },

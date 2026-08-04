@@ -5,7 +5,10 @@
 // `field_sources`, which the tool returns verbatim so an agent can tell a derived floor
 // from a measured hyperparameter without a second call.
 import { z } from "zod";
-import { SubnetValidatorEconomicsArtifactSchema } from "../routes/validator-economics.ts";
+import {
+  SubnetValidatorEconomicsArtifactSchema,
+  ValidatorEconomicsRankingArtifactSchema,
+} from "../routes/validator-economics.ts";
 
 export const GetSubnetValidatorEconomicsInputSchema = z
   .object({
@@ -20,4 +23,26 @@ export const GetSubnetValidatorEconomicsOutputSchema =
   SubnetValidatorEconomicsArtifactSchema.passthrough();
 export type GetSubnetValidatorEconomicsOutput = z.infer<
   typeof GetSubnetValidatorEconomicsOutputSchema
+>;
+
+// list_validator_economics (#9324) — the cross-subnet ranking. The MCP tool is as
+// much the point of that issue as the REST route: it turns "find me a subnet worth
+// validating on" into a single agent call.
+export const ListValidatorEconomicsInputSchema = z
+  .object({
+    sort: z.string().optional(),
+    limit: z.int().min(1).optional(),
+    offset: z.int().min(0).optional(),
+    emission_gate_open: z.boolean().optional(),
+    cap_binding: z.boolean().optional(),
+  })
+  .strict();
+export type ListValidatorEconomicsInput = z.infer<
+  typeof ListValidatorEconomicsInputSchema
+>;
+
+export const ListValidatorEconomicsOutputSchema =
+  ValidatorEconomicsRankingArtifactSchema.passthrough();
+export type ListValidatorEconomicsOutput = z.infer<
+  typeof ListValidatorEconomicsOutputSchema
 >;

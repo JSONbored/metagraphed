@@ -143,8 +143,16 @@ import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.ts";
 import { loadSubnetBurn } from "../../src/subnet-burn.ts";
 import {
   buildValidatorEconomics,
+  groupNeuronsByNetuid,
+  rankValidatorEconomics,
+  VALIDATOR_ECONOMICS_SORTS,
+  type ValidatorEconomicsRow,
   type ValidatorNeuron,
 } from "../../src/validator-economics.ts";
+import {
+  VALIDATOR_ECONOMICS_LIMIT_DEFAULT,
+  VALIDATOR_ECONOMICS_LIMIT_MAX,
+} from "../../src/route-limits.ts";
 import { loadSubnetLease } from "../../src/subnet-lease.ts";
 import {
   isCrowdloanId,
@@ -3420,9 +3428,29 @@ export async function buildSubnetValidatorEconomicsPayload(
         : null,
   });
 
-  const data = {
+  const data = validatorEconomicsWire(
+    { ...economicsResult, netuid: Number(netuid), maxValidators },
+    maxValidators,
+    params,
+  );
+
+  return { data, generatedAt };
+}
+
+// Shared by the per-subnet route and the ranking: the derived fields have no
+// storage item behind them, so they are labelled `reconstructed` rather than
+// claiming to be measured.
+function validatorEconomicsWire(
+  economicsResult: ValidatorEconomicsRow,
+  maxValidators: number | null,
+  params: {
+    stake_threshold_tao: number | null;
+    tao_weight: number | null;
+  } | null,
+): Record<string, unknown> {
+  return {
     schema_version: 1,
-    netuid: Number(netuid),
+    netuid: economicsResult.netuid,
     permit_floor_units: economicsResult.permitFloorUnits,
     permit_floor_cost_tao: economicsResult.permitFloorCostTao,
     permit_entry_cost_tao: economicsResult.permitEntryCostTao,
@@ -3465,8 +3493,6 @@ export async function buildSubnetValidatorEconomicsPayload(
     degraded_reason: economicsResult.degradedReason,
     field_sources: VALIDATOR_ECONOMICS_FIELD_SOURCES,
   };
-
-  return { data, generatedAt };
 }
 
 export async function handleSubnetValidatorEconomics(
@@ -3495,6 +3521,204 @@ export async function handleSubnetValidatorEconomics(
       meta: await metagraphMeta(
         env,
         `/metagraph/subnets/${netuid}/validator-economics.json`,
+        generatedAt,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/validators/economics (#9324): one row per subnet, ranked by what it
+// costs to become an EARNING validator there.
+//
+// ONE cross-subnet neuron scan plus ONE economics-artifact read, not 128 per-subnet
+// round trips — the same shape `chain-yield` uses over this table. The registration
+// burn is deliberately absent from the ranking: it is a live per-subnet chain read
+// with no cached tier, so including it would mean ~128 RPC calls per request, and it
+// is immaterial to the ORDER anyway (~0.15 TAO against floor costs of tens to
+// hundreds). The per-subnet route reads it live and reports the true entry cost.
+export async function buildValidatorEconomicsRankingPayload(
+  env: Env,
+  options: {
+    sort?: string;
+    limit?: number;
+    offset?: number;
+    emissionGateOpen?: boolean | null;
+    capBinding?: boolean | null;
+  } = {},
+  deps: {
+    loadParams?: typeof loadNetworkParameters;
+    loadEconomics?: (env: Env) => Promise<{
+      rows: Array<Record<string, unknown>>;
+      generatedAt: unknown;
+    }>;
+  } = {},
+): Promise<{ data: Record<string, unknown>; generatedAt: unknown }> {
+  const readParams = deps.loadParams ?? loadNetworkParameters;
+  const readEconomics =
+    deps.loadEconomics ??
+    (async (e: Env) => {
+      // The whole blob in one read. `resolveSubnetEconomicsRow` resolves the same
+      // blob and then picks a single row, so calling it per subnet would re-read
+      // the artifact 128 times for data already in hand.
+      const artifact = await readArtifact(e, "/metagraph/economics.json");
+      const blob = artifact.ok
+        ? (artifact.data as Record<string, unknown> | undefined)
+        : undefined;
+      return {
+        rows: Array.isArray(blob?.subnets)
+          ? (blob.subnets as Array<Record<string, unknown>>)
+          : [],
+        generatedAt: blob?.generated_at ?? blob?.captured_at ?? null,
+      };
+    });
+
+  const db = env.METAGRAPH_HEALTH_DB;
+  const neuronRows = db
+    ? ((
+        await db
+          .prepare(
+            `SELECT netuid, ${VALIDATOR_ECONOMICS_NEURON_COLUMNS} FROM neurons WHERE netuid != 0 ORDER BY netuid, uid`,
+          )
+          .all()
+      )?.results ?? [])
+    : [];
+
+  const { rows: economicsRows, generatedAt } = await readEconomics(env);
+  const params = await readParams(env);
+  const economicsByNetuid = new Map<number, Record<string, unknown>>();
+  for (const row of economicsRows) {
+    economicsByNetuid.set(Number(row?.netuid), row);
+  }
+
+  const grouped = groupNeuronsByNetuid(
+    (neuronRows as Array<Record<string, unknown>>).map((row) => ({
+      netuid: Number(row.netuid),
+      ...toValidatorNeurons([row])[0],
+    })),
+  );
+
+  const rows: ValidatorEconomicsRow[] = [];
+  for (const [netuid, neurons] of grouped) {
+    const economics = economicsByNetuid.get(netuid);
+    const maxValidators =
+      economics?.max_validators != null
+        ? Number(economics.max_validators)
+        : null;
+    rows.push({
+      maxValidators,
+      ...buildValidatorEconomics({
+        neurons,
+        maxValidators,
+        stakeThreshold: params?.stake_threshold_tao ?? null,
+        taoWeight: params?.tao_weight ?? null,
+        taoReserve:
+          economics?.tao_in_pool_tao != null
+            ? Number(economics.tao_in_pool_tao)
+            : null,
+        alphaReserve:
+          economics?.alpha_in_pool != null
+            ? Number(economics.alpha_in_pool)
+            : null,
+        taoInEmissionPerBlock:
+          economics?.tao_in_emission_tao != null
+            ? Number(economics.tao_in_emission_tao)
+            : null,
+      }),
+      netuid,
+    });
+  }
+
+  const ranked = rankValidatorEconomics(rows, {
+    sort: options.sort,
+    limit: options.limit,
+    offset: options.offset,
+    emissionGateOpen: options.emissionGateOpen ?? null,
+    capBinding: options.capBinding ?? null,
+  });
+
+  return {
+    data: {
+      schema_version: 1,
+      sort: ranked.sort,
+      order: ranked.order,
+      total: ranked.total,
+      rows: ranked.rows.map((row) =>
+        validatorEconomicsWire(row, row.maxValidators, params),
+      ),
+      excluded: ranked.excluded,
+      stake_threshold_units: params?.stake_threshold_tao ?? null,
+      tao_weight: params?.tao_weight ?? null,
+      root_tao_to_clear_threshold:
+        params?.stake_threshold_tao != null &&
+        params?.tao_weight != null &&
+        params.tao_weight > 0
+          ? params.stake_threshold_tao / params.tao_weight
+          : null,
+      field_sources: VALIDATOR_ECONOMICS_FIELD_SOURCES,
+    },
+    generatedAt,
+  };
+}
+
+export async function handleValidatorEconomicsRanking(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
+  const validationError = validateEntityQuery(url, [
+    "sort",
+    "limit",
+    "offset",
+    "emission_gate_open",
+    "cap_binding",
+  ]);
+  if (validationError) return analyticsQueryError(validationError);
+
+  const sortParam = url.searchParams.get("sort");
+  if (sortParam && !VALIDATOR_ECONOMICS_SORTS.includes(sortParam as never)) {
+    return analyticsQueryError({
+      parameter: "sort",
+      message: `"${sortParam}" is not a supported sort. Supported: ${VALIDATOR_ECONOMICS_SORTS.join(", ")}.`,
+    });
+  }
+  const limit = parseBoundedIntParam(url, "limit", {
+    def: VALIDATOR_ECONOMICS_LIMIT_DEFAULT,
+    min: 1,
+    max: VALIDATOR_ECONOMICS_LIMIT_MAX,
+  });
+  if ("error" in limit) return analyticsQueryError(limit.error);
+  const offset = parseBoundedIntParam(url, "offset", {
+    def: 0,
+    min: 0,
+    max: VALIDATOR_ECONOMICS_LIMIT_MAX,
+  });
+  if ("error" in offset) return analyticsQueryError(offset.error);
+
+  // A tri-state flag: absent means "both", which is not the same as false.
+  const flag = (name: string) => {
+    const raw = url.searchParams.get(name);
+    if (raw === null) return null;
+    return raw === "true";
+  };
+
+  const { data, generatedAt } = await buildValidatorEconomicsRankingPayload(
+    env,
+    {
+      sort: sortParam ?? undefined,
+      limit: limit.value,
+      offset: offset.value,
+      emissionGateOpen: flag("emission_gate_open"),
+      capBinding: flag("cap_binding"),
+    },
+  );
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/validators/economics.json",
         generatedAt,
       ),
     },

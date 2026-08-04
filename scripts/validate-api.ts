@@ -460,6 +460,41 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/validators/economics?limit=5",
+    (body) => {
+      // The ranking's own contract: a stated sort/order, a total that counts
+      // matches BEFORE the page, and an `excluded` list so an omitted subnet is
+      // distinguishable from an absent one.
+      assert.equal(typeof body.data.sort, "string");
+      assert.ok(["asc", "desc"].includes(body.data.order as string));
+      assert.equal(typeof body.data.total, "number");
+      assert.equal(Array.isArray(body.data.rows), true);
+      assert.equal(Array.isArray(body.data.excluded), true);
+      assert.ok(
+        (body.data.rows as unknown[]).length <= 5,
+        "limit must bound the page",
+      );
+      // Every row carries the per-subnet shape, so a caller reading both
+      // surfaces never reconciles two vocabularies for the same fields.
+      for (const row of body.data.rows as Row[]) {
+        assert.equal(typeof row.netuid, "number");
+        assert.ok("permit_floor_units" in row);
+        assert.ok("degraded_reason" in row);
+      }
+      // The governance parameters every row was derived against, echoed once.
+      for (const key of [
+        "stake_threshold_units",
+        "tao_weight",
+        "root_tao_to_clear_threshold",
+      ]) {
+        assert.ok(
+          body.data[key] === null || typeof body.data[key] === "number",
+          `${key} must be a number or null`,
+        );
+      }
+    },
+  ],
+  [
     "/api/v1/subnets/7/validator-economics",
     (body) => {
       assert.equal(body.data.netuid, 7);

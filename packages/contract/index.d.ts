@@ -5046,6 +5046,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/validators/economics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch every subnet ranked by what it costs to become an EARNING validator there. One row per subnet with the same fields as /api/v1/subnets/{netuid}/validator-economics: the permit floor and the earning floor (which differ by a median of ~7x — a permit is not income), their TAO cost against live pool reserves, validator set composition as three separate counts, open slots, the take distribution, and the emission-gate state. Sort by earning_floor_cost_tao (default, cheapest first), permit_floor_cost_tao, permit_to_earning_multiple, tao_inflow_per_day or validator_headroom; filter on emission_gate_open or cap_binding, where omitting a filter means BOTH rather than false. limit caps the page (default 50, max 512). Every subnet the ranking drops is returned in `excluded` with a reason. The registration burn is excluded from the ranking — it is a live per-subnet read and immaterial to the order; the per-subnet route reports the true entry cost. */
+        get: operations["validatorEconomicsRanking"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -11376,6 +11393,32 @@ export interface components {
             total_stake_tao: number;
         } & {
             [key: string]: unknown;
+        };
+        ValidatorEconomicsExclusion: {
+            netuid: number;
+            reason: string;
+        };
+        ValidatorEconomicsRankingArtifact: {
+            excluded: components["schemas"]["ValidatorEconomicsExclusion"][];
+            /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
+            field_sources: {
+                [key: string]: {
+                    /** @enum {string} */
+                    kind: "measured" | "reconstructed";
+                    /** @enum {string} */
+                    read_at?: "capture" | "chain_state.block";
+                    storage: string | null;
+                };
+            };
+            /** @enum {string} */
+            order: "asc" | "desc";
+            root_tao_to_clear_threshold: number | null;
+            rows: components["schemas"]["SubnetValidatorEconomicsArtifact"][];
+            schema_version: number;
+            sort: string;
+            stake_threshold_units: number | null;
+            tao_weight: number | null;
+            total: number;
         };
         ValidatorHistoryArtifact: {
             hotkey: string;
@@ -49174,6 +49217,180 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ValidatorNominatorsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    validatorEconomicsRanking: {
+        parameters: {
+            query?: {
+                sort?: string;
+                /** @description Maximum number of rows to return in one page (at most 512). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
+                limit?: number;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
+                offset?: number;
+                emission_gate_open?: boolean;
+                cap_binding?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "excluded": [
+                     *           {
+                     *             "netuid": 7,
+                     *             "reason": "example"
+                     *           }
+                     *         ],
+                     *         "field_sources": {
+                     *           "example": {
+                     *             "kind": "measured",
+                     *             "storage": "example"
+                     *           }
+                     *         },
+                     *         "order": "asc",
+                     *         "root_tao_to_clear_threshold": 0.5,
+                     *         "rows": [
+                     *           {
+                     *             "cap_binding": false,
+                     *             "composition": {
+                     *               "active": 1,
+                     *               "earning": 1,
+                     *               "permitted": 1
+                     *             },
+                     *             "degraded_reason": "A",
+                     *             "earning_entry_cost_tao": 0.5,
+                     *             "earning_floor_cost_tao": 0.5,
+                     *             "earning_floor_units": 0.5,
+                     *             "emission_gate_open": false,
+                     *             "field_sources": {},
+                     *             "max_validators": 1,
+                     *             "min_childkey_take_ratio": 0.9966,
+                     *             "model_agreement": {
+                     *               "agreement": 0.5,
+                     *               "matched": 1,
+                     *               "observed_permits": 1,
+                     *               "over_predicted": 1,
+                     *               "publishable": false,
+                     *               "under_predicted": 1
+                     *             },
+                     *             "netuid": 7,
+                     *             "permit_entry_cost_tao": 0.5,
+                     *             "permit_floor_cost_tao": 0.5,
+                     *             "permit_floor_units": 0.5,
+                     *             "permit_to_earning_multiple": 0.5,
+                     *             "registration_cost_tao": 0.5,
+                     *             "root_tao_to_clear_threshold": 0.5,
+                     *             "schema_version": 1,
+                     *             "stake_threshold_units": 0.5,
+                     *             "takes": {
+                     *               "distribution": [
+                     *                 0.5
+                     *               ],
+                     *               "max": 0.5,
+                     *               "median": 0.5,
+                     *               "median_earning": 0.5,
+                     *               "min": 0.5,
+                     *               "sample_size": 1
+                     *             },
+                     *             "tao_inflow_per_day": 0.5,
+                     *             "tao_weight": 0.5,
+                     *             "uids_above_threshold": 1,
+                     *             "validator_slots_open": 1
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "sort": "example",
+                     *         "stake_threshold_units": 0.5,
+                     *         "tao_weight": 0.5,
+                     *         "total": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ValidatorEconomicsRankingArtifact"];
                     };
                 };
             };

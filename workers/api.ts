@@ -133,6 +133,7 @@ import {
   handleSubnetOhlc,
   handleSubnetStakeQuote,
   handleSubnetValidatorEconomics,
+  handleValidatorEconomicsRanking,
   handleSubnetRecycled,
   handleSubnetBurn,
   handleCrowdloan,
@@ -461,6 +462,7 @@ import {
   SUBNET_OHLC_PATH_PATTERN,
   SUBNET_STAKE_QUOTE_PATH_PATTERN,
   SUBNET_VALIDATOR_ECONOMICS_PATH_PATTERN,
+  VALIDATOR_ECONOMICS_RANKING_PATH,
   SUBNET_RECYCLED_PATH_PATTERN,
   SUBNET_BURN_PATH_PATTERN,
   CROWDLOANS_PATH_PATTERN,
@@ -4182,6 +4184,17 @@ export async function handleRequest(
         ctx,
       );
     }
+    if (resolved.url.pathname === VALIDATOR_ECONOMICS_RANKING_PATH) {
+      // Edge-cached: the answer depends only on the query, and the underlying
+      // scan is the most expensive read in this family.
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        "validator-economics-ranking",
+        () => handleValidatorEconomicsRanking(request, env, resolved.url),
+      );
+    }
     const validatorEconomicsMatch =
       SUBNET_VALIDATOR_ECONOMICS_PATH_PATTERN.exec(resolved.url.pathname);
     if (validatorEconomicsMatch) {
@@ -5214,6 +5227,7 @@ export function isMainnetOnlyApiPath(pathname: string) {
     // Mainnet-only by construction, not policy: it reads StakeThreshold,
     // TaoWeight and Burn out of finney storage at request time.
     SUBNET_VALIDATOR_ECONOMICS_PATH_PATTERN.test(pathname) ||
+    pathname === VALIDATOR_ECONOMICS_RANKING_PATH ||
     SUBNET_RECYCLED_PATH_PATTERN.test(pathname) ||
     SUBNET_BURN_PATH_PATTERN.test(pathname) ||
     SUBNET_LEASE_PATH_PATTERN.test(pathname) ||

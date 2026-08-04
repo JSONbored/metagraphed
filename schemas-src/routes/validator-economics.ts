@@ -114,3 +114,56 @@ export const SubnetValidatorEconomicsQuerySchema = z.object({}).strict();
 export type SubnetValidatorEconomicsQuery = z.infer<
   typeof SubnetValidatorEconomicsQuerySchema
 >;
+
+// GET /api/v1/validators/economics (#9324) — the cross-subnet ranking.
+//
+// One row per subnet, reusing the per-subnet artifact shape so a caller reading
+// both surfaces never has to reconcile two vocabularies for the same fields.
+//
+// `excluded` is part of the contract, not a debug aid: a ranking that silently
+// drops a subnet cannot answer "why is SN45 not in this list", which is the next
+// question it gets asked.
+export const ValidatorEconomicsExclusionSchema = z
+  .object({
+    netuid: z.int().min(0),
+    reason: z.string(),
+  })
+  .strict();
+
+export const ValidatorEconomicsRankingArtifactSchema = z
+  .object({
+    schema_version: z.int(),
+    sort: z.string(),
+    order: z.enum(["asc", "desc"]),
+    total: z.int().min(0),
+    rows: z.array(SubnetValidatorEconomicsArtifactSchema),
+    excluded: z.array(ValidatorEconomicsExclusionSchema),
+    // Echoed once for the whole ranking rather than repeated per row: both are
+    // network-wide and sudo-settable, and the floors in every row were derived
+    // against exactly these values.
+    stake_threshold_units: z.number().nullable(),
+    tao_weight: z.number().nullable(),
+    root_tao_to_clear_threshold: z.number().nullable(),
+    field_sources: FieldSourcesSchema,
+  })
+  .strict();
+export type ValidatorEconomicsRankingArtifact = z.infer<
+  typeof ValidatorEconomicsRankingArtifactSchema
+>;
+
+export const ValidatorEconomicsRankingResponseSchema = successEnvelopeSchema(
+  ValidatorEconomicsRankingArtifactSchema,
+);
+
+export const ValidatorEconomicsRankingQuerySchema = z
+  .object({
+    sort: z.string().optional(),
+    limit: z.int().min(1).optional(),
+    offset: z.int().min(0).optional(),
+    emission_gate_open: z.boolean().optional(),
+    cap_binding: z.boolean().optional(),
+  })
+  .strict();
+export type ValidatorEconomicsRankingQuery = z.infer<
+  typeof ValidatorEconomicsRankingQuerySchema
+>;
