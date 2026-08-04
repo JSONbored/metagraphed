@@ -17,6 +17,11 @@ import {
   CHAIN_TRANSFER_PAIR_WINDOWS,
   DEFAULT_CHAIN_TRANSFER_PAIR_WINDOW,
 } from "./chain-transfer-pairs.ts";
+import {
+  type ChainNetworkId,
+  DEFAULT_CHAIN_NETWORK,
+  projectionKey,
+} from "./chain-network.ts";
 
 export const CHAIN_TRANSFER_PAIRS_PROJECTION_KEY =
   "metagraph/projections/chain-transfer-pairs.json";
@@ -50,12 +55,16 @@ function newestObservedIso(value: unknown): string | null {
 export async function loadChainTransferPairsFromArtifact(
   env: Env | null | undefined,
   query: { window?: string | null; sort?: string | null; limit?: unknown },
+  /** Which chain's projection to read (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildChainTransferPairs> | null> {
   const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
     ?.METAGRAPH_ARCHIVE;
   if (!bucket?.get) return null;
   try {
-    const object = await bucket.get(CHAIN_TRANSFER_PAIRS_PROJECTION_KEY);
+    const object = await bucket.get(
+      projectionKey(CHAIN_TRANSFER_PAIRS_PROJECTION_KEY, network),
+    );
     if (!object) return null;
     const body = (await object.json()) as {
       schema_version?: unknown;

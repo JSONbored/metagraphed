@@ -26,7 +26,11 @@ import {
   CHAIN_STAKE_TRANSFERS_ROLLUP,
   CHAIN_REGISTRATIONS_ROLLUP,
 } from "../../src/chain-event-rollup-cold-tier.ts";
-import { type ChainNetworkId, networkKvKey } from "../../src/chain-network.ts";
+import {
+  DEFAULT_CHAIN_NETWORK,
+  networkKvKey,
+  type ChainNetworkId,
+} from "../../src/chain-network.ts";
 import { SS58_ADDRESS_PATTERN, resolveClientIp } from "../config.ts";
 import {
   BLOCK_PAGINATION,
@@ -6105,6 +6109,8 @@ export async function handleBlocksSummary(
   request: Request,
   env: Env,
   url: URL,
+  /** Which chain's projection to serve (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ) {
   const validationError = validateQueryParams(url, []);
   if (validationError) return analyticsQueryError(validationError);
@@ -6112,7 +6118,8 @@ export async function handleBlocksSummary(
   // #9146: on a tier miss, serve the precomputed card from the blocks-summary
   // projection rather than a zeroed one. The reader declines (null) when it
   // cannot answer faithfully, which keeps buildBlocksSummary([]) as the floor.
-  const projected = pgData ?? (await loadBlocksSummaryFromArtifact(env));
+  const projected =
+    pgData ?? (await loadBlocksSummaryFromArtifact(env, network));
   const data = projected ?? buildBlocksSummary([]);
   const response = await envelopeResponse(
     request,

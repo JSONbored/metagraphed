@@ -148,3 +148,28 @@ export function chainNetworkFromChainName(
     ? "testnet"
     : DEFAULT_CHAIN_NETWORK;
 }
+
+/**
+ * Where one network's projection artifact lives.
+ *
+ * MAINNET KEEPS ITS KEY UNCHANGED, the same asymmetry `networkKvKey` uses for
+ * the KV cache and `chainTable` for the lakehouse namespace: every artifact
+ * already written stays readable, and a mainnet request after this change
+ * reads exactly the object it read before. Testnet gets its own keyspace, so a
+ * testnet card can never be served to a mainnet caller no matter what a reader
+ * does with it afterwards.
+ *
+ * The insertion point is after the `metagraph/projections/` prefix rather than
+ * at the front of the key, so the projections stay one prefix in the bucket
+ * and a listing still groups them.
+ */
+export function projectionKey(
+  artifactKey: string,
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
+): string {
+  if (network === DEFAULT_CHAIN_NETWORK) return artifactKey;
+  const prefix = "metagraph/projections/";
+  return artifactKey.startsWith(prefix)
+    ? `${prefix}${network}/${artifactKey.slice(prefix.length)}`
+    : `${network}/${artifactKey}`;
+}

@@ -12,6 +12,7 @@
     "blocks-feed",
     "blocks-feed-by-network",
     "blocks-summary",
+    "blocks-summary-by-network",
     "runtime-versions"
   ]
 }

@@ -30,6 +30,10 @@ import {
   MAX_INCIDENT_ROWS,
   resolveClientIp,
 } from "../config.ts";
+import {
+  type ChainNetworkId,
+  DEFAULT_CHAIN_NETWORK,
+} from "../../src/chain-network.ts";
 import { parseLimitParam } from "../request-params.ts";
 import { loadChainServingColdTier } from "../../src/chain-serving-loader.ts";
 import { loadChainWeightsColdTier } from "../../src/chain-weights-loader.ts";
@@ -532,6 +536,23 @@ async function analyticsMeta(
 // `waitUntil`, so a full ExecutionContext isn't required to satisfy this type.
 export interface EdgeCacheCtx {
   waitUntil?: (promise: Promise<unknown>) => void;
+}
+
+/**
+ * An edge-cache label scoped to its chain.
+ *
+ * MAINNET KEEPS ITS BARE LABEL, so every warm entry survives this change and a
+ * mainnet request hits the key it hit before. The `/{network}/` prefix is
+ * stripped before dispatch, so without this the two chains reach these handlers
+ * with byte-identical paths and would share one cache entry -- and since their
+ * shapes are identical, a testnet card served to a mainnet caller would look
+ * completely well-formed.
+ */
+export function edgeCacheScope(
+  label: string,
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
+): string {
+  return network === DEFAULT_CHAIN_NETWORK ? label : `${label}:${network}`;
 }
 
 export async function withEdgeCache(
@@ -1249,6 +1270,8 @@ export async function handleChainActivity(
   env: Env,
   url: URL,
   ctx: EdgeCacheCtx = {},
+  /** Which chain's projection to serve (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const windowResult = analyticsWindow(url, ["format"]);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
@@ -1260,7 +1283,7 @@ export async function handleChainActivity(
     request,
     ctx,
     env,
-    "chain-activity",
+    edgeCacheScope("chain-activity", network),
     async (cacheRequest) => {
       const meta = await readHealthMetaKv(env);
       // #4909 D1 retirement: extrinsics'/blocks' D1 write path is retired
@@ -1281,7 +1304,11 @@ export async function handleChainActivity(
           // daily series from the lakehouse; the reader feeds the same
           // formatter, and the #8242 trim below applies to it exactly as it
           // applies to a live answer. See src/chain-activity-artifact.ts.
-          (await loadChainActivityFromArtifact(env, { window: label })) ??
+          (await loadChainActivityFromArtifact(
+            env,
+            { window: label },
+            network,
+          )) ??
           buildChainActivity({
             window: label,
             observedAt: meta?.last_run_at || null,
@@ -1326,6 +1353,8 @@ export async function handleChainCalls(
   env: Env,
   url: URL,
   ctx: EdgeCacheCtx = {},
+  /** Which chain's projection to serve (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const windowResult = analyticsWindow(url, [
     "group_by",
@@ -1356,7 +1385,7 @@ export async function handleChainCalls(
     request,
     ctx,
     env,
-    "chain-calls",
+    edgeCacheScope("chain-calls", network),
     async (cacheRequest) => {
       // #4772 D1 retirement: the `extrinsics` D1 table is dropped in production, so
       // a postgres-tier miss now falls straight back to the pure builder with no
@@ -1435,6 +1464,8 @@ export async function handleChainSigners(
   env: Env,
   url: URL,
   ctx: EdgeCacheCtx = {},
+  /** Which chain's projection to serve (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const windowResult = analyticsWindow(url, [
     "limit",
@@ -1464,7 +1495,7 @@ export async function handleChainSigners(
     request,
     ctx,
     env,
-    "chain-signers",
+    edgeCacheScope("chain-signers", network),
     async (cacheRequest) => {
       const meta = await readHealthMetaKv(env);
       // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and
@@ -1532,6 +1563,8 @@ export async function handleChainTransfers(
   env: Env,
   url: URL,
   ctx: EdgeCacheCtx = {},
+  /** Which chain's projection to serve (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const windowResult = analyticsWindow(url, ["limit", "format"]);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
@@ -1560,7 +1593,7 @@ export async function handleChainTransfers(
     cacheRequest,
     ctx,
     env,
-    "chain-transfers",
+    edgeCacheScope("chain-transfers", network),
     async () => {
       const meta = await readHealthMetaKv(env);
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
@@ -1577,10 +1610,14 @@ export async function handleChainTransfers(
         // scorecard from the lakehouse; the artifact reader slices to the
         // request's limit and feeds the same formatter. See
         // src/chain-transfers-artifact.ts.
-        (await loadChainTransfersFromArtifact(env, {
-          window: label,
-          limit,
-        })) ??
+        (await loadChainTransfersFromArtifact(
+          env,
+          {
+            window: label,
+            limit,
+          },
+          network,
+        )) ??
         buildChainTransfers({
           window: label,
           observedAt: meta?.last_run_at || null,
@@ -1632,6 +1669,8 @@ export async function handleChainTransferPairs(
   env: Env,
   url: URL,
   ctx: EdgeCacheCtx = {},
+  /** Which chain's projection to serve (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const windowResult = analyticsWindow(url, ["limit", "sort", "format"]);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
@@ -1659,7 +1698,7 @@ export async function handleChainTransferPairs(
     cacheRequest,
     ctx,
     env,
-    "chain-transfer-pairs",
+    edgeCacheScope("chain-transfer-pairs", network),
     async () => {
       const meta = await readHealthMetaKv(env);
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
@@ -1676,11 +1715,15 @@ export async function handleChainTransferPairs(
         // corridor leaderboard (both sorts) from the lakehouse; the reader
         // slices to the request's limit and feeds the same formatter. See
         // src/chain-transfer-pairs-artifact.ts.
-        (await loadChainTransferPairsFromArtifact(env, {
-          window: label,
-          sort,
-          limit,
-        })) ??
+        (await loadChainTransferPairsFromArtifact(
+          env,
+          {
+            window: label,
+            sort,
+            limit,
+          },
+          network,
+        )) ??
         buildChainTransferPairs({
           window: label,
           sort,
@@ -1730,6 +1773,8 @@ export async function handleChainStakeFlow(
   env: Env,
   url: URL,
   ctx: EdgeCacheCtx = {},
+  /** Which chain's projection to serve (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const windowResult = analyticsWindow(url, ["limit", "format"]);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
@@ -1754,7 +1799,7 @@ export async function handleChainStakeFlow(
     cacheRequest,
     ctx,
     env,
-    "chain-stake-flow",
+    edgeCacheScope("chain-stake-flow", network),
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
       // and the table is dropped in production, so a D1 query here would
@@ -1770,10 +1815,14 @@ export async function handleChainStakeFlow(
         // per-(netuid, event_kind) aggregate from the lakehouse; the shared
         // builder owns ranking and the limit. See
         // src/chain-stake-flow-artifact.ts.
-        (await loadChainStakeFlowFromArtifact(env, {
-          window: label,
-          limit,
-        })) ??
+        (await loadChainStakeFlowFromArtifact(
+          env,
+          {
+            window: label,
+            limit,
+          },
+          network,
+        )) ??
         buildChainStakeFlow([], {
           window: label,
           limit,
@@ -1835,6 +1884,8 @@ export async function handleChainAlphaVolume(
   env: Env,
   url: URL,
   ctx: EdgeCacheCtx = {},
+  /** Which chain's projection to serve (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const validationError = validateQueryParams(url, ["limit", "format"]);
   if (validationError) return analyticsQueryError(validationError);
@@ -1858,7 +1909,7 @@ export async function handleChainAlphaVolume(
     cacheRequest,
     ctx,
     env,
-    "chain-alpha-volume",
+    edgeCacheScope("chain-alpha-volume", network),
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
       // and the table is dropped in production, so a D1 query here would
@@ -1874,7 +1925,7 @@ export async function handleChainAlphaVolume(
         // per-(netuid, event_kind) aggregate from the lakehouse; the shared
         // builder owns ranking and the limit. See
         // src/chain-alpha-volume-artifact.ts.
-        (await loadChainAlphaVolumeFromArtifact(env, { limit })) ??
+        (await loadChainAlphaVolumeFromArtifact(env, { limit }, network)) ??
         buildChainAlphaVolume([], {
           limit,
         } as unknown as Parameters<typeof buildChainAlphaVolume>[1]);
@@ -2336,6 +2387,8 @@ export async function handleChainRegistrations(
   env: Env,
   url: URL,
   ctx: EdgeCacheCtx = {},
+  /** Which chain's projection to serve (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const windowResult = analyticsWindow(url, ["limit", "format"]);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
@@ -2358,7 +2411,7 @@ export async function handleChainRegistrations(
     cacheRequest,
     ctx,
     env,
-    "chain-registrations",
+    edgeCacheScope("chain-registrations", network),
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
       // and the table is dropped in production, so a D1 query here would
@@ -2378,10 +2431,14 @@ export async function handleChainRegistrations(
         // served real 7d numbers and an empty 30d block in production. The
         // lane distributes that aggregation (GROUP BY netuid, hotkey) and
         // reduces it writer-side, exactly and once per tick.
-        (await loadChainRegistrationsFromArtifact(env, {
-          window: label,
-          limit,
-        })) ??
+        (await loadChainRegistrationsFromArtifact(
+          env,
+          {
+            window: label,
+            limit,
+          },
+          network,
+        )) ??
         buildChainRegistrations([], {
           window: label,
           limit,
@@ -2428,6 +2485,8 @@ export async function handleChainDeregistrations(
   env: Env,
   url: URL,
   ctx: EdgeCacheCtx = {},
+  /** Which chain's projection to serve (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const windowResult = analyticsWindow(url, ["limit", "format"]);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
@@ -2450,7 +2509,7 @@ export async function handleChainDeregistrations(
     cacheRequest,
     ctx,
     env,
-    "chain-deregistrations",
+    edgeCacheScope("chain-deregistrations", network),
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
       // and the table is dropped in production, so a D1 query here would
@@ -2467,10 +2526,14 @@ export async function handleChainDeregistrations(
         // The feed is DERIVED from UID reuse in the NeuronRegistered stream by
         // the chain-deregistrations projection lane — see
         // src/deregistration-derivation.ts.
-        (await loadChainDeregistrationsFromArtifact(env, {
-          window: label,
-          limit,
-        })) ??
+        (await loadChainDeregistrationsFromArtifact(
+          env,
+          {
+            window: label,
+            limit,
+          },
+          network,
+        )) ??
         // Still the schema-stable empty when nothing derived it — but MARKED,
         // so a caller can tell "no evictions" from "we could not look".
         markDeregistrationsNotDerived(
@@ -2521,6 +2584,8 @@ export async function handleChainStakeMoves(
   env: Env,
   url: URL,
   ctx: EdgeCacheCtx = {},
+  /** Which chain's projection to serve (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const windowResult = analyticsWindow(url, ["limit", "format"]);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
@@ -2543,7 +2608,7 @@ export async function handleChainStakeMoves(
     cacheRequest,
     ctx,
     env,
-    "chain-stake-moves",
+    edgeCacheScope("chain-stake-moves", network),
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
       // and the table is dropped in production, so a D1 query here would
@@ -2558,10 +2623,14 @@ export async function handleChainStakeMoves(
         // network DISTINCT row + per-subnet aggregate from the lakehouse;
         // the shared builder owns ranking, the rollup, and the limit. See
         // src/chain-stake-moves-artifact.ts.
-        (await loadChainStakeMovesFromArtifact(env, {
-          window: label,
-          limit,
-        })) ??
+        (await loadChainStakeMovesFromArtifact(
+          env,
+          {
+            window: label,
+            limit,
+          },
+          network,
+        )) ??
         buildChainStakeMoves([], {
           window: label,
           limit,
@@ -2608,6 +2677,8 @@ export async function handleChainStakeTransfers(
   env: Env,
   url: URL,
   ctx: EdgeCacheCtx = {},
+  /** Which chain's projection to serve (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const windowResult = analyticsWindow(url, ["limit", "format"]);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
@@ -2630,7 +2701,7 @@ export async function handleChainStakeTransfers(
     cacheRequest,
     ctx,
     env,
-    "chain-stake-transfers",
+    edgeCacheScope("chain-stake-transfers", network),
     async () => {
       // #4909 D1 retirement: account_events' D1 write path is retired (#4772)
       // and the table is dropped in production, so a D1 query here would
@@ -2645,10 +2716,14 @@ export async function handleChainStakeTransfers(
         // network DISTINCT row + per-subnet aggregate from the lakehouse;
         // the shared builder owns ranking, the rollup, and the limit. See
         // src/chain-stake-transfers-artifact.ts.
-        (await loadChainStakeTransfersFromArtifact(env, {
-          window: label,
-          limit,
-        })) ??
+        (await loadChainStakeTransfersFromArtifact(
+          env,
+          {
+            window: label,
+            limit,
+          },
+          network,
+        )) ??
         buildChainStakeTransfers([], {
           window: label,
           limit,
@@ -2692,6 +2767,8 @@ export async function handleChainFees(
   env: Env,
   url: URL,
   ctx: EdgeCacheCtx = {},
+  /** Which chain's projection to serve (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Response> {
   const windowResult = analyticsWindow(url, ["limit", "call_module", "format"]);
   if ("error" in windowResult) return analyticsQueryError(windowResult.error);
@@ -2713,7 +2790,7 @@ export async function handleChainFees(
     request,
     ctx,
     env,
-    "chain-fees",
+    edgeCacheScope("chain-fees", network),
     async (cacheRequest) => {
       const meta = await readHealthMetaKv(env);
       // #4909/#4772 D1 retirement: extrinsics' D1 write path is retired and

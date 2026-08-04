@@ -23,6 +23,11 @@
 // two routes therefore cannot disagree about a subnet's volume: they are shaping the
 // same rows.
 import { buildAlphaVolume } from "./alpha-volume.ts";
+import {
+  type ChainNetworkId,
+  DEFAULT_CHAIN_NETWORK,
+  projectionKey,
+} from "./chain-network.ts";
 import { CHAIN_ALPHA_VOLUME_PROJECTION_KEY } from "./chain-alpha-volume-artifact.ts";
 
 /** The route's one window label (fixed 24h, no `?window=` param). */
@@ -45,6 +50,8 @@ export async function loadSubnetAlphaVolumeFromArtifact(
   env: Env | null | undefined,
   netuid: number,
   { marketCapTao }: { marketCapTao?: number | null } = {},
+  /** Which chain's projection to read (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<{
   data: ReturnType<typeof buildAlphaVolume>;
   generatedAt: string | null;
@@ -54,7 +61,9 @@ export async function loadSubnetAlphaVolumeFromArtifact(
     ?.METAGRAPH_ARCHIVE;
   if (!bucket?.get) return null;
   try {
-    const object = await bucket.get(CHAIN_ALPHA_VOLUME_PROJECTION_KEY);
+    const object = await bucket.get(
+      projectionKey(CHAIN_ALPHA_VOLUME_PROJECTION_KEY, network),
+    );
     if (!object) return null;
     const body = (await object.json()) as {
       schema_version?: unknown;

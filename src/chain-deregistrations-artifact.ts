@@ -35,6 +35,11 @@ import {
   DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW,
 } from "./chain-deregistrations.ts";
 import {
+  type ChainNetworkId,
+  DEFAULT_CHAIN_NETWORK,
+  projectionKey,
+} from "./chain-network.ts";
+import {
   buildSubnetDeregistrations,
   SUBNET_DEREGISTRATIONS_WINDOWS,
   DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
@@ -88,12 +93,13 @@ export function markDeregistrationsNotDerived<T extends object>(payload: T): T {
 async function readProjection(
   env: Env | null | undefined,
   key: string,
+  network: ChainNetworkId,
 ): Promise<Record<string, ProjectionWindow> | null> {
   const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
     ?.METAGRAPH_ARCHIVE;
   if (!bucket?.get) return null;
   try {
-    const object = await bucket.get(key);
+    const object = await bucket.get(projectionKey(key, network));
     if (!object) return null;
     const body = (await object.json()) as {
       schema_version?: unknown;
@@ -155,9 +161,11 @@ function derivationOf(
 export async function loadChainDeregistrationsFromArtifact(
   env: Env | null | undefined,
   query: { window?: string | null; limit?: number },
+  /** Which chain's projection to read (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildChainDeregistrations> | null> {
   const selected = selectWindow(
-    await readProjection(env, CHAIN_DEREGISTRATIONS_PROJECTION_KEY),
+    await readProjection(env, CHAIN_DEREGISTRATIONS_PROJECTION_KEY, network),
     CHAIN_DEREGISTRATIONS_WINDOWS,
     DEFAULT_CHAIN_DEREGISTRATIONS_WINDOW,
     query.window,
@@ -192,9 +200,11 @@ export async function loadSubnetDeregistrationsFromArtifact(
   env: Env | null | undefined,
   netuid: unknown,
   query: { window?: string | null } = {},
+  /** Which chain's projection to read (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Record<string, unknown> | null> {
   const selected = selectWindow(
-    await readProjection(env, CHAIN_DEREGISTRATIONS_PROJECTION_KEY),
+    await readProjection(env, CHAIN_DEREGISTRATIONS_PROJECTION_KEY, network),
     SUBNET_DEREGISTRATIONS_WINDOWS,
     DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
     query.window,
@@ -227,12 +237,18 @@ export async function loadAccountDeregistrationsFromArtifact(
   env: Env | null | undefined,
   ss58: string,
   query: { window?: string | null } = {},
+  /** Which chain's projection to read (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<{
   data: ReturnType<typeof buildAccountDeregistrations>;
   generatedAt: string | null;
 } | null> {
   const selected = selectWindow(
-    await readProjection(env, CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY),
+    await readProjection(
+      env,
+      CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY,
+      network,
+    ),
     ACCOUNT_DEREGISTRATION_WINDOWS,
     DEFAULT_ACCOUNT_DEREGISTRATION_WINDOW,
     query.window,

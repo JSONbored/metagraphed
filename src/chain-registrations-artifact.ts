@@ -21,6 +21,11 @@ import {
   CHAIN_REGISTRATIONS_WINDOWS,
   DEFAULT_CHAIN_REGISTRATIONS_WINDOW,
 } from "./chain-registrations.ts";
+import {
+  type ChainNetworkId,
+  DEFAULT_CHAIN_NETWORK,
+  projectionKey,
+} from "./chain-network.ts";
 
 export const CHAIN_REGISTRATIONS_PROJECTION_KEY =
   "metagraph/projections/chain-registrations.json";
@@ -38,12 +43,16 @@ interface ArtifactBucket {
 export async function loadChainRegistrationsFromArtifact(
   env: Env | null | undefined,
   query: { window?: string | null; limit?: number },
+  /** Which chain's projection to read (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildChainRegistrations> | null> {
   const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
     ?.METAGRAPH_ARCHIVE;
   if (!bucket?.get) return null;
   try {
-    const object = await bucket.get(CHAIN_REGISTRATIONS_PROJECTION_KEY);
+    const object = await bucket.get(
+      projectionKey(CHAIN_REGISTRATIONS_PROJECTION_KEY, network),
+    );
     if (!object) return null;
     const body = (await object.json()) as {
       schema_version?: unknown;
@@ -73,7 +82,7 @@ export async function loadChainRegistrationsFromArtifact(
     // registrants but one network-wide distinct registrant. Summing the rows
     // would silently overcount, so the lane stores the real network aggregate
     // and this hands it through untouched.
-    const network = (win.network ?? null) as {
+    const chainWide = (win.network ?? null) as {
       distinct_registrants?: unknown;
       newest_observed?: unknown;
     } | null;
@@ -81,7 +90,7 @@ export async function loadChainRegistrationsFromArtifact(
     return buildChainRegistrations(win.rows as Record<string, unknown>[], {
       window: label,
       limit: query.limit,
-      networkDistinct: network ?? undefined,
+      networkDistinct: chainWide ?? undefined,
     });
   } catch {
     return null;

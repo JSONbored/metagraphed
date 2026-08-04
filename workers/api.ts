@@ -72,33 +72,34 @@ import {
   handleBadgeSvgRequest,
 } from "./request-handlers/discovery.ts";
 import {
+  analyticsQueryError,
   configureAnalytics,
+  edgeCacheScope,
   handleBulkHealthTrends,
   handleChainActivity,
-  handleChainCalls,
-  handleChainFees,
-  handleChainSigners,
-  handleChainTransferPairs,
-  handleChainTransfers,
-  handleChainStakeFlow,
   handleChainAlphaVolume,
-  handleChainWeights,
-  handleChainWeightSetters,
-  handleChainServing,
-  handleChainPrometheus,
   handleChainAxonRemovals,
-  handleChainRegistrations,
+  handleChainCalls,
   handleChainDeregistrations,
+  handleChainFees,
+  handleChainPrometheus,
+  handleChainRegistrations,
+  handleChainServing,
+  handleChainSigners,
+  handleChainStakeFlow,
   handleChainStakeMoves,
   handleChainStakeTransfers,
+  handleChainTransferPairs,
+  handleChainTransfers,
+  handleChainWeightSetters,
+  handleChainWeights,
   handleGlobalIncidents,
-  resolveGlobalIncidentsForFeed,
   handleHealthIncidents,
   handleHealthPercentiles,
   handleHealthTrends,
-  withEdgeCache,
+  resolveGlobalIncidentsForFeed,
   validateDeclaredQueryParams,
-  analyticsQueryError,
+  withEdgeCache,
 } from "./request-handlers/analytics.ts";
 import {
   handleSubnetMetagraph,
@@ -514,6 +515,7 @@ import { NETWORK_PUBLISHED_ARTIFACT_PATHS } from "../src/network-artifacts.ts";
 import { type ChainNetworkId, chainNetworkId } from "../src/chain-network.ts";
 import { LIVE_CHAIN_ROUTE_PATHS } from "../src/live-chain-routes.ts";
 import { CHAIN_HISTORY_ROUTE_PATHS } from "../src/chain-history-routes.ts";
+import { PROJECTION_ROUTE_PATHS } from "../src/projection-routes.ts";
 import {
   subnetNewsItems,
   type ChainEventRow,
@@ -3333,6 +3335,7 @@ export async function handleRequest(
           nonArtifactRoutes: [
             ...LIVE_CHAIN_ROUTE_PATHS,
             ...CHAIN_HISTORY_ROUTE_PATHS,
+            ...PROJECTION_ROUTE_PATHS,
           ],
         }),
         meta: { contract_version: contractVersion(env) },
@@ -4898,30 +4901,16 @@ export async function handleRequest(
         handleGlobalIncidents(request, env, resolved.url),
       );
     }
-    if (resolved.url.pathname === "/api/v1/chain/activity") {
-      return handleChainActivity(request, env, resolved.url, ctx);
-    }
-    if (resolved.url.pathname === "/api/v1/chain/calls") {
-      return handleChainCalls(request, env, resolved.url, ctx);
-    }
-    if (resolved.url.pathname === "/api/v1/chain/signers") {
-      return handleChainSigners(request, env, resolved.url, ctx);
-    }
-    if (resolved.url.pathname === "/api/v1/chain/fees") {
-      return handleChainFees(request, env, resolved.url, ctx);
-    }
-    if (resolved.url.pathname === "/api/v1/chain/transfers") {
-      return handleChainTransfers(request, env, resolved.url, ctx);
-    }
-    if (resolved.url.pathname === "/api/v1/chain/transfer-pairs") {
-      return handleChainTransferPairs(request, env, resolved.url, ctx);
-    }
-    if (resolved.url.pathname === "/api/v1/chain/stake-flow") {
-      return handleChainStakeFlow(request, env, resolved.url, ctx);
-    }
-    if (resolved.url.pathname === "/api/v1/chain/alpha-volume") {
-      return handleChainAlphaVolume(request, env, resolved.url, ctx);
-    }
+    // The projection-backed chain routes (#9412), dispatched from the table
+    // shared with the /{network}/-prefixed path so the two cannot drift. On the
+    // bare path this resolves to mainnet, exactly as before.
+    const projectionResponse = await dispatchProjectionRoute(
+      request,
+      env,
+      resolved.url,
+      ctx,
+    );
+    if (projectionResponse) return projectionResponse;
     if (resolved.url.pathname === "/api/v1/chain/weights") {
       return handleChainWeights(request, env, resolved.url, ctx);
     }
@@ -4936,18 +4925,6 @@ export async function handleRequest(
     }
     if (resolved.url.pathname === "/api/v1/chain/axon-removals") {
       return handleChainAxonRemovals(request, env, resolved.url, ctx);
-    }
-    if (resolved.url.pathname === "/api/v1/chain/registrations") {
-      return handleChainRegistrations(request, env, resolved.url, ctx);
-    }
-    if (resolved.url.pathname === "/api/v1/chain/deregistrations") {
-      return handleChainDeregistrations(request, env, resolved.url, ctx);
-    }
-    if (resolved.url.pathname === "/api/v1/chain/stake-moves") {
-      return handleChainStakeMoves(request, env, resolved.url, ctx);
-    }
-    if (resolved.url.pathname === "/api/v1/chain/stake-transfers") {
-      return handleChainStakeTransfers(request, env, resolved.url, ctx);
     }
     // GET /api/v1/chain/concentration: network-wide neurons aggregate — edge-cache
     // busts on the shared health-cron stamp like every sibling Postgres-tier route
@@ -5102,23 +5079,11 @@ export function isMainnetOnlyApiPath(pathname: string) {
     pathname === "/api/v1/health" ||
     pathname === "/api/v1/incidents" ||
     pathname === "/api/v1/rpc/usage" ||
-    pathname === "/api/v1/chain/activity" ||
-    pathname === "/api/v1/chain/calls" ||
-    pathname === "/api/v1/chain/signers" ||
-    pathname === "/api/v1/chain/fees" ||
-    pathname === "/api/v1/chain/transfers" ||
-    pathname === "/api/v1/chain/transfer-pairs" ||
-    pathname === "/api/v1/chain/stake-flow" ||
-    pathname === "/api/v1/chain/alpha-volume" ||
     pathname === "/api/v1/chain/weights" ||
     pathname === "/api/v1/chain/weights/setters" ||
     pathname === "/api/v1/chain/serving" ||
     pathname === "/api/v1/chain/prometheus" ||
     pathname === "/api/v1/chain/axon-removals" ||
-    pathname === "/api/v1/chain/registrations" ||
-    pathname === "/api/v1/chain/deregistrations" ||
-    pathname === "/api/v1/chain/stake-moves" ||
-    pathname === "/api/v1/chain/stake-transfers" ||
     pathname === "/api/v1/chain/concentration" ||
     pathname === "/api/v1/chain/performance" ||
     pathname === "/api/v1/chain/idle-stake" ||
@@ -5126,7 +5091,6 @@ export function isMainnetOnlyApiPath(pathname: string) {
     pathname === "/api/v1/self-health" ||
     pathname === "/api/v1/chain/yield" ||
     pathname === "/api/v1/chain/turnover" ||
-    pathname === "/api/v1/blocks/summary" ||
     pathname === "/api/v1/economics/trends" ||
     pathname.startsWith("/api/v1/webhooks/") ||
     pathname.startsWith("/api/v1/alerts/triggers") ||
@@ -5309,6 +5273,74 @@ async function dispatchLiveChainRoute(
 }
 
 /**
+ * The PROJECTION-backed chain routes (#9412), as one table both dispatch paths
+ * use.
+ *
+ * These answer from an artifact a cron precomputes out of the lakehouse -- not
+ * from chain state and not from a request-time scan. That is why they are a
+ * third table rather than rows in dispatchChainHistoryRoute: what decides
+ * whether a network can serve them is whether its LANE has run, and the lane
+ * is what #9412 gave a network dimension.
+ *
+ * A single table rather than two copies of these thirteen branches, for the
+ * reason the sibling tables give: the bare `/api/v1/chain/transfers` and
+ * `/api/v1/testnet/chain/transfers` must resolve to the same handler with a
+ * different network and nothing else.
+ */
+async function dispatchProjectionRoute(
+  request: Request,
+  env: Env,
+  url: URL,
+  ctx: Ctx = {},
+  network: typeof DEFAULT_NETWORK = DEFAULT_NETWORK,
+): Promise<Response | null> {
+  const chain = chainNetworkId(network.id);
+  const { pathname } = url;
+  if (pathname === "/api/v1/blocks/summary") {
+    return withEdgeCache(
+      request,
+      ctx,
+      env,
+      edgeCacheScope("blocks-summary", chain),
+      () => handleBlocksSummary(request, env, url, chain),
+    );
+  }
+  const handler = PROJECTION_ROUTE_HANDLERS[pathname];
+  return handler ? handler(request, env, url, ctx, chain) : null;
+}
+
+/**
+ * Path -> handler for the twelve `/chain/*` projection routes.
+ *
+ * A map rather than a branch ladder because every entry has the identical
+ * shape; the one route that does not (`/blocks/summary`, which wraps its own
+ * edge cache) is handled above rather than bent to fit.
+ */
+const PROJECTION_ROUTE_HANDLERS: Record<
+  string,
+  (
+    request: Request,
+    env: Env,
+    url: URL,
+    ctx: Ctx,
+    chain: ChainNetworkId,
+  ) => Promise<Response>
+> = {
+  "/api/v1/chain/activity": handleChainActivity,
+  "/api/v1/chain/calls": handleChainCalls,
+  "/api/v1/chain/signers": handleChainSigners,
+  "/api/v1/chain/fees": handleChainFees,
+  "/api/v1/chain/transfers": handleChainTransfers,
+  "/api/v1/chain/transfer-pairs": handleChainTransferPairs,
+  "/api/v1/chain/stake-flow": handleChainStakeFlow,
+  "/api/v1/chain/alpha-volume": handleChainAlphaVolume,
+  "/api/v1/chain/registrations": handleChainRegistrations,
+  "/api/v1/chain/deregistrations": handleChainDeregistrations,
+  "/api/v1/chain/stake-moves": handleChainStakeMoves,
+  "/api/v1/chain/stake-transfers": handleChainStakeTransfers,
+};
+
+/**
  * The chain-HISTORY routes (#8700), as one table both dispatch paths use.
  *
  * These answer from the R2 lakehouse (and, on mainnet only, the D1 hot tier
@@ -5350,23 +5382,6 @@ async function dispatchChainHistoryRoute(
   const blockEventsMatch = BLOCK_EVENTS_PATH_PATTERN.exec(pathname);
   if (blockEventsMatch) {
     return handleBlockEvents(request, env, blockEventsMatch[1], url, chain);
-  }
-  // Exact-match the block-production summary BEFORE the {ref} detail pattern so
-  // "summary" is never parsed as a block reference. Edge-cached like the sibling
-  // live analytics routes (busts on the prober tick).
-  //
-  // Deliberately takes NO network: it stays mainnet-only, gated separately in
-  // isMainnetOnlyApiPath, so this branch is unreachable off mainnet and the
-  // absent argument cannot leak. It is cross-subnet block-production analytics
-  // (author decentralization, spec-version spread), which #8700's subset test
-  // — "what does a subnet developer validating their own subnet need?" — does
-  // not clear. If it is ever opened, it needs the network threaded FIRST;
-  // reaching this branch without one would serve mainnet's analytics under a
-  // testnet path.
-  if (pathname === "/api/v1/blocks/summary") {
-    return withEdgeCache(request, ctx, env, "blocks-summary", () =>
-      handleBlocksSummary(request, env, url),
-    );
   }
   const blockDetailMatch = BLOCK_DETAIL_PATH_PATTERN.exec(pathname);
   if (blockDetailMatch) {
@@ -5509,6 +5524,18 @@ async function handleNetworkScopedRequest(
       network,
     );
     if (liveChainResponse) return liveChainResponse;
+
+    // Projection-backed routes first: /blocks/summary is an exact match here
+    // and a `{ref}` block detail to the history table below, so the order is
+    // load-bearing exactly as it is inside that table.
+    const projectionResponse = await dispatchProjectionRoute(
+      request,
+      env,
+      resolved.url,
+      ctx,
+      network,
+    );
+    if (projectionResponse) return projectionResponse;
 
     const chainHistoryResponse = await dispatchChainHistoryRoute(
       request,
