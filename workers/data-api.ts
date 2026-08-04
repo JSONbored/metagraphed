@@ -429,7 +429,7 @@ function validNeuronSyncRow(row: Row) {
     row.uid > NEURONS_SYNC_MAX_UID
   )
     return false;
-  if (!Number.isInteger(row.captured_at) || row.captured_at <= 0) return false;
+  if (!validSyncCapturedAt(row.captured_at)) return false;
   for (const [key, value] of Object.entries(row)) {
     if (!NEURON_INSERT_COLUMNS.includes(key)) return false;
     if (
@@ -446,6 +446,46 @@ function validNeuronSyncRow(row: Row) {
     if (value !== null && typeof value === "object") return false;
   }
   return true;
+}
+
+/**
+ * Floor for a plausible epoch-MILLISECOND capture stamp (#9382).
+ *
+ * Every `captured_at` reaching these sync endpoints is milliseconds. A
+ * seconds-precision value is a unit error rather than a very old capture, and it
+ * fails quietly and durably in two ways:
+ *
+ *  1. `neuronSyncSnapshotDate` derives the row's day from it, so read as
+ *     milliseconds a seconds stamp lands 20 days after the epoch and the row is
+ *     filed under `1970-01-21`.
+ *  2. These tables upsert under a `captured_at <= excluded.captured_at` staleness
+ *     guard, so a stamp 1,000x too small is permanently "older" than any correct
+ *     one — the bad row can never be corrected in place by a later capture, and the
+ *     per-netuid prune compares against it too.
+ *
+ * One row reached production exactly this way: netuid 1, uid 0, block 8,755,038,
+ * `captured_at` 1785715160 (seconds) beside `updated_at` 1785715160521 (the same
+ * instant in milliseconds). It belongs to 2026-08-02.
+ *
+ * 2020-01-01 separates the two units with enormous margin — a seconds stamp would
+ * have to represent the year 51,978 to clear it — while sitting comfortably before
+ * any real Bittensor capture. Shared by every sync validator below rather than
+ * restated, because the defect is the unit, not the table.
+ */
+export const SYNC_MIN_CAPTURED_AT_MS = Date.UTC(2020, 0, 1);
+
+/**
+ * Whether a sync row's `captured_at` is a usable epoch-millisecond stamp.
+ *
+ * Rejected rather than coerced: a stamp in the wrong unit means the producer is
+ * wrong, and silently multiplying by 1000 here would hide that while inventing a
+ * capture time. A clean 400 tells the producer; a 1970 row tells nobody.
+ */
+function validSyncCapturedAt(capturedAt: unknown): boolean {
+  return (
+    Number.isInteger(capturedAt) &&
+    (capturedAt as number) >= SYNC_MIN_CAPTURED_AT_MS
+  );
 }
 
 // captured_at is epoch ms; snapshot_date is the UTC day, matching D1's
@@ -1000,7 +1040,7 @@ function validSubnetHyperparamsSyncRow(row: Row) {
     row.netuid > SUBNET_HYPERPARAMS_SYNC_MAX_NETUID
   )
     return false;
-  if (!Number.isInteger(row.captured_at) || row.captured_at <= 0) return false;
+  if (!validSyncCapturedAt(row.captured_at)) return false;
   for (const [key, value] of Object.entries(row)) {
     if (!SUBNET_HYPERPARAMS_INSERT_COLUMNS.includes(key)) return false;
     if (typeof value === "number" && !Number.isFinite(value)) return false;
@@ -1514,7 +1554,7 @@ function validNominatorCountSyncRow(row: Row) {
     return false;
   if (!Number.isInteger(row.nominator_count) || row.nominator_count < 0)
     return false;
-  if (!Number.isInteger(row.captured_at) || row.captured_at <= 0) return false;
+  if (!validSyncCapturedAt(row.captured_at)) return false;
   return true;
 }
 
@@ -1698,7 +1738,7 @@ function validNominatorPositionSyncRow(row: Row) {
     row.share_fraction > 1
   )
     return false;
-  if (!Number.isInteger(row.captured_at) || row.captured_at <= 0) return false;
+  if (!validSyncCapturedAt(row.captured_at)) return false;
   return true;
 }
 

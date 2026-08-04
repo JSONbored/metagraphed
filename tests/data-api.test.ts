@@ -299,6 +299,30 @@ test("neurons-sync rejects a row missing a valid captured_at (400)", async () =>
   expect(res.status).toBe(400);
 });
 
+test("neurons-sync rejects a SECONDS-precision captured_at (400) (#9382)", async () => {
+  // The case the old `captured_at > 0` check accepted, and the one that actually
+  // reached production. Read as milliseconds this is 1970-01-21, which is the
+  // snapshot_date the row would have been filed under -- and because neuron_daily
+  // upserts under `captured_at <= excluded.captured_at`, a stamp 1000x too small is
+  // permanently "older" than any correct capture, so the bad row could never be
+  // repaired in place by a later one.
+  const seconds = Math.floor(Date.UTC(2026, 7, 2) / 1000);
+  const res = await postNeurons([neuronSyncRow({ captured_at: seconds })], {
+    secret: NEURONS_SYNC_SECRET,
+  });
+  expect(res.status).toBe(400);
+});
+
+test("neurons-sync accepts a normal millisecond captured_at (#9382)", async () => {
+  // The floor must not reject real captures -- the guard is about the unit, not
+  // about being strict.
+  const res = await postNeurons(
+    [neuronSyncRow({ captured_at: Date.UTC(2026, 7, 2) })],
+    { secret: NEURONS_SYNC_SECRET },
+  );
+  expect(res.status).toBe(200);
+});
+
 test("neurons-sync rejects an empty array (400)", async () => {
   const res = await postNeurons([], { secret: NEURONS_SYNC_SECRET });
   expect(res.status).toBe(400);
