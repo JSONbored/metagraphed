@@ -20,6 +20,11 @@ import {
 import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "./kv-keys.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
 
+import {
+  comparePoolEndpoints,
+  endpointScoreBreakdown,
+} from "./endpoint-score.ts";
+
 type Row = Record<string, unknown>;
 
 // Must exceed the probe cadence (15 min) so a live D1 health row is never treated
@@ -324,10 +329,15 @@ export function mergeRpcEndpoints(
 // static properties that never change between prober runs) are reused here;
 // health eligibility is judged solely by wrongChain/sustainedDown, exactly
 // as before, just no longer gated behind the stale static boolean too.
-// score/score_reasons are intentionally left static (out of scope for this
-// fix; a stale score never excludes an eligible endpoint since
-// weightedPickEndpoint falls back to weight 1 for score<=0, only
-// deprioritises it).
+// score/score_reasons are RECOMPUTED here too, from the same refreshed row (#9355).
+// They used to be left static on the argument that "a stale score never excludes an
+// eligible endpoint ... only deprioritises it" -- true about exclusion, wrong about
+// ranking, which is what a pool is for. Live on 2026-08-04 all four finney-rpc
+// endpoints served `status:"ok"` alongside a stale `status-degraded` penalty and no
+// `status-ok` bonus, so every healthy endpoint scored 0 and a host decommissioned in
+// metagraphed-infra#225 -- answering Cloudflare 1033 on every request -- ranked FIRST
+// on a stale latency sample. The endpoints are re-sorted after refreshing, since the
+// build-time order was computed from the values just replaced.
 export function overlayRpcPoolEligibility(
   pool: Row | null | undefined,
   liveRpcPool: Row | null | undefined,
@@ -338,18 +348,31 @@ export function overlayRpcPoolEligibility(
   const liveById = new Map(
     (liveRpcPool.endpoints as Row[]).map((e) => [e.id, e]),
   );
-  return {
-    ...pool,
-    endpoints: ((pool.endpoints as Row[]) || []).map((endpoint) => {
+  const endpoints: Row[] = ((pool.endpoints as Row[]) || [])
+    .map((endpoint) => {
       const live = liveById.get(endpoint.id);
-      if (!live) return endpoint;
-      const refreshed: Row = {
-        ...endpoint,
-        status: normalizeProbeStatus(live.status),
-        latency_ms: live.latency_ms ?? endpoint.latency_ms,
-        latest_block: live.latest_block ?? endpoint.latest_block ?? null,
-        health_source: "live-cron-prober",
-      };
+      // An endpoint with no live row is still RESCORED, from its own unchanged
+      // fields. Skipping it would leave the pool ranking two scales against each
+      // other: freshly-computed scores for endpoints the prober covered, and
+      // build-time scores for the rest -- so an uncovered endpoint would keep an
+      // inflated old number and outrank a healthy, freshly-measured one. The
+      // recomputation is a no-op for those rows by construction (same inputs, same
+      // function the build used), which is exactly why it is safe to run on all of
+      // them.
+      const refreshed: Row = live
+        ? {
+            ...endpoint,
+            status: normalizeProbeStatus(live.status),
+            latency_ms: live.latency_ms ?? endpoint.latency_ms,
+            latest_block: live.latest_block ?? endpoint.latest_block ?? null,
+            health_source: "live-cron-prober",
+            health_stale: false,
+          }
+        : // Not covered by this prober run: the row keeps the build's status, which
+          // may be up to a day old. Marked stale so the comparator ranks it below an
+          // endpoint of the same class whose health was just confirmed, and so a
+          // consumer can tell "healthy" from "was healthy yesterday".
+          { ...endpoint, health_stale: true };
       const reasons: string[] = [];
       if (!isBaseLayerEndpoint(refreshed.kind)) {
         reasons.push("not-bittensor-base-layer");
@@ -360,22 +383,47 @@ export function overlayRpcPoolEligibility(
       if (refreshed.public_safe !== true) {
         reasons.push("not-public-safe");
       }
-      if (live.classification === "wrong-chain") {
+      if (live?.classification === "wrong-chain") {
         reasons.push("wrong-chain");
       }
       if (
+        live &&
         live.status !== "ok" &&
         ((live.consecutive_failures as number) || 0) >=
           POOL_SUSTAINED_DOWN_FAILURES
       ) {
         reasons.push("sustained-down");
       }
-      return {
+      // SCORE is refreshed for every row (see above); ELIGIBILITY only for rows the
+      // prober actually covered. Re-deriving eligibility without live data would
+      // PROMOTE endpoints the build excluded for reasons this overlay does not model
+      // -- it only knows the structural checks plus wrong-chain/sustained-down -- and
+      // silently widening a public pool is not a ranking fix.
+      const rescored = endpointScoreBreakdown(refreshed);
+      const scored: Row = {
         ...refreshed,
+        score: rescored.score,
+        score_reasons: rescored.reasons,
+      };
+      if (!live) return scored;
+      return {
+        ...scored,
         pool_eligible: reasons.length === 0,
         pool_eligibility_reasons: reasons.length ? reasons : ["eligible"],
       };
-    }),
+    })
+    .sort(comparePoolEndpoints);
+  // eligible_count and best_endpoint_id are DERIVED from the rows just refreshed, so
+  // they are recomputed rather than passed through. Live on 2026-08-04 `finney-rpc`
+  // served `best_endpoint_id: null` while four of its endpoints were eligible: the
+  // field was frozen at a build where none of them was.
+  return {
+    ...pool,
+    endpoints,
+    eligible_count: endpoints.filter((endpoint) => endpoint.pool_eligible)
+      .length,
+    best_endpoint_id:
+      endpoints.find((endpoint) => endpoint.pool_eligible)?.id ?? null,
   };
 }
 

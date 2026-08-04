@@ -11,6 +11,10 @@
 // ES-module cycle — safe here because the import is consumed only at call time
 // (inside buildEndpointResourceArtifact), never during module evaluation.
 import { surfaceStableKey } from "../lib.ts";
+import {
+  comparePoolEndpoints,
+  endpointScoreBreakdown,
+} from "../../src/endpoint-score.ts";
 
 // Surfaces, probe health, and derived endpoint/pool/incident rows are untrusted
 // dynamic JSON, read only for artifact derivation -- never trusted for control
@@ -336,12 +340,8 @@ export function buildEndpointPoolArtifact({
 function endpointPool(id: string, kind: string, endpoints: Row[]): Row {
   const poolEndpoints = endpoints
     .filter((endpoint) => kind === "archive" || endpoint.kind === kind)
-    .sort(
-      (a, b) =>
-        b.score - a.score ||
-        (a.latency_ms ?? 999999) - (b.latency_ms ?? 999999) ||
-        a.id.localeCompare(b.id),
-    );
+    // Health class first, then score -- see comparePoolEndpoints (#9355).
+    .sort(comparePoolEndpoints);
   return {
     id,
     kind,
@@ -566,47 +566,6 @@ function endpointPublicationState({
     return "monitored";
   }
   return "verified";
-}
-
-interface ScoreBreakdown {
-  score: number;
-  reasons: Array<{ reason: string; points: number }>;
-}
-
-function endpointScoreBreakdown(endpoint: Row): ScoreBreakdown {
-  let score = 0;
-  const reasons: Array<{ reason: string; points: number }> = [];
-  function add(reason: string, points: number): void {
-    score += points;
-    reasons.push({ reason, points });
-  }
-
-  if (endpoint.status === "ok") add("status-ok", 50);
-  if (endpoint.archive_support === true) add("archive-support", 15);
-  if (endpoint.latest_block) add("latest-block-observed", 10);
-  const methodSupport = endpoint.methods_supported || endpoint.method_support;
-  if (
-    methodSupport &&
-    typeof methodSupport === "object" &&
-    !Array.isArray(methodSupport)
-  ) {
-    add(
-      "method-support",
-      Math.min(Object.values(methodSupport).filter(Boolean).length * 5, 20),
-    );
-  } else if (Array.isArray(methodSupport)) {
-    add("method-support", Math.min(methodSupport.length * 5, 20));
-  }
-  if (Number.isFinite(endpoint.latency_ms))
-    add("latency", Math.max(0, 20 - Math.round(endpoint.latency_ms / 100)));
-  if (endpoint.auth_required) add("auth-required", -25);
-  if (endpoint.status === "degraded") add("status-degraded", -10);
-  if (endpoint.status === "failed") add("status-failed", -50);
-
-  return {
-    score: Math.max(0, score),
-    reasons: reasons.filter((reason) => reason.points !== 0),
-  };
 }
 
 interface PoolEligibility {
