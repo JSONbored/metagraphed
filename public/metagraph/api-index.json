@@ -2191,7 +2191,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 97,
+    "mainnet_only_route_count": 84,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -9141,12 +9141,15 @@
     {
       "artifact_path": "/metagraph/blocks/summary.json",
       "cache": "short",
-      "description": "Fetch block-production analytics over recent blocks: inter-block time distribution, extrinsic/event throughput, block-author decentralization (concentration over each author's block count), and the spec-version spread. Computed live from the blocks D1 tier; schema-stable zeroed card when cold.",
+      "description": "Fetch block-production analytics over recent blocks: inter-block time distribution, extrinsic/event throughput, block-author decentralization (concentration over each author's block count), and the spec-version spread. Precomputed by a cron from that network's decoded blocks; schema-stable zeroed card when the projection is cold.",
       "id": "blocks-summary",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/blocks/summary",
       "public": true,
@@ -9767,10 +9770,13 @@
       "cache": "short",
       "description": "Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first. Computed live from the first-party chain D1 tiers (#1987); schema-stable day_count:0/days:[] when the store is cold.",
       "id": "chain-activity",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/chain/activity",
       "public": true,
@@ -9805,10 +9811,13 @@
       "cache": "short",
       "description": "Fetch the extrinsic call-mix breakdown (count + share per call_module, or call_module/call_function with group_by=module_function) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. When scoped, total_extrinsics and share use the scoped module denominator. Computed live from the first-party extrinsics D1 tier (#1989); schema-stable call_count:0/calls:[] when cold.",
       "id": "chain-calls",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/chain/calls",
       "public": true,
@@ -9868,10 +9877,13 @@
       "cache": "short",
       "description": "Fetch the windowed most-active-account leaderboard (signers ranked by ?sort=tx_count or ?sort=total_fee_tao, with total fees/tips + newest signed block) over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. Computed live from the first-party extrinsics D1 tier (#1990); schema-stable signer_count:0/signers:[] when cold.",
       "id": "chain-signers",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/chain/signers",
       "public": true,
@@ -9931,10 +9943,13 @@
       "cache": "short",
       "description": "Fetch network-wide native-TAO transfer analytics over a 7d or 30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume (?limit, <=100), and the top senders' share of total volume. Computed live from the account_events Transfer feed; schema-stable zeros + empty leaderboards when cold. Pass ?format=csv to download the top senders and receivers as one CSV tagged by a `direction` column (the totals + top_sender_share stay JSON-only).",
       "id": "chain-transfers",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/chain/transfers",
       "public": true,
@@ -9977,10 +9992,13 @@
       "cache": "short",
       "description": "Fetch network-wide directed native-TAO transfer-pair analytics over a 7d or 30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share, and top sender -> receiver pairs ranked by ?sort=volume or ?sort=count (?limit, <=100). Computed live from the account_events Transfer feed; schema-stable zeros + an empty pairs list when cold. Pass ?format=csv to download the ranked pairs as CSV (the totals + top_pair_share stay JSON-only).",
       "id": "chain-transfer-pairs",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/chain/transfer-pairs",
       "public": true,
@@ -10033,10 +10051,13 @@
       "cache": "short",
       "description": "Fetch network-wide cross-subnet capital flow over a 7d or 30d window: every subnet that moved stake in the window ranked by net StakeAdded minus StakeRemoved TAO (subnets with no stake events in the window are excluded) (biggest net inflow first, ?limit <=100), with per-subnet staked/unstaked/net/gross totals and a direction label, a network rollup, and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet net flow. Computed live from the account_events stake stream; schema-stable zeros + empty leaderboard when cold.",
       "id": "chain-stake-flow",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/chain/stake-flow",
       "public": true,
@@ -10079,10 +10100,13 @@
       "cache": "short",
       "description": "Fetch the network-wide rolling 24h buy/sell alpha-volume leaderboard: every subnet that had StakeAdded (buy) or StakeRemoved (sell) volume in the last 24h (subnets with no volume are excluded) ranked by total_volume_tao (biggest market activity first, ?limit <=100), each with the same buy/sell/total volume + sentiment scorecard as GET /api/v1/subnets/{netuid}/volume, plus a network rollup (with its own net/gross sentiment reading) and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet total volume. Computed live from the account_events stream; schema-stable zeros + empty leaderboard when cold. Fixed 24h window (no ?window= param), matching the per-subnet route's own framing.",
       "id": "chain-alpha-volume",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/chain/alpha-volume",
       "public": true,
@@ -10345,10 +10369,13 @@
       "cache": "short",
       "description": "Fetch network-wide neuron-registration activity over a 7d or 30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): a per-subnet leaderboard (NeuronRegistered event count, distinct registrants, and average registrations per registrant) ranked by total registrations, a network rollup with the true distinct registrant count (a hotkey registering on several subnets counts once) and total registrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-registration intensity. `limit` caps the leaderboard (default 20, max 100). Raw registration demand — the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. Computed live from the account_events NeuronRegistered stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
       "id": "chain-registrations",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/chain/registrations",
       "public": true,
@@ -10391,10 +10418,13 @@
       "cache": "short",
       "description": "Fetch network-wide neuron-deregistration activity over a 7d or 30d window across the subnets with observed deregistration activity (subnets with no NeuronDeregistered events are absent): a per-subnet leaderboard (NeuronDeregistered event count, distinct deregistered hotkeys, and average deregistrations per hotkey) ranked by total deregistrations, a network rollup with the true distinct hotkey count (a hotkey deregistered on several subnets counts once) and total deregistrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-deregistration intensity. `limit` caps the leaderboard (default 20, max 100). Raw deregistration/eviction activity — the exit-side companion to GET /api/v1/chain/registrations and the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. DERIVED from UID reuse in the NeuronRegistered stream by a scheduled projection (NeuronDeregistered has never been emitted by the runtime); the payload's `derivation` block states how many window registrations had no observable previous holder, and `degraded` marks an answer nothing derived. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
       "id": "chain-deregistrations",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/chain/deregistrations",
       "public": true,
@@ -10437,10 +10467,13 @@
       "cache": "short",
       "description": "Fetch network-wide stake-transfer activity over a 7d or 30d window across the subnets with observed transfer activity (subnets with no StakeTransferred events are absent): a per-subnet leaderboard (StakeTransferred event count, distinct senders, and average transfers per sender) ranked by total transfers, a network rollup with the true distinct sender count (an account transferring stake out of several subnets counts once) and total transfers, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet transfer intensity. `limit` caps the leaderboard (default 20, max 100). The between-coldkeys companion to the within-account re-delegation churn of GET /api/v1/chain/stake-moves — transfer_stake relocates staked alpha from one account to another on the same hotkey (origin leg only), so it moves ownership, not net capital. Computed live from the account_events StakeTransferred stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
       "id": "chain-stake-transfers",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/chain/stake-transfers",
       "public": true,
@@ -10483,10 +10516,13 @@
       "cache": "short",
       "description": "Fetch network-wide stake-movement (re-delegation) activity over a 7d or 30d window across the subnets with observed movement activity (subnets with no StakeMoved events are absent): a per-subnet leaderboard (StakeMoved event count, distinct movers, and average movements per mover) ranked by total movements, a network rollup with the true distinct mover count (an account moving stake out of several subnets counts once) and total movements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-move intensity. `limit` caps the leaderboard (default 20, max 100). The re-delegation-churn companion to the net-capital-flow GET /api/v1/chain/stake-flow — move_stake relocates stake between hotkeys/subnets without unstaking, so it is churn, not flow. Computed live from the account_events StakeMoved stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
       "id": "chain-stake-moves",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/chain/stake-moves",
       "public": true,
@@ -10529,10 +10565,13 @@
       "cache": "short",
       "description": "Fetch fee/tip market analytics — a per-UTC-day fee series (totals, plus averages and exact ordered-offset medians computed over signed extrinsics only) plus a windowed top-fee-payer list — over a 7d or 30d window, optionally scoped to one pallet with ?call_module=. extrinsic_count counts every extrinsic including unsigned inherents; signed_extrinsic_count is the denominator for the averages/medians. Computed live from the first-party extrinsics D1 tier (#1988); schema-stable day_count:0 + empty lists when cold.",
       "id": "chain-fees",
-      "mainnet_only": true,
+      "mainnet_only": false,
       "method": "GET",
       "networks": [
-        "mainnet"
+        "finney",
+        "mainnet",
+        "test",
+        "testnet"
       ],
       "path": "/api/v1/chain/fees",
       "public": true,

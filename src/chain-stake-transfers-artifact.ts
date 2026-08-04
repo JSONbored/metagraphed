@@ -13,6 +13,11 @@ import {
   CHAIN_STAKE_TRANSFERS_WINDOWS,
   DEFAULT_CHAIN_STAKE_TRANSFERS_WINDOW,
 } from "./chain-stake-transfers.ts";
+import {
+  type ChainNetworkId,
+  DEFAULT_CHAIN_NETWORK,
+  projectionKey,
+} from "./chain-network.ts";
 
 export const CHAIN_STAKE_TRANSFERS_PROJECTION_KEY =
   "metagraph/projections/chain-stake-transfers.json";
@@ -30,12 +35,16 @@ interface ArtifactBucket {
 export async function loadChainStakeTransfersFromArtifact(
   env: Env | null | undefined,
   query: { window?: string | null; limit?: number },
+  /** Which chain's projection to read (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildChainStakeTransfers> | null> {
   const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
     ?.METAGRAPH_ARCHIVE;
   if (!bucket?.get) return null;
   try {
-    const object = await bucket.get(CHAIN_STAKE_TRANSFERS_PROJECTION_KEY);
+    const object = await bucket.get(
+      projectionKey(CHAIN_STAKE_TRANSFERS_PROJECTION_KEY, network),
+    );
     if (!object) return null;
     const body = (await object.json()) as {
       schema_version?: unknown;
@@ -61,12 +70,13 @@ export async function loadChainStakeTransfersFromArtifact(
     if (!Array.isArray(win?.rows)) return null;
     // The stored network row is data-api's networkRows[0] ?? null; anything
     // else is not the artifact the lane wrote.
-    const network = win.network ?? null;
-    if (network !== null && typeof network !== "object") return null;
+    const chainWide = win.network ?? null;
+    if (chainWide !== null && typeof chainWide !== "object") return null;
     return buildChainStakeTransfers(win.rows as Record<string, unknown>[], {
       window: label,
       limit: query.limit,
-      networkDistinct: (network as Record<string, unknown> | null) ?? undefined,
+      networkDistinct:
+        (chainWide as Record<string, unknown> | null) ?? undefined,
     });
   } catch {
     return null;

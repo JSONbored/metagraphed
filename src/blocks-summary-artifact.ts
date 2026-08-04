@@ -19,6 +19,11 @@
 // served from Postgres.
 
 import type { BlocksSummaryResult } from "./blocks-summary.ts";
+import {
+  type ChainNetworkId,
+  DEFAULT_CHAIN_NETWORK,
+  projectionKey,
+} from "./chain-network.ts";
 
 export const BLOCKS_SUMMARY_PROJECTION_KEY =
   "metagraph/projections/blocks-summary.json";
@@ -34,12 +39,16 @@ interface ArtifactBucket {
  */
 export async function loadBlocksSummaryFromArtifact(
   env: Env | null | undefined,
+  /** Which chain's projection to read (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<BlocksSummaryResult | null> {
   const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
     ?.METAGRAPH_ARCHIVE;
   if (!bucket?.get) return null;
   try {
-    const object = await bucket.get(BLOCKS_SUMMARY_PROJECTION_KEY);
+    const object = await bucket.get(
+      projectionKey(BLOCKS_SUMMARY_PROJECTION_KEY, network),
+    );
     if (!object) return null;
     const body = (await object.json()) as {
       schema_version?: unknown;

@@ -10,6 +10,11 @@
 
 import { buildChainActivity } from "./chain-analytics.ts";
 import {
+  type ChainNetworkId,
+  DEFAULT_CHAIN_NETWORK,
+  projectionKey,
+} from "./chain-network.ts";
+import {
   ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,
 } from "../workers/config.ts";
@@ -59,12 +64,16 @@ function newestObservedIso(value: unknown): string | null {
 export async function loadChainActivityFromArtifact(
   env: Env | null | undefined,
   query: { window?: string | null },
+  /** Which chain's projection to read (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildChainActivity> | null> {
   const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
     ?.METAGRAPH_ARCHIVE;
   if (!bucket?.get) return null;
   try {
-    const object = await bucket.get(CHAIN_ACTIVITY_PROJECTION_KEY);
+    const object = await bucket.get(
+      projectionKey(CHAIN_ACTIVITY_PROJECTION_KEY, network),
+    );
     if (!object) return null;
     const body = (await object.json()) as {
       schema_version?: unknown;

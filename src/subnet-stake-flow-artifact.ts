@@ -27,6 +27,11 @@ import {
   STAKE_FLOW_WINDOWS,
   STAKE_REMOVED_KIND,
 } from "./stake-flow.ts";
+import {
+  type ChainNetworkId,
+  DEFAULT_CHAIN_NETWORK,
+  projectionKey,
+} from "./chain-network.ts";
 import { CHAIN_STAKE_FLOW_PROJECTION_KEY } from "./chain-stake-flow-artifact.ts";
 
 interface ArtifactBucket {
@@ -56,12 +61,16 @@ export async function loadSubnetStakeFlowFromArtifact(
   env: Env | null | undefined,
   netuid: number,
   query: { window?: string | null; direction?: string | null } = {},
+  /** Which chain's projection to read (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<SubnetStakeFlowFromArtifact | null> {
   const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
     ?.METAGRAPH_ARCHIVE;
   if (!bucket?.get) return null;
   try {
-    const object = await bucket.get(CHAIN_STAKE_FLOW_PROJECTION_KEY);
+    const object = await bucket.get(
+      projectionKey(CHAIN_STAKE_FLOW_PROJECTION_KEY, network),
+    );
     if (!object) return null;
     const body = (await object.json()) as {
       schema_version?: unknown;

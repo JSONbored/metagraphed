@@ -356,12 +356,12 @@ describe("the chain-history route list is derived from the router", () => {
   });
 
   test("it does not claim routes that are still mainnet-only", () => {
-    // /blocks/summary is the trap: same family, same prefix, still gated —
-    // because it is cross-subnet analytics over an artifact the decode lane
-    // does not produce, rather than one chain's own history. Its two former
-    // neighbours here (the chain-events feed and one block's chain-events) came
-    // OFF the gate in #8700 once their readers took the network dimension.
-    for (const template of ["/api/v1/blocks/summary"]) {
+    // The trap is a route in the same FAMILY that this list must not absorb.
+    // /blocks/summary was that route until #9412 gave the projection lanes a
+    // network dimension; it is a projection route now, held by
+    // tests/projection-networks.test.ts, and the remaining example is the
+    // neurons-tier analytics, which read a store no decode lane produces.
+    for (const template of ["/api/v1/chain/weights"]) {
       assert.ok(
         !isChainHistoryRouteTemplate(template),
         `${template} is still mainnet-only but the list claims it`,

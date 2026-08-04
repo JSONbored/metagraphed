@@ -22,6 +22,7 @@ import {
   chainTable,
   DEFAULT_CHAIN_NETWORK,
   LAKEHOUSE_NAMESPACES,
+  projectionKey,
 } from "./chain-network.ts";
 import { isR2SqlConfigured, r2SqlQuery } from "./r2-sql.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
@@ -1177,30 +1178,10 @@ export const PROJECTION_NETWORKS = Object.keys(
   LAKEHOUSE_NAMESPACES,
 ) as ChainNetworkId[];
 
-/**
- * Where one network's projection artifact lives.
- *
- * MAINNET KEEPS ITS KEY UNCHANGED, the same asymmetry `networkKvKey` uses for
- * the KV cache and `chainTable` for the lakehouse namespace: every artifact
- * already written stays readable, and a mainnet request after this change
- * reads exactly the object it read before. Testnet gets its own keyspace, so a
- * testnet card can never be served to a mainnet caller no matter what a reader
- * does with it afterwards.
- *
- * The insertion point is after the `metagraph/projections/` prefix rather than
- * at the front of the key, so the projections stay one prefix in the bucket
- * and a listing still groups them.
- */
-export function projectionKey(
-  artifactKey: string,
-  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
-): string {
-  if (network === DEFAULT_CHAIN_NETWORK) return artifactKey;
-  const prefix = "metagraph/projections/";
-  return artifactKey.startsWith(prefix)
-    ? `${prefix}${network}/${artifactKey.slice(prefix.length)}`
-    : `${network}/${artifactKey}`;
-}
+/** Re-exported from its home in chain-network.ts, where it sits beside
+ * `networkKvKey` and `chainTable` -- the same scoping rule for the third
+ * store. Kept here so the lane registry and its tests read one module. */
+export { projectionKey };
 
 export interface ProjectionLaneDeps {
   recordException?: typeof recordExceptionEvent;

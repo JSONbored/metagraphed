@@ -336,11 +336,11 @@ describe("multi-network routing prefix (Phase 1)", () => {
       // NOTE: /blocks, /blocks/{ref} and /extrinsics used to be asserted here.
       // #8700 opened them once the decode lane began filling `chain_testnet`;
       // their testnet coverage lives in tests/chain-history-networks.test.ts.
-      // /blocks/summary stays: it is cross-subnet block-production analytics
-      // (author decentralization, spec spread), which #8700's subset test --
-      // "what does a subnet developer validating their own subnet need?" --
-      // does not clear.
-      "/api/v1/testnet/blocks/summary",
+      // NOTE: /blocks/summary and the projection-backed /chain/* analytics
+      // used to be asserted here too. #9412 gave the projection LANES a
+      // network dimension, so those cards exist for testnet and the routes
+      // serve them; their coverage lives in tests/projection-networks.test.ts.
+      // What is left below reads a tier that has no testnet twin at all.
       // Sudo-call feed reads the same mainnet-only extrinsics D1 tier (#4310/2.2).
       "/api/v1/testnet/sudo",
       // Same for the AdminUtils config-change feed (#4310/2.3).
@@ -390,14 +390,12 @@ describe("multi-network routing prefix (Phase 1)", () => {
       "/api/v1/testnet/incidents",
 
       "/api/v1/testnet/rpc/usage",
-      // The whole D1-backed chain analytics family is mainnet-only, not just
-      // chain/activity — cover the rest so a route dropped from the allow-list
-      // 404s with the network-named contract instead of leaking a testnet R2 key.
-      "/api/v1/testnet/chain/activity",
-      "/api/v1/testnet/chain/calls",
-      "/api/v1/testnet/chain/fees",
-      "/api/v1/testnet/chain/signers",
-      "/api/v1/testnet/chain/transfers",
+      // The neurons-tier chain analytics ARE still mainnet-only -- they read
+      // a store the decode lane does not produce, unlike their
+      // projection-backed neighbours (#9412).
+      "/api/v1/testnet/chain/weights",
+      "/api/v1/testnet/chain/serving",
+      "/api/v1/testnet/chain/concentration",
       "/api/v1/testnet/chain/concentration",
       "/api/v1/testnet/chain/performance",
       "/api/v1/testnet/chain/idle-stake",
@@ -420,10 +418,10 @@ describe("multi-network routing prefix (Phase 1)", () => {
       ["GET", "/api/v1/testnet/graphql"],
       ["POST", "/api/v1/testnet/graphql"],
       ["POST", "/api/v1/testnet/ask"],
-      // /blocks is served on testnet since #8700; /blocks/summary is the
-      // block-family route that is still mainnet-only, so it carries the
-      // method-independence assertion now.
-      ["GET", "/api/v1/testnet/blocks/summary"],
+      // /blocks and /blocks/summary are both served on testnet now (#8700,
+      // #9412), so a genuinely still-gated route carries the
+      // method-independence assertion.
+      ["GET", "/api/v1/testnet/chain/weights"],
     ]) {
       const { res, body } = await get(env, path, { method });
       assert.equal(res.status, 404, `${method} ${path}`);

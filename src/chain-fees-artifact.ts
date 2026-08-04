@@ -14,6 +14,11 @@
 
 import { buildChainFees } from "./chain-analytics.ts";
 import {
+  type ChainNetworkId,
+  DEFAULT_CHAIN_NETWORK,
+  projectionKey,
+} from "./chain-network.ts";
+import {
   ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,
 } from "../workers/config.ts";
@@ -60,6 +65,8 @@ export async function loadChainFeesFromArtifact(
     limit?: unknown;
     callModule?: string | null;
   },
+  /** Which chain's projection to read (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildChainFees> | null> {
   // A pallet-scoped call has no precomputed answer; serving the unfiltered
   // series under a filtered label would be a wrong answer, not a degraded one.
@@ -69,7 +76,9 @@ export async function loadChainFeesFromArtifact(
     ?.METAGRAPH_ARCHIVE;
   if (!bucket?.get) return null;
   try {
-    const object = await bucket.get(CHAIN_FEES_PROJECTION_KEY);
+    const object = await bucket.get(
+      projectionKey(CHAIN_FEES_PROJECTION_KEY, network),
+    );
     if (!object) return null;
     const body = (await object.json()) as {
       schema_version?: unknown;

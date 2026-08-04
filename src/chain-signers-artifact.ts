@@ -12,6 +12,11 @@
 // than serving unfiltered numbers under a filtered label.
 
 import { buildChainSigners } from "./chain-analytics.ts";
+import {
+  type ChainNetworkId,
+  DEFAULT_CHAIN_NETWORK,
+  projectionKey,
+} from "./chain-network.ts";
 import { CHAIN_SIGNERS_SORTS } from "./chain-query-loaders.ts";
 import {
   ANALYTICS_WINDOWS,
@@ -61,6 +66,8 @@ export async function loadChainSignersFromArtifact(
     limit?: unknown;
     callModule?: string | null;
   },
+  /** Which chain's projection to read (#9412). */
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildChainSigners> | null> {
   // A pallet-scoped call has no precomputed answer; serving the unfiltered
   // leaderboard under a filtered label would be a wrong answer, not a
@@ -71,7 +78,9 @@ export async function loadChainSignersFromArtifact(
     ?.METAGRAPH_ARCHIVE;
   if (!bucket?.get) return null;
   try {
-    const object = await bucket.get(CHAIN_SIGNERS_PROJECTION_KEY);
+    const object = await bucket.get(
+      projectionKey(CHAIN_SIGNERS_PROJECTION_KEY, network),
+    );
     if (!object) return null;
     const body = (await object.json()) as {
       schema_version?: unknown;
