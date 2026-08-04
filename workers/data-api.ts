@@ -5060,6 +5060,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
               nd.validator_trust AS validator_trust, nd.consensus AS consensus,
               nd.dividends AS dividends, nd.take AS take,
               nd.validator_permit AS validator_permit,
+              s.total_stake_tao AS subnet_total_stake,
               nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END AS total_stake_tao,
               nd.emission_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END AS total_emission_tao
             FROM neuron_daily nd
@@ -5074,6 +5075,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
               nd.validator_trust AS validator_trust, nd.consensus AS consensus,
               nd.dividends AS dividends, nd.take AS take,
               nd.validator_permit AS validator_permit,
+              s.total_stake_tao AS subnet_total_stake,
               nd.stake_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END AS total_stake_tao,
               nd.emission_tao * CASE WHEN nd.netuid = 0 THEN 1 ELSE s.alpha_price_tao END AS total_emission_tao
             FROM neuron_daily nd

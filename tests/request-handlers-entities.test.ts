@@ -3181,17 +3181,23 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
   });
 
   test("handleValidatorNominators serves the nominator list from the lakehouse", async () => {
-    const q = lakeFetch([
-      {
-        coldkey: COUNTERPARTY,
-        staked_tao: 40,
-        unstaked_tao: 5,
-        event_count: 4,
-        last_observed: 1_785_544_524_000,
-        net_staked_tao: 35,
-        gross_staked_tao: 45,
-      },
-    ]);
+    const q = lakeFetch(
+      [
+        {
+          coldkey: COUNTERPARTY,
+          staked_tao: 40,
+          unstaked_tao: 5,
+          event_count: 4,
+          last_observed: 1_785_544_524_000,
+          net_staked_tao: 35,
+          gross_staked_tao: 45,
+        },
+      ],
+      // #9393: the loader also reads the TRUE distinct-coldkey count now -- the
+      // leaderboard scan is bounded by LIMIT, so its length is the page size, not
+      // the total, which is what used to ship as nominator_count.
+      [{ c: 1 }],
+    );
     const body = await json(
       await handleValidatorNominators(
         req(`/api/v1/validators/${ADDR}/nominators`),

@@ -19555,24 +19555,32 @@ describe("graphql — validator_nominators (#5692, Postgres-tier + D1-live fallb
     const realFetch = globalThis.fetch;
     let capturedQuery = "";
     globalThis.fetch = (async (_u: string, init: RequestInit) => {
-      capturedQuery = JSON.parse(String(init.body)).query;
+      const query = JSON.parse(String(init.body)).query as string;
+      // #9393: the loader now issues a SECOND query for the true distinct-coldkey
+      // count, because the leaderboard scan is bounded by LIMIT and its length is the
+      // page size rather than the total. Only the leaderboard query is captured, so
+      // the assertions below still describe the scan they were written for.
+      const isCount = query.includes("count(*) AS c");
+      if (!isCount) capturedQuery = query;
       return {
         ok: true,
         status: 200,
         json: async () => ({
           success: true,
           result: {
-            rows: [
-              {
-                coldkey: COLDKEY,
-                staked_tao: 12.5,
-                unstaked_tao: 2.5,
-                event_count: 3,
-                last_observed: 1785544524000,
-                net_staked_tao: 10,
-                gross_staked_tao: 15,
-              },
-            ],
+            rows: isCount
+              ? [{ c: 1 }]
+              : [
+                  {
+                    coldkey: COLDKEY,
+                    staked_tao: 12.5,
+                    unstaked_tao: 2.5,
+                    event_count: 3,
+                    last_observed: 1785544524000,
+                    net_staked_tao: 10,
+                    gross_staked_tao: 15,
+                  },
+                ],
           },
         }),
       };

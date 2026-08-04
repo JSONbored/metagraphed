@@ -344,3 +344,165 @@ describe("buildValidatorHistory — scoped to one subnet (#9383)", () => {
     assert.equal(point.rewards_per_1000_alpha, null);
   });
 });
+
+// #9390: take-change detection and dividend efficiency.
+describe("buildValidatorHistory — operator signals (#9390)", () => {
+  // The REAL series measured on 5G9hfkx9…/netuid 4, newest first. The take never
+  // changed; a float diff reports four changes.
+  const REAL_TAKE_SERIES = [
+    { snapshot_date: "2026-08-03", take: 0.009994659342336155 },
+    { snapshot_date: "2026-08-02", take: 0.00999466 },
+    { snapshot_date: "2026-07-20", take: 0.00999466 },
+    { snapshot_date: "2026-07-19", take: 0.009994659 },
+    { snapshot_date: "2026-07-17", take: 0.009994659 },
+    { snapshot_date: "2026-07-16", take: 0 },
+    { snapshot_date: "2026-07-14", take: 0 },
+    { snapshot_date: "2026-07-13", take: null },
+    { snapshot_date: "2026-07-10", take: null },
+  ];
+
+  test("three float renderings of one u16 are NOT a take change", () => {
+    const card = buildValidatorHistory(REAL_TAKE_SERIES, HOTKEY, { netuid: 4 });
+    assert.equal(card.take_u16, 655, "all three renderings are u16 655");
+    assert.equal(
+      card.take_last_changed_date,
+      null,
+      "this validator never changed its take",
+    );
+  });
+
+  test("the leading null/0 run is not read as a take of zero", () => {
+    // The column simply was not being captured yet. Reporting the step out of that run
+    // would manufacture a change for every validator alive when capture started.
+    const card = buildValidatorHistory(REAL_TAKE_SERIES, HOTKEY, { netuid: 4 });
+    assert.equal(card.take_last_changed_date, null);
+    assert.equal(card.next_take_change_eligible_date, null);
+  });
+
+  test("a REAL take change is detected and dated", () => {
+    const card = buildValidatorHistory(
+      [
+        { snapshot_date: "2026-08-03", take: 0.18 },
+        { snapshot_date: "2026-08-02", take: 0.18 },
+        { snapshot_date: "2026-08-01", take: 0.009994659 },
+        { snapshot_date: "2026-07-31", take: 0.009994659 },
+      ],
+      HOTKEY,
+      { netuid: 4 },
+    );
+    assert.equal(card.take_last_changed_date, "2026-08-02");
+    // + 216,000 blocks * 12s = exactly 30 days.
+    assert.equal(card.next_take_change_eligible_date, "2026-09-01");
+    assert.equal(card.take_change_observable, true);
+  });
+
+  test("a validator whose take is genuinely 0 throughout keeps its series", () => {
+    const card = buildValidatorHistory(
+      [
+        { snapshot_date: "2026-08-03", take: 0 },
+        { snapshot_date: "2026-08-02", take: 0 },
+      ],
+      HOTKEY,
+      { netuid: 4 },
+    );
+    assert.equal(card.take_u16, 0);
+    assert.equal(card.take_change_observable, true, "two usable readings");
+  });
+
+  test("a series too short to resolve a change says so", () => {
+    const card = buildValidatorHistory(
+      [{ snapshot_date: "2026-08-03", take: 0.18 }],
+      HOTKEY,
+      { netuid: 4 },
+    );
+    assert.equal(card.take_last_changed_date, null);
+    assert.equal(
+      card.take_change_observable,
+      false,
+      "one reading cannot show a change -- distinct from 'stable'",
+    );
+  });
+
+  test("the unscoped series reports no take at all", () => {
+    const card = buildValidatorHistory(REAL_TAKE_SERIES, HOTKEY, {});
+    assert.equal(card.take_u16, null);
+    assert.equal(card.take_change_observable, false);
+  });
+
+  test("dividend efficiency is dividend share over stake share", () => {
+    const point = (
+      buildValidatorHistory(
+        [
+          {
+            snapshot_date: "2026-08-04",
+            netuid: 64,
+            stake_alpha: 2_118_872,
+            subnet_total_stake: 3_899_868,
+            dividends: 0.546273,
+          },
+        ],
+        HOTKEY,
+        { netuid: 64 },
+      ).points as Row[]
+    )[0];
+    // 2,118,872 / 3,899,868 = 0.54331890… -> 0.543319 at 6dp
+    assert.equal(point.stake_share, 0.543319);
+    // 0.546273 / 0.543319 = 1.005437 -> earning slightly above its stake share
+    assert.ok(
+      Math.abs((point.dividend_efficiency as number) - 1.005437) < 1e-5,
+    );
+  });
+
+  test("efficiency is null rather than Infinity when there is no stake", () => {
+    for (const [stake, total] of [
+      [0, 3_899_868],
+      [100, 0],
+      [100, null],
+    ] as const) {
+      const point = (
+        buildValidatorHistory(
+          [
+            {
+              snapshot_date: "2026-08-04",
+              netuid: 64,
+              stake_alpha: stake,
+              subnet_total_stake: total,
+              dividends: 0.5,
+            },
+          ],
+          HOTKEY,
+          { netuid: 64 },
+        ).points as Row[]
+      )[0];
+      assert.equal(point.dividend_efficiency, null, `${stake}/${total}`);
+    }
+  });
+
+  test("a point with an unusable snapshot_date is excluded from take detection", () => {
+    // A row whose date cannot be read cannot be ordered, and an unorderable row in a
+    // change-detection series would attribute the change to the wrong day.
+    const card = buildValidatorHistory(
+      [
+        { snapshot_date: 20260803, take: 0.18 },
+        { snapshot_date: "2026-08-02", take: 0.009994659 },
+      ],
+      HOTKEY,
+      { netuid: 4 },
+    );
+    assert.equal(card.take_last_changed_date, null);
+    assert.equal(card.take_change_observable, false, "one usable reading left");
+  });
+
+  test("the card still satisfies its published schema", () => {
+    const card = buildValidatorHistory(REAL_TAKE_SERIES, HOTKEY, {
+      window: "30d",
+      netuid: 4,
+    });
+    const parsed = ValidatorHistoryArtifactSchema.safeParse(card);
+    assert.equal(
+      parsed.success,
+      true,
+      parsed.success ? "" : JSON.stringify(parsed.error.issues),
+    );
+  });
+});

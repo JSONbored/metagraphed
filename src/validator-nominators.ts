@@ -87,6 +87,81 @@ interface ColdkeyBucket {
 // read path. Null-safe: no rows (cold store / empty window / no nominators)
 // yields a zeroed, empty list — never throws, matching the sibling account
 // tiers (stake-flow, counterparties).
+/**
+ * The count to publish.
+ *
+ * When the caller handed us every row, their number IS the total. When it handed us a
+ * page, only an explicitly supplied total is trustworthy — falling back to the page
+ * length there is the #9393 defect.
+ */
+/**
+ * How concentrated this validator's delegated stake is.
+ *
+ * The question an operator actually asks: **if my biggest delegator leaves, how much
+ * goes with them.** Shaped like `/accounts/{ss58}/portfolio`'s existing
+ * `stake_concentration` block rather than inventing a second vocabulary for the same
+ * idea.
+ *
+ * COMPUTED OVER THE ROWS PRESENT, and honest about it. When the route is serving a
+ * page of a larger set, a "top nominator share" derived from that page describes the
+ * page, not the validator — the same class of mistake as a UI filtering client-side
+ * over one page of 1,184 rows. So this returns nulls unless the rows in hand are the
+ * whole set, which is exactly when `nominator_count` equals the number of rows.
+ *
+ * Negative net stake (a coldkey that withdrew more than it added in the window) is
+ * clamped out of the denominator rather than allowed to inflate everyone else's share
+ * past 1.
+ */
+function concentrationView(
+  nominators: Nominator[],
+  reportedCount: number | null,
+): Row {
+  const complete =
+    reportedCount !== null && reportedCount === nominators.length;
+  const stakes = nominators
+    .map((n) => Number(n.net_staked_tao))
+    .filter((v) => Number.isFinite(v) && v > 0)
+    .sort((a, b) => b - a);
+  const total = stakes.reduce((sum, v) => sum + v, 0);
+  if (!complete || stakes.length === 0 || total <= 0) {
+    return {
+      concentration_complete: complete,
+      top_nominator_share: null,
+      top5_nominator_share: null,
+      nominator_gini: null,
+    };
+  }
+  const share = (n: number) =>
+    Math.round((stakes.slice(0, n).reduce((s, v) => s + v, 0) / total) * 1e6) /
+    1e6;
+  // Gini over the ascending stakes: sum((2i - n - 1) * x_i) / (n * sum(x)).
+  const asc = [...stakes].reverse();
+  const n = asc.length;
+  const weighted = asc.reduce(
+    (sum, v, i) => sum + (2 * (i + 1) - n - 1) * v,
+    0,
+  );
+  return {
+    concentration_complete: true,
+    top_nominator_share: share(1),
+    top5_nominator_share: share(5),
+    // A single nominator is perfectly concentrated, but Gini is undefined at n=1
+    // (the formula divides by n and yields 0, which would read as perfectly EQUAL).
+    nominator_gini:
+      n < 2 ? null : Math.round((weighted / (n * total)) * 1e6) / 1e6,
+  };
+}
+
+function resolveCount(
+  totalCount: unknown,
+  pageLength: number,
+  alreadyPaged: boolean,
+): number | null {
+  const n = Math.trunc(Number(totalCount));
+  if (Number.isFinite(n) && n >= 0) return n;
+  return alreadyPaged ? null : pageLength;
+}
+
 export function buildValidatorNominators(
   rows: Row[] | null | undefined,
   hotkey: unknown,
@@ -96,12 +171,25 @@ export function buildValidatorNominators(
     limit = NOMINATOR_LIMIT_DEFAULT,
     offset = 0,
     totalCount,
+    alreadyPaged = false,
   }: {
     window?: string;
     sort?: string;
     limit?: unknown;
     offset?: unknown;
     totalCount?: unknown;
+    /**
+     * True when `rows` is ALREADY the requested page (the SQL read applied
+     * LIMIT/OFFSET), so this builder must not slice it again.
+     *
+     * Split from `totalCount` by #9393. The two used to be the same signal —
+     * `totalCount == null` meant both "page in memory" and "no total supplied" — which
+     * left no way to say "these rows are a page AND the total is unknown". The loader
+     * worked around it by passing `page.length` as the total, and that page size then
+     * shipped as `nominator_count`, tracking `limit` (20, then 100) for a validator
+     * with 2,474 nominators.
+     */
+    alreadyPaged?: boolean;
   } = {},
 ): Row {
   const normalizedSort = NOMINATOR_SORTS.includes(sort)
@@ -178,6 +266,7 @@ export function buildValidatorNominators(
   // last_observed_ms is an internal sort key, never part of the public shape.
   for (const nominator of nominators) delete nominator.last_observed_ms;
 
+  const count = resolveCount(totalCount, nominators.length, alreadyPaged);
   return {
     schema_version: 1,
     hotkey,
@@ -185,14 +274,13 @@ export function buildValidatorNominators(
     sort: normalizedSort,
     limit: normalizedLimit,
     offset: normalizedOffset,
-    nominator_count:
-      totalCount == null
-        ? nominators.length
-        : Math.max(0, Math.trunc(Number(totalCount))) || 0,
-    nominators:
-      totalCount == null
-        ? nominators.slice(normalizedOffset, normalizedOffset + normalizedLimit)
-        : nominators,
+    // Null ONLY when the rows are a page and the true total could not be read: an
+    // unknown total is a real state, and a page size dressed as a total is not.
+    nominator_count: count,
+    ...concentrationView(nominators, count),
+    nominators: alreadyPaged
+      ? nominators
+      : nominators.slice(normalizedOffset, normalizedOffset + normalizedLimit),
   };
 }
 

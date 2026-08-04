@@ -619,6 +619,26 @@ export async function loadValidatorNominatorsColdTier(
   );
   if (rows === null) return null;
 
+  // #9393: the TRUE distinct-coldkey count, which the scan above cannot know -- it is
+  // bounded by `LIMIT limit + offset`, so its length is the page size by construction.
+  // Passing that as `totalCount` made nominator_count track `limit` (20 with limit=20,
+  // 100 with limit=100) for a validator whose detail card reported 2,474.
+  //
+  // Wrapped in a GROUP BY subquery, not `count(DISTINCT coldkey)`: R2 SQL rejects the
+  // ungrouped form outright with `40015: scan budget exceeded: scanning too much data
+  // for count(DISTINCT) without GROUP BY`, and a rejected query would decline the whole
+  // reader. Same idiom, and same reason, as loadAccountSummaryColdTier.
+  const countRows = await r2SqlQuery(
+    env,
+    `SELECT count(*) AS c FROM (SELECT coldkey FROM chain.account_events` +
+      ` WHERE ${where.join(" AND ")} GROUP BY coldkey)`,
+  );
+  // A failed count leaves the total UNKNOWN rather than falling back to the page size.
+  // Null is a real state; a page size dressed as a total is not.
+  const counted = Number(countRows?.[0]?.c);
+  const totalCount =
+    countRows === null || !Number.isFinite(counted) ? null : counted;
+
   // data-api wrapped every sum in COALESCE(..., 0); replicate that client-side
   // rather than lean on the beta engine's function coverage. Without it an
   // all-null group would be skipped by the builder instead of counted at zero.
@@ -633,7 +653,8 @@ export async function loadValidatorNominatorsColdTier(
       sort,
       limit,
       offset,
-      totalCount: page.length,
+      totalCount,
+      alreadyPaged: true,
     }),
     generatedAt: latestObservedIso(page),
   };

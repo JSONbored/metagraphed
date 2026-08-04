@@ -44,6 +44,13 @@ const ValidatorHistoryPointSchema = z
         "Whether the permit was held that day. The scoped series reports a lost permit rather than dropping the day, so 'lost the permit' stays distinguishable from 'no data'.",
       ),
     rewards_per_1000_alpha: z.number().nullable().optional(),
+    // #9390. `dividends` is already normalised by the chain (the column sums to ~1.0
+    // across a subnet's neurons), so it IS the dividend share; efficiency is that over
+    // stake share. Above 1 the validator out-earns its stake, below 1 it under-earns.
+    // The denominator is TOTAL subnet stake including miners -- measured at 99.87-100%
+    // validator stake, so the distinction is sub-0.2%.
+    stake_share: z.number().min(0).nullable().optional(),
+    dividend_efficiency: z.number().min(0).nullable().optional(),
   })
   .strict();
 
@@ -55,6 +62,18 @@ export const ValidatorHistoryArtifactSchema = z
     // The subnet this series was scoped to; null for the cross-subnet rollup, so a
     // consumer never has to probe a point to learn which shape it received.
     netuid: z.int().min(0).nullable(),
+    // #9390: take is a delegate-level fact, reported once for the series rather than
+    // per point, and compared as the u16 the chain stores it in — the float rendering
+    // is not stable and diffing it manufactures changes that never happened.
+    take_u16: z.int().min(0).max(65535).nullable(),
+    take_last_changed_date: z.string().nullable(),
+    next_take_change_eligible_date: z
+      .string()
+      .nullable()
+      .describe(
+        "take_last_changed_date + TxDelegateTakeRateLimit (216,000 blocks / 30.00 days, read from the chain's runtime metadata default). NULL when no change is resolvable in the retained window, which is SHORTER than the rate limit — so 'no change seen' cannot be resolved to 'eligible now'.",
+      ),
+    take_change_observable: z.boolean(),
     point_count: z.int().min(0),
     points: z.array(ValidatorHistoryPointSchema),
   })
