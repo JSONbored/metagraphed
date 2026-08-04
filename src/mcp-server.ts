@@ -610,8 +610,10 @@ import {
   GetSubnetRecycledOutputSchema,
   GetSubnetBurnInputSchema,
   GetChainBurnInputSchema,
+  GetSubnetBurnHistoryInputSchema,
   GetSubnetBurnOutputSchema,
   GetChainBurnOutputSchema,
+  GetSubnetBurnHistoryOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-recycled-burn.ts";
 import {
   GetSubnetValidatorEconomicsInputSchema,
@@ -1426,6 +1428,12 @@ import { buildAccountIdentityHistory } from "./account-identity-history.ts";
 import { isU16Netuid, loadSubnetRecycled } from "./subnet-recycled.ts";
 import { loadSubnetBurn } from "./subnet-burn.ts";
 import { loadChainBurn } from "./chain-burn.ts";
+import {
+  BURN_HISTORY_WINDOWS,
+  DEFAULT_BURN_HISTORY_WINDOW,
+  buildSubnetBurnHistory,
+  loadSubnetBurnHistory,
+} from "./subnet-burn-history.ts";
 import { loadSubnetLease } from "./subnet-lease.ts";
 // coldTierChainEventsPayload is still reached for CONVICTION (#9319), which
 // has no composer of its own. The ownership-history branch no longer comes
@@ -7713,6 +7721,45 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_subnet_burn_history",
+    title: "Get a subnet's registration-cost series",
+    description:
+      "Fetch how one subnet's registration/burn cost has MOVED (#9402) -- the " +
+      "live routes answer what it costs now, this answers whether it is getting " +
+      "more or less expensive, which is what decides where and WHEN to register. " +
+      "Captured every 15 minutes. Choose the window (24h, 7d, 30d, 90d; default " +
+      "7d). change_tao/change_pct describe the movement across the RETURNED " +
+      "window and are null when there is nothing to compare against. A subnet " +
+      "with no recorded prices returns an empty series, not an error. Mirrors " +
+      "GET /api/v1/subnets/{netuid}/burn/history.",
+    inputSchema: z.toJSONSchema(GetSubnetBurnHistoryInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetBurnHistoryInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      if (!isU16Netuid(netuid)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `netuid` must be an integer in the u16 range 0..65535.",
+        );
+      }
+      const label =
+        optionalEnum(args, "window", Object.keys(BURN_HISTORY_WINDOWS)) ??
+        DEFAULT_BURN_HISTORY_WINDOW;
+      const rows = await loadSubnetBurnHistory(
+        ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+          typeof loadSubnetBurnHistory
+        >[0],
+        netuid,
+        { windowDays: BURN_HISTORY_WINDOWS[label] },
+      );
+      return buildSubnetBurnHistory(rows, netuid, { window: label });
+    },
+  },
+  {
     name: "get_chain_burn",
     title: "Get every subnet's live registration cost, ranked",
     description:
@@ -12698,6 +12745,9 @@ const TOOL_OUTPUT_SCHEMAS = {
     target: "draft-2020-12",
   }),
   get_subnet_recycled: z.toJSONSchema(GetSubnetRecycledOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_subnet_burn_history: z.toJSONSchema(GetSubnetBurnHistoryOutputSchema, {
     target: "draft-2020-12",
   }),
   get_chain_burn: z.toJSONSchema(GetChainBurnOutputSchema, {

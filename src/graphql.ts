@@ -287,6 +287,12 @@ import { buildChainYield } from "./chain-yield.ts";
 import { loadSubnetRecycled, isU16Netuid } from "./subnet-recycled.ts";
 import { loadSubnetBurn } from "./subnet-burn.ts";
 import { loadChainBurn } from "./chain-burn.ts";
+import {
+  BURN_HISTORY_WINDOWS,
+  DEFAULT_BURN_HISTORY_WINDOW,
+  buildSubnetBurnHistory,
+  loadSubnetBurnHistory,
+} from "./subnet-burn-history.ts";
 import { chainNetworkFromChainName } from "./chain-network.ts";
 import { loadSubnetLease } from "./subnet-lease.ts";
 import { loadAccountBalance, isFinneySs58Address } from "./account-balance.ts";
@@ -650,6 +656,7 @@ import type {
   QueryChain_Transfer_PairsArgs,
   QueryChain_TransfersArgs,
   QueryChain_BurnArgs,
+  QuerySubnet_Burn_HistoryArgs,
   QueryChain_TurnoverArgs,
   QueryChain_Weight_SettersArgs,
   QueryChain_WeightsArgs,
@@ -8249,6 +8256,36 @@ const rootValue = {
       netuid,
       chainNetworkFromChainName(network),
     );
+  },
+
+  async subnet_burn_history(
+    { netuid, window }: QuerySubnet_Burn_HistoryArgs,
+    context: GqlContext,
+  ) {
+    if (!isU16Netuid(netuid)) {
+      throw new GraphQLError("netuid must be a u16 subnet id (0-65535).", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const label = window ?? DEFAULT_BURN_HISTORY_WINDOW;
+    const windowDays = BURN_HISTORY_WINDOWS[label];
+    if (windowDays === undefined) {
+      throw new GraphQLError(
+        `window must be one of ${Object.keys(BURN_HISTORY_WINDOWS).join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    // A cold or unwritten table is an EMPTY series, never an error: "we have not
+    // been recording this subnet" is a real state, and the same convention the
+    // sibling history fields already follow.
+    const rows = await loadSubnetBurnHistory(
+      context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof loadSubnetBurnHistory
+      >[0],
+      netuid,
+      { windowDays },
+    );
+    return buildSubnetBurnHistory(rows, netuid, { window: label });
   },
 
   async chain_burn({ network }: QueryChain_BurnArgs, context: GqlContext) {

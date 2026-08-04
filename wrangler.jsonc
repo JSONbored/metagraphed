@@ -746,6 +746,10 @@
       // chain ~6x so an outage backlog drains; see RAW_CAPTURE_CRON in
       // workers/config.ts and src/raw-chain-capture.ts's no-gap guarantee.
       "*/5 * * * *",
+      // #9402: the registration-cost capture lane. 1/16/31/46 is the only 15-minute
+      // grid that collides with none of the crons above. See
+      // SUBNET_BURN_CAPTURE_CRON for why the cadence is resolution-driven.
+      "1,16,31,46 * * * *",
       // #9096, the remaining three machine-data lanes, each replacing a
       // retired commit-a-file workflow on the cadence that workflow ran:
       //   47      = hourly operational-surfaces derivation (was

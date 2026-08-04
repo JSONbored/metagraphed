@@ -1202,6 +1202,24 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/subnets/7/burn/history",
+    (body) => {
+      // #9402. A subnet with no recorded prices is an EMPTY series, never a 404 --
+      // "we have not been recording this" is a real state.
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.points), true);
+      assert.equal(typeof body.data.point_count, "number");
+      // Newest first, so a caller charting it does not have to sort.
+      const at = body.data.points.map((p: { observed_at: string }) =>
+        Date.parse(p.observed_at),
+      );
+      assert.deepEqual(
+        at,
+        [...at].sort((a: number, b: number) => b - a),
+      );
+    },
+  ],
+  [
     "/api/v1/chain/burn",
     (body) => {
       // #9399. The two counts stay separate on purpose: subnet_count is what the

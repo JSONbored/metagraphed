@@ -110,6 +110,8 @@ import {
 import {
   SubnetBurnArtifactSchema,
   ChainBurnArtifactSchema,
+  SubnetBurnHistoryArtifactSchema,
+  SubnetBurnHistoryPointSchema,
   ChainBurnEntrySchema,
   SubnetRecycledArtifactSchema,
 } from "./routes/subnet-registration-cost.ts";
@@ -458,6 +460,8 @@ register(SubnetBurnArtifactSchema, "SubnetBurnArtifact");
 // referenced only from an array gets inlined rather than $ref'd.
 register(ChainBurnEntrySchema, "ChainBurnEntry");
 register(ChainBurnArtifactSchema, "ChainBurnArtifact");
+register(SubnetBurnHistoryPointSchema, "SubnetBurnHistoryPoint");
+register(SubnetBurnHistoryArtifactSchema, "SubnetBurnHistoryArtifact");
 register(SubnetRecycledArtifactSchema, "SubnetRecycledArtifact");
 register(AccountEventSchema, "AccountEvent");
 register(SubnetEventsArtifactSchema, "SubnetEventsArtifact");

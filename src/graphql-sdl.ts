@@ -918,6 +918,7 @@ export const SDL = /* GraphQL */ `
     "Live current registration/burn cost for one subnet -- the dynamic price between the static min_burn_tao/max_burn_tao bounds, read directly from chain via RPC (not the Postgres tier). burn_tao is null on RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/subnets/{netuid}/burn."
     subnet_burn(netuid: Int!, network: Network): SubnetBurn
     chain_burn(network: Network): ChainBurn
+    subnet_burn_history(netuid: Int!, window: String): SubnetBurnHistory!
     "One subnet's validator/neuron-set turnover (entered/exited/retention/0-100 stability) between the boundary snapshots of a 7d/30d/90d/1y/all window (default 30d), from neuron_daily. comparable is false and the churn metrics zeroed on a single-snapshot or cold store, never null. Mirrors GET /api/v1/subnets/{netuid}/turnover."
     subnet_turnover(
       netuid: Int!
@@ -3610,6 +3611,25 @@ export const SDL = /* GraphQL */ `
     median_burn_tao: Float
     subnets: [ChainBurnEntry!]!
     field_sources: JSON!
+  }
+
+  "How one subnet's registration cost has MOVED (#9402). The live fields answer what it costs; this answers whether it is getting more or less expensive. Mainnet only — the series has no network dimension."
+  type SubnetBurnHistory {
+    schema_version: Int!
+    netuid: Int!
+    window: String
+    point_count: Int!
+    current_burn_tao: Float
+    "Movement across the RETURNED window. Null when there is nothing to compare against: a single point has no change, and a change from a zero base has no percentage."
+    change_tao: Float
+    change_pct: Float
+    points: [SubnetBurnHistoryPoint!]!
+  }
+
+  "One captured price."
+  type SubnetBurnHistoryPoint {
+    observed_at: String!
+    burn_tao: Float!
   }
 
   "One subnet's registration cost. A genuine 0 is included, not dropped — it is the cheapest registration on the network."

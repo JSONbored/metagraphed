@@ -87,3 +87,32 @@ export const GetChainBurnOutputSchema = z
   })
   .passthrough();
 export type GetChainBurnOutput = z.infer<typeof GetChainBurnOutputSchema>;
+
+// #9402: one subnet's registration-cost series.
+export const GetSubnetBurnHistoryInputSchema = z
+  .object({
+    netuid: z.int().min(0).max(65535),
+    window: z.enum(["24h", "7d", "30d", "90d"]).optional(),
+  })
+  .strict();
+export type GetSubnetBurnHistoryInput = z.infer<
+  typeof GetSubnetBurnHistoryInputSchema
+>;
+
+export const GetSubnetBurnHistoryOutputSchema = z
+  .object({
+    schema_version: z.int().optional(),
+    netuid: z.int(),
+    window: z.string().nullable(),
+    point_count: z.int(),
+    current_burn_tao: z.number().nullable(),
+    change_tao: z.number().nullable(),
+    change_pct: z.number().nullable(),
+    points: z.array(
+      z.object({ observed_at: z.string(), burn_tao: z.number() }).passthrough(),
+    ),
+  })
+  .passthrough();
+export type GetSubnetBurnHistoryOutput = z.infer<
+  typeof GetSubnetBurnHistoryOutputSchema
+>;

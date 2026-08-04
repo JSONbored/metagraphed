@@ -1166,6 +1166,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-burn-history",
+      "path": "/metagraph/subnets/{netuid}/burn-history.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetBurnHistoryArtifact",
+      "status": "live",
+      "storage_tier": "git"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "chain-burn",
       "path": "/metagraph/chain/burn.json",
       "retirement": null,
@@ -2182,7 +2191,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 96,
+    "mainnet_only_route_count": 97,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -8859,6 +8868,35 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/burn-history.json",
+      "cache": "short",
+      "description": "Fetch one subnet's registration-cost series. One subnet's registration-cost series (#9402) — how SubtensorModule.Burn has moved, captured every 15 minutes into D1 from the same single-call chain read /chain/burn uses. The live routes answer 'what does it cost'; this answers 'is it getting more expensive', which is the question an operator deciding where and WHEN to register actually has. ?window=24h|7d|30d|90d (default 7d), newest first, bounded. change_tao/change_pct describe the movement across the RETURNED window and are null when there is nothing to compare against — a single point has no change, and a change from a zero base has no percentage. A subnet with no recorded prices returns an empty series, never a 404.",
+      "id": "subnet-burn-history",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/burn/history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "24h",
+              "7d",
+              "30d",
+              "90d"
+            ],
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/chain/burn.json",

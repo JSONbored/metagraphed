@@ -151,6 +151,12 @@ import { isU16Netuid, loadSubnetRecycled } from "../../src/subnet-recycled.ts";
 import { loadSubnetBurn } from "../../src/subnet-burn.ts";
 import { loadChainBurn } from "../../src/chain-burn.ts";
 import {
+  BURN_HISTORY_WINDOWS,
+  DEFAULT_BURN_HISTORY_WINDOW,
+  buildSubnetBurnHistory,
+  loadSubnetBurnHistory,
+} from "../../src/subnet-burn-history.ts";
+import {
   buildValidatorEconomics,
   buildValidatorEconomicsHistory,
   DEFAULT_VALIDATOR_ECONOMICS_HISTORY_WINDOW,
@@ -5748,6 +5754,51 @@ export async function handleSubnetBurn(
   }
 
   const data = await loadSubnetBurn(env, netuid, network);
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/burn/history (#9402): how this subnet's registration
+// cost has moved. The live routes answer "what does it cost"; this answers "is it
+// getting more expensive", which is the question an operator deciding where and WHEN
+// to register actually has. Served from the D1 series the capture cron writes.
+export async function handleSubnetBurnHistory(
+  request: Request,
+  env: Env,
+  netuid: number,
+  url: URL,
+) {
+  if (!isU16Netuid(netuid)) {
+    return errorResponse(
+      "invalid_netuid",
+      "netuid must be an integer in the u16 range 0..65535.",
+      400,
+    );
+  }
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const label = url.searchParams.get("window") ?? DEFAULT_BURN_HISTORY_WINDOW;
+  const windowDays = BURN_HISTORY_WINDOWS[label];
+  if (windowDays === undefined) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: `window must be one of ${Object.keys(BURN_HISTORY_WINDOWS).join(", ")}.`,
+    });
+  }
+  const rows = await loadSubnetBurnHistory(
+    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+      typeof loadSubnetBurnHistory
+    >[0],
+    netuid,
+    { windowDays },
+  );
+  // A cold or unwritten table yields an EMPTY series, not a 404: "we have not been
+  // recording this subnet" is a real state, and the same convention every sibling
+  // history route already follows.
+  const data = buildSubnetBurnHistory(rows, netuid, { window: label });
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },
