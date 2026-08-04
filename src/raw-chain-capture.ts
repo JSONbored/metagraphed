@@ -31,6 +31,8 @@
 // apart from the injected fetch and store, so the whole guarantee is testable
 // without a chain or a bucket.
 
+import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
+
 /** twox128("System") ++ twox128("Events") — the runtime storage key holding
  * the event list for a block. Stable across runtime upgrades (the KEY is a
  * hash of the pallet/item names; only the VALUE's encoding tracks metadata,
@@ -155,11 +157,26 @@ export function nextCaptureHeights(
   return out;
 }
 
-/** Zero-padded so lexicographic key order matches numeric block order — R2
- * listings and any later compaction then walk the chain in order for free. */
-export function rawBatchKey(first: number, last: number): string {
+/**
+ * Zero-padded so lexicographic key order matches numeric block order — R2
+ * listings and any later compaction then walk the chain in order for free.
+ *
+ * Mainnet keeps the bare `chain/raw/blocks/` prefix UNCHANGED. That is not
+ * cosmetic: the decode lane (metagraphed-infra's decode-r2 container) lists
+ * exactly that prefix, and every object already captured lives under it.
+ * Testnet gets its own prefix instead, because the key encodes only a block
+ * RANGE — testnet block 7,700,000 and mainnet block 7,700,000 would otherwise
+ * write the same object, and the second one to land would silently overwrite
+ * the first with bytes from a different chain.
+ */
+export function rawBatchKey(
+  first: number,
+  last: number,
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
+): string {
   const pad = (n: number) => String(n).padStart(12, "0");
-  return `chain/raw/blocks/${pad(first)}-${pad(last)}.ndjson`;
+  const scope = network === DEFAULT_CHAIN_NETWORK ? "" : `${network}/`;
+  return `chain/raw/${scope}blocks/${pad(first)}-${pad(last)}.ndjson`;
 }
 
 /** The minimal slice of the R2 binding this module uses — structural so tests
@@ -203,6 +220,9 @@ export async function captureTick(deps: {
   watermark: WatermarkStore;
   genesisFloor: number;
   maxPerTick: number;
+  /** Which chain these bytes came from. Decides the R2 key prefix only —
+   * everything else here is chain-agnostic, because capture never decodes. */
+  network?: ChainNetworkId;
   fetchImpl?: typeof fetch;
   now?: () => number;
 }): Promise<CaptureResult> {
@@ -267,7 +287,7 @@ export async function captureTick(deps: {
   // One object per contiguous batch, keyed by its range: a retry of the same
   // range overwrites byte-for-byte rather than appending a duplicate.
   await deps.store.put(
-    rawBatchKey(first, last),
+    rawBatchKey(first, last, deps.network),
     blocks.map((b) => JSON.stringify(b)).join("\n") + "\n",
   );
   // Only now — the bytes are durable, so the watermark may claim them.

@@ -120,6 +120,30 @@ describe("rawBatchKey", () => {
     assert.ok(rawBatchKey(9, 9) < rawBatchKey(10, 10));
     assert.ok(rawBatchKey(99, 99) < rawBatchKey(100, 100));
   });
+
+  test("mainnet keeps the bare prefix, explicitly and by default (#8700)", () => {
+    // The decode lane lists `chain/raw/blocks/` and every object captured
+    // before networks existed lives there, so this prefix is a compatibility
+    // contract, not a naming preference.
+    assert.equal(
+      rawBatchKey(9, 12, "mainnet"),
+      "chain/raw/blocks/000000000009-000000000012.ndjson",
+    );
+    assert.equal(rawBatchKey(9, 12), rawBatchKey(9, 12, "mainnet"));
+  });
+
+  test("testnet writes under its own prefix, so equal heights cannot collide", () => {
+    // The key encodes only a block RANGE. Without the prefix, testnet block
+    // 7,700,000 and mainnet block 7,700,000 are the same object, and the
+    // second write silently replaces the first with another chain's bytes.
+    assert.equal(
+      rawBatchKey(9, 12, "testnet"),
+      "chain/raw/testnet/blocks/000000000009-000000000012.ndjson",
+    );
+    assert.notEqual(rawBatchKey(9, 12, "testnet"), rawBatchKey(9, 12));
+    // Ordering still holds within a network.
+    assert.ok(rawBatchKey(9, 9, "testnet") < rawBatchKey(10, 10, "testnet"));
+  });
 });
 
 describe("fetchRawBlock", () => {

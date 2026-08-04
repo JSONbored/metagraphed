@@ -460,6 +460,13 @@
     "CHAIN_HEAD_POLL_ENABLED": "true",
     "CHAIN_HEAD_RPC_URL": "https://archive.chain.opentensor.ai",
     "CHAIN_HEAD_POLL_INTERVAL_MS": "6000",
+    // #8700: the raw-capture lane's testnet endpoint. Declared explicitly
+    // rather than left to the code default so the two chains this Worker
+    // captures are both visible here — a lane whose endpoint is only knowable
+    // by reading src/ is one nobody checks when an endpoint moves. The public
+    // testnet RPC is a full archive (state at block 1, unpruned, verified
+    // 2026-08-04), so it can serve a widened floor later without a swap.
+    "TESTNET_CHAIN_HEAD_RPC_URL": "https://test.finney.opentensor.ai:443",
     "GITHUB_OAUTH_CLIENT_ID": "Ov23liz4NzqUvC8YrKMS",
   },
   // api.metagraph.sh is the backend worker's custom domain (the canonical agent

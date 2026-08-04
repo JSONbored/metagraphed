@@ -155,6 +155,10 @@ interface Env {
   CHAIN_HEAD_POLL_ENABLED?: string;
   CHAIN_HEAD_RPC_URL?: string;
   CHAIN_HEAD_POLL_INTERVAL_MS?: string;
+  /** #8700: the raw-capture lane's testnet endpoint. Only the capture lane
+   * reads it — the head poller stays mainnet-only, because `blocks_head` has
+   * no network dimension yet. */
+  TESTNET_CHAIN_HEAD_RPC_URL?: string;
 }
 
 // Raw chain capture (src/raw-chain-capture.ts). Kill switch is opt-IN: an
