@@ -1363,6 +1363,104 @@ describe("MCP transport handling", () => {
     }
   });
 
+  // Minimal KV double for the api-key lookup cache (each suite defines its own,
+  // matching tests/tiered-rate-limit.test.ts).
+  function createFakeKv() {
+    const store = new Map<string, string>();
+    return {
+      async get(key: string, options?: { type?: string }) {
+        if (!store.has(key)) return null;
+        const raw = store.get(key)!;
+        return options?.type === "json" ? JSON.parse(raw) : raw;
+      },
+      async put(key: string, value: string) {
+        store.set(key, value);
+      },
+    };
+  }
+
+  // #9414: the cost-weighted quota is spent AFTER the body is parsed, because
+  // only then is it known which tools were asked for -- every MCP call shares
+  // the pathname `/mcp`, which prices at the `edge` catch-all. An exhausted
+  // quota must still refuse, and must say which ceiling did it.
+  test("an exhausted daily quota refuses the call after the body is priced", async () => {
+    const spends: { cost: number }[] = [];
+    const env = {
+      METAGRAPH_CONTROL: createFakeKv(),
+      API_KEY_LOOKUP_INTERNAL_TOKEN: "test-lookup-token",
+      MCP_RATE_LIMITER: {
+        async limit() {
+          return { success: true };
+        },
+      },
+      MCP_RATE_LIMITER_PAID: {
+        async limit() {
+          return { success: true };
+        },
+      },
+      MCP_RATE_LIMITER_KEYED: {
+        async limit() {
+          return { success: true };
+        },
+      },
+      DATA_API: {
+        fetch: async (request: Request) => {
+          const path = new URL(request.url).pathname;
+          if (path === "/api/v1/internal/keys/quota") {
+            spends.push(JSON.parse(await request.clone().text()));
+            return new Response(
+              JSON.stringify({
+                allowed: false,
+                used: 250000,
+                limit: 250000,
+                remaining: 0,
+                resetAt: "2026-08-05T00:00:00.000Z",
+              }),
+              { status: 200 },
+            );
+          }
+          return new Response(
+            JSON.stringify({
+              valid: true,
+              code: "VALID",
+              tier: "paid",
+              accountId: "42",
+            }),
+            { status: 200 },
+          );
+        },
+      },
+    } as unknown as Env;
+
+    const response = await handleMcpRequest(
+      new Request(MCP_URL, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer mg_aValidOpaqueUnkeyGeneratedSuffix",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name: "ask", arguments: { question: "hi" } },
+        }),
+      }),
+      env,
+      makeDeps(),
+    );
+
+    assert.equal(response.status, 429);
+    const body = (await response.json()) as Row;
+    assert.match(body.error.message, /Daily MCP quota exhausted/);
+    // Priced by the TOOL, not the transport: `ask` is the ai family (25),
+    // where `/mcp` alone would have debited the edge catch-all's 1.
+    assert.deepEqual(
+      spends.map((s) => s.cost),
+      [25],
+    );
+  });
+
   test("the MCP rate limiter is enforced before body parsing", async () => {
     let rateLimitKey;
     const request = new Request(MCP_URL, {
