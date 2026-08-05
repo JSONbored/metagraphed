@@ -22,7 +22,7 @@ export const GetSudoInputSchema = z
     block_end: z.int().min(0).optional(),
     from: z.int().min(0).optional(),
     to: z.int().min(0).optional(),
-    // #9460: both feeds say "same filters as list_extrinsics" and were modelled on it,
+    // Both feeds say "same filters as list_extrinsics" and were modelled on it,
     // but dropped its `.max(100)` — declaring unbounded while the tier they forward to
     // caps at 100. A copy-paste omission, not a wider ceiling.
     limit: limitSchema(EXTRINSICS_LIMIT_MAX).optional(),
@@ -74,7 +74,7 @@ export const GetGovernanceConfigChangesInputSchema = z
     block_end: z.int().min(0).optional(),
     from: z.int().min(0).optional(),
     to: z.int().min(0).optional(),
-    // #9460: both feeds say "same filters as list_extrinsics" and were modelled on it,
+    // Both feeds say "same filters as list_extrinsics" and were modelled on it,
     // but dropped its `.max(100)` — declaring unbounded while the tier they forward to
     // caps at 100. A copy-paste omission, not a wider ceiling.
     limit: limitSchema(EXTRINSICS_LIMIT_MAX).optional(),

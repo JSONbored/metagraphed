@@ -126,14 +126,14 @@ describe("buildSubnetValidatorEconomicsPayload", () => {
     assert.match(sql[0], /FROM neurons WHERE netuid = \?/);
     assert.match(sql[0], /stake_tao/);
     assert.match(sql[0], /take/);
-    // The owner exception (#9460) needs the hotkey to find the owner's UID; without it
+    // The owner exception needs the hotkey to find the owner's UID; without it
     // selected, every owner-below-threshold subnet stays permanently degraded.
     assert.match(sql[0], /hotkey/);
     // A SELECT * here would drag ~20 unused columns per UID across 256 rows.
     assert.doesNotMatch(sql[0], /SELECT \*/);
   });
 
-  // #9460, end to end: the owner hotkey lives on the economics artifact and the UID it
+  // end to end: the owner hotkey lives on the economics artifact and the UID it
   // names lives in D1, so this is the one place the two tiers have to meet.
   test("threads the owner hotkey from the economics tier into the permit model", async () => {
     const neurons = [
@@ -170,7 +170,7 @@ describe("buildSubnetValidatorEconomicsPayload", () => {
   });
 
   test("publishes the model-free fields even while the floor is withheld", async () => {
-    // #9460: cap_binding, uids_above_threshold, validator_slots_open and
+    // cap_binding, uids_above_threshold, validator_slots_open and
     // root_tao_to_clear_threshold are counted off the live threshold and the observed
     // permits — none of them needs the floor model that has drifted.
     const { env } = envWith({
@@ -536,7 +536,7 @@ describe("buildValidatorEconomicsRankingPayload", () => {
     );
   });
 
-  // #9460, on the CROSS-SUBNET route: the owner exception has to reach here too, or
+  // on the CROSS-SUBNET route: the owner exception has to reach here too, or
   // every owner-below-threshold subnet lands in `excluded` and drops out of the ranking
   // entirely — which is how 13 subnets were missing from it.
   test("applies the owner exception per subnet from the economics rows", async () => {
@@ -874,7 +874,7 @@ describe("buildSubnetValidatorEconomicsHistoryPayload", () => {
     );
     assert.match(sql[0], /LIMIT \?/);
     // The owner's unconditional permit has to be identifiable to stay out of the
-    // observed floor (#9460).
+    // observed floor.
     assert.match(sql[0], /hotkey/);
     assert.equal(binds[0][0], 7);
     // The cutoff is a date string, not a timestamp — snapshot_date is TEXT.
@@ -882,7 +882,7 @@ describe("buildSubnetValidatorEconomicsHistoryPayload", () => {
     assert.equal(typeof binds[0][2], "number");
   });
 
-  // #9460: the series was not self-contained. `permit_floor_alpha` is the observed
+  // the series was not self-contained. `permit_floor_alpha` is the observed
   // floor regardless of cap state, so reading it needs the cap — which lived only on
   // the current record, making the join wrong for any subnet whose cap had moved.
   test("stamps the cap and the full-set flag onto every point", async () => {

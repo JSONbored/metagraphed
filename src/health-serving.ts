@@ -435,7 +435,7 @@ export function overlayRpcPoolEligibility(
 
 /**
  * One serve-time lane: a tier that moves on its OWN schedule, not the publish's, so
- * the built artifact can never carry its timestamp (#9460).
+ * the built artifact can never carry its timestamp.
  */
 function liveFreshnessSource({
   id,
@@ -486,7 +486,7 @@ function liveFreshnessSource({
  *
  * Three lanes here are NOT the publish's: the 15-minute surface prober, the ~3-hourly
  * economics refresh, and the per-request live chain reads. The built artifact stamps
- * only what the publish itself captured, so before #9460 this route reported a
+ * only what the publish itself captured, so before this change the route reported a
  * `native_data_as_of` from the last publish while `/economics` served a snapshot hours
  * newer and `/network/parameters` served one seconds old — and neither appeared here at
  * all. A freshness route that omits the freshest lanes cannot answer the one question it

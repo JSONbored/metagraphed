@@ -2273,7 +2273,7 @@ describe("coverage-depth CSV export", () => {
 // run, so limit=50 yields exactly three pages at cursors 0 / 50 / 100.
 describe("pagination Link header", () => {
   // Only the PAGINATION relations. Every API response also carries a `service-desc`
-  // pointer to the OpenAPI document (#9460), which is not part of the walk and would
+  // pointer to the OpenAPI document, which is not part of the walk and would
   // otherwise show up in every relation-set assertion below.
   const PAGINATION_RELS = new Set(["first", "prev", "next", "last"]);
   const parseLink = (value: Row) => {

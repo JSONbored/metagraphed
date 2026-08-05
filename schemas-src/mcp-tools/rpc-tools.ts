@@ -151,7 +151,7 @@ export type GetBestRpcEndpointOutput = z.infer<
 
 export const CallRpcInputSchema = z
   .object({
-    // #9460: a hard allowlist, so it ships as one. The description spelled all thirteen
+    // A hard allowlist, so it ships as one. The description spelled all thirteen
     // methods out in prose while the schema said "any string", which meant an agent had
     // to read English to avoid a guaranteed rejection — and `call_subnet_surface.method`
     // right beside it already declared its enum. Read from the same sets the proxy

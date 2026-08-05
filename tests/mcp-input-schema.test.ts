@@ -7,7 +7,7 @@ import {
 import { listToolDefinitions } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
 
-// #9460. `z.int()` carries JavaScript's safe-integer range as a real constraint, so
+// `z.int()` carries JavaScript's safe-integer range as a real constraint, so
 // every integer parameter published `maximum: 9007199254740991` whether or not anyone
 // chose a bound — 198 of 287 of them. The cost was not the number itself but that it
 // made a DELIBERATE `.max()` indistinguishable from the default, so "bounded" and

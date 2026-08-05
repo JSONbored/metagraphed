@@ -8,7 +8,7 @@ import { limitSchema, offsetSchema } from "./shared.ts";
 /**
  * Page-size ceiling for the extrinsics feeds and the two fixed-call_module feeds
  * modelled on them (get_sudo, get_governance_config_changes). Exported so those two
- * read it rather than restating it — they previously declared no maximum at all (#9460).
+ * read it rather than restating it — they previously declared no maximum at all.
  */
 export const EXTRINSICS_LIMIT_MAX = 100;
 import {

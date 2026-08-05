@@ -63,7 +63,7 @@ const GLOBAL_VALIDATOR_SORTS = [
 export const ListGlobalValidatorsInputSchema = z
   .object({
     sort: z.enum(GLOBAL_VALIDATOR_SORTS).optional(),
-    // #9460: was a hardcoded 100 while this tool's own description — interpolated from
+    // Was a hardcoded 100 while this tool's own description — interpolated from
     // GLOBAL_VALIDATOR_LIMIT_MAX — said "max 2000", and the handler clamped to 2000.
     // The tool advertised 2000 in prose, 100 in schema, and served 2000. Now the
     // constant is the only declaration, as src/route-limits.ts intended.

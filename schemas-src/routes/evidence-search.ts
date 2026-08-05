@@ -37,7 +37,7 @@ const FreshnessSourceSchema = z
       "health-probe",
       "native-data",
       "schema-snapshot",
-      // Serve-time lanes (#9460): both move on their own schedule rather than the
+      // Serve-time lanes: both move on their own schedule rather than the
       // publish's, so they exist only in the live overlay, never in the built artifact.
       "economics",
       "live-rpc",
@@ -45,7 +45,7 @@ const FreshnessSourceSchema = z
     notes: z.string().optional(),
     path: z.string(),
     required_for_publish: z.boolean(),
-    // Not an integer since #9460: the live-RPC lane's window is minutes, not hours.
+    // Not an integer since the live-RPC lane's window is minutes, not hours.
     stale_after_hours: z.number().min(0),
     stale_behavior: z.enum(["block", "warn"]),
     status: z.enum(["captured", "current", "degraded", "missing", "stale"]),
@@ -71,7 +71,7 @@ export const FreshnessArtifactSchema = ArtifactBaseSchema.extend({
       // Live-injected by mergeFreshness(), not in the hand-edited schema --
       // see header.
       operational_probe_as_of: z.string().nullable().optional(),
-      // Also live-injected (#9460): the two lanes that move independently of the
+      // Also live-injected: the two lanes that move independently of the
       // publish. Optional for the same reason the line above is — the built artifact
       // carries neither, so only the served response has them.
       economics_as_of: z.string().nullable().optional(),

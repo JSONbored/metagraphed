@@ -1,12 +1,12 @@
-// Normalisation applied to every MCP tool input schema on the way out (#9460).
+// Normalisation applied to every MCP tool input schema on the way out.
 //
 // ## The problem this exists to solve
 //
 // `z.int()` in Zod 4 carries JavaScript's safe-integer range as real constraints, and
 // `z.toJSONSchema` faithfully emits them:
 //
-//   z.int()            -> {"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991}
-//   z.int().min(0)     -> {"type":"integer","minimum":0,"maximum":9007199254740991}
+// z.int()            -> {"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991}
+// z.int().min(0)     -> {"type":"integer","minimum":0,"maximum":9007199254740991}
 //
 // Nobody wrote those numbers and none of them is a real bound. 198 of 287 integer
 // parameters carried one, which made the schema unable to express the one distinction a

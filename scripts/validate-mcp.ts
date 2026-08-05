@@ -334,7 +334,7 @@ for (const tool of tools) {
   );
 }
 
-// --- Input-schema honesty (#9460) ------------------------------------------
+// --- Input-schema honesty ------------------------------------------
 //
 // The published input schema is the WHOLE contract an MCP client sees: dispatch
 // validates that arguments are an object and nothing else — no types, no enums, no

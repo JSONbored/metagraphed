@@ -12,7 +12,7 @@ import { z } from "zod";
 import { NeuronSchema } from "../routes/subnet-metagraph.ts";
 import { MAX_OFFSET } from "../../workers/request-params.ts";
 
-// --- Bounded input primitives (#9460) --------------------------------------
+// --- Bounded input primitives --------------------------------------
 //
 // Every tool author wrote `z.int().min(0)` inline, so no parameter declared a real
 // upper bound and all of them inherited `z.int()`'s safe-integer sentinel — see

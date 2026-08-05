@@ -10,7 +10,7 @@ import {
 } from "../src/contracts.ts";
 
 /**
- * The `service-desc` link every API response carries (#9460).
+ * The `service-desc` link every API response carries.
  *
  * Points at the RAW artifact, never `/api/v1/openapi.json`: that route wraps the spec
  * in the standard success envelope, so it has no top-level `openapi` key and every
@@ -129,7 +129,7 @@ export async function envelopeResponse(
       headers.set(key, value);
     }
   }
-  // RFC 8288 pointer to the OpenAPI document, on EVERY API response (#9460).
+  // RFC 8288 pointer to the OpenAPI document, on EVERY API response.
   //
   // It was emitted only on `/`, so a consumer who started anywhere under /api/v1 — the
   // normal case — got no pointer to the spec at all. An external integrator reported

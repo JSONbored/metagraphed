@@ -44,7 +44,7 @@ export const GetEconomicsInputSchema = z
     q: z.string().optional(),
     sort: z.enum(ECONOMICS_SORT_FIELDS).optional(),
     order: z.enum(["asc", "desc"]).optional(),
-    // #9460: `sort` and `order` were enums and this was a bare string with no stated
+    // `sort` and `order` were enums while this was a bare string with no stated
     // format anywhere — comma-separated? a JSON array? — so the one parameter an agent
     // could not guess was the only one left undocumented.
     fields: fieldsSchema().optional(),

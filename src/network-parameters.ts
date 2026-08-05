@@ -16,15 +16,15 @@
 // in Node's built-in crypto. Verified live against finney (bittensor 10.5.0,
 // substrate.create_storage_key("SubtensorModule", <item>)) and via raw
 // state_getStorage RPC calls, 2026-07-17:
-//   TaoWeight raw result 0x7a14ae47e17a142e -> a U64F64 fixed-point ratio
-//     (bits/2**64 = 0.18004..., matching live TaoWeight ~0.18 at the time
-//     the underlying issue was filed -- this is governance-adjustable and
-//     will drift, the fixed-point DECODING is what's verified, not the
-//     specific value).
-//   StakeThreshold raw result 0x0010a5d4e8000000 -> a plain u64 rao amount
-//     (1e12 rao = 1000 TAO exactly).
-//   PendingChildKeyCooldown raw result 0x201c000000000000 -> a plain u64
-//     block count (7200, no TAO conversion).
+// TaoWeight raw result 0x7a14ae47e17a142e -> a U64F64 fixed-point ratio
+// (bits/2**64 = 0.18004..., matching live TaoWeight ~0.18 at the time
+// the underlying issue was filed -- this is governance-adjustable and
+// will drift, the fixed-point DECODING is what's verified, not the
+// specific value).
+// StakeThreshold raw result 0x0010a5d4e8000000 -> a plain u64 rao amount
+// (1e12 rao = 1000 TAO exactly).
+// PendingChildKeyCooldown raw result 0x201c000000000000 -> a plain u64
+// block count (7200, no TAO conversion).
 
 import { blockEmissionForIssuance } from "./block-emission.ts";
 import type { FieldSources } from "./field-provenance.ts";
@@ -268,18 +268,18 @@ async function fetchStorageU128(
  * more than any other:
  *
  * - `block_emission_tao` / `block_emission_halvings` are derived from
- *   `TotalIssuance`, NEVER read from the `BlockEmission` storage item, which
- *   has been stale at 1.0 TAO since the first halving (#8747). The item exists
- *   and would look like the obvious source; publishing `storage: null` says
- *   plainly that we did not use it.
+ * `TotalIssuance`, NEVER read from the `BlockEmission` storage item, which
+ * has been stale at 1.0 TAO since the first halving (#8747). The item exists
+ * and would look like the obvious source; publishing `storage: null` says
+ * plainly that we did not use it.
  * - `emission_gate_exponent_effective` is `DEFAULT_EMISSION_GATE_EXPONENT`
- *   whenever the storage item is unset, which is its current state on finney.
- *   Without this map a caller sees `3` and has no way to learn it came from our
- *   source tree rather than the chain — the `null` beside it in
- *   `emission_gate_exponent` reads as missing data, not as the tell. It stays
- *   reconstructed even when the item IS set and the two agree: which one it is
- *   depends on chain state the caller cannot see, and a field whose kind flips
- *   per response is not a contract.
+ * whenever the storage item is unset, which is its current state on finney.
+ * Without this map a caller sees `3` and has no way to learn it came from our
+ * source tree rather than the chain — the `null` beside it in
+ * `emission_gate_exponent` reads as missing data, not as the tell. It stays
+ * reconstructed even when the item IS set and the two agree: which one it is
+ * depends on chain state the caller cannot see, and a field whose kind flips
+ * per response is not a contract.
  *
  * Everything else is one read, decoded. `stake_threshold_tao` divided by 1e9
  * and `tao_weight` decoded from U64F64 are still that single read.
@@ -350,7 +350,7 @@ export interface NetworkParameters extends NetworkParametersSnapshot {
 }
 
 /**
- * The cached snapshot ONLY — never a live RPC read (#9460).
+ * The cached snapshot ONLY — never a live RPC read.
  *
  * `/freshness` reports how current the live-RPC lane is, and it must not become a
  * reason for that lane to be queried: a freshness probe that triggers the work it is

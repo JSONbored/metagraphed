@@ -3422,7 +3422,7 @@ const VALIDATOR_ECONOMICS_FIELD_SOURCES = {
 // The per-UID columns the derivation needs, and no more. `stake_tao` is the metagraph's
 // `total_stake` — it ALREADY contains the root leg at tao_weight, so it is passed
 // through untouched; recombining it from legs is the #9331 bug.
-// `hotkey` is here only so the owner-exception path (#9460) can find the owner's UID.
+// `hotkey` is here only so the owner-exception path can find the owner's UID.
 const VALIDATOR_ECONOMICS_NEURON_COLUMNS =
   "uid, hotkey, stake_tao, validator_permit, dividends, active, take";
 
@@ -3537,7 +3537,7 @@ export async function buildSubnetValidatorEconomicsPayload(
       hyperRow?.min_childkey_take_ratio != null
         ? Number(hyperRow.min_childkey_take_ratio)
         : null,
-    // #9460: the economics row is the only tier here that carries subnet ownership.
+    // the economics row is the only tier here that carries subnet ownership.
     ownerHotkey:
       economics?.owner_hotkey != null ? String(economics.owner_hotkey) : null,
   });
@@ -3665,7 +3665,7 @@ const VALIDATOR_ECONOMICS_HISTORY_FIELD_SOURCES = {
     kind: "reconstructed",
     storage: "SubtensorModule.SubnetTaoInEmission",
   },
-  // #9460. The cap is read live and stamped onto every point, so unlike its neighbours
+  // The cap is read live and stamped onto every point, so unlike its neighbours
   // it is NOT observed off that day's snapshot — a subnet whose cap moved inside the
   // window carries today's value on older points. That is still strictly better than
   // the join it replaces (the consumer had no cap at all), and labelling it `measured`
@@ -3703,7 +3703,7 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
         await db
           .prepare(
             // `hotkey` is selected only so the owner's unconditional permit can be kept
-            // out of the observed floor (#9460).
+            // out of the observed floor.
             "SELECT snapshot_date, hotkey, stake_tao, validator_permit, dividends, active " +
               "FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? " +
               "ORDER BY snapshot_date DESC LIMIT ?",
@@ -3726,7 +3726,7 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
     : [];
 
   // The cap travels on every point so the observed floor is interpretable without a
-  // join, and the owner is what keeps its unconditional permit out of that floor (#9460).
+  // join, and the owner is what keeps its unconditional permit out of that floor.
   //
   // The cap is resolved per day from the hyperparameter CHANGE-LOG, not stamped from the
   // live value: applying today's cap to an old snapshot manufactures a transition that
@@ -3910,7 +3910,7 @@ export async function buildValidatorEconomicsRankingPayload(
           economics?.tao_in_emission_tao != null
             ? Number(economics.tao_in_emission_tao)
             : null,
-        // #9460: same owner exception the per-subnet route applies — without it this
+        // same owner exception the per-subnet route applies — without it this
         // route drops every owner-below-threshold subnet into `excluded`.
         ownerHotkey:
           economics?.owner_hotkey != null

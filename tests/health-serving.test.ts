@@ -722,7 +722,7 @@ describe("mergeFreshness", () => {
     assert.equal(out.summary.health_probe_as_of, "2026-06-11T00:00:00.000Z");
   });
 
-  // #9460. The publish stamps only what IT captured, so the two freshest tiers —
+  // The publish stamps only what IT captured, so the two freshest tiers —
   // economics (~3h, its own schedule) and the live chain reads (per request) — never
   // appeared here at all. A consumer gating on this route would have rejected data
   // hours newer than the number it was reading.

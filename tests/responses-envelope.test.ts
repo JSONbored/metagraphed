@@ -37,7 +37,7 @@ test("envelopeResponse applies extra headers and skips null values", async () =>
     "x-skip-me": null,
   });
   // The caller's pagination link survives; the service-desc pointer is APPENDED to
-  // it rather than replacing it (#9460) — RFC 8288 carries multiple values, and
+  // it rather than replacing it — RFC 8288 carries multiple values, and
   // trading pagination away for discoverability would be a worse bargain.
   assert.match(
     res.headers.get("link") ?? "",
@@ -158,7 +158,7 @@ test("envelopeResponse: a match returns a bodiless 304, a miss returns the body"
   assert.equal(((await stale.json()) as Row).data.hello, "world");
 });
 
-// #9460. The OpenAPI spec is published and complete, but the `service-desc` Link was
+// The OpenAPI spec is published and complete, but the `service-desc` Link was
 // emitted only on `/`, and the api index advertised `/api/v1/openapi.json` — which
 // serves the spec INSIDE the success envelope, so it carries no top-level `openapi`
 // key and every generator pointed at it fails. An external integrator hand-probed

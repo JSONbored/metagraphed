@@ -1617,9 +1617,9 @@ const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
 // The MCP server's own SemVer — the tool surface is a public contract agents
 // depend on, so it needs a version signal distinct from CONTRACT_VERSION (the
 // date-based REST/data-contract version). Bump policy (#393):
-//   - add a tool / additive field        → MINOR
-//   - change or remove a tool's I/O       → MAJOR
-//   - behavioral-only fix (no I/O change) → PATCH
+// - add a tool / additive field        → MINOR
+// - change or remove a tool's I/O       → MAJOR
+// - behavioral-only fix (no I/O change) → PATCH
 // Reported in serverInfo.version (initialize) + the generated server-card.json.
 export const MCP_SERVER_VERSION = "1.78.13";
 // Price-impact thresholds for get_stake_action_preview's plan-shaped
@@ -2317,7 +2317,7 @@ async function findCataloguedSurface(
  * Those are both correct. What was wrong is what we said when the two differ:
  * every non-callable id came back as
  *
- *   not_found: No catalogued surface with id, key, or deprecated id "…"
+ * not_found: No catalogued surface with id, key, or deprecated id "…"
  *
  * which is false. The surface IS catalogued -- the agent almost certainly got
  * that id from `list_surfaces` or `get_subnet_surfaces` moments earlier -- it
@@ -3844,10 +3844,10 @@ const LIST_SUBNETS_ENUM_MEMBERS: Record<string, readonly string[]> = {
  * 231 already reject by hand, and these four (the two below plus their `not_`
  * counterparts) silently degraded instead:
  *
- *   coverage_level / curation_level      -> matched no row -> HTTP 200 with
- *                                           subnets: [], total: 0
- *   not_coverage_level / not_curation_level -> excluded no row -> the full
- *                                           list, silently UNFILTERED
+ * coverage_level / curation_level      -> matched no row -> HTTP 200 with
+ * subnets: [], total: 0
+ * not_coverage_level / not_curation_level -> excluded no row -> the full
+ * list, silently UNFILTERED
  *
  * The `not_` pair is the closer analogue of #8804: the agent asked to exclude
  * something, got no error, and got back exactly what it excluded.
@@ -4846,7 +4846,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       args: z.infer<typeof ListValidatorEconomicsInputSchema>,
       ctx: McpCtx,
     ) {
-      // #9460: an unsupported sort is rejected, not silently answered with the
+      // an unsupported sort is rejected, not silently answered with the
       // default ranking. REST returns 400 for the same input; this is that parity.
       if (
         args?.sort != null &&
@@ -13215,7 +13215,7 @@ export function listToolDefinitions() {
       name: tool.name,
       title: tool.title,
       description: `${tool.description} ${UNTRUSTED_DATA_NOTE}`,
-      // #9460: drop Zod's implicit safe-integer bounds. They are not constraints
+      // drop Zod's implicit safe-integer bounds. They are not constraints
       // anyone chose, and while they were emitted a real `maximum` could not be told
       // apart from `z.int()`'s default — see src/mcp-input-schema.ts.
       inputSchema: stripSentinelIntegerBounds(tool.inputSchema),
@@ -14416,13 +14416,13 @@ function rpcError(id: unknown, code: number, message: string) {
  * Precedence, strongest first:
  *
  * 1. **`github:<login>`** — a GitHub identity the OAuth provider itself already
- *    validated (metagraphed#7153). A real, durable person.
+ * validated (metagraphed#7153). A real, durable person.
  * 2. **`mcp-session:<id>`** — the client-generated Streamable HTTP session id.
- *    Not a person, and deliberately not presented as one: it is a stable handle
- *    for one client's run, which is the granularity that makes "how many
- *    distinct callers" answerable at all.
+ * Not a person, and deliberately not presented as one: it is a stable handle
+ * for one client's run, which is the granularity that makes "how many
+ * distinct callers" answerable at all.
  * 3. **undefined** — no session either. `recordX`'s own anonymous-fallback
- *    constant is the single place that decision lives, so this never invents one.
+ * constant is the single place that decision lives, so this never invents one.
  *
  * Why this is worth doing and why it stops here: every anonymous caller
  * previously collapsed onto that one fallback constant, so 13,193 of 13,365

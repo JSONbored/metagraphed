@@ -240,7 +240,7 @@ describe("public contract registry", () => {
     assert.equal(contracts.primary_domain, "api.metagraph.sh");
     assert.equal(contracts.openapi_url, "/metagraph/openapi.json");
     assert.equal(contracts.type_definitions_url, "/metagraph/types.d.ts");
-    // #9460: the RAW artifact, matching contracts.openapi_url above. This asserted
+    // the RAW artifact, matching contracts.openapi_url above. This asserted
     // "/api/v1/openapi.json" — the enveloped route, which is not a valid OpenAPI
     // document — so the check that should have caught the broken pointer was pinning it.
     assert.equal(apiIndex.openapi_url, "/metagraph/openapi.json");

@@ -62,7 +62,7 @@ export const SubnetValidatorEconomicsArtifactSchema = z
     permit_floor_units: z.number().nullable(),
     permit_floor_cost_tao: z.number().nullable(),
     permit_entry_cost_tao: z.number().nullable(),
-    // The EARNING floors exclude the subnet owner (#9460): its permit is unconditional,
+    // The EARNING floors exclude the subnet owner: its permit is unconditional,
     // so an owner earning on ~0 stake reported a floor of 0 -- "free to earn here" -- and
     // a 0-alpha buy cannot be priced, which then dropped the subnet out of the
     // cross-subnet ranking as unpriceable. Null means no NON-OWNER has earned here,
@@ -190,7 +190,7 @@ export type ValidatorEconomicsRankingQuery = z.infer<
 // The cap WAS omitted here, because `subnet_snapshots` carries no historical
 // `max_validators` and applying today's cap to an old snapshot would manufacture a
 // transition that never happened. That reasoning was right about the hazard and wrong
-// about the remedy (#9460): `permit_floor_alpha` is the observed floor REGARDLESS of cap
+// about the remedy: `permit_floor_alpha` is the observed floor REGARDLESS of cap
 // state, so without a cap the series cannot be read at all, and every consumer joined
 // today's cap off the current record — committing the same error, silently, and getting
 // it wrong for any subnet whose cap moved inside the window.

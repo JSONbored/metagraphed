@@ -586,7 +586,7 @@ describe("GET /api/v1/network/parameters via the Worker", () => {
   });
 });
 
-// #9460. /freshness reports how current the live-RPC lane is, and reads the cached
+// /freshness reports how current the live-RPC lane is, and reads the cached
 // snapshot ONLY — never falling through to chain RPC. A freshness probe that triggered
 // the work it measures would refresh `queried_at` on every call and always report
 // "current": a lane that cannot go stale, and therefore cannot be gated on.

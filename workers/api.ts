@@ -3703,7 +3703,7 @@ export async function handleRequest(
     // capture through waitUntil instead of stranding it on isolate exit.
     return handleMcpRequest(request, env, {
       readArtifact,
-      // #9460: `economics:current` reads go through the SAME memo the REST routes use
+      // `economics:current` reads go through the SAME memo the REST routes use
       // (readEconomicsCurrentKv), not a second, independently-timed read of the same
       // key. Two paths reading one blob on two schedules is how an agent ends up
       // holding two different snapshots of one resource with no way to tell which is
@@ -7739,7 +7739,7 @@ async function liveHealthOverlay(
     }
     case "freshness": {
       // The economics tier and the live-RPC tier both move independently of the
-      // publish, so their timestamps exist only at serve time (#9460). Both reads are
+      // publish, so their timestamps exist only at serve time. Both reads are
       // the SAME ones the data routes make — the memoized economics blob and the
       // cached parameters snapshot — so `/freshness` can never report an `as_of` that
       // disagrees with what `/economics` or `/network/parameters` just returned.

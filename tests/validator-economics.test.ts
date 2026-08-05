@@ -164,7 +164,7 @@ describe("predictPermits", () => {
     assert.equal(predictPermits([n(0), n(1)], 2, 0).size, 0);
   });
 
-  // #9460. Shaped like SN5 on 2026-08-05: the owner holds a permit at EXACTLY zero
+  // Shaped like SN5 on 2026-08-05: the owner holds a permit at EXACTLY zero
   // stake, which the top-k-by-stake rule can never reproduce on its own.
   test("grants the subnet owner a permit below the threshold", () => {
     const rows = [
@@ -216,7 +216,7 @@ describe("predictPermits", () => {
   });
 });
 
-// #9460: the owner exception, measured. On 2026-08-05 thirteen subnets sat below the
+// the owner exception, measured. On 2026-08-05 thirteen subnets sat below the
 // publishable floor; 9 of 9 remaining residuals were the subnet owner and
 // over-prediction was 0 on every one of them. Modelling the owner takes all 13 to 1.0
 // and moves no other subnet — verified against all 128 live.
@@ -335,7 +335,7 @@ describe("capBinding and permitFloorUnits", () => {
     assert.equal(permitFloorUnits(rows, 2, 1000), 1000);
   });
 
-  // #9460. The owner's permit is unconditional but still one of `maxValidators`, so it
+  // The owner's permit is unconditional but still one of `maxValidators`, so it
   // shrinks the field a non-owner competes for. No live subnet has a binding cap today
   // (verified across all 128 on 2026-08-05, where this changes nothing), but where one
   // does, ignoring the owner's seat would report a floor one rank too low.
@@ -380,7 +380,7 @@ describe("capBinding and permitFloorUnits", () => {
 });
 
 describe("earningFloorUnits and setComposition", () => {
-  // #9460. The owner earns on an unconditional permit, so an owner sitting at ~0 stake
+  // The owner earns on an unconditional permit, so an owner sitting at ~0 stake
   // reported an earning floor of 0 — "free to earn here". Worse downstream: a 0-alpha
   // buy cannot be priced against the pool, so earning_floor_cost_tao came back null and
   // the cross-subnet ranking EXCLUDED the subnet as unpriceable. Both were happening.
@@ -539,7 +539,7 @@ describe("buildValidatorEconomics", () => {
     assert.equal(out.modelAgreement?.publishable, false);
   });
 
-  // #9460: which fields the drifted path is allowed to withhold. The floor depends on
+  // which fields the drifted path is allowed to withhold. The floor depends on
   // the model and stays null; these four are counted off the live threshold and the
   // observed permits, so withholding them only forced consumers to guess — and the
   // guess is asymmetric, since assuming an open cap on a full subnet under-reports the
@@ -845,7 +845,7 @@ function row(
 }
 
 describe("rankValidatorEconomics — an unsupported sort", () => {
-  // #9460. An unsupported sort silently became the default ranking, which was then
+  // An unsupported sort silently became the default ranking, which was then
   // echoed back as `sort`. Asking for `tao_inflow_per_day` and mistyping it returned a
   // COST-ranked list, labelled honestly, with no error — a plausible answer to a
   // question nobody asked. REST already returned 400 and GraphQL BAD_USER_INPUT; only
@@ -951,7 +951,7 @@ describe("rankValidatorEconomics", () => {
 
   // Was: "falls back to the default sort rather than erroring on an unknown one",
   // reasoning that the handler rejects a bad sort first so this is only a belt to that
-  // braces. The premise was wrong (#9460) — the MCP tool reached here with no
+  // braces. The premise was wrong — the MCP tool reached here with no
   // validation at all, and the fallback turned a typo into a differently-ranked list
   // presented as an answer. A belt that silently changes the question is worse than no
   // belt; the rejection now lives here, where every surface passes through.
@@ -1073,7 +1073,7 @@ describe("groupNeuronsByNetuid", () => {
 
   // The rebuild names every field explicitly, so a new one is dropped unless it is
   // added there too — which would leave the owner exception working on the per-subnet
-  // route and silently disabled on the cross-subnet ranking (#9460).
+  // route and silently disabled on the cross-subnet ranking.
   test("carries the hotkey through so the owner exception survives grouping", () => {
     const grouped = groupNeuronsByNetuid([
       { netuid: 5, ...n(0, { hotkey: "5OWNER" }) },
@@ -1117,7 +1117,7 @@ describe("buildValidatorEconomicsHistory", () => {
     assert.equal(points[1].validators_permitted, 2);
   });
 
-  // #9460. `permit_floor_alpha` is the observed floor regardless of cap state, so a
+  // `permit_floor_alpha` is the observed floor regardless of cap state, so a
   // consumer has to test the cap per day to use it — and the cap was not in the point.
   // Joining today's cap from the current record is silently wrong for any subnet whose
   // cap moved inside the window.

@@ -4,7 +4,7 @@ import { handleRequest } from "../workers/api.ts";
 import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.ts";
 import type { Row } from "./row-type.ts";
 
-// #9460. REST and MCP answer the same question about the same resource, and an
+// REST and MCP answer the same question about the same resource, and an
 // external consumer found them holding two different snapshots of it — economics
 // three hours and ~900 blocks apart between `GET /api/v1/economics` and the MCP
 // `get_economics` tool.

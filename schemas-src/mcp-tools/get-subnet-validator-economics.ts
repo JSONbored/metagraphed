@@ -37,7 +37,7 @@ export type GetSubnetValidatorEconomicsOutput = z.infer<
 // validating on" into a single agent call.
 export const ListValidatorEconomicsInputSchema = z
   .object({
-    // #9460: an enum, not a free string. The description already named all five keys,
+    // An enum, not a free string. The description already named all five keys,
     // and REST rejected anything else with a 400 — but MCP took any string and SILENTLY
     // ranked by the default, echoing that default back as `sort`. A model that guessed
     // got a plausible list answering a question nobody asked. Read from the same
@@ -64,7 +64,7 @@ export type ListValidatorEconomicsOutput = z.infer<
 export const GetSubnetValidatorEconomicsHistoryInputSchema = z
   .object({
     netuid: netuidSchema(),
-    // #9460: the one window parameter of 55 that was not an enum. Its sibling
+    // The one window parameter of 55 that was not an enum. Its sibling
     // get_subnet_burn_history already declared one, so a model reading the two
     // together had no way to know this was the same kind of closed set.
     window: z
