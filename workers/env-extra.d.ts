@@ -112,6 +112,7 @@ interface Env {
    * any high-entropy random string works, and until both sides hold it the
    * poller logs "job will not run" rather than failing quietly. */
   HOTKEY_ALPHA_SYNC_SECRET?: string;
+  POLLER_LANE_HEALTH_SYNC_SECRET?: string;
   METAGRAPH_ALLOW_R2_STATIC_FALLBACK?: string;
   METAGRAPH_DISABLE_REQUEST_LOGS?: string;
   METAGRAPH_HEALTH_MAX_AGE_HOURS?: string;
