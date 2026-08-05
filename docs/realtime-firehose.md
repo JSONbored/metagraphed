@@ -3,13 +3,20 @@
 > **Partly historical (2026-08-05).** The ingest half of this document — the Postgres
 > `AFTER INSERT` trigger, the `chain_firehose_outbox` table, and the box-side relay that
 > drained it — was retired with Postgres and the box (#9426). The Durable Object hub, the
-> SSE/GraphQL/MCP fan-out and the rate-limiting design below are all still live: the row
-> _source_ changed, and the hub is now fed by whatever POSTs
-> `/api/v1/internal/chain-firehose-ingest`.
+> SSE/GraphQL/MCP fan-out and the rate-limiting design below are all still live.
 >
-> **What actually arrives today is `blocks` and nothing else** — measured on an unfiltered
-> subscription, 2026-08-05. `extrinsics`, `chain_events` and `account_events` are dark; see
-> #9583 before building on them.
+> **The hub now polls the chain head itself** (#204, `src/head-poller.ts`): an alarm in the
+> Durable Object reads `CHAIN_HEAD_RPC_URL` every `CHAIN_HEAD_POLL_INTERVAL_MS` (default 6s),
+> broadcasts each new block, and writes it to D1's `blocks_head`. The main Worker's
+> 15-minute cron re-arms that alarm as a self-healing bootstrap. Nothing POSTs
+> `/api/v1/internal/chain-firehose-ingest` in production any more, though the endpoint
+> remains for direct testing.
+>
+> **That means `blocks` is the only topic that emits**, by design: `extrinsics`,
+> `chain_events` and `account_events` need SCALE decoding against runtime metadata, which is
+> the Containers indexer's job (#209) — a Worker faking them from undecoded bytes would
+> serve wrong data. Confirmed by an unfiltered subscription on 2026-08-05: five blocks in
+> 60s, nothing else. Don't build on the other three here (#9583).
 
 The `chain_firehose_outbox` table was a compact, best-effort stream source for
 every row landing in `blocks`/`extrinsics`/`chain_events`/`account_events`
@@ -21,14 +28,21 @@ retired `metagraphed-streamer`'s exact failure mode, documented in ADR 0014).
 ## How it works
 
 ```
-TODAY
+TODAY (#204)
 
-  the producer → POST /api/v1/internal/chain-firehose-ingest → Cloudflare Durable Object (#4982, live)
-                                                                          │
-                                              SSE / WS (#4982, live) / GraphQL subs / MCP (#4983, live)
+  DO alarm (every CHAIN_HEAD_POLL_INTERVAL_MS, default 6s)
+        │
+        ├→ JSON-RPC to CHAIN_HEAD_RPC_URL (public archive) → new block?
+        │
+        ├→ broadcast to subscribers        → SSE / WS (#4982) / GraphQL subs / MCP (#4983)
+        └→ write D1 blocks_head
 
-  Observed 2026-08-05: only `blocks` payloads arrive. The other three topics
-  are dark — see #9583.
+  main Worker's 15-minute cron → POST /poll-start → re-arms the alarm if it ever stopped
+
+  BLOCKS ONLY, deliberately: the other three lanes need SCALE decode against
+  runtime metadata (the Containers indexer's job, #209). /api/v1/internal/
+  chain-firehose-ingest still exists for direct testing; nothing posts it in
+  production.
 
 RETIRED WITH THE BOX (#9426) — the ingest half everything below describes
 
@@ -475,10 +489,10 @@ wrangler secret put CHAIN_FIREHOSE_SYNC_SECRET
 
 The #4981 relay was verified live in its day — `chain_firehose_outbox` on the
 indexer box's Postgres held zero pending rows, most recent delivered within ~7s
-of being written. It went with the box; the hub is now fed by whatever POSTs the
-ingest endpoint, and a live subscription shows `blocks` payloads arriving one per
-block (with only that topic — #9583). The ingest endpoint can still be exercised
-directly to isolate the hub itself from the rest of the path when debugging:
+of being written. It went with the box. The hub's own head poller (#204) took
+over the `blocks` lane, and a live subscription shows one block payload per
+block. The ingest endpoint below is no longer driven by anything in production,
+but still works for isolating the hub from the rest of the path when debugging:
 
 ```sh
 # terminal 1: subscribe (SSE)
