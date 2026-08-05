@@ -435,12 +435,33 @@ describe("formatFlags", () => {
 });
 
 describe("mapWithConcurrency", () => {
+  // These yield across MICROTASKS, never `setTimeout`.
+  //
+  // An earlier version slept on real timers. It passed locally and on two CI
+  // runs, then timed out at 30s for BOTH cases in the 661-file shared-registry
+  // pass -- a 1ms timer that never fired inside a 30s budget. The mechanism is
+  // NOT established: installing fake timers from a sibling file does not
+  // reproduce it locally, so the obvious explanation is ruled out rather than
+  // confirmed. It is the same signature as the unresolved timer stall behind
+  // the webhook-retry work, where the fix was likewise to stop depending on a
+  // real timer instead of explaining it.
+  //
+  // Microtasks always drain, so what these assert is deterministic regardless
+  // of which files the pass batches together. Nothing here needs wall-clock
+  // time to be true -- the ordering and the concurrency bound are both
+  // properties of the pool, not of elapsed milliseconds.
+  const yieldTimes = async (n: number) => {
+    for (let i = 0; i < n; i += 1) await Promise.resolve();
+  };
+
   test("preserves input order regardless of completion order", async () => {
-    const results = await mapWithConcurrency([30, 0, 10], 3, async (ms) => {
-      await new Promise((resolve) => setTimeout(resolve, ms));
-      return ms;
+    // Deeper yields finish later, so completion order is 1, 2, 3 while the
+    // input order is the reverse -- exactly the case the result must not honour.
+    const results = await mapWithConcurrency([3, 2, 1], 3, async (depth) => {
+      await yieldTimes(depth);
+      return depth;
     });
-    assert.deepEqual(results, [30, 0, 10]);
+    assert.deepEqual(results, [3, 2, 1]);
   });
 
   test("never exceeds the requested concurrency", async () => {
@@ -449,7 +470,10 @@ describe("mapWithConcurrency", () => {
     await mapWithConcurrency(Array.from({ length: 10 }), 2, async () => {
       active += 1;
       peak = Math.max(peak, active);
-      await new Promise((resolve) => setTimeout(resolve, 1));
+      // Long enough to guarantee the sibling worker is in flight at the same
+      // time; without a yield the body would run to completion synchronously
+      // and peak would read 1 no matter what the pool did.
+      await yieldTimes(5);
       active -= 1;
     });
     assert.equal(peak, 2);
