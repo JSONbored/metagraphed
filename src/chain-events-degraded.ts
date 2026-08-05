@@ -56,6 +56,26 @@ import {
 type Row = Record<string, unknown>;
 
 const BLOCK_CHAIN_EVENTS = /^\/api\/v1\/blocks\/(\d+)\/chain-events$/;
+/**
+ * The same route, admitting the `0x` block-hash form of `{ref}`.
+ *
+ * The ROUTER already accepts a hash (`BLOCK_CHAIN_EVENTS_PATH_PATTERN`,
+ * workers/config.ts), and so does every reader underneath -- `answerBlockDetail`
+ * resolves a hash ref, and `loadBlockChainEventsColdTier` puts it through
+ * `resolveBlockHeight`. Only the tier MATCHER below was numeric-only, so a
+ * hash-form request routed in, matched no tier, asked no store, and fell out of
+ * `handleChainEventsFamily` as a 503 `data_tier_unavailable` -- a status that
+ * says "retry, this is temporary" for a request that could never succeed. That
+ * is what crawlers walking `/blocks/{hash}/chain-events` kept retrying, and why
+ * the sibling `/blocks/{ref}/events` served the same hash correctly all along.
+ *
+ * Deliberately a SECOND constant rather than a widened first: the degraded
+ * builder above pairs its match with a non-nullable `block_number`, which a
+ * hash cannot supply without a lookup. Keeping that one numeric means the
+ * widened form is used only where a ref is actually resolved.
+ */
+const BLOCK_CHAIN_EVENTS_REF =
+  /^\/api\/v1\/blocks\/(\d+|0x[0-9a-fA-F]{64})\/chain-events$/;
 const SUBNET_OWNERSHIP_HISTORY =
   /^\/api\/v1\/subnets\/(\d+)\/ownership-history$/;
 const SUBNET_CONVICTION = /^\/api\/v1\/subnets\/(\d+)\/conviction$/;
@@ -318,7 +338,7 @@ export async function hotTierBlockChainEvents(
   /** Which chain to read (#8700). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ChainDetailAnswer<BlockChainEventsPayload> | null> {
-  const block = BLOCK_CHAIN_EVENTS.exec(url.pathname);
+  const block = BLOCK_CHAIN_EVENTS_REF.exec(url.pathname);
   if (!block) return null;
   return answerBlockDetail<BlockChainEventsPayload>(
     env,

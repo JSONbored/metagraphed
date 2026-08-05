@@ -593,6 +593,56 @@ describe("block chain-events routes to the lakehouse off mainnet", () => {
   });
 });
 
+// The router has always admitted the `0x` hash form of {ref}, and so has every
+// reader underneath -- only the tier matcher was numeric-only. A hash therefore
+// routed in, matched no tier, asked NO STORE, and fell out of
+// handleChainEventsFamily as a 503 `data_tier_unavailable`: a retry-me status
+// for a request that could never succeed, which is what the crawlers walking
+// /blocks/{hash}/chain-events kept retrying against.
+describe("the 0x block-hash form of {ref} reaches a tier", () => {
+  const HASH = "0x" + "ab".repeat(32);
+
+  test("a hash-form path is matched and actually queries a store", async () => {
+    const queries: string[] = [];
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      queries.push(String(JSON.parse(String(init.body)).query));
+      return {
+        ok: true,
+        json: async () => ({ success: true, result: { rows: [] } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+    const env = mockEnv({ [R2_SQL_TOKEN_ENV]: "cfut_test" }) as unknown as Env;
+
+    const answer = await hotTierBlockChainEvents(
+      env,
+      new URL(`https://api.metagraph.sh/api/v1/blocks/${HASH}/chain-events`),
+      "testnet",
+    );
+
+    assert.notEqual(
+      answer,
+      null,
+      "a null here is the routing miss that became a 503 nothing could retry away",
+    );
+    assert.ok(
+      queries.length > 0,
+      "the point of matching is that a store gets asked at all",
+    );
+  });
+
+  test("a malformed hash is still not this route", async () => {
+    // 63 hex chars: close enough to prove the guard is the pattern, not a
+    // prefix check that would admit anything starting 0x.
+    const answer = await hotTierBlockChainEvents(
+      mockEnv() as unknown as Env,
+      new URL(
+        `https://api.metagraph.sh/api/v1/blocks/0x${"ab".repeat(31)}c/chain-events`,
+      ),
+    );
+    assert.equal(answer, null);
+  });
+});
+
 // Off mainnet there is no second source to fall back to, so a lakehouse read
 // that FAILS is a miss, not an empty block. The distinction is the whole point
 // of #9260: `events: []` for a block with 400 of them reads as a quiet chain.
