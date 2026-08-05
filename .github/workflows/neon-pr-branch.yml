@@ -1,0 +1,117 @@
+# A Neon database branch per PR that touches schema (metagraphed-infra#336).
+#
+# Adapted from Neon's generated template rather than pasted, and the four
+# differences are the point:
+#
+# 1. NO `tj-actions/branch-names`. The template uses it to compute a branch name
+#    that `github.head_ref` already provides for free on pull_request events, so
+#    it is an entire job and a third-party dependency for nothing. That org's
+#    `changed-files` action was backdoored in March 2025 (CVE-2025-30066) to dump
+#    secrets into build logs; a floating `@v8` tag from it, in a repo that pins
+#    every other action by SHA, is not a trade worth making for a string
+#    interpolation.
+#
+# 2. BRANCHES ARE NAMED `preview/pr-<number>` ONLY. The template appends the head
+#    ref, which may contain `/` and other characters Neon's branch names do not
+#    take, and which CHANGES if a branch is renamed mid-PR -- at which point the
+#    delete job computes a different name than the create job did and leaks the
+#    branch. The PR number is stable and unique for exactly as long as the branch
+#    should be.
+#
+# 3. CREATED ONLY WHEN SCHEMA CHANGED. This repo merges a lot of PRs -- most of
+#    them nowhere near a migration -- and a database branch each would be churn
+#    against the plan's branch limit for no review value. The detection is the
+#    same `git diff` against the merge base that syntax-check.yml uses for Rust,
+#    rather than another third-party action.
+#
+# 4. DELETE IS NOT GATED. It runs on every closed PR regardless of what changed,
+#    because the failure modes are asymmetric: a redundant delete of a branch
+#    that was never created is a no-op, while a skipped delete leaks a database
+#    branch until someone notices.
+#
+# The schema-diff-action stays OUT, deliberately. It posts a comment containing
+# a branch connection string, and this repository is PUBLIC -- that is a
+# credential in public view, which is the class of mistake `scan:public-safety`
+# exists to catch. Read the diff from the branch directly if you need it.
+name: Neon PR branch
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number }}
+
+# Least privilege: this workflow reads the diff to decide whether a branch is
+# needed and talks to Neon over its own API key. It never writes to the repo.
+permissions:
+  contents: read
+
+jobs:
+  changed:
+    name: Detect schema changes
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+    outputs:
+      schema: ${{ steps.filter.outputs.schema }}
+    steps:
+      # fetch-depth: 0 because the filter needs a real merge base. A shallow
+      # clone has none, and a filter that silently answers "no schema changed"
+      # is worse than no filter -- it skips the branch on exactly the PRs that
+      # need one.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Filter
+        id: filter
+        run: |
+          set -euo pipefail
+          base="$(git merge-base "origin/${{ github.base_ref }}" HEAD)"
+          # `|| true` so a no-match grep does not trip `set -e`.
+          changed="$(git diff --name-only "$base" HEAD \
+            | grep -E '^(migrations/|schemas/|schema\.sql$)' || true)"
+          if [ -n "$changed" ]; then
+            echo "schema=true" >> "$GITHUB_OUTPUT"
+            echo "schema files changed:"; echo "$changed"
+          else
+            echo "schema=false" >> "$GITHUB_OUTPUT"
+            echo "no schema files changed; no Neon branch needed"
+          fi
+
+  create:
+    name: Create Neon branch
+    needs: changed
+    if: needs.changed.outputs.schema == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Branch expiry (14 days)
+        run: echo "EXPIRES_AT=$(date -u --date '+14 days' +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
+
+      # The outputs of this step (db_url, db_url_with_pooler) carry a username
+      # and password. Never echo them, never pass them to a step that logs its
+      # environment, and never surface them in a PR comment on a public repo.
+      - name: Create branch
+        uses: neondatabase/create-branch-action@fb620d43d4c565abaf088b848a4e28e5c4ea4d9c # v6
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch_name: preview/pr-${{ github.event.number }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+          expires_at: ${{ env.EXPIRES_AT }}
+
+  delete:
+    name: Delete Neon branch
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      # Unconditional, and tolerant of a branch that never existed: a PR that
+      # touched no schema created nothing, and deleting nothing is a no-op worth
+      # paying for to guarantee the ones that DID exist are cleaned up.
+      - name: Delete branch
+        continue-on-error: true
+        uses: neondatabase/delete-branch-action@4468d825d5a88ef4012f1705a82f02ec3072f776 # v3
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch: preview/pr-${{ github.event.number }}
+          api_key: ${{ secrets.NEON_API_KEY }}
