@@ -182,10 +182,17 @@ export type ValidatorEconomicsRankingQuery = z.infer<
 // floors are unambiguous; cost is a present-tense question the per-subnet route
 // answers.
 //
-// `cap_binding` is absent for a different reason: `subnet_snapshots` carries no
-// historical `max_validators`, and applying today's cap to an old snapshot would
-// manufacture a transition that never happened. Omitted rather than published as a
-// permanently-null field.
+// The cap WAS omitted here, because `subnet_snapshots` carries no historical
+// `max_validators` and applying today's cap to an old snapshot would manufacture a
+// transition that never happened. That reasoning was right about the hazard and wrong
+// about the remedy (#9460): `permit_floor_alpha` is the observed floor REGARDLESS of cap
+// state, so without a cap the series cannot be read at all, and every consumer joined
+// today's cap off the current record — committing the same error, silently, and getting
+// it wrong for any subnet whose cap moved inside the window.
+//
+// So the cap ships, resolved per day from the `subnet_hyperparams_history` change-log,
+// with `max_validators_source` naming the days that fall back to the live value. An
+// approximation the caller can see is not the failure mode being guarded against.
 export const ValidatorEconomicsHistoryPointSchema = z
   .object({
     snapshot_date: z.string(),
@@ -196,6 +203,9 @@ export const ValidatorEconomicsHistoryPointSchema = z
     validators_earning: z.int().min(0),
     emission_gate_open: z.boolean().nullable(),
     tao_inflow_per_day: z.number().nullable(),
+    max_validators: z.int().min(1).nullable(),
+    max_validators_source: z.enum(["observed", "current"]).nullable(),
+    permit_set_full: z.boolean().nullable(),
   })
   .strict();
 

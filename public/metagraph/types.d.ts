@@ -12260,7 +12260,10 @@ export interface components {
         ValidatorEconomicsHistoryPoint: {
             earning_floor_alpha: number | null;
             emission_gate_open: boolean | null;
+            max_validators: number | null;
+            max_validators_source: ("observed" | "current") | null;
             permit_floor_alpha: number | null;
+            permit_set_full: boolean | null;
             snapshot_date: string;
             tao_inflow_per_day: number | null;
             validators_active: number;
@@ -53135,7 +53138,10 @@ export interface operations {
                      *           {
                      *             "earning_floor_alpha": 0.5,
                      *             "emission_gate_open": false,
+                     *             "max_validators": 1,
+                     *             "max_validators_source": "observed",
                      *             "permit_floor_alpha": 0.5,
+                     *             "permit_set_full": false,
                      *             "snapshot_date": "example",
                      *             "tao_inflow_per_day": 0.5,
                      *             "validators_active": 1,

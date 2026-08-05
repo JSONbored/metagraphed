@@ -5671,7 +5671,13 @@ export type ValidatorEconomicsHistoryPoint = {
   __typename?: 'ValidatorEconomicsHistoryPoint';
   earning_floor_alpha?: Maybe<Scalars['Float']['output']>;
   emission_gate_open?: Maybe<Scalars['Boolean']['output']>;
+  /** The validator cap in force on this day. permit_floor_alpha is the observed floor REGARDLESS of cap state, so it cannot be read without this -- and joining today's cap onto an old point is wrong for any subnet whose cap moved. */
+  max_validators?: Maybe<Scalars['Int']['output']>;
+  /** Where max_validators came from: observed = the hyperparameter change-log recorded it at or before this day; current = the change-log does not reach this far back, so the LIVE cap is reported. */
+  max_validators_source?: Maybe<Scalars['String']['output']>;
   permit_floor_alpha?: Maybe<Scalars['Float']['output']>;
+  /** Whether the permit set was full on this day (validators_permitted >= max_validators). NOT the same measure as the current record's cap_binding, which counts UIDs clearing the threshold against slots -- only the permitted set survives in a daily snapshot. */
+  permit_set_full?: Maybe<Scalars['Boolean']['output']>;
   snapshot_date: Scalars['String']['output'];
   tao_inflow_per_day?: Maybe<Scalars['Float']['output']>;
   validators_active: Scalars['Int']['output'];
@@ -9838,7 +9844,10 @@ export type ValidatorEconomicsExclusionResolvers<ContextType = GqlContext, Paren
 export type ValidatorEconomicsHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ValidatorEconomicsHistoryPoint'] = ResolversParentTypes['ValidatorEconomicsHistoryPoint']> = ResolversObject<{
   earning_floor_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   emission_gate_open?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  max_validators?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  max_validators_source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   permit_floor_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  permit_set_full?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   snapshot_date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   tao_inflow_per_day?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validators_active?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;

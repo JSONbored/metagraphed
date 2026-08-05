@@ -10843,7 +10843,10 @@
               {
                 "earning_floor_alpha": 0.5,
                 "emission_gate_open": false,
+                "max_validators": 1,
+                "max_validators_source": "observed",
                 "permit_floor_alpha": 0.5,
+                "permit_set_full": false,
                 "snapshot_date": "example",
                 "tao_inflow_per_day": 0.5,
                 "validators_active": 1,
@@ -48525,10 +48528,46 @@
               }
             ]
           },
+          "max_validators": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "max_validators_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "observed",
+                  "current"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "permit_floor_alpha": {
             "anyOf": [
               {
                 "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "permit_set_full": {
+            "anyOf": [
+              {
+                "type": "boolean"
               },
               {
                 "type": "null"
@@ -48572,7 +48611,10 @@
           "validators_active",
           "validators_earning",
           "emission_gate_open",
-          "tao_inflow_per_day"
+          "tao_inflow_per_day",
+          "max_validators",
+          "max_validators_source",
+          "permit_set_full"
         ],
         "type": "object"
       },
