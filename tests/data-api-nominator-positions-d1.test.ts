@@ -198,23 +198,29 @@ describe("POST /api/v1/internal/nominator-positions-sync", () => {
   });
 
   test("rejects a row with a bad key, netuid, captured_at, or an unknown column", async () => {
-    const bad: Row[] = [
-      positionRow({ coldkey: "" }),
-      positionRow({ coldkey: 42 }),
-      positionRow({ hotkey: "x".repeat(200) }),
-      positionRow({ netuid: -1 }),
-      positionRow({ netuid: 70_000 }),
-      positionRow({ netuid: 1.5 }),
-      positionRow({ captured_at: 0 }),
-      positionRow({ captured_at: 1.5 }),
-      positionRow({ surprise: 1 }),
+    // #9564: each rejection now names the row index and the offending FIELD,
+    // instead of one shape-level sentence for a whole batch. Asserting the
+    // field is strictly stronger than the old message -- it would catch a rule
+    // that still rejects but for the wrong reason, which the shape-level regex
+    // could not distinguish.
+    const bad: [Row, RegExp][] = [
+      [positionRow({ coldkey: "" }), /^row 0: coldkey /],
+      [positionRow({ coldkey: 42 }), /^row 0: coldkey /],
+      [positionRow({ hotkey: "x".repeat(200) }), /^row 0: hotkey /],
+      [positionRow({ netuid: -1 }), /^row 0: netuid /],
+      [positionRow({ netuid: 70_000 }), /^row 0: netuid /],
+      [positionRow({ netuid: 1.5 }), /^row 0: netuid /],
+      [positionRow({ captured_at: 0 }), /^row 0: captured_at /],
+      [positionRow({ captured_at: 1.5 }), /^row 0: captured_at /],
+      [positionRow({ surprise: 1 }), /^row 0: surprise /],
     ];
-    for (const row of bad) {
+    for (const [row, expected] of bad) {
       const response = await post({ rows: [row] });
       assert.equal(response.status, 400, JSON.stringify(row));
       assert.match(
         (await response.json<{ error: string }>()).error,
-        /nominator-position row shape/,
+        expected,
+        JSON.stringify(row),
       );
     }
     // A non-object row, and an empty batch, are the same 400.

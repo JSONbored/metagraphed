@@ -17,6 +17,16 @@
 // TAO/USD index cron. Routes whose store is gone still answer exactly what
 // they answered before the deletion -- see dispatchDataApiRequest's own note
 // for why that matters to the forward gate.
+import {
+  accountBalanceSyncRowSchema,
+  accountIdentitySyncRowSchema,
+  hotkeyAlphaSyncRowSchema,
+  neuronSyncRowSchema,
+  nominatorCountSyncRowSchema,
+  nominatorPositionSyncRowSchema,
+  subnetHyperparamsSyncRowSchema,
+  validateSyncRows,
+} from "../src/sync-row-schemas.ts";
 import { spotPriceTao } from "../src/stake-quote.ts";
 import { recordExceptionEvent } from "../src/usage-telemetry.ts";
 import { isPathUnder } from "./http.ts";
@@ -477,39 +487,6 @@ function utf8Bytes(value: unknown) {
 // same trust posture as workers/request-handlers/staging.mjs's
 // validStagedNeuronRow (this payload arrives over a different transport, but
 // it's the same untrusted-until-checked shape from the same producer script).
-function validNeuronSyncRow(row: Row) {
-  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
-  if (
-    !Number.isInteger(row.netuid) ||
-    row.netuid < 0 ||
-    row.netuid > NEURONS_SYNC_MAX_NETUID
-  )
-    return false;
-  if (
-    !Number.isInteger(row.uid) ||
-    row.uid < 0 ||
-    row.uid > NEURONS_SYNC_MAX_UID
-  )
-    return false;
-  if (!validSyncCapturedAt(row.captured_at)) return false;
-  for (const [key, value] of Object.entries(row)) {
-    if (!NEURON_INSERT_COLUMNS.includes(key)) return false;
-    if (
-      typeof value === "string" &&
-      utf8Bytes(value).length > NEURONS_SYNC_MAX_STRING_BYTES
-    )
-      return false;
-    if (typeof value === "number" && !Number.isFinite(value)) return false;
-    // Every column here is a TEXT/INTEGER/NUMERIC/BOOLEAN scalar (never
-    // JSONB) -- a nested object or array slipping through would only be
-    // caught later as an opaque Postgres bind error (a 502), so reject it
-    // here as a clean 400 instead. (bigint/symbol/function are NOT checked:
-    // JSON.parse, this row's only real source, can never produce them.)
-    if (value !== null && typeof value === "object") return false;
-  }
-  return true;
-}
-
 /**
  * Floor for a plausible epoch-MILLISECOND capture stamp (#9382).
  *
@@ -536,19 +513,15 @@ function validNeuronSyncRow(row: Row) {
  */
 export const SYNC_MIN_CAPTURED_AT_MS = Date.UTC(2020, 0, 1);
 
-/**
- * Whether a sync row's `captured_at` is a usable epoch-millisecond stamp.
- *
- * Rejected rather than coerced: a stamp in the wrong unit means the producer is
- * wrong, and silently multiplying by 1000 here would hide that while inventing a
- * capture time. A clean 400 tells the producer; a 1970 row tells nobody.
- */
-function validSyncCapturedAt(capturedAt: unknown): boolean {
-  return (
-    Number.isInteger(capturedAt) &&
-    (capturedAt as number) >= SYNC_MIN_CAPTURED_AT_MS
-  );
-}
+// One instance per route, each built from the SAME *_INSERT_COLUMNS the writer
+// binds, so a schema can never drift from the INSERT it guards (#9564).
+const NEURON_SYNC_ROW_SCHEMA = neuronSyncRowSchema({
+  columns: NEURON_INSERT_COLUMNS,
+  minCapturedAtMs: SYNC_MIN_CAPTURED_AT_MS,
+  maxNetuid: NEURONS_SYNC_MAX_NETUID,
+  maxUid: NEURONS_SYNC_MAX_UID,
+  maxStringBytes: NEURONS_SYNC_MAX_STRING_BYTES,
+});
 
 // captured_at is epoch ms; snapshot_date is the UTC day, matching D1's
 // rollupNeuronDaily (`date(captured_at / 1000, 'unixepoch')`).
@@ -643,11 +616,13 @@ async function handleNeuronsSync(request: Request, env: Env) {
   // -- this handler had the exact same bug, just never patched alongside
   // the backfill one.
   const validatedIncoming = incoming.map(stripClientSnapshotDate);
-  if (
-    !validatedIncoming.length ||
-    !validatedIncoming.every(validNeuronSyncRow)
-  ) {
-    return writeJson({ error: "rows must match the neuron row shape" }, 400);
+  const neuronCheck = validateSyncRows(
+    validatedIncoming,
+    NEURON_SYNC_ROW_SCHEMA,
+    "neuron",
+  );
+  if (!neuronCheck.ok) {
+    return writeJson({ error: neuronCheck.error }, 400);
   }
 
   const rows = validatedIncoming.map(coerceNeuronSyncRow);
@@ -929,11 +904,13 @@ async function handleNeuronDailyBackfill(request: Request, env: Env) {
     );
   }
   const validatedIncoming = incoming.map(stripClientSnapshotDate);
-  if (
-    !validatedIncoming.length ||
-    !validatedIncoming.every(validNeuronSyncRow)
-  ) {
-    return writeJson({ error: "rows must match the neuron row shape" }, 400);
+  const neuronCheck = validateSyncRows(
+    validatedIncoming,
+    NEURON_SYNC_ROW_SCHEMA,
+    "neuron",
+  );
+  if (!neuronCheck.ok) {
+    return writeJson({ error: neuronCheck.error }, 400);
   }
 
   const rows = validatedIncoming.map(coerceNeuronSyncRow);
@@ -1095,22 +1072,11 @@ const SUBNET_HYPERPARAMS_HISTORY_FIELDS =
 // Bounds-check one incoming row against SUBNET_HYPERPARAMS_INSERT_COLUMNS --
 // every field but netuid is null-or-finite-number; the fetch script emits 0/1
 // for the boolean-flag columns, not JSON booleans.
-function validSubnetHyperparamsSyncRow(row: Row) {
-  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
-  if (
-    !Number.isInteger(row.netuid) ||
-    row.netuid < 0 ||
-    row.netuid > SUBNET_HYPERPARAMS_SYNC_MAX_NETUID
-  )
-    return false;
-  if (!validSyncCapturedAt(row.captured_at)) return false;
-  for (const [key, value] of Object.entries(row)) {
-    if (!SUBNET_HYPERPARAMS_INSERT_COLUMNS.includes(key)) return false;
-    if (typeof value === "number" && !Number.isFinite(value)) return false;
-    if (value !== null && typeof value !== "number") return false;
-  }
-  return true;
-}
+const SUBNET_HYPERPARAMS_SYNC_ROW_SCHEMA = subnetHyperparamsSyncRowSchema({
+  columns: SUBNET_HYPERPARAMS_INSERT_COLUMNS,
+  minCapturedAtMs: SYNC_MIN_CAPTURED_AT_MS,
+  maxNetuid: SUBNET_HYPERPARAMS_SYNC_MAX_NETUID,
+});
 
 // 0/1 -> boolean for the BOOLEAN columns (see NEURONS_SYNC_BOOLEAN_COLUMNS'
 // identical reasoning above); everything else passes through unchanged.
@@ -1219,11 +1185,13 @@ async function handleSubnetHyperparamsSync(request: Request, env: Env) {
       413,
     );
   }
-  if (!incoming.length || !incoming.every(validSubnetHyperparamsSyncRow)) {
-    return writeJson(
-      { error: "rows must match the subnet-hyperparams row shape" },
-      400,
-    );
+  const subnetHyperparamsCheck = validateSyncRows(
+    incoming,
+    SUBNET_HYPERPARAMS_SYNC_ROW_SCHEMA,
+    "subnet-hyperparams",
+  );
+  if (!subnetHyperparamsCheck.ok) {
+    return writeJson({ error: subnetHyperparamsCheck.error }, 400);
   }
 
   const rows = incoming.map(coerceSubnetHyperparamsSyncRow);
@@ -1359,20 +1327,10 @@ const ACCOUNT_IDENTITY_SYNC_MAX_STRING_BYTES = 1024;
 // same trust posture as staging.mjs's validStagedAccountIdentityRow. Unlike
 // validSubnetHyperparamsSyncRow, every column but account/captured_at is
 // TEXT-only, so a bare number must be actively REJECTED here, not tolerated.
-function validAccountIdentitySyncRow(row: Row) {
-  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
-  if (typeof row.account !== "string" || row.account.length === 0) return false;
-  if (!Number.isFinite(row.captured_at)) return false;
-  for (const [key, value] of Object.entries(row)) {
-    if (!ACCOUNT_IDENTITY_INSERT_COLUMNS.includes(key)) return false;
-    if (key === "account" || key === "captured_at") continue;
-    if (value === null) continue;
-    if (typeof value !== "string") return false;
-    if (utf8Bytes(value).length > ACCOUNT_IDENTITY_SYNC_MAX_STRING_BYTES)
-      return false;
-  }
-  return true;
-}
+const ACCOUNT_IDENTITY_SYNC_ROW_SCHEMA = accountIdentitySyncRowSchema({
+  columns: ACCOUNT_IDENTITY_INSERT_COLUMNS,
+  maxStringBytes: ACCOUNT_IDENTITY_SYNC_MAX_STRING_BYTES,
+});
 
 // Postgres' TEXT type rejects any embedded NUL byte outright ("invalid byte
 // sequence for encoding UTF8: 0x00") -- confirmed live 2026-07-11 against a
@@ -1484,11 +1442,13 @@ async function handleAccountIdentitySync(request: Request, env: Env) {
       413,
     );
   }
-  if (!incoming.length || !incoming.every(validAccountIdentitySyncRow)) {
-    return writeJson(
-      { error: "rows must match the account-identity row shape" },
-      400,
-    );
+  const accountIdentityCheck = validateSyncRows(
+    incoming,
+    ACCOUNT_IDENTITY_SYNC_ROW_SCHEMA,
+    "account-identity",
+  );
+  if (!accountIdentityCheck.ok) {
+    return writeJson({ error: accountIdentityCheck.error }, 400);
   }
 
   // Sanitize BEFORE both the upsert and the history hash so the two stay
@@ -1605,21 +1565,11 @@ const VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_KEY_BYTES = 128;
  * discards anything that isn't -- a value this route accepted but every reader
  * silently drops is worse than a 400 the producer can actually see.
  */
-function validNominatorCountSyncRow(row: Row) {
-  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
-  for (const key of Object.keys(row)) {
-    if (!VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS.includes(key)) return false;
-  }
-  if (typeof row.hotkey !== "string" || row.hotkey.length === 0) return false;
-  if (
-    utf8Bytes(row.hotkey).length > VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_KEY_BYTES
-  )
-    return false;
-  if (!Number.isInteger(row.nominator_count) || row.nominator_count < 0)
-    return false;
-  if (!validSyncCapturedAt(row.captured_at)) return false;
-  return true;
-}
+const NOMINATOR_COUNT_SYNC_ROW_SCHEMA = nominatorCountSyncRowSchema({
+  columns: VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS,
+  minCapturedAtMs: SYNC_MIN_CAPTURED_AT_MS,
+  maxKeyBytes: VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_KEY_BYTES,
+});
 
 /** Project a validated row onto the writer's exact column list and order. */
 function coerceNominatorCountSyncRow(row: Row) {
@@ -1693,11 +1643,13 @@ async function handleValidatorNominatorCountsSync(request: Request, env: Env) {
       413,
     );
   }
-  if (!incoming.length || !incoming.every(validNominatorCountSyncRow)) {
-    return writeJson(
-      { error: "rows must match the nominator count row shape" },
-      400,
-    );
+  const nominatorCountCheck = validateSyncRows(
+    incoming,
+    NOMINATOR_COUNT_SYNC_ROW_SCHEMA,
+    "nominator count",
+  );
+  if (!nominatorCountCheck.ok) {
+    return writeJson({ error: nominatorCountCheck.error }, 400);
   }
 
   const rows = incoming.map(coerceNominatorCountSyncRow);
@@ -1777,33 +1729,12 @@ const NOMINATOR_POSITIONS_SYNC_MAX_KEY_BYTES = 128;
  * hotkey's stake as this account's position. That is the one field here whose
  * garbage would read as a plausible number rather than as an error.
  */
-function validNominatorPositionSyncRow(row: Row) {
-  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
-  for (const key of Object.keys(row)) {
-    if (!NOMINATOR_POSITION_INSERT_COLUMNS.includes(key)) return false;
-  }
-  for (const key of ["coldkey", "hotkey"]) {
-    const value = row[key];
-    if (typeof value !== "string" || value.length === 0) return false;
-    if (utf8Bytes(value).length > NOMINATOR_POSITIONS_SYNC_MAX_KEY_BYTES)
-      return false;
-  }
-  if (
-    !Number.isInteger(row.netuid) ||
-    row.netuid < 0 ||
-    row.netuid > NOMINATOR_POSITIONS_SYNC_MAX_NETUID
-  )
-    return false;
-  if (
-    typeof row.share_fraction !== "number" ||
-    !Number.isFinite(row.share_fraction) ||
-    row.share_fraction < 0 ||
-    row.share_fraction > 1
-  )
-    return false;
-  if (!validSyncCapturedAt(row.captured_at)) return false;
-  return true;
-}
+const NOMINATOR_POSITION_SYNC_ROW_SCHEMA = nominatorPositionSyncRowSchema({
+  columns: NOMINATOR_POSITION_INSERT_COLUMNS,
+  minCapturedAtMs: SYNC_MIN_CAPTURED_AT_MS,
+  maxKeyBytes: NOMINATOR_POSITIONS_SYNC_MAX_KEY_BYTES,
+  maxNetuid: NOMINATOR_POSITIONS_SYNC_MAX_NETUID,
+});
 
 /** Project a validated row onto the writer's exact column list and order. */
 function coerceNominatorPositionSyncRow(row: Row) {
@@ -1872,11 +1803,13 @@ async function handleNominatorPositionsSync(request: Request, env: Env) {
       413,
     );
   }
-  if (!incoming.length || !incoming.every(validNominatorPositionSyncRow)) {
-    return writeJson(
-      { error: "rows must match the nominator-position row shape" },
-      400,
-    );
+  const nominatorPositionCheck = validateSyncRows(
+    incoming,
+    NOMINATOR_POSITION_SYNC_ROW_SCHEMA,
+    "nominator-position",
+  );
+  if (!nominatorPositionCheck.ok) {
+    return writeJson({ error: nominatorPositionCheck.error }, 400);
   }
 
   const rows = incoming.map(coerceNominatorPositionSyncRow);
@@ -1967,22 +1900,11 @@ const ACCOUNT_BALANCES_SYNC_MAX_PASS_TOTAL = 10_000_000;
  * Infinity arriving as null would otherwise bind as NULL against a NOT NULL
  * column and fail the whole 25,000-row batch at the database instead of here.
  */
-function validAccountBalanceSyncRow(row: Row) {
-  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
-  for (const key of Object.keys(row)) {
-    if (!ACCOUNT_BALANCE_INSERT_COLUMNS.includes(key)) return false;
-  }
-  if (typeof row.ss58 !== "string" || row.ss58.length === 0) return false;
-  if (utf8Bytes(row.ss58).length > ACCOUNT_BALANCES_SYNC_MAX_KEY_BYTES)
-    return false;
-  for (const key of ["free_tao", "reserved_tao"]) {
-    const value = row[key];
-    if (typeof value !== "number" || !Number.isFinite(value) || value < 0)
-      return false;
-  }
-  if (!validSyncCapturedAt(row.captured_at)) return false;
-  return true;
-}
+const ACCOUNT_BALANCE_SYNC_ROW_SCHEMA = accountBalanceSyncRowSchema({
+  columns: ACCOUNT_BALANCE_INSERT_COLUMNS,
+  minCapturedAtMs: SYNC_MIN_CAPTURED_AT_MS,
+  maxKeyBytes: ACCOUNT_BALANCES_SYNC_MAX_KEY_BYTES,
+});
 
 /** Project a validated row onto the writer's exact column list and order. */
 function coerceAccountBalanceSyncRow(row: Row) {
@@ -2062,11 +1984,13 @@ async function handleAccountBalancesSync(request: Request, env: Env) {
       413,
     );
   }
-  if (!incoming.length || !incoming.every(validAccountBalanceSyncRow)) {
-    return writeJson(
-      { error: "rows must match the account-balance row shape" },
-      400,
-    );
+  const accountBalanceCheck = validateSyncRows(
+    incoming,
+    ACCOUNT_BALANCE_SYNC_ROW_SCHEMA,
+    "account-balance",
+  );
+  if (!accountBalanceCheck.ok) {
+    return writeJson({ error: accountBalanceCheck.error }, 400);
   }
 
   const rows = incoming.map(coerceAccountBalanceSyncRow);
@@ -2190,27 +2114,11 @@ const HOTKEY_ALPHA_SYNC_MAX_PASS_TOTAL = 10_000_000;
  * balance columns are bounded: the composite primary key means a junk netuid
  * silently creates a parallel row rather than updating the intended one.
  */
-function validHotkeyAlphaSyncRow(row: Row) {
-  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
-  for (const key of Object.keys(row)) {
-    if (!HOTKEY_ALPHA_INSERT_COLUMNS.includes(key)) return false;
-  }
-  if (typeof row.hotkey !== "string" || row.hotkey.length === 0) return false;
-  if (utf8Bytes(row.hotkey).length > HOTKEY_ALPHA_SYNC_MAX_KEY_BYTES)
-    return false;
-  if (
-    typeof row.netuid !== "number" ||
-    !Number.isInteger(row.netuid) ||
-    row.netuid < 0
-  ) {
-    return false;
-  }
-  const alpha = row.total_alpha;
-  if (typeof alpha !== "number" || !Number.isFinite(alpha) || alpha < 0)
-    return false;
-  if (!validSyncCapturedAt(row.captured_at)) return false;
-  return true;
-}
+const HOTKEY_ALPHA_SYNC_ROW_SCHEMA = hotkeyAlphaSyncRowSchema({
+  columns: HOTKEY_ALPHA_INSERT_COLUMNS,
+  minCapturedAtMs: SYNC_MIN_CAPTURED_AT_MS,
+  maxKeyBytes: HOTKEY_ALPHA_SYNC_MAX_KEY_BYTES,
+});
 
 /** Project a validated row onto the writer's exact column list and order. */
 function coerceHotkeyAlphaSyncRow(row: Row) {
@@ -2288,11 +2196,13 @@ async function handleHotkeyAlphaSync(request: Request, env: Env) {
       413,
     );
   }
-  if (!incoming.length || !incoming.every(validHotkeyAlphaSyncRow)) {
-    return writeJson(
-      { error: "rows must match the hotkey-alpha row shape" },
-      400,
-    );
+  const hotkeyAlphaCheck = validateSyncRows(
+    incoming,
+    HOTKEY_ALPHA_SYNC_ROW_SCHEMA,
+    "hotkey-alpha",
+  );
+  if (!hotkeyAlphaCheck.ok) {
+    return writeJson({ error: hotkeyAlphaCheck.error }, 400);
   }
 
   const rows = incoming.map(coerceHotkeyAlphaSyncRow);
