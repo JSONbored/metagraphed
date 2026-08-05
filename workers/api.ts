@@ -14,7 +14,15 @@ type Row = Record<string, any>;
 // call sites here sometimes pass a real Workers-runtime ExecutionContext,
 // sometimes {} (e.g. handleScheduled's default), so a full ExecutionContext
 // isn't required to satisfy every caller.
-type Ctx = { waitUntil?: (promise: Promise<unknown>) => void };
+type Ctx = {
+  waitUntil?: (promise: Promise<unknown>) => void;
+  /**
+   * Set only by the method gate's own existence probe (see `pathResolves`). It
+   * suppresses the side effects a real request has -- usage rollup, rate-limit charge --
+   * so asking "does this path exist" cannot be mistaken for someone having called it.
+   */
+  methodProbe?: boolean;
+};
 // The Cache API (`caches.default`) isn't in the generated Env/global types --
 // it's a Workers-runtime global, not an Env binding.
 const globalWithCaches = globalThis as unknown as { caches?: Row };
@@ -3566,7 +3574,10 @@ export async function handleRequest(
   // request including keyless ones, which is the opposite of this being free.
   // A malformed `mg_` bearer counts as keyed and is a rounding error against
   // the question being asked.
-  if (url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/")) {
+  if (
+    !ctx.methodProbe &&
+    (url.pathname === "/api/v1" || url.pathname.startsWith("/api/v1/"))
+  ) {
     const authHeader = request.headers.get("authorization") || "";
     recordUsageRollup(
       env,
@@ -3892,14 +3903,38 @@ export async function handleRequest(
   }
 
   if (!["GET", "HEAD"].includes(request.method)) {
+    // 405 says "this resource exists, but not with that method", so it is only true of
+    // a path that exists. Every write route has already returned by here, so anything
+    // still in flight is either a read surface being called wrongly (405) or a path
+    // that is not a surface at all (404) -- and answering 404 with 405 sent an MCP
+    // client hunting for a method that would work on a route that was never there.
+    //
+    // Resolved by ASKING THE ROUTER, not by mirroring it. A list of "paths that exist"
+    // maintained beside the dispatch is a second copy of the routing table, and the
+    // 401 this whole thread began with was two copies of one route disagreeing by a
+    // single character. The probe re-enters as HEAD -- read-only by definition, no
+    // body to serialise, and it passes this gate on the first check, so it cannot
+    // recurse -- with `methodProbe` set so it charges nobody's rate limit and counts
+    // as nobody's usage.
+    const probe = await handleRequest(
+      new Request(url.toString(), {
+        method: "HEAD",
+        headers: request.headers,
+      }),
+      env,
+      { ...ctx, methodProbe: true },
+    );
+    if (probe.status === 404) {
+      // No `allow` here on purpose: it names the methods a resource accepts, and this
+      // one does not exist to accept any.
+      return errorResponse("not_found", "No route matched this path.", 404);
+    }
     return errorResponse(
       "method_not_allowed",
       "Only GET, HEAD, and OPTIONS are supported.",
       405,
       {},
-      {
-        allow: "GET, HEAD, OPTIONS",
-      },
+      { allow: allowedMethodsForPath(url.pathname) },
     );
   }
 
@@ -7844,9 +7879,15 @@ async function liveHealthOverlay(
   return data ? { data } : null;
 }
 
-function corsPreflight(request: Request) {
-  const url = new URL(request.url);
-  const headers = apiHeaders("short");
+/**
+ * Which methods a path accepts.
+ *
+ * One declaration, two consumers: the CORS preflight below, and the read-only method
+ * gate's `allow` header. They answered the same question from two copies before, which
+ * is how a route could advertise one method set to a browser and another to a client.
+ */
+function allowedMethodsForPath(pathname: string): string {
+  const url = { pathname };
   let methods = "GET, HEAD, OPTIONS";
   if (url.pathname.startsWith("/rpc/")) {
     methods = "POST, OPTIONS";
@@ -7879,7 +7920,16 @@ function corsPreflight(request: Request) {
   } else if (url.pathname === "/api/v1/watch/tokens") {
     methods = "POST, OPTIONS";
   }
-  headers.set("access-control-allow-methods", methods);
+  return methods;
+}
+
+function corsPreflight(request: Request) {
+  const url = new URL(request.url);
+  const headers = apiHeaders("short");
+  headers.set(
+    "access-control-allow-methods",
+    allowedMethodsForPath(url.pathname),
+  );
   headers.set(
     "access-control-allow-headers",
     `content-type, if-none-match, authorization, mcp-session-id, mcp-protocol-version, ` +

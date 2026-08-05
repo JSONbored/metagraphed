@@ -4037,3 +4037,109 @@ describe("inverse contract coverage (dispatched ⊆ contracted)", () => {
     });
   }
 });
+
+// The read-only method gate answers 405 ("this resource exists, but not with that
+// method") only for paths that exist. It used to answer 405 for everything, which sent
+// an MCP client hunting for a method that would work on a route that was never there.
+//
+// The distinction is resolved by asking the ROUTER — a list of "paths that exist"
+// maintained beside the dispatch would be a second copy of the routing table, and two
+// copies of one route disagreeing by a single character is the bug that started this.
+describe("non-GET methods: 405 for a real route, 404 for a path that is not one", () => {
+  const post = (path: string) =>
+    handleRequest(
+      req(path, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      }),
+      createLocalArtifactEnv() as unknown as Env,
+      {},
+    );
+
+  test("a read route that exists answers 405 and says what it takes", async () => {
+    // Deliberately spans all three kinds of surface: a declarative API route, a
+    // Worker-generated singleton in no route table, and the api index itself. A
+    // hand-kept registry would have had to know about each; the router already does.
+    for (const path of [
+      "/api/v1/subnets",
+      "/api/v1/freshness",
+      "/api/v1",
+      "/health",
+      "/og.png",
+      "/.well-known/api-catalog",
+    ]) {
+      const res = await post(path);
+      assert.equal(res.status, 405, path);
+      assert.equal(res.headers.get("allow"), "GET, HEAD, OPTIONS", path);
+    }
+  });
+
+  test("a path that is not a route at all answers 404", async () => {
+    for (const path of [
+      "/mcp/sse",
+      "/mcpx",
+      "/api/v1/nope",
+      "/nope",
+      "/api/v1/subnets/9999999/nope",
+    ]) {
+      const res = await post(path);
+      assert.equal(res.status, 404, path);
+      assert.equal(
+        res.headers.get("allow"),
+        null,
+        `${path}: allow names what a resource accepts, and this one does not exist`,
+      );
+      assert.equal((await res.json()).error.code, "not_found", path);
+    }
+  });
+
+  test("the existence probe is not counted as a call", async () => {
+    // The probe re-enters the router; if it charged usage, every bot POST to a
+    // nonexistent path would bill twice and pollute the rollup.
+    const recorded: unknown[] = [];
+    const env = {
+      ...(createLocalArtifactEnv() as unknown as Record<string, unknown>),
+      METAGRAPH_USAGE: {
+        writeDataPoint: (point: unknown) => recorded.push(point),
+      },
+    } as unknown as Env;
+    await handleRequest(
+      req("/api/v1/nope", { method: "POST", body: "{}" }),
+      env,
+      {},
+    );
+    assert.ok(
+      recorded.length <= 1,
+      `one request must not produce ${recorded.length} usage rows`,
+    );
+  });
+
+  test("OPTIONS still preflights rather than falling into the gate", async () => {
+    const res = await handleRequest(
+      req("/api/v1/subnets", { method: "OPTIONS" }),
+      createLocalArtifactEnv() as unknown as Env,
+      {},
+    );
+    assert.equal(res.status, 204);
+    assert.equal(
+      res.headers.get("access-control-allow-methods"),
+      "GET, HEAD, OPTIONS",
+    );
+  });
+
+  test("a write route is unaffected — it returns before the gate", async () => {
+    // /api/v1/graphql takes POST; reaching the gate at all would break it.
+    const res = await handleRequest(
+      req("/api/v1/graphql", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ query: "{ __typename }" }),
+      }),
+      createLocalArtifactEnv() as unknown as Env,
+      {},
+    );
+    assert.notEqual(res.status, 405);
+    assert.notEqual(res.status, 404);
+  });
+});
