@@ -69,8 +69,33 @@ describe("buildChainAlphaVolume", () => {
     assert.equal(s1.net_volume_alpha, 70);
     assert.equal(s1.sentiment_ratio, 0.5385); // 70/130 rounded to 4dp
     assert.equal(s1.sentiment, "bullish");
-    // No per-subnet marketCapTao is passed at the network level -> always null.
+    // No marketCapByNetuid index passed -> the denominator is unknown, so the
+    // ratio stays null. #9526 made the index optional, not mandatory.
     assert.equal(s1.vol_mcap_ratio, null);
+  });
+
+  // #9526: the denominator used to be out of scope at the network level, which
+  // made vol_mcap_ratio structurally null on every row and in the CSV export.
+  test("fills vol_mcap_ratio per netuid from the market-cap index, and only where the index has one", () => {
+    const data = buildChainAlphaVolume(ROWS, {
+      // netuid 3 deliberately absent: a partial index must not invent a value.
+      marketCapByNetuid: new Map([
+        [1, 1000],
+        [2, 500],
+      ]),
+    });
+    const byNetuid = new Map(data.subnets.map((s) => [s.netuid, s]));
+    // 130/1000 and 100/500, each rounded to 6dp by volMcapRatio.
+    assert.equal(byNetuid.get(1)!.vol_mcap_ratio, 0.13);
+    assert.equal(byNetuid.get(2)!.vol_mcap_ratio, 0.2);
+    assert.equal(byNetuid.get(3)!.vol_mcap_ratio, null);
+    // The ratio is never a sort key: ranking stays on total_volume_tao, so a
+    // partial index cannot reorder the leaderboard. netuid 2 has the highest
+    // ratio here and still sits second.
+    assert.deepEqual(
+      data.subnets.map((s) => s.netuid),
+      [1, 2, 3],
+    );
   });
 
   test("a subnet with only one event kind (single-sided volume) shapes correctly", () => {
