@@ -295,6 +295,12 @@ import {
   TOP_HOLDERS_LIMIT_MAX,
   TOP_HOLDERS_SORTS,
 } from "./top-holders.ts";
+import {
+  buildSubnetHolders,
+  loadSubnetHolders,
+  SUBNET_HOLDERS_LIMIT_DEFAULT,
+  SUBNET_HOLDERS_LIMIT_MAX,
+} from "./subnet-holders.ts";
 import { loadTopHoldersFromArtifact } from "./top-holders-artifact.ts";
 import { loadTopHoldersFlowTier } from "./top-holders-flow-tier.ts";
 import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.ts";
@@ -1148,6 +1154,9 @@ export const FIELD_COMPLEXITY = {
   subnet_performance_history: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_concentration: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_concentration_history: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #9595: two D1 statements, both bounded -- the ranked page by `limit` and the
+  // aggregate to a single row -- so it costs what its siblings do.
+  subnet_holders: RELATIONSHIP_FIELD_COMPLEXITY,
   neuron: RELATIONSHIP_FIELD_COMPLEXITY,
   neuron_history: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -2718,6 +2727,43 @@ const rootValue = {
       consensus: data.consensus ?? null,
       validator_trust: data.validator_trust ?? null,
     };
+  },
+
+  async subnet_holders(
+    { netuid, limit }: { netuid: number; limit?: number | null },
+    context: GqlContext,
+  ) {
+    // #9595. Reads the SAME loader REST and MCP do rather than a resolver-local
+    // query -- the defect this surface has a history of is a field that answers
+    // a confident zero off a tier its siblings stopped using, and one shared
+    // loader is what makes that impossible rather than merely unlikely.
+    //
+    // The limit is VALIDATED, not clamped: REST returns 400 on an over-ceiling
+    // limit, and a GraphQL field that silently substituted a different number
+    // would answer a question the caller did not ask.
+    if (
+      limit != null &&
+      (!Number.isInteger(limit) ||
+        limit < 1 ||
+        limit > SUBNET_HOLDERS_LIMIT_MAX)
+    ) {
+      throw new GraphQLError(
+        `limit must be an integer between 1 and ${SUBNET_HOLDERS_LIMIT_MAX}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const safeLimit = limit ?? SUBNET_HOLDERS_LIMIT_DEFAULT;
+    const read = await loadSubnetHolders(
+      context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof loadSubnetHolders
+      >[0],
+      netuid,
+      { limit: safeLimit },
+    );
+    // buildSubnetHolders already returns the decline shape (empty holders, a
+    // degraded block, null counts), so there is nothing to translate here -- and
+    // nothing that could turn a decline into a zero on the way through.
+    return buildSubnetHolders(read, netuid, { limit: safeLimit });
   },
 
   async subnet_concentration(

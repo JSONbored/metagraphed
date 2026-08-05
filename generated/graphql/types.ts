@@ -2800,6 +2800,8 @@ export type Query = {
   subnet_health_trends: SubnetHealthTrends;
   /** One subnet's daily history from the neuron_daily rollup over a 7d/30d/90d/1y/all window (default 30d): neuron count, validator count, total stake (TAO), and total emission (TAO) per snapshot_date, newest first. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/history. */
   subnet_history: SubnetHistory;
+  /** Who OWNS a subnet's alpha: the top coldkeys by alpha held on that netuid, each with its share of the subnet total and how many hotkeys it holds through, plus whole-subnet aggregates (distinct holder count, total measured alpha, top5/top10/top20 concentration). The reverse index of account_positions, which reads the same ledger one coldkey (one account) at a time, and distinct from subnet_concentration: that card is computed off registered UIDs' stake, while this one includes alpha staked to UNREGISTERED hotkeys. Ranked in ALPHA, not TAO. limit caps the rows (default 20, max 100); the aggregates are always computed over the FULL holder set, so holder_count is not the length of what you got back. TWO STATES DECLINE rather than answer, both with an empty holders list, a degraded block and NULL counts: pool_totals_unproven while the pool ledger has no complete pass, and root_not_in_alpha_map for netuid 0, which the chain's Alpha map does not cover. An empty holders list WITHOUT a degraded block is therefore a measurement. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/holders. */
+  subnet_holders: SubnetHolders;
   /** One subnet's live on-chain hyperparameters (latest snapshot only). The hyperparameters block is null when the subnet has no captured row -- a schema-stable card, never a GraphQL error, matching the Query.block ref-lookup convention. Mirrors GET /api/v1/subnets/{netuid}/hyperparameters. */
   subnet_hyperparameters?: Maybe<SubnetHyperparameters>;
   /** One subnet's append-only hyperparameter-change history, newest first, one entry per observed change. Forward-only: entries exist only from when the diff-on-change write started. A subnet with no recorded changes resolves to an empty entry list, never null. Mirrors GET /api/v1/subnets/{netuid}/hyperparameters/history. */
@@ -3907,6 +3909,12 @@ export type QuerySubnet_HistoryArgs = {
 };
 
 
+export type QuerySubnet_HoldersArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  netuid: Scalars['Int']['input'];
+};
+
+
 export type QuerySubnet_HyperparametersArgs = {
   netuid: Scalars['Int']['input'];
 };
@@ -4902,6 +4910,44 @@ export type SubnetHistoryPoint = {
   total_emission_alpha?: Maybe<Scalars['Float']['output']>;
   total_stake_alpha?: Maybe<Scalars['Float']['output']>;
   validator_count?: Maybe<Scalars['Int']['output']>;
+};
+
+/** One coldkey's holding of a subnet's alpha, including alpha staked to hotkeys that hold no UID on that subnet. */
+export type SubnetHolder = {
+  __typename?: 'SubnetHolder';
+  /** ALPHA, not TAO. Within one subnet alpha is already a common unit, so there is no price conversion and none of its staleness -- multiply by the subnet's alpha_price_tao for TAO. */
+  alpha: Scalars['Float']['output'];
+  coldkey: Scalars['String']['output'];
+  /** Distinct hotkeys this coldkey holds the subnet's alpha through -- registered on it or not, which is the part a neurons-sourced view misses. */
+  hotkey_count?: Maybe<Scalars['Int']['output']>;
+  /** This holder's alpha over the subnet's FULL measured total, so it means the same thing at limit 5 and limit 100. Null when the total is zero. */
+  share_of_total?: Maybe<Scalars['Float']['output']>;
+};
+
+export type SubnetHolders = {
+  __typename?: 'SubnetHolders';
+  /** The pool pass every row was valued against. */
+  captured_at?: Maybe<Scalars['String']['output']>;
+  concentration?: Maybe<SubnetHoldersConcentration>;
+  /** Present ONLY on a decline. Its absence is what says the ranking is real -- an empty holders list with no degraded block means the subnet genuinely has no measured holders. */
+  degraded?: Maybe<DegradedInfo>;
+  /** Distinct coldkeys holding this subnet's alpha -- the whole set, never the returned page's length. */
+  holder_count?: Maybe<Scalars['Int']['output']>;
+  holders: Array<SubnetHolder>;
+  limit?: Maybe<Scalars['Int']['output']>;
+  netuid: Scalars['Int']['output'];
+  /** When the positions ledger itself was last written, which advances on a different cadence than the pool totals. */
+  positions_captured_at?: Maybe<Scalars['String']['output']>;
+  schema_version: Scalars['Int']['output'];
+  total_alpha?: Maybe<Scalars['Float']['output']>;
+};
+
+/** Concentration of a subnet's alpha, each rank summed over the top N of the FULL holder set rather than the returned page. */
+export type SubnetHoldersConcentration = {
+  __typename?: 'SubnetHoldersConcentration';
+  top5_share?: Maybe<Scalars['Float']['output']>;
+  top10_share?: Maybe<Scalars['Float']['output']>;
+  top20_share?: Maybe<Scalars['Float']['output']>;
 };
 
 /** Per-subnet neuron-registration activity over a window (#5720). Zeroed card (0 counts) on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/registrations. */
@@ -6125,6 +6171,9 @@ export type ResolversTypes = ResolversObject<{
   SubnetHealthTrends: ResolverTypeWrapper<SubnetHealthTrends>;
   SubnetHistory: ResolverTypeWrapper<SubnetHistory>;
   SubnetHistoryPoint: ResolverTypeWrapper<SubnetHistoryPoint>;
+  SubnetHolder: ResolverTypeWrapper<SubnetHolder>;
+  SubnetHolders: ResolverTypeWrapper<SubnetHolders>;
+  SubnetHoldersConcentration: ResolverTypeWrapper<SubnetHoldersConcentration>;
   SubnetHyperparameters: ResolverTypeWrapper<SubnetHyperparameters>;
   SubnetHyperparamsHistory: ResolverTypeWrapper<SubnetHyperparamsHistory>;
   SubnetIdentityHistory: ResolverTypeWrapper<SubnetIdentityHistory>;
@@ -6442,6 +6491,9 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetHealthTrends: SubnetHealthTrends;
   SubnetHistory: SubnetHistory;
   SubnetHistoryPoint: SubnetHistoryPoint;
+  SubnetHolder: SubnetHolder;
+  SubnetHolders: SubnetHolders;
+  SubnetHoldersConcentration: SubnetHoldersConcentration;
   SubnetHyperparameters: SubnetHyperparameters;
   SubnetHyperparamsHistory: SubnetHyperparamsHistory;
   SubnetIdentityHistory: SubnetIdentityHistory;
@@ -8669,6 +8721,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_health_percentiles?: Resolver<ResolversTypes['SubnetHealthPercentiles'], ParentType, ContextType, RequireFields<QuerySubnet_Health_PercentilesArgs, 'netuid'>>;
   subnet_health_trends?: Resolver<ResolversTypes['SubnetHealthTrends'], ParentType, ContextType, RequireFields<QuerySubnet_Health_TrendsArgs, 'netuid'>>;
   subnet_history?: Resolver<ResolversTypes['SubnetHistory'], ParentType, ContextType, RequireFields<QuerySubnet_HistoryArgs, 'netuid'>>;
+  subnet_holders?: Resolver<ResolversTypes['SubnetHolders'], ParentType, ContextType, RequireFields<QuerySubnet_HoldersArgs, 'netuid'>>;
   subnet_hyperparameters?: Resolver<Maybe<ResolversTypes['SubnetHyperparameters']>, ParentType, ContextType, RequireFields<QuerySubnet_HyperparametersArgs, 'netuid'>>;
   subnet_hyperparameters_history?: Resolver<ResolversTypes['SubnetHyperparamsHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Hyperparameters_HistoryArgs, 'netuid'>>;
   subnet_identity_history?: Resolver<ResolversTypes['SubnetIdentityHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Identity_HistoryArgs, 'netuid'>>;
@@ -9225,6 +9278,32 @@ export type SubnetHistoryPointResolvers<ContextType = GqlContext, ParentType ext
   total_emission_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   total_stake_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+}>;
+
+export type SubnetHolderResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetHolder'] = ResolversParentTypes['SubnetHolder']> = ResolversObject<{
+  alpha?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  coldkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  hotkey_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  share_of_total?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type SubnetHoldersResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetHolders'] = ResolversParentTypes['SubnetHolders']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  concentration?: Resolver<Maybe<ResolversTypes['SubnetHoldersConcentration']>, ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
+  holder_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  holders?: Resolver<Array<ResolversTypes['SubnetHolder']>, ParentType, ContextType>;
+  limit?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  positions_captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  total_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type SubnetHoldersConcentrationResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetHoldersConcentration'] = ResolversParentTypes['SubnetHoldersConcentration']> = ResolversObject<{
+  top5_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  top10_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  top20_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type SubnetHyperparametersResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetHyperparameters'] = ResolversParentTypes['SubnetHyperparameters']> = ResolversObject<{
@@ -10193,6 +10272,9 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetHealthTrends?: SubnetHealthTrendsResolvers<ContextType>;
   SubnetHistory?: SubnetHistoryResolvers<ContextType>;
   SubnetHistoryPoint?: SubnetHistoryPointResolvers<ContextType>;
+  SubnetHolder?: SubnetHolderResolvers<ContextType>;
+  SubnetHolders?: SubnetHoldersResolvers<ContextType>;
+  SubnetHoldersConcentration?: SubnetHoldersConcentrationResolvers<ContextType>;
   SubnetHyperparameters?: SubnetHyperparametersResolvers<ContextType>;
   SubnetHyperparamsHistory?: SubnetHyperparamsHistoryResolvers<ContextType>;
   SubnetIdentityHistory?: SubnetIdentityHistoryResolvers<ContextType>;

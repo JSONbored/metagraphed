@@ -304,6 +304,8 @@ export const SDL = /* GraphQL */ `
     ): SubnetPerformanceHistory!
     "Per-subnet stake and emission concentration over the current neurons snapshot: raw-UID and per-entity Gini/HHI/Nakamoto/top-K share for stake and emission, validator-only stake concentration, and a uids-per-entity Sybil signal; a subnet with no neurons resolves to a schema-stable zeroed card (metric blocks null), never null. Mirrors GET /api/v1/subnets/{netuid}/concentration."
     subnet_concentration(netuid: Int!): SubnetConcentration!
+    "Who OWNS a subnet's alpha: the top coldkeys by alpha held on that netuid, each with its share of the subnet total and how many hotkeys it holds through, plus whole-subnet aggregates (distinct holder count, total measured alpha, top5/top10/top20 concentration). The reverse index of account_positions, which reads the same ledger one coldkey (one account) at a time, and distinct from subnet_concentration: that card is computed off registered UIDs' stake, while this one includes alpha staked to UNREGISTERED hotkeys. Ranked in ALPHA, not TAO. limit caps the rows (default 20, max 100); the aggregates are always computed over the FULL holder set, so holder_count is not the length of what you got back. TWO STATES DECLINE rather than answer, both with an empty holders list, a degraded block and NULL counts: pool_totals_unproven while the pool ledger has no complete pass, and root_not_in_alpha_map for netuid 0, which the chain's Alpha map does not cover. An empty holders list WITHOUT a degraded block is therefore a measurement. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/holders."
+    subnet_holders(netuid: Int!, limit: Int): SubnetHolders!
     "Per-subnet per-day stake and emission concentration trend from the neuron_daily rollup over a 7d/30d/90d window (default 30d): each day's stake/emission Gini, Nakamoto coefficient, and top-10% share, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/concentration/history."
     subnet_concentration_history(
       netuid: Int!
@@ -2790,6 +2792,41 @@ export const SDL = /* GraphQL */ `
     deregistrations: Int!
     deregistrations_per_hotkey: Float
     derivation: DeregistrationDerivation
+    degraded: DegradedInfo
+  }
+
+  "One coldkey's holding of a subnet's alpha, including alpha staked to hotkeys that hold no UID on that subnet."
+  type SubnetHolder {
+    coldkey: String!
+    "ALPHA, not TAO. Within one subnet alpha is already a common unit, so there is no price conversion and none of its staleness -- multiply by the subnet's alpha_price_tao for TAO."
+    alpha: Float!
+    "This holder's alpha over the subnet's FULL measured total, so it means the same thing at limit 5 and limit 100. Null when the total is zero."
+    share_of_total: Float
+    "Distinct hotkeys this coldkey holds the subnet's alpha through -- registered on it or not, which is the part a neurons-sourced view misses."
+    hotkey_count: Int
+  }
+
+  "Concentration of a subnet's alpha, each rank summed over the top N of the FULL holder set rather than the returned page."
+  type SubnetHoldersConcentration {
+    top5_share: Float
+    top10_share: Float
+    top20_share: Float
+  }
+
+  type SubnetHolders {
+    schema_version: Int!
+    netuid: Int!
+    limit: Int
+    "Distinct coldkeys holding this subnet's alpha -- the whole set, never the returned page's length."
+    holder_count: Int
+    total_alpha: Float
+    concentration: SubnetHoldersConcentration
+    "The pool pass every row was valued against."
+    captured_at: String
+    "When the positions ledger itself was last written, which advances on a different cadence than the pool totals."
+    positions_captured_at: String
+    holders: [SubnetHolder!]!
+    "Present ONLY on a decline. Its absence is what says the ranking is real -- an empty holders list with no degraded block means the subnet genuinely has no measured holders."
     degraded: DegradedInfo
   }
 
