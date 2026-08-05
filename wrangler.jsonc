@@ -279,10 +279,17 @@
     //
     // 1.0 is safe HERE specifically because MCP is the cheap surface:
     // ~1.9K tool calls/day, so ~56K spans/month against a 1M/month free tier.
-    // The general POSTHOG_TRACES_SAMPLE_RATE is deliberately left UNSET, so
-    // REST stays at 0 -- at ~1.1M requests/day even 1% would be 330K
-    // spans/month on an account already ~33x over its event allowance (#9004).
-    // Raise REST once that volume is dealt with; it is a config change.
+    // The general POSTHOG_TRACES_SAMPLE_RATE is deliberately left UNSET on
+    // THIS config, so this Worker's REST stays at 0 -- at ~1.1M requests/day
+    // even 1% would be 330K spans/month on an account already ~33x over its
+    // event allowance (#9004). Raise it once that volume is dealt with; it is
+    // a config change.
+    //
+    // #9466: `vars` are per-config, so leaving it unset here left it unset on
+    // the two Workers this file does NOT configure either -- data-api and
+    // registry-sync-api, whose own sampled branches were dead code as a
+    // result. Both now set their own measured rate (0.01 and 1 respectively);
+    // see those configs for the arithmetic. This line governs api.ts alone.
     "POSTHOG_TRACES_SAMPLE_RATE_MCP": "1",
     // usage_event sampling, sized against the 1M/MONTH free tier. See
     // src/usage-telemetry.ts's sampling header for the mechanism (and for
