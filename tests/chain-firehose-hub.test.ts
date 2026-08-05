@@ -45,6 +45,9 @@ import {
   validateChainFirehoseIngestPayload,
   shouldEmitAlerterUnreachable,
   ALERTER_UNREACHABLE_EVENT_WINDOW_MS,
+  CHAIN_FIREHOSE_PUBLISHED_TABLES,
+  formatChainFirehoseTopicNoticeFrame,
+  unpublishedChainFirehoseTopics,
 } from "../workers/chain-firehose-hub.ts";
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.ts";
 import { resetModuleState } from "../src/module-state-registry.ts";
@@ -743,6 +746,71 @@ test("ChainFirehoseHub /subscribe (SSE): responds with a text/event-stream and a
   await reader.cancel();
 });
 
+test("unpublishedChainFirehoseTopics: names the topics no producer publishes (#9583)", () => {
+  assert.deepEqual(
+    unpublishedChainFirehoseTopics(new Set(["chain_events", "blocks"])),
+    ["chain_events"],
+  );
+  // Sorted, so the frame is stable regardless of the caller's ?topics= order.
+  assert.deepEqual(
+    unpublishedChainFirehoseTopics(new Set(["extrinsics", "account_events"])),
+    ["account_events", "extrinsics"],
+  );
+  // Positive control: `blocks` IS published, so a blocks-only filter is not a
+  // thwarted expectation and must produce no notice.
+  assert.ok(CHAIN_FIREHOSE_PUBLISHED_TABLES.has("blocks"));
+  assert.deepEqual(unpublishedChainFirehoseTopics(new Set(["blocks"])), []);
+  // No filter means "everything there is", which is never thwarted either.
+  assert.deepEqual(unpublishedChainFirehoseTopics(null), []);
+  assert.deepEqual(unpublishedChainFirehoseTopics(undefined), []);
+});
+
+test("formatChainFirehoseTopicNoticeFrame: an id-less notice frame (#9583)", () => {
+  const frame = formatChainFirehoseTopicNoticeFrame(["chain_events"]);
+  assert.equal(
+    frame,
+    'event: notice\ndata: {"code":"topic_not_published","topics":["chain_events"],"published":["blocks"]}\n\n',
+  );
+  // No `id:` -- a reconnecting client must not be able to resume "from" a
+  // notice, the same reason formatChainFirehoseSseResetFrame() has none.
+  assert.ok(!frame.includes("id:"));
+});
+
+test("ChainFirehoseHub /subscribe (SSE): warns a client that filtered to an unpublished topic (#9583)", async () => {
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  const res = await hub.fetch(
+    new Request(
+      "https://chain-firehose-hub.internal/subscribe?topics=chain_events",
+    ),
+  );
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  assert.equal(decoder.decode((await reader.read()).value), ": connected\n\n");
+  assert.equal(
+    decoder.decode((await reader.read()).value),
+    formatChainFirehoseTopicNoticeFrame(["chain_events"]),
+  );
+  await reader.cancel();
+});
+
+test("ChainFirehoseHub /subscribe (SSE): no notice when the filter names a published topic (#9583)", async () => {
+  const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+  const res = await hub.fetch(
+    new Request("https://chain-firehose-hub.internal/subscribe?topics=blocks"),
+  );
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  assert.equal(decoder.decode((await reader.read()).value), ": connected\n\n");
+  // Positive control: the same request shape with an unpublished topic emits a
+  // notice as its SECOND frame (test above), so proving there is none here
+  // means proving the next frame is real data instead.
+  hub.broadcast({ table: "blocks", block_number: 1 });
+  const second = decoder.decode((await reader.read()).value);
+  assert.ok(!second.includes("event: notice"));
+  assert.ok(second.includes("event: chain"));
+  await reader.cancel();
+});
+
 test("ChainFirehoseHub /subscribe (SSE): rejects new clients at the global connection cap", async () => {
   const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   const responses = [];
@@ -849,6 +917,7 @@ test("ChainFirehoseHub /subscribe (SSE) -> broadcast: ?netuid= filters account_e
   const decode = async () =>
     new TextDecoder().decode((await reader.read()).value);
   await decode(); // ": connected"
+  await decode(); // #9583 notice: account_events has no producer today
 
   hub.broadcast({ table: "account_events", block_number: 1, netuid: 9 }); // wrong subnet -- filtered
   hub.broadcast({ table: "account_events", block_number: 2, netuid: 5 }); // id 2 -- matches
@@ -890,6 +959,12 @@ test("ChainFirehoseHub /subscribe (SSE) Last-Event-ID resume: replays only event
     new TextDecoder().decode((await reader.read()).value);
 
   assert.equal(await decode(), ": connected\n\n");
+  // #9583: the notice precedes the replay -- a resuming client learns the
+  // topic has no producer before it starts reading history through it.
+  assert.equal(
+    await decode(),
+    formatChainFirehoseTopicNoticeFrame(["account_events"]),
+  );
   assert.equal(
     await decode(),
     'id: 2\nevent: chain\ndata: {"table":"account_events","block_number":2,"netuid":5}\n\n',

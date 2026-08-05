@@ -80,6 +80,33 @@ export const CHAIN_FIREHOSE_TABLES = new Set([
   "account_events",
 ]);
 
+// #9583: of the four topics above, only `blocks` has a producer today. The
+// box-side relay that fed all four died with Postgres (#9426) and the head
+// poller that replaced it (#204) publishes the blocks lane alone -- decoding
+// the other three needs runtime metadata, which is the Containers indexer's
+// job (#209), and a Worker faking them from undecoded bytes would serve wrong
+// data.
+//
+// A topic filter is still ACCEPTED for all four, because a producer arriving
+// later must not require a client change. But a subscriber that asks only for
+// unpublished topics gets a well-formed stream that never emits, which is
+// indistinguishable from a quiet chain -- so say so once, at connect.
+export const CHAIN_FIREHOSE_PUBLISHED_TABLES = new Set(["blocks"]);
+
+/**
+ * Requested topics that no producer currently publishes, sorted for a stable
+ * frame. `null` (no filter) returns none: that caller asked for everything and
+ * gets everything there is, which is not a thwarted expectation.
+ */
+export function unpublishedChainFirehoseTopics(
+  topics: Set<string> | null | undefined,
+): string[] {
+  if (!topics) return [];
+  return [...topics]
+    .filter((topic) => !CHAIN_FIREHOSE_PUBLISHED_TABLES.has(topic))
+    .sort();
+}
+
 // Headroom over Postgres's 8000-byte NOTIFY payload cap (the trigger's own
 // payload is already far smaller than this -- see the trigger's comment).
 export const CHAIN_FIREHOSE_MAX_INGEST_BODY_BYTES = 16_000;
@@ -506,6 +533,20 @@ export function chainFirehoseSseResumeHasGap(
 // instead of refetching again.
 export function formatChainFirehoseSseResetFrame(): string {
   return `event: reset\ndata: {}\n\n`;
+}
+
+// #9583: sent once, at connect, when a client filtered to topics nothing
+// publishes. Its own event type so an existing client ignores it (EventSource
+// delivers only listened-for types), and no `id:` for the same reason `reset`
+// has none -- it is not a numbered event in the stream's sequence, and a
+// resuming client must not be able to resume "from" it.
+export function formatChainFirehoseTopicNoticeFrame(topics: string[]): string {
+  const payload = JSON.stringify({
+    code: "topic_not_published",
+    topics,
+    published: [...CHAIN_FIREHOSE_PUBLISHED_TABLES].sort(),
+  });
+  return `event: notice\ndata: ${payload}\n\n`;
 }
 
 // Sentry METAGRAPHED-3: state.getWebSockets() itself -- not a per-socket
@@ -1261,6 +1302,16 @@ export class ChainFirehoseHub implements DurableObject {
           entry = { controller, topics, ip: clientIp, netuid };
           this.addSseClient(entry);
           controller.enqueue(encoder.encode(": connected\n\n"));
+
+          // #9583: before any data frame, tell a client that filtered to
+          // topics nothing publishes -- otherwise the silence that follows
+          // reads as a quiet chain rather than an absent producer.
+          const unpublished = unpublishedChainFirehoseTopics(topics);
+          if (unpublished.length > 0) {
+            controller.enqueue(
+              encoder.encode(formatChainFirehoseTopicNoticeFrame(unpublished)),
+            );
+          }
 
           // #8364: Last-Event-ID resume.
           if (lastEventIdHeader !== null) {

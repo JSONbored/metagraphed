@@ -144,7 +144,20 @@ One global instance (`idFromName("global")`) owns two endpoints:
   the WS transport instead. Both support
   `?topics=blocks,extrinsics,chain_events,account_events` (comma-separated,
   defaults to all four) to avoid forcing a client to consume the full
-  firehose.
+  firehose. **Only `blocks` has a producer today** (#204 publishes that lane
+  alone; see the banner at the top), so a filter naming only the other three
+  matches nothing. The filter still accepts all four — a producer arriving
+  later must not require a client change — but SSE sends one
+  `event: notice` frame at connect naming any requested topic that has no
+  producer:
+
+  ```
+  event: notice
+  data: {"code":"topic_not_published","topics":["chain_events"],"published":["blocks"]}
+  ```
+
+  It carries no `id:`, so it never becomes a resume point, and `EventSource`
+  clients that don't listen for `notice` ignore it (#9583).
 
 Bounded per-connection buffering: an SSE client whose `ReadableStream`
 controller falls behind (`desiredSize < 0` against a 64-frame
