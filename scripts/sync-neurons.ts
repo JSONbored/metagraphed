@@ -27,6 +27,12 @@
 // makes chunking safe: splitting one snapshot across N requests cannot make an
 // earlier chunk's rows look stale to a later chunk's prune.
 
+import {
+  initObservability,
+  endSessionAndFlush,
+  captureFatalAndExit,
+} from "./observability.ts";
+
 const SYNC_URL =
   process.env.NEURONS_SYNC_URL ||
   "https://api.metagraph.sh/api/v1/internal/neurons-sync";
@@ -141,10 +147,26 @@ async function main(): Promise<void> {
 // runs the sync only when invoked directly, not on import.
 const { fileURLToPath } = await import("node:url");
 if (process.argv[1] && process.argv[1] === fileURLToPath(import.meta.url)) {
-  main().catch((err) => {
-    console.error(
-      `sync-neurons failed: ${err instanceof Error ? err.message : err}`,
-    );
-    process.exitCode = 1;
-  });
+  // Inside the direct-invocation guard, not at module scope: initObservability
+  // registers process-level crash handlers, and importing this file for the
+  // chunker (tests/sync-neurons.test.ts) must not install them.
+  initObservability("sync-neurons");
+  main()
+    .then(async () => {
+      await endSessionAndFlush();
+    })
+    .catch(async (err) => {
+      console.error(
+        `sync-neurons failed: ${err instanceof Error ? err.message : err}`,
+      );
+      // Explicit capture required here (not left to observability.ts's
+      // process-level uncaughtException/unhandledRejection handlers): Node
+      // stops considering a promise "unhandled" once something calls
+      // .catch() on it, which this script already did before those handlers
+      // would ever see it. Same reason discover-testnet-surfaces.ts calls it
+      // directly. This replaces the previous `process.exitCode = 1`:
+      // captureFatalAndExit exits 1 itself, and does so with or without a
+      // POSTHOG_PROJECT_TOKEN, so the failing exit status is unchanged.
+      await captureFatalAndExit(err);
+    });
 }

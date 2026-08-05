@@ -50,6 +50,8 @@ jobs:
         run: npm ci
 
       - name: Probe testnet subnet surfaces
+        env:
+          POSTHOG_PROJECT_TOKEN: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
         run: |
           node scripts/discover-testnet-surfaces.ts --out testnet-discovery.json | tee discovery.log
           {
