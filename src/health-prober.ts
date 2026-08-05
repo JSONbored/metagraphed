@@ -35,7 +35,6 @@ import {
   upsertSubnetSnapshotsToD1,
   type ObservationsDb,
 } from "./observations-d1.ts";
-import { tryPostgresTier } from "../workers/postgres-tier.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import {
@@ -61,6 +60,7 @@ import {
 } from "./endpoint-reliability.ts";
 import { emptyStatusCounts } from "./endpoint-score.ts";
 import type { ObservationsReadDb } from "./analytics-live.ts";
+import { readLiveSurfaceStatus } from "./health-status-live.ts";
 export const OPERATIONAL_SURFACES_PATH = "/metagraph/operational-surfaces.json";
 
 type Row = Record<string, unknown>;
@@ -501,25 +501,21 @@ export async function runHealthProber(
   }
 
   // Prior status (last_ok + consecutive_failures) for continuity + the breaker.
-  // D1 retirement: this used to read D1's own surface_status directly; now
-  // reuses the same Postgres-backed internal endpoint resolveLiveHealth's
-  // KV-cold fallback calls (workers/data-api.ts's
-  // /api/v1/internal/health-status-live), with since=0 so it returns every
-  // tracked surface regardless of freshness — this read needs the LAST known
-  // row per surface for continuity even if it's stale, unlike the serving
-  // fallback which deliberately filters to fresh rows only.
+  // since=0 so it returns every tracked surface regardless of freshness — this
+  // read needs the LAST known row per surface for continuity even if it's
+  // stale, unlike the serving fallback which deliberately filters to fresh
+  // rows only.
+  //
+  // #9522: this went through tryPostgresTier until the route it asks for was
+  // actually implemented AND the flag gate stopped swallowing it. Both halves
+  // were broken — see src/health-status-live.ts for why the fix is a direct
+  // service-binding call rather than a wider flag. While it resolved to null,
+  // every line below that reads `prior` silently took its absent branch: any
+  // surface not ok THIS run had last_ok rewritten to null, and the failure
+  // streak restarted at 1, holding it under the pool breaker's threshold.
   const priorStatus = new Map<unknown, Row>();
-  const priorRows = await tryPostgresTier(
-    env,
-    new Request(
-      "https://api.metagraph.sh/api/v1/internal/health-status-live?since=0",
-    ),
-    "METAGRAPH_HEALTH_SOURCE",
-  );
-  if (Array.isArray(priorRows?.rows)) {
-    for (const row of priorRows.rows as Row[]) {
-      priorStatus.set(row.surface_key || row.surface_id, row);
-    }
+  for (const row of await readLiveSurfaceStatus(env, 0)) {
+    priorStatus.set(row.surface_key || row.surface_id, row);
   }
 
   const probed = await mapLimit(surfaces, concurrency, async (surface) => {
