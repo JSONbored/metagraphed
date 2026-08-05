@@ -24,10 +24,12 @@
 #    same `git diff` against the merge base that syntax-check.yml uses for Rust,
 #    rather than another third-party action.
 #
-# 4. DELETE IS NOT GATED. It runs on every closed PR regardless of what changed,
-#    because the failure modes are asymmetric: a redundant delete of a branch
-#    that was never created is a no-op, while a skipped delete leaks a database
-#    branch until someone notices.
+# 4. DELETE IS NOT GATED ON THE PATH FILTER. It runs on every closed PR, because
+#    the failure modes are asymmetric: a skipped delete leaks a database branch
+#    until someone notices. It asks Neon whether the branch exists first rather
+#    than deleting blindly -- `continue-on-error` is forbidden in this repo, and
+#    rightly, since silencing "no such branch" would equally silence a delete
+#    that failed for a real reason.
 #
 # The schema-diff-action stays OUT, deliberately. It posts a comment containing
 # a branch connection string, and this repository is PUBLIC -- that is a
@@ -105,11 +107,38 @@ jobs:
     if: github.event.action == 'closed'
     runs-on: ubuntu-latest
     steps:
-      # Unconditional, and tolerant of a branch that never existed: a PR that
-      # touched no schema created nothing, and deleting nothing is a no-op worth
-      # paying for to guarantee the ones that DID exist are cleaned up.
+      # ASKED, NOT ASSUMED. Most closed PRs never created a branch, so a blind
+      # delete fails on them -- and the obvious silencer, continue-on-error, is
+      # forbidden here for good reason: it would equally hide a delete that
+      # failed for a REAL reason, which is how a branch leaks unnoticed. So the
+      # condition is made explicit and every remaining failure is genuine.
+      #
+      # `-sf` and a jq default keep the step from failing on a transport error
+      # in a way that reads as "no branch"; a bad response yields an empty list
+      # and the delete is skipped rather than mis-firing.
+      - name: Does the branch exist?
+        id: exists
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          BRANCH: preview/pr-${{ github.event.number }}
+        run: |
+          set -euo pipefail
+          # Header via a variable so the key never appears in the trace.
+          found="$(curl -sf \
+            -H "Authorization: Bearer $NEON_API_KEY" \
+            "https://console.neon.tech/api/v2/projects/$PROJECT_ID/branches" \
+            | jq -r --arg b "$BRANCH" '[.branches[]? | select(.name == $b)] | length' \
+            || echo 0)"
+          if [ "${found:-0}" -gt 0 ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "no branch $BRANCH; nothing to delete"
+          fi
+
       - name: Delete branch
-        continue-on-error: true
+        if: steps.exists.outputs.found == 'true'
         uses: neondatabase/delete-branch-action@4468d825d5a88ef4012f1705a82f02ec3072f776 # v3
         with:
           project_id: ${{ vars.NEON_PROJECT_ID }}
