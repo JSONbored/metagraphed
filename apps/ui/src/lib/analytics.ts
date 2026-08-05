@@ -163,6 +163,30 @@ function loadPostHog(): Promise<PostHog | null> {
         // captured the first frames. SPA navigations are handled by
         // syncReplayPolicy() below.
         disable_session_recording: isReplayBlockedRoute(currentPathname()),
+        // #9451 follow-up: the throttle in captureException() below only sees
+        // exceptions this app routes through it (error boundaries via
+        // error-reporting.ts). The project has exception AUTOCAPTURE enabled,
+        // and posthog-js sends those straight from its own window.onerror /
+        // unhandledrejection handlers -- never through our wrapper -- so an
+        // unhandled fault in a render loop was still completely unthrottled.
+        // That is not hypothetical: the `Invalid regular expression: /^*/
+        // settings/*$/` storm (a malformed replay-blocklist rule, since
+        // corrected project-side) arrived this way, `handled: false`, once
+        // per pageview across every route.
+        //
+        // before_send is posthog-js's documented last gate before dispatch
+        // and sees EVERY event including autocaptured ones, so the same
+        // admitClientException() budget now governs both paths. Returning
+        // null drops the event client-side, which means it is never ingested
+        // and therefore never billed (PostHog bills ingested $exception
+        // events; a drop before send costs nothing). Non-exception events
+        // pass through untouched.
+        before_send: (event) => {
+          if (event?.event !== "$exception") return event;
+          const values = event.properties?.["$exception_values"];
+          const signature = Array.isArray(values) ? values.join("|") : String(values ?? "");
+          return admitClientException(signature) ? event : null;
+        },
         capture_pageview: false,
         // posthog-js's own default for capture_pageleave is
         // 'if_capture_pageview' -- i.e. it piggybacks on capture_pageview's
@@ -335,29 +359,38 @@ export function captureEvent(name: string, properties?: Record<string, unknown>)
 // #9451: client-side $exception cost guard, the browser twin of
 // src/usage-telemetry.ts's admitExceptionCapture. The server side throttles
 // per fingerprint per isolate; here the unit of blast radius is one page
-// load (a render-loop error boundary or a failing effect can call
-// reportError on every frame), so the guard is two-layered: at most one
-// capture per error signature per window, and a hard cap per page load no
-// matter how many distinct signatures a cascade mints. Unlike the server
-// guard this is NOT env-gated -- there is no test-determinism concern here
-// (the throttle state is module-scoped and vi.resetModules() clears it),
-// and an unconfigured token already short-circuits before the guard runs.
+// load (a render loop can throw on every frame), so the guard is two-layered:
+// at most one capture per error signature per window, and a hard cap per page
+// load no matter how many distinct signatures a cascade mints. Unlike the
+// server guard this is NOT env-gated -- there is no test-determinism concern
+// (the state is module-scoped, and vi.resetModules() clears it).
+//
+// Enforced in exactly ONE place: the `before_send` hook in loadPostHog above.
+// That is deliberate. before_send is the only gate BOTH exception paths pass
+// through -- this module's own captureException AND posthog-js's exception
+// autocapture, which sends from its internal window.onerror handler and never
+// touches our wrapper. An earlier revision also called this from
+// captureException, which double-spent the budget: one explicit capture
+// consumed a slot on the way in and then met its own throttle again in
+// before_send, where a second signature miss could drop an event that had
+// already been admitted.
 const EXCEPTION_WINDOW_MS = 60_000;
 const EXCEPTION_PAGE_CAP = 20;
 const exceptionLastSentAt = new Map<string, number>();
 let exceptionsSentThisPage = 0;
 
-/** Decide whether this exception may be captured now. Exported for tests
- * only -- captureException is a silent no-op without a token, so "throttled"
- * would otherwise be indistinguishable from "unconfigured" (same reasoning
- * as the server-side admitExceptionCapture's export). */
-export function admitClientException(error: unknown, nowMs: number = Date.now()): boolean {
+/** Decide whether an exception with this signature may be sent now.
+ *
+ * Takes the already-normalized signature STRING rather than the error object:
+ * before_send sees a serialized PostHog event (`$exception_values`), not the
+ * original `Error`, so a string keeps the one budget keyed consistently no
+ * matter which path produced the event. Exported for tests -- a dropped event
+ * is otherwise indistinguishable from an unconfigured no-op. */
+export function admitClientException(signature: string, nowMs: number = Date.now()): boolean {
   if (exceptionsSentThisPage >= EXCEPTION_PAGE_CAP) return false;
-  // Name+message, not a stack hash: two occurrences of the same fault can
+  // Message text, not a stack hash: two occurrences of the same fault can
   // carry different chunk URLs in their stacks (lazy-loaded routes), and
   // PostHog's own issue grouping is message-led anyway (#9019 server-side).
-  const err = error instanceof Error ? error : null;
-  const signature = `${err?.name ?? typeof error}:${err?.message ?? String(error)}`;
   const lastSentAt = exceptionLastSentAt.get(signature);
   if (lastSentAt !== undefined && nowMs - lastSentAt < EXCEPTION_WINDOW_MS) return false;
   exceptionLastSentAt.set(signature, nowMs);
@@ -375,14 +408,14 @@ export function admitClientException(error: unknown, nowMs: number = Date.now())
  * call site. Same best-effort, no-op-when-unconfigured contract as every
  * other export here.
  *
- * #9451: throttled via admitClientException above, and #7761's
- * `startSessionRecording(true)` force-record is REMOVED -- forcing a
- * recording per exception coupled error volume to session-replay billing,
- * so one storm spent two quotas at once. Replay stays on its configured
- * sample rate; exceptions no longer override it. */
+ * #9451: no throttle call here -- the budget is enforced once, in the
+ * `before_send` hook (see admitClientException below for why one gate rather
+ * than two). #7761's `startSessionRecording(true)` force-record is REMOVED:
+ * forcing a recording per exception coupled error volume to session-replay
+ * billing, so one storm spent two quotas at once. Replay stays on its
+ * configured sample rate; exceptions no longer override it. */
 export function captureException(error: unknown, properties?: Record<string, unknown>): void {
   if (!POSTHOG_TOKEN) return;
-  if (!admitClientException(error)) return;
   void loadPostHog().then((posthog) => {
     posthog?.captureException(error, properties);
   });

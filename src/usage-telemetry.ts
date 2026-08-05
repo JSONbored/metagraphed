@@ -1250,6 +1250,39 @@ function exceptionListEntry(error: unknown): {
 }
 
 /**
+ * Platform lifecycle messages that are NOT faults, and must never spend
+ * error-tracking quota or land in the error inbox.
+ *
+ * "Durable Object reset because its code was updated" is the runtime telling
+ * us a deploy landed while a DO was live. It is expected on EVERY deploy,
+ * self-heals (the alarm/request simply re-runs), and there is no action a
+ * reader could take. workers/api.ts's firehose-ingest handler already
+ * documents it as "expected/occasional, not a real fault" and swallows it at
+ * that one call site -- but the DOs' own alarm loops capture it too, and
+ * their per-isolate change-detectors (e.g. ChainFirehoseHub's
+ * lastCapturedHeadPollerError) are defeated by construction here: the reset
+ * WIPES the isolate holding the memo, so the next occurrence always looks
+ * new. That is why this needs to be central rather than another local guard
+ * -- all four DOs (chain-firehose, mcp-session, subnet-status, alerter) can
+ * raise it, and a deploy-heavy day captured 43 of them.
+ *
+ * Deliberately an exact-prefix list of runtime-owned strings, not a fuzzy
+ * "looks benign" heuristic: anything broader would eventually swallow a real
+ * fault, which is the failure mode that actually costs debugging time.
+ */
+const BENIGN_PLATFORM_MESSAGE_PREFIXES = [
+  "Durable Object reset because its code was updated",
+] as const;
+
+/** Exported for tests: a suppressed capture is otherwise indistinguishable
+ * from the unconfigured no-op, the same reasoning as admitExceptionCapture. */
+export function isBenignPlatformMessage(message: string): boolean {
+  return BENIGN_PLATFORM_MESSAGE_PREFIXES.some((prefix) =>
+    message.startsWith(prefix),
+  );
+}
+
+/**
  * Capture one exception as a PostHog `$exception` event. Same no-throw,
  * no-op-when-unconfigured contract as recordUsageEvent/recordMcpToolCallEvent.
  *
@@ -1274,6 +1307,15 @@ export async function recordExceptionEvent(
     if (!event || typeof event !== "object") return false;
 
     const { type, entry } = exceptionListEntry(event.error);
+    // Before the storm guard, not after: a benign platform message must never
+    // consume a fingerprint's window either, or a deploy-time reset would
+    // suppress the NEXT genuine fault on that same route for a full window.
+    if (
+      typeof entry.value === "string" &&
+      isBenignPlatformMessage(entry.value)
+    ) {
+      return false;
+    }
     const route = sanitizeLabel(event.route);
     const mcpTool = sanitizeLabel(event.mcpTool);
     // A stable string groups every occurrence of "this site threw this

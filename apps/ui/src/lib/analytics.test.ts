@@ -235,31 +235,43 @@ describe("analytics (PostHog web analytics)", () => {
       expect(startSessionRecording).not.toHaveBeenCalled();
     });
 
-    it("captureException drops a repeat of the same error signature inside the throttle window (#9451)", async () => {
+    it("before_send throttles a repeated $exception, including autocaptured ones (#9451)", async () => {
       vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
-      const { captureException } = await import("./analytics");
-      captureException(new Error("boom"));
-      captureException(new Error("boom"));
-      await vi.waitFor(() => expect(captureExceptionSpy).toHaveBeenCalled());
-      expect(captureExceptionSpy).toHaveBeenCalledTimes(1);
-      // A DIFFERENT signature is never delayed by an unrelated storm.
-      captureException(new TypeError("other fault"));
-      await vi.waitFor(() => expect(captureExceptionSpy).toHaveBeenCalledTimes(2));
+      const { capturePageview } = await import("./analytics");
+      capturePageview("https://metagraph.sh/");
+      await vi.waitFor(() => expect(init).toHaveBeenCalled());
+      const beforeSend = init.mock.calls[0][1].before_send as (e: unknown) => unknown;
+
+      // An autocaptured exception never passes through captureException, so
+      // before_send is the only thing standing between it and ingestion.
+      const autocaptured = {
+        event: "$exception",
+        properties: { $exception_values: ["Invalid regular expression"] },
+      };
+      expect(beforeSend(autocaptured)).toBe(autocaptured);
+      expect(beforeSend({ ...autocaptured })).toBeNull();
+
+      // A different fault is never delayed by an unrelated storm.
+      const other = { event: "$exception", properties: { $exception_values: ["other"] } };
+      expect(beforeSend(other)).toBe(other);
+
+      // Non-exception events pass through untouched and spend no budget.
+      const pageview = { event: "$pageview", properties: {} };
+      expect(beforeSend(pageview)).toBe(pageview);
     });
 
     it("admitClientException re-admits a signature once its window elapses, and enforces the page cap (#9451)", async () => {
       vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
       const { admitClientException } = await import("./analytics");
-      const err = new Error("boom");
-      expect(admitClientException(err, 0)).toBe(true);
-      expect(admitClientException(err, 59_999)).toBe(false);
-      expect(admitClientException(err, 60_000)).toBe(true);
+      expect(admitClientException("Error:boom", 0)).toBe(true);
+      expect(admitClientException("Error:boom", 59_999)).toBe(false);
+      expect(admitClientException("Error:boom", 60_000)).toBe(true);
       // Hard per-pageload cap: a cascade minting distinct signatures cannot
       // spend unbounded quota. 2 admissions consumed above; the cap is 20.
       for (let i = 0; i < 18; i += 1) {
-        expect(admitClientException(new Error(`cascade ${i}`), 0)).toBe(true);
+        expect(admitClientException(`cascade ${i}`, 0)).toBe(true);
       }
-      expect(admitClientException(new Error("over the cap"), 0)).toBe(false);
+      expect(admitClientException("over the cap", 0)).toBe(false);
     });
 
     it("captureException shares the same lazily-loaded instance as capturePageview/captureEvent (no second init)", async () => {
