@@ -9804,7 +9804,15 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "cannot derive. Sortable by total_tao (default), free_tao, delegated_tao, " +
       "or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, " +
       "net_flow_90d -- StakeAdded minus StakeRemoved, #6886/#6887). The " +
-      "coldkey/balance-centric counterpart to list_accounts. Mirrors GET " +
+      "coldkey/balance-centric counterpart to list_accounts. " +
+      "NOT LIVE (#9464): this leaderboard is served from a FIXED SNAPSHOT " +
+      "taken 2026-08-02, not from current chain state. Its source table was a " +
+      "System::Account scan written by an indexer that has been decommissioned, " +
+      "and no replacement writer exists yet, so captured_at/last_updated do " +
+      "NOT advance and every balance is as of that date. Treat the ranking as " +
+      "historical: an account that has moved TAO since is misreported, and one " +
+      "first funded since is absent entirely. For current per-account balances " +
+      "use get_account_balance, which reads chain state live. Mirrors GET " +
       "/api/v1/accounts/top-holders.",
     inputSchema: z.toJSONSchema(GetTopHoldersInputSchema, {
       target: "draft-2020-12",

@@ -1,6 +1,10 @@
-// GET /api/v1/accounts/top-holders (types-epic B batch 4, #8058). Live
-// account_balances + nominator_positions/neurons D1-tier data -- no static
-// file. Modeled from src/top-holders.ts's buildTopHoldersList(), cross-
+// GET /api/v1/accounts/top-holders (types-epic B batch 4, #8058). Modeled on
+// account_balances + nominator_positions/neurons tier data -- no static file.
+// NOT live as of #9464: those tables lost their writer with the indexer box,
+// and the route answers from a fixed 2026-08-02 materialization, so the
+// nullable `captured_at`/`last_updated` below are a snapshot date rather than
+// a refresh clock. The SHAPE is unaffected, which is why this schema is
+// unchanged. Modeled from src/top-holders.ts's buildTopHoldersList(), cross-
 // checked against the hand-edited TopHoldersArtifact component it replaces.
 //
 // Real finding (bucket b): the hand-edited `sort` enum only listed

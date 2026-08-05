@@ -204,6 +204,19 @@ export const CHAIN_DETAIL_PRUNE_CRON = "12,27,42,57 * * * *";
 // lane keeps the block list live and merely starts declining drill-down, which
 // is silent in aggregate. Minutes 14/29/44/59 are likewise unused elsewhere.
 export const CHAIN_DETAIL_STALENESS_WATCHDOG_CRON = "14,29,44,59 * * * *";
+// #9464: the top-holders leaderboard's alarm. That lane had NO watchdog and no
+// producer -- `account_balances` died with the box and is not in the poller
+// Container's job set -- so the route served a one-shot pre-decommission
+// materialization for three days at 200 OK and the gap was found by a caller
+// reading `captured_at`, not by us. Twice hourly: the tick is one R2 get, so a
+// cheap cadence costs nothing and bounds detection well inside the twelve-hour
+// threshold (src/top-holders-staleness-watchdog.ts explains that sizing, and
+// why the frozen snapshot records a verdict without paging anyone). Minutes
+// 22/52 tick on none of the crons in this file and stay off the */5 raw-capture
+// and */15 probe grids -- dispatch keys on the LITERAL cron string, so this
+// must be unique here as well as matching a wrangler.jsonc `triggers.crons`
+// entry.
+export const TOP_HOLDERS_STALENESS_WATCHDOG_CRON = "22,52 * * * *";
 // #9146: scheduled projections -- recompute the windowed-aggregate artifacts
 // (every lane in src/projection-lanes.ts's PROJECTION_LANES) from the
 // lakehouse. These routes cannot

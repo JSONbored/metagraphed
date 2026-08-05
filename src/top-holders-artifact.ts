@@ -20,8 +20,41 @@ import { buildTopHoldersList } from "./top-holders.ts";
 export const TOP_HOLDERS_ARTIFACT_KEY =
   "metagraph/materialized/top-holders.json";
 
+/**
+ * When the ONE materialization this reader was built around was taken.
+ *
+ * The artifact carries its own `generated_at`; this is that value, committed,
+ * so a caller can tell "the frozen snapshot, still" from "something wrote
+ * here". src/top-holders-staleness-watchdog.ts is the consumer, and the whole
+ * point is that it self-retires: the day a producer overwrites this key, the
+ * string stops matching and the watchdog becomes an ordinary staleness alarm
+ * with no code change.
+ */
+export const TOP_HOLDERS_FROZEN_GENERATED_AT =
+  "2026-08-02T22:38:17.501738+00:00";
+
 interface ArtifactBucket {
   get(key: string): Promise<{ json(): Promise<unknown> } | null>;
+}
+
+/**
+ * The rows this reader will actually serve from, or null when the body is not
+ * the artifact this module wrote.
+ *
+ * Exported so the watchdog judges the artifact by the SAME test the read path
+ * applies. Two copies of "is this body usable" would drift silently, and the
+ * direction they drift is the dangerous one: a watchdog with a looser test
+ * reports healthy on exactly the object the route is declining to serve.
+ */
+export function topHoldersArtifactRows(
+  body: unknown,
+): Record<string, unknown>[] | null {
+  const parsed = body as { schema_version?: unknown; rows?: unknown } | null;
+  // A body that is not the artifact this module wrote is a decline, not a
+  // guess -- serving a half-recognized shape through the formatter would
+  // produce a confidently wrong page.
+  if (parsed?.schema_version !== 1 || !Array.isArray(parsed.rows)) return null;
+  return parsed.rows as Record<string, unknown>[];
 }
 
 /**
@@ -39,15 +72,9 @@ export async function loadTopHoldersFromArtifact(
   try {
     const object = await bucket.get(TOP_HOLDERS_ARTIFACT_KEY);
     if (!object) return null;
-    const body = (await object.json()) as {
-      schema_version?: unknown;
-      rows?: unknown;
-    } | null;
-    // A body that is not the artifact this module wrote is a decline, not a
-    // guess -- serving a half-recognized shape through the formatter would
-    // produce a confidently wrong page.
-    if (body?.schema_version !== 1 || !Array.isArray(body.rows)) return null;
-    return buildTopHoldersList(body.rows as Record<string, unknown>[], {
+    const rows = topHoldersArtifactRows(await object.json());
+    if (rows === null) return null;
+    return buildTopHoldersList(rows, {
       sort: query.sort,
       limit: query.limit,
     });

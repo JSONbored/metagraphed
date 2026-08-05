@@ -366,6 +366,7 @@ import {
 } from "../src/chain-detail-staleness-watchdog.ts";
 import { pruneChainDetail } from "../src/chain-detail-prune.ts";
 import { runRpcUsageStalenessWatchdog } from "../src/rpc-usage-staleness-watchdog.ts";
+import { runTopHoldersStalenessWatchdog } from "../src/top-holders-staleness-watchdog.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
 import { validateResponseTripwire } from "../src/response-validation-tripwire.ts";
 import {
@@ -437,6 +438,7 @@ import {
   VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON,
   CHAIN_DETAIL_PRUNE_CRON,
   CHAIN_DETAIL_STALENESS_WATCHDOG_CRON,
+  TOP_HOLDERS_STALENESS_WATCHDOG_CRON,
   LIVE_ECONOMICS_REFRESH_CRON,
   PROJECTION_LANES_CRON,
   FRESHNESS_WATCHDOG_STATE_KEY,
@@ -1614,6 +1616,8 @@ function cronLabel(cron: string): string {
   if (cron === CHAIN_DETAIL_PRUNE_CRON) return "chain-detail-prune";
   if (cron === CHAIN_DETAIL_STALENESS_WATCHDOG_CRON)
     return "chain-detail-staleness-watchdog";
+  if (cron === TOP_HOLDERS_STALENESS_WATCHDOG_CRON)
+    return "top-holders-staleness-watchdog";
   if (cron === LIVE_ECONOMICS_REFRESH_CRON) return "live-economics-refresh";
   // Every unmatched cron falls through to the health prober, matching dispatch.
   return "health-prober";
@@ -1931,6 +1935,18 @@ async function dispatchScheduled(
     // state; a stale verdict records one exception under
     // watchdog:chain-detail-staleness, the project's alert channel.
     return runChainDetailStalenessWatchdog(
+      env as unknown as Record<string, unknown>,
+    );
+  }
+  if (cron === TOP_HOLDERS_STALENESS_WATCHDOG_CRON) {
+    // The top-holders leaderboard's alarm (#9464). UNLIKE its siblings, zero
+    // alerts is NOT the current steady state and is not expected to be: the
+    // lane has no producer, so every tick records a `frozen` verdict to
+    // `lane_health` (published on /api/v1/self-health) without paging. An
+    // ABSENT, UNREADABLE or EMPTY artifact DOES record one exception under
+    // watchdog:top-holders-staleness -- that is the condition where the route
+    // silently answers 200 with an empty leaderboard instead of a frozen one.
+    return runTopHoldersStalenessWatchdog(
       env as unknown as Record<string, unknown>,
     );
   }
