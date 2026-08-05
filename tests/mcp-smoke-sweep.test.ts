@@ -269,6 +269,50 @@ describe("findFirstRowArray", () => {
     );
   });
 
+  test("an incidental empty array never outranks a populated row set", () => {
+    // Regression for a live false positive: `[].every(...)` is true, so an
+    // empty array of anything looks like an empty row set. Picking `warnings`
+    // here reported EMPTY on a tool that returned a full payload.
+    assert.deepEqual(
+      findFirstRowArray({ warnings: [], subnets: [{ netuid: 1 }] }),
+      { path: "subnets", rows: [{ netuid: 1 }] },
+    );
+  });
+
+  test("a genuinely empty response still reports EMPTY", () => {
+    // The non-empty preference must not become "never report EMPTY" -- with no
+    // populated row set anywhere, EMPTY is the honest answer.
+    assert.deepEqual(findFirstRowArray({ subnets: [], meta: { count: 0 } }), {
+      path: "subnets",
+      rows: [],
+    });
+  });
+
+  test("ignores arrays buried below the payload depth", () => {
+    // get_adapter's only arrays are schema descriptors at depth 5; treating
+    // them as its row set flagged a healthy tool EMPTY. Nothing that deep is
+    // even considered, so the tool correctly reports no row array.
+    assert.equal(
+      findFirstRowArray({
+        snapshot: {
+          dimensions: {
+            crown: { shape: { array_fields: [], object_fields: [{ n: 1 }] } },
+          },
+        },
+      }),
+      null,
+    );
+  });
+
+  test("keeps a row set at the deepest allowed level", () => {
+    // `data.boards.healthiest` is a real payload path and must stay in reach --
+    // the cap has to exclude metadata without cutting off real rows.
+    assert.deepEqual(
+      findFirstRowArray({ data: { boards: { healthiest: [{ netuid: 1 }] } } }),
+      { path: "data.boards.healthiest", rows: [{ netuid: 1 }] },
+    );
+  });
+
   test("prefers the outermost row array over a nested one", () => {
     const found = findFirstRowArray({
       rows: [{ id: 1, children: [{ id: 2 }] }],

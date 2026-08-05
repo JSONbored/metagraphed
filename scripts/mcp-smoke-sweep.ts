@@ -20,12 +20,17 @@
 // explicit, opt-in invocation (`npm run smoke:mcp`), never something a PR
 // triggers.
 //
-// A known limit of driving the sweep off `required`: a handful of tools
-// (how_do_i_call, verify_integration) declare no required field but reject an
-// empty argument set, because their real contract is "one of these two". They
-// report ERROR with that message rather than OK, which is honest -- covering
-// them would mean hand-maintaining the per-tool argument table this design
-// exists to avoid.
+// Two known limits, both deliberate:
+//
+//   - Driving the sweep off `required` misses tools whose real contract is "one
+//     of these two" -- how_do_i_call and verify_integration declare no required
+//     field but reject an empty argument set. They report ERROR with that
+//     message rather than OK, which is honest; covering them would mean
+//     hand-maintaining the per-tool argument table this design exists to avoid.
+//   - Only ONE row set per response is examined. A tool returning several
+//     (get_registry_leaderboards has `boards.healthiest`, `boards.open`, ...)
+//     is judged on the first alone, so a defect confined to a later board is
+//     invisible here. The reported `path=` names which one was read.
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { flagValue } from "./lib.ts";
@@ -54,6 +59,11 @@ const RATE_LIMIT_BACKOFF_MS = 1000;
 // "every row is identical" to mean something. Below this, one shared value is
 // unremarkable.
 const UNIFORM_MIN_ROWS = 5;
+// How deep a row array can sit before it stops being payload and starts being
+// metadata. Real row sets are shallow (`subnets`, `data.blocks`,
+// `data.boards.healthiest` at the deepest); schema descriptors are not. Children
+// past this depth are never enqueued, so nothing below it can be picked at all.
+const MAX_ROW_ARRAY_DEPTH = 3;
 
 // Declared up here, not next to postRpc: the direct-execution guard below runs
 // `main()` at module top level, which would hit this in its temporal dead zone
@@ -246,35 +256,62 @@ export function classifyCall(payload: Row): CallOutcome {
 // Shape heuristic
 // ---------------------------------------------------------------------------
 
-// Depth-first walk for the first array of objects -- the row set a caller would
-// actually read. Deterministic: object keys in insertion order, and an array is
-// checked before descending into it, so the outermost row set wins over a
-// nested one.
+// Finds the row set a caller would actually read. Two rules, both learned from
+// false positives this produced against production:
+//
+// 1. A NON-EMPTY array of objects wins over an empty one. `[].every(...)` is
+//    true, so an empty array of anything -- `warnings: []`, `labels: []` --
+//    is structurally indistinguishable from an empty row set, and picking one
+//    reports EMPTY on a tool that returned a full payload. An empty array is
+//    only accepted when the response has no populated row set anywhere within
+//    reach, which is exactly when EMPTY is the honest answer.
+// 2. Nothing deeper than MAX_ROW_ARRAY_DEPTH counts. Payload rows sit near the
+//    root; deep arrays are metadata. get_adapter's only arrays are schema
+//    descriptors at depth 5 (`snapshot.dimensions.crown.shape.array_fields`),
+//    and treating those as its row set flagged a healthy tool EMPTY.
+//
+// Breadth-first, so the shallowest match wins, with ties broken on insertion
+// order -- the result is deterministic run to run.
 export function findFirstRowArray(
   value: unknown,
   basePath = "",
 ): { path: string; rows: Row[] } | null {
-  if (Array.isArray(value)) {
-    if (value.every((item) => isPlainObject(item))) {
-      return { path: basePath || "$", rows: value as Row[] };
+  const queue: { value: unknown; path: string; depth: number }[] = [
+    { value, path: basePath, depth: 0 },
+  ];
+  let emptyFallback: { path: string; rows: Row[] } | null = null;
+  while (queue.length > 0) {
+    const node = queue.shift();
+    if (!node) break;
+    if (Array.isArray(node.value)) {
+      if (node.value.length === 0) {
+        emptyFallback ??= { path: node.path || "$", rows: [] };
+        continue;
+      }
+      if (node.value.every((item) => isPlainObject(item))) {
+        return { path: node.path || "$", rows: node.value as Row[] };
+      }
     }
-    for (const [index, item] of value.entries()) {
-      const found = findFirstRowArray(item, `${basePath}[${index}]`);
-      if (found) return found;
+    if (node.depth >= MAX_ROW_ARRAY_DEPTH) continue;
+    if (Array.isArray(node.value)) {
+      for (const [index, item] of node.value.entries()) {
+        queue.push({
+          value: item,
+          path: `${node.path}[${index}]`,
+          depth: node.depth + 1,
+        });
+      }
+    } else if (isPlainObject(node.value)) {
+      for (const [key, child] of Object.entries(node.value)) {
+        queue.push({
+          value: child,
+          path: node.path ? `${node.path}.${key}` : key,
+          depth: node.depth + 1,
+        });
+      }
     }
-    return null;
   }
-  if (!isPlainObject(value)) {
-    return null;
-  }
-  for (const [key, child] of Object.entries(value)) {
-    const found = findFirstRowArray(
-      child,
-      basePath ? `${basePath}.${key}` : key,
-    );
-    if (found) return found;
-  }
-  return null;
+  return emptyFallback;
 }
 
 export type RowFlag =
