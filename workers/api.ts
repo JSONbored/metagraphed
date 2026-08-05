@@ -3703,7 +3703,15 @@ export async function handleRequest(
     // capture through waitUntil instead of stranding it on isolate exit.
     return handleMcpRequest(request, env, {
       readArtifact,
-      readHealthKv,
+      // #9460: `economics:current` reads go through the SAME memo the REST routes use
+      // (readEconomicsCurrentKv), not a second, independently-timed read of the same
+      // key. Two paths reading one blob on two schedules is how an agent ends up
+      // holding two different snapshots of one resource with no way to tell which is
+      // current — and MCP is the surface with no second path to check against.
+      readHealthKv: ((e: Env, key: string) =>
+        key === KV_ECONOMICS_CURRENT
+          ? readEconomicsCurrentKv(e)
+          : readHealthKv(e, key)) as unknown as typeof readHealthKv,
       executionCtx: ctx,
     });
   }
