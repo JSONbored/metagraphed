@@ -10002,7 +10002,11 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "Fetch the extrinsic call-mix breakdown over a 7d or 30d window: each " +
       "call_module (or call_module/call_function with group_by=module_function) " +
       "by count and share of all extrinsics. Optionally scope to one pallet via " +
-      "call_module. Use it to see which pallets and calls dominate on-chain traffic " +
+      "call_module -- but note that scope is NOT precomputed: a call_module " +
+      "request is declined rather than approximated, and comes back empty with " +
+      "degraded.reason = call_module_scope_not_precomputed, which is NOT a " +
+      "measurement of zero. Use list_extrinsics (call_module filter) to count a " +
+      "single pallet. Use it to see which pallets and calls dominate on-chain traffic " +
       "before drilling into specific blocks (get_block) or extrinsics " +
       "(list_extrinsics). Mirrors GET /api/v1/chain/calls.",
     inputSchema: z.toJSONSchema(GetChainCallsInputSchema, {
@@ -10046,13 +10050,16 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           limit,
           callModule,
         })) ??
-        buildChainCalls({
-          window: label,
-          groupBy,
-          observedAt: await mcpObservedAt(ctx),
-          total: 0,
-          rows: [],
-        })
+        markChainCallsScopeDeclined(
+          buildChainCalls({
+            window: label,
+            groupBy,
+            observedAt: await mcpObservedAt(ctx),
+            total: 0,
+            rows: [],
+          }),
+          callModule,
+        )
       );
     },
   },
@@ -14107,6 +14114,42 @@ function scheduleTraceSpan(
  * replaces made missing data look measured.
  */
 export const MCP_DEGRADED_REASON = "tier_unavailable";
+
+/**
+ * A `call_module`-scoped request that reached the empty floor did NOT measure
+ * zero -- it was declined (#9536).
+ *
+ * The projection lane does not precompute a pallet scope on purpose: its value
+ * space is unbounded, and filtering the stored top-N would answer with an empty
+ * slice that looks authoritative (`AdminUtils` and `Sudo` are nowhere near the
+ * top by count). So declining is right. Rendering the decline as
+ * `total_extrinsics: 0` is not: measured live, get_chain_calls(call_module:
+ * "AdminUtils") reported zero for a 30d window in which
+ * get_governance_config_changes listed four AdminUtils extrinsics.
+ *
+ * REST already says so with the `x-metagraph-degraded` header
+ * (markPostgresTierFallbackResponse). MCP has no headers, and its
+ * `markMcpTierDegraded` chokepoint cannot see this: it fires on a change to the
+ * fallback GENERATION, and tryPostgresTier returns null at its `!forwards`
+ * guard without recording one. So the handler labels its own answer, which is
+ * the case that chokepoint's own comment carves out -- a specific reason beats
+ * the generic `tier_unavailable`, and MCP must not be the one surface that
+ * cannot say why a zero is untrustworthy.
+ *
+ * Unscoped calls are untouched: their zero is a real measurement.
+ */
+export const CHAIN_CALLS_SCOPE_DECLINED = "call_module_scope_not_precomputed";
+
+export function markChainCallsScopeDeclined<T>(
+  card: T,
+  callModule: string | null | undefined,
+): T {
+  if (typeof callModule !== "string" || callModule.length === 0) return card;
+  return {
+    ...(card as Record<string, unknown>),
+    degraded: { reason: CHAIN_CALLS_SCOPE_DECLINED },
+  } as T;
+}
 
 export function markMcpTierDegraded(
   data: unknown,

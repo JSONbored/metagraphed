@@ -13272,6 +13272,37 @@ describe("MCP economics + metagraph data tools", () => {
     assert.deepEqual(out.calls, []);
   });
 
+  // #9536: a call_module scope is DECLINED (the lane does not precompute an
+  // unbounded value space, and filtering the stored top-N would answer with an
+  // authoritative-looking empty slice -- AdminUtils and Sudo are nowhere near
+  // the top by count). Declining is right; rendering the decline as
+  // total_extrinsics: 0 is not. Measured live: call_module "AdminUtils"
+  // reported zero over a 30d window in which get_governance_config_changes
+  // listed four AdminUtils extrinsics.
+  test("get_chain_calls labels a declined call_module scope instead of reporting zero", async () => {
+    const scoped = await callTool("get_chain_calls", {
+      window: "7d",
+      call_module: "AdminUtils",
+    });
+    const out = scoped.body.result.structuredContent;
+    assert.equal(out.call_count, 0);
+    assert.equal(
+      out.degraded?.reason,
+      "call_module_scope_not_precomputed",
+      "a declined scope must not read as a measurement of zero",
+    );
+
+    // An UNSCOPED empty is a real measurement and must stay unlabelled --
+    // marking it would make every cold read look like a declined one.
+    const unscoped = await callTool("get_chain_calls", { window: "7d" });
+    assert.equal(unscoped.body.result.structuredContent.call_count, 0);
+    assert.equal(
+      unscoped.body.result.structuredContent.degraded,
+      undefined,
+      "an unscoped zero is measured, not declined",
+    );
+  });
+
   test("get_chain_calls rejects invalid window and group_by params", async () => {
     const window = await callTool("get_chain_calls", { window: "90d" });
     assert.equal(window.body.result.isError, true);
