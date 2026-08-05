@@ -18,6 +18,14 @@ import {
   validate,
 } from "graphql";
 import { readArtifact, readHealthKv } from "../workers/storage.ts";
+import { loadChainStakeFlowFromArtifact } from "./chain-stake-flow-artifact.ts";
+import { loadChainStakeMovesFromArtifact } from "./chain-stake-moves-artifact.ts";
+import { loadChainStakeTransfersFromArtifact } from "./chain-stake-transfers-artifact.ts";
+import { loadChainAlphaVolumeFromArtifact } from "./chain-alpha-volume-artifact.ts";
+import { resolveMarketCapIndex } from "./market-cap-index.ts";
+import { loadChainCallsFromArtifact } from "./chain-calls-artifact.ts";
+import { loadChainFeesFromArtifact } from "./chain-fees-artifact.ts";
+import { loadExtrinsicFeedColdTier } from "./extrinsics-cold-tier.ts";
 // #7881: the same list-query helper the REST pipeline and the list_* MCP
 // loaders use, so subnet_health's filter/sort/page allowlists cannot drift
 // from GET /api/v1/subnets/{netuid}/health.
@@ -4716,6 +4724,28 @@ const rootValue = {
         postgresTierRequest(context, "/api/v1/extrinsics", params),
         "METAGRAPH_EXTRINSICS_SOURCE",
       )) as Row | null) ??
+      // The extrinsics cold tier REST and MCP both read (#9540).
+      //
+      // call_hash matches INSIDE call_args, which the lakehouse cannot express,
+      // so its presence skips the tier entirely rather than silently ignoring
+      // the filter and serving unfiltered rows under a filtered label -- the
+      // same gate REST's handleExtrinsics and MCP's list_extrinsics apply.
+      ((callHash == null
+        ? await loadExtrinsicFeedColdTier(context.env, {
+            limit: safeLimit,
+            offset: safeOffset,
+            cursor,
+            signer,
+            module: callModule,
+            callFunction,
+            success,
+            block,
+            blockStart,
+            blockEnd,
+            from,
+            to,
+          })
+        : null) as Row | null) ??
       buildExtrinsicFeed([], {
         limit: safeLimit,
         offset: safeOffset,
@@ -4882,6 +4912,24 @@ const rootValue = {
         postgresTierRequest(context, "/api/v1/sudo", params),
         "METAGRAPH_EXTRINSICS_SOURCE",
       )) as Row | null) ??
+      // The extrinsics cold tier REST and MCP both read (#9540). `module` is
+      // the pathname->pallet predicate data-api applies to this route
+      // (SUDO_GOVERNANCE_ROUTES), expressed against the lakehouse verbatim --
+      // not a filter reinvented here. from/to arrive as Strings (epoch-ms
+      // overflows GraphQL Int); the loader coerces them via safeBlockNumber.
+      ((await loadExtrinsicFeedColdTier(context.env, {
+        limit: safeLimit,
+        offset: safeOffset,
+        module: "Sudo",
+        cursor,
+        callFunction,
+        success,
+        block,
+        blockStart,
+        blockEnd,
+        from,
+        to,
+      })) as Row | null) ??
       buildExtrinsicFeed([], {
         limit: safeLimit,
         offset: safeOffset,
@@ -4974,6 +5022,24 @@ const rootValue = {
         ),
         "METAGRAPH_EXTRINSICS_SOURCE",
       )) as Row | null) ??
+      // The extrinsics cold tier REST and MCP both read (#9540). `module` is
+      // the pathname->pallet predicate data-api applies to this route
+      // (SUDO_GOVERNANCE_ROUTES), expressed against the lakehouse verbatim --
+      // not a filter reinvented here. from/to arrive as Strings (epoch-ms
+      // overflows GraphQL Int); the loader coerces them via safeBlockNumber.
+      ((await loadExtrinsicFeedColdTier(context.env, {
+        limit: safeLimit,
+        offset: safeOffset,
+        module: "AdminUtils",
+        cursor,
+        callFunction,
+        success,
+        block,
+        blockStart,
+        blockEnd,
+        from,
+        to,
+      })) as Row | null) ??
       buildExtrinsicFeed([], {
         limit: safeLimit,
         offset: safeOffset,
@@ -6970,6 +7036,17 @@ const rootValue = {
         postgresTierRequest(context, "/api/v1/chain/calls", params),
         "METAGRAPH_EXTRINSICS_SOURCE",
       )) as Row | null) ??
+      // The projection tier REST and MCP both read (#9540). callModule is
+      // threaded rather than dropped: the reader DECLINES a pallet-scoped call
+      // by contract (its value space is not precomputed), so passing it keeps
+      // GraphQL's answer identical to REST's instead of quietly serving the
+      // unfiltered mix under a filtered label.
+      ((await loadChainCallsFromArtifact(context.env, {
+        window: label,
+        groupBy: requestedGroupBy,
+        limit: safeLimit,
+        callModule,
+      })) as Row | null) ??
       buildChainCalls({ window: label, groupBy: requestedGroupBy });
     return {
       schema_version: data.schema_version ?? 1,
@@ -7026,6 +7103,13 @@ const rootValue = {
         postgresTierRequest(context, "/api/v1/chain/fees", params),
         "METAGRAPH_EXTRINSICS_SOURCE",
       )) as ReturnType<typeof buildChainFees> | null) ??
+        // The projection tier REST and MCP both read (#9540); same
+        // declines-a-scoped-call contract as chain_calls above.
+        ((await loadChainFeesFromArtifact(context.env, {
+          window: label,
+          limit: safeLimit,
+          callModule,
+        })) as ReturnType<typeof buildChainFees> | null) ??
         buildChainFees({ window: label }),
       days,
     );
@@ -7525,7 +7609,15 @@ const rootValue = {
         context.env,
         postgresTierRequest(context, "/api/v1/chain/alpha-volume", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
-      )) as Row | null) ?? buildChainAlphaVolume([], { limit: safeLimit });
+      )) as Row | null) ??
+      // The projection tier REST and MCP both read (#9540); without it this
+      // resolver's whole answer was the empty card below. The market-cap index
+      // rides along so vol_mcap_ratio is not null on GraphQL alone (#9526).
+      ((await loadChainAlphaVolumeFromArtifact(context.env, {
+        limit: safeLimit,
+        marketCapByNetuid: await resolveMarketCapIndex(context.env),
+      })) as Row | null) ??
+      buildChainAlphaVolume([], { limit: safeLimit });
     return {
       schema_version: data.schema_version ?? 1,
       window: data.window ?? "24h",
@@ -7596,6 +7688,13 @@ const rootValue = {
         postgresTierRequest(context, "/api/v1/chain/stake-flow", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
+      // The projection tier REST and MCP both read (#9540). Without this rung
+      // the ladder below is the whole answer, and the retired flag above
+      // guarantees we reach it -- a confident zero, with no error to say so.
+      ((await loadChainStakeFlowFromArtifact(context.env, {
+        window: requestedWindow,
+        limit: safeLimit,
+      })) as Row | null) ??
       buildChainStakeFlow([], {
         window: requestedWindow,
         limit: safeLimit,
@@ -7648,6 +7747,13 @@ const rootValue = {
         postgresTierRequest(context, "/api/v1/chain/stake-moves", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
+      // The projection tier REST and MCP both read (#9540). Without this rung
+      // the ladder below is the whole answer, and the retired flag above
+      // guarantees we reach it -- a confident zero, with no error to say so.
+      ((await loadChainStakeMovesFromArtifact(context.env, {
+        window: requestedWindow,
+        limit: safeLimit,
+      })) as Row | null) ??
       buildChainStakeMoves([], {
         window: requestedWindow,
         limit: safeLimit,
@@ -7697,6 +7803,13 @@ const rootValue = {
         postgresTierRequest(context, "/api/v1/chain/stake-transfers", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
+      // The projection tier REST and MCP both read (#9540). Without this rung
+      // the ladder below is the whole answer, and the retired flag above
+      // guarantees we reach it -- a confident zero, with no error to say so.
+      ((await loadChainStakeTransfersFromArtifact(context.env, {
+        window: requestedWindow,
+        limit: safeLimit,
+      })) as Row | null) ??
       buildChainStakeTransfers([], {
         window: requestedWindow,
         limit: safeLimit,
