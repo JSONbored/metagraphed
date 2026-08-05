@@ -71,6 +71,7 @@
     "contract:summary": "node scripts/contract-change-summary.ts",
     "validate:artifact-budgets": "node scripts/validate-artifact-budgets.ts",
     "validate:docs": "node scripts/validate-docs.ts",
+    "validate:contract-doc-sync": "node scripts/validate-contract-doc-sync.ts",
     "validate:ui-docs-drift": "node scripts/validate-ui-docs-drift.ts",
     "validate:readme-catalog": "node scripts/generate-registry-readme-section.ts --check",
     "readme:catalog": "node scripts/generate-registry-readme-section.ts",
