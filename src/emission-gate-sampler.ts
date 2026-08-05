@@ -62,6 +62,17 @@ export interface EmissionGateSample {
   current_ema: [number, { block: number } | null][];
 }
 
+/**
+ * Storage keys per `state_queryStorageAt` request.
+ *
+ * Comfortably above the ~72 `SubnetEmissionEnabled` and ~124 `SubnetEmaTaoFlow`
+ * keys the chain holds today (measured live 2026-08-05), so both are one call
+ * now, while still bounding the request body if the subnet count grows by an
+ * order of magnitude. Exported so a test can assert the chunking loop actually
+ * runs more than once rather than trusting a single-chunk happy path.
+ */
+export const STORAGE_BATCH_SIZE = 200;
+
 /** The maps key on `prefix ++ netuid as u16 little-endian`, Identity-hashed
  * (no hasher prefix), so the netuid is simply the last 4 hex chars. */
 export function netuidFromKey(key: string, prefix: string): number | null {
@@ -117,8 +128,49 @@ export async function sampleEmissionGate(
     return keys;
   }
 
-  async function readU64F64(storageKey: string): Promise<number | null> {
-    const raw = await rpc<string | null>("state_getStorage", [storageKey]);
+  /**
+   * Read many storage values in ONE request, chunked.
+   *
+   * `state_getStorage` fetches a single value, so asking for it per subnet cost
+   * this sampler ~207 calls a tick against an endpoint that serves 100 per
+   * client per minute (`RPC_REQUESTS_PER_MINUTE_LIMIT`, measured in #9378).
+   * It spent that allowance about six seconds in, threw, and lost the whole
+   * sample every ten minutes -- while also spending the raw-capture lanes'
+   * share of the same per-client budget (#9477).
+   *
+   * Chunked rather than one unbounded request: 72 keys is what the chain has
+   * today, and a body sized by the subnet count is the kind of thing that works
+   * until it abruptly does not.
+   */
+  async function queryStorage(
+    keys: string[],
+  ): Promise<Map<string, string | null>> {
+    const values = new Map<string, string | null>();
+    for (let i = 0; i < keys.length; i += STORAGE_BATCH_SIZE) {
+      const chunk = keys.slice(i, i + STORAGE_BATCH_SIZE);
+      const pages = await rpc<{ changes?: [string, string | null][] }[] | null>(
+        "state_queryStorageAt",
+        [chunk],
+      );
+      for (const page of pages ?? []) {
+        for (const [key, value] of page?.changes ?? []) {
+          values.set(key, value ?? null);
+        }
+      }
+    }
+    // A key the node simply omits is UNSET, which is a real reading, not a
+    // missing one -- record it so a caller reading this map cannot mistake
+    // "absent from the response" for "never asked for". Same reason
+    // state_getStorage's own `null` was never treated as a failure.
+    for (const key of keys) if (!values.has(key)) values.set(key, null);
+    return values;
+  }
+
+  function u64f64At(
+    values: Map<string, string | null>,
+    storageKey: string,
+  ): number | null {
+    const raw = values.get(storageKey) ?? null;
     if (raw === null) return null;
     const bits = decodeLeU128(raw);
     return bits === null ? null : u64f64U128ToFloat(bits);
@@ -128,12 +180,16 @@ export async function sampleEmissionGate(
   const blockNumber = parseInt(header.number, 16);
   const observedAt = now();
 
-  const [bar, quantile, exponent, totalIssuanceRaw] = await Promise.all([
-    readU64F64(EMISSION_GATE_BAR_STORAGE_KEY),
-    readU64F64(EMISSION_BAR_QUANTILE_STORAGE_KEY),
-    readU64F64(EMISSION_GATE_EXPONENT_STORAGE_KEY),
-    rpc<string | null>("state_getStorage", [TOTAL_ISSUANCE_STORAGE_KEY]),
+  const paramValues = await queryStorage([
+    EMISSION_GATE_BAR_STORAGE_KEY,
+    EMISSION_BAR_QUANTILE_STORAGE_KEY,
+    EMISSION_GATE_EXPONENT_STORAGE_KEY,
+    TOTAL_ISSUANCE_STORAGE_KEY,
   ]);
+  const bar = u64f64At(paramValues, EMISSION_GATE_BAR_STORAGE_KEY);
+  const quantile = u64f64At(paramValues, EMISSION_BAR_QUANTILE_STORAGE_KEY);
+  const exponent = u64f64At(paramValues, EMISSION_GATE_EXPONENT_STORAGE_KEY);
+  const totalIssuanceRaw = paramValues.get(TOTAL_ISSUANCE_STORAGE_KEY) ?? null;
 
   // Halvings, not the emission itself: the TAO-per-block figure drifts with
   // issuance, but the HALVING COUNT is a step function that moves a handful
@@ -152,31 +208,32 @@ export async function sampleEmissionGate(
   };
 
   const enabledKeys = await keysPaged(SUBNET_EMISSION_ENABLED_PREFIX);
+  const enabledValues = await queryStorage(enabledKeys);
   const currentEnabled = new Map<number, boolean>();
   for (const key of enabledKeys) {
     const netuid = netuidFromKey(key, SUBNET_EMISSION_ENABLED_PREFIX);
     if (netuid === null) continue;
-    const raw = await rpc<string | null>("state_getStorage", [key]);
+    const raw = enabledValues.get(key) ?? null;
     // 0x00 is disabled; anything else present is enabled.
     currentEnabled.set(netuid, raw !== "0x00");
   }
 
-  const flowObservations: FlowParamObservation[] = [];
-  for (const [item, key] of Object.entries(FLOW_PARAM_ITEMS) as [
+  const flowEntries = Object.entries(FLOW_PARAM_ITEMS) as [
     FlowParamItem,
     string,
-  ][]) {
-    const raw = await rpc<string | null>("state_getStorage", [key]);
-    flowObservations.push({ item, raw });
-  }
+  ][];
+  const flowValues = await queryStorage(flowEntries.map(([, key]) => key));
+  const flowObservations: FlowParamObservation[] = flowEntries.map(
+    ([item, key]) => ({ item, raw: flowValues.get(key) ?? null }),
+  );
 
   const emaKeys = await keysPaged(SUBNET_EMA_TAO_FLOW_PREFIX);
+  const emaValues = await queryStorage(emaKeys);
   const currentEma = new Map<number, { block: number } | null>();
   for (const key of emaKeys) {
     const netuid = netuidFromKey(key, SUBNET_EMA_TAO_FLOW_PREFIX);
     if (netuid === null) continue;
-    const raw = await rpc<string | null>("state_getStorage", [key]);
-    currentEma.set(netuid, decodeSubnetEmaTaoFlow(raw));
+    currentEma.set(netuid, decodeSubnetEmaTaoFlow(emaValues.get(key) ?? null));
   }
 
   return {
