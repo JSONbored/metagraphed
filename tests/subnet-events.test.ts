@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
+import { EVENTS_CSV_COLUMNS } from "../workers/request-handlers/entities.ts";
 
 function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
@@ -15,8 +16,10 @@ test("GET /subnets/{netuid}/events rejects an unsupported query param", async ()
   assert.equal(res.status, 400);
 });
 
-const EVENTS_CSV_HEADER =
-  "block_number,event_index,event_kind,hotkey,coldkey,netuid,uid,amount_tao,alpha_amount,observed_at,extrinsic_index";
+// Derived, not restated (#9537): a hand-written copy of this header is exactly
+// how price_at_tx/price_basis stayed missing from the CSV export while the JSON
+// contract published them -- the literal agreed with the bug.
+const EVENTS_CSV_HEADER = EVENTS_CSV_COLUMNS.join(",");
 
 test("GET /subnets/{netuid}/events?format=csv emits a header-only CSV when cold", async () => {
   const res = await handleRequest(

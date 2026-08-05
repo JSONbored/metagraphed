@@ -3,9 +3,15 @@
 // examples without contending on the csvExampleForRoute if-chain in contracts.ts.
 // Shared header/example for the two event-stream feeds (subnet + account), which
 // serialize the same formatAccountEvent row shape.
+// price_at_tx / price_basis close #9537: both are on every JSON event row and
+// were missing from this projection. The sample row now carries a real
+// alpha_amount too -- a StakeAdded with an empty alpha leg was never a shape
+// production emits, and it made the derived price columns un-illustratable.
+// price_at_tx is amount_tao / alpha_amount at rao precision (12.5 / 440,
+// resolvePriceAtTx -> roundUnit), so the example stays arithmetically true.
 const EVENTS_CSV_EXAMPLE = [
-  "block_number,event_index,event_kind,hotkey,coldkey,netuid,uid,amount_tao,alpha_amount,observed_at,extrinsic_index",
-  "8454388,3,StakeAdded,5Hotkey_sample,5Coldkey_sample,7,3,12.5,,2026-07-03T00:00:00.000Z,2",
+  "block_number,event_index,event_kind,hotkey,coldkey,netuid,uid,amount_tao,alpha_amount,observed_at,extrinsic_index,price_at_tx,price_basis",
+  "8454388,3,StakeAdded,5Hotkey_sample,5Coldkey_sample,7,3,12.5,440,2026-07-03T00:00:00.000Z,2,0.028409091,trade_exact",
 ].join("\r\n");
 
 export const ROUTE_CSV_EXAMPLES: Record<string, string> = {

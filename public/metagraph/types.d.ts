@@ -29209,8 +29209,8 @@ export interface operations {
                         data?: components["schemas"]["AccountEventsArtifact"];
                     };
                     /**
-                     * @example block_number,event_index,event_kind,hotkey,coldkey,netuid,uid,amount_tao,alpha_amount,observed_at,extrinsic_index
-                     *     8454388,3,StakeAdded,5Hotkey_sample,5Coldkey_sample,7,3,12.5,,2026-07-03T00:00:00.000Z,2
+                     * @example block_number,event_index,event_kind,hotkey,coldkey,netuid,uid,amount_tao,alpha_amount,observed_at,extrinsic_index,price_at_tx,price_basis
+                     *     8454388,3,StakeAdded,5Hotkey_sample,5Coldkey_sample,7,3,12.5,440,2026-07-03T00:00:00.000Z,2,0.028409091,trade_exact
                      */
                     "text/csv": string;
                 };
@@ -48143,8 +48143,8 @@ export interface operations {
                         data?: components["schemas"]["SubnetEventsArtifact"];
                     };
                     /**
-                     * @example block_number,event_index,event_kind,hotkey,coldkey,netuid,uid,amount_tao,alpha_amount,observed_at,extrinsic_index
-                     *     8454388,3,StakeAdded,5Hotkey_sample,5Coldkey_sample,7,3,12.5,,2026-07-03T00:00:00.000Z,2
+                     * @example block_number,event_index,event_kind,hotkey,coldkey,netuid,uid,amount_tao,alpha_amount,observed_at,extrinsic_index,price_at_tx,price_basis
+                     *     8454388,3,StakeAdded,5Hotkey_sample,5Coldkey_sample,7,3,12.5,440,2026-07-03T00:00:00.000Z,2,0.028409091,trade_exact
                      */
                     "text/csv": string;
                 };

@@ -4,6 +4,7 @@ import { handleRequest } from "../workers/api.ts";
 import { CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY } from "../src/chain-deregistrations-artifact.ts";
 import { DEREGISTRATIONS_DEGRADED_NOT_DERIVED } from "../src/uncurated-event-streams.ts";
 import type { Row } from "./row-type.ts";
+import { EVENTS_CSV_COLUMNS } from "../workers/request-handlers/entities.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 
@@ -81,8 +82,11 @@ test("GET /accounts/{ss58}/events rejects an unsupported query param", async () 
   assert.equal(res.status, 400);
 });
 
-const EVENTS_CSV_HEADER =
-  "block_number,event_index,event_kind,hotkey,coldkey,netuid,uid,amount_tao,alpha_amount,observed_at,extrinsic_index";
+// Derived, not restated (#9537): this was the FOURTH hand-written copy of this
+// header in the suite, and every one of them agreed with the bug -- the CSV
+// export dropped price_at_tx/price_basis while the JSON contract published
+// them, and four literals all asserted the wrong thing in unison.
+const EVENTS_CSV_HEADER = EVENTS_CSV_COLUMNS.join(",");
 
 test("GET /accounts/{ss58}/events?format=csv emits a header-only CSV when cold", async () => {
   const res = await handleRequest(

@@ -16,6 +16,7 @@ import {
   buildAccountTransfers,
   ACCOUNT_ACTIVITY_MODULES_WINDOW,
 } from "../src/account-events.ts";
+import { EVENTS_CSV_COLUMNS } from "../workers/request-handlers/entities.ts";
 
 test("INDEXED_EVENT_KINDS covers the core entity events", () => {
   for (const k of [
@@ -1119,4 +1120,48 @@ test("loadAccountHistory is schema-stable when no tier can answer", async () => 
   assert.deepEqual(out.days, []);
   assert.equal(out.limit, 25);
   assert.equal(out.offset, 0);
+});
+
+// #9537: EVENTS_CSV_COLUMNS is the ONLY declaration of the CSV projection for
+// all three event feeds (account, subnet, block), and it is written by hand
+// beside a row shape that grows independently. price_at_tx/price_basis were
+// added to formatAccountEvent and never to the list, so every ?format=csv
+// export silently dropped two fields the JSON contract kept publishing.
+//
+// Deriving the expectation from formatAccountEvent's own output, rather than
+// restating the column names, is the point: a restated list would have to be
+// updated by the same hand that forgot the first time.
+test("the events CSV projection covers every field formatAccountEvent emits", () => {
+  const row = formatAccountEvent({
+    block_number: 8454388,
+    event_index: 3,
+    event_kind: "StakeAdded",
+    hotkey: "5Hot",
+    coldkey: "5Cold",
+    netuid: 7,
+    uid: 3,
+    amount_tao: 12.5,
+    alpha_amount: 440,
+    observed_at: 1_751_500_800_000,
+    extrinsic_index: 2,
+  });
+  assert.ok(row);
+  const emitted = Object.keys(row);
+  const missing = emitted.filter((key) => !EVENTS_CSV_COLUMNS.includes(key));
+  assert.deepEqual(
+    missing,
+    [],
+    `formatAccountEvent emits field(s) the CSV export drops: ${missing.join(", ")}`,
+  );
+  // And nothing in the list that the row never emits -- a stale column would
+  // write a blank cell forever and read as "always null" to a consumer.
+  const orphaned = EVENTS_CSV_COLUMNS.filter((key) => !emitted.includes(key));
+  assert.deepEqual(
+    orphaned,
+    [],
+    `CSV columns with no source field: ${orphaned.join(", ")}`,
+  );
+  // The derived pair specifically, since they are what regressed.
+  assert.equal(row.price_at_tx, 0.028409091);
+  assert.equal(row.price_basis, "trade_exact");
 });
