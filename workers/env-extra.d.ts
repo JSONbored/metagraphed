@@ -97,6 +97,11 @@ interface Env {
    */
   ETH_RPC_URL?: string;
   HEALTH_CHECKS_SYNC_SECRET?: string;
+  /** #9502: gates POST /api/v1/internal/hotkey-alpha-sync -- the write path
+   * into hotkey_alpha, the (hotkey, netuid) alpha-pool totals delegated_tao
+   * values a position against. Set via `wrangler secret put` on BOTH Workers
+   * (api.ts proxies, data-api.ts checks) and in the poller's vault. */
+  HOTKEY_ALPHA_SYNC_SECRET?: string;
   METAGRAPH_ALLOW_R2_STATIC_FALLBACK?: string;
   METAGRAPH_DISABLE_REQUEST_LOGS?: string;
   METAGRAPH_HEALTH_MAX_AGE_HOURS?: string;

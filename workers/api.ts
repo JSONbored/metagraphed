@@ -3041,6 +3041,20 @@ async function handleAccountBalancesSyncProxy(request: Request, env: Env) {
   });
 }
 
+// Proxies POST /api/v1/internal/hotkey-alpha-sync -- the write path into
+// hotkey_alpha (#9502), the (hotkey, netuid) alpha-pool totals delegated_tao
+// needs to value a position. Same DATA_API service binding as the other
+// internal sync routes above.
+async function handleHotkeyAlphaSyncProxy(request: Request, env: Env) {
+  return proxyToDataApi(request, env, {
+    code: "hotkey_alpha_sync_unavailable",
+    notBoundMessage:
+      "The hotkey-alpha sync tier is not bound to this deployment.",
+    unreadableMessage:
+      "The hotkey-alpha sync tier returned an unreadable response.",
+  });
+}
+
 // --- POST /api/v1/internal/emission-gate-sync (#8748/#8750 restored) --------
 // The persistence half of the emission-gate sampling lane, moved off the
 // decommissioned box's Postgres onto D1. scripts/sample-emission-gate.ts (now
@@ -3819,6 +3833,11 @@ export async function handleRequest(
   // account-balances job POSTs here. Same DATA_API service binding.
   if (url.pathname === "/api/v1/internal/account-balances-sync") {
     return handleAccountBalancesSyncProxy(request, env);
+  }
+  // The write path into hotkey_alpha (#9502) -- the poller's TotalHotkeyAlpha
+  // scan POSTs here. Same DATA_API service binding.
+  if (url.pathname === "/api/v1/internal/hotkey-alpha-sync") {
+    return handleHotkeyAlphaSyncProxy(request, env);
   }
   // The write path into the emission-gate history tables on D1 (#8748/#8750,
   // box decommission) -- sample-emission-gate.yml's 10-minute schedule POSTs
