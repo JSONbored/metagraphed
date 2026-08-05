@@ -36,6 +36,8 @@ import {
   type ObservationsDb,
 } from "./observations-d1.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
+import { recordExceptionEvent } from "./usage-telemetry.ts";
+import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import {
   recordSubnetIdentityChanges,
   syncSubnetIdentityToPostgres,
@@ -1130,6 +1132,11 @@ export async function syncSubnetSnapshotToPostgres(
 interface WriteSubnetSnapshotOverrides {
   now?: () => number;
   readArtifact?: (env: Env, path: string) => Promise<Row>;
+  /** #9452 seams: the outcome reporting is the behaviour under test, so both
+   * of its channels are injectable rather than reachable only against a real
+   * D1 and a real PostHog token. */
+  laneHealthDb?: LaneHealthDb;
+  recordExceptionEvent?: typeof recordExceptionEvent;
 }
 
 // Daily growth snapshot (AI-4). Captures each subnet's structural maturity into
@@ -1139,21 +1146,84 @@ interface WriteSubnetSnapshotOverrides {
 // syncSubnetSnapshotToPostgres below) and recordSubnetIdentityChanges reads
 // its own latest-hash baseline from Postgres too now (see that function's own
 // header comment in src/subnet-identity-history.ts).
+/** This writer's lane name in `lane_health`, and on the self-health card. */
+const SUBNET_SNAPSHOT_LANE = "subnet-snapshot";
+
+/**
+ * Report the outcome of one snapshot write (#9452).
+ *
+ * THE BUG THIS CLOSES: every decline below used to be a bare
+ * `return { ok: false, reason }`, and the value was returned into the void --
+ * `workers/api.entry.ts` discards what `scheduled` returns. So "the economics
+ * source gave us nothing, and today's history was never written" and
+ * "everything is fine" produced byte-identical telemetry: silence. A whole day
+ * of `subnet_snapshots` went missing on 2026-08-01 -- all 129 subnets -- and
+ * was found four days later by reading the table by hand.
+ *
+ * Two channels, for the reason src/lane-health.ts documents: PostHog is the
+ * NOTIFICATION and can be dropped by someone else's quota, so the `lane_health`
+ * row is the RECORD. The row is written on every run, healthy or not, because
+ * a healthy snapshot lane's output is silence and silence is exactly what a
+ * stopped one produces.
+ *
+ * `stale` rather than a bespoke verdict on failure: a day whose row never
+ * landed genuinely leaves this lane behind, which is what the self-health
+ * card's readers understand a non-ok lane to mean.
+ *
+ * Never throws -- see recordLaneVerdict, and the capture is caught here.
+ */
+async function reportSnapshotOutcome(
+  env: Env,
+  outcome: { ok: boolean; reason?: string; rows?: number },
+  deps: WriteSubnetSnapshotOverrides,
+): Promise<void> {
+  const now = deps.now || (() => Date.now());
+  await recordLaneVerdict(
+    deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as unknown as LaneHealthDb),
+    {
+      lane: SUBNET_SNAPSHOT_LANE,
+      verdict: outcome.ok ? "ok" : "stale",
+      // The write either happened for this run or it did not; there is no
+      // meaningful "how far behind" to report from inside a single run, and
+      // inventing one would put a fabricated number in the column triage reads.
+      age_ms: null,
+      detail: outcome.ok ? null : (outcome.reason ?? "unknown"),
+      checked_at: now(),
+    },
+  );
+  if (outcome.ok) return;
+  const record = deps.recordExceptionEvent ?? recordExceptionEvent;
+  await record(env, {
+    error: new Error(
+      `subnet snapshot write declined: ${outcome.reason ?? "unknown"} -- ` +
+        "today's row was not written, so the daily series has a hole",
+    ),
+    route: "subnet-snapshot-write",
+    errorCode: "stale_lane",
+  }).catch(() => false);
+}
+
 export async function writeSubnetSnapshot(
   env: Env,
   overrides: WriteSubnetSnapshotOverrides = {},
 ): Promise<Row> {
+  // Every `return { ok: false, ... }` below routes through here first, so a
+  // decline cannot be added later that forgets to report itself.
+  const decline = async (reason: string, extra: Row = {}): Promise<Row> => {
+    await reportSnapshotOutcome(env, { ok: false, reason }, overrides);
+    return { ok: false, reason, ...extra };
+  };
   const now = overrides.now || (() => Date.now());
   const readArtifact = overrides.readArtifact;
   if (typeof readArtifact !== "function") {
-    return { ok: false, reason: "unavailable" };
+    return decline("unavailable");
   }
   const profilesResult = await readArtifact(env, "/metagraph/profiles.json");
-  if (!profilesResult?.ok) return { ok: false, reason: "profiles_unavailable" };
+  if (!profilesResult?.ok) return decline("profiles_unavailable");
   const profiles: Row[] = Array.isArray((profilesResult.data as Row)?.profiles)
     ? ((profilesResult.data as Row).profiles as Row[])
     : [];
-  if (!profiles.length) return { ok: false, reason: "no_profiles" };
+  if (!profiles.length) return decline("no_profiles");
 
   const capturedAt = now();
   const identityArgs = { profiles, now: capturedAt };
@@ -1205,15 +1275,14 @@ export async function writeSubnetSnapshot(
     Number.isInteger(profile.netuid),
   ).length;
   if (!rows) {
-    return { ok: false, reason: "no_rows", identity_history: identityHistory };
+    return decline("no_rows", { identity_history: identityHistory });
   }
   if (!syncResult.synced) {
-    return {
-      ok: false,
-      reason: syncResult.reason,
+    return decline(String(syncResult.reason ?? "sync_declined"), {
       identity_history: identityHistory,
-    };
+    });
   }
+  await reportSnapshotOutcome(env, { ok: true, rows }, overrides);
   return {
     ok: true,
     date,
