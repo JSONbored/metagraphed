@@ -489,7 +489,10 @@ describe("buildValidatorEconomicsRankingPayload", () => {
     ...over,
   });
 
-  function rankEnv(scan: Row[]) {
+  // Routes by table, not by call order: the ranking makes three bulk reads
+  // (neuron scan, latest burn per subnet, hyperparams) and a stub that answered
+  // all of them with the neuron scan would feed burn rows into the burn map.
+  function rankEnv(scan: Row[], burn: Row[] = [], hyper: Row[] = []) {
     const sql: string[] = [];
     return {
       sql,
@@ -497,7 +500,12 @@ describe("buildValidatorEconomicsRankingPayload", () => {
         METAGRAPH_HEALTH_DB: {
           prepare(query: string) {
             sql.push(query);
-            return { all: async () => ({ results: scan }) };
+            const results = /subnet_burn_history/.test(query)
+              ? burn
+              : /subnet_hyperparams/.test(query)
+                ? hyper
+                : scan;
+            return { all: async () => ({ results }) };
           },
         },
       } as never,
@@ -706,6 +714,81 @@ describe("buildValidatorEconomicsRankingPayload", () => {
       rankDeps([pool(5)]),
     );
     assert.equal(generatedAt, "2026-08-03T00:00:00.000Z");
+  });
+
+  // #9455: the ranking used to publish null for every burn-derived field and for
+  // min_childkey_take_ratio, because the burn had no cached tier and the
+  // hyperparams row was never read here. Both are now ONE bulk read for every
+  // subnet, so the row carries what the per-subnet route reports.
+  test("reads the latest burn per subnet and the childkey ratio in bulk", async () => {
+    const { env, sql } = rankEnv(
+      [scanRow(5, 0), scanRow(6, 0)],
+      [
+        { netuid: 5, burn_tao: 0.5 },
+        { netuid: 6, burn_tao: 2 },
+      ],
+      [
+        { netuid: 5, min_childkey_take_ratio: 0.12 },
+        { netuid: 6, min_childkey_take_ratio: 0.2 },
+      ],
+    );
+    const { data } = await buildValidatorEconomicsRankingPayload(
+      env,
+      {},
+      rankDeps([pool(5), pool(6)]),
+    );
+    // One query per table, never one per subnet -- the property the route's
+    // "no 128 per-subnet round trips" contract rests on.
+    assert.equal(sql.filter((q) => /subnet_burn_history/.test(q)).length, 1);
+    assert.equal(sql.filter((q) => /subnet_hyperparams/.test(q)).length, 1);
+
+    const rows = data.rows as Row[];
+    const five = rows.find((r) => r.netuid === 5) as Row;
+    assert.equal(five.registration_cost_tao, 0.5);
+    assert.equal(five.min_childkey_take_ratio, 0.12);
+    // The entry costs are the floors plus the burn, so a present burn is what
+    // turns them from null into a real number.
+    assert.ok(
+      (five.permit_entry_cost_tao as number) >
+        (five.permit_floor_cost_tao as number),
+    );
+    assert.ok((five.earning_entry_cost_tao as number) > 0);
+  });
+
+  test("a genuine zero burn or ratio is reported as 0, never null", async () => {
+    // netuid 76 reads a true zero burn on mainnet and is the cheapest
+    // registration on the network; `?? null` rather than `||` is what keeps
+    // that distinguishable from "we could not read it".
+    const { env } = rankEnv(
+      [scanRow(76, 0)],
+      [{ netuid: 76, burn_tao: 0 }],
+      [{ netuid: 76, min_childkey_take_ratio: 0 }],
+    );
+    const { data } = await buildValidatorEconomicsRankingPayload(
+      env,
+      {},
+      rankDeps([pool(76)]),
+    );
+    const row = (data.rows as Row[])[0];
+    assert.equal(row.registration_cost_tao, 0);
+    assert.equal(row.min_childkey_take_ratio, 0);
+  });
+
+  test("a subnet missing from either bulk read still ranks, with nulls", async () => {
+    // The burn tier is a rolling capture, so a newly-registered subnet can be
+    // absent from it. That must cost the field, never the row.
+    const { env } = rankEnv([scanRow(9, 0)], [], []);
+    const { data } = await buildValidatorEconomicsRankingPayload(
+      env,
+      {},
+      rankDeps([pool(9)]),
+    );
+    const row = (data.rows as Row[])[0];
+    assert.equal(row.netuid, 9);
+    assert.equal(row.registration_cost_tao, null);
+    assert.equal(row.min_childkey_take_ratio, null);
+    // The floors do not depend on the burn, so they must still be published.
+    assert.ok((row.permit_floor_cost_tao as number) > 0);
   });
 });
 
