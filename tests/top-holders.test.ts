@@ -163,7 +163,10 @@ describe("buildTopHoldersList", () => {
     assert.equal(data.account_count, 0);
   });
 
-  test("a negative or non-finite balance value falls back to 0 (defensive against a malformed row)", () => {
+  // #9469 changed this from 0 to null, and the change is the point: a row the
+  // answering tier cannot read is not a row worth 0 TAO. A zero ranks and
+  // sums; a null ranks last and refuses to be summed into total_tao.
+  test("a negative or non-finite balance value degrades to null, not 0", () => {
     const data = buildTopHoldersList([
       {
         ss58: "5Bad",
@@ -172,9 +175,46 @@ describe("buildTopHoldersList", () => {
         captured_at: 1,
       },
     ]) as Row;
+    assert.equal(data.accounts[0].free_tao, null);
+    assert.equal(data.accounts[0].delegated_tao, null);
+    assert.equal(data.accounts[0].total_tao, null);
+  });
+
+  // The distinction the null exists for: a MEASURED zero still behaves like a
+  // number everywhere a null does not.
+  test("a measured 0 is kept as 0 and still sums into total_tao", () => {
+    const data = buildTopHoldersList([
+      { ss58: "5Zeroed", free_tao: 0, delegated_tao: 0, captured_at: 1 },
+    ]) as Row;
     assert.equal(data.accounts[0].free_tao, 0);
     assert.equal(data.accounts[0].delegated_tao, 0);
     assert.equal(data.accounts[0].total_tao, 0);
+  });
+
+  // A flow-lane row carries no holdings columns at all. total_tao must not
+  // quietly become "the half we happen to know".
+  test("total_tao is null when either addend is absent, never a partial sum", () => {
+    const data = buildTopHoldersList([
+      { ss58: "5FlowOnly", net_flow_7d: 12.5, captured_at: 1 },
+      { ss58: "5HalfKnown", free_tao: 500, captured_at: 1 },
+    ]) as Row;
+    const byKey = Object.fromEntries(
+      (data.accounts as { ss58: string }[]).map((a) => [a.ss58, a]),
+    ) as Record<string, Row>;
+    assert.equal(byKey["5FlowOnly"]!.total_tao, null);
+    assert.equal(byKey["5FlowOnly"]!.net_flow_7d, 12.5);
+    assert.equal(byKey["5HalfKnown"]!.free_tao, 500);
+    assert.equal(byKey["5HalfKnown"]!.total_tao, null);
+  });
+
+  // Number("") is 0, so a blank cell is exactly the coercion that would
+  // manufacture a confident zero balance out of nothing.
+  test("a blank-string balance cell is absent, not zero", () => {
+    const data = buildTopHoldersList([
+      { ss58: "5Blank", free_tao: "  ", delegated_tao: "", captured_at: 1 },
+    ]) as Row;
+    assert.equal(data.accounts[0].free_tao, null);
+    assert.equal(data.accounts[0].delegated_tao, null);
   });
 
   test("captured_at of 0 or negative degrades to a null last_updated, distinct from a missing captured_at", () => {

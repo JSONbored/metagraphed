@@ -62,11 +62,33 @@
 //                        -- 200 OK, `account_count: 0`, silent in aggregate.
 //   empty                the object is well-formed and carries no rows, which
 //                        serves the same empty page from a different fault.
+//
+// ## Two objects now, not one (#9469)
+//
+// `net_flow_7d/30d/90d` has a producer: src/top-holders-flow-tier.ts's daily
+// lane, writing its own R2 key. So this watchdog judges TWO artifacts through
+// the SAME pure rule -- the frozen holdings materialization on its 12-hour
+// bound, the live flow ranking on the 48-hour bound its daily cadence earns --
+// and writes a `lane_health` row for each. `free_tao`, `delegated_tao` and
+// `total_tao` are unaffected and still have no sink (that module's header
+// measures both gaps), so the frozen half keeps reporting `stale` every tick
+// exactly as above.
+//
+// The flow half gets no special case either, on #9475's reasoning: an absent
+// flow artifact means the daily lane has not written -- before its first
+// 01:34 tick, or because it is failing -- and the route silently falls back to
+// the frozen artifact, whose net_flow_* cells are null on every row, which is
+// precisely the ss58-ordered non-ranking #9469 exists to remove. That is a
+// defect to report, not a state to suppress.
 
 import {
   TOP_HOLDERS_ARTIFACT_KEY,
   topHoldersArtifactRows,
 } from "./top-holders-artifact.ts";
+import {
+  TOP_HOLDERS_FLOW_PROJECTION_KEY,
+  topHoldersFlowRows,
+} from "./top-holders-flow-tier.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 
@@ -94,6 +116,20 @@ import { recordExceptionEvent } from "./usage-telemetry.ts";
  * number can follow a future sink's cadence without a code deploy.
  */
 export const TOP_HOLDERS_STALENESS_THRESHOLD_MS = 12 * 60 * 60 * 1000;
+
+/**
+ * The same bound for the LIVE half of this leaderboard (#9469).
+ *
+ * FORTY-EIGHT HOURS, by the identical rule one cadence up: the net_flow_*
+ * lane runs once a day (TOP_HOLDERS_FLOW_CRON), a healthy lane's age
+ * therefore swings across a full 24 hours, and this is that plus one whole
+ * cadence of slack -- so it cannot fire until a daily pass has genuinely been
+ * skipped. Anything at or near 24 h would alert on a lane that is working,
+ * which is the #9301 mistake the threshold above already carries a note about.
+ *
+ * Overridable per-deployment via TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS.
+ */
+export const TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS = 48 * 60 * 60 * 1000;
 
 export type TopHoldersStalenessReason =
   "absent" | "unreadable" | "empty" | "stale" | null;
@@ -183,13 +219,21 @@ export interface TopHoldersStalenessDeps {
   laneHealthDb?: LaneHealthDb | null;
 }
 
-/** Read the served artifact and classify it exactly as the read path would. */
+/** Read the served artifact and classify it exactly as the read path would.
+ *
+ * `key`/`readRows` default to the frozen holdings artifact and ITS reader
+ * test; the flow lane passes its own pair so each object is judged by the
+ * function the route actually serves it through. Two copies of "is this body
+ * usable" drift, and the direction they drift is the dangerous one: a looser
+ * test reports healthy on exactly the object the route is declining. */
 export async function readTopHoldersArtifactState(
   bucket: ArtifactBucket,
+  key: string = TOP_HOLDERS_ARTIFACT_KEY,
+  readRows: (body: unknown) => unknown[] | null = topHoldersArtifactRows,
 ): Promise<TopHoldersArtifactState> {
   let body: unknown;
   try {
-    const object = await bucket.get(TOP_HOLDERS_ARTIFACT_KEY);
+    const object = await bucket.get(key);
     if (!object) return { present: false, reason: "absent" };
     body = await object.json();
   } catch {
@@ -200,7 +244,7 @@ export async function readTopHoldersArtifactState(
     // could not see it, which is a different thing to go and check.
     return { present: false, reason: "unreadable" };
   }
-  const rows = topHoldersArtifactRows(body);
+  const rows = readRows(body);
   if (rows === null) return { present: false, reason: "unreadable" };
   const generatedAt = (body as { generated_at?: unknown } | null)?.generated_at;
   return {
@@ -235,6 +279,20 @@ export async function runTopHoldersStalenessWatchdog(
     thresholdMs,
   });
 
+  // The LIVE half (#9469), judged by the SAME rule against its own cadence.
+  const flowThresholdMs =
+    Number(env?.TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS) ||
+    TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS;
+  const flow = evaluateTopHoldersStaleness({
+    artifact: await readTopHoldersArtifactState(
+      bucket,
+      TOP_HOLDERS_FLOW_PROJECTION_KEY,
+      topHoldersFlowRows,
+    ),
+    nowMs: now(),
+    thresholdMs: flowThresholdMs,
+  });
+
   if (verdict.stale) {
     const age =
       verdict.age_ms === null
@@ -248,6 +306,24 @@ export async function runTopHoldersStalenessWatchdog(
           `this object, and serve an EMPTY leaderboard when it cannot be read`,
       ),
       route: "watchdog:top-holders-staleness",
+      errorCode: "stale_lane",
+    }).catch(() => false);
+  }
+
+  if (flow.stale) {
+    const age =
+      flow.age_ms === null
+        ? "age unknown"
+        : `${(flow.age_ms / 3_600_000).toFixed(1)} h old`;
+    await record(env as never, {
+      error: new Error(
+        `top-holders flow lane ${flow.reason}: the net_flow_* ranking is ` +
+          `${age} (threshold ${(flowThresholdMs / 3_600_000).toFixed(1)} h) ` +
+          `-- /api/v1/accounts/top-holders?sort=net_flow_7d|30d|90d then ` +
+          `falls back to the frozen artifact, whose net_flow_* cells are ` +
+          `null on every row, so the sort silently answers in ss58 order`,
+      ),
+      route: "watchdog:top-holders-flow-staleness",
       errorCode: "stale_lane",
     }).catch(() => false);
   }
@@ -267,7 +343,24 @@ export async function runTopHoldersStalenessWatchdog(
       checked_at: now(),
     },
   );
+  await recordLaneVerdict(
+    deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as never),
+    {
+      lane: "top-holders-flow-staleness",
+      verdict: flow.stale ? "stale" : "ok",
+      age_ms: flow.age_ms,
+      detail: flow.reason,
+      checked_at: now(),
+    },
+  );
 
-  // `ok` describes whether the TICK ran, not whether the lane is fresh.
-  return { ok: true, alerted: verdict.stale, ...verdict };
+  // `ok` describes whether the TICK ran, not whether the lane is fresh. The
+  // top-level fields stay the FROZEN artifact's verdict so an existing reader
+  // of this summary is unchanged; the live lane's is nested beside it.
+  return {
+    ok: true,
+    alerted: verdict.stale || flow.stale,
+    ...verdict,
+    flow,
+  };
 }

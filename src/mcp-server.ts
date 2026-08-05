@@ -267,6 +267,7 @@ import {
   type ChainDetailAnswer,
 } from "./chain-detail-hot-tier.ts";
 import { loadTopHoldersFromArtifact } from "./top-holders-artifact.ts";
+import { loadTopHoldersFlowTier } from "./top-holders-flow-tier.ts";
 import { loadChainTransfersFromArtifact } from "./chain-transfers-artifact.ts";
 import { loadChainStakeFlowFromArtifact } from "./chain-stake-flow-artifact.ts";
 import { loadChainRegistrationsFromArtifact } from "./chain-registrations-artifact.ts";
@@ -9805,15 +9806,21 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, " +
       "net_flow_90d -- StakeAdded minus StakeRemoved, #6886/#6887). The " +
       "coldkey/balance-centric counterpart to list_accounts. " +
-      "NOT LIVE (#9464): this leaderboard is served from a FIXED SNAPSHOT " +
-      "taken 2026-08-02, not from current chain state. Its source table was a " +
-      "System::Account scan written by an indexer that has been decommissioned, " +
-      "and no replacement writer exists yet, so captured_at/last_updated do " +
-      "NOT advance and every balance is as of that date. Treat the ranking as " +
-      "historical: an account that has moved TAO since is misreported, and one " +
-      "first funded since is absent entirely. For current per-account balances " +
-      "use get_account_balance, which reads chain state live. Mirrors GET " +
-      "/api/v1/accounts/top-holders.",
+      "TWO TIERS, AND WHICH ONE ANSWERS DEPENDS ON THE SORT (#9469). " +
+      "net_flow_7d/30d/90d are LIVE: recomputed once a day from the " +
+      "account_events stake stream, signed (a real net outflow is negative), " +
+      "and captured_at advances with each pass. free_tao, delegated_tao and " +
+      "total_tao are NOT live -- they are served from a FIXED SNAPSHOT taken " +
+      "2026-08-02, because account_balances lost its writer with the " +
+      "decommissioned indexer and delegated_tao needs a per-(hotkey, netuid) " +
+      "alpha pool total that no current table holds. Sorting by one of those " +
+      "three returns the frozen ranking with captured_at stuck at that date: " +
+      "an account that has moved TAO since is misreported and one first funded " +
+      "since is absent entirely. On a net_flow_*-sorted page the three " +
+      "holdings columns come back NULL rather than zero -- the live tier has " +
+      "no balance source, and a zero there would read as an empty wallet. For " +
+      "current per-account balances use get_account_balance, which reads chain " +
+      "state live. Mirrors GET /api/v1/accounts/top-holders.",
     inputSchema: z.toJSONSchema(GetTopHoldersInputSchema, {
       target: "draft-2020-12",
     }),
@@ -9835,6 +9842,10 @@ export const MCP_TOOLS: McpToolDefinition[] = [
           }),
           "METAGRAPH_TOP_HOLDERS_SOURCE",
         )) ??
+        // Same tier order handleTopHoldersList uses: the live flow lane for
+        // the three net_flow_* sorts it can rank (#9469), the frozen
+        // 2026-08-02 materialization for the holdings sorts it cannot.
+        (await loadTopHoldersFlowTier(ctx.env, { sort, limit })) ??
         (await loadTopHoldersFromArtifact(ctx.env, { sort, limit })) ??
         buildTopHoldersList([], { sort, limit })
       );

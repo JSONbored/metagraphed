@@ -242,6 +242,7 @@ import { loadSelfHealthColdTier } from "../../src/self-health-cold-tier.ts";
 import { loadLatestLaneHealth } from "../../src/lane-health.ts";
 import { withLaneHealth } from "../../src/self-health.ts";
 import { loadTopHoldersFromArtifact } from "../../src/top-holders-artifact.ts";
+import { loadTopHoldersFlowTier } from "../../src/top-holders-flow-tier.ts";
 import { buildBlocksSummary } from "../../src/blocks-summary.ts";
 import { loadBlocksSummaryFromArtifact } from "../../src/blocks-summary-artifact.ts";
 import {
@@ -1318,9 +1319,19 @@ export async function handleTopHoldersList(
       request,
       "METAGRAPH_TOP_HOLDERS_SOURCE",
     )) as ReturnType<typeof buildTopHoldersList> | null) ??
-    // The materialized final answer: the route's inputs are frozen snapshots
-    // of the decommissioned box, so the query's one-time result IS the live
-    // result. See src/top-holders-artifact.ts.
+    // The LIVE leg (#9469): net_flow_7d/30d/90d, recomputed daily from
+    // chain.account_events. Answers only those three sorts and declines the
+    // holdings ones, so it takes precedence where it can genuinely rank and
+    // never displaces the frozen artifact where it cannot. See
+    // src/top-holders-flow-tier.ts.
+    (await loadTopHoldersFlowTier(env, {
+      sort: parsed.sort,
+      limit: parsed.limit,
+    })) ??
+    // The holdings columns: still the one-shot 2026-08-02 materialization,
+    // because free_tao and delegated_tao have no live source (both blockers
+    // are measured in src/top-holders-flow-tier.ts's header). See
+    // src/top-holders-artifact.ts.
     (await loadTopHoldersFromArtifact(env, {
       sort: parsed.sort,
       limit: parsed.limit,

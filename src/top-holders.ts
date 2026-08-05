@@ -16,28 +16,36 @@ export { TOP_HOLDERS_LIMIT_DEFAULT, TOP_HOLDERS_LIMIT_MAX };
 // already does per-account, aggregated across every account here). An
 // account can appear from either source alone.
 //
-// NOTHING PRODUCES THOSE INPUTS ANY MORE (#9464). account_balances lived only
-// in the decommissioned box's Postgres — no D1 table of that name was ever
-// created, #9193 retired its sync handler to the auth gate, and the poller job
-// that filled it is deliberately absent from POLLER_ONLY in metagraphed-infra's
-// Dockerfile.poller (one of the four Postgres-backed lanes held disabled until
-// they have a Cloudflare-native sink). What the route actually serves is
-// src/top-holders-artifact.ts's one-shot materialization of the query below,
-// taken 2026-08-02, so `captured_at` is a FIXED date rather than a refresh
-// clock. This formatter is unchanged by that and stays the shared shaper for
-// whatever tier answers; the staleness alarm is
-// src/top-holders-staleness-watchdog.ts, and every published description of
-// this route says so out loud so a caller does not read the leaderboard as
-// current.
+// TWO TIERS ANSWER THROUGH THIS ONE FORMATTER, and they cover different
+// columns (#9469):
 //
-// net_flow_7d/30d/90d (#6886/#6887) extend this same coldkey-keyed leaderboard
-// with a rollup-backed cross-subnet stake-flow ranking (StakeAdded -
-// StakeRemoved over a window) rather than shipping as a separate wallet-
-// holdings feature -- reuses this route's existing holdings computation
-// instead of duplicating it. Sourced from wallet_flow_daily (a daily
-// coldkey-keyed rollup of account_events, populated by the same cron as
-// account_events_daily); unlike free_tao/delegated_tao, net flow is signed
-// (a real net outflow is negative), so it gets its own signed-number guard.
+//   net_flow_7d/30d/90d  LIVE. src/top-holders-flow-tier.ts recomputes the
+//                        cross-subnet stake-flow ranking (StakeAdded minus
+//                        StakeRemoved over the window) from
+//                        chain.account_events on a daily cron. Unlike the
+//                        holdings columns net flow is signed -- a real net
+//                        outflow is negative -- so it gets its own signed
+//                        guard below.
+//   free_tao             FROZEN. account_balances got its D1 sink in #9483
+//   delegated_tao        but has no rows yet -- its producer is infra-side;
+//   total_tao            delegated_tao needs a per-(hotkey, netuid) alpha POOL
+//                        total that neither D1 nor the lakehouse holds (see
+//                        src/top-holders-flow-tier.ts's header for both
+//                        measurements). These three still come from
+//                        src/top-holders-artifact.ts's one-shot 2026-08-02
+//                        materialization, whose `captured_at` is a fixed date
+//                        rather than a refresh clock, and every published
+//                        description of this route says so out loud.
+//
+// A tier answers only the sorts it can genuinely rank and declines the rest,
+// so neither tier's gaps drive an ordering. The holdings cells are therefore
+// NULLABLE here: a flow-sorted page carries rows the frozen snapshot has
+// never seen, and reporting `free_tao: 0` for one would read as "this account
+// holds nothing" -- the confident wrong zero #9066/#9273/#9305 keep removing.
+// Absent means absent; 0 is reserved for a measured zero.
+//
+// The staleness alarm for both tiers is
+// src/top-holders-staleness-watchdog.ts.
 
 type Row = Record<string, unknown>;
 
@@ -59,14 +67,22 @@ function toIso(ms: unknown): string | null {
   return Number.isFinite(d.getTime()) ? d.toISOString() : null;
 }
 
-function numberOrZero(value: unknown): number {
+// A finite, non-negative holdings cell, or null when the tier that answered
+// has no source for it. Distinguishing the two is the point: an ABSENT cell
+// means "this tier cannot see this column" and must not rank or sum, while a
+// present 0 is a measured zero and does both. Blank string is absent too --
+// Number("") is 0, which is exactly the coercion that would turn a missing
+// balance into a confident zero.
+function nonNegativeOrNull(value: unknown): number | null {
+  if (value == null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
   const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
-// Net flow can be genuinely negative (net outflow) -- numberOrZero's >= 0
-// guard would silently clamp a real outflow to 0, which is wrong here.
-// Missing rollup data must stay null (never coerce to 0) so sort keys can
+// Net flow can be genuinely negative (net outflow) -- nonNegativeOrNull's
+// >= 0 guard would silently drop a real outflow, which is wrong here.
+// Missing flow data must stay null (never coerce to 0) so sort keys can
 // distinguish "confirmed zero movers" from "no flow row in the window".
 function numberOrNullSigned(value: unknown): number | null {
   if (value == null) return null;
@@ -76,9 +92,9 @@ function numberOrNullSigned(value: unknown): number | null {
 
 interface TopHoldersEntry {
   ss58: string;
-  free_tao: number;
-  delegated_tao: number;
-  total_tao: number;
+  free_tao: number | null;
+  delegated_tao: number | null;
+  total_tao: number | null;
   net_flow_7d: number | null;
   net_flow_30d: number | null;
   net_flow_90d: number | null;
@@ -87,13 +103,17 @@ interface TopHoldersEntry {
 }
 
 function buildTopHoldersEntry(row: Row): TopHoldersEntry {
-  const freeTao = numberOrZero(row?.free_tao);
-  const delegatedTao = numberOrZero(row?.delegated_tao);
+  const freeTao = nonNegativeOrNull(row?.free_tao);
+  const delegatedTao = nonNegativeOrNull(row?.delegated_tao);
   return {
     ss58: row.ss58 as string,
     free_tao: freeTao,
     delegated_tao: delegatedTao,
-    total_tao: freeTao + delegatedTao,
+    // Only a sum of two MEASURED addends is a total. If either side is absent
+    // the sum would silently understate the account by the missing side, and
+    // "5,448,995 TAO free" vs "0" is not a rounding difference.
+    total_tao:
+      freeTao === null || delegatedTao === null ? null : freeTao + delegatedTao,
     net_flow_7d: numberOrNullSigned(row?.net_flow_7d),
     net_flow_30d: numberOrNullSigned(row?.net_flow_30d),
     net_flow_90d: numberOrNullSigned(row?.net_flow_90d),
@@ -110,8 +130,13 @@ export function compareTopHoldersSort(
 ): number {
   const aVal = a[sortKey];
   const bVal = b[sortKey];
-  // net_flow_* are number | null; other sort keys are always number.
-  // typeof null === "object", so non-numbers (including null) sort last.
+  // EVERY sort key is number | null now that a tier answers only the columns
+  // it can see. typeof null === "object", so non-numbers sort last -- but a
+  // page where the requested key is null on EVERY row degenerates to the
+  // ss58 tie-break below, which is a lexicographic list wearing a ranking's
+  // label. That is #9469's defect, and the fix is upstream: each tier
+  // declines a sort it cannot rank (src/top-holders-flow-tier.ts) rather than
+  // letting this comparator paper over it.
   const aNum = typeof aVal === "number";
   const bNum = typeof bVal === "number";
   if (aNum !== bNum) {
@@ -122,10 +147,12 @@ export function compareTopHoldersSort(
   return (bVal as number) - (aVal as number) || a.ss58.localeCompare(b.ss58);
 }
 
-/** Shapes raw (ss58, free_tao, delegated_tao, captured_at) rows -- one per
- * account from either account_balances or the nominator_positions/neurons
- * aggregate -- into a paginated, sortable leaderboard. Null-safe: no rows
- * (cold store) yields a schema-stable empty leaderboard. */
+/** Shapes raw (ss58, captured_at, plus whatever columns the answering tier
+ * has) rows into a paginated, sortable leaderboard: `free_tao`/
+ * `delegated_tao` from the frozen holdings artifact, `net_flow_*` from the
+ * live flow lane. A column the tier does not carry is absent from the row and
+ * comes out null, never zero. Null-safe: no rows (cold store) yields a
+ * schema-stable empty leaderboard. */
 export function buildTopHoldersList(
   rows: Row[] | null | undefined,
   {

@@ -257,6 +257,8 @@ import {
   TOP_HOLDERS_LIMIT_MAX,
   TOP_HOLDERS_SORTS,
 } from "./top-holders.ts";
+import { loadTopHoldersFromArtifact } from "./top-holders-artifact.ts";
+import { loadTopHoldersFlowTier } from "./top-holders-flow-tier.ts";
 import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.ts";
 import {
   COMPARE_VALIDATORS_MAX,
@@ -2285,6 +2287,19 @@ const rootValue = {
         postgresTierRequest(context, "/api/v1/accounts/top-holders", params),
         "METAGRAPH_TOP_HOLDERS_SOURCE",
       )) as Row | null) ??
+      // The same two tiers the REST handler and the MCP tool read (#9469).
+      // This resolver had NEITHER, so with the Postgres source retired it
+      // answered a schema-stable EMPTY list while /api/v1/accounts/top-holders
+      // served a leaderboard -- the same shape of dead fallback ladder the
+      // issue is about, one layer down.
+      (await loadTopHoldersFlowTier(context.env, {
+        sort: safeSort,
+        limit: safeLimit,
+      })) ??
+      (await loadTopHoldersFromArtifact(context.env, {
+        sort: safeSort,
+        limit: safeLimit,
+      })) ??
       buildTopHoldersList([], { sort: safeSort, limit: safeLimit })
     );
   },

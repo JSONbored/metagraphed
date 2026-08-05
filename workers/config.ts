@@ -241,6 +241,19 @@ export const ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON = "4,34 * * * *";
 // raw-capture and */15 probe grids. Must match a wrangler.jsonc
 // `triggers.crons` entry.
 export const PROJECTION_LANES_CRON = "11,41 * * * *";
+// #9469: the top-holders net_flow_* lane -- the one column of that leaderboard
+// with a live source. Its own cron rather than a slot in PROJECTION_LANES
+// because its scan is priced very differently from theirs: `GROUP BY coldkey`
+// over the 90-day account_events window scans 1.65 GB (measured against
+// production, 2026-08-05), which is 1.65 GB/day here and would be 79 GB/day on
+// the twice-hourly lane tick. Nothing it feeds moves faster than that: the
+// windows are 7/30/90 days, and the sibling holdings columns it sits beside
+// are a fixed 2026-08-02 snapshot. 01:34 UTC puts it ~2.5 h after the
+// nominator-positions producer's nightly pass (last two writes 22:27 and
+// 23:10 UTC) and on a minute no other cron in this file uses -- dispatch keys
+// on the LITERAL cron string, so this must be unique here as well as matching
+// a wrangler.jsonc `triggers.crons` entry.
+export const TOP_HOLDERS_FLOW_CRON = "34 1 * * *";
 // The live-economics refresh, moved off .github/workflows/refresh-economics.yml
 // -- the last GitHub Actions data lane. Same 3-hourly cadence that workflow
 // ran (it was `41 */3 * * *`), on minute :26, which is the nearest free minute:

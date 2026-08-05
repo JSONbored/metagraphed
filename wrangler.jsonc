@@ -824,6 +824,11 @@
       // the lakehouse -- see PROJECTION_LANES_CRON in workers/config.ts for
       // the cadence and minute-offset rationale.
       "11,41 * * * *",
+      // 34 1 = the top-holders net_flow_* lane (#9469), daily rather than on
+      // the tick above: its 90-day per-account aggregate scans 1.65 GB, so
+      // the twice-hourly cadence would cost 79 GB/day for windows measured in
+      // weeks -- see TOP_HOLDERS_FLOW_CRON in workers/config.ts.
+      "34 1 * * *",
       // 3,13,... = the 10-minute emission-gate sampler (#8748/#8750), moved
       // off its GitHub Actions schedule -- offset from :0-based grids so it
       // never stacks on the */5 raw-capture tick's busiest minute.
