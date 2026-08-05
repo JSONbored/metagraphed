@@ -1977,9 +1977,11 @@ async function dispatchScheduled(
     // The account-balances lane's alarm (#9478) -- the SOURCE side of the
     // watchdog above rather than a replacement for it: that one asks whether
     // the served artifact is readable and current, this one asks whether the
-    // D1 table it is composed from is being written at all. Zero alerts is the
-    // correct steady state; a stale verdict records one exception under
-    // watchdog:account-balances-staleness, the project's alert channel. An
+    // D1 table it is composed from is being written at all -- and, since
+    // #9530, whether each pass COVERS the network rather than merely arriving
+    // recently. Zero alerts is the correct steady state; a stale verdict
+    // records one exception under watchdog:account-balances-staleness, the
+    // project's alert channel. An
     // EMPTY table alerts too -- until the revived lane posts, every top-holders
     // read is still answering from the frozen 2026-08-02 materialization.
     return runAccountBalancesStalenessWatchdog(
