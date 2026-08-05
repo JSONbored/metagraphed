@@ -4964,6 +4964,25 @@ function useColumnVisibility(pageKey, columns) {
   }, [columns]);
   return { visible, isVisible, toggle, reset, setVisible };
 }
+function TableColGroup({ widths }) {
+  const total = widths.reduce((sum3, w) => sum3 + w, 0);
+  return /* @__PURE__ */ jsxRuntime.jsx("colgroup", { children: widths.map((w, i) => (
+    // Positional by definition: a <col> IS its index in the row.
+    /* @__PURE__ */ jsxRuntime.jsx(
+      "col",
+      {
+        style: { width: `${(w / total * 100).toFixed(3)}%` }
+      },
+      `col-${i}`
+    )
+  )) });
+}
+function columnWidths(columns, isVisible, leading = []) {
+  return [
+    ...leading,
+    ...columns.filter((c) => isVisible(c.id)).map((c) => c.width ?? 100)
+  ];
+}
 var VARIANT_ICON = {
   empty: lucideReact.Inbox,
   filtered: lucideReact.Filter,
@@ -6707,6 +6726,7 @@ exports.StatWithSpark = StatWithSpark;
 exports.StatusBadge = StatusBadge;
 exports.StickyToolbar = StickyToolbar;
 exports.TabStrip = TabStrip;
+exports.TableColGroup = TableColGroup;
 exports.TableSkeleton = TableSkeleton;
 exports.TableState = TableState;
 exports.TimeAgo = TimeAgo;
@@ -6722,6 +6742,7 @@ exports.YieldPercentileStrip = YieldPercentileStrip;
 exports.buildCsvDownloadUrl = buildCsvDownloadUrl;
 exports.classNames = classNames;
 exports.cn = cn;
+exports.columnWidths = columnWidths;
 exports.defaultVisible = defaultVisible;
 exports.fmtYield = fmtYield;
 exports.isScrolledPast = isScrolledPast;

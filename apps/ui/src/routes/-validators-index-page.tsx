@@ -37,6 +37,7 @@ import {
   ValidatorCompareToggle,
 } from "@/components/metagraphed/validators-compare-drawer";
 import { SortHeader, ariaSort, SearchInput } from "@/components/metagraphed/table-controls";
+import { TableColGroup } from "@jsonbored/ui-kit";
 import type { GlobalValidator } from "@/lib/metagraphed/types";
 import { useMeasuredRowHeight } from "@/hooks/use-measured-row-height";
 
@@ -272,10 +273,13 @@ function ValidatorsDirectory({
           <div ref={tableScrollRef} className="mg-table-scroll mg-list-viewport">
             <table
               className={classNames(
-                "w-full text-left text-sm",
+                "w-full min-w-[1100px] table-fixed text-left text-sm",
                 compact && "[&_td]:!py-1 [&_th]:!py-1",
               )}
             >
+              {/* Pins the column tracks so they cannot be re-derived from
+                  whichever virtualized rows happen to be mounted. */}
+              <TableColGroup widths={[46, 40, ...VALIDATOR_COLUMNS.map((c) => c.width)]} />
               <thead className="mg-table-head-pinned">
                 <tr>
                   <th className="w-6 px-3 py-2" aria-label="Watch" />

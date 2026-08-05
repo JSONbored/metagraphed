@@ -46,14 +46,20 @@ export interface ValidatorColumn {
    *  field the column ranks by. Columns without one (identity, derived-on-
    *  scroll cells) render a plain, non-interactive header. */
   sortKey?: string;
+  /** Relative width for the table's <colgroup>; see TableColGroup. Weights
+   *  follow what auto-layout settled on at 1280px, so pinning them keeps the
+   *  table looking as it does today rather than retuning it. */
+  width: number;
 }
 
 const numeric = (
   header: string,
-): Pick<ValidatorColumn, "header" | "thClassName" | "tdClassName"> => ({
+  width: number,
+): Pick<ValidatorColumn, "header" | "thClassName" | "tdClassName" | "width"> => ({
   header,
   thClassName: `${TH_BASE} text-right`,
   tdClassName: `${TD_NUM} text-ink`,
+  width,
 });
 
 // #8251: 30d stake trend, lazily fetched per row only once it scrolls into
@@ -102,6 +108,7 @@ function Stake30dDeltaCell({ hotkey }: { hotkey: string }) {
 export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
   {
     header: "Operator",
+    width: 350,
     thClassName: TH_BASE,
     tdClassName: TD_BASE,
     cell: (v, ctx) => {
@@ -150,13 +157,13 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     },
   },
   {
-    ...numeric("Take"),
+    ...numeric("Take", 72),
     sortKey: "take",
     tdClassName: `${TD_NUM} text-ink-muted`,
     cell: (v) => formatTakePct(v.take),
   },
   {
-    ...numeric("Est. APY"),
+    ...numeric("Est. APY", 89),
     sortKey: "apy_estimate",
     // apy_estimate (#2551) is a 0..1 fraction; formatApyPct takes a percentage.
     cell: (v) => {
@@ -171,28 +178,28 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     },
   },
   {
-    ...numeric("Active subnets"),
+    ...numeric("Active subnets", 139),
     sortKey: "subnet_count",
     cell: (v) => formatNumber(v.subnet_count),
   },
   {
-    ...numeric("Nominators"),
+    ...numeric("Nominators", 115),
     sortKey: "nominator_count",
     tdClassName: `${TD_NUM} text-ink-muted`,
     cell: (v) => (v.nominator_count != null ? formatNumber(v.nominator_count) : "—"),
   },
   {
-    ...numeric("Dominance"),
+    ...numeric("Dominance", 113),
     sortKey: "stake_dominance",
     cell: (v) => (v.stake_dominance != null ? `${(v.stake_dominance * 100).toFixed(2)}%` : "—"),
   },
   {
-    ...numeric("Total stake"),
+    ...numeric("Total stake", 129),
     sortKey: "total_stake_tao",
     cell: (v) => taoCompact(v.total_stake_tao),
   },
   {
-    ...numeric("30d Δ"),
+    ...numeric("30d Δ", 75),
     tdClassName: `${TD_NUM}`,
     cell: (v) => <Stake30dDeltaCell hotkey={v.hotkey} />,
   },

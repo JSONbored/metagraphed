@@ -250,6 +250,10 @@ export {
   type ColumnDef,
 } from "@/components/metagraphed/use-column-visibility";
 export {
+  TableColGroup,
+  columnWidths,
+} from "@/components/metagraphed/table-colgroup";
+export {
   Panel,
   type PanelProps,
   type PanelTone,

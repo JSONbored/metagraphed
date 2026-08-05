@@ -7,6 +7,21 @@ export interface ColumnDef {
   required?: boolean;
   /** Default visibility if no persisted state exists. */
   defaultVisible?: boolean;
+  /**
+   * Relative width, used to build the table's <colgroup>.
+   *
+   * Needed because these tables are virtualized: with `table-layout: auto`
+   * the browser sizes columns from the rows currently in the DOM, and a
+   * virtualizer swaps that set on every scroll, so the columns -- and the
+   * pinned header sitting on top of them -- visibly shift as the reader
+   * scrolls. Measured drift before this existed: 43px on /subnets, 123px on
+   * /validators.
+   *
+   * A weight, not a fixed size: the visible column set changes as columns are
+   * toggled, so widths are normalised over whatever is on screen rather than
+   * being absolute. Columns without one fall back to an even share.
+   */
+  width?: number;
 }
 
 const STORAGE_PREFIX = "mg:cols:v1:";

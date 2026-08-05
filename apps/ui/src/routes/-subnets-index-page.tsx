@@ -5,6 +5,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getTaoMarket } from "@/lib/metagraphed/market.functions";
 import { ChevronDown, Coins, Layers, Server, Star } from "lucide-react";
+import { TableColGroup, columnWidths } from "@jsonbored/ui-kit";
 import {
   AsyncPanel,
   Chip,
@@ -142,21 +143,21 @@ type SubnetRow = Subnet & {
 // registered-UID cap, not a real signal) and had no customizer escape hatch
 // worth keeping for a column that carries zero information.
 const SUBNET_COLUMNS: ColumnDef[] = [
-  { id: "netuid", label: "UID", required: true },
-  { id: "name", label: "Name", required: true },
-  { id: "alphaPrice", label: "Price (α)", defaultVisible: true },
-  { id: "priceChange", label: "24h/7d %", defaultVisible: true },
-  { id: "emission", label: "Emission", defaultVisible: true },
-  { id: "totalStake", label: "Total stake", defaultVisible: true },
-  { id: "health", label: "Health", defaultVisible: true },
-  { id: "age", label: "Age", defaultVisible: true },
-  { id: "marketCap", label: "Market cap", defaultVisible: false },
-  { id: "registration", label: "Reg. cost", defaultVisible: false },
-  { id: "symbol", label: "Symbol", defaultVisible: false },
-  { id: "surfaces", label: "Surfaces", defaultVisible: false },
-  { id: "curation", label: "Source", defaultVisible: false },
-  { id: "readiness", label: "Profile", defaultVisible: false },
-  { id: "updated", label: "Updated", defaultVisible: false },
+  { id: "netuid", label: "UID", required: true, width: 143 },
+  { id: "name", label: "Name", required: true, width: 217 },
+  { id: "alphaPrice", label: "Price (α)", defaultVisible: true, width: 128 },
+  { id: "priceChange", label: "24h/7d %", defaultVisible: true, width: 109 },
+  { id: "emission", label: "Emission", defaultVisible: true, width: 109 },
+  { id: "totalStake", label: "Total stake", defaultVisible: true, width: 123 },
+  { id: "health", label: "Health", defaultVisible: true, width: 132 },
+  { id: "age", label: "Age", defaultVisible: true, width: 162 },
+  { id: "marketCap", label: "Market cap", defaultVisible: false, width: 130 },
+  { id: "registration", label: "Reg. cost", defaultVisible: false, width: 110 },
+  { id: "symbol", label: "Symbol", defaultVisible: false, width: 90 },
+  { id: "surfaces", label: "Surfaces", defaultVisible: false, width: 100 },
+  { id: "curation", label: "Source", defaultVisible: false, width: 110 },
+  { id: "readiness", label: "Profile", defaultVisible: false, width: 110 },
+  { id: "updated", label: "Updated", defaultVisible: false, width: 120 },
 ];
 
 function joinCatalog(
@@ -1233,7 +1234,10 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
             // owned the sticky <thead>, and the outer of the two could never
             // scroll because the inner capped its content at the same 70vh.
             // One viewport, one ref, one thing the header pins against.
-            <table className="w-full text-left text-sm">
+            <table className="w-full min-w-[1100px] table-fixed text-left text-sm">
+              {/* Pins the column tracks so they cannot be re-derived from
+                  whichever virtualized rows happen to be mounted. */}
+              <TableColGroup widths={columnWidths(SUBNET_COLUMNS, columns.isVisible, [42, 36])} />
               <thead>
                 <tr>
                   <th
