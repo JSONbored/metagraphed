@@ -13,11 +13,16 @@
 //
 // FORMERLY BOX-SIDE (a 10-minute systemd timer with a low-latency RPC path
 // to our own nodes, writing straight into the box's Postgres). That box and
-// its Postgres are decommissioned, so the lane is restored as a GitHub
-// Actions schedule (.github/workflows/sample-emission-gate.yml) on the same
-// cadence, reading the public archive endpoint -- and the persistence moved
-// behind the Worker route because a stateless Actions runner has no database
-// of its own and D1 is not internet-addressable except through the Worker.
+// its Postgres are decommissioned, and the lane now runs Worker-native as
+// EMISSION_GATE_SAMPLE_CRON (workers/config.ts), reading the public archive
+// endpoint on the same cadence. The GitHub Actions schedule that carried it
+// in between was retired with the workflow -- an Actions hop bought nothing
+// once the estate was Cloudflare-only, since the D1 tables it feeds are a
+// binding the Worker already holds.
+//
+// This script survives as the box-side/manual entrypoint (invoked by
+// scripts/data-refresh-node-entrypoint.sh's STEP=emission-gate-sample), not
+// as the primary driver.
 //
 // Idempotent by construction: the differs return [] when nothing moved, so a
 // run against an unchanged chain writes nothing at all. Re-running is safe.

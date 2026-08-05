@@ -286,14 +286,17 @@ describe("derivation from the real tree", () => {
   test("...and that sweep would catch a workflow that dropped the token", () => {
     const ctx = realContext();
     const stripped = readFileSync(
-      path.join(repoRoot, ".github/workflows/refresh-metagraph.yml"),
+      path.join(repoRoot, ".github/workflows/discover-testnet-surfaces.yml"),
       "utf8",
     )
       .split("\n")
       .filter((line) => !line.includes(`${OBSERVABILITY_TOKEN_ENV}:`))
       .join("\n");
     assert.deepEqual(stepsMissingObservabilityToken(stripped, ctx), [
-      { step: "Sync to D1", scripts: ["scripts/sync-neurons.ts"] },
+      {
+        step: "Probe testnet subnet surfaces",
+        scripts: ["scripts/discover-testnet-surfaces.ts"],
+      },
     ]);
   });
 });
