@@ -218,9 +218,12 @@ jobs:
           else
             echo "run_ui_e2e=false" >> "$GITHUB_OUTPUT"
           fi
-          # Same-shape flag for the python job: the Python SDK's hermetic suite reads only python/**,
-          # so a PR with zero changes there cannot affect its result.
-          if grep -qE '^python/' changed-files.txt; then
+          # Same-shape flag for the python job, which runs two independent hermetic suites: the
+          # Python SDK's (reads only python/**) and the data-refresh scripts' (reads only
+          # scripts/**.py). scripts/ is overwhelmingly TypeScript since #7510, so this gates on the
+          # .py extension rather than the whole directory -- a .ts-only diff under scripts/ cannot
+          # change either suite's result.
+          if grep -qE '^python/|^scripts/.*\.py$' changed-files.txt; then
             echo "run_python_validation=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_python_validation=false" >> "$GITHUB_OUTPUT"
@@ -754,22 +757,29 @@ jobs:
           override_pr: ${{ github.event.pull_request.number }}
           fail_ci_if_error: false
 
-  # The Python SDK (python/) ships its own hermetic unittest suite (37 cases) but
-  # was never run in CI — a regression in retry/backoff, Retry-After capping,
-  # pagination, JSON-RPC unwrap, or the SSRF-safe redirect handler could land on a
-  # PR (and reach PyPI) despite covering tests existing. This job runs it on every
-  # PR that touches python/**. It is independent of the Node job, so it adds no wall-clock to the
-  # `test` long pole.
+  # Every hermetic Python suite in the repo, both of which existed without a runner.
+  #
+  # The Python SDK (python/) ships its own suite (37 cases) but was never run in CI — a
+  # regression in retry/backoff, Retry-After capping, pagination, JSON-RPC unwrap, or the
+  # SSRF-safe redirect handler could land on a PR (and reach PyPI) despite covering tests
+  # existing.
+  #
+  # scripts/test_*.py (44 cases) covers the surviving data-refresh scripts' pure helpers and
+  # had no runner either: discovery here reads python/tests, and vitest does not see .py at
+  # all. #9473 is what that costs — four of those files spent two weeks importing scripts
+  # deleted in #7012, failing on contact, with nothing to go red.
+  #
+  # Independent of the Node job, so this adds no wall-clock to the `test` long pole.
   python:
     name: python
     needs: changes
     # Path-gated at the JOB level (safe: zero required status contexts on main, and the review
-    # pipeline buckets skipped as success -- see the `test` job comment): the hermetic suite reads
-    # only python/**, so a PR with zero changes there cannot change its result. Draft PRs skip
-    # entirely, same as every heavy job here. Push/dispatch runs are unaffected.
+    # pipeline buckets skipped as success -- see the `test` job comment): both suites read only
+    # python/** and scripts/**.py, so a PR touching neither cannot change this job's result. Draft
+    # PRs skip entirely, same as every heavy job here. Push/dispatch runs are unaffected.
     if: ${{ github.event_name != 'pull_request' || (github.event.pull_request.draft != true && needs.changes.outputs.run_python_validation == 'true') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15 # hermetic unittest suite (37 cases), no network
+    timeout-minutes: 15 # two hermetic unittest suites (37 + 44 cases), no network
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -783,6 +793,14 @@ jobs:
       - name: Test Python SDK
         working-directory: python
         run: uv run --extra test python -m unittest discover -s tests
+
+      # Stdlib unittest with no third-party imports (each case loads its subject by path via
+      # importlib and asserts pure helpers), so this runs OUTSIDE the SDK's project environment
+      # -- `--no-project` keeps python/'s pyproject from being resolved for a suite that does not
+      # belong to it. Discovery is the point: a test whose subject has been deleted fails at
+      # import here instead of sitting unrun.
+      - name: Test data-refresh scripts
+        run: uv run --no-project python -m unittest discover -s scripts -p 'test_*.py'
 
   # apps/ui (TanStack Start/Vite frontend, #3062) — entirely independent of the backend job above:
   # a backend-only PR never installs or builds this tree, and vice versa. Gated on run_ui_validation

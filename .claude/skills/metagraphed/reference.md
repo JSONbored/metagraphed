@@ -98,10 +98,16 @@ build):
   **not** participate in the docs fast lane below — coverage is a repo-wide delta gate, not
   diff-scoped, and it isn't the wall-clock long pole regardless.
 - **`checks`** — builds, then lint + format + the ~20 contract/schema/safety validators (below).
-- **`python`** — runs the Python SDK's unittest suite via `uv run --extra test python -m unittest
-discover -s tests` (the `[test]` extra pulls in httpx so the async cases run). Node-independent, so
-  it adds no wall-clock to the long poles. The same step runs in `publish-python.yml`'s unprivileged
-  `build` job before the artifact is built, so a red suite blocks a PyPI publish.
+- **`python`** — runs BOTH hermetic Python suites, and is gated on
+  `python/**` or `scripts/**.py` changing. Step 1 is the Python SDK's, via `uv run --extra test
+python -m unittest discover -s tests` (the `[test]` extra pulls in httpx so the async cases run);
+  the same step runs in `publish-python.yml`'s unprivileged `build` job before the artifact is
+  built, so a red suite blocks a PyPI publish. Step 2 is `scripts/test_*.py`, via
+  `uv run --no-project python -m unittest discover -s scripts -p 'test_*.py'` — stdlib-only, run
+  outside the SDK's project env because it isn't part of that project. **A new `scripts/*.py` needs
+  no wiring, but a `scripts/test_*.py` whose subject is deleted now fails at import here** (#9473 —
+  four of them sat unrun and broken for two weeks before this step existed). Node-independent, so
+  neither adds wall-clock to the long poles.
 - **`ui`** — lint + typecheck + test + a responsive-overflow e2e check (Playwright, baseline-diffed
   against `apps/ui/tests/e2e/overflow-baseline.json` — fails only on a NEW element escaping the
   viewport, not the pre-existing tracked backlog like #3930/#3931/#3985; regenerate the baseline via
