@@ -98,6 +98,38 @@ describe("it reads as a leaderboard, not a list of labelled fields", () => {
   });
 });
 
+describe("the summary is labelled stats, not a run-on strip", () => {
+  it("gives each headline figure its own labelled tile", () => {
+    // It was `520 holders · 152.3k α held · top 5 shown` with the ranks tacked
+    // underneath as `TOP 5 31.4% 10 44.1% 20 58.7%` -- three different KINDS of
+    // fact in one sentence, and a rank row that read as unpaired digits.
+    expect(component).toContain("StatTile");
+    for (const eyebrow of ['eyebrow="Holders"', 'eyebrow="Alpha held"', 'eyebrow="Top 10 share"']) {
+      expect(component).toContain(eyebrow);
+    }
+  });
+
+  it("explains each stat in a tooltip rather than a clipped hint", () => {
+    // The two hints that did exist truncated to "coldkeys with …" at 375px in a
+    // two-column grid, which is worse than no hint at all.
+    expect(component.match(/tooltip=/g) ?? []).toHaveLength(3);
+  });
+
+  it("says the aggregates are whole-subnet, not the rows shown", () => {
+    expect(component).toMatch(/rather than the rows shown below/);
+    expect(component).toMatch(/never over the rows shown below/);
+  });
+
+  it("moves list-scoped facts out of the tiles and under the list", () => {
+    // How many rows are on screen and how fresh the pass is are facts about the
+    // LIST, not about the subnet, so they belong with it.
+    expect(component).toMatch(/Showing the top \$\{formatNumber\(shown\)\}/);
+    const footerAt = component.indexOf("Showing the top");
+    const panelEnd = component.indexOf("</Panel>");
+    expect(footerAt).toBeGreaterThan(panelEnd);
+  });
+});
+
 describe("the section is wired into the page", () => {
   it("mounts under an anchor inside an error boundary", () => {
     expect(page).toContain('id="holders"');

@@ -4,7 +4,7 @@ import { subnetHoldersQuery } from "@/lib/metagraphed/queries";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
-import { RealtimeFreshness } from "@jsonbored/ui-kit";
+import { RealtimeFreshness, StatTile } from "@jsonbored/ui-kit";
 import { formatNumber } from "@/lib/metagraphed/format";
 
 /**
@@ -126,53 +126,55 @@ export function SubnetHoldersLeaderboard({ netuid }: { netuid: number }) {
   }
 
   const conc = data?.concentration;
+  const shown =
+    data?.holder_count != null ? Math.min(holders.length, data.holder_count) : holders.length;
 
   return (
     <div className="space-y-3">
-      {/* Two lines, not one run-on strip. The first states the SET being ranked
-          (and that holder_count describes the whole subnet rather than the rows
-          on screen -- a reader looking at 20 rows would otherwise reasonably
-          read it as describing them); the second is concentration, which is a
-          different question and was previously wrapping into the middle of the
-          first at 375px. */}
-      <div className="space-y-1 mg-type-data text-ink-muted">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          {data?.holder_count != null ? (
-            <span className="text-ink">
-              <span className="font-mono tabular-nums text-ink-strong">
-                {formatNumber(data.holder_count)}
-              </span>{" "}
-              holders
-            </span>
-          ) : null}
-          {data?.total_alpha != null ? (
-            <span>
-              · <span className="font-mono tabular-nums">{fmtAlpha(data.total_alpha)}</span> held
-            </span>
-          ) : null}
-          {data?.holder_count != null && holders.length < data.holder_count ? (
-            <span>· top {holders.length} shown</span>
-          ) : null}
-          {data?.captured_at ? <RealtimeFreshness at={data.captured_at} /> : null}
-        </div>
-        {conc?.top5_share != null || conc?.top10_share != null || conc?.top20_share != null ? (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="mg-type-caption uppercase tracking-wide">Top</span>
-            {(
-              [
-                ["5", conc?.top5_share ?? null],
-                ["10", conc?.top10_share ?? null],
-                ["20", conc?.top20_share ?? null],
-              ] as const
-            ).map(([label, share]) =>
-              share == null ? null : (
-                <span key={label} className="whitespace-nowrap">
-                  {label} <span className="font-mono tabular-nums text-ink">{pctStr(share)}</span>
-                </span>
-              ),
-            )}
-          </div>
-        ) : null}
+      {/* LABELLED TILES, NOT A RUN-ON STRIP.
+      
+          This was a dot-separated line -- `520 holders · 152.3k α held · top 5
+          shown` -- with the three concentration ranks tacked underneath as
+          `TOP 5 31.4% 10 44.1% 20 58.7%`. Every number was correct and none of
+          them was legible: three different KINDS of fact (a population, a
+          magnitude, a pagination note) ran together in one sentence, and the
+          rank row read as unpaired digits because the label sat outside the
+          pairs it was labelling.
+          
+          Each figure now carries its own label, and only the three that answer
+          a question a reader actually has get tile weight. The other two --
+          how many rows are on screen, and how fresh the pool pass is -- are
+          about the LIST rather than about the subnet, so they moved to a
+          caption under it. */}
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+        <StatTile
+          eyebrow="Holders"
+          value={data?.holder_count == null ? "—" : formatNumber(data.holder_count)}
+          tooltip="Distinct coldkeys holding alpha on this subnet through a stake position, across the whole subnet rather than the rows shown below."
+        />
+        <StatTile
+          eyebrow="Alpha held"
+          value={data?.total_alpha == null ? "—" : fmtAlpha(data.total_alpha)}
+          tooltip="The alpha these positions account for on this subnet. It is the denominator every share below is taken over, not the subnet's SubnetAlphaOut."
+        />
+        <StatTile
+          className="col-span-2 md:col-span-1"
+          eyebrow="Top 10 share"
+          tone={conc?.top10_share != null && conc.top10_share >= 0.5 ? "warn" : "default"}
+          value={pctStr(conc?.top10_share ?? null)}
+          hint={
+            conc?.top5_share == null && conc?.top20_share == null
+              ? undefined
+              : [
+                  conc?.top5_share == null ? null : `top 5 ${pctStr(conc.top5_share)}`,
+                  conc?.top20_share == null ? null : `top 20 ${pctStr(conc.top20_share)}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+          }
+          truncate={false}
+          tooltip="Share of the subnet's measured alpha held by its ten largest holders. Each rank is summed over the full holder set, never over the rows shown below."
+        />
       </div>
       <Panel as="div" flush className="overflow-hidden">
         {/* MOBILE IS A RANKED LIST, NOT A TABLE OF LABELLED FIELDS.
@@ -287,6 +289,20 @@ export function SubnetHoldersLeaderboard({ netuid }: { netuid: number }) {
           </table>
         </div>
       </Panel>
+      {/* About the LIST, not about the subnet -- which is why it sits with the
+          list rather than in the tiles above. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mg-type-caption text-ink-muted">
+        <span>
+          {data?.holder_count != null && shown < data.holder_count
+            ? `Showing the top ${formatNumber(shown)} of ${formatNumber(data.holder_count)}`
+            : `Showing all ${formatNumber(shown)}`}
+        </span>
+        {data?.captured_at ? (
+          <span className="inline-flex items-center gap-1.5">
+            Pool totals <RealtimeFreshness at={data.captured_at} />
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }
