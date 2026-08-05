@@ -96,7 +96,7 @@ export function buildFixtures(now: Date = new Date()): Record<string, unknown> {
     netuid: 64,
     netuids: [7, 8],
     uid: 0,
-    // Top-of-leaderboard coldkey -- an account with balance, stake positions and
+    // Top-of-leaderboard account -- carries balance, stake positions and
     // history, so account tools return populated rows rather than a valid-but-
     // empty account.
     ss58: "5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F",
