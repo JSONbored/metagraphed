@@ -5338,6 +5338,7 @@ export type SubnetValidatorEconomics = {
   degraded_reason?: Maybe<Scalars['String']['output']>;
   earning_entry_cost_tao?: Maybe<Scalars['Float']['output']>;
   earning_floor_cost_tao?: Maybe<Scalars['Float']['output']>;
+  /** The smallest stake that actually EARNS dividends here, excluding the subnet owner -- its permit is unconditional, so an owner earning on ~0 stake would report a floor of 0. Null when NO non-owner has earned on this subnet, which is a real answer (the owner is taking the dividends), not a missing one. */
   earning_floor_units?: Maybe<Scalars['Float']['output']>;
   /** Reported, never scored. Gate-closed subnets still emit alpha at a comparable rate and are less contested, so per unit of stake they pay MORE -- the gate is an exit-liquidity question, not an eligibility one. */
   emission_gate_open?: Maybe<Scalars['Boolean']['output']>;

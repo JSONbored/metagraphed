@@ -380,6 +380,42 @@ describe("capBinding and permitFloorUnits", () => {
 });
 
 describe("earningFloorUnits and setComposition", () => {
+  // #9460. The owner earns on an unconditional permit, so an owner sitting at ~0 stake
+  // reported an earning floor of 0 — "free to earn here". Worse downstream: a 0-alpha
+  // buy cannot be priced against the pool, so earning_floor_cost_tao came back null and
+  // the cross-subnet ranking EXCLUDED the subnet as unpriceable. Both were happening.
+  test("the owner never sets the earning floor", () => {
+    const rows = [
+      n(0, {
+        totalStake: 4000,
+        validatorPermit: true,
+        dividends: 0.5,
+        hotkey: "5V0",
+      }),
+      n(9, {
+        totalStake: 0,
+        validatorPermit: true,
+        dividends: 0.9,
+        hotkey: "5OWNER",
+      }),
+    ];
+    assert.equal(earningFloorUnits(rows), 0, "the owner's zero, unfiltered");
+    assert.equal(earningFloorUnits(rows, "5OWNER"), 4000);
+  });
+
+  test("a subnet where ONLY the owner earns has no earning floor", () => {
+    // Null, not 0: nobody a newcomer could match has earned here.
+    const rows = [
+      n(9, {
+        totalStake: 0,
+        validatorPermit: true,
+        dividends: 0.9,
+        hotkey: "5OWNER",
+      }),
+    ];
+    assert.equal(earningFloorUnits(rows, "5OWNER"), null);
+  });
+
   test("permitted, active and earning are three different counts", () => {
     assert.deepEqual(setComposition(cappedSubnet()), {
       permitted: 64,
@@ -1153,6 +1189,19 @@ describe("buildValidatorEconomicsHistory", () => {
       "current",
       "an approximation the consumer can see is not an approximation that misleads",
     );
+  });
+
+  test("an unparseable snapshot_date falls back rather than throwing", () => {
+    // snapshot_date is TEXT in D1; a malformed row must not take out the series or
+    // silently claim an observed cap it cannot place in time.
+    const points = buildValidatorEconomicsHistory([day("not-a-date")], [], {
+      capHistory: [
+        { observed_at: Date.parse("2026-08-01T00:00:00Z"), max_validators: 8 },
+      ],
+      maxValidators: 64,
+    });
+    assert.equal(points[0].max_validators, 64);
+    assert.equal(points[0].max_validators_source, "current");
   });
 
   test("ignores change-log entries that record no cap", () => {

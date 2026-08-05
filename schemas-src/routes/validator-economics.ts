@@ -62,6 +62,11 @@ export const SubnetValidatorEconomicsArtifactSchema = z
     permit_floor_units: z.number().nullable(),
     permit_floor_cost_tao: z.number().nullable(),
     permit_entry_cost_tao: z.number().nullable(),
+    // The EARNING floors exclude the subnet owner (#9460): its permit is unconditional,
+    // so an owner earning on ~0 stake reported a floor of 0 -- "free to earn here" -- and
+    // a 0-alpha buy cannot be priced, which then dropped the subnet out of the
+    // cross-subnet ranking as unpriceable. Null means no NON-OWNER has earned here,
+    // which is a real answer about the subnet rather than a missing reading.
     earning_floor_units: z.number().nullable(),
     earning_floor_cost_tao: z.number().nullable(),
     earning_entry_cost_tao: z.number().nullable(),

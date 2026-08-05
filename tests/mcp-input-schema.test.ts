@@ -91,6 +91,36 @@ describe("stripSentinelIntegerBounds", () => {
     assert.deepEqual(stripSentinelIntegerBounds(once), once);
   });
 
+  test("normalises a bare array of schemas", () => {
+    // The registry hands whole objects in, but anyOf/prefixItems recurse as arrays and
+    // the entry point accepts one directly.
+    assert.deepEqual(
+      stripSentinelIntegerBounds([
+        { type: "integer", maximum: MAX },
+        { type: "string" },
+      ]),
+      [{ type: "integer" }, { type: "string" }],
+    );
+  });
+
+  test("drops the exclusive sentinels too", () => {
+    // `z.int().gt()/.lt()` emit these instead of minimum/maximum, and they carry the
+    // same safe-integer default.
+    assert.deepEqual(
+      stripSentinelIntegerBounds({
+        type: "integer",
+        exclusiveMaximum: MAX,
+        exclusiveMinimum: MIN,
+      }),
+      { type: "integer" },
+    );
+    // A real exclusive bound survives.
+    assert.deepEqual(
+      stripSentinelIntegerBounds({ type: "integer", exclusiveMaximum: 10 }),
+      { type: "integer", exclusiveMaximum: 10 },
+    );
+  });
+
   test("passes through primitives and null without throwing", () => {
     assert.equal(stripSentinelIntegerBounds(null), null);
     assert.equal(stripSentinelIntegerBounds(undefined), undefined);

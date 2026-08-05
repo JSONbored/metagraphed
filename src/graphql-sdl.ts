@@ -3422,6 +3422,7 @@ export const SDL = /* GraphQL */ `
     permit_floor_cost_tao: Float
     "Floor cost plus the registration burn. Entry is two spends; publishing one understates it."
     permit_entry_cost_tao: Float
+    "The smallest stake that actually EARNS dividends here, excluding the subnet owner -- its permit is unconditional, so an owner earning on ~0 stake would report a floor of 0. Null when NO non-owner has earned on this subnet, which is a real answer (the owner is taking the dividends), not a missing one."
     earning_floor_units: Float
     earning_floor_cost_tao: Float
     earning_entry_cost_tao: Float

@@ -369,11 +369,20 @@ export function permitFloorUnits(
 // requires submitting weights each epoch. Of ACTIVE permit-holders 97.8% earn; of
 // INACTIVE ones 1.3% do. Reported beside the floor, never instead of it. Null when
 // nobody on the subnet earns.
+//
+// The subnet owner is excluded for the same reason it never sets the permit floor
+// (#9460): its permit is unconditional, so an owner earning on ~0 stake would report an
+// earning floor of 0 — "free to earn here" — and, because a 0-alpha buy cannot be priced
+// against the pool, would then drop the whole subnet out of the cross-subnet ranking as
+// unpriceable. Both were happening.
 export function earningFloorUnits(
   neurons: readonly ValidatorNeuron[],
+  ownerHotkey?: string | null,
 ): number | null {
+  const owner = ownerUid(neurons, ownerHotkey);
   let floor: number | null = null;
   for (const n of neurons) {
+    if (owner !== null && n.uid === owner) continue;
     if (!n.validatorPermit || n.dividends <= 0) continue;
     if (floor === null || n.totalStake < floor) floor = n.totalStake;
   }
@@ -593,7 +602,7 @@ export function buildValidatorEconomics(
     stakeThreshold,
     ownerHotkey,
   );
-  const earnFloor = earningFloorUnits(neurons);
+  const earnFloor = earningFloorUnits(neurons, ownerHotkey);
   const floorCost = ammCostTao(
     inputs.taoReserve ?? NaN,
     inputs.alphaReserve ?? NaN,

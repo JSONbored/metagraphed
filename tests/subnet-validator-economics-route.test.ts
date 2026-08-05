@@ -536,6 +536,32 @@ describe("buildValidatorEconomicsRankingPayload", () => {
     );
   });
 
+  // #9460, on the CROSS-SUBNET route: the owner exception has to reach here too, or
+  // every owner-below-threshold subnet lands in `excluded` and drops out of the ranking
+  // entirely — which is how 13 subnets were missing from it.
+  test("applies the owner exception per subnet from the economics rows", async () => {
+    const scan = [
+      scanRow(5, 0, { hotkey: "5V0", stake_tao: 5000 }),
+      scanRow(5, 9, { hotkey: "5OWNER", stake_tao: 0 }),
+    ];
+    const withoutOwner = await buildValidatorEconomicsRankingPayload(
+      rankEnv(scan).env,
+      {},
+      rankDeps([pool(5)]),
+    );
+    // Without the owner the floor is withheld, so the subnet cannot be priced and
+    // drops out of the ranking entirely — not merely flagged within it.
+    assert.deepEqual(withoutOwner.data.rows, []);
+    assert.equal((withoutOwner.data.excluded as Row[])[0]?.netuid, 5);
+    const withOwner = await buildValidatorEconomicsRankingPayload(
+      rankEnv(scan).env,
+      {},
+      rankDeps([pool(5, { owner_hotkey: "5OWNER" })]),
+    );
+    assert.equal((withOwner.data.rows as Row[])[0]?.degraded_reason, null);
+    assert.equal((withOwner.data.rows as Row[])[0]?.permit_floor_units, 1000);
+  });
+
   test("derives one row per subnet from a single grouped scan", async () => {
     const { env } = rankEnv([
       scanRow(5, 0),
