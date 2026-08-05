@@ -224,16 +224,42 @@ describe("analytics (PostHog web analytics)", () => {
       expect(capture).not.toHaveBeenCalled();
     });
 
-    it("captureException force-starts session replay past its sample-rate skip (issue 7761)", async () => {
+    it("captureException never force-starts session replay (#9451 reversed issue 7761's coupling)", async () => {
       vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
       const { captureException } = await import("./analytics");
-      const err = new Error("boom");
-      captureException(err);
+      captureException(new Error("boom"));
       await vi.waitFor(() => expect(captureExceptionSpy).toHaveBeenCalled());
-      expect(startSessionRecording).toHaveBeenCalledWith(true);
-      // Every exception-linked recording call must be paired with the
-      // capture itself, never called standalone with nothing captured.
-      expect(startSessionRecording).toHaveBeenCalledTimes(1);
+      // #7761 forced a recording per exception, which converted every
+      // exception storm into billable replay quota. Replay stays on its
+      // configured sample rate now; an exception must not override it.
+      expect(startSessionRecording).not.toHaveBeenCalled();
+    });
+
+    it("captureException drops a repeat of the same error signature inside the throttle window (#9451)", async () => {
+      vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
+      const { captureException } = await import("./analytics");
+      captureException(new Error("boom"));
+      captureException(new Error("boom"));
+      await vi.waitFor(() => expect(captureExceptionSpy).toHaveBeenCalled());
+      expect(captureExceptionSpy).toHaveBeenCalledTimes(1);
+      // A DIFFERENT signature is never delayed by an unrelated storm.
+      captureException(new TypeError("other fault"));
+      await vi.waitFor(() => expect(captureExceptionSpy).toHaveBeenCalledTimes(2));
+    });
+
+    it("admitClientException re-admits a signature once its window elapses, and enforces the page cap (#9451)", async () => {
+      vi.stubEnv("VITE_POSTHOG_PROJECT_TOKEN", "phc_test_token");
+      const { admitClientException } = await import("./analytics");
+      const err = new Error("boom");
+      expect(admitClientException(err, 0)).toBe(true);
+      expect(admitClientException(err, 59_999)).toBe(false);
+      expect(admitClientException(err, 60_000)).toBe(true);
+      // Hard per-pageload cap: a cascade minting distinct signatures cannot
+      // spend unbounded quota. 2 admissions consumed above; the cap is 20.
+      for (let i = 0; i < 18; i += 1) {
+        expect(admitClientException(new Error(`cascade ${i}`), 0)).toBe(true);
+      }
+      expect(admitClientException(new Error("over the cap"), 0)).toBe(false);
     });
 
     it("captureException shares the same lazily-loaded instance as capturePageview/captureEvent (no second init)", async () => {
