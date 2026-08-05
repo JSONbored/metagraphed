@@ -9,6 +9,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import {
+  NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS,
+  NOMINATOR_POSITIONS_EXPECTED_COLDKEYS,
+  NOMINATOR_POSITIONS_PASS_WINDOW_MS,
   NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS,
   evaluateNominatorPositionsStaleness,
   runNominatorPositionsStalenessWatchdog,
@@ -19,17 +22,32 @@ import * as workerConfig from "../workers/config.ts";
 const NOW = 1_785_800_000_000;
 const HOUR = 60 * 60_000;
 
-function fakeDb(latest: number | null | Error) {
+/** A pass that covered the keyspace, so coverage is never the thing under test
+ * unless a case says so. */
+const FULL = NOMINATOR_POSITIONS_EXPECTED_COLDKEYS;
+
+function fakeDb(
+  latest: number | null | Error,
+  covered: number = FULL,
+  total: number = FULL,
+) {
   const queries: string[] = [];
+  const binds: unknown[][] = [];
   return {
     queries,
+    binds,
     db: {
       prepare(sql: string) {
         queries.push(sql);
         return {
-          async first() {
-            if (latest instanceof Error) throw latest;
-            return { latest };
+          bind(...values: unknown[]) {
+            binds.push(values);
+            return {
+              async first() {
+                if (latest instanceof Error) throw latest;
+                return { latest, covered, total };
+              },
+            };
           },
         };
       },
@@ -37,13 +55,27 @@ function fakeDb(latest: number | null | Error) {
   };
 }
 
+/** The rule's inputs with everything healthy, so each case overrides only the
+ * one field it is about. */
+function inputs(
+  over: Partial<Parameters<typeof evaluateNominatorPositionsStaleness>[0]> = {},
+) {
+  return {
+    latestCapturedAtMs: NOW - 2 * HOUR,
+    coveredColdkeys: FULL,
+    totalColdkeys: FULL,
+    nowMs: NOW,
+    thresholdMs: NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS,
+    coverageFloorColdkeys: NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS,
+    ...over,
+  };
+}
+
 describe("evaluateNominatorPositionsStaleness", () => {
   test("a recent pass is quiet; one past the threshold is a stall", () => {
-    const fresh = evaluateNominatorPositionsStaleness({
-      latestCapturedAtMs: NOW - 2 * HOUR,
-      nowMs: NOW,
-      thresholdMs: NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS,
-    });
+    const fresh = evaluateNominatorPositionsStaleness(
+      inputs({ latestCapturedAtMs: NOW - 2 * HOUR }),
+    );
     assert.equal(fresh.stale, false);
     assert.equal(fresh.reason, null);
     assert.equal(fresh.age_ms, 2 * HOUR);
@@ -51,11 +83,9 @@ describe("evaluateNominatorPositionsStaleness", () => {
     // 31h, not 7h: the threshold moved to 30h in #9301 once the lane had a
     // real producer on a 24h tick. A 7-hour-old capture is now a HEALTHY
     // mid-cycle reading -- see the constant's own header.
-    const stalled = evaluateNominatorPositionsStaleness({
-      latestCapturedAtMs: NOW - 31 * HOUR,
-      nowMs: NOW,
-      thresholdMs: NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS,
-    });
+    const stalled = evaluateNominatorPositionsStaleness(
+      inputs({ latestCapturedAtMs: NOW - 31 * HOUR }),
+    );
     assert.equal(stalled.stale, true);
     assert.equal(stalled.reason, "stale");
     assert.equal(stalled.latest_captured_at, NOW - 31 * HOUR);
@@ -65,11 +95,9 @@ describe("evaluateNominatorPositionsStaleness", () => {
     // The regression #9301 fixed: at the old 6h threshold this lane alerted
     // for roughly three quarters of every day while working perfectly.
     for (const hours of [7, 12, 20, 23]) {
-      const verdict = evaluateNominatorPositionsStaleness({
-        latestCapturedAtMs: NOW - hours * HOUR,
-        nowMs: NOW,
-        thresholdMs: NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS,
-      });
+      const verdict = evaluateNominatorPositionsStaleness(
+        inputs({ latestCapturedAtMs: NOW - hours * HOUR }),
+      );
       assert.equal(
         verdict.stale,
         false,
@@ -80,24 +108,85 @@ describe("evaluateNominatorPositionsStaleness", () => {
 
   test("exactly at the threshold is not yet a stall", () => {
     // Strictly-greater, so a lane running exactly on cadence never flaps.
-    const verdict = evaluateNominatorPositionsStaleness({
-      latestCapturedAtMs: NOW - NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS,
-      nowMs: NOW,
-      thresholdMs: NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS,
-    });
+    const verdict = evaluateNominatorPositionsStaleness(
+      inputs({
+        latestCapturedAtMs: NOW - NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS,
+      }),
+    );
     assert.equal(verdict.stale, false);
   });
 
   test("an empty table is a stall of infinite age, never a healthy quiet", () => {
-    const verdict = evaluateNominatorPositionsStaleness({
-      latestCapturedAtMs: null,
-      nowMs: NOW,
-      thresholdMs: NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS,
-    });
+    const verdict = evaluateNominatorPositionsStaleness(
+      inputs({ latestCapturedAtMs: null }),
+    );
     assert.equal(verdict.stale, true);
     assert.equal(verdict.reason, "no_rows");
     assert.equal(verdict.age_ms, null);
     assert.equal(verdict.latest_captured_at, null);
+  });
+
+  test("HALF THE COLDKEYS RECENTLY and ALL THE COLDKEYS RECENTLY are told apart", () => {
+    // The acceptance criterion. Both ticks carry an identically fresh
+    // MAX(captured_at); the ONLY difference is how far into the coldkey walk
+    // the scan got, which is exactly what a timestamp cannot express.
+    const half = evaluateNominatorPositionsStaleness(
+      inputs({ coveredColdkeys: 11_800, totalColdkeys: FULL }),
+    );
+    assert.equal(
+      half.stale,
+      true,
+      "a half-scanned keyspace must not read as ok",
+    );
+    assert.equal(half.reason, "partial");
+    // Recent, not old -- caught WITHOUT any time passing.
+    assert.equal(half.age_ms, 2 * HOUR);
+    assert.ok(half.age_ms < half.threshold_ms);
+
+    const whole = evaluateNominatorPositionsStaleness(inputs());
+    assert.equal(whole.stale, false);
+    assert.equal(whole.reason, null);
+    assert.equal(whole.age_ms, half.age_ms);
+  });
+
+  test("the per-coldkey prune's stragglers do not count against coverage", () => {
+    // Measured 2026-08-05: 23,668 coldkeys at the newest stamp plus 453 across
+    // two older vintages, because a coldkey absent from a pass is left
+    // untouched by design. A healthy tick must stay quiet with them present --
+    // which is why the floor is absolute rather than a ratio of the table, a
+    // ratio would read 98.1% here and drift down forever.
+    const verdict = evaluateNominatorPositionsStaleness(
+      inputs({ coveredColdkeys: 23_668, totalColdkeys: 24_121 }),
+    );
+    assert.equal(verdict.stale, false);
+    assert.equal(verdict.reason, null);
+  });
+
+  test("a pass exactly at the floor is complete; one coldkey under is not", () => {
+    // Strictly-less, matching the threshold edge, so a lane landing exactly on
+    // the floor never flaps.
+    const atFloor = evaluateNominatorPositionsStaleness(
+      inputs({ coveredColdkeys: NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS }),
+    );
+    assert.equal(atFloor.stale, false);
+    assert.equal(atFloor.reason, null);
+
+    const under = evaluateNominatorPositionsStaleness(
+      inputs({
+        coveredColdkeys: NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS - 1,
+      }),
+    );
+    assert.equal(under.stale, true);
+    assert.equal(under.reason, "partial");
+  });
+
+  test("a stalled lane reports `stale`, not `partial`, even when also short", () => {
+    // If a whole 24h pass has been missed, "the producer stopped" is the
+    // headline and the coverage of its last attempt is a detail.
+    const verdict = evaluateNominatorPositionsStaleness(
+      inputs({ latestCapturedAtMs: NOW - 34 * HOUR, coveredColdkeys: 11_800 }),
+    );
+    assert.equal(verdict.reason, "stale");
   });
 });
 
@@ -118,7 +207,112 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
     assert.equal(result.ok, true);
     assert.equal(result.alerted, false);
     assert.deepEqual(recorded, []);
-    assert.match(queries[0]!, /MAX\(captured_at\).*FROM nominator_positions/);
+    assert.match(queries[0]!, /MAX\(captured_at\)/);
+    assert.match(queries[0]!, /FROM nominator_positions/);
+    // The coverage half has to be IN the read, or the rule is being handed a
+    // number nothing measured. DISTINCT coldkey, not COUNT(*) -- rows would
+    // hide a scan that died after the largest delegators.
+    assert.match(queries[0]!, /COUNT\(DISTINCT coldkey\) AS total/);
+    assert.match(queries[0]!, /THEN coldkey END\) AS covered/);
+  });
+
+  test("the read counts only the newest pass, bounded by the pass window", () => {
+    // A window spanning the 24h poll interval would merge two consecutive
+    // passes into one coverage count, so a truncated pass landing on a complete
+    // one would report full coverage -- the bug, restored.
+    const { db, queries, binds } = fakeDb(NOW - HOUR);
+    return runNominatorPositionsStalenessWatchdog(
+      { METAGRAPH_HEALTH_DB: db },
+      { now: () => NOW, recordException: (async () => true) as never },
+    ).then(() => {
+      assert.deepEqual(binds[0], [NOMINATOR_POSITIONS_PASS_WINDOW_MS]);
+      assert.ok(
+        NOMINATOR_POSITIONS_PASS_WINDOW_MS < 24 * HOUR,
+        "the window must stay under VALIDATOR_NOMINATORS_POLL_SECS (24h)",
+      );
+      // Counted against the newest stamp, not against `now` -- a lane that is
+      // merely late must not also read as uncovered.
+      assert.match(
+        queries[0]!,
+        /captured_at >= \(SELECT MAX\(captured_at\) FROM nominator_positions\) - \?/,
+      );
+    });
+  });
+
+  test("a recent but half-scanned keyspace alerts, naming both counts", async () => {
+    const { db } = fakeDb(NOW - HOUR, 11_800, 24_121);
+    const recorded: { error?: Error; route?: string; errorCode?: string }[] =
+      [];
+    const result = await runNominatorPositionsStalenessWatchdog(
+      { METAGRAPH_HEALTH_DB: db },
+      {
+        now: () => NOW,
+        recordException: (async (_env: never, event: never) => {
+          recorded.push(event);
+          return true;
+        }) as never,
+      },
+    );
+    assert.equal(result.alerted, true);
+    assert.equal(result.reason, "partial");
+    assert.equal(result.covered_coldkeys, 11_800);
+    assert.equal(recorded.length, 1);
+    assert.equal(recorded[0]!.errorCode, "stale_lane");
+    const message = String(recorded[0]!.error?.message);
+    // Distinct wording from the stalled case -- different place to go looking.
+    assert.match(message, /truncated/);
+    assert.match(message, /11800 of 24121 coldkeys/);
+    assert.match(message, /RECENT and PARTIAL/);
+    assert.doesNotMatch(message, /nothing is refreshing/);
+  });
+
+  test("the env coverage-floor and pass-window overrides win over the defaults", async () => {
+    const { db, binds } = fakeDb(NOW - HOUR, 20_000, 24_121);
+    const raised = await runNominatorPositionsStalenessWatchdog(
+      {
+        METAGRAPH_HEALTH_DB: db,
+        NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS: String(22_000),
+        NOMINATOR_POSITIONS_PASS_WINDOW_MS: String(HOUR),
+      },
+      { now: () => NOW, recordException: (async () => true) as never },
+    );
+    assert.equal(raised.alerted, true);
+    assert.equal(raised.reason, "partial");
+    assert.equal(raised.coverage_floor_coldkeys, 22_000);
+    assert.deepEqual(binds[0], [HOUR]);
+
+    // Lowered under the same reading, the identical tick is quiet. This is the
+    // documented remedy if the delegating population ever genuinely shrinks.
+    const lowered = await runNominatorPositionsStalenessWatchdog(
+      {
+        METAGRAPH_HEALTH_DB: fakeDb(NOW - HOUR, 20_000, 24_121).db,
+        NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS: String(15_000),
+      },
+      { now: () => NOW, recordException: (async () => true) as never },
+    );
+    assert.equal(lowered.alerted, false);
+    assert.equal(lowered.coverage_floor_coldkeys, 15_000);
+  });
+
+  test("an uncountable coverage number reads as ZERO, never as covered", async () => {
+    // A NaN would compare false against the floor and report a half-scanned
+    // keyspace healthy -- the exact direction of failure this closes.
+    const { db } = fakeDb(NOW - HOUR, null as unknown as number, 0);
+    const result = await runNominatorPositionsStalenessWatchdog(
+      { METAGRAPH_HEALTH_DB: db },
+      { now: () => NOW, recordException: (async () => true) as never },
+    );
+    assert.equal(result.covered_coldkeys, 0);
+    assert.equal(result.alerted, true);
+    assert.equal(result.reason, "partial");
+
+    const junk = fakeDb(NOW - HOUR, "not a number" as unknown as number, 0);
+    const nonNumeric = await runNominatorPositionsStalenessWatchdog(
+      { METAGRAPH_HEALTH_DB: junk.db },
+      { now: () => NOW, recordException: (async () => true) as never },
+    );
+    assert.equal(nonNumeric.covered_coldkeys, 0);
+    assert.equal(nonNumeric.alerted, true);
   });
 
   test("a stalled lane records ONE exception naming the age and the route it breaks", async () => {
@@ -200,9 +394,11 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
     // yields a readable detail.
     const stringThrow = {
       prepare: () => ({
-        first: async () => {
-          throw "socket hangup";
-        },
+        bind: () => ({
+          first: async () => {
+            throw "socket hangup";
+          },
+        }),
       }),
     };
     const nonError = await runNominatorPositionsStalenessWatchdog(
@@ -215,7 +411,7 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
 
   test("a null row and a telemetry failure never fail the tick", async () => {
     const nullRow = {
-      prepare: () => ({ first: async () => null }),
+      prepare: () => ({ bind: () => ({ first: async () => null }) }),
     };
     const empty = await runNominatorPositionsStalenessWatchdog(
       { METAGRAPH_HEALTH_DB: nullRow },
