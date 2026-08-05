@@ -20,6 +20,9 @@ import {
   TOP_HOLDERS_FLOW_PROJECTION_KEY,
   TOP_HOLDERS_FLOW_SORTS,
   TOP_HOLDERS_FLOW_WINDOW_DAYS,
+  TOP_HOLDERS_LIVE_SORTS,
+  topHoldersArtifactSorts,
+  topHoldersBalances,
 } from "../src/top-holders-flow-tier.ts";
 
 const GENERATED_AT = Date.parse("2026-08-05T01:34:00.000Z");
@@ -53,8 +56,42 @@ function bucketWith(
   };
 }
 
-function artifact(rows: Array<Record<string, unknown>>) {
-  return { schema_version: 1, generated_at: "x", row_count: rows.length, rows };
+function artifact(
+  rows: Array<Record<string, unknown>>,
+  sorts: string[] = TOP_HOLDERS_FLOW_SORTS,
+) {
+  return {
+    schema_version: 1,
+    generated_at: "x",
+    row_count: rows.length,
+    sorts,
+    rows,
+  };
+}
+
+/** A D1 stub whose one statement returns `rows` (or throws). */
+function d1With(rows: unknown[] | null, opts: { throws?: boolean } = {}) {
+  const seen: { sql: string; params: unknown[] }[] = [];
+  return {
+    seen,
+    env: {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql: string) {
+          return {
+            bind(...params: unknown[]) {
+              return {
+                async all() {
+                  seen.push({ sql, params });
+                  if (opts.throws) throw new Error("no such table");
+                  return rows === null ? null : { results: rows };
+                },
+              };
+            },
+          };
+        },
+      },
+    } as unknown as Env,
+  };
 }
 
 describe("topHoldersFlowSql", () => {
@@ -210,6 +247,46 @@ describe("buildTopHoldersFlowRows", () => {
     );
   });
 
+  // The free_tao and net_flow populations are DISJOINT in production -- the
+  // top free-balance accounts hold 5.4M TAO and delegate nothing -- so the
+  // union has to keep both, not intersect them.
+  test("unions the balance leaderboard with the flow one", () => {
+    const rows = buildTopHoldersFlowRows(
+      [aggregate("5Staker", { net_flow_7d: 500 })],
+      GENERATED_AT,
+      1,
+      new Map([["5Exchange", 5_448_995.869289362]]),
+    );
+    assert.deepEqual(rows.map((r) => r.ss58).sort(), ["5Exchange", "5Staker"]);
+    const exchange = rows.find((r) => r.ss58 === "5Exchange")!;
+    assert.equal(exchange.free_tao, 5_448_995.869289362);
+    // An account ranked only by balance has no flow figures, and says so with
+    // absence rather than a zero.
+    assert.equal("net_flow_7d" in exchange, false);
+  });
+
+  test("merges both legs onto one row when an account appears in each", () => {
+    const [row] = buildTopHoldersFlowRows(
+      [aggregate("5Both", { net_flow_30d: -12 })],
+      GENERATED_AT,
+      10,
+      new Map([["5Both", 42]]),
+    );
+    assert.equal(row!.free_tao, 42);
+    assert.equal(row!.net_flow_30d, -12);
+    assert.equal(row!.captured_at, GENERATED_AT);
+  });
+
+  test("a null balances map leaves free_tao out entirely", () => {
+    const [row] = buildTopHoldersFlowRows(
+      [aggregate("5A", { net_flow_7d: 1 })],
+      GENERATED_AT,
+      10,
+      null,
+    );
+    assert.equal("free_tao" in row!, false);
+  });
+
   test("ties inside a capped key break on ss58, not on insertion order", () => {
     const rows = buildTopHoldersFlowRows(
       [
@@ -223,6 +300,80 @@ describe("buildTopHoldersFlowRows", () => {
       rows.map((r) => r.ss58),
       ["5A"],
     );
+  });
+});
+
+describe("topHoldersBalances", () => {
+  // The state today: #9483 created the table, the producer is infra-side and
+  // has not run, so the ledger is empty. Declining is what keeps the frozen
+  // artifact answering ?sort=free_tao with the real balances it still holds.
+  test("declines on an EMPTY ledger, so free_tao stays with the frozen tier", async () => {
+    assert.equal(await topHoldersBalances(d1With([]).env), null);
+  });
+
+  test("declines on an unbound DB and on a missing table", async () => {
+    assert.equal(await topHoldersBalances(null), null);
+    assert.equal(await topHoldersBalances({} as never), null);
+    assert.equal(await topHoldersBalances(d1With(null).env), null);
+    assert.equal(
+      await topHoldersBalances(d1With([], { throws: true }).env),
+      null,
+    );
+  });
+
+  test("returns the largest balances, ordered and capped by the query", async () => {
+    const { env, seen } = d1With([
+      { ss58: "5Whale", free_tao: 5_448_995.869289362 },
+      { ss58: "5Small", free_tao: 0.25 },
+    ]);
+    const map = await topHoldersBalances(env, 250);
+    assert.deepEqual(
+      [...map!.entries()],
+      [
+        ["5Whale", 5_448_995.869289362],
+        ["5Small", 0.25],
+      ],
+    );
+    // The ordering and the cap are the DATABASE's job -- there is no index on
+    // free_tao, so sorting in the Worker would mean shipping every row.
+    assert.match(seen[0]!.sql, /ORDER BY free_tao DESC LIMIT \?/);
+    assert.deepEqual(seen[0]!.params, [250]);
+  });
+
+  test("skips unusable cells, and declines when nothing usable remains", async () => {
+    const map = await topHoldersBalances(
+      d1With([
+        { ss58: "5Ok", free_tao: 7 },
+        { ss58: "5Neg", free_tao: -1 },
+        { ss58: "5NaN", free_tao: "nope" },
+        { ss58: 42, free_tao: 9 },
+      ]).env,
+    );
+    assert.deepEqual([...map!.keys()], ["5Ok"]);
+    assert.equal(
+      await topHoldersBalances(d1With([{ ss58: "5Neg", free_tao: -1 }]).env),
+      null,
+    );
+  });
+});
+
+describe("topHoldersArtifactSorts", () => {
+  // A body written by the flow-only lane (#9492) has no `sorts`. Reading it as
+  // flow-only is what keeps a deploy landing before the next 01:34 tick
+  // answering exactly what it answered yesterday.
+  test("a body with no `sorts` is read as flow-only", () => {
+    assert.deepEqual(topHoldersArtifactSorts({}), TOP_HOLDERS_FLOW_SORTS);
+    assert.deepEqual(topHoldersArtifactSorts(null), TOP_HOLDERS_FLOW_SORTS);
+  });
+
+  test("a declared list is honoured, and unrecognised entries are dropped", () => {
+    assert.deepEqual(
+      topHoldersArtifactSorts({ sorts: ["free_tao", "net_flow_7d"] }),
+      ["free_tao", "net_flow_7d"],
+    );
+    // Never rank on whatever a stored string asks for: total_tao has no live
+    // source, so an artifact claiming it is a bad write, not an instruction.
+    assert.deepEqual(topHoldersArtifactSorts({ sorts: ["total_tao", 7] }), []);
   });
 });
 
@@ -263,6 +414,50 @@ describe("computeTopHoldersFlow", () => {
     assert.equal(body.row_count, 1);
     assert.ok(topHoldersFlowRows(body), "readable by the reader's own test");
     assert.ok(Date.parse(body.generated_at as string) > 0);
+  });
+
+  test("declares only the sorts the legs actually backed", async () => {
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          result: { rows: [{ coldkey: "5A", net_flow_7d: 1 }] },
+          success: true,
+        }),
+        { headers: { "content-type": "application/json" } },
+      )) as never;
+    // No D1 binding -> the balances leg declines -> free_tao is NOT claimed,
+    // and the frozen artifact keeps that sort.
+    const withoutBalances = (await computeTopHoldersFlow({
+      R2_SQL_TOKEN: "cfut_test",
+    } as unknown as Env)) as Record<string, unknown>;
+    assert.deepEqual(withoutBalances.sorts, TOP_HOLDERS_FLOW_SORTS);
+
+    const withBalances = (await computeTopHoldersFlow({
+      R2_SQL_TOKEN: "cfut_test",
+      ...(d1With([{ ss58: "5Exchange", free_tao: 900 }]).env as object),
+    } as unknown as Env)) as Record<string, unknown>;
+    assert.deepEqual(withBalances.sorts, TOP_HOLDERS_LIVE_SORTS);
+    assert.equal(withBalances.row_count, 2);
+  });
+
+  // The balance ledger is mainnet-only. Reading it for a testnet projection
+  // would label another chain's accounts with finney balances.
+  test("never reads the mainnet balance ledger for a testnet projection", async () => {
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          result: { rows: [{ coldkey: "5A", net_flow_7d: 1 }] },
+          success: true,
+        }),
+        { headers: { "content-type": "application/json" } },
+      )) as never;
+    const { env, seen } = d1With([{ ss58: "5Exchange", free_tao: 900 }]);
+    const body = (await computeTopHoldersFlow(
+      { R2_SQL_TOKEN: "cfut_test", ...(env as object) } as unknown as Env,
+      "testnet",
+    )) as Record<string, unknown>;
+    assert.deepEqual(body.sorts, TOP_HOLDERS_FLOW_SORTS);
+    assert.deepEqual(seen, [], "the balance ledger must not be queried at all");
   });
 
   test("the lane declares the key the reader gets", () => {
@@ -328,16 +523,55 @@ describe("loadTopHoldersFlowTier", () => {
     const { env, gets } = bucketWith(
       artifact([{ ss58: "5A", net_flow_7d: 3, captured_at: GENERATED_AT }]),
     );
-    for (const sort of ["total_tao", "free_tao", "delegated_tao", undefined]) {
+    // free_tao is deliberately NOT here: no live leg backs it today, but one
+    // CAN, so it is rejected per-body rather than up front -- see the
+    // declared-sorts test below.
+    for (const sort of ["total_tao", "delegated_tao", undefined]) {
       assert.equal(
         await loadTopHoldersFlowTier(env, { sort }),
         null,
-        `${sort} is not a flow sort`,
+        `${sort} can never be a live sort`,
       );
     }
-    // And it declines BEFORE the get: a sort this tier cannot rank is not a
-    // reason to spend an R2 round trip.
+    // And it declines BEFORE the get: a sort no version of this artifact can
+    // rank is not a reason to spend an R2 round trip.
     assert.deepEqual(gets, []);
+  });
+
+  // The switch that makes the free_tao cutover deploy-free: the same code
+  // declines or answers purely on what the written object says it ranked.
+  test("answers free_tao only when the artifact declares it", async () => {
+    const rows = [
+      { ss58: "5Small", free_tao: 1, captured_at: GENERATED_AT },
+      { ss58: "5Exchange", free_tao: 5_448_995, captured_at: GENERATED_AT },
+    ];
+    assert.equal(
+      await loadTopHoldersFlowTier(bucketWith(artifact(rows)).env, {
+        sort: "free_tao",
+      }),
+      null,
+      "flow-only artifact must not rank a column it did not compose",
+    );
+    const data = (await loadTopHoldersFlowTier(
+      bucketWith(artifact(rows, TOP_HOLDERS_LIVE_SORTS)).env,
+      { sort: "free_tao", limit: 10 },
+    ))!;
+    assert.deepEqual(
+      (data.accounts as { ss58: string }[]).map((a) => a.ss58),
+      ["5Exchange", "5Small"],
+    );
+  });
+
+  test("never ranks a sort no live leg can back, even if the body claims it", async () => {
+    const { env } = bucketWith(
+      artifact(
+        [{ ss58: "5A", free_tao: 1, captured_at: GENERATED_AT }],
+        ["total_tao", "delegated_tao"],
+      ),
+    );
+    for (const sort of ["total_tao", "delegated_tao"]) {
+      assert.equal(await loadTopHoldersFlowTier(env, { sort }), null);
+    }
   });
 
   test("reads the projection key, not the frozen one", async () => {
