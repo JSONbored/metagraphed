@@ -92,6 +92,11 @@ function checkCommands(): Step[] {
     step("validate:committed-seed"),
     step("validate:artifact-budgets"),
     step("validate:docs"),
+    // Companion to validate:docs: it checks each artifact/route is MENTIONED
+    // in docs/backend-artifact-contracts.md, this one checks a bullet did not
+    // silently outlive the behavior it describes. Diff-scoped -- with no merge
+    // base resolvable it skips, so a local run stays quiet on a clean tree.
+    step("validate:contract-doc-sync"),
     // #8917: apps/ui/content/docs/api-reference is generated from
     // openapi.json, so a CONTRACT change invalidates it -- but that lands
     // in a backend PR that need never touch apps/ui, and the only prior
@@ -165,6 +170,11 @@ function refreshCommands(refreshTimestamp: string): Step[] {
     step("validate:committed-seed"),
     step("validate:artifact-budgets"),
     step("validate:docs"),
+    // Companion to validate:docs: it checks each artifact/route is MENTIONED
+    // in docs/backend-artifact-contracts.md, this one checks a bullet did not
+    // silently outlive the behavior it describes. Diff-scoped -- with no merge
+    // base resolvable it skips, so a local run stays quiet on a clean tree.
+    step("validate:contract-doc-sync"),
     // #8917: apps/ui/content/docs/api-reference is generated from
     // openapi.json, so a CONTRACT change invalidates it -- but that lands
     // in a backend PR that need never touch apps/ui, and the only prior
