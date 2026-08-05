@@ -330,12 +330,16 @@
     // that storm's real cost was the error inbox and the alerts it took down
     // with it, not the events themselves.
     //
-    // 60s is sized to diagnosis, not to volume: a recurring fault's hundredth
-    // occurrence in a minute carries the same type, message and stack as its
-    // first. The same storm under this guard is ~5.7K events instead of 872K,
-    // still reports continuously for all four days, and still says how many
-    // occurrences it stood for.
-    "POSTHOG_EXCEPTION_STORM_WINDOW_MS": "60000",
+    // Widened 60s -> 300s (2026-08-04): measured at 60s, the steady-state
+    // fault lanes alone (r2-sql:Error/AbortError plus ~20 projection-lane
+    // fingerprints, each admitted once per minute per isolate) still summed
+    // to ~4.6K $exception/day = ~140K/month, over the 100K free error-
+    // tracking tier -- during the same window PostHog billed real money for
+    // the July storms. At 300s a recurring fault still reports 12x/hour per
+    // isolate with its suppressed count carried on the next admitted event;
+    // nothing about diagnosis needs more than that, and the projected
+    // steady-state (~1K/day) sits comfortably inside the free tier.
+    "POSTHOG_EXCEPTION_STORM_WINDOW_MS": "300000",
     // subnet_hyperparams (#4832 gap-closure): FLIPPED to "postgres" 2026-07-11,
     // after a live parity pass. refresh-subnet-hyperparams.yml's real
     // workflow_dispatch run synced all 129 subnets (Postgres started

@@ -107,6 +107,14 @@
     "METAGRAPH_NEURONS_SOURCE": "d1",
     "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "d1",
     "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "d1",
+    // #9430's $exception storm guard reads this var per-Worker
+    // (src/usage-telemetry.ts), and `vars` are per-config -- declaring it
+    // only in wrangler.jsonc left THIS Worker's captures entirely unguarded,
+    // and this is the Worker where the 871,649-event `wallet-auth-keys`
+    // storm actually happened (see wrangler.jsonc's narration). Same value
+    // as the main Worker: one capture per fingerprint per 5 minutes per
+    // isolate, suppressed count carried on the next admitted event.
+    "POSTHOG_EXCEPTION_STORM_WINDOW_MS": "300000",
   },
   // Smart placement: run the Worker close to the Hyperdrive origin (self-hosted indexer
   // box Postgres, reached via Cloudflare Tunnel) to minimize the per-request DB round-trip,

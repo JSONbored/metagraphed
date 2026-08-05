@@ -37,6 +37,14 @@
   // not "the shared-secret check, or just don't send one and see".
   "workers_dev": false,
   "preview_urls": false,
+  // #9430's $exception storm guard reads this var per-Worker
+  // (src/usage-telemetry.ts), and `vars` are per-config -- without it this
+  // Worker's recordExceptionEvent calls (workers/registry-sync-api.ts) run
+  // uncapped. Same value as the main Worker and wrangler.data.jsonc: one
+  // capture per fingerprint per 5 minutes per isolate.
+  "vars": {
+    "POSTHOG_EXCEPTION_STORM_WINDOW_MS": "300000",
+  },
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1,

@@ -8,8 +8,10 @@
  * `isFeatureEnabled()` and never touches `posthog-js` directly elsewhere.
  * Session replay has no separate exported function --
  * it's configured once in `loadPostHog`'s `session_recording` block below
- * and otherwise runs itself (posthog-js's own recorder), except for the
- * exception-linked force-record call inside `captureException`.
+ * and otherwise runs itself (posthog-js's own recorder). #7761's
+ * exception-linked force-record call was removed in #9451: it converted
+ * every exception into a billable recording, which is exactly the wrong
+ * coupling during an exception storm.
  * `captureException` is called from error-reporting.ts's `reportError` --
  * metagraphed#7766: Sentry (formerly a parallel sink there) is fully removed
  * now that parity was proven; this module's `posthog-js` instance is the
@@ -330,6 +332,39 @@ export function captureEvent(name: string, properties?: Record<string, unknown>)
   void loadPostHog().then((posthog) => posthog?.capture(name, properties));
 }
 
+// #9451: client-side $exception cost guard, the browser twin of
+// src/usage-telemetry.ts's admitExceptionCapture. The server side throttles
+// per fingerprint per isolate; here the unit of blast radius is one page
+// load (a render-loop error boundary or a failing effect can call
+// reportError on every frame), so the guard is two-layered: at most one
+// capture per error signature per window, and a hard cap per page load no
+// matter how many distinct signatures a cascade mints. Unlike the server
+// guard this is NOT env-gated -- there is no test-determinism concern here
+// (the throttle state is module-scoped and vi.resetModules() clears it),
+// and an unconfigured token already short-circuits before the guard runs.
+const EXCEPTION_WINDOW_MS = 60_000;
+const EXCEPTION_PAGE_CAP = 20;
+const exceptionLastSentAt = new Map<string, number>();
+let exceptionsSentThisPage = 0;
+
+/** Decide whether this exception may be captured now. Exported for tests
+ * only -- captureException is a silent no-op without a token, so "throttled"
+ * would otherwise be indistinguishable from "unconfigured" (same reasoning
+ * as the server-side admitExceptionCapture's export). */
+export function admitClientException(error: unknown, nowMs: number = Date.now()): boolean {
+  if (exceptionsSentThisPage >= EXCEPTION_PAGE_CAP) return false;
+  // Name+message, not a stack hash: two occurrences of the same fault can
+  // carry different chunk URLs in their stacks (lazy-loaded routes), and
+  // PostHog's own issue grouping is message-led anyway (#9019 server-side).
+  const err = error instanceof Error ? error : null;
+  const signature = `${err?.name ?? typeof error}:${err?.message ?? String(error)}`;
+  const lastSentAt = exceptionLastSentAt.get(signature);
+  if (lastSentAt !== undefined && nowMs - lastSentAt < EXCEPTION_WINDOW_MS) return false;
+  exceptionLastSentAt.set(signature, nowMs);
+  exceptionsSentThisPage += 1;
+  return true;
+}
+
 /** Captures a caught exception via posthog-js's dedicated `captureException`
  * (never the generic `.capture("$exception", ...)`, which PostHog's own docs
  * warn is "unreliable because it does not attach required metadata" --
@@ -338,21 +373,17 @@ export function captureEvent(name: string, properties?: Record<string, unknown>)
  * flat into the event (PostHog's own signature), not nested the way
  * Sentry's `{ extra: context }` shape is -- see error-reporting.ts's own
  * call site. Same best-effort, no-op-when-unconfigured contract as every
- * other export here. */
+ * other export here.
+ *
+ * #9451: throttled via admitClientException above, and #7761's
+ * `startSessionRecording(true)` force-record is REMOVED -- forcing a
+ * recording per exception coupled error volume to session-replay billing,
+ * so one storm spent two quotas at once. Replay stays on its configured
+ * sample rate; exceptions no longer override it. */
 export function captureException(error: unknown, properties?: Record<string, unknown>): void {
   if (!POSTHOG_TOKEN) return;
+  if (!admitClientException(error)) return;
   void loadPostHog().then((posthog) => {
-    // metagraphed#7761's own explicit requirement: "always-on [replay] for
-    // sessions with an exception". `startSessionRecording(true)` is
-    // posthog-js's documented override to force this session's recording
-    // past its sample-rate dice roll (`{ sampling: true, linked_flag: true }`
-    // shorthand) -- it does not retroactively invent pre-exception frames,
-    // but posthog-js's recorder already buffers a rolling pre-trigger
-    // window internally (see `trigger_pending_buffer_interval_millis` in
-    // node_modules/@posthog/types), so calling this the moment an exception
-    // is captured keeps that lead-up context rather than starting a bare
-    // recording from this instant. A no-op if replay is already recording.
-    posthog?.startSessionRecording(true);
     posthog?.captureException(error, properties);
   });
 }
