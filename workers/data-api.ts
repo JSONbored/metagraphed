@@ -2321,6 +2321,17 @@ const REALIZED_RETURN_WINDOWS = { d1: 1, d7: 7, d30: 30 };
 // is missing or late, while rejecting anything older -- so a "1-day return"
 // can never be computed against a week-old baseline (the stale-baseline bug
 // this closes). Applied uniformly to all three REALIZED_RETURN_WINDOWS.
+//
+// A CONSEQUENCE WORTH STATING, because it looks exactly like a dead field
+// (#9455 filed it as one): a window is unanswerable until neuron_daily holds
+// history reaching past `days + tolerance`. The table began accumulating
+// 2026-07-10, so through early August the d30 window's bound
+// [today-32, today-30] fell entirely before the oldest row and
+// realized_return_1m was null for EVERY validator while 1d and 1w -- the same
+// query, the same code path -- returned values for ~49/50. That is the correct
+// answer, not a defect: the alternative is reaching further back, which is
+// precisely the stale baseline #8837 exists to refuse. It resolves itself once
+// the table is deep enough (~2026-08-09); nothing here needs changing for it.
 export const REALIZED_RETURN_BASELINE_TOLERANCE_DAYS = 2;
 
 // postgres.js returns BIGINT columns as strings; the D1-backed routes return them

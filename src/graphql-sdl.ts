@@ -4000,7 +4000,7 @@ export const SDL = /* GraphQL */ `
     realized_return_1d: Float
     "Realized 7-day return on staked capital vs the newest permitted neuron_daily snapshot within 2 days of the ~1-week-ago target date; null when no permitted snapshot lands in that range (#7228, #8837)."
     realized_return_1w: Float
-    "Realized 30-day return on staked capital vs the newest permitted neuron_daily snapshot within 2 days of the ~1-month-ago target date; null when no permitted snapshot lands in that range (#7228, #8837)."
+    "Realized 30-day return on staked capital vs the newest permitted neuron_daily snapshot within 2 days of the ~1-month-ago target date; null when no permitted snapshot lands in that range (#7228, #8837). NOTE: a window can only be answered once neuron_daily holds history reaching back past it -- the table began accumulating on 2026-07-10, so this 30-day window reads null for EVERY validator until roughly 2026-08-09 and is not a defect before then (#9455). The shorter windows are unaffected."
     realized_return_1m: Float
     avg_validator_trust: Float
     max_validator_trust: Float
