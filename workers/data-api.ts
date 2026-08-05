@@ -6169,6 +6169,53 @@ function accountIdentityServedFromD1(env: Env) {
   return env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE !== "postgres";
 }
 
+function healthStatusServedFromD1(env: Env) {
+  return env.METAGRAPH_HEALTH_SOURCE !== "postgres";
+}
+
+// Every column liveFromStatusRows projects (src/health-serving.ts:1918-1936)
+// plus consecutive_failures, which only the prober reads. Kept as one list
+// because both consumers of this route want the whole surface_status row --
+// the serving overlay to render it, the prober to carry it forward.
+const HEALTH_STATUS_LIVE_D1_READ_COLUMNS =
+  "surface_id, surface_key, netuid, kind, provider, url, status, " +
+  "classification, latency_ms, status_code, last_checked, last_ok, " +
+  "consecutive_failures";
+
+// GET /api/v1/internal/health-status-live?since=<epoch_ms>
+//
+// The route two callers in the main Worker have always requested and nothing
+// ever answered (#9522): src/health-prober.ts asks with since=0 for the LAST
+// known row per surface, and src/health-serving.ts asks with a freshness
+// cutoff for its KV-cold serving fallback. Without it, tryPostgresTier
+// returned null on every call, so the prober's prior map was empty and it
+// rewrote last_ok to null and reset consecutive_failures on every run --
+// which in turn made the pool's sustained-down breaker (threshold 2)
+// unreachable.
+//
+// `since` filters on last_checked, the column that records when the row was
+// written; since=0 (or absent/unparseable) returns everything, which is what
+// "the last known row, however stale" means for the prober's continuity read.
+function matchHealthStatusD1Route(
+  url: URL,
+  env: Env,
+): NeuronsD1RouteHandler | null {
+  if (!healthStatusServedFromD1(env)) return null;
+  if (url.pathname !== "/api/v1/internal/health-status-live") return null;
+  return async (sql) => {
+    const since = Number(url.searchParams.get("since"));
+    const cutoff = Number.isFinite(since) && since > 0 ? since : 0;
+    const rows = await sql.unsafe(
+      `SELECT ${HEALTH_STATUS_LIVE_D1_READ_COLUMNS}
+       FROM surface_status
+       WHERE last_checked >= ?
+       ORDER BY surface_id ASC`,
+      [cutoff],
+    );
+    return json({ rows });
+  };
+}
+
 function d1TierCold() {
   return json({ error: "d1 tier cold: no sync has landed yet" }, 503);
 }
@@ -6652,6 +6699,28 @@ async function dispatchDataApiRequest(
           );
         } catch (err) {
           console.error("data-api neurons D1 query failed:", err);
+          await captureDataApiError(err, maskRouteParams(url.pathname), env);
+          return json({ error: "data query failed" }, 502);
+        }
+      }
+    }
+
+    // Probe status on D1 (#9522) -- the internal continuity read the prober
+    // and the health-serving fallback have both always called. Same envelope
+    // as the neurons block above.
+    {
+      const healthStatusD1Handler = matchHealthStatusD1Route(url, env);
+      if (healthStatusD1Handler) {
+        if (!env.METAGRAPH_HEALTH_DB) {
+          return json({ error: "d1 binding unavailable" }, 503);
+        }
+        try {
+          return await healthStatusD1Handler(
+            createD1Sql(env.METAGRAPH_HEALTH_DB),
+            env,
+          );
+        } catch (err) {
+          console.error("data-api health-status D1 query failed:", err);
           await captureDataApiError(err, maskRouteParams(url.pathname), env);
           return json({ error: "data query failed" }, 502);
         }

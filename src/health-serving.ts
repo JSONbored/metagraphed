@@ -26,6 +26,7 @@ import {
   comparePoolEndpoints,
   endpointScoreBreakdown,
 } from "./endpoint-score.ts";
+import { readLiveSurfaceStatus } from "./health-status-live.ts";
 
 type Row = Record<string, unknown>;
 
@@ -2006,15 +2007,12 @@ export async function resolveLiveHealth({
   const currentTime = typeof now === "function" ? now() : Date.now();
   const freshnessCutoff = currentTime - D1_HEALTH_FALLBACK_MAX_AGE_MS;
   if (env) {
-    const pg = await tryPostgresTier(
-      env,
-      new Request(
-        `https://api.metagraph.sh/api/v1/internal/health-status-live?since=${freshnessCutoff}`,
-      ),
-      "METAGRAPH_HEALTH_SOURCE",
-    );
-    if (Array.isArray(pg?.rows) && pg.rows.length) {
-      return liveFromStatusRows(pg.rows as Row[]);
+    // #9522: same route, same previously-dead read as the prober's continuity
+    // load — see src/health-status-live.ts. A freshness cutoff here rather
+    // than 0, because a stale row is worth CARRYING FORWARD but not SERVING.
+    const rows = await readLiveSurfaceStatus(env, freshnessCutoff);
+    if (rows.length) {
+      return liveFromStatusRows(rows);
     }
   }
   return null;

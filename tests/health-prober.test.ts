@@ -217,12 +217,20 @@ function makeDb({ priorStatus = [] as unknown[] } = {}) {
 // /api/v1/internal/health-checks-sync (whose `probed` body is the new
 // observation point for consecutive_failures/etc, replacing the old D1
 // INSERT-statement inspection).
-function makeProberEnv({ priorStatus = [] as unknown[] } = {}) {
+// healthSource is a parameter, not a constant, because the flag VALUE is what
+// #9522 turned on: production has read "d1" since the box was retired, and
+// tryPostgresTier only forwards "d1" for flags listed in DATA_API_D1_FLAGS.
+// Every continuity test below ran under "postgres", which forwards, so they
+// all passed while production silently resolved the prior read to null.
+function makeProberEnv({
+  priorStatus = [] as unknown[],
+  healthSource = "postgres",
+} = {}) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const posted: any[][] = [];
   return {
     env: mockEnv({
-      METAGRAPH_HEALTH_SOURCE: "postgres",
+      METAGRAPH_HEALTH_SOURCE: healthSource,
       HEALTH_CHECKS_SYNC_SECRET: "test-secret",
       DATA_API: {
         async fetch(request: Row) {
@@ -597,6 +605,45 @@ describe("runHealthProber", () => {
     // re-keys onto the rename-stable identity, not the display id/slug.
     const apiRow = posted[0].find((r) => r.surface_id === "sn7-api");
     assert.equal(apiRow.surface_key, "srf-sn7apikey000000");
+    assert.equal(apiRow.consecutive_failures, 3);
+  });
+
+  // #9522. The two assertions above are the same ones the suite already made
+  // under METAGRAPH_HEALTH_SOURCE="postgres". Production has read "d1" since
+  // the box was retired, and "d1" only forwards for flags in
+  // DATA_API_D1_FLAGS -- which this one was not in. So the prior read returned
+  // null on every real run: last_ok was rewritten to null for any surface that
+  // was not ok THIS run, and consecutive_failures restarted at 1, capping it
+  // below the breaker's threshold of 2 forever.
+  //
+  // Measured in production D1 before the fix: 0 of 109 degraded/failed rows
+  // carried a last_ok though 85 of them had ok=1 rows in surface_checks, and
+  // consecutive_failures was 0 or 1 across all 635 rows.
+  test("carries prior last_ok and the failure streak under the d1 flag production actually runs", async () => {
+    const { env, posted } = makeProberEnv({
+      healthSource: "d1",
+      priorStatus: [
+        {
+          surface_id: "sn7-api",
+          surface_key: "srf-sn7apikey000000",
+          last_ok: 1000,
+          consecutive_failures: 2,
+        },
+      ],
+    });
+    await runHealthProber(env, FAKE_CTX, {
+      now: () => 50000,
+      kv: makeKv(),
+      loadSurfaces: async () => SURFACES,
+      probeSurface: probeImpl,
+      probeOptions: {},
+    });
+    const apiRow = posted[0].find((r) => r.surface_id === "sn7-api");
+    // Carried forward, not wiped: this surface failed THIS run but was healthy
+    // at t=1000, and "when was it last up" is the whole point of the column.
+    assert.equal(apiRow.last_ok_ms, 1000);
+    // 2 -> 3 crosses POOL_SUSTAINED_DOWN_FAILURES, so `sustained-down`
+    // eviction becomes reachable. Pinned at 1 before this fix.
     assert.equal(apiRow.consecutive_failures, 3);
   });
 
