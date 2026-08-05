@@ -70,6 +70,34 @@ describe("alpha is displayed in the unit the API serves", () => {
   });
 });
 
+describe("it reads as a leaderboard, not a list of labelled fields", () => {
+  it("renders a rank at both breakpoints", () => {
+    // The first version had none: the order carried all the meaning and a
+    // reader had to count rows to recover it.
+    expect(component).toMatch(/\{i \+ 1\}/);
+    expect(component).toMatch(/holders\.map\(\(entry, i\) =>/);
+  });
+
+  it("encodes share as a bar, not only a percentage", () => {
+    // Concentration is the question this section exists to answer, and a column
+    // of percentages does not answer it at a glance. Both breakpoints get the
+    // bar so they say the same thing.
+    const bars = component.match(/style=\{\{ width: `\$\{Math\.min\(100,/g) ?? [];
+    expect(bars.length).toBe(2);
+  });
+
+  it("marks the bar aria-hidden, since the percentage is the value", () => {
+    // Redundant encoding, not the only one -- a screen reader gets the number.
+    const at = component.indexOf("rounded-full bg-border/60");
+    expect(component.slice(Math.max(0, at - 260), at)).toContain("aria-hidden");
+  });
+
+  it("shows the hotkey count only when it says something", () => {
+    // A "1" on every row is noise, and null means unread rather than one.
+    expect(component).toMatch(/entry\.hotkey_count != null && entry\.hotkey_count > 1/);
+  });
+});
+
 describe("the section is wired into the page", () => {
   it("mounts under an anchor inside an error boundary", () => {
     expect(page).toContain('id="holders"');
