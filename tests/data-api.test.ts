@@ -1307,7 +1307,12 @@ test("account-balances-sync is disabled (503) when ACCOUNT_BALANCES_SYNC_SECRET 
   expect(res.status).toBe(503);
 });
 
-test("account-balances-sync answers 503 -- the Postgres tier it wrote to is gone (#9193)", async () => {
+test("account-balances-sync writes to D1 -- the lane is live again (#9478)", async () => {
+  // It answered 503 for the whole period top-holders was frozen (#9193 retired
+  // it with the box), which is why /api/v1/accounts/top-holders served a
+  // `captured_at` stuck at 2026-08-02. The end-to-end write contract lives in
+  // tests/data-api-account-balances-d1.test.ts against a real SQLite database;
+  // this asserts only that the route no longer dead-ends here.
   const res = await worker.fetch(
     new Request("https://d/api/v1/internal/account-balances-sync", {
       method: "POST",
@@ -1320,7 +1325,12 @@ test("account-balances-sync answers 503 -- the Postgres tier it wrote to is gone
     env as unknown as Env,
     ctx,
   );
-  expect(res.status).toBe(503);
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({
+    ok: true,
+    account_balances_written: 1,
+    stores: ["d1"],
+  });
 });
 
 const SUBNET_IDENTITY_NETUID = 8;

@@ -30,6 +30,7 @@ import {
   NEURON_INSERT_COLUMNS,
 } from "../src/metagraph-neurons.ts";
 import { ACCOUNT_POSITION_DAILY_COLUMNS } from "../src/neurons-d1-write.ts";
+import { ACCOUNT_BALANCE_INSERT_COLUMNS } from "../src/account-balances-d1-write.ts";
 import {
   CHAIN_DETAIL_BLOCK_COLUMNS,
   CHAIN_DETAIL_EXTRINSIC_COLUMNS,
@@ -101,6 +102,11 @@ const GUARDED: Array<[string, string, readonly string[] | string]> = [
     "chain_detail_chain_events",
     "CHAIN_DETAIL_CHAIN_EVENT_COLUMNS",
     CHAIN_DETAIL_CHAIN_EVENT_COLUMNS,
+  ],
+  [
+    "account_balances",
+    "ACCOUNT_BALANCE_INSERT_COLUMNS",
+    ACCOUNT_BALANCE_INSERT_COLUMNS,
   ],
 ];
 
