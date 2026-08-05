@@ -50,16 +50,85 @@ export const HOTKEY_ALPHA_INSERT_COLUMNS = [
 ];
 
 /**
+ * One pass's completeness accounting, when the producer declares it.
+ *
+ * The twin of AccountBalancesPass, and deliberately a separate type rather than
+ * a shared generic: the two lanes' tallies live in different tables and can
+ * diverge in shape, and collapsing them would make a change to one silently a
+ * change to both.
+ */
+export interface HotkeyAlphaPass {
+  capturedAt: number;
+  expectedRows: number;
+  receivedRows: number;
+  /** Injected rather than read from the clock so a test can pin it. */
+  nowMs: number;
+}
+
+/**
+ * The statement that advances a pass's row tally, upserted on (captured_at).
+ *
+ * `completed_at` is set by whichever request brings the running total up to
+ * `expected_rows`, and never cleared afterwards -- a replayed request adds its
+ * rows again and would otherwise un-complete a finished pass. Over-counting on
+ * replay is deliberate and harmless: the reader asks "is completed_at set",
+ * never "does the count match exactly", precisely so an at-least-once producer
+ * cannot leave a complete pass looking unfinished.
+ */
+export function hotkeyAlphaPassStatement(
+  db: D1Like,
+  pass: HotkeyAlphaPass,
+): D1PreparedStatement {
+  return db
+    .prepare(
+      `INSERT INTO hotkey_alpha_passes
+         (captured_at, expected_rows, received_rows, completed_at)
+       VALUES (?, ?, ?, CASE WHEN ? >= ? THEN ? ELSE NULL END)
+       ON CONFLICT (captured_at) DO UPDATE SET
+         expected_rows = excluded.expected_rows,
+         received_rows = hotkey_alpha_passes.received_rows + excluded.received_rows,
+         completed_at = COALESCE(
+           hotkey_alpha_passes.completed_at,
+           CASE
+             WHEN hotkey_alpha_passes.received_rows + excluded.received_rows
+                  >= excluded.expected_rows
+             THEN ?
+             ELSE NULL
+           END
+         )`,
+    )
+    .bind(
+      pass.capturedAt,
+      pass.expectedRows,
+      pass.receivedRows,
+      pass.receivedRows,
+      pass.expectedRows,
+      pass.nowMs,
+      pass.nowMs,
+    );
+}
+
+/**
  * Write one hotkey-alpha sync batch to D1: a latest-only upsert on
- * (hotkey, netuid), nothing else.
+ * (hotkey, netuid), plus this pass's completeness tally when the producer
+ * declared one.
  *
  * NO PRUNE -- see this module's header and the migration's. An empty batch
  * issues no statements at all rather than an empty `db.batch([])`, matching
  * writeAccountBalancesToD1's own guard.
+ *
+ * THE PASS STATEMENT IS APPENDED LAST, for writeAccountBalancesToD1's reason
+ * exactly: batchInSlices splits a large statement list across several
+ * `db.batch()` calls, so no single transaction spans them, and the only safe
+ * ordering is the one where a mid-run failure UNDER-counts. Rows land, then the
+ * tally moves; a pass can look less complete than it is, never more. The
+ * reverse would mark a pass complete over rows that never arrived, which is the
+ * lie the tally exists to prevent.
  */
 export async function writeHotkeyAlphaToD1(
   db: D1Like,
   rows: Row[],
+  pass?: HotkeyAlphaPass | null,
 ): Promise<{ statements: number }> {
   const statements: D1PreparedStatement[] = chunkStatements(
     db,
@@ -68,6 +137,9 @@ export async function writeHotkeyAlphaToD1(
     ["hotkey", "netuid"],
     rows,
   );
+  if (pass && statements.length) {
+    statements.push(hotkeyAlphaPassStatement(db, pass));
+  }
   if (statements.length) await batchInSlices(db, statements);
   return { statements: statements.length };
 }
