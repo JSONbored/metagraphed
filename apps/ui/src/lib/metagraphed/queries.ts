@@ -1860,11 +1860,13 @@ function normalizeBlockEvents(raw: unknown): BlockEvents {
   } satisfies BlockEvents;
 }
 
-// The Postgres-backed all-events tier (unlike the first-party D1 blocks/events/
-// extrinsics tiers) serializes bigint columns (block_number, event_index,
-// observed_at) as JSON strings rather than numbers, and the per-block route
-// omits the (redundant, same for every row) block_number on each event —
-// hence coerceFiniteNumber (not firstFiniteNumber) and the fallback below.
+// Deliberately tolerant of both wire shapes for the bigint-ish fields
+// (block_number, event_index, observed_at). The Postgres-era all-events tier
+// serialized them as JSON strings and omitted the (redundant) block_number on
+// each row of the per-block route; the lakehouse tier serving it today sends
+// numbers and includes block_number — verified against a live response. Both
+// are accepted rather than pinned to the current one, hence coerceFiniteNumber
+// (not firstFiniteNumber) and the fallback below.
 function normalizeChainEvent(raw: unknown, fallbackBlockNumber: number | null): ChainEvent | null {
   if (!isRecord(raw)) return null;
   const observedAtMs = coerceFiniteNumber(raw.observed_at);
@@ -1975,7 +1977,7 @@ export const blockEventsQuery = (ref: string, params?: QueryParams) =>
 
 /**
  * Single block by numeric block_number or 0x block_hash, with every raw
- * pallet-level chain event from the Postgres-backed all-events tier — a
+ * pallet-level chain event from the lakehouse all-events tier — a
  * broader, decoded-args view than {@link blockEventsQuery}'s curated,
  * account-attributed stream. Takes no query params (the route accepts none).
  */

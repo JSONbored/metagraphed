@@ -1,32 +1,34 @@
 ---
 title: Chain events reference
-description: How GET /api/v1/chain-events, /chain-events/stats, and /blocks/{n}/chain-events serve the Postgres deep-history all-events tier — params, response shapes, curl examples, the two-store split, and the 503 data_tier_unavailable condition.
+description: How GET /api/v1/chain-events, /chain-events/stats, and /blocks/{n}/chain-events serve the lakehouse deep-history all-events tier — params, response shapes, curl examples, how they differ from the curated event feeds, and what a cold tier returns.
 ---
 
-The Postgres deep-history all-events tier — every raw `pallet.method` event on the chain, served by a separate data Worker (ADR 0014). This page covers the three `/chain-events` routes, how they differ from the other two "events" surfaces, and the 503 you'll get when the data tier isn't deployed.
+The deep-history all-events tier — every raw `pallet.method` event on the chain, read from the `chain.chain_events` lakehouse table over R2 SQL. This page covers the three `/chain-events` routes, how they differ from the other two "events" surfaces, and what you get back when the tier can't answer.
 
 ## Three "events" surfaces — pick the right one
 
 Metagraphed exposes three unrelated things named "events." They don't share a store, a shape, or a purpose.
 
-| Route                                                                 | Store                                   | Real-time?                                                   | What it returns                                                                                                                                                                                                                                                          |
-| --------------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET /api/v1/events`                                                  | R2 artifact + KV pointer                | SSE, poll-on-reconnect                                       | Not chain data. A thin change feed over the _registry's own publish snapshot_ (build pointer + changelog) — one `snapshot` SSE event per (re)connect, 5-minute suggested retry. Answers "did the site's content change," not "did the chain move."                       |
-| `GET /api/v1/subnets/{netuid}/events`                                 | Postgres — `account_events`             | Near-real-time (cache: short)                                | Curated, decoded events for one subnet: a fixed allowlist of "interesting" kinds (Transfer, NetworkAdded, StakeAdded/Removed, …), attributed to the account(s) involved. Originated as a D1 tier; now served from the same Postgres instance the deep-history tier uses. |
-| `GET /api/v1/chain-events` (+ `/stats`, + `/blocks/{n}/chain-events`) | Postgres (TimescaleDB) — `chain_events` | Near-real-time (cache: short), 503 if `DATA_API` isn't bound | The raw deep-history all-events tier documented on this page: every `pallet.method` event, no kind filtering, no account attribution. Postgres-only from day one — never had a D1 equivalent.                                                                            |
+| Route                                                                 | Store                              | Real-time?                                                       | What it returns                                                                                                                                                                                                                                            |
+| --------------------------------------------------------------------- | ---------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/events`                                                  | R2 artifact + KV pointer           | SSE, poll-on-reconnect                                           | Not chain data. A thin change feed over the _registry's own publish snapshot_ (build pointer + changelog) — one `snapshot` SSE event per (re)connect, 5-minute suggested retry. Answers "did the site's content change," not "did the chain move."         |
+| `GET /api/v1/subnets/{netuid}/events`                                 | Lakehouse — `chain.account_events` | Near-real-time (cache: short)                                    | Curated, decoded events for one subnet: a fixed allowlist of "interesting" kinds (Transfer, NetworkAdded, StakeAdded/Removed, …), attributed to the account(s) involved. Originated as a D1 tier, spent a period on Postgres, and now reads the lakehouse. |
+| `GET /api/v1/chain-events` (+ `/stats`, + `/blocks/{n}/chain-events`) | Lakehouse — `chain.chain_events`   | Near-real-time (cache: short), degraded empty if it can't answer | The raw deep-history all-events tier documented on this page: every `pallet.method` event, no kind filtering, no account attribution. Never had a D1 equivalent.                                                                                           |
 
-## The two-store split
+## One store, two tables
 
-Originally a D1 near-real-time hot cache vs. a Postgres deep-history sink. That split is narrower than it used to be — read on before assuming D1 is still load-bearing here.
+The curated explorer views and the deep-history feed both read the lakehouse now. What separates them is not the store — it's the _table_:
 
-[ADR 0013](https://github.com/JSONbored/metagraphed/blob/main/docs/adr/0013-hybrid-deployment-topology.md) originally proposed D1 as a near-real-time explorer cache (blocks/extrinsics/account_events, pruned after a few days) with Postgres as the durable, unbounded sink feeding a genuinely new tier: `chain_events`, the raw all-events firehose. [ADR 0014](https://github.com/JSONbored/metagraphed/blob/main/docs/adr/0014-chain-data-infrastructure-and-postgres-cutover.md) (accepted 2026-07-10, supersedes 0013) is the current, directly-verified snapshot of what actually shipped.
+- The curated explorer surfaces (`/blocks/{ref}/events`, `/accounts/{ss58}/events`, `/subnets/{netuid}/events`) read `chain.account_events` — decoded and filtered down to a fixed allowlist of "interesting" kinds (Transfer, NetworkAdded, NeuronDeregistered, StakeAdded/Removed, and roughly thirty more), attributed to the account(s) involved.
+- The deep-history tier (`/chain-events*`) reads `chain.chain_events` — literally every `pallet.method` event the indexer decodes, no kind filtering, no account attribution.
 
-As of ADR 0014, D1's write paths for `blocks`, `extrinsics`, and `account_events` are retired and those tables are dropped in production. Every one of those tiers' serving flags (`METAGRAPH_BLOCKS_SOURCE`, `METAGRAPH_EXTRINSICS_SOURCE`, `METAGRAPH_ACCOUNT_EVENTS_SOURCE`) is flipped to `"postgres"` in production, read through the same `tryPostgresTier()` helper and the same `DATA_API` service binding this page's chain-events routes use.
+### How it got here
 
-So today, the curated explorer views and the deep-history feed both live in Postgres, served by the same Worker. What's still genuinely different between them isn't the store — it's the _table_:
+Worth knowing if you're reading older ADRs or the `METAGRAPH_*_SOURCE` flags and expecting them to still mean what they say.
 
-- The curated explorer surfaces (`/blocks/{ref}/events`, `/accounts/{ss58}/events`, `/subnets/{netuid}/events`) read `account_events` — decoded and filtered down to a fixed allowlist of "interesting" kinds (Transfer, NetworkAdded, NeuronDeregistered, StakeAdded/Removed, and roughly thirty more), attributed to the account(s) involved.
-- The deep-history tier (`/chain-events*`) reads `chain_events` — literally every `pallet.method` event the indexer decodes, no kind filtering, no account attribution. It never had a D1 form; it's been Postgres-only (TimescaleDB) from day one.
+[ADR 0013](https://github.com/JSONbored/metagraphed/blob/main/docs/adr/0013-hybrid-deployment-topology.md) proposed D1 as a near-real-time explorer cache (blocks/extrinsics/account_events, pruned after a few days) with Postgres as the durable, unbounded sink feeding a genuinely new tier: `chain_events`, the raw all-events firehose. [ADR 0014](https://github.com/JSONbored/metagraphed/blob/main/docs/adr/0014-chain-data-infrastructure-and-postgres-cutover.md) (accepted 2026-07-10, supersedes 0013) recorded the cutover onto Postgres.
+
+Both are history. The indexer box that ran Postgres was decommissioned, the `postgres.js` driver and the read dispatcher behind it were deleted, and `HYPERDRIVE` is unbound — so nothing can serve from Postgres regardless of configuration. The serving flags (`METAGRAPH_BLOCKS_SOURCE`, `METAGRAPH_EXTRINSICS_SOURCE`, `METAGRAPH_ACCOUNT_EVENTS_SOURCE`) read `"retired"` in production today, and each family is served by its own lakehouse reader.
 
 ## Why the same block can show two different event counts
 
@@ -36,33 +38,32 @@ Not a bug: two different tables, two different filters, populated by the same in
 
 Don't treat a mismatch between the two as a sync bug or evidence of ingestion drift — cross-checking them for parity is comparing two different, intentionally-scoped views of the same block, not two copies of the same data.
 
-## Deployment dependency: the DATA_API binding
+## What a cold tier returns
 
-All three routes are a proxy, not a first-party handler in this Worker.
+These routes are first-party handlers in the main API Worker. They used to be forwarded to a separate data Worker over a `DATA_API` service binding, but that upstream's store is gone, so the forward was a subrequest that could only fail — it was removed, and the lakehouse reader that was the fallback is now the primary path.
 
-The main API Worker's `handleChainEventsProxy` (`workers/api.ts`) forwards all three routes as-is to a separate Cloudflare Worker (`workers/data-api.ts`, the metagraphed-data-api service) over a Worker-to-Worker service binding named `DATA_API`. That split keeps the postgres.js driver and the Hyperdrive-backed Postgres tiers out of the main Worker's bundle, which is already near its size budget.
+**A tier that can't answer does not error.** You get the same schema-stable empty every other tier in this API degrades to — `200` with zero rows — marked so you can tell it from a genuinely empty query, and barred from the edge cache so a cold answer is never served to anyone else.
 
-There are two distinct failure modes, with two distinct error codes — don't conflate them when triaging:
+The marker is a response header, `x-metagraph-degraded: tier_unavailable`, paired with `meta.source: "data-worker-unavailable"` in the body. Check one of those rather than inferring from `count: 0` — an empty page is a legitimate answer for a narrow `?pallet`/`?block` filter:
 
-- `data_tier_unavailable` — either this Worker's own `DATA_API` binding isn't wired into this deployment (503, checked before any request even reaches the data Worker), or the data Worker responded but its body couldn't be parsed as JSON (502, an unreadable upstream response).
-- `data_query_failed` (status mirrors the upstream) — the data Worker _is_ reachable and returned readable JSON, but a non-2xx status: its own `HYPERDRIVE` binding is missing (its own 503) or the query errored. The proxy rewraps whatever status/message the data Worker returned.
-
-All three routes only accept `GET` (and `HEAD`, normalized to a `GET` internally). The proxy doesn't gate the method itself — a `POST` is forwarded straight through and comes back as the data Worker's own 405, wrapped as `data_query_failed` rather than a dedicated method-not-allowed code.
-
-Every request to any of the three routes is also capped by a shared rate limiter, checked before the tier-availability check above — 60 requests / 60s per client IP with no key, or 300 requests / 60s (5×) keyed by account when a valid `Authorization: Bearer mg_...` [API key](/settings) is presented instead of an IP. Exceeding it returns `429 data_rate_limited` with `retry-after`, `x-ratelimit-limit`, `x-ratelimit-remaining` (always `0` on a 429), and `x-ratelimit-reset` (an upper-bound estimate, not an exact window boundary) headers.
-
-```json title="503 · data_tier_unavailable"
+```json title="200 · degraded (schema-stable empty)"
 {
-  "ok": false,
+  "ok": true,
   "schema_version": 1,
-  "data": null,
-  "error": {
-    "code": "data_tier_unavailable",
-    "message": "The all-events data tier is not bound to this deployment."
-  },
-  "meta": { "contract_version": "2026-07-10.1" }
+  "data": { "count": 0, "next_before": null, "next_cursor": null, "events": [] },
+  "meta": {
+    "artifact_path": "/api/v1/chain-events",
+    "cache": "short",
+    "source": "data-worker-unavailable"
+  }
 }
 ```
+
+A measured answer reports `meta.source: "lakehouse-cold-tier"` instead, and carries no degraded header.
+
+All three routes only accept `GET` (and `HEAD`, normalized to a `GET` internally).
+
+Every request to any of the three routes is capped by a shared rate limiter — 60 requests / 60s per client IP with no key, or 300 requests / 60s (5×) keyed by account when a valid `Authorization: Bearer mg_...` [API key](/settings) is presented instead of an IP. Exceeding it returns `429 data_rate_limited` with `retry-after`, `x-ratelimit-limit`, `x-ratelimit-remaining` (always `0` on a 429), and `x-ratelimit-reset` (an upper-bound estimate, not an exact window boundary) headers.
 
 ## GET /api/v1/chain-events
 
