@@ -5207,6 +5207,54 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   "/api/v1/incidents",
 ];
 
+// Parameters whose value space is finite and enumerable at build time. Anything
+// else makes an artifact unbakeable BY DEFINITION rather than by effort -- the
+// key space of {ref}/{ss58}/{hash}/{uid}/{h160} is every block, account,
+// extrinsic and address that has ever existed.
+const BOUNDED_ARTIFACT_PARAMS: ReadonlySet<string> = new Set(["netuid", "tag"]);
+
+/**
+ * Artifact path template -> the live route that answers it, for artifacts that
+ * are computed live AND unbounded, i.e. the ones for which NO file is ever
+ * written at any key.
+ *
+ * Both halves of that predicate matter. `computed` alone is not enough: a
+ * computed artifact whose parameters are bounded ({netuid}, {tag}) IS baked to
+ * R2 by scripts/bake-computed-artifacts.ts and must still be read from there.
+ * It is the unbounded ones that no build can ever produce.
+ *
+ * DERIVED from the two contracts above rather than listed, for the same reason
+ * COMPUTED_ARTIFACT_IDS is: a third hand-maintained list is how a route gets
+ * renamed and leaves a stale orphan behind.
+ */
+const LIVE_ONLY_ARTIFACT_ROUTES: ReadonlyMap<string, string> = new Map(
+  PUBLIC_ARTIFACTS.filter(
+    (entry) =>
+      entry.computed &&
+      [...entry.path.matchAll(/\{(\w+)\}/g)].some(
+        (m) => !BOUNDED_ARTIFACT_PARAMS.has(m[1]!),
+      ),
+  ).flatMap((entry) => {
+    const live = API_ROUTES.find((r) => r.artifact_path === entry.path);
+    return live ? [[entry.path, live.path] as [string, string]] : [];
+  }),
+);
+
+/**
+ * The live route serving this artifact path, when the artifact is computed live
+ * with unbounded parameters -- otherwise null.
+ *
+ * A caller that gets a route back should NOT read R2 for the artifact: nothing
+ * has ever written it, and nothing ever will. `/metagraph/blocks/{ref}.json` is
+ * the case that made this worth having -- every request for it cost one R2
+ * GetObject miss (two when the pointer names a run prefix) before answering the
+ * 404 that was knowable without asking, and the site's own block pages link it,
+ * so crawlers walk it continuously (#9485).
+ */
+export function liveOnlyArtifactRoute(artifactPath: string): string | null {
+  return LIVE_ONLY_ARTIFACT_ROUTES.get(artifactPath) ?? null;
+}
+
 const MAINNET_ONLY_ROUTE_SET = new Set(MAINNET_ONLY_ROUTE_PATHS);
 
 /** Is this route template mainnet-only? */

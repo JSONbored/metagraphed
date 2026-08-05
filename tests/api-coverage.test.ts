@@ -1206,6 +1206,63 @@ describe("live health overlay (rpc-endpoints + freshness)", () => {
     assert.equal(reads, 0);
   });
 
+  // Computed-live artifacts with unbounded parameters have no file at any key
+  // and never will, so reading R2 to discover that spent a GetObject miss (two
+  // when the pointer names a run prefix) on a 404 the contract already knew.
+  // /metagraph/blocks/{ref}.json is linked from the site's own block pages, so
+  // crawlers walked it continuously and it became the largest single source of
+  // R2 errors in the Worker log.
+  test("a computed-live artifact answers from the contract, without touching R2", async () => {
+    let reads = 0;
+    const env = createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          reads += 1;
+          return null;
+        },
+      },
+    });
+    for (const path of [
+      "/metagraph/blocks/8090851.json",
+      "/metagraph/accounts/5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY.json",
+    ]) {
+      const res = await handleRequest(req(path), env as unknown as Env, {});
+      assert.equal(res.status, 404, path);
+      const body = (await res.json()) as {
+        error: { code: string };
+        live_route?: string;
+      };
+      assert.equal(body.error.code, "artifact_computed_live", path);
+    }
+    assert.equal(reads, 0, "the miss was knowable without asking the store");
+  });
+
+  test("a BOUNDED computed artifact is still read from R2", async () => {
+    // {netuid} is enumerable, so bake-computed-artifacts DOES write this one --
+    // the guard must key on unbounded parameters, not on `computed` alone, or
+    // it would blind a tier that genuinely has files.
+    let reads = 0;
+    const env = createLocalArtifactEnv({
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          reads += 1;
+          return null;
+        },
+      },
+    });
+    const res = await handleRequest(
+      req("/metagraph/subnets/7.json"),
+      env as unknown as Env,
+      {},
+    );
+    assert.notEqual(
+      (await res.json())?.error?.code,
+      "artifact_computed_live",
+      "a bounded computed artifact is baked and must still be read",
+    );
+    assert.ok(reads > 0, "R2 must still be consulted for artifacts that exist");
+  });
+
   test("/api/v1/subnets/:netuid/health ignores stale static R2 objects", async () => {
     let reads = 0;
     const env = createLocalArtifactEnv({
