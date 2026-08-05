@@ -62,6 +62,11 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // capture cron writes -- never a file. A baked series would freeze at build time,
   // which is the opposite of what a series is for.
   /^subnets\/(?:\d+|\{netuid\})\/burn-history\.json$/,
+  // One subnet's alpha holder leaderboard (#9557), computed live from the D1
+  // positions ledger joined to the proven pool totals. A baked ranking would
+  // freeze a leaderboard whose whole value is that it is current, and would also
+  // outlive the completeness gate that decides whether it may be served at all.
+  /^subnets\/(?:\d+|\{netuid\})\/holders\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/trajectory\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/uptime\.json$/,
   // Stake/emission concentration (#2106): computed live from the neurons D1 tier.

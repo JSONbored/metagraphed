@@ -58,6 +58,19 @@ export const CHAIN_TURNOVER_LIMIT_MAX = 100;
 export const TOP_HOLDERS_LIMIT_DEFAULT = 20;
 export const TOP_HOLDERS_LIMIT_MAX = 100;
 
+/**
+ * `/api/v1/subnets/{netuid}/holders` -- per-subnet alpha holder leaderboard (#9557).
+ *
+ * The same 20/100 pair as the chain-wide holder ranking above, deliberately: the
+ * two answer the same shape of question at different scopes, and a caller moving
+ * between them should not have to relearn the page size. The cap does not bound
+ * the WORK -- ranking requires aggregating every holder on the subnet before any
+ * slice is taken -- it bounds the payload, which is what a caller charting a
+ * leaderboard actually needs.
+ */
+export const SUBNET_HOLDERS_LIMIT_DEFAULT = 20;
+export const SUBNET_HOLDERS_LIMIT_MAX = 100;
+
 /** `/api/v1/accounts` -- site-wide accounts leaderboard. */
 export const ACCOUNTS_LIST_LIMIT_DEFAULT = 20;
 export const ACCOUNTS_LIST_LIMIT_MAX = 100;

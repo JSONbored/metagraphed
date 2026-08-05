@@ -1,0 +1,30 @@
+-- A netuid-leading index on the positions ledger (#9557).
+--
+-- 0011 declared PRIMARY KEY (coldkey, hotkey, netuid) plus one secondary index
+-- on captured_at, because the only read shape at the time was "one coldkey's
+-- whole position set" and the leading PK column served it from the table's own
+-- index. The per-subnet holder leaderboard reads the ledger the other way round
+-- -- `WHERE np.netuid = ?` -- and no existing index leads with netuid, so that
+-- predicate is a full scan of the whole table (123,974 rows measured
+-- 2026-08-05) on every request, for a result of at most 100.
+--
+-- NOT covered by 0022's (hotkey, netuid) index, which #9558 added for the
+-- sink's per-row EXISTS. netuid is its SECOND column, so a lookup keyed on
+-- netuid alone is not a prefix of it and falls back to the same scan. The two
+-- indexes answer opposite questions about the same table: 0022 asks "does any
+-- position reference this pool", this one asks "who holds this subnet".
+--
+-- (netuid, coldkey) rather than (netuid) alone: the reader groups by coldkey
+-- immediately after filtering, so leading the index with the filter column and
+-- following it with the grouping column lets SQLite seek the netuid's slice and
+-- walk it already ordered, instead of sorting it afterwards. `hotkey` is
+-- deliberately NOT a third column -- it is only ever COUNT(DISTINCT)-ed, which
+-- reads the rows regardless, and a third column would grow the index for no
+-- seek it enables.
+--
+-- Purely additive: no column, constraint or existing index changes, so the
+-- forward read gets faster and nothing else observes a difference. The
+-- account-tier read (`WHERE coldkey = ?`) keeps using the primary key exactly as
+-- before.
+CREATE INDEX IF NOT EXISTS idx_nominator_positions_netuid
+  ON nominator_positions (netuid, coldkey);

@@ -161,6 +161,12 @@ import {
   loadSubnetBurnHistory,
 } from "../../src/subnet-burn-history.ts";
 import {
+  buildSubnetHolders,
+  loadSubnetHolders,
+  SUBNET_HOLDERS_LIMIT_DEFAULT,
+  SUBNET_HOLDERS_LIMIT_MAX,
+} from "../../src/subnet-holders.ts";
+import {
   buildValidatorEconomics,
   buildValidatorEconomicsHistory,
   DEFAULT_VALIDATOR_ECONOMICS_HISTORY_WINDOW,
@@ -5946,6 +5952,55 @@ export async function handleSubnetBurnHistory(
   // recording this subnet" is a real state, and the same convention every sibling
   // history route already follows.
   const data = buildSubnetBurnHistory(rows, netuid, { window: label });
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/holders (#9557): who owns this subnet's alpha.
+//
+// The reverse of /accounts/{ss58}/positions, which reads the same ledger one
+// coldkey (one account) at a time. /subnets/{netuid}/concentration answers the
+// neighbouring question off `neurons` and therefore sees registered UIDs only;
+// this reads `nominator_positions`, which is keyed on (coldkey, hotkey, netuid)
+// whether or not that hotkey holds a UID, so alpha parked on UNREGISTERED
+// hotkeys is included -- the part no other public source carries.
+//
+// Declines rather than serving an empty ranking in two states (no complete pool
+// pass, and root) -- see src/subnet-holders.ts for why an empty leaderboard here
+// would read as a measurement.
+export async function handleSubnetHolders(
+  request: Request,
+  env: Env,
+  netuid: number,
+  url: URL,
+) {
+  if (!isU16Netuid(netuid)) {
+    return errorResponse(
+      "invalid_netuid",
+      "netuid must be an integer in the u16 range 0..65535.",
+      400,
+    );
+  }
+  const validationError = validateEntityQuery(url, ["limit", "format"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const limit = parseBoundedIntParam(url, "limit", {
+    def: SUBNET_HOLDERS_LIMIT_DEFAULT,
+    min: 1,
+    max: SUBNET_HOLDERS_LIMIT_MAX,
+  });
+  if ("error" in limit) return analyticsQueryError(limit.error);
+
+  const read = await loadSubnetHolders(
+    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+      typeof loadSubnetHolders
+    >[0],
+    netuid,
+    { limit: limit.value },
+  );
+  const data = buildSubnetHolders(read, netuid, { limit: limit.value });
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },

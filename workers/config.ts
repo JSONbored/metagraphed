@@ -460,6 +460,10 @@ export const SUBNET_NEURON_HISTORY_PATH_PATTERN =
  * so the router's patterns stay in one place. */
 export const SUBNET_BURN_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/burn\/history$/;
+/** GET /api/v1/subnets/{netuid}/holders (#9557) -- the per-subnet alpha holder
+ * leaderboard, read from the D1 positions ledger x the proven pool totals. */
+export const SUBNET_HOLDERS_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/holders$/;
 
 export const SUBNET_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/history$/;

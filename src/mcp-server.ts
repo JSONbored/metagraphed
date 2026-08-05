@@ -619,6 +619,10 @@ import {
   GetSubnetBurnHistoryOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-recycled-burn.ts";
 import {
+  GetSubnetHoldersInputSchema,
+  GetSubnetHoldersOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-holders.ts";
+import {
   GetSubnetValidatorEconomicsInputSchema,
   GetSubnetValidatorEconomicsOutputSchema,
   ListValidatorEconomicsInputSchema,
@@ -1416,6 +1420,12 @@ import {
   TOP_HOLDERS_LIMIT_DEFAULT,
   TOP_HOLDERS_LIMIT_MAX,
 } from "./top-holders.ts";
+import {
+  buildSubnetHolders,
+  loadSubnetHolders,
+  SUBNET_HOLDERS_LIMIT_DEFAULT,
+  SUBNET_HOLDERS_LIMIT_MAX,
+} from "./subnet-holders.ts";
 import { buildSubnetHyperparams } from "./subnet-hyperparams.ts";
 import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.ts";
 import { buildAlphaVolume } from "./alpha-volume.ts";
@@ -7838,6 +7848,62 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_subnet_holders",
+    title: "Get a subnet's alpha holder leaderboard",
+    description:
+      "Fetch WHO OWNS one subnet's alpha (#9557) -- the top coldkeys by alpha " +
+      "held on that netuid, each with its share of the subnet total and how " +
+      "many hotkeys it holds through, plus whole-subnet aggregates (distinct " +
+      "holder count, total measured alpha, top5/top10/top20 concentration). " +
+      "This is the reverse of get_account_positions, which reads the same " +
+      "ledger one coldkey at a time. Prefer it over get_subnet_concentration " +
+      "when the question is WHO rather than HOW CONCENTRATED: that tool " +
+      "computes scalars off registered UIDs' stake, while this one includes " +
+      "alpha staked to UNREGISTERED hotkeys -- on netuid 74, 92 hotkeys carry " +
+      "positions and only 10 are registered there, so a registered-only source " +
+      "misses most holders. Ranked in ALPHA, not TAO: within one subnet alpha " +
+      "is already a common unit, so there is no price conversion and no price " +
+      "staleness -- multiply by the subnet's alpha_price_tao for TAO. limit " +
+      `caps the rows (default ${SUBNET_HOLDERS_LIMIT_DEFAULT}, max ` +
+      `${SUBNET_HOLDERS_LIMIT_MAX}); the aggregates are always computed over ` +
+      "the FULL holder set, so holder_count is not the length of what you got " +
+      "back. IMPORTANT: an empty `holders` list is NOT evidence that nobody " +
+      "holds this subnet's alpha -- check `degraded.reason` first. " +
+      "`pool_totals_unproven` means the pool-total ledger has no complete pass " +
+      "yet and a ranking would silently underprice holders; " +
+      "`root_not_in_alpha_map` means netuid 0, which the chain's Alpha map does " +
+      "not cover at all. Mainnet only. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/holders.",
+    inputSchema: z.toJSONSchema(GetSubnetHoldersInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetHoldersInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      if (!isU16Netuid(netuid)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `netuid` must be an integer in the u16 range 0..65535.",
+        );
+      }
+      const limit = clampLimit(
+        args?.limit,
+        SUBNET_HOLDERS_LIMIT_DEFAULT,
+        SUBNET_HOLDERS_LIMIT_MAX,
+      );
+      const read = await loadSubnetHolders(
+        ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+          typeof loadSubnetHolders
+        >[0],
+        netuid,
+        { limit },
+      );
+      return buildSubnetHolders(read, netuid, { limit });
+    },
+  },
+  {
     name: "get_chain_burn",
     title: "Get every subnet's live registration cost, ranked",
     description:
@@ -12896,6 +12962,9 @@ const TOOL_OUTPUT_SCHEMAS = {
     target: "draft-2020-12",
   }),
   get_subnet_burn_history: z.toJSONSchema(GetSubnetBurnHistoryOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_subnet_holders: z.toJSONSchema(GetSubnetHoldersOutputSchema, {
     target: "draft-2020-12",
   }),
   get_chain_burn: z.toJSONSchema(GetChainBurnOutputSchema, {

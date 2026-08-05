@@ -1220,6 +1220,32 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/subnets/7/holders",
+    (body) => {
+      // #9557. The route never 404s and never serves a bare empty ranking: either
+      // `holders` is a real list, or it is empty WITH a degraded.reason saying why.
+      // An empty array on its own would read as "nobody holds this subnet's alpha",
+      // which is a measurement this route may not make while its inputs are unproven.
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.holders), true);
+      if (body.data.holders.length === 0) {
+        assert.equal(typeof body.data.degraded?.reason, "string");
+      }
+      // Ranked by alpha, descending -- asserted as ordering rather than truthiness,
+      // since a holder with a genuine zero is still a holder.
+      const alpha = body.data.holders.map((h: { alpha: number }) => h.alpha);
+      assert.deepEqual(
+        alpha,
+        [...alpha].sort((a: number, b: number) => b - a),
+      );
+      // The aggregates describe the WHOLE subnet, so holder_count is never bounded
+      // by the returned page -- that is the invariant a `?limit=` slice must not break.
+      if (body.data.holder_count !== null) {
+        assert.equal(body.data.holder_count >= body.data.holders.length, true);
+      }
+    },
+  ],
+  [
     "/api/v1/chain/burn",
     (body) => {
       // #9399. The two counts stay separate on purpose: subnet_count is what the

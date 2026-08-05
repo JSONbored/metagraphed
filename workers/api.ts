@@ -155,6 +155,7 @@ import {
   handleSubnetBurn,
   handleChainBurn,
   handleSubnetBurnHistory,
+  handleSubnetHolders,
   handleCrowdloan,
   handleCrowdloans,
   handleSubnetLease,
@@ -478,6 +479,7 @@ import {
   ROLLUP_TOKEN_HEADER,
   RUNTIME_VERSIONS_PATH_PATTERN,
   SUBNET_BURN_HISTORY_PATH_PATTERN,
+  SUBNET_HOLDERS_PATH_PATTERN,
   SUBNET_HISTORY_PATH_PATTERN,
   SUBNET_HYPERPARAMS_PATH_PATTERN,
   SUBNET_HYPERPARAMS_HISTORY_PATH_PATTERN,
@@ -4841,6 +4843,20 @@ export async function handleRequest(
         resolved.url,
       );
     }
+    // #9557: the per-subnet holder leaderboard. Mainnet-only for the same reason
+    // as the burn series above -- neither source table has a network column --
+    // so it is dispatched here rather than through dispatchLiveChainRoute.
+    const holdersMatch = SUBNET_HOLDERS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (holdersMatch) {
+      return handleSubnetHolders(
+        request,
+        env,
+        Number(holdersMatch[1]),
+        resolved.url,
+      );
+    }
     const subnetHistoryMatch = SUBNET_HISTORY_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -5448,6 +5464,11 @@ export function isMainnetOnlyApiPath(pathname: string) {
     // request would be served MAINNET prices. Declared in MAINNET_ONLY_ROUTE_PATHS
     // too -- this function and that list are asserted equal, in both directions.
     SUBNET_BURN_HISTORY_PATH_PATTERN.test(pathname) ||
+    // #9557: both source tables (nominator_positions, hotkey_alpha) are written
+    // by mainnet-only lanes and carry no network column, so a testnet-addressed
+    // request would serve MAINNET holders as testnet's. Same posture as
+    // /accounts/{ss58}/positions, which reads the first of those two.
+    SUBNET_HOLDERS_PATH_PATTERN.test(pathname) ||
     SUBNET_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_IDENTITY_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_CONCENTRATION_PATH_PATTERN.test(pathname) ||
