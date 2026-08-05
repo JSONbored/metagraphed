@@ -10,6 +10,57 @@
 // two helpers are the Zod equivalent of that same shallow-on-purpose shape.
 import { z } from "zod";
 import { NeuronSchema } from "../routes/subnet-metagraph.ts";
+import { MAX_OFFSET } from "../../workers/request-params.ts";
+
+// --- Bounded input primitives (#9460) --------------------------------------
+//
+// Every tool author wrote `z.int().min(0)` inline, so no parameter declared a real
+// upper bound and all of them inherited `z.int()`'s safe-integer sentinel — see
+// src/mcp-input-schema.ts for why that made the published schema unreadable. These
+// helpers put the bound where the fact lives: `limitSchema` takes the same constant
+// from `src/route-limits.ts` that the handler enforces and the OpenAPI `maximum`
+// publishes, so an MCP tool can no longer advertise a ceiling its own route rejects.
+// `scripts/validate-mcp.ts` asserts the two agree.
+
+/**
+ * A subnet id. Bounded because it genuinely is: `netuid` is a u16 on chain, and
+ * `isU16Netuid` is what the REST routes reject against.
+ */
+export const netuidSchema = () => z.int().min(0).max(65535);
+
+/** A page size, capped at the mirrored route's own ceiling. */
+export const limitSchema = (max: number) => z.int().min(1).max(max);
+
+/**
+ * A page offset. `MAX_OFFSET` is the deep-paging bound every paginated route already
+ * clamps to — previously declared as unbounded here and silently clamped there.
+ */
+export const offsetSchema = () => z.int().min(0).max(MAX_OFFSET);
+
+/**
+ * The accepted `fields` syntax, which was documented NOWHERE a caller could see it:
+ * 27 of 31 `fields` parameters were bare `{"type":"string"}`, 19 of them with no
+ * mention in the tool description either. The format is a comma-separated list of bare
+ * row-field names — mirrors `FIELD_NAME_PATTERN` in src/field-projection.ts, which is
+ * what actually rejects a malformed value.
+ *
+ * Deliberately as permissive as `parseFieldsParam` actually is, not as tidy as the
+ * canonical form looks: that parser trims each segment and drops empty ones, so
+ * `"netuid, name"` and `"netuid,,name"` are both accepted. A stricter pattern would
+ * make a generated client reject input the server takes — the same defect as an MCP
+ * tool declaring a page-size ceiling its own route does not enforce.
+ */
+export const FIELDS_PATTERN =
+  "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$";
+export const fieldsSchema = () =>
+  z
+    .string()
+    .regex(new RegExp(FIELDS_PATTERN))
+    .describe(
+      "Comma-separated row field names to project, e.g. `netuid,name,slug`. " +
+        "Bare identifiers only — not a JSON array, no paths or indices. " +
+        "An unknown name is rejected rather than ignored.",
+    );
 
 // Bare `{type:"object"}` (hand-written, no `properties`/`additionalProperties`
 // declared -- JSON Schema's own default for an omitted additionalProperties

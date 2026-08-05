@@ -19,6 +19,7 @@ import {
   takeDistribution,
   buildValidatorEconomicsHistory,
   rankValidatorEconomics,
+  VALIDATOR_ECONOMICS_SORTS,
   groupNeuronsByNetuid,
   type ValidatorEconomicsRow,
   type ValidatorNeuron,
@@ -807,6 +808,43 @@ function row(
   };
 }
 
+describe("rankValidatorEconomics — an unsupported sort", () => {
+  // #9460. An unsupported sort silently became the default ranking, which was then
+  // echoed back as `sort`. Asking for `tao_inflow_per_day` and mistyping it returned a
+  // COST-ranked list, labelled honestly, with no error — a plausible answer to a
+  // question nobody asked. REST already returned 400 and GraphQL BAD_USER_INPUT; only
+  // MCP reached this, and MCP is where a model's guess lands.
+  test("is rejected rather than answered with the default", () => {
+    assert.throws(
+      () => rankValidatorEconomics([row(1)], { sort: "tao_inflow_per_dya" }),
+      (error: Error) => {
+        assert.equal(error.name, "UnsupportedSortError");
+        assert.match(error.message, /is not a supported sort/);
+        // The message names the alternatives — the caller mistyped one of five.
+        assert.match(error.message, /tao_inflow_per_day/);
+        return true;
+      },
+    );
+  });
+
+  test("an ABSENT sort still takes the default", () => {
+    // Not the same question: omitting a sort is a valid request, mistyping one is not.
+    for (const options of [{}, { sort: undefined }, { sort: "" }]) {
+      assert.equal(
+        rankValidatorEconomics([row(1)], options).sort,
+        "earning_floor_cost_tao",
+      );
+    }
+  });
+
+  test("every supported key is accepted", () => {
+    // Guards the rejection against being too eager as the set changes.
+    for (const sort of VALIDATOR_ECONOMICS_SORTS) {
+      assert.equal(rankValidatorEconomics([row(1)], { sort }).sort, sort);
+    }
+  });
+});
+
 describe("rankValidatorEconomics", () => {
   test("ranks cheapest-to-earn first by default", () => {
     const out = rankValidatorEconomics([
@@ -875,12 +913,13 @@ describe("rankValidatorEconomics", () => {
     );
   });
 
-  test("falls back to the default sort rather than erroring on an unknown one", () => {
-    // The handler rejects a bad sort before reaching here; this is the belt to
-    // that braces, so a caller that bypasses the handler still gets an ordering.
-    const out = rankValidatorEconomics([row(1)], { sort: "nonsense" });
-    assert.equal(out.sort, "earning_floor_cost_tao");
-  });
+  // Was: "falls back to the default sort rather than erroring on an unknown one",
+  // reasoning that the handler rejects a bad sort first so this is only a belt to that
+  // braces. The premise was wrong (#9460) — the MCP tool reached here with no
+  // validation at all, and the fallback turned a typo into a differently-ranked list
+  // presented as an answer. A belt that silently changes the question is worse than no
+  // belt; the rejection now lives here, where every surface passes through.
+  // Behaviour pinned in "rankValidatorEconomics — an unsupported sort" above.
 
   test("excludes an unpriceable subnet with a reason instead of ranking it first", () => {
     // A null cost sorted as 0 would put the one subnet we CANNOT price at the

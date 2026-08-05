@@ -678,6 +678,26 @@ export const VALIDATOR_ECONOMICS_SORTS = [
 ] as const;
 export type ValidatorEconomicsSort = (typeof VALIDATOR_ECONOMICS_SORTS)[number];
 
+/**
+ * Thrown when a caller names a sort key that does not exist (#9460).
+ *
+ * A distinct type rather than a bare Error so each surface can map it to its own
+ * shape — REST to a 400, MCP to `invalid_params` — without string-matching a message.
+ */
+export class UnsupportedSortError extends Error {
+  // Plain fields, not constructor parameter properties: these modules are loaded by
+  // Node's strip-only TypeScript mode, which rejects that syntax outright.
+  readonly supported: readonly string[] = VALIDATOR_ECONOMICS_SORTS;
+  readonly requested: string;
+  constructor(requested: string) {
+    super(
+      `${requested} is not a supported sort. Supported: ${VALIDATOR_ECONOMICS_SORTS.join(", ")}.`,
+    );
+    this.name = "UnsupportedSortError";
+    this.requested = requested;
+  }
+}
+
 /** Ascending for costs (cheapest first), descending for the "more is better" keys. */
 const DESCENDING_SORTS = new Set<string>([
   "tao_inflow_per_day",
@@ -723,6 +743,21 @@ export function rankValidatorEconomics(
   rows: readonly ValidatorEconomicsRow[],
   options: ValidatorEconomicsRankingOptions = {},
 ): ValidatorEconomicsRanking {
+  // An ABSENT sort takes the default; an unsupported one is rejected (#9460).
+  //
+  // These are different questions and this silently answered both with the default:
+  // asking to rank by `tao_inflow_per_day` and mistyping it returned a list ranked by
+  // cost, echoing `sort: "earning_floor_cost_tao"` back, with no error. The caller gets
+  // a plausible ranking that answers a question it did not ask — and on MCP, where the
+  // input schema is not enforced at dispatch, a model's guess landed here directly.
+  // REST already rejected the same input with a 400; the two surfaces now agree.
+  if (
+    options.sort != null &&
+    options.sort !== "" &&
+    !VALIDATOR_ECONOMICS_SORTS.includes(options.sort as ValidatorEconomicsSort)
+  ) {
+    throw new UnsupportedSortError(String(options.sort));
+  }
   const sort = VALIDATOR_ECONOMICS_SORTS.includes(
     options.sort as ValidatorEconomicsSort,
   )

@@ -627,7 +627,9 @@ import {
 import {
   DEFAULT_VALIDATOR_ECONOMICS_HISTORY_WINDOW,
   VALIDATOR_ECONOMICS_HISTORY_WINDOWS,
+  VALIDATOR_ECONOMICS_SORTS,
 } from "./validator-economics.ts";
+import { stripSentinelIntegerBounds } from "./mcp-input-schema.ts";
 import {
   buildSubnetValidatorEconomicsPayload,
   buildSubnetValidatorEconomicsHistoryPayload,
@@ -4844,6 +4846,19 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       args: z.infer<typeof ListValidatorEconomicsInputSchema>,
       ctx: McpCtx,
     ) {
+      // #9460: an unsupported sort is rejected, not silently answered with the
+      // default ranking. REST returns 400 for the same input; this is that parity.
+      if (
+        args?.sort != null &&
+        !VALIDATOR_ECONOMICS_SORTS.includes(
+          args.sort as (typeof VALIDATOR_ECONOMICS_SORTS)[number],
+        )
+      ) {
+        throw toolError(
+          "invalid_params",
+          `${args.sort} is not a supported sort. Supported: ${VALIDATOR_ECONOMICS_SORTS.join(", ")}.`,
+        );
+      }
       const { data } = await buildValidatorEconomicsRankingPayload(
         ctx.env,
         {
@@ -13200,7 +13215,10 @@ export function listToolDefinitions() {
       name: tool.name,
       title: tool.title,
       description: `${tool.description} ${UNTRUSTED_DATA_NOTE}`,
-      inputSchema: tool.inputSchema,
+      // #9460: drop Zod's implicit safe-integer bounds. They are not constraints
+      // anyone chose, and while they were emitted a real `maximum` could not be told
+      // apart from `z.int()`'s default — see src/mcp-input-schema.ts.
+      inputSchema: stripSentinelIntegerBounds(tool.inputSchema),
       // outputSchema (optional) lets a client validate the structuredContent the
       // tool returns; included only when the tool declares one.
       ...(outputSchema ? { outputSchema } : {}),

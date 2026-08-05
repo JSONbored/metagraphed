@@ -10,10 +10,16 @@ import {
   ValidatorEconomicsRankingArtifactSchema,
   SubnetValidatorEconomicsHistoryArtifactSchema,
 } from "../routes/validator-economics.ts";
+import { limitSchema, netuidSchema, offsetSchema } from "./shared.ts";
+import { VALIDATOR_ECONOMICS_LIMIT_MAX } from "../../src/route-limits.ts";
+import {
+  VALIDATOR_ECONOMICS_HISTORY_WINDOWS,
+  VALIDATOR_ECONOMICS_SORTS,
+} from "../../src/validator-economics.ts";
 
 export const GetSubnetValidatorEconomicsInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
   })
   .strict();
 export type GetSubnetValidatorEconomicsInput = z.infer<
@@ -31,9 +37,15 @@ export type GetSubnetValidatorEconomicsOutput = z.infer<
 // validating on" into a single agent call.
 export const ListValidatorEconomicsInputSchema = z
   .object({
-    sort: z.string().optional(),
-    limit: z.int().min(1).optional(),
-    offset: z.int().min(0).optional(),
+    // #9460: an enum, not a free string. The description already named all five keys,
+    // and REST rejected anything else with a 400 — but MCP took any string and SILENTLY
+    // ranked by the default, echoing that default back as `sort`. A model that guessed
+    // got a plausible list answering a question nobody asked. Read from the same
+    // constant the ranking and the REST validator use.
+    sort: z.enum(VALIDATOR_ECONOMICS_SORTS).optional(),
+    // Was unbounded while the mirrored route rejected anything over 512.
+    limit: limitSchema(VALIDATOR_ECONOMICS_LIMIT_MAX).optional(),
+    offset: offsetSchema().optional(),
     emission_gate_open: z.boolean().optional(),
     cap_binding: z.boolean().optional(),
   })
@@ -51,8 +63,18 @@ export type ListValidatorEconomicsOutput = z.infer<
 // get_subnet_validator_economics_history (#9326).
 export const GetSubnetValidatorEconomicsHistoryInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    window: z.string().optional(),
+    netuid: netuidSchema(),
+    // #9460: the one window parameter of 55 that was not an enum. Its sibling
+    // get_subnet_burn_history already declared one, so a model reading the two
+    // together had no way to know this was the same kind of closed set.
+    window: z
+      .enum(
+        Object.keys(VALIDATOR_ECONOMICS_HISTORY_WINDOWS) as [
+          string,
+          ...string[],
+        ],
+      )
+      .optional(),
   })
   .strict();
 export type GetSubnetValidatorEconomicsHistoryInput = z.infer<

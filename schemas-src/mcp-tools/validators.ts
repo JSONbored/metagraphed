@@ -5,7 +5,12 @@
 // covered pilot routes -- no existing Zod schema to reuse. Modeled fresh,
 // matching each hand-written literal field-for-field.
 import { z } from "zod";
-import { NeuronFieldsInputSchema, OpenObjectArraySchema } from "./shared.ts";
+import {
+  limitSchema,
+  NeuronFieldsInputSchema,
+  OpenObjectArraySchema,
+} from "./shared.ts";
+import { GLOBAL_VALIDATOR_LIMIT_MAX } from "../../src/route-limits.ts";
 
 // Mirrors workers/config.ts's SS58_ADDRESS_PATTERN (inlined rather than
 // cross-imported from workers/, matching this directory's existing
@@ -58,7 +63,11 @@ const GLOBAL_VALIDATOR_SORTS = [
 export const ListGlobalValidatorsInputSchema = z
   .object({
     sort: z.enum(GLOBAL_VALIDATOR_SORTS).optional(),
-    limit: z.int().min(1).max(100).optional(),
+    // #9460: was a hardcoded 100 while this tool's own description — interpolated from
+    // GLOBAL_VALIDATOR_LIMIT_MAX — said "max 2000", and the handler clamped to 2000.
+    // The tool advertised 2000 in prose, 100 in schema, and served 2000. Now the
+    // constant is the only declaration, as src/route-limits.ts intended.
+    limit: limitSchema(GLOBAL_VALIDATOR_LIMIT_MAX).optional(),
   })
   .strict();
 export type ListGlobalValidatorsInput = z.infer<
