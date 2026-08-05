@@ -3,14 +3,19 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
+  auraSlotFromDigest,
+  AURA_AUTHORITIES_KEY,
+  authorFromAuthorities,
   fetchBlockAt,
   fetchEventCountAt,
   fetchHeadNumber,
   heightsToEmit,
   hexToNumber,
   scaleCompactLength,
+  scaleCompactPrefixBytes,
   SYSTEM_EVENTS_STORAGE_KEY,
 } from "../src/head-poller.ts";
+import { DEFAULT_SS58_PREFIX, encodeAccountId32 } from "../src/ss58.ts";
 import { ChainFirehoseHub } from "../workers/chain-firehose-hub.ts";
 
 const rpcFetch = (handlers: Record<string, (params: unknown[]) => unknown>) =>
@@ -66,6 +71,9 @@ test("fetchBlockAt assembles a scalar blocks payload", async () => {
     // Opt-in (#9417): this call did not ask for the count, so no extra
     // state_getStorage was spent and the field is an honest null.
     event_count: null,
+    // Opt-in (#9455) on the same terms as the count above: unasked-for, so no
+    // extra state_getStorage was spent and the field is an honest null.
+    author: null,
     observed_at: 1_000,
   });
 });
@@ -430,4 +438,199 @@ test("alarm: a repeating failure captures ONE $exception; a changed failure capt
     globalThis.fetch = realFetch;
   }
   assert.ok(alarm() !== null, "re-armed throughout");
+});
+
+// ---------------------------------------------------------------------------
+// #9455 -- the block author, derivable at head without runtime metadata.
+// ---------------------------------------------------------------------------
+
+// Block 8,700,000's real PreRuntime digest log, captured from the live archive:
+// 0x06 (PreRuntime) ++ 61757261 ("aura") ++ 0x20 (compact: an 8-byte payload)
+// ++ the slot as a little-endian u64.
+const REAL_AURA_LOG = "0x06617572612073bddd0800000000";
+const REAL_AURA_SLOT = 148_749_683n;
+
+/** A SCALE `Vec<[u8; 32]>` of `count` keys, key i being the byte i+1 repeated. */
+function authoritiesVec(count: number): string {
+  const keys = Array.from({ length: count }, (_unused, i) =>
+    String(i + 1)
+      .padStart(2, "0")
+      .repeat(32),
+  );
+  return `0x${(count << 2).toString(16).padStart(2, "0")}${keys.join("")}`;
+}
+
+test("scaleCompactPrefixBytes reports each compact mode's width", () => {
+  // The value and its width are different questions: scaleCompactLength reads
+  // the number, this reads where the payload after it starts.
+  assert.equal(scaleCompactPrefixBytes("20"), 1); // single-byte mode
+  assert.equal(scaleCompactPrefixBytes("0105"), 2); // two-byte mode
+  assert.equal(scaleCompactPrefixBytes("02000001"), 4); // four-byte mode
+  assert.equal(scaleCompactPrefixBytes("0300000001"), 5); // big-integer mode
+  assert.equal(scaleCompactPrefixBytes(""), null);
+});
+
+test("auraSlotFromDigest reads the slot from a real production header", () => {
+  // Golden vector, not a synthetic one: this is the exact log the chain served
+  // for block 8,700,000, whose author the lakehouse independently records.
+  assert.equal(auraSlotFromDigest([REAL_AURA_LOG]), REAL_AURA_SLOT);
+});
+
+test("auraSlotFromDigest skips logs that are not Aura pre-runtime", () => {
+  // A real header carries Seal and Consensus logs alongside the PreRuntime one;
+  // the scan must pass over them rather than mis-read the first entry.
+  const seal = "0x05617572610101328cdf16";
+  const consensus = "0x0466726f6e8902016b264e";
+  assert.equal(
+    auraSlotFromDigest([consensus, seal, REAL_AURA_LOG]),
+    REAL_AURA_SLOT,
+  );
+});
+
+test("auraSlotFromDigest returns null rather than guessing", () => {
+  assert.equal(auraSlotFromDigest(undefined), null); // header carried no digest
+  assert.equal(auraSlotFromDigest([]), null);
+  assert.equal(auraSlotFromDigest(["0x05617572610101"]), null); // no PreRuntime
+  assert.equal(auraSlotFromDigest([{ preRuntime: [] }]), null); // not a hex log
+  // PreRuntime for a different engine (BABE) must not be read as an Aura slot.
+  assert.equal(auraSlotFromDigest(["0x0662616265200102030405060708"]), null);
+  // Truncated payload: the 8 slot bytes are not all there.
+  assert.equal(auraSlotFromDigest(["0x06617572612073bd"]), null);
+});
+
+test("authorFromAuthorities selects authorities[slot % n] and SS58-encodes it", () => {
+  const authorities = authoritiesVec(3);
+  // 7 % 3 = 1 -> the second key, which is byte 0x02 repeated.
+  assert.equal(
+    authorFromAuthorities(authorities, 7n),
+    encodeAccountId32(new Array(32).fill(2), DEFAULT_SS58_PREFIX),
+  );
+  // 6 % 3 = 0 -> wraps back to the first.
+  assert.equal(
+    authorFromAuthorities(authorities, 6n),
+    encodeAccountId32(new Array(32).fill(1), DEFAULT_SS58_PREFIX),
+  );
+});
+
+test("authorFromAuthorities reduces the slot exactly, past 2^53", () => {
+  // The slot is a u64 and the modulo picks the producer, so it must stay in
+  // BigInt space -- reducing through a double would start attributing blocks
+  // to the wrong authority instead of failing loudly.
+  const authorities = authoritiesVec(3);
+  const slot = 9_007_199_254_740_995n; // 2^53 + 3, exactly representable only as a BigInt
+  assert.equal(slot % 3n, 2n);
+  assert.equal(
+    authorFromAuthorities(authorities, slot),
+    encodeAccountId32(new Array(32).fill(3), DEFAULT_SS58_PREFIX),
+  );
+});
+
+test("authorFromAuthorities refuses malformed or truncated authority sets", () => {
+  // A wrong author is worse than an absent one, so every one of these is null
+  // rather than a best effort.
+  assert.equal(authorFromAuthorities(authoritiesVec(3), null), null); // no slot
+  assert.equal(authorFromAuthorities(null, 1n), null); // storage read missed
+  assert.equal(authorFromAuthorities("0xzz", 1n), null); // not hex
+  assert.equal(authorFromAuthorities("0x00", 1n), null); // empty vec
+  // Claims 3 keys, carries 2: picking from a short read would silently
+  // attribute the block to whichever key survived.
+  assert.equal(
+    authorFromAuthorities(`0x0c${"01".repeat(32)}${"02".repeat(32)}`, 1n),
+    null,
+  );
+});
+
+test("AURA_AUTHORITIES_KEY is derived, not hardcoded", () => {
+  // Same contract as SYSTEM_EVENTS_STORAGE_KEY: 32 bytes of twox128 pair, and
+  // it must match the key the live chain actually answers on.
+  assert.match(AURA_AUTHORITIES_KEY, /^0x[0-9a-f]{64}$/);
+  assert.equal(
+    AURA_AUTHORITIES_KEY,
+    "0x57f8dc2f5ab09467896f47300f0424385e0621c4869aa60c02be9adcc98a0d1d",
+  );
+});
+
+test("fetchBlockAt derives the author only when asked", async () => {
+  let storageReads = 0;
+  const handlers = {
+    chain_getBlockHash: () => "0xabc",
+    chain_getBlock: () => ({
+      block: {
+        header: { parentHash: "0xdef", digest: { logs: [REAL_AURA_LOG] } },
+        extrinsics: [],
+      },
+    }),
+    state_getStorage: () => {
+      storageReads += 1;
+      return authoritiesVec(20);
+    },
+  };
+  const without = await fetchBlockAt(
+    "https://rpc.example",
+    16,
+    rpcFetch(handlers),
+    () => 1,
+  );
+  assert.equal(without.author, null);
+  assert.equal(storageReads, 0, "unasked-for author must cost no RPC");
+
+  const withAuthor = await fetchBlockAt(
+    "https://rpc.example",
+    16,
+    rpcFetch(handlers),
+    () => 1,
+    false,
+    true,
+  );
+  // 148749683 % 20 = 3 -> the fourth key.
+  assert.equal(
+    withAuthor.author,
+    encodeAccountId32(new Array(32).fill(4), DEFAULT_SS58_PREFIX),
+  );
+  assert.equal(storageReads, 1);
+});
+
+test("fetchBlockAt keeps the block when the author read fails", async () => {
+  // Fail-soft, exactly like event_count: losing the height because a storage
+  // read failed would be the worse trade.
+  const block = await fetchBlockAt(
+    "https://rpc.example",
+    16,
+    rpcFetch({
+      chain_getBlockHash: () => "0xabc",
+      chain_getBlock: () => ({
+        block: {
+          header: { parentHash: "0xdef", digest: { logs: [REAL_AURA_LOG] } },
+          extrinsics: [1],
+        },
+      }),
+      // No state_getStorage handler -> the rpc helper throws.
+    }),
+    () => 1,
+    false,
+    true,
+  );
+  assert.equal(block.author, null);
+  assert.equal(block.block_number, 16, "the height must survive");
+  assert.equal(block.extrinsic_count, 1);
+});
+
+test("fetchBlockAt tolerates a header with no digest", async () => {
+  // BlockBodySchema is deliberately loose here: a header we cannot read logs
+  // from must still yield a block row with an honest null author.
+  const block = await fetchBlockAt(
+    "https://rpc.example",
+    16,
+    rpcFetch({
+      chain_getBlockHash: () => "0xabc",
+      chain_getBlock: () => ({
+        block: { header: { parentHash: "0xdef" }, extrinsics: [] },
+      }),
+    }),
+    () => 1,
+    false,
+    true,
+  );
+  assert.equal(block.author, null);
+  assert.equal(block.block_hash, "0xabc");
 });

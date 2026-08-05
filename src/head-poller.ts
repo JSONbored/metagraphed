@@ -14,6 +14,7 @@
 
 import { z } from "zod";
 import { bytesToHex, storageMapPrefix } from "./twox-storage-key.ts";
+import { DEFAULT_SS58_PREFIX, encodeAccountId32 } from "./ss58.ts";
 
 /**
  * The firehose `blocks` payload this module produces.
@@ -39,6 +40,14 @@ export const HeadBlockSchema = z.object({
    * See migrations/d1/0016_blocks_head_event_count.sql.
    */
   event_count: z.int().min(0).nullable(),
+  /**
+   * The SS58 address that produced this block, or null when it could not be
+   * derived.
+   *
+   * Nullable, never defaulted: an author we do not have is not a placeholder
+   * address. See migrations/d1/0017_blocks_head_author.sql.
+   */
+  author: z.string().nullable(),
   observed_at: z.int(),
 });
 export type HeadBlock = z.infer<typeof HeadBlockSchema>;
@@ -54,7 +63,16 @@ export type HeadBlock = z.infer<typeof HeadBlockSchema>;
  */
 const BlockBodySchema = z.object({
   block: z.object({
-    header: z.object({ parentHash: z.string() }),
+    header: z.object({
+      parentHash: z.string(),
+      /**
+       * The header's digest logs, where Aura records the slot this block was
+       * produced in. Optional and loose on purpose, per this schema's rule: a
+       * header without decodable logs must still yield a block row (with a
+       * null author), not a refusal.
+       */
+      digest: z.object({ logs: z.array(z.unknown()) }).optional(),
+    }),
     extrinsics: z.array(z.unknown()),
   }),
 });
@@ -117,6 +135,18 @@ export async function fetchHeadNumber(
  */
 export const SYSTEM_EVENTS_STORAGE_KEY = bytesToHex(
   storageMapPrefix("System", "Events"),
+);
+
+/**
+ * Storage key for `Aura.Authorities`: twox128("Aura") ++ twox128("Authorities").
+ *
+ * Derived for the same reasons as SYSTEM_EVENTS_STORAGE_KEY above, and legal
+ * for this module on the same grounds: hashing two literal names needs no
+ * runtime metadata, and the `Vec<[u8; 32]>` it returns is read by length and
+ * offset rather than decoded against a type registry.
+ */
+export const AURA_AUTHORITIES_KEY = bytesToHex(
+  storageMapPrefix("Aura", "Authorities"),
 );
 
 /**
@@ -202,6 +232,123 @@ export async function fetchEventCountAt(
   }
 }
 
+// How many bytes the SCALE compact integer at the front of `hex` occupies.
+// scaleCompactLength reads the VALUE; a payload that follows the prefix also
+// needs to know where it ends. Mirrors that function's mode table exactly.
+export function scaleCompactPrefixBytes(hex: string): number | null {
+  if (hex.length < 2) return null;
+  const b0 = Number.parseInt(hex.slice(0, 2), 16);
+  if (!Number.isFinite(b0)) return null;
+  const mode = b0 & 0b11;
+  if (mode === 0b00) return 1;
+  if (mode === 0b01) return 2;
+  if (mode === 0b10) return 4;
+  return (b0 >> 2) + 5;
+}
+
+/** Aura's digest engine id, ASCII "aura" — the four bytes after the log tag. */
+const AURA_ENGINE_ID = "61757261";
+/** `DigestItem::PreRuntime` — SCALE variant index 6. */
+const PRE_RUNTIME_TAG = "06";
+
+/**
+ * The Aura slot this block was produced in, from the header's own PreRuntime
+ * digest log, or null when the header carries no readable Aura log.
+ *
+ * Costs no RPC: `chain_getBlock` already returned this header. Layout is
+ * `0x06` (PreRuntime) ++ 4-byte engine id ++ a compact-length-prefixed payload
+ * whose first 8 bytes are the slot as a little-endian u64.
+ *
+ * Returns a bigint, not a number: a slot is a u64, and the modulo that selects
+ * the authority has to be exact. Reducing it through a double would start
+ * mis-attributing blocks once the slot passes 2^53 rather than failing loudly.
+ */
+export function auraSlotFromDigest(logs: unknown): bigint | null {
+  if (!Array.isArray(logs)) return null;
+  for (const log of logs) {
+    if (typeof log !== "string" || !/^0x([0-9a-fA-F]{2})+$/.test(log)) continue;
+    const body = log.slice(2);
+    if (body.slice(0, 2) !== PRE_RUNTIME_TAG) continue;
+    if (body.slice(2, 10).toLowerCase() !== AURA_ENGINE_ID) continue;
+    const payload = body.slice(10);
+    const prefix = scaleCompactPrefixBytes(payload);
+    if (prefix === null) return null;
+    const slotHex = payload.slice(prefix * 2, prefix * 2 + 16);
+    if (slotHex.length !== 16) return null;
+    // Little-endian u64: walk the byte pairs back to front.
+    let be = "";
+    for (let i = 0; i < 8; i += 1) be = slotHex.slice(i * 2, i * 2 + 2) + be;
+    if (!/^[0-9a-fA-F]{16}$/.test(be)) return null;
+    return BigInt(`0x${be}`);
+  }
+  return null;
+}
+
+/**
+ * The producer of a block, given the SCALE-encoded `Aura.Authorities` value
+ * and that block's slot: `authorities[slot % authorities.length]`, SS58.
+ *
+ * The stored value is a `Vec<AuthorityId>` — a compact length followed by that
+ * many 32-byte sr25519 public keys. Null on anything malformed rather than a
+ * guess, because a wrong author is worse than an absent one.
+ */
+export function authorFromAuthorities(
+  authoritiesHex: unknown,
+  slot: bigint | null,
+): string | null {
+  if (slot === null) return null;
+  if (
+    typeof authoritiesHex !== "string" ||
+    !/^0x([0-9a-fA-F]{2})*$/.test(authoritiesHex)
+  ) {
+    return null;
+  }
+  const body = authoritiesHex.slice(2);
+  const count = scaleCompactLength(authoritiesHex);
+  const prefix = scaleCompactPrefixBytes(body);
+  if (count === null || prefix === null || count <= 0) return null;
+  // Refuse a truncated set: picking from a short read would silently attribute
+  // the block to whichever key happened to survive.
+  if (body.length < (prefix + count * 32) * 2) return null;
+  const index = Number(slot % BigInt(count));
+  const start = (prefix + index * 32) * 2;
+  const key = body.slice(start, start + 64);
+  const bytes: number[] = [];
+  for (let i = 0; i < 32; i += 1) {
+    bytes.push(Number.parseInt(key.slice(i * 2, i * 2 + 2), 16));
+  }
+  return encodeAccountId32(bytes, DEFAULT_SS58_PREFIX);
+}
+
+/**
+ * This block's author, or null when it cannot be derived.
+ *
+ * One extra `state_getStorage`, and fail-SOFT for the same reason
+ * fetchEventCountAt is: the block row matters, its author does not. The
+ * authority set is read at this block's hash rather than at head, so a set
+ * rotation between the poll and the read cannot mis-attribute the block.
+ */
+async function fetchAuthorAt(
+  url: string,
+  hash: string,
+  logs: unknown,
+  fetchImpl: typeof fetch,
+): Promise<string | null> {
+  const slot = auraSlotFromDigest(logs);
+  if (slot === null) return null;
+  try {
+    const raw = await rpc(
+      url,
+      "state_getStorage",
+      [AURA_AUTHORITIES_KEY, hash],
+      fetchImpl,
+    );
+    return authorFromAuthorities(raw, slot);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * One finalized-ish block at an exact height, as a firehose `blocks` payload.
  * Three reads: hash at height, header, body (for the extrinsic count the UI's
@@ -218,6 +365,13 @@ export async function fetchBlockAt(
    * request count; the head poller opts in via CHAIN_HEAD_EVENT_COUNT_ENABLED.
    */
   withEventCount = false,
+  /**
+   * Whether to spend one extra `state_getStorage` on this block's author.
+   * Off by default for the same reason as withEventCount: every existing
+   * caller keeps its exact request count. The head poller opts in via
+   * CHAIN_HEAD_AUTHOR_ENABLED.
+   */
+  withAuthor = false,
 ): Promise<HeadBlock> {
   const hash = (await rpc(
     url,
@@ -249,6 +403,11 @@ export async function fetchBlockAt(
     // failure degrades the count to null and leaves the block intact.
     event_count: withEventCount
       ? await fetchEventCountAt(url, hash, fetchImpl)
+      : null,
+    // Same posture as event_count: awaited (it needs the hash above), never
+    // throws, and degrades to null rather than costing the height.
+    author: withAuthor
+      ? await fetchAuthorAt(url, hash, header.digest?.logs, fetchImpl)
       : null,
     observed_at: now(),
   };

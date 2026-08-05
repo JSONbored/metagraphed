@@ -1,0 +1,40 @@
+-- blocks_head.author (#9455) -- the block's producer, read by the head poller
+-- itself instead of waiting for the Containers indexer.
+--
+-- WHY THIS EXISTS. `author` was the one column the head window could not show.
+-- Below the decode watermark the lakehouse serves a full column set, so
+-- list_blocks reports an author for every historical block (verified 20/20 at
+-- 4.2M / 8.0M / 8.7M / 8.775M); above it, blocks_head answered with null. For a
+-- block explorer that window is the front page, so "who produced the newest
+-- blocks" was exactly the question the newest data could not answer -- and it
+-- read as a dead field rather than a decode lag (#9455 filed it as
+-- "uniformly absent", which the seam explains).
+--
+-- WHY THE POLLER CAN KNOW THIS. Same argument as event_count in
+-- 0016_blocks_head_event_count.sql: the CONTENT of an extrinsic needs SCALE
+-- decoding against runtime metadata, but this does not. Aura writes the slot
+-- into the block header's own PreRuntime digest log, and the header is already
+-- in hand from the `chain_getBlock` the poller makes anyway -- so the slot
+-- costs no extra RPC. The authority set is one `Aura.Authorities` storage read,
+-- and the producer is `authorities[slot % authorities.length]`, SS58-encoded
+-- with the encoder src/ss58.ts already ships.
+--
+-- Verified against production before it was built: the derivation reproduces
+-- the authors the lakehouse already holds, exactly, for blocks 8,700,000 /
+-- 8,700,001 / 8,700,002 / 8,700,003 -- 5HZDvVFW.. / 5H3v2VfQ.. / 5CPhKdvH.. /
+-- 5DZTjVhq.. . A derivation that did not match known-good rows would have
+-- produced a plausible-looking wrong author, which is worse than the null it
+-- replaces.
+--
+-- WHY IT IS NULLABLE. Fail-soft, exactly like event_count: a block row is
+-- essential, its author is not. A failed storage read (or a header carrying no
+-- Aura pre-runtime log) writes the block with a null author rather than losing
+-- the height. Null keeps meaning "not known here" -- it must never be defaulted
+-- to a placeholder address, and the serving layer's toAuthorOrNull already
+-- treats "" as null for exactly that reason (#4687).
+--
+-- Backfill is deliberately absent, same rationale as 0016: rows below the
+-- decode watermark are already answered by the lakehouse with a verified
+-- author. This column only has to cover the ~10-20 minutes between a block
+-- being seen and being decoded.
+ALTER TABLE blocks_head ADD COLUMN author TEXT;
