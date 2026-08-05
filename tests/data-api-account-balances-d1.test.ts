@@ -280,10 +280,12 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
     assert.equal(rows().length, 0);
   });
 
-  test("chunks a batch under the binding's 100-parameter limit", async () => {
-    // Four columns puts 25 rows in a statement, so this is the wall #9157 hit
-    // in production -- a full pass is ~21,700 statements and a hand-rolled
-    // batch would fail on the first request.
+  test("a whole batch is ONE statement, end to end through the route", async () => {
+    // The wall #9157 hit: four columns put 25 rows in a statement, so 60 rows
+    // took 3 and a full pass took ~14,600 -- more than the producer's request
+    // had 60 seconds to finish. A chunk now travels as a single json_each
+    // parameter, and this asserts it through the REAL route against REAL
+    // SQLite, so it is the end-to-end proof that the rows still land.
     const many = Array.from({ length: 60 }, (_unused, i) =>
       balanceRow({ ss58: `acct-${i}` }),
     );
@@ -293,10 +295,16 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
       ok: true,
       account_balances_written: 60,
       stores: ["d1"],
-      d1_statements: 3,
+      d1_statements: 1,
       pass_total: null,
     });
-    assert.equal(rows().length, 60);
+    assert.equal(rows().length, 60, "every row landed");
+    // And the values are not shifted a column: json_extract('$[i]') has to
+    // agree with the writer's own column order, and a silent shift here would
+    // write every balance into the wrong field and still succeed.
+    const first = rows().find((r) => r.ss58 === "acct-7")!;
+    assert.equal(first.free_tao, balanceRow().free_tao);
+    assert.equal(first.reserved_tao, balanceRow().reserved_tao);
   });
 
   test("a D1 failure is a 502, not a silent success", async () => {

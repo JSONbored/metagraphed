@@ -420,9 +420,11 @@ describe("writeAccountIdentityToD1 against real SQLite", () => {
     );
   });
 
-  test("a full-width batch splits under the parameter budget", async () => {
-    // 9 columns -> 10 rows per statement (90 params). 25 accounts must
-    // produce 3 statements, none over the budget.
+  test("a full-width batch is ONE statement, and every row still lands", async () => {
+    // The old shape: 9 columns against the 90-parameter budget is 10 rows a
+    // statement, so 25 accounts took 3. They now take one -- and this runs
+    // against REAL SQLite, so it is also the end-to-end proof that the
+    // json_each upsert writes what the per-row binding wrote.
     const rows = Array.from({ length: 25 }, (_, i) =>
       identityRow({ account: `5Acct${i}` }),
     );
@@ -431,16 +433,17 @@ describe("writeAccountIdentityToD1 against real SQLite", () => {
       rows,
       historyRows: [],
     });
-    assert.equal(database.prepared.length, 3);
+    assert.equal(database.prepared.length, 1);
     for (const statement of database.prepared) {
-      assert.ok(statement.values.length <= D1_PARAM_BUDGET);
+      assert.equal(statement.values.length, 1, "one parameter per statement");
     }
-    assert.equal(count("account_identity"), 25);
+    assert.equal(count("account_identity"), 25, "every row landed");
+    // The parameter budget still describes the OLD shape correctly; it is just
+    // no longer what bounds a chunk.
     assert.equal(
       rowsPerStatement(ACCOUNT_IDENTITY_INSERT_COLUMNS.length) *
         ACCOUNT_IDENTITY_INSERT_COLUMNS.length,
       90,
-      "the identity column count should sit exactly at the budget",
     );
   });
 

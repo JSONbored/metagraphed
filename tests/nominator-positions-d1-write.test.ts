@@ -173,15 +173,24 @@ describe("writeNominatorPositionsToD1", () => {
       rows,
       coldkeyMaxCapturedAt: coldkeyMaxCapturedAt(rows),
     });
-    assert.ok(statements.length > 1, "500 rows must not be one statement");
-    for (const statement of statements) {
-      assert.ok(
-        statement.params.length <= D1_BIND_PARAM_CAP,
-        `a statement bound ${statement.params.length} parameters; D1's binding rejects anything over ${D1_BIND_PARAM_CAP}`,
+    // ONE parameter per statement now: a chunk travels as json_each rather
+    // than as one parameter per column per row, so the count cannot drift
+    // toward the cap as columns are added -- it is no longer a function of
+    // them at all.
+    const inserts = statements.filter((s) => s.sql.startsWith("INSERT"));
+    assert.ok(inserts.length, "the chunked upserts are the ones at issue");
+    for (const statement of inserts) {
+      assert.equal(
+        statement.params.length,
+        1,
+        `an insert bound ${statement.params.length} parameters; D1's binding rejects anything over ${D1_BIND_PARAM_CAP}`,
       );
     }
-    // The chunk size is DERIVED from the column count, so adding a column
-    // re-sizes the batch instead of silently pushing it over the limit.
+    // The prune is not a chunked upsert -- it binds its own per-coldkey
+    // arguments -- but it must still sit under the cap.
+    for (const statement of statements) {
+      assert.ok(statement.params.length <= D1_BIND_PARAM_CAP);
+    }
     assert.ok(D1_PARAM_BUDGET <= D1_BIND_PARAM_CAP);
   });
 

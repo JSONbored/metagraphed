@@ -16,7 +16,7 @@ import {
   ACCOUNT_BALANCE_INSERT_COLUMNS,
   writeAccountBalancesToD1,
 } from "../src/account-balances-d1-write.ts";
-import { D1_PARAM_BUDGET } from "../src/neurons-d1-write.ts";
+import { D1_JSON_BUDGET_BYTES } from "../src/neurons-d1-write.ts";
 
 const MIGRATION = readFileSync(
   "migrations/d1/0017_account_balances.sql",
@@ -132,15 +132,12 @@ describe("writeAccountBalancesToD1", () => {
       /WHERE account_balances\.captured_at <= excluded\.captured_at/,
       "an older capture must never overwrite a newer one",
     );
-    assert.deepEqual(statements[0]!.params, [
-      SS58,
-      1000.5,
-      25.25,
-      1_000,
-      "5G9",
-      3,
-      0,
-      1_000,
+    // One json_each parameter carrying both rows as positional tuples, in
+    // the statement's own column order.
+    assert.equal(statements[0]!.params.length, 1);
+    assert.deepEqual(JSON.parse(statements[0]!.params[0] as string), [
+      [SS58, 1000.5, 25.25, 1_000],
+      ["5G9", 3, 0, 1_000],
     ]);
   });
 
@@ -160,12 +157,12 @@ describe("writeAccountBalancesToD1", () => {
     }
   });
 
-  test("no statement exceeds the Workers binding's bound-parameter limit", async () => {
+  test("binds ONE parameter per statement, whatever the row count", async () => {
     // 100 per statement on the BINDING -- not the 1,200 `wrangler d1 execute`
-    // permits from the CLI. The first 15 production neurons syncs all failed
-    // on exactly this, so the limit is asserted, never a constant we picked.
-    // At four columns this table chunks to 25 rows a statement, so one
-    // 25,000-row request alone is 1,000 statements.
+    // permits from the CLI. The first 15 production neurons syncs all failed on
+    // exactly that confusion. A chunk now travels as a single json_each
+    // parameter, so the count is 1 rather than merely under the ceiling, and a
+    // 25,000-row request is a handful of statements instead of 1,000.
     const { statements, db } = d1Stub();
     await writeAccountBalancesToD1(
       db as never,
@@ -173,12 +170,10 @@ describe("writeAccountBalancesToD1", () => {
         row(`acct-${i}`, i, 0, 1_000),
       ),
     );
-    assert.ok(statements.length > 1, "500 rows must chunk");
+    assert.equal(statements.length, 1, "500 rows fit in a single statement");
     for (const statement of statements) {
-      assert.ok(
-        statement.params.length <= D1_PARAM_BUDGET,
-        `a statement bound ${statement.params.length} parameters, over the ${D1_PARAM_BUDGET} budget`,
-      );
+      assert.equal(statement.params.length, 1);
+      assert.ok((statement.params[0] as string).length <= D1_JSON_BUDGET_BYTES);
     }
   });
 
