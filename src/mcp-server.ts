@@ -7433,7 +7433,7 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     description:
       "Fetch a single neuron's per-day time series in one subnet by its UID, from " +
       "the neuron_daily rollup: stake, rank, trust, consensus, incentive, " +
-      "dividends, emission, validator permit, and axon per snapshot_date, newest " +
+      "dividends, emission, validator permit, axon, and take per snapshot_date, newest " +
       "first. Choose the window (7d, 30d, 90d, 1y, all; default 30d). Use it to " +
       "track how one miner or validator has performed over time. Mirrors " +
       "GET /api/v1/subnets/{netuid}/neurons/{uid}/history.",

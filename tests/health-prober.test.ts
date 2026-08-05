@@ -883,8 +883,10 @@ describe("handleScheduled dispatch", () => {
   // only on the alert-worthy outcome, so a cron that STOPPED FIRING was
   // indistinguishable from one that ran fine -- and so was one that ran and
   // failed. Silent in both directions, with no exception storm to eventually
-  // notice. The health probe is the sharpest case: it writes
-  // self_health_checks, the data behind our own uptime claim.
+  // notice. The health probe is the sharpest case: it writes surface_checks
+  // and surface_status, the observations behind third-party surface health.
+  // (It does not write self_health_checks -- that was the decommissioned box's
+  // own poller; corrected in #9541.)
   describe("#8998 cron telemetry", () => {
     function capture() {
       const posted: Row[] = [];

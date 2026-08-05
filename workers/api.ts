@@ -1595,9 +1595,15 @@ export { composeCompareData } from "./request-handlers/analytics-routes.ts";
 // from one that ran fine, and so was one that ran and failed -- silent in both
 // directions, with no exception storm to eventually notice.
 //
-// The health probe is the sharpest case: it is what WRITES self_health_checks,
-// the data behind our own uptime claim. If it stops, the uptime page keeps
-// serving the last good day and nothing reports the gap.
+// The health probe is the sharpest case: it is what writes surface_checks and
+// surface_status, the observations behind every third-party surface's health.
+// If it stops, the health pages keep serving the last good sweep and nothing
+// reports the gap.
+//
+// It does NOT write self_health_checks, which this comment claimed until #9541.
+// That table was written by the decommissioned indexer box's own poller, and
+// nothing in this repo has ever written it -- a tree-wide grep finds only
+// comments and tests.
 //
 // A closed name table rather than the raw cron expression: the expressions come
 // from wrangler.jsonc so they are bounded today, but a label built from input
