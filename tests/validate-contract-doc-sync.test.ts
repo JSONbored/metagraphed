@@ -12,6 +12,7 @@ import {
   descriptionsFromCatalog,
   docBulletFor,
   evaluateContractDocSync,
+  headReadRef,
   resolveDiffBase,
 } from "../scripts/validate-contract-doc-sync.ts";
 
@@ -227,6 +228,71 @@ describe("evaluateContractDocSync", () => {
       headDoc: DOC_WITH_STALE_BULLET,
     });
     expect(result.ok).toBe(true);
+  });
+});
+
+describe("head-side source (#9575)", () => {
+  it("reads the explicit head ref when CI supplies one", () => {
+    // On a pull_request the checkout is the MERGE commit, so reading the
+    // working tree would diff the base branch's own changes as this PR's.
+    expect(headReadRef("abc123")).toBe("abc123");
+  });
+
+  it("falls back to the working tree locally, so an uncommitted edit counts", () => {
+    expect(headReadRef(undefined)).toBe(null);
+    expect(headReadRef("")).toBe(null);
+  });
+});
+
+describe("bullet already agrees (#9575)", () => {
+  // A description corrected to match prose that was already right: the bullet
+  // says D1, the description finally does too. Editing the bullet to satisfy a
+  // gate would degrade a correct line.
+  const correctBullet =
+    "- `/metagraph/x.json`: served live from the `neurons` D1 tier.";
+  const staleDescription = "Served live from the Postgres-backed neurons tier.";
+  const fixedDescription = "Served live from the neurons D1 tier.";
+
+  it("does not fire when the bullet already carries the gained claims", () => {
+    // Positive control: the claim vector really did move (postgres -> d1), so
+    // the pre-#9575 rule would have reported drift here.
+    expect(claimVector(staleDescription)).toContain("postgres");
+    expect(claimVector(fixedDescription)).toContain("d1");
+
+    const result = evaluateContractDocSync({
+      baseDescriptions: new Map([["/metagraph/x.json", staleDescription]]),
+      headDescriptions: new Map([["/metagraph/x.json", fixedDescription]]),
+      baseDoc: correctBullet,
+      headDoc: correctBullet,
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it("still fires when the bullet keeps a claim the description dropped", () => {
+    const staleBullet =
+      "- `/metagraph/x.json`: not live — answers from the frozen materialization.";
+    const result = evaluateContractDocSync({
+      baseDescriptions: new Map([["/metagraph/x.json", STALE_DESCRIPTION]]),
+      headDescriptions: new Map([["/metagraph/x.json", LIVE_DESCRIPTION]]),
+      baseDoc: staleBullet,
+      headDoc: staleBullet,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.drift[0].lost).toContain("not-live");
+  });
+
+  it("still fires when the bullet is missing a claim the description gained", () => {
+    const thinBullet = "- `/metagraph/x.json`: the top-holder leaderboard.";
+    const result = evaluateContractDocSync({
+      baseDescriptions: new Map([["/metagraph/x.json", staleDescription]]),
+      headDescriptions: new Map([
+        ["/metagraph/x.json", "Served from the frozen lakehouse export."],
+      ]),
+      baseDoc: thinBullet,
+      headDoc: thinBullet,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.drift[0].gained).toContain("lakehouse");
   });
 });
 
