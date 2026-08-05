@@ -16,6 +16,20 @@ export { TOP_HOLDERS_LIMIT_DEFAULT, TOP_HOLDERS_LIMIT_MAX };
 // already does per-account, aggregated across every account here). An
 // account can appear from either source alone.
 //
+// NOTHING PRODUCES THOSE INPUTS ANY MORE (#9464). account_balances lived only
+// in the decommissioned box's Postgres — no D1 table of that name was ever
+// created, #9193 retired its sync handler to the auth gate, and the poller job
+// that filled it is deliberately absent from POLLER_ONLY in metagraphed-infra's
+// Dockerfile.poller (one of the four Postgres-backed lanes held disabled until
+// they have a Cloudflare-native sink). What the route actually serves is
+// src/top-holders-artifact.ts's one-shot materialization of the query below,
+// taken 2026-08-02, so `captured_at` is a FIXED date rather than a refresh
+// clock. This formatter is unchanged by that and stays the shared shaper for
+// whatever tier answers; the staleness alarm is
+// src/top-holders-staleness-watchdog.ts, and every published description of
+// this route says so out loud so a caller does not read the leaderboard as
+// current.
+//
 // net_flow_7d/30d/90d (#6886/#6887) extend this same coldkey-keyed leaderboard
 // with a rollup-backed cross-subnet stake-flow ranking (StakeAdded -
 // StakeRemoved over a window) rather than shipping as a separate wallet-

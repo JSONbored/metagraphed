@@ -2874,7 +2874,7 @@ export type Query = {
   sudo_key?: Maybe<SudoKey>;
   /** Curated public interface surfaces with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/provider/id, sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/surfaces. */
   surfaces: SurfaceList;
-  /** The largest TAO holders ranked by the chosen sort (total_tao by default), limit 1-100 (default 20). An unknown sort is a BAD_USER_INPUT error. Resolves to a schema-stable empty list when the holders tier is cold, never null. Opaque JSON, matching the get_top_holders MCP/REST shape. Mirrors GET /api/v1/accounts/top-holders. */
+  /** The largest TAO holders ranked by the chosen sort (total_tao by default), limit 1-100 (default 20). An unknown sort is a BAD_USER_INPUT error. Resolves to a schema-stable empty list when the holders tier is cold, never null. NOT LIVE (#9464): served from a fixed snapshot taken 2026-08-02 whose source scan has no writer any more, so captured_at/last_updated do not advance and balances are as of that date -- read it as historical, and use account(ss58) for a live balance. Opaque JSON, matching the get_top_holders MCP/REST shape. Mirrors GET /api/v1/accounts/top-holders. */
   top_holders?: Maybe<Scalars['JSON']['output']>;
   /** One validator's cross-subnet aggregate by hotkey; a hotkey with no validator_permit=1 rows resolves to a schema-stable zeroed aggregate, never null. Mirrors GET /api/v1/validators/{hotkey}. */
   validator?: Maybe<Validator>;
