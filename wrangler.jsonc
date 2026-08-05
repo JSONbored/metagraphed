@@ -864,6 +864,12 @@
       // alerts on every stale one -- see TOP_HOLDERS_STALENESS_WATCHDOG_CRON in
       // workers/config.ts.
       "22,52 * * * *",
+      // 4,34 = the account-balances staleness watchdog (#9469): the SOURCE side
+      // of the watchdog above. That one watches the served artifact; this one
+      // watches the D1 table it is composed from, so a producer that stops is
+      // visible without waiting for the publish path to notice. See
+      // ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON in workers/config.ts.
+      "4,34 * * * *",
     ],
   },
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite

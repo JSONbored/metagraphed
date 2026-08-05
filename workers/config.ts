@@ -217,6 +217,18 @@ export const CHAIN_DETAIL_STALENESS_WATCHDOG_CRON = "14,29,44,59 * * * *";
 // must be unique here as well as matching a wrangler.jsonc `triggers.crons`
 // entry.
 export const TOP_HOLDERS_STALENESS_WATCHDOG_CRON = "22,52 * * * *";
+// #9478: the account-balances lane's alarm -- the SOURCE side of the watchdog
+// above, not a replacement for it. That one watches the served artifact; this
+// one watches the D1 table the artifact is supposed to be composed from, and
+// the two fail independently (a fresh table behind a stale artifact is a
+// publish problem; a stale table behind either is the producer). Twice hourly
+// against the same twelve-hour threshold, since one producer tick is what
+// refreshes it -- src/account-balances-staleness-watchdog.ts explains that
+// sizing against the poller's six-hour ACCOUNT_BALANCES_POLL_SECS. Minutes 4/34
+// tick on none of the crons in this file and stay off the */5 raw-capture and
+// */15 probe grids -- dispatch keys on the LITERAL cron string, so this must be
+// unique here as well as matching a wrangler.jsonc `triggers.crons` entry.
+export const ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON = "4,34 * * * *";
 // #9146: scheduled projections -- recompute the windowed-aggregate artifacts
 // (every lane in src/projection-lanes.ts's PROJECTION_LANES) from the
 // lakehouse. These routes cannot

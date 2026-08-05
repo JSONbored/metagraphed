@@ -358,6 +358,10 @@ import {
   writeNominatorPositionsToD1,
 } from "../src/nominator-positions-d1-write.ts";
 import { writeValidatorNominatorCountsToD1 } from "../src/validator-nominator-counts-d1-write.ts";
+import {
+  ACCOUNT_BALANCE_INSERT_COLUMNS,
+  writeAccountBalancesToD1,
+} from "../src/account-balances-d1-write.ts";
 import { VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS } from "../src/validator-nominator-counts-staleness-watchdog.ts";
 import { writeChainDetailToD1 } from "../src/chain-detail-d1-write.ts";
 import {
@@ -1900,20 +1904,76 @@ async function handleNominatorPositionsSync(request: Request, env: Env) {
   });
 }
 
-// --- POST /api/v1/internal/account-balances-sync (#6742) -------------------
-//
-// RETIRED (#9193): the Postgres tables this wrote were destroyed with the
-// box, so the handler now stops at its auth gate and answers exactly what it
-// already answered in production. What follows describes what it DID.
+// --- POST /api/v1/internal/account-balances-sync (#6742, revived #9478) ----
 //
 // Chain-wide free/reserved balance snapshot, one row per account with a
 // nonzero balance --
-// apps/indexer-rs/src/bin/poller/jobs/account_balances.rs's own header comment
-// on why this reads System::Account directly rather than reconstructing
-// balance from transfer/fee/stake events (a direct state read can't drift;
-// event-replay can, one missed mutation path at a time). Same "latest-only,
-// captured_at freshness guard" upsert shape as nominator-positions-sync.
+// metagraphed-infra's services/indexer-rs/src/bin/poller/jobs/account_balances.rs's
+// own header comment on why this reads System::Account directly rather than
+// reconstructing balance from transfer/fee/stake events (a direct state read
+// can't drift; event-replay can, one missed mutation path at a time).
+//
+// RETIRED with the box (#9193) and REVIVED against D1 here, because this lane
+// came out of the decommission worse off than the two 0011/0012 revived: they
+// each had a frozen lakehouse export to fall back on, and `account_balances`
+// had no D1 table at all. /api/v1/accounts/top-holders has answered from a
+// one-shot materialization taken 2026-08-02 ever since, with a `captured_at`
+// that cannot advance -- an account that has moved TAO since is misreported and
+// one first funded since is absent. Same request/{rows:[...]} shape, same token
+// gate, and the same D1-is-required posture as handleNominatorPositionsSync
+// above.
+//
+// A FULL PASS DOES NOT FIT ONE REQUEST. 542,618 System::Account entries at the
+// producer's own last live measurement puts a pass at ~22 requests against the
+// caps below. Unlike nominator-positions, the chunking is a plain flat slice
+// and needs no packing rule: rows are keyed on (ss58) alone and this lane never
+// prunes, so a row may land in any request in any order.
 const ACCOUNT_BALANCES_SYNC_TOKEN_HEADER = "x-account-balances-sync-token";
+// Matched to the nominator-positions siblings rather than re-derived: 25k rows
+// x 4 short columns sits well inside the Worker request ceiling. Body bound
+// first, row bound second -- neither alone is sufficient (a few enormous
+// SS58-shaped strings pass the row bound; 25k tiny rows pass the byte bound).
+const ACCOUNT_BALANCES_SYNC_MAX_BODY_BYTES = 8_000_000;
+const ACCOUNT_BALANCES_SYNC_MAX_ROWS = 25_000;
+// An SS58 address is 48 characters; the ceiling is generous rather than exact
+// so a future address format does not silently fail the whole batch.
+const ACCOUNT_BALANCES_SYNC_MAX_KEY_BYTES = 128;
+
+/**
+ * Bounds-check one incoming row against ACCOUNT_BALANCE_INSERT_COLUMNS.
+ *
+ * Both balances are required to be finite and NON-NEGATIVE rather than merely
+ * numeric. A negative balance is not a thing System::Account can hold, and the
+ * one consumer of this column (src/top-holders.ts's `numberOrZero`) would
+ * silently clamp it to 0 -- so a value this route accepted and every reader
+ * quietly rewrote is worse than a 400 the producer can actually see.
+ * `Number.isFinite` also rejects the JSON-hostile cases outright: a NaN or
+ * Infinity arriving as null would otherwise bind as NULL against a NOT NULL
+ * column and fail the whole 25,000-row batch at the database instead of here.
+ */
+function validAccountBalanceSyncRow(row: Row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+  for (const key of Object.keys(row)) {
+    if (!ACCOUNT_BALANCE_INSERT_COLUMNS.includes(key)) return false;
+  }
+  if (typeof row.ss58 !== "string" || row.ss58.length === 0) return false;
+  if (utf8Bytes(row.ss58).length > ACCOUNT_BALANCES_SYNC_MAX_KEY_BYTES)
+    return false;
+  for (const key of ["free_tao", "reserved_tao"]) {
+    const value = row[key];
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0)
+      return false;
+  }
+  if (!validSyncCapturedAt(row.captured_at)) return false;
+  return true;
+}
+
+/** Project a validated row onto the writer's exact column list and order. */
+function coerceAccountBalanceSyncRow(row: Row) {
+  const out: Row = {};
+  for (const col of ACCOUNT_BALANCE_INSERT_COLUMNS) out[col] = row[col];
+  return out;
+}
 
 async function handleAccountBalancesSync(request: Request, env: Env) {
   if (!env.ACCOUNT_BALANCES_SYNC_SECRET) {
@@ -1933,9 +1993,77 @@ async function handleAccountBalancesSync(request: Request, env: Env) {
       401,
     );
   }
-  // #9193: same deletion as handleRollupAccountEventsDaily above -- unreachable
-  // since HYPERDRIVE went away, answered here, status and body unchanged.
-  return writeJson({ error: "hyperdrive binding unavailable" }, 503);
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > ACCOUNT_BALANCES_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      { error: `body exceeds ${ACCOUNT_BALANCES_SYNC_MAX_BODY_BYTES} bytes` },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return writeJson(
+      {
+        error:
+          "body must be a JSON array of account-balance rows (or {rows:[...]})",
+      },
+      400,
+    );
+  }
+  if (incoming.length > ACCOUNT_BALANCES_SYNC_MAX_ROWS) {
+    return writeJson(
+      { error: `at most ${ACCOUNT_BALANCES_SYNC_MAX_ROWS} rows per request` },
+      413,
+    );
+  }
+  if (!incoming.length || !incoming.every(validAccountBalanceSyncRow)) {
+    return writeJson(
+      { error: "rows must match the account-balance row shape" },
+      400,
+    );
+  }
+
+  const rows = incoming.map(coerceAccountBalanceSyncRow);
+
+  // D1 is the binding this path REQUIRES -- the only store this family has.
+  // Checked HERE, after validation, not at the top: a malformed body is a 400
+  // whether or not a store happens to be bound (handleNominatorPositionsSync's
+  // own 400-before-503 reasoning).
+  if (!env.METAGRAPH_HEALTH_DB) {
+    return writeJson({ error: "d1 binding unavailable" }, 503);
+  }
+
+  let d1Statements: number;
+  try {
+    ({ statements: d1Statements } = await writeAccountBalancesToD1(
+      env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof writeAccountBalancesToD1
+      >[0],
+      rows,
+    ));
+  } catch (err) {
+    console.error("data-api account-balances-sync D1 write failed:", err);
+    await captureDataApiError(err, "account-balances-sync-d1", env);
+    return writeJson({ error: "d1 write failed" }, 502);
+  }
+
+  return writeJson({
+    ok: true,
+    account_balances_written: rows.length,
+    stores: ["d1"],
+    d1_statements: d1Statements,
+  });
 }
 
 // --- POST /api/v1/internal/subnet-identity-sync (#4832 gap-closure) -------

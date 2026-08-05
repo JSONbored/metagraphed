@@ -360,6 +360,7 @@ import { runNeuronsStalenessWatchdog } from "../src/neurons-staleness-watchdog.t
 import { runNominatorPositionsStalenessWatchdog } from "../src/nominator-positions-staleness-watchdog.ts";
 import { runProjectionStalenessWatchdog } from "../src/projection-staleness-watchdog.ts";
 import { runValidatorNominatorCountsStalenessWatchdog } from "../src/validator-nominator-counts-staleness-watchdog.ts";
+import { runAccountBalancesStalenessWatchdog } from "../src/account-balances-staleness-watchdog.ts";
 import {
   readChainDetailHead,
   runChainDetailStalenessWatchdog,
@@ -439,6 +440,7 @@ import {
   CHAIN_DETAIL_PRUNE_CRON,
   CHAIN_DETAIL_STALENESS_WATCHDOG_CRON,
   TOP_HOLDERS_STALENESS_WATCHDOG_CRON,
+  ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON,
   LIVE_ECONOMICS_REFRESH_CRON,
   PROJECTION_LANES_CRON,
   FRESHNESS_WATCHDOG_STATE_KEY,
@@ -1618,6 +1620,8 @@ function cronLabel(cron: string): string {
     return "chain-detail-staleness-watchdog";
   if (cron === TOP_HOLDERS_STALENESS_WATCHDOG_CRON)
     return "top-holders-staleness-watchdog";
+  if (cron === ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON)
+    return "account-balances-staleness-watchdog";
   if (cron === LIVE_ECONOMICS_REFRESH_CRON) return "live-economics-refresh";
   // Every unmatched cron falls through to the health prober, matching dispatch.
   return "health-prober";
@@ -1947,6 +1951,19 @@ async function dispatchScheduled(
     // UNREADABLE or EMPTY artifact alerts too -- that is the condition where
     // the route silently answers 200 with an empty leaderboard.
     return runTopHoldersStalenessWatchdog(
+      env as unknown as Record<string, unknown>,
+    );
+  }
+  if (cron === ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON) {
+    // The account-balances lane's alarm (#9478) -- the SOURCE side of the
+    // watchdog above rather than a replacement for it: that one asks whether
+    // the served artifact is readable and current, this one asks whether the
+    // D1 table it is composed from is being written at all. Zero alerts is the
+    // correct steady state; a stale verdict records one exception under
+    // watchdog:account-balances-staleness, the project's alert channel. An
+    // EMPTY table alerts too -- until the revived lane posts, every top-holders
+    // read is still answering from the frozen 2026-08-02 materialization.
+    return runAccountBalancesStalenessWatchdog(
       env as unknown as Record<string, unknown>,
     );
   }
