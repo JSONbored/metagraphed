@@ -25,7 +25,20 @@ import { loadChainAlphaVolumeFromArtifact } from "./chain-alpha-volume-artifact.
 import { resolveMarketCapIndex } from "./market-cap-index.ts";
 import { loadChainCallsFromArtifact } from "./chain-calls-artifact.ts";
 import { loadChainFeesFromArtifact } from "./chain-fees-artifact.ts";
+import { loadChainActivityFromArtifact } from "./chain-activity-artifact.ts";
 import { loadExtrinsicFeedColdTier } from "./extrinsics-cold-tier.ts";
+import {
+  loadAccountCounterpartiesColdTier,
+  loadAccountRegistrationsColdTier,
+  loadAccountServingColdTier,
+  loadAccountStakeFlowColdTier,
+  loadAccountStakeMovesColdTier,
+  loadAccountTransfersColdTier,
+  loadAccountWeightSettersColdTier,
+  loadCounterpartyRelationshipColdTier,
+} from "./account-feeds-cold-tier.ts";
+import { loadAccountEventsColdTier } from "./events-cold-tier.ts";
+import { loadAccountExtrinsicsColdTier } from "./extrinsics-cold-tier.ts";
 import { loadExtrinsicColdTier } from "./extrinsics-cold-tier.ts";
 import {
   loadBlockColdTier,
@@ -5837,6 +5850,14 @@ const rootValue = {
     );
     const data =
       (pg?.data as Row | undefined) ??
+      // The account cold tier REST and MCP both read (#9540); the loader
+      // returns the same { data } envelope the retired tier did.
+      ((
+        (await loadAccountStakeFlowColdTier(context.env, ss58, {
+          window: requestedWindow,
+          direction: requestedDirection,
+        })) as Row | null
+      )?.data as Row | undefined) ??
       buildAccountStakeFlow([], ss58, { window: requestedWindow });
     return {
       schema_version: data.schema_version ?? 1,
@@ -6003,6 +6024,13 @@ const rootValue = {
     );
     const data =
       (tier?.data as Row | undefined) ??
+      // The account cold tier REST and MCP both read (#9540); the loader
+      // returns the same { data } envelope the retired tier did.
+      ((
+        (await loadAccountRegistrationsColdTier(context.env, ss58, {
+          window: windowParam,
+        })) as Row | null
+      )?.data as Row | undefined) ??
       buildAccountRegistrations([], ss58, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
@@ -6123,6 +6151,13 @@ const rootValue = {
     );
     const data =
       (tier?.data as Row | undefined) ??
+      // The account cold tier REST and MCP both read (#9540); the loader
+      // returns the same { data } envelope the retired tier did.
+      ((
+        (await loadAccountServingColdTier(context.env, ss58, {
+          window: windowParam,
+        })) as Row | null
+      )?.data as Row | undefined) ??
       buildAccountServing([], ss58, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
@@ -6234,6 +6269,13 @@ const rootValue = {
     );
     const data =
       (tier?.data as Row | undefined) ??
+      // The account cold tier REST and MCP both read (#9540); the loader
+      // returns the same { data } envelope the retired tier did.
+      ((
+        (await loadAccountStakeMovesColdTier(context.env, ss58, {
+          window: windowParam,
+        })) as Row | null
+      )?.data as Row | undefined) ??
       buildAccountStakeMoves([], ss58, { window: windowParam });
     return {
       schema_version: data.schema_version ?? 1,
@@ -6288,6 +6330,13 @@ const rootValue = {
     );
     const data =
       (pg?.data as Row | undefined) ??
+      // The account cold tier REST and MCP both read (#9540); the loader
+      // returns the same { data } envelope the retired tier did.
+      ((
+        (await loadAccountWeightSettersColdTier(context.env, ss58, {
+          window: requestedWindow,
+        })) as Row | null
+      )?.data as Row | undefined) ??
       buildAccountWeightSetters([], ss58, { window: requestedWindow });
     return {
       schema_version: data.schema_version ?? 1,
@@ -6486,6 +6535,24 @@ const rootValue = {
       "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
     );
     let data = tier as Row | null;
+    // The cold tiers REST and MCP both read (#9540). Two of them, because this
+    // resolver has two modes and they are not interchangeable: a counterparty
+    // argument asks about ONE relationship, and answering it from the list
+    // reader would return a different question's answer.
+    if (data == null) {
+      data = (
+        counterparty != null
+          ? await loadCounterpartyRelationshipColdTier(
+              context.env,
+              ss58,
+              counterparty,
+              { limit: limit ?? undefined },
+            )
+          : await loadAccountCounterpartiesColdTier(context.env, ss58, {
+              limit: limit ?? undefined,
+            })
+      ) as Row | null;
+    }
     if (data == null) {
       if (counterparty != null) {
         const rel = buildCounterpartyRelationship([], ss58, counterparty, {
@@ -6600,6 +6667,16 @@ const rootValue = {
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
+      // The account cold tier REST and MCP both read (#9540). Every filter is
+      // forwarded, so the tier filters -- the empty builder below ignores them.
+      ((await loadAccountTransfersColdTier(context.env, ss58, {
+        limit: safeLimit,
+        offset: safeOffset,
+        cursor,
+        direction,
+        blockStart: block_start,
+        blockEnd: block_end,
+      })) as Row | null) ??
       buildAccountTransfers([], ss58, {
         limit: safeLimit,
         offset: safeOffset,
@@ -6668,6 +6745,15 @@ const rootValue = {
         ),
         "METAGRAPH_EXTRINSICS_SOURCE",
       )) as Row | null) ??
+      // The account cold tier REST and MCP both read (#9540). Every filter is
+      // forwarded, so the tier filters -- the empty builder below ignores them.
+      ((await loadAccountExtrinsicsColdTier(context.env, ss58, {
+        limit: safeLimit,
+        offset: safeOffset,
+        cursor,
+        blockStart: block_start,
+        blockEnd: block_end,
+      })) as Row | null) ??
       buildAccountExtrinsics([], ss58, {
         limit: safeLimit,
         offset: safeOffset,
@@ -6734,6 +6820,17 @@ const rootValue = {
         ),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
+      // The account cold tier REST and MCP both read (#9540). Every filter is
+      // forwarded, so the tier filters -- the empty builder below ignores them.
+      ((await loadAccountEventsColdTier(context.env, ss58, {
+        limit: safeLimit,
+        offset: safeOffset,
+        cursor,
+        kind,
+        netuid,
+        blockStart: block_start,
+        blockEnd: block_end,
+      })) as Row | null) ??
       buildAccountEvents([], ss58, {
         limit: safeLimit,
         offset: safeOffset,
@@ -7083,6 +7180,14 @@ const rootValue = {
         postgresTierRequest(context, "/api/v1/chain/activity", params),
         "METAGRAPH_EXTRINSICS_SOURCE",
       )) as ReturnType<typeof buildChainActivity> | null) ??
+        // The projection tier REST reads (#9540). Window-based like REST's
+        // handleChainActivity, NOT the blocks-based loadChainActivity MCP's
+        // get_chain_activity uses -- that tool takes a block count and answers a
+        // different question, so borrowing its loader would change this
+        // resolver's contract rather than fill it.
+        ((await loadChainActivityFromArtifact(context.env, {
+          window: label,
+        })) as ReturnType<typeof buildChainActivity> | null) ??
         buildChainActivity({ window: label }),
       days,
     );

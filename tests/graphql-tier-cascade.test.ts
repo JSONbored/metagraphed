@@ -94,11 +94,20 @@ function buildResolver(
     usesRetiredTier:
       /tryPostgresTier\(/.test(body) &&
       [...retired].some((flag) => body.includes(flag)),
-    // The rung: any shared cold-tier / artifact reader. `loadChainActivity` and
-    // friends do not follow the ColdTier/FromArtifact suffix convention, so
-    // match the loader prefix rather than the suffix. Comments count as body
+    // The rung: any shared cold-tier / artifact reader, OR a composer that owns
+    // the whole ladder on the resolver's behalf.
+    //
+    // Both prefixes are needed. `load*` covers the readers, but several routes
+    // reach their tier through an `answer*` composer instead --
+    // answerSubnetEvents owns the tier order and empty floor for REST, MCP and
+    // GraphQL alike, and answerBlockDetail routes a ref across the seam. Matching
+    // only `load` reported subnet_events as missing a rung it already had, which
+    // would have sent someone to "fix" a correct resolver.
+    //
+    // Suffix matching is not an option either: loadChainActivity and friends do
+    // not follow the ColdTier/FromArtifact convention. Comments count as body
     // text, which is why the brace-accurate slice above matters.
-    hasLoader: /\bload[A-Z][A-Za-z]*\s*\(/.test(body),
+    hasLoader: /\b(?:load|answer)[A-Z][A-Za-z]*\s*\(/.test(body),
   };
 }
 
@@ -112,22 +121,10 @@ function buildResolver(
  * only ever SHRINK, and the test above still fails for any resolver that is in
  * neither map. A newly-broken resolver cannot hide among them.
  */
-const PENDING_WIRING = new Set([
-  "subnet_axon_removals",
-  "subnet_events",
-  "subnet_prometheus",
-  "account_prometheus",
-  "account_stake_flow",
-  "account_registrations",
-  "account_serving",
-  "account_axon_removals",
-  "account_stake_moves",
-  "account_weight_setters",
-  "account_counterparties",
-  "account_transfers",
-  "account_extrinsics",
-  "account_events",
-  "chain_activity",
+const PENDING_WIRING = new Set<string>([
+  // Empty, and kept so the next gap has an obvious home: a resolver found
+  // broken goes here with its issue, and the staleness check below forces it
+  // back out the moment it is fixed.
 ]);
 
 /**
@@ -144,17 +141,17 @@ const PENDING_WIRING = new Set([
  */
 const NO_TIER_ANYWHERE: Record<string, string> = {
   chain_axon_removals:
-    "get_chain_axon_removals falls to buildChainAxonRemovals([]) on MCP too -- no artifact lane exists for it",
+    "get_chain_axon_removals falls to buildChainAxonRemovals([]) on MCP too -- no lane exists for it",
   chain_prometheus:
-    "get_chain_prometheus falls to buildChainPrometheus([]) on MCP too -- no artifact lane exists for it",
-  account:
-    "get_account composes from sibling readers rather than one tier loader; not a single missing rung",
-  account_entities:
-    "get_account_entities composes from sibling readers rather than one tier loader",
-  chain_identity_history:
-    "no identity-history cold tier exists on any surface; MCP's own ladder ends at the same empty",
-  subnet_identity_history:
-    "same identity-history lane as chain_identity_history",
+    "get_chain_prometheus falls to buildChainPrometheus([]) on MCP too -- no lane exists for it",
+  account_prometheus:
+    "get_account_prometheus falls to buildAccountPrometheus([]) on MCP too -- no lane exists for it",
+  account_axon_removals:
+    "get_account_axon_removals falls to buildAccountAxonRemovals([]) on MCP too -- no lane exists for it",
+  subnet_axon_removals:
+    "get_subnet_axon_removals falls to buildSubnetAxonRemovals(null) on MCP too -- no lane exists for it",
+  subnet_prometheus:
+    "get_subnet_prometheus falls to buildSubnetPrometheus(null) on MCP too -- no lane exists for it",
 };
 
 // Positive control. A pure "nothing is broken" assertion passes just as well
