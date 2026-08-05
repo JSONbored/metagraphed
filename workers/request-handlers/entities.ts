@@ -3881,6 +3881,60 @@ export async function buildValidatorEconomicsRankingPayload(
       )?.results ?? [])
     : [];
 
+  // Two bulk reads that make the ranking carry the SAME per-subnet fields the
+  // detail route reports (#9455). Both are one query for every subnet, not one
+  // per subnet -- the thing the original "128 per-subnet round trips" note
+  // rules out. See buildValidatorEconomics's call below for what they feed.
+  //
+  // The burn read is why `permit_entry_cost_tao` / `earning_entry_cost_tao` /
+  // `registration_cost_tao` used to publish null here. That was correct when
+  // the burn existed only as a live per-subnet chain read with no cached tier;
+  // `subnet_burn_history` (#9382) is that tier, refreshed continuously across
+  // every subnet, so the cost argument no longer holds and the fields can carry
+  // their real values instead of being dropped from the row.
+  const latestBurnByNetuid = new Map<number, number>();
+  const minChildkeyTakeByNetuid = new Map<number, number>();
+  if (db) {
+    // Newest observation per subnet. A window function rather than a
+    // correlated subquery: one pass over the (netuid, observed_at DESC) index.
+    const burnRows =
+      (
+        await db
+          .prepare(
+            `SELECT netuid, burn_tao FROM (
+               SELECT netuid, burn_tao,
+                 ROW_NUMBER() OVER (PARTITION BY netuid ORDER BY observed_at DESC) AS rn
+               FROM subnet_burn_history
+             ) WHERE rn = 1`,
+          )
+          .all()
+      )?.results ?? [];
+    for (const row of burnRows as Array<Record<string, unknown>>) {
+      // burn_tao is NOT NULL in the table and a genuine 0 is a real price
+      // (netuid 76 reads a true zero), so this must test for null, never falsy.
+      if (row?.netuid != null && row.burn_tao != null) {
+        latestBurnByNetuid.set(Number(row.netuid), Number(row.burn_tao));
+      }
+    }
+    const hyperRows =
+      (
+        await db
+          .prepare(
+            "SELECT netuid, min_childkey_take_ratio FROM subnet_hyperparams",
+          )
+          .all()
+      )?.results ?? [];
+    for (const row of hyperRows as Array<Record<string, unknown>>) {
+      // Same rule: 0 is a real ratio, and the detail route reports it as 0.
+      if (row?.netuid != null && row.min_childkey_take_ratio != null) {
+        minChildkeyTakeByNetuid.set(
+          Number(row.netuid),
+          Number(row.min_childkey_take_ratio),
+        );
+      }
+    }
+  }
+
   const { rows: economicsRows, generatedAt } = await readEconomics(env);
   const params = await readParams(env);
   const economicsByNetuid = new Map<number, Record<string, unknown>>();
@@ -3927,6 +3981,10 @@ export async function buildValidatorEconomicsRankingPayload(
           economics?.owner_hotkey != null
             ? String(economics.owner_hotkey)
             : null,
+        // Both `?? null` rather than `||`: a subnet whose burn or childkey
+        // ratio is a genuine 0 must report 0, not fall through to null.
+        registrationCostTao: latestBurnByNetuid.get(netuid) ?? null,
+        minChildkeyTakeRatio: minChildkeyTakeByNetuid.get(netuid) ?? null,
       }),
       netuid,
     });
