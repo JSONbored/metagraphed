@@ -998,7 +998,9 @@ async function handleNeuronDailyBackfill(request: Request, env: Env) {
 // called from handleScheduled). Also rolls up wallet_flow_daily (#6886/#6887)
 // in the same run -- the account-keyed, per-day net/gross StakeAdded vs
 // StakeRemoved rollup GET /api/v1/accounts/top-holders' ?sort=net_flow_*
-// reads, sharing this same day-bucket loop rather than a second cron entry
+// read (those sorts and their fields are themselves withdrawn as of #9461,
+// precisely because this rollup is gone), sharing this same day-bucket loop
+// rather than a second cron entry
 // (same source table, same active-day re-roll window, one Postgres
 // round-trip pair per day instead of two separate ticks). Formerly a
 // dedicated hourly GitHub Actions workflow (rollup-account-events-daily.yml,

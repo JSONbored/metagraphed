@@ -3,11 +3,10 @@
 // file. Modeled from src/top-holders.ts's buildTopHoldersList(), cross-
 // checked against the hand-edited TopHoldersArtifact component it replaces.
 //
-// Real finding (bucket b): the hand-edited `sort` enum only listed
-// ["total_tao","free_tao","delegated_tao"] -- TOP_HOLDERS_SORTS also allows
-// "net_flow_7d"/"net_flow_30d"/"net_flow_90d" (#6886/#6887's cross-subnet
-// stake-flow leaderboard extension), so the hand-edited enum was stale;
-// generated schema matches the real TOP_HOLDERS_SORTS constant.
+// The sort enum is the three holdings keys, matching TOP_HOLDERS_SORTS. It
+// briefly carried three more -- net_flow_7d/30d/90d, #6886/#6887's cross-
+// subnet stake-flow extension -- withdrawn in #9461 once wallet_flow_daily
+// was confirmed gone with the Postgres box.
 //
 // Bucket (c): captured_at/last_updated drop format:date-time in favor of
 // plain z.string().nullable(), matching this epic's established convention.
@@ -23,9 +22,6 @@ const TOP_HOLDERS_SORT_VALUES = [
   "total_tao",
   "free_tao",
   "delegated_tao",
-  "net_flow_7d",
-  "net_flow_30d",
-  "net_flow_90d",
 ] as const;
 
 const TopHoldersEntrySchema = z
@@ -47,9 +43,6 @@ const TopHoldersEntrySchema = z
       .describe(
         "free_tao + delegated_tao. Both addends are TAO, so the sum is a real TAO quantity; it inherits delegated_tao's ~24h price staleness. Default sort.",
       ),
-    net_flow_7d: z.number().nullable(),
-    net_flow_30d: z.number().nullable(),
-    net_flow_90d: z.number().nullable(),
     last_updated: z.string().nullable(),
   })
   .strict();

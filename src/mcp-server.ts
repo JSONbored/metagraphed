@@ -9801,11 +9801,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "Fetch the balance-based top-holder leaderboard (#6741/#6743): every " +
       "account (coldkey) with a nonzero free balance and/or delegated stake " +
       "position, with free/delegated/total TAO columns list_accounts explicitly " +
-      "cannot derive. Sortable by total_tao (default), free_tao, delegated_tao, " +
-      "or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, " +
-      "net_flow_90d -- StakeAdded minus StakeRemoved, #6886/#6887). The " +
-      "coldkey/balance-centric counterpart to list_accounts. Mirrors GET " +
-      "/api/v1/accounts/top-holders.",
+      "cannot derive. Sortable by total_tao (default), free_tao or " +
+      "delegated_tao. The coldkey/balance-centric counterpart to " +
+      "list_accounts. Mirrors GET /api/v1/accounts/top-holders.",
     inputSchema: z.toJSONSchema(GetTopHoldersInputSchema, {
       target: "draft-2020-12",
     }),

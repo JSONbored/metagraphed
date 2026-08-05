@@ -21048,14 +21048,7 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
   });
 
   test("get_top_holders accepts each REST-supported sort key with an empty leaderboard", async () => {
-    for (const sort of [
-      "total_tao",
-      "free_tao",
-      "delegated_tao",
-      "net_flow_7d",
-      "net_flow_30d",
-      "net_flow_90d",
-    ]) {
+    for (const sort of ["total_tao", "free_tao", "delegated_tao"]) {
       const res = await callTool("get_top_holders", { sort, limit: 1 });
       const out = res.body.result.structuredContent;
       assert.equal(out.sort, sort);
@@ -21066,6 +21059,16 @@ describe("MCP sudo/governance/runtime/list_accounts tools (#5225 parity)", () =>
   test("get_top_holders rejects an invalid sort", async () => {
     const res = await callTool("get_top_holders", { sort: "bogus" });
     assert.equal(res.body.result.isError, true);
+  });
+
+  // #9461: withdrawn along with the fields they ranked. Their wallet_flow_daily
+  // source went with the Postgres box, so they sorted an all-null column and
+  // silently answered in ss58 order.
+  test("get_top_holders rejects the withdrawn net_flow_* sorts (#9461)", async () => {
+    for (const sort of ["net_flow_7d", "net_flow_30d", "net_flow_90d"]) {
+      const res = await callTool("get_top_holders", { sort });
+      assert.equal(res.body.result.isError, true);
+    }
   });
 });
 

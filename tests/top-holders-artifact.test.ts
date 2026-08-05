@@ -14,9 +14,6 @@ function row(ss58: string, free: number, delegated: number) {
     ss58,
     free_tao: String(free),
     delegated_tao: String(delegated),
-    net_flow_7d: null,
-    net_flow_30d: null,
-    net_flow_90d: null,
     captured_at: "1785680000000",
   };
 }

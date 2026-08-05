@@ -129,7 +129,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, delegated_tao, or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, net_flow_90d, #6886/#6887); limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own stake positions across every hotkey/subnet, VALUED IN TAO: every position is non-root and therefore denominated in its subnet's alpha token, so each is multiplied by that netuid's alpha_price_tao from the latest daily subnet_snapshots row before summing (#8803) -- a DAILY cadence, so the price can lag up to ~24h behind the live economics tier, and a netuid with no usable price is excluded from the sum rather than counted as zero. total_tao adds it to free_tao, which is valid because both are TAO; net_flow_* is StakeAdded minus StakeRemoved over the window, from the wallet_flow_daily rollup -- a negative value is a real net outflow, not a missing value; null means no wallet_flow_daily row for this account in the window, and null-valued rows sort last on the net_flow_* keys.
+         * Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao or delegated_tao; limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own stake positions across every hotkey/subnet, VALUED IN TAO: every position is non-root and therefore denominated in its subnet's alpha token, so each is multiplied by that netuid's alpha_price_tao from the latest daily subnet_snapshots row before summing (#8803) -- a DAILY cadence, so the price can lag up to ~24h behind the live economics tier, and a netuid with no usable price is excluded from the sum rather than counted as zero. total_tao adds it to free_tao, which is valid because both are TAO. This route also used to publish net_flow_7d/30d/90d and accept them as sort keys; their wallet_flow_daily source was a Postgres table that did not survive the box being destroyed, so the fields were always null and the sorts silently degraded to ss58 order -- withdrawn in #9461.
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["topHoldersByNetwork"];
@@ -2590,7 +2590,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, delegated_tao, or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, net_flow_90d, #6886/#6887); limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own stake positions across every hotkey/subnet, VALUED IN TAO: every position is non-root and therefore denominated in its subnet's alpha token, so each is multiplied by that netuid's alpha_price_tao from the latest daily subnet_snapshots row before summing (#8803) -- a DAILY cadence, so the price can lag up to ~24h behind the live economics tier, and a netuid with no usable price is excluded from the sum rather than counted as zero. total_tao adds it to free_tao, which is valid because both are TAO; net_flow_* is StakeAdded minus StakeRemoved over the window, from the wallet_flow_daily rollup -- a negative value is a real net outflow, not a missing value; null means no wallet_flow_daily row for this account in the window, and null-valued rows sort last on the net_flow_* keys. */
+        /** Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao or delegated_tao; limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own stake positions across every hotkey/subnet, VALUED IN TAO: every position is non-root and therefore denominated in its subnet's alpha token, so each is multiplied by that netuid's alpha_price_tao from the latest daily subnet_snapshots row before summing (#8803) -- a DAILY cadence, so the price can lag up to ~24h behind the live economics tier, and a netuid with no usable price is excluded from the sum rather than counted as zero. total_tao adds it to free_tao, which is valid because both are TAO. This route also used to publish net_flow_7d/30d/90d and accept them as sort keys; their wallet_flow_daily source was a Postgres table that did not survive the box being destroyed, so the fields were always null and the sorts silently degraded to ss58 order -- withdrawn in #9461. */
         get: operations["topHolders"];
         put?: never;
         post?: never;
@@ -12116,9 +12116,6 @@ export interface components {
                 /** @description Genuine free TAO from the System::Account chain-state scan. */
                 free_tao: number;
                 last_updated: string | null;
-                net_flow_30d: number | null;
-                net_flow_7d: number | null;
-                net_flow_90d: number | null;
                 ss58: string;
                 /** @description free_tao + delegated_tao. Both addends are TAO, so the sum is a real TAO quantity; it inherits delegated_tao's ~24h price staleness. Default sort. */
                 total_tao: number;
@@ -12127,7 +12124,7 @@ export interface components {
             limit: number;
             schema_version: number;
             /** @enum {string} */
-            sort: "total_tao" | "free_tao" | "delegated_tao" | "net_flow_7d" | "net_flow_30d" | "net_flow_90d";
+            sort: "total_tao" | "free_tao" | "delegated_tao";
         } & {
             [key: string]: unknown;
         };
@@ -13254,9 +13251,6 @@ export interface operations {
                      *             "delegated_tao": 0.5,
                      *             "free_tao": 0.5,
                      *             "last_updated": "2026-06-01T00:00:00.000Z",
-                     *             "net_flow_30d": 0.5,
-                     *             "net_flow_7d": 0.5,
-                     *             "net_flow_90d": 0.5,
                      *             "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
                      *             "total_tao": 0.5
                      *           }
@@ -31368,9 +31362,6 @@ export interface operations {
                      *             "delegated_tao": 0.5,
                      *             "free_tao": 0.5,
                      *             "last_updated": "2026-06-01T00:00:00.000Z",
-                     *             "net_flow_30d": 0.5,
-                     *             "net_flow_7d": 0.5,
-                     *             "net_flow_90d": 0.5,
                      *             "ss58": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
                      *             "total_tao": 0.5
                      *           }

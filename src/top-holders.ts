@@ -16,25 +16,18 @@ export { TOP_HOLDERS_LIMIT_DEFAULT, TOP_HOLDERS_LIMIT_MAX };
 // already does per-account, aggregated across every account here). An
 // account can appear from either source alone.
 //
-// net_flow_7d/30d/90d (#6886/#6887) extend this same coldkey-keyed leaderboard
-// with a rollup-backed cross-subnet stake-flow ranking (StakeAdded -
-// StakeRemoved over a window) rather than shipping as a separate wallet-
-// holdings feature -- reuses this route's existing holdings computation
-// instead of duplicating it. Sourced from wallet_flow_daily (a daily
-// coldkey-keyed rollup of account_events, populated by the same cron as
-// account_events_daily); unlike free_tao/delegated_tao, net flow is signed
-// (a real net outflow is negative), so it gets its own signed-number guard.
+// This route also used to publish net_flow_7d/30d/90d (#6886/#6887), a
+// cross-subnet stake-flow ranking read from the wallet_flow_daily rollup.
+// That rollup was a POSTGRES table and did not survive the box being
+// destroyed (#9193) -- there is no D1 migration for it, so the three fields
+// could only ever be null and their three sort keys silently degraded to
+// ss58 order. Withdrawn in #9461; the underlying events survive in the
+// lakehouse (chain.account_events), so rebuilding the rollup is a separate
+// project, not a reason to keep advertising an unfillable field.
 
 type Row = Record<string, unknown>;
 
-export const TOP_HOLDERS_SORTS = [
-  "total_tao",
-  "free_tao",
-  "delegated_tao",
-  "net_flow_7d",
-  "net_flow_30d",
-  "net_flow_90d",
-];
+export const TOP_HOLDERS_SORTS = ["total_tao", "free_tao", "delegated_tao"];
 export const DEFAULT_TOP_HOLDERS_SORT = "total_tao";
 
 function toIso(ms: unknown): string | null {
@@ -50,24 +43,11 @@ function numberOrZero(value: unknown): number {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 }
 
-// Net flow can be genuinely negative (net outflow) -- numberOrZero's >= 0
-// guard would silently clamp a real outflow to 0, which is wrong here.
-// Missing rollup data must stay null (never coerce to 0) so sort keys can
-// distinguish "confirmed zero movers" from "no flow row in the window".
-function numberOrNullSigned(value: unknown): number | null {
-  if (value == null) return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
 interface TopHoldersEntry {
   ss58: string;
   free_tao: number;
   delegated_tao: number;
   total_tao: number;
-  net_flow_7d: number | null;
-  net_flow_30d: number | null;
-  net_flow_90d: number | null;
   last_updated: string | null;
   [key: string]: unknown;
 }
@@ -80,32 +60,25 @@ function buildTopHoldersEntry(row: Row): TopHoldersEntry {
     free_tao: freeTao,
     delegated_tao: delegatedTao,
     total_tao: freeTao + delegatedTao,
-    net_flow_7d: numberOrNullSigned(row?.net_flow_7d),
-    net_flow_30d: numberOrNullSigned(row?.net_flow_30d),
-    net_flow_90d: numberOrNullSigned(row?.net_flow_90d),
     last_updated: toIso(
       row?.captured_at == null ? null : Number(row.captured_at),
     ),
   };
 }
 
+// Every sort key is one of TOP_HOLDERS_SORTS, and all three are produced by
+// numberOrZero/their sum -- so both sides are always finite numbers and there
+// is no null rank to model. The null-last branch this used to carry existed
+// only for the withdrawn net_flow_* keys (#9461); reintroducing a nullable
+// sort key means reintroducing it deliberately, not inheriting it.
 export function compareTopHoldersSort(
   a: TopHoldersEntry,
   b: TopHoldersEntry,
   sortKey: string,
 ): number {
-  const aVal = a[sortKey];
-  const bVal = b[sortKey];
-  // net_flow_* are number | null; other sort keys are always number.
-  // typeof null === "object", so non-numbers (including null) sort last.
-  const aNum = typeof aVal === "number";
-  const bNum = typeof bVal === "number";
-  if (aNum !== bNum) {
-    if (aNum) return -1;
-    return 1;
-  }
-  if (!aNum) return a.ss58.localeCompare(b.ss58);
-  return (bVal as number) - (aVal as number) || a.ss58.localeCompare(b.ss58);
+  const aVal = a[sortKey] as number;
+  const bVal = b[sortKey] as number;
+  return bVal - aVal || a.ss58.localeCompare(b.ss58);
 }
 
 /** Shapes raw (ss58, free_tao, delegated_tao, captured_at) rows -- one per

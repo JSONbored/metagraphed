@@ -19,14 +19,7 @@ const ACCOUNTS_LIST_SORTS = [
   "stake_dominance",
   "last_active",
 ] as const;
-const TOP_HOLDERS_SORTS = [
-  "total_tao",
-  "free_tao",
-  "delegated_tao",
-  "net_flow_7d",
-  "net_flow_30d",
-  "net_flow_90d",
-] as const;
+const TOP_HOLDERS_SORTS = ["total_tao", "free_tao", "delegated_tao"] as const;
 
 export const ListAccountsInputSchema = z
   .object({
@@ -96,9 +89,6 @@ const TopHolderItemSchema = z
       .describe(
         "free_tao + delegated_tao. Both addends are TAO, so the sum is a real TAO quantity; it inherits delegated_tao's ~24h price staleness. Default sort.",
       ),
-    net_flow_7d: z.unknown().optional(),
-    net_flow_30d: z.unknown().optional(),
-    net_flow_90d: z.unknown().optional(),
     last_updated: z.string().nullable().optional(),
   })
   .passthrough();

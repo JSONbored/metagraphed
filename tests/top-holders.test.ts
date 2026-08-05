@@ -192,148 +192,68 @@ describe("buildTopHoldersList", () => {
     assert.equal(data.accounts[0].last_updated, null);
   });
 
-  test("TOP_HOLDERS_SORTS matches the six real sort keys", () => {
+  test("TOP_HOLDERS_SORTS matches the three real sort keys", () => {
     assert.deepEqual(TOP_HOLDERS_SORTS, [
       "total_tao",
       "free_tao",
       "delegated_tao",
-      "net_flow_7d",
-      "net_flow_30d",
-      "net_flow_90d",
     ]);
   });
 
-  test("net_flow_7d/30d/90d are null when the flow rollup has no row for this account (#8807)", () => {
-    const data = buildTopHoldersList([ROW]) as Row;
-    assert.equal(data.accounts[0].net_flow_7d, null);
-    assert.equal(data.accounts[0].net_flow_30d, null);
-    assert.equal(data.accounts[0].net_flow_90d, null);
-  });
-
-  test("a genuine zero net_flow_7d is preserved when the account has flow rows but none in the last 7 days (#8807)", () => {
+  // #9461: net_flow_7d/30d/90d were sourced from wallet_flow_daily, a Postgres
+  // table that did not survive the box being destroyed. Even a row that still
+  // carries the columns must not put them back on the wire -- the withdrawal
+  // is of the published field, not merely of a value that happened to be null.
+  test("the withdrawn net_flow_* fields never appear on an entry (#9461)", () => {
     const data = buildTopHoldersList([
-      {
-        ...ROW,
-        net_flow_7d: 0,
-        net_flow_30d: 12.5,
-        net_flow_90d: 40,
-      },
+      { ...ROW, net_flow_7d: -500.25, net_flow_30d: 0, net_flow_90d: 40 },
     ]) as Row;
-    assert.equal(data.accounts[0].net_flow_7d, 0);
-    assert.equal(data.accounts[0].net_flow_30d, 12.5);
-    assert.equal(data.accounts[0].net_flow_90d, 40);
+    assert.deepEqual(Object.keys(data.accounts[0] as object), [
+      "ss58",
+      "free_tao",
+      "delegated_tao",
+      "total_tao",
+      "last_updated",
+    ]);
   });
 
-  test("a negative net flow (net outflow) is preserved, not clamped to 0", () => {
-    const data = buildTopHoldersList([
-      { ...ROW, net_flow_7d: -500.25, net_flow_30d: -1000, net_flow_90d: -1 },
-    ]) as Row;
-    assert.equal(data.accounts[0].net_flow_7d, -500.25);
-    assert.equal(data.accounts[0].net_flow_30d, -1000);
-    assert.equal(data.accounts[0].net_flow_90d, -1);
-  });
-
-  test("a non-finite net flow value becomes null, not 0 (#8807)", () => {
-    const data = buildTopHoldersList([
-      { ...ROW, net_flow_30d: "not-a-number" },
-    ]) as Row;
-    assert.equal(data.accounts[0].net_flow_30d, null);
-  });
-
-  test("sorts by net_flow_30d when requested, biggest net inflow first", () => {
-    const data = buildTopHoldersList(
-      [
-        { ss58: "5Outflow", free_tao: 0, delegated_tao: 0, net_flow_30d: -500 },
-        {
-          ss58: "5BigInflow",
-          free_tao: 0,
-          delegated_tao: 0,
-          net_flow_30d: 500,
-        },
-      ],
-      { sort: "net_flow_30d" },
-    ) as Row;
-    assert.equal(data.accounts[0].ss58, "5BigInflow");
-    assert.equal(data.accounts[1].ss58, "5Outflow");
-  });
-
-  test("null net_flow_7d sorts after a real negative outflow (#8807)", () => {
-    const data = buildTopHoldersList(
-      [
-        { ss58: "5Unknown", free_tao: 0, delegated_tao: 0 },
-        { ss58: "5Outflow", free_tao: 0, delegated_tao: 0, net_flow_7d: -5 },
-      ],
-      { sort: "net_flow_7d" },
-    ) as Row;
-    assert.deepEqual(
-      (data.accounts as Row[]).map((a: Row) => a.ss58),
-      ["5Outflow", "5Unknown"],
-    );
-  });
-
-  test("two null net_flow_7d rows tiebreak by ss58 (#8807)", () => {
-    const data = buildTopHoldersList(
-      [
-        { ss58: "5B", free_tao: 0, delegated_tao: 0 },
-        { ss58: "5A", free_tao: 0, delegated_tao: 0 },
-      ],
-      { sort: "net_flow_7d" },
-    ) as Row;
-    assert.deepEqual(
-      (data.accounts as Row[]).map((a: Row) => a.ss58),
-      ["5A", "5B"],
-    );
-  });
-
-  test("equal net_flow_7d values tiebreak by ss58 (#8807 coverage)", () => {
-    const data = buildTopHoldersList(
-      [
-        { ss58: "5B", free_tao: 0, delegated_tao: 0, net_flow_7d: 10 },
-        { ss58: "5A", free_tao: 0, delegated_tao: 0, net_flow_7d: 10 },
-        { ss58: "5C", free_tao: 0, delegated_tao: 0, net_flow_7d: 20 },
-      ],
-      { sort: "net_flow_7d" },
-    ) as Row;
-    assert.deepEqual(
-      (data.accounts as Row[]).map((a: Row) => a.ss58),
-      ["5C", "5A", "5B"],
-    );
-  });
-
-  test("undefined net_flow is null, distinct from a genuine zero (#8807)", () => {
-    const data = buildTopHoldersList([
-      { ...ROW, net_flow_7d: undefined, net_flow_30d: 0 },
-    ]) as Row;
-    assert.equal(data.accounts[0].net_flow_7d, null);
-    assert.equal(data.accounts[0].net_flow_30d, 0);
+  test("a withdrawn net_flow_* sort key falls back to the default (#9461)", () => {
+    for (const sort of ["net_flow_7d", "net_flow_30d", "net_flow_90d"]) {
+      const data = buildTopHoldersList([ROW], { sort }) as Row;
+      assert.equal(data.sort, DEFAULT_TOP_HOLDERS_SORT);
+    }
   });
 });
 
 describe("compareTopHoldersSort", () => {
-  const num = {
-    ss58: "5Num",
-    free_tao: 0,
+  const entry = (ss58: string, total: number) => ({
+    ss58,
+    free_tao: total,
     delegated_tao: 0,
-    total_tao: 0,
-    net_flow_7d: -5,
-    net_flow_30d: null,
-    net_flow_90d: null,
+    total_tao: total,
     last_updated: null,
-  };
-  const missing = {
-    ss58: "5Null",
-    free_tao: 0,
-    delegated_tao: 0,
-    total_tao: 0,
-    net_flow_7d: null,
-    net_flow_30d: null,
-    net_flow_90d: null,
-    last_updated: null,
-  };
+  });
 
-  test("number vs null and null vs number both place null last (#8807)", () => {
-    assert.equal(compareTopHoldersSort(num, missing, "net_flow_7d"), -1);
-    assert.equal(compareTopHoldersSort(missing, num, "net_flow_7d"), 1);
+  test("ranks the larger value first and tiebreaks equal values by ss58", () => {
+    assert.equal(
+      compareTopHoldersSort(
+        entry("5Big", 100),
+        entry("5Small", 1),
+        "total_tao",
+      ),
+      -99,
+    );
+    assert.equal(
+      compareTopHoldersSort(
+        entry("5Small", 1),
+        entry("5Big", 100),
+        "total_tao",
+      ),
+      99,
+    );
+    assert.ok(
+      compareTopHoldersSort(entry("5A", 10), entry("5B", 10), "total_tao") < 0,
+    );
   });
 });
 
@@ -361,6 +281,25 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
     const body = await res.json();
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "sort");
+  });
+
+  // The one observable behaviour change of #9461: these used to answer 200
+  // while quietly ordering by ss58, because every net_flow_* value was null.
+  // Refusing the request is the correct answer to an intent we cannot honour.
+  test("rejects a withdrawn net_flow_* sort with 400 rather than answering in ss58 order (#9461)", async () => {
+    for (const sort of ["net_flow_7d", "net_flow_30d", "net_flow_90d"]) {
+      const res = await handleRequest(
+        new Request(
+          `https://api.metagraph.sh/api/v1/accounts/top-holders?sort=${sort}`,
+        ),
+        createLocalArtifactEnv() as unknown as Env,
+        ctx,
+      );
+      assert.equal(res.status, 400);
+      const body = await res.json();
+      assert.equal(body.error.code, "invalid_query");
+      assert.equal(body.meta.parameter, "sort");
+    }
   });
 
   test("rejects a ?limit above the max with 400", async () => {
@@ -415,9 +354,6 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
                 free_tao: 1000.5,
                 delegated_tao: 250.25,
                 total_tao: 1250.75,
-                net_flow_7d: -50,
-                net_flow_30d: 200,
-                net_flow_90d: 900,
                 last_updated: new Date(1750000000000).toISOString(),
               },
             ],
@@ -435,10 +371,11 @@ describe("GET /api/v1/accounts/top-holders via the Worker", () => {
     assert.match(res.headers.get("content-type"), /text\/csv/);
     const lines = (await res.text()).trim().split("\r\n");
     assert.equal(lines.length, 2);
-    // net_flow_7d (-50) gets a leading `'` -- the formula-injection guard for
-    // CSV cells starting with -/+/=/@ (workers/csv.ts), same as any other
-    // negative-leading cell in this codebase's CSV exports.
-    assert.match(lines[1], /^5Whale1,1000\.5,250\.25,1250\.75,'-50,200,900,/);
+    assert.equal(
+      lines[0],
+      "ss58,free_tao,delegated_tao,total_tao,last_updated",
+    );
+    assert.match(lines[1], /^5Whale1,1000\.5,250\.25,1250\.75,/);
   });
 
   test("testnet has no variant (mainnet-only leaderboard)", async () => {
