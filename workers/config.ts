@@ -563,12 +563,15 @@ export const BLOCK_EXTRINSICS_PATH_PATTERN =
 export const BLOCK_EVENTS_PATH_PATTERN =
   /^\/api\/v1\/blocks\/(\d+|0x[0-9a-fA-F]{64})\/events$/;
 // Per-block RAW pallet events (#1620), the all-events tier's sibling to
-// /events above. Dispatched inline in workers/api.ts by a numeric-only literal
-// regex; this named copy exists so isMainnetOnlyApiPath can reference the same
-// shape as its BLOCK_* neighbours rather than open-coding a third variant.
-// Accepts the hash form too, matching every other {ref} route -- the dispatch
-// site's numeric-only pattern is narrower, and a hash-form request is a 404
-// either way, so the wider shape here cannot admit anything the router serves.
+// /events above. Accepts the hash form, matching every other {ref} route.
+//
+// This pattern's width used to be justified by "a hash-form request is a 404
+// either way". It was not: it routed the request into handleChainEventsFamily,
+// whose tier matcher was numeric-only, so a hash asked no store and fell out as
+// a 503 `data_tier_unavailable`. The tier matcher now admits the same shape
+// this does (BLOCK_CHAIN_EVENTS_REF in src/chain-events-degraded.ts), so the
+// two agree and a hash is served -- or declines with the typed
+// `block_detail_unavailable` 503 the contract documents.
 export const BLOCK_CHAIN_EVENTS_PATH_PATTERN =
   /^\/api\/v1\/blocks\/(\d+|0x[0-9a-fA-F]{64})\/chain-events$/;
 // Block-explorer extrinsic routes (#1345 second slice): recent feed + per-extrinsic
