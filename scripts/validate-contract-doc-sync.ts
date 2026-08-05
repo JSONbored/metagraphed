@@ -130,9 +130,32 @@ export interface ContractDocDrift {
 }
 
 /**
+ * Does this bullet already say what the new description says? True when the
+ * prose carries every claim the description GAINED and none of the ones it
+ * LOST -- which is agreement, not staleness, and must not be reported as drift.
+ *
+ * #9575: without this the gate fired on 47 entries of #9573, a PR that
+ * corrected src/contracts.ts to match bullets that ALREADY said D1. The only
+ * way to satisfy it was to edit a line that was right, which is the token-edit
+ * failure mode the claim vector exists to avoid. Checking agreement is what the
+ * gate is for; "was the bullet edited" was only ever a proxy for it.
+ */
+function bulletAlreadyAgrees(
+  bulletText: string,
+  gained: string[],
+  lost: string[],
+): boolean {
+  const bulletTokens = claimVector(bulletText);
+  return (
+    gained.every((token) => bulletTokens.includes(token)) &&
+    lost.every((token) => !bulletTokens.includes(token))
+  );
+}
+
+/**
  * Pure decision function (unit-tested). Drift is: the entry existed at the base,
- * its claim vector changed, it has a bullet, and that bullet is byte-identical
- * to the base's.
+ * its claim vector changed, it has a bullet, that bullet is byte-identical to
+ * the base's, AND the bullet does not already agree with the new claims.
  */
 export function evaluateContractDocSync({
   baseDescriptions,
@@ -162,11 +185,15 @@ export function evaluateContractDocSync({
     if (!headBullet || !baseBullet) continue;
     if (headBullet.text !== baseBullet.text) continue;
 
+    const gained = after.filter((token) => !before.includes(token));
+    const lost = before.filter((token) => !after.includes(token));
+    if (bulletAlreadyAgrees(headBullet.text, gained, lost)) continue;
+
     drift.push({
       path: entryPath,
       docLine: headBullet.line,
-      gained: after.filter((token) => !before.includes(token)),
-      lost: before.filter((token) => !after.includes(token)),
+      gained,
+      lost,
     });
   }
   return { drift, ok: drift.length === 0 };
@@ -212,16 +239,33 @@ export function resolveDiffBase({
   return null;
 }
 
-function readAtBase(baseRef: string, filePath: string): string | null {
+/**
+ * Which commit the HEAD side is read from: the explicit head ref when one was
+ * supplied, or `null` meaning "the working tree". Exported so the choice itself
+ * is unit-tested -- it is the whole of the #9575 fix.
+ */
+export function headReadRef(explicitHead: string | undefined): string | null {
+  return explicitHead ? explicitHead : null;
+}
+
+function readAtRef(ref: string, filePath: string): string | null {
   try {
-    return git(["show", `${baseRef}:${filePath}`]);
+    return git(["show", `${ref}:${filePath}`]);
   } catch {
     return null;
   }
 }
 
 async function main(): Promise<void> {
-  const headRef = valueAfter("--head-sha") || process.env.HEAD_SHA || "HEAD";
+  // An EXPLICIT head ref (CI always passes the PR head SHA) is read from git;
+  // only a local run with none falls back to the working tree. #9575: reading
+  // the head side from the working tree on a PR compares the merge base against
+  // the MERGE COMMIT, so every contract change that landed on the base branch
+  // since the fork point is diffed as though this PR made it -- #9574 inherited
+  // 47 entries from two PRs it had nothing to do with. Same reason
+  // validate-client-sdk-sync.ts diffs fork-point -> HEAD_SHA with explicit refs.
+  const explicitHead = valueAfter("--head-sha") || process.env.HEAD_SHA;
+  const headRef = explicitHead || "HEAD";
   const baseRef = resolveDiffBase({
     explicitBase: valueAfter("--base-sha") || process.env.BASE_SHA,
     baseRef: valueAfter("--base-ref") || process.env.BASE_REF || "main",
@@ -237,11 +281,9 @@ async function main(): Promise<void> {
     return;
   }
 
-  // Base from git, head from the working tree: on a PR the checkout is the merge
-  // commit, and locally this is what makes an uncommitted doc edit count.
-  const baseArtifacts = readAtBase(baseRef, ARTIFACT_CATALOG_PATH);
-  const baseRoutes = readAtBase(baseRef, ROUTE_INDEX_PATH);
-  const baseDoc = readAtBase(baseRef, DOC_PATH);
+  const baseArtifacts = readAtRef(baseRef, ARTIFACT_CATALOG_PATH);
+  const baseRoutes = readAtRef(baseRef, ROUTE_INDEX_PATH);
+  const baseDoc = readAtRef(baseRef, DOC_PATH);
   if (baseArtifacts === null || baseRoutes === null || baseDoc === null) {
     console.log(
       `ℹ Contract↔doc sync: a tracked file is absent at ${baseRef.slice(0, 9)} — gate skipped.`,
@@ -249,9 +291,24 @@ async function main(): Promise<void> {
     return;
   }
 
-  const headDoc = await fs.readFile(path.join(repoRoot, DOC_PATH), "utf8");
-  const readHead = async (filePath: string): Promise<unknown> =>
-    JSON.parse(await fs.readFile(path.join(repoRoot, filePath), "utf8"));
+  // With an explicit head ref, read that commit; otherwise the working tree, so
+  // a local run still sees an uncommitted doc edit.
+  const headSource = headReadRef(explicitHead);
+  const readHeadText = async (filePath: string): Promise<string | null> =>
+    headSource
+      ? readAtRef(headSource, filePath)
+      : await fs.readFile(path.join(repoRoot, filePath), "utf8");
+
+  const headDoc = await readHeadText(DOC_PATH);
+  const headArtifacts = await readHeadText(ARTIFACT_CATALOG_PATH);
+  const headRoutes = await readHeadText(ROUTE_INDEX_PATH);
+  if (headDoc === null || headArtifacts === null || headRoutes === null) {
+    console.log(
+      `ℹ Contract↔doc sync: a tracked file is absent at ${headRef.slice(0, 9)} — gate skipped.`,
+    );
+    return;
+  }
+  const readHead = (contents: string): unknown => JSON.parse(contents);
 
   const drift = [
     evaluateContractDocSync({
@@ -260,7 +317,7 @@ async function main(): Promise<void> {
         "artifacts",
       ),
       headDescriptions: descriptionsFromCatalog(
-        await readHead(ARTIFACT_CATALOG_PATH),
+        readHead(headArtifacts),
         "artifacts",
       ),
       baseDoc,
@@ -271,10 +328,7 @@ async function main(): Promise<void> {
         JSON.parse(baseRoutes),
         "routes",
       ),
-      headDescriptions: descriptionsFromCatalog(
-        await readHead(ROUTE_INDEX_PATH),
-        "routes",
-      ),
+      headDescriptions: descriptionsFromCatalog(readHead(headRoutes), "routes"),
       baseDoc,
       headDoc,
     }),
