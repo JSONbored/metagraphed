@@ -29,8 +29,10 @@
 //
 // COLUMN COVERAGE IS NOT UNIFORM, and this module does not pretend otherwise.
 // `blocks_head` carries block_number, block_hash, parent_hash, extrinsic_count
-// and observed_at. It has no author, spec_version, or event_count, so above
-// the seam those fields are null and any FILTER on them cannot be honoured.
+// and observed_at, plus event_count (#9417) and author (#9455) read by the
+// poller itself; `spec_version` arrives via the chain_detail_blocks join below.
+// Those three are READABLE above the seam but still not FILTERABLE, so a FILTER
+// on them cannot be honoured here.
 // Rather than answer such a filter with rows that ignore it, the D1 leg is
 // skipped entirely for those queries and only the lakehouse range is served --
 // an incomplete answer is recoverable, a wrong one is not. See
@@ -95,7 +97,7 @@ export const DEFAULT_BLOCKS_SEAM = 8_759_336;
 // `chain_event_count`, NOT `account_event_count` (the curated subset).
 const D1_SELECT =
   "b.block_number, b.block_hash, b.parent_hash, b.extrinsic_count, " +
-  "b.observed_at, c.spec_version AS spec_version, " +
+  "b.observed_at, b.author, c.spec_version AS spec_version, " +
   // COALESCE, indexer first (#9417): chain_detail_blocks' count comes from a
   // full SCALE decode of every event, blocks_head's from the Vec length prefix
   // the head poller reads. Both are exact and they agree; the decode is
@@ -208,8 +210,15 @@ export async function lakehouseHeadBlock(
  * hot tier's window is shorter than blocks_head's range, so a block outside it
  * joins to null and would be silently excluded by `spec_version = ?` or
  * `event_count >= ?` -- dropping rows the caller never excluded. Being able to
- * report a value is not the same as being able to filter on it. `author` is
- * carried by neither table, so it disqualifies the leg outright.
+ * report a value is not the same as being able to filter on it.
+ *
+ * `author` (#9455) is now readable here too, and stays non-filterable for the
+ * same class of reason: rows written before the poller began deriving it hold
+ * null, so `author = ?` would silently drop blocks whose producer simply was
+ * not recorded yet rather than blocks with a different producer. The lakehouse
+ * leg answers author filters completely for all decoded history; the only
+ * blocks it cannot cover are the ~10-20 minutes above the seam, and an
+ * incomplete answer is recoverable where a wrong one is not.
  */
 export function d1CanServe(query: BlockFeedQuery): boolean {
   return (

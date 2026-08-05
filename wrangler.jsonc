@@ -490,6 +490,14 @@
     // flip to "false" to stop paying that immediately (blocks keep flowing;
     // their counts just go back to arriving with the indexer).
     "CHAIN_HEAD_EVENT_COUNT_ENABLED": "true",
+    // #9455: derive each block's author from the header's Aura PreRuntime
+    // digest (already in hand from chain_getBlock) plus one Aura.Authorities
+    // storage read. Without it the head window publishes author: null for every
+    // block until the decode lane catches up ~10-20 minutes later -- on a block
+    // explorer, precisely the blocks on the front page. Flip to "false" to stop
+    // paying the extra read (blocks keep flowing; authors go back to arriving
+    // with the indexer).
+    "CHAIN_HEAD_AUTHOR_ENABLED": "true",
     // #8700: the raw-capture lane's testnet endpoint. Declared explicitly
     // rather than left to the code default so the two chains this Worker
     // captures are both visible here — a lane whose endpoint is only knowable

@@ -1034,14 +1034,21 @@ export class ChainFirehoseHub implements DurableObject {
           fetch,
           Date.now,
           this.env.CHAIN_HEAD_EVENT_COUNT_ENABLED !== "false",
+          // #9455: derive the author too, so the head window can answer "who
+          // produced this block" instead of showing null until the decode lane
+          // catches up ~10-20 minutes later. Separately kill-switched from the
+          // event count -- it is its own extra storage read per block, and the
+          // two should be disableable independently if the endpoint objects to
+          // either one's volume.
+          this.env.CHAIN_HEAD_AUTHOR_ENABLED !== "false",
         );
         await this.broadcast(block as unknown as ChainFirehoseIngestPayload);
         const db = this.env.METAGRAPH_HEALTH_DB;
         if (db?.prepare) {
           await db
             .prepare(
-              `INSERT INTO blocks_head (block_number, block_hash, parent_hash, extrinsic_count, event_count, observed_at)
-               VALUES (?, ?, ?, ?, ?, ?)
+              `INSERT INTO blocks_head (block_number, block_hash, parent_hash, extrinsic_count, event_count, author, observed_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(block_number) DO UPDATE SET
                  block_hash=excluded.block_hash,
                  parent_hash=excluded.parent_hash,
@@ -1049,6 +1056,9 @@ export class ChainFirehoseHub implements DurableObject {
                  -- COALESCE, not excluded: a re-poll that could not read the
                  -- count must not erase one an earlier tick already stored.
                  event_count=COALESCE(excluded.event_count, blocks_head.event_count),
+                 -- Same COALESCE rule, same reason: a re-poll whose storage
+                 -- read failed must not blank an author already derived.
+                 author=COALESCE(excluded.author, blocks_head.author),
                  observed_at=excluded.observed_at`,
             )
             .bind(
@@ -1057,6 +1067,7 @@ export class ChainFirehoseHub implements DurableObject {
               block.parent_hash,
               block.extrinsic_count,
               block.event_count,
+              block.author,
               block.observed_at,
             )
             .run();

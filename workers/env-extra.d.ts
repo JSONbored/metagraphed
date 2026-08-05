@@ -161,6 +161,12 @@ interface Env {
    * above, the feature it gates is a correctness fix, so an unset var in
    * local/CI should exercise it rather than skip it. */
   CHAIN_HEAD_EVENT_COUNT_ENABLED?: string;
+  /** #9455: derive each block's author from the header's Aura pre-runtime
+   * digest plus the Aura.Authorities set. Defaults ON (only "false" disables),
+   * for the same reason as the count above — it fills a field that otherwise
+   * publishes null for the whole head window. Separate from the count switch so
+   * either extra storage read can be dropped without the other. */
+  CHAIN_HEAD_AUTHOR_ENABLED?: string;
   /** #8700: the raw-capture lane's testnet endpoint. Only the capture lane
    * reads it — the head poller stays mainnet-only, because `blocks_head` has
    * no network dimension yet. */
