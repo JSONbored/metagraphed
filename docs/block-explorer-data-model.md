@@ -108,10 +108,10 @@ settings, etc.) — live state values, not events.
 
 **The metagraph** (per-neuron: UID, stake weight, VTrust, consensus, incentive, dividends,
 emission, "Updated" = blocks since last weight-set) — **fundamentally a state snapshot**.
-Already captured today via a separate pipeline (`scripts/fetch-metagraph-native.py`, run on the
-indexer box's own `data-refresh-cron` systemd timer as of 2026-07-13, previously GitHub Actions'
-`refresh-metagraph.yml` → Postgres `neurons`/`neuron_daily`) — see the block-explorer completion
-roadmap issue tree for the one confirmed remaining gap (subnet hyperparameters).
+Already captured today via a separate pipeline: the poller Container's `metagraph` job on a
+15-minute loop, which POSTs a full snapshot to `/api/v1/internal/neurons-sync` → D1
+`neurons`/`neuron_daily`. It is no longer the indexer box's `data-refresh-cron` systemd timer
+(retired 2026-08-03 with the box) and before that GitHub Actions' `refresh-metagraph.yml`.
 
 **Validator dashboards, historical time-series** (price charts, registration-cost charts,
 historical metagraph snapshots) — mix of event-derived and state-derived data.
@@ -124,16 +124,19 @@ direct independent cross-check against two sources with zero shared infrastructu
 indexing pipeline (our own archive node for a historical block, `entrypoint-finney.opentensor.ai`
 for a live one): perfect parity, both extrinsic and event content, exact order.
 
-Per-neuron metagraph state is now served from Postgres (`neurons`/`neuron_daily`, ADR 0014's
-#4771 cutover, flipped 2026-07-10) — the ADR-0013-era `economics_history` table was superseded
+Per-neuron metagraph state is served from D1 (`neurons`/`neuron_daily`; ADR 0014's #4771
+cutover moved it to Postgres in 2026-07, and #9157's port moved it back to D1 when the box was
+decommissioned — `METAGRAPH_NEURONS_SOURCE` reads `d1`) — the ADR-0013-era `economics_history` table was superseded
 by folding economics columns into D1's/Postgres's `subnet_snapshots` (migration 0008) instead,
 and was removed as dead schema before Postgres itself was retired (#9426). Check D1's route list in
 `workers/config.ts` before assuming a chain-data tier is missing, the two can diverge.
 
-The one confirmed, unfiled capture gap is **subnet hyperparameters** — no pipeline captures
-these anywhere. Everything else needed for full explorer parity is a derived view or narrow
-enrichment on already-accurate data, not new chain-state capture. See the block-explorer
-completion roadmap issue tree for the full breakdown.
+That gap is closed. **Subnet hyperparameters** are captured (#4832): a producer POSTs to
+`/api/v1/internal/subnet-hyperparams-sync`, `writeSubnetHyperparamsToD1` lands them in D1
+`subnet_hyperparams` plus the append-only `subnet_hyperparams_history`, and they are served at
+`/api/v1/subnets/{netuid}/hyperparameters`. Everything needed for full explorer parity is now a
+derived view or narrow enrichment on already-accurate data, not new chain-state capture. See the
+block-explorer completion roadmap issue tree for the full breakdown.
 
 Price/market data is a separate problem again — not a state read in the simple sense, needs
 a decision on data source (on-chain bonding-curve state vs. an external price feed).
