@@ -32,6 +32,7 @@ import { ValidatorSubnetHeatmap } from "@/components/metagraphed/charts/validato
 import { ValidatorCardList } from "@/components/metagraphed/validator-card-list";
 import { ValidatorGuide } from "@/components/metagraphed/validator-guide";
 import { VALIDATOR_COLUMNS } from "@/components/metagraphed/validator-columns";
+import { ColumnCustomizer, useColumnVisibility } from "@jsonbored/ui-kit";
 import {
   ValidatorsCompareDrawer,
   ValidatorCompareToggle,
@@ -121,6 +122,12 @@ function ValidatorsDirectory({
   const generatedAt = res.meta?.generated_at ?? null;
   const compact = density === "compact";
   const watchlist = useWatchlist("validator");
+  // Every column is opt-in/out, with a core set on by default -- the API
+  // returns far more per validator than the table used to show (emission,
+  // trust, realized returns, the root/alpha stake split), and hiding them
+  // permanently was the wrong default.
+  const columns = useColumnVisibility("validators", VALIDATOR_COLUMNS);
+  const visibleColumns = VALIDATOR_COLUMNS.filter((c) => columns.isVisible(c.id));
 
   const setSearch = (patch: Record<string, unknown>) =>
     navigate({
@@ -247,7 +254,13 @@ function ValidatorsDirectory({
         <span className="mg-type-data text-ink-muted">
           {formatNumber(rows.length)} of {formatNumber(all.length)} validators
         </span>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <ColumnCustomizer
+            columns={VALIDATOR_COLUMNS}
+            isVisible={columns.isVisible}
+            onToggle={columns.toggle}
+            onReset={columns.reset}
+          />
           <DensityToggle value={density} onChange={onDensityChange} />
         </div>
       </div>
@@ -279,12 +292,12 @@ function ValidatorsDirectory({
             >
               {/* Pins the column tracks so they cannot be re-derived from
                   whichever virtualized rows happen to be mounted. */}
-              <TableColGroup widths={[46, 40, ...VALIDATOR_COLUMNS.map((c) => c.width)]} />
+              <TableColGroup widths={[46, 40, ...visibleColumns.map((c) => c.width)]} />
               <thead className="mg-table-head-pinned">
                 <tr>
                   <th className="w-6 px-3 py-2" aria-label="Watch" />
                   <th className="w-6 px-3 py-2" aria-label="Compare" />
-                  {VALIDATOR_COLUMNS.map((col) => (
+                  {visibleColumns.map((col) => (
                     <th
                       key={col.header}
                       className={col.thClassName}
@@ -347,7 +360,7 @@ function ValidatorsDirectory({
                       <td className="px-3 py-2 align-middle">
                         <ValidatorCompareToggle hotkey={v.hotkey} />
                       </td>
-                      {VALIDATOR_COLUMNS.map((col) => (
+                      {visibleColumns.map((col) => (
                         <td key={col.header} className={col.tdClassName}>
                           {col.cell(v, { group: groupInfo?.get(v.hotkey) })}
                         </td>
