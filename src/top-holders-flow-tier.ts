@@ -81,7 +81,10 @@ import { DEFAULT_CHAIN_NETWORK, chainTable } from "./chain-network.ts";
 import type { ChainNetworkId } from "./chain-network.ts";
 import { r2SqlQuery } from "./r2-sql.ts";
 import { buildTopHoldersList } from "./top-holders.ts";
-
+import {
+  latestCompleteAccountBalancesPass,
+  mayRankAccountBalances,
+} from "./account-balances-completeness.ts";
 /** Where the lane writes and the reader below gets. Under
  * `metagraph/projections/` like every other cron-recomputed card, and
  * deliberately NOT the frozen `metagraph/materialized/top-holders.json`: the
@@ -290,9 +293,38 @@ export async function topHoldersBalances(
   const db = (env as { METAGRAPH_HEALTH_DB?: D1Like } | null | undefined)
     ?.METAGRAPH_HEALTH_DB;
   if (!db?.prepare) return null;
+
+  // COMPLETENESS FIRST, ROWS SECOND (#9511). A row count cannot answer "is this
+  // ledger safe to rank from": 147,000 well-formed rows look exactly like
+  // 364,266 well-formed rows, only fewer, and `ORDER BY free_tao DESC` over the
+  // former returns the largest balances PRESENT rather than the largest that
+  // EXIST. Production served precisely that on 2026-08-05 -- a correct-looking
+  // leaderboard whose #2, 737,821 TAO live on chain, was simply absent -- and
+  // the `results.length === 0` check below cleared it without complaint.
+  //
+  // The producer declares each pass's size up front (it buffers the walk before
+  // posting, metagraphed-infra#316) and the sink tallies arrivals against it, so
+  // this asks the tally rather than guessing from the ledger.
+  // The two readers describe the same binding with different minimal shapes --
+  // this module's D1Like names bind()/all(), the completeness reader names
+  // first() -- so the cast goes through unknown rather than widening either
+  // interface to satisfy the other.
+  const completeness = await latestCompleteAccountBalancesPass(
+    db as unknown as Parameters<typeof latestCompleteAccountBalancesPass>[0],
+  );
+  if (!mayRankAccountBalances(completeness)) return null;
+
   let results: unknown[];
   try {
     const res = await db
+      // NOT scoped to the complete pass's captured_at, deliberately. This
+      // ledger never prunes, so a later PARTIAL pass only overwrites rows --
+      // it never removes an account. Once any complete pass has landed the
+      // table holds at least that whole account set, and scoping to its stamp
+      // would drop exactly the accounts a newer partial pass had refreshed:
+      // the same missing-top-holder bug, reintroduced by the guard against it.
+      // Mixed stamps mean some values are fresher than others, which is what a
+      // no-prune upsert ledger is.
       .prepare(
         "SELECT ss58, free_tao FROM account_balances" +
           " WHERE free_tao > 0 ORDER BY free_tao DESC LIMIT ?",

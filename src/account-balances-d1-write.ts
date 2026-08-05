@@ -59,17 +59,86 @@ export const ACCOUNT_BALANCE_INSERT_COLUMNS = [
 ];
 
 /**
+ * One pass's completeness accounting, when the producer declares it.
+ *
+ * `expectedRows` is what the producer says the whole pass will deliver -- a
+ * number it knows because metagraphed-infra#316 made it buffer the walk before
+ * posting anything. `receivedRows` is what THIS request carries. The statement
+ * adds the second to a running total and stamps `completed_at` on the request
+ * that closes the gap.
+ */
+export interface AccountBalancesPass {
+  capturedAt: number;
+  expectedRows: number;
+  receivedRows: number;
+  /** Injected rather than read from the clock so a test can pin it. */
+  nowMs: number;
+}
+
+/**
+ * The statement that advances a pass's row tally, upserted on (captured_at).
+ *
+ * `completed_at` is set by whichever request brings the running total up to
+ * `expected_rows`, and never cleared afterwards -- a replayed request adds its
+ * rows again and would otherwise un-complete a finished pass. Over-counting on
+ * replay is deliberate and harmless: the reader asks "is completed_at set",
+ * never "does the count match exactly", precisely so an at-least-once producer
+ * cannot leave a complete pass looking unfinished.
+ */
+export function accountBalancesPassStatement(
+  db: D1Like,
+  pass: AccountBalancesPass,
+): D1PreparedStatement {
+  return db
+    .prepare(
+      `INSERT INTO account_balances_passes
+         (captured_at, expected_rows, received_rows, completed_at)
+       VALUES (?, ?, ?, CASE WHEN ? >= ? THEN ? ELSE NULL END)
+       ON CONFLICT (captured_at) DO UPDATE SET
+         expected_rows = excluded.expected_rows,
+         received_rows = account_balances_passes.received_rows + excluded.received_rows,
+         completed_at = COALESCE(
+           account_balances_passes.completed_at,
+           CASE
+             WHEN account_balances_passes.received_rows + excluded.received_rows
+                  >= excluded.expected_rows
+             THEN ?
+             ELSE NULL
+           END
+         )`,
+    )
+    .bind(
+      pass.capturedAt,
+      pass.expectedRows,
+      pass.receivedRows,
+      pass.receivedRows,
+      pass.expectedRows,
+      pass.nowMs,
+      pass.nowMs,
+    );
+}
+
+/**
  * Write one account-balances sync batch to D1: a latest-only upsert on (ss58),
- * nothing else.
+ * plus this pass's completeness tally when the producer declared one.
  *
  * NO PRUNE -- see this module's header and the migration's for why deleting an
  * account absent from a batch would delete the wallets that emptied. An empty
  * batch issues no statements at all rather than an empty `db.batch([])`,
  * matching writeValidatorNominatorCountsToD1's own guard.
+ *
+ * THE PASS STATEMENT IS APPENDED LAST, deliberately. batchInSlices splits a
+ * large statement list across several `db.batch()` calls, so there is no single
+ * transaction spanning all of them -- and given that, the only safe ordering is
+ * one where a mid-run failure UNDER-counts. Rows land, then the tally moves; a
+ * pass can therefore look less complete than it is, never more. The reverse
+ * would mark a pass complete over rows that never arrived, which is exactly the
+ * lie #9511 is about.
  */
 export async function writeAccountBalancesToD1(
   db: D1Like,
   rows: Row[],
+  pass?: AccountBalancesPass | null,
 ): Promise<{ statements: number }> {
   const statements: D1PreparedStatement[] = chunkStatements(
     db,
@@ -78,6 +147,7 @@ export async function writeAccountBalancesToD1(
     ["ss58"],
     rows,
   );
+  if (pass) statements.push(accountBalancesPassStatement(db, pass));
   if (statements.length) await batchInSlices(db, statements);
   return { statements: statements.length };
 }
