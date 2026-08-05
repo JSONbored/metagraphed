@@ -5634,7 +5634,7 @@ export type Validator = {
   nominator_count?: Maybe<Scalars['Int']['output']>;
   /** Realized 1-day return on staked capital: the fractional change in total_stake_tao vs the newest permitted neuron_daily snapshot within 2 days of the ~1-day-ago target date. Backward-looking over an elapsed window (captures compounding + net delegation flow), unlike the forward-looking apy_estimate; null when no permitted snapshot lands in that range (never computed against a stale far-older baseline, #8837). Mirrors realized_return_1d in the REST/MCP shape (#7228). */
   realized_return_1d?: Maybe<Scalars['Float']['output']>;
-  /** Realized 30-day return on staked capital vs the newest permitted neuron_daily snapshot within 2 days of the ~1-month-ago target date; null when no permitted snapshot lands in that range (#7228, #8837). */
+  /** Realized 30-day return on staked capital vs the newest permitted neuron_daily snapshot within 2 days of the ~1-month-ago target date; null when no permitted snapshot lands in that range (#7228, #8837). NOTE: a window can only be answered once neuron_daily holds history reaching back past it -- the table began accumulating on 2026-07-10, so this 30-day window reads null for EVERY validator until roughly 2026-08-09 and is not a defect before then (#9455). The shorter windows are unaffected. */
   realized_return_1m?: Maybe<Scalars['Float']['output']>;
   /** Realized 7-day return on staked capital vs the newest permitted neuron_daily snapshot within 2 days of the ~1-week-ago target date; null when no permitted snapshot lands in that range (#7228, #8837). */
   realized_return_1w?: Maybe<Scalars['Float']['output']>;
