@@ -644,7 +644,15 @@ const ACCOUNT_COUNTERPARTIES_CSV_COLUMNS = [
 ];
 // Shared column order for the subnet + account event-stream feeds — the
 // formatAccountEvent row shape, stable so a CSV consumer's columns never shift.
-const EVENTS_CSV_COLUMNS = [
+//
+// This must stay COMPLETE, not merely stable: it is the only place the CSV
+// projection is declared, so a field added to formatAccountEvent and not here
+// is dropped from every ?format=csv export while the JSON contract keeps
+// publishing it. That is how price_at_tx/price_basis went missing (#9537) --
+// they were appended to the row and never to this list. Exported so
+// tests/account-events pins the two against each other; a new field belongs in
+// BOTH.
+export const EVENTS_CSV_COLUMNS = [
   "block_number",
   "event_index",
   "event_kind",
@@ -656,6 +664,10 @@ const EVENTS_CSV_COLUMNS = [
   "alpha_amount",
   "observed_at",
   "extrinsic_index",
+  // Appended, not interleaved: existing consumers' column positions are part
+  // of the stability promise above.
+  "price_at_tx",
+  "price_basis",
 ];
 // The formatIdentityHistoryEntry row shape (src/subnet-identity-history.ts):
 // one SubnetIdentitiesV3 snapshot per row, stable so a CSV consumer's columns

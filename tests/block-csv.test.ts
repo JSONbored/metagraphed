@@ -2,14 +2,17 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import { EVENTS_CSV_COLUMNS } from "../workers/request-handlers/entities.ts";
 
 // #5746: ?format=csv on the block-scoped extrinsics/events feeds, reusing the
 // unscoped/account-scoped siblings' CSV-columns constants (same row shapes).
 const REF = "8621331";
 const EXTRINSICS_CSV_HEADER =
   "extrinsic_id,block_number,signer,call_module,call_function,success";
-const EVENTS_CSV_HEADER =
-  "block_number,event_index,event_kind,hotkey,coldkey,netuid,uid,amount_tao,alpha_amount,observed_at,extrinsic_index";
+// Derived, not restated (#9537): a hand-written copy of this header is exactly
+// how price_at_tx/price_basis stayed missing from the CSV export while the JSON
+// contract published them -- the literal agreed with the bug.
+const EVENTS_CSV_HEADER = EVENTS_CSV_COLUMNS.join(",");
 
 function req(path: string, init?: RequestInit) {
   return new Request(`https://api.metagraph.sh${path}`, init);
