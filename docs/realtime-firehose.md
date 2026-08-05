@@ -1,30 +1,44 @@
 # Realtime chain-event firehose (#2114, ADR 0015)
 
-> **Partly historical (2026-08-04).** The ingest half of this document describes a
-> Postgres `AFTER INSERT` trigger that was retired with Postgres itself (#9426). The
-> Durable Object hub, the SSE/GraphQL/MCP fan-out and the rate-limiting design below are
-> all still live — only the row _source_ changed, from a Postgres trigger to the head
-> poller writing D1 and the lakehouse.
+> **Partly historical (2026-08-05).** The ingest half of this document — the Postgres
+> `AFTER INSERT` trigger, the `chain_firehose_outbox` table, and the box-side relay that
+> drained it — was retired with Postgres and the box (#9426). The Durable Object hub, the
+> SSE/GraphQL/MCP fan-out and the rate-limiting design below are all still live: the row
+> _source_ changed, and the hub is now fed by whatever POSTs
+> `/api/v1/internal/chain-firehose-ingest`.
+>
+> **What actually arrives today is `blocks` and nothing else** — measured on an unfiltered
+> subscription, 2026-08-05. `extrinsics`, `chain_events` and `account_events` are dark; see
+> #9583 before building on them.
 
-The `chain_firehose_outbox` table is a compact, best-effort stream source for
+The `chain_firehose_outbox` table was a compact, best-effort stream source for
 every row landing in `blocks`/`extrinsics`/`chain_events`/`account_events`
 (the last added for #4984 -- see below), decoupled from `indexer-rs`'s own
-process so downstream delivery cannot block the chain follower. See ADR 0015
+process so downstream delivery could not block the chain follower. See ADR 0015
 for why this shape was chosen over a direct push from `indexer-rs` (the
 retired `metagraphed-streamer`'s exact failure mode, documented in ADR 0014).
 
 ## How it works
 
 ```
-indexer-rs → (writes, as it always has) → Postgres
-                                              │
-                              AFTER INSERT trigger (retired Postgres, #9426)
-                                              │
-                                 INSERT chain_firehose_outbox(payload)
-                                              │
-              box-side relay (poll/claim rows, #4981/#5027, live) → Cloudflare Durable Object (#4982, live)
+TODAY
+
+  the producer → POST /api/v1/internal/chain-firehose-ingest → Cloudflare Durable Object (#4982, live)
                                                                           │
                                               SSE / WS (#4982, live) / GraphQL subs / MCP (#4983, live)
+
+  Observed 2026-08-05: only `blocks` payloads arrive. The other three topics
+  are dark — see #9583.
+
+RETIRED WITH THE BOX (#9426) — the ingest half everything below describes
+
+  indexer-rs → (writes) → Postgres
+                              │
+                  AFTER INSERT trigger
+                              │
+                 INSERT chain_firehose_outbox(payload)
+                              │
+              box-side relay (poll/claim rows, #4981/#5027)
 ```
 
 this exists. The trigger writes compact references into a normal Postgres
@@ -63,7 +77,7 @@ trigger; the row-level outbox design here is unchanged. A
 future fast-follow if outbox INSERT volume itself (not ingest-request volume)
 ever becomes the bottleneck instead.
 
-## The relay (#4981, live)
+## The relay (#4981, RETIRED with the box — historical)
 
 A new, small, self-hosted process on the indexer box polls and claims pending
 `chain_firehose_outbox` rows, groups them into `CHAIN_FIREHOSE_INGEST_BATCH_SIZE`-sized
@@ -459,11 +473,12 @@ is, on the MAIN Worker (the hub is co-located there, not on
 wrangler secret put CHAIN_FIREHOSE_SYNC_SECRET
 ```
 
-The #4981 relay is deployed and live — verified directly against the running
-infrastructure: `chain_firehose_outbox` on the indexer box's Postgres has zero
-pending rows, with the most recent row delivered within ~7s of being written.
-The ingest endpoint below can still be exercised directly to isolate the hub
-itself from the rest of the path when debugging:
+The #4981 relay was verified live in its day — `chain_firehose_outbox` on the
+indexer box's Postgres held zero pending rows, most recent delivered within ~7s
+of being written. It went with the box; the hub is now fed by whatever POSTs the
+ingest endpoint, and a live subscription shows `blocks` payloads arriving one per
+block (with only that topic — #9583). The ingest endpoint can still be exercised
+directly to isolate the hub itself from the rest of the path when debugging:
 
 ```sh
 # terminal 1: subscribe (SSE)
