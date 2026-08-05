@@ -30,6 +30,10 @@ const SCHEMA = fs.readFileSync(
   path.join(process.cwd(), "migrations/d1/0017_account_balances.sql"),
   "utf8",
 );
+const PASSES_SCHEMA = fs.readFileSync(
+  path.join(process.cwd(), "migrations/d1/0020_account_balances_passes.sql"),
+  "utf8",
+);
 
 const PATH = "/api/v1/internal/account-balances-sync";
 const SECRET = "test-account-balances-sync-secret";
@@ -108,9 +112,15 @@ function balanceRow(overrides: Row = {}): Row {
 const rows = () =>
   db.prepare("SELECT * FROM account_balances ORDER BY ss58").all() as Row[];
 
+const passes = () =>
+  db
+    .prepare("SELECT * FROM account_balances_passes ORDER BY captured_at")
+    .all() as Row[];
+
 beforeEach(() => {
   db = new DatabaseSync(":memory:");
   db.exec(SCHEMA);
+  db.exec(PASSES_SCHEMA);
 });
 
 describe("POST /api/v1/internal/account-balances-sync", () => {
@@ -127,6 +137,9 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
       account_balances_written: 2,
       stores: ["d1"],
       d1_statements: 1,
+      // null, not absent: an undeclared pass is reported as undeclared rather
+      // than dropped, so a producer can tell the field was understood.
+      pass_total: null,
     });
     assert.equal(rows().length, 2);
     // A zero free_tao IS stored: the producer only skips an account whose free
@@ -281,6 +294,7 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
       account_balances_written: 60,
       stores: ["d1"],
       d1_statements: 3,
+      pass_total: null,
     });
     assert.equal(rows().length, 60);
   });
@@ -290,5 +304,111 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
     const response = await post({ rows: [balanceRow()] });
     assert.equal(response.status, 502);
     assert.deepEqual(await response.json(), { error: "d1 write failed" });
+  });
+});
+
+// --- pass completeness (#9511) ---------------------------------------------
+//
+// A partial load is indistinguishable from a complete one by inspection: 147,000
+// well-formed rows look exactly like 364,266 well-formed rows, only fewer. The
+// producer therefore declares its pass size, and these assert the accounting.
+describe("pass_total completeness accounting", () => {
+  test("a single-request pass completes immediately", async () => {
+    const response = await post({ rows: [balanceRow()], pass_total: 1 });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      ok: true,
+      account_balances_written: 1,
+      stores: ["d1"],
+      d1_statements: 2,
+      pass_total: 1,
+    });
+    const [row] = passes();
+    assert.equal(row!.expected_rows, 1);
+    assert.equal(row!.received_rows, 1);
+    assert.ok(row!.completed_at, "a satisfied pass carries a completion stamp");
+  });
+
+  test("a multi-request pass stays incomplete until the last request lands", async () => {
+    // THE REGRESSION. Rows are present and correct after the first request, and
+    // ranking over them would drop real top holders -- which is exactly what
+    // production did on 2026-08-05.
+    await post({ rows: [balanceRow()], pass_total: 3 });
+    assert.equal(rows().length, 1);
+    assert.equal(passes()[0]!.received_rows, 1);
+    assert.equal(
+      passes()[0]!.completed_at,
+      null,
+      "one of three requests is NOT a complete pass",
+    );
+
+    await post({ rows: [balanceRow({ ss58: SS58_B })], pass_total: 3 });
+    assert.equal(passes()[0]!.received_rows, 2);
+    assert.equal(passes()[0]!.completed_at, null);
+
+    await post({ rows: [balanceRow({ ss58: "5Third" })], pass_total: 3 });
+    assert.equal(passes()[0]!.received_rows, 3);
+    assert.ok(passes()[0]!.completed_at, "the closing request stamps it");
+  });
+
+  test("a replayed request never un-completes a finished pass", async () => {
+    // The producer re-sends on failure, so received can exceed expected. The
+    // stamp is set once and must survive the overshoot.
+    await post({ rows: [balanceRow()], pass_total: 1 });
+    const stamped = passes()[0]!.completed_at;
+    await post({ rows: [balanceRow()], pass_total: 1 });
+    assert.equal(passes()[0]!.received_rows, 2, "the replay is counted");
+    assert.equal(
+      passes()[0]!.completed_at,
+      stamped,
+      "and the original completion stamp is preserved",
+    );
+  });
+
+  test("a second pass is tracked separately from the first", async () => {
+    await post({ rows: [balanceRow()], pass_total: 1 });
+    await post({
+      rows: [balanceRow({ captured_at: 1_790_000_000_000 })],
+      pass_total: 2,
+    });
+    assert.equal(passes().length, 2, "one row per captured_at");
+    assert.equal(passes()[1]!.completed_at, null, "the newer one is partial");
+  });
+
+  test("omitting pass_total writes no tally at all -- the bare-array envelope", async () => {
+    await post([balanceRow()]);
+    assert.equal(rows().length, 1);
+    assert.deepEqual(passes(), [], "an undeclared pass is not half-tracked");
+  });
+
+  test("rejects a pass_total that is absent-shaped, negative, fractional or absurd", async () => {
+    for (const bad of [0, -1, 1.5, "3", null, 10_000_001]) {
+      const response = await post({ rows: [balanceRow()], pass_total: bad });
+      assert.equal(response.status, 400, `expected 400 for ${bad}`);
+    }
+    assert.equal(rows().length, 0, "no partial write from a rejected batch");
+  });
+
+  test("rejects a pass_total smaller than the request it arrived with", async () => {
+    const response = await post({
+      rows: [balanceRow(), balanceRow({ ss58: SS58_B })],
+      pass_total: 1,
+    });
+    assert.equal(response.status, 400);
+  });
+
+  test("rejects a declared pass carrying two captured_at stamps", async () => {
+    // The tally is keyed on captured_at, so two stamps in one request would
+    // credit rows to whichever the code happened to pick -- and the reader
+    // would trust a total never delivered under that key.
+    const response = await post({
+      rows: [
+        balanceRow(),
+        balanceRow({ ss58: SS58_B, captured_at: 1_790_000_000_000 }),
+      ],
+      pass_total: 5,
+    });
+    assert.equal(response.status, 400);
+    assert.equal(rows().length, 0);
   });
 });

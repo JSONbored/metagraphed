@@ -69,15 +69,43 @@ function artifact(
   };
 }
 
-/** A D1 stub whose one statement returns `rows` (or throws). */
-function d1With(rows: unknown[] | null, opts: { throws?: boolean } = {}) {
+/**
+ * A D1 stub whose one statement returns `rows` (or throws).
+ *
+ * Also answers the completeness probe (#9511), which runs BEFORE the balance
+ * query: `topHoldersBalances` declines outright unless a pass has been recorded
+ * complete, so a stub without it would make every balance test vacuously assert
+ * the decline path. `pass` defaults to a completed one so the existing tests
+ * keep testing what they were written to test; pass `null` for the ledger state
+ * that must be refused.
+ */
+function d1With(
+  rows: unknown[] | null,
+  opts: {
+    throws?: boolean;
+    pass?: Record<string, unknown> | null;
+  } = {},
+) {
   const seen: { sql: string; params: unknown[] }[] = [];
+  const pass =
+    opts.pass === undefined
+      ? {
+          captured_at: 1_785_900_000_000,
+          expected_rows: 364_266,
+          received_rows: 364_266,
+        }
+      : opts.pass;
   return {
     seen,
     env: {
       METAGRAPH_HEALTH_DB: {
         prepare(sql: string) {
           return {
+            // The completeness reader's shape.
+            async first() {
+              seen.push({ sql, params: [] });
+              return pass;
+            },
             bind(...params: unknown[]) {
               return {
                 async all() {
@@ -336,8 +364,15 @@ describe("topHoldersBalances", () => {
     );
     // The ordering and the cap are the DATABASE's job -- there is no index on
     // free_tao, so sorting in the Worker would mean shipping every row.
-    assert.match(seen[0]!.sql, /ORDER BY free_tao DESC LIMIT \?/);
-    assert.deepEqual(seen[0]!.params, [250]);
+    // Located rather than indexed: the completeness probe (#9511) runs first,
+    // so a positional assertion here would silently start checking the wrong
+    // statement the next time a preflight is added.
+    const balanceQuery = seen.find((q) =>
+      q.sql.includes("FROM account_balances "),
+    );
+    assert.ok(balanceQuery, "the balance query ran");
+    assert.match(balanceQuery.sql, /ORDER BY free_tao DESC LIMIT \?/);
+    assert.deepEqual(balanceQuery.params, [250]);
   });
 
   test("skips unusable cells, and declines when nothing usable remains", async () => {
@@ -676,5 +711,75 @@ describe("the flow lane's cron", () => {
     assert.equal(result.ok, false);
     assert.equal(result.reason, "compute_declined");
     assert.deepEqual(puts, []);
+  });
+});
+
+// --- the completeness gate (#9511) ------------------------------------------
+describe("topHoldersBalances refuses a ledger that is not provably complete", () => {
+  const ROWS = [
+    { ss58: "5Whale", free_tao: 900_000 },
+    { ss58: "5Small", free_tao: 12 },
+  ];
+
+  test("declines when no pass has ever completed", async () => {
+    // THE REGRESSION. Rows are present and every one is correct -- production
+    // had 147,000 such rows -- and ranking over them drops the network's #2.
+    // The old guard was `results.length === 0`, which 147,000 clears.
+    const { env, seen } = d1With(ROWS, { pass: null });
+    assert.equal(await topHoldersBalances(env), null);
+    assert.equal(
+      seen.filter((q) => q.sql.includes("FROM account_balances ")).length,
+      0,
+      "and it does not even run the ranking query",
+    );
+  });
+
+  test("ranks once a pass is recorded complete", async () => {
+    const { env } = d1With(ROWS);
+    const map = await topHoldersBalances(env);
+    assert.equal(map?.size, 2);
+    assert.equal(map?.get("5Whale"), 900_000);
+  });
+
+  test("an unreadable passes table declines rather than ranking blind", async () => {
+    // The migration is applied by hand, so "the table is not there yet" is a
+    // real state -- and it means the same thing as an unfinished pass.
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare() {
+          return {
+            async first() {
+              throw new Error("no such table: account_balances_passes");
+            },
+            bind() {
+              return {
+                async all() {
+                  return { results: ROWS };
+                },
+              };
+            },
+          };
+        },
+      },
+    } as unknown as Env;
+    assert.equal(await topHoldersBalances(env), null);
+  });
+
+  test("the artifact leaves free_tao out of its declared sorts while refused", async () => {
+    // The end-to-end consequence: with the ledger unproven the object never
+    // claims the sort, so `?sort=free_tao` keeps answering from the frozen
+    // materialization instead of a ranking missing its top holders.
+    const { env } = d1With(ROWS, { pass: null });
+    const balances = await topHoldersBalances(env);
+    const body = buildTopHoldersFlowRows(
+      [{ coldkey: "5Whale", net_flow_7d: 1, net_flow_30d: 1, net_flow_90d: 1 }],
+      GENERATED_AT,
+      10,
+      balances,
+    );
+    assert.ok(
+      !JSON.stringify(body).includes("free_tao"),
+      "no free_tao column while the ledger is unproven",
+    );
   });
 });

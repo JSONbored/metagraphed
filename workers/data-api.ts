@@ -361,6 +361,7 @@ import { writeValidatorNominatorCountsToD1 } from "../src/validator-nominator-co
 import {
   ACCOUNT_BALANCE_INSERT_COLUMNS,
   writeAccountBalancesToD1,
+  type AccountBalancesPass,
 } from "../src/account-balances-d1-write.ts";
 import {
   HOTKEY_ALPHA_INSERT_COLUMNS,
@@ -1942,6 +1943,13 @@ const ACCOUNT_BALANCES_SYNC_MAX_ROWS = 25_000;
 // An SS58 address is 48 characters; the ceiling is generous rather than exact
 // so a future address format does not silently fail the whole batch.
 const ACCOUNT_BALANCES_SYNC_MAX_KEY_BYTES = 128;
+// A ceiling on the producer's declared `pass_total` (#9511). Every account that
+// has ever held a balance measured 364,266 on 2026-08-05 against 554,136
+// System::Account entries, so ten million is roughly 27x headroom -- generous
+// enough to survive a decade of growth, tight enough that a garbage value
+// cannot declare a pass that never completes and pins the reader on an older
+// one forever.
+const ACCOUNT_BALANCES_SYNC_MAX_PASS_TOTAL = 10_000_000;
 
 /**
  * Bounds-check one incoming row against ACCOUNT_BALANCE_INSERT_COLUMNS.
@@ -2025,6 +2033,25 @@ async function handleAccountBalancesSync(request: Request, env: Env) {
       400,
     );
   }
+  // OPTIONAL, and absent on the bare-array envelope: how many rows the whole
+  // pass will deliver (#9511). The producer knows this before its first request
+  // because it buffers the walk, and it is the only way a reader can tell a
+  // complete ledger from a partial one -- 147,000 well-formed rows look exactly
+  // like 542,618 well-formed rows, only fewer.
+  const declaredTotal = Array.isArray(parsed) ? undefined : parsed?.pass_total;
+  if (
+    declaredTotal !== undefined &&
+    (!Number.isInteger(declaredTotal) ||
+      declaredTotal <= 0 ||
+      declaredTotal > ACCOUNT_BALANCES_SYNC_MAX_PASS_TOTAL)
+  ) {
+    return writeJson(
+      {
+        error: `pass_total must be a positive integer no greater than ${ACCOUNT_BALANCES_SYNC_MAX_PASS_TOTAL}`,
+      },
+      400,
+    );
+  }
   if (incoming.length > ACCOUNT_BALANCES_SYNC_MAX_ROWS) {
     return writeJson(
       { error: `at most ${ACCOUNT_BALANCES_SYNC_MAX_ROWS} rows per request` },
@@ -2039,6 +2066,39 @@ async function handleAccountBalancesSync(request: Request, env: Env) {
   }
 
   const rows = incoming.map(coerceAccountBalanceSyncRow);
+
+  // A declared pass is keyed on its own captured_at, which the producer stamps
+  // once at scan start and repeats across every chunk. Requiring exactly one
+  // here is what makes the tally meaningful: two stamps in a request would
+  // credit rows to whichever one this code happened to pick, and the reader
+  // would trust a total that was never delivered under that key.
+  let pass: AccountBalancesPass | null = null;
+  if (declaredTotal !== undefined) {
+    const stamps = new Set<number>(
+      rows.map((row: Row) => row.captured_at as number),
+    );
+    if (stamps.size !== 1) {
+      return writeJson(
+        {
+          error:
+            "a request declaring pass_total must carry exactly one captured_at",
+        },
+        400,
+      );
+    }
+    if (declaredTotal < rows.length) {
+      return writeJson(
+        { error: "pass_total cannot be smaller than this request's row count" },
+        400,
+      );
+    }
+    pass = {
+      capturedAt: [...stamps][0]!,
+      expectedRows: declaredTotal as number,
+      receivedRows: rows.length,
+      nowMs: Date.now(),
+    };
+  }
 
   // D1 is the binding this path REQUIRES -- the only store this family has.
   // Checked HERE, after validation, not at the top: a malformed body is a 400
@@ -2055,6 +2115,7 @@ async function handleAccountBalancesSync(request: Request, env: Env) {
         typeof writeAccountBalancesToD1
       >[0],
       rows,
+      pass,
     ));
   } catch (err) {
     console.error("data-api account-balances-sync D1 write failed:", err);
@@ -2067,6 +2128,9 @@ async function handleAccountBalancesSync(request: Request, env: Env) {
     account_balances_written: rows.length,
     stores: ["d1"],
     d1_statements: d1Statements,
+    // Echoed so a producer can see its declaration was understood rather than
+    // silently dropped -- the failure mode a purely optional field invites.
+    pass_total: pass?.expectedRows ?? null,
   });
 }
 
