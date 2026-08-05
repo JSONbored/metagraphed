@@ -224,6 +224,8 @@ import type {
   SubnetOhlcCandle,
   SubnetConviction,
   SubnetConvictionEntry,
+  SubnetHolderEntry,
+  SubnetHolders,
   SubnetOwnershipHistory,
   SubnetLeaseState,
   SubnetLeaseTerms,
@@ -5265,6 +5267,77 @@ export const subnetConvictionQuery = (netuid: number) =>
         { signal },
       );
       return { data: normalizeSubnetConviction(netuid, res.data), meta: res.meta, url: res.url };
+    },
+    staleTime: STALE_MED,
+  });
+
+// A well-formed holder row, or null to drop a malformed one rather than
+// poisoning the whole leaderboard -- mirrors normalizeSubnetConvictionEntry.
+//
+// `alpha` defaults to 0 because a row that reached here named a coldkey, and a
+// holder with an unreadable amount is still a holder. The two SHARE fields do
+// NOT default: null means "no share to state" (the subnet's measured total is
+// zero) and 0 would claim the holder owns none of it.
+export function normalizeSubnetHolderEntry(raw: unknown): SubnetHolderEntry | null {
+  if (!isRecord(raw)) return null;
+  const coldkey = firstString(raw.coldkey);
+  if (!coldkey) return null;
+  return {
+    coldkey,
+    alpha: coerceFiniteNumber(raw.alpha) ?? 0,
+    share_of_total: firstFiniteNumber(raw.share_of_total) ?? null,
+    hotkey_count: firstFiniteNumber(raw.hotkey_count) ?? null,
+  };
+}
+
+// Cold/absent store, a DECLINE, and a subnet with genuinely no holders all
+// yield a schema-stable card -- never throws.
+//
+// THE AGGREGATES STAY NULL WHEN THEY ARE NULL. `?? 0` on any of them would turn
+// "we could not rank this subnet" into "this subnet has 0 holders holding 0
+// alpha", which is the exact confusion the route's `degraded` block exists to
+// prevent, recreated one layer up. `degraded` is preserved verbatim for the
+// same reason: it is the only thing distinguishing a decline from a
+// measurement, since both carry an empty `holders`.
+export function normalizeSubnetHolders(netuid: number, raw: unknown): SubnetHolders {
+  const d = isRecord(raw) ? raw : {};
+  const holders = Array.isArray(d.holders)
+    ? d.holders.map(normalizeSubnetHolderEntry).filter((e): e is SubnetHolderEntry => e != null)
+    : [];
+  const c = isRecord(d.concentration) ? d.concentration : {};
+  const reason = isRecord(d.degraded) ? firstString(d.degraded.reason) : null;
+  return {
+    schema_version: firstFiniteNumber(d.schema_version) ?? 1,
+    netuid: firstFiniteNumber(d.netuid) ?? netuid,
+    limit: firstFiniteNumber(d.limit) ?? null,
+    holder_count: firstFiniteNumber(d.holder_count) ?? null,
+    total_alpha: firstFiniteNumber(d.total_alpha) ?? null,
+    concentration: {
+      top5_share: firstFiniteNumber(c.top5_share) ?? null,
+      top10_share: firstFiniteNumber(c.top10_share) ?? null,
+      top20_share: firstFiniteNumber(c.top20_share) ?? null,
+    },
+    captured_at: firstString(d.captured_at) ?? null,
+    positions_captured_at: firstString(d.positions_captured_at) ?? null,
+    holders,
+    degraded: reason ? { reason } : null,
+  };
+}
+
+// GET /api/v1/subnets/{netuid}/holders (#9557): who owns this subnet's alpha,
+// ranked by alpha held, INCLUDING alpha staked to hotkeys that hold no UID on
+// the subnet -- the part /concentration cannot see, since it reads registered
+// UIDs' stake. Declines rather than serving an empty ranking while the pool
+// ledger is unproven, so `degraded` has to survive normalization.
+export const subnetHoldersQuery = (netuid: number, limit?: number) =>
+  queryOptions({
+    queryKey: k("subnet-holders", netuid, limit ?? null),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Partial<SubnetHolders>>(`/api/v1/subnets/${netuid}/holders`, {
+        params: limit == null ? undefined : { limit: String(limit) },
+        signal,
+      });
+      return { data: normalizeSubnetHolders(netuid, res.data), meta: res.meta, url: res.url };
     },
     staleTime: STALE_MED,
   });

@@ -2237,6 +2237,51 @@ export interface SubnetConviction {
   leaderboard: SubnetConvictionEntry[];
 }
 
+/** One coldkey's holding of a subnet's alpha, from
+ * /api/v1/subnets/{netuid}/holders (#9557). `alpha` is WHOLE ALPHA, not rao --
+ * the producer converts before writing (`rao_to_alpha_f64`), unlike the
+ * conviction leaderboard's rao-scale figures. share_of_total is over the
+ * subnet's FULL measured total, so it means the same thing at any `limit`;
+ * null when that total is zero. hotkey_count counts distinct hotkeys this
+ * coldkey holds through, registered on the subnet or not. */
+export interface SubnetHolderEntry {
+  coldkey: string;
+  alpha: number;
+  share_of_total: number | null;
+  hotkey_count: number | null;
+}
+
+/** Concentration of a subnet's alpha. Each rank is summed over the top N of
+ * the FULL holder set rather than the returned page, and is null when there is
+ * no total to divide by. */
+export interface SubnetHoldersConcentration {
+  top5_share: number | null;
+  top10_share: number | null;
+  top20_share: number | null;
+}
+
+/** Per-subnet alpha holder leaderboard (#9557).
+ *
+ * EVERY AGGREGATE IS NULLABLE, and that is the contract rather than an
+ * inconvenience: the route DECLINES in two states -- the pool ledger has no
+ * complete pass (`pool_totals_unproven`), or netuid 0, which the chain's Alpha
+ * map does not cover (`root_not_in_alpha_map`) -- and a decline returns an
+ * empty `holders` with null counts and a `degraded` block. So an empty
+ * `holders` list WITHOUT `degraded` is a MEASUREMENT: the subnet genuinely has
+ * no holders. Coercing these nulls to 0 anywhere would erase that difference. */
+export interface SubnetHolders {
+  schema_version: number;
+  netuid: number;
+  limit: number | null;
+  holder_count: number | null;
+  total_alpha: number | null;
+  concentration: SubnetHoldersConcentration;
+  captured_at: string | null;
+  positions_captured_at: string | null;
+  holders: SubnetHolderEntry[];
+  degraded: { reason: string } | null;
+}
+
 /** One automatic ownership transfer, decoded from a chain_events
  * SubnetOwnerChanged row (#6637). old_coldkey/new_coldkey are SS58-encoded. */
 export interface SubnetOwnershipChange {
