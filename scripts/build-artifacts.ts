@@ -386,17 +386,42 @@ for (const surface of surfaces) {
   }
   providerIdsByNetuid.get(surface.netuid).add(surface.provider);
 }
-const derivedDescriptionByNetuid = new Map();
-// serial: accumulates into derivedDescriptionByNetuid (shared state), so unlike the
-// #2057 per-subnet write loops this is intentionally not parallelized.
-for (const subnet of mergedSubnets) {
-  if (subnet.description) continue;
-  const ids = [...(providerIdsByNetuid.get(subnet.netuid) || [])].sort(
+// A subnet's attached provider ids, subnet-team ones first, then by id so the
+// order is deterministic across builds. Shared by the derived-description pass
+// below and the team lookup, which want the same "most authoritative provider
+// for this subnet" ranking.
+function providerIdsForNetuid(netuid: number) {
+  return [...(providerIdsByNetuid.get(netuid) || [])].sort(
     (a, b) =>
       (providersById.get(a)?.kind === "subnet-team" ? 0 : 1) -
         (providersById.get(b)?.kind === "subnet-team" ? 0 : 1) ||
       a.localeCompare(b),
   );
+}
+
+// The team behind each subnet, from its attached `kind: "subnet-team"` provider
+// (#9524). Registry records carry no `team` key of their own -- the identity has
+// always lived on the provider -- so the profile artifact published team: null
+// for all 129 subnets. Only a subnet-team provider counts: any other kind is a
+// vendor or infra operator, not the team, and naming one here would be wrong
+// rather than merely absent.
+const teamByNetuid = new Map();
+for (const subnet of mergedSubnets) {
+  const teamId = providerIdsForNetuid(subnet.netuid).find(
+    (id) => providersById.get(id)?.kind === "subnet-team",
+  );
+  const name = teamId ? providersById.get(teamId)?.name : null;
+  if (typeof name === "string" && name.trim()) {
+    teamByNetuid.set(subnet.netuid, name.trim());
+  }
+}
+
+const derivedDescriptionByNetuid = new Map();
+// serial: accumulates into derivedDescriptionByNetuid (shared state), so unlike the
+// #2057 per-subnet write loops this is intentionally not parallelized.
+for (const subnet of mergedSubnets) {
+  if (subnet.description) continue;
+  const ids = providerIdsForNetuid(subnet.netuid);
   for (const id of ids) {
     const provider = providersById.get(id);
     const derived = deriveDescriptionFromNotes(
@@ -3336,7 +3361,7 @@ function buildSubnetProfile({
     github_commits_weekly: subnet.github_commits_weekly,
     github_unreachable: subnet.github_unreachable,
     project_name: subnet.name,
-    team: null,
+    team: teamByNetuid.get(subnet.netuid) ?? null,
     categories: subnet.categories || [],
     derived_categories: subnet.derived_categories || [],
     derived_description: derivedDescription,

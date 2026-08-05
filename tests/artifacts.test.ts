@@ -1234,6 +1234,35 @@ test("public artifacts are internally consistent", () => {
     ),
     true,
   );
+  // #9524: `team` used to be a hardcoded null in the build, so every profile
+  // published it empty. Two assertions, and the second is the important one:
+  // coverage alone would pass just as well if the field were filled from the
+  // wrong provider, so pin the value to a subnet-team provider that actually
+  // claims this netuid. A team the registry does not attest is worse than null.
+  {
+    const teamProviders = (providersArtifact.providers as Row[]).filter(
+      (provider: Row) => provider.kind === "subnet-team",
+    );
+    const withTeam = (profiles.profiles as Row[]).filter(
+      (profile: Row) => profile.team,
+    );
+    assert.equal(
+      withTeam.length > (profiles.profiles as Row[]).length * 0.9,
+      true,
+      `expected >90% of profiles to resolve a team, got ${withTeam.length}/${(profiles.profiles as Row[]).length}`,
+    );
+    for (const profile of withTeam) {
+      assert.equal(
+        teamProviders.some(
+          (provider: Row) =>
+            provider.name === profile.team &&
+            (provider.netuids as number[]).includes(profile.netuid as number),
+        ),
+        true,
+        `profile ${profile.netuid} names team "${profile.team}" with no matching subnet-team provider on that netuid`,
+      );
+    }
+  }
   assert.equal(
     profileCompleteness.profiles.every(
       (profile: Row) =>
