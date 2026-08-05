@@ -35,6 +35,7 @@
 // that turns a slow archive query into a broken page would be worse than the
 // empty it replaced.
 
+import { z } from "zod";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 
@@ -72,14 +73,81 @@ const DEFAULT_WAREHOUSE = "metagraphed-lakehouse";
  */
 export const QUERY_TIMEOUT_MS = 15_000;
 
+/**
+ * How long to stop querying after the ACCOUNT-wide rate limit rejects us, as a
+ * wrangler var in ms. Unset or malformed falls back to
+ * `R2_SQL_RATE_LIMIT_COOLDOWN_DEFAULT_MS`; an explicit "0" disables the breaker.
+ */
+export const R2_SQL_RATE_LIMIT_COOLDOWN_MS_ENV =
+  "R2_SQL_RATE_LIMIT_COOLDOWN_MS";
+
+/** Long enough to outlast the limit's own window, short enough that a lane tick
+ * 30 minutes later is never still suppressed by it. */
+export const R2_SQL_RATE_LIMIT_COOLDOWN_DEFAULT_MS = 60_000;
+
+/** The status R2 SQL answers an account-wide rejection with (engine code
+ * 80014). Per ACCOUNT, not per Worker and not per query — which is why the
+ * cooldown below is module-global rather than threaded through a caller. */
+const RATE_LIMIT_STATUS = 429;
+
 // Same contract as the Postgres tier's fallback generation: a caller can
 // snapshot this before a read and compare after, so a degraded (empty) answer
 // is never written into the edge cache as though it were real.
 let r2SqlFailureGeneration = 0;
 
+/**
+ * When the account-wide cooldown expires; 0 when the breaker is closed.
+ *
+ * WHY A BREAKER AT ALL. 80014 is an ACCOUNT limit, so every caller in this
+ * codebase shares one budget: ~44 request-time cold-tier entry points (several
+ * fanning out 3-4 wide through `Promise.all`) plus the projection lanes' 148
+ * queries per tick. Nothing retried a 429 — so the storm was never amplified by
+ * retries — but nothing backed off either, so each rejection was followed
+ * immediately by the next caller firing into the same exhausted budget, holding
+ * the limit open and spending one `$exception` per attempt. 2026-08-04 cost
+ * ~1,500 429s across two hours that way, against a ~100K/month error-tracking
+ * allowance (#9465).
+ *
+ * Module-global to match the limit's scope. Per-isolate, so it is a pressure
+ * valve rather than a guarantee: it cannot see rejections another isolate took,
+ * and it is not trying to. Stopping ONE isolate's cron tick from issuing its
+ * remaining ~140 doomed queries is the whole win.
+ */
+let r2SqlRateLimitedUntilMs = 0;
+
 registerModuleStateReset("src/r2-sql.ts", () => {
   r2SqlFailureGeneration = 0;
+  r2SqlRateLimitedUntilMs = 0;
 });
+
+// Same contract as usage-telemetry's storm window: wrangler vars arrive as
+// strings, and stating the shape once as a schema beats a typeof/isFinite
+// ladder at each use. `.nonnegative()` rather than `.positive()` so an explicit
+// "0" survives parsing as the disabled sentinel instead of being caught into
+// the default -- an operator must be able to turn a safety valve off.
+const RateLimitCooldownSchema = z.coerce
+  .number()
+  .finite()
+  .nonnegative()
+  .catch(R2_SQL_RATE_LIMIT_COOLDOWN_DEFAULT_MS);
+
+function rateLimitCooldownMs(env: Env | null | undefined): number {
+  const raw = env?.[R2_SQL_RATE_LIMIT_COOLDOWN_MS_ENV as keyof Env];
+  // Absent coerces to NaN and an empty string to 0, which mean opposite things
+  // here -- unset must take the default, while a deliberate "" is as much an
+  // unset as `undefined` is. Both route to the default; only a real "0" disables.
+  if (raw === undefined || raw === null || String(raw).trim() === "") {
+    return R2_SQL_RATE_LIMIT_COOLDOWN_DEFAULT_MS;
+  }
+  return RateLimitCooldownSchema.parse(raw);
+}
+
+/** Milliseconds remaining on the account-wide cooldown, or 0 when closed.
+ * Exported for tests and for a caller that wants to explain a degraded answer
+ * without issuing a query to discover it. */
+export function r2SqlRateLimitRemainingMs(nowMs: number = Date.now()): number {
+  return Math.max(0, r2SqlRateLimitedUntilMs - nowMs);
+}
 
 export function currentR2SqlFailureGeneration(): number {
   return r2SqlFailureGeneration;
@@ -118,6 +186,10 @@ export interface R2SqlDeps {
    * investigated and ruled out.
    */
   scheduleAbort?: (abort: () => void, ms: number) => () => void;
+  /** Read the clock. Injectable for the same reason `scheduleAbort` is: the
+   * breaker's open/expired branches are decided by elapsed time, and a test
+   * that had to wait out a real cooldown would be a slow test that proves less. */
+  now?: () => number;
 }
 
 interface R2SqlBody {
@@ -233,6 +305,16 @@ function failureClassification(
 }
 
 /**
+ * The `error_code` a query suppressed by the breaker reports.
+ *
+ * Sits alongside `failureClassification`'s vocabulary rather than inside it:
+ * the others classify a rejection we actually received, and this one names a
+ * query we deliberately never sent. Worth telling apart in a log — "we were
+ * refused" and "we declined to ask" are different operational facts.
+ */
+const RATE_LIMITED_CODE = "rate_limited";
+
+/**
  * Run one read-only query and return its rows, or null on ANY failure.
  *
  * `sql` is built by the caller from validated, non-caller-controlled pieces —
@@ -249,6 +331,27 @@ export async function r2SqlQuery(
   if (!isR2SqlConfigured(env)) {
     // Unconfigured is not a fault: self-hosters and local/CI runs simply have
     // no lakehouse, and the caller's existing empty payload is correct there.
+    return null;
+  }
+  const now = deps.now ?? Date.now;
+  const remaining = r2SqlRateLimitRemainingMs(now());
+  if (remaining > 0) {
+    // The account budget is known-exhausted, so this query cannot succeed and
+    // issuing it would only hold the limit open longer. Decline WITHOUT the
+    // exception hop: the 429 that opened the breaker already recorded one, and
+    // recording another per suppressed query would rebuild the storm this
+    // exists to stop -- in telemetry cost, if no longer in load.
+    r2SqlFailureGeneration += 1;
+    const detail = `r2 sql: account rate limited, ${remaining}ms of cooldown remaining`;
+    // Same labelled log shape #9459 gave the failure path, for the same reason:
+    // the tail is where every occurrence can be read, and a suppressed query is
+    // exactly the one the exception stream deliberately will NOT show.
+    console.error("[r2-sql]", RATE_LIMITED_CODE, r2SqlQueryKind(sql), detail);
+    try {
+      deps.onError?.(detail);
+    } catch {
+      // A caller's own reporting must never turn a declined query into a thrown one.
+    }
     return null;
   }
   const doFetch = deps.fetch ?? globalThis.fetch;
@@ -283,6 +386,13 @@ export async function r2SqlQuery(
     } as RequestInit);
     if (!res?.ok) {
       thrownCode = `http_${res?.status}`;
+      if (res?.status === RATE_LIMIT_STATUS) {
+        // Opened BEFORE the throw, so the catch below records exactly one
+        // exception for this rejection and every caller behind it is suppressed
+        // by the breaker rather than each paying for its own.
+        const cooldown = rateLimitCooldownMs(env);
+        if (cooldown > 0) r2SqlRateLimitedUntilMs = now() + cooldown;
+      }
       throw new Error(
         `r2 sql: HTTP ${res?.status}${await rejectionDetail(res)}`,
       );

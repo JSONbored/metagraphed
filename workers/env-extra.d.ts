@@ -178,6 +178,7 @@ interface Env {
   R2_SQL_TOKEN?: string;
   R2_SQL_ACCOUNT_ID?: string;
   R2_SQL_WAREHOUSE?: string;
+  R2_SQL_RATE_LIMIT_COOLDOWN_MS?: string;
 }
 
 // RPC reverse-proxy usage telemetry on Workers Analytics Engine (#9228).
