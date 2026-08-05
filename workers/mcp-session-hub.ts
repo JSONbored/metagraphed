@@ -126,6 +126,7 @@ export function formatMcpSseEvent(
 // route is at most a few events per session. Lifecycle is the signal worth
 // paying for; a per-event counter is not.
 const SESSION_HUB_ROUTES: Record<string, string> = {
+  "/register": "register",
   "/subscribe": "subscribe",
   "/unsubscribe": "unsubscribe",
   "/stream": "stream",
@@ -253,6 +254,9 @@ export class McpSessionHub implements DurableObject {
     }
 
     const handled = async (): Promise<Response | null> => {
+      if (url.pathname === "/register" && request.method === "POST") {
+        return this.handleRegister(request);
+      }
       if (url.pathname === "/subscribe" && request.method === "POST") {
         return this.handleSubscribe(request);
       }
@@ -280,6 +284,47 @@ export class McpSessionHub implements DurableObject {
       this.recordRoute(routeLabel, response.status < 400, startedAt);
     }
     return response;
+  }
+
+  /**
+   * Record that a session exists, without subscribing it to anything.
+   *
+   * Called once by `initialize`. Before this, a session was known to the hub only
+   * from `resources/subscribe`, so the canonical initialize-then-GET sequence always
+   * missed — and the answer to that GET is 405 ("this endpoint offers no SSE stream"),
+   * which a conformant client is entitled to believe permanently. It would then never
+   * re-open the stream after subscribing, and every `notifications/resources/updated`
+   * would be delivered to nobody. 405 was true of the request and false of the server.
+   *
+   * DELETE had the same hole: terminating a session that had only ever initialized
+   * returned "session not found", so a well-behaved client could not release its hub.
+   *
+   * Idempotent — a client may re-register a session id it already holds, and a
+   * `terminated` session stays terminated rather than being resurrected by a late call.
+   */
+  async handleRegister(request: Request): Promise<Response> {
+    const { sessionId } = (await request.json()) as { sessionId: string };
+    if (!sessionId) {
+      return new Response(JSON.stringify({ error: "sessionId is required" }), {
+        status: 400,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    // A client-supplied id is authority only over the DO it names, which is derived
+    // from that same id -- so this can only ever register the session it IS.
+    if (this.sessionId && this.sessionId !== sessionId) {
+      return new Response(JSON.stringify({ error: "session mismatch" }), {
+        status: 409,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    this.sessionId = sessionId;
+    await this.persist();
+    await this.touch();
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
   }
 
   async handleSubscribe(request: Request): Promise<Response> {
@@ -511,11 +556,16 @@ export class McpSessionHub implements DurableObject {
 
   async handleStream(url: URL): Promise<Response> {
     const sessionId = url.searchParams.get("sessionId");
-    if (
-      !this.sessionId ||
-      (sessionId && sessionId !== this.sessionId) ||
-      this.subscribedUris.size === 0
-    ) {
+    // A registered session may hold the stream open with NOTHING subscribed. That is
+    // the ordinary shape of the transport: the GET channel is the server's side of the
+    // connection, opened once at startup, and what it carries is decided later.
+    //
+    // Requiring a subscription here made the ordering load-bearing — open the stream
+    // before subscribing and you got a 404, which the Worker surfaced as a 405 the
+    // client was entitled to treat as final. Since a stream still costs residency, the
+    // bound is unchanged: MCP_SESSION_MAX_STREAM_DURATION_MS closes it either way, and
+    // the idle alarm reaps a session nobody comes back to.
+    if (!this.sessionId || (sessionId && sessionId !== this.sessionId)) {
       return new Response(JSON.stringify({ error: "session not found" }), {
         status: 404,
         headers: { "content-type": "application/json" },

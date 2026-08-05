@@ -1061,3 +1061,171 @@ test("alarm: a healthy expiry captures nothing", async () => {
     globalThis.fetch = original;
   }
 });
+
+// --- /register: a session exists from `initialize`, not from `resources/subscribe` ---
+//
+// Before this, the hub learned a session only from resources/subscribe. So the
+// canonical initialize-then-GET sequence always missed, and its answer -- 405, "this
+// endpoint offers no SSE stream" -- is one a conformant client may believe forever.
+// Such a client never re-opens the stream after subscribing, and every
+// notifications/resources/updated is delivered to nobody.
+
+test("handleRegister records the session without subscribing it to anything", async () => {
+  const hub = new McpSessionHub(stubState(), mockEnv());
+  const response = await hub.fetch(
+    new Request("https://mcp-session-hub.internal/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId: "s-1" }),
+    }),
+  );
+  assert.equal(response.status, 200);
+  assert.equal(hub.sessionId, "s-1");
+  assert.equal(
+    hub.subscribedUris.size,
+    0,
+    "registration is not a subscription",
+  );
+});
+
+test("handleRegister arms the idle alarm, so an abandoned session still reaps", async () => {
+  const state = stubState();
+  const hub = new McpSessionHub(state, mockEnv());
+  const before = Date.now();
+  await hub.fetch(
+    new Request("https://mcp-session-hub.internal/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId: "s-1" }),
+    }),
+  );
+  const alarm = (state.storage as unknown as { lastAlarmTime: number | null })
+    .lastAlarmTime;
+  assert.ok(
+    alarm !== null && alarm >= before + MCP_SESSION_IDLE_TTL_MS - 5_000,
+    "registering must not create state nothing will clean up",
+  );
+});
+
+test("handleRegister is idempotent for the same session id", async () => {
+  const hub = new McpSessionHub(stubState(), mockEnv());
+  const register = () =>
+    hub.fetch(
+      new Request("https://mcp-session-hub.internal/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ sessionId: "s-1" }),
+      }),
+    );
+  assert.equal((await register()).status, 200);
+  assert.equal((await register()).status, 200);
+  assert.equal(hub.sessionId, "s-1");
+});
+
+test("handleRegister refuses a different session id on the same object", async () => {
+  // Reachable only via a hash collision on idFromName; refusing is still cheaper
+  // than letting one session's id overwrite another's.
+  const hub = new McpSessionHub(stubState(), mockEnv());
+  await hub.fetch(
+    new Request("https://mcp-session-hub.internal/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId: "s-1" }),
+    }),
+  );
+  const response = await hub.fetch(
+    new Request("https://mcp-session-hub.internal/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId: "s-2" }),
+    }),
+  );
+  assert.equal(response.status, 409);
+  assert.equal(hub.sessionId, "s-1");
+});
+
+test("handleRegister rejects a missing session id rather than persisting a null", async () => {
+  const hub = new McpSessionHub(stubState(), mockEnv());
+  const response = await hub.fetch(
+    new Request("https://mcp-session-hub.internal/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    }),
+  );
+  assert.equal(response.status, 400);
+  assert.equal(hub.sessionId, null);
+});
+
+test("a registered session opens a stream with NOTHING subscribed", async () => {
+  // The whole point: the GET channel is the server's side of the connection, opened
+  // once at startup. What it carries is decided later, by subscribe.
+  const hub = new McpSessionHub(stubState(), mockEnv());
+  await hub.fetch(
+    new Request("https://mcp-session-hub.internal/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId: "s-1" }),
+    }),
+  );
+  const response = await hub.fetch(
+    new Request("https://mcp-session-hub.internal/stream?sessionId=s-1"),
+  );
+  assert.equal(response.status, 200);
+  await response.body?.cancel();
+});
+
+test("an unregistered session still finds no stream", async () => {
+  // Registration is what makes a stream real; a bare Durable Object name is not a
+  // session, or any UUID would open one.
+  const hub = new McpSessionHub(stubState(), mockEnv());
+  const response = await hub.fetch(
+    new Request("https://mcp-session-hub.internal/stream?sessionId=s-unknown"),
+  );
+  assert.equal(response.status, 404);
+});
+
+test("DELETE terminates a session that only ever registered", async () => {
+  // This returned "session not found" before, so a well-behaved client could not
+  // release its hub after a bare initialize.
+  const hub = new McpSessionHub(stubState(), mockEnv());
+  await hub.fetch(
+    new Request("https://mcp-session-hub.internal/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId: "s-1" }),
+    }),
+  );
+  const response = await hub.fetch(
+    new Request("https://mcp-session-hub.internal/terminate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId: "s-1" }),
+    }),
+  );
+  assert.equal(response.status, 200);
+  assert.equal(hub.terminated, true);
+});
+
+test("a terminated session is not resurrected by a late register", async () => {
+  const hub = new McpSessionHub(stubState(), mockEnv());
+  const register = () =>
+    hub.fetch(
+      new Request("https://mcp-session-hub.internal/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ sessionId: "s-1" }),
+      }),
+    );
+  await register();
+  await hub.fetch(
+    new Request("https://mcp-session-hub.internal/terminate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId: "s-1" }),
+    }),
+  );
+  const response = await register();
+  assert.equal(response.status, 404, "the terminated gate answers first");
+  assert.equal(hub.terminated, true);
+});

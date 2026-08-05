@@ -6,6 +6,7 @@ import {
   handleGithubOAuthCallback,
   isAnonymousMcpRequest,
   isNonOAuthMcpRequest,
+  isMcpEndpointPath,
   matchesMcpApiRoute,
   OAUTH_PENDING_TTL_SECONDS,
   UNUSED_DEFAULT_HANDLER,
@@ -667,6 +668,23 @@ describe("isNonOAuthMcpRequest (#8643) — our own API keys must not reach OAuth
       "https://api.metagraph.sh/mcpx",
     ]) {
       expect(isNonOAuthMcpRequest(new Request(url)), url).toBe(true);
+    }
+  });
+
+  test("isMcpEndpointPath is the endpoint, not the OAuth surface", () => {
+    // Narrower than matchesMcpApiRoute on purpose: `/mcp/sse` is claimed by OAuth's
+    // prefix but is NOT the endpoint, and serving it as MCP would be worse than the
+    // 404 it gets. A trailing slash, though, IS the endpoint — that is the client
+    // mistake most likely to be made, and it now works instead of 405ing.
+    for (const [pathname, expected] of [
+      ["/mcp", true],
+      ["/mcp/", true],
+      ["/mcp/sse", false],
+      ["/mcp/message", false],
+      ["/mcpx", false],
+      ["/api/v1/subnets", false],
+    ] as Array<[string, boolean]>) {
+      expect(isMcpEndpointPath(pathname), pathname).toBe(expected);
     }
   });
 
