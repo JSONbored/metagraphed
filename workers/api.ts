@@ -439,6 +439,7 @@ import {
   VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON,
   CHAIN_DETAIL_PRUNE_CRON,
   CHAIN_DETAIL_STALENESS_WATCHDOG_CRON,
+  TOP_HOLDERS_FLOW_CRON,
   TOP_HOLDERS_STALENESS_WATCHDOG_CRON,
   ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON,
   LIVE_ECONOMICS_REFRESH_CRON,
@@ -548,7 +549,11 @@ import type { UsageObservation } from "../src/usage-rollup.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
 import { runLakehouseSeamWatchdog } from "../src/lakehouse-seam-watchdog.ts";
 import { runSafeModeWatchdog } from "../src/safe-mode-watchdog.ts";
-import { runProjectionLanes } from "../src/projection-lanes.ts";
+import {
+  runProjectionLane,
+  runProjectionLanes,
+} from "../src/projection-lanes.ts";
+import { TOP_HOLDERS_FLOW_LANE } from "../src/top-holders-flow-tier.ts";
 
 // #8386: anonymous stays the existing, regression-tested DATA_RATE_LIMITER
 // policy (60/60s, unchanged); a caller with a valid mg_... key gets 5x via a
@@ -1622,6 +1627,7 @@ function cronLabel(cron: string): string {
     return "top-holders-staleness-watchdog";
   if (cron === ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON)
     return "account-balances-staleness-watchdog";
+  if (cron === TOP_HOLDERS_FLOW_CRON) return "top-holders-flow";
   if (cron === LIVE_ECONOMICS_REFRESH_CRON) return "live-economics-refresh";
   // Every unmatched cron falls through to the health prober, matching dispatch.
   return "health-prober";
@@ -1941,6 +1947,16 @@ async function dispatchScheduled(
     return runChainDetailStalenessWatchdog(
       env as unknown as Record<string, unknown>,
     );
+  }
+  if (cron === TOP_HOLDERS_FLOW_CRON) {
+    // #9469: recompute the top-holders net_flow_7d/30d/90d ranking from
+    // chain.account_events. Its own daily branch rather than a slot in
+    // PROJECTION_LANES because the shared tick is twice-hourly and this scan
+    // is 1.65 GB -- see TOP_HOLDERS_FLOW_CRON in workers/config.ts. The lane
+    // reuses runProjectionLane, so a declined compute leaves yesterday's
+    // ranking in place and records one exception under
+    // projection:top-holders-flow rather than publishing an empty one.
+    return runProjectionLane(env, TOP_HOLDERS_FLOW_LANE);
   }
   if (cron === TOP_HOLDERS_STALENESS_WATCHDOG_CRON) {
     // The top-holders leaderboard's alarm (#9464). Zero alerts is the correct

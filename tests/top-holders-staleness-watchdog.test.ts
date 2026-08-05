@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   evaluateTopHoldersStaleness,
+  TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS,
   readTopHoldersArtifactState,
   runTopHoldersStalenessWatchdog,
   TOP_HOLDERS_STALENESS_THRESHOLD_MS,
@@ -17,6 +18,7 @@ import {
   TOP_HOLDERS_ARTIFACT_KEY,
   topHoldersArtifactRows,
 } from "../src/top-holders-artifact.ts";
+import { TOP_HOLDERS_FLOW_PROJECTION_KEY } from "../src/top-holders-flow-tier.ts";
 import { TOP_HOLDERS_STALENESS_WATCHDOG_CRON } from "../workers/config.ts";
 
 const HOUR = 3_600_000;
@@ -263,15 +265,37 @@ describe("runTopHoldersStalenessWatchdog", () => {
     };
   }
 
-  function envWith(body: unknown, extra: Record<string, unknown> = {}) {
+  /** A FRESH live-flow artifact (#9469). Supplied by default so the existing
+   * assertions below stay about the frozen holdings half: a stale flow lane
+   * would add its own event and change every count here for reasons that have
+   * nothing to do with the case under test. */
+  const freshFlowBody = {
+    schema_version: 1,
+    generated_at: new Date(NOW - HOUR).toISOString(),
+    rows: [{ ss58: "5A", net_flow_7d: 1 }],
+  };
+
+  /** Explicit "there is no flow object". Passing `undefined` cannot say this:
+   * an omitted argument and an explicit `undefined` both take the default. */
+  const ABSENT_FLOW = Symbol("absent-flow");
+
+  function envWith(
+    body: unknown,
+    extra: Record<string, unknown> = {},
+    flowBody: unknown = freshFlowBody,
+  ) {
+    const flow = flowBody === ABSENT_FLOW ? undefined : flowBody;
+    const bodyFor = (key: string) =>
+      key === TOP_HOLDERS_FLOW_PROJECTION_KEY ? flow : body;
     return {
       METAGRAPH_ARCHIVE: {
-        async get() {
-          return body === undefined
+        async get(key: string) {
+          const found = bodyFor(key);
+          return found === undefined
             ? null
             : {
                 async json() {
-                  return body;
+                  return found;
                 },
               };
         },
@@ -322,7 +346,7 @@ describe("runTopHoldersStalenessWatchdog", () => {
     assert.equal(events.length, 1, "the production state must page");
     assert.equal(events[0]!.route, "watchdog:top-holders-staleness");
     assert.equal(events[0]!.errorCode, "stale_lane");
-    assert.equal(spy.rows.length, 1);
+    assert.equal(spy.rows.length, 2, "one row per artifact since #9469");
     assert.equal(spy.rows[0]!.lane, "top-holders-staleness");
     assert.equal(spy.rows[0]!.verdict, "stale");
     assert.equal(spy.rows[0]!.detail, "stale");
@@ -347,7 +371,7 @@ describe("runTopHoldersStalenessWatchdog", () => {
     await run();
     await run();
     assert.equal(events.length, 2);
-    assert.equal(spy.rows.length, 2);
+    assert.equal(spy.rows.length, 4, "two artifacts x two ticks");
   });
 
   test("an absent artifact pages, because the route then serves an empty list", async () => {
@@ -443,22 +467,155 @@ describe("runTopHoldersStalenessWatchdog", () => {
     assert.equal(result.stale, true);
   });
 
+  // #9469: the live half. It is a SECOND artifact on a SECOND cadence, so it
+  // gets its own verdict, its own row and its own routed exception -- and the
+  // frozen half's verdict must not move because of it.
+  test("a fresh flow artifact records ok and pages nobody", async () => {
+    const events: { route?: string }[] = [];
+    const spy = laneHealthSpy();
+    const result = (await runTopHoldersStalenessWatchdog(envWith(frozenBody), {
+      now: () => NOW,
+      laneHealthDb: spy.db,
+      recordException: (async (_e: unknown, ev: never) => {
+        events.push(ev);
+        return true;
+      }) as never,
+    })) as Record<string, unknown>;
+    const flow = result.flow as Record<string, unknown>;
+    assert.equal(flow.stale, false);
+    assert.equal(flow.reason, null);
+    assert.equal(flow.threshold_ms, TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS);
+    assert.equal(spy.rows[1]!.lane, "top-holders-flow-staleness");
+    assert.equal(spy.rows[1]!.verdict, "ok");
+    // Only the frozen half paged.
+    assert.deepEqual(
+      events.map((e) => e.route),
+      ["watchdog:top-holders-staleness"],
+    );
+  });
+
+  // The failure this half exists to catch: with no flow artifact the route
+  // falls back to the frozen one, whose net_flow_* cells are null on every
+  // row -- so `?sort=net_flow_30d` silently answers in ss58 order again.
+  test("an absent flow artifact pages under its own route label", async () => {
+    const events: { route?: string; errorCode?: string }[] = [];
+    const spy = laneHealthSpy();
+    const result = (await runTopHoldersStalenessWatchdog(
+      envWith(frozenBody, {}, ABSENT_FLOW),
+      {
+        now: () => NOW,
+        laneHealthDb: spy.db,
+        recordException: (async (_e: unknown, ev: never) => {
+          events.push(ev);
+          return true;
+        }) as never,
+      },
+    )) as Record<string, unknown>;
+    assert.equal((result.flow as Record<string, unknown>).reason, "absent");
+    assert.equal(result.alerted, true);
+    assert.equal(spy.rows[1]!.verdict, "stale");
+    assert.equal(spy.rows[1]!.detail, "absent");
+    assert.deepEqual(
+      events.map((e) => e.route),
+      ["watchdog:top-holders-staleness", "watchdog:top-holders-flow-staleness"],
+    );
+    assert.equal(events[1]!.errorCode, "stale_lane");
+  });
+
+  // A day-old flow ranking is FINE -- the lane is daily. Sizing the bound to
+  // one cadence instead of two is the #9301 alarm-that-always-fires mistake.
+  test("a day-old flow ranking is healthy; three days is not", async () => {
+    const flowAt = (hoursAgo: number) => ({
+      schema_version: 1,
+      generated_at: new Date(NOW - hoursAgo * HOUR).toISOString(),
+      rows: [{ ss58: "5A", net_flow_7d: 1 }],
+    });
+    const verdictAt = async (hoursAgo: number) => {
+      const result = (await runTopHoldersStalenessWatchdog(
+        envWith(frozenBody, {}, flowAt(hoursAgo)),
+        {
+          now: () => NOW,
+          laneHealthDb: laneHealthSpy().db,
+          recordException: (async () => true) as never,
+        },
+      )) as Record<string, unknown>;
+      return result.flow as Record<string, unknown>;
+    };
+    assert.equal(
+      (await verdictAt(25)).stale,
+      false,
+      "one missed pass is slack",
+    );
+    assert.equal((await verdictAt(72)).stale, true);
+    assert.equal((await verdictAt(72)).reason, "stale");
+  });
+
+  test("the flow threshold is overridable per-deployment", async () => {
+    const result = (await runTopHoldersStalenessWatchdog(
+      envWith(
+        frozenBody,
+        { TOP_HOLDERS_FLOW_STALENESS_THRESHOLD_MS: String(HOUR) },
+        {
+          schema_version: 1,
+          generated_at: new Date(NOW - 3 * HOUR).toISOString(),
+          rows: [{ ss58: "5A", net_flow_7d: 1 }],
+        },
+      ),
+      {
+        now: () => NOW,
+        laneHealthDb: laneHealthSpy().db,
+        recordException: (async () => true) as never,
+      },
+    )) as Record<string, unknown>;
+    const flow = result.flow as Record<string, unknown>;
+    assert.equal(flow.threshold_ms, HOUR);
+    assert.equal(flow.stale, true);
+  });
+
+  // An emptied-in-place flow artifact serves the same ss58-ordered fallback as
+  // a missing one, and is a different repair.
+  test("an empty flow artifact is reported as empty, not stale", async () => {
+    const result = (await runTopHoldersStalenessWatchdog(
+      envWith(
+        frozenBody,
+        {},
+        {
+          schema_version: 1,
+          generated_at: new Date(NOW - HOUR).toISOString(),
+          rows: [],
+        },
+      ),
+      {
+        now: () => NOW,
+        laneHealthDb: laneHealthSpy().db,
+        recordException: (async () => true) as never,
+      },
+    )) as Record<string, unknown>;
+    assert.equal((result.flow as Record<string, unknown>).reason, "empty");
+  });
+
   // A watchdog whose alarm-recording broke its alarm would be worse than the
   // bug it reports, so both sinks are allowed to fail independently.
   test("a failing notifier and a failing recorder both still complete the tick", async () => {
-    const result = (await runTopHoldersStalenessWatchdog(envWith(undefined), {
-      now: () => NOW,
-      laneHealthDb: {
-        prepare() {
-          throw new Error("no such table: lane_health");
+    // BOTH artifacts absent, so both halves try to notify and both try to
+    // record -- four independent failure points in one tick.
+    const result = (await runTopHoldersStalenessWatchdog(
+      envWith(undefined, {}, ABSENT_FLOW),
+      {
+        now: () => NOW,
+        laneHealthDb: {
+          prepare() {
+            throw new Error("no such table: lane_health");
+          },
         },
+        recordException: (async () => {
+          throw new Error("posthog unreachable");
+        }) as never,
       },
-      recordException: (async () => {
-        throw new Error("posthog unreachable");
-      }) as never,
-    })) as Record<string, unknown>;
+    )) as Record<string, unknown>;
     assert.equal(result.ok, true);
     assert.equal(result.alerted, true);
+    assert.equal((result.flow as Record<string, unknown>).reason, "absent");
   });
 
   // No `deps` at all: the real Date.now, the real recordExceptionEvent (a
@@ -470,7 +627,7 @@ describe("runTopHoldersStalenessWatchdog", () => {
     )) as Record<string, unknown>;
     assert.equal(result.ok, true);
     assert.equal(result.reason, "stale");
-    assert.equal(spy.rows.length, 1, "falls back to env.METAGRAPH_HEALTH_DB");
+    assert.equal(spy.rows.length, 2, "falls back to env.METAGRAPH_HEALTH_DB");
     assert.ok(Number(spy.rows[0]!.checked_at) > 0, "uses the real clock");
   });
 });
@@ -545,9 +702,10 @@ describe("the watchdog's cron", () => {
       } as never,
       {} as never,
     )) as Record<string, unknown>;
-    // The POSITIVE: the branch actually reached the artifact. A summary from a
-    // watchdog that read nothing is the failure this module exists to prevent.
-    assert.equal(read, 1);
+    // The POSITIVE: the branch actually reached the artifacts. A summary from
+    // a watchdog that read nothing is the failure this module exists to
+    // prevent. Two gets since #9469 -- the frozen key and the flow key.
+    assert.equal(read, 2);
     assert.equal(result.ok, true);
     assert.equal(result.reason, "stale");
     assert.equal(result.alerted, true);
