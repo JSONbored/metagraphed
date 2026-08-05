@@ -11,20 +11,23 @@
 // -- lexicographic address order -- while the envelope echoed
 // `"sort": "net_flow_30d"`. A ranking that is not a ranking, announced as one.
 //
-// THE OTHER THREE COLUMNS ARE STILL BLOCKED, and deliberately not faked here:
+// FREE_TAO IS WIRED AND WAITING (#9501). The sink landed in #9483: the D1
+// table and the revived sync handler both exist. What does not exist yet is
+// the producer -- infra-side and human-gated, the poller job still writes
+// System::Account through tokio_postgres into the decommissioned box -- so
+// `account_balances` has no rows (verified against production D1, 2026-08-05:
+// table present, COUNT(*) 0). The balances leg below therefore DECLINES, the
+// artifact does not declare `free_tao` among its `sorts`, and the frozen
+// materialization keeps answering that sort with the real balances it still
+// carries. The day the ledger fills, the leg returns a map, the lane declares
+// the sort, and the reader starts answering it -- no deploy, no flag. That is
+// the decline-while-empty switch #9292 established, applied to a LEG rather
+// than a whole tier, and it is why "which sorts does this artifact rank" is a
+// property of the written object rather than a constant in this file.
 //
-//   free_tao   the sink landed in #9483 and is still EMPTY. That migration
-//              created `account_balances` on D1 and revived the sync handler,
-//              but the producer half is infra-side and human-gated: the poller
-//              job still scans System::Account correctly and still writes it
-//              through tokio_postgres into the decommissioned box, and its
-//              vault secret has to be re-provisioned before it can POST here
-//              instead. Verified against production D1, 2026-08-05: the table
-//              exists, `SELECT COUNT(*)` is 0. Composing the column stays here
-//              and is unblocked the day the table has rows -- the same
-//              decline-while-empty switch #9292 established, applied to a leg
-//              rather than a whole tier.
-//   delegated  `nominator_positions` IS live, but pricing it needs each
+// THE LAST COLUMN IS STILL BLOCKED, and deliberately not faked here:
+//   delegated_tao / total_tao
+//              `nominator_positions` IS live, but pricing it needs each
 //              (hotkey, netuid) alpha POOL total, and the only stake source in
 //              D1 is `neurons.stake_tao`, which exists solely for hotkeys
 //              holding a UID on that exact subnet. A delegate accrues alpha on
@@ -41,7 +44,9 @@
 //              the payload entirely, so a "live" delegated_tao leaderboard
 //              would be confidently wrong about who the top holders are --
 //              worse than the frozen one it replaced. It needs a
-//              TotalHotkeyAlpha sink, which neither D1 nor the lakehouse has.
+//              TotalHotkeyAlpha sink, which neither D1 nor the lakehouse has
+//              -- the chain item itself is there and populated (probed live
+//              2026-08-05); only a producer and a table are missing (#9502).
 //
 // So this tier answers the three sorts it can genuinely rank and DECLINES the
 // other three, leaving the frozen artifact to serve them with the real numbers
@@ -86,14 +91,36 @@ import { buildTopHoldersList } from "./top-holders.ts";
 export const TOP_HOLDERS_FLOW_PROJECTION_KEY =
   "metagraph/projections/top-holders-flow.json";
 
-/** The sort keys this tier can genuinely rank. Everything else is a decline —
- * see the header. Kept as the single source both the reader and its tests
- * read, so "which sorts are live" is stated once. */
+/** The sort keys the FLOW leg can rank. Everything else is a decline — see the
+ * header. Kept as the single source both the lane and its tests read, so
+ * "which sorts does the lakehouse leg back" is stated once. */
 export const TOP_HOLDERS_FLOW_SORTS = [
   "net_flow_7d",
   "net_flow_30d",
   "net_flow_90d",
 ];
+
+/**
+ * The sort key the BALANCES leg backs, when `account_balances` has rows.
+ *
+ * Separate from the list above because the two legs fail independently: the
+ * lakehouse can answer while D1's balance ledger is still empty (today), and
+ * the reverse is equally possible. Which sorts an artifact actually backs is
+ * therefore a property of the WRITTEN artifact, not of this module -- see
+ * `sorts` in the body the lane emits.
+ */
+export const TOP_HOLDERS_BALANCE_SORT = "free_tao";
+
+/**
+ * How many of the largest free balances the lane pulls.
+ *
+ * `account_balances` has no index on `free_tao` (migration 0017 indexes only
+ * `captured_at`), so this ORDER BY is a full scan of every account that has
+ * ever held a balance -- 542,618 entries by the producer's own measurement.
+ * That is a fine daily cost and an unacceptable per-request one, which is the
+ * whole reason the column is composed here rather than read on the hot path.
+ */
+export const TOP_HOLDERS_BALANCE_SCAN_LIMIT = 1_000;
 
 /** Sort key -> lookback in days. The key IS the column the artifact carries,
  * so a new window is one entry here plus one entry in TOP_HOLDERS_SORTS. */
@@ -178,8 +205,19 @@ export function buildTopHoldersFlowRows(
   aggregateRows: Array<Record<string, unknown>> | null | undefined,
   generatedAtMs: number,
   cap: number = TOP_HOLDERS_FLOW_ROW_CAP,
+  /** ss58 -> free_tao from `account_balances`, or null when that leg declined.
+   * An EMPTY map is not the same as null: null means "no balance leg ran", an
+   * empty map means "it ran and the ledger has nothing", and only the first
+   * may leave `free_tao` out of the artifact's declared sorts. */
+  balances: Map<string, number> | null = null,
 ): Array<Record<string, unknown>> {
   const byColdkey = new Map<string, Record<string, unknown>>();
+  const add = (ss58: string, cells: Record<string, unknown>) => {
+    const existing = byColdkey.get(ss58);
+    if (existing) Object.assign(existing, cells);
+    else byColdkey.set(ss58, { ss58, ...cells, captured_at: generatedAtMs });
+  };
+
   for (const row of Array.isArray(aggregateRows) ? aggregateRows : []) {
     const coldkey = typeof row?.coldkey === "string" ? row.coldkey : null;
     if (!coldkey || coldkey.length === 0) continue;
@@ -187,19 +225,22 @@ export function buildTopHoldersFlowRows(
       (key) => [key, nullableFlow(row[key])] as const,
     );
     if (flows.every(([, value]) => value === null)) continue;
-    byColdkey.set(coldkey, {
-      ss58: coldkey,
-      ...Object.fromEntries(flows),
-      // The LANE's stamp, not the account's newest event: it is what makes the
-      // envelope's captured_at advance, and it is the honest answer to "how
-      // old is this ranking" for every row alike.
-      captured_at: generatedAtMs,
-    });
+    // The LANE's stamp, not the account's newest event: it is what makes the
+    // envelope's captured_at advance, and it is the honest answer to "how old
+    // is this ranking" for every row alike.
+    add(coldkey, Object.fromEntries(flows));
+  }
+  for (const [ss58, freeTao] of balances ?? []) {
+    add(ss58, { free_tao: freeTao });
   }
 
   const candidates = [...byColdkey.values()];
+  const rankedKeys = [
+    ...TOP_HOLDERS_FLOW_SORTS,
+    ...(balances ? [TOP_HOLDERS_BALANCE_SORT] : []),
+  ];
   const kept = new Map<string, Record<string, unknown>>();
-  for (const key of TOP_HOLDERS_FLOW_SORTS) {
+  for (const key of rankedKeys) {
     const ranked = candidates
       .filter((row) => typeof row[key] === "number")
       .sort(
@@ -217,6 +258,68 @@ export function buildTopHoldersFlowRows(
   );
 }
 
+/** The D1 surface the balances leg needs -- structural, so tests can hand a
+ * plain object (the same pattern as src/nominator-positions-hot-tier.ts). */
+interface D1Like {
+  prepare(sql: string): {
+    bind(...values: unknown[]): {
+      all?(): Promise<{ results?: unknown[] } | null>;
+    };
+    all?(): Promise<{ results?: unknown[] } | null>;
+  };
+}
+
+/**
+ * The largest free balances from D1, or null to leave `free_tao` out of this
+ * artifact entirely.
+ *
+ * DECLINES ON AN EMPTY LEDGER, which is the state today: #9483 created the
+ * table and revived the sync handler, but the producer is infra-side and
+ * human-gated, so `account_balances` has no rows (verified against production
+ * 2026-08-05). Declining -- rather than publishing a `free_tao` column of
+ * nothing -- is what keeps the frozen artifact answering `?sort=free_tao` with
+ * the real balances it still carries. The day the ledger fills, this returns a
+ * map, the lane declares the sort, and the reader starts answering it with no
+ * deploy: the same decline-while-empty switch #9292 established, applied to a
+ * LEG rather than a whole tier.
+ */
+export async function topHoldersBalances(
+  env: Env | null | undefined,
+  limit: number = TOP_HOLDERS_BALANCE_SCAN_LIMIT,
+): Promise<Map<string, number> | null> {
+  const db = (env as { METAGRAPH_HEALTH_DB?: D1Like } | null | undefined)
+    ?.METAGRAPH_HEALTH_DB;
+  if (!db?.prepare) return null;
+  let results: unknown[];
+  try {
+    const res = await db
+      .prepare(
+        "SELECT ss58, free_tao FROM account_balances" +
+          " WHERE free_tao > 0 ORDER BY free_tao DESC LIMIT ?",
+      )
+      .bind(limit)
+      .all?.();
+    if (!Array.isArray(res?.results)) throw new Error("account_balances: none");
+    results = res.results;
+  } catch {
+    // A missing table, an unbound DB and a failed read are one outcome here:
+    // no balance leg ran, so the artifact must not claim the sort.
+    return null;
+  }
+  if (results.length === 0) return null;
+  const map = new Map<string, number>();
+  for (const raw of results as Record<string, unknown>[]) {
+    const ss58 = typeof raw?.ss58 === "string" ? raw.ss58 : null;
+    if (!ss58) continue;
+    const value = Number(raw?.free_tao);
+    // A negative or non-finite balance is not a measurement; skip the row
+    // rather than rank on it.
+    if (!Number.isFinite(value) || value < 0) continue;
+    map.set(ss58, value);
+  }
+  return map.size === 0 ? null : map;
+}
+
 /**
  * The artifact body, or null when the lakehouse could not answer — which
  * leaves the previous day's ranking in place rather than replacing it with an
@@ -230,14 +333,35 @@ export async function computeTopHoldersFlow(
   const rows = await r2SqlQuery(env, topHoldersFlowSql(generatedAt, network), {
     timeoutMs: PROJECTION_QUERY_TIMEOUT_MS,
   });
+  // The FLOW leg is required: it is the one this lane was built for, and an
+  // artifact without it would silently un-rank the net_flow_* sorts.
   if (rows === null) return null;
-  const shaped = buildTopHoldersFlowRows(rows, generatedAt);
+  // The BALANCES leg is optional and D1-backed, so it is mainnet-only -- the
+  // testnet projection has no balance ledger of its own, and reading the
+  // mainnet one for it would mislabel another chain's accounts.
+  const balances =
+    network === DEFAULT_CHAIN_NETWORK ? await topHoldersBalances(env) : null;
+  const shaped = buildTopHoldersFlowRows(
+    rows,
+    generatedAt,
+    TOP_HOLDERS_FLOW_ROW_CAP,
+    balances,
+  );
   return {
     // Deliberately the SAME shape src/top-holders-artifact.ts reads, so the
     // reader below is the frozen reader's twin rather than a second dialect.
     schema_version: 1,
     generated_at: new Date(generatedAt).toISOString(),
     row_count: shaped.length,
+    // WHICH SORTS THIS BODY CAN RANK, declared by the writer rather than
+    // assumed by the reader. The two legs fail independently, so "is free_tao
+    // live" is a fact about the object that actually got written -- and
+    // stating it here is what lets the balance ledger start backing the sort
+    // the day it has rows, with no deploy and no flag.
+    sorts: [
+      ...TOP_HOLDERS_FLOW_SORTS,
+      ...(balances ? [TOP_HOLDERS_BALANCE_SORT] : []),
+    ],
     rows: shaped,
   };
 }
@@ -273,6 +397,35 @@ export function topHoldersFlowRows(
   return parsed.rows as Record<string, unknown>[];
 }
 
+/** Every sort ANY version of this artifact could back -- the union of both
+ * legs. Used only for the pre-fetch rejection; the authority on a given body
+ * is that body's own `sorts`. */
+export const TOP_HOLDERS_LIVE_SORTS = [
+  ...TOP_HOLDERS_FLOW_SORTS,
+  TOP_HOLDERS_BALANCE_SORT,
+];
+
+/**
+ * The sorts a written body says it ranked, intersected with the ones this
+ * module recognises.
+ *
+ * A body with no `sorts` is one the flow-only lane wrote (#9492), and is read
+ * as flow-only -- so a deploy that lands this code before the next 01:34 tick
+ * keeps answering exactly what it answered yesterday, rather than declining
+ * every sort for a day or claiming a `free_tao` column that object does not
+ * carry. Unrecognised entries are dropped rather than trusted: the artifact
+ * is ours, but a reader that ranks on whatever a stored string asks for is
+ * one bad write away from a confident nonsense ordering.
+ */
+export function topHoldersArtifactSorts(body: unknown): string[] {
+  const declared = (body as { sorts?: unknown } | null)?.sorts;
+  if (!Array.isArray(declared)) return TOP_HOLDERS_FLOW_SORTS;
+  return declared.filter(
+    (entry): entry is string =>
+      typeof entry === "string" && TOP_HOLDERS_LIVE_SORTS.includes(entry),
+  );
+}
+
 /**
  * The live flow leaderboard for a `net_flow_*` sort, or null to fall through
  * to the frozen artifact.
@@ -287,20 +440,26 @@ export async function loadTopHoldersFlowTier(
   env: Env | null | undefined,
   query: { sort?: string; limit?: unknown },
 ): Promise<ReturnType<typeof buildTopHoldersList> | null> {
-  if (!TOP_HOLDERS_FLOW_SORTS.includes(query.sort ?? "")) return null;
+  // Cheap rejection BEFORE the R2 round trip for the sorts no version of this
+  // artifact can ever back. The finer per-body check is below, once the
+  // written object can say what it actually ranked.
+  const sort = query.sort ?? "";
+  if (!TOP_HOLDERS_LIVE_SORTS.includes(sort)) return null;
   const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
     ?.METAGRAPH_ARCHIVE;
   if (!bucket?.get) return null;
   try {
     const object = await bucket.get(TOP_HOLDERS_FLOW_PROJECTION_KEY);
     if (!object) return null;
-    const rows = topHoldersFlowRows(await object.json());
+    const body = await object.json();
+    const rows = topHoldersFlowRows(body);
     // An artifact with no rows is a decline, not an answer: the frozen
     // leaderboard is still a better response than an empty one, and this is
     // the pre-first-run state as well as the emptied-in-place fault.
     if (rows === null || rows.length === 0) return null;
+    if (!topHoldersArtifactSorts(body).includes(sort)) return null;
     return buildTopHoldersList(rows, {
-      sort: query.sort,
+      sort,
       limit: query.limit,
     });
   } catch {

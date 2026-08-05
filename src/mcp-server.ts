@@ -9825,10 +9825,12 @@ export const MCP_TOOLS: McpToolDefinition[] = [
       "net_flow_7d/30d/90d are LIVE: recomputed once a day from the " +
       "account_events stake stream, signed (a real net outflow is negative), " +
       "and captured_at advances with each pass. free_tao, delegated_tao and " +
-      "total_tao are NOT live -- they are served from a FIXED SNAPSHOT taken " +
-      "2026-08-02, because account_balances lost its writer with the " +
-      "decommissioned indexer and delegated_tao needs a per-(hotkey, netuid) " +
-      "alpha pool total that no current table holds. Sorting by one of those " +
+      "total_tao are NOT live yet -- they are served from a FIXED SNAPSHOT " +
+      "taken 2026-08-02, because account_balances has no rows yet (its D1 " +
+      "sink exists and the lane already composes free_tao, so that sort goes " +
+      "live the day its producer posts) and delegated_tao needs a " +
+      "per-(hotkey, netuid) alpha pool total that no current table holds. " +
+      "Sorting by one of those " +
       "three returns the frozen ranking with captured_at stuck at that date: " +
       "an account that has moved TAO since is misreported and one first funded " +
       "since is absent entirely. On a net_flow_*-sorted page the three " +
