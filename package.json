@@ -125,6 +125,7 @@
     "deploy:wss-lb": "scripts/deploy-worker-with-sourcemaps.sh wrangler.wss-lb.jsonc",
     "deploy:wss-lb:preview": "scripts/deploy-worker-with-sourcemaps.sh wrangler.wss-lb.jsonc --preview",
     "smoke:live": "node scripts/smoke-live-api.ts",
+    "smoke:mcp": "node scripts/mcp-smoke-sweep.ts",
     "lint": "eslint .",
     "format:check": "prettier --check .",
     "pretypecheck": "npm run build --workspace=packages/chain-summaries",
