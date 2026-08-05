@@ -10692,7 +10692,7 @@
     {
       "artifact_path": "/metagraph/self-health.json",
       "cache": "short",
-      "description": "metagraphed's OWN uptime: a verdict scoped strictly to our own components (api / site / publish) plus each one's trailing-90-day daily uptime ratios and latest probe state, written by the indexer box's self-health poller rather than by a Worker sharing a failure domain with what it checks. Days with no probe rows are ABSENT, never zero-filled -- a gap means we weren't measuring, not that we were down. Never mixes in third-party subnet-surface health, which is what /api/v1/health covers. Computed live from the self_health_daily/self_health_checks Postgres tier at /api/v1/self-health (no static file).",
+      "description": "metagraphed's OWN uptime: a verdict scoped strictly to our own components (api / site / publish) plus each one's trailing-90-day daily uptime ratios and latest probe state, served from the self_health_daily lakehouse rollup at /api/v1/self-health (no static file). Days with no probe rows are ABSENT, never zero-filled -- a gap means we weren't measuring, not that we were down. Never mixes in third-party subnet-surface health, which is what /api/v1/health covers. The per-component current_ok/http_status/latency_ms/checked_at/note fields are NULL for now, and null here means UNMEASURED, not down: the per-check ticks were written by the indexer box's self-health poller, the box is decommissioned, and only the daily rollup survived it. Synthesizing a current reading from the last frozen tick would state a probe we did not take.",
       "id": "self-health",
       "mainnet_only": true,
       "method": "GET",

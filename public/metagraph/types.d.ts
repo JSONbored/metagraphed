@@ -4685,7 +4685,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** metagraphed's OWN uptime: a verdict scoped strictly to our own components (api / site / publish) plus each one's trailing-90-day daily uptime ratios and latest probe state, written by the indexer box's self-health poller rather than by a Worker sharing a failure domain with what it checks. Days with no probe rows are ABSENT, never zero-filled -- a gap means we weren't measuring, not that we were down. Never mixes in third-party subnet-surface health, which is what /api/v1/health covers. Computed live from the self_health_daily/self_health_checks Postgres tier at /api/v1/self-health (no static file). */
+        /** metagraphed's OWN uptime: a verdict scoped strictly to our own components (api / site / publish) plus each one's trailing-90-day daily uptime ratios and latest probe state, served from the self_health_daily lakehouse rollup at /api/v1/self-health (no static file). Days with no probe rows are ABSENT, never zero-filled -- a gap means we weren't measuring, not that we were down. Never mixes in third-party subnet-surface health, which is what /api/v1/health covers. The per-component current_ok/http_status/latency_ms/checked_at/note fields are NULL for now, and null here means UNMEASURED, not down: the per-check ticks were written by the indexer box's self-health poller, the box is decommissioned, and only the daily rollup survived it. Synthesizing a current reading from the last frozen tick would state a probe we did not take. */
         get: operations["selfHealth"];
         put?: never;
         post?: never;
@@ -9252,6 +9252,7 @@ export interface components {
             netuid: number;
             neuron: {
                 active: boolean;
+                /** @description The neuron's announced serving endpoint (ip:port), emitted only when the on-chain axon IP is non-zero. Null means NOT SERVING, which is the normal state for a validator -- so validator-scoped views read null throughout while miner rows on the same table carry a value. There is no alternate carrier: AxonServed stores only [netuid, hotkey] (#9541). */
                 axon?: string | null;
                 coldkey: string | null;
                 consensus?: number | null;
@@ -9264,6 +9265,7 @@ export interface components {
                 immunity_expires_at_block?: number;
                 incentive?: number | null;
                 is_immunity_period?: boolean;
+                /** @description 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
                 rank?: number | null;
                 registered_at_block?: number | null;
                 /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
@@ -9283,6 +9285,7 @@ export interface components {
             point_count: number;
             points: ({
                 active: boolean;
+                /** @description The neuron's announced serving endpoint (ip:port), emitted only when the on-chain axon IP is non-zero. Null means NOT SERVING, which is the normal state for a validator -- so validator-scoped views read null throughout while miner rows on the same table carry a value. There is no alternate carrier: AxonServed stores only [netuid, hotkey] (#9541). */
                 axon?: string | null;
                 block_number?: number | null;
                 captured_at?: string | null;
@@ -9297,6 +9300,7 @@ export interface components {
                 immunity_expires_at_block?: number;
                 incentive?: number | null;
                 is_immunity_period?: boolean;
+                /** @description 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
                 rank?: number | null;
                 registered_at_block?: number | null;
                 snapshot_date: string;
@@ -11202,6 +11206,7 @@ export interface components {
             neuron_count: number;
             neurons: {
                 active: boolean;
+                /** @description The neuron's announced serving endpoint (ip:port), emitted only when the on-chain axon IP is non-zero. Null means NOT SERVING, which is the normal state for a validator -- so validator-scoped views read null throughout while miner rows on the same table carry a value. There is no alternate carrier: AxonServed stores only [netuid, hotkey] (#9541). */
                 axon?: string | null;
                 coldkey: string | null;
                 consensus?: number | null;
@@ -11214,6 +11219,7 @@ export interface components {
                 immunity_expires_at_block?: number;
                 incentive?: number | null;
                 is_immunity_period?: boolean;
+                /** @description 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
                 rank?: number | null;
                 registered_at_block?: number | null;
                 /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */
@@ -11832,6 +11838,7 @@ export interface components {
             validator_count: number;
             validators: {
                 active: boolean;
+                /** @description The neuron's announced serving endpoint (ip:port), emitted only when the on-chain axon IP is non-zero. Null means NOT SERVING, which is the normal state for a validator -- so validator-scoped views read null throughout while miner rows on the same table carry a value. There is no alternate carrier: AxonServed stores only [netuid, hotkey] (#9541). */
                 axon?: string | null;
                 coldkey: string | null;
                 consensus?: number | null;
@@ -11844,6 +11851,7 @@ export interface components {
                 immunity_expires_at_block?: number;
                 incentive?: number | null;
                 is_immunity_period?: boolean;
+                /** @description 1-based position by incentive, descending. dTAO has no chain rank storage, so this is DERIVED by the producer and assigned only to neurons with non-zero incentive -- null for the whole incentive == 0 population, which is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs with incentive > 0. Null means unranked, not rank-last (#9541). */
                 rank?: number | null;
                 registered_at_block?: number | null;
                 /** @description This row's stake in the subnet named by the sibling `netuid`. ALPHA for non-root subnets -- a non-root neuron's stake is that subnet's own alpha token, not TAO (#2550); netuid 0 (root) stake is genuine TAO. Comparable within one subnet, never summable across subnets: the cross-subnet totals that ARE safe to read as TAO convert through each subnet's alpha price first (#9051/#8803). Kept under the on-chain column name deliberately (#8945). */

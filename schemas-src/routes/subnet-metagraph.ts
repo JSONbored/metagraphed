@@ -34,7 +34,17 @@ export const NeuronSchema = z
     coldkey: z.string().nullable(),
     active: z.boolean(),
     validator_permit: z.boolean(),
-    rank: z.number().nullable().optional(),
+    rank: z
+      .number()
+      .nullable()
+      .optional()
+      .describe(
+        "1-based position by incentive, descending. dTAO has no chain rank storage, " +
+          "so this is DERIVED by the producer and assigned only to neurons with " +
+          "non-zero incentive -- null for the whole incentive == 0 population, which " +
+          "is most validators. Verified on netuid 64: non-null on exactly the 16 UIDs " +
+          "with incentive > 0. Null means unranked, not rank-last (#9541).",
+      ),
     trust: z.number().nullable().optional(),
     validator_trust: z.number().nullable().optional(),
     consensus: z.number().nullable().optional(),
@@ -62,7 +72,17 @@ export const NeuronSchema = z
     // Wall-clock ETA for immunity_expires_at_block, extrapolated at ~12s/block;
     // only present alongside immunity_expires_at_block.
     immunity_expires_at: z.string().nullable().optional(),
-    axon: z.string().nullable().optional(),
+    axon: z
+      .string()
+      .nullable()
+      .optional()
+      .describe(
+        "The neuron's announced serving endpoint (ip:port), emitted only when the " +
+          "on-chain axon IP is non-zero. Null means NOT SERVING, which is the normal " +
+          "state for a validator -- so validator-scoped views read null throughout " +
+          "while miner rows on the same table carry a value. There is no alternate " +
+          "carrier: AxonServed stores only [netuid, hotkey] (#9541).",
+      ),
     // Only present on SubnetValidatorsArtifact rows (a real Set is always
     // passed there); omitted (not false) on metagraph/neuron-detail rows.
     featured: z.boolean().optional(),
