@@ -315,6 +315,7 @@ export function SubnetMasthead({
       `/api/v1/subnets/${netuid}/stake-quote?amount=100&direction=stake`,
       `/api/v1/subnets/${netuid}/lease`,
       `/api/v1/subnets/${netuid}/lease/history`,
+      `/api/v1/subnets/${netuid}/holders`,
       `/api/v1/agent-catalog/${netuid}`,
     ],
     [`/metagraph/subnets/${netuid}.json`],

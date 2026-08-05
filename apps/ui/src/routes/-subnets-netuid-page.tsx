@@ -64,6 +64,7 @@ import { EndpointSnippet, apiSnippet } from "@/components/metagraphed/endpoint-s
 import { SubnetHistoryChart } from "@/components/metagraphed/subnet-history-chart";
 import { SubnetOhlcChart } from "@/components/metagraphed/subnet-ohlc-chart";
 import { SubnetConvictionLeaderboard } from "@/components/metagraphed/subnet-conviction-leaderboard";
+import { SubnetHoldersLeaderboard } from "@/components/metagraphed/subnet-holders-leaderboard";
 import { SubnetOwnershipHistory } from "@/components/metagraphed/subnet-ownership-history";
 import { SubnetLeasePanel } from "@/components/metagraphed/subnet-lease-panel";
 import { MetagraphTableLoader } from "@/components/metagraphed/metagraph-panel";
@@ -170,6 +171,7 @@ const SECTION_TO_TAB: Record<string, string> = {
   metagraph: "metagraph",
   neuron: "metagraph",
   concentration: "metagraph",
+  holders: "metagraph",
   yield: "metagraph",
   turnover: "metagraph",
   validators: "metagraph",
@@ -1971,6 +1973,18 @@ function MetagraphPanel({ netuid }: { netuid: number }) {
       >
         <QueryErrorBoundary>
           <DistributionPanel netuid={netuid} />
+        </QueryErrorBoundary>
+      </SectionAnchor>
+
+      <SectionAnchor
+        id="holders"
+        title="Alpha holders"
+        subtitle="Who owns this subnet's alpha: the top coldkeys by alpha held, including alpha staked to hotkeys that hold no UID here."
+        info="GET /api/v1/subnets/{netuid}/holders — coldkeys ranked by alpha held on this subnet, read from the stake-position ledger rather than from registered UIDs, so passive holders are included. Aggregates cover the whole subnet, not the returned rows."
+        tone="muted"
+      >
+        <QueryErrorBoundary>
+          <SubnetHoldersLeaderboard netuid={netuid} />
         </QueryErrorBoundary>
       </SectionAnchor>
 
