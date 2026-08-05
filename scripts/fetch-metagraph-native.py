@@ -118,8 +118,9 @@ def main():
         except Exception as exc:
             # A per-netuid storage read failing must not silently null out
             # that subnet's data with no signal (metagraphed-infra#62) --
-            # record it and keep going (matching fetch-subnet-hyperparams.py's
-            # accumulate-and-fail-at-the-end pattern) rather than either
+            # record it and keep going (matching the retired
+            # fetch-subnet-hyperparams.py's accumulate-and-fail-at-the-end
+            # pattern, #7012) rather than either
             # crashing the whole run on one flaky call while every other
             # subnet is fine, or silently emitting validator_trust=None for
             # this subnet as if that were valid data.
@@ -220,8 +221,9 @@ def main():
         sys.stderr.write(f"  {err}\n")
     # This feeds a full-snapshot loader -- a partial ValidatorTrust read for
     # even one subnet must fail the run instead of authenticating a
-    # degraded snapshot as complete (metagraphed-infra#62), matching
-    # fetch-subnet-hyperparams.py's own exit-on-any-error convention.
+    # degraded snapshot as complete (metagraphed-infra#62), matching the
+    # retired fetch-subnet-hyperparams.py's own exit-on-any-error
+    # convention (#7012).
     if errors:
         sys.exit(1)
 

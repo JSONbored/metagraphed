@@ -83,7 +83,7 @@ byte-for-byte match to an undocumented competitor endpoint.
 
 `delegators_affected` (a **per-coldkey** count, not per-neuron) needs one more join: which
 distinct coldkeys have a stake position on a `dividends == 0` hotkey. That's exactly the
-self-stake position data #6507 already captures (`scripts/fetch-self-stake.py`) — still no new
+self-stake position data #6507 already captures (the poller's `self_stake` job) — still no new
 polling, just a join across two tiers that already exist.
 
 ## Deliverable scoping (follow-up issue, not this one)
