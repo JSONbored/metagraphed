@@ -410,6 +410,11 @@ import {
 import { BLOCKLIST_KV_KEY, BLOCKLIST_KV_TTL } from "./tiered-rate-limit.ts";
 import { MCP_TIERED_RATE_LIMIT } from "../src/mcp-server.ts";
 import { createPgSql } from "../src/pg-sql.ts";
+import { recordLaneVerdict } from "../src/lane-health.ts";
+import {
+  coercePollerJobOutcome,
+  validPollerJobOutcome,
+} from "../src/poller-lane-health.ts";
 import {
   createSessionToken,
   createTriggerToken,
@@ -2273,6 +2278,87 @@ async function handleHotkeyAlphaSync(request: Request, env: Env) {
     // silently dropped -- the failure mode a purely optional field invites.
     pass_total: pass?.expectedRows ?? null,
   });
+}
+
+// --- POST /api/v1/internal/poller-lane-health-sync -------------------------
+//
+// The poller reporting its OWN job outcomes (metagraphed-infra#343 phase 1).
+// See src/poller-lane-health.ts for why: `hotkey_alpha` failed 95 seconds into
+// every run for ten hours and nothing anywhere said so, because container
+// stderr has no queryable destination and every staleness watchdog keys on a
+// MAX(captured_at) that a never-successful lane does not have.
+//
+// SMALL BODY, NO PASS ACCOUNTING. This is one row per tick, not a bulk load, so
+// it needs none of the chunking or completeness machinery the data lanes carry.
+const POLLER_LANE_HEALTH_TOKEN_HEADER = "x-poller-lane-health-sync-token";
+const POLLER_LANE_HEALTH_MAX_BODY_BYTES = 64_000;
+const POLLER_LANE_HEALTH_MAX_ROWS = 50;
+
+async function handlePollerLaneHealthSync(request: Request, env: Env) {
+  if (!env.POLLER_LANE_HEALTH_SYNC_SECRET) {
+    return writeJson(
+      {
+        error: "poller lane-health sync is not provisioned on this deployment",
+      },
+      503,
+    );
+  }
+  const provided = request.headers.get(POLLER_LANE_HEALTH_TOKEN_HEADER) || "";
+  if (
+    !provided ||
+    !timingSafeEqual(provided, env.POLLER_LANE_HEALTH_SYNC_SECRET)
+  ) {
+    return writeJson(
+      { error: `provide a valid ${POLLER_LANE_HEALTH_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > POLLER_LANE_HEALTH_MAX_BODY_BYTES) {
+    return writeJson(
+      { error: `body exceeds ${POLLER_LANE_HEALTH_MAX_BODY_BYTES} bytes` },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return writeJson(
+      { error: "body must be a JSON array of outcomes (or {rows:[...]})" },
+      400,
+    );
+  }
+  if (incoming.length > POLLER_LANE_HEALTH_MAX_ROWS) {
+    return writeJson(
+      { error: `at most ${POLLER_LANE_HEALTH_MAX_ROWS} rows per request` },
+      413,
+    );
+  }
+  if (!incoming.length || !incoming.every(validPollerJobOutcome)) {
+    return writeJson({ error: "rows must match the outcome shape" }, 400);
+  }
+  if (!env.METAGRAPH_HEALTH_DB) {
+    return writeJson({ error: "d1 binding unavailable" }, 503);
+  }
+
+  // recordLaneVerdict swallows its own failures by design -- an alarm whose
+  // recording can break the alarm is worse than the bug. So the count of rows
+  // that actually landed is reported rather than assumed.
+  let written = 0;
+  for (const row of incoming.map(coercePollerJobOutcome)) {
+    if (await recordLaneVerdict(env.METAGRAPH_HEALTH_DB, row)) written += 1;
+  }
+  return writeJson({ ok: true, lane_health_written: written, stores: ["d1"] });
 }
 
 // --- POST /api/v1/internal/subnet-identity-sync (#4832 gap-closure) -------
@@ -6478,6 +6564,12 @@ async function dispatchDataApiRequest(
       url.pathname === "/api/v1/internal/hotkey-alpha-sync"
     ) {
       return handleHotkeyAlphaSync(request, env);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/poller-lane-health-sync"
+    ) {
+      return handlePollerLaneHealthSync(request, env);
     }
     if (
       request.method === "POST" &&
