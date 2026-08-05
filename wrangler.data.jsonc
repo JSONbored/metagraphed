@@ -215,6 +215,37 @@
       "database_id": "8e14c15f-d0b0-4ffd-ad65-01e37993efcf",
     },
   ],
+  // Neon Postgres, via Hyperdrive (metagraphed-infra#336). NOT the return of the
+  // box: HYPERDRIVE was unbound in #9186 because the Postgres it fronted was
+  // wiped, and the two Hyperdrive configs that pointed at it have since been
+  // deleted. This is a NEW config against a managed database, bound for one
+  // table.
+  //
+  // WHY ANY OF THIS. Bulk sync passes saturate D1 -- `D1_ERROR: D1 DB is
+  // overloaded. Requests queued for too long.`, which on 2026-08-05 aborted the
+  // account-balances passes AND failed unrelated writers (wallet-auth,
+  // tao-usd-index) on the database everything shares. The neurons family is the
+  // dominant write load: one 15-minute tick writes ~30k rows to EACH of
+  // `neurons`, `neuron_daily` and `account_position_daily`, so ~8.6M row-writes
+  // a day.
+  //
+  // `account_position_daily` goes first because it carries a third of that load
+  // behind the smallest read surface in the family -- two query sites in one
+  // file, against `neurons`' forty across eighteen. Same relief, a twentieth of
+  // the blast radius. The D1 table is deliberately LEFT IN PLACE: rollback is a
+  // revert, not a restore.
+  //
+  // The id is a Hyperdrive config, not a connection string -- the credentials
+  // live in Cloudflare, exactly as `database_id` above is not a D1 credential.
+  // Never add `localConnectionString` here: Neon's own guide suggests it and it
+  // would commit a live password to a public repository. Use `.dev.vars`, which
+  // IS gitignored, for local work.
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "8a09dc673733497f987434f59689287e",
+    },
+  ],
   // Wallet-login challenge nonces (ADR 0021, #6835, src/wallet-auth.ts) --
   // the SAME namespace id as the main Worker's own METAGRAPH_CONTROL binding
   // (wrangler.jsonc), bound under the same name here so both Workers read/

@@ -409,6 +409,7 @@ import {
 } from "../src/api-key-abuse.ts";
 import { BLOCKLIST_KV_KEY, BLOCKLIST_KV_TTL } from "./tiered-rate-limit.ts";
 import { MCP_TIERED_RATE_LIMIT } from "../src/mcp-server.ts";
+import { createPgSql } from "../src/pg-sql.ts";
 import {
   createSessionToken,
   createTriggerToken,
@@ -5363,6 +5364,24 @@ async function loadRealizedStakeBaselinesD1(
 // every non-neurons-family route, which then flows on to the dispatcher's
 // remaining tiers unchanged). Split from execution so the caller can check
 // the binding exactly once, after a route has actually matched.
+/**
+ * Which of the neurons-family routes reads Neon rather than D1.
+ *
+ * ONE ROUTE, on purpose. `account_position_daily` is the first table moved
+ * (metagraphed-infra#336) because it carries a third of the family's ~8.6M
+ * daily row-writes behind the smallest read surface: two query sites in one
+ * file, against `neurons`' forty across eighteen. Same D1 relief, a twentieth
+ * of the blast radius.
+ *
+ * A LIST, not a flag, so the next table added is one entry and its rollback is
+ * deleting that entry.
+ */
+export function positionHistoryServedFromNeon(url: URL): boolean {
+  return /^\/api\/v1\/accounts\/[^/]+\/subnets\/\d+\/history$/.test(
+    url.pathname,
+  );
+}
+
 function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
   // GET /api/v1/subnets/:netuid/metagraph -- twin of the Postgres route of
   // the same name below. immunity_period comes from subnet_hyperparams,
@@ -6376,6 +6395,9 @@ function matchHyperparamsIdentityD1Route(
 async function dispatchDataApiRequest(
   request: Request,
   env: Env,
+  // Threaded through for createPgSql, which returns its Hyperdrive connection
+  // via waitUntil rather than making the response wait on the teardown.
+  ctx: ExecutionContext,
 ): Promise<Response> {
   {
     const url = new URL(request.url);
@@ -6669,13 +6691,25 @@ async function dispatchDataApiRequest(
         if (!env.METAGRAPH_HEALTH_DB) {
           return json({ error: "d1 binding unavailable" }, 503);
         }
+        // `account_position_daily` lives in Neon (metagraphed-infra#336). The
+        // handler is unchanged -- it is written against a tagged template, and
+        // createPgSql is interface-compatible with createD1Sql -- so the store
+        // moves by choosing a runner, not by rewriting a query.
+        //
+        // FALLS BACK TO D1 WHEN THE BINDING IS ABSENT, which is what makes this
+        // reversible without a deploy: the D1 table is still written and still
+        // current, so unbinding HYPERDRIVE restores the previous behaviour
+        // exactly. That is deliberate for a first migration and should be
+        // removed once the D1 write is retired, or it becomes a fallback ladder
+        // hiding a dead dependency.
+        const store =
+          env.HYPERDRIVE && positionHistoryServedFromNeon(url)
+            ? createPgSql(env.HYPERDRIVE, ctx)
+            : createD1Sql(env.METAGRAPH_HEALTH_DB);
         try {
-          return await neuronsD1Handler(
-            createD1Sql(env.METAGRAPH_HEALTH_DB),
-            env,
-          );
+          return await neuronsD1Handler(store, env);
         } catch (err) {
-          console.error("data-api neurons D1 query failed:", err);
+          console.error("data-api neurons query failed:", err);
           await captureDataApiError(err, maskRouteParams(url.pathname), env);
           return json({ error: "data query failed" }, 502);
         }
@@ -6926,7 +6960,7 @@ export default {
     // rethrow, never handle.
     if (!shouldSampleTrace(env)) {
       try {
-        return await dispatchDataApiRequest(request, env);
+        return await dispatchDataApiRequest(request, env, ctx);
       } catch (error) {
         await captureUncaughtDataApiError(
           error,
@@ -6946,7 +6980,7 @@ export default {
     const route = maskedDataApiRoute(request);
     let ok = true;
     try {
-      const response = await dispatchDataApiRequest(request, env);
+      const response = await dispatchDataApiRequest(request, env, ctx);
       ok = response.status < 500;
       return response;
     } catch (error) {
