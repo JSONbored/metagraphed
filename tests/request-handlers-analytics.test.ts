@@ -1664,7 +1664,12 @@ describe("handleGlobalIncidents", () => {
       url(p),
     );
     await json(res);
-    assert.equal(res.headers.get("link"), null);
+    // No pagination relations; the service-desc pointer every API response carries
+    // (#9460) is not one of them.
+    assert.doesNotMatch(
+      res.headers.get("link") ?? "",
+      /rel="(next|prev|first|last)"/,
+    );
   });
 });
 
