@@ -99,8 +99,18 @@ interface Env {
   HEALTH_CHECKS_SYNC_SECRET?: string;
   /** #9502: gates POST /api/v1/internal/hotkey-alpha-sync -- the write path
    * into hotkey_alpha, the (hotkey, netuid) alpha-pool totals delegated_tao
-   * values a position against. Set via `wrangler secret put` on BOTH Workers
-   * (api.ts proxies, data-api.ts checks) and in the poller's vault. */
+   * values a position against.
+   *
+   * ONE Worker, not two: `wrangler secret put HOTKEY_ALPHA_SYNC_SECRET --name
+   * metagraphed-data-api`. api.ts only PROXIES this route -- it forwards the
+   * caller's header untouched and never reads the secret itself -- so setting
+   * it there does nothing. (The sibling comments above say "BOTH Workers"
+   * because their routes are checked in both; this one is not.)
+   *
+   * The producer needs the SAME value as `hotkey_alpha_sync_secret` in the
+   * metagraphed-infra vault. It is a shared secret with no external issuer:
+   * any high-entropy random string works, and until both sides hold it the
+   * poller logs "job will not run" rather than failing quietly. */
   HOTKEY_ALPHA_SYNC_SECRET?: string;
   METAGRAPH_ALLOW_R2_STATIC_FALLBACK?: string;
   METAGRAPH_DISABLE_REQUEST_LOGS?: string;
