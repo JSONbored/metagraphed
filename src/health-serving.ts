@@ -265,6 +265,12 @@ export function mergeRpcEndpoints(
       classification: live.classification,
       latency_ms: live.latency_ms,
       archive_support: live.archive_support ?? endpoint.archive_support,
+      // #9538: overlaid UNCONDITIONALLY, including back to null. A `?? endpoint.error`
+      // fallback would leave a recovered endpoint wearing the error string from
+      // whichever sweep last failed it -- the same drift `by_status` is recomputed
+      // below to avoid. The live row is the whole truth about this observation:
+      // if it reports no error, there is no error.
+      error: (live.error as string | null) ?? null,
       health_source: "probe-derived",
       health_stale: false,
       // observed_at is when this status was observed, i.e. the sweep time. rpc-pool
