@@ -8,6 +8,7 @@ import {
   USAGE_EVENT_DISTINCT_ID,
   USAGE_EVENT_NAME,
   admitExceptionCapture,
+  isBenignPlatformMessage,
   MCP_PROTOCOL_ROUTE_PREFIX,
   classifyMcpErrorType,
   resolveDeployment,
@@ -779,6 +780,64 @@ describe("recordMcpInitializeEvent", () => {
 // comment for the sources. These tests pin that shape so a future refactor
 // can't silently drift from it.
 describe("recordExceptionEvent", () => {
+  test("drops a Durable Object code-update reset without sending anything", async () => {
+    // Expected on every deploy, self-healing, and raised by all four DOs --
+    // the per-isolate change-detectors cannot suppress it because the reset
+    // is what wipes the isolate holding the memo.
+    const calls: Row[] = [];
+    const recorded = await recordExceptionEvent(
+      CONFIGURED,
+      {
+        error: new Error("Durable Object reset because its code was updated."),
+        route: "head-poller",
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal(recorded, false);
+    assert.equal(calls.length, 0);
+  });
+
+  test("a genuine fault on the same route is still captured after a reset was dropped", async () => {
+    // The suppression runs BEFORE the storm guard, so a dropped platform
+    // message must not have consumed head-poller's throttle window.
+    const calls: Row[] = [];
+    const deps = { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) };
+    await recordExceptionEvent(
+      CONFIGURED,
+      {
+        error: new Error("Durable Object reset because its code was updated."),
+        route: "reset-route",
+      },
+      deps,
+    );
+    const recorded = await recordExceptionEvent(
+      CONFIGURED,
+      { error: new Error("real fault"), route: "reset-route" },
+      deps,
+    );
+    assert.equal(recorded, true);
+    assert.equal(calls.length, 1);
+    assert.equal(
+      calls[0].body.properties.$exception_list[0].value,
+      "real fault",
+    );
+  });
+
+  test("isBenignPlatformMessage matches only the exact runtime prefix", () => {
+    assert.equal(
+      isBenignPlatformMessage(
+        "Durable Object reset because its code was updated.",
+      ),
+      true,
+    );
+    // A real fault that merely mentions the same subject must NOT be swallowed.
+    assert.equal(
+      isBenignPlatformMessage("failed to reach Durable Object reset endpoint"),
+      false,
+    );
+    assert.equal(isBenignPlatformMessage("boom"), false);
+  });
+
   test("stamps frames with the chunk id of the file they came from", async () => {
     // Models production faithfully: `posthog-cli sourcemap inject` prepends an
     // IIFE that registers globalThis._posthogChunkIds[<a stack captured INSIDE
