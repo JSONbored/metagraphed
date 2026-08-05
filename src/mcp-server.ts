@@ -14862,7 +14862,12 @@ async function handleMcpStreamRequest(request: Request, env: Env) {
           "(metagraph://chain/stream or metagraph://subnet/{netuid}/status), " +
           "then GET with that session id. Every other MCP method is POST.",
       ),
-      400,
+      // 405, for the same reason as the no-subscription branch below: a client
+      // opening the push channel before it has a session is doing the ordinary
+      // thing, and the transport's answer for "no stream here" is 405, not a 400
+      // that reads as a protocol violation. The message is unchanged.
+      405,
+      { allow: "POST, DELETE, OPTIONS" },
     );
   }
   if (!env.MCP_SESSION_HUB) {
@@ -14894,7 +14899,20 @@ async function handleMcpStreamRequest(request: Request, env: Env) {
               "before opening the GET stream. If the session has since expired, " +
               "re-run initialize and subscribe again.",
       ),
-      upstream.status === 409 ? 409 : 404,
+      // 405, not 404, for the no-subscription case. The Streamable HTTP transport
+      // names 405 as the sanctioned "this endpoint offers no SSE stream", and a
+      // conformant client treats it as "fine, POST-only" and moves on; ANY other
+      // non-2xx is a transport error that tears the connection down.
+      //
+      // The canonical initialize-then-GET sequence always lands here, because a
+      // session is only registered with the hub by resources/subscribe. So every
+      // spec-following client took a transport error within a second of connecting
+      // and began reconnecting — which is the churn that then walked into the
+      // OAuth-route 401 (see matchesMcpApiRoute in src/github-oauth.ts).
+      //
+      // 409 keeps its own status: a stream IS on offer there, just already taken.
+      upstream.status === 409 ? 409 : 405,
+      upstream.status === 409 ? undefined : { allow: "POST, DELETE, OPTIONS" },
     );
   }
   return new Response(upstream.body, {

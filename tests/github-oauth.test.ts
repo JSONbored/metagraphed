@@ -6,6 +6,7 @@ import {
   handleGithubOAuthCallback,
   isAnonymousMcpRequest,
   isNonOAuthMcpRequest,
+  matchesMcpApiRoute,
   OAUTH_PENDING_TTL_SECONDS,
   UNUSED_DEFAULT_HANDLER,
 } from "../src/github-oauth.ts";
@@ -646,6 +647,44 @@ describe("isNonOAuthMcpRequest (#8643) — our own API keys must not reach OAuth
         headers: { Authorization: "Bearer mg_abcdefghijklmnop" },
       });
       expect(isNonOAuthMcpRequest(request), url).toBe(false);
+    }
+  });
+
+  // The inverse of the case above, and the one nothing pinned. OAuthProvider's
+  // matchApiRoute matches a path-style apiRoute with `startsWith`, so `/mcp` claims
+  // `/mcp/`, `/mcp/sse` and `/mcpx`. This predicate used `!==` against the same
+  // constant — one character narrower — and every path in the gap was handed to
+  // oauthProvider.fetch, which answered an anonymous 401 with a
+  // `WWW-Authenticate: Bearer realm="OAuth"` challenge before the app ever ran.
+  // Reproduced against production: POST /mcp -> 200, POST /mcp/ -> 401. A trailing
+  // slash was enough to tell an unauthenticated client it needed OAuth.
+  test("diverts every path OAuthProvider would claim by prefix, not just /mcp exactly", () => {
+    for (const url of [
+      "https://api.metagraph.sh/mcp",
+      "https://api.metagraph.sh/mcp/",
+      "https://api.metagraph.sh/mcp/sse",
+      "https://api.metagraph.sh/mcp/message",
+      "https://api.metagraph.sh/mcpx",
+    ]) {
+      expect(isNonOAuthMcpRequest(new Request(url)), url).toBe(true);
+    }
+  });
+
+  test("matchesMcpApiRoute agrees with OAuthProvider's startsWith, so the two cannot drift", () => {
+    // If this ever disagrees with matchApiRoute, the gap reopens as a 401.
+    const claimedByLibrary = (pathname: string) => pathname.startsWith("/mcp");
+    for (const pathname of [
+      "/mcp",
+      "/mcp/",
+      "/mcp/sse",
+      "/mcpx",
+      "/api/v1/subnets",
+      "/authorize",
+      "/",
+    ]) {
+      expect(matchesMcpApiRoute(pathname), pathname).toBe(
+        claimedByLibrary(pathname),
+      );
     }
   });
 

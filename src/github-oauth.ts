@@ -179,8 +179,31 @@ export function buildOAuthProviderOptions(
  * discovery endpoints, and /mcp with a genuine OAuth Bearer -- still needs the
  * real oauthProvider.fetch() dispatch.
  */
+/**
+ * Does OAuthProvider consider this path part of the MCP API surface?
+ *
+ * This has to be asked exactly the way the library asks it. `matchApiRoute`
+ * (@cloudflare/workers-oauth-provider) matches a path-style `apiRoute` with
+ * `url.pathname.startsWith(route)`, so `/mcp` claims `/mcp/`, `/mcp/sse` and even
+ * `/mcpx` — not just `/mcp`.
+ *
+ * The bypass below used `!==` against the same constant. One character narrower than
+ * the library, and every request that fell into the gap was handed to
+ * `oauthProvider.fetch`, matched `isApiRequest` by prefix, and was answered by
+ * `handleApiRequest`'s no-Authorization branch: an anonymous **401** with a
+ * `WWW-Authenticate: Bearer realm="OAuth"` challenge, before `apiHandler` ever ran.
+ *
+ * A trailing slash was therefore enough to make an unauthenticated MCP client believe
+ * the server required OAuth — and, because the discovery documents it points at are
+ * live and complete, to start a flow it cannot finish unattended. Exported so the two
+ * sides are one declaration and cannot drift apart again.
+ */
+export function matchesMcpApiRoute(pathname: string): boolean {
+  return pathname.startsWith(MCP_API_ROUTE);
+}
+
 export function isNonOAuthMcpRequest(request: Request): boolean {
-  if (new URL(request.url).pathname !== MCP_API_ROUTE) return false;
+  if (!matchesMcpApiRoute(new URL(request.url).pathname)) return false;
   const header = request.headers.get("Authorization");
   if (!header?.startsWith("Bearer ")) return true;
   return header.slice("Bearer ".length).startsWith(MG_API_KEY_TAG);

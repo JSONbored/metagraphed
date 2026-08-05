@@ -1470,11 +1470,20 @@ assert.equal(
 const unknownTool = await call("not_a_real_tool", {});
 assert.equal(unknownTool.isError, true, "unknown tools must return isError");
 
+// 405, not 400: the Streamable HTTP transport names 405 as the sanctioned "this
+// endpoint offers no SSE stream", and a conformant client treats it as POST-only
+// and carries on. Any other non-2xx is a transport error that starts a reconnect
+// loop — which is what every client opening the push channel used to hit.
 const getWithoutSession = await mcpRaw(null, { method: "GET" });
 assert.equal(
   getWithoutSession.status,
-  400,
-  "GET /mcp without an Mcp-Session-Id header must be rejected with 400",
+  405,
+  "GET /mcp without an Mcp-Session-Id header must answer 405, not a transport error",
+);
+assert.equal(
+  getWithoutSession.headers.get("allow"),
+  "POST, DELETE, OPTIONS",
+  "a 405 must say which methods the endpoint does take",
 );
 
 const A_SESSION_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
@@ -1639,8 +1648,8 @@ const postTerminateStream = await mcpRaw(null, {
 });
 assert.equal(
   postTerminateStream.status,
-  404,
-  "GET /mcp after DELETE must find no such session",
+  405,
+  "GET /mcp after DELETE must report no stream on offer, the same 405 way an unregistered session does",
 );
 
 // --- MCP per-subnet status subscription lifecycle (#6034) ------------------
