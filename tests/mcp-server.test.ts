@@ -1580,19 +1580,24 @@ describe("MCP transport handling", () => {
   });
 
   describe("GET /mcp — the SSE push stream (#4983 MCP half)", () => {
-    test("without an Mcp-Session-Id header, rejects with 400", async () => {
+    // 405, not 400. The Streamable HTTP transport names 405 as the sanctioned
+    // "this endpoint offers no SSE stream": a conformant client reads it as
+    // "POST-only, fine" and carries on, where any other non-2xx is a transport
+    // error that tears the connection down and starts a reconnect loop.
+    test("without an Mcp-Session-Id header, answers 405 rather than a transport error", async () => {
       const res = await rpc(null, { method: "GET" });
-      assert.equal(res.status, 400);
+      assert.equal(res.status, 405);
+      assert.equal(res.headers.get("allow"), "POST, DELETE, OPTIONS");
       assert.equal(res.body.error.code, -32600);
       assert.match(res.body.error.message, /Mcp-Session-Id/);
     });
 
-    test("with a malformed Mcp-Session-Id header, rejects with 400", async () => {
+    test("with a malformed Mcp-Session-Id header, answers 405", async () => {
       const res = await rpc(null, {
         method: "GET",
         headers: { "mcp-session-id": "has a space" },
       });
-      assert.equal(res.status, 400);
+      assert.equal(res.status, 405);
     });
 
     test("with an unrecognized MCP-Protocol-Version header, rejects with 400 before checking the session", async () => {
@@ -1642,7 +1647,7 @@ describe("MCP transport handling", () => {
     // by resources/subscribe. These pin the message actually being actionable.
     test("a bare GET (no session) says this is not a browsable URL", async () => {
       const res = await rpc(null, { method: "GET" });
-      assert.equal(res.status, 400);
+      assert.equal(res.status, 405);
       assert.match(res.body.error.message, /not a browsable endpoint/);
     });
 
@@ -1691,7 +1696,11 @@ describe("MCP transport handling", () => {
       assert.match(body.error.message, /already open/);
     });
 
-    test("a 404 from the session hub (unknown/terminated session) passes through as 404", async () => {
+    // The canonical initialize-then-GET sequence ALWAYS lands here, because a
+    // session is only registered with the hub by resources/subscribe. Answering it
+    // with 404 made every spec-following client take a transport error within a
+    // second of connecting; 405 is the transport's own word for "no stream here".
+    test("an unregistered session answers 405, not a transport error", async () => {
       const hub = fakeMcpSessionHubBinding({
         "/stream": () => new Response(null, { status: 404 }),
       });
@@ -1702,7 +1711,8 @@ describe("MCP transport handling", () => {
       const response = await handleMcpRequest(request, {
         MCP_SESSION_HUB: hub,
       } as unknown as Env);
-      assert.equal(response.status, 404);
+      assert.equal(response.status, 405);
+      assert.equal(response.headers.get("allow"), "POST, DELETE, OPTIONS");
       const body = (await response.json()) as Row;
       assert.match(
         body.error.message,
