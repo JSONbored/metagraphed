@@ -36,6 +36,29 @@ const PASSES_SCHEMA = fs.readFileSync(
   path.join(process.cwd(), "migrations/d1/0021_hotkey_alpha_passes.sql"),
   "utf8",
 );
+// The write filters against nominator_positions (#9557): only pools some
+// position actually references are stored, so the sink's statement reads that
+// table and the fixture has to provide it.
+const POSITIONS_SCHEMA = fs.readFileSync(
+  path.join(process.cwd(), "migrations/d1/0011_nominator_positions.sql"),
+  "utf8",
+);
+const POSITIONS_INDEX = fs.readFileSync(
+  path.join(
+    process.cwd(),
+    "migrations/d1/0022_nominator_positions_hotkey_netuid.sql",
+  ),
+  "utf8",
+);
+
+/** Make (hotkey, netuid) referenced, so a pool for it is stored. */
+function reference(hotkey: string, netuid: number) {
+  db.prepare(
+    "INSERT OR IGNORE INTO nominator_positions" +
+      " (coldkey, hotkey, netuid, share_fraction, captured_at)" +
+      " VALUES (?, ?, ?, 1.0, 1)",
+  ).run(`5Cold${hotkey}${netuid}`, hotkey, netuid);
+}
 
 const PATH = "/api/v1/internal/hotkey-alpha-sync";
 const SECRET = "test-hotkey-alpha-sync-secret";
@@ -125,6 +148,14 @@ beforeEach(() => {
   db = new DatabaseSync(":memory:");
   db.exec(SCHEMA);
   db.exec(PASSES_SCHEMA);
+  db.exec(POSITIONS_SCHEMA);
+  db.exec(POSITIONS_INDEX);
+  // The fixtures below use HOTKEY/HOTKEY_B on the netuids alphaRow() defaults
+  // to; referencing them keeps every pre-existing assertion about what lands
+  // testing what it was written to test.
+  for (const hk of [HOTKEY, HOTKEY_B]) {
+    for (const n of [7, 8, 9, 83]) reference(hk, n);
+  }
 });
 
 describe("POST /api/v1/internal/hotkey-alpha-sync", () => {
@@ -395,5 +426,83 @@ describe("pass_total completeness accounting", () => {
     });
     assert.equal(response.status, 400);
     assert.equal(rows().length, 0);
+  });
+});
+
+// --- writing only what something reads (#9557) -------------------------------
+//
+// `TotalHotkeyAlpha` has ~762,577 entries; `nominator_positions` names 17,902
+// distinct (hotkey, netuid) pairs, and pricing those positions is the only
+// reason this table exists. The other 43x was written every pass, read by
+// nothing, and measurably harmful: the bulk volume saturated D1
+// (`D1 DB is overloaded. Requests queued for too long.`), which aborted the
+// passes AND failed unrelated writers on the same database.
+describe("only pools some position references are stored", () => {
+  test("an unreferenced pool is accepted and NOT written", async () => {
+    const orphan = "5OrphanHotkeyNothingDelegatesTo00000000000000000";
+    const response = await post({
+      rows: [
+        alphaRow({ netuid: 7 }),
+        alphaRow({ hotkey: orphan, netuid: 7, total_alpha: 999 }),
+      ],
+    });
+    // ACCEPTED, not rejected: the producer walks the whole keyspace and is
+    // right to send it. Declining is the sink's judgement about storage, not a
+    // complaint about the payload -- a 4xx here would abort a healthy pass.
+    assert.equal(response.status, 200);
+    assert.equal(((await response.json()) as Row).hotkey_alpha_written, 2);
+
+    const stored = rows();
+    assert.deepEqual(
+      stored.map((r) => r.hotkey),
+      [HOTKEY],
+      "the referenced pool landed and the orphan did not",
+    );
+  });
+
+  test("a pool becomes storable once a position references it", async () => {
+    const later = "5LaterHotkeyGainsANominator0000000000000000000000";
+    await post({ rows: [alphaRow({ hotkey: later, netuid: 7 })] });
+    assert.equal(rows().length, 0, "nothing references it yet");
+
+    // Both lanes refresh daily, so a pair that gains a position is picked up on
+    // the next pass rather than needing a backfill.
+    reference(later, 7);
+    await post({ rows: [alphaRow({ hotkey: later, netuid: 7 })] });
+    assert.equal(rows().length, 1);
+    assert.equal(rows()[0]!.hotkey, later);
+  });
+
+  test("the filter is per (hotkey, netuid), not per hotkey", async () => {
+    // A hotkey holds a SEPARATE pool on every subnet it is staked to. Filtering
+    // on the hotkey alone would store pools for subnets nothing delegates on --
+    // and, worse, the composite key means those rows are not overwrites.
+    const partial = "5PartialHotkeyOnOneSubnetOnly000000000000000000";
+    reference(partial, 7);
+    await post({
+      rows: [
+        alphaRow({ hotkey: partial, netuid: 7, total_alpha: 10 }),
+        alphaRow({ hotkey: partial, netuid: 42, total_alpha: 20 }),
+      ],
+    });
+    const stored = rows().filter((r) => r.hotkey === partial);
+    assert.deepEqual(
+      stored.map((r) => r.netuid),
+      [7],
+    );
+  });
+
+  test("the pass tally counts what ARRIVED, not what was stored", async () => {
+    // Completeness is a fact about the producer's delivery. If it counted
+    // stored rows, every pass would look short by exactly the rows the sink
+    // chose not to keep, and the gate would never open.
+    const orphan = "5AnotherOrphan000000000000000000000000000000000";
+    await post({
+      rows: [alphaRow({ netuid: 7 }), alphaRow({ hotkey: orphan, netuid: 7 })],
+      pass_total: 2,
+    });
+    assert.equal(rows().length, 1, "one stored");
+    assert.equal(passes()[0]!.received_rows, 2, "two received");
+    assert.ok(passes()[0]!.completed_at, "and the pass is complete");
   });
 });

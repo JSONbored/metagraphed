@@ -147,12 +147,23 @@ export function buildJsonUpsert(
   table: string,
   columns: string[],
   conflict: string[],
+  /**
+   * An optional SQL predicate on the incoming row, evaluated INSIDE the
+   * statement so a rejected row costs no D1 write at all.
+   *
+   * This is how a lane declines to store rows nothing will ever read. Filtering
+   * in the Worker instead would still pay the write; filtering in the producer
+   * would need it to know something only the database does. The predicate may
+   * reference `json_extract(value, '$[i]')` for the incoming row's columns.
+   */
+  filter?: string,
 ): string {
   const updatable = columns.filter((column) => !conflict.includes(column));
   return (
     `INSERT INTO ${table} (${columns.join(", ")}) SELECT ` +
     columns.map((_, i) => `json_extract(value, '$[${i}]')`).join(", ") +
     ` FROM json_each(?1) WHERE true` +
+    (filter ? ` AND (${filter})` : "") +
     ` ON CONFLICT (${conflict.join(", ")}) DO UPDATE SET ` +
     updatable.map((column) => `${column} = excluded.${column}`).join(", ") +
     ` WHERE ${table}.captured_at <= excluded.captured_at`
@@ -246,9 +257,12 @@ export function chunkStatements(
   columns: string[],
   conflict: string[],
   rows: Row[],
+  /** See buildJsonUpsert's own `filter`. Upsert-only: an append-only table has
+   * no key to decline a row against. */
+  filter?: string,
 ): D1PreparedStatement[] {
   const sql = conflict.length
-    ? buildJsonUpsert(table, columns, conflict)
+    ? buildJsonUpsert(table, columns, conflict, filter)
     : buildJsonAppendInsert(table, columns);
   return chunkRowsByJsonBytes(rows, columns).map((chunk) =>
     db.prepare(sql).bind(JSON.stringify(chunk)),

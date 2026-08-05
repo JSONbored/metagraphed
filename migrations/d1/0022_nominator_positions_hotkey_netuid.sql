@@ -1,0 +1,22 @@
+-- The (hotkey, netuid) lookup `nominator_positions` could not serve (#9558).
+--
+-- The PRIMARY KEY is (coldkey, hotkey, netuid), so its implicit index answers
+-- "which positions does this coldkey hold" and nothing else: a lookup keyed on
+-- (hotkey, netuid) is not a prefix of it and falls back to a full scan of every
+-- position row.
+--
+-- WHAT NEEDS IT. The hotkey-alpha sink now writes only the pools some position
+-- actually references, which is a per-row EXISTS against exactly this key. At
+-- 25,000 rows a request against ~124,000 position rows, an unindexed predicate
+-- would be a scan per incoming row -- comfortably worse than the write volume
+-- it exists to avoid, which is the kind of "optimisation" that reads as a fix
+-- and measures as a regression.
+--
+-- The top-holders holdings query benefits incidentally: it drives from
+-- `nominator_positions` and looks `hotkey_alpha` up by ITS primary key, so that
+-- direction was already covered, but the reverse direction now is too.
+--
+-- COVERING, deliberately. Both columns are in the index, so the EXISTS is
+-- answered from the index alone and never touches the table.
+CREATE INDEX IF NOT EXISTS idx_nominator_positions_hotkey_netuid
+  ON nominator_positions (hotkey, netuid);

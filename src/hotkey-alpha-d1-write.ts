@@ -50,6 +50,39 @@ export const HOTKEY_ALPHA_INSERT_COLUMNS = [
 ];
 
 /**
+ * Only pools some position actually references are stored (#9558).
+ *
+ * WHY A LEDGER SHOULD REFUSE MOST OF ITS OWN KEYSPACE. `TotalHotkeyAlpha` has
+ * ~762,577 entries. The number this table exists to serve is `delegated_tao`,
+ * which prices `nominator_positions` -- and those name **17,902** distinct
+ * (hotkey, netuid) pairs. The other 43x is written every pass, read by nothing,
+ * and was measurably harmful: bulk passes saturated D1
+ * (`D1_ERROR: D1 DB is overloaded. Requests queued for too long.`), which
+ * aborted the passes themselves and failed unrelated writers -- `wallet-auth`
+ * and `tao-usd-index` -- on the database everything shares.
+ *
+ * FILTERED IN THE STATEMENT, not in the Worker and not in the producer. In the
+ * Worker the write is already paid for by the time you could skip it; in the
+ * producer it would need to know the position set, which only the database has.
+ * As a predicate on the SELECT, a declined row costs no write at all.
+ *
+ * NOT A PRUNE. Rows already stored for a pair that later loses its positions
+ * stay -- this lane has never deleted, and `absent` carries no meaning here (the
+ * producer skips a genuine zero pool). A pair that GAINS a position is picked up
+ * on the next pass, since both lanes refresh daily.
+ *
+ * Needs migrations/d1/0022's (hotkey, netuid) index: the primary key is
+ * (coldkey, hotkey, netuid), so without it this predicate is a full scan of
+ * every position row, per incoming row.
+ */
+const REFERENCED_BY_A_POSITION =
+  "EXISTS (SELECT 1 FROM nominator_positions np" +
+  ` WHERE np.hotkey = json_extract(value, '$[${HOTKEY_ALPHA_INSERT_COLUMNS.indexOf("hotkey")}]')` +
+  ` AND np.netuid = json_extract(value, '$[${HOTKEY_ALPHA_INSERT_COLUMNS.indexOf("netuid")}]'))`;
+
+export { REFERENCED_BY_A_POSITION };
+
+/**
  * One pass's completeness accounting, when the producer declares it.
  *
  * The twin of AccountBalancesPass, and deliberately a separate type rather than
@@ -136,6 +169,7 @@ export async function writeHotkeyAlphaToD1(
     HOTKEY_ALPHA_INSERT_COLUMNS,
     ["hotkey", "netuid"],
     rows,
+    REFERENCED_BY_A_POSITION,
   );
   if (pass && statements.length) {
     statements.push(hotkeyAlphaPassStatement(db, pass));
