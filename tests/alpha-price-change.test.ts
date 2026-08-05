@@ -119,7 +119,7 @@ describe("computeAlphaPriceChanges", () => {
         { date: "2026-03", alpha_price_tao: 1 },
         { date: "2026-06-01", alpha_price_tao: 1 },
       ]),
-      [{ date: "2026-06-01", alpha_price_tao: 1 }],
+      [{ date: "2026-06-01", alpha_price_tao: 1, captured_at: null }],
     );
   });
 });
@@ -137,8 +137,8 @@ describe("normalizeAlphaPricePoints / index / withAlphaPriceChanges", () => {
         { alpha_price_tao: 9 },
       ] as unknown as Record<string, unknown>[]),
       [
-        { date: "2026-06-01", alpha_price_tao: 1 },
-        { date: "2026-06-02", alpha_price_tao: 1.5 },
+        { date: "2026-06-01", alpha_price_tao: 1, captured_at: null },
+        { date: "2026-06-02", alpha_price_tao: 1.5, captured_at: null },
       ],
     );
     assert.deepEqual(normalizeAlphaPricePoints(null), []);
@@ -189,5 +189,127 @@ describe("normalizeAlphaPricePoints / index / withAlphaPriceChanges", () => {
     assert.equal(out.alpha_price_change_1d, null);
     assert.equal(out.alpha_price_change_7d, null);
     assert.equal(out.alpha_price_change_1m, null);
+  });
+});
+
+// #9449: the window is measured on a real clock, not by calendar-date
+// subtraction.
+//
+// THE BUG THIS PINS, reproduced from live production data. Snapshot rows are
+// upserted throughout their own day, so the row dated "today" holds a
+// measurement from minutes ago while the row dated "yesterday" holds
+// yesterday's LAST one. On 2026-08-05 the 08-05 row was captured 00:00:08 and
+// the 08-04 row 23:00:08 -- ONE HOUR apart. The economics source they both
+// read refreshes every ~3h, so both carried a byte-identical price, and the
+// date-based lookup reported `alpha_price_change_1d` as exactly 0 for ALL 129
+// subnets. Zero, not null: a consumer plots that as "flat", which is a
+// confident wrong answer rather than a missing one.
+describe("#9449 — windows measured by captured_at, not by date arithmetic", () => {
+  const at = (iso: string) => Date.parse(iso);
+
+  // The exact live shape: netuid 64's last four snapshot rows.
+  const production = [
+    {
+      snapshot_date: "2026-08-02",
+      alpha_price_tao: 0.083135901,
+      captured_at: at("2026-08-02T23:00:05Z"),
+    },
+    {
+      snapshot_date: "2026-08-03",
+      alpha_price_tao: 0.084084102,
+      captured_at: at("2026-08-03T23:00:14Z"),
+    },
+    {
+      snapshot_date: "2026-08-04",
+      alpha_price_tao: 0.084773044,
+      captured_at: at("2026-08-04T23:00:08Z"),
+    },
+    {
+      snapshot_date: "2026-08-05",
+      alpha_price_tao: 0.084773044,
+      captured_at: at("2026-08-05T00:00:08Z"),
+    },
+  ];
+
+  test("does not report 0 for two rows measured an hour apart", () => {
+    const changes = computeAlphaPriceChanges(production);
+    // The old date-based lookup picked the 08-04 row (one hour earlier, same
+    // price) and returned exactly 0.
+    assert.notEqual(changes.alpha_price_change_1d, 0);
+    // 08-03 is the newest row at least 24h before 08-05 00:00:08.
+    assert.equal(
+      changes.alpha_price_change_1d,
+      pctChange(0.084084102, 0.084773044),
+    );
+    assert.equal(changes.alpha_price_change_1d, 0.82);
+  });
+
+  test("null, not 0, when history does not reach back far enough", () => {
+    // "We cannot measure this window" and "the price did not move" are
+    // different statements, and only one of them is safe to plot.
+    const changes = computeAlphaPriceChanges([
+      {
+        snapshot_date: "2026-08-05",
+        alpha_price_tao: 1,
+        captured_at: at("2026-08-05T00:00:00Z"),
+      },
+      {
+        snapshot_date: "2026-08-05",
+        alpha_price_tao: 1,
+        captured_at: at("2026-08-05T01:00:00Z"),
+      },
+    ]);
+    assert.equal(changes.alpha_price_change_1d, null);
+    assert.equal(changes.alpha_price_change_7d, null);
+  });
+
+  test("a row with no captured_at counts as END of its day", () => {
+    // Untimestamped historical rows are what the live writer's last upsert of
+    // a day represents (~23:00), so midnight would overstate every gap by
+    // nearly a full day and silently shift which row each window picks.
+    const changes = computeAlphaPriceChanges([
+      { snapshot_date: "2026-08-03", alpha_price_tao: 1 },
+      { snapshot_date: "2026-08-04", alpha_price_tao: 2 },
+      {
+        snapshot_date: "2026-08-05",
+        alpha_price_tao: 4,
+        captured_at: at("2026-08-05T23:30:00Z"),
+      },
+    ]);
+    // 24h before 08-05T23:30 is 08-04T23:30; the 08-04 row counts as
+    // 08-04T23:59:59.999, which is AFTER that, so 08-03 is the correct pick.
+    assert.equal(changes.alpha_price_change_1d, pctChange(1, 4));
+  });
+
+  test("the window still works late in the day, when dates would also agree", () => {
+    // The old logic was right at end-of-day and wrong at start-of-day; the fix
+    // must not break the case that used to work.
+    const changes = computeAlphaPriceChanges([
+      {
+        snapshot_date: "2026-08-04",
+        alpha_price_tao: 2,
+        captured_at: at("2026-08-04T23:00:00Z"),
+      },
+      {
+        snapshot_date: "2026-08-05",
+        alpha_price_tao: 3,
+        captured_at: at("2026-08-05T23:00:00Z"),
+      },
+    ]);
+    assert.equal(changes.alpha_price_change_1d, pctChange(2, 3));
+  });
+
+  test("indexAlphaPriceHistoryByNetuid carries captured_at through", () => {
+    // The seam where the fix would silently stop working: drop the column here
+    // and every row falls back to end-of-day.
+    const indexed = indexAlphaPriceHistoryByNetuid([
+      {
+        netuid: 64,
+        snapshot_date: "2026-08-05",
+        alpha_price_tao: 1,
+        captured_at: 123,
+      },
+    ]);
+    assert.equal(indexed.get(64)?.[0]?.captured_at, 123);
   });
 });

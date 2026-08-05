@@ -51,7 +51,12 @@ export function alphaPriceHistoryQuery(
   lookbackDays: number = ALPHA_PRICE_HISTORY_LOOKBACK_DAYS,
 ): string {
   return (
-    "SELECT netuid, snapshot_date, alpha_price_tao FROM subnet_snapshots " +
+    // captured_at is load-bearing, not decoration (#9449): a snapshot row is
+    // upserted repeatedly through its own day, so `snapshot_date` says WHICH
+    // day a row belongs to and nothing at all about how far apart two rows
+    // actually are. Two consecutive dates were measured one hour apart.
+    "SELECT netuid, snapshot_date, alpha_price_tao, captured_at " +
+    "FROM subnet_snapshots " +
     `WHERE snapshot_date >= date('now','-${Math.trunc(lookbackDays)} days') ` +
     "ORDER BY netuid ASC, snapshot_date ASC"
   );

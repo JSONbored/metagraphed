@@ -611,7 +611,10 @@ describe("refreshLiveEconomics", () => {
     for (const call of reads) assert.equal(call.params[1], BLOCK_HASH);
     assert.deepEqual(queries, [
       NEURON_AGGREGATE_QUERY,
-      "SELECT netuid, snapshot_date, alpha_price_tao FROM subnet_snapshots " +
+      // #9449: captured_at is selected because the %-change windows are
+      // measured in elapsed time, not by subtracting snapshot dates.
+      "SELECT netuid, snapshot_date, alpha_price_tao, captured_at " +
+        "FROM subnet_snapshots " +
         "WHERE snapshot_date >= date('now','-40 days') " +
         "ORDER BY netuid ASC, snapshot_date ASC",
     ]);
