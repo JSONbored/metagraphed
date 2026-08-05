@@ -372,6 +372,7 @@ import { runNominatorPositionsStalenessWatchdog } from "../src/nominator-positio
 import { runProjectionStalenessWatchdog } from "../src/projection-staleness-watchdog.ts";
 import { runValidatorNominatorCountsStalenessWatchdog } from "../src/validator-nominator-counts-staleness-watchdog.ts";
 import { runAccountBalancesStalenessWatchdog } from "../src/account-balances-staleness-watchdog.ts";
+import { runHotkeyAlphaStalenessWatchdog } from "../src/hotkey-alpha-staleness-watchdog.ts";
 import {
   readChainDetailHead,
   runChainDetailStalenessWatchdog,
@@ -454,6 +455,7 @@ import {
   TOP_HOLDERS_FLOW_CRON,
   TOP_HOLDERS_STALENESS_WATCHDOG_CRON,
   ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON,
+  HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON,
   LIVE_ECONOMICS_REFRESH_CRON,
   PROJECTION_LANES_CRON,
   FRESHNESS_WATCHDOG_STATE_KEY,
@@ -1644,6 +1646,8 @@ function cronLabel(cron: string): string {
     return "chain-detail-staleness-watchdog";
   if (cron === TOP_HOLDERS_STALENESS_WATCHDOG_CRON)
     return "top-holders-staleness-watchdog";
+  if (cron === HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON)
+    return "hotkey-alpha-staleness-watchdog";
   if (cron === ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON)
     return "account-balances-staleness-watchdog";
   if (cron === TOP_HOLDERS_FLOW_CRON) return "top-holders-flow";
@@ -1986,6 +1990,19 @@ async function dispatchScheduled(
     // UNREADABLE or EMPTY artifact alerts too -- that is the condition where
     // the route silently answers 200 with an empty leaderboard.
     return runTopHoldersStalenessWatchdog(
+      env as unknown as Record<string, unknown>,
+    );
+  }
+  if (cron === HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON) {
+    // The pool ledger's alarm (#9576) -- the twin of the watchdog above, for
+    // the OTHER table the holdings columns are composed from. `hotkey_alpha`
+    // shipped in #9512 without one, and the cost is that its readers all
+    // decline QUIETLY: /accounts/top-holders falls back to the frozen
+    // 2026-08-02 materialization and /subnets/{netuid}/holders answers
+    // pool_totals_unproven, both of which are correct and both of which look
+    // identical to a producer that died. An EMPTY table alerts, because that is
+    // the state the lane has been in since the sink landed.
+    return runHotkeyAlphaStalenessWatchdog(
       env as unknown as Record<string, unknown>,
     );
   }
