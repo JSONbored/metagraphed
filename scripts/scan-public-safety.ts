@@ -377,20 +377,6 @@ function isSelfReferential(relativePath: string): boolean {
   return SELF_REFERENTIAL_PATHS.has(relativePath);
 }
 
-// scripts/fetch-account-identity.py's module docstring is dense, entirely
-// legitimate Bittensor-identity domain prose (#4324/5.1) where "coldkey" is
-// unavoidable, ordinary vocabulary in running sentences ("a coldkey attaches
-// to itself", "the same coldkey can appear at multiple UIDs") -- not one of
-// the structural code shapes the allow-list above can reasonably enumerate.
-// Same rationale as isMirroredExternalSpec (legitimate published vocabulary,
-// soft heuristic only); the hard secret-value patterns still apply.
-const PROSE_HEAVY_SOFT_SKIP_PATHS = new Set([
-  "scripts/fetch-account-identity.py",
-]);
-function isProseHeavy(relativePath: string): boolean {
-  return PROSE_HEAVY_SOFT_SKIP_PATHS.has(relativePath);
-}
-
 // `npm run types:workers` (TypeScript migration, metagraphed#7510/#7513) writes
 // these three via `wrangler types` -- verbatim Cloudflare Workers runtime type
 // declarations (Web Crypto's `CryptoKeyPair { publicKey; privateKey }`,
@@ -510,7 +496,6 @@ async function runScan(): Promise<void> {
       const skipSoft =
         isMirroredExternalSpec(relative) ||
         isSelfReferential(relative) ||
-        isProseHeavy(relative) ||
         isGeneratedWorkerTypes(relative);
 
       if (isMirroredExternalFixture(relative)) {

@@ -1525,7 +1525,7 @@ export interface AccountPosition {
 /**
  * #5233: /api/v1/accounts/{ss58}/positions -- the coldkey-scoped counterpart to
  * AccountPortfolio (hotkey-scoped). Sourced from nominator_positions, populated
- * by a daily/weekly full-chain scan (scripts/fetch-validator-nominator-counts.py)
+ * by a daily/weekly full-chain scan (the poller's validator_nominators job)
  * -- NOT a live query. Root (netuid 0) has zero coverage: SubtensorModule::Alpha
  * carries no root data (root is TAO-denominated 1:1, no alpha pool). Treat
  * captured_at as a staleness label for UI display, never as authoritative for a

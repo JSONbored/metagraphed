@@ -177,7 +177,8 @@ def main():
         # An empty network-wide result is suspicious (see module docstring --
         # ~180 rows observed live 2026-07-18) rather than a legitimately cold
         # store; treat it as a systemic failure, not a valid empty snapshot,
-        # matching fetch-self-stake.py's own "no pairs -> exit 1" convention.
+        # matching the retired fetch-self-stake.py's own "no pairs -> exit 1"
+        # convention (#7012).
         sys.exit(1)
 
 
