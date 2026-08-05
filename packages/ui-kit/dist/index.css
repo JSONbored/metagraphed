@@ -217,7 +217,7 @@
 }
 .mg-list-viewport {
   max-height: var(--mg-list-viewport-max, 70vh);
-  overflow-y: auto;
+  overflow: auto;
   overscroll-behavior: contain;
 }
 .mg-table-head-pinned {

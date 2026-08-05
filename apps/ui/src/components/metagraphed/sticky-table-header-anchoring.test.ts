@@ -38,10 +38,15 @@ describe("sticky table header anchoring", () => {
     // measures and the element the header pins to are the same one.
     expect(subnetsPage).toContain("viewportRef={tableScrollRef}");
     expect(subnetsPage).not.toContain("mg-list-viewport");
-    // Conditional, not a literal: `stickyHeader={false}` drops the bounded
-    // box along with the pin, so a list that opts out page-scrolls entirely
-    // rather than getting a scroll region whose header scrolls away inside it.
-    expect(listShell).toContain('stickyHeader ? "mg-list-viewport" : undefined');
+    // ONE element carries both classes: .mg-table-scroll for the edge-fade and
+    // thin scrollbar, .mg-list-viewport for the height cap, both overflow axes
+    // and overscroll containment. Nesting them does not work -- `overflow-y:
+    // auto` coerces `overflow-x` to `auto`, so an inner vertical scroller
+    // steals the horizontal axis and strands the affordance on an element that
+    // can no longer scroll.
+    expect(listShell).toContain('"mg-table-scroll mg-list-viewport"');
+    // `stickyHeader={false}` drops the bounded box along with the pin.
+    expect(listShell).toContain('"mg-table-scroll overflow-x-auto"');
     // The cap must carry a literal fallback. A bare var() that fails to
     // resolve computes `max-height: none`, which silently unbounds the
     // viewport and makes every sticky header in the app inert again --

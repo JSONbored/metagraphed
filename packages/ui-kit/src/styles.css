@@ -449,7 +449,23 @@
    making every sticky header in the app inert again. */
 .mg-list-viewport {
   max-height: var(--mg-list-viewport-max, 70vh);
-  overflow-y: auto;
+  /* BOTH axes, on ONE element -- pair this with .mg-table-scroll on the same
+     div rather than nesting them.
+
+     Splitting them does not work, and the reason is the same CSS rule behind
+     the original inert-header bug: `overflow-y: auto` coerces `overflow-x`
+     from `visible` to `auto` (CSS Overflow 3 §3). So an inner vertical
+     scroller silently becomes a horizontal one too and STEALS that axis from
+     the .mg-table-scroll wrapper around it. Measured on /chain/extrinsics at
+     820px: the inner div scrolled x (958 > 708) while the outer could not
+     scroll at all -- which stranded the edge-fade affordance and the thin
+     scrollbar styling on an element that no longer moved, and put a 15px
+     default scrollbar INSIDE the bounded region.
+
+     One element scrolls both axes, carries both sets of styling, and the
+     sticky header pins to it vertically while travelling with the content
+     horizontally, which is what a table header should do. */
+  overflow: auto;
   overscroll-behavior: contain;
 }
 

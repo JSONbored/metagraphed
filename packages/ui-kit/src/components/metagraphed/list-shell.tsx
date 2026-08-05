@@ -67,6 +67,12 @@ export function ListShell({
   stickyHeader?: boolean;
 }) {
   const tableCard = "rounded border border-border bg-card overflow-hidden";
+  // .mg-table-scroll brings the edge-fade + thin scrollbar; .mg-list-viewport
+  // brings the height cap, both overflow axes and overscroll containment. They
+  // belong on the SAME element (see the note below).
+  const viewportClass = stickyHeader
+    ? "mg-table-scroll mg-list-viewport"
+    : "mg-table-scroll overflow-x-auto";
   return (
     <div>
       <div
@@ -119,25 +125,17 @@ export function ListShell({
           {cards ? <div className="md:hidden space-y-2">{cards}</div> : null}
           <div className={cards ? "hidden md:block" : undefined}>
             <div className={tableCard}>
-              {/* Two nested wrappers, one axis each. The outer keeps the
-                  edge-fade mask and thin horizontal scrollbar that
-                  .mg-table-scroll styles; the inner (.mg-list-viewport) is
-                  the bounded viewport the <thead> pins against. The cap is
-                  `max-height`, not `height`, so a short table is untouched --
-                  it only engages once the list is taller than the screen,
-                  which is exactly when a header that scrolls away starts
-                  costing the reader the column labels. */}
-              <div className="mg-table-scroll overflow-x-auto">
-                {/* No bounded viewport when stickiness is opted out of:
-                    keeping the box while dropping the pin would give the
-                    worst of both -- an inner scroll region whose header
-                    scrolls away inside it. */}
-                <div
-                  ref={viewportRef}
-                  className={stickyHeader ? "mg-list-viewport" : undefined}
-                >
-                  {table}
-                </div>
+              {/* ONE scroll container, both axes. These used to be two
+                  nested divs -- .mg-table-scroll for x, an inner bounded div
+                  for y -- and that does not work: `overflow-y: auto` coerces
+                  `overflow-x` to `auto` as well, so the inner div quietly took
+                  the horizontal axis too and left .mg-table-scroll unable to
+                  scroll at all. Its edge-fade and thin-scrollbar styling then
+                  applied to an element that never moved, while a 15px default
+                  scrollbar appeared inside the bounded region. Same coercion
+                  rule that made the headers inert in the first place. */}
+              <div ref={viewportRef} className={viewportClass}>
+                {table}
               </div>
               {footer}
             </div>

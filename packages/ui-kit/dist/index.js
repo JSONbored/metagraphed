@@ -2018,6 +2018,7 @@ function ListShell({
   stickyHeader = true
 }) {
   const tableCard = "rounded border border-border bg-card overflow-hidden";
+  const viewportClass = stickyHeader ? "mg-table-scroll mg-list-viewport" : "mg-table-scroll overflow-x-auto";
   return /* @__PURE__ */ jsxs("div", { children: [
     /* @__PURE__ */ jsx(
       "div",
@@ -2064,14 +2065,7 @@ function ListShell({
     ) : /* @__PURE__ */ jsxs("div", { className: isStale ? "opacity-70 transition-opacity" : void 0, children: [
       cards ? /* @__PURE__ */ jsx("div", { className: "md:hidden space-y-2", children: cards }) : null,
       /* @__PURE__ */ jsx("div", { className: cards ? "hidden md:block" : void 0, children: /* @__PURE__ */ jsxs("div", { className: tableCard, children: [
-        /* @__PURE__ */ jsx("div", { className: "mg-table-scroll overflow-x-auto", children: /* @__PURE__ */ jsx(
-          "div",
-          {
-            ref: viewportRef,
-            className: stickyHeader ? "mg-list-viewport" : void 0,
-            children: table
-          }
-        ) }),
+        /* @__PURE__ */ jsx("div", { ref: viewportRef, className: viewportClass, children: table }),
         footer
       ] }) }),
       cards && footer ? /* @__PURE__ */ jsx("div", { className: "md:hidden mt-3", children: footer }) : null
