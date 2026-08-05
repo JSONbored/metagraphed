@@ -18,6 +18,8 @@ import {
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
   TOP_HOLDERS_LIMIT_DEFAULT,
   TOP_HOLDERS_LIMIT_MAX,
+  SUBNET_HOLDERS_LIMIT_DEFAULT,
+  SUBNET_HOLDERS_LIMIT_MAX,
 } from "./route-limits.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1634,6 +1636,13 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/subnets/{netuid}/burn-history.json",
     "One subnet's registration-cost series (#9402) — how SubtensorModule.Burn has moved, captured every 15 minutes into D1 from the same single-call chain read /chain/burn uses. The live routes answer 'what does it cost'; this answers 'is it getting more expensive', which is the question an operator deciding where and WHEN to register actually has. ?window=24h|7d|30d|90d (default 7d), newest first, bounded. change_tao/change_pct describe the movement across the RETURNED window and are null when there is nothing to compare against — a single point has no change, and a change from a zero base has no percentage. A subnet with no recorded prices returns an empty series, never a 404.",
     "SubnetBurnHistoryArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
+    "subnet-holders",
+    "/metagraph/subnets/{netuid}/holders.json",
+    `Who owns one subnet's alpha (#9557) — the top coldkeys by alpha held on that netuid, with each holder's share of the subnet total, how many hotkeys they hold it through, and whole-subnet aggregates (distinct holder count, total measured alpha, top5/top10/top20 concentration). The reverse index of /accounts/{ss58}/positions, which reads the same ledger one coldkey (one account) at a time. Distinct from /subnets/{netuid}/concentration, which computes its scalars off neurons.stake_tao and therefore sees REGISTERED UIDs only: this reads nominator_positions, keyed on (coldkey, hotkey, netuid) whether or not the hotkey holds a UID on the subnet, so alpha staked to UNREGISTERED hotkeys is included — on netuid 74, 92 hotkeys carry positions and 10 are registered there. Valued as share_fraction x hotkey_alpha.total_alpha against ONE proven pool pass, and ranked in ALPHA rather than TAO: within a single subnet alpha is already a common unit, so there is no subnet_snapshots price join and none of its up-to-24h staleness. limit caps the returned rows (default ${SUBNET_HOLDERS_LIMIT_DEFAULT}, max ${SUBNET_HOLDERS_LIMIT_MAX}); the aggregates are computed across the FULL holder set and then sliced, never over the capped rows, because the top of a sum is not contained in the union of the tops of its addends. TWO STATES DECLINE rather than answer, both with holders:[] plus a degraded.reason and NULL counts: pool_totals_unproven while no hotkey_alpha pass is recorded complete (a partially loaded pool ledger silently UNDERPRICES holders rather than visibly dropping them, so the ranking would be plausible and wrong), and root_not_in_alpha_map for netuid 0, which SubtensorModule::Alpha does not cover at all. A zero in any count is therefore a measured zero, never a decline.`,
+    "SubnetHoldersArtifact",
     COMPUTED_LIVE,
   ),
   artifact(
@@ -3801,6 +3810,31 @@ export const API_ROUTES = [
     ],
   ),
   route(
+    "subnet-holders",
+    "GET",
+    "/api/v1/subnets/{netuid}/holders",
+    "/metagraph/subnets/{netuid}/holders.json",
+    `Fetch who owns one subnet's alpha (#9557) — the top coldkeys by alpha held on that netuid, with each holder's share of the subnet total, how many hotkeys they hold it through, and whole-subnet aggregates (distinct holder count, total measured alpha, top5/top10/top20 concentration). The reverse index of /accounts/{ss58}/positions, which reads the same ledger one coldkey (one account) at a time. Distinct from /subnets/{netuid}/concentration, which computes its scalars off neurons.stake_tao and therefore sees REGISTERED UIDs only: this reads nominator_positions, keyed on (coldkey, hotkey, netuid) whether or not the hotkey holds a UID on the subnet, so alpha staked to UNREGISTERED hotkeys is included — on netuid 74, 92 hotkeys carry positions and 10 are registered there, which is the part no other public source reaches without a full-chain map scan. Valued as share_fraction x hotkey_alpha.total_alpha against ONE proven pool pass, and ranked in ALPHA rather than TAO: within a single subnet alpha is already a common unit, so there is no subnet_snapshots price join and none of its up-to-24h staleness — multiply by the subnet's alpha_price_tao for TAO. limit caps the returned rows (default ${SUBNET_HOLDERS_LIMIT_DEFAULT}, max ${SUBNET_HOLDERS_LIMIT_MAX}); holder_count, total_alpha and the three concentration shares are computed across the FULL holder set and then sliced, never over the capped rows, because the top of a sum is not contained in the union of the tops of its addends. TWO STATES DECLINE rather than answer, both with holders:[] plus a degraded.reason and NULL counts: pool_totals_unproven while no hotkey_alpha pass is recorded complete (a partially loaded pool ledger silently UNDERPRICES holders rather than visibly dropping them, so the ranking would be plausible and wrong), and root_not_in_alpha_map for netuid 0, which SubtensorModule::Alpha does not cover at all. A zero in any count is therefore a measured zero, never a decline. Mainnet-only: neither source table carries a network dimension.`,
+    "short",
+    ["subnets"],
+    [
+      {
+        name: "limit",
+        schema: {
+          type: "integer",
+          minimum: 1,
+          maximum: SUBNET_HOLDERS_LIMIT_MAX,
+        },
+      },
+    ],
+    [
+      {
+        name: "netuid",
+        schema: { type: "integer", minimum: 0, maximum: 65535 },
+      },
+    ],
+  ),
+  route(
     "chain-burn",
     "GET",
     "/api/v1/chain/burn",
@@ -5121,6 +5155,11 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // #9402: subnet_burn_history has no network dimension, so a testnet-addressed
   // request would be served MAINNET prices. Declared rather than silently wrong.
   "/api/v1/subnets/{netuid}/burn/history",
+  // #9557: nominator_positions and hotkey_alpha are both written by mainnet-only
+  // lanes and carry no network column, so a testnet-addressed request would be
+  // served MAINNET holders. Same posture as /accounts/{ss58}/positions below,
+  // which reads the first of those two tables.
+  "/api/v1/subnets/{netuid}/holders",
   "/api/v1/economics/trends",
   "/api/v1/health",
   "/api/v1/subnets/{netuid}/health",
