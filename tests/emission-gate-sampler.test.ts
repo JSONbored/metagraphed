@@ -8,6 +8,7 @@ import { describe, test } from "vitest";
 import {
   netuidFromKey,
   sampleEmissionGate,
+  STORAGE_BATCH_SIZE,
   SUBNET_EMA_TAO_FLOW_PREFIX,
   SUBNET_EMISSION_ENABLED_PREFIX,
 } from "../src/emission-gate-sampler.ts";
@@ -47,6 +48,26 @@ function rpcFetch(answer: (method: string, params: unknown[]) => unknown): {
   return { impl, calls };
 }
 
+/** The chain's storage, per key. The sampler reads these in BATCHES
+ * (`state_queryStorageAt`), so the transport below turns this per-key view into
+ * the batched response shape — keeping each test's intent expressed as "what
+ * does this key hold" rather than as request plumbing. */
+function healthyStorage(key: string): string | null {
+  if (key === TOTAL_ISSUANCE_STORAGE_KEY) return "0x0000c16ff2862300"; // u64 LE
+  if (key === ENABLED_KEY_7) return "0x00"; // disabled
+  if (key === EMA_KEY_7) return null;
+  return null;
+}
+
+/** `state_queryStorageAt`'s answer: one page whose `changes` pairs every
+ * requested key with its value. */
+function changesFor(
+  keys: string[],
+  value: (key: string) => string | null,
+): unknown {
+  return [{ changes: keys.map((key) => [key, value(key)]) }];
+}
+
 /** The minimal healthy chain: header, null gate params, one enabled subnet,
  * flow params unset, one EMA entry. */
 function healthyAnswer(method: string, params: unknown[]): unknown {
@@ -57,14 +78,22 @@ function healthyAnswer(method: string, params: unknown[]): unknown {
     if (prefix === SUBNET_EMA_TAO_FLOW_PREFIX) return [EMA_KEY_7];
     return [];
   }
-  if (method === "state_getStorage") {
-    const key = params[0];
-    if (key === TOTAL_ISSUANCE_STORAGE_KEY) return "0x0000c16ff2862300"; // u64 LE
-    if (key === ENABLED_KEY_7) return "0x00"; // disabled
-    if (key === EMA_KEY_7) return null;
-    return null;
+  if (method === "state_queryStorageAt") {
+    return changesFor(params[0] as string[], healthyStorage);
   }
   throw new Error(`unexpected method ${method}`);
+}
+
+/** The healthy chain with specific storage keys overridden. */
+function answerWith(
+  overrides: Record<string, string | null>,
+): (method: string, params: unknown[]) => unknown {
+  return (method, params) =>
+    method === "state_queryStorageAt"
+      ? changesFor(params[0] as string[], (key) =>
+          key in overrides ? overrides[key]! : healthyStorage(key),
+        )
+      : healthyAnswer(method, params);
 }
 
 describe("netuidFromKey", () => {
@@ -124,11 +153,7 @@ describe("sampleEmissionGate", () => {
   });
 
   test("a non-0x00 enablement value reads as enabled", async () => {
-    const { impl } = rpcFetch((m, p) =>
-      m === "state_getStorage" && p[0] === ENABLED_KEY_7
-        ? "0x01"
-        : healthyAnswer(m, p),
-    );
+    const { impl } = rpcFetch(answerWith({ [ENABLED_KEY_7]: "0x01" }));
     const sample = await sampleEmissionGate({
       rpcUrl: "https://rpc.test",
       fetchImpl: impl,
@@ -240,10 +265,8 @@ describe("sampleEmissionGate", () => {
 
   test("an unset TotalIssuance reads halvings as null, and the global fetch default engages", async () => {
     const realFetch = globalThis.fetch;
-    globalThis.fetch = rpcFetch((m, p) =>
-      m === "state_getStorage" && p[0] === TOTAL_ISSUANCE_STORAGE_KEY
-        ? null
-        : healthyAnswer(m, p),
+    globalThis.fetch = rpcFetch(
+      answerWith({ [TOTAL_ISSUANCE_STORAGE_KEY]: null }),
     ).impl;
     try {
       const sample = await sampleEmissionGate({ rpcUrl: "https://rpc.test" });
@@ -254,13 +277,15 @@ describe("sampleEmissionGate", () => {
   });
 
   test("an undecodable gate value and a malformed EMA key both degrade, never throw", async () => {
-    const { impl } = rpcFetch((m, p) => {
-      if (m === "state_getStorage" && p[0] === EMISSION_GATE_BAR_STORAGE_KEY)
-        return "0xnothex"; // present but undecodable -> null param
-      if (m === "state_getKeysPaged" && p[0] === SUBNET_EMA_TAO_FLOW_PREFIX)
-        return [SUBNET_EMA_TAO_FLOW_PREFIX + "070000", EMA_KEY_7];
-      return healthyAnswer(m, p);
+    // present but undecodable -> null param
+    const undecodable = answerWith({
+      [EMISSION_GATE_BAR_STORAGE_KEY]: "0xnothex",
     });
+    const { impl } = rpcFetch((m, p) =>
+      m === "state_getKeysPaged" && p[0] === SUBNET_EMA_TAO_FLOW_PREFIX
+        ? [SUBNET_EMA_TAO_FLOW_PREFIX + "070000", EMA_KEY_7]
+        : undecodable(m, p),
+    );
     const sample = await sampleEmissionGate({
       rpcUrl: "https://rpc.test",
       fetchImpl: impl,
@@ -269,13 +294,79 @@ describe("sampleEmissionGate", () => {
     assert.deepEqual(sample.current_ema, [[7, null]]);
   });
 
+  // The batched read is what keeps this sampler inside the endpoint's 100
+  // requests/minute/client budget (#9477). Before it, one state_getStorage per
+  // subnet cost ~207 calls a tick, 429'd about six seconds in, and threw away
+  // the whole sample every ten minutes.
+  test("reads every subnet's storage in ONE call, not one call per subnet", async () => {
+    const { impl, calls } = rpcFetch(healthyAnswer);
+    await sampleEmissionGate({ rpcUrl: "https://rpc.test", fetchImpl: impl });
+    assert.equal(
+      calls.filter((c) => c.method === "state_getStorage").length,
+      0,
+      "the per-key method is what blew the budget — nothing may still use it",
+    );
+    // header + params + 2 keysPaged + enabled + flow + ema.
+    assert.ok(calls.length <= 8, `expected <=8 RPC calls, got ${calls.length}`);
+  });
+
+  test("chunks a key list longer than the batch size", async () => {
+    // One key past the bound, so the loop must run twice rather than once.
+    const many = Array.from(
+      { length: STORAGE_BATCH_SIZE + 1 },
+      (_, i) =>
+        SUBNET_EMISSION_ENABLED_PREFIX + i.toString(16).padStart(4, "0"),
+    );
+    const { impl, calls } = rpcFetch((m, p) => {
+      if (m === "state_getKeysPaged" && p[0] === SUBNET_EMISSION_ENABLED_PREFIX)
+        return many;
+      return healthyAnswer(m, p);
+    });
+    await sampleEmissionGate({ rpcUrl: "https://rpc.test", fetchImpl: impl });
+    const batched = calls.filter((c) => c.method === "state_queryStorageAt");
+    const enabledBatches = batched.filter((c) =>
+      (c.params[0] as string[])[0]?.startsWith(SUBNET_EMISSION_ENABLED_PREFIX),
+    );
+    assert.equal(enabledBatches.length, 2);
+    assert.equal((enabledBatches[0]!.params[0] as string[]).length, 200);
+    assert.equal((enabledBatches[1]!.params[0] as string[]).length, 1);
+  });
+
+  test("a key the node omits from `changes` reads as unset, not as missing", async () => {
+    // The node is entitled to answer with fewer pairs than were asked for.
+    // Those keys are UNSET, which is a real reading — dropping them would let
+    // an absent subnet look like one that was never queried.
+    const { impl } = rpcFetch((m, p) =>
+      m === "state_queryStorageAt" ? [{ changes: [] }] : healthyAnswer(m, p),
+    );
+    const sample = await sampleEmissionGate({
+      rpcUrl: "https://rpc.test",
+      fetchImpl: impl,
+    });
+    assert.equal(sample.current.block_emission_halvings, null);
+    // null !== "0x00", so an unset enablement still reads as enabled.
+    assert.deepEqual(sample.current_enabled, [[7, true]]);
+    assert.deepEqual(sample.current_ema, [[7, null]]);
+  });
+
+  test("a null or page-less batch result degrades rather than throwing", async () => {
+    for (const result of [null, [], [{}]]) {
+      const { impl } = rpcFetch((m, p) =>
+        m === "state_queryStorageAt" ? result : healthyAnswer(m, p),
+      );
+      const sample = await sampleEmissionGate({
+        rpcUrl: "https://rpc.test",
+        fetchImpl: impl,
+      });
+      assert.equal(sample.current.emission_gate_bar, null);
+    }
+  });
+
   test("gate params decode through the u64f64 path when present", async () => {
     // 1.0 in U64F64: integer part 1 in the high 64 bits -> LE u128 hex.
     const oneU64F64 = "0x" + "00".repeat(8) + "01" + "00".repeat(7);
-    const { impl } = rpcFetch((m, p) =>
-      m === "state_getStorage" && p[0] === EMISSION_GATE_BAR_STORAGE_KEY
-        ? oneU64F64
-        : healthyAnswer(m, p),
+    const { impl } = rpcFetch(
+      answerWith({ [EMISSION_GATE_BAR_STORAGE_KEY]: oneU64F64 }),
     );
     const sample = await sampleEmissionGate({
       rpcUrl: "https://rpc.test",
