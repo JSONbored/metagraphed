@@ -331,17 +331,27 @@ describe("live-economics cron wiring", () => {
     );
   });
 
-  test("refresh-economics.yml keeps workflow_dispatch and drops its schedule", async () => {
-    // The manual fallback has to survive the move: it is the path to reach for
-    // when the cron itself is what is under suspicion.
-    const { readFileSync } = await import("node:fs");
-    const workflow = readFileSync(
-      ".github/workflows/refresh-economics.yml",
-      "utf8",
+  // Replaces an earlier test that required refresh-economics.yml to survive as
+  // a dispatch-only manual fallback. That fallback is gone on purpose: the
+  // estate is Cloudflare-only, and a data lane whose KV key, D1 tables and R2
+  // artifact are all bindings the Worker already holds bought nothing from an
+  // Actions hop except a third-party trigger dependency and a repository
+  // CLOUDFLARE_API_TOKEN (whose missing D1 read permission silently nulled
+  // every alpha_price_change_* field in #9189). Recovery is redeploying or
+  // hand-triggering the Worker, not clicking Run on a workflow.
+  test("the retired Actions data lanes stay retired", async () => {
+    const { existsSync } = await import("node:fs");
+    const revived = [
+      "refresh-economics.yml",
+      "refresh-metagraph.yml",
+      "sample-emission-gate.yml",
+      "check-emission-drift.yml",
+    ].filter((name) => existsSync(`.github/workflows/${name}`));
+    assert.deepEqual(
+      revived,
+      [],
+      "these lanes run as Worker crons / the poller Container; re-adding the workflow would put a second writer on the same route",
     );
-    assert.match(workflow, /workflow_dispatch: \{\}/);
-    assert.doesNotMatch(workflow, /^\s+schedule:/m);
-    assert.match(workflow, /LIVE_ECONOMICS_REFRESH_CRON/);
   });
 });
 

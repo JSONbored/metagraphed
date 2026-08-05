@@ -1,12 +1,21 @@
 // POSTs a metagraph snapshot to /api/v1/internal/neurons-sync (#9146).
 //
+// NOT THE DRIVER. The poller Container owns the live 15-minute neurons lane
+// (METAGRAPH_POLL_SECS, default 900) and POSTs to this same route; the GitHub
+// Actions workflow that used to run this file was deleted once the Container
+// was verified writing D1 end-to-end. What remains here is the manual /
+// box-side recovery path for when the Container itself is the thing under
+// suspicion -- keep it runnable, and do NOT schedule it alongside the
+// Container: two concurrent snapshots race the route's per-netuid prune, and
+// the older run can delete UIDs the newer one just wrote.
+//
 // RESTORED FROM THE INDEXER BOX. The neurons family was the only LIVE-refreshed
 // data left on it: apps/indexer-rs' poller read the chain and POSTed to this
 // same route. That box is being wiped, and its last snapshot landed at
 // 2026-08-02T07:50Z -- so without this, `neurons` simply stops advancing and
 // every metagraph route freezes at whatever the final box run wrote.
 //
-// The split matches sample-emission-gate.yml's, which restored a box timer the
+// The split matches sample-emission-gate.ts's, which restored a box timer the
 // same way: **the producer keeps all chain I/O, the Worker route keeps all
 // persistence.** scripts/fetch-metagraph-native.py already owns the chain read
 // (one get_all_metagraphs_info call plus the two SubtensorModule storage maps
