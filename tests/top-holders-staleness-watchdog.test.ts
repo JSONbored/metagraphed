@@ -15,13 +15,18 @@ import {
 } from "../src/top-holders-staleness-watchdog.ts";
 import {
   TOP_HOLDERS_ARTIFACT_KEY,
-  TOP_HOLDERS_FROZEN_GENERATED_AT,
   topHoldersArtifactRows,
 } from "../src/top-holders-artifact.ts";
 import { TOP_HOLDERS_STALENESS_WATCHDOG_CRON } from "../workers/config.ts";
 
 const HOUR = 3_600_000;
 const NOW = Date.parse("2026-08-05T02:00:00.000Z");
+
+/** The `generated_at` of the one-shot pre-decommission materialization sitting
+ * in R2 today. A literal, deliberately NOT a constant imported from source:
+ * #9475 deleted that constant because keying the alarm off it is what kept the
+ * alarm quiet on the live defect. Here it is only a fixture. */
+const FROZEN_GENERATED_AT = "2026-08-02T22:38:17.501738+00:00";
 
 /** A present artifact carrying `rows` rows, generated at `generatedAt`. */
 function present(
@@ -40,38 +45,45 @@ function verdictFor(
 }
 
 describe("evaluateTopHoldersStaleness", () => {
-  // The production state, replayed. It is stale, it is recorded, and it
-  // deliberately does NOT page: the condition is permanent and declared in
-  // source, and an alarm that fires twice an hour forever stops being read.
-  test("the frozen pre-decommission snapshot is stale but not an alert", () => {
-    const verdict = verdictFor(present(TOP_HOLDERS_FROZEN_GENERATED_AT));
+  // The production state, replayed. #9475: this is `stale` with no
+  // special-casing, so the tick notifies -- the snapshot's own timestamp buys
+  // it no exemption, which is the whole correction.
+  test("the frozen pre-decommission snapshot is plainly stale", () => {
+    const verdict = verdictFor(present(FROZEN_GENERATED_AT));
     assert.equal(verdict.stale, true);
-    assert.equal(verdict.alert, false);
-    assert.equal(verdict.reason, "frozen");
-    assert.equal(verdict.generated_at, TOP_HOLDERS_FROZEN_GENERATED_AT);
-    // The age is still measured, so the durable row carries how long this has
-    // been going on even though nobody is paged about it.
+    assert.equal(verdict.reason, "stale");
+    assert.equal(verdict.generated_at, FROZEN_GENERATED_AT);
     assert.ok(verdict.age_ms !== null && verdict.age_ms > 2 * 24 * HOUR);
   });
 
-  // The branch that is dead today and is the whole point of the file: the day
-  // a Cloudflare-native sink writes this key, `generated_at` stops matching the
-  // constant and this becomes an ordinary staleness alarm with no code change.
-  test("once the artifact moves off the frozen constant it alerts on age", () => {
-    const refreshed = verdictFor(
-      present(new Date(NOW - 3 * HOUR).toISOString()),
+  // The regression guard for #9475 itself. A rule that reads any particular
+  // `generated_at` as a reason to stay quiet is the bug; the ONLY thing that
+  // decides a present, non-empty artifact's verdict is its age.
+  test("no timestamp is exempt -- only age decides", () => {
+    const fresh = new Date(NOW - HOUR).toISOString();
+    const old = new Date(NOW - 20 * HOUR).toISOString();
+    // Same instant, expressed the way the frozen artifact expresses it and the
+    // way an ISO writer would: neither spelling changes the verdict.
+    for (const stamp of [old, "2026-08-04T06:00:00.000000+00:00"]) {
+      const verdict = verdictFor(present(stamp));
+      assert.equal(verdict.stale, true, stamp);
+      assert.equal(verdict.reason, "stale", stamp);
+    }
+    assert.equal(verdictFor(present(fresh)).stale, false);
+    assert.equal(verdictFor(present(fresh)).reason, null);
+    assert.equal(verdictFor(present(fresh)).age_ms, HOUR);
+    // And the production timestamp specifically is not treated differently
+    // from any other artifact of the same age.
+    const sameAgeAsFrozen = verdictFor(
+      present(new Date(Date.parse(FROZEN_GENERATED_AT)).toISOString()),
     );
-    assert.equal(refreshed.stale, false);
-    assert.equal(refreshed.alert, false);
-    assert.equal(refreshed.reason, null);
-    assert.equal(refreshed.age_ms, 3 * HOUR);
-
-    const stalled = verdictFor(
-      present(new Date(NOW - 20 * HOUR).toISOString()),
+    assert.deepEqual(
+      { stale: sameAgeAsFrozen.stale, reason: sameAgeAsFrozen.reason },
+      {
+        stale: verdictFor(present(FROZEN_GENERATED_AT)).stale,
+        reason: "stale",
+      },
     );
-    assert.equal(stalled.stale, true);
-    assert.equal(stalled.alert, true, "a lane WITH a producer must page");
-    assert.equal(stalled.reason, "stale");
   });
 
   // The sizing rule #9301 corrected the nominator-positions threshold for: a
@@ -103,22 +115,29 @@ describe("evaluateTopHoldersStaleness", () => {
       [{ present: false, reason: "unreadable" } as const, "unreadable"],
       [present(null), "unreadable"],
       [present("not a timestamp"), "unreadable"],
-      [present(TOP_HOLDERS_FROZEN_GENERATED_AT, 0), "empty"],
+      [present(FROZEN_GENERATED_AT, 0), "empty"],
     ] as const) {
       const verdict = verdictFor(artifact);
       assert.equal(verdict.stale, true, reason);
-      assert.equal(verdict.alert, true, reason);
       assert.equal(verdict.reason, reason);
     }
   });
 
-  // An artifact emptied in place still serves nobody. Reporting that as
-  // "frozen, as expected" would be the watchdog agreeing with the outage.
-  test("empty beats frozen even at the frozen timestamp", () => {
-    const verdict = verdictFor(present(TOP_HOLDERS_FROZEN_GENERATED_AT, 0));
+  // An artifact present and well-formed with no rows serves an empty
+  // leaderboard NOW, whatever its age, which is a different repair from one
+  // that merely stopped being refreshed -- so it keeps its own reason even
+  // when the age alone would already have said `stale`.
+  test("empty outranks age, and still reports the age", () => {
+    const verdict = verdictFor(present(FROZEN_GENERATED_AT, 0));
+    assert.equal(verdict.stale, true);
     assert.equal(verdict.reason, "empty");
-    assert.equal(verdict.alert, true);
     assert.notEqual(verdict.age_ms, null, "age is still measurable here");
+    // Even a FRESH artifact with no rows is a stall, which age alone misses.
+    const freshButEmpty = verdictFor(
+      present(new Date(NOW - HOUR).toISOString(), 0),
+    );
+    assert.equal(freshButEmpty.stale, true);
+    assert.equal(freshButEmpty.reason, "empty");
   });
 
   test("an absent or unparseable artifact reports no age rather than zero", () => {
@@ -127,11 +146,7 @@ describe("evaluateTopHoldersStaleness", () => {
   });
 
   test("the threshold travels on every verdict", () => {
-    const verdict = verdictFor(
-      present(TOP_HOLDERS_FROZEN_GENERATED_AT),
-      NOW,
-      7,
-    );
+    const verdict = verdictFor(present(FROZEN_GENERATED_AT), NOW, 7);
     assert.equal(verdict.threshold_ms, 7);
   });
 });
@@ -163,14 +178,14 @@ describe("readTopHoldersArtifactState", () => {
 
   const frozenBody = {
     schema_version: 1,
-    generated_at: TOP_HOLDERS_FROZEN_GENERATED_AT,
+    generated_at: FROZEN_GENERATED_AT,
     rows: [{ ss58: "5A", free_tao: "1" }],
   };
 
   test("reads the real artifact shape", async () => {
     assert.deepEqual(await readTopHoldersArtifactState(bucket(frozenBody)), {
       present: true,
-      generatedAt: TOP_HOLDERS_FROZEN_GENERATED_AT,
+      generatedAt: FROZEN_GENERATED_AT,
       rowCount: 1,
     });
   });
@@ -267,7 +282,7 @@ describe("runTopHoldersStalenessWatchdog", () => {
 
   const frozenBody = {
     schema_version: 1,
-    generated_at: TOP_HOLDERS_FROZEN_GENERATED_AT,
+    generated_at: FROZEN_GENERATED_AT,
     rows: [{ ss58: "5A" }, { ss58: "5B" }],
   };
 
@@ -286,30 +301,53 @@ describe("runTopHoldersStalenessWatchdog", () => {
     );
   });
 
-  // The heart of the design: the frozen lane is written down on every tick and
-  // pages nobody. Without the row there is nothing anywhere that distinguishes
-  // a permanently dead leaderboard from one nobody has looked at.
-  test("the frozen lane records every tick and notifies on none", async () => {
-    const events: unknown[] = [];
+  // The heart of the correction (#9475): the lane in production today BOTH
+  // records and notifies. Recording alone is what let #9464 ship a watchdog
+  // that was silent on the very defect it was built for.
+  test("the live frozen artifact notifies AND records, every tick", async () => {
+    const events: { route?: string; errorCode?: string; error?: Error }[] = [];
     const spy = laneHealthSpy();
     const result = (await runTopHoldersStalenessWatchdog(envWith(frozenBody), {
       now: () => NOW,
       laneHealthDb: spy.db,
-      recordException: (async (_e: unknown, ev: unknown) => {
+      recordException: (async (_e: unknown, ev: never) => {
         events.push(ev);
         return true;
       }) as never,
     })) as Record<string, unknown>;
     assert.equal(result.ok, true);
     assert.equal(result.stale, true);
-    assert.equal(result.alerted, false);
-    assert.equal(result.reason, "frozen");
-    assert.deepEqual(events, [], "a permanent, documented state must not page");
+    assert.equal(result.alerted, true);
+    assert.equal(result.reason, "stale");
+    assert.equal(events.length, 1, "the production state must page");
+    assert.equal(events[0]!.route, "watchdog:top-holders-staleness");
+    assert.equal(events[0]!.errorCode, "stale_lane");
     assert.equal(spy.rows.length, 1);
     assert.equal(spy.rows[0]!.lane, "top-holders-staleness");
     assert.equal(spy.rows[0]!.verdict, "stale");
-    assert.equal(spy.rows[0]!.detail, "frozen");
+    assert.equal(spy.rows[0]!.detail, "stale");
     assert.equal(spy.rows[0]!.checked_at, NOW);
+  });
+
+  // Two consecutive ticks over the unchanged artifact: neither goes quiet.
+  // Nothing in this module carries state that would let the second tick
+  // decide the first one already covered it.
+  test("a repeat tick over the same artifact alerts again", async () => {
+    const events: unknown[] = [];
+    const spy = laneHealthSpy();
+    const run = () =>
+      runTopHoldersStalenessWatchdog(envWith(frozenBody), {
+        now: () => NOW,
+        laneHealthDb: spy.db,
+        recordException: (async () => {
+          events.push(1);
+          return true;
+        }) as never,
+      });
+    await run();
+    await run();
+    assert.equal(events.length, 2);
+    assert.equal(spy.rows.length, 2);
   });
 
   test("an absent artifact pages, because the route then serves an empty list", async () => {
@@ -431,7 +469,7 @@ describe("runTopHoldersStalenessWatchdog", () => {
       envWith(frozenBody, { METAGRAPH_HEALTH_DB: spy.db }),
     )) as Record<string, unknown>;
     assert.equal(result.ok, true);
-    assert.equal(result.reason, "frozen");
+    assert.equal(result.reason, "stale");
     assert.equal(spy.rows.length, 1, "falls back to env.METAGRAPH_HEALTH_DB");
     assert.ok(Number(spy.rows[0]!.checked_at) > 0, "uses the real clock");
   });
@@ -497,7 +535,7 @@ describe("the watchdog's cron", () => {
               async json() {
                 return {
                   schema_version: 1,
-                  generated_at: TOP_HOLDERS_FROZEN_GENERATED_AT,
+                  generated_at: FROZEN_GENERATED_AT,
                   rows: [{ ss58: "5A" }],
                 };
               },
@@ -511,8 +549,8 @@ describe("the watchdog's cron", () => {
     // watchdog that read nothing is the failure this module exists to prevent.
     assert.equal(read, 1);
     assert.equal(result.ok, true);
-    assert.equal(result.reason, "frozen");
-    assert.equal(result.alerted, false);
+    assert.equal(result.reason, "stale");
+    assert.equal(result.alerted, true);
   });
 
   test("an unbound bucket still reports through the cron wrapper", async () => {

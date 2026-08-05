@@ -1939,13 +1939,13 @@ async function dispatchScheduled(
     );
   }
   if (cron === TOP_HOLDERS_STALENESS_WATCHDOG_CRON) {
-    // The top-holders leaderboard's alarm (#9464). UNLIKE its siblings, zero
-    // alerts is NOT the current steady state and is not expected to be: the
-    // lane has no producer, so every tick records a `frozen` verdict to
-    // `lane_health` (published on /api/v1/self-health) without paging. An
-    // ABSENT, UNREADABLE or EMPTY artifact DOES record one exception under
-    // watchdog:top-holders-staleness -- that is the condition where the route
-    // silently answers 200 with an empty leaderboard instead of a frozen one.
+    // The top-holders leaderboard's alarm (#9464). Zero alerts is the correct
+    // steady state and is NOT the current one: the lane has no producer, so it
+    // records one exception under watchdog:top-holders-staleness on every tick
+    // and will until the artifact gets a writer or the route is withdrawn
+    // (#9475 removed the special case that kept this quiet). An ABSENT,
+    // UNREADABLE or EMPTY artifact alerts too -- that is the condition where
+    // the route silently answers 200 with an empty leaderboard.
     return runTopHoldersStalenessWatchdog(
       env as unknown as Record<string, unknown>,
     );

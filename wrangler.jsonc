@@ -861,8 +861,8 @@
       // 22,52 = the top-holders staleness watchdog (#9464): the leaderboard is
       // served from a one-shot pre-decommission artifact with no producer, and
       // nothing reported that for three days. Records a verdict every tick and
-      // pages only when the artifact goes absent/unreadable/empty -- see
-      // TOP_HOLDERS_STALENESS_WATCHDOG_CRON in workers/config.ts.
+      // alerts on every stale one -- see TOP_HOLDERS_STALENESS_WATCHDOG_CRON in
+      // workers/config.ts.
       "22,52 * * * *",
     ],
   },

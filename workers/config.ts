@@ -211,7 +211,7 @@ export const CHAIN_DETAIL_STALENESS_WATCHDOG_CRON = "14,29,44,59 * * * *";
 // reading `captured_at`, not by us. Twice hourly: the tick is one R2 get, so a
 // cheap cadence costs nothing and bounds detection well inside the twelve-hour
 // threshold (src/top-holders-staleness-watchdog.ts explains that sizing, and
-// why the frozen snapshot records a verdict without paging anyone). Minutes
+// why a lane with no producer reports stale on every tick). Minutes
 // 22/52 tick on none of the crons in this file and stay off the */5 raw-capture
 // and */15 probe grids -- dispatch keys on the LITERAL cron string, so this
 // must be unique here as well as matching a wrangler.jsonc `triggers.crons`

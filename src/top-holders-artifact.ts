@@ -20,19 +20,6 @@ import { buildTopHoldersList } from "./top-holders.ts";
 export const TOP_HOLDERS_ARTIFACT_KEY =
   "metagraph/materialized/top-holders.json";
 
-/**
- * When the ONE materialization this reader was built around was taken.
- *
- * The artifact carries its own `generated_at`; this is that value, committed,
- * so a caller can tell "the frozen snapshot, still" from "something wrote
- * here". src/top-holders-staleness-watchdog.ts is the consumer, and the whole
- * point is that it self-retires: the day a producer overwrites this key, the
- * string stops matching and the watchdog becomes an ordinary staleness alarm
- * with no code change.
- */
-export const TOP_HOLDERS_FROZEN_GENERATED_AT =
-  "2026-08-02T22:38:17.501738+00:00";
-
 interface ArtifactBucket {
   get(key: string): Promise<{ json(): Promise<unknown> } | null>;
 }

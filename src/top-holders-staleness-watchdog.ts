@@ -21,26 +21,40 @@
 // route SQL"`, and whose every row carries the same fixed `captured_at`. That
 // answer does not age gracefully -- it does not age at all.
 //
-// ## Why the frozen state is RECORDED and not PAGED
+// ## It alerts on every tick, and that is the point (#9475)
 //
-// The sibling watchdogs emit one exception per stale tick, and for their lanes
-// that is right: each was watching a lane that had a writer, so the alert had
-// somewhere to land and a reason to stop. This one would fire twice an hour
-// forever, because the condition it reports is permanent and is already
-// declared in source (TOP_HOLDERS_FROZEN_GENERATED_AT). Two separate things in
-// this repo say why that is not acceptable: `$exception` volume is the
-// project's metered cost (the storm guard in src/usage-telemetry.ts exists for
-// exactly this), and src/nominator-positions-staleness-watchdog.ts names the
-// other cost directly -- "the failure mode where an alarm that always fires
-// stops being read".
+// This shipped in #9464 special-casing the frozen snapshot: a committed
+// `TOP_HOLDERS_FROZEN_GENERATED_AT` constant matched the artifact's own
+// `generated_at`, and that one verdict recorded a `lane_health` row without
+// notifying. The reasoning was exception cost plus alarm fatigue. Both parts
+// were wrong, and the shape was worse than either:
 //
-// So the frozen snapshot is written to `lane_health` on EVERY tick, which puts
-// it on GET /api/v1/self-health under `lanes[]` and inside `stale_lane_count`
-// permanently and queryably (#9330/#9340 built that surface for precisely the
-// question "was anything stale overnight"). It just does not re-page anyone
-// about a state the code itself documents.
+//   - The cost claim does not survive arithmetic. Twice hourly is 48 events a
+//     day against a project running ~1M/day -- 0.005%, and the production
+//     storm guard (POSTHOG_EXCEPTION_STORM_WINDOW_MS, 5 min) does not even
+//     engage at a 30-minute spacing. There was no cost to trade anything for.
 //
-// EVERY OTHER VERDICT PAGES, and those are the ones with an operator action:
+//   - It made the watchdog silent on the exact defect it was built for. #9464
+//     exists because a frozen leaderboard went three days unnoticed; a
+//     watchdog that answers that by writing a row into a table nobody queries
+//     lets the next three days pass the same way. `lane_health` is the RECORD,
+//     which is why it is still written every tick -- it was never a substitute
+//     for the notification.
+//
+//   - Suppressing on a hardcoded timestamp is a known-bad-state allowlist. It
+//     disables the alarm for precisely the condition that is currently true,
+//     indefinitely, and a second frozen materialization would have to be
+//     hand-added to keep it quiet. Nothing else in this repo suppresses an
+//     alarm that way, and the two sibling lanes this one is modelled on
+//     (#9273, #9301) both alerted every tick while dead -- and both got fixed.
+//
+// So there is no frozen branch and no constant. A leaderboard nothing refreshes
+// is `stale`, it says so on every tick, and it keeps saying so until someone
+// gives the lane a producer or withdraws the route. An alarm that fires
+// forever on a defect that persists forever is not noise; it is an accurate
+// report, and the way to silence it is to fix the thing.
+//
+// The other verdicts name faults with different repairs:
 //
 //   absent / unreadable  the R2 object is gone or is not the shape the reader
 //                        accepts, so loadTopHoldersFromArtifact declines and
@@ -48,23 +62,16 @@
 //                        -- 200 OK, `account_count: 0`, silent in aggregate.
 //   empty                the object is well-formed and carries no rows, which
 //                        serves the same empty page from a different fault.
-//   stale                `generated_at` has MOVED off the frozen constant --
-//                        someone built the sink -- and the lane has since
-//                        fallen past its own producer cadence. This branch is
-//                        dead today and is the point: the day top-holders has
-//                        a writer again, this file is already the ordinary
-//                        staleness alarm for it, with no code change.
 
 import {
   TOP_HOLDERS_ARTIFACT_KEY,
-  TOP_HOLDERS_FROZEN_GENERATED_AT,
   topHoldersArtifactRows,
 } from "./top-holders-artifact.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 
 /**
- * How old the leaderboard may get before a REFRESHED lane counts as stalled.
+ * How old the leaderboard may get before it is a stall.
  *
  * TWELVE HOURS, sized to the producer this lane has when it has one:
  * `ACCOUNT_BALANCES_POLL_SECS` defaults to 21600 (six hours) in the poller
@@ -79,8 +86,9 @@ import { recordExceptionEvent } from "./usage-telemetry.ts";
  * a 24-hour producer and alerted three quarters of every day on a lane that
  * was working.
  *
- * It does NOT govern the frozen snapshot, which is stale by identity rather
- * than by age -- see this module's header.
+ * The artifact in place today is days past this and climbing, so the verdict
+ * is `stale` on every tick until the lane gets a producer -- see the module
+ * header for why that is reported rather than suppressed.
  *
  * Overridable per-deployment via TOP_HOLDERS_STALENESS_THRESHOLD_MS so the
  * number can follow a future sink's cadence without a code deploy.
@@ -88,7 +96,7 @@ import { recordExceptionEvent } from "./usage-telemetry.ts";
 export const TOP_HOLDERS_STALENESS_THRESHOLD_MS = 12 * 60 * 60 * 1000;
 
 export type TopHoldersStalenessReason =
-  "absent" | "unreadable" | "empty" | "frozen" | "stale" | null;
+  "absent" | "unreadable" | "empty" | "stale" | null;
 
 /** What the watchdog found in the bucket, normalized so the rule below needs
  * neither R2 nor a JSON parser. `present: false` carries WHY, because "the
@@ -100,10 +108,6 @@ export type TopHoldersArtifactState =
 
 export interface TopHoldersStalenessVerdict {
   stale: boolean;
-  /** Whether this tick has something to NOTIFY about, which is deliberately
-   * NOT the same as `stale`: the frozen snapshot is stale on every tick and
-   * newsworthy on none of them. */
-  alert: boolean;
   reason: TopHoldersStalenessReason;
   age_ms: number | null;
   generated_at: string | null;
@@ -123,7 +127,6 @@ export function evaluateTopHoldersStaleness(input: {
     // this is the one condition that is completely invisible from outside.
     return {
       stale: true,
-      alert: true,
       reason: artifact.reason,
       age_ms: null,
       generated_at: null,
@@ -137,7 +140,6 @@ export function evaluateTopHoldersStaleness(input: {
     // route is serving it, and nothing can say how old it is.
     return {
       stale: true,
-      alert: true,
       reason: "unreadable",
       age_ms: null,
       generated_at: generatedAt,
@@ -146,23 +148,13 @@ export function evaluateTopHoldersStaleness(input: {
   }
   const ageMs = nowMs - at;
   if (rowCount === 0) {
-    // Checked BEFORE the frozen comparison: an artifact emptied in place still
-    // serves nobody, and reporting that as "frozen, as expected" would be the
-    // watchdog agreeing with the outage.
+    // Distinguished from a plain `stale` even though both are stalls: an
+    // artifact present and well-formed with no rows serves an empty
+    // leaderboard NOW, regardless of its age, and that is a different repair
+    // from one that merely stopped being refreshed.
     return {
       stale: true,
-      alert: true,
       reason: "empty",
-      age_ms: ageMs,
-      generated_at: generatedAt,
-      threshold_ms: thresholdMs,
-    };
-  }
-  if (generatedAt === TOP_HOLDERS_FROZEN_GENERATED_AT) {
-    return {
-      stale: true,
-      alert: false,
-      reason: "frozen",
       age_ms: ageMs,
       generated_at: generatedAt,
       threshold_ms: thresholdMs,
@@ -171,7 +163,6 @@ export function evaluateTopHoldersStaleness(input: {
   const stale = ageMs > thresholdMs;
   return {
     stale,
-    alert: stale,
     reason: stale ? "stale" : null,
     age_ms: ageMs,
     generated_at: generatedAt,
@@ -244,7 +235,7 @@ export async function runTopHoldersStalenessWatchdog(
     thresholdMs,
   });
 
-  if (verdict.alert) {
+  if (verdict.stale) {
     const age =
       verdict.age_ms === null
         ? "age unknown"
@@ -262,10 +253,10 @@ export async function runTopHoldersStalenessWatchdog(
   }
 
   // #9330/#9340: the DURABLE record, written every tick rather than only when
-  // stale. It carries more weight here than for any sibling, because this is
-  // the lane whose alerting is deliberately quiet -- the `frozen` row on every
-  // tick is the ONLY thing standing between a permanently dead leaderboard and
-  // nobody knowing. Never throws -- see recordLaneVerdict.
+  // stale. PostHog stays the notification path; it is no longer the record,
+  // because a dropped `$exception` is indistinguishable from a lane that was
+  // fine, and writing on every tick is also what makes "the watchdog stopped
+  // running" visible at all. Never throws -- see recordLaneVerdict.
   await recordLaneVerdict(
     deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as never),
     {
@@ -278,5 +269,5 @@ export async function runTopHoldersStalenessWatchdog(
   );
 
   // `ok` describes whether the TICK ran, not whether the lane is fresh.
-  return { ok: true, alerted: verdict.alert, ...verdict };
+  return { ok: true, alerted: verdict.stale, ...verdict };
 }
