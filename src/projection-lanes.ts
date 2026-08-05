@@ -120,7 +120,22 @@ const TRANSFER_KIND = "Transfer";
  */
 export const PROJECTION_QUERY_TIMEOUT_MS = 4 * QUERY_TIMEOUT_MS;
 
-/** Every lane statement runs on the lane bound, never the request bound. */
+/**
+ * Every lane statement runs on the lane bound, never the request bound.
+ *
+ * That sentence has been here since #9423 and was not true of the whole
+ * module: eight statements across six lanes (stake-flow, chain-fees' two
+ * median passes, alpha-volume, blocks-summary, registrations' stamp + pair
+ * reads, deregistrations) called r2SqlQuery directly and silently took the
+ * 15s REQUEST default — the very bound #9423 had just established a cron does
+ * not share. Several are among the heaviest reads here: account_events
+ * aggregated or scanned over multi-day windows, the same shape whose growth
+ * is what made #9423's own lane start aborting.
+ *
+ * So this is the only entry point, and `r2SqlQuery` is imported for nothing
+ * else — a direct call is now visible as one, and tests/projection-lanes.test.ts
+ * asserts against the source that none creeps back in.
+ */
 function laneQuery(env: Env, sql: string) {
   return r2SqlQuery(env, sql, { timeoutMs: PROJECTION_QUERY_TIMEOUT_MS });
 }
@@ -272,7 +287,7 @@ async function computeChainStakeFlow(
   let rowCount = 0;
   for (const [label, days] of Object.entries(STAKE_FLOW_PROJECTION_WINDOWS)) {
     const cutoff = generatedAt - days * DAY_MS;
-    const rows = await r2SqlQuery(
+    const rows = await laneQuery(
       env,
       `SELECT netuid, event_kind, COALESCE(SUM(amount_tao), 0) AS total_tao, ` +
         `COUNT(*) AS event_count, MAX(observed_at) AS last_observed ` +
@@ -524,12 +539,12 @@ async function computeChainFees(
     if (daily === null) return null;
     const payers = await laneQuery(env, payersSql!);
     if (payers === null) return null;
-    const feeMedians = await r2SqlQuery(
+    const feeMedians = await laneQuery(
       env,
       chainFeesMedianSql(cutoff, "fee_tao", network),
     );
     if (feeMedians === null) return null;
-    const tipMedians = await r2SqlQuery(
+    const tipMedians = await laneQuery(
       env,
       chainFeesMedianSql(cutoff, "tip_tao", network),
     );
@@ -648,7 +663,7 @@ async function computeChainAlphaVolume(
 ): Promise<Record<string, unknown> | null> {
   const generatedAt = Date.now();
   const cutoff = generatedAt - DAY_MS;
-  const rows = await r2SqlQuery(
+  const rows = await laneQuery(
     env,
     `SELECT netuid, event_kind, ` +
       `COALESCE(SUM(alpha_amount), 0) AS alpha_volume, ` +
@@ -965,7 +980,7 @@ async function computeBlocksSummary(
   network: ChainNetworkId,
 ): Promise<Record<string, unknown> | null> {
   const generatedAt = Date.now();
-  const rows = await r2SqlQuery(
+  const rows = await laneQuery(
     env,
     `SELECT ${BLOCKS_SUMMARY_READ_COLUMNS} FROM ${chainTable("blocks", network)} ` +
       `ORDER BY block_number DESC LIMIT ${BLOCKS_SUMMARY_SCAN_CAP}`,
@@ -1023,7 +1038,7 @@ async function computeChainRegistrations(
 
     // Cheap gate, no DISTINCT: the window's freshness stamp, and a null means
     // the window holds no registrations so the heavy read is worth skipping.
-    const stampRows = await r2SqlQuery(
+    const stampRows = await laneQuery(
       env,
       `SELECT MAX(observed_at) AS newest_observed ${scope}`,
     );
@@ -1033,7 +1048,7 @@ async function computeChainRegistrations(
     let rows: Record<string, unknown>[] = [];
     let networkRegistrants = 0;
     if (newestObserved != null) {
-      const pairs = await r2SqlQuery(
+      const pairs = await laneQuery(
         env,
         `SELECT netuid, hotkey, COUNT(*) AS n ${scope} GROUP BY netuid, hotkey`,
       );
@@ -1133,7 +1148,7 @@ async function computeChainDeregistrations(
   const lookbackDays = Math.max(
     ...Object.values(CHAIN_DEREGISTRATIONS_WINDOWS),
   );
-  const rows = await r2SqlQuery(
+  const rows = await laneQuery(
     env,
     `SELECT ${DEREGISTRATION_READ_COLUMNS} FROM ${chainTable("account_events", network)} ` +
       `WHERE event_kind = '${REGISTRATION_EVENT_KIND}' ` +

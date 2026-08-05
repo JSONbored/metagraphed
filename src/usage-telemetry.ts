@@ -1084,6 +1084,20 @@ export interface ExceptionEvent {
   route?: string;
   mcpTool?: string;
   errorCode?: string;
+  /**
+   * Which query a query-engine capture site was running when it failed.
+   *
+   * `queryKind` is the coarse, bounded bucket you filter an inbox by (a
+   * lakehouse table, e.g. `chain.account_events`); `queryShape` is the
+   * statement itself with its literals collapsed, which names the exact call
+   * site. Both are OPTIONAL and omitted-not-defaulted, so no existing capture
+   * site's payload changes.
+   *
+   * Both are deliberately kept OUT of the fingerprint — see the note in
+   * recordExceptionEvent for why that is a cost decision, not a style one.
+   */
+  queryKind?: string;
+  queryShape?: string;
 }
 
 // ─── $exception storm guard ────────────────────────────────────────────────
@@ -1341,6 +1355,25 @@ export async function recordExceptionEvent(
     if (mcpTool !== undefined) properties.mcp_tool = mcpTool;
     const errorCode = sanitizeLabel(event.errorCode);
     if (errorCode !== undefined) properties.error_code = errorCode;
+    // Query attribution rides along as PROPERTIES, never as fingerprint input.
+    //
+    // #9459: `route: "r2-sql"` collapses a timeout, a 429, a 422 scan-budget
+    // rejection and a 400 into one issue, so the inbox cannot say which query
+    // is slow. The obvious fix -- fold the answer into the fingerprint -- is
+    // the expensive one, because the storm guard above windows PER
+    // FINGERPRINT: one fingerprint at one event per window becomes N
+    // fingerprints at one event per window EACH, i.e. N times the billable
+    // volume, against the tightest budget this project has (~90K/month of a
+    // 100K free tier before the current fixes).
+    //
+    // A property costs bytes on an event that is already being sent, and
+    // PostHog groups Issues on $exception_fingerprint (set explicitly above),
+    // so occurrences stay in ONE issue while every sampled event names the
+    // query that produced it. Attribution without volume.
+    const queryKind = sanitizeLabel(event.queryKind);
+    if (queryKind !== undefined) properties.query_kind = queryKind;
+    const queryShape = sanitizeLabel(event.queryShape);
+    if (queryShape !== undefined) properties.query_shape = queryShape;
     assignDeployment(properties, env);
 
     const doFetch = deps.fetch ?? globalThis.fetch;

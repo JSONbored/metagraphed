@@ -9,6 +9,8 @@ import {
   currentR2SqlFailureGeneration,
   isR2SqlConfigured,
   r2SqlQuery,
+  r2SqlQueryKind,
+  r2SqlQueryShape,
   R2_SQL_TOKEN_ENV,
   safeBlockNumber,
   safeHexLiteral,
@@ -440,5 +442,196 @@ describe("the inline-literal guards", () => {
         JSON.stringify(bad)?.slice(0, 40),
       );
     }
+  });
+});
+
+// #9459: every failure here captured under one flat `route: "r2-sql"`, so a
+// timeout, a 429, a 422 scan-budget rejection and a 400 shared one fingerprint
+// and the inbox could not say which query was slow. The fix has to buy that
+// attribution WITHOUT splitting the fingerprint, because the storm guard
+// windows per fingerprint -- N fingerprints at one event per window each is N
+// times the billable volume against the tightest budget this project has.
+describe("query attribution (#9459)", () => {
+  /** Capture the one exception event a failed query records. */
+  async function captureFailure(
+    sql: string,
+    fetchImpl: typeof fetch,
+    extra: Record<string, unknown> = {},
+  ) {
+    const captured: Record<string, unknown>[] = [];
+    await r2SqlQuery(mockEnv(TOKEN), sql, {
+      fetch: fetchImpl,
+      recordException: (async (_e: unknown, ev: Record<string, unknown>) => {
+        captured.push(ev);
+        return true;
+      }) as never,
+      ...extra,
+    });
+    return captured[0]!;
+  }
+
+  test("the fingerprint input is unchanged — attribution is properties only", async () => {
+    // The whole cost argument in one assertion: two queries that differ in
+    // every way still carry the SAME `route`, which is what
+    // recordExceptionEvent builds $exception_fingerprint from. If a future
+    // change moves query_kind into `route` to "improve" grouping, this fails.
+    const { impl } = jsonFetch({}, false, 429);
+    const a = await captureFailure("SELECT 1 FROM chain.blocks", impl);
+    const b = await captureFailure(
+      "SELECT netuid FROM chain_testnet.account_events WHERE observed_at >= 5",
+      jsonFetch({}, false, 500).impl,
+    );
+    assert.equal(a.route, "r2-sql");
+    assert.equal(b.route, "r2-sql");
+    assert.notEqual(a.queryKind, b.queryKind);
+    assert.notEqual(a.errorCode, b.errorCode);
+  });
+
+  test("an HTTP rejection is classified by its status", async () => {
+    const captured = await captureFailure(
+      "SELECT 1 FROM chain.blocks",
+      jsonFetch({}, false, 429).impl,
+    );
+    // The 429 storm of 2026-08-04 was indistinguishable from the steady
+    // timeout leak in the inbox; this is the field that separates them.
+    assert.equal(captured.errorCode, "http_429");
+    assert.equal(captured.queryKind, "chain.blocks");
+  });
+
+  test("an engine rejection carries its numbered code", async () => {
+    const captured = await captureFailure(
+      "SELECT count(DISTINCT coldkey) FROM chain.account_events",
+      jsonFetch({
+        success: false,
+        errors: [
+          { code: 40015, message: "scan budget exceeded: count(DISTINCT)" },
+        ],
+      }).impl,
+    );
+    assert.equal(captured.errorCode, "engine_40015");
+  });
+
+  test("an engine rejection with no code is `engine`, not `engine_undefined`", async () => {
+    const captured = await captureFailure(
+      "SELECT 1 FROM chain.blocks",
+      jsonFetch({ success: false, errors: [{ message: "nope" }] }).impl,
+    );
+    assert.equal(captured.errorCode, "engine");
+  });
+
+  test("a transport throw is `transport` — no response was ever inspected", async () => {
+    const captured = await captureFailure(
+      "SELECT 1 FROM chain.blocks",
+      (async () => {
+        throw new Error("network down");
+      }) as unknown as typeof fetch,
+    );
+    assert.equal(captured.errorCode, "transport");
+  });
+
+  test("an abort is `timeout`, read off the signal rather than the message", async () => {
+    // The abort's text is the runtime's, not ours, and has changed spelling
+    // across workerd versions -- so the classifier must not sniff it. Same
+    // driven-abort shape as the timeout test above (#9123): the stubbed fetch
+    // only settles on abort, so nothing else can end this promise.
+    let fire: (() => void) | undefined;
+    const impl = (async (_u: string, init: RequestInit) =>
+      new Promise((_resolve, reject) => {
+        (init.signal as AbortSignal).addEventListener("abort", () =>
+          reject(new Error("The operation was aborted")),
+        );
+      })) as unknown as typeof fetch;
+    const pending = captureFailure("SELECT 1 FROM chain.blocks", impl, {
+      scheduleAbort: (abort: () => void) => {
+        fire = abort;
+        return () => {};
+      },
+    });
+    (fire as unknown as () => void)();
+    assert.equal((await pending).errorCode, "timeout");
+  });
+
+  test("the shape names the exact query with its literals collapsed", async () => {
+    const captured = await captureFailure(
+      `SELECT netuid, COUNT(*) AS n FROM chain.account_events` +
+        ` WHERE coldkey = '5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F'` +
+        ` AND observed_at >= 1754352000000 GROUP BY netuid`,
+      jsonFetch({}, false, 500).impl,
+    );
+    assert.equal(
+      captured.queryShape,
+      "SELECT netuid, COUNT(*) AS n FROM chain.account_events" +
+        " WHERE coldkey = ? AND observed_at >= ? GROUP BY netuid",
+    );
+    // The address the caller looked up is gone; the query that was slow is not.
+    assert.equal(
+      String(captured.queryShape).includes("5EYCAe5"),
+      false,
+      "a caller-supplied address must not ride out on a telemetry property",
+    );
+  });
+});
+
+describe("r2SqlQueryKind — the bounded half of the attribution", () => {
+  test("names the qualified lakehouse table", () => {
+    assert.equal(
+      r2SqlQueryKind("SELECT * FROM chain.account_events WHERE x = 1"),
+      "chain.account_events",
+    );
+    assert.equal(
+      r2SqlQueryKind("SELECT * FROM chain_testnet.blocks"),
+      "chain_testnet.blocks",
+    );
+  });
+
+  test("takes the FIRST FROM, so a subquery reports the real table", () => {
+    // loadValidatorNominatorsColdTier's true-count read: the outer FROM is a
+    // derived table with no name worth reporting, the inner one is the answer.
+    assert.equal(
+      r2SqlQueryKind(
+        "SELECT count(*) AS c FROM (SELECT coldkey FROM chain.account_events" +
+          " WHERE observed_at >= 1 GROUP BY coldkey)",
+      ),
+      "chain.account_events",
+    );
+  });
+
+  test("matches case-insensitively and accepts an unqualified table", () => {
+    assert.equal(r2SqlQueryKind("select n from blocks"), "blocks");
+  });
+
+  test("reports `unknown` rather than nothing when there is no FROM", () => {
+    // Visibly "we could not tell", never confusable with a capture that
+    // predates attribution altogether.
+    assert.equal(r2SqlQueryKind("SELECT 1"), "unknown");
+    assert.equal(r2SqlQueryKind(""), "unknown");
+  });
+});
+
+describe("r2SqlQueryShape — the precise half of the attribution", () => {
+  test("collapses string and numeric literals and flattens whitespace", () => {
+    assert.equal(
+      r2SqlQueryShape(
+        "SELECT *\n  FROM chain.blocks\n  WHERE block_number = 8755000\n" +
+          "    AND hash = '0xdeadbeef'",
+      ),
+      "SELECT * FROM chain.blocks WHERE block_number = ? AND hash = ?",
+    );
+  });
+
+  test("collapses a float, and a string literal that contains digits", () => {
+    assert.equal(
+      r2SqlQueryShape("SELECT x FROM t WHERE a > 1.5 AND b = 'sn74 2026'"),
+      "SELECT x FROM t WHERE a > ? AND b = ?",
+    );
+  });
+
+  test("keeps identifiers that merely contain digits", () => {
+    // `net_flow_7d` and `ss58` are diagnostic content, not literals -- the
+    // same reason normalizeExceptionMessage refuses to be a blanket strip.
+    assert.equal(
+      r2SqlQueryShape("SELECT ss58, net_flow_7d FROM chain.account_events"),
+      "SELECT ss58, net_flow_7d FROM chain.account_events",
+    );
   });
 });
