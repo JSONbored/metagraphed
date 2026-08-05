@@ -1185,6 +1185,38 @@ test("ChainFirehoseHub broadcast: dropping a stalled SSE client also releases it
   await res.body!.cancel();
 });
 
+// The per-IP quota is only meaningful if a slot comes back when its subscriber
+// goes away. cancel() covers the consumer-side disconnect and the lifetime
+// timeout covers the hour cap, but neither covers the UA-dependent case the
+// heartbeat's own catch was written for: the stream is gone and cancel() never
+// fired. That used to be swallowed, so the slot sat occupied for up to an hour
+// and 20 such ghosts returned 503 to a caller with nothing live at all.
+test("ChainFirehoseHub /subscribe (SSE): a heartbeat that cannot enqueue releases the per-IP slot", async () => {
+  vi.useFakeTimers();
+  try {
+    const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
+    const res = await hub.fetch(subscribeRequest("203.0.113.9"));
+    assert.equal(hub.sseClientsByIp.get("203.0.113.9"), 1);
+
+    // The runtime closed the stream without invoking cancel() -- exactly the
+    // case the catch exists for. The next heartbeat's enqueue now throws.
+    const entry = [...hub.sseClients][0]!;
+    entry.controller.close();
+
+    await vi.advanceTimersByTimeAsync(CHAIN_FIREHOSE_SSE_HEARTBEAT_INTERVAL_MS);
+
+    assert.equal(hub.sseClients.size, 0, "the dead entry is still registered");
+    assert.equal(
+      hub.sseClientsByIp.has("203.0.113.9"),
+      false,
+      "the quota slot is still held by a subscriber that no longer exists",
+    );
+    await res.body!.cancel();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 test("ChainFirehoseHub.addSseClient: a second connection from the same IP increments rather than overwrites the count", () => {
   const hub = new ChainFirehoseHub(stubState(), mockEnv({}));
   hub.addSseClient({ ip: "203.0.113.9" } as unknown as SseEntryLike);

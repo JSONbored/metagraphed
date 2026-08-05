@@ -1291,18 +1291,36 @@ export class ChainFirehoseHub implements DurableObject {
             }
           }
 
-          // #8364: heartbeat. A `try` around the enqueue because a client
-          // that disconnected without the runtime having called cancel() yet
-          // (a real possibility -- cancel() timing is UA-dependent) would
-          // otherwise throw here and leave the interval itself still
-          // running; the catch is a no-op because cancel()/the lifetime
-          // timeout below are what actually clear this interval; this just
-          // keeps one late tick from crashing the DO.
+          // #8364: heartbeat. A `try` around the enqueue because a client that
+          // disconnected without the runtime having called cancel() yet (a real
+          // possibility -- cancel() timing is UA-dependent) would otherwise
+          // throw here and leave the interval itself still running.
+          //
+          // The catch RELEASES rather than doing nothing. A throwing enqueue is
+          // not noise to be swallowed: it is the disconnect signal for exactly
+          // the case cancel() did not cover, and it is the only one that
+          // arrives promptly. Waiting instead for the lifetime timeout meant a
+          // client that had already vanished held its per-IP slot for up to an
+          // hour, so 20 such ghosts returned 503 "too many connections" to a
+          // caller with no live connections at all -- a quota spent on
+          // subscribers that no longer exist (#9489). Releasing here bounds
+          // that at one heartbeat interval instead.
+          //
+          // Safe against the other three release paths: removeSseClient is
+          // idempotent (it returns early when the entry is already gone) and
+          // clears this very interval, so a later cancel() or lifetime timeout
+          // cannot double-release, whichever order they land in.
           entry.heartbeatTimer = setInterval(() => {
             try {
               controller.enqueue(encoder.encode(": heartbeat\n\n"));
             } catch {
-              // see comment above
+              try {
+                controller.close();
+              } catch {
+                // already closed by the runtime -- the release below is what
+                // this tick is actually here for.
+              }
+              this.removeSseClient(entry);
             }
           }, CHAIN_FIREHOSE_SSE_HEARTBEAT_INTERVAL_MS);
 
