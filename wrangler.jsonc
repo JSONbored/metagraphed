@@ -347,6 +347,17 @@
     // nothing about diagnosis needs more than that, and the projected
     // steady-state (~1K/day) sits comfortably inside the free tier.
     "POSTHOG_EXCEPTION_STORM_WINDOW_MS": "300000",
+    // How long to stop querying R2 SQL after it rejects us with HTTP 429
+    // (engine code 80014, "Account rate limit exceeded"). That limit is per
+    // ACCOUNT, so the ~44 request-time cold-tier readers and the projection
+    // lanes' 148 queries per tick all draw on one budget with nothing
+    // coordinating them. 2026-08-04 spent ~1,500 429s over two hours because
+    // each rejection was followed straight away by the next caller firing into
+    // the same exhausted budget -- holding the limit open and costing one
+    // $exception per attempt (#9465). 60s outlasts the limit's own window while
+    // staying far short of the 30-minute lane interval, so a tick is never
+    // still suppressed by the previous one's cooldown. "0" disables the breaker.
+    "R2_SQL_RATE_LIMIT_COOLDOWN_MS": "60000",
     // subnet_hyperparams (#4832 gap-closure): FLIPPED to "postgres" 2026-07-11,
     // after a live parity pass. refresh-subnet-hyperparams.yml's real
     // workflow_dispatch run synced all 129 subnets (Postgres started

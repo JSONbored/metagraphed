@@ -4,22 +4,33 @@
 // interpolated into a query (R2 SQL has no bound parameters, so the safe-
 // literal guards are the whole defence).
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { afterEach, describe, test } from "vitest";
 import {
   currentR2SqlFailureGeneration,
   isR2SqlConfigured,
   r2SqlQuery,
   r2SqlQueryKind,
   r2SqlQueryShape,
+  r2SqlRateLimitRemainingMs,
+  R2_SQL_RATE_LIMIT_COOLDOWN_DEFAULT_MS,
+  R2_SQL_RATE_LIMIT_COOLDOWN_MS_ENV,
   R2_SQL_TOKEN_ENV,
   safeBlockNumber,
   safeHexLiteral,
   safeSs58Literal,
   safeNameLiteral,
 } from "../src/r2-sql.ts";
+import { resetModuleState } from "../src/module-state-registry.ts";
 import { mockEnv } from "./row-type.ts";
 
 const TOKEN = { [R2_SQL_TOKEN_ENV]: "cfut_test" };
+
+// The account rate-limit breaker is module-global by design, and several tests
+// here answer 429 deliberately (the attribution suite asserts `http_429`). File
+// scope rather than per-describe: any test that provokes a 429 now leaves the
+// breaker open, and a suppressed query is silent, so a leak would surface as an
+// unrelated test failing on a capture that never happened.
+afterEach(() => resetModuleState());
 
 function jsonFetch(body: unknown, ok = true, status = 200) {
   const calls: { url: string; init: RequestInit }[] = [];
@@ -374,6 +385,265 @@ describe("a rejected query says WHY the engine refused it", () => {
   });
 });
 
+// The account-wide 429 breaker (#9465). 80014 is a per-ACCOUNT limit, so the
+// question these tests answer is not "did one query fail" -- that was always
+// handled -- but "did the NEXT one stop firing into an exhausted budget".
+describe("r2SqlQuery account rate-limit breaker", () => {
+  function statusFetch(status: number) {
+    const calls: string[] = [];
+    const impl = (async (url: string) => {
+      calls.push(url);
+      return {
+        ok: status < 400,
+        status,
+        text: async () =>
+          `{"code":80014,"message":"Account rate limit exceeded"}`,
+        json: async () => ({ success: true, result: { rows: [] } }),
+      };
+    }) as unknown as typeof fetch;
+    return { impl, calls };
+  }
+
+  /** Silences the module's console.error so a deliberate failure does not print
+   * through the suite; returns what it swallowed. */
+  async function quietly<T>(run: () => Promise<T>): Promise<T> {
+    const spy = console.error;
+    console.error = () => {};
+    try {
+      return await run();
+    } finally {
+      console.error = spy;
+    }
+  }
+
+  const noCapture = { recordException: (async () => true) as never };
+
+  test("a 429 opens the cooldown; the NEXT query never reaches the network", async () => {
+    const { impl, calls } = statusFetch(429);
+    let clock = 1_000;
+    const deps = { fetch: impl, now: () => clock, ...noCapture };
+
+    await quietly(() => r2SqlQuery(mockEnv(TOKEN), "SELECT 1", deps));
+    assert.equal(
+      calls.length,
+      1,
+      "the first query is the one that discovers it",
+    );
+    assert.equal(
+      r2SqlRateLimitRemainingMs(clock),
+      R2_SQL_RATE_LIMIT_COOLDOWN_DEFAULT_MS,
+    );
+
+    clock += 5_000;
+    const rows = await quietly(() =>
+      r2SqlQuery(mockEnv(TOKEN), "SELECT 2", deps),
+    );
+    assert.equal(rows, null, "still the same degrade-to-empty contract");
+    assert.equal(
+      calls.length,
+      1,
+      "suppressed queries must not spend the account budget they are waiting on",
+    );
+  });
+
+  test("a suppressed query records NO exception, but still marks the answer degraded", async () => {
+    const { impl } = statusFetch(429);
+    let clock = 1_000;
+    let captured = 0;
+    const deps = {
+      fetch: impl,
+      now: () => clock,
+      recordException: (async () => {
+        captured += 1;
+        return true;
+      }) as never,
+    };
+
+    await quietly(() => r2SqlQuery(mockEnv(TOKEN), "SELECT 1", deps));
+    assert.equal(
+      captured,
+      1,
+      "the rejection that opened the breaker reports once",
+    );
+
+    clock += 5_000;
+    const before = currentR2SqlFailureGeneration();
+    await quietly(() => r2SqlQuery(mockEnv(TOKEN), "SELECT 2", deps));
+    assert.equal(
+      captured,
+      1,
+      "one $exception per cooldown, not one per suppressed query -- the storm this exists to stop",
+    );
+    assert.equal(
+      currentR2SqlFailureGeneration(),
+      before + 1,
+      "a suppressed answer is still a degraded one and must never be cached as real",
+    );
+  });
+
+  test("the caller still learns WHY, through the same onError seam", async () => {
+    const { impl } = statusFetch(429);
+    let clock = 1_000;
+    const details: string[] = [];
+    const deps = {
+      fetch: impl,
+      now: () => clock,
+      onError: (detail: string) => details.push(detail),
+      ...noCapture,
+    };
+
+    await quietly(() => r2SqlQuery(mockEnv(TOKEN), "SELECT 1", deps));
+    clock += 5_000;
+    await quietly(() => r2SqlQuery(mockEnv(TOKEN), "SELECT 2", deps));
+
+    assert.match(details[0]!, /HTTP 429/);
+    assert.match(details[1]!, /account rate limited/);
+    assert.match(details[1]!, /55000ms/, "and how long is left on it");
+  });
+
+  test("a throwing onError never turns a declined query into a thrown one", async () => {
+    const { impl } = statusFetch(429);
+    const clock = 1_000;
+    const deps = {
+      fetch: impl,
+      now: () => clock,
+      onError: () => {
+        throw new Error("the caller's own reporting is broken");
+      },
+      ...noCapture,
+    };
+
+    assert.equal(
+      await quietly(() => r2SqlQuery(mockEnv(TOKEN), "SELECT 1", deps)),
+      null,
+    );
+    // And on the suppressed path too, which routes through the same helper.
+    assert.equal(
+      await quietly(() => r2SqlQuery(mockEnv(TOKEN), "SELECT 2", deps)),
+      null,
+    );
+  });
+
+  test("once the cooldown expires, querying resumes", async () => {
+    const { impl, calls } = statusFetch(429);
+    let clock = 1_000;
+    const deps = { fetch: impl, now: () => clock, ...noCapture };
+
+    await quietly(() => r2SqlQuery(mockEnv(TOKEN), "SELECT 1", deps));
+    clock += R2_SQL_RATE_LIMIT_COOLDOWN_DEFAULT_MS;
+    assert.equal(r2SqlRateLimitRemainingMs(clock), 0);
+
+    await quietly(() => r2SqlQuery(mockEnv(TOKEN), "SELECT 2", deps));
+    assert.equal(calls.length, 2, "the breaker must not latch shut");
+  });
+
+  test("only 429 opens it — a 422 scan-budget rejection must not mute the tier", async () => {
+    const { impl, calls } = statusFetch(422);
+    const clock = 1_000;
+    const deps = { fetch: impl, now: () => clock, ...noCapture };
+
+    await quietly(() => r2SqlQuery(mockEnv(TOKEN), "SELECT 1", deps));
+    assert.equal(r2SqlRateLimitRemainingMs(clock), 0);
+    await quietly(() => r2SqlQuery(mockEnv(TOKEN), "SELECT 2", deps));
+    assert.equal(
+      calls.length,
+      2,
+      "one bad query is not evidence the account budget is gone",
+    );
+  });
+
+  test("the cooldown length is configurable, and an explicit 0 disables the breaker", async () => {
+    const { impl, calls } = statusFetch(429);
+    const clock = 1_000;
+
+    const tuned = mockEnv({
+      ...TOKEN,
+      [R2_SQL_RATE_LIMIT_COOLDOWN_MS_ENV]: "5000",
+    });
+    await quietly(() =>
+      r2SqlQuery(tuned, "SELECT 1", {
+        fetch: impl,
+        now: () => clock,
+        ...noCapture,
+      }),
+    );
+    assert.equal(r2SqlRateLimitRemainingMs(clock), 5_000);
+
+    resetModuleState();
+    const off = mockEnv({ ...TOKEN, [R2_SQL_RATE_LIMIT_COOLDOWN_MS_ENV]: "0" });
+    await quietly(() =>
+      r2SqlQuery(off, "SELECT 1", {
+        fetch: impl,
+        now: () => clock,
+        ...noCapture,
+      }),
+    );
+    assert.equal(
+      r2SqlRateLimitRemainingMs(clock),
+      0,
+      "an operator can turn it off",
+    );
+    await quietly(() =>
+      r2SqlQuery(off, "SELECT 2", {
+        fetch: impl,
+        now: () => clock,
+        ...noCapture,
+      }),
+    );
+    assert.equal(calls.length, 3);
+  });
+
+  test("an unset, blank or malformed cooldown all take the default", async () => {
+    const clock = 1_000;
+    for (const raw of [undefined, "", "   ", "not-a-number", "-1"]) {
+      resetModuleState();
+      const { impl } = statusFetch(429);
+      const env = mockEnv(
+        raw === undefined
+          ? { ...TOKEN }
+          : { ...TOKEN, [R2_SQL_RATE_LIMIT_COOLDOWN_MS_ENV]: raw },
+      );
+      await quietly(() =>
+        r2SqlQuery(env, "SELECT 1", {
+          fetch: impl,
+          now: () => clock,
+          ...noCapture,
+        }),
+      );
+      assert.equal(
+        r2SqlRateLimitRemainingMs(clock),
+        R2_SQL_RATE_LIMIT_COOLDOWN_DEFAULT_MS,
+        `${String(raw)} must not silently disable the breaker`,
+      );
+    }
+  });
+
+  test("remaining time reads the real clock when no time is supplied", () => {
+    assert.equal(r2SqlRateLimitRemainingMs(), 0);
+  });
+
+  test("an unconfigured deployment is never suppressed by the breaker", async () => {
+    const { impl, calls } = statusFetch(429);
+    const clock = 1_000;
+    await quietly(() =>
+      r2SqlQuery(mockEnv(TOKEN), "SELECT 1", {
+        fetch: impl,
+        now: () => clock,
+        ...noCapture,
+      }),
+    );
+    // No token: the unconfigured branch returns first, so the breaker's state
+    // is irrelevant and no failure is counted against it.
+    const before = currentR2SqlFailureGeneration();
+    assert.equal(
+      await r2SqlQuery(mockEnv(), "SELECT 2", { fetch: impl }),
+      null,
+    );
+    assert.equal(currentR2SqlFailureGeneration(), before);
+    assert.equal(calls.length, 1);
+  });
+});
+
 // R2 SQL takes NO bound parameters, so every value that reaches a query is inlined
 // into a string. These two guards are therefore the whole injection boundary for the
 // lakehouse readers, and they were exercised only indirectly through their callers.
@@ -475,11 +745,16 @@ describe("query attribution (#9459)", () => {
     // every way still carry the SAME `route`, which is what
     // recordExceptionEvent builds $exception_fingerprint from. If a future
     // change moves query_kind into `route` to "improve" grouping, this fails.
-    const { impl } = jsonFetch({}, false, 429);
-    const a = await captureFailure("SELECT 1 FROM chain.blocks", impl);
+    // The 429 goes LAST on purpose: it opens the account rate-limit breaker,
+    // which suppresses the next query in this isolate outright — so a 429 first
+    // would leave `b` with no capture to assert on at all.
+    const a = await captureFailure(
+      "SELECT 1 FROM chain.blocks",
+      jsonFetch({}, false, 500).impl,
+    );
     const b = await captureFailure(
       "SELECT netuid FROM chain_testnet.account_events WHERE observed_at >= 5",
-      jsonFetch({}, false, 500).impl,
+      jsonFetch({}, false, 429).impl,
     );
     assert.equal(a.route, "r2-sql");
     assert.equal(b.route, "r2-sql");
