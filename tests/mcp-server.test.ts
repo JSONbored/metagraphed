@@ -1619,6 +1619,108 @@ describe("MCP transport handling", () => {
       assert.equal(res.headers.get("allow"), "POST, OPTIONS");
     });
 
+    // The sequence an MCP client actually performs, and the one that used to fail:
+    // initialize, then open the push channel with the id it just received. A session
+    // was known to the hub only from resources/subscribe, so this GET always missed —
+    // and its answer, 405, is one a conformant client may treat as "no SSE stream,
+    // ever", after which it never re-opens the channel and every
+    // notifications/resources/updated goes to nobody.
+    test("initialize registers the session, so the GET that follows it opens a stream", async () => {
+      const hub = fakeMcpSessionHubBinding();
+      const env = { MCP_SESSION_HUB: hub } as unknown as Env;
+
+      const init = await rpc(
+        {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-06-18",
+            capabilities: {},
+            clientInfo: { name: "t", version: "1" },
+          },
+        },
+        { env },
+      );
+      const sessionId = init.headers.get("mcp-session-id");
+      assert.ok(sessionId, "initialize must hand back a session id");
+
+      // Registered BEFORE the id reached the client — registering afterwards is a race
+      // the client wins by opening the stream on the next tick.
+      const registered = hub.calls.filter((c: Row) =>
+        String(c.url).includes("/register"),
+      );
+      assert.equal(registered.length, 1);
+      assert.equal(
+        JSON.parse(String((registered[0].init as RequestInit).body)).sessionId,
+        sessionId,
+      );
+
+      const stream = await handleMcpRequest(
+        new Request(MCP_URL, {
+          method: "GET",
+          headers: { "mcp-session-id": sessionId },
+        }),
+        env,
+      );
+      assert.equal(stream.status, 200);
+      await stream.body?.cancel();
+    });
+
+    test("an initialize that mints no session id registers nothing", async () => {
+      // Registration is driven by the header mintMcpSessionHeaderIfNeeded produced,
+      // not by "the body said initialize" — so every case it excludes (a batch, which
+      // predates the session concept; a failed negotiation) creates no hub state for
+      // an id the client never received.
+      const hub = fakeMcpSessionHubBinding();
+      const res = await rpc(
+        [
+          {
+            jsonrpc: "2.0",
+            id: 1,
+            method: "initialize",
+            params: {
+              protocolVersion: "2025-06-18",
+              capabilities: {},
+              clientInfo: { name: "t", version: "1" },
+            },
+          },
+        ],
+        { env: { MCP_SESSION_HUB: hub } as unknown as Env },
+      );
+      assert.equal(res.headers.get("mcp-session-id"), null);
+      assert.deepEqual(
+        hub.calls.filter((c: Row) => String(c.url).includes("/register")),
+        [],
+      );
+    });
+
+    test("an unreachable hub costs the push channel, not the initialize", async () => {
+      const hub = {
+        idFromName: (name: string) => name,
+        get: () => ({
+          fetch: async () => {
+            throw new Error("hub unreachable");
+          },
+        }),
+      };
+      const res = await rpc(
+        {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-06-18",
+            capabilities: {},
+            clientInfo: { name: "t", version: "1" },
+          },
+        },
+        { env: { MCP_SESSION_HUB: hub } as unknown as Env },
+      );
+      assert.equal(res.status, 200);
+      assert.ok(res.headers.get("mcp-session-id"), "the session still exists");
+    });
+
     test("with MCP_SESSION_HUB bound, forwards to the session's /stream route and streams the response through", async () => {
       const hub = fakeMcpSessionHubBinding();
       const request = new Request(MCP_URL, {
@@ -23673,4 +23775,53 @@ describe("MCP event-stream honesty (#9307)", () => {
       );
     },
   );
+});
+
+// `/mcp/` is the same endpoint as `/mcp`. A trailing slash is what a client gets from
+// joining a base URL; OAuthProvider already treats the two as one route, and the app
+// answering only the bare form is what put an otherwise-correct client on the 405 path.
+describe("the MCP endpoint tolerates a trailing slash", () => {
+  test("POST /mcp/ dispatches like POST /mcp", async () => {
+    const response = await handleRequest(
+      new Request("https://api.metagraph.sh/mcp/", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/list",
+          params: {},
+        }),
+      }),
+      {} as unknown as Env,
+      {
+        waitUntil() {},
+        passThroughOnException() {},
+      } as unknown as ExecutionContext,
+    );
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as Row;
+    assert.ok(
+      Array.isArray((body.result as Row)?.tools),
+      "a trailing slash must not change the answer",
+    );
+  });
+
+  test("a deeper /mcp path is still not the endpoint", async () => {
+    // `/mcp/sse` is claimed by OAuth's prefix but is not this endpoint; serving it as
+    // MCP would be worse than the honest rejection it gets.
+    const response = await handleRequest(
+      new Request("https://api.metagraph.sh/mcp/sse", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
+      }),
+      {} as unknown as Env,
+      {
+        waitUntil() {},
+        passThroughOnException() {},
+      } as unknown as ExecutionContext,
+    );
+    assert.notEqual(response.status, 200);
+  });
 });

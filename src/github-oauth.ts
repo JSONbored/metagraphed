@@ -202,6 +202,23 @@ export function matchesMcpApiRoute(pathname: string): boolean {
   return pathname.startsWith(MCP_API_ROUTE);
 }
 
+/**
+ * Is this the MCP endpoint itself — the path the Worker actually serves?
+ *
+ * Deliberately NARROWER than `matchesMcpApiRoute`, and the two are next to each other
+ * so the difference is visible: that one answers "would OAuthProvider claim this",
+ * which must stay a prefix; this one answers "is this the endpoint", which must not,
+ * or `/mcp/sse` would be served as MCP rather than 404ing honestly.
+ *
+ * A trailing slash IS the endpoint. `/mcp/` is what a client gets from joining a base
+ * URL, it is the same resource by every convention that matters, and OAuthProvider
+ * already treats it as the same route. Rejecting it bought nothing and cost the one
+ * client mistake most likely to be made.
+ */
+export function isMcpEndpointPath(pathname: string): boolean {
+  return pathname === MCP_API_ROUTE || pathname === `${MCP_API_ROUTE}/`;
+}
+
 export function isNonOAuthMcpRequest(request: Request): boolean {
   if (!matchesMcpApiRoute(new URL(request.url).pathname)) return false;
   const header = request.headers.get("Authorization");

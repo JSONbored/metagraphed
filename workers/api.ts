@@ -375,6 +375,7 @@ import { validateResponseTripwire } from "../src/response-validation-tripwire.ts
 import {
   handleAuthorizeRequest,
   handleGithubOAuthCallback,
+  isMcpEndpointPath,
 } from "../src/github-oauth.ts";
 import {
   handleSavedQueryRequest,
@@ -3714,7 +3715,11 @@ export async function handleRequest(
   // Runs before the read-only method gate (POST/DELETE would otherwise be
   // rejected there) like the RPC proxy. Artifact/KV readers are injected so
   // the MCP tools reuse the exact R2/ASSETS resolution.
-  if (url.pathname === "/mcp") {
+  // `/mcp` and `/mcp/` are the same endpoint. A trailing slash is what a client gets
+  // from joining a base URL, and rejecting it bought nothing: OAuthProvider already
+  // treats the two as one route, and the app answering only the bare form is what put
+  // an otherwise-correct client on the 405 path.
+  if (isMcpEndpointPath(url.pathname)) {
     // executionCtx is what lets tool-dispatch telemetry (#6031) drain its
     // capture through waitUntil instead of stranding it on isolate exit.
     return handleMcpRequest(request, env, {
@@ -7837,7 +7842,7 @@ function corsPreflight(request: Request) {
   } else if (url.pathname === "/api/v1/graphql") {
     // POST executes queries; GET serves the published SDL document.
     methods = "GET, POST, OPTIONS";
-  } else if (url.pathname === "/mcp") {
+  } else if (isMcpEndpointPath(url.pathname)) {
     // GET opens the bounded SSE push stream (#4983 MCP half); DELETE
     // terminates a session explicitly; POST is the stateless JSON-RPC path.
     methods = "GET, POST, DELETE, OPTIONS";

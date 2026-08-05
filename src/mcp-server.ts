@@ -14827,6 +14827,38 @@ function pendingMcpSessionId(body: Row | null): string | null {
   return crypto.randomUUID();
 }
 
+/**
+ * Tell the session's hub it exists, as soon as `initialize` decides to hand the id out.
+ *
+ * A session used to become known to `McpSessionHub` only via `resources/subscribe`, so
+ * `GET /mcp` and `DELETE /mcp` both failed for a session that had merely initialized —
+ * and the GET's answer is 405, which a conformant client may take as "this server has
+ * no SSE stream, ever". Such a client never re-opens the stream after subscribing, and
+ * every `notifications/resources/updated` is then delivered to nobody.
+ *
+ * Never throws: an unbound or unreachable hub leaves the session unregistered, which
+ * degrades to exactly the previous behaviour (a 405 on GET) rather than failing the
+ * initialize that a client needs in order to do anything at all.
+ */
+async function registerMcpSession(
+  env: Env,
+  sessionId: string | undefined,
+): Promise<void> {
+  if (!sessionId || !env.MCP_SESSION_HUB) return;
+  try {
+    const stub = env.MCP_SESSION_HUB.get(
+      env.MCP_SESSION_HUB.idFromName(sessionId),
+    );
+    await stub.fetch("https://mcp-session-hub.internal/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ sessionId }),
+    });
+  } catch {
+    // See above: a hub that cannot be reached costs the push channel, not the session.
+  }
+}
+
 const MCP_STREAM_HUB_UNAVAILABLE_RESPONSE = new Response(null, {
   status: 405,
   headers: { ...MCP_HEADERS, allow: "POST, OPTIONS" },
@@ -15090,6 +15122,15 @@ export async function handleMcpRequest(
     response,
     ctx.pendingSessionId ?? null,
   );
+  // Register the session with its hub BEFORE the id reaches the client, and only
+  // when it actually will (mintMcpSessionHeaderIfNeeded returns {} for a failed or
+  // batched initialize, so a session id the client never receives creates no state).
+  //
+  // Awaited, not deferred: the client learns the id from this response's headers and
+  // may open the GET stream on the next tick. Registering after the response is a race
+  // the client wins — which is how an initialize-then-GET could 404 against a session
+  // the server had just handed out.
+  await registerMcpSession(env, sessionHeaders["mcp-session-id"]);
   if (!response) {
     // Notification(s) only — nothing to return.
     return new Response(null, {
