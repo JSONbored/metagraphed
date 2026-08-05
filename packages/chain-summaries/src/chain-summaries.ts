@@ -92,6 +92,96 @@ function timelockedWeightsTemplate(): CallTemplate {
   };
 }
 
+/** Every `{name, value}` pair on a call, in declaration order, regardless of
+ * which of the two valid call_args shapes decoded (see callArgValue). Null
+ * when callArgs is neither shape. */
+function callArgEntries(callArgs: unknown): Array<[string, unknown]> | null {
+  if (Array.isArray(callArgs)) {
+    return (callArgs as Array<{ name?: string | null; value?: unknown }>)
+      .filter((a) => typeof a?.name === "string")
+      .map((a) => [a.name as string, a.value]);
+  }
+  if (callArgs && typeof callArgs === "object") {
+    return Object.entries(callArgs as Record<string, unknown>);
+  }
+  return null;
+}
+
+/** A hyperparameter's new value, rendered literally. Null for anything this
+ * cannot state exactly -- a nested object has no faithful one-line form, and a
+ * half-rendered value would be exactly the guess this module refuses to make. */
+function valueLabel(value: unknown): string | null {
+  if (value === null || value === undefined) return "none";
+  if (typeof value === "boolean") return String(value);
+  if (typeof value === "number") return fmtNumber(value);
+  if (typeof value === "string") {
+    if (value === "") return null;
+    // Numeric strings (including the hex small-ints nested calls carry) read as
+    // numbers to a human, so format them as such.
+    const asNumber = parseNetuidLike(value);
+    if (asNumber !== null && /^(0x[0-9a-f]+|-?\d+)$/i.test(value.trim())) {
+      return fmtNumber(asNumber);
+    }
+    return shortHash(value) ?? value;
+  }
+  if (Array.isArray(value)) {
+    const parts = value.map((item) => valueLabel(item));
+    if (parts.some((part) => part === null)) return null;
+    return `[${parts.join(", ")}]`;
+  }
+  return null;
+}
+
+/** `sudo_set_weights_version_key` -> `weights version key`. */
+function humanizeParam(name: string): string {
+  return name.replace(/_/g, " ").trim();
+}
+
+/**
+ * AdminUtils is subtensor's root-origin hyperparameter pathway, and it is
+ * uniform by construction: every call is `sudo_set_<param>` taking a `netuid`
+ * plus that parameter's new value. That regularity is why this is derived from
+ * the decoded call rather than written out as ~80 near-identical templates --
+ * a hand-maintained list would go stale the next time the pallet gains a
+ * setter, and silently return to publishing null for it.
+ *
+ * Nothing here is inferred: the parameter name comes from the call's own
+ * decoded name and the value from its own decoded args. A value that cannot be
+ * stated exactly (valueLabel -> null) declines the whole sentence.
+ */
+function adminUtilsTemplate(callFunction: string): CallTemplate | null {
+  const SET_PREFIX = "sudo_set_";
+  if (!callFunction.startsWith(SET_PREFIX)) return null;
+  const param = humanizeParam(callFunction.slice(SET_PREFIX.length));
+  if (!param) return null;
+  return (callArgs) => {
+    const entries = callArgEntries(callArgs);
+    if (!entries) return null;
+    const netuid = subnetLabel(callArgValue(callArgs, "netuid"));
+    // Every arg except the subnet selector is part of the new value. Rendering
+    // all of them matters for the multi-value setters (e.g.
+    // sudo_set_mechanism_emission_split), where naming only the first would
+    // understate what the call actually changed.
+    const rest = entries.filter(([name]) => name !== "netuid");
+    if (rest.length === 0) return null;
+    const rendered = rest.map(([name, value]) => {
+      const label = valueLabel(value);
+      return label === null ? null : rest.length === 1 ? label : `${humanizeParam(name)} ${label}`;
+    });
+    if (rendered.some((part) => part === null)) return null;
+    const target = netuid ? ` for ${netuid}` : "";
+    return `Set ${param}${target} to ${rendered.join(", ")}.`;
+  };
+}
+
+/** Templates resolved by SHAPE rather than by exact pallet.method, for a
+ * pallet whose call set is uniform and open-ended. Consulted only after the
+ * exact-match table misses, so a hand-written template always wins. */
+function patternTemplate(callModule: string, callFunction: string): CallTemplate | null {
+  if (callModule === "AdminUtils") return adminUtilsTemplate(callFunction);
+  return null;
+}
+
 /** A wrapper call (Utility.batch*, Proxy.proxy) that recurses into its inner call(s). */
 function describeInner(call: DecodedCall | null, ctx: SummaryContext): string {
   if (!call) return "an unrecognized call";
@@ -183,6 +273,27 @@ const CALL_TEMPLATES: Record<string, CallTemplate> = {
       : "Set the node heap page allocation.";
   },
   "System.remark": (_args, ctx) => `${addressLabel(ctx.signer)} submitted an on-chain remark.`,
+  // Sudo is subtensor's only root-origin pathway (it has no Council/Senate).
+  // Every observed get_sudo row is a WRAPPER whose payload is the interesting
+  // part -- a flat sentence here would say "someone used sudo" and omit what
+  // they did -- so these recurse like Utility.batch*/Proxy.proxy. The inner
+  // call is usually AdminUtils, which is why this and adminUtilsTemplate ship
+  // together: without the latter, a sudo-wrapped config change would still
+  // bottom out in describeInner's raw `module.function` fallback.
+  "Sudo.sudo": (callArgs, ctx) =>
+    `${addressLabel(ctx.signer)} executed a root call: ${describeInner(asDecodedCall(callArgValue(callArgs, "call")), ctx)}`,
+  "Sudo.sudo_unchecked_weight": (callArgs, ctx) =>
+    `${addressLabel(ctx.signer)} executed a root call: ${describeInner(asDecodedCall(callArgValue(callArgs, "call")), ctx)}`,
+  "Sudo.sudo_as": (callArgs, ctx) => {
+    const who = callArgValue(callArgs, "who");
+    // The inner call's effective origin is `who`, not the sudo key -- same
+    // signer substitution Proxy.proxy makes for `real`.
+    return `${addressLabel(ctx.signer)} executed a root call as ${addressLabel(who)}: ${describeInner(asDecodedCall(callArgValue(callArgs, "call")), { signer: typeof who === "string" ? who : ctx.signer })}`;
+  },
+  "Sudo.set_key": (callArgs, ctx) =>
+    `${addressLabel(ctx.signer)} transferred the sudo key to ${addressLabel(callArgValue(callArgs, "new"))}.`,
+  "Sudo.remove_key": (_args, ctx) =>
+    `${addressLabel(ctx.signer)} removed the sudo key, permanently disabling root calls.`,
 };
 
 function batchSentence(callArgs: unknown, ctx: SummaryContext): string | null {
@@ -208,7 +319,8 @@ export function summarizeCall(
   ctx: SummaryContext = {},
 ): string | null {
   if (!callModule || !callFunction) return null;
-  const template = CALL_TEMPLATES[`${callModule}.${callFunction}`];
+  const template =
+    CALL_TEMPLATES[`${callModule}.${callFunction}`] ?? patternTemplate(callModule, callFunction);
   if (!template) return null;
   try {
     return template(callArgs, ctx);
@@ -416,6 +528,11 @@ export function summarizeEvent(
 
 /** Every `pallet.method` key this module can produce a sentence for -- used by the coverage script. */
 export function summarizableCallKeys(): string[] {
+  // EXACT-match keys only. AdminUtils is covered by shape instead
+  // (patternTemplate -> adminUtilsTemplate), because its call set is uniform
+  // and open-ended, so it has no finite key list to enumerate here. A coverage
+  // script reading this will understate AdminUtils rather than overstate it,
+  // which is the safe direction for a bar that fails on regressions.
   return Object.keys(CALL_TEMPLATES);
 }
 

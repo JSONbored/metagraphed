@@ -630,6 +630,61 @@ function timelockedWeightsTemplate() {
     return `${addressLabel(ctx.signer)} committed time-locked weights for ${netuid}, revealing at round ${round}.`;
   };
 }
+function callArgEntries(callArgs) {
+  if (Array.isArray(callArgs)) {
+    return callArgs.filter((a) => typeof a?.name === "string").map((a) => [a.name, a.value]);
+  }
+  if (callArgs && typeof callArgs === "object") {
+    return Object.entries(callArgs);
+  }
+  return null;
+}
+function valueLabel(value) {
+  if (value === null || value === void 0) return "none";
+  if (typeof value === "boolean") return String(value);
+  if (typeof value === "number") return fmtNumber(value);
+  if (typeof value === "string") {
+    if (value === "") return null;
+    const asNumber2 = parseNetuidLike(value);
+    if (asNumber2 !== null && /^(0x[0-9a-f]+|-?\d+)$/i.test(value.trim())) {
+      return fmtNumber(asNumber2);
+    }
+    return shortHash(value) ?? value;
+  }
+  if (Array.isArray(value)) {
+    const parts = value.map((item) => valueLabel(item));
+    if (parts.some((part) => part === null)) return null;
+    return `[${parts.join(", ")}]`;
+  }
+  return null;
+}
+function humanizeParam(name) {
+  return name.replace(/_/g, " ").trim();
+}
+function adminUtilsTemplate(callFunction) {
+  const SET_PREFIX = "sudo_set_";
+  if (!callFunction.startsWith(SET_PREFIX)) return null;
+  const param = humanizeParam(callFunction.slice(SET_PREFIX.length));
+  if (!param) return null;
+  return (callArgs) => {
+    const entries = callArgEntries(callArgs);
+    if (!entries) return null;
+    const netuid = subnetLabel(callArgValue(callArgs, "netuid"));
+    const rest = entries.filter(([name]) => name !== "netuid");
+    if (rest.length === 0) return null;
+    const rendered = rest.map(([name, value]) => {
+      const label = valueLabel(value);
+      return label === null ? null : rest.length === 1 ? label : `${humanizeParam(name)} ${label}`;
+    });
+    if (rendered.some((part) => part === null)) return null;
+    const target = netuid ? ` for ${netuid}` : "";
+    return `Set ${param}${target} to ${rendered.join(", ")}.`;
+  };
+}
+function patternTemplate(callModule, callFunction) {
+  if (callModule === "AdminUtils") return adminUtilsTemplate(callFunction);
+  return null;
+}
 function describeInner(call, ctx) {
   if (!call) return "an unrecognized call";
   const summary = summarizeCall(call.call_module, call.call_function, call.call_args, ctx);
@@ -702,7 +757,22 @@ var CALL_TEMPLATES = {
     const pages = fmtNumber(callArgValue(callArgs, "pages"));
     return pages ? `Set the node heap page allocation to ${pages}.` : "Set the node heap page allocation.";
   },
-  "System.remark": (_args, ctx) => `${addressLabel(ctx.signer)} submitted an on-chain remark.`
+  "System.remark": (_args, ctx) => `${addressLabel(ctx.signer)} submitted an on-chain remark.`,
+  // Sudo is subtensor's only root-origin pathway (it has no Council/Senate).
+  // Every observed get_sudo row is a WRAPPER whose payload is the interesting
+  // part -- a flat sentence here would say "someone used sudo" and omit what
+  // they did -- so these recurse like Utility.batch*/Proxy.proxy. The inner
+  // call is usually AdminUtils, which is why this and adminUtilsTemplate ship
+  // together: without the latter, a sudo-wrapped config change would still
+  // bottom out in describeInner's raw `module.function` fallback.
+  "Sudo.sudo": (callArgs, ctx) => `${addressLabel(ctx.signer)} executed a root call: ${describeInner(asDecodedCall(callArgValue(callArgs, "call")), ctx)}`,
+  "Sudo.sudo_unchecked_weight": (callArgs, ctx) => `${addressLabel(ctx.signer)} executed a root call: ${describeInner(asDecodedCall(callArgValue(callArgs, "call")), ctx)}`,
+  "Sudo.sudo_as": (callArgs, ctx) => {
+    const who = callArgValue(callArgs, "who");
+    return `${addressLabel(ctx.signer)} executed a root call as ${addressLabel(who)}: ${describeInner(asDecodedCall(callArgValue(callArgs, "call")), { signer: typeof who === "string" ? who : ctx.signer })}`;
+  },
+  "Sudo.set_key": (callArgs, ctx) => `${addressLabel(ctx.signer)} transferred the sudo key to ${addressLabel(callArgValue(callArgs, "new"))}.`,
+  "Sudo.remove_key": (_args, ctx) => `${addressLabel(ctx.signer)} removed the sudo key, permanently disabling root calls.`
 };
 function batchSentence(callArgs, ctx) {
   const calls = callArgValue(callArgs, "calls");
@@ -714,7 +784,7 @@ function batchSentence(callArgs, ctx) {
 }
 function summarizeCall(callModule, callFunction, callArgs, ctx = {}) {
   if (!callModule || !callFunction) return null;
-  const template = CALL_TEMPLATES[`${callModule}.${callFunction}`];
+  const template = CALL_TEMPLATES[`${callModule}.${callFunction}`] ?? patternTemplate(callModule, callFunction);
   if (!template) return null;
   try {
     return template(callArgs, ctx);

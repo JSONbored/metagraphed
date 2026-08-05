@@ -394,6 +394,192 @@ describe("summarizeCall", () => {
     expect(keys).toContain("Utility.batch_all");
     expect(keys.length).toBeGreaterThanOrEqual(20);
   });
+
+  // #9525. get_sudo and get_governance_config_changes filter to exactly the
+  // Sudo and AdminUtils pallets, and neither had a single template -- so
+  // `summary` was null on 100% of both feeds while the global >=95% coverage
+  // bar stayed green on SubtensorModule-dominated traffic.
+  //
+  // Every call_args fixture below was captured live from api.metagraph.sh
+  // (get_sudo / get_governance_config_changes, 2026-08-05), same discipline as
+  // the fixtures above.
+  describe("governance pallets (#9525)", () => {
+    const SIGNER = "5DA2vLrSXZxnT9G4Yrywx1Fpi4RXwMH1Ah7r8DTTWS7UZZBM";
+
+    it("AdminUtils.sudo_set_* renders the parameter and its new value", () => {
+      expect(
+        summarizeCall(
+          "AdminUtils",
+          "sudo_set_weights_version_key",
+          [
+            { name: "netuid", type: "NetUid", value: 107 },
+            { name: "weights_version_key", type: "u64", value: 20 },
+          ],
+          { signer: SIGNER },
+        ),
+      ).toBe("Set weights version key for SN107 to 20.");
+    });
+
+    // A multi-value setter must name every value it changed: reporting only
+    // the first would understate the call.
+    it("renders every non-netuid arg, not just the first", () => {
+      expect(
+        summarizeCall(
+          "AdminUtils",
+          "sudo_set_mechanism_emission_split",
+          [
+            { name: "netuid", value: 89 },
+            { name: "maybe_split", value: [52428, 13107] },
+          ],
+          { signer: SIGNER },
+        ),
+      ).toBe("Set mechanism emission split for SN89 to [52,428, 13,107].");
+    });
+
+    it("renders a boolean hyperparameter literally", () => {
+      expect(
+        summarizeCall(
+          "AdminUtils",
+          "sudo_set_network_registration_allowed",
+          [
+            { name: "netuid", value: 92 },
+            { name: "registration_allowed", value: false },
+          ],
+          { signer: SIGNER },
+        ),
+      ).toBe("Set network registration allowed for SN92 to false.");
+    });
+
+    it("omits the subnet clause for a network-wide setter", () => {
+      expect(
+        summarizeCall("AdminUtils", "sudo_set_tx_rate_limit", { tx_rate_limit: 1000 }, {}),
+      ).toBe("Set tx rate limit to 1,000.");
+    });
+
+    // The refusal half of the contract: a value with no faithful one-line form
+    // declines the sentence rather than half-rendering it.
+    it("declines rather than half-rendering an unstatable value", () => {
+      expect(
+        summarizeCall(
+          "AdminUtils",
+          "sudo_set_something",
+          [
+            { name: "netuid", value: 1 },
+            { name: "opaque", value: { nested: "object" } },
+          ],
+          {},
+        ),
+      ).toBeNull();
+      // No args beyond netuid: nothing to report as the new value.
+      expect(
+        summarizeCall("AdminUtils", "sudo_set_x", [{ name: "netuid", value: 1 }], {}),
+      ).toBeNull();
+      // Not a setter, so the pattern does not claim it.
+      expect(summarizeCall("AdminUtils", "some_other_call", { a: 1 }, {})).toBeNull();
+    });
+
+    // Every observed get_sudo row is a wrapper; a flat sentence would say
+    // "someone used sudo" and omit what they actually did.
+    it("Sudo.sudo recurses into the wrapped call", () => {
+      expect(
+        summarizeCall(
+          "Sudo",
+          "sudo",
+          [
+            {
+              name: "call",
+              type: "RuntimeCall",
+              value: {
+                call_module: "AdminUtils",
+                call_function: "sudo_set_weights_set_rate_limit",
+                call_args: { netuid: 6, weights_set_rate_limit: 10 },
+              },
+            },
+          ],
+          { signer: SIGNER },
+        ),
+      ).toBe(
+        `${shortHash(SIGNER)} executed a root call: Set weights set rate limit for SN6 to 10.`,
+      );
+    });
+
+    // An inner pallet with no template still names the call rather than
+    // vanishing -- describeInner's existing raw fallback.
+    it("falls back to the raw inner call name when the inner pallet has no template", () => {
+      expect(
+        summarizeCall(
+          "Sudo",
+          "sudo",
+          [
+            {
+              name: "call",
+              value: {
+                call_module: "Swap",
+                call_function: "toggle_user_liquidity",
+                call_args: { enable: true, netuid: 30 },
+              },
+            },
+          ],
+          { signer: SIGNER },
+        ),
+      ).toBe(`${shortHash(SIGNER)} executed a root call: Swap.toggle_user_liquidity`);
+    });
+
+    it("Sudo.sudo_as attributes the inner call to `who`, not the sudo key", () => {
+      const who = "5CfSg4e23Z3aTXvc2XZie8ZE1xkqRPoyVRFdWUuyyjGxJrMA";
+      expect(
+        summarizeCall(
+          "Sudo",
+          "sudo_as",
+          [
+            { name: "who", value: who },
+            {
+              name: "call",
+              value: {
+                call_module: "System",
+                call_function: "remark",
+                call_args: {},
+              },
+            },
+          ],
+          { signer: SIGNER },
+        ),
+      ).toBe(
+        `${shortHash(SIGNER)} executed a root call as ${shortHash(who)}: ${shortHash(who)} submitted an on-chain remark.`,
+      );
+    });
+
+    it("Sudo key management reads as key management, not as a wrapper", () => {
+      const next = "5CfSg4e23Z3aTXvc2XZie8ZE1xkqRPoyVRFdWUuyyjGxJrMA";
+      expect(
+        summarizeCall("Sudo", "set_key", [{ name: "new", value: next }], { signer: SIGNER }),
+      ).toBe(`${shortHash(SIGNER)} transferred the sudo key to ${shortHash(next)}.`);
+      expect(summarizeCall("Sudo", "remove_key", [], { signer: SIGNER })).toBe(
+        `${shortHash(SIGNER)} removed the sudo key, permanently disabling root calls.`,
+      );
+    });
+
+    it("Sudo.sudo_unchecked_weight recurses like Sudo.sudo", () => {
+      expect(
+        summarizeCall(
+          "Sudo",
+          "sudo_unchecked_weight",
+          [
+            {
+              name: "call",
+              value: {
+                call_module: "AdminUtils",
+                call_function: "sudo_set_tempo",
+                call_args: { netuid: 3, tempo: 360 },
+              },
+            },
+            { name: "weight", value: { ref_time: 1 } },
+          ],
+          { signer: SIGNER },
+        ),
+      ).toBe(`${shortHash(SIGNER)} executed a root call: Set tempo for SN3 to 360.`);
+    });
+  });
 });
 
 describe("summarizeEvent", () => {
