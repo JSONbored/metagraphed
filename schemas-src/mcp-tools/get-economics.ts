@@ -11,6 +11,7 @@
 // constraint means NOT tightening beyond what already shipped, even though
 // the real per-row data happens to satisfy the deeper REST schema too.
 import { z } from "zod";
+import { fieldsSchema, netuidSchema, offsetSchema } from "./shared.ts";
 
 const ECONOMICS_SORT_FIELDS = [
   "alpha_fdv_tao",
@@ -38,14 +39,17 @@ const ECONOMICS_SORT_FIELDS = [
 
 export const GetEconomicsInputSchema = z
   .object({
-    netuid: z.int().min(0).optional(),
+    netuid: netuidSchema().optional(),
     registration_allowed: z.enum(["true", "false"]).optional(),
     q: z.string().optional(),
     sort: z.enum(ECONOMICS_SORT_FIELDS).optional(),
     order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
+    // `sort` and `order` were enums while this was a bare string with no stated
+    // format anywhere — comma-separated? a JSON array? — so the one parameter an agent
+    // could not guess was the only one left undocumented.
+    fields: fieldsSchema().optional(),
     limit: z.int().min(1).max(1000).optional(),
-    cursor: z.int().min(0).optional(),
+    cursor: offsetSchema().optional(),
   })
   .strict();
 export type GetEconomicsInput = z.infer<typeof GetEconomicsInputSchema>;

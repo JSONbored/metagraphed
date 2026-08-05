@@ -126,8 +126,65 @@ describe("buildSubnetValidatorEconomicsPayload", () => {
     assert.match(sql[0], /FROM neurons WHERE netuid = \?/);
     assert.match(sql[0], /stake_tao/);
     assert.match(sql[0], /take/);
+    // The owner exception needs the hotkey to find the owner's UID; without it
+    // selected, every owner-below-threshold subnet stays permanently degraded.
+    assert.match(sql[0], /hotkey/);
     // A SELECT * here would drag ~20 unused columns per UID across 256 rows.
     assert.doesNotMatch(sql[0], /SELECT \*/);
+  });
+
+  // end to end: the owner hotkey lives on the economics artifact and the UID it
+  // names lives in D1, so this is the one place the two tiers have to meet.
+  test("threads the owner hotkey from the economics tier into the permit model", async () => {
+    const neurons = [
+      permitted(0, { hotkey: "5V0", stake_tao: 5000 }),
+      // The owner, holding a permit the stake rule cannot explain — SN5's shape.
+      permitted(9, { hotkey: "5OWNER", stake_tao: 0 }),
+    ];
+    const withoutOwner = await buildSubnetValidatorEconomicsPayload(
+      envWith({ neurons }).env,
+      7,
+      deps(),
+    );
+    assert.equal(
+      withoutOwner.data.degraded_reason,
+      "permit model disagrees with observed permits on this subnet",
+    );
+    assert.equal(withoutOwner.data.permit_floor_units, null);
+
+    const withOwner = await buildSubnetValidatorEconomicsPayload(
+      envWith({
+        neurons,
+        economics: economicsArtifact({ owner_hotkey: "5OWNER" }),
+      }).env,
+      7,
+      deps(),
+    );
+    assert.equal(withOwner.data.degraded_reason, null);
+    assert.equal(withOwner.data.permit_floor_units, 1000);
+    assert.equal(
+      (withOwner.data.model_agreement as Row | null)?.agreement,
+      1,
+      "the owner exception reproduces the chain exactly",
+    );
+  });
+
+  test("publishes the model-free fields even while the floor is withheld", async () => {
+    // cap_binding, uids_above_threshold, validator_slots_open and
+    // root_tao_to_clear_threshold are counted off the live threshold and the observed
+    // permits — none of them needs the floor model that has drifted.
+    const { env } = envWith({
+      neurons: [
+        permitted(0, { hotkey: "5V0", stake_tao: 5000 }),
+        permitted(9, { hotkey: "5OWNER", stake_tao: 0 }),
+      ],
+    });
+    const { data } = await buildSubnetValidatorEconomicsPayload(env, 7, deps());
+    assert.equal(data.permit_floor_units, null, "still withheld");
+    assert.equal(data.cap_binding, false);
+    assert.equal(data.uids_above_threshold, 1);
+    assert.equal(data.validator_slots_open, 62, "64 slots less 2 permits");
+    assert.equal(data.root_tao_to_clear_threshold, 1000 / 0.18);
   });
 
   test("treats a result set with no rows array as empty, not as a crash", async () => {
@@ -479,6 +536,32 @@ describe("buildValidatorEconomicsRankingPayload", () => {
     );
   });
 
+  // on the CROSS-SUBNET route: the owner exception has to reach here too, or
+  // every owner-below-threshold subnet lands in `excluded` and drops out of the ranking
+  // entirely — which is how 13 subnets were missing from it.
+  test("applies the owner exception per subnet from the economics rows", async () => {
+    const scan = [
+      scanRow(5, 0, { hotkey: "5V0", stake_tao: 5000 }),
+      scanRow(5, 9, { hotkey: "5OWNER", stake_tao: 0 }),
+    ];
+    const withoutOwner = await buildValidatorEconomicsRankingPayload(
+      rankEnv(scan).env,
+      {},
+      rankDeps([pool(5)]),
+    );
+    // Without the owner the floor is withheld, so the subnet cannot be priced and
+    // drops out of the ranking entirely — not merely flagged within it.
+    assert.deepEqual(withoutOwner.data.rows, []);
+    assert.equal((withoutOwner.data.excluded as Row[])[0]?.netuid, 5);
+    const withOwner = await buildValidatorEconomicsRankingPayload(
+      rankEnv(scan).env,
+      {},
+      rankDeps([pool(5, { owner_hotkey: "5OWNER" })]),
+    );
+    assert.equal((withOwner.data.rows as Row[])[0]?.degraded_reason, null);
+    assert.equal((withOwner.data.rows as Row[])[0]?.permit_floor_units, 1000);
+  });
+
   test("derives one row per subnet from a single grouped scan", async () => {
     const { env } = rankEnv([
       scanRow(5, 0),
@@ -730,7 +813,11 @@ describe("validator-economics routing", () => {
 });
 
 describe("buildSubnetValidatorEconomicsHistoryPayload", () => {
-  function historyEnv(neuronRows: Row[], emissionRows: Row[] = []) {
+  function historyEnv(
+    neuronRows: Row[],
+    emissionRows: Row[] = [],
+    capRows: Row[] = [],
+  ) {
     const sql: string[] = [];
     const binds: unknown[][] = [];
     return {
@@ -740,13 +827,25 @@ describe("buildSubnetValidatorEconomicsHistoryPayload", () => {
         METAGRAPH_HEALTH_DB: {
           prepare(query: string) {
             sql.push(query);
-            const isEmission = /subnet_snapshots/.test(query);
+            // Three different reads share this stub, so each has to be told apart by
+            // its table — returning the neuron rows for all of them would let a
+            // broken cap query pass by accident.
+            const table = /subnet_snapshots/.test(query)
+              ? "emission"
+              : /subnet_hyperparams_history/.test(query)
+                ? "cap"
+                : "neurons";
             return {
               bind(...args: unknown[]) {
                 binds.push(args);
                 return {
                   all: async () => ({
-                    results: isEmission ? emissionRows : neuronRows,
+                    results:
+                      table === "emission"
+                        ? emissionRows
+                        : table === "cap"
+                          ? capRows
+                          : neuronRows,
                   }),
                 };
               },
@@ -774,10 +873,123 @@ describe("buildSubnetValidatorEconomicsHistoryPayload", () => {
       /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \?/,
     );
     assert.match(sql[0], /LIMIT \?/);
+    // The owner's unconditional permit has to be identifiable to stay out of the
+    // observed floor.
+    assert.match(sql[0], /hotkey/);
     assert.equal(binds[0][0], 7);
     // The cutoff is a date string, not a timestamp — snapshot_date is TEXT.
     assert.match(String(binds[0][1]), /^\d{4}-\d{2}-\d{2}$/);
     assert.equal(typeof binds[0][2], "number");
+  });
+
+  // the series was not self-contained. `permit_floor_alpha` is the observed
+  // floor regardless of cap state, so reading it needs the cap — which lived only on
+  // the current record, making the join wrong for any subnet whose cap had moved.
+  test("stamps the cap and the full-set flag onto every point", async () => {
+    const { env } = historyEnv([
+      dayRow("2026-08-01"),
+      dayRow("2026-08-01", { stake_tao: 3000 }),
+    ]);
+    const { data } = await buildSubnetValidatorEconomicsHistoryPayload(
+      env,
+      7,
+      "7d",
+      {
+        loadEconomicsRow: (async () => ({
+          row: { max_validators: 2 },
+          generatedAt: null,
+        })) as never,
+      },
+    );
+    const points = data.points as Array<Row>;
+    assert.equal(points[0].max_validators, 2);
+    assert.equal(points[0].permit_set_full, true, "2 permitted for 2 slots");
+    assert.equal(
+      points[0].max_validators_source,
+      "current",
+      "no change-log entry reaches this day, so the live cap is reported AS the live cap",
+    );
+  });
+
+  // Stamping today's cap onto an old point manufactures a transition that never
+  // happened — the reason the cap was left out of the series in the first place. The
+  // change-log is what makes it publishable: the cap in force on a day is the newest
+  // entry at or before it.
+  test("resolves the cap per day from the hyperparameter change-log", async () => {
+    const { env, sql } = historyEnv(
+      [dayRow("2026-08-01"), dayRow("2026-08-03")],
+      [],
+      [
+        // Raised from 8 to 64 on 2026-08-02.
+        { observed_at: Date.parse("2026-07-01T00:00:00Z"), max_validators: 8 },
+        { observed_at: Date.parse("2026-08-02T12:00:00Z"), max_validators: 64 },
+      ],
+    );
+    const { data } = await buildSubnetValidatorEconomicsHistoryPayload(
+      env,
+      7,
+      "30d",
+      {
+        loadEconomicsRow: (async () => ({
+          row: { max_validators: 64 },
+          generatedAt: null,
+        })) as never,
+      },
+    );
+    assert.match(sql[2], /FROM subnet_hyperparams_history/);
+    // The change-log is deliberately NOT bounded by the window: the cap on day one is
+    // whatever the last change before the window set.
+    assert.doesNotMatch(sql[2], /observed_at >= \?/);
+    const byDate = new Map(
+      (data.points as Array<Row>).map((p) => [p.snapshot_date, p]),
+    );
+    assert.equal(byDate.get("2026-08-01")?.max_validators, 8);
+    assert.equal(byDate.get("2026-08-01")?.max_validators_source, "observed");
+    assert.equal(byDate.get("2026-08-03")?.max_validators, 64);
+    assert.equal(byDate.get("2026-08-03")?.max_validators_source, "observed");
+  });
+
+  test("keeps the owner's unconditional permit out of the observed floor", async () => {
+    const { env } = historyEnv([
+      dayRow("2026-08-01", { stake_tao: 4000, hotkey: "5V0" }),
+      dayRow("2026-08-01", { stake_tao: 0, hotkey: "5OWNER" }),
+    ]);
+    const { data } = await buildSubnetValidatorEconomicsHistoryPayload(
+      env,
+      7,
+      "7d",
+      {
+        loadEconomicsRow: (async () => ({
+          row: { max_validators: 64, owner_hotkey: "5OWNER" },
+          generatedAt: null,
+        })) as never,
+      },
+    );
+    const points = data.points as Array<Row>;
+    assert.equal(
+      points[0].permit_floor_alpha,
+      4000,
+      "a 0 here reads as free to validate",
+    );
+    assert.equal(points[0].validators_permitted, 2);
+  });
+
+  test("a cold economics tier leaves the cap null rather than guessing", async () => {
+    const { env } = historyEnv([dayRow("2026-08-01")]);
+    const { data } = await buildSubnetValidatorEconomicsHistoryPayload(
+      env,
+      7,
+      "7d",
+      {
+        loadEconomicsRow: (async () => ({
+          row: null,
+          generatedAt: null,
+        })) as never,
+      },
+    );
+    const points = data.points as Array<Row>;
+    assert.equal(points[0].max_validators, null);
+    assert.equal(points[0].permit_set_full, null);
   });
 
   test("joins the emission series from subnet_snapshots", async () => {

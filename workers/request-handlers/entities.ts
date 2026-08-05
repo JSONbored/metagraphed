@@ -3433,14 +3433,16 @@ const VALIDATOR_ECONOMICS_FIELD_SOURCES = {
 // The per-UID columns the derivation needs, and no more. `stake_tao` is the metagraph's
 // `total_stake` — it ALREADY contains the root leg at tao_weight, so it is passed
 // through untouched; recombining it from legs is the #9331 bug.
+// `hotkey` is here only so the owner-exception path can find the owner's UID.
 const VALIDATOR_ECONOMICS_NEURON_COLUMNS =
-  "uid, stake_tao, validator_permit, dividends, active, take";
+  "uid, hotkey, stake_tao, validator_permit, dividends, active, take";
 
 function toValidatorNeurons(
   rows: Array<Record<string, unknown>>,
 ): ValidatorNeuron[] {
   return rows.map((row) => ({
     uid: Number(row.uid),
+    hotkey: row.hotkey == null ? null : String(row.hotkey),
     totalStake: Number(row.stake_tao ?? 0),
     validatorPermit: Number(row.validator_permit) === 1,
     dividends: Number(row.dividends ?? 0),
@@ -3546,6 +3548,9 @@ export async function buildSubnetValidatorEconomicsPayload(
       hyperRow?.min_childkey_take_ratio != null
         ? Number(hyperRow.min_childkey_take_ratio)
         : null,
+    // the economics row is the only tier here that carries subnet ownership.
+    ownerHotkey:
+      economics?.owner_hotkey != null ? String(economics.owner_hotkey) : null,
   });
 
   const data = validatorEconomicsWire(
@@ -3671,6 +3676,19 @@ const VALIDATOR_ECONOMICS_HISTORY_FIELD_SOURCES = {
     kind: "reconstructed",
     storage: "SubtensorModule.SubnetTaoInEmission",
   },
+  // The cap is read live and stamped onto every point, so unlike its neighbours
+  // it is NOT observed off that day's snapshot — a subnet whose cap moved inside the
+  // window carries today's value on older points. That is still strictly better than
+  // the join it replaces (the consumer had no cap at all), and labelling it `measured`
+  // against the live storage item is what says so.
+  max_validators: {
+    kind: "measured",
+    storage: "SubtensorModule.MaxAllowedValidators",
+  },
+  permit_set_full: {
+    kind: "reconstructed",
+    storage: "SubtensorModule.ValidatorPermit",
+  },
 } as const;
 
 // GET /api/v1/subnets/{netuid}/validator-economics/history (#9326): the observed
@@ -3680,7 +3698,11 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
   env: Env,
   netuid: number,
   windowLabel: string,
+  // Same injection seam the per-subnet composer uses: the economics row is an artifact
+  // read, and a test that cannot stub it exercises only the cap-unknown path.
+  deps: { loadEconomicsRow?: typeof resolveSubnetEconomicsRow } = {},
 ): Promise<{ data: Record<string, unknown> }> {
+  const readEconomicsRow = deps.loadEconomicsRow ?? resolveSubnetEconomicsRow;
   const days = VALIDATOR_ECONOMICS_HISTORY_WINDOWS[windowLabel];
   const cutoff = new Date(Date.now() - days * 86_400_000)
     .toISOString()
@@ -3691,7 +3713,9 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
     ? ((
         await db
           .prepare(
-            "SELECT snapshot_date, stake_tao, validator_permit, dividends, active " +
+            // `hotkey` is selected only so the owner's unconditional permit can be kept
+            // out of the observed floor.
+            "SELECT snapshot_date, hotkey, stake_tao, validator_permit, dividends, active " +
               "FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? " +
               "ORDER BY snapshot_date DESC LIMIT ?",
           )
@@ -3712,6 +3736,27 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
       )?.results ?? [])
     : [];
 
+  // The cap travels on every point so the observed floor is interpretable without a
+  // join, and the owner is what keeps its unconditional permit out of that floor.
+  //
+  // The cap is resolved per day from the hyperparameter CHANGE-LOG, not stamped from the
+  // live value: applying today's cap to an old snapshot manufactures a transition that
+  // never happened. Rows before the window still matter — the cap in force on day one is
+  // whatever the last change before it set — so this is not bounded by the cutoff.
+  const capHistory = db
+    ? ((
+        await db
+          .prepare(
+            "SELECT observed_at, max_validators FROM subnet_hyperparams_history " +
+              "WHERE netuid = ? AND max_validators IS NOT NULL ORDER BY observed_at ASC",
+          )
+          .bind(netuid)
+          .all()
+      )?.results ?? [])
+    : [];
+
+  const { row: economics } = await readEconomicsRow(env, netuid);
+
   return {
     data: {
       schema_version: 1,
@@ -3720,6 +3765,17 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
       points: buildValidatorEconomicsHistory(
         neuronRows as never,
         emissionRows as never,
+        {
+          maxValidators:
+            economics?.max_validators != null
+              ? Number(economics.max_validators)
+              : null,
+          capHistory: capHistory as never,
+          ownerHotkey:
+            economics?.owner_hotkey != null
+              ? String(economics.owner_hotkey)
+              : null,
+        },
       ),
       field_sources: VALIDATOR_ECONOMICS_HISTORY_FIELD_SOURCES,
     },
@@ -3864,6 +3920,12 @@ export async function buildValidatorEconomicsRankingPayload(
         taoInEmissionPerBlock:
           economics?.tao_in_emission_tao != null
             ? Number(economics.tao_in_emission_tao)
+            : null,
+        // same owner exception the per-subnet route applies — without it this
+        // route drops every owner-below-threshold subnet into `excluded`.
+        ownerHotkey:
+          economics?.owner_hotkey != null
+            ? String(economics.owner_hotkey)
             : null,
       }),
       netuid,

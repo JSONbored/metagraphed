@@ -18,6 +18,7 @@ import {
   okLatencyMs,
 } from "./health-probe-core.ts";
 import { spotPriceTao } from "./stake-quote.ts";
+import { NETWORK_PARAMETERS_KV_TTL } from "./network-parameters.ts";
 import { KV_ECONOMICS_CURRENT, KV_HEALTH_CURRENT } from "./kv-keys.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
 
@@ -432,12 +433,78 @@ export function overlayRpcPoolEligibility(
   };
 }
 
-// Set the live health-probe freshness onto the static freshness artifact.
+/**
+ * One serve-time lane: a tier that moves on its OWN schedule, not the publish's, so
+ * the built artifact can never carry its timestamp.
+ */
+function liveFreshnessSource({
+  id,
+  lane,
+  asOf,
+  maxAgeMs,
+  path,
+  timestampField,
+  notes,
+  now,
+}: {
+  id: string;
+  lane: string;
+  asOf: unknown;
+  maxAgeMs: number;
+  path: string;
+  timestampField: string;
+  notes: string;
+  now: number;
+}): Row {
+  const parsed = typeof asOf === "string" ? Date.parse(asOf) : NaN;
+  // "missing" is a third state, distinct from stale: a lane whose store is cold has no
+  // age at all, and reporting that as stale would invent an age it does not have.
+  const status = !Number.isFinite(parsed)
+    ? "missing"
+    : now - parsed > maxAgeMs
+      ? "stale"
+      : "current";
+  return {
+    as_of: status === "missing" ? null : asOf,
+    id,
+    lane,
+    notes,
+    path,
+    required_for_publish: false,
+    // These lanes are independent of the publish, so they can never block it — but a
+    // consumer still has to be able to gate on them, which is the whole point.
+    stale_after_hours: maxAgeMs / 3_600_000,
+    stale_behavior: "warn",
+    status,
+    timestamp: status === "missing" ? null : asOf,
+    timestamp_field: timestampField,
+  };
+}
+
+/**
+ * Set the live freshness onto the static freshness artifact.
+ *
+ * Three lanes here are NOT the publish's: the 15-minute surface prober, the ~3-hourly
+ * economics refresh, and the per-request live chain reads. The built artifact stamps
+ * only what the publish itself captured, so before this change the route reported a
+ * `native_data_as_of` from the last publish while `/economics` served a snapshot hours
+ * newer and `/network/parameters` served one seconds old — and neither appeared here at
+ * all. A freshness route that omits the freshest lanes cannot answer the one question it
+ * exists for, and a consumer gating on it would reject data that was current.
+ */
 export function mergeFreshness(
   staticFreshness: Row | null | undefined,
   liveMeta: Row | null | undefined,
+  liveLanes: {
+    /** `captured_at` off the economics KV blob — the same field /economics returns. */
+    economicsCapturedAt?: unknown;
+    /** `queried_at` off the cached live-RPC parameters snapshot. */
+    parametersQueriedAt?: unknown;
+    now?: number;
+  } = {},
 ): Row | null {
   if (!liveMeta || !staticFreshness) return null;
+  const now = liveLanes.now ?? Date.now();
   const sources = Array.isArray(staticFreshness.sources)
     ? (staticFreshness.sources as Row[]).map((source) =>
         source.id === "surface-health"
@@ -452,13 +519,51 @@ export function mergeFreshness(
           : source,
       )
     : staticFreshness.sources;
+
+  const economics = liveFreshnessSource({
+    id: "economics-live",
+    lane: "economics",
+    asOf: liveLanes.economicsCapturedAt,
+    // The same window the serving tier itself gates on, so this route and
+    // `resolveLiveEconomics` can never disagree about whether economics is stale.
+    maxAgeMs: ECONOMICS_FRESHNESS_MAX_AGE_MS,
+    path: "/api/v1/economics",
+    timestampField: "captured_at",
+    notes:
+      "Refreshed on its own ~3h schedule, independent of the data publish. " +
+      "`as_of` is the captured_at /api/v1/economics returns for the same blob.",
+    now,
+  });
+
+  const liveRpc = liveFreshnessSource({
+    id: "chain-parameters",
+    lane: "live-rpc",
+    asOf: liveLanes.parametersQueriedAt,
+    // Read per request behind a short KV cache, so anything older than a few multiples
+    // of that TTL means the RPC reads are failing, not merely uncached.
+    maxAgeMs: NETWORK_PARAMETERS_KV_TTL * 1000 * 4,
+    path: "/api/v1/network/parameters",
+    timestampField: "queried_at",
+    notes:
+      "Read live from chain RPC per request behind a ~5 minute cache. " +
+      "`as_of` is the queried_at /api/v1/network/parameters returns.",
+    now,
+  });
+
   return {
     ...staticFreshness,
-    sources,
+    // A malformed artifact whose `sources` is not an array passes through untouched,
+    // as it always has — appending to it would turn a string into a list of characters.
+    // The summary below still carries both lanes, so they are never silently lost.
+    sources: Array.isArray(sources)
+      ? [...(sources as Row[]), economics, liveRpc]
+      : sources,
     summary: {
       ...(staticFreshness.summary as Row),
       health_probe_as_of: liveMeta.last_run_at,
       operational_probe_as_of: liveMeta.last_run_at,
+      economics_as_of: economics.as_of,
+      live_rpc_as_of: liveRpc.as_of,
     },
   };
 }

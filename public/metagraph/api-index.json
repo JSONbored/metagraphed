@@ -2195,7 +2195,7 @@
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
-  "openapi_url": "/api/v1/openapi.json",
+  "openapi_url": "/metagraph/openapi.json",
   "primary_domain": "api.metagraph.sh",
   "response_envelope": {
     "error_schema_ref": "#/components/schemas/ErrorEnvelope",

@@ -5,10 +5,10 @@
 //
 // ## The rule, read from subtensor v441 (the deployed runtime), not inferred
 //
-//   validator_permit = top max_validators by total_stake,
-//                      among UIDs with total_stake >= StakeThreshold
+// validator_permit = top max_validators by total_stake,
+// among UIDs with total_stake >= StakeThreshold
 //
-//   total_stake = alpha + tao_weight * root      <- RAW rao, NOT normalised per leg
+// total_stake = alpha + tao_weight * root      <- RAW rao, NOT normalised per leg
 //
 // `staking/stake_utils.rs:278` combines the legs; `epoch/run_epoch.rs:246-261` filters
 // on the result then takes `is_topk_nonzero`. `StakeThreshold` raw is
@@ -36,11 +36,11 @@
 //
 // ## Two refusals, each a wrong answer found while measuring
 //
-//  1. `stakeThreshold` and `taoWeight` are PARAMETERS, never constants. A module that
-//     bakes in 1000 / 0.18 keeps returning confident, wrong floors after a governance
-//     change with nothing anywhere to notice.
-//  2. Rewards accrue as alpha. Realised revenue must go through `ammProceedsTao` — a
-//     spot mark overstates, because selling drains the pool it is priced against.
+// 1. `stakeThreshold` and `taoWeight` are PARAMETERS, never constants. A module that
+// bakes in 1000 / 0.18 keeps returning confident, wrong floors after a governance
+// change with nothing anywhere to notice.
+// 2. Rewards accrue as alpha. Realised revenue must go through `ammProceedsTao` — a
+// spot mark overstates, because selling drains the pool it is priced against.
 
 /** One UID's economics, normalised away from any tier's column shape. */
 export type ValidatorNeuron = {
@@ -60,6 +60,12 @@ export type ValidatorNeuron = {
    * which would drag the median toward a floor nobody actually set.
    */
   take?: number | null;
+  /**
+   * SS58 of the hotkey at this UID. Optional for the same reason `take` is: only the
+   * owner-exception path reads it, and a caller that cannot supply it gets the
+   * the earlier behaviour rather than a crash.
+   */
+  hotkey?: string | null;
 };
 
 /** How far `modelAgreement` may fall before a derived floor stops being publishable. */
@@ -216,14 +222,68 @@ function ranked(
   );
 }
 
-// The permit set the rule implies: top-k by total stake among those clearing the threshold.
+// The subnet owner's UID, when the owner hotkey is registered on its own subnet.
+//
+// Null when no owner hotkey was supplied (callers that predate ) or when the owner
+// holds no UID here — an owner can run its subnet without registering a neuron on it.
+export function ownerUid(
+  neurons: readonly ValidatorNeuron[],
+  ownerHotkey?: string | null,
+): number | null {
+  if (!ownerHotkey) return null;
+  for (const n of neurons)
+    if (n.hotkey && n.hotkey === ownerHotkey) return n.uid;
+  return null;
+}
+
+// Validator slots left for everyone who is not the subnet owner.
+//
+// The owner's permit is unconditional but it is still ONE OF the `maxValidators` permits
+// the subnet issues, so it comes out of the same budget. Where the cap does not bind
+// this changes nothing; where it does, ignoring it would report a floor one rank too low.
+function competitorSlots(maxValidators: number, owner: number | null): number {
+  return Math.max(0, maxValidators - (owner === null ? 0 : 1));
+}
+
+// Eligible UIDs ranked by stake, with the owner removed — the field a non-owner
+// actually competes against for the remaining slots.
+function rankedCompetitors(
+  neurons: readonly ValidatorNeuron[],
+  stakeThreshold: number,
+  owner: number | null,
+): ValidatorNeuron[] {
+  const all = ranked(neurons, stakeThreshold);
+  return owner === null ? all : all.filter((n) => n.uid !== owner);
+}
+
+// The permit set the rule implies: the subnet owner unconditionally, then top-k by total
+// stake among the remaining UIDs clearing the threshold.
+//
+// ## Why the owner is unconditional
+//
+// Measured 2026-08-05 across the 13 subnets whose agreement had fallen below the
+// publishable floor: 9 of 9 remaining residuals were the subnet owner holding a permit
+// the stake rule cannot explain — three of them at EXACTLY zero stake — and
+// over-prediction was 0 on every subnet. Modelling the owner takes all 13 to 1.0.
+//
+// The other 5 residuals present that day were transient: UIDs that had dropped below the
+// threshold but whose permit had not yet been recomputed. Permits recompute once per
+// tempo while stake moves continuously, so a snapshot always contains some. They cleared
+// on their own within the hour and are deliberately NOT modelled here — they are timing,
+// not a rule, and `modelAgreement` is what reports them.
 export function predictPermits(
   neurons: readonly ValidatorNeuron[],
   maxValidators: number,
   stakeThreshold: number,
+  ownerHotkey?: string | null,
 ): Set<number> {
+  const owner = ownerUid(neurons, ownerHotkey);
   const predicted = new Set<number>();
-  for (const n of ranked(neurons, stakeThreshold).slice(0, maxValidators)) {
+  if (owner !== null) predicted.add(owner);
+  for (const n of rankedCompetitors(neurons, stakeThreshold, owner).slice(
+    0,
+    competitorSlots(maxValidators, owner),
+  )) {
     // A zero-stake UID clears the threshold only if the threshold is itself zero, which
     // a governance change could do — do not claim a permit in that case.
     if (n.totalStake > 0) predicted.add(n.uid);
@@ -241,8 +301,14 @@ export function modelAgreement(
   neurons: readonly ValidatorNeuron[],
   maxValidators: number,
   stakeThreshold: number,
+  ownerHotkey?: string | null,
 ): ModelAgreement {
-  const predicted = predictPermits(neurons, maxValidators, stakeThreshold);
+  const predicted = predictPermits(
+    neurons,
+    maxValidators,
+    stakeThreshold,
+    ownerHotkey,
+  );
   const observed = new Set<number>();
   for (const n of neurons) if (n.validatorPermit) observed.add(n.uid);
 
@@ -269,8 +335,13 @@ export function capBinding(
   neurons: readonly ValidatorNeuron[],
   maxValidators: number,
   stakeThreshold: number,
+  ownerHotkey?: string | null,
 ): boolean {
-  return eligible(neurons, stakeThreshold).length >= maxValidators;
+  const owner = ownerUid(neurons, ownerHotkey);
+  return (
+    rankedCompetitors(neurons, stakeThreshold, owner).length >=
+    competitorSlots(maxValidators, owner)
+  );
 }
 
 // Total-stake units needed to hold a permit on this subnet.
@@ -278,11 +349,18 @@ export function permitFloorUnits(
   neurons: readonly ValidatorNeuron[],
   maxValidators: number,
   stakeThreshold: number,
+  ownerHotkey?: string | null,
 ): number {
-  if (!capBinding(neurons, maxValidators, stakeThreshold))
+  if (!capBinding(neurons, maxValidators, stakeThreshold, ownerHotkey))
     return stakeThreshold;
-  const marginal = ranked(neurons, stakeThreshold)[maxValidators - 1];
-  return Math.max(stakeThreshold, marginal.totalStake);
+  // The owner's unconditional permit is not a rank a non-owner can take, so the marginal
+  // seat is the last COMPETITOR slot — one lower than the raw cap when an owner holds one.
+  const owner = ownerUid(neurons, ownerHotkey);
+  const competitors = rankedCompetitors(neurons, stakeThreshold, owner);
+  const marginal = competitors[competitorSlots(maxValidators, owner) - 1];
+  return marginal === undefined
+    ? stakeThreshold
+    : Math.max(stakeThreshold, marginal.totalStake);
 }
 
 // Total stake held by the smallest permit-holder actually earning dividends.
@@ -291,11 +369,20 @@ export function permitFloorUnits(
 // requires submitting weights each epoch. Of ACTIVE permit-holders 97.8% earn; of
 // INACTIVE ones 1.3% do. Reported beside the floor, never instead of it. Null when
 // nobody on the subnet earns.
+//
+// The subnet owner is excluded for the same reason it never sets the permit floor
+//: its permit is unconditional, so an owner earning on ~0 stake would report an
+// earning floor of 0 — "free to earn here" — and, because a 0-alpha buy cannot be priced
+// against the pool, would then drop the whole subnet out of the cross-subnet ranking as
+// unpriceable. Both were happening.
 export function earningFloorUnits(
   neurons: readonly ValidatorNeuron[],
+  ownerHotkey?: string | null,
 ): number | null {
+  const owner = ownerUid(neurons, ownerHotkey);
   let floor: number | null = null;
   for (const n of neurons) {
+    if (owner !== null && n.uid === owner) continue;
     if (!n.validatorPermit || n.dividends <= 0) continue;
     if (floor === null || n.totalStake < floor) floor = n.totalStake;
   }
@@ -403,6 +490,13 @@ export type EconomicsInputs = {
   /** Live recycle/burn cost. Entry is two spends and publishing one understates it. */
   registrationCostTao?: number | null;
   minChildkeyTakeRatio?: number | null;
+  /**
+   * The subnet owner's hotkey. The owner holds a validator permit unconditionally,
+   * so the permit model cannot reproduce the chain without it — absent, every subnet whose
+   * owner sits below the stake threshold reports a permanent model disagreement and stops
+   * publishing its floors.
+   */
+  ownerHotkey?: string | null;
 };
 
 // 12s blocks.
@@ -463,7 +557,13 @@ export function buildValidatorEconomics(
     return { ...blank, degradedReason: "no metagraph rows for this subnet" };
   }
 
-  const agreement = modelAgreement(neurons, maxValidators, stakeThreshold);
+  const ownerHotkey = inputs.ownerHotkey ?? null;
+  const agreement = modelAgreement(
+    neurons,
+    maxValidators,
+    stakeThreshold,
+    ownerHotkey,
+  );
   const composition = setComposition(neurons);
   // Composition and agreement are OBSERVED, not derived — they stay published even when
   // the model has drifted, because they are exactly what a caller needs to see why.
@@ -473,14 +573,36 @@ export function buildValidatorEconomics(
       composition,
       // Takes are observed too, and stay published for the same reason composition does.
       takes: takeDistribution(neurons),
+      // So are these four. Suppressing the FLOOR when the permit model has
+      // drifted is right — a wrong floor reads as a price. But none of these depends on
+      // the floor model:
+      // cap_binding / uids_above_threshold  count UIDs against the live threshold
+      // validator_slots_open                is max_validators minus observed permits
+      // root_tao_to_clear_threshold         is threshold / tao_weight, pure arithmetic
+      // Nulling them forced every consumer to guess, and the guess is asymmetric: assume
+      // an open cap on a subnet that is actually full and the floor you compute is too low.
+      capBinding: capBinding(
+        neurons,
+        maxValidators,
+        stakeThreshold,
+        ownerHotkey,
+      ),
+      uidsAboveThreshold: eligible(neurons, stakeThreshold).length,
+      validatorSlotsOpen: Math.max(0, maxValidators - composition.permitted),
+      rootTaoToClear: rootTaoToClear(stakeThreshold, taoWeight),
       modelAgreement: agreement,
       degradedReason:
         "permit model disagrees with observed permits on this subnet",
     };
   }
 
-  const floor = permitFloorUnits(neurons, maxValidators, stakeThreshold);
-  const earnFloor = earningFloorUnits(neurons);
+  const floor = permitFloorUnits(
+    neurons,
+    maxValidators,
+    stakeThreshold,
+    ownerHotkey,
+  );
+  const earnFloor = earningFloorUnits(neurons, ownerHotkey);
   const floorCost = ammCostTao(
     inputs.taoReserve ?? NaN,
     inputs.alphaReserve ?? NaN,
@@ -509,7 +631,7 @@ export function buildValidatorEconomics(
     permitToEarningMultiple:
       earnFloor === null || floor <= 0 ? null : earnFloor / floor,
     rootTaoToClear: rootTaoToClear(stakeThreshold, taoWeight),
-    capBinding: capBinding(neurons, maxValidators, stakeThreshold),
+    capBinding: capBinding(neurons, maxValidators, stakeThreshold, ownerHotkey),
     uidsAboveThreshold: eligible(neurons, stakeThreshold).length,
     validatorSlotsOpen: Math.max(0, maxValidators - composition.permitted),
     composition,
@@ -565,6 +687,26 @@ export const VALIDATOR_ECONOMICS_SORTS = [
 ] as const;
 export type ValidatorEconomicsSort = (typeof VALIDATOR_ECONOMICS_SORTS)[number];
 
+/**
+ * Thrown when a caller names a sort key that does not exist.
+ *
+ * A distinct type rather than a bare Error so each surface can map it to its own
+ * shape — REST to a 400, MCP to `invalid_params` — without string-matching a message.
+ */
+export class UnsupportedSortError extends Error {
+  // Plain fields, not constructor parameter properties: these modules are loaded by
+  // Node's strip-only TypeScript mode, which rejects that syntax outright.
+  readonly supported: readonly string[] = VALIDATOR_ECONOMICS_SORTS;
+  readonly requested: string;
+  constructor(requested: string) {
+    super(
+      `${requested} is not a supported sort. Supported: ${VALIDATOR_ECONOMICS_SORTS.join(", ")}.`,
+    );
+    this.name = "UnsupportedSortError";
+    this.requested = requested;
+  }
+}
+
 /** Ascending for costs (cheapest first), descending for the "more is better" keys. */
 const DESCENDING_SORTS = new Set<string>([
   "tao_inflow_per_day",
@@ -610,6 +752,21 @@ export function rankValidatorEconomics(
   rows: readonly ValidatorEconomicsRow[],
   options: ValidatorEconomicsRankingOptions = {},
 ): ValidatorEconomicsRanking {
+  // An ABSENT sort takes the default; an unsupported one is rejected.
+  //
+  // These are different questions and this silently answered both with the default:
+  // asking to rank by `tao_inflow_per_day` and mistyping it returned a list ranked by
+  // cost, echoing `sort: "earning_floor_cost_tao"` back, with no error. The caller gets
+  // a plausible ranking that answers a question it did not ask — and on MCP, where the
+  // input schema is not enforced at dispatch, a model's guess landed here directly.
+  // REST already rejected the same input with a 400; the two surfaces now agree.
+  if (
+    options.sort != null &&
+    options.sort !== "" &&
+    !VALIDATOR_ECONOMICS_SORTS.includes(options.sort as ValidatorEconomicsSort)
+  ) {
+    throw new UnsupportedSortError(String(options.sort));
+  }
   const sort = VALIDATOR_ECONOMICS_SORTS.includes(
     options.sort as ValidatorEconomicsSort,
   )
@@ -680,6 +837,10 @@ export function groupNeuronsByNetuid(
     const bucket = out.get(row.netuid);
     const neuron: ValidatorNeuron = {
       uid: row.uid,
+      // Rebuilt field-by-field rather than spread, so every field this module reads has
+      // to be named here — `hotkey` included, or the owner exception silently
+      // sees an unowned subnet on the cross-subnet ranking route only.
+      hotkey: row.hotkey ?? null,
       totalStake: row.totalStake,
       validatorPermit: row.validatorPermit,
       dividends: row.dividends,
@@ -720,6 +881,42 @@ export type ValidatorEconomicsHistoryPoint = {
   validators_earning: number;
   emission_gate_open: boolean | null;
   tao_inflow_per_day: number | null;
+  /**
+   * The subnet's validator cap. Carried on every point because
+   * `permit_floor_alpha` is the observed floor REGARDLESS of cap state, so it cannot be
+   * read without knowing whether the cap was the binding constraint that day — and
+   * joining today's cap onto a historical point is silently wrong for any subnet whose
+   * cap moved inside the window, which is exactly the join a consumer was forced into.
+   *
+   * Resolved per day from the hyperparameter change-log where that reaches back far
+   * enough, and from the live cap otherwise — `max_validators_source` says which, so the
+   * approximation is never silent. Null when unknown, never 0: an unknown cap must not
+   * read as "no slots".
+   */
+  max_validators: number | null;
+  /**
+   * Where this point's `max_validators` came from.
+   *
+   * `observed` — the change-log recorded this cap at or before this day, so it is what
+   * the subnet actually had.
+   * `current`  — the change-log does not reach this far back, so the LIVE cap is
+   * reported. Correct unless the cap moved, which is precisely the case a consumer
+   * has to be able to detect. The change-log began filling 2026-08-04, so older
+   * points read `current` and become `observed` as it accumulates.
+   *
+   * Null exactly when `max_validators` is null.
+   */
+  max_validators_source: "observed" | "current" | null;
+  /**
+   * Whether the permit set was FULL on this day: `validators_permitted >= max_validators`.
+   *
+   * Deliberately NOT named `cap_binding`. The per-subnet record's `cap_binding` is a
+   * forward-looking measure over UIDs that CLEAR THE THRESHOLD (candidates against
+   * slots); only the permitted set survives in the daily snapshot, so the same name
+   * would ship a different quantity — the silent-mismatch class this module exists to
+   * avoid. Null when the cap is unknown.
+   */
+  permit_set_full: boolean | null;
 };
 
 type HistoryRow = {
@@ -728,11 +925,18 @@ type HistoryRow = {
   validator_permit: unknown;
   dividends: unknown;
   active: unknown;
+  hotkey?: unknown;
 };
 
 type HistoryEmissionRow = {
   snapshot_date: unknown;
   tao_in_emission_tao: unknown;
+};
+
+/** One `subnet_hyperparams_history` entry: a CHANGE, not a daily value. */
+type HistoryCapRow = {
+  observed_at: unknown;
+  max_validators: unknown;
 };
 
 function numeric(value: unknown): number {
@@ -752,7 +956,55 @@ function numeric(value: unknown): number {
 export function buildValidatorEconomicsHistory(
   rows: readonly HistoryRow[],
   emissionRows: readonly HistoryEmissionRow[] = [],
+  options: {
+    /** The LIVE cap, used only for days the change-log does not reach. */
+    maxValidators?: number | null;
+    /**
+     * `subnet_hyperparams_history` rows for this subnet: a change-log, so the cap in
+     * force on a given day is the newest entry at or before it, not an entry per day.
+     */
+    capHistory?: readonly HistoryCapRow[];
+    /**
+     * The subnet owner's hotkey. The owner's permit is unconditional, so its
+     * stake is not a floor anyone else can enter at — a subnet whose owner holds a
+     * permit at ~0 published `permit_floor_alpha: 0`, which reads as "free to validate",
+     * the same wrong answer the per-subnet route already fails closed on.
+     */
+    ownerHotkey?: string | null;
+  } = {},
 ): ValidatorEconomicsHistoryPoint[] {
+  const positiveCap = (value: unknown): number | null => {
+    const n = Number(value);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
+  const liveCap = positiveCap(options.maxValidators);
+  const ownerHotkey = options.ownerHotkey || null;
+
+  // Ascending by observation time so the newest entry at or before a day is a scan
+  // backwards from the end — a change-log, not a per-day series.
+  const capLog = [...(options.capHistory ?? [])]
+    .map((row) => ({
+      observedAt: Number(row.observed_at),
+      cap: positiveCap(row.max_validators),
+    }))
+    .filter((row) => Number.isFinite(row.observedAt) && row.cap !== null)
+    .sort((a, b) => a.observedAt - b.observedAt);
+
+  // The cap in force at the END of a day — the snapshot is taken across it, and a
+  // change landing that morning is the cap that day's permits were computed against.
+  const capForDate = (
+    date: string,
+  ): { cap: number | null; source: "observed" | "current" | null } => {
+    const endOfDay = Date.parse(`${date}T23:59:59.999Z`);
+    if (Number.isFinite(endOfDay)) {
+      for (let i = capLog.length - 1; i >= 0; i -= 1) {
+        if (capLog[i].observedAt <= endOfDay) {
+          return { cap: capLog[i].cap, source: "observed" };
+        }
+      }
+    }
+    return { cap: liveCap, source: liveCap === null ? null : "current" };
+  };
   const emissionByDate = new Map<string, number | null>();
   for (const row of emissionRows) {
     const date = String(row.snapshot_date);
@@ -795,11 +1047,18 @@ export function buildValidatorEconomicsHistory(
     const stake = numeric(row.stake_tao);
     point.permitted += 1;
     if (numeric(row.active) === 1) point.active += 1;
+    // The owner still COUNTS as permitted — that is observed truth — but its stake is
+    // not a price anyone else can pay, so it never sets a floor.
+    const isOwner =
+      ownerHotkey !== null &&
+      row.hotkey != null &&
+      String(row.hotkey) === ownerHotkey;
+    if (numeric(row.dividends) > 0) point.earning += 1;
+    if (isOwner) continue;
     if (point.permitFloor === null || stake < point.permitFloor) {
       point.permitFloor = stake;
     }
     if (numeric(row.dividends) > 0) {
-      point.earning += 1;
       if (point.earningFloor === null || stake < point.earningFloor) {
         point.earningFloor = stake;
       }
@@ -826,6 +1085,7 @@ export function buildValidatorEconomicsHistory(
       const inflow = emissionByDate.has(snapshot_date)
         ? (emissionByDate.get(snapshot_date) ?? null)
         : null;
+      const { cap, source: capSource } = capForDate(snapshot_date);
       return {
         snapshot_date,
         permit_floor_alpha: point.permitFloor,
@@ -835,6 +1095,9 @@ export function buildValidatorEconomicsHistory(
         validators_earning: point.earning,
         emission_gate_open: inflow === null ? null : inflow > 0,
         tao_inflow_per_day: inflow === null ? null : inflow * BLOCKS_PER_DAY,
+        max_validators: cap,
+        max_validators_source: capSource,
+        permit_set_full: cap === null ? null : point.permitted >= cap,
       };
     })
     .sort((a, b) => b.snapshot_date.localeCompare(a.snapshot_date));

@@ -36,7 +36,14 @@ test("envelopeResponse applies extra headers and skips null values", async () =>
     link: '<https://x/next>; rel="next"',
     "x-skip-me": null,
   });
-  assert.equal(res.headers.get("link"), '<https://x/next>; rel="next"');
+  // The caller's pagination link survives; the service-desc pointer is APPENDED to
+  // it rather than replacing it — RFC 8288 carries multiple values, and
+  // trading pagination away for discoverability would be a worse bargain.
+  assert.match(
+    res.headers.get("link") ?? "",
+    /<https:\/\/x\/next>; rel="next"/,
+  );
+  assert.match(res.headers.get("link") ?? "", /rel="service-desc"/);
   assert.equal(res.headers.has("x-skip-me"), false);
 });
 
@@ -52,7 +59,13 @@ test("envelopeResponse keeps extra headers on a 304 short-circuit", async () => 
     { link: '<https://x/next>; rel="next"' },
   );
   assert.equal(res.status, 304);
-  assert.equal(res.headers.get("link"), '<https://x/next>; rel="next"');
+  assert.match(
+    res.headers.get("link") ?? "",
+    /<https:\/\/x\/next>; rel="next"/,
+  );
+  // A 304 carries it too: a conditional request is exactly when a client that already
+  // has the body is still looking for the spec.
+  assert.match(res.headers.get("link") ?? "", /rel="service-desc"/);
 });
 
 // Regression guard: the two success builders (dataResponse + envelopeResponse)
@@ -143,4 +156,34 @@ test("envelopeResponse: a match returns a bodiless 304, a miss returns the body"
   const stale = await envelopeResponse(reqWith('"stale"'), payload, "standard");
   assert.equal(stale.status, 200);
   assert.equal(((await stale.json()) as Row).data.hello, "world");
+});
+
+// The OpenAPI spec is published and complete, but the `service-desc` Link was
+// emitted only on `/`, and the api index advertised `/api/v1/openapi.json` — which
+// serves the spec INSIDE the success envelope, so it carries no top-level `openapi`
+// key and every generator pointed at it fails. An external integrator hand-probed
+// routes and reported that no spec existed. Both pointers now name the raw artifact,
+// and every API response carries one.
+test("every API response points at the OpenAPI document", async () => {
+  const payload = { data: { ok: 1 }, meta: { contract_version: "test" } };
+  const res = await envelopeResponse(reqWith(null), payload, "standard");
+  const link = res.headers.get("link") ?? "";
+  assert.match(link, /rel="service-desc"/);
+  assert.match(
+    link,
+    /\/metagraph\/openapi\.json/,
+    "the RAW artifact — the enveloped route is not a valid OpenAPI document",
+  );
+  assert.doesNotMatch(link, /\/api\/v1\/openapi\.json/);
+});
+
+test("the api index and the contracts artifact agree on where the spec is", async () => {
+  // These two pointers disagreed, and the more prominent one was the broken one.
+  const { buildApiIndexArtifact, buildContractsArtifact } =
+    await import("../src/contracts.ts");
+  const generatedAt = "2026-08-05T00:00:00.000Z";
+  const contracts = buildContractsArtifact(generatedAt);
+  const index = buildApiIndexArtifact(generatedAt, contracts) as Row;
+  assert.equal((contracts as Row).openapi_url, "/metagraph/openapi.json");
+  assert.equal(index.openapi_url, (contracts as Row).openapi_url);
 });

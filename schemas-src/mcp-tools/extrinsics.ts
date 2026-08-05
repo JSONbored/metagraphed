@@ -3,6 +3,14 @@
 // schemas-src/routes/'s covered pilot routes -- no existing Zod schema to
 // reuse. Modeled fresh, matching each hand-written literal field-for-field.
 import { z } from "zod";
+import { limitSchema, offsetSchema } from "./shared.ts";
+
+/**
+ * Page-size ceiling for the extrinsics feeds and the two fixed-call_module feeds
+ * modelled on them (get_sudo, get_governance_config_changes). Exported so those two
+ * read it rather than restating it — they previously declared no maximum at all.
+ */
+export const EXTRINSICS_LIMIT_MAX = 100;
 import {
   AccountEventItemSchema,
   ExtrinsicItemSchema,
@@ -23,8 +31,8 @@ export const ListExtrinsicsInputSchema = z
     block_end: z.int().min(0).optional(),
     from: z.int().min(0).optional(),
     to: z.int().min(0).optional(),
-    limit: z.int().min(1).max(100).optional(),
-    offset: z.int().min(0).optional(),
+    limit: limitSchema(EXTRINSICS_LIMIT_MAX).optional(),
+    offset: offsetSchema().optional(),
     cursor: z.string().optional(),
   })
   .strict();

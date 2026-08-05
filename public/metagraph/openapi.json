@@ -1601,7 +1601,7 @@
             "contract_version": "2026-06-29.1",
             "generated_at": "2026-06-01T00:00:00.000Z",
             "notes": "Example description.",
-            "openapi_url": "/api/v1/openapi.json",
+            "openapi_url": "/metagraph/openapi.json",
             "primary_domain": "api.metagraph.sh",
             "response_envelope": {
               "error_schema_ref": "#/components/schemas/ErrorEnvelope",
@@ -5255,7 +5255,7 @@
                 "lane": "adapter-snapshot",
                 "path": "example",
                 "required_for_publish": true,
-                "stale_after_hours": 1,
+                "stale_after_hours": 0.5,
                 "stale_behavior": "block",
                 "status": "captured",
                 "timestamp": "example",
@@ -5267,8 +5267,10 @@
               "adapter_snapshot_as_of": "example",
               "blocking_source_count": 5000000,
               "candidate_discovery_as_of": "example",
+              "economics_as_of": "example",
               "health_probe_as_of": "example",
               "health_surface_count": 1,
+              "live_rpc_as_of": "example",
               "missing_blocking_source_count": 5000000,
               "native_data_as_of": "example",
               "native_snapshot_captured_at": "2026-06-01T00:00:00.000Z",
@@ -10843,7 +10845,10 @@
               {
                 "earning_floor_alpha": 0.5,
                 "emission_gate_open": false,
+                "max_validators": 1,
+                "max_validators_source": "observed",
                 "permit_floor_alpha": 0.5,
+                "permit_set_full": false,
                 "snapshot_date": "example",
                 "tao_inflow_per_day": 0.5,
                 "validators_active": 1,
@@ -16842,7 +16847,7 @@
             ]
           },
           "openapi_url": {
-            "const": "/api/v1/openapi.json",
+            "const": "/metagraph/openapi.json",
             "type": "string"
           },
           "primary_domain": {
@@ -28534,7 +28539,9 @@
                     "candidate-verification",
                     "health-probe",
                     "native-data",
-                    "schema-snapshot"
+                    "schema-snapshot",
+                    "economics",
+                    "live-rpc"
                   ],
                   "type": "string"
                 },
@@ -28548,9 +28555,8 @@
                   "type": "boolean"
                 },
                 "stale_after_hours": {
-                  "maximum": 9007199254740991,
                   "minimum": 0,
-                  "type": "integer"
+                  "type": "number"
                 },
                 "stale_behavior": {
                   "enum": [
@@ -28639,6 +28645,16 @@
                   }
                 ]
               },
+              "economics_as_of": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "health_probe_as_of": {
                 "anyOf": [
                   {
@@ -28653,6 +28669,16 @@
                 "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
+              },
+              "live_rpc_as_of": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "missing_blocking_source_count": {
                 "maximum": 9007199254740991,
@@ -48549,10 +48575,46 @@
               }
             ]
           },
+          "max_validators": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "max_validators_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "observed",
+                  "current"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "permit_floor_alpha": {
             "anyOf": [
               {
                 "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "permit_set_full": {
+            "anyOf": [
+              {
+                "type": "boolean"
               },
               {
                 "type": "null"
@@ -48596,7 +48658,10 @@
           "validators_active",
           "validators_earning",
           "emission_gate_open",
-          "tao_inflow_per_day"
+          "tao_inflow_per_day",
+          "max_validators",
+          "max_validators_source",
+          "permit_set_full"
         ],
         "type": "object"
       },

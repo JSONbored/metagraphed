@@ -8,6 +8,8 @@
 // identical JSON Schema and the diff-audit script already treats them as
 // equal (see list_accounts/get_top_holders in #8070).
 import { z } from "zod";
+import { limitSchema, offsetSchema } from "./shared.ts";
+import { EXTRINSICS_LIMIT_MAX } from "./extrinsics.ts";
 import { ExtrinsicItemSchema } from "./shared.ts";
 import { FieldSourcesSchema, McpNetworkSchema } from "../shared.ts";
 
@@ -20,8 +22,11 @@ export const GetSudoInputSchema = z
     block_end: z.int().min(0).optional(),
     from: z.int().min(0).optional(),
     to: z.int().min(0).optional(),
-    limit: z.int().min(1).optional(),
-    offset: z.int().min(0).optional(),
+    // Both feeds say "same filters as list_extrinsics" and were modelled on it,
+    // but dropped its `.max(100)` — declaring unbounded while the tier they forward to
+    // caps at 100. A copy-paste omission, not a wider ceiling.
+    limit: limitSchema(EXTRINSICS_LIMIT_MAX).optional(),
+    offset: offsetSchema().optional(),
     cursor: z.string().optional(),
   })
   .strict();
@@ -69,8 +74,11 @@ export const GetGovernanceConfigChangesInputSchema = z
     block_end: z.int().min(0).optional(),
     from: z.int().min(0).optional(),
     to: z.int().min(0).optional(),
-    limit: z.int().min(1).optional(),
-    offset: z.int().min(0).optional(),
+    // Both feeds say "same filters as list_extrinsics" and were modelled on it,
+    // but dropped its `.max(100)` — declaring unbounded while the tier they forward to
+    // caps at 100. A copy-paste omission, not a wider ceiling.
+    limit: limitSchema(EXTRINSICS_LIMIT_MAX).optional(),
+    offset: offsetSchema().optional(),
     cursor: z.string().optional(),
   })
   .strict();

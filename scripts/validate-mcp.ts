@@ -10,6 +10,16 @@ import { existsSync, readFileSync } from "node:fs";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { handleRequest } from "../workers/api.ts";
 import { PRIMARY_DOMAIN, REPOSITORY_URL } from "../src/contracts.ts";
+import {
+  ACCOUNTS_LIST_LIMIT_MAX,
+  CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
+  CHAIN_TURNOVER_LIMIT_MAX,
+  GLOBAL_VALIDATOR_LIMIT_MAX,
+  MOVERS_LIMIT_MAX,
+  SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+  TOP_HOLDERS_LIMIT_MAX,
+  VALIDATOR_ECONOMICS_LIMIT_MAX,
+} from "../src/route-limits.ts";
 import { MCP_SERVER_INFO } from "../src/mcp-server.ts";
 import {
   MCP_SERVER_VERSION,
@@ -321,6 +331,105 @@ for (const tool of tools) {
     tool.inputSchema?.type,
     "object",
     `${tool.name}: inputSchema must be an object schema`,
+  );
+}
+
+// --- Input-schema honesty ------------------------------------------
+//
+// The published input schema is the WHOLE contract an MCP client sees: dispatch
+// validates that arguments are an object and nothing else — no types, no enums, no
+// bounds — so a schema that misdescribes a parameter is not caught anywhere at runtime.
+// Three classes had accumulated, all of them invisible to the one assertion above.
+
+const SENTINEL_MAX = Number.MAX_SAFE_INTEGER;
+const SENTINEL_MIN = Number.MIN_SAFE_INTEGER;
+
+/** Walk every subschema of a published input schema, with a readable path. */
+function* walkSchema(
+  schema: unknown,
+  path = "",
+): Generator<{ path: string; node: Row }> {
+  if (!schema || typeof schema !== "object") return;
+  if (Array.isArray(schema)) {
+    for (const [index, entry] of schema.entries()) {
+      yield* walkSchema(entry, `${path}[${index}]`);
+    }
+    return;
+  }
+  const node = schema as Row;
+  yield { path: path || ".", node };
+  for (const [key, value] of Object.entries(node)) {
+    if (value && typeof value === "object") {
+      yield* walkSchema(value, path ? `${path}.${key}` : key);
+    }
+  }
+}
+
+for (const tool of tools) {
+  for (const { path, node } of walkSchema(tool.inputSchema)) {
+    if (node.type !== "integer") continue;
+    // Zod's `z.int()` carries the safe-integer range as a real constraint, so every
+    // integer parameter published one whether or not anyone chose it — which made a
+    // deliberate `.max()` indistinguishable from the default. listToolDefinitions()
+    // strips them; this is what keeps a newly-added `z.int()` from reintroducing the
+    // class. Add a real `.max()`, or leave the parameter genuinely unbounded.
+    assert.notEqual(
+      node.maximum,
+      SENTINEL_MAX,
+      `${tool.name}: ${path} publishes Zod's safe-integer sentinel as a maximum`,
+    );
+    assert.notEqual(
+      node.minimum,
+      SENTINEL_MIN,
+      `${tool.name}: ${path} publishes Zod's safe-integer sentinel as a minimum`,
+    );
+  }
+}
+
+// Every `limit` must declare the same ceiling the mirrored REST route enforces. #8251
+// moved a ceiling in one place and left the published contract declaring the old one,
+// so a client generated from our own spec rejected the request our own site makes;
+// src/route-limits.ts exists to make that impossible and only helps if it is read.
+const MCP_LIMIT_CEILINGS: Record<string, number> = {
+  list_global_validators: GLOBAL_VALIDATOR_LIMIT_MAX,
+  list_validator_economics: VALIDATOR_ECONOMICS_LIMIT_MAX,
+  get_subnet_movers: MOVERS_LIMIT_MAX,
+  get_chain_turnover: CHAIN_TURNOVER_LIMIT_MAX,
+  get_top_holders: TOP_HOLDERS_LIMIT_MAX,
+  list_accounts: ACCOUNTS_LIST_LIMIT_MAX,
+  get_subnet_event_summary: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+  get_chain_identity_history: CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
+};
+for (const [name, ceiling] of Object.entries(MCP_LIMIT_CEILINGS)) {
+  const tool = tools.find((entry: Row) => entry.name === name);
+  assert.ok(tool, `${name}: named in MCP_LIMIT_CEILINGS but not published`);
+  const limit = ((tool.inputSchema as Row)?.properties as Row)?.limit as Row;
+  assert.ok(limit, `${name}: has a route-limit ceiling but no limit parameter`);
+  assert.equal(
+    limit.maximum,
+    ceiling,
+    `${name}: declares limit maximum ${limit.maximum} but src/route-limits.ts says ${ceiling}`,
+  );
+}
+
+// A parameter whose description enumerates a closed set must DECLARE that set. An
+// agent cannot be expected to parse prose to avoid a guaranteed rejection, and the
+// same server already declared enums for 54 of 55 window parameters — so the misses
+// read as oversights, not as a different convention.
+const ENUM_REQUIRED: Array<[string, string]> = [
+  ["list_validator_economics", "sort"],
+  ["get_subnet_validator_economics_history", "window"],
+  ["call_rpc", "method"],
+  ["get_subnet_burn_history", "window"],
+];
+for (const [name, param] of ENUM_REQUIRED) {
+  const tool = tools.find((entry: Row) => entry.name === name);
+  assert.ok(tool, `${name}: named in ENUM_REQUIRED but not published`);
+  const node = ((tool.inputSchema as Row)?.properties as Row)?.[param] as Row;
+  assert.ok(node, `${name}: no ${param} parameter to constrain`);
+  assert.ok(
+    Array.isArray(node.enum) && node.enum.length > 0,
+    `${name}.${param}: its description names a closed set, so the schema must declare an enum`,
   );
 }
 

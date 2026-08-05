@@ -3398,6 +3398,12 @@ export const SDL = /* GraphQL */ `
     validators_earning: Int!
     emission_gate_open: Boolean
     tao_inflow_per_day: Float
+    "The validator cap in force on this day. permit_floor_alpha is the observed floor REGARDLESS of cap state, so it cannot be read without this -- and joining today's cap onto an old point is wrong for any subnet whose cap moved."
+    max_validators: Int
+    "Where max_validators came from: observed = the hyperparameter change-log recorded it at or before this day; current = the change-log does not reach this far back, so the LIVE cap is reported."
+    max_validators_source: String
+    "Whether the permit set was full on this day (validators_permitted >= max_validators). NOT the same measure as the current record's cap_binding, which counts UIDs clearing the threshold against slots -- only the permitted set survives in a daily snapshot."
+    permit_set_full: Boolean
   }
 
   type SubnetValidatorEconomicsHistory {
@@ -3416,6 +3422,7 @@ export const SDL = /* GraphQL */ `
     permit_floor_cost_tao: Float
     "Floor cost plus the registration burn. Entry is two spends; publishing one understates it."
     permit_entry_cost_tao: Float
+    "The smallest stake that actually EARNS dividends here, excluding the subnet owner -- its permit is unconditional, so an owner earning on ~0 stake would report a floor of 0. Null when NO non-owner has earned on this subnet, which is a real answer (the owner is taking the dividends), not a missing one."
     earning_floor_units: Float
     earning_floor_cost_tao: Float
     earning_entry_cost_tao: Float

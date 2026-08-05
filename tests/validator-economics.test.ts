@@ -19,6 +19,7 @@ import {
   takeDistribution,
   buildValidatorEconomicsHistory,
   rankValidatorEconomics,
+  VALIDATOR_ECONOMICS_SORTS,
   groupNeuronsByNetuid,
   type ValidatorEconomicsRow,
   type ValidatorNeuron,
@@ -162,6 +163,109 @@ describe("predictPermits", () => {
     // Reachable only if the threshold is itself zero, which a governance change could do.
     assert.equal(predictPermits([n(0), n(1)], 2, 0).size, 0);
   });
+
+  // Shaped like SN5 on 2026-08-05: the owner holds a permit at EXACTLY zero
+  // stake, which the top-k-by-stake rule can never reproduce on its own.
+  test("grants the subnet owner a permit below the threshold", () => {
+    const rows = [
+      n(0, { totalStake: 5000, hotkey: "5A" }),
+      n(251, { totalStake: 0, hotkey: "5OWNER" }),
+    ];
+    assert.deepEqual(
+      [...predictPermits(rows, 64, 1000, "5OWNER")].sort(),
+      [0, 251],
+    );
+  });
+
+  test("without an owner hotkey the rule is unchanged", () => {
+    const rows = [
+      n(0, { totalStake: 5000, hotkey: "5A" }),
+      n(251, { totalStake: 0, hotkey: "5OWNER" }),
+    ];
+    assert.deepEqual([...predictPermits(rows, 64, 1000)], [0]);
+  });
+
+  test("an owner that holds no UID on its own subnet grants nothing", () => {
+    const rows = [n(0, { totalStake: 5000, hotkey: "5A" })];
+    assert.deepEqual([...predictPermits(rows, 64, 1000, "5ABSENT")], [0]);
+  });
+
+  test("the owner's permit comes out of the cap, not on top of it", () => {
+    // Two slots, an owner below the threshold, and two eligible competitors: the owner
+    // takes one slot, so only the STRONGER competitor gets the other.
+    const rows = [
+      n(0, { totalStake: 5000, hotkey: "5A" }),
+      n(1, { totalStake: 4000, hotkey: "5B" }),
+      n(9, { totalStake: 0, hotkey: "5OWNER" }),
+    ];
+    assert.deepEqual(
+      [...predictPermits(rows, 2, 1000, "5OWNER")].sort(),
+      [0, 9],
+    );
+  });
+
+  test("counts the owner once when it would have ranked in anyway", () => {
+    const rows = [
+      n(0, { totalStake: 9000, hotkey: "5OWNER" }),
+      n(1, { totalStake: 4000, hotkey: "5B" }),
+    ];
+    assert.deepEqual(
+      [...predictPermits(rows, 2, 1000, "5OWNER")].sort(),
+      [0, 1],
+    );
+  });
+});
+
+// the owner exception, measured. On 2026-08-05 thirteen subnets sat below the
+// publishable floor; 9 of 9 remaining residuals were the subnet owner and
+// over-prediction was 0 on every one of them. Modelling the owner takes all 13 to 1.0
+// and moves no other subnet — verified against all 128 live.
+describe("modelAgreement with the subnet owner", () => {
+  // SN68 on 2026-08-05: 5 observed permits, 4 explicable by stake, the fifth the owner.
+  function ownerResidualSubnet(): ValidatorNeuron[] {
+    const rows = [
+      n(0, { totalStake: 216.6, validatorPermit: true, hotkey: "5OWNER" }),
+    ];
+    for (let uid = 1; uid < 5; uid += 1)
+      rows.push(
+        n(uid, {
+          totalStake: 2000 + uid,
+          validatorPermit: true,
+          hotkey: `5V${uid}`,
+        }),
+      );
+    return rows;
+  }
+
+  test("an owner-only residual is a permanent, unpublishable disagreement", () => {
+    const a = modelAgreement(ownerResidualSubnet(), 64, 1000);
+    assert.equal(a.observedPermits, 5);
+    assert.equal(a.underPredicted, 1, "the owner");
+    assert.equal(a.overPredicted, 0);
+    assert.equal(a.agreement, 0.8);
+    assert.equal(a.publishable, false);
+  });
+
+  test("modelling the owner reproduces the chain exactly", () => {
+    const a = modelAgreement(ownerResidualSubnet(), 64, 1000, "5OWNER");
+    assert.equal(a.matched, 5);
+    assert.equal(a.underPredicted, 0);
+    assert.equal(a.overPredicted, 0);
+    assert.equal(a.agreement, 1);
+    assert.equal(a.publishable, true);
+  });
+
+  test("the exception never invents a permit the chain did not grant", () => {
+    // An owner registered but NOT permitted on chain must show as over-prediction
+    // rather than being quietly matched — the exception has to stay falsifiable.
+    const rows = [
+      n(0, { totalStake: 5000, validatorPermit: true, hotkey: "5A" }),
+      n(1, { totalStake: 0, validatorPermit: false, hotkey: "5OWNER" }),
+    ];
+    const a = modelAgreement(rows, 64, 1000, "5OWNER");
+    assert.equal(a.overPredicted, 1);
+    assert.equal(a.matched, 1);
+  });
 });
 
 describe("modelAgreement", () => {
@@ -230,9 +334,88 @@ describe("capBinding and permitFloorUnits", () => {
     assert.equal(capBinding(rows, 2, 1000), true);
     assert.equal(permitFloorUnits(rows, 2, 1000), 1000);
   });
+
+  // The owner's permit is unconditional but still one of `maxValidators`, so it
+  // shrinks the field a non-owner competes for. No live subnet has a binding cap today
+  // (verified across all 128 on 2026-08-05, where this changes nothing), but where one
+  // does, ignoring the owner's seat would report a floor one rank too low.
+  test("the owner's seat raises the marginal rank on a capped subnet", () => {
+    const rows = [
+      n(0, { totalStake: 5000, hotkey: "5A" }),
+      n(1, { totalStake: 4000, hotkey: "5B" }),
+      n(2, { totalStake: 3000, hotkey: "5C" }),
+      n(9, { totalStake: 0, hotkey: "5OWNER" }),
+    ];
+    // Three slots, three eligible competitors: without the owner the third slot is the
+    // marginal one and the floor is 3000. With the owner holding one, only two slots
+    // remain and the marginal competitor is the SECOND — a floor of 4000.
+    assert.equal(permitFloorUnits(rows, 3, 1000), 3000);
+    assert.equal(permitFloorUnits(rows, 3, 1000, "5OWNER"), 4000);
+  });
+
+  test("the owner's seat can make a cap bind that otherwise would not", () => {
+    const rows = [
+      n(0, { totalStake: 5000, hotkey: "5A" }),
+      n(1, { totalStake: 4000, hotkey: "5B" }),
+      n(9, { totalStake: 0, hotkey: "5OWNER" }),
+    ];
+    assert.equal(capBinding(rows, 3, 1000), false, "2 eligible < 3 slots");
+    assert.equal(
+      capBinding(rows, 3, 1000, "5OWNER"),
+      true,
+      "2 competitors for the 2 slots the owner leaves",
+    );
+  });
+
+  test("a cap the owner alone fills floors at the threshold", () => {
+    // One slot, taken by the owner: there is no marginal competitor to read a floor off,
+    // so the threshold stands rather than the lookup returning undefined.
+    const rows = [
+      n(0, { totalStake: 5000, hotkey: "5A" }),
+      n(9, { totalStake: 0, hotkey: "5OWNER" }),
+    ];
+    assert.equal(capBinding(rows, 1, 1000, "5OWNER"), true);
+    assert.equal(permitFloorUnits(rows, 1, 1000, "5OWNER"), 1000);
+  });
 });
 
 describe("earningFloorUnits and setComposition", () => {
+  // The owner earns on an unconditional permit, so an owner sitting at ~0 stake
+  // reported an earning floor of 0 — "free to earn here". Worse downstream: a 0-alpha
+  // buy cannot be priced against the pool, so earning_floor_cost_tao came back null and
+  // the cross-subnet ranking EXCLUDED the subnet as unpriceable. Both were happening.
+  test("the owner never sets the earning floor", () => {
+    const rows = [
+      n(0, {
+        totalStake: 4000,
+        validatorPermit: true,
+        dividends: 0.5,
+        hotkey: "5V0",
+      }),
+      n(9, {
+        totalStake: 0,
+        validatorPermit: true,
+        dividends: 0.9,
+        hotkey: "5OWNER",
+      }),
+    ];
+    assert.equal(earningFloorUnits(rows), 0, "the owner's zero, unfiltered");
+    assert.equal(earningFloorUnits(rows, "5OWNER"), 4000);
+  });
+
+  test("a subnet where ONLY the owner earns has no earning floor", () => {
+    // Null, not 0: nobody a newcomer could match has earned here.
+    const rows = [
+      n(9, {
+        totalStake: 0,
+        validatorPermit: true,
+        dividends: 0.9,
+        hotkey: "5OWNER",
+      }),
+    ];
+    assert.equal(earningFloorUnits(rows, "5OWNER"), null);
+  });
+
   test("permitted, active and earning are three different counts", () => {
     assert.deepEqual(setComposition(cappedSubnet()), {
       permitted: 64,
@@ -354,6 +537,37 @@ describe("buildValidatorEconomics", () => {
     // The observed facts survive — they are what explains the disagreement.
     assert.deepEqual(out.composition, { permitted: 2, active: 0, earning: 0 });
     assert.equal(out.modelAgreement?.publishable, false);
+  });
+
+  // which fields the drifted path is allowed to withhold. The floor depends on
+  // the model and stays null; these four are counted off the live threshold and the
+  // observed permits, so withholding them only forced consumers to guess — and the
+  // guess is asymmetric, since assuming an open cap on a full subnet under-reports the
+  // floor rather than erring safe.
+  test("publishes the fields that need no floor model when the model has drifted", () => {
+    const drifted = [
+      n(0, { totalStake: 5000, validatorPermit: true }),
+      n(1, { totalStake: 200, validatorPermit: true }),
+      n(2, { totalStake: 4000 }),
+    ];
+    const out = buildValidatorEconomics({
+      ...base,
+      neurons: drifted,
+      maxValidators: 2,
+    });
+    assert.equal(
+      out.permitFloorUnits,
+      null,
+      "the floor still is not published",
+    );
+    assert.equal(out.capBinding, true, "2 eligible for 2 slots");
+    assert.equal(out.uidsAboveThreshold, 2);
+    assert.equal(out.validatorSlotsOpen, 0, "max_validators minus permitted");
+    assert.equal(
+      out.rootTaoToClear,
+      1000 / 0.18,
+      "threshold / tao_weight is arithmetic, not a model",
+    );
   });
 
   test("keeps the unit floors when only the reserves are missing", () => {
@@ -630,6 +844,43 @@ function row(
   };
 }
 
+describe("rankValidatorEconomics — an unsupported sort", () => {
+  // An unsupported sort silently became the default ranking, which was then
+  // echoed back as `sort`. Asking for `tao_inflow_per_day` and mistyping it returned a
+  // COST-ranked list, labelled honestly, with no error — a plausible answer to a
+  // question nobody asked. REST already returned 400 and GraphQL BAD_USER_INPUT; only
+  // MCP reached this, and MCP is where a model's guess lands.
+  test("is rejected rather than answered with the default", () => {
+    assert.throws(
+      () => rankValidatorEconomics([row(1)], { sort: "tao_inflow_per_dya" }),
+      (error: Error) => {
+        assert.equal(error.name, "UnsupportedSortError");
+        assert.match(error.message, /is not a supported sort/);
+        // The message names the alternatives — the caller mistyped one of five.
+        assert.match(error.message, /tao_inflow_per_day/);
+        return true;
+      },
+    );
+  });
+
+  test("an ABSENT sort still takes the default", () => {
+    // Not the same question: omitting a sort is a valid request, mistyping one is not.
+    for (const options of [{}, { sort: undefined }, { sort: "" }]) {
+      assert.equal(
+        rankValidatorEconomics([row(1)], options).sort,
+        "earning_floor_cost_tao",
+      );
+    }
+  });
+
+  test("every supported key is accepted", () => {
+    // Guards the rejection against being too eager as the set changes.
+    for (const sort of VALIDATOR_ECONOMICS_SORTS) {
+      assert.equal(rankValidatorEconomics([row(1)], { sort }).sort, sort);
+    }
+  });
+});
+
 describe("rankValidatorEconomics", () => {
   test("ranks cheapest-to-earn first by default", () => {
     const out = rankValidatorEconomics([
@@ -698,12 +949,13 @@ describe("rankValidatorEconomics", () => {
     );
   });
 
-  test("falls back to the default sort rather than erroring on an unknown one", () => {
-    // The handler rejects a bad sort before reaching here; this is the belt to
-    // that braces, so a caller that bypasses the handler still gets an ordering.
-    const out = rankValidatorEconomics([row(1)], { sort: "nonsense" });
-    assert.equal(out.sort, "earning_floor_cost_tao");
-  });
+  // Was: "falls back to the default sort rather than erroring on an unknown one",
+  // reasoning that the handler rejects a bad sort first so this is only a belt to that
+  // braces. The premise was wrong — the MCP tool reached here with no
+  // validation at all, and the fallback turned a typo into a differently-ranked list
+  // presented as an answer. A belt that silently changes the question is worse than no
+  // belt; the rejection now lives here, where every surface passes through.
+  // Behaviour pinned in "rankValidatorEconomics — an unsupported sort" above.
 
   test("excludes an unpriceable subnet with a reason instead of ranking it first", () => {
     // A null cost sorted as 0 would put the one subnet we CANNOT price at the
@@ -819,6 +1071,21 @@ describe("groupNeuronsByNetuid", () => {
     assert.equal(grouped.get(5)?.[0].take, 0.18);
   });
 
+  // The rebuild names every field explicitly, so a new one is dropped unless it is
+  // added there too — which would leave the owner exception working on the per-subnet
+  // route and silently disabled on the cross-subnet ranking.
+  test("carries the hotkey through so the owner exception survives grouping", () => {
+    const grouped = groupNeuronsByNetuid([
+      { netuid: 5, ...n(0, { hotkey: "5OWNER" }) },
+    ]);
+    assert.equal(grouped.get(5)?.[0].hotkey, "5OWNER");
+  });
+
+  test("a neuron scanned without a hotkey groups to an explicit null", () => {
+    const grouped = groupNeuronsByNetuid([{ netuid: 5, ...n(0) }]);
+    assert.equal(grouped.get(5)?.[0].hotkey, null);
+  });
+
   test("an empty scan groups to an empty map", () => {
     assert.equal(groupNeuronsByNetuid([]).size, 0);
   });
@@ -848,6 +1115,176 @@ describe("buildValidatorEconomicsHistory", () => {
       ["2026-08-02", "2026-08-01"],
     );
     assert.equal(points[1].validators_permitted, 2);
+  });
+
+  // `permit_floor_alpha` is the observed floor regardless of cap state, so a
+  // consumer has to test the cap per day to use it — and the cap was not in the point.
+  // Joining today's cap from the current record is silently wrong for any subnet whose
+  // cap moved inside the window.
+  test("carries the cap on every point so the floor is interpretable alone", () => {
+    const points = buildValidatorEconomicsHistory(
+      [day("2026-08-01"), day("2026-08-02")],
+      [],
+      { maxValidators: 64 },
+    );
+    assert.deepEqual(
+      points.map((p) => p.max_validators),
+      [64, 64],
+    );
+  });
+
+  test("an unknown cap is null on every point, never zero", () => {
+    // A 0 here would read as "no validator slots at all".
+    const points = buildValidatorEconomicsHistory([day("2026-08-01")]);
+    assert.equal(points[0].max_validators, null);
+    assert.equal(points[0].max_validators_source, null);
+    assert.equal(points[0].permit_set_full, null);
+  });
+
+  // The change-log is what makes the cap publishable per day. Re-running today's cap
+  // over an old snapshot would show a flat cap across a change that really happened —
+  // the same class of error the module refuses for the floor.
+  test("reads the cap in force on each day from the change-log", () => {
+    const capHistory = [
+      { observed_at: Date.parse("2026-08-02T12:00:00Z"), max_validators: 64 },
+      { observed_at: Date.parse("2026-07-01T00:00:00Z"), max_validators: 8 },
+    ];
+    const points = buildValidatorEconomicsHistory(
+      [day("2026-08-01"), day("2026-08-03")],
+      [],
+      { capHistory, maxValidators: 64 },
+    );
+    const byDate = new Map(points.map((p) => [p.snapshot_date, p]));
+    assert.equal(
+      byDate.get("2026-08-01")?.max_validators,
+      8,
+      "before the raise",
+    );
+    assert.equal(byDate.get("2026-08-03")?.max_validators, 64, "after it");
+    assert.equal(byDate.get("2026-08-01")?.max_validators_source, "observed");
+  });
+
+  test("a change landing mid-day counts for that day", () => {
+    // Permits are recomputed across the day, so the cap at its END is the one that
+    // day's set was computed against.
+    const points = buildValidatorEconomicsHistory([day("2026-08-02")], [], {
+      capHistory: [
+        { observed_at: Date.parse("2026-08-02T12:00:00Z"), max_validators: 64 },
+      ],
+    });
+    assert.equal(points[0].max_validators, 64);
+    assert.equal(points[0].max_validators_source, "observed");
+  });
+
+  test("falls back to the live cap for days the change-log predates", () => {
+    const points = buildValidatorEconomicsHistory([day("2026-06-01")], [], {
+      capHistory: [
+        { observed_at: Date.parse("2026-08-02T00:00:00Z"), max_validators: 64 },
+      ],
+      maxValidators: 32,
+    });
+    assert.equal(points[0].max_validators, 32);
+    assert.equal(
+      points[0].max_validators_source,
+      "current",
+      "an approximation the consumer can see is not an approximation that misleads",
+    );
+  });
+
+  test("an unparseable snapshot_date falls back rather than throwing", () => {
+    // snapshot_date is TEXT in D1; a malformed row must not take out the series or
+    // silently claim an observed cap it cannot place in time.
+    const points = buildValidatorEconomicsHistory([day("not-a-date")], [], {
+      capHistory: [
+        { observed_at: Date.parse("2026-08-01T00:00:00Z"), max_validators: 8 },
+      ],
+      maxValidators: 64,
+    });
+    assert.equal(points[0].max_validators, 64);
+    assert.equal(points[0].max_validators_source, "current");
+  });
+
+  test("ignores change-log entries that record no cap", () => {
+    // The table logs every hyperparameter, so most rows carry no max_validators.
+    const points = buildValidatorEconomicsHistory([day("2026-08-03")], [], {
+      capHistory: [
+        {
+          observed_at: Date.parse("2026-08-01T00:00:00Z"),
+          max_validators: null,
+        },
+      ],
+      maxValidators: 16,
+    });
+    assert.equal(points[0].max_validators, 16);
+    assert.equal(points[0].max_validators_source, "current");
+  });
+
+  test("a non-positive cap is treated as unknown", () => {
+    const points = buildValidatorEconomicsHistory([day("2026-08-01")], [], {
+      maxValidators: 0,
+    });
+    assert.equal(points[0].max_validators, null);
+  });
+
+  test("permit_set_full compares the permitted count against the cap", () => {
+    const rows = [
+      day("2026-08-01", { stake_tao: 9000 }),
+      day("2026-08-01", { stake_tao: 8000 }),
+    ];
+    assert.equal(
+      buildValidatorEconomicsHistory(rows, [], { maxValidators: 2 })[0]
+        .permit_set_full,
+      true,
+    );
+    assert.equal(
+      buildValidatorEconomicsHistory(rows, [], { maxValidators: 3 })[0]
+        .permit_set_full,
+      false,
+    );
+  });
+
+  // The per-subnet record fails closed when it cannot justify a floor. The series did
+  // not, so a subnet whose owner holds a permit at ~0 published `permit_floor_alpha: 0`
+  // — "free to validate", the exact wrong answer the rest of the module avoids.
+  test("the owner's unconditional permit never sets the floor", () => {
+    const rows = [
+      day("2026-08-01", { stake_tao: 4000, hotkey: "5V0" }),
+      day("2026-08-01", { stake_tao: 0, hotkey: "5OWNER" }),
+    ];
+    assert.equal(
+      buildValidatorEconomicsHistory(rows)[0].permit_floor_alpha,
+      0,
+      "without an owner the observed minimum is the owner's zero",
+    );
+    const fixed = buildValidatorEconomicsHistory(rows, [], {
+      ownerHotkey: "5OWNER",
+    })[0];
+    assert.equal(fixed.permit_floor_alpha, 4000);
+    assert.equal(
+      fixed.validators_permitted,
+      2,
+      "the owner still counts as permitted — that is observed truth",
+    );
+  });
+
+  test("the owner is excluded from the earning floor too", () => {
+    const rows = [
+      day("2026-08-01", { stake_tao: 4000, hotkey: "5V0", dividends: 0.5 }),
+      day("2026-08-01", { stake_tao: 1, hotkey: "5OWNER", dividends: 0.9 }),
+    ];
+    const p = buildValidatorEconomicsHistory(rows, [], {
+      ownerHotkey: "5OWNER",
+    })[0];
+    assert.equal(p.earning_floor_alpha, 4000);
+    assert.equal(p.validators_earning, 2, "still counted, just not a floor");
+  });
+
+  test("a row with no hotkey is never mistaken for the owner", () => {
+    const rows = [day("2026-08-01", { stake_tao: 7 })];
+    const p = buildValidatorEconomicsHistory(rows, [], {
+      ownerHotkey: "5OWNER",
+    })[0];
+    assert.equal(p.permit_floor_alpha, 7);
   });
 
   test("the permit floor is the smallest stake that ACTUALLY held a permit", () => {

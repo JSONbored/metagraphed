@@ -10,6 +10,10 @@
 // to match this epic's usual item-shape convention.
 import { z } from "zod";
 import { OpenObjectSchema } from "./shared.ts";
+import {
+  SAFE_RPC_METHODS,
+  SAFE_RPC_STATE_QUERY_METHODS,
+} from "../../workers/config.ts";
 
 const RpcUsageLatencyMsSchema = z
   .object({
@@ -147,7 +151,17 @@ export type GetBestRpcEndpointOutput = z.infer<
 
 export const CallRpcInputSchema = z
   .object({
-    method: z.string(),
+    // A hard allowlist, so it ships as one. The description spelled all thirteen
+    // methods out in prose while the schema said "any string", which meant an agent had
+    // to read English to avoid a guaranteed rejection — and `call_subnet_surface.method`
+    // right beside it already declared its enum. Read from the same sets the proxy
+    // enforces, so a method added there cannot be missing here.
+    method: z.enum(
+      [...SAFE_RPC_METHODS, ...SAFE_RPC_STATE_QUERY_METHODS].sort() as [
+        string,
+        ...string[],
+      ],
+    ),
     params: z.array(z.unknown()).optional(),
     network: z.enum(["finney", "test"]).optional(),
   })

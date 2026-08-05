@@ -2272,11 +2272,15 @@ describe("coverage-depth CSV export", () => {
 // here proves the wiring for all of them. The fixture sorts to a stable netuid
 // run, so limit=50 yields exactly three pages at cursors 0 / 50 / 100.
 describe("pagination Link header", () => {
+  // Only the PAGINATION relations. Every API response also carries a `service-desc`
+  // pointer to the OpenAPI document, which is not part of the walk and would
+  // otherwise show up in every relation-set assertion below.
+  const PAGINATION_RELS = new Set(["first", "prev", "next", "last"]);
   const parseLink = (value: Row) => {
     const links: Row = {};
     for (const part of String(value || "").split(",")) {
       const match = part.match(/<([^>]+)>;\s*rel="([^"]+)"/);
-      if (match) {
+      if (match && PAGINATION_RELS.has(match[2])) {
         links[match[2]] = new URL(match[1]);
       }
     }
@@ -2344,17 +2348,20 @@ describe("pagination Link header", () => {
     assert.equal(links.last.searchParams.get("cursor"), "86");
   });
 
-  test("empty result set carries no Link header", async () => {
-    const { res } = await page("netuid=999999&limit=50");
+  test("empty result set advertises no page to walk to", async () => {
+    const { res, links } = await page("netuid=999999&limit=50");
     assert.equal(res.status, 200);
     assert.equal((await res.json()).meta.pagination.total, 0);
-    assert.equal(res.headers.get("link"), null);
+    assert.deepEqual(Object.keys(links), []);
+    // The service-desc pointer still ships — it describes the API, not the page.
+    assert.match(res.headers.get("link") ?? "", /rel="service-desc"/);
   });
 
-  test("an unpaged request (no limit/cursor) carries no Link header", async () => {
-    const { res } = await page("order=asc");
+  test("an unpaged request (no limit/cursor) advertises no page to walk to", async () => {
+    const { res, links } = await page("order=asc");
     assert.equal(res.status, 200);
-    assert.equal(res.headers.get("link"), null);
+    assert.deepEqual(Object.keys(links), []);
+    assert.match(res.headers.get("link") ?? "", /rel="service-desc"/);
   });
 
   test("a HEAD request still carries the walkable Link header", async () => {

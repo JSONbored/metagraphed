@@ -6,6 +6,7 @@ import {
   NETWORK_PARAMETERS_RPC_TIMEOUT_MS,
   NETWORK_PARAMETERS_FIELD_SOURCES,
   loadNetworkParameters,
+  readCachedNetworkParametersSnapshot,
 } from "../src/network-parameters.ts";
 import { handleRequest } from "../workers/api.ts";
 import { mockEnv } from "./row-type.ts";
@@ -581,6 +582,63 @@ describe("GET /api/v1/network/parameters via the Worker", () => {
           );
         }
       },
+    );
+  });
+});
+
+// /freshness reports how current the live-RPC lane is, and reads the cached
+// snapshot ONLY — never falling through to chain RPC. A freshness probe that triggered
+// the work it measures would refresh `queried_at` on every call and always report
+// "current": a lane that cannot go stale, and therefore cannot be gated on.
+describe("readCachedNetworkParametersSnapshot", () => {
+  test("returns the cached snapshot without touching RPC", async () => {
+    const snapshot = {
+      queried_at: "2026-08-05T03:59:00.000Z",
+      tao_weight: 0.18,
+    };
+    let fetched = false;
+    await withFetchStub(
+      () => {
+        fetched = true;
+        throw new Error("the freshness probe must not query the chain");
+      },
+      async () => {
+        const out = await readCachedNetworkParametersSnapshot({
+          METAGRAPH_CONTROL: { get: async () => snapshot },
+        } as unknown as Env);
+        assert.equal(out?.queried_at, snapshot.queried_at);
+        assert.equal(fetched, false);
+      },
+    );
+  });
+
+  test("a cold or unbound KV is null, not an RPC read", async () => {
+    assert.equal(
+      await readCachedNetworkParametersSnapshot({} as unknown as Env),
+      null,
+      "unbound",
+    );
+    assert.equal(
+      await readCachedNetworkParametersSnapshot({
+        METAGRAPH_CONTROL: { get: async () => null },
+      } as unknown as Env),
+      null,
+      "cold",
+    );
+  });
+
+  test("a KV failure is null rather than a thrown freshness route", async () => {
+    // The caller reports `missing`; a throw here would take out the whole route over
+    // one lane's store being unreachable.
+    assert.equal(
+      await readCachedNetworkParametersSnapshot({
+        METAGRAPH_CONTROL: {
+          get: async () => {
+            throw new Error("KV down");
+          },
+        },
+      } as unknown as Env),
+      null,
     );
   });
 });

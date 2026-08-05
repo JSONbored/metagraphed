@@ -3,7 +3,21 @@
 // Extracted from workers/api.ts (issue #510, de-monolith). Depends only on the
 // http + storage leaf modules and the contract version; it calls nothing back
 // into api.ts, so there is no import cycle.
-import { CONTRACT_VERSION } from "../src/contracts.ts";
+import {
+  ARTIFACT_BASE_PATH,
+  CONTRACT_VERSION,
+  PRIMARY_DOMAIN,
+} from "../src/contracts.ts";
+
+/**
+ * The `service-desc` link every API response carries.
+ *
+ * Points at the RAW artifact, never `/api/v1/openapi.json`: that route wraps the spec
+ * in the standard success envelope, so it has no top-level `openapi` key and every
+ * OpenAPI tool pointed at it fails. Absolute, matching the linkset body and the `/`
+ * header, since the API and the site are different origins.
+ */
+const SERVICE_DESC_LINK = `<https://${PRIMARY_DOMAIN}${ARTIFACT_BASE_PATH}/openapi.json>; rel="service-desc"; type="application/json"`;
 import { apiHeaders, ifNoneMatchSatisfied, weakEtag } from "./http.ts";
 import type { CacheProfile } from "./http.ts";
 import { latestPointer } from "./storage.ts";
@@ -115,6 +129,21 @@ export async function envelopeResponse(
       headers.set(key, value);
     }
   }
+  // RFC 8288 pointer to the OpenAPI document, on EVERY API response.
+  //
+  // It was emitted only on `/`, so a consumer who started anywhere under /api/v1 — the
+  // normal case — got no pointer to the spec at all. An external integrator reported
+  // hand-probing routes and concluding no spec existed; it does, at this URL, and
+  // nothing they touched said so.
+  //
+  // Appended rather than set: several routes already send a pagination `Link`, and
+  // overwriting it would trade one discovery problem for a worse one. Multiple
+  // comma-separated values are exactly what the header is specified to carry.
+  const existingLink = headers.get("link");
+  headers.set(
+    "link",
+    existingLink ? `${existingLink}, ${SERVICE_DESC_LINK}` : SERVICE_DESC_LINK,
+  );
   if (ifNoneMatchSatisfied(request, etag)) {
     return new Response(null, {
       status: 304,

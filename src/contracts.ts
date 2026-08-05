@@ -5328,7 +5328,14 @@ export function buildApiIndexArtifact(
     generated_at: generatedAt,
     primary_domain: PRIMARY_DOMAIN,
     base_path: API_BASE_PATH,
-    openapi_url: `${API_BASE_PATH}/openapi.json`,
+    // The RAW artifact, not `${API_BASE_PATH}/openapi.json`.
+    //
+    // Both routes serve the spec, but the /api/v1 one wraps it in the standard success
+    // envelope — correct per the envelope rule, and unusable as an OpenAPI document,
+    // since the result has no top-level `openapi` key. This index advertised the
+    // wrapped one while /api/v1/contracts advertised the raw one, so the two pointers
+    // disagreed and the more prominent one broke every generator that followed it.
+    openapi_url: `${ARTIFACT_BASE_PATH}/openapi.json`,
     type_definitions_url: TYPE_DEFINITIONS_PATH,
     response_envelope: {
       schema_version: SCHEMA_VERSION,
@@ -5378,9 +5385,9 @@ export function buildApiIndexArtifact(
 }
 
 /** The 200 response schema for a route: the success envelope, narrowed to the
- *  route's own artifact component. Shared by the example registry below and the
- *  path emitter, so the example a route ships is sampled from exactly the schema
- *  that route advertises — not a second, separately-built copy of it. */
+ * route's own artifact component. Shared by the example registry below and the
+ * path emitter, so the example a route ships is sampled from exactly the schema
+ * that route advertises — not a second, separately-built copy of it. */
 function openApiResponseSchemaForRoute(entry: (typeof API_ROUTES)[number]) {
   return {
     allOf: [

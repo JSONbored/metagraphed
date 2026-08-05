@@ -6733,7 +6733,7 @@ export interface components {
             generated_at: string;
             notes?: string | string[];
             /** @constant */
-            openapi_url: "/api/v1/openapi.json";
+            openapi_url: "/metagraph/openapi.json";
             /** @constant */
             primary_domain: "api.metagraph.sh";
             response_envelope: {
@@ -8739,7 +8739,7 @@ export interface components {
                 as_of: string | null;
                 id: string;
                 /** @enum {string} */
-                lane: "adapter-snapshot" | "candidate-discovery" | "candidate-verification" | "health-probe" | "native-data" | "schema-snapshot";
+                lane: "adapter-snapshot" | "candidate-discovery" | "candidate-verification" | "health-probe" | "native-data" | "schema-snapshot" | "economics" | "live-rpc";
                 notes?: string;
                 path: string;
                 required_for_publish: boolean;
@@ -8756,8 +8756,10 @@ export interface components {
                 adapter_snapshot_as_of: string | null;
                 blocking_source_count: number;
                 candidate_discovery_as_of: string | null;
+                economics_as_of?: string | null;
                 health_probe_as_of: string | null;
                 health_surface_count: number;
+                live_rpc_as_of?: string | null;
                 missing_blocking_source_count: number;
                 native_data_as_of: string;
                 native_snapshot_captured_at: string;
@@ -12263,7 +12265,10 @@ export interface components {
         ValidatorEconomicsHistoryPoint: {
             earning_floor_alpha: number | null;
             emission_gate_open: boolean | null;
+            max_validators: number | null;
+            max_validators_source: ("observed" | "current") | null;
             permit_floor_alpha: number | null;
+            permit_set_full: boolean | null;
             snapshot_date: string;
             tao_inflow_per_day: number | null;
             validators_active: number;
@@ -12481,7 +12486,7 @@ export interface operations {
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
-                     *         "openapi_url": "/api/v1/openapi.json",
+                     *         "openapi_url": "/metagraph/openapi.json",
                      *         "primary_domain": "api.metagraph.sh",
                      *         "response_envelope": {
                      *           "error_schema_ref": "#/components/schemas/ErrorEnvelope",
@@ -12626,7 +12631,7 @@ export interface operations {
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
-                     *         "openapi_url": "/api/v1/openapi.json",
+                     *         "openapi_url": "/metagraph/openapi.json",
                      *         "primary_domain": "api.metagraph.sh",
                      *         "response_envelope": {
                      *           "error_schema_ref": "#/components/schemas/ErrorEnvelope",
@@ -19665,7 +19670,7 @@ export interface operations {
                      *             "lane": "adapter-snapshot",
                      *             "path": "example",
                      *             "required_for_publish": true,
-                     *             "stale_after_hours": 1,
+                     *             "stale_after_hours": 0.5,
                      *             "stale_behavior": "block",
                      *             "status": "captured",
                      *             "timestamp": "example",
@@ -19677,8 +19682,10 @@ export interface operations {
                      *           "adapter_snapshot_as_of": "example",
                      *           "blocking_source_count": 5000000,
                      *           "candidate_discovery_as_of": "example",
+                     *           "economics_as_of": "example",
                      *           "health_probe_as_of": "example",
                      *           "health_surface_count": 1,
+                     *           "live_rpc_as_of": "example",
                      *           "missing_blocking_source_count": 5000000,
                      *           "native_data_as_of": "example",
                      *           "native_snapshot_captured_at": "2026-06-01T00:00:00.000Z",
@@ -41126,7 +41133,7 @@ export interface operations {
                      *             "lane": "adapter-snapshot",
                      *             "path": "example",
                      *             "required_for_publish": true,
-                     *             "stale_after_hours": 1,
+                     *             "stale_after_hours": 0.5,
                      *             "stale_behavior": "block",
                      *             "status": "captured",
                      *             "timestamp": "example",
@@ -41138,8 +41145,10 @@ export interface operations {
                      *           "adapter_snapshot_as_of": "example",
                      *           "blocking_source_count": 5000000,
                      *           "candidate_discovery_as_of": "example",
+                     *           "economics_as_of": "example",
                      *           "health_probe_as_of": "example",
                      *           "health_surface_count": 1,
+                     *           "live_rpc_as_of": "example",
                      *           "missing_blocking_source_count": 5000000,
                      *           "native_data_as_of": "example",
                      *           "native_snapshot_captured_at": "2026-06-01T00:00:00.000Z",
@@ -53138,7 +53147,10 @@ export interface operations {
                      *           {
                      *             "earning_floor_alpha": 0.5,
                      *             "emission_gate_open": false,
+                     *             "max_validators": 1,
+                     *             "max_validators_source": "observed",
                      *             "permit_floor_alpha": 0.5,
+                     *             "permit_set_full": false,
                      *             "snapshot_date": "example",
                      *             "tao_inflow_per_day": 0.5,
                      *             "validators_active": 1,
