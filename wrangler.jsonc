@@ -878,6 +878,13 @@
       // visible without waiting for the publish path to notice. See
       // ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON in workers/config.ts.
       "4,34 * * * *",
+      // 18 */6 = the top-holders recompute (#9469): rebuilds the leaderboard
+      // artifact from D1 holdings + the lakehouse net-flow scan, so free_tao,
+      // delegated_tao and net_flow_* all have live producers again. Six-hourly
+      // because that is the poller's own account-balances cadence, and the
+      // lane's other read is a 90-day lakehouse scan -- see
+      // TOP_HOLDERS_RECOMPUTE_CRON in workers/config.ts.
+      "18 */6 * * *",
     ],
   },
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite

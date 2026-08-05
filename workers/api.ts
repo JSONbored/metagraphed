@@ -369,6 +369,7 @@ import {
 import { pruneChainDetail } from "../src/chain-detail-prune.ts";
 import { runRpcUsageStalenessWatchdog } from "../src/rpc-usage-staleness-watchdog.ts";
 import { runTopHoldersStalenessWatchdog } from "../src/top-holders-staleness-watchdog.ts";
+import { runTopHoldersRecompute } from "../src/top-holders-projection.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
 import { validateResponseTripwire } from "../src/response-validation-tripwire.ts";
 import {
@@ -441,6 +442,7 @@ import {
   CHAIN_DETAIL_PRUNE_CRON,
   CHAIN_DETAIL_STALENESS_WATCHDOG_CRON,
   TOP_HOLDERS_STALENESS_WATCHDOG_CRON,
+  TOP_HOLDERS_RECOMPUTE_CRON,
   ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON,
   LIVE_ECONOMICS_REFRESH_CRON,
   PROJECTION_LANES_CRON,
@@ -1621,6 +1623,7 @@ function cronLabel(cron: string): string {
     return "chain-detail-staleness-watchdog";
   if (cron === TOP_HOLDERS_STALENESS_WATCHDOG_CRON)
     return "top-holders-staleness-watchdog";
+  if (cron === TOP_HOLDERS_RECOMPUTE_CRON) return "top-holders-recompute";
   if (cron === ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON)
     return "account-balances-staleness-watchdog";
   if (cron === LIVE_ECONOMICS_REFRESH_CRON) return "live-economics-refresh";
@@ -1954,6 +1957,15 @@ async function dispatchScheduled(
     return runTopHoldersStalenessWatchdog(
       env as unknown as Record<string, unknown>,
     );
+  }
+  if (cron === TOP_HOLDERS_RECOMPUTE_CRON) {
+    // #9469: recompute the top-holders artifact from the live stores, so every
+    // column the route publishes has a producer again. All-or-nothing -- a
+    // declined compute leaves the previous artifact in place rather than
+    // publishing a leaderboard missing free_tao, which would reorder the
+    // ranking rather than merely age it. Six-hourly, following the poller's
+    // own account-balances cadence; see the runner's header.
+    return runTopHoldersRecompute(env);
   }
   if (cron === ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON) {
     // The account-balances lane's alarm (#9478) -- the SOURCE side of the

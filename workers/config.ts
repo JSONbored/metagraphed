@@ -217,6 +217,19 @@ export const CHAIN_DETAIL_STALENESS_WATCHDOG_CRON = "14,29,44,59 * * * *";
 // must be unique here as well as matching a wrangler.jsonc `triggers.crons`
 // entry.
 export const TOP_HOLDERS_STALENESS_WATCHDOG_CRON = "22,52 * * * *";
+// #9469: the top-holders recompute. Its own cron rather than a
+// PROJECTION_LANES entry -- src/top-holders-projection.ts's runner header
+// gives the three reasons it does not fit that registry (it reads D1, its key
+// is not under metagraph/projections/, and it is mainnet-only). SIX-HOURLY,
+// following its slowest input rather than the projection fleet's half-hour
+// tick: `free_tao` refreshes on the poller's ACCOUNT_BALANCES_POLL_SECS (21600)
+// and the lane's other read is a 90-day lakehouse scan, so a finer cadence
+// would pay R2 SQL forty-eight times a day to restate the same holdings.
+// Minute 18 ticks on none of the crons in this file and stays off the */5
+// raw-capture and */15 probe grids -- dispatch keys on the LITERAL cron
+// string, so this must be unique here as well as matching a wrangler.jsonc
+// `triggers.crons` entry.
+export const TOP_HOLDERS_RECOMPUTE_CRON = "18 */6 * * *";
 // #9478: the account-balances lane's alarm -- the SOURCE side of the watchdog
 // above, not a replacement for it. That one watches the served artifact; this
 // one watches the D1 table the artifact is supposed to be composed from, and
