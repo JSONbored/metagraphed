@@ -144,6 +144,7 @@ import { loadChainCallsFromArtifact } from "../../src/chain-calls-artifact.ts";
 import { loadChainFeesFromArtifact } from "../../src/chain-fees-artifact.ts";
 import { loadChainSignersFromArtifact } from "../../src/chain-signers-artifact.ts";
 import { loadChainAlphaVolumeFromArtifact } from "../../src/chain-alpha-volume-artifact.ts";
+import { resolveMarketCapIndex } from "../../src/market-cap-index.ts";
 import { loadChainStakeTransfersFromArtifact } from "../../src/chain-stake-transfers-artifact.ts";
 import { loadChainTransferPairsFromArtifact } from "../../src/chain-transfer-pairs-artifact.ts";
 import { loadChainStakeMovesFromArtifact } from "../../src/chain-stake-moves-artifact.ts";
@@ -1925,7 +1926,14 @@ export async function handleChainAlphaVolume(
         // per-(netuid, event_kind) aggregate from the lakehouse; the shared
         // builder owns ranking and the limit. See
         // src/chain-alpha-volume-artifact.ts.
-        (await loadChainAlphaVolumeFromArtifact(env, { limit }, network)) ??
+        // marketCapByNetuid is vol_mcap_ratio's denominator (#9526), resolved
+        // here rather than inside the reader so an unreachable economics tier
+        // costs a null ratio and not the whole leaderboard.
+        (await loadChainAlphaVolumeFromArtifact(
+          env,
+          { limit, marketCapByNetuid: await resolveMarketCapIndex(env) },
+          network,
+        )) ??
         buildChainAlphaVolume([], {
           limit,
         } as unknown as Parameters<typeof buildChainAlphaVolume>[1]);

@@ -283,6 +283,7 @@ import { loadChainCallsFromArtifact } from "./chain-calls-artifact.ts";
 import { loadChainFeesFromArtifact } from "./chain-fees-artifact.ts";
 import { loadChainSignersFromArtifact } from "./chain-signers-artifact.ts";
 import { loadChainAlphaVolumeFromArtifact } from "./chain-alpha-volume-artifact.ts";
+import { resolveMarketCapIndex } from "./market-cap-index.ts";
 import { loadChainStakeTransfersFromArtifact } from "./chain-stake-transfers-artifact.ts";
 import { loadChainTransferPairsFromArtifact } from "./chain-transfer-pairs-artifact.ts";
 import { loadChainStakeMovesFromArtifact } from "./chain-stake-moves-artifact.ts";
@@ -5480,8 +5481,13 @@ export const MCP_TOOLS: McpToolDefinition[] = [
         )) ??
         // The projection tier (#9146): the cron-recomputed lakehouse
         // aggregate, through the same builder. See
-        // src/chain-alpha-volume-artifact.ts.
-        (await loadChainAlphaVolumeFromArtifact(ctx.env, { limit })) ??
+        // src/chain-alpha-volume-artifact.ts. The market-cap index is
+        // vol_mcap_ratio's denominator (#9526); an unreachable economics tier
+        // yields an empty index and a null ratio, never a failed leaderboard.
+        (await loadChainAlphaVolumeFromArtifact(ctx.env, {
+          limit,
+          marketCapByNetuid: await resolveMarketCapIndex(ctx.env),
+        })) ??
         buildChainAlphaVolume([], { limit })
       );
     },

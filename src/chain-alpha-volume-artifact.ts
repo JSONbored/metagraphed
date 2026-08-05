@@ -33,7 +33,14 @@ interface ArtifactBucket {
  */
 export async function loadChainAlphaVolumeFromArtifact(
   env: Env | null | undefined,
-  query: { limit?: number },
+  query: {
+    limit?: number;
+    /** Passed straight to the formatter for vol_mcap_ratio (#9526). Resolved by
+     * the caller, not here: this reader's contract is "shape the artifact or
+     * decline", and reaching into the economics tier from inside it would give
+     * a second store the power to fail a read that the artifact can answer. */
+    marketCapByNetuid?: Map<number, number> | null;
+  },
   /** Which chain's projection to read (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<ReturnType<typeof buildChainAlphaVolume> | null> {
@@ -64,6 +71,7 @@ export async function loadChainAlphaVolumeFromArtifact(
     if (!Array.isArray(win?.rows)) return null;
     return buildChainAlphaVolume(win.rows as Record<string, unknown>[], {
       limit: query.limit,
+      marketCapByNetuid: query.marketCapByNetuid ?? null,
     });
   } catch {
     return null;

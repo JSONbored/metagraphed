@@ -97,10 +97,14 @@ function volumeDistribution(values: number[]): VolumeDistribution | null {
 // StakeAdded/StakeRemoved aggregate. `rows` carries at most two rows per netuid (one per kind)
 // with alpha_volume (SUM alpha_amount), tao_volume (SUM amount_tao), event_count (COUNT), and
 // last_observed (MAX observed_at) — the exact shape buildAlphaVolume's own per-subnet rows carry.
-// Each netuid's row-group is handed to buildAlphaVolume (netuid, no marketCapTao — this route has
-// no per-subnet market-cap input in scope, so vol_mcap_ratio is null on every leaderboard entry,
-// same as the D1/Postgres subnet-level route's own null-marketCapTao branch) to get that subnet's
-// full volume scorecard, then those scorecards are ranked by total_volume_tao descending (tied
+// Each netuid's row-group is handed to buildAlphaVolume with that subnet's alpha_market_cap_tao
+// from the caller's marketCapByNetuid index (#9526 — the denominator used to be out of scope here,
+// which made vol_mcap_ratio structurally null on every leaderboard entry AND in the CSV export;
+// the economics blob the subnet-level route already reads is the full subnets[] array, so the
+// chain-level fill is one read and a keyed lookup) to get that subnet's full volume scorecard.
+// A netuid absent from the index keeps a null ratio and its position — ranking is by
+// total_volume_tao, never by the ratio, so a partial index cannot distort the leaderboard.
+// Those scorecards are then ranked by total_volume_tao descending (tied
 // broken by netuid ascending). `limit` caps the leaderboard; the network rollup, subnet_count, and
 // distribution cover every subnet that had volume (the aggregate's rows) — subnets with no
 // StakeAdded/StakeRemoved events are absent from account_events and so are not represented, the
@@ -132,7 +136,16 @@ export interface ChainAlphaVolumeResult {
 
 export function buildChainAlphaVolume(
   rows: Array<Record<string, unknown>> | null | undefined,
-  { limit = CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT }: { limit?: number } = {},
+  {
+    limit = CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
+    marketCapByNetuid = null,
+  }: {
+    limit?: number;
+    /** alpha_market_cap_tao per netuid, for vol_mcap_ratio (#9526). Optional:
+     * omitted or missing a netuid, that subnet's ratio stays null, which is
+     * how this route read for its whole life before the index existed. */
+    marketCapByNetuid?: Map<number, number> | null;
+  } = {},
 ): ChainAlphaVolumeResult {
   const list = Array.isArray(rows) ? rows : [];
   const flooredLimit = Math.floor(Number(limit));
@@ -165,7 +178,11 @@ export function buildChainAlphaVolume(
 
   const subnets: AlphaVolumeResult[] = [];
   for (const [netuid, subnetRows] of perNetuid) {
-    subnets.push(buildAlphaVolume(subnetRows, netuid));
+    subnets.push(
+      buildAlphaVolume(subnetRows, netuid, {
+        marketCapTao: marketCapByNetuid?.get(netuid) ?? null,
+      }),
+    );
   }
   // Biggest total volume first (where market activity is concentrated), tie-broken by netuid.
   subnets.sort(
