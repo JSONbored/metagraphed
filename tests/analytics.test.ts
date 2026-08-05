@@ -2112,3 +2112,124 @@ describe("emission-pipeline route", () => {
     assert.equal(bad.status, 400);
   });
 });
+
+// #9452: the snapshot write REPORTS its outcome instead of returning it.
+//
+// THE INCIDENT THIS CLOSES: 2026-08-01 is missing entirely from
+// subnet_snapshots -- all 129 subnets, a whole day of price/economics history
+// that does not exist -- and nothing said so. Every decline was a bare
+// `return { ok: false, reason }`, and workers/api.entry.ts discards what
+// `scheduled` returns, so "the economics source gave us nothing and today's
+// history was never written" and "everything is fine" produced byte-identical
+// telemetry. It was found four days later by reading the table by hand.
+describe("#9452 — writeSubnetSnapshot reports its verdict", () => {
+  function spies() {
+    const rows: Row[] = [];
+    const captures: Row[] = [];
+    return {
+      rows,
+      captures,
+      overrides: {
+        laneHealthDb: {
+          prepare: (sql: string) => ({
+            bind: (...values: unknown[]) => ({
+              run: async () => {
+                if (sql.startsWith("INSERT")) {
+                  rows.push({
+                    lane: values[0],
+                    verdict: values[1],
+                    age_ms: values[2],
+                    detail: values[3],
+                  });
+                }
+              },
+            }),
+          }),
+          batch: async () => [],
+        } as never,
+        recordExceptionEvent: (async (_env: unknown, event: unknown) => {
+          captures.push(event as Row);
+          return true;
+        }) as never,
+      },
+    };
+  }
+
+  test("a decline records a stale lane row AND notifies", async () => {
+    const s = spies();
+    const result = (await writeSubnetSnapshot({} as never, {
+      // No profiles artifact: the shape a degraded upstream produces.
+      readArtifact: (() => Promise.resolve({ ok: false })) as never,
+      ...s.overrides,
+    })) as Row;
+
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, "profiles_unavailable");
+
+    assert.equal(s.rows.length, 1, "a row per run, healthy or not");
+    assert.equal(s.rows[0].lane, "subnet-snapshot");
+    assert.equal(s.rows[0].verdict, "stale");
+    assert.equal(s.rows[0].detail, "profiles_unavailable");
+
+    assert.equal(s.captures.length, 1);
+    assert.equal(s.captures[0].route, "subnet-snapshot-write");
+    assert.equal(s.captures[0].errorCode, "stale_lane");
+    assert.match(
+      (s.captures[0].error as Error).message,
+      /profiles_unavailable/,
+    );
+  });
+
+  test("an empty profiles list is a decline, not a quiet success", async () => {
+    // The exact shape that loses a day: the artifact reads fine and carries
+    // nothing, so there is nothing to write and no error to throw.
+    const s = spies();
+    const result = (await writeSubnetSnapshot({} as never, {
+      readArtifact: (() =>
+        Promise.resolve({ ok: true, data: { profiles: [] } })) as never,
+      ...s.overrides,
+    })) as Row;
+
+    assert.equal(result.reason, "no_profiles");
+    assert.equal(s.rows[0].verdict, "stale");
+    assert.equal(s.captures.length, 1);
+  });
+
+  test("a missing reader is reported too, not silently skipped", async () => {
+    const s = spies();
+    const result = (await writeSubnetSnapshot(
+      {} as never,
+      s.overrides as never,
+    )) as Row;
+    assert.equal(result.reason, "unavailable");
+    assert.equal(s.rows[0].verdict, "stale");
+    assert.equal(s.captures.length, 1);
+  });
+
+  test("a lane_health write that fails never breaks the run", async () => {
+    // D1 migrations here are applied by hand, so "no such table" is a real
+    // production state. A writer whose alarm-recording broke its write would
+    // be worse than the bug being fixed.
+    const result = (await writeSubnetSnapshot({} as never, {
+      readArtifact: (() => Promise.resolve({ ok: false })) as never,
+      laneHealthDb: {
+        prepare: () => {
+          throw new Error("no such table: lane_health");
+        },
+      } as never,
+      recordExceptionEvent: (async () => true) as never,
+    })) as Row;
+    assert.equal(result.ok, false);
+    assert.equal(result.reason, "profiles_unavailable");
+  });
+
+  test("a capture that throws never breaks the run either", async () => {
+    const result = (await writeSubnetSnapshot({} as never, {
+      readArtifact: (() => Promise.resolve({ ok: false })) as never,
+      recordExceptionEvent: (async () => {
+        throw new Error("posthog unreachable");
+      }) as never,
+    })) as Row;
+    assert.equal(result.reason, "profiles_unavailable");
+  });
+});
