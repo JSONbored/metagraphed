@@ -586,6 +586,16 @@ export async function runHealthProber(
       checked_at_ms: runAt,
       last_ok_ms: lastOkMs,
       consecutive_failures: consecutiveFailures,
+      // #9538: the probe core has produced this since #255 (unsafe URL, unsafe
+      // redirect target, transport throw) and this row dropped it, so the only
+      // `error` a served endpoint could ever show was whatever a local build's
+      // probe cache baked -- absent in CI, hence null on every row in
+      // production even mid-outage. Not written to D1: surface_checks and
+      // surface_status have no error column, and KV is the live serving path
+      // for the RPC pool, so carrying it here and through the pool row is the
+      // whole fix. persistProbesToD1 binds explicit columns, so the extra
+      // field on this object is inert for that writer.
+      error: base.error ?? null,
     };
   });
 
@@ -718,6 +728,10 @@ async function persistToKv(
       archive_support: row.archive_support,
       last_ok: iso(row.last_ok_ms),
       consecutive_failures: row.consecutive_failures,
+      // #9538: carried so the serving overlay has something to show. Null on a
+      // healthy endpoint, which is the honest value -- what it must never be is
+      // null on a failing one purely because the pool row could not express it.
+      error: (row.error as string | null) ?? null,
       pool_eligible: row.status === "ok",
       // Null when the window holds no samples for this surface -- a new endpoint has
       // no record, and inventing a neutral score for it would let it tie a proven one.

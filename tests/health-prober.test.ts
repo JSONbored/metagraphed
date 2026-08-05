@@ -492,6 +492,60 @@ describe("runHealthProber", () => {
     assert.equal(meta.last_run_at, new Date(50000).toISOString());
   });
 
+  // #9538: the probe core has produced `error` since #255, and the probed row
+  // dropped it -- so the RPC pool row the serving overlay reads had nothing to
+  // carry, and list_rpc_endpoints.error could never be non-null on the live
+  // path no matter what a probe found.
+  test("carries a failing RPC probe's error onto the pool row, and null when it is healthy", async () => {
+    const failingRpc = async (input: Row) =>
+      input.kind === "subtensor-rpc"
+        ? {
+            status: "failed",
+            classification: "dead",
+            latency_ms: null,
+            status_code: null,
+            error: "connect ECONNREFUSED 10.0.0.1:9944",
+          }
+        : {
+            status: "ok",
+            classification: "live",
+            latency_ms: 5,
+            status_code: 200,
+          };
+    const { env } = makeProberEnv();
+    const kv = makeKv();
+    await runHealthProber(env, FAKE_CTX, {
+      now: () => 50000,
+      kv,
+      loadSurfaces: async () => SURFACES,
+      probeSurface: failingRpc,
+      probeOptions: {},
+    });
+    const pool = kv.json(KV_HEALTH_RPC_POOL);
+    assert.equal(pool.endpoints.length, 1);
+    assert.equal(pool.endpoints[0].status, "failed");
+    assert.equal(
+      pool.endpoints[0].error,
+      "connect ECONNREFUSED 10.0.0.1:9944",
+      "the probe's reason must reach the pool row",
+    );
+
+    // A healthy probe reports no error, and the field must be present-and-null
+    // rather than absent -- the overlay reads it unconditionally.
+    const okKv = makeKv();
+    await runHealthProber(env, FAKE_CTX, {
+      now: () => 50000,
+      kv: okKv,
+      loadSurfaces: async () => SURFACES,
+      probeSurface: probeImpl,
+      probeOptions: {},
+    });
+    const okPool = okKv.json(KV_HEALTH_RPC_POOL);
+    assert.equal(okPool.endpoints[0].status, "ok");
+    assert.equal(okPool.endpoints[0].error, null);
+    assert.ok("error" in okPool.endpoints[0]);
+  });
+
   test("folds unrecognized probe status into unknown in global status_counts", async () => {
     const kv = makeKv();
     const { env } = makeProberEnv();

@@ -149,6 +149,51 @@ describe("mergeRpcEndpoints", () => {
     assert.equal(merged.endpoints.find((e: Row) => e.id === "b").status, "ok"); // no live → static
   });
 
+  // #9538: `error` reached the served row from the STATIC build only, so a live
+  // failing endpoint published error: null while reporting status: "failed" --
+  // a consumer could not tell "no errors" from "errors dropped".
+  test("overlays the live probe error, and clears a stale one on recovery", () => {
+    const stat = {
+      schema_version: 1,
+      generated_at: "old",
+      summary: { total: 2 },
+      endpoints: [
+        // A stale error baked by an earlier build, on an endpoint that is now ok.
+        { id: "a", status: "failed", error: "connect ETIMEDOUT" },
+        { id: "b", status: "ok", error: null },
+      ],
+    };
+    const live = {
+      last_run_at: "r",
+      generated_at: "g",
+      endpoints: [
+        {
+          id: "a",
+          status: "ok",
+          classification: null,
+          latency_ms: 12,
+          error: null,
+        },
+        {
+          id: "b",
+          status: "failed",
+          classification: "dead",
+          latency_ms: null,
+          error: "probe threw",
+        },
+      ],
+    };
+    const merged = mergeRpcEndpoints(stat, live) as Row;
+    const a = merged.endpoints.find((e: Row) => e.id === "a");
+    const b = merged.endpoints.find((e: Row) => e.id === "b");
+    // Recovered: the stale build-time string must NOT survive the overlay.
+    assert.equal(a.status, "ok");
+    assert.equal(a.error, null);
+    // Newly failing: the live reason reaches the caller.
+    assert.equal(b.status, "failed");
+    assert.equal(b.error, "probe threw");
+  });
+
   test("recomputes summary.by_status and archive_supported_count from the post-overlay endpoints, never the stale static build", () => {
     // Reproduces a live discrepancy: the static build's summary said 4 "degraded"
     // (the state at the last full artifact rebuild), but a later live sweep
