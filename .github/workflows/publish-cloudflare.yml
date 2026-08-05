@@ -120,6 +120,13 @@ jobs:
           # build falls back to the committed seed -- never a failure.
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # scripts/build.ts spawns its child steps with `...process.env`, so
+          # this reaches the two instrumented steps in the production build
+          # list: native-snapshot (refresh-native-snapshot.ts) and
+          # refresh-og-image. Both are tolerant-by-design -- they log a warning
+          # and let the publish continue -- which is exactly why they need this:
+          # a silently-degrading step is invisible without it.
+          POSTHOG_PROJECT_TOKEN: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
 
       # Belt-and-suspenders for Finding 1: the build just re-snapshotted adapters
       # from live GitHub metadata. Refuse to publish if any degraded to broken

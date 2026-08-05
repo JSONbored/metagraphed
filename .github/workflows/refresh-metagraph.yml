@@ -75,3 +75,4 @@ jobs:
         env:
           METAGRAPH_NEURONS_JSON: dist/metagraph-neurons.json
           NEURONS_SYNC_SECRET: ${{ secrets.NEURONS_SYNC_SECRET }}
+          POSTHOG_PROJECT_TOKEN: ${{ secrets.POSTHOG_PROJECT_TOKEN }}

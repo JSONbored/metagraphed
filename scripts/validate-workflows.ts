@@ -1,6 +1,13 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { repoRoot } from "./lib.ts";
+import {
+  OBSERVABILITY_TOKEN_ENV,
+  buildStepScripts,
+  instrumentedScripts,
+  stepsMissingObservabilityToken,
+  workflowSteps,
+} from "./workflow-observability.ts";
 
 const workflowRoot = path.join(repoRoot, ".github/workflows");
 const workflows = (await fs.readdir(workflowRoot))
@@ -18,6 +25,39 @@ const errors: string[] = [];
 // exempt a future workflow that SHOULD have a checkout) is the correct fix, not a decorative
 // checkout added purely to satisfy this check.
 const NO_CHECKOUT_BY_DESIGN = new Set(["ui-preview-deploy.yml"]);
+
+// Both halves of the observability rule are DERIVED (see
+// scripts/workflow-observability.ts): which scripts are instrumented, and
+// which scripts each workflow step reaches. Nothing here is hand-listed.
+const scriptSources = await readScriptSources(path.join(repoRoot, "scripts"));
+const instrumented = instrumentedScripts(scriptSources);
+const packageJson = JSON.parse(
+  await fs.readFile(path.join(repoRoot, "package.json"), "utf8"),
+) as { scripts?: Record<string, string> };
+const buildSteps = buildStepScripts(
+  scriptSources.get("scripts/build.ts") ?? "",
+);
+const observabilityContext = {
+  npmScripts: packageJson.scripts ?? {},
+  buildStepScripts: buildSteps,
+  instrumented,
+};
+
+// Guards against this rule passing VACUOUSLY, which is the same failure mode
+// it exists to catch. If either derivation silently returns nothing -- the
+// import specifier in observability.ts's consumers changes, or build.ts stops
+// declaring steps as nodeStep(...) -- every workflow trivially satisfies the
+// rule and the regression walks straight back in. Fail instead of pass.
+check(
+  instrumented.size > 0,
+  "scripts/workflow-observability.ts",
+  "found no scripts importing ./observability.ts -- the instrumentation scan is broken, so the workflow token rule below proves nothing",
+);
+check(
+  [...buildSteps.production].some((script) => instrumented.has(script)),
+  "scripts/workflow-observability.ts",
+  "scripts/build.ts's productionSteps() no longer declares any instrumented script as a nodeStep() -- either the step list moved (so the publish build is no longer checked) or the instrumentation was dropped",
+);
 
 for (const workflow of workflows) {
   const content = await fs.readFile(path.join(workflowRoot, workflow), "utf8");
@@ -61,6 +101,18 @@ for (const workflow of workflows) {
     workflow,
     "missing checkout action",
   );
+  // A step that runs an instrumented script without the token gets
+  // initObservability()'s early return: no client, no capture, no complaint.
+  for (const { step, scripts } of stepsMissingObservabilityToken(
+    content,
+    observabilityContext,
+  )) {
+    check(
+      false,
+      workflow,
+      `step "${step}" runs ${scripts.join(", ")} (instrumented via scripts/observability.ts) without ${OBSERVABILITY_TOKEN_ENV} in scope -- its error reporting would silently no-op`,
+    );
+  }
   for (const match of content.matchAll(/uses:\s+([^\s#]+)/g)) {
     const actionRef = match[1].replace(/^['"]|['"]$/g, "");
     if (actionRef.startsWith("./") || actionRef.startsWith("docker://")) {
@@ -290,6 +342,23 @@ function check(condition: unknown, workflow: string, message: string): void {
   }
 }
 
+/** Every .ts/.mjs/.js file under scripts/, keyed by repo-relative path. */
+async function readScriptSources(dir: string): Promise<Map<string, string>> {
+  const sources = new Map<string, string>();
+  for (const entry of await fs.readdir(dir, {
+    withFileTypes: true,
+    recursive: true,
+  })) {
+    if (!/\.(?:ts|mjs|js)$/.test(entry.name)) continue;
+    const full = path.join(entry.parentPath, entry.name);
+    sources.set(
+      path.relative(repoRoot, full).split(path.sep).join("/"),
+      await fs.readFile(full, "utf8"),
+    );
+  }
+  return sources;
+}
+
 function workflowJobBlock(content: string, jobName: string): string {
   const match = content.match(
     new RegExp(
@@ -298,37 +367,6 @@ function workflowJobBlock(content: string, jobName: string): string {
     ),
   );
   return match?.[0] || "";
-}
-
-/**
- * Every `- name:` step in a workflow, as {name, block}.
- *
- * Enumerated rather than looked up by literal, so a rule can select steps by
- * what they DO -- which upload carries the token -- instead of by what they are
- * called. Names are prose and get rewritten; the contract should not move with
- * them. Quoted names are unwrapped, since YAML requires quoting once a name
- * contains a colon.
- */
-function workflowSteps(content: string): { name: string; block: string }[] {
-  const steps: { name: string; block: string }[] = [];
-  // Six spaces is the indent a step sits at inside jobs.<id>.steps. Written as {6}
-  // rather than as literal spaces so the count is readable and cannot be miscounted
-  // by eye -- which is exactly what no-regex-spaces is for.
-  const marker = /^ {6}- name: (.+)$/gm;
-  const starts: { name: string; index: number }[] = [];
-  for (const m of content.matchAll(marker)) {
-    starts.push({
-      name: m[1].trim().replace(/^["'](.*)["']$/, "$1"),
-      index: m.index ?? 0,
-    });
-  }
-  for (const [i, step] of starts.entries()) {
-    steps.push({
-      name: step.name,
-      block: content.slice(step.index, starts[i + 1]?.index),
-    });
-  }
-  return steps;
 }
 
 /** Whether an upload sends Codecov the owner-prefixed branch it requires from

@@ -64,6 +64,8 @@ jobs:
 
       - name: Refresh native chain snapshot (tolerant)
         run: node scripts/refresh-native-snapshot.ts
+        env:
+          POSTHOG_PROJECT_TOKEN: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
 
       - name: Publish live economics (KV)
         run: npm run economics:refresh
@@ -72,6 +74,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
           METAGRAPH_ALLOW_KV_WRITE: "1"
+          POSTHOG_PROJECT_TOKEN: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
 
       - name: Notify on failure
         if: failure() && env.METAGRAPH_ALERT_WEBHOOK_URL != ''
