@@ -6733,7 +6733,7 @@ export interface components {
             generated_at: string;
             notes?: string | string[];
             /** @constant */
-            openapi_url: "/api/v1/openapi.json";
+            openapi_url: "/metagraph/openapi.json";
             /** @constant */
             primary_domain: "api.metagraph.sh";
             response_envelope: {
@@ -12483,7 +12483,7 @@ export interface operations {
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
-                     *         "openapi_url": "/api/v1/openapi.json",
+                     *         "openapi_url": "/metagraph/openapi.json",
                      *         "primary_domain": "api.metagraph.sh",
                      *         "response_envelope": {
                      *           "error_schema_ref": "#/components/schemas/ErrorEnvelope",
@@ -12628,7 +12628,7 @@ export interface operations {
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "notes": "Example description.",
-                     *         "openapi_url": "/api/v1/openapi.json",
+                     *         "openapi_url": "/metagraph/openapi.json",
                      *         "primary_domain": "api.metagraph.sh",
                      *         "response_envelope": {
                      *           "error_schema_ref": "#/components/schemas/ErrorEnvelope",

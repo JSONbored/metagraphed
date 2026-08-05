@@ -136,7 +136,11 @@ export type ContractsArtifact = z.infer<typeof ContractsArtifactSchema>;
 export const ApiIndexArtifactSchema = ArtifactBaseSchema.extend({
   artifact_contracts: z.array(ArtifactContractEntrySchema),
   base_path: z.literal("/api/v1"),
-  openapi_url: z.literal("/api/v1/openapi.json"),
+  // #9460: the RAW artifact, matching what /api/v1/contracts has always advertised.
+  // This pinned `/api/v1/openapi.json`, which serves the spec inside the success
+  // envelope — valid for the envelope rule, and not a valid OpenAPI document, so every
+  // generator pointed here by the index failed on a spec that was published and fine.
+  openapi_url: z.literal("/metagraph/openapi.json"),
   primary_domain: z.literal("api.metagraph.sh"),
   response_envelope: ResponseEnvelopeContractSchema,
   routes: z.array(ApiRouteSchema),
