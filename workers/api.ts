@@ -311,6 +311,7 @@ import {
   writeSubnetSnapshot,
 } from "../src/health-prober.ts";
 import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.ts";
+import { readCachedNetworkParametersSnapshot } from "../src/network-parameters.ts";
 import {
   mergeFreshness,
   mergeRpcEndpoints,
@@ -7729,8 +7730,20 @@ async function liveHealthOverlay(
       break;
     }
     case "freshness": {
-      const meta = await readHealthMetaKv(env);
-      data = mergeFreshness(staticData, meta);
+      // The economics tier and the live-RPC tier both move independently of the
+      // publish, so their timestamps exist only at serve time (#9460). Both reads are
+      // the SAME ones the data routes make — the memoized economics blob and the
+      // cached parameters snapshot — so `/freshness` can never report an `as_of` that
+      // disagrees with what `/economics` or `/network/parameters` just returned.
+      const [meta, economicsBlob, parameters] = await Promise.all([
+        readHealthMetaKv(env),
+        readEconomicsCurrentKv(env),
+        readCachedNetworkParametersSnapshot(env),
+      ]);
+      data = mergeFreshness(staticData, meta, {
+        economicsCapturedAt: economicsBlob?.captured_at,
+        parametersQueriedAt: parameters?.queried_at,
+      });
       break;
     }
     case "subnet-overview": {

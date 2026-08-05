@@ -8739,7 +8739,7 @@ export interface components {
                 as_of: string | null;
                 id: string;
                 /** @enum {string} */
-                lane: "adapter-snapshot" | "candidate-discovery" | "candidate-verification" | "health-probe" | "native-data" | "schema-snapshot";
+                lane: "adapter-snapshot" | "candidate-discovery" | "candidate-verification" | "health-probe" | "native-data" | "schema-snapshot" | "economics" | "live-rpc";
                 notes?: string;
                 path: string;
                 required_for_publish: boolean;
@@ -8756,8 +8756,10 @@ export interface components {
                 adapter_snapshot_as_of: string | null;
                 blocking_source_count: number;
                 candidate_discovery_as_of: string | null;
+                economics_as_of?: string | null;
                 health_probe_as_of: string | null;
                 health_surface_count: number;
+                live_rpc_as_of?: string | null;
                 missing_blocking_source_count: number;
                 native_data_as_of: string;
                 native_snapshot_captured_at: string;
@@ -19665,7 +19667,7 @@ export interface operations {
                      *             "lane": "adapter-snapshot",
                      *             "path": "example",
                      *             "required_for_publish": true,
-                     *             "stale_after_hours": 1,
+                     *             "stale_after_hours": 0.5,
                      *             "stale_behavior": "block",
                      *             "status": "captured",
                      *             "timestamp": "example",
@@ -19677,8 +19679,10 @@ export interface operations {
                      *           "adapter_snapshot_as_of": "example",
                      *           "blocking_source_count": 5000000,
                      *           "candidate_discovery_as_of": "example",
+                     *           "economics_as_of": "example",
                      *           "health_probe_as_of": "example",
                      *           "health_surface_count": 1,
+                     *           "live_rpc_as_of": "example",
                      *           "missing_blocking_source_count": 5000000,
                      *           "native_data_as_of": "example",
                      *           "native_snapshot_captured_at": "2026-06-01T00:00:00.000Z",
@@ -41126,7 +41130,7 @@ export interface operations {
                      *             "lane": "adapter-snapshot",
                      *             "path": "example",
                      *             "required_for_publish": true,
-                     *             "stale_after_hours": 1,
+                     *             "stale_after_hours": 0.5,
                      *             "stale_behavior": "block",
                      *             "status": "captured",
                      *             "timestamp": "example",
@@ -41138,8 +41142,10 @@ export interface operations {
                      *           "adapter_snapshot_as_of": "example",
                      *           "blocking_source_count": 5000000,
                      *           "candidate_discovery_as_of": "example",
+                     *           "economics_as_of": "example",
                      *           "health_probe_as_of": "example",
                      *           "health_surface_count": 1,
+                     *           "live_rpc_as_of": "example",
                      *           "missing_blocking_source_count": 5000000,
                      *           "native_data_as_of": "example",
                      *           "native_snapshot_captured_at": "2026-06-01T00:00:00.000Z",

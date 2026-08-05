@@ -5255,7 +5255,7 @@
                 "lane": "adapter-snapshot",
                 "path": "example",
                 "required_for_publish": true,
-                "stale_after_hours": 1,
+                "stale_after_hours": 0.5,
                 "stale_behavior": "block",
                 "status": "captured",
                 "timestamp": "example",
@@ -5267,8 +5267,10 @@
               "adapter_snapshot_as_of": "example",
               "blocking_source_count": 5000000,
               "candidate_discovery_as_of": "example",
+              "economics_as_of": "example",
               "health_probe_as_of": "example",
               "health_surface_count": 1,
+              "live_rpc_as_of": "example",
               "missing_blocking_source_count": 5000000,
               "native_data_as_of": "example",
               "native_snapshot_captured_at": "2026-06-01T00:00:00.000Z",
@@ -28537,7 +28539,9 @@
                     "candidate-verification",
                     "health-probe",
                     "native-data",
-                    "schema-snapshot"
+                    "schema-snapshot",
+                    "economics",
+                    "live-rpc"
                   ],
                   "type": "string"
                 },
@@ -28551,9 +28555,8 @@
                   "type": "boolean"
                 },
                 "stale_after_hours": {
-                  "maximum": 9007199254740991,
                   "minimum": 0,
-                  "type": "integer"
+                  "type": "number"
                 },
                 "stale_behavior": {
                   "enum": [
@@ -28642,6 +28645,16 @@
                   }
                 ]
               },
+              "economics_as_of": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "health_probe_as_of": {
                 "anyOf": [
                   {
@@ -28656,6 +28669,16 @@
                 "maximum": 9007199254740991,
                 "minimum": 0,
                 "type": "integer"
+              },
+              "live_rpc_as_of": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "missing_blocking_source_count": {
                 "maximum": 9007199254740991,

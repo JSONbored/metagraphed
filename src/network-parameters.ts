@@ -349,6 +349,34 @@ export interface NetworkParameters extends NetworkParametersSnapshot {
   field_sources: typeof NETWORK_PARAMETERS_FIELD_SOURCES;
 }
 
+/**
+ * The cached snapshot ONLY — never a live RPC read (#9460).
+ *
+ * `/freshness` reports how current the live-RPC lane is, and it must not become a
+ * reason for that lane to be queried: a freshness probe that triggers the work it is
+ * measuring would refresh `queried_at` on every call and always report "current",
+ * which is precisely a lane that cannot go stale and therefore cannot be gated on.
+ *
+ * Null when KV is unbound or cold — the caller reports `missing`, not an age.
+ */
+export async function readCachedNetworkParametersSnapshot(
+  env: Env,
+  network?: ChainNetworkId,
+): Promise<NetworkParametersSnapshot | null> {
+  const kv = env?.METAGRAPH_CONTROL;
+  if (!kv?.get) return null;
+  try {
+    return (
+      (await kv.get<NetworkParametersSnapshot>(
+        networkKvKey("network:parameters", network),
+        { type: "json" },
+      )) ?? null
+    );
+  } catch {
+    return null;
+  }
+}
+
 // Query the live global governance parameters. Uses METAGRAPH_CONTROL KV
 // (300s TTL) when present; each field is independently null on its own RPC
 // failure (schema-stable, never throws) -- three parallel reads against the

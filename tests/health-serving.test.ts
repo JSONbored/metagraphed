@@ -721,6 +721,90 @@ describe("mergeFreshness", () => {
     );
     assert.equal(out.summary.health_probe_as_of, "2026-06-11T00:00:00.000Z");
   });
+
+  // #9460. The publish stamps only what IT captured, so the two freshest tiers —
+  // economics (~3h, its own schedule) and the live chain reads (per request) — never
+  // appeared here at all. A consumer gating on this route would have rejected data
+  // hours newer than the number it was reading.
+  describe("the lanes that move independently of the publish", () => {
+    const NOW = Date.parse("2026-08-05T04:00:00.000Z");
+    const base = {
+      sources: [{ id: "surface-health", as_of: null, status: "missing" }],
+      summary: {},
+    };
+    const merge = (lanes: Record<string, unknown>) =>
+      mergeFreshness(
+        base,
+        { last_run_at: "2026-08-05T03:45:00.000Z" },
+        {
+          now: NOW,
+          ...lanes,
+        },
+      ) as Row;
+
+    test("reports the economics tier with the captured_at /economics returns", () => {
+      const out = merge({ economicsCapturedAt: "2026-08-05T03:26:09.362Z" });
+      const econ = out.sources.find((s: Row) => s.id === "economics-live");
+      assert.equal(econ.lane, "economics");
+      assert.equal(econ.as_of, "2026-08-05T03:26:09.362Z");
+      assert.equal(econ.status, "current", "34 minutes old, inside the window");
+      assert.equal(out.summary.economics_as_of, "2026-08-05T03:26:09.362Z");
+    });
+
+    test("reports the live-RPC tier with the queried_at /network/parameters returns", () => {
+      const out = merge({ parametersQueriedAt: "2026-08-05T03:59:00.000Z" });
+      const rpc = out.sources.find((s: Row) => s.id === "chain-parameters");
+      assert.equal(rpc.lane, "live-rpc");
+      assert.equal(rpc.status, "current");
+      assert.equal(out.summary.live_rpc_as_of, "2026-08-05T03:59:00.000Z");
+    });
+
+    test("an economics blob past the serving window reads stale", () => {
+      // The same 8h window resolveLiveEconomics itself gates on, so this route and the
+      // serving tier can never disagree about whether economics is stale.
+      const out = merge({ economicsCapturedAt: "2026-08-04T19:00:00.000Z" });
+      assert.equal(
+        out.sources.find((s: Row) => s.id === "economics-live").status,
+        "stale",
+      );
+    });
+
+    test("a cold tier reports missing, not an age it does not have", () => {
+      const out = merge({});
+      for (const id of ["economics-live", "chain-parameters"]) {
+        const source = out.sources.find((s: Row) => s.id === id);
+        assert.equal(source.status, "missing");
+        assert.equal(source.as_of, null);
+      }
+      assert.equal(out.summary.economics_as_of, null);
+    });
+
+    test("an unparseable timestamp is missing rather than infinitely stale", () => {
+      const out = merge({ economicsCapturedAt: "not-a-date" });
+      assert.equal(
+        out.sources.find((s: Row) => s.id === "economics-live").status,
+        "missing",
+      );
+    });
+
+    test("neither lane can block a publish it is not part of", () => {
+      const out = merge({
+        economicsCapturedAt: "2026-08-05T03:26:09.362Z",
+        parametersQueriedAt: "2026-08-05T03:59:00.000Z",
+      });
+      for (const id of ["economics-live", "chain-parameters"]) {
+        const source = out.sources.find((s: Row) => s.id === id);
+        assert.equal(source.required_for_publish, false);
+        assert.equal(source.stale_behavior, "warn");
+      }
+    });
+
+    test("leaves the built sources untouched", () => {
+      const out = merge({ economicsCapturedAt: "2026-08-05T03:26:09.362Z" });
+      assert.equal(out.sources.length, 3, "one built source plus the two live");
+      assert.equal(out.sources[0].id, "surface-health");
+    });
+  });
 });
 
 describe("formatTrends", () => {
