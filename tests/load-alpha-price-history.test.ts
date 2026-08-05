@@ -74,8 +74,10 @@ describe("loadAlphaPriceHistoryByNetuid", () => {
     assert.ok(history);
     assert.equal(history.size, 2);
     assert.deepEqual(history.get(1), [
-      { snapshot_date: "2026-08-01", alpha_price_tao: 0.5 },
-      { snapshot_date: "2026-08-02", alpha_price_tao: 0.6 },
+      // #9449: captured_at rides along so the window arithmetic downstream
+      // measures elapsed time instead of subtracting calendar dates.
+      { snapshot_date: "2026-08-01", alpha_price_tao: 0.5, captured_at: null },
+      { snapshot_date: "2026-08-02", alpha_price_tao: 0.6, captured_at: null },
     ]);
     // The bounded D1 database, and the token as the only credential.
     assert.ok(calls[0].url.includes(SUBNET_SNAPSHOTS_D1_DATABASE_ID));

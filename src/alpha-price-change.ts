@@ -33,16 +33,45 @@ function toFiniteOrNull(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function shiftDate(isoDate: string, days: number): string {
-  // Caller always passes a normalized YYYY-MM-DD from normalizeAlphaPricePoints.
-  const [y, m, d] = isoDate.split("-").map(Number);
-  const base = Date.UTC(y, m - 1, d) + days * 24 * 60 * 60 * 1000;
-  return new Date(base).toISOString().slice(0, 10);
-}
-
 export interface AlphaPricePoint {
   date: string;
   alpha_price_tao: number | null;
+  /**
+   * When this row was actually written, epoch ms. Null for rows that predate
+   * the column or arrive from a caller that does not carry it.
+   *
+   * #9449: this is what makes a window mean what it says. A snapshot row is
+   * UPSERTED throughout its own day (the health prober rewrites today's row
+   * every run), so a row's date identifies which day it belongs to and says
+   * nothing about how far apart two rows were measured. Live data on
+   * 2026-08-05: the 08-05 row was captured 00:00:08 and the 08-04 row
+   * 23:00:08 -- one hour apart, treated as a day.
+   */
+  captured_at: number | null;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function toEpochMsOrNull(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/**
+ * When a point was measured, for window arithmetic.
+ *
+ * Falls back to the END of its calendar day when the row carries no
+ * `captured_at`. That is the right default rather than midnight: the live
+ * writer's last successful upsert for a day lands late in it (~23:00 in
+ * production), so end-of-day is what an untimestamped historical row actually
+ * represents. Using midnight would systematically overstate every gap by
+ * nearly a day.
+ */
+function effectiveAt(point: AlphaPricePoint): number {
+  if (point.captured_at != null) return point.captured_at;
+  const [y, m, d] = point.date.split("-").map(Number);
+  return Date.UTC(y, m - 1, d) + DAY_MS - 1;
 }
 
 /**
@@ -58,25 +87,48 @@ export function normalizeAlphaPricePoints(
     const date = row.date ?? row.snapshot_date;
     if (date == null || date === "") continue;
     const day = String(date).slice(0, 10);
-    // Reject non-calendar prefixes so shiftDate never sees partial dates.
+    // Reject non-calendar prefixes so effectiveAt never sees partial dates.
     if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) continue;
     points.push({
       date: day,
       alpha_price_tao: toFiniteOrNull(row.alpha_price_tao),
+      captured_at: toEpochMsOrNull(row.captured_at),
     });
   }
   points.sort((a, b) => a.date.localeCompare(b.date));
   return points;
 }
 
-/** Latest point on or before `target` with a finite alpha price. */
-function finitePriceAtOrBefore(
+/**
+ * The newest point measured at least `days` before `latest`, by actual
+ * elapsed time.
+ *
+ * #9449: this replaced a calendar-date lookup (`latest.date - days`, then the
+ * newest row on or before that date), which was wrong in a way that produced
+ * a CONFIDENT WRONG ANSWER rather than a missing one. Snapshot rows are
+ * upserted through their own day, so the row dated "yesterday" holds
+ * yesterday's LAST measurement (~23:00) while the row dated "today" holds
+ * one taken minutes ago. Just after midnight UTC those two rows are an hour
+ * apart, and since the economics source they both read refreshes only every
+ * ~3h, they carried a byte-identical price -- so `alpha_price_change_1d`
+ * reported exactly 0 for ALL 129 subnets, every day, for the first hours of
+ * each UTC day. Not null, not absent: 0, which a consumer plots as "flat".
+ *
+ * Selecting by elapsed time makes the window mean what its name says
+ * regardless of when in the day either row happened to land.
+ */
+function priorPointAtLeast(
   points: AlphaPricePoint[],
-  target: string,
+  latest: AlphaPricePoint,
+  days: number,
 ): AlphaPricePoint | null {
+  const cutoff = effectiveAt(latest) - days * DAY_MS;
   let chosen: AlphaPricePoint | null = null;
+  // Ascending by date, and effectiveAt is monotonic with it for the daily
+  // series this reads, so the last point at or before the cutoff is the
+  // newest one -- same walk the date version did, on a real clock.
   for (const point of points) {
-    if (point.date > target) break;
+    if (effectiveAt(point) > cutoff) break;
     if (point.alpha_price_tao != null) chosen = point;
   }
   return chosen;
@@ -88,10 +140,10 @@ function changeOver(
   days: number | null | undefined,
 ): number | null {
   if (days == null || !latest || latest.alpha_price_tao == null) return null;
-  const target = shiftDate(latest.date, -days);
-  const prior = finitePriceAtOrBefore(points, target);
-  // target is always strictly before latest.date for positive day windows, so
-  // a found prior is a distinct earlier point (or null when history is short).
+  const prior = priorPointAtLeast(points, latest, days);
+  // Null, never 0, when history does not reach back far enough: "we cannot
+  // measure this window" and "the price did not move" are different
+  // statements, and only one of them is safe to plot.
   if (!prior || prior.alpha_price_tao == null) return null;
   return pctChange(prior.alpha_price_tao, latest.alpha_price_tao);
 }
@@ -143,10 +195,21 @@ export function computeAlphaPriceChanges(
  */
 export function indexAlphaPriceHistoryByNetuid(
   rows: Array<Record<string, unknown>> | null | undefined,
-): Map<number, Array<{ snapshot_date: string; alpha_price_tao: unknown }>> {
+): Map<
+  number,
+  Array<{
+    snapshot_date: string;
+    alpha_price_tao: unknown;
+    captured_at: unknown;
+  }>
+> {
   const map = new Map<
     number,
-    Array<{ snapshot_date: string; alpha_price_tao: unknown }>
+    Array<{
+      snapshot_date: string;
+      alpha_price_tao: unknown;
+      captured_at: unknown;
+    }>
   >();
   for (const row of Array.isArray(rows) ? rows : []) {
     const netuid = Number(row?.netuid);
@@ -157,6 +220,9 @@ export function indexAlphaPriceHistoryByNetuid(
     list.push({
       snapshot_date: String(date).slice(0, 10),
       alpha_price_tao: row.alpha_price_tao,
+      // Carried through, or the window arithmetic downstream falls back to
+      // end-of-day for every row and the fix stops working at this seam.
+      captured_at: row.captured_at ?? null,
     });
     map.set(netuid, list);
   }
