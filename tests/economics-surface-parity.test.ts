@@ -21,7 +21,16 @@ import type { Row } from "./row-type.ts";
 // external report said exactly that — it nearly shipped a conclusion that a rebuild was
 // impossible because the API looked frozen.
 
-const CAPTURED_AT = "2026-08-05T03:26:09.362Z";
+// RELATIVE, not a literal. resolveLiveEconomics rejects a blob older than
+// ECONOMICS_FRESHNESS_MAX_AGE_MS (8h) and falls through to R2 -- which this
+// harness deliberately leaves empty so the KV tier is the one under test. A
+// hardcoded stamp therefore makes this file a time bomb: it was committed dated
+// slightly in the future, passed while wall-clock time was behind it, and went
+// permanently red 8 hours after that instant, with a `not_found` from the R2
+// fallback rather than anything resembling the freshness cause. Anchoring to
+// now keeps the blob perpetually fresh, which is the precondition of the test,
+// not its subject.
+const CAPTURED_AT = new Date(Date.now() - 60_000).toISOString();
 const BLOCK = 8_775_311;
 
 const ECONOMICS_BLOB = {
