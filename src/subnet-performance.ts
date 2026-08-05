@@ -21,6 +21,16 @@ export const PERFORMANCE_READ_COLUMNS =
   "incentive, dividends, trust, consensus, validator_trust, " +
   "active, validator_permit, captured_at";
 
+// The neuron_daily columns the performance-HISTORY handler reads. Separate from
+// PERFORMANCE_READ_COLUMNS above because the two differ at both ends: history
+// groups by snapshot_date and has no use for captured_at. Single-sourced here
+// for the same reason as its sibling — the history SELECT was hand-transcribed
+// and silently omitted validator_trust, which nulled validator_trust_mean and
+// validator_trust_median on every point of every subnet (#9523).
+export const PERFORMANCE_HISTORY_READ_COLUMNS =
+  "snapshot_date, incentive, dividends, trust, consensus, validator_trust, " +
+  "active, validator_permit";
+
 // The 0..1 score columns reported as a percentile spread (not a concentration
 // scorecard — a bounded score has no "share of a total" to be unequal over, so a
 // distribution summary is the meaningful lens).

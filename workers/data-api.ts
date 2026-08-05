@@ -47,6 +47,7 @@ import {
 import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,
+  PERFORMANCE_HISTORY_READ_COLUMNS,
   PERFORMANCE_HISTORY_ROW_CAP,
   PERFORMANCE_HISTORY_WINDOWS,
   DEFAULT_PERFORMANCE_HISTORY_WINDOW,
@@ -71,6 +72,7 @@ import {
   HISTORY_WINDOWS,
   DEFAULT_HISTORY_WINDOW,
   MAX_HISTORY_POINTS,
+  NEURON_DAILY_READ_COLUMNS,
 } from "../src/neuron-history.ts";
 import { buildValidatorHistory } from "../src/validator-history.ts";
 import {
@@ -5424,17 +5426,25 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         HISTORY_WINDOWS,
         DEFAULT_HISTORY_WINDOW,
       );
+      // sql.unsafe, not the tagged form: the tag binds every interpolation as a
+      // parameter, so a column-list constant can only be threaded this way --
+      // the same reason the neurons reads above use it for NEURON_COLUMNS.
+      // Hand-transcribing the list here is what dropped `take` (#9523).
       const rows = cutoff
-        ? await sql`
-          SELECT snapshot_date, uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
+        ? await sql.unsafe(
+            `SELECT ${NEURON_DAILY_READ_COLUMNS}
           FROM neuron_daily
-          WHERE netuid = ${netuid} AND uid = ${uid} AND snapshot_date >= ${cutoff}
-          ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
-        : await sql`
-          SELECT snapshot_date, uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, consensus, incentive, dividends, emission_tao, stake_tao, registered_at_block, is_immunity_period, axon, block_number, captured_at
+          WHERE netuid = ? AND uid = ? AND snapshot_date >= ?
+          ORDER BY snapshot_date DESC LIMIT ?`,
+            [netuid, uid, cutoff, MAX_HISTORY_POINTS],
+          )
+        : await sql.unsafe(
+            `SELECT ${NEURON_DAILY_READ_COLUMNS}
           FROM neuron_daily
-          WHERE netuid = ${netuid} AND uid = ${uid}
-          ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`;
+          WHERE netuid = ? AND uid = ?
+          ORDER BY snapshot_date DESC LIMIT ?`,
+            [netuid, uid, MAX_HISTORY_POINTS],
+          );
       return json(
         buildNeuronHistory(rows, netuid, uid, {
           window: windowLabelFor(url, HISTORY_WINDOWS, DEFAULT_HISTORY_WINDOW),
@@ -5731,11 +5741,13 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         PERFORMANCE_HISTORY_WINDOWS,
         DEFAULT_PERFORMANCE_HISTORY_WINDOW,
       );
-      const rows = await sql`
-        SELECT snapshot_date, incentive, dividends, trust, consensus, validator_permit, active
+      const rows = await sql.unsafe(
+        `SELECT ${PERFORMANCE_HISTORY_READ_COLUMNS}
         FROM neuron_daily
-        WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
-        ORDER BY snapshot_date DESC LIMIT ${PERFORMANCE_HISTORY_ROW_CAP}`;
+        WHERE netuid = ? AND snapshot_date >= ?
+        ORDER BY snapshot_date DESC LIMIT ?`,
+        [netuid, cutoff, PERFORMANCE_HISTORY_ROW_CAP],
+      );
       return json(
         buildSubnetPerformanceHistory(rows, netuid, {
           window: windowLabelFor(

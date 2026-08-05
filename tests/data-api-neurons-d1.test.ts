@@ -1021,6 +1021,43 @@ test("GET /api/v1/subnets/:netuid/neurons/:uid/history windows on snapshot_date 
   assert.equal(allBody.window, "all");
 });
 
+// #9523. Both of the next two assert a SELECT LIST, not a builder: each handler
+// hand-transcribed its column list instead of using the shared read constant,
+// and each quietly dropped one column. The builders were already covered --
+// tests/subnet-performance.test.ts feeds validator_trust straight in -- so the
+// gap could only ever be caught by reading a real row back through the route.
+// Assert every column the builder consumes, so the next omission fails here.
+test("GET /api/v1/subnets/:netuid/neurons/:uid/history serves take (SELECT list must match NEURON_DAILY_READ_COLUMNS)", async () => {
+  insertDaily({ uid: 3, snapshot_date: dayAgo(1), take: 0.18 });
+  const res = await call(req("/api/v1/subnets/7/neurons/3/history"));
+  assert.equal(res.status, 200);
+  const point = ((await res.json()) as Row).points as Row[];
+  assert.equal(point.length, 1);
+  assert.equal(point[0].take, 0.18, "take was dropped from the SELECT list");
+  // The neighbours that were never broken, so a regression here reads as the
+  // whole projection going wrong rather than one column.
+  assert.equal(point[0].validator_trust, 0.8);
+  assert.equal(point[0].axon, "1.2.3.4:8091");
+});
+
+test("GET /api/v1/subnets/:netuid/performance/history serves validator_trust_mean/median (SELECT list must match PERFORMANCE_HISTORY_READ_COLUMNS)", async () => {
+  // Two permit-holding validators on one day: mean 0.6, median 0.6. Distinct
+  // values so a mean/median computed over an all-undefined array (the bug)
+  // cannot coincidentally match.
+  insertDaily({ uid: 0, snapshot_date: dayAgo(1), validator_trust: 0.4 });
+  insertDaily({ uid: 1, snapshot_date: dayAgo(1), validator_trust: 0.8 });
+  const res = await call(req("/api/v1/subnets/7/performance/history"));
+  assert.equal(res.status, 200);
+  const points = ((await res.json()) as Row).points as Row[];
+  assert.equal(points.length, 1);
+  assert.equal(
+    points[0].validator_trust_mean,
+    0.6,
+    "validator_trust was dropped from the SELECT list",
+  );
+  assert.equal(points[0].validator_trust_median, 0.6);
+});
+
 test("GET /api/v1/subnets/:netuid/history aggregates per day (SUM over 0/1 validator_permit)", async () => {
   insertDaily({
     uid: 0,
