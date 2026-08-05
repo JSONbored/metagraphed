@@ -19,6 +19,7 @@ import {
   D1_PARAM_BUDGET,
   NEURON_DAILY_COLUMNS,
   rowsPerStatement,
+  D1_JSON_BUDGET_BYTES,
   writeNeuronSnapshotToD1,
 } from "../src/neurons-d1-write.ts";
 import { NEURON_INSERT_COLUMNS } from "../src/metagraph-neurons.ts";
@@ -78,9 +79,12 @@ describe("the Workers-binding parameter limit (the one that bit production)", ()
     }
   });
 
-  test("a full-size snapshot is batched in slices with prunes last", async () => {
-    const { db, batchCalls } = fakeDb();
-    // 4 rows/statement at 21 columns -> 4,500 rows = 1,126 statements = 2 slices.
+  test("a full-size snapshot collapses to a handful of statements", async () => {
+    const { db, batchCalls, prepared } = fakeDb();
+    // The old shape: 21 columns against a 90-parameter budget is 4 rows a
+    // statement, so 4,500 rows was 1,126 statements and two batch slices. That
+    // arithmetic is what put a real pass past the producer's 60-second request
+    // timeout, so the assertion is now about how FEW statements this is.
     const rows = Array.from({ length: 4_500 }, (_, i) => neuronRow(1, i));
     await writeNeuronSnapshotToD1(db, {
       rows,
@@ -88,15 +92,26 @@ describe("the Workers-binding parameter limit (the one that bit production)", ()
       positionRows: [],
       netuidMaxCapturedAt: new Map([[1, 1785700000000]]),
     });
+    const oldShape = Math.ceil(
+      4_500 / rowsPerStatement(NEURON_INSERT_COLUMNS.length),
+    );
+    assert.ok(
+      prepared.length * 20 < oldShape,
+      `${prepared.length} statements must be far below the ${oldShape} the parameter budget needed`,
+    );
     const calls = batchCalls();
-    assert.ok(calls.length >= 2, "sliced into multiple batch() calls");
     for (const c of calls) {
       assert.ok(c.length <= 1_000, `slice of ${c.length} exceeds 1,000`);
     }
-    // Order across slices is the write order; the prune is the last statement
-    // of the last slice, never ahead of the upserts it depends on.
+    // The prune still lands last: it depends on the upserts ahead of it, and
+    // batchInSlices gives no single transaction across slices.
     const last = calls[calls.length - 1]!;
     assert.ok(last.length >= 1);
+    assert.match(
+      prepared[prepared.length - 1]!.sql,
+      /DELETE|captured_at/,
+      "the prune is the final statement",
+    );
   });
 });
 
@@ -154,7 +169,10 @@ describe("the neurons D1 write path (#9146)", () => {
 
   test("a chunk binds its values in column order", () => {
     // A shifted binding writes every value into the wrong column and still
-    // succeeds, which is the worst kind of failure this path can have.
+    // succeeds, which is the worst kind of failure this path can have. Rows now
+    // travel as positional arrays inside ONE json_each parameter, so the
+    // ordering contract moved from the bind list into the tuple -- and the
+    // statement's json_extract('$[i]') list has to agree with it.
     const { db, prepared } = fakeDb();
     const row = neuronRow(1, 0);
     void writeNeuronSnapshotToD1(db, {
@@ -163,19 +181,30 @@ describe("the neurons D1 write path (#9146)", () => {
       positionRows: [],
       netuidMaxCapturedAt: new Map(),
     });
-    const values = prepared[0].values;
-    assert.equal(values.length, NEURON_INSERT_COLUMNS.length);
+    assert.equal(prepared[0].values.length, 1, "one parameter per statement");
+    const [tuple] = JSON.parse(prepared[0].values[0] as string);
+    assert.equal(tuple.length, NEURON_INSERT_COLUMNS.length);
     NEURON_INSERT_COLUMNS.forEach((column, index) => {
       assert.equal(
-        values[index],
+        tuple[index],
         row[column] ?? null,
         `${column} is bound at the wrong position`,
+      );
+      assert.ok(
+        prepared[0].sql.includes(`json_extract(value, '$[${index}]')`),
+        `${column} has no extractor at its position`,
       );
     });
   });
 
-  test("rows are split into statements once the budget is reached", () => {
-    const perStatement = rowsPerStatement(NEURON_INSERT_COLUMNS.length);
+  test("rows are split into statements once the BYTE budget is reached", () => {
+    // The split is by serialized payload now, not by a parameter count: a
+    // chunk carries one parameter however many rows it holds, so what bounds
+    // it is how big that parameter gets.
+    const oneRow = JSON.stringify(
+      NEURON_INSERT_COLUMNS.map((c) => neuronRow(1, 0)[c] ?? null),
+    ).length;
+    const perStatement = Math.floor(D1_JSON_BUDGET_BYTES / (oneRow + 1));
     const rows = Array.from({ length: perStatement + 1 }, (_, uid) =>
       neuronRow(1, uid),
     );
@@ -191,11 +220,20 @@ describe("the neurons D1 write path (#9146)", () => {
       2,
       "one row past the budget needs a second statement",
     );
-    assert.equal(
-      prepared[0].values.length,
-      perStatement * NEURON_INSERT_COLUMNS.length,
+    for (const p of prepared) {
+      assert.equal(p.values.length, 1, "one parameter per statement");
+      assert.ok(
+        (p.values[0] as string).length <= D1_JSON_BUDGET_BYTES,
+        "no chunk exceeds the byte budget",
+      );
+    }
+    // And the whole point: this is far fewer statements than the parameter
+    // budget allowed. 22 rows a statement at four columns was the shape that
+    // put a 364k-row pass at ~14,600 statements and timed the request out.
+    assert.ok(
+      perStatement > rowsPerStatement(NEURON_INSERT_COLUMNS.length) * 20,
+      "the JSON budget must hold far more rows than the parameter budget did",
     );
-    assert.equal(prepared[1].values.length, NEURON_INSERT_COLUMNS.length);
   });
 
   test("the prune is per-netuid, never batch-wide", () => {

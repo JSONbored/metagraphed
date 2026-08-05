@@ -16,7 +16,7 @@ import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import { writeValidatorNominatorCountsToD1 } from "../src/validator-nominator-counts-d1-write.ts";
 import { VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS } from "../src/validator-nominator-summary.ts";
-import { D1_PARAM_BUDGET } from "../src/neurons-d1-write.ts";
+import { D1_JSON_BUDGET_BYTES } from "../src/neurons-d1-write.ts";
 
 const MIGRATION = readFileSync(
   "migrations/d1/0012_validator_nominator_counts.sql",
@@ -118,13 +118,11 @@ describe("writeValidatorNominatorCountsToD1", () => {
       /WHERE validator_nominator_counts\.captured_at <= excluded\.captured_at/,
       "an older capture must never overwrite a newer one",
     );
-    assert.deepEqual(statements[0]!.params, [
-      HOTKEY,
-      12,
-      1_000,
-      "5G9",
-      3,
-      1_000,
+    // One json_each parameter carrying both rows as positional tuples.
+    assert.equal(statements[0]!.params.length, 1);
+    assert.deepEqual(JSON.parse(statements[0]!.params[0] as string), [
+      [HOTKEY, 12, 1_000],
+      ["5G9", 3, 1_000],
     ]);
   });
 
@@ -137,12 +135,13 @@ describe("writeValidatorNominatorCountsToD1", () => {
       db as never,
       Array.from({ length: 500 }, (_unused, i) => row(`hk-${i}`, i, 1_000)),
     );
-    assert.ok(statements.length > 1, "500 rows must chunk");
+    // ONE parameter per statement now, which is the strongest form of "inside
+    // the binding's limit" -- the count cannot drift toward 100 as columns are
+    // added, because it is not a function of the columns any more.
+    assert.equal(statements.length, 1, "500 narrow rows fit one statement");
     for (const statement of statements) {
-      assert.ok(
-        statement.params.length <= D1_PARAM_BUDGET,
-        `a statement bound ${statement.params.length} parameters, over the ${D1_PARAM_BUDGET} budget`,
-      );
+      assert.equal(statement.params.length, 1);
+      assert.ok((statement.params[0] as string).length <= D1_JSON_BUDGET_BYTES);
     }
   });
 

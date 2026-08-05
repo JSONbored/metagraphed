@@ -112,11 +112,133 @@ export function buildAppendInsert(
 }
 
 /**
- * Rows -> prepared statements, chunked under the parameter budget. An empty
- * `conflict` means the table is append-only (buildAppendInsert); a non-empty
- * one is the upsert key (buildUpsert). Shared by this module and
- * src/hyperparams-identity-d1-write.ts so there is exactly one place the
- * budget arithmetic and the column-order binding live.
+ * THE ROW-PER-PARAMETER SHAPE IS WHY THESE LANES KEPT TIMING OUT (#9543).
+ *
+ * A statement built by buildUpsert spends one bound parameter per COLUMN per
+ * ROW, so the 90-parameter budget above puts 22 rows in a 4-column statement
+ * and 6 in a 15-column one. A full pass is then tens of thousands of
+ * statements -- ~16,000 for a 30k-neuron snapshot, ~14,600 for a 364k-row
+ * account-balances pass -- and the producer's HTTP request carrying them has
+ * 60 seconds to finish. It did not: account-balances published 48% of a pass,
+ * and metagraphed-infra#325 responded by shrinking the chunk, which moved the
+ * failure from request 8 to request 29 rather than removing it.
+ *
+ * The parameter budget is not a law about how many ROWS fit in a statement. It
+ * is a law about how many PARAMETERS do, and a whole chunk fits in ONE if it
+ * travels as JSON:
+ *
+ *   INSERT INTO t (a, b) SELECT json_extract(value, '$[0]'), ...
+ *   FROM json_each(?1) WHERE true ON CONFLICT ... DO UPDATE SET ...
+ *
+ * Same upsert, same `captured_at <= excluded.captured_at` guard, one statement
+ * per chunk instead of hundreds. Verified against production D1 (SQLite's JSON1
+ * is enabled there, `ON CONFLICT` parses after a SELECT given the `WHERE true`,
+ * and a replayed older capture is still refused by the guard).
+ *
+ * ROWS TRAVEL AS POSITIONAL ARRAYS, not objects: `[[v,v],[v,v]]` rather than
+ * `[{"a":v},{"a":v}]`. The column names are already in the statement, so
+ * repeating them per row would inflate the payload for nothing -- and the
+ * payload is what this chunking is now bounded by.
+ *
+ * `WHERE true` is load-bearing rather than decorative: without it SQLite parses
+ * the `ON CONFLICT` as part of the SELECT's source and the statement fails.
+ */
+export function buildJsonUpsert(
+  table: string,
+  columns: string[],
+  conflict: string[],
+): string {
+  const updatable = columns.filter((column) => !conflict.includes(column));
+  return (
+    `INSERT INTO ${table} (${columns.join(", ")}) SELECT ` +
+    columns.map((_, i) => `json_extract(value, '$[${i}]')`).join(", ") +
+    ` FROM json_each(?1) WHERE true` +
+    ` ON CONFLICT (${conflict.join(", ")}) DO UPDATE SET ` +
+    updatable.map((column) => `${column} = excluded.${column}`).join(", ") +
+    ` WHERE ${table}.captured_at <= excluded.captured_at`
+  );
+}
+
+/** The append-only twin, for tables whose only key is their AUTOINCREMENT id
+ * -- an upsert clause there would be a lie about their write semantics. */
+export function buildJsonAppendInsert(
+  table: string,
+  columns: string[],
+): string {
+  return (
+    `INSERT INTO ${table} (${columns.join(", ")}) SELECT ` +
+    columns.map((_, i) => `json_extract(value, '$[${i}]')`).join(", ") +
+    ` FROM json_each(?1)`
+  );
+}
+
+/**
+ * Bytes of serialized JSON per statement.
+ *
+ * The bound-parameter COUNT stops being the constraint once a chunk travels as
+ * one parameter; its SIZE becomes the constraint instead. And the size limit on
+ * a bound parameter is the one number here that is NOT documented and could NOT
+ * be measured: `wrangler dev --remote` crashes on this Worker before a request
+ * completes, and `wrangler dev` locally refuses to boot it at all
+ * (`REALIZED_RETURN_BASELINE_TOLERANCE_DAYS` is rejected by workerd, unrelated
+ * to this path). Both failures are in the tooling, not in the write.
+ *
+ * MEASURING IT THROUGH `wrangler d1 execute` WOULD BE WORSE THAN NOT MEASURING,
+ * and D1_PARAM_BUDGET's own comment above is why: 1,200 bound parameters
+ * execute happily over that HTTP path while the Workers runtime binding
+ * enforces 100, and fifteen production syncs failed before anyone noticed the
+ * two paths have different limits. A number confirmed on the wrong path reads
+ * exactly like a number confirmed on the right one.
+ *
+ * So this is set from what IS documented rather than from an experiment that
+ * cannot be run: D1's maximum SQL statement length is 100 KB, and 64 KB sits
+ * under it with room for the statement text and encoding overhead. That is
+ * conservative on purpose. At four short columns it is ~1,400 rows a statement
+ * against the 22 the parameter budget allowed, so a 364k-row pass falls from
+ * ~14,600 statements to ~260 -- the overwhelming majority of the available win,
+ * with none of the risk of sitting on an unverified ceiling. Sitting on a
+ * ceiling is what #325 was already cleaning up after.
+ *
+ * RAISING THIS IS FINE, but only against a measurement taken through a real
+ * binding -- a deployed Worker or a working `--remote` session -- never through
+ * the CLI.
+ */
+export const D1_JSON_BUDGET_BYTES = 64_000;
+
+/**
+ * Rows -> chunks, split so each chunk's serialized JSON stays under the byte
+ * budget. A single row over budget still gets its own chunk: dropping it would
+ * lose data, and D1 rejecting one oversized statement is a loud failure rather
+ * than a silent gap.
+ */
+export function chunkRowsByJsonBytes(
+  rows: Row[],
+  columns: string[],
+  budgetBytes: number = D1_JSON_BUDGET_BYTES,
+): unknown[][][] {
+  const chunks: unknown[][][] = [];
+  let current: unknown[][] = [];
+  let bytes = 2; // the enclosing []
+  for (const row of rows) {
+    const tuple = columns.map((column) => row[column] ?? null);
+    const size = JSON.stringify(tuple).length + 1; // + the joining comma
+    if (current.length && bytes + size > budgetBytes) {
+      chunks.push(current);
+      current = [];
+      bytes = 2;
+    }
+    current.push(tuple);
+    bytes += size;
+  }
+  if (current.length) chunks.push(current);
+  return chunks;
+}
+
+/**
+ * Rows -> prepared statements, one statement per chunk. An empty `conflict`
+ * means the table is append-only; a non-empty one is the upsert key. Shared by
+ * this module and src/hyperparams-identity-d1-write.ts so there is exactly one
+ * place the chunking and the column-order binding live.
  */
 export function chunkStatements(
   db: D1Like,
@@ -125,19 +247,12 @@ export function chunkStatements(
   conflict: string[],
   rows: Row[],
 ): D1PreparedStatement[] {
-  const perStatement = rowsPerStatement(columns.length);
-  const statements: D1PreparedStatement[] = [];
-  for (let i = 0; i < rows.length; i += perStatement) {
-    const chunk = rows.slice(i, i + perStatement);
-    const sql = conflict.length
-      ? buildUpsert(table, columns, conflict, chunk.length)
-      : buildAppendInsert(table, columns, chunk.length);
-    const values = chunk.flatMap((row) =>
-      columns.map((column) => row[column] ?? null),
-    );
-    statements.push(db.prepare(sql).bind(...values));
-  }
-  return statements;
+  const sql = conflict.length
+    ? buildJsonUpsert(table, columns, conflict)
+    : buildJsonAppendInsert(table, columns);
+  return chunkRowsByJsonBytes(rows, columns).map((chunk) =>
+    db.prepare(sql).bind(JSON.stringify(chunk)),
+  );
 }
 
 export interface NeuronSnapshotWrite {

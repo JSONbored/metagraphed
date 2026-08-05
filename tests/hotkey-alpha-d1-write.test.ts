@@ -22,7 +22,7 @@ import {
   HOTKEY_ALPHA_INSERT_COLUMNS,
   writeHotkeyAlphaToD1,
 } from "../src/hotkey-alpha-d1-write.ts";
-import { D1_PARAM_BUDGET } from "../src/neurons-d1-write.ts";
+import { D1_JSON_BUDGET_BYTES } from "../src/neurons-d1-write.ts";
 
 const MIGRATION = readFileSync("migrations/d1/0019_hotkey_alpha.sql", "utf8");
 
@@ -139,37 +139,48 @@ describe("writeHotkeyAlphaToD1", () => {
     // A pass arrives across many requests and the producer re-sends on
     // failure, so a replayed batch must be a no-op rather than a regression.
     assert.match(sql, /captured_at\s*<=\s*excluded\.captured_at/);
-    // Both rows in one statement, bound in the writer's column order.
-    assert.deepEqual(statements[0]!.params, [
-      HOTKEY,
-      7,
-      1234.5,
-      1_000,
-      HOTKEY,
-      83,
-      20,
-      1_000,
+    // Both rows in one statement, as positional tuples inside a single
+    // json_each parameter, in the writer's column order.
+    assert.equal(statements[0]!.params.length, 1);
+    assert.deepEqual(JSON.parse(statements[0]!.params[0] as string), [
+      [HOTKEY, 7, 1234.5, 1_000],
+      [HOTKEY, 83, 20, 1_000],
     ]);
   });
 
-  test("chunks to stay inside the binding's parameter budget", async () => {
-    // 4 columns against D1's 100-parameter ceiling is 25 rows a statement.
-    // Exceeding it fails the whole batch, which is what #9157 hit live.
-    const perStatement = Math.floor(
-      D1_PARAM_BUDGET / HOTKEY_ALPHA_INSERT_COLUMNS.length,
-    );
+  test("binds ONE parameter per statement, whatever the row count", async () => {
+    // The old shape spent one parameter per column per row, so 4 columns
+    // against the 90-parameter budget was 22 rows a statement -- and a full
+    // 762k-pool pass was tens of thousands of statements against curl's
+    // 60-second timeout. A chunk now travels as one json_each parameter, which
+    // is the strongest possible form of "inside the binding's limit": one.
     const { statements, db } = d1Stub();
-    const rows = Array.from({ length: perStatement * 2 + 1 }, (_unused, i) =>
+    const rows = Array.from({ length: 500 }, (_unused, i) =>
       row(HOTKEY, i, i, 1_000),
     );
     const { statements: count } = await writeHotkeyAlphaToD1(db as never, rows);
-    assert.equal(count, 3);
+    assert.equal(count, 1, "500 rows fit in a single statement");
     for (const statement of statements) {
+      assert.equal(statement.params.length, 1);
       assert.ok(
-        statement.params.length <= D1_PARAM_BUDGET,
-        `a statement bound ${statement.params.length} parameters`,
+        (statement.params[0] as string).length <= D1_JSON_BUDGET_BYTES,
+        "the chunk stays inside the byte budget",
       );
     }
+    const tuples = JSON.parse(statements[0]!.params[0] as string);
+    assert.equal(tuples.length, 500);
+    assert.deepEqual(tuples[0], [HOTKEY, 0, 0, 1_000]);
+  });
+
+  test("splits once the byte budget is reached", async () => {
+    const { statements, db } = d1Stub();
+    const oneRow = JSON.stringify([HOTKEY, 0, 0, 1_000]).length + 1;
+    const perStatement = Math.floor(D1_JSON_BUDGET_BYTES / oneRow);
+    const rows = Array.from({ length: perStatement + 1 }, (_unused, i) =>
+      row(HOTKEY, i, i, 1_000),
+    );
+    await writeHotkeyAlphaToD1(db as never, rows);
+    assert.equal(statements.length, 2, "one row past the budget splits");
   });
 
   test("an empty batch issues no statements at all", async () => {
