@@ -203,3 +203,100 @@ describe("writeHotkeyAlphaToD1", () => {
     }
   });
 });
+
+// --- the pass tally (#9502, migrations/d1/0021) ------------------------------
+//
+// Why this lane needs a tally at all is the migration's subject: absence in
+// `hotkey_alpha` is AMBIGUOUS by design, because the producer skips a genuine
+// zero pool rather than writing a zero row. So "no row for this (hotkey,
+// netuid)" means either "scanned, empty" or "never scanned", and no query over
+// the table distinguishes them. Only the writer knows, so only the writer can
+// state it.
+describe("the hotkey_alpha pass tally", () => {
+  const PASS = {
+    capturedAt: 1_785_910_000_000,
+    expectedRows: 148_211,
+    receivedRows: 5_000,
+    nowMs: 1_785_910_500_000,
+  };
+
+  test("no pass declared means no tally statement at all", async () => {
+    // The producer may post without declaring, and a lane that invented a
+    // pass_total would mark an unproven load complete.
+    const { statements, db } = d1Stub();
+    await writeHotkeyAlphaToD1(db as never, [row(HOTKEY, 7, 1, 1)]);
+    assert.equal(
+      statements.some((s) => s.sql.includes("hotkey_alpha_passes")),
+      false,
+    );
+  });
+
+  test("the tally statement is appended LAST, so a mid-run failure under-counts", async () => {
+    // batchInSlices splits a long statement list across several batch() calls,
+    // so no single transaction spans them. Rows first, tally second: a pass can
+    // look less complete than it is, never more. The reverse would mark a pass
+    // complete over rows that never arrived.
+    const { statements, db } = d1Stub();
+    await writeHotkeyAlphaToD1(
+      db as never,
+      [row(HOTKEY, 7, 1, PASS.capturedAt), row(HOTKEY, 8, 2, PASS.capturedAt)],
+      PASS,
+    );
+    const last = statements.at(-1)!;
+    assert.match(last.sql, /INSERT INTO hotkey_alpha_passes/);
+    assert.equal(
+      statements.slice(0, -1).some((s) => s.sql.includes("_passes")),
+      false,
+      "exactly one tally statement, and it is the final one",
+    );
+  });
+
+  test("an empty batch writes no tally either", async () => {
+    // An empty request must not advance a pass it delivered nothing for.
+    const { statements, db } = d1Stub();
+    await writeHotkeyAlphaToD1(db as never, [], PASS);
+    assert.deepEqual(statements, []);
+  });
+
+  test("completed_at is stamped only when the running total reaches the declared one", async () => {
+    const { statements, db } = d1Stub();
+    await writeHotkeyAlphaToD1(
+      db as never,
+      [row(HOTKEY, 7, 1, PASS.capturedAt)],
+      PASS,
+    );
+    const tally = statements.at(-1)!;
+    // The CASE compares this request's rows against the declared total, and the
+    // ON CONFLICT arm compares the accumulated total -- so a single short
+    // request cannot stamp a completion.
+    assert.match(tally.sql, /WHEN \? >= \? THEN \? ELSE NULL END/);
+    assert.match(
+      tally.sql,
+      /received_rows = hotkey_alpha_passes\.received_rows \+ excluded\.received_rows/,
+    );
+    assert.deepEqual(tally.params, [
+      PASS.capturedAt,
+      PASS.expectedRows,
+      PASS.receivedRows,
+      PASS.receivedRows,
+      PASS.expectedRows,
+      PASS.nowMs,
+      PASS.nowMs,
+    ]);
+  });
+
+  test("a replay never un-completes a finished pass", async () => {
+    // The producer is at-least-once, so received_rows can exceed expected_rows.
+    // COALESCE keeps the original stamp rather than recomputing it.
+    const { statements, db } = d1Stub();
+    await writeHotkeyAlphaToD1(
+      db as never,
+      [row(HOTKEY, 7, 1, PASS.capturedAt)],
+      PASS,
+    );
+    assert.match(
+      statements.at(-1)!.sql,
+      /completed_at = COALESCE\(\s*hotkey_alpha_passes\.completed_at/,
+    );
+  });
+});

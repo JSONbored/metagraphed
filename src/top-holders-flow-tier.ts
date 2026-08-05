@@ -11,49 +11,29 @@
 // -- lexicographic address order -- while the envelope echoed
 // `"sort": "net_flow_30d"`. A ranking that is not a ranking, announced as one.
 //
-// FREE_TAO IS WIRED AND WAITING (#9501). The sink landed in #9483: the D1
-// table and the revived sync handler both exist. What does not exist yet is
-// the producer -- infra-side and human-gated, the poller job still writes
-// System::Account through tokio_postgres into the decommissioned box -- so
-// `account_balances` has no rows (verified against production D1, 2026-08-05:
-// table present, COUNT(*) 0). The balances leg below therefore DECLINES, the
-// artifact does not declare `free_tao` among its `sorts`, and the frozen
-// materialization keeps answering that sort with the real balances it still
-// carries. The day the ledger fills, the leg returns a map, the lane declares
-// the sort, and the reader starts answering it -- no deploy, no flag. That is
-// the decline-while-empty switch #9292 established, applied to a LEG rather
-// than a whole tier, and it is why "which sorts does this artifact rank" is a
-// property of the written object rather than a constant in this file.
+// THE HOLDINGS COLUMNS ARE COMPOSED HERE TOO (#9502), beside the flow ones:
+// free_tao, delegated_tao and total_tao come from src/top-holders-holdings.ts,
+// which prices `nominator_positions` against the `hotkey_alpha` pool totals
+// #9502 captured and reads `account_balances` for the free side. That module's
+// header carries the pricing rule, the exclude-rather-than-zero rule for an
+// unpriceable netuid, and why total_tao is ranked across the full tables rather
+// than summed over the other two legs' capped rows.
 //
-// THE LAST COLUMN IS STILL BLOCKED, and deliberately not faked here:
-//   delegated_tao / total_tao
-//              `nominator_positions` IS live, but pricing it needs each
-//              (hotkey, netuid) alpha POOL total, and the only stake source in
-//              D1 is `neurons.stake_tao`, which exists solely for hotkeys
-//              holding a UID on that exact subnet. A delegate accrues alpha on
-//              every subnet it is staked to, not just the ones it is
-//              registered in: measured 2026-08-05, one coldkey's 124 positions
-//              all sit on a single hotkey that `neurons` knows on 2 netuids,
-//              and network-wide only 28,902 of 126,508 position rows (22.8%)
-//              and 6,673 of 24,121 coldkeys (27.7%) price at all. The live
-//              per-account route already reports exactly this and labels it
-//              (`degraded.reason: positions_unpriceable`,
-//               src/account-nominator-positions.ts). A per-row label cannot
-//              rescue a RANKING, though: the same computation drops an account
-//              the frozen snapshot puts at 81,185 TAO to 0 and another out of
-//              the payload entirely, so a "live" delegated_tao leaderboard
-//              would be confidently wrong about who the top holders are --
-//              worse than the frozen one it replaced. It needs a
-//              TotalHotkeyAlpha sink, which neither D1 nor the lakehouse has
-//              -- the chain item itself is there and populated (probed live
-//              2026-08-05); only a producer and a table are missing (#9502).
+// EACH LEG IS PROVEN SEPARATELY AND THE ARTIFACT SAYS WHICH ONES RAN. The two
+// legs fail independently -- the lakehouse can answer while D1's ledgers are
+// unproven, and the reverse is equally possible -- so "which sorts does this
+// artifact rank" is a property of the written object (`sorts`) rather than a
+// constant in this file. That is the decline-while-unproven switch #9292
+// established, applied to LEGS rather than whole tiers, and it is what let
+// free_tao and delegated_tao become live on different days with no deploy.
 //
-// So this tier answers the three sorts it can genuinely rank and DECLINES the
-// other three, leaving the frozen artifact to serve them with the real numbers
-// it still carries. The holdings columns come back null on a flow-sorted page
-// (src/top-holders.ts) rather than zeroed -- a zero here would read as "this
-// account holds nothing", which is the confident-wrong-zero this repo keeps
-// removing (#9066/#9273/#9305).
+// A DECLINED LEG LEAVES THE FROZEN ARTIFACT ANSWERING, which is why declining
+// is not a degradation: src/top-holders-artifact.ts still carries real (if
+// fixed-date) holdings, and falling through to it beats publishing a column
+// this tier cannot prove. The holdings columns come back null on a flow-sorted
+// page (src/top-holders.ts) rather than zeroed -- a zero here would read as
+// "this account holds nothing", which is the confident-wrong-zero this repo
+// keeps removing (#9066/#9273/#9305).
 //
 // WHY A CRON AND NOT A REQUEST-TIME READ -- and what it costs. Priced against
 // production before it was written, per #9469's own instruction. The aggregate
@@ -82,9 +62,12 @@ import type { ChainNetworkId } from "./chain-network.ts";
 import { r2SqlQuery } from "./r2-sql.ts";
 import { buildTopHoldersList } from "./top-holders.ts";
 import {
-  latestCompleteAccountBalancesPass,
-  mayRankAccountBalances,
-} from "./account-balances-completeness.ts";
+  TOP_HOLDERS_DELEGATED_SORT,
+  TOP_HOLDERS_FREE_SORT,
+  TOP_HOLDERS_TOTAL_SORT,
+  topHoldersHoldings,
+  type HoldingsLeg,
+} from "./top-holders-holdings.ts";
 /** Where the lane writes and the reader below gets. Under
  * `metagraph/projections/` like every other cron-recomputed card, and
  * deliberately NOT the frozen `metagraph/materialized/top-holders.json`: the
@@ -104,26 +87,19 @@ export const TOP_HOLDERS_FLOW_SORTS = [
 ];
 
 /**
- * The sort key the BALANCES leg backs, when `account_balances` has rows.
+ * The sort keys the HOLDINGS leg can back, when its inputs are proven.
  *
- * Separate from the list above because the two legs fail independently: the
- * lakehouse can answer while D1's balance ledger is still empty (today), and
- * the reverse is equally possible. Which sorts an artifact actually backs is
- * therefore a property of the WRITTEN artifact, not of this module -- see
- * `sorts` in the body the lane emits.
+ * Separate from the list above because the two legs fail independently, and
+ * separate from src/top-holders-holdings.ts's own per-column constants because
+ * this is the ORDER the artifact declares them in. Which sorts an artifact
+ * actually backs is a property of the WRITTEN artifact, not of this module --
+ * see `sorts` in the body the lane emits.
  */
-export const TOP_HOLDERS_BALANCE_SORT = "free_tao";
-
-/**
- * How many of the largest free balances the lane pulls.
- *
- * `account_balances` has no index on `free_tao` (migration 0017 indexes only
- * `captured_at`), so this ORDER BY is a full scan of every account that has
- * ever held a balance -- 542,618 entries by the producer's own measurement.
- * That is a fine daily cost and an unacceptable per-request one, which is the
- * whole reason the column is composed here rather than read on the hot path.
- */
-export const TOP_HOLDERS_BALANCE_SCAN_LIMIT = 1_000;
+export const TOP_HOLDERS_HOLDINGS_SORTS = [
+  TOP_HOLDERS_FREE_SORT,
+  TOP_HOLDERS_DELEGATED_SORT,
+  TOP_HOLDERS_TOTAL_SORT,
+];
 
 /** Sort key -> lookback in days. The key IS the column the artifact carries,
  * so a new window is one entry here plus one entry in TOP_HOLDERS_SORTS. */
@@ -208,11 +184,12 @@ export function buildTopHoldersFlowRows(
   aggregateRows: Array<Record<string, unknown>> | null | undefined,
   generatedAtMs: number,
   cap: number = TOP_HOLDERS_FLOW_ROW_CAP,
-  /** ss58 -> free_tao from `account_balances`, or null when that leg declined.
-   * An EMPTY map is not the same as null: null means "no balance leg ran", an
-   * empty map means "it ran and the ledger has nothing", and only the first
-   * may leave `free_tao` out of the artifact's declared sorts. */
-  balances: Map<string, number> | null = null,
+  /** The proven holdings columns, or null when that leg declined entirely.
+   * The leg carries its OWN `sorts` rather than a fixed three, because its
+   * inputs become provable on different days: `free_tao` needs a complete
+   * `account_balances` pass, `delegated_tao` a complete `hotkey_alpha` one, and
+   * `total_tao` both. Only the sorts it reports are ranked below. */
+  holdings: HoldingsLeg | null = null,
 ): Array<Record<string, unknown>> {
   const byColdkey = new Map<string, Record<string, unknown>>();
   const add = (ss58: string, cells: Record<string, unknown>) => {
@@ -233,15 +210,15 @@ export function buildTopHoldersFlowRows(
     // is this ranking" for every row alike.
     add(coldkey, Object.fromEntries(flows));
   }
-  for (const [ss58, freeTao] of balances ?? []) {
-    add(ss58, { free_tao: freeTao });
+  for (const [ss58, cells] of holdings?.cells ?? []) {
+    // HoldingsCells names its three optional keys rather than carrying an index
+    // signature, which is the stricter and more useful shape everywhere else;
+    // `add` takes the open record every other caller hands it.
+    add(ss58, cells as Record<string, unknown>);
   }
 
   const candidates = [...byColdkey.values()];
-  const rankedKeys = [
-    ...TOP_HOLDERS_FLOW_SORTS,
-    ...(balances ? [TOP_HOLDERS_BALANCE_SORT] : []),
-  ];
+  const rankedKeys = [...TOP_HOLDERS_FLOW_SORTS, ...(holdings?.sorts ?? [])];
   const kept = new Map<string, Record<string, unknown>>();
   for (const key of rankedKeys) {
     const ranked = candidates
@@ -261,97 +238,6 @@ export function buildTopHoldersFlowRows(
   );
 }
 
-/** The D1 surface the balances leg needs -- structural, so tests can hand a
- * plain object (the same pattern as src/nominator-positions-hot-tier.ts). */
-interface D1Like {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      all?(): Promise<{ results?: unknown[] } | null>;
-    };
-    all?(): Promise<{ results?: unknown[] } | null>;
-  };
-}
-
-/**
- * The largest free balances from D1, or null to leave `free_tao` out of this
- * artifact entirely.
- *
- * DECLINES ON AN EMPTY LEDGER, which is the state today: #9483 created the
- * table and revived the sync handler, but the producer is infra-side and
- * human-gated, so `account_balances` has no rows (verified against production
- * 2026-08-05). Declining -- rather than publishing a `free_tao` column of
- * nothing -- is what keeps the frozen artifact answering `?sort=free_tao` with
- * the real balances it still carries. The day the ledger fills, this returns a
- * map, the lane declares the sort, and the reader starts answering it with no
- * deploy: the same decline-while-empty switch #9292 established, applied to a
- * LEG rather than a whole tier.
- */
-export async function topHoldersBalances(
-  env: Env | null | undefined,
-  limit: number = TOP_HOLDERS_BALANCE_SCAN_LIMIT,
-): Promise<Map<string, number> | null> {
-  const db = (env as { METAGRAPH_HEALTH_DB?: D1Like } | null | undefined)
-    ?.METAGRAPH_HEALTH_DB;
-  if (!db?.prepare) return null;
-
-  // COMPLETENESS FIRST, ROWS SECOND (#9511). A row count cannot answer "is this
-  // ledger safe to rank from": 147,000 well-formed rows look exactly like
-  // 364,266 well-formed rows, only fewer, and `ORDER BY free_tao DESC` over the
-  // former returns the largest balances PRESENT rather than the largest that
-  // EXIST. Production served precisely that on 2026-08-05 -- a correct-looking
-  // leaderboard whose #2, 737,821 TAO live on chain, was simply absent -- and
-  // the `results.length === 0` check below cleared it without complaint.
-  //
-  // The producer declares each pass's size up front (it buffers the walk before
-  // posting, metagraphed-infra#316) and the sink tallies arrivals against it, so
-  // this asks the tally rather than guessing from the ledger.
-  // The two readers describe the same binding with different minimal shapes --
-  // this module's D1Like names bind()/all(), the completeness reader names
-  // first() -- so the cast goes through unknown rather than widening either
-  // interface to satisfy the other.
-  const completeness = await latestCompleteAccountBalancesPass(
-    db as unknown as Parameters<typeof latestCompleteAccountBalancesPass>[0],
-  );
-  if (!mayRankAccountBalances(completeness)) return null;
-
-  let results: unknown[];
-  try {
-    const res = await db
-      // NOT scoped to the complete pass's captured_at, deliberately. This
-      // ledger never prunes, so a later PARTIAL pass only overwrites rows --
-      // it never removes an account. Once any complete pass has landed the
-      // table holds at least that whole account set, and scoping to its stamp
-      // would drop exactly the accounts a newer partial pass had refreshed:
-      // the same missing-top-holder bug, reintroduced by the guard against it.
-      // Mixed stamps mean some values are fresher than others, which is what a
-      // no-prune upsert ledger is.
-      .prepare(
-        "SELECT ss58, free_tao FROM account_balances" +
-          " WHERE free_tao > 0 ORDER BY free_tao DESC LIMIT ?",
-      )
-      .bind(limit)
-      .all?.();
-    if (!Array.isArray(res?.results)) throw new Error("account_balances: none");
-    results = res.results;
-  } catch {
-    // A missing table, an unbound DB and a failed read are one outcome here:
-    // no balance leg ran, so the artifact must not claim the sort.
-    return null;
-  }
-  if (results.length === 0) return null;
-  const map = new Map<string, number>();
-  for (const raw of results as Record<string, unknown>[]) {
-    const ss58 = typeof raw?.ss58 === "string" ? raw.ss58 : null;
-    if (!ss58) continue;
-    const value = Number(raw?.free_tao);
-    // A negative or non-finite balance is not a measurement; skip the row
-    // rather than rank on it.
-    if (!Number.isFinite(value) || value < 0) continue;
-    map.set(ss58, value);
-  }
-  return map.size === 0 ? null : map;
-}
-
 /**
  * The artifact body, or null when the lakehouse could not answer — which
  * leaves the previous day's ranking in place rather than replacing it with an
@@ -368,16 +254,16 @@ export async function computeTopHoldersFlow(
   // The FLOW leg is required: it is the one this lane was built for, and an
   // artifact without it would silently un-rank the net_flow_* sorts.
   if (rows === null) return null;
-  // The BALANCES leg is optional and D1-backed, so it is mainnet-only -- the
-  // testnet projection has no balance ledger of its own, and reading the
-  // mainnet one for it would mislabel another chain's accounts.
-  const balances =
-    network === DEFAULT_CHAIN_NETWORK ? await topHoldersBalances(env) : null;
+  // The HOLDINGS leg is optional and D1-backed, so it is mainnet-only -- the
+  // testnet projection has no balance ledger or pool ledger of its own, and
+  // reading the mainnet ones for it would mislabel another chain's accounts.
+  const holdings =
+    network === DEFAULT_CHAIN_NETWORK ? await topHoldersHoldings(env) : null;
   const shaped = buildTopHoldersFlowRows(
     rows,
     generatedAt,
     TOP_HOLDERS_FLOW_ROW_CAP,
-    balances,
+    holdings,
   );
   return {
     // Deliberately the SAME shape src/top-holders-artifact.ts reads, so the
@@ -386,14 +272,12 @@ export async function computeTopHoldersFlow(
     generated_at: new Date(generatedAt).toISOString(),
     row_count: shaped.length,
     // WHICH SORTS THIS BODY CAN RANK, declared by the writer rather than
-    // assumed by the reader. The two legs fail independently, so "is free_tao
-    // live" is a fact about the object that actually got written -- and
-    // stating it here is what lets the balance ledger start backing the sort
-    // the day it has rows, with no deploy and no flag.
-    sorts: [
-      ...TOP_HOLDERS_FLOW_SORTS,
-      ...(balances ? [TOP_HOLDERS_BALANCE_SORT] : []),
-    ],
+    // assumed by the reader. The legs fail independently and each holdings
+    // column becomes provable on its own day, so "is delegated_tao live" is a
+    // fact about the object that actually got written -- and stating it here is
+    // what lets a ledger start backing its sort with no deploy and no flag.
+    // The holdings leg reports its OWN sorts rather than a fixed three.
+    sorts: [...TOP_HOLDERS_FLOW_SORTS, ...(holdings?.sorts ?? [])],
     rows: shaped,
   };
 }
@@ -434,7 +318,7 @@ export function topHoldersFlowRows(
  * is that body's own `sorts`. */
 export const TOP_HOLDERS_LIVE_SORTS = [
   ...TOP_HOLDERS_FLOW_SORTS,
-  TOP_HOLDERS_BALANCE_SORT,
+  ...TOP_HOLDERS_HOLDINGS_SORTS,
 ];
 
 /**

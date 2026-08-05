@@ -32,6 +32,10 @@ const SCHEMA = fs.readFileSync(
   path.join(process.cwd(), "migrations/d1/0019_hotkey_alpha.sql"),
   "utf8",
 );
+const PASSES_SCHEMA = fs.readFileSync(
+  path.join(process.cwd(), "migrations/d1/0021_hotkey_alpha_passes.sql"),
+  "utf8",
+);
 
 const PATH = "/api/v1/internal/hotkey-alpha-sync";
 const SECRET = "test-hotkey-alpha-sync-secret";
@@ -112,9 +116,15 @@ const rows = () =>
     .prepare("SELECT * FROM hotkey_alpha ORDER BY hotkey, netuid")
     .all() as Row[];
 
+const passes = () =>
+  db
+    .prepare("SELECT * FROM hotkey_alpha_passes ORDER BY captured_at")
+    .all() as Row[];
+
 beforeEach(() => {
   db = new DatabaseSync(":memory:");
   db.exec(SCHEMA);
+  db.exec(PASSES_SCHEMA);
 });
 
 describe("POST /api/v1/internal/hotkey-alpha-sync", () => {
@@ -128,6 +138,7 @@ describe("POST /api/v1/internal/hotkey-alpha-sync", () => {
       hotkey_alpha_written: 2,
       stores: ["d1"],
       d1_statements: 1,
+      pass_total: null,
     });
     assert.equal(rows().length, 2);
     // A zero pool IS stored. The producer skips an unread pool, so a zero that
@@ -278,5 +289,111 @@ describe("POST /api/v1/internal/hotkey-alpha-sync", () => {
     });
     const response = await post({ rows: [alphaRow()] }, SECRET, exploding);
     assert.equal(response.status, 502);
+  });
+});
+
+// --- the pass tally (#9502, migrations/d1/0021) ------------------------------
+//
+// The twin of the balances lane's accounting, guarding a quieter failure. A
+// short balance ledger visibly drops accounts from a leaderboard; a short POOL
+// ledger prices the positions naming it against nothing, so delegated_tao comes
+// out merely too LOW. And absence here is AMBIGUOUS by design -- the producer
+// skips a genuine zero pool rather than writing a zero row -- so no count over
+// the table can recover completeness. Only the declaration can.
+describe("pass_total completeness accounting", () => {
+  test("a single-request pass completes immediately", async () => {
+    const response = await post({ rows: [alphaRow()], pass_total: 1 });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      ok: true,
+      hotkey_alpha_written: 1,
+      stores: ["d1"],
+      d1_statements: 2,
+      pass_total: 1,
+    });
+    const [row] = passes();
+    assert.equal(row!.expected_rows, 1);
+    assert.equal(row!.received_rows, 1);
+    assert.ok(row!.completed_at, "a satisfied pass carries a completion stamp");
+  });
+
+  test("a multi-request pass stays incomplete until the last request lands", async () => {
+    // THE REGRESSION SHAPE, and production's live state while this was written:
+    // 140,000 of a declared 364,284 rows landed, every one correct. Pricing
+    // over that underprices every coldkey whose pools had not arrived.
+    await post({ rows: [alphaRow()], pass_total: 3 });
+    assert.equal(passes()[0]!.received_rows, 1);
+    assert.equal(
+      passes()[0]!.completed_at,
+      null,
+      "one of three requests is NOT a complete pass",
+    );
+
+    await post({ rows: [alphaRow({ netuid: 8 })], pass_total: 3 });
+    assert.equal(passes()[0]!.received_rows, 2);
+    assert.equal(passes()[0]!.completed_at, null);
+
+    await post({ rows: [alphaRow({ netuid: 9 })], pass_total: 3 });
+    assert.equal(passes()[0]!.received_rows, 3);
+    assert.ok(passes()[0]!.completed_at, "the closing request stamps it");
+  });
+
+  test("a replayed request never un-completes a finished pass", async () => {
+    await post({ rows: [alphaRow()], pass_total: 1 });
+    const stamped = passes()[0]!.completed_at;
+    await post({ rows: [alphaRow()], pass_total: 1 });
+    assert.equal(passes()[0]!.received_rows, 2, "the replay is counted");
+    assert.equal(
+      passes()[0]!.completed_at,
+      stamped,
+      "and the original completion stamp is preserved",
+    );
+  });
+
+  test("a second pass is tracked separately from the first", async () => {
+    await post({ rows: [alphaRow()], pass_total: 1 });
+    await post({
+      rows: [alphaRow({ captured_at: 1_790_000_000_000 })],
+      pass_total: 2,
+    });
+    assert.equal(passes().length, 2, "one row per captured_at");
+    assert.equal(passes()[1]!.completed_at, null, "the newer one is partial");
+  });
+
+  test("omitting pass_total writes no tally at all -- the bare-array envelope", async () => {
+    await post([alphaRow()]);
+    assert.equal(rows().length, 1);
+    assert.deepEqual(passes(), [], "an undeclared pass is not half-tracked");
+  });
+
+  test("rejects a pass_total that is absent-shaped, negative, fractional or absurd", async () => {
+    for (const bad of [0, -1, 1.5, "3", null, 10_000_001]) {
+      const response = await post({ rows: [alphaRow()], pass_total: bad });
+      assert.equal(response.status, 400, `expected 400 for ${bad}`);
+    }
+    assert.equal(rows().length, 0, "no partial write from a rejected batch");
+  });
+
+  test("rejects a pass_total smaller than the request it arrived with", async () => {
+    const response = await post({
+      rows: [alphaRow(), alphaRow({ netuid: 8 })],
+      pass_total: 1,
+    });
+    assert.equal(response.status, 400);
+  });
+
+  test("rejects a declared pass carrying two captured_at stamps", async () => {
+    // The tally is keyed on captured_at, so two stamps in one request would
+    // credit rows to whichever the code happened to pick -- and the reader
+    // would trust a total never delivered under that key.
+    const response = await post({
+      rows: [
+        alphaRow(),
+        alphaRow({ netuid: 8, captured_at: 1_790_000_000_000 }),
+      ],
+      pass_total: 5,
+    });
+    assert.equal(response.status, 400);
+    assert.equal(rows().length, 0);
   });
 });

@@ -26,16 +26,26 @@ export { TOP_HOLDERS_LIMIT_DEFAULT, TOP_HOLDERS_LIMIT_MAX };
 //                        holdings columns net flow is signed -- a real net
 //                        outflow is negative -- so it gets its own signed
 //                        guard below.
-//   free_tao             FROZEN. account_balances got its D1 sink in #9483
-//   delegated_tao        but has no rows yet -- its producer is infra-side;
-//   total_tao            delegated_tao needs a per-(hotkey, netuid) alpha POOL
-//                        total that neither D1 nor the lakehouse holds (see
-//                        src/top-holders-flow-tier.ts's header for both
-//                        measurements). These three still come from
+//   free_tao             COMPOSED LIVE by src/top-holders-holdings.ts (#9502),
+//   delegated_tao        in the same daily lane and from D1: free_tao out of
+//   total_tao            `account_balances`, delegated_tao by pricing
+//                        `nominator_positions` against the `hotkey_alpha` pool
+//                        totals, total_tao as their sum ranked across the full
+//                        tables. That module's header carries the pricing rule
+//                        and why an unpriceable netuid is EXCLUDED from the sum
+//                        rather than counted as zero.
+//
+//                        EACH IS GATED ON ITS OWN INPUT BEING PROVABLY
+//                        COMPLETE, and total_tao on both, because a partial
+//                        ledger does not produce a visibly broken ranking -- it
+//                        produces a plausible wrong one. Until a producer's
+//                        pass is recorded complete the column is DECLINED and
 //                        src/top-holders-artifact.ts's one-shot 2026-08-02
-//                        materialization, whose `captured_at` is a fixed date
-//                        rather than a refresh clock, and every published
-//                        description of this route says so out loud.
+//                        materialization keeps answering that sort with the
+//                        real (if fixed-date) numbers it carries. So a frozen
+//                        cell here is a statement about an input, not about
+//                        this route: see src/account-balances-completeness.ts
+//                        and src/hotkey-alpha-completeness.ts.
 //
 // A tier answers only the sorts it can genuinely rank and declines the rest,
 // so neither tier's gaps drive an ordering. The holdings cells are therefore

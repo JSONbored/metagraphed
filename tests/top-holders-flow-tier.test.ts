@@ -22,7 +22,6 @@ import {
   TOP_HOLDERS_FLOW_WINDOW_DAYS,
   TOP_HOLDERS_LIVE_SORTS,
   topHoldersArtifactSorts,
-  topHoldersBalances,
 } from "../src/top-holders-flow-tier.ts";
 
 const GENERATED_AT = Date.parse("2026-08-05T01:34:00.000Z");
@@ -53,6 +52,28 @@ function bucketWith(
         },
       },
     } as unknown as Env,
+  };
+}
+
+/**
+ * A holdings leg in the shape topHoldersHoldings returns.
+ *
+ * `sorts` defaults to whichever holdings columns the given cells actually
+ * carry, which is the invariant the real leg maintains -- a leg that declared a
+ * sort no row can rank would recreate the ss58-order defect this tier removes.
+ */
+function holdings(
+  cells: Record<string, Record<string, number>>,
+  sorts?: string[],
+) {
+  const entries = Object.entries(cells);
+  return {
+    cells: new Map(entries),
+    sorts:
+      sorts ??
+      ["free_tao", "delegated_tao", "total_tao"].filter((key) =>
+        entries.some(([, cell]) => typeof cell[key] === "number"),
+      ),
   };
 }
 
@@ -105,6 +126,14 @@ function d1With(
             async first() {
               seen.push({ sql, params: [] });
               return pass;
+            },
+            // The holdings query binds NOTHING -- every value in it is a
+            // constant or a number the module read out of D1 itself -- so the
+            // stub has to answer at the statement, not only after bind().
+            async all() {
+              seen.push({ sql, params: [] });
+              if (opts.throws) throw new Error("no such table");
+              return rows === null ? null : { results: rows };
             },
             bind(...params: unknown[]) {
               return {
@@ -283,7 +312,7 @@ describe("buildTopHoldersFlowRows", () => {
       [aggregate("5Staker", { net_flow_7d: 500 })],
       GENERATED_AT,
       1,
-      new Map([["5Exchange", 5_448_995.869289362]]),
+      holdings({ "5Exchange": { free_tao: 5_448_995.869289362 } }),
     );
     assert.deepEqual(rows.map((r) => r.ss58).sort(), ["5Exchange", "5Staker"]);
     const exchange = rows.find((r) => r.ss58 === "5Exchange")!;
@@ -298,14 +327,44 @@ describe("buildTopHoldersFlowRows", () => {
       [aggregate("5Both", { net_flow_30d: -12 })],
       GENERATED_AT,
       10,
-      new Map([["5Both", 42]]),
+      holdings({ "5Both": { free_tao: 42, delegated_tao: 8, total_tao: 50 } }),
     );
     assert.equal(row!.free_tao, 42);
+    assert.equal(row!.delegated_tao, 8);
+    assert.equal(row!.total_tao, 50);
     assert.equal(row!.net_flow_30d, -12);
     assert.equal(row!.captured_at, GENERATED_AT);
   });
 
-  test("a null balances map leaves free_tao out entirely", () => {
+  // Each holdings column becomes provable on its own day: free_tao needs a
+  // complete account_balances pass, delegated_tao a complete hotkey_alpha one.
+  // A leg proving only one must rank only that one.
+  test("ranks only the holdings sorts the leg proved", () => {
+    const rows = buildTopHoldersFlowRows(
+      [aggregate("5Flow", { net_flow_7d: 1 })],
+      GENERATED_AT,
+      1,
+      holdings({
+        "5Pool": { delegated_tao: 81_185 },
+        "5Tiny": { delegated_tao: 1 },
+      }),
+    );
+    // delegated_tao ranked, so the larger of the two survives the cap of 1.
+    assert.ok(rows.some((r) => r.ss58 === "5Pool"));
+    assert.equal(
+      rows.some((r) => r.ss58 === "5Tiny"),
+      false,
+    );
+    // free_tao and total_tao were never proven, so no row carries either.
+    assert.equal(
+      JSON.stringify(rows).includes("free_tao"),
+      false,
+      "no free_tao column while its ledger is unproven",
+    );
+    assert.equal(JSON.stringify(rows).includes("total_tao"), false);
+  });
+
+  test("a null holdings leg leaves every holdings column out entirely", () => {
     const [row] = buildTopHoldersFlowRows(
       [aggregate("5A", { net_flow_7d: 1 })],
       GENERATED_AT,
@@ -313,6 +372,8 @@ describe("buildTopHoldersFlowRows", () => {
       null,
     );
     assert.equal("free_tao" in row!, false);
+    assert.equal("delegated_tao" in row!, false);
+    assert.equal("total_tao" in row!, false);
   });
 
   test("ties inside a capped key break on ss58, not on insertion order", () => {
@@ -331,67 +392,6 @@ describe("buildTopHoldersFlowRows", () => {
   });
 });
 
-describe("topHoldersBalances", () => {
-  // The state today: #9483 created the table, the producer is infra-side and
-  // has not run, so the ledger is empty. Declining is what keeps the frozen
-  // artifact answering ?sort=free_tao with the real balances it still holds.
-  test("declines on an EMPTY ledger, so free_tao stays with the frozen tier", async () => {
-    assert.equal(await topHoldersBalances(d1With([]).env), null);
-  });
-
-  test("declines on an unbound DB and on a missing table", async () => {
-    assert.equal(await topHoldersBalances(null), null);
-    assert.equal(await topHoldersBalances({} as never), null);
-    assert.equal(await topHoldersBalances(d1With(null).env), null);
-    assert.equal(
-      await topHoldersBalances(d1With([], { throws: true }).env),
-      null,
-    );
-  });
-
-  test("returns the largest balances, ordered and capped by the query", async () => {
-    const { env, seen } = d1With([
-      { ss58: "5Whale", free_tao: 5_448_995.869289362 },
-      { ss58: "5Small", free_tao: 0.25 },
-    ]);
-    const map = await topHoldersBalances(env, 250);
-    assert.deepEqual(
-      [...map!.entries()],
-      [
-        ["5Whale", 5_448_995.869289362],
-        ["5Small", 0.25],
-      ],
-    );
-    // The ordering and the cap are the DATABASE's job -- there is no index on
-    // free_tao, so sorting in the Worker would mean shipping every row.
-    // Located rather than indexed: the completeness probe (#9511) runs first,
-    // so a positional assertion here would silently start checking the wrong
-    // statement the next time a preflight is added.
-    const balanceQuery = seen.find((q) =>
-      q.sql.includes("FROM account_balances "),
-    );
-    assert.ok(balanceQuery, "the balance query ran");
-    assert.match(balanceQuery.sql, /ORDER BY free_tao DESC LIMIT \?/);
-    assert.deepEqual(balanceQuery.params, [250]);
-  });
-
-  test("skips unusable cells, and declines when nothing usable remains", async () => {
-    const map = await topHoldersBalances(
-      d1With([
-        { ss58: "5Ok", free_tao: 7 },
-        { ss58: "5Neg", free_tao: -1 },
-        { ss58: "5NaN", free_tao: "nope" },
-        { ss58: 42, free_tao: 9 },
-      ]).env,
-    );
-    assert.deepEqual([...map!.keys()], ["5Ok"]);
-    assert.equal(
-      await topHoldersBalances(d1With([{ ss58: "5Neg", free_tao: -1 }]).env),
-      null,
-    );
-  });
-});
-
 describe("topHoldersArtifactSorts", () => {
   // A body written by the flow-only lane (#9492) has no `sorts`. Reading it as
   // flow-only is what keeps a deploy landing before the next 01:34 tick
@@ -406,9 +406,17 @@ describe("topHoldersArtifactSorts", () => {
       topHoldersArtifactSorts({ sorts: ["free_tao", "net_flow_7d"] }),
       ["free_tao", "net_flow_7d"],
     );
-    // Never rank on whatever a stored string asks for: total_tao has no live
-    // source, so an artifact claiming it is a bad write, not an instruction.
-    assert.deepEqual(topHoldersArtifactSorts({ sorts: ["total_tao", 7] }), []);
+    // Never rank on whatever a stored string asks for. total_tao IS a live
+    // sort now (#9502), so the example has to be something no leg can ever
+    // back -- otherwise this stops testing the drop.
+    assert.deepEqual(
+      topHoldersArtifactSorts({ sorts: ["reserved_tao", 7, null] }),
+      [],
+    );
+    assert.deepEqual(
+      topHoldersArtifactSorts({ sorts: ["total_tao", "made_up"] }),
+      ["total_tao"],
+    );
   });
 });
 
@@ -460,19 +468,34 @@ describe("computeTopHoldersFlow", () => {
         }),
         { headers: { "content-type": "application/json" } },
       )) as never;
-    // No D1 binding -> the balances leg declines -> free_tao is NOT claimed,
-    // and the frozen artifact keeps that sort.
-    const withoutBalances = (await computeTopHoldersFlow({
+    // No D1 binding -> the holdings leg declines entirely -> none of the three
+    // is claimed, and the frozen artifact keeps those sorts.
+    const withoutHoldings = (await computeTopHoldersFlow({
       R2_SQL_TOKEN: "cfut_test",
     } as unknown as Env)) as Record<string, unknown>;
-    assert.deepEqual(withoutBalances.sorts, TOP_HOLDERS_FLOW_SORTS);
+    assert.deepEqual(withoutHoldings.sorts, TOP_HOLDERS_FLOW_SORTS);
 
-    const withBalances = (await computeTopHoldersFlow({
+    const withHoldings = (await computeTopHoldersFlow({
+      R2_SQL_TOKEN: "cfut_test",
+      ...(d1With([
+        {
+          ss58: "5Exchange",
+          free_tao: 900,
+          delegated_tao: 100,
+          total_tao: 1_000,
+        },
+      ]).env as object),
+    } as unknown as Env)) as Record<string, unknown>;
+    assert.deepEqual(withHoldings.sorts, TOP_HOLDERS_LIVE_SORTS);
+    assert.equal(withHoldings.row_count, 2);
+
+    // A leg that proved only ONE column declares only that one: the artifact
+    // must never claim a sort no row in it can rank.
+    const partial = (await computeTopHoldersFlow({
       R2_SQL_TOKEN: "cfut_test",
       ...(d1With([{ ss58: "5Exchange", free_tao: 900 }]).env as object),
     } as unknown as Env)) as Record<string, unknown>;
-    assert.deepEqual(withBalances.sorts, TOP_HOLDERS_LIVE_SORTS);
-    assert.equal(withBalances.row_count, 2);
+    assert.deepEqual(partial.sorts, [...TOP_HOLDERS_FLOW_SORTS, "free_tao"]);
   });
 
   // The balance ledger is mainnet-only. Reading it for a testnet projection
@@ -558,10 +581,11 @@ describe("loadTopHoldersFlowTier", () => {
     const { env, gets } = bucketWith(
       artifact([{ ss58: "5A", net_flow_7d: 3, captured_at: GENERATED_AT }]),
     );
-    // free_tao is deliberately NOT here: no live leg backs it today, but one
-    // CAN, so it is rejected per-body rather than up front -- see the
-    // declared-sorts test below.
-    for (const sort of ["total_tao", "delegated_tao", undefined]) {
+    // Every holdings sort CAN now be live (#9502), so none of them is rejected
+    // up front any more -- they are rejected per-body, by the artifact's own
+    // `sorts`. What remains a cheap up-front rejection is a sort no version of
+    // this artifact could ever carry.
+    for (const sort of ["reserved_tao", undefined]) {
       assert.equal(
         await loadTopHoldersFlowTier(env, { sort }),
         null,
@@ -571,6 +595,13 @@ describe("loadTopHoldersFlowTier", () => {
     // And it declines BEFORE the get: a sort no version of this artifact can
     // rank is not a reason to spend an R2 round trip.
     assert.deepEqual(gets, []);
+
+    // The holdings sorts do spend the round trip, and then decline on a
+    // flow-only body rather than ranking rows that have no such column.
+    for (const sort of ["total_tao", "delegated_tao", "free_tao"]) {
+      assert.equal(await loadTopHoldersFlowTier(env, { sort }), null, sort);
+    }
+    assert.equal(gets.length, 3, "one get per per-body rejection");
   });
 
   // The switch that makes the free_tao cutover deploy-free: the same code
@@ -598,15 +629,35 @@ describe("loadTopHoldersFlowTier", () => {
   });
 
   test("never ranks a sort no live leg can back, even if the body claims it", async () => {
+    // The artifact is ours, but a reader that ranks on whatever a stored
+    // string asks for is one bad write away from a confident nonsense
+    // ordering. `reserved_tao` is a real column name on account_balances and
+    // is NOT a live sort, which is what makes it the right probe here.
     const { env } = bucketWith(
       artifact(
         [{ ss58: "5A", free_tao: 1, captured_at: GENERATED_AT }],
-        ["total_tao", "delegated_tao"],
+        ["reserved_tao", "made_up"],
       ),
     );
-    for (const sort of ["total_tao", "delegated_tao"]) {
+    for (const sort of ["reserved_tao", "made_up"]) {
       assert.equal(await loadTopHoldersFlowTier(env, { sort }), null);
     }
+    // And a body claiming a sort it carries no values for still declines,
+    // rather than ranking every row into compareTopHoldersSort's non-number
+    // bucket and answering in ss58 order -- the defect this tier removes.
+    const claimed = bucketWith(
+      artifact(
+        [{ ss58: "5A", free_tao: 1, captured_at: GENERATED_AT }],
+        ["total_tao"],
+      ),
+    );
+    const ranked = await loadTopHoldersFlowTier(claimed.env, {
+      sort: "total_tao",
+    });
+    assert.equal(
+      (ranked?.accounts as Record<string, unknown>[])?.[0]?.total_tao ?? null,
+      null,
+    );
   });
 
   test("reads the projection key, not the frozen one", async () => {
@@ -711,75 +762,5 @@ describe("the flow lane's cron", () => {
     assert.equal(result.ok, false);
     assert.equal(result.reason, "compute_declined");
     assert.deepEqual(puts, []);
-  });
-});
-
-// --- the completeness gate (#9511) ------------------------------------------
-describe("topHoldersBalances refuses a ledger that is not provably complete", () => {
-  const ROWS = [
-    { ss58: "5Whale", free_tao: 900_000 },
-    { ss58: "5Small", free_tao: 12 },
-  ];
-
-  test("declines when no pass has ever completed", async () => {
-    // THE REGRESSION. Rows are present and every one is correct -- production
-    // had 147,000 such rows -- and ranking over them drops the network's #2.
-    // The old guard was `results.length === 0`, which 147,000 clears.
-    const { env, seen } = d1With(ROWS, { pass: null });
-    assert.equal(await topHoldersBalances(env), null);
-    assert.equal(
-      seen.filter((q) => q.sql.includes("FROM account_balances ")).length,
-      0,
-      "and it does not even run the ranking query",
-    );
-  });
-
-  test("ranks once a pass is recorded complete", async () => {
-    const { env } = d1With(ROWS);
-    const map = await topHoldersBalances(env);
-    assert.equal(map?.size, 2);
-    assert.equal(map?.get("5Whale"), 900_000);
-  });
-
-  test("an unreadable passes table declines rather than ranking blind", async () => {
-    // The migration is applied by hand, so "the table is not there yet" is a
-    // real state -- and it means the same thing as an unfinished pass.
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare() {
-          return {
-            async first() {
-              throw new Error("no such table: account_balances_passes");
-            },
-            bind() {
-              return {
-                async all() {
-                  return { results: ROWS };
-                },
-              };
-            },
-          };
-        },
-      },
-    } as unknown as Env;
-    assert.equal(await topHoldersBalances(env), null);
-  });
-
-  test("the artifact leaves free_tao out of its declared sorts while refused", async () => {
-    // The end-to-end consequence: with the ledger unproven the object never
-    // claims the sort, so `?sort=free_tao` keeps answering from the frozen
-    // materialization instead of a ranking missing its top holders.
-    const { env } = d1With(ROWS, { pass: null });
-    const balances = await topHoldersBalances(env);
-    const body = buildTopHoldersFlowRows(
-      [{ coldkey: "5Whale", net_flow_7d: 1, net_flow_30d: 1, net_flow_90d: 1 }],
-      GENERATED_AT,
-      10,
-      balances,
-    );
-    assert.ok(
-      !JSON.stringify(body).includes("free_tao"),
-      "no free_tao column while the ledger is unproven",
-    );
   });
 });
