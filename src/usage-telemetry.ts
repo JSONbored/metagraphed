@@ -904,6 +904,9 @@ export async function recordMcpToolCallEvent(
     const responseBody = boundedMcpPayload(event.response);
     if (responseBody !== undefined) properties["$mcp_response"] = responseBody;
 
+    // The deployment dimensions, stamped exactly where this family already
+    // stamps its attribution -- see assignMcpAttribution above.
+    assignDeployment(properties, env);
     const doFetch = deps.fetch ?? globalThis.fetch;
     const response = await doFetch(
       `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
@@ -955,6 +958,9 @@ export async function recordMcpInitializeEvent(
       properties["$session_id"] = event.sessionId.trim();
     }
 
+    // The deployment dimensions, stamped exactly where this family already
+    // stamps its attribution -- see assignMcpAttribution above.
+    assignDeployment(properties, env);
     const doFetch = deps.fetch ?? globalThis.fetch;
     const response = await doFetch(
       `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
@@ -1004,6 +1010,9 @@ export async function recordMcpToolsListEvent(
       properties["$session_id"] = event.sessionId.trim();
     }
 
+    // The deployment dimensions, stamped exactly where this family already
+    // stamps its attribution -- see assignMcpAttribution above.
+    assignDeployment(properties, env);
     const doFetch = deps.fetch ?? globalThis.fetch;
     const response = await doFetch(
       `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
@@ -1396,6 +1405,9 @@ export async function recordAiDegradedEvent(
     const surface = sanitizeLabel(event.surface);
     if (surface !== undefined) properties.surface = surface;
 
+    // The deployment dimensions, stamped exactly where this family already
+    // stamps its attribution -- see assignMcpAttribution above.
+    assignDeployment(properties, env);
     const doFetch = deps.fetch ?? globalThis.fetch;
     const response = await doFetch(
       `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
@@ -1503,6 +1515,9 @@ export async function recordAiEmbeddingEvent(
       properties.$ai_error = `${type}: ${entry.value}`;
     }
 
+    // The deployment dimensions, stamped exactly where this family already
+    // stamps its attribution -- see assignMcpAttribution above.
+    assignDeployment(properties, env);
     const doFetch = deps.fetch ?? globalThis.fetch;
     const response = await doFetch(
       `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,
@@ -1592,6 +1607,9 @@ export async function recordAiGenerationEvent(
       properties.$ai_error = `${type}: ${entry.value}`;
     }
 
+    // The deployment dimensions, stamped exactly where this family already
+    // stamps its attribution -- see assignMcpAttribution above.
+    assignDeployment(properties, env);
     const doFetch = deps.fetch ?? globalThis.fetch;
     const response = await doFetch(
       `${resolvePostHogHost(env)}${POSTHOG_CAPTURE_PATH}`,

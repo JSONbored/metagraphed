@@ -586,17 +586,40 @@ export class McpSessionHub implements DurableObject {
   // ChainFirehoseHub.mcpSubscribedSessions never accumulates dead sessions
   // just because a client never explicitly unsubscribed/terminated.
   async alarm(): Promise<void> {
-    await this.hydrate();
-    // Idle expiry, distinct from a client DELETE: same terminate path, but the
-    // session ended because nobody came back, which is the fact worth counting
-    // separately when reasoning about session lifetimes.
-    const startedAt = Date.now();
-    this.recordRoute("expire", true, startedAt);
-    await this.handleTerminate(
-      new Request("https://mcp-session-hub.internal/terminate", {
-        method: "POST",
-        body: JSON.stringify({ sessionId: null }),
-      }),
-    );
+    // #9446: a DO alarm that throws is retried by the platform and recorded
+    // NOWHERE -- no request to fail, no caller to notice, and this file's one
+    // capture site covers `deliver` only. An alarm stuck in a retry loop is
+    // therefore indistinguishable from a hub with no sessions to expire, which
+    // is the state it is supposed to be in almost all the time.
+    //
+    // Captured and rethrown: the platform's own retry behaviour is what makes
+    // a transient failure recoverable, so swallowing here would trade a
+    // retried alarm for a silently skipped expiry.
+    try {
+      await this.hydrate();
+      // Idle expiry, distinct from a client DELETE: same terminate path, but
+      // the session ended because nobody came back, which is the fact worth
+      // counting separately when reasoning about session lifetimes.
+      const startedAt = Date.now();
+      this.recordRoute("expire", true, startedAt);
+      await this.handleTerminate(
+        new Request("https://mcp-session-hub.internal/terminate", {
+          method: "POST",
+          body: JSON.stringify({ sessionId: null }),
+        }),
+      );
+    } catch (error) {
+      // Awaited bare: recordExceptionEvent is contractually
+      // no-throw (it swallows transport failures and returns
+      // false), so a `.catch` here would be an unreachable
+      // handler -- a branch no test can cover, which is worse
+      // than no branch. Same call shape as src/graphql.ts.
+      await recordExceptionEvent(this.env, {
+        error,
+        route: "mcp-session-hub:alarm",
+        errorCode: "internal_error",
+      });
+      throw error;
+    }
   }
 }

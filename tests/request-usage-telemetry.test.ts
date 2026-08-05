@@ -3,7 +3,11 @@ import { afterEach, describe, test, vi } from "vitest";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
 import { POSTHOG_TRACES_SAMPLE_RATE_ENV } from "../src/tracing.ts";
-import worker, { usageRouteLabel, withUsageTelemetry } from "../workers/api.ts";
+import worker, {
+  markRequestAuthTier,
+  usageRouteLabel,
+  withUsageTelemetry,
+} from "../workers/api.ts";
 import type { Row } from "./row-type.ts";
 
 type WTCtx = Parameters<typeof withUsageTelemetry>[2];
@@ -875,5 +879,127 @@ describe("worker entry instrumentation", () => {
 
     assert.equal(after.status, status);
     assert.equal(await after.text(), body);
+  });
+});
+
+// #9446: auth_tier on REST.
+//
+// The field has been declared on UsageEvent since #8993 and populated only on
+// the MCP path, so on the surface carrying 99% of traffic the question the
+// tier system exists to answer -- what share of usage is authenticated, and on
+// which tier -- had no data behind it at all.
+describe("withUsageTelemetry — auth_tier", () => {
+  test("records the tier a gate resolved for this request", async () => {
+    const spy = recorder();
+    const request = req("/api/v1/subnets");
+    await withUsageTelemetry(
+      request,
+      CONFIGURED_ENV as unknown as Env,
+      fakeCtx(),
+      async () => {
+        // What the tiered gates do inside handleRequest.
+        markRequestAuthTier(request, "paid");
+        return new Response("ok");
+      },
+      spy,
+    );
+    assert.equal(spy.events[0].event.authTier, "paid");
+  });
+
+  test("omits it entirely for a route with no tiered gate", async () => {
+    // "anonymous" would be a claim the request never made: those routes did
+    // not check a key at all. Omitted, not defaulted -- the same contract
+    // every other optional dimension here follows.
+    const spy = recorder();
+    await withUsageTelemetry(
+      req("/api/v1/subnets"),
+      CONFIGURED_ENV as unknown as Env,
+      fakeCtx(),
+      async () => new Response("ok"),
+      spy,
+    );
+    assert.equal("authTier" in spy.events[0].event, false);
+  });
+
+  test("records the anonymous tier when the gate resolved one", async () => {
+    // A gate that ran and found no key is a different fact from no gate at
+    // all, and both must be distinguishable in the data.
+    const spy = recorder();
+    const request = req("/api/v1/subnets");
+    await withUsageTelemetry(
+      request,
+      CONFIGURED_ENV as unknown as Env,
+      fakeCtx(),
+      async () => {
+        markRequestAuthTier(request, "anonymous");
+        return new Response("ok");
+      },
+      spy,
+    );
+    assert.equal(spy.events[0].event.authTier, "anonymous");
+  });
+
+  test("one request's tier is never read by another", async () => {
+    const spy = recorder();
+    const keyed = req("/api/v1/subnets");
+    await withUsageTelemetry(
+      keyed,
+      CONFIGURED_ENV as unknown as Env,
+      fakeCtx(),
+      async () => {
+        markRequestAuthTier(keyed, "community");
+        return new Response("ok");
+      },
+      spy,
+    );
+    // A DIFFERENT Request object, so the WeakMap has no entry for it.
+    await withUsageTelemetry(
+      req("/api/v1/subnets"),
+      CONFIGURED_ENV as unknown as Env,
+      fakeCtx(),
+      async () => new Response("ok"),
+      spy,
+    );
+    assert.equal(spy.events[0].event.authTier, "community");
+    assert.equal("authTier" in spy.events[1].event, false);
+  });
+
+  test("a blank or non-string tier is not recorded", async () => {
+    const spy = recorder();
+    const request = req("/api/v1/subnets");
+    await withUsageTelemetry(
+      request,
+      CONFIGURED_ENV as unknown as Env,
+      fakeCtx(),
+      async () => {
+        markRequestAuthTier(request, "");
+        markRequestAuthTier(request, undefined);
+        return new Response("ok");
+      },
+      spy,
+    );
+    assert.equal("authTier" in spy.events[0].event, false);
+  });
+
+  test("still recorded when the handler throws", async () => {
+    // The gate runs before the fault, so the tier is known and belongs on the
+    // failure event as much as on a success.
+    const spy = recorder();
+    const request = req("/api/v1/subnets");
+    await assert.rejects(
+      withUsageTelemetry(
+        request,
+        CONFIGURED_ENV as unknown as Env,
+        fakeCtx(),
+        async () => {
+          markRequestAuthTier(request, "free");
+          throw new Error("handler exploded");
+        },
+        spy,
+      ),
+      /handler exploded/,
+    );
+    assert.equal(spy.events[0].event.ok, false);
+    assert.equal(spy.events[0].event.authTier, "free");
   });
 });
