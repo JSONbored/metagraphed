@@ -883,6 +883,12 @@
       // visible without waiting for the publish path to notice. See
       // ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON in workers/config.ts.
       "4,34 * * * *",
+      // 54 = the hotkey-alpha staleness watchdog (#9576): the same source-side
+      // alarm for the OTHER ledger the holdings columns are composed from,
+      // which shipped in #9512 without one. Hourly rather than twice-hourly,
+      // because its producer polls every 24h against account_balances' 6h. See
+      // HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON in workers/config.ts.
+      "54 * * * *",
     ],
   },
   // Per-client abuse control for the read-only RPC proxy (an abuse prerequisite

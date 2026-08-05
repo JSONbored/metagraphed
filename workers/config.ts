@@ -229,6 +229,17 @@ export const TOP_HOLDERS_STALENESS_WATCHDOG_CRON = "22,52 * * * *";
 // */15 probe grids -- dispatch keys on the LITERAL cron string, so this must be
 // unique here as well as matching a wrangler.jsonc `triggers.crons` entry.
 export const ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON = "4,34 * * * *";
+// #9576: the same alarm for the OTHER ledger the top-holders holdings columns
+// are composed from. `hotkey_alpha` shipped in #9512 without one, so an empty
+// pool ledger was invisible -- every reader declines correctly and quietly, and
+// a correct decline looks exactly like a producer that died a month ago.
+// HOURLY rather than twice-hourly, and against a 48-hour threshold: the poller's
+// HOTKEY_ALPHA_POLL_SECS defaults to 86400 against account_balances' 21600, so a
+// finer cadence would only re-report the same 24-hour-old pass. Minute 54 ticks
+// on none of the crons in this file and stays off the */5 and */15 grids --
+// dispatch keys on the LITERAL cron string, so it must be unique here as well as
+// matching a wrangler.jsonc `triggers.crons` entry.
+export const HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON = "54 * * * *";
 // #9146: scheduled projections -- recompute the windowed-aggregate artifacts
 // (every lane in src/projection-lanes.ts's PROJECTION_LANES) from the
 // lakehouse. These routes cannot
