@@ -141,6 +141,10 @@ export interface Subnet {
   // index signature below.
   subnet_type?: "root" | "application" | string;
   participants?: number;
+  /** Chain lifecycle state ("active" | "deprecated" | ...). Present on every
+   *  /api/v1/subnets row and previously undeclared, so the value could not be
+   *  read without casting. */
+  lifecycle?: string | null;
   tempo?: number;
   // registered_at_block/block (the current snapshot block, for #6643's
   // age-in-days estimate) are the real wire field names (SubnetIndexEntry) --
@@ -2548,6 +2552,13 @@ export interface GlobalValidator {
   apy_estimate_eligible_subnet_count: number;
   avg_validator_trust: number | null;
   max_validator_trust: number | null;
+  /** Realized return over the trailing window, as a fraction (0.03 = +3%).
+   *  Returned by GET /api/v1/validators and previously absent from this type,
+   *  so the field was unreachable from the UI even though every response
+   *  carried it. */
+  realized_return_1d?: number | null;
+  realized_return_1w?: number | null;
+  realized_return_1m?: number | null;
   stake_dominance: number | null;
   latest_captured_at: string | null;
   latest_block_number: number | null;

@@ -158,6 +158,10 @@ const SUBNET_COLUMNS: ColumnDef[] = [
   { id: "curation", label: "Source", defaultVisible: false, width: 110 },
   { id: "readiness", label: "Profile", defaultVisible: false, width: 110 },
   { id: "updated", label: "Updated", defaultVisible: false, width: 120 },
+  // Registry fields the payload has always carried and the table never
+  // showed. Off by default so the core view is unchanged.
+  { id: "participants", label: "Participants", defaultVisible: false, width: 115 },
+  { id: "lifecycle", label: "Lifecycle", defaultVisible: false, width: 110 },
 ];
 
 function joinCatalog(
@@ -1421,6 +1425,24 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                       />
                     </th>
                   ) : null}
+                  {columns.isVisible("participants") ? (
+                    <th
+                      className={classNames(cellPad, "mg-table-head-pinned text-right")}
+                      aria-sort={ariaSort(search.sort === "participants", search.order)}
+                    >
+                      <SortHeader
+                        label="Participants"
+                        field="participants"
+                        active={search.sort === "participants"}
+                        order={search.order}
+                        onSort={onSort}
+                        align="right"
+                      />
+                    </th>
+                  ) : null}
+                  {columns.isVisible("lifecycle") ? (
+                    <th className={classNames(cellPad, "mg-table-head-pinned")}>Lifecycle</th>
+                  ) : null}
                   {columns.isVisible("updated") ? (
                     <th
                       className={classNames(cellPad, "mg-table-head-pinned text-right")}
@@ -1632,6 +1654,18 @@ function SubnetsTable({ view, density = "comfortable" }: { view: ViewMode; densi
                           usdPerTao={taoUsd}
                           window={trendWindow}
                         />
+                      ) : null}
+                      {columns.isVisible("participants") ? (
+                        <td
+                          className={classNames(cellPad, "text-right mg-type-data text-ink-muted")}
+                        >
+                          {s.participants != null ? formatNumber(s.participants) : "—"}
+                        </td>
+                      ) : null}
+                      {columns.isVisible("lifecycle") ? (
+                        <td className={classNames(cellPad, "mg-type-data text-ink-muted")}>
+                          {s.lifecycle ?? "—"}
+                        </td>
                       ) : null}
                       {columns.isVisible("updated") ? (
                         <td

@@ -64,9 +64,14 @@ describe("VALIDATOR_COLUMNS", () => {
 
   // #8251 column diet: Hotkey/Coldkey/UIDs/Total emission left the directory
   // (the Operator cell now carries the detail link + short hotkey; coldkey
-  // and per-subnet emission live on the detail page). This pins the NEW set.
-  it("exposes the #8251 directory column set", () => {
-    const headers = VALIDATOR_COLUMNS.map((c) => c.header);
+  // and per-subnet emission live on the detail page). The diet is now the
+  // DEFAULT rather than the whole set -- every column is toggleable, and the
+  // fields the API returns but the table never showed (emission, trust,
+  // realized return, the root/alpha stake split) are available opt-in instead
+  // of being unreachable. This pins what a reader sees without touching
+  // anything.
+  it("defaults to the #8251 directory column set", () => {
+    const headers = VALIDATOR_COLUMNS.filter((c) => c.defaultVisible).map((c) => c.header);
     expect(headers).toEqual([
       "Operator",
       "Take",
@@ -77,5 +82,21 @@ describe("VALIDATOR_COLUMNS", () => {
       "Total stake",
       "30d Δ",
     ]);
+  });
+
+  it("offers the rest of the payload as opt-in columns", () => {
+    // Each of these is a field GET /api/v1/validators has always returned.
+    // Off by default, so the directory reads the same until asked otherwise.
+    const optIn = VALIDATOR_COLUMNS.filter((c) => !c.defaultVisible).map((c) => c.header);
+    expect(optIn).toEqual(["Emission", "Avg trust", "Realized 7d", "Root stake", "Alpha stake"]);
+  });
+
+  it("gives every column a stable id and a width for the colgroup", () => {
+    // Both are load-bearing: the id keys column visibility, and the width
+    // feeds TableColGroup, without which `table-layout: fixed` splits the
+    // table evenly and the watch checkbox gets as much room as the operator.
+    const ids = VALIDATOR_COLUMNS.map((c) => c.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(VALIDATOR_COLUMNS.every((c) => c.width > 0)).toBe(true);
   });
 });

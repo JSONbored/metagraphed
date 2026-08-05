@@ -6520,6 +6520,13 @@ function normalizeGlobalValidator(raw: unknown): GlobalValidator | null {
       coerceFiniteNumber(raw.apy_estimate_eligible_subnet_count) ?? 0,
     avg_validator_trust: nullableNum(raw.avg_validator_trust),
     max_validator_trust: nullableNum(raw.max_validator_trust),
+    // On the wire since the leaderboard shipped, and dropped here until now --
+    // this builder is an allowlist, so a field the API returns is invisible to
+    // the entire UI unless it is named. That is why the table could not offer
+    // realized return at all.
+    realized_return_1d: nullableNum(raw.realized_return_1d),
+    realized_return_1w: nullableNum(raw.realized_return_1w),
+    realized_return_1m: nullableNum(raw.realized_return_1m),
     stake_dominance: nullableNum(raw.stake_dominance),
     latest_captured_at: typeof raw.latest_captured_at === "string" ? raw.latest_captured_at : null,
     latest_block_number: nullableNum(raw.latest_block_number),

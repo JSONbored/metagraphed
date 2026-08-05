@@ -37,6 +37,14 @@ export interface ValidatorCellContext {
 }
 
 export interface ValidatorColumn {
+  /** Stable key for column visibility (ColumnDef-compatible). */
+  id: string;
+  /** ColumnDef uses `label`; kept in sync with `header` below. */
+  label: string;
+  /** Cannot be hidden -- the row's identity. */
+  required?: boolean;
+  /** Part of the default-visible core set. */
+  defaultVisible?: boolean;
   header: string;
   thClassName: string;
   tdClassName: string;
@@ -53,13 +61,21 @@ export interface ValidatorColumn {
 }
 
 const numeric = (
+  id: string,
   header: string,
   width: number,
-): Pick<ValidatorColumn, "header" | "thClassName" | "tdClassName" | "width"> => ({
+  defaultVisible = true,
+): Pick<
+  ValidatorColumn,
+  "id" | "label" | "header" | "thClassName" | "tdClassName" | "width" | "defaultVisible"
+> => ({
+  id,
+  label: header,
   header,
   thClassName: `${TH_BASE} text-right`,
   tdClassName: `${TD_NUM} text-ink`,
   width,
+  defaultVisible,
 });
 
 // #8251: 30d stake trend, lazily fetched per row only once it scrolls into
@@ -107,6 +123,10 @@ function Stake30dDeltaCell({ hotkey }: { hotkey: string }) {
 // detail page.
 export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
   {
+    id: "operator",
+    label: "Operator",
+    required: true,
+    defaultVisible: true,
     header: "Operator",
     width: 350,
     thClassName: TH_BASE,
@@ -157,13 +177,13 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     },
   },
   {
-    ...numeric("Take", 72),
+    ...numeric("take", "Take", 72),
     sortKey: "take",
     tdClassName: `${TD_NUM} text-ink-muted`,
     cell: (v) => formatTakePct(v.take),
   },
   {
-    ...numeric("Est. APY", 89),
+    ...numeric("apy", "Est. APY", 89),
     sortKey: "apy_estimate",
     // apy_estimate (#2551) is a 0..1 fraction; formatApyPct takes a percentage.
     cell: (v) => {
@@ -178,29 +198,56 @@ export const VALIDATOR_COLUMNS: ValidatorColumn[] = [
     },
   },
   {
-    ...numeric("Active subnets", 139),
+    ...numeric("subnets", "Active subnets", 139),
     sortKey: "subnet_count",
     cell: (v) => formatNumber(v.subnet_count),
   },
   {
-    ...numeric("Nominators", 115),
+    ...numeric("nominators", "Nominators", 115),
     sortKey: "nominator_count",
     tdClassName: `${TD_NUM} text-ink-muted`,
     cell: (v) => (v.nominator_count != null ? formatNumber(v.nominator_count) : "—"),
   },
   {
-    ...numeric("Dominance", 113),
+    ...numeric("dominance", "Dominance", 113),
     sortKey: "stake_dominance",
     cell: (v) => (v.stake_dominance != null ? `${(v.stake_dominance * 100).toFixed(2)}%` : "—"),
   },
   {
-    ...numeric("Total stake", 129),
+    ...numeric("totalStake", "Total stake", 129),
     sortKey: "total_stake_tao",
     cell: (v) => taoCompact(v.total_stake_tao),
   },
   {
-    ...numeric("30d Δ", 75),
+    ...numeric("delta30d", "30d Δ", 75),
     tdClassName: `${TD_NUM}`,
     cell: (v) => <Stake30dDeltaCell hotkey={v.hotkey} />,
+  },
+  {
+    ...numeric("emission", "Emission", 110, false),
+    sortKey: "total_emission_tao",
+    cell: (v) => (v.total_emission_tao != null ? taoCompact(v.total_emission_tao) : "—"),
+  },
+  {
+    ...numeric("trust", "Avg trust", 100, false),
+    sortKey: "avg_validator_trust",
+    cell: (v) =>
+      v.avg_validator_trust != null ? `${(v.avg_validator_trust * 100).toFixed(1)}%` : "—",
+  },
+  {
+    ...numeric("realized1w", "Realized 7d", 110, false),
+    sortKey: "realized_return_1w",
+    cell: (v) =>
+      v.realized_return_1w != null ? `${(v.realized_return_1w * 100).toFixed(2)}%` : "—",
+  },
+  {
+    ...numeric("rootStake", "Root stake", 115, false),
+    sortKey: "root_stake_tao",
+    cell: (v) => (v.root_stake_tao != null ? taoCompact(v.root_stake_tao) : "—"),
+  },
+  {
+    ...numeric("alphaStake", "Alpha stake", 118, false),
+    sortKey: "alpha_stake_tao",
+    cell: (v) => (v.alpha_stake_tao != null ? taoCompact(v.alpha_stake_tao) : "—"),
   },
 ];
