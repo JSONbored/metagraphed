@@ -26,6 +26,23 @@ import { resolveMarketCapIndex } from "./market-cap-index.ts";
 import { loadChainCallsFromArtifact } from "./chain-calls-artifact.ts";
 import { loadChainFeesFromArtifact } from "./chain-fees-artifact.ts";
 import { loadExtrinsicFeedColdTier } from "./extrinsics-cold-tier.ts";
+import { loadExtrinsicColdTier } from "./extrinsics-cold-tier.ts";
+import {
+  loadBlockColdTier,
+  loadBlockFeedColdTier,
+} from "./blocks-cold-tier.ts";
+import { loadBlockExtrinsicsColdTier } from "./extrinsics-cold-tier.ts";
+import { loadBlockEventsColdTier } from "./events-cold-tier.ts";
+import {
+  answerBlockDetail,
+  answerExtrinsicDetail,
+  chainDetailGapMessage,
+  isEmptyEventPayload,
+  isEmptyExtrinsicPayload,
+  loadBlockEventsHotTier,
+  loadBlockExtrinsicsHotTier,
+  type ChainDetailAnswer,
+} from "./chain-detail-hot-tier.ts";
 // #7881: the same list-query helper the REST pipeline and the list_* MCP
 // loaders use, so subnet_health's filter/sort/page allowlists cannot drift
 // from GET /api/v1/subnets/{netuid}/health.
@@ -1984,6 +2001,36 @@ function resolveEvmAddressMapping(
 // the pilot conversion + the codegen mechanism). Every Query root field on
 // this object is now typed against the generated Query<Field>Args types
 // below rather than a Row-typed destructured param.
+/**
+ * A block-scoped detail answer, with the GAP case raised rather than flattened
+ * to an empty (#9540).
+ *
+ * `answerBlockDetail` distinguishes three outcomes and only two of them mean
+ * "no rows". A `gap` is a ref falling between the decoded seam and the hot
+ * window: the data exists and this deployment cannot currently read it. REST
+ * answers that 503 `block_detail_unavailable` and MCP throws a tool error, so
+ * GraphQL must not be the one surface reporting it as an empty block.
+ *
+ * `miss` -- a ref that genuinely resolves to nothing -- still degrades to the
+ * schema-stable empty, which is this surface's existing convention.
+ */
+function gapAwareBlockDetail<T>(
+  answer: ChainDetailAnswer<T>,
+  empty: () => T,
+): T {
+  if (answer.kind === "answer") return answer.data;
+  if (answer.kind === "gap") {
+    throw new GraphQLError(chainDetailGapMessage(answer), {
+      extensions: {
+        code: "BLOCK_DETAIL_UNAVAILABLE",
+        block_number: answer.block,
+        decoded_through: answer.seam,
+      },
+    });
+  }
+  return empty();
+}
+
 const rootValue = {
   subnets(args: QuerySubnetsArgs, context: GqlContext) {
     // #8423: full parity with the list_subnets MCP tool over the same static
@@ -4951,7 +4998,16 @@ const rootValue = {
           `/api/v1/extrinsics/${encodeURIComponent(ref)}`,
         ),
         "METAGRAPH_EXTRINSICS_SOURCE",
-      )) as Row | null) ?? buildExtrinsic(undefined, ref);
+      )) as Row | null) ??
+      // The same hot/cold cascade REST and MCP run (#9540). A composite
+      // "<block>-<index>" ref routes through answerBlockDetail, so it inherits
+      // the gap case -- raised, not flattened to an empty extrinsic.
+      (gapAwareBlockDetail(
+        await answerExtrinsicDetail(context.env, ref, () =>
+          loadExtrinsicColdTier(context.env, ref),
+        ),
+        () => buildExtrinsic(undefined, ref),
+      ) as Row);
     return {
       ref: data.ref ?? ref,
       extrinsic: extrinsicNode(data.extrinsic),
@@ -5097,6 +5153,23 @@ const rootValue = {
         postgresTierRequest(context, "/api/v1/blocks", params),
         "METAGRAPH_BLOCKS_SOURCE",
       )) as Row | null) ??
+      // The blocks cold tier REST and MCP both read (#9540). Every filter is
+      // forwarded, so the tier does the filtering -- the empty builder below
+      // ignores them, which is why reaching it silently dropped a filtered
+      // query's meaning as well as its rows.
+      ((await loadBlockFeedColdTier(context.env, {
+        limit: safeLimit,
+        offset: safeOffset,
+        cursor,
+        author,
+        specVersion,
+        blockStart,
+        blockEnd,
+        from,
+        to,
+        minExtrinsics,
+        minEvents,
+      } as never)) as Row | null) ??
       buildBlockFeed([], {
         limit: safeLimit,
         offset: safeOffset,
@@ -5180,7 +5253,10 @@ const rootValue = {
           `/api/v1/blocks/${encodeURIComponent(ref)}`,
         ),
         "METAGRAPH_BLOCKS_SOURCE",
-      )) as Row | null) ?? buildBlock(undefined, ref);
+      )) as Row | null) ??
+      // The block cold tier REST and MCP both read (#9540).
+      ((await loadBlockColdTier(context.env, ref)) as Row | null) ??
+      buildBlock(undefined, ref);
     return {
       ref: data.ref ?? ref,
       block: data.block ?? null,
@@ -5217,10 +5293,32 @@ const rootValue = {
       ),
       "METAGRAPH_EXTRINSICS_SOURCE",
     )) as Row | null) ?? {
-      data: buildBlockExtrinsics([], ref, null, {
-        limit: safeLimit,
-        offset: safeOffset,
-      }),
+      // The hot/cold cascade REST and MCP both run (#9540). Not a plain loader:
+      // a ref can land in the GAP between the decoded seam and the hot window,
+      // and that is a decline, not an empty -- REST answers it 503
+      // block_detail_unavailable and MCP throws. Returning the empty builder
+      // there would state "this block has no extrinsics", which is the confident
+      // zero this whole change exists to remove.
+      data: gapAwareBlockDetail(
+        await answerBlockDetail(context.env, ref, {
+          hot: (height) =>
+            loadBlockExtrinsicsHotTier(context.env, ref, height, {
+              limit: safeLimit,
+              offset: safeOffset,
+            }),
+          cold: () =>
+            loadBlockExtrinsicsColdTier(context.env, ref, {
+              limit: safeLimit,
+              offset: safeOffset,
+            }),
+          isEmpty: isEmptyExtrinsicPayload,
+        }),
+        () =>
+          buildBlockExtrinsics([], ref, null, {
+            limit: safeLimit,
+            offset: safeOffset,
+          }),
+      ),
     };
     return data;
   },
@@ -5249,10 +5347,32 @@ const rootValue = {
       ),
       "METAGRAPH_EXTRINSICS_SOURCE",
     )) as Row | null) ?? {
-      data: buildBlockEvents([], ref, null, {
-        limit: safeLimit,
-        offset: safeOffset,
-      }),
+      // The hot/cold cascade REST and MCP both run (#9540). Not a plain loader:
+      // a ref can land in the GAP between the decoded seam and the hot window,
+      // and that is a decline, not an empty -- REST answers it 503
+      // block_detail_unavailable and MCP throws. Returning the empty builder
+      // there would state "this block has no events", which is the confident
+      // zero this whole change exists to remove.
+      data: gapAwareBlockDetail(
+        await answerBlockDetail(context.env, ref, {
+          hot: (height) =>
+            loadBlockEventsHotTier(context.env, ref, height, {
+              limit: safeLimit,
+              offset: safeOffset,
+            }),
+          cold: () =>
+            loadBlockEventsColdTier(context.env, ref, {
+              limit: safeLimit,
+              offset: safeOffset,
+            }),
+          isEmpty: isEmptyEventPayload,
+        }),
+        () =>
+          buildBlockEvents([], ref, null, {
+            limit: safeLimit,
+            offset: safeOffset,
+          }),
+      ),
     };
     return data;
   },

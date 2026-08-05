@@ -103,18 +103,6 @@ function buildResolver(
 }
 
 /**
- * Resolvers on a retired tier with no loader, that are NOT defects.
- *
- * A name belongs here only when the tier genuinely does not exist for anyone --
- * verified by the MCP twin ALSO bottoming out in an empty builder. GraphQL
- * matching MCP's empty is correct in that case; the missing data is a separate
- * question about the lane, not a wiring bug on this surface.
- *
- * Every entry needs a reason. The list must SHRINK: an entry that no longer
- * matches a broken resolver fails the test below, so a fix cannot silently
- * leave a stale exemption behind.
- */
-/**
  * Resolvers still to be wired, tracked against #9540.
  *
  * These ARE defects -- each has a loader its REST/MCP twin already calls, and
@@ -128,11 +116,6 @@ const PENDING_WIRING = new Set([
   "subnet_axon_removals",
   "subnet_events",
   "subnet_prometheus",
-  "extrinsic",
-  "blocks",
-  "block",
-  "block_extrinsics",
-  "block_events",
   "account_prometheus",
   "account_stake_flow",
   "account_registrations",
@@ -147,6 +130,18 @@ const PENDING_WIRING = new Set([
   "chain_activity",
 ]);
 
+/**
+ * Resolvers on a retired tier with no loader, that are NOT defects.
+ *
+ * A name belongs here only when the tier genuinely does not exist for anyone --
+ * verified by the MCP twin ALSO bottoming out in an empty builder. GraphQL
+ * matching MCP's empty is correct in that case; the missing data is a separate
+ * question about the lane, not a wiring bug on this surface.
+ *
+ * Every entry needs a reason. The list must SHRINK: an entry that no longer
+ * matches a broken resolver fails the test below, so a fix cannot silently
+ * leave a stale exemption behind.
+ */
 const NO_TIER_ANYWHERE: Record<string, string> = {
   chain_axon_removals:
     "get_chain_axon_removals falls to buildChainAxonRemovals([]) on MCP too -- no artifact lane exists for it",
