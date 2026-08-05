@@ -1050,15 +1050,16 @@ async function handleRollupAccountEventsDaily(request: Request, env: Env) {
 // same proxyToDataApi shape as neurons-sync/rollup-account-events-daily
 // above) -- now this workflow's SOLE write path, D1's own R2-stage-to-D1
 // loader (loadStagedSubnetHyperparams) having been retired alongside D1's
-// copy of these two tables. .github/workflows/refresh-subnet-hyperparams.yml's
-// sign-and-stage job POSTs the signed envelope produced by
-// scripts/sign-staged-neurons.ts (its {schema_version, hmac_sha256, rows}
-// shape, kept for the HMAC utility even with no D1 R2-stage step left to
-// authenticate) directly here -- the hmac_sha256 field itself is ignored: it
-// exists to authenticate an R2 object drop across an untrusted intermediate
-// step, and is unnecessary to replicate here since the POST itself is
-// independently authenticated by the token header below, matching
-// handleNeuronsSync's own request/{rows:[...]} shape.
+// copy of these two tables. The producer is metagraphed-infra's
+// data-refresh-cron job, which POSTs directly here. The retired
+// .github/workflows/refresh-subnet-hyperparams.yml (#5157) used to sign and
+// stage a {schema_version, hmac_sha256, rows} envelope first; the handler
+// below never read either of the first two fields, only rows (or a bare
+// array), so nothing changed on this side when that lane went away. The HMAC
+// authenticated an R2 object drop across an untrusted intermediate step,
+// which a direct POST does not have -- this request is independently
+// authenticated by the token header below, matching handleNeuronsSync's own
+// request/{rows:[...]} shape.
 //
 // Every successful upstream fetch covers ALL active subnets in one run (the
 // fetch script loops every netuid every time and exits nonzero on any

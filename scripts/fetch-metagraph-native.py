@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """First-party per-UID metagraph fetcher (#1348) — chain-direct, REPLACING the
-Taostats fetch (scripts/fetch-metagraph.ts). One `get_all_metagraphs_info` call
+since-removed Taostats fetch. One `get_all_metagraphs_info` call
 yields most per-UID fields for every subnet; `rank` + `validator_trust` come from
 SubtensorModule storage (MetagraphInfo doesn't carry them in dTAO). Emits the exact
 `NEURON_INSERT_COLUMNS` shape to dist/metagraph-neurons.json — a drop-in for the
