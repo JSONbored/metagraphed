@@ -13,9 +13,9 @@ _openapi:
       - content: 'Fetch the per-day emission-yield distribution trend for one subnet
           over a 7d/30d/90d window: the subnet-wide return plus the mean,
           median, and p25/p75/p90 of the per-UID emission-per-stake yields, one
-          point per day (computed live from the Postgres-backed neuron_daily
-          rollup). The time-series companion to /yield and the return-rate twin
-          of /concentration/history. Pass ?format=csv to download the per-day
+          point per day (computed live from the neuron_daily D1 rollup). The
+          time-series companion to /yield and the return-rate twin of
+          /concentration/history. Pass ?format=csv to download the per-day
           series as CSV.'
 ---
 
