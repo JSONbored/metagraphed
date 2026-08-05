@@ -9,6 +9,39 @@ versioning and this changelog are managed by `release-please` from
 [Conventional Commits](https://www.conventionalcommits.org/) touching
 `apps/ui/**`, independent of the backend's release cadence.
 
+## [0.16.0](https://github.com/JSONbored/metagraphed/compare/ui-v0.15.0...ui-v0.16.0) (2026-08-05)
+
+
+### Features
+
+* **accounts:** compose top-holders' free_tao from the balance ledger ([#9504](https://github.com/JSONbored/metagraphed/issues/9504)) ([f3efe4e](https://github.com/JSONbored/metagraphed/commit/f3efe4e070d26dd6a3e0cb61c753ba20a86bf00f)), closes [#9501](https://github.com/JSONbored/metagraphed/issues/9501)
+* **accounts:** give top-holders' net_flow_* sorts a live ranking again ([#9492](https://github.com/JSONbored/metagraphed/issues/9492)) ([af50eeb](https://github.com/JSONbored/metagraphed/commit/af50eeb448d8def7961bcbda89fb37d610ace781)), closes [#9469](https://github.com/JSONbored/metagraphed/issues/9469)
+* **burn:** every subnet's live registration cost in one call, ranked cheapest-first ([#9403](https://github.com/JSONbored/metagraphed/issues/9403)) ([a1d6f40](https://github.com/JSONbored/metagraphed/commit/a1d6f40db452ec074d6f87728f3c452192ed068c))
+* **burn:** record a registration-cost series, so "is this subnet getting more expensive" is answerable ([#9407](https://github.com/JSONbored/metagraphed/issues/9407)) ([9932f9e](https://github.com/JSONbored/metagraphed/commit/9932f9e53bb6a6fa5f7b05c2da4e746ad1dc787e))
+* **chain-events:** serve the family on testnet, and stop forwarding to a store that no longer exists ([#9411](https://github.com/JSONbored/metagraphed/issues/9411)) ([4484144](https://github.com/JSONbored/metagraphed/commit/4484144d571bc31fffb47ae345f7ea197a902f30))
+* **testnet:** serve the thirteen projection-backed chain routes on testnet ([#9422](https://github.com/JSONbored/metagraphed/issues/9422)) ([2161160](https://github.com/JSONbored/metagraphed/commit/216116078e59b9e487313c752d526883a5241aa9))
+* **ui:** make every table column filterable, and surface the fields the API was already returning ([#9460](https://github.com/JSONbored/metagraphed/issues/9460)) ([05234d4](https://github.com/JSONbored/metagraphed/commit/05234d4d4294d08e77aa28dda93ea257a4f71ad3))
+* **validators:** group a multi-key operator's rows under one entry ([#9445](https://github.com/JSONbored/metagraphed/issues/9445)) ([4de675c](https://github.com/JSONbored/metagraphed/commit/4de675cbe563097dd68201155f3325885d6735cd)), closes [#9444](https://github.com/JSONbored/metagraphed/issues/9444)
+
+
+### Bug Fixes
+
+* **api:** recent blocks reported zero events, and eight more correctness gaps alongside it ([#9414](https://github.com/JSONbored/metagraphed/issues/9414)) ([4761416](https://github.com/JSONbored/metagraphed/commit/47614165d4c42362cc6b15cf528738b584fc461f))
+* **networks:** stop telling callers testnet has no chain history, when it has ([#9432](https://github.com/JSONbored/metagraphed/issues/9432)) ([a96170a](https://github.com/JSONbored/metagraphed/commit/a96170a466d40083a54dee19bbf8ffee7d77d515))
+* **observability:** say the top-holders leaderboard is a frozen snapshot, and watch it ([#9467](https://github.com/JSONbored/metagraphed/issues/9467)) ([c511903](https://github.com/JSONbored/metagraphed/commit/c511903644c6240e1219606acde2d7a4069e7126))
+* **telemetry:** guard every $exception emitter, not just the main Worker's ([#9453](https://github.com/JSONbored/metagraphed/issues/9453)) ([811a463](https://github.com/JSONbored/metagraphed/commit/811a4636f57131a61c1bfe7a221845527c3fe946)), closes [#9451](https://github.com/JSONbored/metagraphed/issues/9451)
+* **telemetry:** put the exception budget where autocaptured faults pass ([#9458](https://github.com/JSONbored/metagraphed/issues/9458)) ([f6e9f6e](https://github.com/JSONbored/metagraphed/commit/f6e9f6ee96e8ceba6a41b5d65aef8688523b0479)), closes [#9457](https://github.com/JSONbored/metagraphed/issues/9457)
+* **ui:** pin every table header to its own scrollport, not the page offset ([#9413](https://github.com/JSONbored/metagraphed/issues/9413)) ([9f4dc1d](https://github.com/JSONbored/metagraphed/commit/9f4dc1d5eeeb0fd7872b7d2ede5083c291aee1de))
+* **ui:** pin table column widths so they stop shifting as virtualized rows mount ([#9456](https://github.com/JSONbored/metagraphed/issues/9456)) ([e4f6324](https://github.com/JSONbored/metagraphed/commit/e4f6324c983326f81b919c4218d95d7e11313a23))
+* **ui:** stop list tables dragging their pinned header off-screen, and cover /subnets ([#9418](https://github.com/JSONbored/metagraphed/issues/9418)) ([3961bc6](https://github.com/JSONbored/metagraphed/commit/3961bc6daed729de8077b0c43e4f4426b50f9cd9))
+* **ui:** stop the new "did this route render?" check turning main red ([#9439](https://github.com/JSONbored/metagraphed/issues/9439)) ([54ce02c](https://github.com/JSONbored/metagraphed/commit/54ce02c9166217b398ef3b22285c12d89d721630))
+* **ui:** stop virtualized table rows drifting as you scroll, and put the scroll affordance on the element that scrolls ([#9448](https://github.com/JSONbored/metagraphed/issues/9448)) ([113aa3a](https://github.com/JSONbored/metagraphed/commit/113aa3aef97ce3eb881d6f1df4038f857d2cd197))
+
+
+### Documentation
+
+* **contracts:** correct text that describes the decommissioned box ([#9547](https://github.com/JSONbored/metagraphed/issues/9547)) ([426d1aa](https://github.com/JSONbored/metagraphed/commit/426d1aacc6dc560803c7b3cde798ad7d9cb48fd3)), closes [#9541](https://github.com/JSONbored/metagraphed/issues/9541)
+
 ## [0.15.0](https://github.com/JSONbored/metagraphed/compare/ui-v0.14.1...ui-v0.15.0) (2026-08-03)
 
 
