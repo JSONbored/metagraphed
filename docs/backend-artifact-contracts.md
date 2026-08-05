@@ -411,6 +411,7 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `npm run validate:generated-client`: validate the generated TypeScript client helper is current.
 - `npm run contract:summary`: compare schema contracts against a base ref and classify changes as additive, risky, or breaking.
 - `npm run validate:docs`: validate public docs against current artifact and API contracts.
+- `npm run validate:contract-doc-sync`: fail when an artifact/route description changes what it claims to serve (tier, liveness, provenance) versus the merge base while this file's bullet for it stays byte-identical. Diff-scoped — a PR that changes no description never fires.
 - `npm run validate:intake`: validate GitHub issue intake templates.
 - `npm run surface:add`: append a community surface to a subnet's file.
 - `npm run subnet:new`: scaffold a missing subnet manifest before adding its

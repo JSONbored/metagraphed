@@ -189,7 +189,10 @@ input list, which a one-file surface PR does not commit; since #9096 that list i
 the prober's cold-start seed) · `validate` ·
 `validate:schemas` · `validate:api` ·
 `validate:mcp` · `validate:ai` · `validate:openapi` · `validate:types` · `validate:artifact-budgets` ·
-`validate:docs` · `validate:intake` · `validate:surface` · `validate:workflows` ·
+`validate:docs` · `validate:contract-doc-sync` (PR-only, diff-scoped: fails when an artifact/route
+description changes what it claims to serve — tier, liveness, provenance — versus the merge base
+while its `docs/backend-artifact-contracts.md` bullet stays byte-identical) ·
+`validate:intake` · `validate:surface` · `validate:workflows` ·
 `validate:migrations` (unique, gap-free D1 migration prefixes) ·
 `cloudflare:verify:dry-run` · r2/kv dry-runs · `worker:deploy:dry-run` · `worker:bundle:budget`
 (gzip-measures the `wrangler deploy --dry-run` Worker bundle against a budget so an over-1MiB bundle
@@ -245,7 +248,7 @@ The gate's private scoring rubric/thresholds must **never** appear in this repo 
 | Public-safety scan                        | `npm run scan:public-safety`                                                                                                                                                                                                                                |
 | Code/schema: regenerate the contract      | `npm run build`                                                                                                                                                                                                                                             |
 | Code/schema: typecheck _(new)_            | `npm run typecheck` (`tsc --noEmit`; `src/`+`workers/`+`scripts/`+`tests/` are **all `.ts`** — the migration epic metagraphed#7510 is complete, and `validate:no-hand-written-mjs` fails CI if a new `.mjs`/`.js` appears under a covered directory)        |
-| Code/schema: validators                   | `npm run validate` · `validate:schemas` · `validate:api` · `validate:openapi` · `validate:types` · `validate:contract-drift` · `validate:mcp` · `validate:ai` · `validate:docs` · `validate:intake` · `validate:workflows`                                  |
+| Code/schema: validators                   | `npm run validate` · `validate:schemas` · `validate:api` · `validate:openapi` · `validate:types` · `validate:contract-drift` · `validate:mcp` · `validate:ai` · `validate:docs` · `validate:contract-doc-sync` · `validate:intake` · `validate:workflows`   |
 | Tests / coverage                          | `npm test` · `npm run test:coverage`                                                                                                                                                                                                                        |
 | Full local pipeline (after a clean build) | `npm run pipeline:check`                                                                                                                                                                                                                                    |
 
