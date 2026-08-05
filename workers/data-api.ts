@@ -362,6 +362,10 @@ import {
   ACCOUNT_BALANCE_INSERT_COLUMNS,
   writeAccountBalancesToD1,
 } from "../src/account-balances-d1-write.ts";
+import {
+  HOTKEY_ALPHA_INSERT_COLUMNS,
+  writeHotkeyAlphaToD1,
+} from "../src/hotkey-alpha-d1-write.ts";
 import { VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS } from "../src/validator-nominator-counts-staleness-watchdog.ts";
 import { writeChainDetailToD1 } from "../src/chain-detail-d1-write.ts";
 import {
@@ -2061,6 +2065,166 @@ async function handleAccountBalancesSync(request: Request, env: Env) {
   return writeJson({
     ok: true,
     account_balances_written: rows.length,
+    stores: ["d1"],
+    d1_statements: d1Statements,
+  });
+}
+
+// --- POST /api/v1/internal/hotkey-alpha-sync (#9502) ----------------------
+//
+// The (hotkey, netuid) alpha-pool ledger `delegated_tao` needs. A staker's
+// `nominator_positions.share_fraction` is a dimensionless slice of a pool, and
+// nothing in either store held the pool total to value it against:
+// `neurons.stake_tao` covers only hotkeys registered on that exact subnet,
+// which is 512 of the 13,724 (hotkey, netuid) pairs the positions name, so
+// only 22.8% of position rows and 27.7% of staking accounts priced at all
+// (#9502).
+//
+// Recomputing the leaderboard from that join is not a staleness problem that
+// a label fixes: it puts an account the frozen snapshot ranks at 81,185 TAO at
+// 0 and drops another out of the payload entirely. A ranking cannot carry a
+// per-row degraded flag the way the per-account route does, which is why the
+// column waited for this table rather than shipping wrong.
+//
+// The producer reads `SubtensorModule::TotalHotkeyAlpha(hotkey, netuid)`
+// directly, the same posture as account-balances above: a direct state read
+// cannot drift, event-replay can.
+//
+// A FULL PASS DOES NOT FIT ONE REQUEST -- the sibling Alpha scan is ~762,577
+// entries -- so this takes the same {rows:[...]} shape, the same token gate,
+// and the same flat chunking as account-balances: rows are keyed on
+// (hotkey, netuid) and this lane never prunes, so a row may land in any
+// request in any order.
+const HOTKEY_ALPHA_SYNC_TOKEN_HEADER = "x-hotkey-alpha-sync-token";
+const HOTKEY_ALPHA_SYNC_MAX_BODY_BYTES = 8_000_000;
+const HOTKEY_ALPHA_SYNC_MAX_ROWS = 25_000;
+const HOTKEY_ALPHA_SYNC_MAX_KEY_BYTES = 128;
+
+/**
+ * Bounds-check one incoming row against HOTKEY_ALPHA_INSERT_COLUMNS.
+ *
+ * `total_alpha` must be finite and NON-NEGATIVE: a negative alpha pool is not
+ * a thing the chain can hold, and a NaN or Infinity arriving as null would
+ * bind as NULL against a NOT NULL column and fail the whole batch at the
+ * database rather than here, where the producer can see it. A genuine 0 IS
+ * accepted -- an emptied pool is a real measurement, and the producer's own
+ * skip rule is what keeps those out, not this validator.
+ *
+ * `netuid` is bounded to a non-negative integer for the same reason the
+ * balance columns are bounded: the composite primary key means a junk netuid
+ * silently creates a parallel row rather than updating the intended one.
+ */
+function validHotkeyAlphaSyncRow(row: Row) {
+  if (!row || typeof row !== "object" || Array.isArray(row)) return false;
+  for (const key of Object.keys(row)) {
+    if (!HOTKEY_ALPHA_INSERT_COLUMNS.includes(key)) return false;
+  }
+  if (typeof row.hotkey !== "string" || row.hotkey.length === 0) return false;
+  if (utf8Bytes(row.hotkey).length > HOTKEY_ALPHA_SYNC_MAX_KEY_BYTES)
+    return false;
+  if (
+    typeof row.netuid !== "number" ||
+    !Number.isInteger(row.netuid) ||
+    row.netuid < 0
+  ) {
+    return false;
+  }
+  const alpha = row.total_alpha;
+  if (typeof alpha !== "number" || !Number.isFinite(alpha) || alpha < 0)
+    return false;
+  if (!validSyncCapturedAt(row.captured_at)) return false;
+  return true;
+}
+
+/** Project a validated row onto the writer's exact column list and order. */
+function coerceHotkeyAlphaSyncRow(row: Row) {
+  const out: Row = {};
+  for (const col of HOTKEY_ALPHA_INSERT_COLUMNS) out[col] = row[col];
+  return out;
+}
+
+async function handleHotkeyAlphaSync(request: Request, env: Env) {
+  if (!env.HOTKEY_ALPHA_SYNC_SECRET) {
+    return writeJson(
+      { error: "hotkey-alpha sync is not provisioned on this deployment" },
+      503,
+    );
+  }
+  const provided = request.headers.get(HOTKEY_ALPHA_SYNC_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, env.HOTKEY_ALPHA_SYNC_SECRET)) {
+    return writeJson(
+      { error: `provide a valid ${HOTKEY_ALPHA_SYNC_TOKEN_HEADER} header` },
+      401,
+    );
+  }
+
+  const raw = await request.text();
+  if (utf8Bytes(raw).length > HOTKEY_ALPHA_SYNC_MAX_BODY_BYTES) {
+    return writeJson(
+      { error: `body exceeds ${HOTKEY_ALPHA_SYNC_MAX_BODY_BYTES} bytes` },
+      413,
+    );
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return writeJson({ error: "body must be JSON" }, 400);
+  }
+  const incoming = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray(parsed?.rows)
+      ? parsed.rows
+      : null;
+  if (!incoming) {
+    return writeJson(
+      {
+        error:
+          "body must be a JSON array of hotkey-alpha rows (or {rows:[...]})",
+      },
+      400,
+    );
+  }
+  if (incoming.length > HOTKEY_ALPHA_SYNC_MAX_ROWS) {
+    return writeJson(
+      { error: `at most ${HOTKEY_ALPHA_SYNC_MAX_ROWS} rows per request` },
+      413,
+    );
+  }
+  if (!incoming.length || !incoming.every(validHotkeyAlphaSyncRow)) {
+    return writeJson(
+      { error: "rows must match the hotkey-alpha row shape" },
+      400,
+    );
+  }
+
+  const rows = incoming.map(coerceHotkeyAlphaSyncRow);
+
+  // D1 is the binding this path REQUIRES -- the only store this family has.
+  // Checked HERE, after validation, not at the top: a malformed body is a 400
+  // whether or not a store happens to be bound (handleAccountBalancesSync's
+  // own 400-before-503 reasoning).
+  if (!env.METAGRAPH_HEALTH_DB) {
+    return writeJson({ error: "d1 binding unavailable" }, 503);
+  }
+
+  let d1Statements: number;
+  try {
+    ({ statements: d1Statements } = await writeHotkeyAlphaToD1(
+      env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof writeHotkeyAlphaToD1
+      >[0],
+      rows,
+    ));
+  } catch (err) {
+    console.error("data-api hotkey-alpha-sync D1 write failed:", err);
+    await captureDataApiError(err, "hotkey-alpha-sync-d1", env);
+    return writeJson({ error: "d1 write failed" }, 502);
+  }
+
+  return writeJson({
+    ok: true,
+    hotkey_alpha_written: rows.length,
     stores: ["d1"],
     d1_statements: d1Statements,
   });
@@ -6185,6 +6349,12 @@ async function dispatchDataApiRequest(
       url.pathname === "/api/v1/internal/account-balances-sync"
     ) {
       return handleAccountBalancesSync(request, env);
+    }
+    if (
+      request.method === "POST" &&
+      url.pathname === "/api/v1/internal/hotkey-alpha-sync"
+    ) {
+      return handleHotkeyAlphaSync(request, env);
     }
     if (
       request.method === "POST" &&
