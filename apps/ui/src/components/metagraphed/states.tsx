@@ -18,10 +18,10 @@ import { NativeOnlyNotice } from "./native-only-notice";
 
 /**
  * Shown when a `/chain-events*` request 503s with `data_tier_unavailable` —
- * the deep-history Postgres tier's `DATA_API` service binding isn't wired
- * into this deployment. Expected on a preview/fork/from-scratch environment,
- * not a fault in the feed itself, so an informational notice reads better
- * than a red error card (mirrors `NativeOnlyNotice`'s same reasoning).
+ * the deep-history lakehouse tier can't answer in this deployment (its R2 SQL
+ * credentials aren't bound). Expected on a preview/fork/from-scratch
+ * environment, not a fault in the feed itself, so an informational notice
+ * reads better than a red error card (mirrors `NativeOnlyNotice`'s reasoning).
  */
 function DataTierUnavailableNotice({ context }: { context?: string }) {
   return (
@@ -33,8 +33,8 @@ function DataTierUnavailableNotice({ context }: { context?: string }) {
             Deep-history tier not enabled
           </div>
           <p className="text-xs leading-relaxed text-ink-muted">
-            {context ? `The ${context} view` : "This view"} reads the Postgres all-events tier,
-            which isn't bound in this deployment. It's unrelated to the rest of this page.
+            {context ? `The ${context} view` : "This view"} reads the deep-history all-events tier,
+            which isn't available in this deployment. It's unrelated to the rest of this page.
           </p>
         </div>
       </div>
@@ -103,11 +103,11 @@ export function ErrorState({
   ) {
     return <NativeOnlyNotice context={context} />;
   }
-  // #2564: the chain-events deep-history tier (workers/api.ts's handleChainEventsProxy)
-  // 503s with this exact code whenever the DATA_API service binding isn't wired into a
-  // deployment (e.g. a preview/fork environment). That's an expected, documented
-  // condition, not a fault in this feed — an informational notice reads better than a
-  // red error card for every call site that reads /chain-events*.
+  // #2564: the chain-events deep-history tier (workers/api.ts's handleChainEventsFamily)
+  // 503s with this exact code when nothing can answer the route in a deployment (e.g. a
+  // preview/fork environment without lakehouse credentials). That's an expected,
+  // documented condition, not a fault in this feed — an informational notice reads better
+  // than a red error card for every call site that reads /chain-events*.
   if (isApi && error.code === "data_tier_unavailable") {
     return <DataTierUnavailableNotice context={context} />;
   }

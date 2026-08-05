@@ -88,7 +88,7 @@ data = requests.get(
   of Sudo-pallet calls is a separate, sibling route.
 </Callout>
 
-Unlisted query params 400 rather than being silently ignored. Feed routes clamp `limit` at 1000, `offset` at 1,000,000. `/balance` is the one rate-limited route in this group — 100 requests/60s per client IP; everything else is D1/Postgres-backed with no per-route limiter.
+Unlisted query params 400 rather than being silently ignored. Feed routes clamp `limit` at 1000, `offset` at 1,000,000. `/balance` is the one rate-limited route in this group — 100 requests/60s per client IP; everything else reads D1 or the lakehouse with no per-route limiter.
 
 <ApiSourceFooter
   paths={[

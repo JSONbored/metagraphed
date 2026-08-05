@@ -85,7 +85,7 @@ data = requests.get(
 ).json()["data"]
 ```
 
-Only `/chain/fees` carries a dedicated rate limit (60 req/60s, when it runs through the deep-history Postgres tier) — every other route here relies on edge caching alone. All are cached 60s, keyed on the shared health-cron snapshot stamp.
+Only `/chain/fees` carries a dedicated rate limit (60 req/60s, shared with the rest of the deep-history lakehouse family) — every other route here relies on edge caching alone. All are cached 60s, keyed on the shared health-cron snapshot stamp.
 
 <ApiSourceFooter
   paths={[
