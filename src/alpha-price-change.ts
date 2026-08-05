@@ -5,13 +5,29 @@
  * `/api/v1/subnets/{netuid}/trajectory` already reads. Windows that lack a
  * prior finite price resolve to `null` (schema-stable) — never an error.
  *
- * `alpha_price_change_1h` is always `null` here: daily snapshots cannot
- * support an hour window (OHLC is a separate future source).
+ * `alpha_price_change_1h` is always `null` here: this series is daily, and a
+ * daily series cannot answer an hour window.
+ *
+ * That is now a DELIBERATE gap rather than a pending one. The original note
+ * called OHLC "a separate future source"; it has since shipped, with `1h` as
+ * its default interval (OHLC_INTERVALS, src/subnet-ohlc.ts), so an intraday
+ * price is available. It is still not wired in here, because OHLC is built
+ * from stake add/remove EVENTS -- a traded price -- while these windows are
+ * built from `alpha_price_tao`, the pinned moving average. Filling 1h from
+ * OHLC would make one member of a four-field family answer a different
+ * question from its siblings, which is worse than a null: a reader comparing
+ * 1h against 1d would be comparing two different prices without being told.
+ *
+ * Wiring it up is a real option, but it means either moving all four windows
+ * onto the traded series or documenting the split explicitly -- a decision,
+ * not an omission.
  */
 
 export const ALPHA_PRICE_CHANGE_WINDOWS: Record<string, number | null> =
   Object.freeze({
-    // 1h reserved for a future intraday source; kept for a stable schema shape.
+    // Null = this window is not answerable from a daily series. Kept as a key
+    // for a stable schema shape; see the header for why the now-shipped
+    // intraday OHLC source is deliberately not used to fill it.
     "1h": null,
     "1d": 1,
     "7d": 7,
