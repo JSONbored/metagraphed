@@ -70,6 +70,66 @@ describe("alpha is displayed in the unit the API serves", () => {
   });
 });
 
+describe("it reads as a leaderboard, not a list of labelled fields", () => {
+  it("renders a rank at both breakpoints", () => {
+    // The first version had none: the order carried all the meaning and a
+    // reader had to count rows to recover it.
+    expect(component).toMatch(/\{i \+ 1\}/);
+    expect(component).toMatch(/holders\.map\(\(entry, i\) =>/);
+  });
+
+  it("encodes share as a bar, not only a percentage", () => {
+    // Concentration is the question this section exists to answer, and a column
+    // of percentages does not answer it at a glance. Both breakpoints get the
+    // bar so they say the same thing.
+    const bars = component.match(/style=\{\{ width: `\$\{Math\.min\(100,/g) ?? [];
+    expect(bars.length).toBe(2);
+  });
+
+  it("marks the bar aria-hidden, since the percentage is the value", () => {
+    // Redundant encoding, not the only one -- a screen reader gets the number.
+    const at = component.indexOf("rounded-full bg-border/60");
+    expect(component.slice(Math.max(0, at - 260), at)).toContain("aria-hidden");
+  });
+
+  it("shows the hotkey count only when it says something", () => {
+    // A "1" on every row is noise, and null means unread rather than one.
+    expect(component).toMatch(/entry\.hotkey_count != null && entry\.hotkey_count > 1/);
+  });
+});
+
+describe("the summary is labelled stats, not a run-on strip", () => {
+  it("gives each headline figure its own labelled tile", () => {
+    // It was `520 holders · 152.3k α held · top 5 shown` with the ranks tacked
+    // underneath as `TOP 5 31.4% 10 44.1% 20 58.7%` -- three different KINDS of
+    // fact in one sentence, and a rank row that read as unpaired digits.
+    expect(component).toContain("StatTile");
+    for (const eyebrow of ['eyebrow="Holders"', 'eyebrow="Alpha held"', 'eyebrow="Top 10 share"']) {
+      expect(component).toContain(eyebrow);
+    }
+  });
+
+  it("explains each stat in a tooltip rather than a clipped hint", () => {
+    // The two hints that did exist truncated to "coldkeys with …" at 375px in a
+    // two-column grid, which is worse than no hint at all.
+    expect(component.match(/tooltip=/g) ?? []).toHaveLength(3);
+  });
+
+  it("says the aggregates are whole-subnet, not the rows shown", () => {
+    expect(component).toMatch(/rather than the rows shown below/);
+    expect(component).toMatch(/never over the rows shown below/);
+  });
+
+  it("moves list-scoped facts out of the tiles and under the list", () => {
+    // How many rows are on screen and how fresh the pass is are facts about the
+    // LIST, not about the subnet, so they belong with it.
+    expect(component).toMatch(/Showing the top \$\{formatNumber\(shown\)\}/);
+    const footerAt = component.indexOf("Showing the top");
+    const panelEnd = component.indexOf("</Panel>");
+    expect(footerAt).toBeGreaterThan(panelEnd);
+  });
+});
+
 describe("the section is wired into the page", () => {
   it("mounts under an anchor inside an error boundary", () => {
     expect(page).toContain('id="holders"');

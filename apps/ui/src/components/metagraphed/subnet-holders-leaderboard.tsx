@@ -4,7 +4,7 @@ import { subnetHoldersQuery } from "@/lib/metagraphed/queries";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { Skeleton, EmptyState, ErrorState } from "@/components/metagraphed/states";
 import { Panel } from "@/components/metagraphed/primitives";
-import { RealtimeFreshness } from "@jsonbored/ui-kit";
+import { RealtimeFreshness, StatTile } from "@jsonbored/ui-kit";
 import { formatNumber } from "@/lib/metagraphed/format";
 
 /**
@@ -126,59 +126,110 @@ export function SubnetHoldersLeaderboard({ netuid }: { netuid: number }) {
   }
 
   const conc = data?.concentration;
+  const shown =
+    data?.holder_count != null ? Math.min(holders.length, data.holder_count) : holders.length;
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mg-type-data text-ink-muted">
-        {/* holder_count is the WHOLE subnet, not the returned page -- said
-            explicitly, because a reader looking at 20 rows would otherwise
-            reasonably assume the number describes them. */}
-        {data?.holder_count != null ? (
-          <span>
-            {formatNumber(data.holder_count)} holders
-            {holders.length < data.holder_count ? ` · top ${holders.length} shown` : ""}
-          </span>
-        ) : null}
-        {data?.total_alpha != null ? <span>· {fmtAlpha(data.total_alpha)} held</span> : null}
-        {conc?.top5_share != null ? <span>· top 5 hold {pctStr(conc.top5_share)}</span> : null}
-        {conc?.top10_share != null ? <span>· top 10 {pctStr(conc.top10_share)}</span> : null}
-        {conc?.top20_share != null ? <span>· top 20 {pctStr(conc.top20_share)}</span> : null}
-        {data?.captured_at ? <RealtimeFreshness at={data.captured_at} /> : null}
+      {/* LABELLED TILES, NOT A RUN-ON STRIP.
+      
+          This was a dot-separated line -- `520 holders · 152.3k α held · top 5
+          shown` -- with the three concentration ranks tacked underneath as
+          `TOP 5 31.4% 10 44.1% 20 58.7%`. Every number was correct and none of
+          them was legible: three different KINDS of fact (a population, a
+          magnitude, a pagination note) ran together in one sentence, and the
+          rank row read as unpaired digits because the label sat outside the
+          pairs it was labelling.
+          
+          Each figure now carries its own label, and only the three that answer
+          a question a reader actually has get tile weight. The other two --
+          how many rows are on screen, and how fresh the pool pass is -- are
+          about the LIST rather than about the subnet, so they moved to a
+          caption under it. */}
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+        <StatTile
+          eyebrow="Holders"
+          value={data?.holder_count == null ? "—" : formatNumber(data.holder_count)}
+          tooltip="Distinct coldkeys holding alpha on this subnet through a stake position, across the whole subnet rather than the rows shown below."
+        />
+        <StatTile
+          eyebrow="Alpha held"
+          value={data?.total_alpha == null ? "—" : fmtAlpha(data.total_alpha)}
+          tooltip="The alpha these positions account for on this subnet. It is the denominator every share below is taken over, not the subnet's SubnetAlphaOut."
+        />
+        <StatTile
+          className="col-span-2 md:col-span-1"
+          eyebrow="Top 10 share"
+          tone={conc?.top10_share != null && conc.top10_share >= 0.5 ? "warn" : "default"}
+          value={pctStr(conc?.top10_share ?? null)}
+          hint={
+            conc?.top5_share == null && conc?.top20_share == null
+              ? undefined
+              : [
+                  conc?.top5_share == null ? null : `top 5 ${pctStr(conc.top5_share)}`,
+                  conc?.top20_share == null ? null : `top 20 ${pctStr(conc.top20_share)}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+          }
+          truncate={false}
+          tooltip="Share of the subnet's measured alpha held by its ten largest holders. Each rank is summed over the full holder set, never over the rows shown below."
+        />
       </div>
       <Panel as="div" flush className="overflow-hidden">
-        {/* Mobile card fallback, mirroring NeuronTable's (#6335). Measured at
-            375px, the four-column table pushed the Hotkeys column off the
-            scrollport entirely and wrapped "41.2k α" onto two lines mid-unit --
-            the page did not overflow (the scroll container held it), so nothing
-            in the responsive-overflow sweep would have caught it. One card per
-            holder, each figure labelled, is the house answer to a table too
-            wide to read narrow. */}
+        {/* MOBILE IS A RANKED LIST, NOT A TABLE OF LABELLED FIELDS.
+            
+            The first attempt rendered the four columns as `Alpha 41.2k α Share
+            27.1% Hotkeys 3` under each address -- readable, and wrong for what
+            this is. Three failures, all of them about a leaderboard not looking
+            like one: no rank at all, the address (the least interesting field)
+            set as the most prominent thing, and the ranking key buried in a
+            run-on label row at the same weight as the hotkey count.
+            
+            So: rank leads, alpha is the dominant figure, and the share becomes a
+            BAR -- concentration is the actual question this section answers, and
+            a bar answers it at a glance where a column of percentages does not.
+            The repeated field labels are gone; position and the bar carry the
+            meaning instead, which is also what buys back the width that pushed
+            a column off-screen in the first place. */}
         <ul className="divide-y divide-border/60 md:hidden">
-          {holders.map((entry) => (
-            <li key={entry.coldkey} className="space-y-2 px-4 py-3">
-              <div className="min-w-0">
-                <AddressDisplay ss58={entry.coldkey} fallback="—" compact />
+          {holders.map((entry, i) => (
+            <li key={entry.coldkey} className="space-y-1.5 px-4 py-3">
+              <div className="flex items-baseline gap-2">
+                <span className="w-6 shrink-0 font-mono mg-type-caption tabular-nums text-ink-muted">
+                  {i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <AddressDisplay ss58={entry.coldkey} fallback="—" compact />
+                </div>
+                <span className="shrink-0 font-mono text-sm tabular-nums whitespace-nowrap text-ink-strong">
+                  {fmtAlpha(entry.alpha)}
+                </span>
               </div>
-              <dl className="flex flex-wrap gap-x-4 gap-y-1 mg-type-caption">
-                <div className="flex items-baseline gap-1.5">
-                  <dt className="mg-type-caption text-ink-muted">Alpha</dt>
-                  <dd className="font-mono tabular-nums whitespace-nowrap text-ink-strong">
-                    {fmtAlpha(entry.alpha)}
-                  </dd>
+              <div className="flex items-center gap-2 pl-8">
+                {/* Same 3px track/fill the author-share panel uses. aria-hidden
+                    because the percentage beside it is the accessible value --
+                    the bar is redundant encoding, not the only one. */}
+                <div
+                  aria-hidden
+                  className="h-[3px] min-w-0 flex-1 overflow-hidden rounded-full bg-border/60"
+                >
+                  <div
+                    className="h-full rounded-full bg-accent/70"
+                    style={{ width: `${Math.min(100, (entry.share_of_total ?? 0) * 100)}%` }}
+                  />
                 </div>
-                <div className="flex items-baseline gap-1.5">
-                  <dt className="mg-type-caption text-ink-muted">Share</dt>
-                  <dd className="font-mono tabular-nums whitespace-nowrap text-ink">
-                    {pctStr(entry.share_of_total)}
-                  </dd>
-                </div>
-                <div className="flex items-baseline gap-1.5">
-                  <dt className="mg-type-caption text-ink-muted">Hotkeys</dt>
-                  <dd className="font-mono tabular-nums whitespace-nowrap text-ink-muted">
-                    {entry.hotkey_count == null ? "—" : formatNumber(entry.hotkey_count)}
-                  </dd>
-                </div>
-              </dl>
+                <span className="shrink-0 font-mono mg-type-caption tabular-nums whitespace-nowrap text-ink-muted">
+                  {pctStr(entry.share_of_total)}
+                </span>
+                {/* Only when it says something. One hotkey is the default case
+                    and a "1" on every row is noise; null means unread, not one. */}
+                {entry.hotkey_count != null && entry.hotkey_count > 1 ? (
+                  <span className="shrink-0 mg-type-caption whitespace-nowrap text-ink-muted">
+                    {formatNumber(entry.hotkey_count)} hotkeys
+                  </span>
+                ) : null}
+              </div>
             </li>
           ))}
         </ul>
@@ -186,6 +237,7 @@ export function SubnetHoldersLeaderboard({ netuid }: { netuid: number }) {
           <table className="w-full text-left text-sm">
             <thead className="bg-surface/40">
               <tr>
+                <th className="px-4 py-2.5 mg-type-micro text-ink-muted">#</th>
                 <th className="px-4 py-2.5 mg-type-micro text-ink-muted">Coldkey</th>
                 <th className="px-4 py-2.5 text-right mg-type-micro text-ink-muted">Alpha</th>
                 <th className="px-4 py-2.5 text-right mg-type-micro text-ink-muted">Share</th>
@@ -193,8 +245,13 @@ export function SubnetHoldersLeaderboard({ netuid }: { netuid: number }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {holders.map((entry) => (
+              {holders.map((entry, i) => (
                 <tr key={entry.coldkey} className="mg-row-accent hover:bg-surface/40">
+                  {/* Rank, because this is a leaderboard -- the order carries
+                      meaning and a reader should not have to count rows. */}
+                  <td className="px-4 py-2.5 align-top font-mono mg-type-caption tabular-nums text-ink-muted">
+                    {i + 1}
+                  </td>
                   {/* min-w-0 so a long resolved identity truncates instead of
                       widening the row past the viewport at 375px. */}
                   <td className="px-4 py-2.5 align-top">
@@ -205,8 +262,23 @@ export function SubnetHoldersLeaderboard({ netuid }: { netuid: number }) {
                   <td className="px-4 py-2.5 align-top text-right font-mono mg-type-caption tabular-nums whitespace-nowrap text-ink-strong">
                     {fmtAlpha(entry.alpha)}
                   </td>
-                  <td className="px-4 py-2.5 align-top text-right font-mono mg-type-caption tabular-nums whitespace-nowrap text-ink">
-                    {pctStr(entry.share_of_total)}
+                  <td className="px-4 py-2.5 align-top text-right">
+                    <div className="font-mono mg-type-caption tabular-nums whitespace-nowrap text-ink">
+                      {pctStr(entry.share_of_total)}
+                    </div>
+                    {/* The same bar the mobile list uses, so the concentration
+                        this section exists to show is legible at a glance on
+                        both breakpoints rather than only the narrow one.
+                        aria-hidden: the percentage above it is the value. */}
+                    <div
+                      aria-hidden
+                      className="ml-auto mt-1 h-[3px] w-16 overflow-hidden rounded-full bg-border/60"
+                    >
+                      <div
+                        className="h-full rounded-full bg-accent/70"
+                        style={{ width: `${Math.min(100, (entry.share_of_total ?? 0) * 100)}%` }}
+                      />
+                    </div>
                   </td>
                   <td className="px-4 py-2.5 align-top text-right font-mono mg-type-caption tabular-nums whitespace-nowrap text-ink-muted">
                     {entry.hotkey_count == null ? "—" : formatNumber(entry.hotkey_count)}
@@ -217,6 +289,20 @@ export function SubnetHoldersLeaderboard({ netuid }: { netuid: number }) {
           </table>
         </div>
       </Panel>
+      {/* About the LIST, not about the subnet -- which is why it sits with the
+          list rather than in the tiles above. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mg-type-caption text-ink-muted">
+        <span>
+          {data?.holder_count != null && shown < data.holder_count
+            ? `Showing the top ${formatNumber(shown)} of ${formatNumber(data.holder_count)}`
+            : `Showing all ${formatNumber(shown)}`}
+        </span>
+        {data?.captured_at ? (
+          <span className="inline-flex items-center gap-1.5">
+            Pool totals <RealtimeFreshness at={data.captured_at} />
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }
