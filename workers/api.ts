@@ -5,6 +5,7 @@ import {
   PUBLIC_ARTIFACTS,
   artifactPathFromTemplate,
   compileRoutePattern,
+  liveOnlyArtifactRoute,
 } from "../src/contracts.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -5807,7 +5808,8 @@ async function handleRawArtifactRequest(
   url: URL,
   network: typeof DEFAULT_NETWORK = DEFAULT_NETWORK,
 ) {
-  if (!matchRawArtifact(url.pathname)) {
+  const matched = matchRawArtifact(url.pathname);
+  if (!matched) {
     return errorResponse(
       "not_found",
       "No public artifact contract matched this path.",
@@ -5829,6 +5831,30 @@ async function handleRawArtifactRequest(
       "Current-state health artifacts are retired; use the live API health endpoints instead.",
       410,
       { artifact_path: networkPath },
+    );
+  }
+  // Computed-live artifacts with UNBOUNDED parameters have no file at any key
+  // and never will -- {ref}/{ss58}/{hash} span every block, account and
+  // extrinsic that has ever existed, so the build cannot enumerate them and
+  // scripts/bake-computed-artifacts.ts explicitly does not try.
+  //
+  // Reading R2 to discover that cost a GetObject miss per request (two when the
+  // KV pointer names a run prefix, via readR2Object's `latest/` recovery read)
+  // and answered a 404 that was knowable from the contract without asking.
+  // /metagraph/blocks/{ref}.json is the one that showed up: the site's own block
+  // pages render it as a real link, so crawlers walk it continuously, and it was
+  // the single largest source of R2 errors in the Worker log (#9485).
+  //
+  // Same posture as the retired-health branch above -- decide from the contract,
+  // before any store is touched -- but a 404 rather than a 410: the resource is
+  // not gone, it is served live at the route named in the payload.
+  const liveRoute = liveOnlyArtifactRoute(matched.path);
+  if (liveRoute) {
+    return errorResponse(
+      "artifact_computed_live",
+      `This artifact is computed live and is never written as a file. Fetch ${liveRoute} instead.`,
+      404,
+      { artifact_path: networkPath, live_route: liveRoute },
     );
   }
   const artifact = await readArtifact(env, networkPath);
@@ -6819,8 +6845,10 @@ async function handleApiRequest(
   return response;
 }
 
+/** The matched artifact entry, so a caller can consult its contract (is it
+ * computed live?) and not just whether the path is shaped like one. */
 function matchRawArtifact(pathname: string) {
-  return RAW_ARTIFACT_ROUTES.some((candidate) =>
+  return RAW_ARTIFACT_ROUTES.find((candidate) =>
     candidate.pattern.test(pathname),
   );
 }
