@@ -15,6 +15,20 @@
 // table's parts. That is fine for an archival tier BEHIND an edge cache and
 // wrong as a hot path -- which is exactly how the callers use it.
 //
+// RE-MEASURED 2026-08-05, end to end through the deployed Worker with the
+// edge cache defeated, because the numbers above had aged into a misleading
+// comment. Eight uncached runs of GET /api/v1/accounts/{ss58}/events for the
+// top-balance account -- a filtered, ordered, LIMITed scan of account_events,
+// no GROUP BY:
+//   4.0s  4.0s  5.0s  5.6s  6.2s  8.7s   (limit=200)
+//   5.6s  11.0s                          (limit=50)
+// So a plain page of one account's events is a 4-11s read, not a ~2s one,
+// with a ~2.7x spread run to run and no relationship to the page size. The
+// engine's profile did not change; the table grew. Read the ceiling below
+// against THESE numbers, not the 2026-08-02 ones -- and see #9459 for why the
+// tail that crosses the ceiling could not be attributed to a specific query
+// until this module started labelling its captures.
+//
 // Failure posture matches workers/postgres-tier.ts: ANY failure (missing
 // token, HTTP error, malformed body, timeout) returns null so the caller
 // degrades to the schema-stable empty it already has, never a 5xx. A tier
@@ -35,9 +49,27 @@ export const R2_SQL_WAREHOUSE_ENV = "R2_SQL_WAREHOUSE";
 const DEFAULT_ACCOUNT = "918f0f0e2eb26709d1cf4fb76085c8fb";
 const DEFAULT_WAREHOUSE = "metagraphed-lakehouse";
 
-/** Hard ceiling per query. Deliberately well above the ~2.2s worst case
- * measured above, so an ordinary heavy scan is not mistaken for a fault,
- * while a genuinely stuck query still cannot pin a request open. */
+/**
+ * Hard ceiling per query on the REQUEST path, so a genuinely stuck query
+ * cannot pin a caller's request open.
+ *
+ * Sized when the worst measured read was ~2.2s, which made 15s a ~7x
+ * headroom. The 2026-08-05 re-measurement above puts the same class of read
+ * at 4-11s, so the headroom is now ~1.4x over the observed max, and a run-to-
+ * run spread of ~2.7x means the tail crosses it — which is exactly the steady
+ * AbortError stream #9459 is about.
+ *
+ * DELIBERATELY UNCHANGED HERE. Raising it is a caller-facing change to every
+ * cold-tier route, and readers that issue two reads in sequence (e.g.
+ * loadValidatorNominatorsColdTier's page + its true-count subquery) stack it,
+ * so the number should be chosen against the query that actually aborts, not
+ * against the one route probed above. That query is unidentifiable today —
+ * every failure here captures under one flat `route: "r2-sql"` — which is why
+ * this change ships the attribution first. #9423 is the precedent and the
+ * caution both: the fix there WAS a bigger bound, and its own comment still
+ * says a statement that cannot answer in time is a query to fix rather than
+ * one to wait longer for.
+ */
 export const QUERY_TIMEOUT_MS = 15_000;
 
 // Same contract as the Postgres tier's fallback generation: a caller can
@@ -129,6 +161,78 @@ async function rejectionDetail(
 }
 
 /**
+ * The lakehouse table a statement reads, e.g. `chain.account_events`.
+ *
+ * The coarse half of #9459's attribution: a bounded label (four tables times
+ * two namespaces, per LAKEHOUSE_NAMESPACES) that an inbox can group and filter
+ * by. The FIRST `FROM` is the right one even for the CTE and subquery shapes
+ * this codebase builds — `SELECT count(*) FROM (SELECT coldkey FROM
+ * chain.account_events ...)` names the derived table nowhere and the real one
+ * once.
+ *
+ * Never throws and never returns empty: an unrecognised statement is reported
+ * as `unknown` rather than omitted, so "we could not tell" stays visibly
+ * distinct from "this capture predates attribution".
+ */
+export function r2SqlQueryKind(sql: string): string {
+  const match =
+    /\bFROM\s+([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)?)/i.exec(sql);
+  return match?.[1] ?? "unknown";
+}
+
+/**
+ * The statement with its literals collapsed to `?`, whitespace flattened.
+ *
+ * The precise half of the attribution: the shape identifies the exact call
+ * site, which the table alone cannot — a dozen readers query
+ * `chain.account_events`, and the point of #9459 is to say WHICH one is slow.
+ *
+ * Collapsing is not only for cardinality. It removes the one class of value
+ * that reaches a query here from outside (an ss58 address, a block height, a
+ * hash — public chain data, but caller-supplied all the same), so what leaves
+ * this module is a shape rather than a record of who looked up what. Length
+ * is capped by sanitizeLabel in usage-telemetry.ts at the same 256 chars every
+ * other free-form field gets; no second cap is invented here.
+ *
+ * String literals go first: they can contain digits, and collapsing numbers
+ * first would leave `'0x1a2b'` half-rewritten. The number pass is anchored on
+ * word boundaries so identifiers that merely contain digits (`net_flow_7d`,
+ * `ss58`) survive intact — they are the diagnostic content, the same reason
+ * normalizeExceptionMessage refuses to be a blanket hex-strip.
+ */
+export function r2SqlQueryShape(sql: string): string {
+  return sql
+    .replace(/'[^']*'/g, "?")
+    .replace(/\b\d+(?:\.\d+)?\b/g, "?")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Which failure this was, for the `error_code` property: `timeout`,
+ * `http_<status>`, `engine_<code>` or `transport`.
+ *
+ * The other half of #9459's blocker. Timeouts, 429s, 422 scan-budget
+ * rejections and 400s all arrive at the same catch and all captured as one
+ * undifferentiated `r2-sql:Error`; PostHog even titled the aggregate issue
+ * "HTTP 500" off one unrepresentative sample while the actual 500s numbered
+ * two.
+ *
+ * The timeout arm reads the signal rather than sniffing the message, because
+ * the abort's own text ("The operation was aborted") is the runtime's, not
+ * ours, and has changed spelling across workerd versions before.
+ */
+function failureClassification(
+  aborted: boolean,
+  thrownCode: string | undefined,
+): string {
+  if (aborted) return "timeout";
+  // No recorded code means the throw came from the transport (DNS, TLS, a
+  // socket dropped mid-body) rather than from a response we inspected.
+  return thrownCode ?? "transport";
+}
+
+/**
  * Run one read-only query and return its rows, or null on ANY failure.
  *
  * `sql` is built by the caller from validated, non-caller-controlled pieces —
@@ -163,6 +267,10 @@ export async function r2SqlQuery(
     () => abort.abort(),
     deps.timeoutMs ?? QUERY_TIMEOUT_MS,
   );
+  // Set at the throw site rather than parsed back out of the message in the
+  // catch: the status and the engine's numbered code are both in hand here,
+  // and a message-sniffing classifier is exactly the thing that goes stale.
+  let thrownCode: string | undefined;
   try {
     const res = await doFetch(url, {
       method: "POST",
@@ -174,6 +282,7 @@ export async function r2SqlQuery(
       signal: abort.signal,
     } as RequestInit);
     if (!res?.ok) {
+      thrownCode = `http_${res?.status}`;
       throw new Error(
         `r2 sql: HTTP ${res?.status}${await rejectionDetail(res)}`,
       );
@@ -181,6 +290,9 @@ export async function r2SqlQuery(
     const body = (await res.json()) as R2SqlBody;
     if (body?.success !== true) {
       const first = body?.errors?.[0];
+      // `engine` unnumbered rather than `engine_undefined`: a rejection whose
+      // body carried no code is a real, distinct state, not a missing field.
+      thrownCode = first?.code ? `engine_${first.code}` : "engine";
       throw new Error(
         `r2 sql: ${first?.message ?? "query failed"}${first?.code ? ` (${first.code})` : ""}`,
       );
@@ -192,7 +304,13 @@ export async function r2SqlQuery(
   } catch (error) {
     r2SqlFailureGeneration += 1;
     const detail = String((error as Error)?.message ?? error);
-    console.error("[r2-sql]", detail);
+    const errorCode = failureClassification(abort.signal.aborted, thrownCode);
+    const queryKind = r2SqlQueryKind(sql);
+    // Workers logs get the same attribution the exception does — #9459's
+    // option 1 and option 2 are not alternatives, they cost nothing together,
+    // and a tail is the one place you can read every occurrence rather than
+    // one per storm-guard window.
+    console.error("[r2-sql]", errorCode, queryKind, detail);
     // Reported before the exception hop, so a caller still learns the reason even if
     // the telemetry sink is unavailable -- the point of this seam is that the answer
     // must not depend on another service being up.
@@ -203,7 +321,14 @@ export async function r2SqlQuery(
     }
     await (deps.recordException ?? recordExceptionEvent)(env, {
       error,
+      // Unchanged, and that is the point: `route` is the fingerprint input, so
+      // every occurrence stays in the one issue it is in today. The three
+      // fields below are properties only — see recordExceptionEvent for why
+      // splitting the fingerprint would multiply billable volume instead.
       route: "r2-sql",
+      errorCode,
+      queryKind,
+      queryShape: r2SqlQueryShape(sql),
     });
     return null;
   } finally {

@@ -3,6 +3,7 @@
 // as sharply as its presence — and the lane computes are asserted as the
 // validated-literal R2 SQL that replicates data-api's route semantics.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { afterEach, describe, test, vi } from "vitest";
 import {
   PROJECTION_LANES,
@@ -1960,5 +1961,31 @@ describe("lane statements run on the lane bound, not the request bound", () => {
     // legible: same query, no caller waiting.
     assert.equal(PROJECTION_QUERY_TIMEOUT_MS, 4 * QUERY_TIMEOUT_MS);
     assert.ok(PROJECTION_QUERY_TIMEOUT_MS > QUERY_TIMEOUT_MS);
+  });
+
+  test("no lane statement calls r2SqlQuery directly, bypassing the bound", () => {
+    // #9459: the test above it passed while EIGHT statements across five lanes
+    // did exactly this — the transfer-pairs lane #9423 fixed went through
+    // laneQuery, and nothing checked its siblings, which were quietly taking
+    // the 15s REQUEST default on account_events aggregates over multi-day
+    // windows. A behavioural test cannot see the difference (the bound is a
+    // number handed to a timer, and a stubbed fetch resolves instantly), so
+    // this reads the source: laneQuery is the single seam, and the only
+    // mention of r2SqlQuery outside it is the import that feeds it.
+    const source = readFileSync(
+      new URL("../src/projection-lanes.ts", import.meta.url),
+      "utf8",
+    );
+    const calls = source.match(/\br2SqlQuery\(/g) ?? [];
+    assert.equal(
+      calls.length,
+      1,
+      `r2SqlQuery is called ${calls.length} times; only laneQuery may call it`,
+    );
+    assert.match(
+      source,
+      /function laneQuery\([^)]*\)[^{]*\{\s*return r2SqlQuery\(/,
+      "the one call must be laneQuery's own",
+    );
   });
 });

@@ -1174,6 +1174,63 @@ describe("recordExceptionEvent", () => {
     assert.equal("error_code" in calls[0].body.properties, false);
   });
 
+  // #9459: query attribution has to arrive WITHOUT splitting the issue, or the
+  // storm guard's per-fingerprint window turns one event per window into N.
+  test("query attribution rides as properties and leaves the fingerprint alone", async () => {
+    const calls: Row[] = [];
+    await recordExceptionEvent(
+      CONFIGURED,
+      {
+        error: thrownError(Error, "The operation was aborted"),
+        route: "r2-sql",
+        errorCode: "timeout",
+        queryKind: "chain.account_events",
+        queryShape: "SELECT netuid FROM chain.account_events WHERE x >= ?",
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    const { properties } = calls[0].body;
+    assert.equal(properties.query_kind, "chain.account_events");
+    assert.equal(
+      properties.query_shape,
+      "SELECT netuid FROM chain.account_events WHERE x >= ?",
+    );
+    assert.equal(properties.error_code, "timeout");
+    // The load-bearing assertion: still `route:type`, with nothing about the
+    // query folded in. A second query kind on this route must land in the SAME
+    // PostHog issue and so must cost the same one event per window.
+    assert.equal(properties.$exception_fingerprint, "r2-sql:Error");
+  });
+
+  test("omits query_kind / query_shape when not supplied", async () => {
+    // Omitted-not-defaulted, the same contract sample_rate and error_code
+    // keep: every pre-existing capture site's payload is byte-identical.
+    const calls: Row[] = [];
+    await recordExceptionEvent(
+      CONFIGURED,
+      { error: thrownError(Error, "boom"), route: "x" },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    assert.equal("query_kind" in calls[0].body.properties, false);
+    assert.equal("query_shape" in calls[0].body.properties, false);
+  });
+
+  test("a query shape longer than the label cap is truncated, not dropped", async () => {
+    const calls: Row[] = [];
+    await recordExceptionEvent(
+      CONFIGURED,
+      {
+        error: thrownError(Error, "boom"),
+        route: "r2-sql",
+        queryShape: `SELECT ${"a".repeat(400)} FROM chain.blocks`,
+      },
+      { fetch: fakeFetch({ onCall: (call) => calls.push(call) }) },
+    );
+    // 256 = MAX_LABEL_CHARS, shared with every other free-form field here, so
+    // a pathological statement cannot ship an unbounded payload.
+    assert.equal(calls[0].body.properties.query_shape.length, 256);
+  });
+
   test("never posts when the deployment is unconfigured", async () => {
     let calls = 0;
     const recorded = await recordExceptionEvent(
