@@ -151,6 +151,13 @@ describe("published MCP enums are enforced at runtime (#8942)", () => {
       ["get_chain_serving", { limit: 999_999 }],
       ["get_subnet_movers", { limit: 0 }],
       ["list_global_validators", { limit: "not-a-number" }],
+      // `offset` is the OTHER pagination bound and clamps the same way -- a
+      // non-numeric one resolves to 0 and the response reports `offset: 0`, so
+      // the caller can see what was used. It was left out of this pin
+      // originally, which made 9 tools look like unenforced type constraints
+      // when they were the documented leniency wearing a different name.
+      ["get_sudo", { limit: 2, offset: "not-a-number" }],
+      ["list_blocks", { limit: 2, offset: -5 }],
     ] as [string, Record<string, unknown>][]) {
       const code = await errorCode(tool, args);
       assert.notEqual(
@@ -162,4 +169,56 @@ describe("published MCP enums are enforced at runtime (#8942)", () => {
       );
     }
   }, 60_000);
+
+  // The third constraint class, and the last one without a gate. #8942's audit
+  // covered enums (zero gaps) and numeric bounds (all 101 "gaps" were the
+  // deliberate pagination clamping pinned above). `required` was never probed.
+  //
+  // Measured before writing this: 90 required arguments across every runnable
+  // tool, ZERO silently accepted when omitted. So this fixes nothing today --
+  // it is the same bet the enum test makes, that a tool registered tomorrow
+  // declares `required` and forgets its guard, and then answers a confidently
+  // empty result for a caller who supplied nothing (the #9013 shape).
+  //
+  // Derived from listToolDefinitions() like its sibling, so it needs no
+  // maintenance and a tool added tonight is covered tonight.
+  test("every required argument is rejected when omitted", async () => {
+    const silent: string[] = [];
+    let checked = 0;
+
+    for (const tool of listToolDefinitions() as Row[]) {
+      const schema = tool.inputSchema as Row;
+      const required = (schema?.required as string[]) ?? [];
+      if (required.length === 0) continue;
+      if (!(await isRunnable(tool))) continue;
+
+      for (const key of required) {
+        checked++;
+        const code = await errorCode(
+          tool.name as string,
+          baselineArgs(schema, key),
+        );
+        // Rejection is the property, not a particular code -- same reasoning as
+        // the enum test: a tool may describe the caller's mistake better than
+        // `invalid_params` does. Silent acceptance is what must never happen.
+        if (code === null) {
+          silent.push(`${tool.name}.${key} silently ACCEPTED being omitted`);
+        }
+      }
+    }
+
+    assert.ok(
+      checked > 50,
+      `expected to probe real required args, checked ${checked}`,
+    );
+    assert.deepEqual(
+      silent,
+      [],
+      "these tools publish a required argument but do not enforce it, so a " +
+        "call that omits it reaches the handler with undefined instead of " +
+        "erroring -- add a guard (requireNonNegativeInt / requireString or " +
+        "equivalent) in the handler:\n" +
+        silent.join("\n"),
+    );
+  }, 120_000);
 });
