@@ -115,6 +115,44 @@
     // as the main Worker: one capture per fingerprint per 5 minutes per
     // isolate, suppressed count carried on the next admitted event.
     "POSTHOG_EXCEPTION_STORM_WINDOW_MS": "300000",
+    // #9466: REST trace sampling, finally non-zero on this Worker.
+    //
+    // #9000 set POSTHOG_TRACES_SAMPLE_RATE_MCP in wrangler.jsonc and left the
+    // general rate unset, which reads as "REST stays dark" -- but `vars` are
+    // per-config, so what it actually left unset was the rate on THIS config
+    // too. src/tracing.ts defaults to 0, so the sampled branch in this
+    // Worker's fetch (workers/data-api.ts) has been dead code since #7768.
+    //
+    // THE ARITHMETIC, measured 2026-08-04 from Cloudflare's own
+    // workersInvocationsAdaptive (30-day window, per scriptName). NOT from
+    // usage_event: this Worker emits none -- recordUsageEvent is called only
+    // from api.ts and the five hub Workers -- which is also why these spans
+    // are worth having at all.
+    //
+    //   peak day    1,032,820 requests  (2026-07-31)
+    //   after the wipe 49,670 requests  (2026-08-04)
+    //
+    // That 20x spread inside four days is structural, not a lull, and both
+    // steps are ours: #9186 (08-02) unbound HYPERDRIVE, #9411 (08-04) stopped
+    // the main Worker forwarding chain-events here. Confirmed by the hourly
+    // data-api:main ratio collapsing 0.85 -> 0.20 -> 0.08 while the main
+    // Worker's OWN hourly volume rose -- a quiet window would have moved both.
+    //
+    // So the rate is sized against the PEAK, not the current floor: this
+    // Worker's volume has already moved 20x once, and a backfill or a
+    // re-tiered read path moves it back with no config change to catch it.
+    // Against ~600K spans/month of headroom (1M free tier less the ~400K/month
+    // wrangler.jsonc measured on 2026-08-02):
+    //
+    //   0.02  ->  620K/month at peak  -- over the headroom, rejected
+    //   0.01  ->  310K/month at peak, ~15K/month at current volume
+    //
+    // 0.01 is simply the largest round rate that still fits on the worst day
+    // observed. It buys per-route p50/p95 for the tier the main Worker's
+    // usage_event can only measure from the outside (that timing includes the
+    // DATA_API subrequest, so tier latency is currently unattributable).
+    // Re-derive from measurement -- not estimate -- if volume shape moves.
+    "POSTHOG_TRACES_SAMPLE_RATE": "0.01",
   },
   // Smart placement: run the Worker close to the Hyperdrive origin (self-hosted indexer
   // box Postgres, reached via Cloudflare Tunnel) to minimize the per-request DB round-trip,

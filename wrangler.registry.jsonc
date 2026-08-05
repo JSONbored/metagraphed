@@ -44,6 +44,36 @@
   // capture per fingerprint per 5 minutes per isolate.
   "vars": {
     "POSTHOG_EXCEPTION_STORM_WINDOW_MS": "300000",
+    // #9466: trace sampling at 1.0 -- every request, unsampled.
+    //
+    // Same root cause as wrangler.data.jsonc's own rate: src/tracing.ts
+    // defaults to 0, #9000 set only the MCP rate and only in wrangler.jsonc,
+    // and `vars` are per-config -- so the sampled branch in this Worker's
+    // fetch (workers/registry-sync-api.ts) has been dead code since #7768.
+    //
+    // THE ARITHMETIC, measured 2026-08-04 from Cloudflare's own
+    // workersInvocationsAdaptive (30-day window, per scriptName). Not from
+    // usage_event -- this Worker emits none.
+    //
+    //   830 requests in 31 days = ~27/day, peak 150/day, and SEVEN days
+    //   with zero traffic at all.
+    //
+    // Which is the whole point: this is a CI-only write path, so the
+    // interesting question is not "what do requests look like in aggregate"
+    // but "did each sync run, and how long did it take" -- and at 830
+    // requests/month there is no aggregate to speak of anyway.
+    //
+    // 1.0 costs 830 spans/month, 0.083% of the 1M/month free tier. It is
+    // cheaper than the main Worker's MCP rate (~56K/month, #9000) by two
+    // orders of magnitude, so the budget that forces wrangler.data.jsonc down
+    // to 0.01 simply does not bind here.
+    //
+    // Sampling this path would be actively harmful rather than merely
+    // wasteful: 0.05 -- the rate that looks natural next to data-api's --
+    // yields ~42 spans/MONTH and ~7 on the busiest day, so most days record
+    // nothing and a failed sync is most likely invisible. There is no
+    // meaningful saving to buy with that.
+    "POSTHOG_TRACES_SAMPLE_RATE": "1",
   },
   "observability": {
     "enabled": true,

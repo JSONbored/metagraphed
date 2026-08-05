@@ -70,6 +70,12 @@ export const POSTHOG_TRACES_SAMPLE_RATE_ENV = "POSTHOG_TRACES_SAMPLE_RATE";
  * one -- can run at a rate that actually answers questions, while REST stays
  * dark until its volume is dealt with. Turning REST on later is a config
  * change, not a code change.
+ *
+ * #9466: two of those four Workers now do set the general rate, in their own
+ * configs -- data-api at 0.01 and registry-sync-api at 1. The "set in no
+ * wrangler config" state above was per-config all along: wrangler.jsonc
+ * configures only the main Worker, so a rate omitted there is omitted for
+ * api.ts, not globally. api.ts REST remains at 0 on its own volume.
  */
 export const POSTHOG_TRACES_SAMPLE_RATE_MCP_ENV =
   "POSTHOG_TRACES_SAMPLE_RATE_MCP";
