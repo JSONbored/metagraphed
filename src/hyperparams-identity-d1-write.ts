@@ -17,6 +17,7 @@
 // place owns that arithmetic.
 import {
   batchInSlices,
+  buildLatestHashGuard,
   chunkStatements,
   type D1Like,
   type D1PreparedStatement,
@@ -109,12 +110,20 @@ export async function writeSubnetHyperparamsToD1(
     statements.push(db.prepare(buildHyperparamsPrune(netuids)).bind());
   }
   statements.push(
+    // Guarded against the committed latest hash, not just against the JS diff
+    // above -- see buildLatestHashGuard (metagraphed-infra#358).
     ...chunkStatements(
       db,
       "subnet_hyperparams_history",
       SUBNET_HYPERPARAMS_HISTORY_COLUMNS,
       [],
       historyRows,
+      buildLatestHashGuard(
+        "subnet_hyperparams_history",
+        SUBNET_HYPERPARAMS_HISTORY_COLUMNS,
+        "netuid",
+        "hyperparams_hash",
+      ),
     ),
   );
   if (statements.length) await batchInSlices(db, statements);
@@ -146,12 +155,20 @@ export async function writeAccountIdentityToD1(
       ["account"],
       rows,
     ),
+    // As above (metagraphed-infra#358). This lane needs it MORE: it has no
+    // block_number, so there is no column set a unique constraint could use.
     ...chunkStatements(
       db,
       "account_identity_history",
       ACCOUNT_IDENTITY_HISTORY_COLUMNS,
       [],
       historyRows,
+      buildLatestHashGuard(
+        "account_identity_history",
+        ACCOUNT_IDENTITY_HISTORY_COLUMNS,
+        "account",
+        "identity_hash",
+      ),
     ),
   ];
   if (statements.length) await batchInSlices(db, statements);
