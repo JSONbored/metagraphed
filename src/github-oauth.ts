@@ -134,6 +134,23 @@ export function buildOAuthProviderOptions(
     authorizeEndpoint: "/authorize",
     tokenEndpoint: "/oauth/token",
     clientRegistrationEndpoint: "/oauth/register",
+    // S256 ONLY (#9637). OAuth 2.1 removes `plain`, and the MCP authorization
+    // spec requires S256, but the library's default is permissive in BOTH
+    // directions and this option is the single switch for both:
+    //
+    //   :1172  code_challenge_methods_supported: allowPlainPKCE !== false
+    //            ? ["plain", "S256"] : ["S256"]
+    //   :2963  const codeChallengeMethod =
+    //            url.searchParams.get("code_challenge_method") || "plain"
+    //   :2970  reject plain ONLY when allowPlainPKCE === false
+    //
+    // Line 2963 is the one that matters: a client sending `code_challenge`
+    // and no method is handed `plain` silently -- RFC 7636's default, which
+    // OAuth 2.1 dropped. Under `plain` the challenge IS the verifier, so
+    // anyone who can see the authorization request can redeem an intercepted
+    // code and PKCE protects nothing. Unset, we advertised the weaker method
+    // and defaulted to it.
+    allowPlainPKCE: false,
     scopesSupported: ["profile"],
     resourceMetadata: {
       resource_name: "metagraphed",
