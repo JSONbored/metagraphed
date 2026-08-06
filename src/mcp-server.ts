@@ -317,6 +317,7 @@ import {
   API_QUERY_COLLECTIONS,
   CONTRACT_VERSION,
   PRIMARY_DOMAIN,
+  SITE_ORIGIN,
   QUERY_ENUMS,
 } from "./contracts.ts";
 import {
@@ -1817,6 +1818,39 @@ export const MCP_SERVER_INFO = {
   description:
     "Live operational + integration registry for Bittensor subnets — what each " +
     "subnet exposes (APIs, docs, schemas), whether it is healthy, and how to call it.",
+  // Implementation.websiteUrl (MCP 2025-11-25): where a human goes to find out
+  // what this server is. Declared for the same reason `description` is -- a
+  // client rendering a server picker has nothing else to show.
+  websiteUrl: SITE_ORIGIN,
+  // Implementation.icons (MCP 2025-11-25). Every entry is a real published
+  // asset under apps/ui/public/, served from the same origin as websiteUrl, so
+  // there is no third-party host in the handshake and no URL that can rot
+  // independently of the site.
+  //
+  // SERVER-LEVEL ONLY, deliberately. The spec also allows `icons` per tool,
+  // and every tool here would carry the identical set -- 224 copies of the
+  // same three URLs, roughly 45 KB added to a tools/list response that every
+  // client holds in context, for no information a client does not already have
+  // from the handshake. The same reasoning that refused tools/list pagination
+  // (#9648) applies: the catalogue's cost is real, so nothing goes into it
+  // that does not distinguish one tool from another.
+  icons: [
+    {
+      src: `${SITE_ORIGIN}/favicon.svg`,
+      mimeType: "image/svg+xml",
+      sizes: ["any"],
+    },
+    {
+      src: `${SITE_ORIGIN}/android-chrome-192x192.png`,
+      mimeType: "image/png",
+      sizes: ["192x192"],
+    },
+    {
+      src: `${SITE_ORIGIN}/android-chrome-512x512.png`,
+      mimeType: "image/png",
+      sizes: ["512x512"],
+    },
+  ],
   version: MCP_SERVER_VERSION,
 };
 
@@ -13910,6 +13944,18 @@ export function listToolDefinitions() {
       // tools that leave our infrastructure are named in
       // TOOL_ANNOTATIONS_BY_NAME, and a tool may still override inline.
       annotations: annotationsForTool(tool as { name: string }),
+      // Tool.execution.taskSupport (MCP 2025-11-25). Declared on every tool
+      // because the honest answer is the same for all of them and silence is
+      // not that answer: absent, a client is left to discover by attempting a
+      // task-augmented call and having it fail. This server registers no task
+      // store, so a `task` parameter cannot be honoured -- "forbidden" says so
+      // once, at discovery time.
+      //
+      // Emitted uniformly here rather than per tool for the reason #9642's
+      // intent argument is: a field every tool must carry is a field the next
+      // tool should carry without anyone remembering, and the gate in
+      // tests/mcp-contract-completeness.test.ts asserts exactly that.
+      execution: { taskSupport: "forbidden" },
       // #9070: which tools need an authenticated caller. Published because
       // otherwise the ONLY way to discover it is to call one and be refused --
       // and an agent that has to fail to learn a precondition will usually
@@ -15892,22 +15938,6 @@ export function scheduleMcpRefusalEvent(
 }
 
 /**
- * Is `/mcp` answering through @modelcontextprotocol/sdk (#9647)?
- *
- * DEFAULT OFF, and deliberately a runtime flag rather than a build constant:
- * the point of shipping the SDK envelope dark is that turning it on -- and
- * more importantly turning it back off -- is a `wrangler secret put` away
- * rather than a deploy, on the surface with the most external callers.
- *
- * Accepts only the exact string "1", not any truthy value. A flag whose off
- * state depends on a variable being unset is one stray empty-string binding
- * away from silently enabling itself.
- */
-export function mcpSdkEnvelopeEnabled(env: Env): boolean {
-  return (env as unknown as Row)?.MCP_SDK_ENVELOPE === "1";
-}
-
-/**
  * Is every message in this request body one the SDK envelope may handle?
  *
  * A batch qualifies only if ALL its members do -- the SDK rejects a mixed
@@ -16104,11 +16134,9 @@ async function dispatchMcpRequest(
   // Legacy JSON-RPC batch (array). MCP 2025-06-18 removed batching, but cap
   // older-client compatibility so one HTTP request cannot fan out unboundedly.
   //
-  // HOISTED OUT of the dispatch branch below (#9647) so both envelopes are
-  // capped by it. The SDK's transport fans a batch out with no ceiling of its
-  // own, so leaving this inside the hand-rolled branch would have made the
-  // flag that swaps envelopes also silently remove the fan-out bound -- a
-  // resource limit quietly becoming conditional on an unrelated flag.
+  // Applied BEFORE either dispatch path (#9647): the SDK's transport fans a
+  // batch out with no ceiling of its own, so this has to be the thing that
+  // bounds it rather than something further in.
   if (Array.isArray(body)) {
     if (body.length === 0) {
       return jsonResponse(
@@ -16128,34 +16156,36 @@ async function dispatchMcpRequest(
     }
   }
 
-  // THE SDK ONLY EVER SEES WELL-FORMED MESSAGES (#9647). Its transport parses
-  // every member against its own JSON-RPC schema first and, on any failure,
-  // answers `400 -32700 Parse error: Invalid JSON-RPC message` for the WHOLE
-  // request. That differs from this server three ways, and each one is a
-  // regression rather than a preference:
+  // EVERY WELL-FORMED REQUEST IS SERVED BY THE SDK (#9647 step 4, cut over
+  // 2026-08-06). There is no flag and no second envelope for valid traffic.
+  if (jsonRpcBodyIsDispatchable(body)) {
+    return serveMcpThroughSdk(request, body, ctx, env);
+  }
+
+  // MALFORMED INPUT IS ANSWERED HERE, AND ALWAYS WILL BE. This is not a
+  // leftover of the old envelope kept as a rollback -- it is the one place the
+  // SDK is measurably worse, so it is a permanent part of the design. Its
+  // transport parses every member against its own JSON-RPC schema and, on any
+  // failure, answers `400 -32700 Parse error: Invalid JSON-RPC message` for
+  // the WHOLE request. Three consequences, none of them a preference:
   //
   //   classification  a well-formed JSON body that is not a valid JSON-RPC
   //                   message is Invalid Request (-32600), not Parse error
   //                   (-32700) -- the spec reserves -32700 for JSON that did
   //                   not parse. We answer -32600; the SDK answers -32700.
-  //   status          ours rides inside a 200 (a JSON-RPC error is a
-  //                   successful HTTP exchange). The SDK's 400 would also make
-  //                   every malformed request start emitting the #9639 refusal
-  //                   event, quietly changing what that metric counts.
+  //   status          ours rides inside a 200, because a JSON-RPC error is a
+  //                   successful HTTP exchange. The SDK's 400 would also make
+  //                   every malformed request emit the #9639 refusal event,
+  //                   quietly changing what that metric counts.
   //   batch           ours answers the VALID members of a mixed batch and
   //                   reports an error only for the bad one. The SDK rejects
   //                   the entire batch, so a client with one bad member
-  //                   silently loses the results of its good ones.
+  //                   silently loses the results of its good ones. That is
+  //                   data loss, not a relabelling, and it is why this branch
+  //                   keeps its own fan-out rather than delegating.
   //
-  // Rather than shim any of that back afterwards, malformed input simply never
-  // reaches the SDK: it is answered by dispatchMessage below, which is the
-  // funnel being KEPT (step 4 deletes the envelope, not this). One cheap
-  // predicate, shared with dispatchMessage itself, makes the flag
-  // behaviour-neutral by construction instead of by inspection.
-  if (mcpSdkEnvelopeEnabled(env) && jsonRpcBodyIsDispatchable(body)) {
-    return serveMcpThroughSdk(request, body, ctx, env);
-  }
-
+  // The predicate is shared with dispatchMessage itself, so "malformed" cannot
+  // come to mean two different things.
   if (Array.isArray(body)) {
     // Dispatch independent batch members concurrently (#2060): JSON-RPC 2.0
     // correlates responses by `id`, not position, and the handlers are read-only

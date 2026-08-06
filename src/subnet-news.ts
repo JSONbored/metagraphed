@@ -49,7 +49,7 @@
 //   alone (it reports the event, not decoded lease terms) so nothing here
 //   depends on a payload we have never seen.
 
-const SITE_URL = "https://metagraph.sh";
+import { SITE_ORIGIN as SITE_URL } from "./contracts.ts";
 
 /** Feed item shape, structurally identical to src/feeds.ts' FeedItem. */
 export interface NewsItem {
