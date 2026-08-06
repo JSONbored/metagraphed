@@ -347,7 +347,7 @@ describe("routed to the sync queue (metagraphed-infra#355)", () => {
       }),
     );
     assert.equal(sent[0]!.lane, "nominator-positions");
-    assert.equal(sent[0]!.coldkey_complete, true);
+    assert.equal(sent[0]!.key_complete, true);
     assert.equal(sent[0]!.captured_at, 1_780_000_000_000);
     assert.equal(validSyncBatchMessage(sent[0]), true);
   });

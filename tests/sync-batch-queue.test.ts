@@ -43,9 +43,7 @@ describe("validSyncBatchMessage", () => {
     assert.equal(validSyncBatchMessage({ ...OK, lane: "brand-new" }), false);
     for (const lane of SYNC_BATCH_LANES) {
       // A pruning lane additionally has to assert key-completeness; see below.
-      const extra = PRUNING_LANES.includes(lane)
-        ? { coldkey_complete: true }
-        : {};
+      const extra = PRUNING_LANES.includes(lane) ? { key_complete: true } : {};
       assert.equal(
         validSyncBatchMessage({ ...OK, ...extra, lane }),
         true,
@@ -256,14 +254,14 @@ describe("pruning lanes must declare key-completeness", () => {
     // retry undoes a delete. Refusing beats pruning on trust.
     assert.equal(validSyncBatchMessage(positions), false);
     assert.equal(
-      validSyncBatchMessage({ ...positions, coldkey_complete: false }),
+      validSyncBatchMessage({ ...positions, key_complete: false }),
       false,
     );
   });
 
   test("accepts it once the producer asserts completeness", () => {
     assert.equal(
-      validSyncBatchMessage({ ...positions, coldkey_complete: true }),
+      validSyncBatchMessage({ ...positions, key_complete: true }),
       true,
     );
   });

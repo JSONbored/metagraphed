@@ -71,7 +71,7 @@ function positionMessage(overrides: Record<string, unknown> = {}) {
   return message({
     lane: "nominator-positions",
     captured_at: 1_780_000_000_000,
-    coldkey_complete: true,
+    key_complete: true,
     rows: [
       {
         coldkey: COLDKEY,
@@ -124,10 +124,10 @@ describe("the sync queue consumer", () => {
   });
 
   test("acks a pruning message that failed to assert completeness", async () => {
-    // THE DATA-LOSS GUARD, end to end. Without `coldkey_complete` the write
+    // THE DATA-LOSS GUARD, end to end. Without `key_complete` the write
     // would prune a coldkey against a chunk that may not carry all its rows.
     // The consumer refuses instead, and nothing is written.
-    const m = positionMessage({ coldkey_complete: undefined });
+    const m = positionMessage({ key_complete: undefined });
     await consume([m]);
     assert.deepEqual(m.calls, ["ack"]);
     assert.equal(rows().length, 0, "refused, not written");

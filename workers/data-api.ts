@@ -1852,9 +1852,8 @@ async function handleNominatorPositionsSync(request: Request, env: Env) {
 
   // Enqueue or write, never both -- see handleHotkeyAlphaSync's own note.
   //
-  // `coldkey_complete` is this lane's alone, and it is not ceremony. The write
-  // below PRUNES: it deletes rows for a `coldkey` older than the newest
-  // captured_at just seen for it. Applied to a chunk missing some of those
+  // `key_complete` is not ceremony. The write below PRUNES: it deletes rows
+  // for a `coldkey` older than the newest captured_at just seen for that key. Applied to a chunk missing some of those
   // rows, that deletes rows the chunk never carried -- and no retry undoes a
   // delete. The producer's `pack_coldkey_chunks` guarantees a per-coldkey group
   // is never split, with a test a flat slice would fail; asserting it here
@@ -1868,7 +1867,7 @@ async function handleNominatorPositionsSync(request: Request, env: Env) {
       await env.SYNC_BATCHES!.send({
         lane: "nominator-positions",
         captured_at: rows[0]!.captured_at as number,
-        coldkey_complete: true,
+        key_complete: true,
         rows,
       });
     } catch (err) {
@@ -7242,7 +7241,7 @@ export default {
               pass,
             ),
           // Recomputes the prune map from THIS message's rows, which is sound
-          // only because the message asserted `coldkey_complete` -- the
+          // only because the message asserted `key_complete` -- the
           // validator rejects it otherwise, so this writer never sees a chunk
           // that could prune rows it did not carry.
           "nominator-positions": (rows) =>
