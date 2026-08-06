@@ -9,7 +9,18 @@
 // mirror an existing schemas-src/routes/ REST schema -- modeled fresh,
 // matching each hand-written literal field-for-field.
 import { z } from "zod";
-import { OpenObjectSchema, NotesFieldSchema } from "./shared.ts";
+import {
+  NotesFieldSchema,
+  OpenObjectSchema,
+  fieldsStringSchema,
+  kindSchema,
+  limitSchema,
+  netuidSchema,
+  numericCursorSchema,
+  orderSchema,
+  querySchema,
+  sortSchema,
+} from "./shared.ts";
 
 const SURFACE_KINDS = [
   "archive",
@@ -52,17 +63,33 @@ const EVIDENCE_SORT_FIELDS = [
 
 export const ListEnrichmentEvidenceInputSchema = z
   .object({
-    q: z.string().optional(),
-    netuid: z.int().min(0).optional(),
-    lane: z.enum(LANES).optional(),
-    evidence_action: z.enum(EVIDENCE_ACTIONS).optional(),
-    direct_submission_kinds: z.enum(SURFACE_KINDS).optional(),
-    missing_kinds: z.enum(SURFACE_KINDS).optional(),
-    sort: z.enum(EVIDENCE_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    q: querySchema().optional(),
+    netuid: netuidSchema().optional(),
+    lane: z
+      .enum(LANES)
+      .optional()
+      .describe("Which contribution lane the item belongs to."),
+    evidence_action: z
+      .enum(EVIDENCE_ACTIONS)
+      .optional()
+      .describe("What the evidence is asking a contributor to do."),
+    direct_submission_kinds: z
+      .enum(SURFACE_KINDS)
+      .optional()
+      .describe(
+        "Restrict to subnets where surfaces of this kind a contributor can submit directly. One kind per call; see this parameter's enum.",
+      ),
+    missing_kinds: z
+      .enum(SURFACE_KINDS)
+      .optional()
+      .describe(
+        "Restrict to subnets where surfaces of this kind the subnet is MISSING. One kind per call; see this parameter's enum.",
+      ),
+    sort: sortSchema(EVIDENCE_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListEnrichmentEvidenceInput = z.infer<
@@ -108,15 +135,23 @@ const PRIORITY_SORT_FIELDS = [
 
 export const ListReviewGapsInputSchema = z
   .object({
-    netuid: z.int().min(0).optional(),
-    curation_level: z.enum(CURATION_LEVELS).optional(),
-    missing_kinds: z.enum(SURFACE_KINDS).optional(),
-    review_state: z.string().optional(),
-    sort: z.enum(PRIORITY_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    netuid: netuidSchema().optional(),
+    curation_level: kindSchema(CURATION_LEVELS).optional(),
+    missing_kinds: z
+      .enum(SURFACE_KINDS)
+      .optional()
+      .describe(
+        "Restrict to subnets where surfaces of this kind the subnet is MISSING. One kind per call; see this parameter's enum.",
+      ),
+    review_state: z
+      .string()
+      .optional()
+      .describe("Where the item sits in maintainer review."),
+    sort: sortSchema(PRIORITY_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListReviewGapsInput = z.infer<typeof ListReviewGapsInputSchema>;
@@ -185,25 +220,64 @@ const TARGET_SORT_FIELDS = [
 
 export const ListReviewEnrichmentTargetsInputSchema = z
   .object({
-    q: z.string().optional(),
-    netuid: z.int().min(0).optional(),
-    target_type: z.enum(TARGET_TYPES).optional(),
-    target_action: z.enum(TARGET_ACTIONS).optional(),
-    kind: z.enum(SURFACE_KINDS).optional(),
-    lane: z.enum(LANES).optional(),
-    evidence_action: z.enum(EVIDENCE_ACTIONS).optional(),
-    identity_level: z.enum(IDENTITY_LEVELS).optional(),
-    profile_level: z.enum(PROFILE_LEVELS).optional(),
-    submission_route: z.enum(SUBMISSION_ROUTES).optional(),
-    auto_review_candidate: z.enum(BOOLEAN_STRINGS).optional(),
-    manual_review_required: z.enum(BOOLEAN_STRINGS).optional(),
-    missing_kinds: z.enum(SURFACE_KINDS).optional(),
-    reason_codes: z.string().optional(),
-    sort: z.enum(TARGET_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    q: querySchema().optional(),
+    netuid: netuidSchema().optional(),
+    target_type: z
+      .enum(TARGET_TYPES)
+      .optional()
+      .describe("What kind of enrichment target this is."),
+    target_action: z
+      .enum(TARGET_ACTIONS)
+      .optional()
+      .describe("What the target is asking a contributor to do."),
+    kind: kindSchema(SURFACE_KINDS).optional(),
+    lane: z
+      .enum(LANES)
+      .optional()
+      .describe("Which contribution lane the item belongs to."),
+    evidence_action: z
+      .enum(EVIDENCE_ACTIONS)
+      .optional()
+      .describe("What the evidence is asking a contributor to do."),
+    identity_level: z
+      .enum(IDENTITY_LEVELS)
+      .optional()
+      .describe("How complete the subnet's published identity is."),
+    profile_level: z
+      .enum(PROFILE_LEVELS)
+      .optional()
+      .describe(
+        "How complete the subnet's profile is, from directory-only upward.",
+      ),
+    submission_route: z
+      .enum(SUBMISSION_ROUTES)
+      .optional()
+      .describe("How a contribution for this gap should be submitted."),
+    auto_review_candidate: z
+      .enum(BOOLEAN_STRINGS)
+      .optional()
+      .describe("Restrict to items eligible for automated review."),
+    manual_review_required: z
+      .enum(BOOLEAN_STRINGS)
+      .optional()
+      .describe("Restrict to items that do (or do not) need a human reviewer."),
+    missing_kinds: z
+      .enum(SURFACE_KINDS)
+      .optional()
+      .describe(
+        "Restrict to subnets where surfaces of this kind the subnet is MISSING. One kind per call; see this parameter's enum.",
+      ),
+    reason_codes: z
+      .string()
+      .optional()
+      .describe(
+        "Comma-separated reason codes to filter by; an item matches if it carries any of them.",
+      ),
+    sort: sortSchema(TARGET_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListReviewEnrichmentTargetsInput = z.infer<

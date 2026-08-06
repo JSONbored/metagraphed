@@ -6,7 +6,16 @@
 // array). None mirror an existing schemas-src/routes/ REST schema --
 // modeled fresh, matching each hand-written literal field-for-field.
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import {
+  OpenObjectSchema,
+  fieldsStringSchema,
+  kindSchema,
+  limitSchema,
+  netuidSchema,
+  numericCursorSchema,
+  orderSchema,
+  sortSchema,
+} from "./shared.ts";
 
 export const RegistrySummaryInputSchema = z.object({}).strict();
 export type RegistrySummaryInput = z.infer<typeof RegistrySummaryInputSchema>;
@@ -52,15 +61,28 @@ const AGENT_READINESS_STATUSES = [
 
 export const ListEnrichmentTargetsInputSchema = z
   .object({
-    limit: z.int().min(1).max(50).optional(),
-    tier: z.enum(COVERAGE_DEPTH_TIERS).optional(),
-    severity: z.enum(COVERAGE_DEPTH_SEVERITIES).optional(),
+    limit: limitSchema(50).optional(),
+    tier: z
+      .enum(COVERAGE_DEPTH_TIERS)
+      .optional()
+      .describe("How agent-ready the subnet is."),
+    severity: z
+      .enum(COVERAGE_DEPTH_SEVERITIES)
+      .optional()
+      .describe("How serious the incident is."),
     gap_code: z
       .string()
       .regex(/^[a-z0-9-]+$/)
-      .optional(),
-    agent_status: z.enum(AGENT_READINESS_STATUSES).optional(),
-    netuid: z.int().min(0).optional(),
+      .optional()
+      .describe(
+        "The machine-readable gap identifier (`missing-openapi`), lowercase " +
+          "and hyphenated — not the human-readable label shown beside it.",
+      ),
+    agent_status: z
+      .enum(AGENT_READINESS_STATUSES)
+      .optional()
+      .describe("How usable the subnet is to an agent right now."),
+    netuid: netuidSchema().optional(),
   })
   .strict();
 export type ListEnrichmentTargetsInput = z.infer<
@@ -70,7 +92,7 @@ export type ListEnrichmentTargetsInput = z.infer<
 const EnrichmentTargetItemSchema = z
   .object({
     rank: z.int().nullable().optional(),
-    netuid: z.int().optional(),
+    netuid: netuidSchema().optional(),
     slug: z.string().nullable().optional(),
     name: z.string().nullable().optional(),
     tier: z.string().optional(),
@@ -103,7 +125,7 @@ export type ListEnrichmentTargetsOutput = z.infer<
 
 export const GetSubnetGapsInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
   })
   .strict();
 export type GetSubnetGapsInput = z.infer<typeof GetSubnetGapsInputSchema>;
@@ -113,7 +135,7 @@ export const GetSubnetGapsOutputSchema = z
     schema_version: z.int().optional(),
     contract_version: z.string().nullable().optional(),
     generated_at: z.string().nullable().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     slug: z.string().nullable().optional(),
     name: z.string().nullable().optional(),
     priorities: z.array(OpenObjectSchema),
@@ -162,15 +184,23 @@ const GAP_PRIORITY_SORT_FIELDS = [
 
 export const ListSubnetGapsInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    curation_level: z.enum(CURATION_LEVELS).optional(),
-    missing_kinds: z.enum(SURFACE_KINDS).optional(),
-    review_state: z.string().optional(),
-    sort: z.enum(GAP_PRIORITY_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    netuid: netuidSchema(),
+    curation_level: kindSchema(CURATION_LEVELS).optional(),
+    missing_kinds: z
+      .enum(SURFACE_KINDS)
+      .optional()
+      .describe(
+        "Restrict to subnets where surfaces of this kind the subnet is MISSING. One kind per call; see this parameter's enum.",
+      ),
+    review_state: z
+      .string()
+      .optional()
+      .describe("Where the item sits in maintainer review."),
+    sort: sortSchema(GAP_PRIORITY_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListSubnetGapsInput = z.infer<typeof ListSubnetGapsInputSchema>;
@@ -178,7 +208,7 @@ export type ListSubnetGapsInput = z.infer<typeof ListSubnetGapsInputSchema>;
 export const ListSubnetGapsOutputSchema = z
   .object({
     generated_at: z.string().nullable().optional(),
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     priorities: z.array(OpenObjectSchema),
     total: z.int().optional(),
     returned: z.int().optional(),

@@ -9,7 +9,17 @@
 // mcp-server.ts. None mirror an existing schemas-src/routes/ REST schema --
 // modeled fresh, matching each hand-written literal field-for-field.
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import {
+  OpenObjectSchema,
+  fieldsStringSchema,
+  kindSchema,
+  limitSchema,
+  netuidSchema,
+  numericCursorSchema,
+  orderSchema,
+  providerSlugSchema,
+  sortSchema,
+} from "./shared.ts";
 
 // Symbolic in each hand-written original (src/contracts.ts's QUERY_ENUMS /
 // API_QUERY_COLLECTIONS.*.sort_fields), cross-checked against the actual
@@ -31,14 +41,24 @@ const PROVIDER_SORT_FIELDS = ["authority", "id", "kind", "name"] as const;
 
 export const ListProvidersInputSchema = z
   .object({
-    id: z.string().optional(),
-    kind: z.enum(PROVIDER_KINDS).optional(),
-    authority: z.enum(PROVIDER_AUTHORITIES).optional(),
-    sort: z.enum(PROVIDER_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    id: z
+      .string()
+      .optional()
+      .describe(
+        "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
+      ),
+    kind: kindSchema(PROVIDER_KINDS).optional(),
+    authority: z
+      .enum(PROVIDER_AUTHORITIES)
+      .optional()
+      .describe(
+        "Who asserts this record: the operator, the community, a provider, or the registry's own probes.",
+      ),
+    sort: sortSchema(PROVIDER_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListProvidersInput = z.infer<typeof ListProvidersInputSchema>;
@@ -85,15 +105,20 @@ const SURFACE_SORT_FIELDS = [
 
 export const ListSurfacesInputSchema = z
   .object({
-    netuid: z.int().min(0).optional(),
-    kind: z.enum(SURFACE_KINDS).optional(),
-    provider: z.string().optional(),
-    id: z.string().optional(),
-    sort: z.enum(SURFACE_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    netuid: netuidSchema().optional(),
+    kind: kindSchema(SURFACE_KINDS).optional(),
+    provider: providerSlugSchema().optional(),
+    id: z
+      .string()
+      .optional()
+      .describe(
+        "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
+      ),
+    sort: sortSchema(SURFACE_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListSurfacesInput = z.infer<typeof ListSurfacesInputSchema>;
@@ -135,17 +160,28 @@ const CANDIDATES_SORT_FIELDS = [
 
 export const ListCandidatesInputSchema = z
   .object({
-    netuid: z.int().min(0).optional(),
-    kind: z.enum(SURFACE_KINDS).optional(),
-    provider: z.string().optional(),
-    state: z.enum(CANDIDATE_STATES).optional(),
-    id: z.string().optional(),
-    confidence: z.enum(CONFIDENCE_LEVELS).optional(),
-    sort: z.enum(CANDIDATES_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(1000).optional(),
-    cursor: z.int().min(0).optional(),
+    netuid: netuidSchema().optional(),
+    kind: kindSchema(SURFACE_KINDS).optional(),
+    provider: providerSlugSchema().optional(),
+    state: z
+      .enum(CANDIDATE_STATES)
+      .optional()
+      .describe("The incident's lifecycle state."),
+    id: z
+      .string()
+      .optional()
+      .describe(
+        "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
+      ),
+    confidence: z
+      .enum(CONFIDENCE_LEVELS)
+      .optional()
+      .describe("How confident the machine assessment is."),
+    sort: sortSchema(CANDIDATES_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(1000).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListCandidatesInput = z.infer<typeof ListCandidatesInputSchema>;

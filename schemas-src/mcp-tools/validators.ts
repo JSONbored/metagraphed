@@ -6,11 +6,19 @@
 // matching each hand-written literal field-for-field.
 import { z } from "zod";
 import {
-  limitSchema,
   NeuronFieldsInputSchema,
   OpenObjectArraySchema,
+  accountKeySchema,
+  limitSchema,
+  netuidSchema,
+  offsetSchema,
+  sortSchema,
+  windowSchema,
 } from "./shared.ts";
-import { GLOBAL_VALIDATOR_LIMIT_MAX } from "../../src/route-limits.ts";
+import {
+  GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+  GLOBAL_VALIDATOR_LIMIT_MAX,
+} from "../../src/route-limits.ts";
 
 // Mirrors workers/config.ts's SS58_ADDRESS_PATTERN (inlined rather than
 // cross-imported from workers/, matching this directory's existing
@@ -20,9 +28,30 @@ const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
 
 export const ListSubnetValidatorsInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    limit: z.int().min(1).optional(),
-    min_stake_tao: z.number().min(0).optional(),
+    netuid: netuidSchema(),
+    // NOT limitSchema(): that helper takes the mirrored route's ceiling, and
+    // this parameter has none to take. It is an MCP-only post-filter applied
+    // after the loader returns (see this tool's handler), so the REST route
+    // enforces nothing here and the subnet's own validator set is the bound.
+    // Publishing an invented `maximum` would advertise a constraint the
+    // handler does not apply -- the same defect as declaring a ceiling a route
+    // rejects, in reverse. Described, deliberately unbounded.
+    limit: z
+      .int()
+      .min(1)
+      .describe(
+        "Keep only the highest-stake N validators. Applied after the set is " +
+          "fetched, so it trims the response rather than the query, and has " +
+          "no fixed ceiling: the subnet's own validator count is the bound.",
+      )
+      .optional(),
+    min_stake_tao: z
+      .number()
+      .min(0)
+      .optional()
+      .describe(
+        "Drop rows whose stake is below this many TAO. Applied after the set is fetched.",
+      ),
     // #9082: narrow each returned row to these fields. Omit for the full
     // row. Valid names are NeuronSchema's own, so this enum cannot drift
     // from what the route can project.
@@ -36,7 +65,7 @@ export type ListSubnetValidatorsInput = z.infer<
 export const ListSubnetValidatorsOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     validator_count: z.int(),
     captured_at: z.string().nullable().optional(),
     block_number: z.int().nullable().optional(),
@@ -62,12 +91,15 @@ const GLOBAL_VALIDATOR_SORTS = [
 
 export const ListGlobalValidatorsInputSchema = z
   .object({
-    sort: z.enum(GLOBAL_VALIDATOR_SORTS).optional(),
+    sort: sortSchema(GLOBAL_VALIDATOR_SORTS).optional(),
     // Was a hardcoded 100 while this tool's own description — interpolated from
     // GLOBAL_VALIDATOR_LIMIT_MAX — said "max 2000", and the handler clamped to 2000.
     // The tool advertised 2000 in prose, 100 in schema, and served 2000. Now the
     // constant is the only declaration, as src/route-limits.ts intended.
-    limit: limitSchema(GLOBAL_VALIDATOR_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      GLOBAL_VALIDATOR_LIMIT_MAX,
+      GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+    ).optional(),
   })
   .strict();
 export type ListGlobalValidatorsInput = z.infer<
@@ -78,7 +110,7 @@ export type ListGlobalValidatorsInput = z.infer<
 // search-subnets.ts's same note from the pilot batch).
 const GlobalValidatorSubnetItemSchema = z
   .object({
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     uid: z.int().nullable().optional(),
     stake_tao: z.unknown().optional(),
     emission_tao: z.unknown().optional(),
@@ -121,7 +153,7 @@ export type ListGlobalValidatorsOutput = z.infer<
 
 export const GetValidatorDetailInputSchema = z
   .object({
-    hotkey: Ss58Schema,
+    hotkey: accountKeySchema("hotkey"),
   })
   .strict();
 export type GetValidatorDetailInput = z.infer<
@@ -155,8 +187,14 @@ const COMPARE_VALIDATORS_MAX = 16;
 
 export const CompareValidatorsInputSchema = z
   .object({
-    hotkeys: z.array(Ss58Schema).min(1).max(COMPARE_VALIDATORS_MAX),
-    netuid: z.int().min(0).optional(),
+    hotkeys: z
+      .array(Ss58Schema)
+      .min(1)
+      .max(COMPARE_VALIDATORS_MAX)
+      .describe(
+        "SS58 hotkeys to compare, as an array. Each is a validator/neuron key, not a coldkey.",
+      ),
+    netuid: netuidSchema().optional(),
   })
   .strict();
 export type CompareValidatorsInput = z.infer<
@@ -166,7 +204,7 @@ export type CompareValidatorsInput = z.infer<
 export const CompareValidatorsOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     validator_count: z.int(),
     validators: OpenObjectArraySchema,
   })
@@ -187,12 +225,12 @@ const NOMINATOR_SORTS = [
 
 export const GetValidatorNominatorsInputSchema = z
   .object({
-    hotkey: Ss58Schema,
-    window: z.enum(NOMINATOR_WINDOWS).optional(),
-    sort: z.enum(NOMINATOR_SORTS).optional(),
-    limit: z.int().min(1).max(100).optional(),
-    offset: z.int().min(0).optional(),
-    coldkey: Ss58Schema.optional(),
+    hotkey: accountKeySchema("hotkey"),
+    window: windowSchema(NOMINATOR_WINDOWS).optional(),
+    sort: sortSchema(NOMINATOR_SORTS).optional(),
+    limit: limitSchema(100).optional(),
+    offset: offsetSchema().optional(),
+    coldkey: accountKeySchema("coldkey").optional(),
   })
   .strict();
 export type GetValidatorNominatorsInput = z.infer<
@@ -230,11 +268,11 @@ export type GetValidatorNominatorsOutput = z.infer<
 
 export const GetValidatorHistoryInputSchema = z
   .object({
-    hotkey: Ss58Schema,
-    window: z.enum(["7d", "30d", "90d", "1y", "all"]).optional(),
+    hotkey: accountKeySchema("hotkey"),
+    window: windowSchema(["7d", "30d", "90d", "1y", "all"]).optional(),
     // #9383: scopes the series to one subnet and switches the points to the
     // per-subnet shape (vTrust, consensus, dividends, take, native alpha).
-    netuid: z.int().min(0).max(65535).optional(),
+    netuid: netuidSchema().optional(),
   })
   .strict();
 export type GetValidatorHistoryInput = z.infer<
@@ -250,7 +288,7 @@ const ValidatorHistoryPointSchema = z
     // unscoped series, because vTrust/consensus/dividends/take are per-subnet
     // facts and a cross-subnet average of them is a number the chain never
     // computes -- see subnetScopedFields in src/validator-history.ts.
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     uid: z.int().nullable().optional(),
     stake_alpha: z.number().nullable().optional(),
     emission_alpha: z.number().nullable().optional(),

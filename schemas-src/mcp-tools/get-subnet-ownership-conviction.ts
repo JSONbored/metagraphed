@@ -5,11 +5,12 @@
 // Zod schema to reuse. Modeled fresh, shallow, from the hand-written
 // literals they replace.
 import { z } from "zod";
+import { netuidSchema } from "./shared.ts";
 import { FieldSourcesSchema } from "../shared.ts";
 
 export const GetSubnetOwnershipHistoryInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
   })
   .strict();
 export type GetSubnetOwnershipHistoryInput = z.infer<
@@ -18,7 +19,7 @@ export type GetSubnetOwnershipHistoryInput = z.infer<
 
 const OwnershipChangeSchema = z
   .object({
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     old_coldkey: z.string().nullable().optional(),
     new_coldkey: z.string().nullable().optional(),
     block_number: z.int().nullable().optional(),
@@ -29,7 +30,7 @@ const OwnershipChangeSchema = z
 export const GetSubnetOwnershipHistoryOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     count: z.int(),
     ownership_changes: z.array(OwnershipChangeSchema),
   })
@@ -40,7 +41,7 @@ export type GetSubnetOwnershipHistoryOutput = z.infer<
 
 export const GetSubnetConvictionInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
   })
   .strict();
 export type GetSubnetConvictionInput = z.infer<
@@ -59,7 +60,7 @@ const ConvictionLeaderboardEntrySchema = z
 export const GetSubnetConvictionOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     queried_at_block: z.int().nullable().optional(),
     unlock_rate: z.int().nullable().optional(),
     maturity_rate: z.int().nullable().optional(),

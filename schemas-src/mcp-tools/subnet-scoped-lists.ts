@@ -16,7 +16,17 @@
 // list_subnet_surfaces/list_subnet_health have no `fields` projection param
 // at all, unlike every other list_* tool in this epic.
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import {
+  OpenObjectSchema,
+  fieldsStringSchema,
+  kindSchema,
+  limitSchema,
+  netuidSchema,
+  numericCursorSchema,
+  orderSchema,
+  providerSlugSchema,
+  sortSchema,
+} from "./shared.ts";
 
 const SURFACE_KINDS = [
   "archive",
@@ -65,22 +75,57 @@ const ENDPOINT_SORT_FIELDS = [
 
 export const ListSubnetEndpointsInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    kind: z.enum(SURFACE_KINDS).optional(),
-    layer: z.enum(ENDPOINT_LAYERS).optional(),
-    provider: z.string().optional(),
-    publication_state: z.enum(ENDPOINT_PUBLICATION_STATES).optional(),
-    status: z.enum(HEALTH_STATUSES).optional(),
-    pool_eligible: z.enum(BOOLEAN_STRINGS).optional(),
-    min_latency_ms: z.number().optional(),
-    max_latency_ms: z.number().optional(),
-    min_score: z.number().optional(),
-    max_score: z.number().optional(),
-    sort: z.enum(ENDPOINT_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    netuid: netuidSchema(),
+    kind: kindSchema(SURFACE_KINDS).optional(),
+    layer: z
+      .enum(ENDPOINT_LAYERS)
+      .optional()
+      .describe(
+        "Which layer of the stack the endpoint belongs to: the Bittensor base chain, a data or docs provider, or a subnet's own app.",
+      ),
+    provider: providerSlugSchema().optional(),
+    publication_state: z
+      .enum(ENDPOINT_PUBLICATION_STATES)
+      .optional()
+      .describe(
+        "Where the endpoint sits in the review pipeline, from unreviewed candidate through to pool-eligible or rejected.",
+      ),
+    status: kindSchema(HEALTH_STATUSES).optional(),
+    pool_eligible: z
+      .enum(BOOLEAN_STRINGS)
+      .optional()
+      .describe(
+        "Restrict to endpoints that are (or are not) eligible for the public RPC pool.",
+      ),
+    min_latency_ms: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive lower bound on probe latency in milliseconds; rows below it are excluded.",
+      ),
+    max_latency_ms: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive upper bound on probe latency in milliseconds; rows above it are excluded.",
+      ),
+    min_score: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive lower bound on endpoint score; rows below it are excluded.",
+      ),
+    max_score: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive upper bound on endpoint score; rows above it are excluded.",
+      ),
+    sort: sortSchema(ENDPOINT_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListSubnetEndpointsInput = z.infer<
@@ -90,7 +135,7 @@ export type ListSubnetEndpointsInput = z.infer<
 export const ListSubnetEndpointsOutputSchema = z
   .object({
     generated_at: z.string().nullable().optional(),
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     endpoints: z.array(OpenObjectSchema),
     total: z.int().optional(),
     returned: z.int().optional(),
@@ -115,14 +160,19 @@ const SURFACE_SORT_FIELDS = [
 
 export const ListSubnetSurfacesInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    kind: z.enum(SURFACE_KINDS).optional(),
-    provider: z.string().optional(),
-    id: z.string().optional(),
-    sort: z.enum(SURFACE_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    netuid: netuidSchema(),
+    kind: kindSchema(SURFACE_KINDS).optional(),
+    provider: providerSlugSchema().optional(),
+    id: z
+      .string()
+      .optional()
+      .describe(
+        "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
+      ),
+    sort: sortSchema(SURFACE_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListSubnetSurfacesInput = z.infer<
@@ -132,7 +182,7 @@ export type ListSubnetSurfacesInput = z.infer<
 export const ListSubnetSurfacesOutputSchema = z
   .object({
     generated_at: z.string().nullable().optional(),
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     surfaces: z.array(OpenObjectSchema),
     total: z.int().optional(),
     returned: z.int().optional(),
@@ -176,15 +226,20 @@ const HEALTH_SORT_FIELDS = [
 
 export const ListSubnetHealthInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    kind: z.enum(SURFACE_KINDS).optional(),
-    provider: z.string().optional(),
-    status: z.enum(HEALTH_STATUSES).optional(),
-    classification: z.enum(HEALTH_CLASSIFICATIONS).optional(),
-    sort: z.enum(HEALTH_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    netuid: netuidSchema(),
+    kind: kindSchema(SURFACE_KINDS).optional(),
+    provider: providerSlugSchema().optional(),
+    status: kindSchema(HEALTH_STATUSES).optional(),
+    classification: z
+      .enum(HEALTH_CLASSIFICATIONS)
+      .optional()
+      .describe(
+        "Why a probe ended as it did — the reason behind the status, not the status itself.",
+      ),
+    sort: sortSchema(HEALTH_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListSubnetHealthInput = z.infer<typeof ListSubnetHealthInputSchema>;
@@ -192,7 +247,7 @@ export type ListSubnetHealthInput = z.infer<typeof ListSubnetHealthInputSchema>;
 export const ListSubnetHealthOutputSchema = z
   .object({
     generated_at: z.string().nullable().optional(),
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     surfaces: z.array(OpenObjectSchema),
     total: z.int().optional(),
     returned: z.int().optional(),

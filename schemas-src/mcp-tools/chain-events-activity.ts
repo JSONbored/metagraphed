@@ -8,13 +8,19 @@
 // the shared parseAnalyticsWindow() runtime helper rather than an
 // Object.hasOwn() check -- modeled the same way here, no shared constant.
 import { z } from "zod";
+import { keysetCursorSchema, limitSchema, windowSchema } from "./shared.ts";
 import { McpNetworkSchema } from "../shared.ts";
 
 const WINDOWS_2 = ["7d", "30d"] as const;
 
 export const GetChainActivityInputSchema = z
   .object({
-    blocks: z.int().min(1).max(5000).optional(),
+    blocks: z
+      .int()
+      .min(1)
+      .max(5000)
+      .optional()
+      .describe("How many trailing blocks to cover, ending at the chain head."),
     // #8700: which chain's decoded history to aggregate. The same published
     // finney/test enum every network-aware tool takes, so one vocabulary
     // covers the whole surface.
@@ -46,13 +52,34 @@ export type GetChainActivityOutput = z.infer<
 
 export const ListChainEventsInputSchema = z
   .object({
-    pallet: z.string().optional(),
-    method: z.string().optional(),
-    block: z.int().min(0).optional(),
-    extrinsic: z.int().min(0).optional(),
-    cursor: z.string().optional(),
-    before: z.int().min(0).optional(),
-    limit: z.int().min(1).max(200).optional(),
+    pallet: z
+      .string()
+      .optional()
+      .describe(
+        "Restrict to events emitted by this pallet, by runtime name (`SubtensorModule`). Case-sensitive.",
+      ),
+    method: z.string().optional().describe("HTTP method to use for the call."),
+    block: z
+      .int()
+      .min(0)
+      .optional()
+      .describe("Restrict to this exact block height."),
+    extrinsic: z
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "Restrict to one extrinsic's events by its index within the block. Requires `block`.",
+      ),
+    cursor: keysetCursorSchema().optional(),
+    before: z
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "Legacy cursor: return rows strictly BEFORE this block height. Prefer `cursor` where a tool offers one.",
+      ),
+    limit: limitSchema(200).optional(),
     network: McpNetworkSchema.optional(),
   })
   .strict();
@@ -92,7 +119,7 @@ export type ListChainEventsOutput = z.infer<typeof ListChainEventsOutputSchema>;
 
 export const GetNetworkActivityInputSchema = z
   .object({
-    window: z.enum(WINDOWS_2).optional(),
+    window: windowSchema(WINDOWS_2).optional(),
   })
   .strict();
 export type GetNetworkActivityInput = z.infer<

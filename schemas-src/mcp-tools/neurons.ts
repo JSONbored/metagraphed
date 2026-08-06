@@ -8,12 +8,15 @@ import {
   NeuronFieldsInputSchema,
   OpenObjectArraySchema,
   OpenObjectSchema,
+  netuidSchema,
+  uidSchema,
+  windowSchema,
 } from "./shared.ts";
 
 export const GetNeuronInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    uid: z.int().min(0),
+    netuid: netuidSchema(),
+    uid: uidSchema(),
     // #9082: narrow each returned row to these fields. Omit for the full
     // row. Valid names are NeuronSchema's own, so this enum cannot drift
     // from what the route can project.
@@ -25,7 +28,7 @@ export type GetNeuronInput = z.infer<typeof GetNeuronInputSchema>;
 export const GetNeuronOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     captured_at: z.string().nullable().optional(),
     block_number: z.int().nullable().optional(),
     neuron: OpenObjectSchema.nullable(),
@@ -35,9 +38,9 @@ export type GetNeuronOutput = z.infer<typeof GetNeuronOutputSchema>;
 
 export const GetNeuronHistoryInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    uid: z.int().min(0),
-    window: z.enum(["7d", "30d", "90d", "1y", "all"]).optional(),
+    netuid: netuidSchema(),
+    uid: uidSchema(),
+    window: windowSchema(["7d", "30d", "90d", "1y", "all"]).optional(),
   })
   .strict();
 export type GetNeuronHistoryInput = z.infer<typeof GetNeuronHistoryInputSchema>;
@@ -45,7 +48,7 @@ export type GetNeuronHistoryInput = z.infer<typeof GetNeuronHistoryInputSchema>;
 export const GetNeuronHistoryOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     uid: z.int(),
     window: z.string().nullable().optional(),
     point_count: z.int(),

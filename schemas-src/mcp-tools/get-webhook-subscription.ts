@@ -8,7 +8,11 @@ import { OpenObjectSchema } from "./shared.ts";
 
 export const GetWebhookSubscriptionInputSchema = z
   .object({
-    id: z.string(),
+    id: z
+      .string()
+      .describe(
+        "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
+      ),
   })
   .strict();
 export type GetWebhookSubscriptionInput = z.infer<

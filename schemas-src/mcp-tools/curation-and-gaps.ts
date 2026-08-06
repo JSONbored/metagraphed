@@ -10,7 +10,16 @@
 // notes shape, see shared.ts's NotesFieldSchema) -- a genuine difference,
 // preserved as-is.
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import {
+  OpenObjectSchema,
+  fieldsStringSchema,
+  kindSchema,
+  limitSchema,
+  netuidSchema,
+  numericCursorSchema,
+  orderSchema,
+  sortSchema,
+} from "./shared.ts";
 
 const COVERAGE_LEVELS = ["native-only", "manifested", "probed"] as const;
 const CURATION_LEVELS = [
@@ -30,14 +39,19 @@ const CURATION_SORT_FIELDS = [
 
 export const ListCurationInputSchema = z
   .object({
-    netuid: z.int().min(0).optional(),
-    coverage_level: z.enum(COVERAGE_LEVELS).optional(),
-    curation_level: z.enum(CURATION_LEVELS).optional(),
-    sort: z.enum(CURATION_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    netuid: netuidSchema().optional(),
+    coverage_level: z
+      .enum(COVERAGE_LEVELS)
+      .optional()
+      .describe(
+        "How much of the subnet is covered: on-chain data only, a manifest, or actively probed surfaces.",
+      ),
+    curation_level: kindSchema(CURATION_LEVELS).optional(),
+    sort: sortSchema(CURATION_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListCurationInput = z.infer<typeof ListCurationInputSchema>;
@@ -68,14 +82,19 @@ const GAPS_SORT_FIELDS = [
 
 export const ListGapsInputSchema = z
   .object({
-    netuid: z.int().min(0).optional(),
-    coverage_level: z.enum(COVERAGE_LEVELS).optional(),
-    curation_level: z.enum(CURATION_LEVELS).optional(),
-    sort: z.enum(GAPS_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    netuid: netuidSchema().optional(),
+    coverage_level: z
+      .enum(COVERAGE_LEVELS)
+      .optional()
+      .describe(
+        "How much of the subnet is covered: on-chain data only, a manifest, or actively probed surfaces.",
+      ),
+    curation_level: kindSchema(CURATION_LEVELS).optional(),
+    sort: sortSchema(GAPS_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListGapsInput = z.infer<typeof ListGapsInputSchema>;

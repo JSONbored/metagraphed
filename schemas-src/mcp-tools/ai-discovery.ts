@@ -4,7 +4,7 @@
 // existing schemas-src/routes/ REST schema -- modeled fresh, matching
 // each hand-written literal field-for-field.
 import { z } from "zod";
-import { OpenObjectArraySchema } from "./shared.ts";
+import { OpenObjectArraySchema, limitSchema, netuidSchema } from "./shared.ts";
 
 // Symbolic in the hand-written original (src/health-serving.ts's
 // ECONOMIC_BOARD_SPECS[].key), cross-checked against the actual runtime
@@ -29,8 +29,11 @@ const SemanticTypeSchema = z
 
 export const FindSubnetOpportunitiesInputSchema = z
   .object({
-    board: z.enum(ECONOMIC_LEADERBOARD_BOARDS).optional(),
-    limit: z.int().min(1).max(100).optional(),
+    board: z
+      .enum(ECONOMIC_LEADERBOARD_BOARDS)
+      .optional()
+      .describe("Which leaderboard to return."),
+    limit: limitSchema(100).optional(),
   })
   .strict();
 export type FindSubnetOpportunitiesInput = z.infer<
@@ -39,7 +42,7 @@ export type FindSubnetOpportunitiesInput = z.infer<
 
 const EconomicBoardEntrySchema = z
   .object({
-    netuid: z.int().optional(),
+    netuid: netuidSchema().optional(),
     slug: z.string().nullable().optional(),
     name: z.string().nullable().optional(),
   })
@@ -67,9 +70,13 @@ export type FindSubnetOpportunitiesOutput = z.infer<
 
 export const SemanticSearchInputSchema = z
   .object({
-    query: z.string(),
-    limit: z.int().min(1).max(20).optional(),
-    type: SemanticTypeSchema,
+    query: z
+      .string()
+      .describe(
+        "The request payload or search text this surface expects. Shape depends on the surface; see its schema.",
+      ),
+    limit: limitSchema(20).optional(),
+    type: SemanticTypeSchema.describe("Which entity kind to search over."),
   })
   .strict();
 export type SemanticSearchInput = z.infer<typeof SemanticSearchInputSchema>;
@@ -78,7 +85,7 @@ const SemanticSearchResultItemSchema = z
   .object({
     score: z.unknown().optional(),
     type: z.string().nullable().optional(),
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     slug: z.string().nullable().optional(),
     title: z.string().nullable().optional(),
     subtitle: z.string().nullable().optional(),
@@ -98,8 +105,12 @@ export type SemanticSearchOutput = z.infer<typeof SemanticSearchOutputSchema>;
 
 export const AskInputSchema = z
   .object({
-    question: z.string(),
-    type: SemanticTypeSchema,
+    question: z
+      .string()
+      .describe(
+        "A natural-language question. Answered from indexed registry content with citations, not from model recall.",
+      ),
+    type: SemanticTypeSchema.describe("Which entity kind to search over."),
   })
   .strict();
 export type AskInput = z.infer<typeof AskInputSchema>;
@@ -109,7 +120,7 @@ const AskCitationItemSchema = z
     ref: z.unknown().optional(),
     score: z.number().optional(),
     title: z.string().nullable().optional(),
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     slug: z.string().nullable().optional(),
     url: z.string().nullable().optional(),
   })
@@ -128,8 +139,12 @@ export type AskOutput = z.infer<typeof AskOutputSchema>;
 
 export const FindSubnetForTaskInputSchema = z
   .object({
-    task: z.string(),
-    limit: z.int().min(1).max(20).optional(),
+    task: z
+      .string()
+      .describe(
+        "Describe the task in plain language; subnets are ranked by how well their published capabilities match it.",
+      ),
+    limit: limitSchema(20).optional(),
   })
   .strict();
 export type FindSubnetForTaskInput = z.infer<

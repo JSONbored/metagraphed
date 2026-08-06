@@ -16,15 +16,21 @@
 // strict items. Modeled as-is, not "fixed" to match its sibling -- the epic's
 // wire-compatibility mandate preserves what shipped, not what's consistent.
 import { z } from "zod";
-import { DistributionStatsSchema, OpenObjectSchema } from "./shared.ts";
+import {
+  DistributionStatsSchema,
+  OpenObjectSchema,
+  limitSchema,
+  netuidSchema,
+  windowSchema,
+} from "./shared.ts";
 
 const WINDOWS_2 = ["7d", "30d"] as const;
 const LIMIT_MAX_100 = 100;
 
 export const GetChainRegistrationsInputSchema = z
   .object({
-    window: z.enum(WINDOWS_2).optional(),
-    limit: z.int().min(1).max(LIMIT_MAX_100).optional(),
+    window: windowSchema(WINDOWS_2).optional(),
+    limit: limitSchema(LIMIT_MAX_100).optional(),
   })
   .strict();
 export type GetChainRegistrationsInput = z.infer<
@@ -46,7 +52,7 @@ const ChainRegistrationsNetworkSchema = z
 // get_chain_deregistrations's strict items below.
 const ChainRegistrationsSubnetSchema = z
   .object({
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     distinct_registrants: z.int().nullable().optional(),
     registrations: z.int().nullable().optional(),
     registrations_per_registrant: z.number().nullable().optional(),
@@ -73,8 +79,8 @@ export type GetChainRegistrationsOutput = z.infer<
 
 export const GetChainDeregistrationsInputSchema = z
   .object({
-    window: z.enum(WINDOWS_2).optional(),
-    limit: z.int().min(1).max(LIMIT_MAX_100).optional(),
+    window: windowSchema(WINDOWS_2).optional(),
+    limit: limitSchema(LIMIT_MAX_100).optional(),
   })
   .strict();
 export type GetChainDeregistrationsInput = z.infer<
@@ -91,7 +97,7 @@ const ChainDeregistrationsNetworkSchema = z
 
 const ChainDeregistrationsSubnetSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     distinct_deregistered_hotkeys: z.int(),
     deregistrations: z.int(),
     deregistrations_per_hotkey: z.number(),

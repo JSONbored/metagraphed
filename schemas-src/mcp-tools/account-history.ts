@@ -4,18 +4,33 @@
 // reuse. Modeled fresh, matching the hand-written literal it replaces
 // field-for-field.
 import { z } from "zod";
-
-const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
+import {
+  keysetCursorSchema,
+  limitSchema,
+  netuidSchema,
+  offsetSchema,
+  ss58Schema,
+} from "./shared.ts";
 
 export const GetAccountHistoryInputSchema = z
   .object({
-    ss58: Ss58Schema,
-    netuid: z.int().min(0).optional(),
-    from: z.string().optional(),
-    to: z.string().optional(),
-    limit: z.int().min(1).max(1000).optional(),
-    offset: z.int().min(0).optional(),
-    cursor: z.string().optional(),
+    ss58: ss58Schema(),
+    netuid: netuidSchema().optional(),
+    from: z
+      .string()
+      .optional()
+      .describe(
+        "Inclusive start of the range. A block height on chain tools, an ISO-8601 date on time-series ones.",
+      ),
+    to: z
+      .string()
+      .optional()
+      .describe(
+        "Inclusive end of the range. A block height on chain tools, an ISO-8601 date on time-series ones; an EVM address on decode_evm_call.",
+      ),
+    limit: limitSchema(1000).optional(),
+    offset: offsetSchema().optional(),
+    cursor: keysetCursorSchema().optional(),
   })
   .strict();
 export type GetAccountHistoryInput = z.infer<
@@ -27,7 +42,7 @@ export type GetAccountHistoryInput = z.infer<
 const AccountHistoryDaySchema = z
   .object({
     day: z.string().nullable().optional(),
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     event_count: z.int().nullable().optional(),
     event_kinds: z.array(z.string()).optional(),
     first_block: z.int().nullable().optional(),

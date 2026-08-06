@@ -1,14 +1,18 @@
 // get_emission_pipeline_history (#9625): one subnet's pipeline decomposition
 // over time, mirroring GET /api/v1/subnets/{netuid}/emission-pipeline/history.
 import { z } from "zod";
+import { netuidSchema } from "./shared.ts";
 import { PIPELINE_HISTORY_WINDOWS } from "../../src/route-limits.ts";
 
 export const GetPipelineHistoryInputSchema = z
   .object({
-    netuid: z.int().min(0).max(65535),
+    netuid: netuidSchema(),
     window: z
       .enum(PIPELINE_HISTORY_WINDOWS as [string, ...string[]])
-      .optional(),
+      .optional()
+      .describe(
+        "Trailing time window to aggregate over, ending at the latest data point rather than a calendar boundary. Options are per-tool; see this parameter's enum.",
+      ),
   })
   .strict();
 export type GetPipelineHistoryInput = z.infer<
@@ -18,7 +22,7 @@ export type GetPipelineHistoryInput = z.infer<
 export const GetPipelineHistoryOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string().nullable(),
     point_count: z.int().nullable(),
     distinct_observations: z.int().nullable(),

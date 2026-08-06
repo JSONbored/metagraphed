@@ -8,6 +8,7 @@
 // NULLABLE enum (`type:["string","null"], enum:[...windows, null]`) --
 // `z.enum(...).nullable()`, not `.optional()`.
 import { z } from "zod";
+import { limitSchema, sortSchema, windowSchema } from "./shared.ts";
 
 const WINDOWS_2 = ["7d", "30d"] as const;
 
@@ -24,8 +25,8 @@ const ChainTransferPartySchema = z
 
 export const GetChainTransfersInputSchema = z
   .object({
-    window: z.enum(WINDOWS_2).optional(),
-    limit: z.int().min(1).max(100).optional(),
+    window: windowSchema(WINDOWS_2).optional(),
+    limit: limitSchema(100).optional(),
   })
   .strict();
 export type GetChainTransfersInput = z.infer<
@@ -52,9 +53,9 @@ export type GetChainTransfersOutput = z.infer<
 
 export const GetChainTransferPairsInputSchema = z
   .object({
-    window: z.enum(WINDOWS_2).optional(),
-    sort: z.enum(["volume", "count"]).optional(),
-    limit: z.int().min(1).max(100).optional(),
+    window: windowSchema(WINDOWS_2).optional(),
+    sort: sortSchema(["volume", "count"]).optional(),
+    limit: limitSchema(100).optional(),
   })
   .strict();
 export type GetChainTransferPairsInput = z.infer<

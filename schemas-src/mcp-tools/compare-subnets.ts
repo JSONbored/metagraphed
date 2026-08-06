@@ -9,8 +9,17 @@ const COMPARE_DIMENSIONS = ["structure", "economics", "health"] as const;
 
 export const CompareSubnetsInputSchema = z
   .object({
-    netuids: z.array(z.int().min(0)).min(1).max(128),
-    dimensions: z.array(z.enum(COMPARE_DIMENSIONS)).optional(),
+    netuids: z
+      .array(z.int().min(0))
+      .min(1)
+      .max(128)
+      .describe(
+        "Subnet ids to include, as an array of integers. Omit for every subnet.",
+      ),
+    dimensions: z
+      .array(z.enum(COMPARE_DIMENSIONS))
+      .optional()
+      .describe("Which breakdown dimensions to return, as an array of names."),
   })
   .strict();
 export type CompareSubnetsInput = z.infer<typeof CompareSubnetsInputSchema>;

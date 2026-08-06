@@ -7,7 +7,7 @@
 // `{type:["object","null"]}` fields with no declared shape, which stay
 // untyped open objects here too (not "improved" with a guessed shape).
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import { OpenObjectSchema, netuidSchema } from "./shared.ts";
 
 export const GetChainConcentrationInputSchema = z.object({}).strict();
 export type GetChainConcentrationInput = z.infer<
@@ -64,7 +64,7 @@ export type GetChainIdleStakeInput = z.infer<
 
 const ChainIdleStakeSubnetSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     neuron_count: z.int(),
     idle_neuron_count: z.int(),
     idle_stake_alpha: z.number(),

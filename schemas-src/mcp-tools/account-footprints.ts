@@ -13,8 +13,7 @@
 // false) with every field in their own `required` array -- modeled here
 // with the SAME strictness, not the usual item-level looseness.
 import { z } from "zod";
-
-const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
+import { netuidSchema, ss58Schema, windowSchema } from "./shared.ts";
 
 // Symbolic in each hand-written original (src/account-*.ts's own
 // *_WINDOWS/DEFAULT_*_WINDOW constants), cross-checked against the actual
@@ -25,8 +24,8 @@ const WEIGHT_SETTERS_WINDOWS_2 = ["7d", "30d"] as const;
 
 export const GetAccountStakeMovesInputSchema = z
   .object({
-    ss58: Ss58Schema,
-    window: z.enum(FOOTPRINT_WINDOWS_3).optional(),
+    ss58: ss58Schema(),
+    window: windowSchema(FOOTPRINT_WINDOWS_3).optional(),
   })
   .strict();
 export type GetAccountStakeMovesInput = z.infer<
@@ -35,7 +34,7 @@ export type GetAccountStakeMovesInput = z.infer<
 
 const StakeMovesSubnetSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     movements: z.int(),
     first_moved_at: z.string().nullable(),
     last_moved_at: z.string().nullable(),
@@ -61,8 +60,8 @@ export type GetAccountStakeMovesOutput = z.infer<
 
 export const GetAccountAxonRemovalsInputSchema = z
   .object({
-    ss58: Ss58Schema,
-    window: z.enum(FOOTPRINT_WINDOWS_3).optional(),
+    ss58: ss58Schema(),
+    window: windowSchema(FOOTPRINT_WINDOWS_3).optional(),
   })
   .strict();
 export type GetAccountAxonRemovalsInput = z.infer<
@@ -71,7 +70,7 @@ export type GetAccountAxonRemovalsInput = z.infer<
 
 const AxonRemovalsSubnetSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     removals: z.int(),
     first_removed_at: z.string().nullable(),
     last_removed_at: z.string().nullable(),
@@ -96,8 +95,8 @@ export type GetAccountAxonRemovalsOutput = z.infer<
 
 export const GetAccountPrometheusInputSchema = z
   .object({
-    ss58: Ss58Schema,
-    window: z.enum(FOOTPRINT_WINDOWS_3).optional(),
+    ss58: ss58Schema(),
+    window: windowSchema(FOOTPRINT_WINDOWS_3).optional(),
   })
   .strict();
 export type GetAccountPrometheusInput = z.infer<
@@ -106,7 +105,7 @@ export type GetAccountPrometheusInput = z.infer<
 
 const PrometheusSubnetSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     announcements: z.int(),
     first_announced_at: z.string().nullable(),
     last_announced_at: z.string().nullable(),
@@ -131,8 +130,8 @@ export type GetAccountPrometheusOutput = z.infer<
 
 export const GetAccountRegistrationsInputSchema = z
   .object({
-    ss58: Ss58Schema,
-    window: z.enum(FOOTPRINT_WINDOWS_3).optional(),
+    ss58: ss58Schema(),
+    window: windowSchema(FOOTPRINT_WINDOWS_3).optional(),
   })
   .strict();
 export type GetAccountRegistrationsInput = z.infer<
@@ -141,7 +140,7 @@ export type GetAccountRegistrationsInput = z.infer<
 
 const RegistrationsSubnetSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     registrations: z.int(),
     first_registered_at: z.string().nullable(),
     last_registered_at: z.string().nullable(),
@@ -166,8 +165,8 @@ export type GetAccountRegistrationsOutput = z.infer<
 
 export const GetAccountWeightSettersInputSchema = z
   .object({
-    ss58: Ss58Schema,
-    window: z.enum(WEIGHT_SETTERS_WINDOWS_2).optional(),
+    ss58: ss58Schema(),
+    window: windowSchema(WEIGHT_SETTERS_WINDOWS_2).optional(),
   })
   .strict();
 export type GetAccountWeightSettersInput = z.infer<
@@ -176,7 +175,7 @@ export type GetAccountWeightSettersInput = z.infer<
 
 const WeightSettersSubnetSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     weight_sets: z.int(),
     first_set_at: z.string().nullable(),
     last_set_at: z.string().nullable(),
@@ -201,8 +200,8 @@ export type GetAccountWeightSettersOutput = z.infer<
 
 export const GetAccountServingInputSchema = z
   .object({
-    ss58: Ss58Schema,
-    window: z.enum(FOOTPRINT_WINDOWS_3).optional(),
+    ss58: ss58Schema(),
+    window: windowSchema(FOOTPRINT_WINDOWS_3).optional(),
   })
   .strict();
 export type GetAccountServingInput = z.infer<
@@ -211,7 +210,7 @@ export type GetAccountServingInput = z.infer<
 
 const ServingSubnetSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     announcements: z.int(),
     first_served_at: z.string().nullable(),
     last_served_at: z.string().nullable(),
@@ -236,8 +235,8 @@ export type GetAccountServingOutput = z.infer<
 
 export const GetAccountDeregistrationsInputSchema = z
   .object({
-    ss58: Ss58Schema,
-    window: z.enum(FOOTPRINT_WINDOWS_3).optional(),
+    ss58: ss58Schema(),
+    window: windowSchema(FOOTPRINT_WINDOWS_3).optional(),
   })
   .strict();
 export type GetAccountDeregistrationsInput = z.infer<
@@ -246,7 +245,7 @@ export type GetAccountDeregistrationsInput = z.infer<
 
 const DeregistrationsSubnetSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     deregistrations: z.int(),
     first_deregistered_at: z.string().nullable(),
     last_deregistered_at: z.string().nullable(),

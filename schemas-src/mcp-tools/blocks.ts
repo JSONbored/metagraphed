@@ -8,23 +8,59 @@ import {
   AccountEventItemSchema,
   ExtrinsicItemSchema,
   OpenObjectSchema,
+  blockBoundSchema,
+  keysetCursorSchema,
+  limitSchema,
+  offsetSchema,
 } from "./shared.ts";
 
 const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
 
 export const ListBlocksInputSchema = z
   .object({
-    author: Ss58Schema.optional(),
-    spec_version: z.int().min(0).optional(),
-    block_start: z.int().min(0).optional(),
-    block_end: z.int().min(0).optional(),
-    from: z.int().min(0).optional(),
-    to: z.int().min(0).optional(),
-    min_extrinsics: z.int().min(0).optional(),
-    min_events: z.int().min(0).optional(),
-    limit: z.int().min(1).max(100).optional(),
-    offset: z.int().min(0).optional(),
-    cursor: z.string().optional(),
+    author: Ss58Schema.optional().describe(
+      "Restrict to blocks authored by this SS58 validator hotkey. Only populated below the decode watermark; recent head blocks may not carry an author yet.",
+    ),
+    spec_version: z
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "Restrict to blocks running this runtime spec version — the number that changes at a runtime upgrade.",
+      ),
+    block_start: blockBoundSchema("first").optional(),
+    block_end: blockBoundSchema("last").optional(),
+    from: z
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "Inclusive start of the range. A block height on chain tools, an ISO-8601 date on time-series ones.",
+      ),
+    to: z
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "Inclusive end of the range. A block height on chain tools, an ISO-8601 date on time-series ones; an EVM address on decode_evm_call.",
+      ),
+    min_extrinsics: z
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "Inclusive lower bound on a block's extrinsic count; quieter blocks are excluded.",
+      ),
+    min_events: z
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "Inclusive lower bound on a block's event count; quieter blocks are excluded.",
+      ),
+    limit: limitSchema(100).optional(),
+    offset: offsetSchema().optional(),
+    cursor: keysetCursorSchema().optional(),
   })
   .strict();
 export type ListBlocksInput = z.infer<typeof ListBlocksInputSchema>;
@@ -58,7 +94,11 @@ export type ListBlocksOutput = z.infer<typeof ListBlocksOutputSchema>;
 
 export const GetBlockInputSchema = z
   .object({
-    ref: z.string(),
+    ref: z
+      .string()
+      .describe(
+        "Block reference: either a block NUMBER or a 0x-prefixed block HASH. Both forms are accepted and resolve to the same block.",
+      ),
   })
   .strict();
 export type GetBlockInput = z.infer<typeof GetBlockInputSchema>;
@@ -76,9 +116,13 @@ export type GetBlockOutput = z.infer<typeof GetBlockOutputSchema>;
 
 export const ListBlockExtrinsicsInputSchema = z
   .object({
-    ref: z.string(),
-    limit: z.int().min(1).max(100).optional(),
-    offset: z.int().min(0).optional(),
+    ref: z
+      .string()
+      .describe(
+        "Block reference: either a block NUMBER or a 0x-prefixed block HASH. Both forms are accepted and resolve to the same block.",
+      ),
+    limit: limitSchema(100).optional(),
+    offset: offsetSchema().optional(),
   })
   .strict();
 export type ListBlockExtrinsicsInput = z.infer<
@@ -102,9 +146,13 @@ export type ListBlockExtrinsicsOutput = z.infer<
 
 export const GetBlockEventsInputSchema = z
   .object({
-    ref: z.string(),
-    limit: z.int().min(1).max(1000).optional(),
-    offset: z.int().min(0).optional(),
+    ref: z
+      .string()
+      .describe(
+        "Block reference: either a block NUMBER or a 0x-prefixed block HASH. Both forms are accepted and resolve to the same block.",
+      ),
+    limit: limitSchema(1000).optional(),
+    offset: offsetSchema().optional(),
   })
   .strict();
 export type GetBlockEventsInput = z.infer<typeof GetBlockEventsInputSchema>;

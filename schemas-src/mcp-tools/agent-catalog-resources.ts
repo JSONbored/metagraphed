@@ -6,11 +6,11 @@
 // array). Neither mirrors an existing schemas-src/routes/ REST schema --
 // modeled fresh, matching each hand-written literal field-for-field.
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import { OpenObjectSchema, netuidSchema } from "./shared.ts";
 
 export const GetAgentCatalogInputSchema = z
   .object({
-    netuid: z.int().min(0).optional(),
+    netuid: netuidSchema().optional(),
   })
   .strict();
 export type GetAgentCatalogInput = z.infer<typeof GetAgentCatalogInputSchema>;

@@ -5,12 +5,13 @@
 // hardcoded from src/neuron-history.ts's HISTORY_WINDOWS at the time of
 // writing (mirrors get-subnet-turnover.ts's same precedent this batch).
 import { z } from "zod";
+import { windowSchema } from "./shared.ts";
 
 const HISTORY_WINDOWS = ["7d", "30d", "90d", "1y", "all"] as const;
 
 export const GetEconomicsTrendsInputSchema = z
   .object({
-    window: z.enum(HISTORY_WINDOWS).optional(),
+    window: windowSchema(HISTORY_WINDOWS).optional(),
   })
   .strict();
 export type GetEconomicsTrendsInput = z.infer<

@@ -11,7 +11,18 @@
 // REQUIRED (a path param, not a filter), unlike every other filter in this
 // file.
 import { z } from "zod";
-import { OpenObjectSchema, NotesFieldSchema } from "./shared.ts";
+import {
+  NotesFieldSchema,
+  OpenObjectSchema,
+  fieldsStringSchema,
+  kindSchema,
+  limitSchema,
+  netuidSchema,
+  numericCursorSchema,
+  orderSchema,
+  providerSlugSchema,
+  sortSchema,
+} from "./shared.ts";
 
 const POOL_KINDS = ["subtensor-rpc", "subtensor-wss", "archive"] as const;
 const POOL_SORT_FIELDS = [
@@ -23,17 +34,42 @@ const POOL_SORT_FIELDS = [
 
 export const ListEndpointPoolsInputSchema = z
   .object({
-    id: z.string().optional(),
-    kind: z.enum(POOL_KINDS).optional(),
-    min_eligible_count: z.number().optional(),
-    max_eligible_count: z.number().optional(),
-    min_endpoint_count: z.number().optional(),
-    max_endpoint_count: z.number().optional(),
-    sort: z.enum(POOL_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    id: z
+      .string()
+      .optional()
+      .describe(
+        "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
+      ),
+    kind: kindSchema(POOL_KINDS).optional(),
+    min_eligible_count: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive lower bound on pool-eligible endpoint count; rows below it are excluded.",
+      ),
+    max_eligible_count: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive upper bound on pool-eligible endpoint count; rows above it are excluded.",
+      ),
+    min_endpoint_count: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive lower bound on endpoint count; rows below it are excluded.",
+      ),
+    max_endpoint_count: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive upper bound on endpoint count; rows above it are excluded.",
+      ),
+    sort: sortSchema(POOL_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListEndpointPoolsInput = z.infer<
@@ -91,17 +127,23 @@ const INCIDENT_SORT_FIELDS = [
 
 export const ListEndpointIncidentsInputSchema = z
   .object({
-    netuid: z.int().min(0).optional(),
-    kind: z.enum(SURFACE_KINDS).optional(),
-    provider: z.string().optional(),
-    status: z.enum(HEALTH_STATUSES).optional(),
-    severity: z.enum(INCIDENT_SEVERITIES).optional(),
-    state: z.enum(INCIDENT_STATES).optional(),
-    sort: z.enum(INCIDENT_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    netuid: netuidSchema().optional(),
+    kind: kindSchema(SURFACE_KINDS).optional(),
+    provider: providerSlugSchema().optional(),
+    status: kindSchema(HEALTH_STATUSES).optional(),
+    severity: z
+      .enum(INCIDENT_SEVERITIES)
+      .optional()
+      .describe("How serious the incident is."),
+    state: z
+      .enum(INCIDENT_STATES)
+      .optional()
+      .describe("The incident's lifecycle state."),
+    sort: sortSchema(INCIDENT_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListEndpointIncidentsInput = z.infer<
@@ -156,22 +198,62 @@ const ENDPOINT_SORT_FIELDS = [
 
 export const ListProviderEndpointsInputSchema = z
   .object({
-    slug: z.string().regex(/^[a-z0-9-]+$/),
-    kind: z.enum(SURFACE_KINDS).optional(),
-    layer: z.enum(ENDPOINT_LAYERS).optional(),
-    netuid: z.int().min(0).optional(),
-    publication_state: z.enum(ENDPOINT_PUBLICATION_STATES).optional(),
-    status: z.enum(HEALTH_STATUSES).optional(),
-    pool_eligible: z.boolean().optional(),
-    min_latency_ms: z.number().optional(),
-    max_latency_ms: z.number().optional(),
-    min_score: z.number().optional(),
-    max_score: z.number().optional(),
-    sort: z.enum(ENDPOINT_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    slug: z
+      .string()
+      .regex(/^[a-z0-9-]+$/)
+      .describe(
+        "The registry slug — lowercase, hyphenated (`chutes`), not the display name. Slugs are stable across renames.",
+      ),
+    kind: kindSchema(SURFACE_KINDS).optional(),
+    layer: z
+      .enum(ENDPOINT_LAYERS)
+      .optional()
+      .describe(
+        "Which layer of the stack the endpoint belongs to: the Bittensor base chain, a data or docs provider, or a subnet's own app.",
+      ),
+    netuid: netuidSchema().optional(),
+    publication_state: z
+      .enum(ENDPOINT_PUBLICATION_STATES)
+      .optional()
+      .describe(
+        "Where the endpoint sits in the review pipeline, from unreviewed candidate through to pool-eligible or rejected.",
+      ),
+    status: kindSchema(HEALTH_STATUSES).optional(),
+    pool_eligible: z
+      .boolean()
+      .optional()
+      .describe(
+        "Restrict to endpoints that are (or are not) eligible for the public RPC pool.",
+      ),
+    min_latency_ms: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive lower bound on probe latency in milliseconds; rows below it are excluded.",
+      ),
+    max_latency_ms: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive upper bound on probe latency in milliseconds; rows above it are excluded.",
+      ),
+    min_score: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive lower bound on endpoint score; rows below it are excluded.",
+      ),
+    max_score: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive upper bound on endpoint score; rows above it are excluded.",
+      ),
+    sort: sortSchema(ENDPOINT_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListProviderEndpointsInput = z.infer<

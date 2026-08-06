@@ -12,14 +12,17 @@
 // src/subnet-*.ts WINDOWS constant at the time of writing (all seven
 // verified identical).
 import { z } from "zod";
+import { netuidSchema } from "./shared.ts";
 
 const ACTIVITY_WINDOWS = ["7d", "30d"] as const;
 const ActivityWindowSchema = z.enum(ACTIVITY_WINDOWS).optional();
 
 const ActivityInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    window: ActivityWindowSchema,
+    netuid: netuidSchema(),
+    window: ActivityWindowSchema.describe(
+      "Trailing time window to aggregate over, ending at the latest data point rather than a calendar boundary. Options are per-tool; see this parameter's enum.",
+    ),
   })
   .strict();
 
@@ -30,7 +33,7 @@ export type GetSubnetRegistrationsInput = z.infer<
 export const GetSubnetRegistrationsOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string().nullable(),
     observed_at: z.string().nullable().optional(),
     distinct_registrants: z.int(),
@@ -49,7 +52,7 @@ export type GetSubnetStakeMovesInput = z.infer<
 export const GetSubnetStakeMovesOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string().nullable(),
     observed_at: z.string().nullable().optional(),
     distinct_movers: z.int(),
@@ -68,7 +71,7 @@ export type GetSubnetStakeTransfersInput = z.infer<
 export const GetSubnetStakeTransfersOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string().nullable(),
     observed_at: z.string().nullable().optional(),
     distinct_senders: z.int(),
@@ -87,7 +90,7 @@ export type GetSubnetAxonRemovalsInput = z.infer<
 export const GetSubnetAxonRemovalsOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string().nullable(),
     observed_at: z.string().nullable().optional(),
     distinct_removers: z.int(),
@@ -104,7 +107,7 @@ export type GetSubnetServingInput = z.infer<typeof GetSubnetServingInputSchema>;
 export const GetSubnetServingOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string().nullable(),
     observed_at: z.string().nullable().optional(),
     distinct_servers: z.int(),
@@ -123,7 +126,7 @@ export type GetSubnetPrometheusInput = z.infer<
 export const GetSubnetPrometheusOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string().nullable(),
     observed_at: z.string().nullable().optional(),
     distinct_exporters: z.int(),
@@ -142,7 +145,7 @@ export type GetSubnetDeregistrationsInput = z.infer<
 export const GetSubnetDeregistrationsOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string().nullable(),
     observed_at: z.string().nullable().optional(),
     distinct_deregistered_hotkeys: z.int(),

@@ -17,13 +17,19 @@
 // here as nullable (still required -- the key itself is always present),
 // matching real behavior.
 import { z } from "zod";
+import {
+  keysetCursorSchema,
+  limitSchema,
+  netuidSchema,
+  offsetSchema,
+} from "./shared.ts";
 
 export const GetSubnetIdentityHistoryInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    limit: z.int().min(1).max(1000).optional(),
-    offset: z.int().min(0).optional(),
-    cursor: z.string().optional(),
+    netuid: netuidSchema(),
+    limit: limitSchema(1000).optional(),
+    offset: offsetSchema().optional(),
+    cursor: keysetCursorSchema().optional(),
   })
   .strict();
 export type GetSubnetIdentityHistoryInput = z.infer<
@@ -51,7 +57,7 @@ const SubnetIdentityHistoryEntrySchema = z
 export const GetSubnetIdentityHistoryOutputSchema = z
   .object({
     schema_version: z.int(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     entry_count: z.int(),
     limit: z.int().nullable().optional(),
     offset: z.int().nullable().optional(),

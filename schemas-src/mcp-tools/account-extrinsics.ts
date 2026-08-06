@@ -8,17 +8,22 @@
 // hand-written JSON Schema for now and EXTRINSIC_ITEM itself has no Zod
 // equivalent yet.
 import { z } from "zod";
-
-const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
+import {
+  blockBoundSchema,
+  keysetCursorSchema,
+  limitSchema,
+  offsetSchema,
+  ss58Schema,
+} from "./shared.ts";
 
 export const GetAccountExtrinsicsInputSchema = z
   .object({
-    ss58: Ss58Schema,
-    block_start: z.int().min(0).optional(),
-    block_end: z.int().min(0).optional(),
-    limit: z.int().min(1).max(1000).optional(),
-    offset: z.int().min(0).optional(),
-    cursor: z.string().optional(),
+    ss58: ss58Schema(),
+    block_start: blockBoundSchema("first").optional(),
+    block_end: blockBoundSchema("last").optional(),
+    limit: limitSchema(1000).optional(),
+    offset: offsetSchema().optional(),
+    cursor: keysetCursorSchema().optional(),
   })
   .strict();
 export type GetAccountExtrinsicsInput = z.infer<

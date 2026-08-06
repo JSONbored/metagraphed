@@ -1,12 +1,19 @@
 // get_subnet_surface_history (#9612): one subnet's surface audit trail,
 // mirroring GET /api/v1/subnets/{netuid}/surface-history.
 import { z } from "zod";
-import { SURFACE_HISTORY_LIMIT_MAX } from "../../src/route-limits.ts";
+import { limitSchema, netuidSchema } from "./shared.ts";
+import {
+  SURFACE_HISTORY_LIMIT_DEFAULT,
+  SURFACE_HISTORY_LIMIT_MAX,
+} from "../../src/route-limits.ts";
 
 export const GetSubnetSurfaceHistoryInputSchema = z
   .object({
-    netuid: z.int().min(0).max(65535),
-    limit: z.int().min(1).max(SURFACE_HISTORY_LIMIT_MAX).optional(),
+    netuid: netuidSchema(),
+    limit: limitSchema(
+      SURFACE_HISTORY_LIMIT_MAX,
+      SURFACE_HISTORY_LIMIT_DEFAULT,
+    ).optional(),
   })
   .strict();
 export type GetSubnetSurfaceHistoryInput = z.infer<
@@ -16,7 +23,7 @@ export type GetSubnetSurfaceHistoryInput = z.infer<
 export const GetSubnetSurfaceHistoryOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     limit: z.int().nullable(),
     change_count: z.int(),
     surface_count: z.int(),

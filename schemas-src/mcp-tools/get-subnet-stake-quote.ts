@@ -17,14 +17,20 @@
 // bucket-(a)-equivalent improvement in the PR body, not silently dropped.
 import { SubnetStakeQuoteArtifactSchema } from "../routes/stake-quote.ts";
 import { z } from "zod";
+import { kindSchema, netuidSchema } from "./shared.ts";
 
 const STAKE_QUOTE_DIRECTIONS = ["stake", "unstake"] as const;
 
 export const GetSubnetStakeQuoteInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    amount: z.number().gt(0),
-    direction: z.enum(STAKE_QUOTE_DIRECTIONS).optional(),
+    netuid: netuidSchema(),
+    amount: z
+      .number()
+      .gt(0)
+      .describe(
+        "Amount to quote, in TAO when staking and in alpha when unstaking. Must be greater than 0.",
+      ),
+    direction: kindSchema(STAKE_QUOTE_DIRECTIONS).optional(),
   })
   .strict();
 export type GetSubnetStakeQuoteInput = z.infer<

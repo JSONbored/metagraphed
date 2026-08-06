@@ -9,12 +9,17 @@
 // tightening here, only relocating where the schema is defined (#7863's own
 // "hard wire-compatibility constraint").
 import { z } from "zod";
+import { limitSchema, netuidSchema, numericCursorSchema } from "./shared.ts";
 
 export const SearchSubnetsInputSchema = z
   .object({
-    query: z.string(),
-    cursor: z.int().min(0).optional(),
-    limit: z.int().min(1).max(50).optional(),
+    query: z
+      .string()
+      .describe(
+        "The request payload or search text this surface expects. Shape depends on the surface; see its schema.",
+      ),
+    cursor: numericCursorSchema().optional(),
+    limit: limitSchema(50).optional(),
   })
   .strict();
 export type SearchSubnetsInput = z.infer<typeof SearchSubnetsInputSchema>;
@@ -24,7 +29,7 @@ export type SearchSubnetsInput = z.infer<typeof SearchSubnetsInputSchema>;
 // the wire level even though the real handler always sets all five.
 const SearchSubnetsResultItemSchema = z
   .object({
-    netuid: z.int().optional(),
+    netuid: netuidSchema().optional(),
     slug: z.string().optional(),
     title: z.string().nullable().optional(),
     description: z.string().nullable().optional(),

@@ -16,7 +16,12 @@
 // exception: a flat setters leaderboard with no network/distribution
 // rollup, using the usual objectItems() item-level looseness instead.
 import { z } from "zod";
-import { DistributionStatsSchema } from "./shared.ts";
+import {
+  DistributionStatsSchema,
+  limitSchema,
+  netuidSchema,
+  windowSchema,
+} from "./shared.ts";
 
 const WINDOWS_2 = ["7d", "30d"] as const;
 const WINDOWS_3 = ["7d", "30d", "90d"] as const;
@@ -24,8 +29,8 @@ const LIMIT_MAX_100 = 100;
 
 export const GetChainTurnoverInputSchema = z
   .object({
-    window: z.enum(WINDOWS_3).optional(),
-    limit: z.int().min(1).max(LIMIT_MAX_100).optional(),
+    window: windowSchema(WINDOWS_3).optional(),
+    limit: limitSchema(LIMIT_MAX_100).optional(),
   })
   .strict();
 export type GetChainTurnoverInput = z.infer<typeof GetChainTurnoverInputSchema>;
@@ -43,7 +48,7 @@ const ChainTurnoverNetworkSchema = z
 
 const ChainTurnoverSubnetSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     validators_start: z.int(),
     validators_end: z.int(),
     validators_entered: z.int(),
@@ -72,8 +77,8 @@ export type GetChainTurnoverOutput = z.infer<
 
 export const GetChainStakeFlowInputSchema = z
   .object({
-    window: z.enum(WINDOWS_2).optional(),
-    limit: z.int().min(1).max(LIMIT_MAX_100).optional(),
+    window: windowSchema(WINDOWS_2).optional(),
+    limit: limitSchema(LIMIT_MAX_100).optional(),
   })
   .strict();
 export type GetChainStakeFlowInput = z.infer<
@@ -96,7 +101,7 @@ const ChainStakeFlowNetworkSchema = z
 
 const ChainStakeFlowSubnetSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     total_staked_tao: z.number(),
     total_unstaked_tao: z.number(),
     net_flow_tao: z.number(),
@@ -124,7 +129,7 @@ export type GetChainStakeFlowOutput = z.infer<
 
 export const GetChainAlphaVolumeInputSchema = z
   .object({
-    limit: z.int().min(1).max(LIMIT_MAX_100).optional(),
+    limit: limitSchema(LIMIT_MAX_100).optional(),
   })
   .strict();
 export type GetChainAlphaVolumeInput = z.infer<
@@ -154,7 +159,7 @@ const ChainAlphaVolumeNetworkSchema = z
 const ChainAlphaVolumeSubnetSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string(),
     buy_volume_alpha: z.unknown().optional(),
     sell_volume_alpha: z.unknown().optional(),
@@ -188,8 +193,8 @@ export type GetChainAlphaVolumeOutput = z.infer<
 
 export const GetChainWeightsInputSchema = z
   .object({
-    window: z.enum(WINDOWS_2).optional(),
-    limit: z.int().min(1).max(LIMIT_MAX_100).optional(),
+    window: windowSchema(WINDOWS_2).optional(),
+    limit: limitSchema(LIMIT_MAX_100).optional(),
   })
   .strict();
 export type GetChainWeightsInput = z.infer<typeof GetChainWeightsInputSchema>;
@@ -204,7 +209,7 @@ const ChainWeightsNetworkSchema = z
 
 const ChainWeightsSubnetSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     distinct_setters: z.int(),
     weight_sets: z.int(),
     sets_per_setter: z.number(),
@@ -226,8 +231,8 @@ export type GetChainWeightsOutput = z.infer<typeof GetChainWeightsOutputSchema>;
 
 export const GetChainWeightSettersInputSchema = z
   .object({
-    window: z.enum(WINDOWS_2).optional(),
-    limit: z.int().min(1).max(LIMIT_MAX_100).optional(),
+    window: windowSchema(WINDOWS_2).optional(),
+    limit: limitSchema(LIMIT_MAX_100).optional(),
   })
   .strict();
 export type GetChainWeightSettersInput = z.infer<
@@ -264,8 +269,8 @@ export type GetChainWeightSettersOutput = z.infer<
 
 export const GetChainStakeMovesInputSchema = z
   .object({
-    window: z.enum(WINDOWS_2).optional(),
-    limit: z.int().min(1).max(LIMIT_MAX_100).optional(),
+    window: windowSchema(WINDOWS_2).optional(),
+    limit: limitSchema(LIMIT_MAX_100).optional(),
   })
   .strict();
 export type GetChainStakeMovesInput = z.infer<
@@ -282,7 +287,7 @@ const ChainStakeMovesNetworkSchema = z
 
 const ChainStakeMovesSubnetSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     distinct_movers: z.int(),
     movements: z.int(),
     movements_per_mover: z.number(),
@@ -306,8 +311,8 @@ export type GetChainStakeMovesOutput = z.infer<
 
 export const GetChainStakeTransfersInputSchema = z
   .object({
-    window: z.enum(WINDOWS_2).optional(),
-    limit: z.int().min(1).max(LIMIT_MAX_100).optional(),
+    window: windowSchema(WINDOWS_2).optional(),
+    limit: limitSchema(LIMIT_MAX_100).optional(),
   })
   .strict();
 export type GetChainStakeTransfersInput = z.infer<
@@ -324,7 +329,7 @@ const ChainStakeTransfersNetworkSchema = z
 
 const ChainStakeTransfersSubnetSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     distinct_senders: z.int(),
     transfers: z.int(),
     transfers_per_sender: z.number(),
@@ -348,8 +353,8 @@ export type GetChainStakeTransfersOutput = z.infer<
 
 export const GetChainAxonRemovalsInputSchema = z
   .object({
-    window: z.enum(WINDOWS_2).optional(),
-    limit: z.int().min(1).max(LIMIT_MAX_100).optional(),
+    window: windowSchema(WINDOWS_2).optional(),
+    limit: limitSchema(LIMIT_MAX_100).optional(),
   })
   .strict();
 export type GetChainAxonRemovalsInput = z.infer<
@@ -366,7 +371,7 @@ const ChainAxonRemovalsNetworkSchema = z
 
 const ChainAxonRemovalsSubnetSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     distinct_removers: z.int(),
     removals: z.int(),
     removals_per_remover: z.number(),
@@ -390,8 +395,8 @@ export type GetChainAxonRemovalsOutput = z.infer<
 
 export const GetChainServingInputSchema = z
   .object({
-    window: z.enum(WINDOWS_2).optional(),
-    limit: z.int().min(1).max(LIMIT_MAX_100).optional(),
+    window: windowSchema(WINDOWS_2).optional(),
+    limit: limitSchema(LIMIT_MAX_100).optional(),
   })
   .strict();
 export type GetChainServingInput = z.infer<typeof GetChainServingInputSchema>;
@@ -406,7 +411,7 @@ const ChainServingNetworkSchema = z
 
 const ChainServingSubnetSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     distinct_servers: z.int(),
     announcements: z.int(),
     announcements_per_server: z.number(),
@@ -428,8 +433,8 @@ export type GetChainServingOutput = z.infer<typeof GetChainServingOutputSchema>;
 
 export const GetChainPrometheusInputSchema = z
   .object({
-    window: z.enum(WINDOWS_2).optional(),
-    limit: z.int().min(1).max(LIMIT_MAX_100).optional(),
+    window: windowSchema(WINDOWS_2).optional(),
+    limit: limitSchema(LIMIT_MAX_100).optional(),
   })
   .strict();
 export type GetChainPrometheusInput = z.infer<
@@ -446,7 +451,7 @@ const ChainPrometheusNetworkSchema = z
 
 const ChainPrometheusSubnetSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     distinct_exporters: z.int(),
     announcements: z.int(),
     announcements_per_exporter: z.number(),

@@ -4,11 +4,12 @@
 // no existing Zod schema to reuse. Modeled fresh, shallow, from the
 // hand-written literals they replace.
 import { z } from "zod";
+import { netuidSchema } from "./shared.ts";
 import { FieldSourcesSchema, McpNetworkSchema } from "../shared.ts";
 
 export const GetSubnetLeaseInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
     // #8700: which chain to read. These routes answer from live storage, and
     // the storage keys are twox128 hashes of pallet+item names — identical on
     // every chain running the same runtime — so the endpoint is the only thing
@@ -26,7 +27,7 @@ const LeaseDetailSchema = z
     hotkey: z.string().optional(),
     emissions_share_percent: z.int().optional(),
     end_block: z.int().nullable().optional(),
-    netuid: z.int().optional(),
+    netuid: netuidSchema().optional(),
     cost_tao: z.number().optional(),
     accumulated_dividends_alpha: z.number().nullable().optional(),
   })
@@ -35,7 +36,7 @@ const LeaseDetailSchema = z
 export const GetSubnetLeaseOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     leased: z.boolean().nullable(),
     lease: LeaseDetailSchema.nullable().optional(),
     queried_at: z.string().nullable().optional(),
@@ -47,7 +48,7 @@ export type GetSubnetLeaseOutput = z.infer<typeof GetSubnetLeaseOutputSchema>;
 
 export const GetSubnetLeaseHistoryInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
   })
   .strict();
 export type GetSubnetLeaseHistoryInput = z.infer<
@@ -66,7 +67,7 @@ const LeaseEventSchema = z
 export const GetSubnetLeaseHistoryOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     count: z.int(),
     lease_events: z.array(LeaseEventSchema),
   })

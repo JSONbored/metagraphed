@@ -5,18 +5,23 @@
 // existing schemas-src/routes/ REST schema -- modeled fresh, matching each
 // hand-written literal field-for-field.
 import { z } from "zod";
-import { OpenArraySchema, OpenObjectSchema } from "./shared.ts";
+import {
+  OpenArraySchema,
+  OpenObjectSchema,
+  netuidSchema,
+  surfaceIdSchema,
+} from "./shared.ts";
 
 export const ListSubnetApisInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
   })
   .strict();
 export type ListSubnetApisInput = z.infer<typeof ListSubnetApisInputSchema>;
 
 export const ListSubnetApisOutputSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     service_count: z.int(),
     services: z.array(OpenObjectSchema),
     operational_observed_at: z.string().nullable().optional(),
@@ -27,7 +32,7 @@ export type ListSubnetApisOutput = z.infer<typeof ListSubnetApisOutputSchema>;
 
 export const GetApiSchemaInputSchema = z
   .object({
-    surface_id: z.string(),
+    surface_id: surfaceIdSchema(),
   })
   .strict();
 export type GetApiSchemaInput = z.infer<typeof GetApiSchemaInputSchema>;
@@ -47,7 +52,7 @@ export type GetApiSchemaOutput = z.infer<typeof GetApiSchemaOutputSchema>;
 
 export const GetFixtureInputSchema = z
   .object({
-    surface_id: z.string(),
+    surface_id: surfaceIdSchema(),
   })
   .strict();
 export type GetFixtureInput = z.infer<typeof GetFixtureInputSchema>;
@@ -64,8 +69,17 @@ export type GetFixtureOutput = z.infer<typeof GetFixtureOutputSchema>;
 
 export const GetProviderDetailInputSchema = z
   .object({
-    slug: z.string(),
-    include_endpoints: z.boolean().optional(),
+    slug: z
+      .string()
+      .describe(
+        "The registry slug — lowercase, hyphenated (`chutes`), not the display name. Slugs are stable across renames.",
+      ),
+    include_endpoints: z
+      .boolean()
+      .optional()
+      .describe(
+        "When true, embed each provider's endpoints instead of counts alone.",
+      ),
   })
   .strict();
 export type GetProviderDetailInput = z.infer<

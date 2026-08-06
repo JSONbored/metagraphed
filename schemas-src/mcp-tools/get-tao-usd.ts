@@ -1,8 +1,9 @@
 // get_tao_usd (#9609): the TAO/USD index, mirroring GET /api/v1/network/tao-usd.
 import { z } from "zod";
+import { windowSchema } from "./shared.ts";
 
 export const GetTaoUsdInputSchema = z
-  .object({ window: z.enum(["1h", "24h", "7d", "30d"]).optional() })
+  .object({ window: windowSchema(["1h", "24h", "7d", "30d"]).optional() })
   .strict();
 export type GetTaoUsdInput = z.infer<typeof GetTaoUsdInputSchema>;
 

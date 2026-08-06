@@ -6,12 +6,19 @@
 // output is read by a model, so it stays permissive about extra keys and states
 // only the fields a caller may rely on.
 import { z } from "zod";
-import { SUBNET_HOLDERS_LIMIT_MAX } from "../../src/route-limits.ts";
+import { limitSchema, netuidSchema } from "./shared.ts";
+import {
+  SUBNET_HOLDERS_LIMIT_DEFAULT,
+  SUBNET_HOLDERS_LIMIT_MAX,
+} from "../../src/route-limits.ts";
 
 export const GetSubnetHoldersInputSchema = z
   .object({
-    netuid: z.int().min(0).max(65535),
-    limit: z.int().min(1).max(SUBNET_HOLDERS_LIMIT_MAX).optional(),
+    netuid: netuidSchema(),
+    limit: limitSchema(
+      SUBNET_HOLDERS_LIMIT_MAX,
+      SUBNET_HOLDERS_LIMIT_DEFAULT,
+    ).optional(),
   })
   .strict();
 export type GetSubnetHoldersInput = z.infer<typeof GetSubnetHoldersInputSchema>;
@@ -19,7 +26,7 @@ export type GetSubnetHoldersInput = z.infer<typeof GetSubnetHoldersInputSchema>;
 export const GetSubnetHoldersOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     limit: z.int().nullable(),
     // Whole-subnet, never bounded by the returned page.
     holder_count: z.int().nullable(),

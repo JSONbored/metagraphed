@@ -7,16 +7,25 @@
 // cross-imported, to avoid a runtime dependency for what is purely a wire-
 // schema enum).
 import { z } from "zod";
+import {
+  MOVERS_LIMIT_DEFAULT,
+  MOVERS_LIMIT_MAX,
+} from "../../src/route-limits.ts";
+import {
+  limitSchema,
+  netuidSchema,
+  sortSchema,
+  windowSchema,
+} from "./shared.ts";
 
 const MOVERS_WINDOW_KEYS = ["7d", "30d", "90d"] as const;
 const MOVERS_SORTS = ["stake", "emission", "validators", "neurons"] as const;
-const MOVERS_LIMIT_MAX = 100;
 
 export const GetSubnetMoversInputSchema = z
   .object({
-    window: z.enum(MOVERS_WINDOW_KEYS).optional(),
-    sort: z.enum(MOVERS_SORTS).optional(),
-    limit: z.int().min(1).max(MOVERS_LIMIT_MAX).optional(),
+    window: windowSchema(MOVERS_WINDOW_KEYS).optional(),
+    sort: sortSchema(MOVERS_SORTS).optional(),
+    limit: limitSchema(MOVERS_LIMIT_MAX, MOVERS_LIMIT_DEFAULT).optional(),
   })
   .strict();
 export type GetSubnetMoversInput = z.infer<typeof GetSubnetMoversInputSchema>;
@@ -25,7 +34,7 @@ export type GetSubnetMoversInput = z.infer<typeof GetSubnetMoversInputSchema>;
 // search-subnets.ts's same note from the pilot batch).
 const GetSubnetMoverItemSchema = z
   .object({
-    netuid: z.int().optional(),
+    netuid: netuidSchema().optional(),
     stake_start_alpha: z.unknown().optional(),
     stake_end_alpha: z.unknown().optional(),
     stake_delta_alpha: z.unknown().optional(),

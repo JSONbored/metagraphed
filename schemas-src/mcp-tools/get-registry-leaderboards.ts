@@ -5,7 +5,7 @@
 // from src/health-serving.ts's LEADERBOARD_BOARDS (base 6 boards +
 // ECONOMIC_BOARD_SPECS's 6 keys) at the time of writing.
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import { OpenObjectSchema, limitSchema } from "./shared.ts";
 
 const LEADERBOARD_BOARDS = [
   "healthiest",
@@ -24,8 +24,11 @@ const LEADERBOARD_BOARDS = [
 
 export const GetRegistryLeaderboardsInputSchema = z
   .object({
-    board: z.enum(LEADERBOARD_BOARDS).optional(),
-    limit: z.int().min(1).max(100).optional(),
+    board: z
+      .enum(LEADERBOARD_BOARDS)
+      .optional()
+      .describe("Which leaderboard to return."),
+    limit: limitSchema(100).optional(),
   })
   .strict();
 export type GetRegistryLeaderboardsInput = z.infer<

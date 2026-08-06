@@ -13,7 +13,17 @@
 // subnetType,curationLevel,profileLevel} and the "profiles" query
 // collection's sort_fields at the time of writing.
 import { z } from "zod";
-import { OpenObjectArraySchema, OpenObjectSchema } from "./shared.ts";
+import {
+  OpenObjectArraySchema,
+  OpenObjectSchema,
+  fieldsStringSchema,
+  limitSchema,
+  netuidSchema,
+  numericCursorSchema,
+  orderSchema,
+  querySchema,
+  sortSchema,
+} from "./shared.ts";
 
 const SUBNET_TYPE = ["root", "application"] as const;
 const CURATION_LEVEL = [
@@ -46,25 +56,44 @@ const PROFILES_SORT_FIELDS = [
 
 export const ListProfilesInputSchema = z
   .object({
-    netuid: z.int().min(0).optional(),
-    subnet_type: z.enum(SUBNET_TYPE).optional(),
-    curation_level: z.enum(CURATION_LEVEL).optional(),
-    review_state: z.string().optional(),
-    confidence: z.enum(["low", "medium", "high"]).optional(),
-    profile_level: z.enum(PROFILE_LEVEL).optional(),
-    q: z.string().optional(),
-    sort: z.enum(PROFILES_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(1000).optional(),
-    cursor: z.int().min(0).optional(),
+    netuid: netuidSchema().optional(),
+    subnet_type: z
+      .enum(SUBNET_TYPE)
+      .optional()
+      .describe("Root subnet or an application subnet."),
+    curation_level: z
+      .enum(CURATION_LEVEL)
+      .optional()
+      .describe(
+        "How the record entered the registry — native chain data, discovered candidate, community submission, or machine-derived.",
+      ),
+    review_state: z
+      .string()
+      .optional()
+      .describe("Where the item sits in maintainer review."),
+    confidence: z
+      .enum(["low", "medium", "high"])
+      .optional()
+      .describe("How confident the machine assessment is."),
+    profile_level: z
+      .enum(PROFILE_LEVEL)
+      .optional()
+      .describe(
+        "How complete the subnet's profile is, from directory-only upward.",
+      ),
+    q: querySchema().optional(),
+    sort: sortSchema(PROFILES_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(1000).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListProfilesInput = z.infer<typeof ListProfilesInputSchema>;
 
 export const GetSubnetProfileInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
   })
   .strict();
 export type GetSubnetProfileInput = z.infer<typeof GetSubnetProfileInputSchema>;

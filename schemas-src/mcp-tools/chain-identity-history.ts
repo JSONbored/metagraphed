@@ -4,12 +4,18 @@
 // reuse. Modeled fresh, matching the hand-written literal it replaces
 // field-for-field.
 import { z } from "zod";
-
-const CHAIN_IDENTITY_HISTORY_LIMIT_MAX = 200;
+import {
+  CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
+  CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
+} from "../../src/route-limits.ts";
+import { limitSchema, netuidSchema } from "./shared.ts";
 
 export const GetChainIdentityHistoryInputSchema = z
   .object({
-    limit: z.int().min(1).max(CHAIN_IDENTITY_HISTORY_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
+      CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
+    ).optional(),
   })
   .strict();
 export type GetChainIdentityHistoryInput = z.infer<
@@ -20,7 +26,7 @@ export type GetChainIdentityHistoryInput = z.infer<
 // search-subnets.ts's same note from the pilot batch).
 const ChainIdentityChangeSchema = z
   .object({
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     block_number: z.int().nullable().optional(),
     observed_at: z.string().nullable().optional(),
     subnet_name: z.string().nullable().optional(),

@@ -3,13 +3,14 @@
 // covered pilot routes -- no existing Zod schema to reuse. Modeled fresh,
 // shallow, from the hand-written literal it replaces.
 import { z } from "zod";
+import { netuidSchema, windowSchema } from "./shared.ts";
 
 const SUBNET_WEIGHTS_WINDOWS = ["7d", "30d"] as const;
 
 export const GetSubnetWeightsInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    window: z.enum(SUBNET_WEIGHTS_WINDOWS).optional(),
+    netuid: netuidSchema(),
+    window: windowSchema(SUBNET_WEIGHTS_WINDOWS).optional(),
   })
   .strict();
 export type GetSubnetWeightsInput = z.infer<typeof GetSubnetWeightsInputSchema>;
@@ -17,7 +18,7 @@ export type GetSubnetWeightsInput = z.infer<typeof GetSubnetWeightsInputSchema>;
 export const GetSubnetWeightsOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string().nullable(),
     observed_at: z.string().nullable().optional(),
     distinct_setters: z.int(),

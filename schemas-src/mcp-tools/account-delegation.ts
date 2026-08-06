@@ -6,13 +6,12 @@
 // looseness (neither the hand-written subnets items nor their nested
 // entries items declare a `required` array).
 import { z } from "zod";
+import { netuidSchema, ss58Schema } from "./shared.ts";
 import { FieldSourcesSchema, McpNetworkSchema } from "../shared.ts";
-
-const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
 
 export const GetAccountChildrenInputSchema = z
   .object({
-    ss58: Ss58Schema,
+    ss58: ss58Schema(),
     // #8700: which chain to read. These routes answer from live storage, and
     // the storage keys are twox128 hashes of pallet+item names — identical on
     // every chain running the same runtime — so the endpoint is the only thing
@@ -34,7 +33,7 @@ const ChildEntrySchema = z
 
 const ChildSubnetSchema = z
   .object({
-    netuid: z.int().optional(),
+    netuid: netuidSchema().optional(),
     entries: z.array(ChildEntrySchema).optional(),
   })
   .strict();
@@ -55,7 +54,7 @@ export type GetAccountChildrenOutput = z.infer<
 
 export const GetAccountParentsInputSchema = z
   .object({
-    ss58: Ss58Schema,
+    ss58: ss58Schema(),
     // #8700: which chain to read. These routes answer from live storage, and
     // the storage keys are twox128 hashes of pallet+item names — identical on
     // every chain running the same runtime — so the endpoint is the only thing
@@ -77,7 +76,7 @@ const ParentEntrySchema = z
 
 const ParentSubnetSchema = z
   .object({
-    netuid: z.int().optional(),
+    netuid: netuidSchema().optional(),
     entries: z.array(ParentEntrySchema).optional(),
   })
   .strict();

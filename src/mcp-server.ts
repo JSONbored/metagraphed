@@ -15756,12 +15756,20 @@ export function scheduleMcpRefusalEvent(
   env: Env,
   deps: Row,
   response: Response,
+  /** Injectable clock, mirroring admitMcpRefusalCapture's own `nowMs`. Only a
+   * test passes it. Without it the storm window can only be crossed by real
+   * elapsed time, which made the "next window carries the suppressed count"
+   * case a wall-clock race: two calls meant to share a window straddled it
+   * whenever the event loop scheduled them more than the window apart. A
+   * throttle is exactly the kind of code whose boundary must be asserted
+   * deterministically rather than slept at. */
+  nowMs: number = Date.now(),
 ) {
   try {
     if (!isUsageTelemetryConfigured(env)) return;
     const reason = mcpRefusalReason(response);
     if (reason === null) return;
-    const suppressed = admitMcpRefusalCapture(env, reason);
+    const suppressed = admitMcpRefusalCapture(env, reason, nowMs);
     if (suppressed === null) return;
     const record = (deps.recordUsageEvent ?? recordUsageEvent) as AnyFn;
     const pending = Promise.resolve(

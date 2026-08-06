@@ -4,13 +4,26 @@
 // schemas-src schema to reuse. Modeled fresh, shallow, from the hand-written
 // literal it replaces.
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import { OpenObjectSchema, netuidSchema } from "./shared.ts";
 
 export const GetSubnetSnapshotInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    top_validators_limit: z.int().min(1).optional(),
-    recent_events_limit: z.int().min(1).max(1000).optional(),
+    netuid: netuidSchema(),
+    top_validators_limit: z
+      .int()
+      .min(1)
+      .optional()
+      .describe(
+        "How many top validators to include in the embedded validator list.",
+      ),
+    recent_events_limit: z
+      .int()
+      .min(1)
+      .max(1000)
+      .optional()
+      .describe(
+        "How many recent events to embed. Clamped to the tool's ceiling rather than rejected.",
+      ),
   })
   .strict();
 export type GetSubnetSnapshotInput = z.infer<
@@ -19,7 +32,7 @@ export type GetSubnetSnapshotInput = z.infer<
 
 export const GetSubnetSnapshotOutputSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     hyperparameters: OpenObjectSchema,
     concentration: OpenObjectSchema,
     performance: OpenObjectSchema,

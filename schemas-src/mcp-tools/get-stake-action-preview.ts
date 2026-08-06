@@ -7,14 +7,20 @@
 // replaces, which (unlike most tools in this batch) already declared its
 // own outputSchema inline rather than via TOOL_OUTPUT_SCHEMAS.
 import { z } from "zod";
+import { kindSchema, netuidSchema } from "./shared.ts";
 
 const STAKE_QUOTE_DIRECTIONS = ["stake", "unstake"] as const;
 
 export const GetStakeActionPreviewInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    amount: z.number().gt(0),
-    direction: z.enum(STAKE_QUOTE_DIRECTIONS).optional(),
+    netuid: netuidSchema(),
+    amount: z
+      .number()
+      .gt(0)
+      .describe(
+        "Amount to quote, in TAO when staking and in alpha when unstaking. Must be greater than 0.",
+      ),
+    direction: kindSchema(STAKE_QUOTE_DIRECTIONS).optional(),
   })
   .strict();
 export type GetStakeActionPreviewInput = z.infer<
@@ -30,7 +36,7 @@ const EstimatedOutSchema = z
 
 export const GetStakeActionPreviewOutputSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     direction: z.string(),
     amount: z.number(),
     summary: z.string(),

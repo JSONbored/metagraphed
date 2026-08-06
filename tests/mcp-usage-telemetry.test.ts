@@ -1460,18 +1460,20 @@ describe("scheduleMcpRefusalEvent guards (#9639)", () => {
   });
 
   // The other side of that ternary: once a window rolls over, the count of
-  // what was held is carried on the next event rather than discarded. Uses a
-  // 1ms window and a real rollover -- admitMcpRefusalCapture takes an explicit
-  // clock but scheduleMcpRefusalEvent deliberately does not, so this is the
-  // honest way to cross the boundary through the real call path. A distinct
-  // status keys its own reason, so no earlier test in this file can prime it.
-  test("suppressed_occurrences rides the first event of the next window", async () => {
+  // what was held is carried on the next event rather than discarded.
+  //
+  // Driven by an INJECTED clock, not a sleep. The first version of this test
+  // used a 1ms window and a 20ms wait, and flaked roughly two runs in three:
+  // the two calls meant to share a window straddled it whenever the event loop
+  // scheduled them more than a millisecond apart. A throttle's boundary is
+  // exactly the thing that has to be asserted deterministically.
+  test("suppressed_occurrences rides the first event of the next window", () => {
     const env = {
       ...CONFIGURED_ENV,
-      [POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV]: "1",
+      [POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV]: "1000",
     } as unknown as Env;
     const spy = recorder();
-    const fire = () =>
+    const fire = (at: number) =>
       scheduleMcpRefusalEvent(
         req(),
         env,
@@ -1480,15 +1482,22 @@ describe("scheduleMcpRefusalEvent guards (#9639)", () => {
           executionCtx: fakeExecutionCtx(),
         },
         new Response(null, { status: 418 }),
+        at,
       );
-    fire();
-    fire();
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    fire();
+    fire(0);
+    fire(10);
+    fire(20);
+    fire(1000);
     assert.equal(spy.events.length, 2, "one per window, not one per call");
+    const first = spy.events[0]!.event as Row;
     const second = spy.events[1]!.event as Row;
-    assert.equal(second.route, "mcp:refused:status_418");
-    assert.equal(second.suppressed_occurrences, 1);
+    assert.equal(first.route, "mcp:refused:status_418");
+    assert.equal(
+      "suppressed_occurrences" in first,
+      false,
+      "first sighting held nothing back",
+    );
+    assert.equal(second.suppressed_occurrences, 2);
   });
 
   test("a recorder that rejects is swallowed, never surfaced", async () => {
