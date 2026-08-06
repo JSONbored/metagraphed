@@ -6,6 +6,8 @@
     "search-by-network",
     "search-index",
     "search-index-by-network",
+    "search-resolve",
+    "search-resolve-by-network",
     "search-semantic"
   ]
 }

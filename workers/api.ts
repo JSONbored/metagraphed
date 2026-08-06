@@ -317,6 +317,7 @@ import {
   webhookRetryDelaySeconds,
   WEBHOOK_QUEUE_MAX_ATTEMPTS,
 } from "../src/webhook-queue.ts";
+import { buildSearchResolve } from "../src/identifier-resolver.ts";
 import {
   ALERT_TRIGGER_CREATE_TOKEN_HEADER,
   ALERT_TRIGGER_OWNER_TOKEN_HEADER,
@@ -6079,6 +6080,25 @@ async function dispatchLiveChainRoute(
   // match for the same reason as the line above.
   if (pathname === "/api/v1/health/failure-reasons") {
     return handleFailureReasons(request, env, new URL(request.url));
+  }
+  // metagraphed-infra#362: identifier resolution. Dispatched HERE rather than in
+  // the main router so the bare and /{network}/-prefixed forms reach it through
+  // one path -- shape parsing is network-agnostic (a checksum and a 32-byte hash
+  // mean the same thing on every chain), and a main-router match would have
+  // answered 200 on mainnet and 404 on testnet.
+  //
+  // First among the exact matches deliberately: this is the fast, deterministic
+  // path an explorer's most common search takes, and it must never queue behind
+  // -- or pay for -- anything that reads a database or a model.
+  if (pathname === "/api/v1/search/resolve") {
+    return envelopeResponse(
+      request,
+      {
+        data: buildSearchResolve(url.searchParams.get("q")),
+        meta: { contract_version: contractVersion(env) },
+      },
+      "short",
+    );
   }
   // #9620: block-indexing latency, read from the mainnet firehose poller's own
   // hot tier. Exact-path match for the same reason as the line above.

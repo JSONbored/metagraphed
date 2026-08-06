@@ -152,6 +152,10 @@ import {
   IndexerLagArtifactSchema,
 } from "./routes/indexer-lag.ts";
 import {
+  ResolvedIdentifierSchema,
+  SearchResolveArtifactSchema,
+} from "./routes/search-resolve.ts";
+import {
   TaoUsdPointSchema,
   TaoUsdLatestSchema,
   TaoUsdArtifactSchema,
@@ -536,6 +540,8 @@ register(FailureReasonsArtifactSchema, "FailureReasonsArtifact");
 register(IndexerLagWindowSchema, "IndexerLagWindow");
 register(IndexerLagLatencySchema, "IndexerLagLatency");
 register(IndexerLagArtifactSchema, "IndexerLagArtifact");
+register(ResolvedIdentifierSchema, "ResolvedIdentifier");
+register(SearchResolveArtifactSchema, "SearchResolveArtifact");
 register(TaoUsdPointSchema, "TaoUsdPoint");
 register(TaoUsdLatestSchema, "TaoUsdLatest");
 register(TaoUsdArtifactSchema, "TaoUsdArtifact");

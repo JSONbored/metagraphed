@@ -1521,6 +1521,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/{network}/search/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Resolve a pasted query to the chain entities it could name (metagraphed-infra#362). A block explorer's most common search is an IDENTIFIER, not a question -- an account, a block hash, an extrinsic hash, a netuid -- and every one is recognisable from its shape with no index lookup and no inference. Use this BEFORE /api/v1/search or /api/v1/search/semantic: it answers instantly when the query is an identifier, and returns an empty `matches` when it is not, which is the signal to fall through to corpus search. AMBIGUITY IS RETURNED, NOT GUESSED. `matches` is a list because two inputs have more than one correct reading: a 64-hex string is a block hash OR an extrinsic hash, and a small integer is a netuid AND a block height. Each candidate carries `exact`; `false` means another kind shares the shape, so present the alternatives rather than redirecting. `exact` is NOT an existence claim -- this route looks nothing up. `unambiguous` is true only for a single exact candidate, and is the one field a UI needs to decide between navigating and rendering a choice. An ss58 is checksum-verified, so a one-character typo resolves to NOTHING rather than to an empty account page that reads as 'no activity'. `?q=` is the query; whitespace is trimmed, hex is normalised to lowercase with an 0x prefix. Served live on every network.
+         * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
+         */
+        get: operations["searchResolveByNetwork"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/{network}/source-health": {
         parameters: {
             query?: never;
@@ -4755,6 +4775,23 @@ export interface paths {
         };
         /** Fetch the slim search index — the same documents as /search without the per-document token blobs, for fast browser typeahead and listing. */
         get: operations["searchIndex"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/search/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Resolve a pasted query to the chain entities it could name (metagraphed-infra#362). A block explorer's most common search is an IDENTIFIER, not a question -- an account, a block hash, an extrinsic hash, a netuid -- and every one is recognisable from its shape with no index lookup and no inference. Use this BEFORE /api/v1/search or /api/v1/search/semantic: it answers instantly when the query is an identifier, and returns an empty `matches` when it is not, which is the signal to fall through to corpus search. AMBIGUITY IS RETURNED, NOT GUESSED. `matches` is a list because two inputs have more than one correct reading: a 64-hex string is a block hash OR an extrinsic hash, and a small integer is a netuid AND a block height. Each candidate carries `exact`; `false` means another kind shares the shape, so present the alternatives rather than redirecting. `exact` is NOT an existence claim -- this route looks nothing up. `unambiguous` is true only for a single exact candidate, and is the one field a UI needs to decide between navigating and rendering a choice. An ss58 is checksum-verified, so a one-character typo resolves to NOTHING rather than to an empty account page that reads as 'no activity'. `?q=` is the query; whitespace is trimmed, hex is normalised to lowercase with an 0x prefix. Served live on every network. */
+        get: operations["searchResolve"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9929,6 +9966,14 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        ResolvedIdentifier: {
+            api_path: string;
+            exact: boolean;
+            /** @enum {string} */
+            kind: "account" | "block" | "extrinsic" | "evm-account" | "subnet" | "neuron";
+            ui_path: string;
+            value: string;
+        };
         ResponseMeta: {
             artifact_path?: string;
             cache?: components["schemas"]["CacheProfile"];
@@ -10673,6 +10718,16 @@ export interface components {
             notes?: string | string[];
             /** @constant */
             schema_version: 1;
+        } & {
+            [key: string]: unknown;
+        };
+        SearchResolveArtifact: {
+            match_count: number;
+            matches: components["schemas"]["ResolvedIdentifier"][];
+            query: string;
+            /** @constant */
+            schema_version: 1;
+            unambiguous: boolean;
         } & {
             [key: string]: unknown;
         };
@@ -23807,6 +23862,123 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SearchIndexArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    searchResolveByNetwork: {
+        parameters: {
+            query?: {
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
+                q?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`. */
+                network: "finney" | "mainnet" | "test" | "testnet";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "match_count": 1,
+                     *         "matches": [
+                     *           {
+                     *             "api_path": "example",
+                     *             "exact": false,
+                     *             "kind": "account",
+                     *             "ui_path": "example",
+                     *             "value": "example"
+                     *           }
+                     *         ],
+                     *         "query": "example",
+                     *         "schema_version": 1,
+                     *         "unambiguous": false
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SearchResolveArtifact"];
                     };
                 };
             };
@@ -46938,6 +47110,120 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SearchIndexArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    searchResolve: {
+        parameters: {
+            query?: {
+                /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "match_count": 1,
+                     *         "matches": [
+                     *           {
+                     *             "api_path": "example",
+                     *             "exact": false,
+                     *             "kind": "account",
+                     *             "ui_path": "example",
+                     *             "value": "example"
+                     *           }
+                     *         ],
+                     *         "query": "example",
+                     *         "schema_version": 1,
+                     *         "unambiguous": false
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SearchResolveArtifact"];
                     };
                 };
             };
