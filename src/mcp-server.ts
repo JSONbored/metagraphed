@@ -15015,6 +15015,45 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
       case "ping":
         return isNotification ? null : rpcResult(id, {});
       case "tools/list": {
+        // #9648: `cursor` was ACCEPTED AND IGNORED. A caller that paged got the
+        // whole catalogue back every time, with no `nextCursor` to terminate
+        // on -- whether that loops or merely double-counts is the client's
+        // problem to discover. Accepting a parameter and disregarding it is
+        // worse than refusing it: the request said one thing and the response
+        // quietly did another.
+        //
+        // WHY REFUSE RATHER THAN PAGINATE. Pagination is a server's choice
+        // under the spec, and taking it here would be the more damaging bug.
+        // No compliant client sends `cursor` unprompted -- it only ever comes
+        // from a `nextCursor` we issued -- so the clients that would be handed
+        // a first page are the ones that never asked to page: the scripted
+        // callers (python-requests, curl) that make up most of this surface's
+        // traffic. They would silently see 100 of 224 tools and have no way to
+        // know. Losing tool discovery to fix a cursor is a bad trade.
+        //
+        // It also would not buy what it looks like it buys: a compliant client
+        // fetches every page and puts them all in context, so paginating moves
+        // bytes around without shrinking what an agent ends up holding. The
+        // catalogue's size is a function of having 224 tools, not of how it is
+        // transferred.
+        //
+        // Only a NON-EMPTY cursor is refused. A client that sends the key with
+        // null/undefined -- or omits it, as every one does today -- is
+        // unaffected, so this cannot break a caller that is not already
+        // relying on behaviour we never had.
+        const cursor = (params as Row | undefined)?.cursor;
+        if (typeof cursor === "string" && cursor.trim()) {
+          return isNotification
+            ? null
+            : rpcError(
+                id,
+                RPC_INVALID_PARAMS,
+                "tools/list is not paginated on this server: the full tool " +
+                  "catalogue is returned in one response and no `nextCursor` " +
+                  "is ever issued, so there is no cursor to resume from. Omit " +
+                  "`cursor`.",
+              );
+        }
         const tools = listToolDefinitions();
         // Recorded for a notification too: the discovery happened either way,
         // and dropping it would undercount exactly the crawler traffic this
