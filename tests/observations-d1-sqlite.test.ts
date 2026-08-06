@@ -23,6 +23,17 @@ const SCHEMA = fs.readFileSync(
   "utf8",
 );
 
+// The #9634 repair, executed rather than eyeballed: it is a correlated UPDATE
+// with a matching guard subquery, which is exactly the shape that silently
+// no-ops or over-writes when it is only read.
+const LAST_OK_REPAIR = fs.readFileSync(
+  path.join(
+    process.cwd(),
+    "migrations/d1/0027_surface_status_last_ok_repair.sql",
+  ),
+  "utf8",
+);
+
 let db: InstanceType<typeof DatabaseSync>;
 
 function d1(): ObservationsDb {
@@ -114,6 +125,162 @@ test("re-probing the same surface_key upserts in place across an id rename", asy
   assert.equal(row.status, "failed");
   assert.equal(row.consecutive_failures, 3);
   assert.equal(count("surface_checks"), 2, "raw history keeps both probes");
+});
+
+// #9634: `last_ok` is a high-water mark, so a run that did not observe the
+// surface working must not be able to clear it. The prober passes
+// `last_ok_ms: null` whenever its prior-status read came back empty --
+// readLiveSurfaceStatus degrades to [] on a missing binding, a non-2xx or an
+// unparseable body -- and a bare `last_ok=excluded.last_ok` turned that
+// read-side degrade into permanent data loss for every non-ok surface.
+// Exercised on BOTH conflict paths because they are separate SET lists.
+test("a non-ok re-probe with no prior keeps last_ok on the surface_key path (#9634)", async () => {
+  const firstOk = Date.parse("2026-08-02T10:00:00Z");
+  await persistProbesToD1(d1(), [probe({ last_ok_ms: firstOk })], firstOk);
+  const res = await persistProbesToD1(
+    d1(),
+    [
+      probe({
+        status: "degraded",
+        latency_ms: null,
+        // The prober's `ok ? runAt : (prior?.last_ok ?? null)` with no prior.
+        last_ok_ms: null,
+        consecutive_failures: 1,
+      }),
+    ],
+    firstOk + 60_000,
+  );
+  assert.equal(res.ok, true);
+  const row = db
+    .prepare("SELECT status, last_ok FROM surface_status")
+    .get() as Record<string, unknown>;
+  assert.equal(row.status, "degraded", "this run's status still lands");
+  assert.equal(row.last_ok, firstOk, "history survives a prior-read degrade");
+});
+
+test("a non-ok re-probe with no prior keeps last_ok on the surface_id path (#9634)", async () => {
+  const firstOk = Date.parse("2026-08-02T10:00:00Z");
+  // surface_key null routes the upsert through ON CONFLICT(surface_id).
+  const keyless = { surface_key: null };
+  await persistProbesToD1(
+    d1(),
+    [probe({ ...keyless, last_ok_ms: firstOk })],
+    firstOk,
+  );
+  await persistProbesToD1(
+    d1(),
+    [probe({ ...keyless, status: "failed", last_ok_ms: null })],
+    firstOk + 60_000,
+  );
+  const row = db
+    .prepare("SELECT status, last_ok FROM surface_status")
+    .get() as Record<string, unknown>;
+  assert.equal(row.status, "failed");
+  assert.equal(row.last_ok, firstOk, "history survives on the keyless path");
+});
+
+// The other half of COALESCE: a non-null excluded value is authoritative, so a
+// surface that IS working must still advance its mark rather than pin the
+// oldest success forever.
+test("an ok re-probe advances last_ok rather than holding the first value (#9634)", async () => {
+  const firstOk = Date.parse("2026-08-02T10:00:00Z");
+  const laterOk = Date.parse("2026-08-02T11:00:00Z");
+  await persistProbesToD1(d1(), [probe({ last_ok_ms: firstOk })], firstOk);
+  await persistProbesToD1(d1(), [probe({ last_ok_ms: laterOk })], laterOk);
+  const row = db.prepare("SELECT last_ok FROM surface_status").get() as Record<
+    string,
+    unknown
+  >;
+  assert.equal(row.last_ok, laterOk);
+});
+
+// A surface whose first-ever probe fails has no history to protect, and must
+// read as "never seen working" rather than inheriting anything.
+test("a first probe that fails still stores last_ok null (#9634)", async () => {
+  await persistProbesToD1(
+    d1(),
+    [probe({ status: "failed", latency_ms: null, last_ok_ms: null })],
+    1,
+  );
+  const row = db.prepare("SELECT last_ok FROM surface_status").get() as Record<
+    string,
+    unknown
+  >;
+  assert.equal(row.last_ok, null);
+});
+
+// Migration 0027 recovers the rows wiped BEFORE the COALESCE above existed.
+// The prober is the only writer, so the repair is seeded through it and then
+// the column is nulled by hand -- reproducing the wipe rather than asserting
+// against a hand-built row that might not match what the prober writes.
+test("migration 0027 restores last_ok from the surviving ok checks (#9634)", async () => {
+  const okAt = Date.parse("2026-08-02T10:00:00Z");
+  const laterAt = Date.parse("2026-08-02T11:00:00Z");
+  await persistProbesToD1(
+    d1(),
+    [probe({ checked_at_ms: okAt, last_ok_ms: okAt })],
+    okAt,
+  );
+  // A second success, so the repair has to pick the MOST RECENT one.
+  await persistProbesToD1(
+    d1(),
+    [probe({ checked_at_ms: laterAt, last_ok_ms: laterAt })],
+    laterAt,
+  );
+  // A LATER degraded probe: its check row is the newest of the three, so a
+  // repair that forgot `ok = 1` would restore this timestamp instead.
+  await persistProbesToD1(
+    d1(),
+    [
+      probe({
+        status: "degraded",
+        latency_ms: null,
+        checked_at_ms: laterAt + 60_000,
+        last_ok_ms: laterAt,
+      }),
+    ],
+    laterAt + 60_000,
+  );
+  db.exec("UPDATE surface_status SET last_ok = NULL");
+
+  db.exec(LAST_OK_REPAIR);
+
+  const row = db.prepare("SELECT last_ok FROM surface_status").get() as Record<
+    string,
+    unknown
+  >;
+  assert.equal(row.last_ok, laterAt, "restored to the newest ok check");
+});
+
+test("migration 0027 leaves a surface with no ok check null (#9634)", async () => {
+  await persistProbesToD1(
+    d1(),
+    [probe({ status: "failed", latency_ms: null, last_ok_ms: null })],
+    1,
+  );
+  db.exec(LAST_OK_REPAIR);
+  const row = db.prepare("SELECT last_ok FROM surface_status").get() as Record<
+    string,
+    unknown
+  >;
+  assert.equal(row.last_ok, null, "no evidence means no claim");
+});
+
+// Re-running a repair against a live column is the way a one-shot fix becomes a
+// recurring bug, so the guard is pinned: a value the prober has since written
+// must survive a second application unchanged.
+test("migration 0027 is idempotent and never overwrites a live last_ok (#9634)", async () => {
+  const okAt = Date.parse("2026-08-02T10:00:00Z");
+  const laterAt = Date.parse("2026-08-02T11:00:00Z");
+  await persistProbesToD1(d1(), [probe({ last_ok_ms: okAt })], okAt);
+  await persistProbesToD1(d1(), [probe({ last_ok_ms: laterAt })], laterAt);
+  db.exec(LAST_OK_REPAIR);
+  db.exec(LAST_OK_REPAIR);
+  const row = db.prepare("SELECT last_ok FROM surface_status").get() as Record<
+    string,
+    unknown
+  >;
+  assert.equal(row.last_ok, laterAt, "live value untouched by the repair");
 });
 
 test("the day rollup aggregates checks into surface_uptime_daily with the clamped ratio", async () => {
