@@ -175,6 +175,12 @@ import {
   DEFAULT_CHAIN_HOLDERS_SORT,
 } from "../../src/chain-holders.ts";
 import {
+  buildTaoUsdSeries,
+  loadTaoUsdSeries,
+  DEFAULT_TAO_USD_WINDOW,
+  TAO_USD_WINDOWS,
+} from "../../src/tao-usd-series.ts";
+import {
   buildValidatorEconomics,
   buildValidatorEconomicsHistory,
   DEFAULT_VALIDATOR_ECONOMICS_HISTORY_WINDOW,
@@ -6009,6 +6015,39 @@ export async function handleSubnetHolders(
     { limit: limit.value },
   );
   const data = buildSubnetHolders(read, netuid, { limit: limit.value });
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/network/tao-usd (#9609): the USD price of one TAO, with the
+// derivation that produced it. The serving side of src/tao-usd-index.ts, whose
+// output has been written to D1 once a minute since 2026-08-02 and never read.
+//
+// A null price is a stated outcome (`price_basis: insufficient_pools`), not a
+// gap -- see src/tao-usd-series.ts for why this must never coalesce it.
+export async function handleTaoUsd(request: Request, env: Env, url: URL) {
+  const validationError = validateQueryParams(url, ["window"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const label = url.searchParams.get("window") ?? DEFAULT_TAO_USD_WINDOW;
+  const windowHours = TAO_USD_WINDOWS[label];
+  if (windowHours === undefined) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: `window must be one of ${Object.keys(TAO_USD_WINDOWS).join(", ")}.`,
+    });
+  }
+  const rows = await loadTaoUsdSeries(
+    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+      typeof loadTaoUsdSeries
+    >[0],
+    { windowHours },
+  );
+  // A cold or unwritten table yields an EMPTY series with a null `latest`, not
+  // a 404: "we have not priced this window" is a real state.
+  const data = buildTaoUsdSeries(rows, { window: label });
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },

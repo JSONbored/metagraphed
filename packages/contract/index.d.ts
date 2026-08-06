@@ -4321,6 +4321,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/network/tao-usd": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the TAO/USD index. The TAO/USD index (#9609) -- the current USD price of one TAO with the derivation that produced it, plus the recent series. There is no TAO/USD pair on chain, so this is COMPOSED per ADR 0025 (src/tao-usd-index.ts): a LIQUIDITY-WEIGHTED median across qualifying wTAO/WETH pools, rejecting any pool more than 2% from the unweighted median, refusing to publish below a two-pool quorum, multiplied through an ETH/USDC anchor leg. Composed rather than read from a wTAO/USDC pool deliberately: measured 2026-07-31 all three such pools traded $81k/day combined against WETH/USDC's $118M, ~1,455x deeper, and the thin pools demonstrably misprice -- two well-priced hops beat one badly-priced one. `latest` carries the whole reading together (price, price_basis, eth_usd, block_number, pool_count and the per-pool breakdown) so the number and its audit trail always describe the same block. A NULL usd_per_tao is a STATED OUTCOME, not a gap: the producer writes price_basis `insufficient_pools` when the quorum was not met, and the schema enforces that pairing as a CHECK constraint -- read it as 'not priceable at that block', never as a zero price. ?window=1h|24h|7d|30d (default 24h), newest first, capped at 2000 points; change_usd/change_pct describe the movement across the RETURNED window over PRICED points only, and are null when there is nothing to compare against. point_count and priced_point_count are reported separately: a gap between them is how a window with unpriceable blocks announces itself. THE SERIES BEGINS 2026-08-02 and accrues about one point per minute, so a 30d window today returns everything that exists rather than a month -- `oldest_observed_at` says exactly how far back the answer reaches. Mainnet-only: wrapped TAO on Ethereum has no testnet counterpart. */
+        get: operations["taoUsd"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/networks": {
         parameters: {
             query?: never;
@@ -12212,6 +12229,34 @@ export interface components {
             url: string;
         } & {
             [key: string]: unknown;
+        };
+        TaoUsdArtifact: {
+            change_pct: number | null;
+            change_usd: number | null;
+            latest: components["schemas"]["TaoUsdLatest"] | null;
+            oldest_observed_at: string | null;
+            point_count: number;
+            points: components["schemas"]["TaoUsdPoint"][];
+            priced_point_count: number;
+            schema_version: number;
+            window: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        TaoUsdLatest: {
+            block_number: number | null;
+            eth_usd: number | null;
+            observed_at: string | null;
+            pool_count: number | null;
+            pools: unknown[];
+            price_basis: string | null;
+            usd_per_tao: number | null;
+        };
+        TaoUsdPoint: {
+            block_number: number | null;
+            /** Format: date-time */
+            observed_at: string;
+            usd_per_tao: number | null;
         };
         TopHoldersArtifact: {
             account_count: number;
@@ -42596,6 +42641,132 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["RandomnessArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    taoUsd: {
+        parameters: {
+            query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `1h`, `24h`, `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
+                window?: "1h" | "24h" | "7d" | "30d";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "change_pct": 0.5,
+                     *         "change_usd": 0.5,
+                     *         "latest": {
+                     *           "block_number": 5000000,
+                     *           "eth_usd": 0.5,
+                     *           "observed_at": "2026-06-01T00:00:00.000Z",
+                     *           "pool_count": 1,
+                     *           "pools": [
+                     *             null
+                     *           ],
+                     *           "price_basis": "example",
+                     *           "usd_per_tao": 0.5
+                     *         },
+                     *         "oldest_observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "point_count": 1,
+                     *         "points": [
+                     *           {
+                     *             "block_number": 5000000,
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "usd_per_tao": 0.5
+                     *           }
+                     *         ],
+                     *         "priced_point_count": 1,
+                     *         "schema_version": 1,
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["TaoUsdArtifact"];
                     };
                 };
             };

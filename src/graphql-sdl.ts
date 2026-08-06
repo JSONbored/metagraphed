@@ -308,6 +308,8 @@ export const SDL = /* GraphQL */ `
     subnet_holders(netuid: Int!, limit: Int): SubnetHolders!
     "Every subnet ranked by how concentrated its alpha OWNERSHIP is: per subnet the distinct holder count, measured alpha total, top1/top5/top10/top20 shares and the largest holder's coldkey (an ss58 address). The cross-subnet companion to subnet_holders, which answers one subnet at a time. NOT chain_concentration, which computes Gini/HHI/Nakamoto off registered UIDs' stake and cannot see alpha held on hotkeys with no UID. ALPHA IS NEVER SUMMED ACROSS SUBNETS -- each subnet's alpha is a different token, so total_alpha is per subnet and the network block carries only counts plus the median top-1 share. sort is one of top1_share (default), top5_share, top10_share, top20_share, holder_count, total_alpha; unmeasurable subnets sort LAST. Declines with an empty list plus a degraded block while the pool ledger has no complete pass, so an empty list WITHOUT that block is a measurement. Mainnet only. Mirrors GET /api/v1/chain/holders."
     chain_holders(sort: String, limit: Int): ChainHolders!
+    "The USD price of one TAO with the derivation behind it, plus the recent series. Composed per ADR 0025 -- a liquidity-weighted median across qualifying wTAO/WETH pools with 2% outlier rejection and a two-pool quorum, multiplied through an ETH/USDC anchor -- because no TAO/USD pair exists on chain. A null usd_per_tao is a STATED OUTCOME (price_basis insufficient_pools), never a zero price. window is 1h, 24h (default), 7d or 30d. The series begins 2026-08-02, so a wide window returns everything that exists and oldest_observed_at says how far back that is. Mainnet only. Mirrors GET /api/v1/network/tao-usd."
+    tao_usd(window: String): TaoUsd!
     "Per-subnet per-day stake and emission concentration trend from the neuron_daily rollup over a 7d/30d/90d window (default 30d): each day's stake/emission Gini, Nakamoto coefficient, and top-10% share, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/concentration/history."
     subnet_concentration_history(
       netuid: Int!
@@ -2795,6 +2797,42 @@ export const SDL = /* GraphQL */ `
     deregistrations_per_hotkey: Float
     derivation: DeregistrationDerivation
     degraded: DegradedInfo
+  }
+
+  "One TAO/USD reading."
+  type TaoUsdPoint {
+    observed_at: String!
+    block_number: Int
+    "Null means the block was not priceable (insufficient pool quorum), NOT a zero price."
+    usd_per_tao: Float
+  }
+
+  "The newest reading with the derivation that produced it, kept together so both describe the same block."
+  type TaoUsdLatest {
+    usd_per_tao: Float
+    "Stated even when the price is null -- it is what says why."
+    price_basis: String
+    "The ETH/USDC anchor leg the composition multiplied through."
+    eth_usd: Float
+    block_number: Int
+    observed_at: String
+    pool_count: Int
+    "Per-pool provenance as the producer stored it."
+    pools: JSON
+  }
+
+  type TaoUsd {
+    schema_version: Int!
+    window: String
+    point_count: Int!
+    "How many points carried a price. A gap from point_count is how a window with unpriceable blocks announces itself."
+    priced_point_count: Int!
+    latest: TaoUsdLatest
+    "How far back the answer actually reaches -- the series began 2026-08-02."
+    oldest_observed_at: String
+    change_usd: Float
+    change_pct: Float
+    points: [TaoUsdPoint!]!
   }
 
   "One subnet's alpha-ownership concentration."

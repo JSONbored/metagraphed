@@ -1184,6 +1184,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "tao-usd",
+      "path": "/metagraph/network/tao-usd.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/TaoUsdArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "chain-holders",
       "path": "/metagraph/chain/holders.json",
       "retirement": null,
@@ -2209,7 +2218,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 86,
+    "mainnet_only_route_count": 87,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -8810,6 +8819,35 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/network/tao-usd.json",
+      "cache": "short",
+      "description": "Fetch the TAO/USD index. The TAO/USD index (#9609) -- the current USD price of one TAO with the derivation that produced it, plus the recent series. There is no TAO/USD pair on chain, so this is COMPOSED per ADR 0025 (src/tao-usd-index.ts): a LIQUIDITY-WEIGHTED median across qualifying wTAO/WETH pools, rejecting any pool more than 2% from the unweighted median, refusing to publish below a two-pool quorum, multiplied through an ETH/USDC anchor leg. Composed rather than read from a wTAO/USDC pool deliberately: measured 2026-07-31 all three such pools traded $81k/day combined against WETH/USDC's $118M, ~1,455x deeper, and the thin pools demonstrably misprice -- two well-priced hops beat one badly-priced one. `latest` carries the whole reading together (price, price_basis, eth_usd, block_number, pool_count and the per-pool breakdown) so the number and its audit trail always describe the same block. A NULL usd_per_tao is a STATED OUTCOME, not a gap: the producer writes price_basis `insufficient_pools` when the quorum was not met, and the schema enforces that pairing as a CHECK constraint -- read it as 'not priceable at that block', never as a zero price. ?window=1h|24h|7d|30d (default 24h), newest first, capped at 2000 points; change_usd/change_pct describe the movement across the RETURNED window over PRICED points only, and are null when there is nothing to compare against. point_count and priced_point_count are reported separately: a gap between them is how a window with unpriceable blocks announces itself. THE SERIES BEGINS 2026-08-02 and accrues about one point per minute, so a 30d window today returns everything that exists rather than a month -- `oldest_observed_at` says exactly how far back the answer reaches. Mainnet-only: wrapped TAO on Ethereum has no testnet counterpart.",
+      "id": "tao-usd",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/network/tao-usd",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "1h",
+              "24h",
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/network/parameters.json",

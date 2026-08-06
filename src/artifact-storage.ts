@@ -70,6 +70,9 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // The cross-subnet holder ranking (#9607), computed live from the same two
   // D1 tables -- a baked ranking would freeze exactly the fact it reports.
   /^chain\/holders\.json$/,
+  // The TAO/USD index (#9609): a live D1 read of a table written once a minute.
+  // A baked copy would be stale before it published.
+  /^network\/tao-usd\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/trajectory\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/uptime\.json$/,
   // Stake/emission concentration (#2106): computed live from the neurons D1 tier.

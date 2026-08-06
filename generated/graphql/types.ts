@@ -2919,6 +2919,8 @@ export type Query = {
   sudo_key?: Maybe<SudoKey>;
   /** Curated public interface surfaces with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/provider/id, sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/surfaces. */
   surfaces: SurfaceList;
+  /** The USD price of one TAO with the derivation behind it, plus the recent series. Composed per ADR 0025 -- a liquidity-weighted median across qualifying wTAO/WETH pools with 2% outlier rejection and a two-pool quorum, multiplied through an ETH/USDC anchor -- because no TAO/USD pair exists on chain. A null usd_per_tao is a STATED OUTCOME (price_basis insufficient_pools), never a zero price. window is 1h, 24h (default), 7d or 30d. The series begins 2026-08-02, so a wide window returns everything that exists and oldest_observed_at says how far back that is. Mainnet only. Mirrors GET /api/v1/network/tao-usd. */
+  tao_usd: TaoUsd;
   /** The largest TAO holders ranked by the chosen sort (total_tao by default), limit 1-100 (default 20). An unknown sort is a BAD_USER_INPUT error. Resolves to a schema-stable empty list when every holders tier is cold, never null. TWO TIERS (#9469): the net_flow_7d/30d/90d sorts are LIVE, recomputed daily from the account_events stake stream; the free_tao/delegated_tao/total_tao sorts are served from a fixed snapshot taken 2026-08-02 whose source scan has no writer any more, so on those captured_at/last_updated do not advance and balances are as of that date -- read that ranking as historical, and use account(ss58) for a live balance. On a flow-sorted page the three holdings columns are null, never zero. Opaque JSON, matching the get_top_holders MCP/REST shape. Mirrors GET /api/v1/accounts/top-holders. */
   top_holders?: Maybe<Scalars['JSON']['output']>;
   /** One validator's cross-subnet aggregate by hotkey; a hotkey with no validator_permit=1 rows resolves to a schema-stable zeroed aggregate, never null. Mirrors GET /api/v1/validators/{hotkey}. */
@@ -4226,6 +4228,11 @@ export type QuerySurfacesArgs = {
   order?: InputMaybe<Scalars['String']['input']>;
   provider?: InputMaybe<Scalars['String']['input']>;
   sort?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryTao_UsdArgs = {
+  window?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -5650,6 +5657,45 @@ export type SurfaceList = {
   total: Scalars['Int']['output'];
 };
 
+export type TaoUsd = {
+  __typename?: 'TaoUsd';
+  change_pct?: Maybe<Scalars['Float']['output']>;
+  change_usd?: Maybe<Scalars['Float']['output']>;
+  latest?: Maybe<TaoUsdLatest>;
+  /** How far back the answer actually reaches -- the series began 2026-08-02. */
+  oldest_observed_at?: Maybe<Scalars['String']['output']>;
+  point_count: Scalars['Int']['output'];
+  points: Array<TaoUsdPoint>;
+  /** How many points carried a price. A gap from point_count is how a window with unpriceable blocks announces itself. */
+  priced_point_count: Scalars['Int']['output'];
+  schema_version: Scalars['Int']['output'];
+  window?: Maybe<Scalars['String']['output']>;
+};
+
+/** The newest reading with the derivation that produced it, kept together so both describe the same block. */
+export type TaoUsdLatest = {
+  __typename?: 'TaoUsdLatest';
+  block_number?: Maybe<Scalars['Int']['output']>;
+  /** The ETH/USDC anchor leg the composition multiplied through. */
+  eth_usd?: Maybe<Scalars['Float']['output']>;
+  observed_at?: Maybe<Scalars['String']['output']>;
+  pool_count?: Maybe<Scalars['Int']['output']>;
+  /** Per-pool provenance as the producer stored it. */
+  pools?: Maybe<Scalars['JSON']['output']>;
+  /** Stated even when the price is null -- it is what says why. */
+  price_basis?: Maybe<Scalars['String']['output']>;
+  usd_per_tao?: Maybe<Scalars['Float']['output']>;
+};
+
+/** One TAO/USD reading. */
+export type TaoUsdPoint = {
+  __typename?: 'TaoUsdPoint';
+  block_number?: Maybe<Scalars['Int']['output']>;
+  observed_at: Scalars['String']['output'];
+  /** Null means the block was not priceable (insufficient pool quorum), NOT a zero price. */
+  usd_per_tao?: Maybe<Scalars['Float']['output']>;
+};
+
 /** One UID that changed hands between the window's boundary snapshots. */
 export type TurnoverUidReassignment = {
   __typename?: 'TurnoverUidReassignment';
@@ -6272,6 +6318,9 @@ export type ResolversTypes = ResolversObject<{
   SudoKey: ResolverTypeWrapper<SudoKey>;
   Surface: ResolverTypeWrapper<Surface>;
   SurfaceList: ResolverTypeWrapper<SurfaceList>;
+  TaoUsd: ResolverTypeWrapper<TaoUsd>;
+  TaoUsdLatest: ResolverTypeWrapper<TaoUsdLatest>;
+  TaoUsdPoint: ResolverTypeWrapper<TaoUsdPoint>;
   TurnoverUidReassignment: ResolverTypeWrapper<TurnoverUidReassignment>;
   TurnoverValidatorChange: ResolverTypeWrapper<TurnoverValidatorChange>;
   UptimeDay: ResolverTypeWrapper<UptimeDay>;
@@ -6595,6 +6644,9 @@ export type ResolversParentTypes = ResolversObject<{
   SudoKey: SudoKey;
   Surface: Surface;
   SurfaceList: SurfaceList;
+  TaoUsd: TaoUsd;
+  TaoUsdLatest: TaoUsdLatest;
+  TaoUsdPoint: TaoUsdPoint;
   TurnoverUidReassignment: TurnoverUidReassignment;
   TurnoverValidatorChange: TurnoverValidatorChange;
   UptimeDay: UptimeDay;
@@ -8845,6 +8897,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   sudo?: Resolver<ResolversTypes['ExtrinsicList'], ParentType, ContextType, Partial<QuerySudoArgs>>;
   sudo_key?: Resolver<Maybe<ResolversTypes['SudoKey']>, ParentType, ContextType, Partial<QuerySudo_KeyArgs>>;
   surfaces?: Resolver<ResolversTypes['SurfaceList'], ParentType, ContextType, Partial<QuerySurfacesArgs>>;
+  tao_usd?: Resolver<ResolversTypes['TaoUsd'], ParentType, ContextType, Partial<QueryTao_UsdArgs>>;
   top_holders?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, Partial<QueryTop_HoldersArgs>>;
   validator?: Resolver<Maybe<ResolversTypes['Validator']>, ParentType, ContextType, RequireFields<QueryValidatorArgs, 'hotkey'>>;
   validator_economics?: Resolver<ResolversTypes['ValidatorEconomicsRanking'], ParentType, ContextType, Partial<QueryValidator_EconomicsArgs>>;
@@ -9920,6 +9973,34 @@ export type SurfaceListResolvers<ContextType = GqlContext, ParentType extends Re
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type TaoUsdResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['TaoUsd'] = ResolversParentTypes['TaoUsd']> = ResolversObject<{
+  change_pct?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  change_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  latest?: Resolver<Maybe<ResolversTypes['TaoUsdLatest']>, ParentType, ContextType>;
+  oldest_observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  points?: Resolver<Array<ResolversTypes['TaoUsdPoint']>, ParentType, ContextType>;
+  priced_point_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type TaoUsdLatestResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['TaoUsdLatest'] = ResolversParentTypes['TaoUsdLatest']> = ResolversObject<{
+  block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  eth_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  pool_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  pools?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  price_basis?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  usd_per_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type TaoUsdPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['TaoUsdPoint'] = ResolversParentTypes['TaoUsdPoint']> = ResolversObject<{
+  block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  observed_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  usd_per_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
 export type TurnoverUidReassignmentResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['TurnoverUidReassignment'] = ResolversParentTypes['TurnoverUidReassignment']> = ResolversObject<{
   from_hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   to_hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -10410,6 +10491,9 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SudoKey?: SudoKeyResolvers<ContextType>;
   Surface?: SurfaceResolvers<ContextType>;
   SurfaceList?: SurfaceListResolvers<ContextType>;
+  TaoUsd?: TaoUsdResolvers<ContextType>;
+  TaoUsdLatest?: TaoUsdLatestResolvers<ContextType>;
+  TaoUsdPoint?: TaoUsdPointResolvers<ContextType>;
   TurnoverUidReassignment?: TurnoverUidReassignmentResolvers<ContextType>;
   TurnoverValidatorChange?: TurnoverValidatorChangeResolvers<ContextType>;
   UptimeDay?: UptimeDayResolvers<ContextType>;
