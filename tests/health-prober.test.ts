@@ -2382,7 +2382,13 @@ describe("rollupDailyUptime (durable daily history)", () => {
       // Dual-write: no METAGRAPH_HEALTH_DB binding in this env, so D1 did not
       // roll -- and `rolled` stays true on the Postgres side alone, which is
       // exactly the independence the dual-write promises.
+      //
+      // #9622: `d1_rolled` is now the AND of both D1 rollups, because it gates
+      // the raw prune -- reporting the day rolled while only the uptime half
+      // landed would let the raw checks be deleted with their classifications
+      // never written anywhere durable.
       d1_rolled: false,
+      d1_failures_rolled: false,
       postgres_rolled: true,
     });
   });

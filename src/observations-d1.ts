@@ -142,6 +142,67 @@ export async function persistProbesToD1(
   }
 }
 
+/**
+ * The failure-REASON rollup (#9622): aggregate a UTC day's raw checks into one
+ * row per (day, netuid, kind, classification).
+ *
+ * The sibling rollup above keeps how OFTEN a surface failed and throws away
+ * WHY: `surface_uptime_daily` carries samples, ok_count, uptime_ratio and the
+ * latency tail, and no classification at all. Once pruneHealthHistory deletes
+ * the raw window at 30 days, the reason is gone and nothing downstream can
+ * reconstruct it -- which is what this table exists to stop.
+ *
+ * `live` rows are rolled up too, not just the failures. A failure mix without
+ * its denominator is a count rather than a rate, and a reader forced to fetch
+ * the total from somewhere else would be free to pair it with a different
+ * window.
+ *
+ * The ON CONFLICT target is the EXPRESSION `ifnull(netuid, -1)`, matching
+ * 0025's unique index: netuid is nullable for registry-level surfaces, SQLite
+ * treats NULLs as distinct in a unique constraint, and a plain column key would
+ * therefore append a new row for those surfaces on every hourly tick instead of
+ * updating the one it wrote last time.
+ */
+export async function rollupFailureReasonsToD1(
+  db: ObservationsDb | undefined,
+  days: { date: string; start: number; end: number }[],
+  runAt: number,
+  env?: Env | null,
+): Promise<{ rolled: boolean; error?: string }> {
+  if (!db?.prepare) return { rolled: false };
+  try {
+    const stmt = db.prepare(
+      `INSERT INTO surface_failure_daily
+         (day, netuid, kind, classification, checks, updated_at)
+       SELECT ? AS day, netuid, kind, classification, COUNT(*) AS checks,
+              ? AS updated_at
+         FROM surface_checks
+        WHERE checked_at >= ? AND checked_at < ?
+          AND kind IS NOT NULL
+          AND classification IS NOT NULL
+        GROUP BY netuid, kind, classification
+       ON CONFLICT(day, ifnull(netuid, -1), kind, classification) DO UPDATE SET
+         checks = excluded.checks,
+         updated_at = excluded.updated_at`,
+    );
+    await db.batch(
+      days.map(({ date, start, end }) => stmt.bind(date, runAt, start, end)),
+    );
+    return { rolled: true };
+  } catch (error) {
+    // Same posture as the uptime rollup: a silent failure here freezes the
+    // reason series while the uptime series keeps advancing, which reads as
+    // "no failures had a reason" rather than as a broken lane.
+    const message = String((error as Error)?.message ?? error);
+    console.error("[rollupFailureReasonsToD1]", message);
+    await recordExceptionEvent(env, {
+      error,
+      route: "observations-d1-failure-rollup",
+    });
+    return { rolled: false, error: message };
+  }
+}
+
 // The day rollup, verbatim from the pre-flip implementation: aggregate the raw
 // checks for a UTC day into one row per (surface, day), with the exact
 // clamped-ratio and status semantics the daily series has always had, and the

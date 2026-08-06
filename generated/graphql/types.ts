@@ -2188,6 +2188,53 @@ export type ExtrinsicList = {
   total: Scalars['Int']['output'];
 };
 
+export type FailureReason = {
+  __typename?: 'FailureReason';
+  checks: Scalars['Int']['output'];
+  classification: Scalars['String']['output'];
+  /** Of the FAILING probes only; null on a succeeding classification, where the question does not apply. */
+  failure_share?: Maybe<Scalars['Float']['output']>;
+  /** redirected is NOT a failure -- a surface answering from a new location is serving. */
+  is_failure: Scalars['Boolean']['output'];
+  /** Of every probe in the window. */
+  share?: Maybe<Scalars['Float']['output']>;
+};
+
+export type FailureReasons = {
+  __typename?: 'FailureReasons';
+  /** Counted from the ROWS, not the requested window -- a day the prober did not run is absent rather than a zero. */
+  days_covered?: Maybe<Scalars['Int']['output']>;
+  /** Present ONLY on a decline. An empty window is a measurement, not a decline. */
+  degraded?: Maybe<FailureReasonsDegraded>;
+  failing_checks?: Maybe<Scalars['Int']['output']>;
+  failure_rate?: Maybe<Scalars['Float']['output']>;
+  kind?: Maybe<Scalars['String']['output']>;
+  netuid?: Maybe<Scalars['Int']['output']>;
+  newest_day?: Maybe<Scalars['String']['output']>;
+  oldest_day?: Maybe<Scalars['String']['output']>;
+  reasons: Array<FailureReason>;
+  schema_version: Scalars['Int']['output'];
+  /** Oldest day first. */
+  series: Array<FailureReasonsDay>;
+  total_checks?: Maybe<Scalars['Int']['output']>;
+  window?: Maybe<Scalars['String']['output']>;
+};
+
+export type FailureReasonsDay = {
+  __typename?: 'FailureReasonsDay';
+  /** Checks per classification on this day, as a JSON object. */
+  by_classification: Scalars['JSON']['output'];
+  day: Scalars['String']['output'];
+  failing_checks: Scalars['Int']['output'];
+  failure_rate?: Maybe<Scalars['Float']['output']>;
+  total_checks: Scalars['Int']['output'];
+};
+
+export type FailureReasonsDegraded = {
+  __typename?: 'FailureReasonsDegraded';
+  reason: Scalars['String']['output'];
+};
+
 /** Registry-wide interface gap report page. Mirrors GET /api/v1/gaps (and MCP list_gaps). */
 export type GapsList = {
   __typename?: 'GapsList';
@@ -2764,6 +2811,8 @@ export type Query = {
   extrinsic?: Maybe<ExtrinsicDetail>;
   /** Recent-extrinsic feed (newest first), optionally filtered. Optionally narrow by call_hash, block (exact height), block_start/block_end (inclusive height range), or from/to (observed_at epoch-ms range — String args because epoch-ms exceeds GraphQL Int's 32-bit range, matching account_history) — the same filters GET /api/v1/extrinsics and the list_extrinsics MCP tool accept. Mirrors GET /api/v1/extrinsics. */
   extrinsics: ExtrinsicList;
+  /** WHY registry surfaces fail and whether the mix is changing: the classification breakdown (live, redirected, transient, rate-limited, timeout, dead, content-mismatch, unsupported, auth-required) over a window, plus a per-day series. NOT health_history, which filters one dated snapshot BY classification; this aggregates the reasons themselves. Successful probes are counted too, because a rate needs its denominator -- share is of every probe in the window, failure_share is of the failing ones only and is NULL rather than zero on a succeeding classification. redirected is NOT a failure: a surface answering from a new location is serving. days_covered is counted from the rows, so a day the prober did not run is ABSENT rather than a day of perfect health. window is 7d, 30d (default), 90d or 180d. An empty window is a MEASUREMENT, not a decline. Mainnet only. Mirrors GET /api/v1/health/failure-reasons. */
+  failure_reasons: FailureReasons;
   /** One captured live request/response fixture by surface_id — the sanitized sample get_fixture / GET /api/v1/fixtures/{surface_id} return. Resolves deprecated surface_id aliases the same way MCP does. Null when no fixture exists for the id (rather than a GraphQL error). An invalid surface_id is BAD_USER_INPUT. Opaque JSON passed through verbatim. Mirrors GET /api/v1/fixtures/{surface_id}. */
   fixture?: Maybe<Scalars['JSON']['output']>;
   /** The recorded response fixtures for registered surfaces, used to replay/verify a surface without calling it. Null when no fixture index has been baked in this environment. Opaque JSON passed through verbatim, matching the list_fixtures MCP/REST shape. Mirrors GET /api/v1/fixtures. */
@@ -3507,6 +3556,13 @@ export type QueryExtrinsicsArgs = {
   signer?: InputMaybe<Scalars['String']['input']>;
   success?: InputMaybe<Scalars['Boolean']['input']>;
   to?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryFailure_ReasonsArgs = {
+  kind?: InputMaybe<Scalars['String']['input']>;
+  netuid?: InputMaybe<Scalars['Int']['input']>;
+  window?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -6272,6 +6328,10 @@ export type ResolversTypes = ResolversObject<{
   Extrinsic: ResolverTypeWrapper<Extrinsic>;
   ExtrinsicDetail: ResolverTypeWrapper<ExtrinsicDetail>;
   ExtrinsicList: ResolverTypeWrapper<ExtrinsicList>;
+  FailureReason: ResolverTypeWrapper<FailureReason>;
+  FailureReasons: ResolverTypeWrapper<FailureReasons>;
+  FailureReasonsDay: ResolverTypeWrapper<FailureReasonsDay>;
+  FailureReasonsDegraded: ResolverTypeWrapper<FailureReasonsDegraded>;
   Float: ResolverTypeWrapper<Scalars['Float']['output']>;
   GapsList: ResolverTypeWrapper<GapsList>;
   GlobalHealth: ResolverTypeWrapper<GlobalHealth>;
@@ -6603,6 +6663,10 @@ export type ResolversParentTypes = ResolversObject<{
   Extrinsic: Extrinsic;
   ExtrinsicDetail: ExtrinsicDetail;
   ExtrinsicList: ExtrinsicList;
+  FailureReason: FailureReason;
+  FailureReasons: FailureReasons;
+  FailureReasonsDay: FailureReasonsDay;
+  FailureReasonsDegraded: FailureReasonsDegraded;
   Float: Scalars['Float']['output'];
   GapsList: GapsList;
   GlobalHealth: GlobalHealth;
@@ -8490,6 +8554,42 @@ export type ExtrinsicListResolvers<ContextType = GqlContext, ParentType extends 
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type FailureReasonResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['FailureReason'] = ResolversParentTypes['FailureReason']> = ResolversObject<{
+  checks?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  classification?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  failure_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  is_failure?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type FailureReasonsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['FailureReasons'] = ResolversParentTypes['FailureReasons']> = ResolversObject<{
+  days_covered?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['FailureReasonsDegraded']>, ParentType, ContextType>;
+  failing_checks?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  failure_rate?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  kind?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  netuid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  newest_day?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  oldest_day?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  reasons?: Resolver<Array<ResolversTypes['FailureReason']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  series?: Resolver<Array<ResolversTypes['FailureReasonsDay']>, ParentType, ContextType>;
+  total_checks?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type FailureReasonsDayResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['FailureReasonsDay'] = ResolversParentTypes['FailureReasonsDay']> = ResolversObject<{
+  by_classification?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
+  day?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  failing_checks?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  failure_rate?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  total_checks?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type FailureReasonsDegradedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['FailureReasonsDegraded'] = ResolversParentTypes['FailureReasonsDegraded']> = ResolversObject<{
+  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
 export type GapsListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['GapsList'] = ResolversParentTypes['GapsList']> = ResolversObject<{
   cursor?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   gaps?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
@@ -8914,6 +9014,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   evm_address_mapping?: Resolver<Maybe<ResolversTypes['EvmAddressMapping']>, ParentType, ContextType, RequireFields<QueryEvm_Address_MappingArgs, 'h160'>>;
   extrinsic?: Resolver<Maybe<ResolversTypes['ExtrinsicDetail']>, ParentType, ContextType, RequireFields<QueryExtrinsicArgs, 'ref'>>;
   extrinsics?: Resolver<ResolversTypes['ExtrinsicList'], ParentType, ContextType, Partial<QueryExtrinsicsArgs>>;
+  failure_reasons?: Resolver<ResolversTypes['FailureReasons'], ParentType, ContextType, Partial<QueryFailure_ReasonsArgs>>;
   fixture?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QueryFixtureArgs, 'surface_id'>>;
   fixtures?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   freshness?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
@@ -10505,6 +10606,10 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   Extrinsic?: ExtrinsicResolvers<ContextType>;
   ExtrinsicDetail?: ExtrinsicDetailResolvers<ContextType>;
   ExtrinsicList?: ExtrinsicListResolvers<ContextType>;
+  FailureReason?: FailureReasonResolvers<ContextType>;
+  FailureReasons?: FailureReasonsResolvers<ContextType>;
+  FailureReasonsDay?: FailureReasonsDayResolvers<ContextType>;
+  FailureReasonsDegraded?: FailureReasonsDegradedResolvers<ContextType>;
   GapsList?: GapsListResolvers<ContextType>;
   GlobalHealth?: GlobalHealthResolvers<ContextType>;
   GlobalIncidents?: GlobalIncidentsResolvers<ContextType>;

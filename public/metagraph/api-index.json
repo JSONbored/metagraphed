@@ -1220,6 +1220,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "failure-reasons",
+      "path": "/metagraph/health/failure-reasons.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/FailureReasonsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "chain-burn",
       "path": "/metagraph/chain/burn.json",
       "retirement": null,
@@ -2236,7 +2245,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 89,
+    "mainnet_only_route_count": 90,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -9103,6 +9112,49 @@
             "maximum": 512,
             "minimum": 1,
             "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/health/failure-reasons.json",
+      "cache": "short",
+      "description": "Fetch the probe failure-reason mix. WHY surfaces fail, and whether the mix is changing (#9622). surface_checks.classification is the only record of why a probe failed -- live, redirected, transient, rate-limited, timeout, dead, content-mismatch, unsupported, auth-required, across 1,263,089 checks measured 2026-08-06 -- and nothing served that distribution. /health/history/{date} accepts ?classification= as a FILTER over a dated snapshot ('which surfaces were dead on day D'), which is a different question from 'why are surfaces failing'. THIS READS A ROLLUP, NOT THE RAW TABLE, and that is the point: the raw checks are pruned at 30 days, and the pre-existing daily rollup keeps samples/ok_count/uptime_ratio with NO classification -- it records the RATE of failure and discards the REASON, so every day the answer to 'why did this fail' was expiring. Migration 0025 adds surface_failure_daily, backfills it from everything the raw table still held, and the hourly rollup keeps it current under the same rolled-before-prune contract, so this route is both cheap (7,312 rows for 26 days, against a 7-day raw GROUP BY reading 955,783 rows in 1.14s) and no longer capped at the retention window. SUCCESSFUL PROBES ARE COUNTED TOO, because a rate needs its denominator: 400 timeouts is a different story against 500 checks than against 500,000. share is of every probe in the window and failure_share is of the failing ones only, so neither has to be reconstructed from the other, and failure_share is NULL on a succeeding classification rather than zero. redirected is NOT counted as a failure -- a surface answering from a new location is serving, and the probe's own status says so. THE DEPTH IS PUBLISHED: days_covered is counted from the ROWS rather than from the requested window, so a day the prober did not run is absent rather than reported as a day of perfect health, and oldest_day/newest_day say what was actually covered. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free hour count, because the source is a DAILY rollup and an arbitrary hour would imply a resolution it does not have; ?netuid= scopes to one subnet and ?kind= to one surface kind, both applied in SQL. An EMPTY window is a measurement, not a decline: it means the prober recorded nothing in that range. Mainnet-only: the registry whose surfaces are probed is mainnet's.",
+      "id": "failure-reasons",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/health/failure-reasons",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d",
+              "90d",
+              "180d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "netuid",
+          "schema": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "kind",
+          "schema": {
+            "type": "string"
           }
         }
       ]

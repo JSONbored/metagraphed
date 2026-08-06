@@ -120,3 +120,22 @@ export const SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX = 50;
 // recent-events feed sizing): default 50 changes, capped at 200.
 export const CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT = 50;
 export const CHAIN_IDENTITY_HISTORY_LIMIT_MAX = 200;
+
+/**
+ * `/api/v1/health/failure-reasons` -- the probe failure-reason mix (#9622).
+ *
+ * Windows rather than a free integer: the route reads a DAILY rollup, so an
+ * arbitrary hour count would imply a resolution the table does not have. 30d is
+ * the default because it matches the raw table's retention -- the window a
+ * reader already reasons in -- while 90d and 180d reach into the history the
+ * rollup keeps that the raw table no longer can, which is the whole reason it
+ * exists.
+ */
+export const FAILURE_REASONS_WINDOW_DAYS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+  "180d": 180,
+};
+export const FAILURE_REASONS_WINDOWS = Object.keys(FAILURE_REASONS_WINDOW_DAYS);
+export const DEFAULT_FAILURE_REASONS_WINDOW = "30d";

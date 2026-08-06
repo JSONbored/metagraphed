@@ -156,6 +156,7 @@ import {
   handleChainBurn,
   handleChainHolders,
   handleEmissionChanges,
+  handleFailureReasons,
   handleTaoUsd,
   handleSubnetSurfaceHistory,
   handleSubnetBurnHistory,
@@ -5535,6 +5536,9 @@ export function isMainnetOnlyApiPath(pathname: string) {
     pathname === "/api/v1/chain/holders" ||
     pathname === "/api/v1/chain/governance/emission-changes" ||
     pathname === "/api/v1/network/tao-usd" ||
+    // #9622: the rollup is aggregated from probes of REGISTRY surfaces, and
+    // the registry is mainnet's.
+    pathname === "/api/v1/health/failure-reasons" ||
     SUBNET_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_IDENTITY_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_CONCENTRATION_PATH_PATTERN.test(pathname) ||
@@ -5630,6 +5634,11 @@ async function dispatchLiveChainRoute(
   // both source tables are -- see MAINNET_ONLY_ROUTE_PATHS.
   if (pathname === "/api/v1/chain/holders") {
     return handleChainHolders(request, env, new URL(request.url));
+  }
+  // #9622: the probe failure-reason mix, read from the daily rollup. Exact-path
+  // match for the same reason as the line above.
+  if (pathname === "/api/v1/health/failure-reasons") {
+    return handleFailureReasons(request, env, new URL(request.url));
   }
   // #9609: the TAO/USD index, read from the D1 series the minute tick writes.
   // Mainnet-only: wrapped TAO on Ethereum has no testnet counterpart.

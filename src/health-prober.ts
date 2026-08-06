@@ -31,6 +31,7 @@ import { OPERATIONAL_SURFACES_R2_KEY } from "./operational-surfaces-sync.ts";
 import {
   persistProbesToD1,
   pruneChecksD1,
+  rollupFailureReasonsToD1,
   rollupUptimeDailyToD1,
   upsertSubnetSnapshotsToD1,
   type ObservationsDb,
@@ -904,6 +905,18 @@ export async function rollupDailyUptime(
     runAt,
     env,
   );
+  // #9622: the reason rollup runs beside the uptime one and is folded into
+  // `d1_rolled` below, which is what gates the raw prune. Reporting the day as
+  // rolled while only the uptime half landed would let pruneHealthHistory
+  // delete the raw checks whose classifications never made it anywhere durable
+  // -- the exact orphaning `d1_rolled` was introduced to prevent, one table
+  // over.
+  const d1Failures = await rollupFailureReasonsToD1(
+    env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
+    days,
+    runAt,
+    env,
+  );
   const result = await syncHealthUptimeRollupToPostgres(env, days, runAt);
   if (!result.synced && !d1Rollup.rolled) {
     return { rolled: false, reason: result.reason };
@@ -911,7 +924,8 @@ export async function rollupDailyUptime(
   return {
     rolled: true,
     days: days.map((d) => d.date),
-    d1_rolled: d1Rollup.rolled,
+    d1_rolled: d1Rollup.rolled && d1Failures.rolled,
+    d1_failures_rolled: d1Failures.rolled,
     postgres_rolled: result.synced === true,
   };
 }

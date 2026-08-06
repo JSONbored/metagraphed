@@ -317,6 +317,13 @@ import {
   EMISSION_CHANGES_LIMIT_MAX,
 } from "./emission-gate-changes.ts";
 import {
+  buildFailureReasons,
+  declineFailureReasons,
+  loadFailureReasons,
+  FAILURE_REASONS_WINDOWS,
+} from "./failure-reasons.ts";
+import { DEFAULT_FAILURE_REASONS_WINDOW } from "./route-limits.ts";
+import {
   buildTaoUsdSeries,
   loadTaoUsdSeries,
   DEFAULT_TAO_USD_WINDOW,
@@ -1188,6 +1195,7 @@ export const FIELD_COMPLEXITY = {
   chain_holders: RELATIONSHIP_FIELD_COMPLEXITY,
   // #9615: one bounded union over three small append-only tables.
   emission_changes: RELATIONSHIP_FIELD_COMPLEXITY,
+  failure_reasons: RELATIONSHIP_FIELD_COMPLEXITY,
   // #9609: one bounded window read off an indexed column.
   tao_usd: RELATIONSHIP_FIELD_COMPLEXITY,
   // #9612: one indexed, bounded read of the registry history table.
@@ -2884,6 +2892,45 @@ const rootValue = {
       sort: sort ?? DEFAULT_CHAIN_HOLDERS_SORT,
       limit: limit ?? CHAIN_HOLDERS_LIMIT_DEFAULT,
     });
+  },
+
+  async failure_reasons(
+    {
+      window,
+      netuid,
+      kind,
+    }: { window?: string | null; netuid?: number | null; kind?: string | null },
+    context: GqlContext,
+  ) {
+    // #9622. Shares the REST/MCP loader for #9540's reason.
+    if (window != null && !FAILURE_REASONS_WINDOWS.includes(window)) {
+      throw new GraphQLError(
+        `window must be one of: ${FAILURE_REASONS_WINDOWS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    if (
+      netuid != null &&
+      (!Number.isInteger(netuid) || netuid < 0 || netuid > 65535)
+    ) {
+      throw new GraphQLError("netuid must be an integer between 0 and 65535.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const args = {
+      window: window ?? DEFAULT_FAILURE_REASONS_WINDOW,
+      netuid: netuid ?? undefined,
+      kind: kind ?? undefined,
+    };
+    const rows = await loadFailureReasons(
+      context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof loadFailureReasons
+      >[0],
+      args,
+    );
+    return rows === null
+      ? declineFailureReasons("unavailable", args)
+      : buildFailureReasons(rows, args);
   },
 
   async subnet_holders(

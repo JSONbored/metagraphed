@@ -22,6 +22,7 @@ import {
   SUBNET_HOLDERS_LIMIT_MAX,
   CHAIN_HOLDERS_LIMIT_DEFAULT,
   CHAIN_HOLDERS_LIMIT_MAX,
+  FAILURE_REASONS_WINDOWS,
   SURFACE_HISTORY_LIMIT_DEFAULT,
   SURFACE_HISTORY_LIMIT_MAX,
   EMISSION_CHANGES_LIMIT_DEFAULT,
@@ -1677,6 +1678,13 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/chain/holders.json",
     `Every subnet ranked by how concentrated its alpha OWNERSHIP is (#9607) — per subnet: the distinct holder count, the measured alpha total, top1/top5/top10/top20 shares, and the largest holder's coldkey (an ss58 address). The cross-subnet companion to /subnets/{netuid}/holders, which answers this one subnet at a time and so costs 129 requests to compare the network. DISTINCT FROM /chain/concentration, which computes Gini/HHI/Nakamoto off neurons.stake_tao and therefore sees REGISTERED UIDs only — on netuid 74 that is 10 of the 92 hotkeys actually carrying positions. This reads the position ledger, so alpha parked on hotkeys holding no UID is measured rather than invisible, and the two routes disagree by design. ALPHA IS NEVER SUMMED ACROSS SUBNETS: each subnet's alpha is a different token, so total_alpha is reported per subnet and the network rollup carries only dimension-free facts — subnets measured, how many have a single account holding a majority, how many have exactly one holder, and the MEDIAN of the top-1 shares. A cross-subnet total requires pricing each subnet's alpha through its own alpha_price_tao first, which is what /accounts/top-holders does. ?sort=top1_share (default), top5_share, top10_share, top20_share, holder_count or total_alpha; a subnet whose share could not be computed sorts LAST rather than reading as the least concentrated. limit caps the returned subnets (default ${CHAIN_HOLDERS_LIMIT_DEFAULT}, max ${CHAIN_HOLDERS_LIMIT_MAX}) and the max sits above the subnet count so ranking the whole network is one request. DECLINES rather than answering while the hotkey_alpha pool ledger has no complete pass — an empty subnets array with degraded.reason pool_totals_unproven and a NULL subnet_count, never a zero one. Mainnet-only: neither source table carries a network dimension.`,
     "ChainHoldersArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
+    "failure-reasons",
+    "/metagraph/health/failure-reasons.json",
+    "WHY surfaces fail, and whether the mix is changing (#9622). surface_checks.classification is the only record of why a probe failed -- live, redirected, transient, rate-limited, timeout, dead, content-mismatch, unsupported, auth-required, across 1,263,089 checks measured 2026-08-06 -- and nothing served that distribution. /health/history/{date} accepts ?classification= as a FILTER over a dated snapshot ('which surfaces were dead on day D'), which is a different question from 'why are surfaces failing'. THIS READS A ROLLUP, NOT THE RAW TABLE, and that is the point: the raw checks are pruned at 30 days, and the pre-existing daily rollup keeps samples/ok_count/uptime_ratio with NO classification -- it records the RATE of failure and discards the REASON, so every day the answer to 'why did this fail' was expiring. Migration 0025 adds surface_failure_daily, backfills it from everything the raw table still held, and the hourly rollup keeps it current under the same rolled-before-prune contract, so this route is both cheap (7,312 rows for 26 days, against a 7-day raw GROUP BY reading 955,783 rows in 1.14s) and no longer capped at the retention window. SUCCESSFUL PROBES ARE COUNTED TOO, because a rate needs its denominator: 400 timeouts is a different story against 500 checks than against 500,000. share is of every probe in the window and failure_share is of the failing ones only, so neither has to be reconstructed from the other, and failure_share is NULL on a succeeding classification rather than zero. redirected is NOT counted as a failure -- a surface answering from a new location is serving, and the probe's own status says so. THE DEPTH IS PUBLISHED: days_covered is counted from the ROWS rather than from the requested window, so a day the prober did not run is absent rather than reported as a day of perfect health, and oldest_day/newest_day say what was actually covered. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free hour count, because the source is a DAILY rollup and an arbitrary hour would imply a resolution it does not have; ?netuid= scopes to one subnet and ?kind= to one surface kind, both applied in SQL. An EMPTY window is a measurement, not a decline: it means the prober recorded nothing in that range. Mainnet-only: the registry whose surfaces are probed is mainnet's.",
+    "FailureReasonsArtifact",
     COMPUTED_LIVE,
   ),
   artifact(
@@ -3972,6 +3980,27 @@ export const API_ROUTES = [
     [],
   ),
   route(
+    "failure-reasons",
+    "GET",
+    "/api/v1/health/failure-reasons",
+    "/metagraph/health/failure-reasons.json",
+    "Fetch the probe failure-reason mix. WHY surfaces fail, and whether the mix is changing (#9622). surface_checks.classification is the only record of why a probe failed -- live, redirected, transient, rate-limited, timeout, dead, content-mismatch, unsupported, auth-required, across 1,263,089 checks measured 2026-08-06 -- and nothing served that distribution. /health/history/{date} accepts ?classification= as a FILTER over a dated snapshot ('which surfaces were dead on day D'), which is a different question from 'why are surfaces failing'. THIS READS A ROLLUP, NOT THE RAW TABLE, and that is the point: the raw checks are pruned at 30 days, and the pre-existing daily rollup keeps samples/ok_count/uptime_ratio with NO classification -- it records the RATE of failure and discards the REASON, so every day the answer to 'why did this fail' was expiring. Migration 0025 adds surface_failure_daily, backfills it from everything the raw table still held, and the hourly rollup keeps it current under the same rolled-before-prune contract, so this route is both cheap (7,312 rows for 26 days, against a 7-day raw GROUP BY reading 955,783 rows in 1.14s) and no longer capped at the retention window. SUCCESSFUL PROBES ARE COUNTED TOO, because a rate needs its denominator: 400 timeouts is a different story against 500 checks than against 500,000. share is of every probe in the window and failure_share is of the failing ones only, so neither has to be reconstructed from the other, and failure_share is NULL on a succeeding classification rather than zero. redirected is NOT counted as a failure -- a surface answering from a new location is serving, and the probe's own status says so. THE DEPTH IS PUBLISHED: days_covered is counted from the ROWS rather than from the requested window, so a day the prober did not run is absent rather than reported as a day of perfect health, and oldest_day/newest_day say what was actually covered. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free hour count, because the source is a DAILY rollup and an arbitrary hour would imply a resolution it does not have; ?netuid= scopes to one subnet and ?kind= to one surface kind, both applied in SQL. An EMPTY window is a measurement, not a decline: it means the prober recorded nothing in that range. Mainnet-only: the registry whose surfaces are probed is mainnet's.",
+    "short",
+    ["health"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: FAILURE_REASONS_WINDOWS },
+      },
+      {
+        name: "netuid",
+        schema: { type: "integer", minimum: 0, maximum: 65535 },
+      },
+      { name: "kind", schema: { type: "string" } },
+    ],
+    [],
+  ),
+  route(
     "chain-burn",
     "GET",
     "/api/v1/chain/burn",
@@ -5306,6 +5335,10 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   "/api/v1/subnets/{netuid}/surface-history",
   // #9615: the sampler that writes these tables reads finney.
   "/api/v1/chain/governance/emission-changes",
+  // #9622: the rollup this reads is aggregated from probes of REGISTRY
+  // surfaces, and the registry is mainnet's -- the same reason /health and
+  // /health/trends are already here.
+  "/api/v1/health/failure-reasons",
   "/api/v1/economics/trends",
   "/api/v1/health",
   "/api/v1/subnets/{netuid}/health",

@@ -4236,6 +4236,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/health/failure-reasons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the probe failure-reason mix. WHY surfaces fail, and whether the mix is changing (#9622). surface_checks.classification is the only record of why a probe failed -- live, redirected, transient, rate-limited, timeout, dead, content-mismatch, unsupported, auth-required, across 1,263,089 checks measured 2026-08-06 -- and nothing served that distribution. /health/history/{date} accepts ?classification= as a FILTER over a dated snapshot ('which surfaces were dead on day D'), which is a different question from 'why are surfaces failing'. THIS READS A ROLLUP, NOT THE RAW TABLE, and that is the point: the raw checks are pruned at 30 days, and the pre-existing daily rollup keeps samples/ok_count/uptime_ratio with NO classification -- it records the RATE of failure and discards the REASON, so every day the answer to 'why did this fail' was expiring. Migration 0025 adds surface_failure_daily, backfills it from everything the raw table still held, and the hourly rollup keeps it current under the same rolled-before-prune contract, so this route is both cheap (7,312 rows for 26 days, against a 7-day raw GROUP BY reading 955,783 rows in 1.14s) and no longer capped at the retention window. SUCCESSFUL PROBES ARE COUNTED TOO, because a rate needs its denominator: 400 timeouts is a different story against 500 checks than against 500,000. share is of every probe in the window and failure_share is of the failing ones only, so neither has to be reconstructed from the other, and failure_share is NULL on a succeeding classification rather than zero. redirected is NOT counted as a failure -- a surface answering from a new location is serving, and the probe's own status says so. THE DEPTH IS PUBLISHED: days_covered is counted from the ROWS rather than from the requested window, so a day the prober did not run is absent rather than reported as a day of perfect health, and oldest_day/newest_day say what was actually covered. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free hour count, because the source is a DAILY rollup and an arbitrary hour would imply a resolution it does not have; ?netuid= scopes to one subnet and ?kind= to one surface kind, both applied in SQL. An EMPTY window is a measurement, not a decline: it means the prober recorded nothing in that range. Mainnet-only: the registry whose surfaces are probed is mainnet's. */
+        get: operations["failureReasons"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health/history/{date}": {
         parameters: {
             query?: never;
@@ -8820,6 +8837,42 @@ export interface components {
             schema_version: number;
         } & {
             [key: string]: unknown;
+        };
+        FailureReason: {
+            checks: number;
+            classification: string;
+            failure_share: number | null;
+            is_failure: boolean;
+            share: number | null;
+        };
+        FailureReasonsArtifact: {
+            days_covered: number | null;
+            degraded?: {
+                /** @enum {string} */
+                reason: "unavailable";
+            };
+            failing_checks: number | null;
+            failure_rate: number | null;
+            kind: string | null;
+            netuid: number | null;
+            newest_day: string | null;
+            oldest_day: string | null;
+            reasons: components["schemas"]["FailureReason"][];
+            schema_version: number;
+            series: components["schemas"]["FailureReasonsDay"][];
+            total_checks: number | null;
+            window: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        FailureReasonsDay: {
+            by_classification: {
+                [key: string]: number;
+            };
+            day: string;
+            failing_checks: number;
+            failure_rate: number | null;
+            total_checks: number;
         };
         FixtureArtifact: {
             captured_at?: string | null;
@@ -42098,6 +42151,141 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["HealthSummaryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    failureReasons: {
+        parameters: {
+            query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`, `180d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
+                window?: "7d" | "30d" | "90d" | "180d";
+                /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
+                netuid?: number;
+                kind?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "days_covered": 1,
+                     *         "degraded": {
+                     *           "reason": "unavailable"
+                     *         },
+                     *         "failing_checks": 1,
+                     *         "failure_rate": 0.5,
+                     *         "kind": "example",
+                     *         "netuid": 7,
+                     *         "newest_day": "example",
+                     *         "oldest_day": "example",
+                     *         "reasons": [
+                     *           {
+                     *             "checks": 1,
+                     *             "classification": "example",
+                     *             "failure_share": 0.5,
+                     *             "is_failure": false,
+                     *             "share": 0.5
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "series": [
+                     *           {
+                     *             "by_classification": {},
+                     *             "day": "2026-06-01",
+                     *             "failing_checks": 1,
+                     *             "failure_rate": 0.5,
+                     *             "total_checks": 1
+                     *           }
+                     *         ],
+                     *         "total_checks": 1,
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["FailureReasonsArtifact"];
                     };
                 };
             };
