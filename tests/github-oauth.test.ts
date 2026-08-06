@@ -98,6 +98,17 @@ describe("buildOAuthProviderOptions", () => {
     assert.equal(options.defaultHandler, defaultHandler);
   });
 
+  // #9637: asserted as an explicit `false`, not merely "not true". The
+  // library branches on `allowPlainPKCE !== false` for the advertised metadata
+  // and on `=== false` for the runtime rejection, so `undefined` -- the value
+  // this option had before -- takes the permissive side of BOTH. A test that
+  // accepted any falsy value would pass on exactly the state being fixed.
+  test("requires S256 PKCE: plain is disallowed explicitly (#9637)", () => {
+    const defaultHandler = { fetch: async () => new Response("default") };
+    const options = buildOAuthProviderOptions(defaultHandler);
+    assert.equal(options.allowPlainPKCE, false);
+  });
+
   test("apiHandler.fetch delegates to the given defaultHandler unchanged", async () => {
     const calls: unknown[][] = [];
     const defaultHandler = {
