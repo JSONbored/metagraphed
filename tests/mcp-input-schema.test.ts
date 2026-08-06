@@ -424,3 +424,65 @@ describe("every published tool parameter carries an example (#9655)", () => {
     assert.deepEqual(offenders, []);
   });
 });
+
+// #9659: `format` is a small, specific keyword and the temptation is to spray
+// it. These three are the ones that are TRUE; the gate exists to keep the next
+// one honest rather than to grow the count.
+describe("published formats are vetted, not invented (#9659)", () => {
+  // Each entry records WHY it is allowed, because that is the part a reviewer
+  // needs and the part that rots.
+  const VETTED: Record<string, string> = {
+    date: "annotation only -- the handler gates on DAY_PATTERN (shape), so the stricter calendar pattern is deliberately NOT published",
+    uuid: "enforced -- src/webhooks.ts validates UUID v4 before using the id as a KV key",
+    "uri-reference":
+      "a relative path resolved against the surface's base URL; `uri` would wrongly demand a scheme",
+  };
+
+  const formatted = () => {
+    const rows: Array<{ tool: string; name: string; schema: Row }> = [];
+    for (const tool of listToolDefinitions() as Row[]) {
+      const props = (tool.inputSchema as Row)?.properties ?? {};
+      for (const [name, schema] of Object.entries(props)) {
+        if ((schema as Row).format) {
+          rows.push({ tool: tool.name as string, name, schema: schema as Row });
+        }
+      }
+    }
+    return rows;
+  };
+
+  test("no unvetted format reaches the published schema", () => {
+    const unknown = formatted()
+      .filter((p) => !((p.schema.format as string) in VETTED))
+      .map((p) => `${p.tool}.${p.name} -> ${p.schema.format}`);
+    assert.deepEqual(
+      unknown,
+      [],
+      "a format asserts something about the VALUE -- add it here with the " +
+        "reason the handler makes it true, or drop it",
+    );
+  });
+
+  // The distinction the whole change turns on: a `format` the handler does not
+  // enforce must not arrive with a pattern narrower than the handler's own
+  // gate, or a generated client refuses input the server takes.
+  test("the date format stays annotation-only over the handler's own pattern", () => {
+    const date = formatted().find((p) => p.schema.format === "date");
+    assert.ok(date, "expected a date-formatted parameter");
+    assert.equal(
+      date.schema.pattern,
+      "^\\d{4}-\\d{2}-\\d{2}$",
+      "must remain the shape-only pattern the handler gates on",
+    );
+  });
+
+  test("the uuid format publishes the pattern the handler enforces", () => {
+    const uuid = formatted().find((p) => p.schema.format === "uuid");
+    assert.ok(uuid, "expected a uuid-formatted parameter");
+    assert.match(
+      String(uuid.schema.pattern),
+      /4\[0-9a-fA-F\]\{3\}/,
+      "v4-specific, matching what src/webhooks.ts accepts",
+    );
+  });
+});
