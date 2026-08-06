@@ -18,6 +18,7 @@ import {
   packMultiFamilyMessage,
   packSyncBatchMessages,
   syncBatchRowCount,
+  syncBatchRows,
   QUEUE_MESSAGE_MAX_BYTES,
   SYNC_BATCH_LANES,
   SYNC_BATCH_MAX_ROWS,
@@ -398,19 +399,125 @@ describe("packSyncBatchMessages", () => {
     );
   });
 
-  test("throws on a single row too large for the budget", () => {
-    // A non-pruning lane has no key to group by, so the group IS one row -- and
-    // a row that cannot fit alone cannot be split at all. Better a named error
-    // than a message the transport silently refuses.
+  test("a group over the BUDGET but under the cap goes alone, not thrown", () => {
+    // metagraphed-infra#355. `maxBytes` decides when to stop COMBINING groups;
+    // a group that exceeds it alone cannot be combined with anything, but can
+    // still BE a message -- the only real limit on one message is the transport
+    // cap. Conflating the two made nominator-positions' largest coldkey (722
+    // positions, ~108 KB against a 96 KB budget) unpackable, and the lane 502'd
+    // on its first tick.
+    const messages = packSyncBatchMessages({
+      lane: "hotkey-alpha",
+      capturedAt: 1,
+      rows: [{ blob: "x".repeat(5_000) }, { small: 1 }],
+      maxBytes: 1_024,
+    });
+    assert.equal(messages.length, 2, "the big row got its own message");
+    assert.equal(messages[0]!.rows.length, 1);
+    assert.equal(messages[1]!.rows.length, 1);
+    // And it is still a valid, deliverable message.
+    assert.equal(
+      JSON.stringify(messages[0]).length <= QUEUE_MESSAGE_MAX_BYTES,
+      true,
+    );
+  });
+
+  test("a group over the TRANSPORT CAP still throws, rather than splitting", () => {
+    // The cap is the one limit that cannot be negotiated. A group this large
+    // is a producer-side problem, and the error says so instead of the packer
+    // quietly breaking key_complete to make it fit.
     assert.throws(
       () =>
         packSyncBatchMessages({
           lane: "hotkey-alpha",
           capturedAt: 1,
-          rows: [{ blob: "x".repeat(5_000) }],
-          maxBytes: 1_024,
+          rows: [{ blob: "x".repeat(QUEUE_MESSAGE_MAX_BYTES + 1_000) }],
         }),
-      /row group of 1 row\(s\) is \d+ bytes/,
+      /over the \d+-byte transport cap/,
+    );
+  });
+
+  test("a real 722-position coldkey packs, which is the case that broke", () => {
+    // The measured shape: nominator-positions' largest coldkey. Rows carry a
+    // coldkey, a hotkey, a netuid, an alpha and a captured_at -- ~150 bytes --
+    // so 722 of them is ~108 KB: over the 96 KB budget, under the 128 KB cap.
+    const coldkey = `5${"C".repeat(47)}`;
+    const rows = Array.from({ length: 722 }, (_, i) => ({
+      coldkey,
+      hotkey: `5${String(i).padStart(47, "H")}`,
+      netuid: i % 129,
+      alpha: 1234.56789 + i,
+      captured_at: 1_785_970_245_474,
+    }));
+    // 722 x 200 bytes is ~141 KB -- over the 128 KB cap -- so this only fits
+    // because the coldkey is hoisted off the rows.
+    const messages = packSyncBatchMessages({
+      lane: "nominator-positions",
+      capturedAt: 1_785_970_245_474,
+      rows,
+    });
+    assert.equal(messages.length, 1, "one coldkey, one message");
+    assert.equal(messages[0]!.rows.length, 722, "not one row dropped");
+    assert.equal(messages[0]!.key_complete, true);
+    assert.equal(messages[0]!.key_column, "coldkey", "the key was hoisted");
+    assert.equal(messages[0]!.key_value, coldkey);
+    // Hoisted means ABSENT from the rows -- two copies could disagree.
+    assert.equal("coldkey" in messages[0]!.rows[0]!, false);
+    assert.equal(
+      JSON.stringify(messages[0]).length <= QUEUE_MESSAGE_MAX_BYTES,
+      true,
+      "and the whole point: it now fits",
+    );
+    assert.equal(validSyncBatchMessage(messages[0]), true);
+
+    // The consumer sees whole rows again, so the writer and its prune map are
+    // untouched by the wire encoding.
+    const rebuilt = syncBatchRows(messages[0]!);
+    assert.equal(rebuilt.length, 722);
+    assert.equal(rebuilt[0]!.coldkey, coldkey);
+    assert.deepEqual(rebuilt[0], rows[0]);
+  });
+
+  test("a hoisted key is refused if the rows still carry it", () => {
+    // Two copies of one value can disagree, and the consumer would have to pick.
+    assert.equal(
+      validSyncBatchMessage({
+        lane: "nominator-positions",
+        captured_at: 1,
+        key_complete: true,
+        key_column: "coldkey",
+        key_value: "5A",
+        rows: [{ coldkey: "5B", netuid: 1 }],
+      }),
+      false,
+    );
+  });
+
+  test("a hoisted key is refused on a lane that does not prune", () => {
+    // It is the PRUNE key that is constant across a group. Nothing else is.
+    assert.equal(
+      validSyncBatchMessage({
+        lane: "hotkey-alpha",
+        captured_at: 1,
+        key_column: "hotkey",
+        key_value: "5A",
+        rows: [{ netuid: 1 }],
+      }),
+      false,
+    );
+  });
+
+  test("a hoisted key must name the lane's OWN prune column", () => {
+    assert.equal(
+      validSyncBatchMessage({
+        lane: "nominator-positions",
+        captured_at: 1,
+        key_complete: true,
+        key_column: "netuid",
+        key_value: "7",
+        rows: [{ hotkey: "5A" }],
+      }),
+      false,
     );
   });
 
