@@ -22,6 +22,7 @@ import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
 import { beforeEach, describe, test } from "vitest";
+import { validSyncBatchMessage } from "../src/sync-batch-queue.ts";
 import type { Row } from "./row-type.ts";
 
 const { default: worker } = await import("../workers/data-api.ts");
@@ -418,5 +419,99 @@ describe("pass_total completeness accounting", () => {
     });
     assert.equal(response.status, 400);
     assert.equal(rows().length, 0);
+  });
+});
+
+describe("routed to the sync queue (metagraphed-infra#350)", () => {
+  function queueEnv(send: (m: unknown) => Promise<void>) {
+    return env({
+      SYNC_BATCHES: { send },
+      SYNC_QUEUE_LANES: "account-balances",
+    });
+  }
+
+  test("enqueues instead of writing, and never both", async () => {
+    // NO DUAL WRITE. This is the lane whose unthrottled write saturated D1 in
+    // the first place; writing it twice during the migration would double the
+    // load the queue exists to relieve.
+    const sent: Record<string, unknown>[] = [];
+    const response = await post(
+      { rows: [balanceRow(), balanceRow({ ss58: SS58_B })] },
+      SECRET,
+      queueEnv(async (m) => {
+        sent.push(m as Record<string, unknown>);
+      }),
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      ok: true,
+      account_balances_written: 2,
+      stores: ["queue"],
+      pass_total: null,
+    });
+    assert.equal(sent.length, 1);
+    assert.equal(rows().length, 0, "D1 must not also have been written");
+    assert.equal(passes().length, 0);
+  });
+
+  test("carries a declared pass through to the queue", async () => {
+    // A queue knows a message was DELIVERED. It does not know whether the
+    // producer's whole scan arrived -- a different fact, and the one that caught
+    // this ledger publishing 147,000 of 364,000 rows while looking fresh. The
+    // declaration has to survive the transport or the tally means nothing.
+    const sent: Record<string, unknown>[] = [];
+    const response = await post(
+      { pass_total: 364_000, rows: [balanceRow()] },
+      SECRET,
+      queueEnv(async (m) => {
+        sent.push(m as Record<string, unknown>);
+      }),
+    );
+    assert.equal(response.status, 200);
+    assert.equal(
+      ((await response.json()) as Row).pass_total,
+      364_000,
+      "echoed, so a producer sees its declaration was understood",
+    );
+    assert.equal(sent[0]!.pass_total, 364_000);
+    assert.equal(sent[0]!.captured_at, 1_780_000_000_000);
+    assert.equal(validSyncBatchMessage(sent[0]), true);
+  });
+
+  test("an undeclared chunk enqueues without inventing a total", async () => {
+    // Inventing one would mark an unproven load complete -- the precise lie the
+    // completeness gate exists to prevent.
+    const sent: Record<string, unknown>[] = [];
+    await post(
+      { rows: [balanceRow()] },
+      SECRET,
+      queueEnv(async (m) => {
+        sent.push(m as Record<string, unknown>);
+      }),
+    );
+    assert.equal("pass_total" in sent[0]!, false);
+    assert.equal(validSyncBatchMessage(sent[0]), true);
+  });
+
+  test("a failed enqueue is a 502, not a silent success", async () => {
+    const response = await post(
+      { rows: [balanceRow()] },
+      SECRET,
+      queueEnv(async () => {
+        throw new Error("queue unavailable");
+      }),
+    );
+    assert.equal(response.status, 502);
+    assert.equal(rows().length, 0, "no fallback write -- the lane is cut over");
+  });
+
+  test("an un-opted deployment still writes D1", async () => {
+    const response = await post(
+      { rows: [balanceRow()] },
+      SECRET,
+      env({ SYNC_BATCHES: { send: async () => {} } }),
+    );
+    assert.equal(response.status, 200);
+    assert.equal(rows().length, 1);
   });
 });

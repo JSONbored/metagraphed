@@ -2095,6 +2095,39 @@ async function handleAccountBalancesSync(request: Request, env: Env) {
     };
   }
 
+  // Enqueue or write, never both -- see handleHotkeyAlphaSync's own note.
+  //
+  // THE LANE THAT CAUSED THE INCIDENT. `D1_ERROR: D1 DB is overloaded` aborted
+  // this pass at 147,000 of 364,000 rows, and took `wallet-auth` and
+  // `tao-usd-index` down with it on the database everything shares. It is
+  // therefore the real test of whether queue-provided backpressure replaces the
+  // producer's one-second inter-chunk sleep -- which is why it moves last of
+  // the simple lanes, after the cheap ones proved the shape.
+  //
+  // The declared pass rides along unchanged. A queue knows a message was
+  // delivered; it does not know whether a producer's whole SCAN arrived, and
+  // that second fact is the one that caught the truncation.
+  if (syncLaneUsesQueue(env, "account-balances")) {
+    try {
+      await env.SYNC_BATCHES!.send({
+        lane: "account-balances",
+        captured_at: pass?.capturedAt ?? (rows[0]!.captured_at as number),
+        ...(pass ? { pass_total: pass.expectedRows } : {}),
+        rows,
+      });
+    } catch (err) {
+      console.error("data-api account-balances enqueue failed:", err);
+      await captureDataApiError(err, "account-balances-sync-queue", env);
+      return writeJson({ error: "enqueue failed" }, 502);
+    }
+    return writeJson({
+      ok: true,
+      account_balances_written: rows.length,
+      stores: ["queue"],
+      pass_total: pass?.expectedRows ?? null,
+    });
+  }
+
   // D1 is the binding this path REQUIRES -- the only store this family has.
   // Checked HERE, after validation, not at the top: a malformed body is a 400
   // whether or not a store happens to be bound (handleNominatorPositionsSync's
@@ -7250,6 +7283,14 @@ export default {
                 typeof writeNominatorPositionsToD1
               >[0],
               { rows, coldkeyMaxCapturedAt: coldkeyMaxCapturedAt(rows) },
+            ),
+          "account-balances": (rows, pass) =>
+            writeAccountBalancesToD1(
+              env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+                typeof writeAccountBalancesToD1
+              >[0],
+              rows,
+              pass,
             ),
           "validator-nominator-counts": (rows) =>
             writeValidatorNominatorCountsToD1(
