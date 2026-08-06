@@ -5,10 +5,7 @@ import { ApiError } from "@/lib/metagraphed/client";
 import { searchResolveQuery, semanticSearchQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { captureEvent } from "@/lib/analytics";
-import type {
-  ResolvedIdentifier,
-  SemanticSearchResult,
-} from "@/lib/metagraphed/types";
+import type { ResolvedIdentifier, SemanticSearchResult } from "@/lib/metagraphed/types";
 
 const RESULT_LIMIT = 8;
 
