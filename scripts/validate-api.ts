@@ -1420,6 +1420,41 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/chain/concentration/history",
+    (body) => {
+      // #9628. An empty window is a MEASUREMENT: only a failed read declines.
+      if (body.data.degraded) {
+        assert.equal(body.data.point_count, null);
+        return;
+      }
+      assert.equal(Array.isArray(body.data.points), true);
+      assert.equal(body.data.point_count, body.data.points.length);
+      // More than one builder version means the series changes DEFINITION
+      // partway along -- it must be reported, not inferred.
+      assert.equal(Array.isArray(body.data.builder_versions), true);
+      const seen = new Set();
+      for (const p of body.data.points as Array<{
+        day: string;
+        builder_version: number | null;
+        stake: { gini?: number } | null;
+      }>) {
+        if (p.builder_version !== null) seen.add(p.builder_version);
+        // A null scorecard is "no measurable distribution", never zeros -- so
+        // when one IS present its ratios must be real ratios.
+        if (p.stake && typeof p.stake.gini === "number") {
+          assert.equal(p.stake.gini >= 0 && p.stake.gini <= 1, true);
+        }
+      }
+      assert.deepEqual(
+        [...body.data.builder_versions].sort(),
+        [...seen].sort(),
+      );
+      // Oldest first, so a caller plotting the series need not reverse it.
+      const days = body.data.points.map((p: { day: string }) => p.day);
+      assert.deepEqual(days, [...days].sort());
+    },
+  ],
+  [
     "/api/v1/chain/holders",
     (body) => {
       // #9607. Never 404s and never serves a bare empty ranking: either

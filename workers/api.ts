@@ -1,4 +1,5 @@
 import { economicsFieldSources } from "../src/economics-field-sources.ts";
+import { rollupChainConcentration } from "../src/chain-concentration-rollup.ts";
 import {
   API_QUERY_COLLECTIONS,
   API_ROUTES,
@@ -155,6 +156,7 @@ import {
   handleSubnetBurn,
   handleChainBurn,
   handleChainHolders,
+  handleChainConcentrationHistory,
   handleEmissionChanges,
   handleFailureReasons,
   handleIndexerLag,
@@ -457,6 +459,7 @@ import {
   PROJECTION_STALENESS_WATCHDOG_CRON,
   VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON,
   CHAIN_DETAIL_PRUNE_CRON,
+  CHAIN_CONCENTRATION_ROLLUP_CRON,
   CHAIN_DETAIL_STALENESS_WATCHDOG_CRON,
   TOP_HOLDERS_FLOW_CRON,
   TOP_HOLDERS_STALENESS_WATCHDOG_CRON,
@@ -1649,6 +1652,8 @@ function cronLabel(cron: string): string {
   if (cron === VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON)
     return "validator-nominator-counts-staleness-watchdog";
   if (cron === CHAIN_DETAIL_PRUNE_CRON) return "chain-detail-prune";
+  if (cron === CHAIN_CONCENTRATION_ROLLUP_CRON)
+    return "chain-concentration-rollup";
   if (cron === CHAIN_DETAIL_STALENESS_WATCHDOG_CRON)
     return "chain-detail-staleness-watchdog";
   if (cron === TOP_HOLDERS_STALENESS_WATCHDOG_CRON)
@@ -1969,6 +1974,18 @@ async function dispatchScheduled(
     // failed delete is a real "did not do the work" outcome, and the wrapper
     // honours it.
     return pruneChainDetail(env);
+  }
+  if (cron === CHAIN_CONCENTRATION_ROLLUP_CRON) {
+    // #9628: compute the network-wide concentration card for every COMPLETE
+    // day that has none yet, bounded per tick. Runs the same builder
+    // /chain/concentration serves, so a historical point and the live card are
+    // one computation -- see src/chain-concentration-rollup.ts.
+    return rollupChainConcentration(
+      env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof rollupChainConcentration
+      >[0],
+      { env },
+    );
   }
   if (cron === CHAIN_DETAIL_STALENESS_WATCHDOG_CRON) {
     // The chain-detail live lane's alarm. Zero alerts is the correct steady
@@ -5543,6 +5560,8 @@ export function isMainnetOnlyApiPath(pathname: string) {
     // #9620: chain_detail_blocks is the mainnet firehose poller's own hot tier
     // and carries no network column.
     pathname === "/api/v1/chain/indexer-lag" ||
+    // #9628: neuron_daily carries no network dimension.
+    pathname === "/api/v1/chain/concentration/history" ||
     SUBNET_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_IDENTITY_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_CONCENTRATION_PATH_PATTERN.test(pathname) ||
@@ -5648,6 +5667,11 @@ async function dispatchLiveChainRoute(
   // hot tier. Exact-path match for the same reason as the line above.
   if (pathname === "/api/v1/chain/indexer-lag") {
     return handleIndexerLag(request, env, new URL(request.url));
+  }
+  // #9628: the network-wide concentration series. Exact-path match, and placed
+  // before the bare /chain/concentration check so the suffix is not swallowed.
+  if (pathname === "/api/v1/chain/concentration/history") {
+    return handleChainConcentrationHistory(request, env, new URL(request.url));
   }
   // #9609: the TAO/USD index, read from the D1 series the minute tick writes.
   // Mainnet-only: wrapped TAO on Ethereum has no testnet counterpart.

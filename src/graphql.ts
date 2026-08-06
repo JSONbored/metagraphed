@@ -311,6 +311,13 @@ import {
 } from "./chain-holders.ts";
 import { buildIndexerLag, loadIndexerLag } from "./indexer-lag.ts";
 import {
+  buildChainConcentrationHistory,
+  declineChainConcentrationHistory,
+  loadChainConcentrationHistory,
+  CHAIN_CONCENTRATION_HISTORY_WINDOWS,
+} from "./chain-concentration-history.ts";
+import { DEFAULT_CHAIN_CONCENTRATION_HISTORY_WINDOW } from "./route-limits.ts";
+import {
   buildEmissionChanges,
   loadEmissionChanges,
   EMISSION_CHANGE_KINDS,
@@ -1194,6 +1201,7 @@ export const FIELD_COMPLEXITY = {
   subnet_holders: RELATIONSHIP_FIELD_COMPLEXITY,
   // #9607: one bounded statement over the same two tables.
   chain_holders: RELATIONSHIP_FIELD_COMPLEXITY,
+  chain_concentration_history: RELATIONSHIP_FIELD_COMPLEXITY,
   // #9615: one bounded union over three small append-only tables.
   emission_changes: RELATIONSHIP_FIELD_COMPLEXITY,
   failure_reasons: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -2943,6 +2951,34 @@ const rootValue = {
       >[0],
     );
     return buildIndexerLag(row, Date.now());
+  },
+
+  async chain_concentration_history(
+    { window }: { window?: string | null },
+    context: GqlContext,
+  ) {
+    // #9628. Shares the REST/MCP loader for #9540's reason.
+    if (
+      window != null &&
+      !CHAIN_CONCENTRATION_HISTORY_WINDOWS.includes(window)
+    ) {
+      throw new GraphQLError(
+        `window must be one of: ${CHAIN_CONCENTRATION_HISTORY_WINDOWS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const args = {
+      window: window ?? DEFAULT_CHAIN_CONCENTRATION_HISTORY_WINDOW,
+    };
+    const rows = await loadChainConcentrationHistory(
+      context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof loadChainConcentrationHistory
+      >[0],
+      args,
+    );
+    return rows === null
+      ? declineChainConcentrationHistory("unavailable", args)
+      : buildChainConcentrationHistory(rows, args);
   },
 
   async subnet_holders(

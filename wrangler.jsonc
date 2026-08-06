@@ -793,6 +793,11 @@
       // which do not survive the boxes -- see FRESHNESS_WATCHDOG_CRON in
       // workers/config.ts and src/freshness-watchdog.ts's header.
       "23 * * * *",
+      // 18 = hourly network-wide concentration rollup (#9628). The only free
+      // minute on the hourly grid; hourly rather than daily so the
+      // self-backfill of the days already in neuron_daily drains in a working
+      // day -- see CHAIN_CONCENTRATION_ROLLUP_CRON in workers/config.ts.
+      "18 * * * *",
       // 20 6 = daily github-signals capture writing the R2 store, replacing
       // the retired sync-github-signals.yml commit-a-file workflow (same
       // 06:20 UTC cadence it ran on) -- see GITHUB_SIGNALS_SYNC_CRON in

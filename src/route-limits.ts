@@ -139,3 +139,23 @@ export const FAILURE_REASONS_WINDOW_DAYS: Record<string, number> = {
 };
 export const FAILURE_REASONS_WINDOWS = Object.keys(FAILURE_REASONS_WINDOW_DAYS);
 export const DEFAULT_FAILURE_REASONS_WINDOW = "30d";
+
+/**
+ * `/api/v1/chain/concentration/history` -- the network-wide concentration
+ * series (#9628).
+ *
+ * Windows rather than a free day count, because the source is a DAILY rollup.
+ * 30d is the default and matches what the per-subnet twin already offers, even
+ * though `neuron_daily` -- which the rollup cannot predate -- is itself only
+ * ~27 days deep: the payload reports the depth it FOUND, so a wider window is
+ * answered honestly rather than refused.
+ */
+export const CHAIN_CONCENTRATION_HISTORY_WINDOW_DAYS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+};
+export const CHAIN_CONCENTRATION_HISTORY_WINDOWS = Object.keys(
+  CHAIN_CONCENTRATION_HISTORY_WINDOW_DAYS,
+);
+export const DEFAULT_CHAIN_CONCENTRATION_HISTORY_WINDOW = "30d";

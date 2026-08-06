@@ -2957,6 +2957,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/concentration/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the network-wide concentration series. Is the NETWORK getting more concentrated (#9628) -- the network-wide concentration card as a per-day series. /subnets/{netuid}/concentration/history has answered that one subnet at a time since it shipped; /chain/concentration had no series at all, so 'is subnet 74 concentrating?' was one request and 'is Bittensor concentrating?' was unanswerable. Each point carries the same five lenses the live card does -- stake, emission, entity_stake, entity_emission, validator_stake, each with holders/total/gini/hhi/hhi_normalized/nakamoto_coefficient/top-K shares/entropy -- plus uids_per_entity and the shape of the day it was computed over (neuron_count, subnet_count, entity_count). THIS READS A ROLLUP, AND THE ROLLUP RAN THE SERVING BUILDER. The per-subnet route computes Gini/HHI/Nakamoto in JS from raw per-UID rows, which works because a netuid slice is about 256 of them; network-wide it is not a slice -- neuron_daily holds 816,803 rows across 27 days, ~30,100 a day (measured 2026-08-06), so a 30-day series computed that way would pull ~900,000 rows into one request. An hourly cron instead computes each COMPLETE day once with buildChainConcentration, the same function /chain/concentration serves, so a historical point and the live card are the same computation by construction rather than a SQL reimplementation that agrees until it quietly does not. The rollup BACKFILLS ITSELF, bounded to a few days a tick, so the history that already exists fills in without a separate recovery path. A STORED COMPUTATION FREEZES THE CODE THAT PRODUCED IT, and that is published rather than hidden: if the builder changes, points computed before and after disagree BY CONSTRUCTION, not because the network moved. Every point carries the builder_version it was computed under and the series reports builder_versions -- more than one means the series changes DEFINITION partway along, and a trend drawn across that boundary is not a trend. THE DEPTH IS THE ROLLUP'S, NOT THE WINDOW'S. neuron_daily is itself only ~27 days deep and the rollup cannot predate it, so a 90d window returns what EXISTS; oldest_day/newest_day and point_count come from the rows, and a day the capture did not run is ABSENT rather than a zero-concentration point, which would read as a perfectly distributed network on a day nothing was measured. Today is never rolled up: neuron_daily gains rows as the capture proceeds, so a mid-day card would be computed over a partial network and then never revisited. A NULL scorecard means no measurable distribution, not a missing one -- computeConcentration returns null when a distribution has no positive values, and substituting zeros would invent a perfectly equal one. ?window= is 7d, 30d (default) or 90d. An EMPTY window is a measurement, not an error. Mainnet-only: neuron_daily carries no network dimension. */
+        get: operations["chainConcentrationHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/deregistrations": {
         parameters: {
             query?: never;
@@ -7329,6 +7346,47 @@ export interface components {
             subnet_count: number;
             uids_per_entity: number | null;
             validator_stake: components["schemas"]["ConcentrationMetrics"];
+        } & {
+            [key: string]: unknown;
+        };
+        ChainConcentrationHistoryArtifact: {
+            builder_versions: number[];
+            degraded?: {
+                /** @enum {string} */
+                reason: "unavailable";
+            };
+            newest_day: string | null;
+            oldest_day: string | null;
+            point_count: number | null;
+            points: components["schemas"]["ChainConcentrationHistoryPoint"][];
+            schema_version: number;
+            window: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        ChainConcentrationHistoryPoint: {
+            builder_version: number | null;
+            day: string;
+            emission: components["schemas"]["ChainConcentrationScorecard"] | null;
+            entity_count: number | null;
+            entity_emission: components["schemas"]["ChainConcentrationScorecard"] | null;
+            entity_stake: components["schemas"]["ChainConcentrationScorecard"] | null;
+            neuron_count: number | null;
+            source_captured_at: string | null;
+            stake: components["schemas"]["ChainConcentrationScorecard"] | null;
+            subnet_count: number | null;
+            uids_per_entity: number | null;
+            validator_stake: components["schemas"]["ChainConcentrationScorecard"] | null;
+        };
+        ChainConcentrationScorecard: {
+            entropy: number | null;
+            entropy_normalized: number | null;
+            gini: number | null;
+            hhi: number | null;
+            hhi_normalized: number | null;
+            holders: number;
+            nakamoto_coefficient: number | null;
+            total: number;
         } & {
             [key: string]: unknown;
         };
@@ -34524,6 +34582,179 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainConcentrationArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainConcentrationHistory: {
+        parameters: {
+            query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
+                window?: "7d" | "30d" | "90d";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "builder_versions": [
+                     *           1
+                     *         ],
+                     *         "degraded": {
+                     *           "reason": "unavailable"
+                     *         },
+                     *         "newest_day": "example",
+                     *         "oldest_day": "example",
+                     *         "point_count": 1,
+                     *         "points": [
+                     *           {
+                     *             "builder_version": 1,
+                     *             "day": "2026-06-01",
+                     *             "emission": {
+                     *               "entropy": 0.5,
+                     *               "entropy_normalized": 0.5,
+                     *               "gini": 0.5,
+                     *               "hhi": 0.5,
+                     *               "hhi_normalized": 0.5,
+                     *               "holders": 1,
+                     *               "nakamoto_coefficient": 1,
+                     *               "total": 1
+                     *             },
+                     *             "entity_count": 1,
+                     *             "entity_emission": {
+                     *               "entropy": 0.5,
+                     *               "entropy_normalized": 0.5,
+                     *               "gini": 0.5,
+                     *               "hhi": 0.5,
+                     *               "hhi_normalized": 0.5,
+                     *               "holders": 1,
+                     *               "nakamoto_coefficient": 1,
+                     *               "total": 1
+                     *             },
+                     *             "entity_stake": {
+                     *               "entropy": 0.5,
+                     *               "entropy_normalized": 0.5,
+                     *               "gini": 0.5,
+                     *               "hhi": 0.5,
+                     *               "hhi_normalized": 0.5,
+                     *               "holders": 1,
+                     *               "nakamoto_coefficient": 1,
+                     *               "total": 1
+                     *             },
+                     *             "neuron_count": 1,
+                     *             "source_captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "stake": {
+                     *               "entropy": 0.5,
+                     *               "entropy_normalized": 0.5,
+                     *               "gini": 0.5,
+                     *               "hhi": 0.5,
+                     *               "hhi_normalized": 0.5,
+                     *               "holders": 1,
+                     *               "nakamoto_coefficient": 1,
+                     *               "total": 1
+                     *             },
+                     *             "subnet_count": 1,
+                     *             "uids_per_entity": 0.5,
+                     *             "validator_stake": {
+                     *               "entropy": 0.5,
+                     *               "entropy_normalized": 0.5,
+                     *               "gini": 0.5,
+                     *               "hhi": 0.5,
+                     *               "hhi_normalized": 0.5,
+                     *               "holders": 1,
+                     *               "nakamoto_coefficient": 1,
+                     *               "total": 1
+                     *             }
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainConcentrationHistoryArtifact"];
                     };
                 };
             };

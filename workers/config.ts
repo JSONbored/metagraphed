@@ -240,6 +240,18 @@ export const ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON = "4,34 * * * *";
 // dispatch keys on the LITERAL cron string, so it must be unique here as well as
 // matching a wrangler.jsonc `triggers.crons` entry.
 export const HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON = "54 * * * *";
+/**
+ * #9628: the network-wide concentration rollup.
+ *
+ * :18 is the only free minute on the hourly grid that collides with none of
+ * the crons above and sits on neither the five- nor the fifteen-minute
+ * grid. HOURLY rather than
+ * daily even though it only rolls up COMPLETE days: the pass is a single
+ * anti-join when there is nothing pending, and the frequency is what drains
+ * the self-backfill of the days already in neuron_daily within one working day
+ * instead of a month.
+ */
+export const CHAIN_CONCENTRATION_ROLLUP_CRON = "18 * * * *";
 // #9146: scheduled projections -- recompute the windowed-aggregate artifacts
 // (every lane in src/projection-lanes.ts's PROJECTION_LANES) from the
 // lakehouse. These routes cannot

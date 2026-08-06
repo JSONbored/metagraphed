@@ -308,6 +308,8 @@ export const SDL = /* GraphQL */ `
     subnet_holders(netuid: Int!, limit: Int): SubnetHolders!
     "Every subnet ranked by how concentrated its alpha OWNERSHIP is: per subnet the distinct holder count, measured alpha total, top1/top5/top10/top20 shares and the largest holder's coldkey (an ss58 address). The cross-subnet companion to subnet_holders, which answers one subnet at a time. NOT chain_concentration, which computes Gini/HHI/Nakamoto off registered UIDs' stake and cannot see alpha held on hotkeys with no UID. ALPHA IS NEVER SUMMED ACROSS SUBNETS -- each subnet's alpha is a different token, so total_alpha is per subnet and the network block carries only counts plus the median top-1 share. sort is one of top1_share (default), top5_share, top10_share, top20_share, holder_count, total_alpha; unmeasurable subnets sort LAST. Declines with an empty list plus a degraded block while the pool ledger has no complete pass, so an empty list WITHOUT that block is a measurement. Mainnet only. Mirrors GET /api/v1/chain/holders."
     chain_holders(sort: String, limit: Int): ChainHolders!
+    "Whether the NETWORK is getting more concentrated: the network-wide concentration card as a per-day series, each point carrying the same five lenses the live card does (stake, emission, entity_stake, entity_emission, validator_stake) plus uids_per_entity and the shape of the day it was computed over. subnet_concentration_history answers one subnet at a time; this answers the whole network. READ builder_versions BEFORE DRAWING A TREND -- each point is a STORED computation, so if the builder changed, points before and after disagree BY CONSTRUCTION rather than because the network moved, and more than one version means the series changes DEFINITION partway along. The depth is the rollup's: neuron_daily is ~27 days deep and the rollup cannot predate it, so a 90d window returns what EXISTS, and a day the capture did not run is ABSENT rather than a zero-concentration point. A NULL scorecard means no measurable distribution, not a missing one. window is 7d, 30d (default) or 90d. An empty window is a measurement. Mainnet only. Mirrors GET /api/v1/chain/concentration/history."
+    chain_concentration_history(window: String): ChainConcentrationHistory!
     "Every recorded change to the emission gate -- its governance parameters, the per-subnet emission switches, and the dormant TAO-flow path, in one chronological feed. network_parameters serves these as CURRENT state; this says when they became that and what they were before. CRITICAL FOR COUNTING: predates_capture means the entry is the FIRST OBSERVATION of a value, not a change to it, so subtract predates_capture_count before reporting how often something changed. Each entry carries only the fields its kind has. kind filters to param, subnet or flow; newest first across all three tables. An empty feed is the steady state, not an error. Mainnet only. Mirrors GET /api/v1/chain/governance/emission-changes."
     emission_changes(kind: String, limit: Int): EmissionGateChanges!
     "WHY registry surfaces fail and whether the mix is changing: the classification breakdown (live, redirected, transient, rate-limited, timeout, dead, content-mismatch, unsupported, auth-required) over a window, plus a per-day series. NOT health_history, which filters one dated snapshot BY classification; this aggregates the reasons themselves. Successful probes are counted too, because a rate needs its denominator -- share is of every probe in the window, failure_share is of the failing ones only and is NULL rather than zero on a succeeding classification. redirected is NOT a failure: a surface answering from a new location is serving. days_covered is counted from the rows, so a day the prober did not run is ABSENT rather than a day of perfect health. window is 7d, 30d (default), 90d or 180d. An empty window is a MEASUREMENT, not a decline. Mainnet only. Mirrors GET /api/v1/health/failure-reasons."
@@ -3003,6 +3005,43 @@ export const SDL = /* GraphQL */ `
     measured_at: String!
     "Present ONLY on a decline; its absence says the measurement is real."
     degraded: IndexerLagDegraded
+  }
+
+  type ChainConcentrationHistoryPoint {
+    day: String!
+    "The shape of the day the card was computed over -- a point across half the network is not comparable to one across all of it."
+    neuron_count: Int
+    subnet_count: Int
+    entity_count: Int
+    "WHEN the network looked like this, as distinct from when it was computed."
+    source_captured_at: String
+    "Which definition of the metrics produced this point."
+    builder_version: Int
+    uids_per_entity: Float
+    "NULL means no measurable distribution, NOT missing."
+    stake: JSON
+    emission: JSON
+    entity_stake: JSON
+    entity_emission: JSON
+    validator_stake: JSON
+  }
+
+  type ChainConcentrationHistoryDegraded {
+    reason: String!
+  }
+
+  type ChainConcentrationHistory {
+    schema_version: Int!
+    window: String
+    "From the ROWS. A day the capture did not run is absent, never a zero-concentration point."
+    point_count: Int
+    oldest_day: String
+    newest_day: String
+    "Every distinct builder version in the series. More than one means it changes DEFINITION partway along."
+    builder_versions: [Int!]!
+    points: [ChainConcentrationHistoryPoint!]!
+    "Present ONLY on a decline. An empty window is a measurement."
+    degraded: ChainConcentrationHistoryDegraded
   }
 
   type ChainHolders {
