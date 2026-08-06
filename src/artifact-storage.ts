@@ -12,6 +12,10 @@ export const ARTIFACT_STORAGE_TIERS: Record<
 export const R2_STAGING_RELATIVE_ROOT = "dist/metagraph-r2/metagraph";
 
 export const R2_ONLY_PATTERNS: RegExp[] = [
+  // Identifier resolution (metagraphed-infra#362) is a PURE FUNCTION of the
+  // query -- there is nothing to bake, and a baked copy would be a file that
+  // never changes yet still has to be published.
+  /^search\/resolve\.json$/,
   /^adapters\/[^/]+\.json$/,
   /^candidates\.json$/,
   /^candidates\/(?:\d+|\{netuid\})\.json$/,

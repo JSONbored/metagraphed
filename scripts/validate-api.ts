@@ -1388,6 +1388,30 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/search/resolve?q=7",
+    (body) => {
+      // #362. The AMBIGUITY contract is the thing worth asserting live: `7` is
+      // both a real subnet and a real block, so a single answer here would mean
+      // the route started guessing.
+      assert.equal(Array.isArray(body.data.matches), true);
+      assert.equal(body.data.match_count, body.data.matches.length);
+      assert.equal(body.data.match_count, 2, "7 is a block AND a subnet");
+      assert.deepEqual(
+        body.data.matches.map((m: { kind: string }) => m.kind),
+        ["block", "subnet"],
+      );
+      // A UI must not navigate on an ambiguous query.
+      assert.equal(body.data.unambiguous, false);
+      for (const match of body.data.matches as Array<{
+        api_path: string;
+        ui_path: string;
+      }>) {
+        assert.match(match.api_path, /^\/api\/v1\//);
+        assert.match(match.ui_path, /^\//);
+      }
+    },
+  ],
+  [
     "/api/v1/chain/indexer-lag",
     (body) => {
       // #9620. Either a real measurement or a declared decline -- never a

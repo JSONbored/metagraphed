@@ -41,6 +41,10 @@ export const LIVE_CHAIN_ROUTE_PATHS: readonly string[] = [
   "/api/v1/evm/address/{h160}",
   "/api/v1/network/parameters",
   "/api/v1/network/randomness",
+  // Shape parsing is network-agnostic: an ss58 checksum and a 32-byte hash
+  // mean the same thing on every chain, so this answers identically under a
+  // /testnet/ prefix and must not be reported as unserved there.
+  "/api/v1/search/resolve",
   "/api/v1/subnets/{netuid}/burn",
   "/api/v1/subnets/{netuid}/lease",
   "/api/v1/subnets/{netuid}/recycled",

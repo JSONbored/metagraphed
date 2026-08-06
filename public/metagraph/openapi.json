@@ -7864,6 +7864,49 @@
           "schema_version": 1
         }
       },
+      "SearchResolveArtifactResponse": {
+        "value": {
+          "data": {
+            "match_count": 1,
+            "matches": [
+              {
+                "api_path": "example",
+                "exact": false,
+                "kind": "account",
+                "ui_path": "example",
+                "value": "example"
+              }
+            ],
+            "query": "example",
+            "schema_version": 1,
+            "unambiguous": false
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
+      },
       "SelfHealthArtifactResponse": {
         "value": {
           "data": {
@@ -34915,6 +34958,42 @@
         ],
         "type": "object"
       },
+      "ResolvedIdentifier": {
+        "additionalProperties": false,
+        "properties": {
+          "api_path": {
+            "type": "string"
+          },
+          "exact": {
+            "type": "boolean"
+          },
+          "kind": {
+            "enum": [
+              "account",
+              "block",
+              "extrinsic",
+              "evm-account",
+              "subnet",
+              "neuron"
+            ],
+            "type": "string"
+          },
+          "ui_path": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "value",
+          "api_path",
+          "ui_path",
+          "exact"
+        ],
+        "type": "object"
+      },
       "ResponseMeta": {
         "additionalProperties": true,
         "properties": {
@@ -38707,6 +38786,40 @@
           "generated_at",
           "schema_version",
           "documents"
+        ],
+        "type": "object"
+      },
+      "SearchResolveArtifact": {
+        "additionalProperties": {},
+        "properties": {
+          "match_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/ResolvedIdentifier"
+            },
+            "type": "array"
+          },
+          "query": {
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "unambiguous": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "schema_version",
+          "query",
+          "matches",
+          "match_count",
+          "unambiguous"
         ],
         "type": "object"
       },
@@ -65954,6 +66067,131 @@
         ]
       }
     },
+    "/api/v1/{network}/search/resolve": {
+      "get": {
+        "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
+        "operationId": "searchResolveByNetwork",
+        "parameters": [
+          {
+            "description": "Network to address. `mainnet` and `finney` are the same network, as are `testnet` and `test`.",
+            "in": "path",
+            "name": "network",
+            "required": true,
+            "schema": {
+              "enum": [
+                "finney",
+                "mainnet",
+                "test",
+                "testnet"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "SearchResolveArtifactResponse": {
+                    "$ref": "#/components/examples/SearchResolveArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SearchResolveArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Resolve a pasted query to the chain entities it could name (metagraphed-infra#362). A block explorer's most common search is an IDENTIFIER, not a question -- an account, a block hash, an extrinsic hash, a netuid -- and every one is recognisable from its shape with no index lookup and no inference. Use this BEFORE /api/v1/search or /api/v1/search/semantic: it answers instantly when the query is an identifier, and returns an empty `matches` when it is not, which is the signal to fall through to corpus search. AMBIGUITY IS RETURNED, NOT GUESSED. `matches` is a list because two inputs have more than one correct reading: a 64-hex string is a block hash OR an extrinsic hash, and a small integer is a netuid AND a block height. Each candidate carries `exact`; `false` means another kind shares the shape, so present the alternatives rather than redirecting. `exact` is NOT an existence claim -- this route looks nothing up. `unambiguous` is true only for a single exact candidate, and is the one field a UI needs to decide between navigating and rendering a choice. An ss58 is checksum-verified, so a one-character typo resolves to NOTHING rather than to an empty account page that reads as 'no activity'. `?q=` is the query; whitespace is trimmed, hex is normalised to lowercase with an 0x prefix. Served live on every network.",
+        "tags": [
+          "search"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
+        ]
+      }
+    },
     "/api/v1/{network}/source-health": {
       "get": {
         "description": "Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.",
@@ -92415,6 +92653,115 @@
           }
         },
         "summary": "Fetch the slim search index — the same documents as /search without the per-document token blobs, for fast browser typeahead and listing.",
+        "tags": [
+          "search"
+        ],
+        "x-metagraphed-networks": [
+          "finney",
+          "mainnet",
+          "test",
+          "testnet"
+        ]
+      }
+    },
+    "/api/v1/search/resolve": {
+      "get": {
+        "operationId": "searchResolve",
+        "parameters": [
+          {
+            "description": "Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing.",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "SearchResolveArtifactResponse": {
+                    "$ref": "#/components/examples/SearchResolveArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SearchResolveArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Resolve a pasted query to the chain entities it could name (metagraphed-infra#362). A block explorer's most common search is an IDENTIFIER, not a question -- an account, a block hash, an extrinsic hash, a netuid -- and every one is recognisable from its shape with no index lookup and no inference. Use this BEFORE /api/v1/search or /api/v1/search/semantic: it answers instantly when the query is an identifier, and returns an empty `matches` when it is not, which is the signal to fall through to corpus search. AMBIGUITY IS RETURNED, NOT GUESSED. `matches` is a list because two inputs have more than one correct reading: a 64-hex string is a block hash OR an extrinsic hash, and a small integer is a netuid AND a block height. Each candidate carries `exact`; `false` means another kind shares the shape, so present the alternatives rather than redirecting. `exact` is NOT an existence claim -- this route looks nothing up. `unambiguous` is true only for a single exact candidate, and is the one field a UI needs to decide between navigating and rendering a choice. An ss58 is checksum-verified, so a one-character typo resolves to NOTHING rather than to an empty account page that reads as 'no activity'. `?q=` is the query; whitespace is trimmed, hex is normalised to lowercase with an 0x prefix. Served live on every network.",
         "tags": [
           "search"
         ],
