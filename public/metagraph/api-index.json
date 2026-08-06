@@ -1193,6 +1193,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-surface-history",
+      "path": "/metagraph/subnets/{netuid}/surface-history.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetSurfaceHistoryArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "chain-holders",
       "path": "/metagraph/chain/holders.json",
       "retirement": null,
@@ -2218,7 +2227,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 87,
+    "mainnet_only_route_count": 88,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -8973,6 +8982,31 @@
           "name": "limit",
           "schema": {
             "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/surface-history.json",
+      "cache": "short",
+      "description": "Fetch one subnet's surface audit trail. When one subnet's public surfaces were added, changed or removed, and in which commit (#9612). The registry publishes what a subnet exposes TODAY; this answers when that became true -- the question behind 'did this API move?' and 'when did this subnet stop publishing an OpenAPI spec?'. Each entry names the surface (id, kind, url, name lifted from the recorded overlay), the action (insert, update or delete), the source_commit that produced it, and when it was recorded. A DELETE entry is the only evidence a surface ever existed -- the registry itself carries no trace of a removed surface, which is what makes this trail rather than the surface list the place to ask. IDENTITY IS COALESCED: the upsert path omitted surface_id from its INSERT column list, so 8,831 of the table's 8,892 rows carried a NULL and only the 61 deletes recorded one. Migration 0024 backfilled the column from the overlay's own id -- present on every row -- and the writer now records it, but this route still falls back to the overlay because migrations here are applied by hand and a fresh or restored database will have the nulls back. The overlay itself is READ, not republished: only the fields identifying WHAT changed are lifted out, and a caller wanting the full surface record reads /subnets/{netuid}/surfaces, which is that document's home. surface_count counts distinct surfaces with a recorded mutation, which is NOT the subnet's current surface count -- a deleted surface appears here and not there, and that difference is the point. limit caps the entries (default 50, max 200), newest first. A subnet whose surfaces have never changed returns an empty trail, never a 404 -- stability is the common case. Mainnet-only: the registry sync that writes this table is mainnet's.",
+      "id": "subnet-surface-history",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/surface-history",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 200,
             "minimum": 1,
             "type": "integer"
           }

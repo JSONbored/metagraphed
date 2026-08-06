@@ -181,6 +181,12 @@ import {
   TAO_USD_WINDOWS,
 } from "../../src/tao-usd-series.ts";
 import {
+  buildSurfaceHistory,
+  loadSurfaceHistory,
+  SURFACE_HISTORY_LIMIT_DEFAULT,
+  SURFACE_HISTORY_LIMIT_MAX,
+} from "../../src/surface-history.ts";
+import {
   buildValidatorEconomics,
   buildValidatorEconomicsHistory,
   DEFAULT_VALIDATOR_ECONOMICS_HISTORY_WINDOW,
@@ -6048,6 +6054,48 @@ export async function handleTaoUsd(request: Request, env: Env, url: URL) {
   // A cold or unwritten table yields an EMPTY series with a null `latest`, not
   // a 404: "we have not priced this window" is a real state.
   const data = buildTaoUsdSeries(rows, { window: label });
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/surface-history (#9612): when this subnet's
+// public surfaces were added, changed or removed, and in which commit. The
+// registry says what a subnet exposes TODAY; this says when that became true.
+export async function handleSubnetSurfaceHistory(
+  request: Request,
+  env: Env,
+  netuid: number,
+  url: URL,
+) {
+  if (!isU16Netuid(netuid)) {
+    return errorResponse(
+      "invalid_netuid",
+      "netuid must be an integer in the u16 range 0..65535.",
+      400,
+    );
+  }
+  const validationError = validateEntityQuery(url, ["limit", "format"]);
+  if (validationError) return analyticsQueryError(validationError);
+  const limit = parseBoundedIntParam(url, "limit", {
+    def: SURFACE_HISTORY_LIMIT_DEFAULT,
+    min: 1,
+    max: SURFACE_HISTORY_LIMIT_MAX,
+  });
+  if ("error" in limit) return analyticsQueryError(limit.error);
+
+  const rows = await loadSurfaceHistory(
+    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+      typeof loadSurfaceHistory
+    >[0],
+    netuid,
+    { limit: limit.value },
+  );
+  // A subnet whose surfaces have never changed is an EMPTY trail, not a 404 --
+  // stability is the common case and a real answer.
+  const data = buildSurfaceHistory(rows, netuid, { limit: limit.value });
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },

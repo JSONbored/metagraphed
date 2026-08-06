@@ -2889,6 +2889,8 @@ export type Query = {
   subnet_stake_quote: SubnetStakeQuote;
   /** Per-subnet stake-transfer activity over a 7d/30d window (distinct senders, StakeTransferred count, and transfers per sender); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/stake-transfers. */
   subnet_stake_transfers: SubnetStakeTransfers;
+  /** When one subnet's public surfaces were added, changed or removed, and in which commit. subnet_surfaces says what a subnet exposes TODAY; this says when that became true. A delete entry is the ONLY evidence a surface ever existed -- the registry keeps no trace of a removed surface. surface_count counts distinct surfaces with a recorded mutation, which is NOT the current surface count. The full surface record is not repeated here; read subnet_surfaces for that. Newest first. A subnet whose surfaces never changed resolves to an empty trail, never an error. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/surface-history. */
+  subnet_surface_history: SubnetSurfaceHistory;
   /** One subnet's weekly structural + economics trajectory from the daily snapshots: a chronological series of points (completeness/surface/endpoint counts plus validator/miner counts and economics — stake, alpha price, emission share, pool reserves, volume), and the latest-vs-window-ago deltas for the 7d and 30d windows. A subnet with no snapshots resolves to a schema-stable empty trajectory (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/trajectory. */
   subnet_trajectory: SubnetTrajectory;
   /** One subnet's validator/neuron-set turnover (entered/exited/retention/0-100 stability) between the boundary snapshots of a 7d/30d/90d/1y/all window (default 30d), from neuron_daily. comparable is false and the churn metrics zeroed on a single-snapshot or cold store, never null. Mirrors GET /api/v1/subnets/{netuid}/turnover. */
@@ -4096,6 +4098,12 @@ export type QuerySubnet_Stake_QuoteArgs = {
 export type QuerySubnet_Stake_TransfersArgs = {
   netuid: Scalars['Int']['input'];
   window?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QuerySubnet_Surface_HistoryArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  netuid: Scalars['Int']['input'];
 };
 
 
@@ -5341,6 +5349,18 @@ export type SubnetStakeTransfers = {
   window?: Maybe<Scalars['String']['output']>;
 };
 
+export type SubnetSurfaceHistory = {
+  __typename?: 'SubnetSurfaceHistory';
+  change_count: Scalars['Int']['output'];
+  changes: Array<SurfaceHistoryChange>;
+  latest_change_at?: Maybe<Scalars['String']['output']>;
+  limit?: Maybe<Scalars['Int']['output']>;
+  netuid: Scalars['Int']['output'];
+  schema_version: Scalars['Int']['output'];
+  /** Distinct surfaces with a recorded mutation -- NOT the subnet's current surface count. A deleted surface is counted here and absent there. */
+  surface_count: Scalars['Int']['output'];
+};
+
 /** One subnet's weekly structural + economics trajectory from the daily snapshots (#5887). Mirrors GET /api/v1/subnets/{netuid}/trajectory's data envelope. The REST envelope's window-keyed deltas map (7d/30d) is exposed here as a list carrying each window label, since those keys are not valid GraphQL field names. */
 export type SubnetTrajectory = {
   __typename?: 'SubnetTrajectory';
@@ -5647,6 +5667,21 @@ export type Surface = {
   status?: Maybe<Scalars['String']['output']>;
   subnet_name?: Maybe<Scalars['String']['output']>;
   subnet_slug?: Maybe<Scalars['String']['output']>;
+  url?: Maybe<Scalars['String']['output']>;
+};
+
+/** One recorded mutation of a subnet's public surface. */
+export type SurfaceHistoryChange = {
+  __typename?: 'SurfaceHistoryChange';
+  /** insert, update or delete. A delete is the only evidence a surface ever existed. */
+  action?: Maybe<Scalars['String']['output']>;
+  kind?: Maybe<Scalars['String']['output']>;
+  name?: Maybe<Scalars['String']['output']>;
+  recorded_at: Scalars['String']['output'];
+  /** The registry commit that produced the change. */
+  source_commit?: Maybe<Scalars['String']['output']>;
+  /** Coalesced column then overlay id, so it is present on every row including those written before the column was recorded. */
+  surface_id?: Maybe<Scalars['String']['output']>;
   url?: Maybe<Scalars['String']['output']>;
 };
 
@@ -6297,6 +6332,7 @@ export type ResolversTypes = ResolversObject<{
   SubnetStakeMoves: ResolverTypeWrapper<SubnetStakeMoves>;
   SubnetStakeQuote: ResolverTypeWrapper<SubnetStakeQuote>;
   SubnetStakeTransfers: ResolverTypeWrapper<SubnetStakeTransfers>;
+  SubnetSurfaceHistory: ResolverTypeWrapper<SubnetSurfaceHistory>;
   SubnetTrajectory: ResolverTypeWrapper<SubnetTrajectory>;
   SubnetTrajectoryDelta: ResolverTypeWrapper<SubnetTrajectoryDelta>;
   SubnetTrajectoryPoint: ResolverTypeWrapper<SubnetTrajectoryPoint>;
@@ -6317,6 +6353,7 @@ export type ResolversTypes = ResolversObject<{
   Subscription: ResolverTypeWrapper<Record<PropertyKey, never>>;
   SudoKey: ResolverTypeWrapper<SudoKey>;
   Surface: ResolverTypeWrapper<Surface>;
+  SurfaceHistoryChange: ResolverTypeWrapper<SurfaceHistoryChange>;
   SurfaceList: ResolverTypeWrapper<SurfaceList>;
   TaoUsd: ResolverTypeWrapper<TaoUsd>;
   TaoUsdLatest: ResolverTypeWrapper<TaoUsdLatest>;
@@ -6623,6 +6660,7 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetStakeMoves: SubnetStakeMoves;
   SubnetStakeQuote: SubnetStakeQuote;
   SubnetStakeTransfers: SubnetStakeTransfers;
+  SubnetSurfaceHistory: SubnetSurfaceHistory;
   SubnetTrajectory: SubnetTrajectory;
   SubnetTrajectoryDelta: SubnetTrajectoryDelta;
   SubnetTrajectoryPoint: SubnetTrajectoryPoint;
@@ -6643,6 +6681,7 @@ export type ResolversParentTypes = ResolversObject<{
   Subscription: Record<PropertyKey, never>;
   SudoKey: SudoKey;
   Surface: Surface;
+  SurfaceHistoryChange: SurfaceHistoryChange;
   SurfaceList: SurfaceList;
   TaoUsd: TaoUsd;
   TaoUsdLatest: TaoUsdLatest;
@@ -8882,6 +8921,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_stake_moves?: Resolver<ResolversTypes['SubnetStakeMoves'], ParentType, ContextType, RequireFields<QuerySubnet_Stake_MovesArgs, 'netuid'>>;
   subnet_stake_quote?: Resolver<ResolversTypes['SubnetStakeQuote'], ParentType, ContextType, RequireFields<QuerySubnet_Stake_QuoteArgs, 'amount' | 'netuid'>>;
   subnet_stake_transfers?: Resolver<ResolversTypes['SubnetStakeTransfers'], ParentType, ContextType, RequireFields<QuerySubnet_Stake_TransfersArgs, 'netuid'>>;
+  subnet_surface_history?: Resolver<ResolversTypes['SubnetSurfaceHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Surface_HistoryArgs, 'netuid'>>;
   subnet_trajectory?: Resolver<ResolversTypes['SubnetTrajectory'], ParentType, ContextType, RequireFields<QuerySubnet_TrajectoryArgs, 'netuid'>>;
   subnet_turnover?: Resolver<ResolversTypes['SubnetTurnover'], ParentType, ContextType, RequireFields<QuerySubnet_TurnoverArgs, 'netuid'>>;
   subnet_uptime?: Resolver<ResolversTypes['SubnetUptime'], ParentType, ContextType, RequireFields<QuerySubnet_UptimeArgs, 'netuid'>>;
@@ -9718,6 +9758,16 @@ export type SubnetStakeTransfersResolvers<ContextType = GqlContext, ParentType e
   window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
+export type SubnetSurfaceHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetSurfaceHistory'] = ResolversParentTypes['SubnetSurfaceHistory']> = ResolversObject<{
+  change_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  changes?: Resolver<Array<ResolversTypes['SurfaceHistoryChange']>, ParentType, ContextType>;
+  latest_change_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  limit?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  surface_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type SubnetTrajectoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetTrajectory'] = ResolversParentTypes['SubnetTrajectory']> = ResolversObject<{
   deltas?: Resolver<Array<ResolversTypes['SubnetTrajectoryDelta']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -9964,6 +10014,16 @@ export type SurfaceResolvers<ContextType = GqlContext, ParentType extends Resolv
   status?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   subnet_name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   subnet_slug?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type SurfaceHistoryChangeResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SurfaceHistoryChange'] = ResolversParentTypes['SurfaceHistoryChange']> = ResolversObject<{
+  action?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  kind?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  recorded_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  source_commit?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  surface_id?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   url?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
@@ -10470,6 +10530,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetStakeMoves?: SubnetStakeMovesResolvers<ContextType>;
   SubnetStakeQuote?: SubnetStakeQuoteResolvers<ContextType>;
   SubnetStakeTransfers?: SubnetStakeTransfersResolvers<ContextType>;
+  SubnetSurfaceHistory?: SubnetSurfaceHistoryResolvers<ContextType>;
   SubnetTrajectory?: SubnetTrajectoryResolvers<ContextType>;
   SubnetTrajectoryDelta?: SubnetTrajectoryDeltaResolvers<ContextType>;
   SubnetTrajectoryPoint?: SubnetTrajectoryPointResolvers<ContextType>;
@@ -10490,6 +10551,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   Subscription?: SubscriptionResolvers<ContextType>;
   SudoKey?: SudoKeyResolvers<ContextType>;
   Surface?: SurfaceResolvers<ContextType>;
+  SurfaceHistoryChange?: SurfaceHistoryChangeResolvers<ContextType>;
   SurfaceList?: SurfaceListResolvers<ContextType>;
   TaoUsd?: TaoUsdResolvers<ContextType>;
   TaoUsdLatest?: TaoUsdLatestResolvers<ContextType>;

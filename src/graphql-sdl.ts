@@ -310,6 +310,8 @@ export const SDL = /* GraphQL */ `
     chain_holders(sort: String, limit: Int): ChainHolders!
     "The USD price of one TAO with the derivation behind it, plus the recent series. Composed per ADR 0025 -- a liquidity-weighted median across qualifying wTAO/WETH pools with 2% outlier rejection and a two-pool quorum, multiplied through an ETH/USDC anchor -- because no TAO/USD pair exists on chain. A null usd_per_tao is a STATED OUTCOME (price_basis insufficient_pools), never a zero price. window is 1h, 24h (default), 7d or 30d. The series begins 2026-08-02, so a wide window returns everything that exists and oldest_observed_at says how far back that is. Mainnet only. Mirrors GET /api/v1/network/tao-usd."
     tao_usd(window: String): TaoUsd!
+    "When one subnet's public surfaces were added, changed or removed, and in which commit. subnet_surfaces says what a subnet exposes TODAY; this says when that became true. A delete entry is the ONLY evidence a surface ever existed -- the registry keeps no trace of a removed surface. surface_count counts distinct surfaces with a recorded mutation, which is NOT the current surface count. The full surface record is not repeated here; read subnet_surfaces for that. Newest first. A subnet whose surfaces never changed resolves to an empty trail, never an error. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/surface-history."
+    subnet_surface_history(netuid: Int!, limit: Int): SubnetSurfaceHistory!
     "Per-subnet per-day stake and emission concentration trend from the neuron_daily rollup over a 7d/30d/90d window (default 30d): each day's stake/emission Gini, Nakamoto coefficient, and top-10% share, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/concentration/history."
     subnet_concentration_history(
       netuid: Int!
@@ -2833,6 +2835,31 @@ export const SDL = /* GraphQL */ `
     change_usd: Float
     change_pct: Float
     points: [TaoUsdPoint!]!
+  }
+
+  "One recorded mutation of a subnet's public surface."
+  type SurfaceHistoryChange {
+    "Coalesced column then overlay id, so it is present on every row including those written before the column was recorded."
+    surface_id: String
+    "insert, update or delete. A delete is the only evidence a surface ever existed."
+    action: String
+    kind: String
+    url: String
+    name: String
+    "The registry commit that produced the change."
+    source_commit: String
+    recorded_at: String!
+  }
+
+  type SubnetSurfaceHistory {
+    schema_version: Int!
+    netuid: Int!
+    limit: Int
+    change_count: Int!
+    "Distinct surfaces with a recorded mutation -- NOT the subnet's current surface count. A deleted surface is counted here and absent there."
+    surface_count: Int!
+    latest_change_at: String
+    changes: [SurfaceHistoryChange!]!
   }
 
   "One subnet's alpha-ownership concentration."

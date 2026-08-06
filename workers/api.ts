@@ -156,6 +156,7 @@ import {
   handleChainBurn,
   handleChainHolders,
   handleTaoUsd,
+  handleSubnetSurfaceHistory,
   handleSubnetBurnHistory,
   handleSubnetHolders,
   handleCrowdloan,
@@ -484,6 +485,7 @@ import {
   RUNTIME_VERSIONS_PATH_PATTERN,
   SUBNET_BURN_HISTORY_PATH_PATTERN,
   SUBNET_HOLDERS_PATH_PATTERN,
+  SUBNET_SURFACE_HISTORY_PATH_PATTERN,
   SUBNET_HISTORY_PATH_PATTERN,
   SUBNET_HYPERPARAMS_PATH_PATTERN,
   SUBNET_HYPERPARAMS_HISTORY_PATH_PATTERN,
@@ -4901,6 +4903,20 @@ export async function handleRequest(
         resolved.url,
       );
     }
+    // #9612: the surface audit trail. Mainnet-only for the registry's own
+    // reason -- surface_history is written by the registry sync, which is
+    // mainnet's.
+    const surfaceHistoryMatch = SUBNET_SURFACE_HISTORY_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (surfaceHistoryMatch) {
+      return handleSubnetSurfaceHistory(
+        request,
+        env,
+        Number(surfaceHistoryMatch[1]),
+        resolved.url,
+      );
+    }
     const subnetHistoryMatch = SUBNET_HISTORY_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -5513,6 +5529,7 @@ export function isMainnetOnlyApiPath(pathname: string) {
     // request would serve MAINNET holders as testnet's. Same posture as
     // /accounts/{ss58}/positions, which reads the first of those two.
     SUBNET_HOLDERS_PATH_PATTERN.test(pathname) ||
+    SUBNET_SURFACE_HISTORY_PATH_PATTERN.test(pathname) ||
     // #9607: the cross-subnet twin of the route above, same two tables.
     pathname === "/api/v1/chain/holders" ||
     pathname === "/api/v1/network/tao-usd" ||

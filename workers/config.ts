@@ -475,6 +475,10 @@ export const SUBNET_BURN_HISTORY_PATH_PATTERN =
  * leaderboard, read from the D1 positions ledger x the proven pool totals. */
 export const SUBNET_HOLDERS_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/holders$/;
+/** GET /api/v1/subnets/{netuid}/surface-history (#9612) -- when this subnet's
+ * public surfaces were added, changed or removed, and in which commit. */
+export const SUBNET_SURFACE_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/surface-history$/;
 
 export const SUBNET_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/history$/;

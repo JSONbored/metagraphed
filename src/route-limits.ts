@@ -83,6 +83,18 @@ export const SUBNET_HOLDERS_LIMIT_MAX = 100;
 export const CHAIN_HOLDERS_LIMIT_DEFAULT = 20;
 export const CHAIN_HOLDERS_LIMIT_MAX = 512;
 
+/**
+ * `/api/v1/subnets/{netuid}/surface-history` -- one subnet's surface audit trail (#9612).
+ *
+ * A feed rather than a leaderboard, so it takes the analytics-feed sizing the
+ * chain-identity-history feed uses: enough to read a subnet's recent churn in
+ * one request, capped where a page stops being a page. The table never prunes
+ * -- history outliving the surface it describes is the point -- so an uncapped
+ * read would grow without bound.
+ */
+export const SURFACE_HISTORY_LIMIT_DEFAULT = 50;
+export const SURFACE_HISTORY_LIMIT_MAX = 200;
+
 /** `/api/v1/accounts` -- site-wide accounts leaderboard. */
 export const ACCOUNTS_LIST_LIMIT_DEFAULT = 20;
 export const ACCOUNTS_LIST_LIMIT_MAX = 100;

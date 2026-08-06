@@ -5511,6 +5511,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/surface-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch one subnet's surface audit trail. When one subnet's public surfaces were added, changed or removed, and in which commit (#9612). The registry publishes what a subnet exposes TODAY; this answers when that became true -- the question behind 'did this API move?' and 'when did this subnet stop publishing an OpenAPI spec?'. Each entry names the surface (id, kind, url, name lifted from the recorded overlay), the action (insert, update or delete), the source_commit that produced it, and when it was recorded. A DELETE entry is the only evidence a surface ever existed -- the registry itself carries no trace of a removed surface, which is what makes this trail rather than the surface list the place to ask. IDENTITY IS COALESCED: the upsert path omitted surface_id from its INSERT column list, so 8,831 of the table's 8,892 rows carried a NULL and only the 61 deletes recorded one. Migration 0024 backfilled the column from the overlay's own id -- present on every row -- and the writer now records it, but this route still falls back to the overlay because migrations here are applied by hand and a fresh or restored database will have the nulls back. The overlay itself is READ, not republished: only the fields identifying WHAT changed are lifted out, and a caller wanting the full surface record reads /subnets/{netuid}/surfaces, which is that document's home. surface_count counts distinct surfaces with a recorded mutation, which is NOT the subnet's current surface count -- a deleted surface appears here and not there, and that difference is the point. limit caps the entries (default 50, max 200), newest first. A subnet whose surfaces have never changed returns an empty trail, never a 404 -- stability is the common case. Mainnet-only: the registry sync that writes this table is mainnet's. */
+        get: operations["subnetSurfaceHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/surfaces": {
         parameters: {
             query?: never;
@@ -11808,6 +11825,17 @@ export interface components {
         };
         /** @enum {unknown} */
         SubnetStatus: "active" | "inactive" | "unknown";
+        SubnetSurfaceHistoryArtifact: {
+            change_count: number;
+            changes: components["schemas"]["SurfaceHistoryChange"][];
+            latest_change_at: string | null;
+            limit: number | null;
+            netuid: number;
+            schema_version: number;
+            surface_count: number;
+        } & {
+            [key: string]: unknown;
+        };
         SubnetSurfacesArtifact: {
             contract_version?: string;
             generated_at: string;
@@ -12198,6 +12226,16 @@ export interface components {
         } & {
             [key: string]: unknown;
         });
+        SurfaceHistoryChange: {
+            action: ("insert" | "update" | "delete") | null;
+            kind: string | null;
+            name: string | null;
+            /** Format: date-time */
+            recorded_at: string;
+            source_commit: string | null;
+            surface_id: string | null;
+            url: string | null;
+        };
         /** @enum {string} */
         SurfaceKind: "archive" | "subtensor-rpc" | "subtensor-wss" | "subnet-api" | "openapi" | "sse" | "sdk" | "example" | "website" | "source-repo" | "dashboard" | "repo-registry" | "docs" | "data-artifact";
         SurfacesArtifact: {
@@ -52899,6 +52937,126 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetStakeTransfersArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetSurfaceHistory: {
+        parameters: {
+            query?: {
+                /** @description Maximum number of rows to return in one page (at most 200). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "change_count": 1,
+                     *         "changes": [
+                     *           {
+                     *             "action": "insert",
+                     *             "kind": "example",
+                     *             "name": "Example Subnet",
+                     *             "recorded_at": "2026-06-01T00:00:00.000Z",
+                     *             "source_commit": "example",
+                     *             "surface_id": "example",
+                     *             "url": "https://api.metagraph.sh/example"
+                     *           }
+                     *         ],
+                     *         "latest_change_at": "2026-06-01T00:00:00.000Z",
+                     *         "limit": 1,
+                     *         "netuid": 7,
+                     *         "schema_version": 1,
+                     *         "surface_count": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetSurfaceHistoryArtifact"];
                     };
                 };
             };

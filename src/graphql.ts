@@ -315,6 +315,12 @@ import {
   DEFAULT_TAO_USD_WINDOW,
   TAO_USD_WINDOWS,
 } from "./tao-usd-series.ts";
+import {
+  buildSurfaceHistory,
+  loadSurfaceHistory,
+  SURFACE_HISTORY_LIMIT_DEFAULT,
+  SURFACE_HISTORY_LIMIT_MAX,
+} from "./surface-history.ts";
 import { loadTopHoldersFromArtifact } from "./top-holders-artifact.ts";
 import { loadTopHoldersFlowTier } from "./top-holders-flow-tier.ts";
 import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.ts";
@@ -1175,6 +1181,8 @@ export const FIELD_COMPLEXITY = {
   chain_holders: RELATIONSHIP_FIELD_COMPLEXITY,
   // #9609: one bounded window read off an indexed column.
   tao_usd: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #9612: one indexed, bounded read of the registry history table.
+  subnet_surface_history: RELATIONSHIP_FIELD_COMPLEXITY,
   neuron: RELATIONSHIP_FIELD_COMPLEXITY,
   neuron_history: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -2763,6 +2771,34 @@ const rootValue = {
       { windowHours: TAO_USD_WINDOWS[label] },
     );
     return buildTaoUsdSeries(rows, { window: label });
+  },
+
+  async subnet_surface_history(
+    { netuid, limit }: { netuid: number; limit?: number | null },
+    context: GqlContext,
+  ) {
+    // #9612. Shares the REST/MCP loader for #9540's reason -- a resolver with
+    // its own query is free to drift into answering an empty trail.
+    if (
+      limit != null &&
+      (!Number.isInteger(limit) ||
+        limit < 1 ||
+        limit > SURFACE_HISTORY_LIMIT_MAX)
+    ) {
+      throw new GraphQLError(
+        `limit must be an integer between 1 and ${SURFACE_HISTORY_LIMIT_MAX}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const safeLimit = limit ?? SURFACE_HISTORY_LIMIT_DEFAULT;
+    const rows = await loadSurfaceHistory(
+      context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof loadSurfaceHistory
+      >[0],
+      netuid,
+      { limit: safeLimit },
+    );
+    return buildSurfaceHistory(rows, netuid, { limit: safeLimit });
   },
 
   async chain_holders(

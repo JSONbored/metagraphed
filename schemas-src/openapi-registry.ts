@@ -132,6 +132,10 @@ import {
   TaoUsdArtifactSchema,
 } from "./routes/tao-usd.ts";
 import {
+  SurfaceHistoryChangeSchema,
+  SubnetSurfaceHistoryArtifactSchema,
+} from "./routes/subnet-surface-history.ts";
+import {
   AccountEventSchema,
   SubnetEventsArtifactSchema,
 } from "./routes/subnet-events.ts";
@@ -489,6 +493,8 @@ register(ChainHoldersArtifactSchema, "ChainHoldersArtifact");
 register(TaoUsdPointSchema, "TaoUsdPoint");
 register(TaoUsdLatestSchema, "TaoUsdLatest");
 register(TaoUsdArtifactSchema, "TaoUsdArtifact");
+register(SurfaceHistoryChangeSchema, "SurfaceHistoryChange");
+register(SubnetSurfaceHistoryArtifactSchema, "SubnetSurfaceHistoryArtifact");
 register(AccountEventSchema, "AccountEvent");
 register(SubnetEventsArtifactSchema, "SubnetEventsArtifact");
 register(SubnetEventSummaryArtifactSchema, "SubnetEventSummaryArtifact");

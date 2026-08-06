@@ -73,6 +73,9 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // The TAO/USD index (#9609): a live D1 read of a table written once a minute.
   // A baked copy would be stale before it published.
   /^network\/tao-usd\.json$/,
+  // One subnet's surface audit trail (#9612), read live from the registry's
+  // own history table -- a baked copy would stop recording the moment it built.
+  /^subnets\/(?:\d+|\{netuid\})\/surface-history\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/trajectory\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/uptime\.json$/,
   // Stake/emission concentration (#2106): computed live from the neurons D1 tier.

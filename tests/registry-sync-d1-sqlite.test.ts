@@ -202,6 +202,52 @@ test("a surface insert satisfies both foreign keys and the boolean CHECKs", asyn
   );
 });
 
+// #9612: the audit trail must name the surface it is about.
+//
+// The upsert path omitted surface_id from its INSERT column list, so every
+// insert and update wrote a NULL -- 8,831 of the table's 8,892 production rows,
+// measured 2026-08-06 -- and only the DELETE path recorded one. An audit trail
+// that cannot say WHICH surface changed is not one.
+//
+// The fix is a hoist rather than a second expression, and that distinction is
+// what this test pins: the id is `existing?.id ?? crypto.randomUUID()`, so
+// evaluating it twice would mint a SECOND uuid and file the history row against
+// a surface that does not exist. Both statements must carry the same value.
+test("surface_history names the surface, with the same id the surfaces row got", async () => {
+  const seed = { ...empty, providers: [provider], subnets: [subnet] };
+  await applyRegistrySyncToD1(d1(db) as never, {
+    ...seed,
+    surfaces: [surface()],
+  });
+  const surfaceId = rows("SELECT id FROM surfaces")[0].id;
+  const inserted = rows("SELECT surface_id, action FROM surface_history")[0];
+  assert.equal(inserted.action, "insert");
+  assert.equal(
+    inserted.surface_id,
+    surfaceId,
+    "the history row must point at the surface that was actually written",
+  );
+
+  // And an UPDATE keeps pointing at the same surface rather than re-keying.
+  await applyRegistrySyncToD1(d1(db) as never, {
+    ...seed,
+    surfaces: [surface({ overlay: { kind: "docs", note: "changed" } })],
+  });
+  const trail = rows(
+    "SELECT surface_id, action FROM surface_history ORDER BY id",
+  );
+  assert.deepEqual(
+    trail.map((r) => r.action),
+    ["insert", "update"],
+  );
+  assert.equal(
+    new Set(trail.map((r) => r.surface_id)).size,
+    1,
+    "both entries describe one surface, so both ids must match",
+  );
+  assert.equal(trail[1].surface_id, surfaceId);
+});
+
 // The replacement for Postgres' RETURNING (xmax = 0): a second sync of a CHANGED
 // surface must update in place and record "update", not insert a duplicate.
 test("re-syncing a changed surface updates in place and records an update", async () => {
