@@ -1667,6 +1667,28 @@ async function handleValidatorNominatorCountsSync(request: Request, env: Env) {
 
   const rows = incoming.map(coerceNominatorCountSyncRow);
 
+  // Enqueue or write, never both -- see handleHotkeyAlphaSync's own note.
+  // This lane carries no pass declaration, so the queue message carries none
+  // either: inventing one would mark an unproven load complete.
+  if (syncLaneUsesQueue(env, "validator-nominator-counts")) {
+    try {
+      await env.SYNC_BATCHES!.send({
+        lane: "validator-nominator-counts",
+        captured_at: rows[0]!.captured_at as number,
+        rows,
+      });
+    } catch (err) {
+      console.error("data-api validator-nominator-counts enqueue failed:", err);
+      await captureDataApiError(err, "vnc-sync-queue", env);
+      return writeJson({ error: "enqueue failed" }, 502);
+    }
+    return writeJson({
+      ok: true,
+      nominator_counts_written: rows.length,
+      stores: ["queue"],
+    });
+  }
+
   // D1 is the binding this path REQUIRES -- the only store this family has.
   // Checked HERE, after validation, not at the top: a malformed body is a 400
   // whether or not a store happens to be bound (handleNominatorPositionsSync's
@@ -7183,6 +7205,13 @@ export default {
               >[0],
               rows,
               pass,
+            ),
+          "validator-nominator-counts": (rows) =>
+            writeValidatorNominatorCountsToD1(
+              env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+                typeof writeValidatorNominatorCountsToD1
+              >[0],
+              rows,
             ),
         }
       : {};
