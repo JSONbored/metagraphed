@@ -635,6 +635,10 @@ import {
   GetFailureReasonsOutputSchema,
 } from "../schemas-src/mcp-tools/get-failure-reasons.ts";
 import {
+  GetIndexerLagInputSchema,
+  GetIndexerLagOutputSchema,
+} from "../schemas-src/mcp-tools/get-indexer-lag.ts";
+import {
   GetTaoUsdInputSchema,
   GetTaoUsdOutputSchema,
 } from "../schemas-src/mcp-tools/get-tao-usd.ts";
@@ -1454,6 +1458,7 @@ import {
   CHAIN_HOLDERS_SORTS,
   DEFAULT_CHAIN_HOLDERS_SORT,
 } from "./chain-holders.ts";
+import { buildIndexerLag, loadIndexerLag } from "./indexer-lag.ts";
 import {
   buildEmissionChanges,
   loadEmissionChanges,
@@ -8134,6 +8139,42 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_indexer_lag",
+    title: "Get how far behind block indexing is",
+    description:
+      "Fetch HOW LONG AFTER A BLOCK IS PRODUCED it becomes queryable here " +
+      "(#9620) -- the write-latency distribution (min/p50/p95/p99/max/mean, " +
+      "in milliseconds) over the retained block window, plus how far behind " +
+      "the lane is right now. Use it to answer 'is your data current?' and " +
+      "'how recent a block can I ask about?' before trusting a head-adjacent " +
+      "read. TWO DIFFERENT NUMBERS, and confusing them reports a dead lane as " +
+      "healthy: write_latency_ms is how long each block TOOK to land, while " +
+      "head_age_ms is how stale the newest block IS. A stalled lane keeps a " +
+      "perfect latency distribution -- every block it did write, it wrote " +
+      "promptly -- while head_age_ms climbs without bound, so read that one " +
+      "for staleness. The window is pruned on a rolling basis, so this is the " +
+      "RECENT distribution and `window` reports exactly which blocks it " +
+      "covers. A NEGATIVE latency is real and is served as measured: the two " +
+      "timestamps come from different clocks, so it is evidence of block-" +
+      "author clock skew rather than an error. Null measurements are NOT a " +
+      "zero-latency lane -- check `degraded.reason` first. Mainnet only. " +
+      "Mirrors GET /api/v1/chain/indexer-lag.",
+    inputSchema: z.toJSONSchema(GetIndexerLagInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      _args: z.infer<typeof GetIndexerLagInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const row = await loadIndexerLag(
+        ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+          typeof loadIndexerLag
+        >[0],
+      );
+      return buildIndexerLag(row, Date.now());
+    },
+  },
+  {
     name: "get_subnet_holders",
     title: "Get a subnet's alpha holder leaderboard",
     description:
@@ -13260,6 +13301,9 @@ const TOOL_OUTPUT_SCHEMAS = {
     target: "draft-2020-12",
   }),
   get_failure_reasons: z.toJSONSchema(GetFailureReasonsOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_indexer_lag: z.toJSONSchema(GetIndexerLagOutputSchema, {
     target: "draft-2020-12",
   }),
   get_tao_usd: z.toJSONSchema(GetTaoUsdOutputSchema, {

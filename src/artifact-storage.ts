@@ -74,6 +74,10 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // -- a baked copy would stop the day it built, on a route whose subject is
   // whether the mix is CHANGING.
   /^health\/failure-reasons\.json$/,
+  // Block-indexing latency (#9620), computed live from chain_detail_blocks --
+  // the whole point is how current the lane is RIGHT NOW, which a baked file
+  // would freeze at build time.
+  /^chain\/indexer-lag\.json$/,
   // The emission-gate change log (#9615), read live from three append-on-change
   // D1 tables -- a baked copy would stop recording the moment it built.
   /^chain\/governance\/emission-changes\.json$/,

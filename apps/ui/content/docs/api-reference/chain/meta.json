@@ -47,6 +47,7 @@
     "crowdloan-detail-by-network",
     "crowdloans",
     "crowdloans-by-network",
-    "emission-gate-changes"
+    "emission-gate-changes",
+    "indexer-lag"
   ]
 }

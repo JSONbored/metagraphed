@@ -1388,6 +1388,38 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/chain/indexer-lag",
+    (body) => {
+      // #9620. Either a real measurement or a declared decline -- never a
+      // confident zero, because a zero-millisecond lag is the most flattering
+      // thing this route could say about a dead pipeline.
+      if (body.data.degraded) {
+        assert.equal(body.data.block_count, null);
+        assert.equal(body.data.write_latency_ms, null);
+        assert.equal(body.data.head_age_ms, null);
+        return;
+      }
+      assert.equal(body.data.block_count > 0, true);
+      const l = body.data.write_latency_ms;
+      // Ordered by construction: these are nearest-rank quantiles over one
+      // ranking, so a p95 below its p50 would mean the ranking was not applied.
+      assert.equal(l.min <= l.p50, true);
+      assert.equal(l.p50 <= l.p95, true);
+      assert.equal(l.p95 <= l.p99, true);
+      assert.equal(l.p99 <= l.max, true);
+      // The mean of a set lies within its range -- the cheapest check that the
+      // aggregate and the percentiles came from the same rows.
+      assert.equal(l.min <= l.mean && l.mean <= l.max, true);
+      // The window is published because the table is pruned; a distribution
+      // without its bounds would read as a lifetime one.
+      assert.equal(
+        body.data.window.oldest_block <= body.data.window.newest_block,
+        true,
+      );
+      assert.equal(typeof body.data.head_age_ms, "number");
+    },
+  ],
+  [
     "/api/v1/chain/holders",
     (body) => {
       // #9607. Never 404s and never serves a bare empty ranking: either
