@@ -1455,6 +1455,49 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/subnets/74/emission-pipeline/history",
+    (body) => {
+      // #9625. An empty series is a MEASUREMENT: only a failed read declines.
+      if (body.data.degraded) {
+        assert.equal(body.data.point_count, null);
+        assert.equal(body.data.distinct_observations, null);
+        return;
+      }
+      assert.equal(Array.isArray(body.data.points), true);
+      assert.equal(body.data.point_count, body.data.points.length);
+      // The depth the series BEGINS at rides on every response, so a short
+      // series reads as a start rather than as dropped days.
+      assert.equal(typeof body.data.first_captured_day, "string");
+      // A carried-forward day is the same observation twice, so the count of
+      // independent samples can never exceed the rows returned.
+      assert.equal(
+        body.data.distinct_observations <= body.data.point_count,
+        true,
+      );
+      let previousBlock: number | null = null;
+      let distinct = 0;
+      for (const p of body.data.points as Array<{
+        day: string;
+        pipeline_block: number;
+        repeats_previous_observation: boolean;
+      }>) {
+        // Every point is pinned: without a block it cannot say which chain
+        // state it describes.
+        assert.equal(Number.isInteger(p.pipeline_block), true);
+        const repeats: boolean =
+          previousBlock !== null && p.pipeline_block === previousBlock;
+        assert.equal(p.repeats_previous_observation, repeats);
+        if (!repeats) distinct += 1;
+        previousBlock = p.pipeline_block;
+      }
+      // The published count is the one a reader would compute themselves.
+      assert.equal(body.data.distinct_observations, distinct);
+      // Oldest first, so a caller plotting the series need not reverse it.
+      const days = body.data.points.map((p: { day: string }) => p.day);
+      assert.deepEqual(days, [...days].sort());
+    },
+  ],
+  [
     "/api/v1/chain/holders",
     (body) => {
       // #9607. Never 404s and never serves a bare empty ranking: either

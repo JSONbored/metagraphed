@@ -162,6 +162,7 @@ import {
   handleIndexerLag,
   handleTaoUsd,
   handleSubnetSurfaceHistory,
+  handleSubnetPipelineHistory,
   handleSubnetBurnHistory,
   handleSubnetHolders,
   handleCrowdloan,
@@ -492,6 +493,7 @@ import {
   SUBNET_BURN_HISTORY_PATH_PATTERN,
   SUBNET_HOLDERS_PATH_PATTERN,
   SUBNET_SURFACE_HISTORY_PATH_PATTERN,
+  SUBNET_PIPELINE_HISTORY_PATH_PATTERN,
   SUBNET_HISTORY_PATH_PATTERN,
   SUBNET_HYPERPARAMS_PATH_PATTERN,
   SUBNET_HYPERPARAMS_HISTORY_PATH_PATTERN,
@@ -4937,6 +4939,19 @@ export async function handleRequest(
         resolved.url,
       );
     }
+    // #9625: the pipeline series. Mainnet-only because subnet_snapshots carries
+    // no network dimension -- see MAINNET_ONLY_ROUTE_PATHS.
+    const pipelineHistoryMatch = SUBNET_PIPELINE_HISTORY_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (pipelineHistoryMatch) {
+      return handleSubnetPipelineHistory(
+        request,
+        env,
+        Number(pipelineHistoryMatch[1]),
+        resolved.url,
+      );
+    }
     const subnetHistoryMatch = SUBNET_HISTORY_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -5562,6 +5577,9 @@ export function isMainnetOnlyApiPath(pathname: string) {
     pathname === "/api/v1/chain/indexer-lag" ||
     // #9628: neuron_daily carries no network dimension.
     pathname === "/api/v1/chain/concentration/history" ||
+    // #9625: subnet_snapshots carries no network dimension, so a testnet-
+    // addressed request would be served MAINNET pipeline captures.
+    SUBNET_PIPELINE_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_IDENTITY_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_CONCENTRATION_PATH_PATTERN.test(pathname) ||

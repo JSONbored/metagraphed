@@ -5001,6 +5001,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/emission-pipeline/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch one subnet's emission-pipeline series. One subnet's emission-pipeline decomposition OVER TIME (#9625). /chain/emission-pipeline decomposes the v440 pipeline for every subnet as of ONE BLOCK; subnet_snapshots has persisted that decomposition daily since 2026-08-02 -- emission_share, tao_in_pool_tao, the TAO split (tao_in_emission_tao pool-liquidity injection vs excess_tao chain buys), alpha_in/out_emission, miner_burned_fraction, emission_enabled, first_emission_block, alpha_price_tao, each pinned by pipeline_block/pipeline_block_hash -- and no route read the series, so 'was this subnet's miner burn climbing before its emission dropped?' was unanswerable from data already in the table. THE DEPTH IS FIVE DAYS AND THE ROUTE SAYS SO. subnet_snapshots holds 50,762 rows across 409 days; the PIPELINE columns hold 645 across 5 (measured 2026-08-06, 129 subnets a day, no gaps). oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day rides on every response so a caller receiving 5 points for a 90d window reads it as 'the series begins here' rather than '85 days were dropped'. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED. The daily snapshot writer carries the last pipeline capture forward when a fresh one has not landed for that day -- measured 2026-08-06, that day's row was captured at 05:00 UTC carrying block 8777280, yesterday's, while the chain was at 8782513. So two consecutive points can be THE SAME OBSERVATION, and a consumer reading them as two daily samples would conclude a value was flat when it was simply not re-measured. pipeline_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the number of times the pipeline was actually READ, which is the honest denominator for any claim about how it moved. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily snapshot. An EMPTY series is a measurement, not an error: a subnet registered after the capture began, or a window narrower than the days that exist, both return one legitimately. Mainnet-only: subnet_snapshots carries no network dimension. */
+        get: operations["subnetEmissionPipelineHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/endpoints": {
         parameters: {
             query?: never;
@@ -9711,6 +9728,40 @@ export interface components {
          * @enum {unknown}
          */
         PartnershipTier: "pilot";
+        PipelineHistoryArtifact: {
+            degraded?: {
+                /** @enum {string} */
+                reason: "unavailable";
+            };
+            distinct_observations: number | null;
+            first_captured_day: string;
+            netuid: number;
+            newest_day: string | null;
+            oldest_day: string | null;
+            point_count: number | null;
+            points: components["schemas"]["PipelineHistoryPoint"][];
+            schema_version: number;
+            window: string | null;
+        } & {
+            [key: string]: unknown;
+        };
+        PipelineHistoryPoint: {
+            alpha_in_emission: number | null;
+            alpha_out_emission: number | null;
+            alpha_price_tao: number | null;
+            captured_at: string | null;
+            day: string;
+            emission_enabled: boolean | null;
+            emission_share: number | null;
+            excess_tao: number | null;
+            first_emission_block: number | null;
+            miner_burned_fraction: number | null;
+            pipeline_block: number;
+            pipeline_block_hash: string | null;
+            repeats_previous_observation: boolean;
+            tao_in_emission_tao: number | null;
+            tao_in_pool_tao: number | null;
+        };
         ProbeConfig: {
             enabled: boolean;
             /** @enum {string} */
@@ -48903,6 +48954,139 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["SubnetDeregistrationsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetEmissionPipelineHistory: {
+        parameters: {
+            query?: {
+                /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`, `180d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
+                window?: "7d" | "30d" | "90d" | "180d";
+            };
+            header?: never;
+            path: {
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "degraded": {
+                     *           "reason": "unavailable"
+                     *         },
+                     *         "distinct_observations": 1,
+                     *         "first_captured_day": "2026-06-01T00:00:00.000Z",
+                     *         "netuid": 7,
+                     *         "newest_day": "example",
+                     *         "oldest_day": "example",
+                     *         "point_count": 1,
+                     *         "points": [
+                     *           {
+                     *             "alpha_in_emission": 0.5,
+                     *             "alpha_out_emission": 0.5,
+                     *             "alpha_price_tao": 0.5,
+                     *             "captured_at": "2026-06-01T00:00:00.000Z",
+                     *             "day": "2026-06-01",
+                     *             "emission_enabled": false,
+                     *             "emission_share": 0.5,
+                     *             "excess_tao": 0.5,
+                     *             "first_emission_block": 5000000,
+                     *             "miner_burned_fraction": 0.5,
+                     *             "pipeline_block": 5000000,
+                     *             "pipeline_block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *             "repeats_previous_observation": false,
+                     *             "tao_in_emission_tao": 0.5,
+                     *             "tao_in_pool_tao": 0.5
+                     *           }
+                     *         ],
+                     *         "schema_version": 1,
+                     *         "window": "30d"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["PipelineHistoryArtifact"];
                     };
                 };
             };

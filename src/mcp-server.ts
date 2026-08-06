@@ -631,6 +631,10 @@ import {
   GetChainConcentrationHistoryOutputSchema,
 } from "../schemas-src/mcp-tools/get-chain-concentration-history.ts";
 import {
+  GetPipelineHistoryInputSchema,
+  GetPipelineHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/get-emission-pipeline-history.ts";
+import {
   GetEmissionChangesInputSchema,
   GetEmissionChangesOutputSchema,
 } from "../schemas-src/mcp-tools/get-emission-changes.ts";
@@ -1470,6 +1474,13 @@ import {
   CHAIN_CONCENTRATION_HISTORY_WINDOWS,
 } from "./chain-concentration-history.ts";
 import { DEFAULT_CHAIN_CONCENTRATION_HISTORY_WINDOW } from "./route-limits.ts";
+import {
+  buildPipelineHistory,
+  declinePipelineHistory,
+  loadPipelineHistory,
+  PIPELINE_HISTORY_WINDOWS,
+} from "./emission-pipeline-history.ts";
+import { DEFAULT_PIPELINE_HISTORY_WINDOW } from "./route-limits.ts";
 import {
   buildEmissionChanges,
   loadEmissionChanges,
@@ -8233,6 +8244,54 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_emission_pipeline_history",
+    title: "Get a subnet's emission-pipeline series",
+    description:
+      "Fetch ONE SUBNET'S emission-pipeline decomposition OVER TIME (#9625) " +
+      "-- emission share, the TAO split (pool-liquidity injection vs chain " +
+      "buys), alpha in/out emission, miner burned fraction, whether emission " +
+      "is enabled -- one point per day, each pinned to the block it was " +
+      "captured at. get_emission_pipeline answers ONE BLOCK for every subnet; " +
+      "this answers one subnet across days, and is what 'was this subnet's " +
+      "miner burn climbing before its emission dropped?' needs. " +
+      "READ THE DEPTH BEFORE DRAWING A TREND: the pipeline columns began on " +
+      "2026-08-02, so a 90d window returns the few days that EXIST, not 90 " +
+      "-- first_captured_day says where the series starts and " +
+      "oldest_day/newest_day say what was covered. " +
+      "AND READ distinct_observations, NOT point_count, when claiming a value " +
+      "moved: the snapshot writer carries the last capture forward when a " +
+      "fresh one has not landed for a day, so two consecutive points can be " +
+      "THE SAME OBSERVATION. Each point flags that as " +
+      "repeats_previous_observation, and treating a carried-forward day as an " +
+      "independent sample would report a value as FLAT when it was simply not " +
+      "re-measured. window is 7d, 30d (default), 90d or 180d. An empty series " +
+      "is a measurement -- a subnet registered after the capture began " +
+      "returns one legitimately. Mainnet only. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/emission-pipeline/history.",
+    inputSchema: z.toJSONSchema(GetPipelineHistoryInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetPipelineHistoryInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      const window =
+        optionalEnum(args, "window", [...PIPELINE_HISTORY_WINDOWS]) ??
+        DEFAULT_PIPELINE_HISTORY_WINDOW;
+      const rows = await loadPipelineHistory(
+        ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+          typeof loadPipelineHistory
+        >[0],
+        netuid,
+        { window },
+      );
+      return rows === null
+        ? declinePipelineHistory("unavailable", netuid, { window })
+        : buildPipelineHistory(rows, netuid, { window });
+    },
+  },
+  {
     name: "get_subnet_holders",
     title: "Get a subnet's alpha holder leaderboard",
     description:
@@ -13357,6 +13416,10 @@ const TOOL_OUTPUT_SCHEMAS = {
   }),
   get_chain_concentration_history: z.toJSONSchema(
     GetChainConcentrationHistoryOutputSchema,
+    { target: "draft-2020-12" },
+  ),
+  get_emission_pipeline_history: z.toJSONSchema(
+    GetPipelineHistoryOutputSchema,
     { target: "draft-2020-12" },
   ),
   get_emission_changes: z.toJSONSchema(GetEmissionChangesOutputSchema, {

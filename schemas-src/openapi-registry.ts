@@ -132,6 +132,10 @@ import {
   ChainConcentrationHistoryArtifactSchema,
 } from "./routes/chain-concentration-history.ts";
 import {
+  PipelineHistoryPointSchema,
+  PipelineHistoryArtifactSchema,
+} from "./routes/emission-pipeline-history.ts";
+import {
   EmissionParamChangeSchema,
   EmissionSubnetChangeSchema,
   EmissionFlowChangeSchema,
@@ -520,6 +524,8 @@ register(
   ChainConcentrationHistoryArtifactSchema,
   "ChainConcentrationHistoryArtifact",
 );
+register(PipelineHistoryPointSchema, "PipelineHistoryPoint");
+register(PipelineHistoryArtifactSchema, "PipelineHistoryArtifact");
 register(EmissionParamChangeSchema, "EmissionParamChange");
 register(EmissionSubnetChangeSchema, "EmissionSubnetChange");
 register(EmissionFlowChangeSchema, "EmissionFlowChange");

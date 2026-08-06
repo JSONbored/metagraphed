@@ -491,6 +491,11 @@ export const SUBNET_HOLDERS_PATH_PATTERN =
  * public surfaces were added, changed or removed, and in which commit. */
 export const SUBNET_SURFACE_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/surface-history$/;
+/** GET /api/v1/subnets/{netuid}/emission-pipeline/history (#9625) -- one
+ * subnet's pipeline decomposition over time, each point pinned to the block it
+ * was captured at. */
+export const SUBNET_PIPELINE_HISTORY_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/emission-pipeline\/history$/;
 
 export const SUBNET_HISTORY_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/history$/;

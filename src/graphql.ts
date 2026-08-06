@@ -318,6 +318,13 @@ import {
 } from "./chain-concentration-history.ts";
 import { DEFAULT_CHAIN_CONCENTRATION_HISTORY_WINDOW } from "./route-limits.ts";
 import {
+  buildPipelineHistory,
+  declinePipelineHistory,
+  loadPipelineHistory,
+  PIPELINE_HISTORY_WINDOWS,
+} from "./emission-pipeline-history.ts";
+import { DEFAULT_PIPELINE_HISTORY_WINDOW } from "./route-limits.ts";
+import {
   buildEmissionChanges,
   loadEmissionChanges,
   EMISSION_CHANGE_KINDS,
@@ -1202,6 +1209,7 @@ export const FIELD_COMPLEXITY = {
   // #9607: one bounded statement over the same two tables.
   chain_holders: RELATIONSHIP_FIELD_COMPLEXITY,
   chain_concentration_history: RELATIONSHIP_FIELD_COMPLEXITY,
+  subnet_emission_pipeline_history: RELATIONSHIP_FIELD_COMPLEXITY,
   // #9615: one bounded union over three small append-only tables.
   emission_changes: RELATIONSHIP_FIELD_COMPLEXITY,
   failure_reasons: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -2979,6 +2987,30 @@ const rootValue = {
     return rows === null
       ? declineChainConcentrationHistory("unavailable", args)
       : buildChainConcentrationHistory(rows, args);
+  },
+
+  async subnet_emission_pipeline_history(
+    { netuid, window }: { netuid: number; window?: string | null },
+    context: GqlContext,
+  ) {
+    // #9625. Shares the REST/MCP loader for #9540's reason.
+    if (window != null && !PIPELINE_HISTORY_WINDOWS.includes(window)) {
+      throw new GraphQLError(
+        `window must be one of: ${PIPELINE_HISTORY_WINDOWS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const args = { window: window ?? DEFAULT_PIPELINE_HISTORY_WINDOW };
+    const rows = await loadPipelineHistory(
+      context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof loadPipelineHistory
+      >[0],
+      netuid,
+      args,
+    );
+    return rows === null
+      ? declinePipelineHistory("unavailable", netuid, args)
+      : buildPipelineHistory(rows, netuid, args);
   },
 
   async subnet_holders(
