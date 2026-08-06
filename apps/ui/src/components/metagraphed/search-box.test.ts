@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "@/lib/metagraphed/client";
 import type { SemanticSearchResult } from "@/lib/metagraphed/types";
-import { describeSearchError, formatScore, resultLabel, resultMeta } from "./search-box";
+import {
+  describeSearchError,
+  formatScore,
+  resultLabel,
+  resultMeta,
+  identifierKindLabel,
+  shortenIdentifier,
+} from "./search-box";
 
 function result(overrides: Partial<SemanticSearchResult> = {}): SemanticSearchResult {
   return {
@@ -99,5 +106,32 @@ describe("resultMeta", () => {
 
   it("omits the subnet prefix when netuid is null", () => {
     expect(resultMeta(result({ netuid: null, score: 0.5 }))).toBe("50%");
+  });
+});
+
+describe("identifier matches (metagraphed-infra#362)", () => {
+  it("labels every resolved kind", () => {
+    // A kind with no label would render blank, which reads as a broken row
+    // rather than a missing case.
+    const kinds = ["account", "block", "extrinsic", "evm-account", "subnet", "neuron"] as const;
+    for (const kind of kinds) {
+      expect(identifierKindLabel(kind).length).toBeGreaterThan(0);
+    }
+  });
+
+  it("shortens in the MIDDLE, keeping both ends", () => {
+    // The ends are what a user recognises in a hash or an address; truncating
+    // the tail makes two different hashes look identical.
+    const hash = `0x${"a".repeat(64)}`;
+    const short = shortenIdentifier(hash);
+    expect(short.startsWith("0xaaaaaaaa")).toBe(true);
+    expect(short.endsWith("aaaaaaaa")).toBe(true);
+    expect(short).toContain("…");
+    expect(short.length).toBeLessThan(hash.length);
+  });
+
+  it("leaves a short value alone", () => {
+    expect(shortenIdentifier("7")).toBe("7");
+    expect(shortenIdentifier("74:12")).toBe("74:12");
   });
 });
