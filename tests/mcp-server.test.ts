@@ -23865,3 +23865,86 @@ describe("the MCP endpoint tolerates a trailing slash", () => {
     assert.notEqual(response.status, 200);
   });
 });
+
+// #9648: `cursor` on tools/list was accepted and ignored -- the request said
+// one thing and the response quietly did another, with no `nextCursor` to
+// terminate on.
+describe("tools/list cursor handling (#9648)", () => {
+  const call = async (params?: Row) => {
+    const res = await handleMcpRequest(
+      new Request("https://api.metagraph.sh/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/list",
+          ...(params ? { params } : {}),
+        }),
+      }),
+      {} as unknown as Env,
+      {},
+    );
+    return (await res.json()) as Row;
+  };
+
+  test("the full catalogue is returned when no cursor is sent", async () => {
+    const body = await call();
+    assert.ok((body.result as Row).tools.length > 200);
+    assert.equal(
+      "nextCursor" in (body.result as Row),
+      false,
+      "no cursor is issued, so none may be advertised",
+    );
+  });
+
+  test("a non-empty cursor is refused rather than silently ignored", async () => {
+    const body = await call({ cursor: "abc" });
+    assert.equal((body.error as Row).code, -32602);
+    assert.match(String((body.error as Row).message), /not paginated/i);
+  });
+
+  // A NOTIFICATION carrying a cursor: there is no id to answer, so the refusal
+  // has nowhere to go and the response must stay empty rather than inventing
+  // an error envelope with a null id.
+  test("a notification with a cursor is dropped, not answered", async () => {
+    const res = await handleMcpRequest(
+      new Request("https://api.metagraph.sh/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "tools/list",
+          params: { cursor: "abc" },
+        }),
+      }),
+      {} as unknown as Env,
+      {},
+    );
+    assert.equal(res.status, 202);
+    assert.equal(await res.text(), "");
+  });
+
+  // The compatibility line: every client today sends no cursor, and some send
+  // the key with an empty value. Neither may start failing.
+  test("an absent, null or empty cursor is unaffected", async () => {
+    for (const params of [
+      undefined,
+      { cursor: null },
+      { cursor: "" },
+      { cursor: "   " },
+    ]) {
+      const body = await call(params as Row | undefined);
+      assert.ok(
+        (body.result as Row)?.tools?.length > 200,
+        `expected the full catalogue for ${JSON.stringify(params)}`,
+      );
+    }
+  });
+});
