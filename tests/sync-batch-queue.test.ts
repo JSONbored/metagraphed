@@ -14,9 +14,13 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   classifySyncBatch,
+  enqueueSyncBatch,
+  packSyncBatchMessages,
+  QUEUE_MESSAGE_MAX_BYTES,
   SYNC_BATCH_LANES,
   SYNC_BATCH_MAX_ROWS,
   passTallyFor,
+  PRUNING_LANE_KEYS,
   PRUNING_LANES,
   syncLaneUsesQueue,
   validSyncBatchMessage,
@@ -273,5 +277,292 @@ describe("pruning lanes must declare key-completeness", () => {
     assert.equal(validSyncBatchMessage(OK), true);
     assert.equal(PRUNING_LANES.includes("hotkey-alpha"), false);
     assert.equal(PRUNING_LANES.includes("nominator-positions"), true);
+  });
+});
+
+// --- The transport's size cap (metagraphed-infra#360) ------------------------
+//
+// The bug this section exists for did not look like a bug. `send()` was handed
+// the whole posted chunk, the producers chunk at 25,000 rows, and a Queues
+// message is capped at 128 KB -- so every enqueue threw, the route returned 502,
+// and the producer read that as a transient network fault and retried into it.
+// A cut-over lane did not degrade. It stopped, wearing the costume of a flaky
+// one, and both lanes sat at zero completed passes until someone compared a
+// deploy timestamp against a pass table.
+//
+// So the tests that matter here are the ones that would have caught it: pack a
+// realistically-shaped chunk at the real producer size and assert the RESULT
+// fits the real cap.
+const ss58 = (n: number) => `5${String(n).padStart(47, "D")}`;
+
+/** A chunk shaped like the real thing: 25,000 rows is `CHUNK_SIZE` in both
+ * `hotkey_alpha.rs` and `account_balances.rs`, and the ss58 is what makes a row
+ * 127.6 bytes rather than the 30 a toy fixture would be. */
+const realisticChunk = (n: number, capturedAt = 1_785_970_245_474) =>
+  Array.from({ length: n }, (_, i) => ({
+    hotkey: ss58(i),
+    netuid: i % 129,
+    total_alpha: 1234.56789012 + i,
+    captured_at: capturedAt,
+  }));
+
+describe("packSyncBatchMessages", () => {
+  test("a real 25,000-row chunk becomes messages that each fit the cap", () => {
+    const rows = realisticChunk(25_000);
+
+    // THE FIXTURE MUST BE ABLE TO FAIL. If one message could hold this chunk
+    // the rest of the test proves nothing, so assert first that the payload
+    // really is over the cap -- this is the measurement the bug turned on.
+    const unsplit = JSON.stringify({
+      lane: "hotkey-alpha",
+      captured_at: 1_785_970_245_474,
+      pass_total: 47_032,
+      rows,
+    }).length;
+    assert.equal(unsplit > QUEUE_MESSAGE_MAX_BYTES * 20, true);
+
+    const messages = packSyncBatchMessages({
+      lane: "hotkey-alpha",
+      capturedAt: 1_785_970_245_474,
+      passTotal: 47_032,
+      rows,
+    });
+
+    assert.equal(messages.length > 1, true);
+    for (const message of messages) {
+      assert.equal(
+        JSON.stringify(message).length <= QUEUE_MESSAGE_MAX_BYTES,
+        true,
+      );
+      // Every message is independently valid, or the consumer acks it and the
+      // rows vanish -- a malformed message is not retried.
+      assert.equal(validSyncBatchMessage(message), true);
+    }
+  });
+
+  test("loses no row and reorders none, so the tally still sums", () => {
+    const rows = realisticChunk(5_000);
+    const messages = packSyncBatchMessages({
+      lane: "hotkey-alpha",
+      capturedAt: 1_785_970_245_474,
+      passTotal: 47_032,
+      rows,
+    });
+    const flat = messages.flatMap((m) => m.rows);
+    assert.equal(flat.length, rows.length);
+    assert.deepEqual(flat, rows);
+    // The declaration rides on every message, exactly as it rides on every
+    // POSTed chunk -- `received_rows` accumulates against one `pass_total`.
+    for (const m of messages) assert.equal(m.pass_total, 47_032);
+  });
+
+  test("carries no pass declaration when the producer made none", () => {
+    const messages = packSyncBatchMessages({
+      lane: "validator-nominator-counts",
+      capturedAt: 1_785_970_245_474,
+      rows: realisticChunk(10),
+    });
+    assert.equal(messages.length, 1);
+    assert.equal("pass_total" in messages[0]!, false);
+  });
+
+  test("returns nothing for an empty chunk rather than an empty message", () => {
+    // An empty message fails the validator, so emitting one would put a
+    // guaranteed reject on the queue.
+    assert.deepEqual(
+      packSyncBatchMessages({
+        lane: "hotkey-alpha",
+        capturedAt: 1,
+        rows: [],
+      }),
+      [],
+    );
+  });
+
+  test("refuses to emit a message over the transport cap", () => {
+    // The last line of defence, and the one whose absence cost two stopped
+    // lanes. It fires when the budget itself is wrong -- raise
+    // SYNC_BATCH_MAX_BYTES above the platform cap and the packer must refuse
+    // rather than hand `send()` something it will reject.
+    assert.throws(
+      () =>
+        packSyncBatchMessages({
+          lane: "hotkey-alpha",
+          capturedAt: 1_785_970_245_474,
+          rows: realisticChunk(25_000),
+          maxBytes: QUEUE_MESSAGE_MAX_BYTES * 100,
+        }),
+      /over the \d+-byte transport cap/,
+    );
+  });
+
+  test("throws on a single row too large for the budget", () => {
+    // A non-pruning lane has no key to group by, so the group IS one row -- and
+    // a row that cannot fit alone cannot be split at all. Better a named error
+    // than a message the transport silently refuses.
+    assert.throws(
+      () =>
+        packSyncBatchMessages({
+          lane: "hotkey-alpha",
+          capturedAt: 1,
+          rows: [{ blob: "x".repeat(5_000) }],
+          maxBytes: 1_024,
+        }),
+      /row group of 1 row\(s\) is \d+ bytes/,
+    );
+  });
+
+  test("splits on the row ceiling too, not only on bytes", () => {
+    // Tiny rows: the byte budget would never trigger, so this isolates the
+    // row-count bound.
+    const rows = Array.from({ length: 20 }, (_, i) => ({ i }));
+    const messages = packSyncBatchMessages({
+      lane: "hotkey-alpha",
+      capturedAt: 1,
+      rows,
+      maxRows: 7,
+    });
+    assert.deepEqual(
+      messages.map((m) => m.rows.length),
+      [7, 7, 6],
+    );
+  });
+});
+
+describe("packSyncBatchMessages: the pruning lanes", () => {
+  // `nominator-positions` DELETES rows for a coldkey older than the newest
+  // captured_at it saw for that coldkey. Applied to a message holding only some
+  // of a coldkey's rows, that deletes rows the message never carried -- and no
+  // retry undoes a delete. So the packer may never split a coldkey.
+  const positions = (coldkeys: number, per: number) =>
+    Array.from({ length: coldkeys * per }, (_, i) => ({
+      coldkey: ss58(Math.floor(i / per)),
+      hotkey: ss58(1000 + (i % per)),
+      netuid: i % 129,
+      alpha: 1234.5678 + i,
+      captured_at: 1_785_970_245_474,
+    }));
+
+  test("never splits a coldkey across messages", () => {
+    const rows = positions(400, 30);
+    const messages = packSyncBatchMessages({
+      lane: "nominator-positions",
+      capturedAt: 1_785_970_245_474,
+      rows,
+    });
+
+    // More than one message, or the grouping was never exercised.
+    assert.equal(messages.length > 1, true);
+
+    const seen = new Map<string, number>();
+    for (const [index, message] of messages.entries()) {
+      for (const row of message.rows) {
+        const key = row.coldkey as string;
+        const previous = seen.get(key);
+        // Every row for a coldkey must sit in the SAME message.
+        if (previous !== undefined) assert.equal(previous, index);
+        else seen.set(key, index);
+      }
+    }
+    assert.equal(seen.size, 400);
+  });
+
+  test("asserts key_complete on every message, because it made it true", () => {
+    const messages = packSyncBatchMessages({
+      lane: "nominator-positions",
+      capturedAt: 1_785_970_245_474,
+      rows: positions(50, 10),
+    });
+    for (const message of messages) {
+      assert.equal(message.key_complete, true);
+      assert.equal(validSyncBatchMessage(message), true);
+    }
+  });
+
+  test("does not claim key_complete for a lane that does not prune", () => {
+    // The flag is a claim about a property. A lane that never deletes has no
+    // such property, and asserting it anyway would make the field meaningless
+    // the day a third lane reads it.
+    const [message] = packSyncBatchMessages({
+      lane: "hotkey-alpha",
+      capturedAt: 1,
+      rows: realisticChunk(3),
+    });
+    assert.equal("key_complete" in message!, false);
+  });
+
+  test("throws on a coldkey too large to fit, rather than splitting it", () => {
+    // Degrading here would silently reintroduce the deletion the guard exists
+    // to stop, on a lane whose failure mode is lost rows.
+    assert.throws(
+      () =>
+        packSyncBatchMessages({
+          lane: "nominator-positions",
+          capturedAt: 1,
+          rows: positions(1, 2_000),
+          maxBytes: 4_096,
+        }),
+      /cannot be split without breaking key_complete/,
+    );
+  });
+
+  test("throws if a pruning lane has no declared key column", () => {
+    // Reachable because the two lists are separate on purpose: a lane can have
+    // a known prune key before its producer asserts key-completeness (`neurons`
+    // today, metagraphed-infra#357), so "in PRUNING_LANES, absent from the key
+    // map" is a state the code can really be in. Emitting an unguarded message
+    // there would delete rows it never carried.
+    assert.throws(
+      () =>
+        packSyncBatchMessages({
+          lane: "nominator-positions",
+          capturedAt: 1,
+          rows: realisticChunk(2),
+          pruningKeys: {},
+        }),
+      /prunes but declares no key column/,
+    );
+  });
+
+  test("every pruning lane declares its key, so the guard is never reached", () => {
+    // The test above proves the guard works. This one proves it should never
+    // fire in production -- a lane added to PRUNING_LANES without a key would
+    // throw on its first real chunk.
+    for (const lane of PRUNING_LANES) {
+      assert.equal(typeof PRUNING_LANE_KEYS[lane], "string");
+    }
+  });
+});
+
+describe("enqueueSyncBatch", () => {
+  test("sends every packed message and reports how many", async () => {
+    const sent: unknown[] = [];
+    const count = await enqueueSyncBatch(
+      { send: async (body) => void sent.push(body) },
+      {
+        lane: "hotkey-alpha",
+        capturedAt: 1_785_970_245_474,
+        passTotal: 47_032,
+        rows: realisticChunk(3_000),
+      },
+    );
+    assert.equal(sent.length > 1, true);
+    assert.equal(count, sent.length);
+  });
+
+  test("rejects when a send fails, so the producer retries the chunk", async () => {
+    // 502, never 200. Reporting success on a chunk the queue never accepted
+    // loses it silently, and the pass would sit incomplete forever.
+    await assert.rejects(
+      enqueueSyncBatch(
+        { send: async () => Promise.reject(new Error("over capacity")) },
+        {
+          lane: "hotkey-alpha",
+          capturedAt: 1,
+          rows: realisticChunk(10),
+        },
+      ),
+      /over capacity/,
+    );
   });
 });
