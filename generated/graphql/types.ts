@@ -1165,6 +1165,47 @@ export enum ChainFirehoseTable {
   Extrinsics = 'extrinsics'
 }
 
+export type ChainHolders = {
+  __typename?: 'ChainHolders';
+  captured_at?: Maybe<Scalars['String']['output']>;
+  /** Present ONLY on a decline. An empty subnets list WITHOUT this block is a measurement. */
+  degraded?: Maybe<DegradedInfo>;
+  limit?: Maybe<Scalars['Int']['output']>;
+  network?: Maybe<ChainHoldersNetwork>;
+  positions_captured_at?: Maybe<Scalars['String']['output']>;
+  schema_version: Scalars['Int']['output'];
+  sort: Scalars['String']['output'];
+  /** Subnets measured -- NOT the length of the subnets list when limit bites. */
+  subnet_count?: Maybe<Scalars['Int']['output']>;
+  subnets: Array<ChainHoldersSubnet>;
+};
+
+/** Dimension-free network facts. There is deliberately no cross-subnet alpha total: summing different subnets' alpha has no unit. */
+export type ChainHoldersNetwork = {
+  __typename?: 'ChainHoldersNetwork';
+  median_top1_share?: Maybe<Scalars['Float']['output']>;
+  subnets_measured?: Maybe<Scalars['Int']['output']>;
+  /** Subnets where ONE account holds a majority of the measured alpha. */
+  subnets_with_majority_holder?: Maybe<Scalars['Int']['output']>;
+  /** Subnets whose entire measured alpha sits in a single wallet. */
+  subnets_with_single_holder?: Maybe<Scalars['Int']['output']>;
+};
+
+/** One subnet's alpha-ownership concentration. */
+export type ChainHoldersSubnet = {
+  __typename?: 'ChainHoldersSubnet';
+  holder_count?: Maybe<Scalars['Int']['output']>;
+  netuid: Scalars['Int']['output'];
+  top1_share?: Maybe<Scalars['Float']['output']>;
+  top5_share?: Maybe<Scalars['Float']['output']>;
+  top10_share?: Maybe<Scalars['Float']['output']>;
+  top20_share?: Maybe<Scalars['Float']['output']>;
+  /** The largest holder's coldkey (an ss58 address). */
+  top_holder?: Maybe<Scalars['String']['output']>;
+  /** ALPHA, comparable only WITHIN this subnet -- each subnet's alpha is a different token. */
+  total_alpha?: Maybe<Scalars['Float']['output']>;
+};
+
 export type ChainIdentityHistory = {
   __typename?: 'ChainIdentityHistory';
   changes: Array<ChainIdentityHistoryEntry>;
@@ -2611,6 +2652,8 @@ export type Query = {
   chain_events_stats: ChainEventsStats;
   /** Per-UTC-day network fee/tip series over a 7d/30d window (default 7d): each day's extrinsic count and total/avg/median fee + tip in TAO, plus the top fee-paying signers (limit default 25, max 100), optionally scoped to a single call_module. Computed live from the extrinsics tier; a cold store yields a schema-stable empty series, never a GraphQL error. Mirrors GET /api/v1/chain/fees. */
   chain_fees: ChainFees;
+  /** Every subnet ranked by how concentrated its alpha OWNERSHIP is: per subnet the distinct holder count, measured alpha total, top1/top5/top10/top20 shares and the largest holder's coldkey (an ss58 address). The cross-subnet companion to subnet_holders, which answers one subnet at a time. NOT chain_concentration, which computes Gini/HHI/Nakamoto off registered UIDs' stake and cannot see alpha held on hotkeys with no UID. ALPHA IS NEVER SUMMED ACROSS SUBNETS -- each subnet's alpha is a different token, so total_alpha is per subnet and the network block carries only counts plus the median top-1 share. sort is one of top1_share (default), top5_share, top10_share, top20_share, holder_count, total_alpha; unmeasurable subnets sort LAST. Declines with an empty list plus a degraded block while the pool ledger has no complete pass, so an empty list WITHOUT that block is a measurement. Mainnet only. Mirrors GET /api/v1/chain/holders. */
+  chain_holders: ChainHolders;
   /** Network-wide identity-change feed: the most-recent SubnetIdentitiesV3 changes across every subnet (each entry carries its netuid), newest first, capped by limit; a cold/absent store resolves to a schema-stable empty feed (count 0), never null. Mirrors GET /api/v1/chain/identity-history. */
   chain_identity_history: ChainIdentityHistory;
   /** Network-wide idle-stake rollup: every subnet's stake delegated to a currently-zero-dividends hotkey, ranked by idle_stake_alpha, plus the network total. Current snapshot only (no window/params). A cold store yields a schema-stable empty ranking, never a GraphQL error. Mirrors GET /api/v1/chain/idle-stake. */
@@ -3187,6 +3230,12 @@ export type QueryChain_FeesArgs = {
   call_module?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   window?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryChain_HoldersArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  sort?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -6016,6 +6065,9 @@ export type ResolversTypes = ResolversObject<{
   ChainFees: ResolverTypeWrapper<ChainFees>;
   ChainFeesDay: ResolverTypeWrapper<ChainFeesDay>;
   ChainFirehoseTable: ResolverTypeWrapper<ChainFirehoseTable>;
+  ChainHolders: ResolverTypeWrapper<ChainHolders>;
+  ChainHoldersNetwork: ResolverTypeWrapper<ChainHoldersNetwork>;
+  ChainHoldersSubnet: ResolverTypeWrapper<ChainHoldersSubnet>;
   ChainIdentityHistory: ResolverTypeWrapper<ChainIdentityHistory>;
   ChainIdentityHistoryEntry: ResolverTypeWrapper<ChainIdentityHistoryEntry>;
   ChainIdleStake: ResolverTypeWrapper<ChainIdleStake>;
@@ -6337,6 +6389,9 @@ export type ResolversParentTypes = ResolversObject<{
   ChainFeePayer: ChainFeePayer;
   ChainFees: ChainFees;
   ChainFeesDay: ChainFeesDay;
+  ChainHolders: ChainHolders;
+  ChainHoldersNetwork: ChainHoldersNetwork;
+  ChainHoldersSubnet: ChainHoldersSubnet;
   ChainIdentityHistory: ChainIdentityHistory;
   ChainIdentityHistoryEntry: ChainIdentityHistoryEntry;
   ChainIdleStake: ChainIdleStake;
@@ -7477,6 +7532,36 @@ export type ChainFeesDayResolvers<ContextType = GqlContext, ParentType extends R
   signed_extrinsic_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   total_fee_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   total_tip_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type ChainHoldersResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainHolders'] = ResolversParentTypes['ChainHolders']> = ResolversObject<{
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['DegradedInfo']>, ParentType, ContextType>;
+  limit?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  network?: Resolver<Maybe<ResolversTypes['ChainHoldersNetwork']>, ParentType, ContextType>;
+  positions_captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  sort?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  subnet_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  subnets?: Resolver<Array<ResolversTypes['ChainHoldersSubnet']>, ParentType, ContextType>;
+}>;
+
+export type ChainHoldersNetworkResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainHoldersNetwork'] = ResolversParentTypes['ChainHoldersNetwork']> = ResolversObject<{
+  median_top1_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  subnets_measured?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  subnets_with_majority_holder?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  subnets_with_single_holder?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+}>;
+
+export type ChainHoldersSubnetResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainHoldersSubnet'] = ResolversParentTypes['ChainHoldersSubnet']> = ResolversObject<{
+  holder_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  top1_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  top5_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  top10_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  top20_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  top_holder?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  total_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
 export type ChainIdentityHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainIdentityHistory'] = ResolversParentTypes['ChainIdentityHistory']> = ResolversObject<{
@@ -8626,6 +8711,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   chain_events?: Resolver<ResolversTypes['ChainEventsFeed'], ParentType, ContextType, Partial<QueryChain_EventsArgs>>;
   chain_events_stats?: Resolver<ResolversTypes['ChainEventsStats'], ParentType, ContextType, Partial<QueryChain_Events_StatsArgs>>;
   chain_fees?: Resolver<ResolversTypes['ChainFees'], ParentType, ContextType, Partial<QueryChain_FeesArgs>>;
+  chain_holders?: Resolver<ResolversTypes['ChainHolders'], ParentType, ContextType, Partial<QueryChain_HoldersArgs>>;
   chain_identity_history?: Resolver<ResolversTypes['ChainIdentityHistory'], ParentType, ContextType, Partial<QueryChain_Identity_HistoryArgs>>;
   chain_idle_stake?: Resolver<ResolversTypes['ChainIdleStake'], ParentType, ContextType>;
   chain_performance?: Resolver<ResolversTypes['ChainPerformance'], ParentType, ContextType>;
@@ -10121,6 +10207,9 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ChainFeePayer?: ChainFeePayerResolvers<ContextType>;
   ChainFees?: ChainFeesResolvers<ContextType>;
   ChainFeesDay?: ChainFeesDayResolvers<ContextType>;
+  ChainHolders?: ChainHoldersResolvers<ContextType>;
+  ChainHoldersNetwork?: ChainHoldersNetworkResolvers<ContextType>;
+  ChainHoldersSubnet?: ChainHoldersSubnetResolvers<ContextType>;
   ChainIdentityHistory?: ChainIdentityHistoryResolvers<ContextType>;
   ChainIdentityHistoryEntry?: ChainIdentityHistoryEntryResolvers<ContextType>;
   ChainIdleStake?: ChainIdleStakeResolvers<ContextType>;

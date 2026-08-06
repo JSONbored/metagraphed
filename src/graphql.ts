@@ -301,6 +301,14 @@ import {
   SUBNET_HOLDERS_LIMIT_DEFAULT,
   SUBNET_HOLDERS_LIMIT_MAX,
 } from "./subnet-holders.ts";
+import {
+  buildChainHolders,
+  loadChainHolders,
+  CHAIN_HOLDERS_LIMIT_DEFAULT,
+  CHAIN_HOLDERS_LIMIT_MAX,
+  CHAIN_HOLDERS_SORTS,
+  DEFAULT_CHAIN_HOLDERS_SORT,
+} from "./chain-holders.ts";
 import { loadTopHoldersFromArtifact } from "./top-holders-artifact.ts";
 import { loadTopHoldersFlowTier } from "./top-holders-flow-tier.ts";
 import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.ts";
@@ -1157,6 +1165,8 @@ export const FIELD_COMPLEXITY = {
   // #9595: two D1 statements, both bounded -- the ranked page by `limit` and the
   // aggregate to a single row -- so it costs what its siblings do.
   subnet_holders: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #9607: one bounded statement over the same two tables.
+  chain_holders: RELATIONSHIP_FIELD_COMPLEXITY,
   neuron: RELATIONSHIP_FIELD_COMPLEXITY,
   neuron_history: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -2727,6 +2737,44 @@ const rootValue = {
       consensus: data.consensus ?? null,
       validator_trust: data.validator_trust ?? null,
     };
+  },
+
+  async chain_holders(
+    { sort, limit }: { sort?: string | null; limit?: number | null },
+    context: GqlContext,
+  ) {
+    // #9607. Shares the REST/MCP loader rather than querying here, for the
+    // reason #9540 exists: a resolver with its own ladder is free to drift into
+    // answering a confident zero while its siblings serve rows.
+    if (
+      sort != null &&
+      !CHAIN_HOLDERS_SORTS.includes(
+        sort as (typeof CHAIN_HOLDERS_SORTS)[number],
+      )
+    ) {
+      throw new GraphQLError(
+        `sort must be one of: ${CHAIN_HOLDERS_SORTS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    if (
+      limit != null &&
+      (!Number.isInteger(limit) || limit < 1 || limit > CHAIN_HOLDERS_LIMIT_MAX)
+    ) {
+      throw new GraphQLError(
+        `limit must be an integer between 1 and ${CHAIN_HOLDERS_LIMIT_MAX}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const read = await loadChainHolders(
+      context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof loadChainHolders
+      >[0],
+    );
+    return buildChainHolders(read, {
+      sort: sort ?? DEFAULT_CHAIN_HOLDERS_SORT,
+      limit: limit ?? CHAIN_HOLDERS_LIMIT_DEFAULT,
+    });
   },
 
   async subnet_holders(

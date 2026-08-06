@@ -19,6 +19,7 @@
     "chain-events-stats-by-network",
     "chain-fees",
     "chain-fees-by-network",
+    "chain-holders",
     "chain-identity-history",
     "chain-idle-stake",
     "chain-performance",

@@ -623,6 +623,10 @@ import {
   GetSubnetHoldersOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-holders.ts";
 import {
+  GetChainHoldersInputSchema,
+  GetChainHoldersOutputSchema,
+} from "../schemas-src/mcp-tools/get-chain-holders.ts";
+import {
   GetSubnetValidatorEconomicsInputSchema,
   GetSubnetValidatorEconomicsOutputSchema,
   ListValidatorEconomicsInputSchema,
@@ -1426,6 +1430,14 @@ import {
   SUBNET_HOLDERS_LIMIT_DEFAULT,
   SUBNET_HOLDERS_LIMIT_MAX,
 } from "./subnet-holders.ts";
+import {
+  buildChainHolders,
+  loadChainHolders,
+  CHAIN_HOLDERS_LIMIT_DEFAULT,
+  CHAIN_HOLDERS_LIMIT_MAX,
+  CHAIN_HOLDERS_SORTS,
+  DEFAULT_CHAIN_HOLDERS_SORT,
+} from "./chain-holders.ts";
 import { buildSubnetHyperparams } from "./subnet-hyperparams.ts";
 import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.ts";
 import { buildAlphaVolume } from "./alpha-volume.ts";
@@ -7848,6 +7860,53 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_chain_holders",
+    title: "Rank every subnet by alpha-ownership concentration",
+    description:
+      "Fetch EVERY subnet ranked by how concentrated its alpha OWNERSHIP is " +
+      "(#9607) -- per subnet the distinct holder count, measured alpha total, " +
+      "top1/top5/top10/top20 shares and the largest holder's coldkey (an ss58 address). The " +
+      "cross-subnet companion to get_subnet_holders, which answers this one " +
+      "subnet at a time; use this to find where ownership is concentrated " +
+      "across the network in one call. NOT the same as " +
+      "get_chain_concentration, which computes Gini/HHI/Nakamoto off " +
+      "registered UIDs' stake and therefore cannot see alpha held on hotkeys " +
+      "with no UID -- the two disagree by design. IMPORTANT: alpha is NEVER " +
+      "summed across subnets, because each subnet's alpha is a different " +
+      "token; total_alpha is per subnet and the network block carries only " +
+      "counts plus the MEDIAN top-1 share. To compare holdings across subnets " +
+      "you must price each through its own alpha_price_tao -- get_top_holders " +
+      "already does that. sort is one of top1_share (default), top5_share, " +
+      "top10_share, top20_share, holder_count, total_alpha; a subnet whose " +
+      "share could not be computed sorts LAST rather than reading as the " +
+      `least concentrated. limit caps the rows (default ${CHAIN_HOLDERS_LIMIT_DEFAULT}, max ${CHAIN_HOLDERS_LIMIT_MAX}), ` +
+      "above the subnet count so ranking the whole network is one call. An " +
+      "empty `subnets` list is NOT evidence that nobody holds alpha -- check " +
+      "`degraded.reason` first. Mainnet only. Mirrors GET /api/v1/chain/holders.",
+    inputSchema: z.toJSONSchema(GetChainHoldersInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetChainHoldersInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const sort =
+        optionalEnum(args, "sort", [...CHAIN_HOLDERS_SORTS]) ??
+        DEFAULT_CHAIN_HOLDERS_SORT;
+      const limit = clampLimit(
+        args?.limit,
+        CHAIN_HOLDERS_LIMIT_DEFAULT,
+        CHAIN_HOLDERS_LIMIT_MAX,
+      );
+      const read = await loadChainHolders(
+        ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+          typeof loadChainHolders
+        >[0],
+      );
+      return buildChainHolders(read, { sort, limit });
+    },
+  },
+  {
     name: "get_subnet_holders",
     title: "Get a subnet's alpha holder leaderboard",
     description:
@@ -12965,6 +13024,9 @@ const TOOL_OUTPUT_SCHEMAS = {
     target: "draft-2020-12",
   }),
   get_subnet_holders: z.toJSONSchema(GetSubnetHoldersOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_chain_holders: z.toJSONSchema(GetChainHoldersOutputSchema, {
     target: "draft-2020-12",
   }),
   get_chain_burn: z.toJSONSchema(GetChainBurnOutputSchema, {

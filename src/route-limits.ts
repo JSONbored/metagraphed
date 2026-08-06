@@ -71,6 +71,18 @@ export const TOP_HOLDERS_LIMIT_MAX = 100;
 export const SUBNET_HOLDERS_LIMIT_DEFAULT = 20;
 export const SUBNET_HOLDERS_LIMIT_MAX = 100;
 
+/**
+ * `/api/v1/chain/holders` -- every subnet ranked by alpha-ownership concentration (#9607).
+ *
+ * Bounded by the network rather than by a scan: one row per subnet, ~129 today.
+ * The default shows the concentrated tail a caller came for; the max is above
+ * the subnet count on purpose, so "rank every subnet" is one request and the
+ * answer is never silently truncated -- the same reasoning
+ * VALIDATOR_ECONOMICS_LIMIT_MAX is sized on.
+ */
+export const CHAIN_HOLDERS_LIMIT_DEFAULT = 20;
+export const CHAIN_HOLDERS_LIMIT_MAX = 512;
+
 /** `/api/v1/accounts` -- site-wide accounts leaderboard. */
 export const ACCOUNTS_LIST_LIMIT_DEFAULT = 20;
 export const ACCOUNTS_LIST_LIMIT_MAX = 100;

@@ -67,6 +67,9 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // freeze a leaderboard whose whole value is that it is current, and would also
   // outlive the completeness gate that decides whether it may be served at all.
   /^subnets\/(?:\d+|\{netuid\})\/holders\.json$/,
+  // The cross-subnet holder ranking (#9607), computed live from the same two
+  // D1 tables -- a baked ranking would freeze exactly the fact it reports.
+  /^chain\/holders\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/trajectory\.json$/,
   /^subnets\/(?:\d+|\{netuid\})\/uptime\.json$/,
   // Stake/emission concentration (#2106): computed live from the neurons D1 tier.
