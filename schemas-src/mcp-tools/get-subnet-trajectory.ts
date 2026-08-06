@@ -2,11 +2,11 @@
 // "Mirrors" claim in its description and no covered REST route to reuse.
 // Modeled fresh, shallow, from the hand-written literal it replaces.
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import { OpenObjectSchema, netuidSchema } from "./shared.ts";
 
 export const GetSubnetTrajectoryInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
   })
   .strict();
 export type GetSubnetTrajectoryInput = z.infer<
@@ -16,7 +16,7 @@ export type GetSubnetTrajectoryInput = z.infer<
 export const GetSubnetTrajectoryOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     point_count: z.int(),
     points: z.array(OpenObjectSchema),
     deltas: OpenObjectSchema.optional(),

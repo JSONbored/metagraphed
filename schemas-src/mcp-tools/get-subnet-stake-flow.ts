@@ -6,15 +6,16 @@
 // STAKE_FLOW_WINDOWS/STAKE_FLOW_DIRECTIONS at the time of writing (mirrors
 // the pilot batch's ECONOMICS_SORT_FIELDS precedent -- not cross-imported).
 import { z } from "zod";
+import { kindSchema, netuidSchema, windowSchema } from "./shared.ts";
 
 const STAKE_FLOW_WINDOWS = ["7d", "30d", "90d"] as const;
 const STAKE_FLOW_DIRECTIONS = ["all", "in", "out"] as const;
 
 export const GetSubnetStakeFlowInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    window: z.enum(STAKE_FLOW_WINDOWS).optional(),
-    direction: z.enum(STAKE_FLOW_DIRECTIONS).optional(),
+    netuid: netuidSchema(),
+    window: windowSchema(STAKE_FLOW_WINDOWS).optional(),
+    direction: kindSchema(STAKE_FLOW_DIRECTIONS).optional(),
   })
   .strict();
 export type GetSubnetStakeFlowInput = z.infer<
@@ -24,7 +25,7 @@ export type GetSubnetStakeFlowInput = z.infer<
 export const GetSubnetStakeFlowOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string().nullable(),
     total_staked_tao: z.unknown(),
     total_unstaked_tao: z.unknown(),

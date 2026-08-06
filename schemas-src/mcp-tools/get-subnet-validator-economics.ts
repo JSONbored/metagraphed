@@ -10,8 +10,16 @@ import {
   ValidatorEconomicsRankingArtifactSchema,
   SubnetValidatorEconomicsHistoryArtifactSchema,
 } from "../routes/validator-economics.ts";
-import { limitSchema, netuidSchema, offsetSchema } from "./shared.ts";
-import { VALIDATOR_ECONOMICS_LIMIT_MAX } from "../../src/route-limits.ts";
+import {
+  limitSchema,
+  netuidSchema,
+  offsetSchema,
+  sortSchema,
+} from "./shared.ts";
+import {
+  VALIDATOR_ECONOMICS_LIMIT_DEFAULT,
+  VALIDATOR_ECONOMICS_LIMIT_MAX,
+} from "../../src/route-limits.ts";
 import {
   VALIDATOR_ECONOMICS_HISTORY_WINDOWS,
   VALIDATOR_ECONOMICS_SORTS,
@@ -42,12 +50,25 @@ export const ListValidatorEconomicsInputSchema = z
     // ranked by the default, echoing that default back as `sort`. A model that guessed
     // got a plausible list answering a question nobody asked. Read from the same
     // constant the ranking and the REST validator use.
-    sort: z.enum(VALIDATOR_ECONOMICS_SORTS).optional(),
+    sort: sortSchema(VALIDATOR_ECONOMICS_SORTS).optional(),
     // Was unbounded while the mirrored route rejected anything over 512.
-    limit: limitSchema(VALIDATOR_ECONOMICS_LIMIT_MAX).optional(),
+    limit: limitSchema(
+      VALIDATOR_ECONOMICS_LIMIT_MAX,
+      VALIDATOR_ECONOMICS_LIMIT_DEFAULT,
+    ).optional(),
     offset: offsetSchema().optional(),
-    emission_gate_open: z.boolean().optional(),
-    cap_binding: z.boolean().optional(),
+    emission_gate_open: z
+      .boolean()
+      .optional()
+      .describe(
+        "Restrict to subnets whose emission gate is open (`true`) or closed (`false`).",
+      ),
+    cap_binding: z
+      .boolean()
+      .optional()
+      .describe(
+        "Restrict to subnets where the validator cap is actually binding (`true`).",
+      ),
   })
   .strict();
 export type ListValidatorEconomicsInput = z.infer<
@@ -74,7 +95,10 @@ export const GetSubnetValidatorEconomicsHistoryInputSchema = z
           ...string[],
         ],
       )
-      .optional(),
+      .optional()
+      .describe(
+        "Trailing time window to aggregate over, ending at the latest data point rather than a calendar boundary. Options are per-tool; see this parameter's enum.",
+      ),
   })
   .strict();
 export type GetSubnetValidatorEconomicsHistoryInput = z.infer<

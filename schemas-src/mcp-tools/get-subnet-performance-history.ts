@@ -4,14 +4,14 @@
 // schema to reuse. Modeled fresh, shallow, from the hand-written literal it
 // replaces.
 import { z } from "zod";
-import { OpenObjectArraySchema } from "./shared.ts";
+import { OpenObjectArraySchema, netuidSchema, windowSchema } from "./shared.ts";
 
 const PERFORMANCE_HISTORY_WINDOWS = ["7d", "30d", "90d"] as const;
 
 export const GetSubnetPerformanceHistoryInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    window: z.enum(PERFORMANCE_HISTORY_WINDOWS).optional(),
+    netuid: netuidSchema(),
+    window: windowSchema(PERFORMANCE_HISTORY_WINDOWS).optional(),
   })
   .strict();
 export type GetSubnetPerformanceHistoryInput = z.infer<
@@ -21,7 +21,7 @@ export type GetSubnetPerformanceHistoryInput = z.infer<
 export const GetSubnetPerformanceHistoryOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string().nullable(),
     point_count: z.int(),
     points: OpenObjectArraySchema,

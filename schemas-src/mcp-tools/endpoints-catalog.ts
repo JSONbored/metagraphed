@@ -5,7 +5,17 @@
 // schema -- modeled fresh, matching each hand-written literal
 // field-for-field.
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import {
+  OpenObjectSchema,
+  fieldsStringSchema,
+  kindSchema,
+  limitSchema,
+  netuidSchema,
+  numericCursorSchema,
+  orderSchema,
+  providerSlugSchema,
+  sortSchema,
+} from "./shared.ts";
 
 const SURFACE_KINDS = [
   "archive",
@@ -53,24 +63,59 @@ const ENDPOINT_SORT_FIELDS = [
 
 export const ListEndpointsInputSchema = z
   .object({
-    kind: z.enum(SURFACE_KINDS).optional(),
-    layer: z.enum(ENDPOINT_LAYERS).optional(),
-    netuid: z.int().min(0).optional(),
-    provider: z.string().optional(),
-    publication_state: z.enum(ENDPOINT_PUBLICATION_STATES).optional(),
-    status: z.enum(HEALTH_STATUSES).optional(),
-    pool_eligible: z.boolean().optional(),
-    min_latency_ms: z.number().optional(),
-    max_latency_ms: z.number().optional(),
-    min_score: z.number().optional(),
-    max_score: z.number().optional(),
-    sort: z.enum(ENDPOINT_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
+    kind: kindSchema(SURFACE_KINDS).optional(),
+    layer: z
+      .enum(ENDPOINT_LAYERS)
+      .optional()
+      .describe(
+        "Which layer of the stack the endpoint belongs to: the Bittensor base chain, a data or docs provider, or a subnet's own app.",
+      ),
+    netuid: netuidSchema().optional(),
+    provider: providerSlugSchema().optional(),
+    publication_state: z
+      .enum(ENDPOINT_PUBLICATION_STATES)
+      .optional()
+      .describe(
+        "Where the endpoint sits in the review pipeline, from unreviewed candidate through to pool-eligible or rejected.",
+      ),
+    status: kindSchema(HEALTH_STATUSES).optional(),
+    pool_eligible: z
+      .boolean()
+      .optional()
+      .describe(
+        "Restrict to endpoints that are (or are not) eligible for the public RPC pool.",
+      ),
+    min_latency_ms: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive lower bound on probe latency in milliseconds; rows below it are excluded.",
+      ),
+    max_latency_ms: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive upper bound on probe latency in milliseconds; rows above it are excluded.",
+      ),
+    min_score: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive lower bound on endpoint score; rows below it are excluded.",
+      ),
+    max_score: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive upper bound on endpoint score; rows above it are excluded.",
+      ),
+    sort: sortSchema(ENDPOINT_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
     // Ceiling is MAX_LIMIT (workers/request-params.ts:21); a literal here
     // because schemas-src/ imports from neither src/ nor workers/.
-    limit: z.int().min(1).max(1000).optional(),
-    cursor: z.int().min(0).optional(),
+    limit: limitSchema(1000).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListEndpointsInput = z.infer<typeof ListEndpointsInputSchema>;
@@ -93,7 +138,7 @@ export type ListEndpointsOutput = z.infer<typeof ListEndpointsOutputSchema>;
 
 export const GetSubnetEndpointsInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
   })
   .strict();
 export type GetSubnetEndpointsInput = z.infer<
@@ -102,7 +147,7 @@ export type GetSubnetEndpointsInput = z.infer<
 
 export const GetSubnetEndpointsOutputSchema = z
   .object({
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     endpoints: z.array(OpenObjectSchema).optional(),
     generated_at: z.string().nullable().optional(),
     schema_version: z.union([z.string(), z.int()]).nullable().optional(),

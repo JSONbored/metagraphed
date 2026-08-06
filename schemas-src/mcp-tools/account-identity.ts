@@ -4,12 +4,16 @@
 // routes -- no existing Zod schema to reuse. Modeled fresh, matching each
 // hand-written literal field-for-field.
 import { z } from "zod";
-
-const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
+import {
+  keysetCursorSchema,
+  limitSchema,
+  offsetSchema,
+  ss58Schema,
+} from "./shared.ts";
 
 export const GetAccountIdentityInputSchema = z
   .object({
-    ss58: Ss58Schema,
+    ss58: ss58Schema(),
   })
   .strict();
 export type GetAccountIdentityInput = z.infer<
@@ -37,10 +41,10 @@ export type GetAccountIdentityOutput = z.infer<
 
 export const GetAccountIdentityHistoryInputSchema = z
   .object({
-    ss58: Ss58Schema,
-    limit: z.int().min(1).max(1000).optional(),
-    offset: z.int().min(0).optional(),
-    cursor: z.string().optional(),
+    ss58: ss58Schema(),
+    limit: limitSchema(1000).optional(),
+    offset: offsetSchema().optional(),
+    cursor: keysetCursorSchema().optional(),
   })
   .strict();
 export type GetAccountIdentityHistoryInput = z.infer<

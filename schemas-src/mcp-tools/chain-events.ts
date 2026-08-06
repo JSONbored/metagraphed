@@ -4,11 +4,12 @@
 // covered pilot routes -- no existing Zod schema to reuse. Modeled fresh,
 // matching each hand-written literal field-for-field.
 import { z } from "zod";
+import { keysetCursorSchema, limitSchema } from "./shared.ts";
 import { McpNetworkSchema } from "../shared.ts";
 
 export const GetBlockChainEventsInputSchema = z
   .object({
-    block_number: z.int().min(0),
+    block_number: z.int().min(0).describe("The block height to read."),
     // #8700: which chain's history to read. The same published finney/test
     // enum every network-aware tool takes.
     network: McpNetworkSchema.optional(),
@@ -55,9 +56,13 @@ export type GetBlockChainEventsOutput = z.infer<
 
 export const GetExtrinsicChainEventsInputSchema = z
   .object({
-    ref: z.string(),
-    limit: z.int().min(1).max(200).optional(),
-    cursor: z.string().optional(),
+    ref: z
+      .string()
+      .describe(
+        "Block reference: either a block NUMBER or a 0x-prefixed block HASH. Both forms are accepted and resolve to the same block.",
+      ),
+    limit: limitSchema(200).optional(),
+    cursor: keysetCursorSchema().optional(),
     network: McpNetworkSchema.optional(),
   })
   .strict();

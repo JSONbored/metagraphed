@@ -9,7 +9,8 @@
 // declare real item-level required fields -- preserved exactly, not loosened
 // to match this epic's usual item-shape convention.
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import { McpNetworkSchema } from "../shared.ts";
+import { OpenObjectSchema, limitSchema, windowSchema } from "./shared.ts";
 import {
   SAFE_RPC_METHODS,
   SAFE_RPC_STATE_QUERY_METHODS,
@@ -69,7 +70,7 @@ const RpcUsageBucketItemSchema = z
 
 export const GetRpcUsageInputSchema = z
   .object({
-    window: z.enum(["7d", "30d"]).optional(),
+    window: windowSchema(["7d", "30d"]).optional(),
   })
   .strict();
 export type GetRpcUsageInput = z.infer<typeof GetRpcUsageInputSchema>;
@@ -118,7 +119,7 @@ export type GetRpcUsageOutput = z.infer<typeof GetRpcUsageOutputSchema>;
 
 export const GetBestRpcEndpointInputSchema = z
   .object({
-    limit: z.int().min(1).max(10).optional(),
+    limit: limitSchema(10).optional(),
   })
   .strict();
 export type GetBestRpcEndpointInput = z.infer<
@@ -156,14 +157,25 @@ export const CallRpcInputSchema = z
     // to read English to avoid a guaranteed rejection — and `call_subnet_surface.method`
     // right beside it already declared its enum. Read from the same sets the proxy
     // enforces, so a method added there cannot be missing here.
-    method: z.enum(
-      [...SAFE_RPC_METHODS, ...SAFE_RPC_STATE_QUERY_METHODS].sort() as [
-        string,
-        ...string[],
-      ],
-    ),
-    params: z.array(z.unknown()).optional(),
-    network: z.enum(["finney", "test"]).optional(),
+    method: z
+      .enum(
+        [...SAFE_RPC_METHODS, ...SAFE_RPC_STATE_QUERY_METHODS].sort() as [
+          string,
+          ...string[],
+        ],
+      )
+      .describe(
+        "The JSON-RPC method to call. Restricted to a read-only allowlist — " +
+          "the enum is the complete set, and it is the same set the proxy " +
+          "enforces, so anything absent here is refused rather than forwarded.",
+      ),
+    params: z
+      .array(z.unknown())
+      .optional()
+      .describe(
+        "Positional or named parameters for the RPC method, matching what that method expects.",
+      ),
+    network: McpNetworkSchema.optional(),
   })
   .strict();
 export type CallRpcInput = z.infer<typeof CallRpcInputSchema>;

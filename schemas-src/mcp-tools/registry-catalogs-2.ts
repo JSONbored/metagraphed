@@ -16,7 +16,18 @@
 // list_rpc_endpoints' `fields`/`cursor` inputs are `oneOf` unions (string-or-
 // array, integer-or-string) unlike every other tool's single-type fields.
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import {
+  OpenObjectSchema,
+  fieldsStringSchema,
+  kindSchema,
+  limitSchema,
+  netuidSchema,
+  numericCursorSchema,
+  orderSchema,
+  providerSlugSchema,
+  querySchema,
+  sortSchema,
+} from "./shared.ts";
 
 const CLAIM_SORT_FIELDS = [
   "claim",
@@ -27,12 +38,12 @@ const CLAIM_SORT_FIELDS = [
 
 export const ListEvidenceInputSchema = z
   .object({
-    q: z.string().optional(),
-    sort: z.enum(CLAIM_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    q: querySchema().optional(),
+    sort: sortSchema(CLAIM_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListEvidenceInput = z.infer<typeof ListEvidenceInputSchema>;
@@ -100,24 +111,75 @@ const ENDPOINT_SORT_FIELDS = [
 
 export const ListRpcEndpointsInputSchema = z
   .object({
-    kind: z.enum(SURFACE_KINDS).optional(),
-    layer: z.enum(ENDPOINT_LAYERS).optional(),
-    netuid: z.int().min(0).optional(),
-    provider: z.string().optional(),
-    publication_state: z.enum(ENDPOINT_PUBLICATION_STATES).optional(),
-    status: z.enum(HEALTH_STATUSES).optional(),
-    pool_eligible: z.boolean().optional(),
-    min_latency_ms: z.number().optional(),
-    max_latency_ms: z.number().optional(),
-    min_score: z.number().optional(),
-    max_score: z.number().optional(),
-    sort: z.enum(ENDPOINT_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.union([z.string(), z.array(z.string())]).optional(),
+    kind: kindSchema(SURFACE_KINDS).optional(),
+    layer: z
+      .enum(ENDPOINT_LAYERS)
+      .optional()
+      .describe(
+        "Which layer of the stack the endpoint belongs to: the Bittensor base chain, a data or docs provider, or a subnet's own app.",
+      ),
+    netuid: netuidSchema().optional(),
+    provider: providerSlugSchema().optional(),
+    publication_state: z
+      .enum(ENDPOINT_PUBLICATION_STATES)
+      .optional()
+      .describe(
+        "Where the endpoint sits in the review pipeline, from unreviewed candidate through to pool-eligible or rejected.",
+      ),
+    status: kindSchema(HEALTH_STATUSES).optional(),
+    pool_eligible: z
+      .boolean()
+      .optional()
+      .describe(
+        "Restrict to endpoints that are (or are not) eligible for the public RPC pool.",
+      ),
+    min_latency_ms: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive lower bound on probe latency in milliseconds; rows below it are excluded.",
+      ),
+    max_latency_ms: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive upper bound on probe latency in milliseconds; rows above it are excluded.",
+      ),
+    min_score: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive lower bound on endpoint score; rows below it are excluded.",
+      ),
+    max_score: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive upper bound on endpoint score; rows above it are excluded.",
+      ),
+    sort: sortSchema(ENDPOINT_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    // Both `fields` and `cursor` are UNIONS here, unlike everywhere else, so
+    // neither can take a shared builder -- the sentence has to say which forms
+    // are accepted rather than assume one.
+    fields: z
+      .union([z.string(), z.array(z.string())])
+      .describe(
+        "Row fields to project. Accepts either a comma-separated string " +
+          "(`id,url,status`) or an array of bare names. Omit for the full row.",
+      )
+      .optional(),
     // Ceiling is MAX_LIMIT (workers/request-params.ts:21); a literal here
     // because schemas-src/ imports from neither src/ nor workers/.
-    limit: z.int().min(1).max(1000).optional(),
-    cursor: z.union([z.int().min(0), z.string()]).optional(),
+    limit: limitSchema(1000).optional(),
+    cursor: z
+      .union([z.int().min(0), z.string()])
+      .describe(
+        "Page cursor. Accepts either a numeric row offset or the opaque " +
+          "`next_cursor` token from the previous response; pass a token back " +
+          "verbatim, since its contents are not stable.",
+      )
+      .optional(),
   })
   .strict();
 export type ListRpcEndpointsInput = z.infer<typeof ListRpcEndpointsInputSchema>;
@@ -157,17 +219,42 @@ const POOL_SORT_FIELDS = [
 
 export const ListRpcPoolsInputSchema = z
   .object({
-    id: z.string().optional(),
-    kind: z.enum(POOL_KINDS).optional(),
-    min_eligible_count: z.number().optional(),
-    max_eligible_count: z.number().optional(),
-    min_endpoint_count: z.number().optional(),
-    max_endpoint_count: z.number().optional(),
-    sort: z.enum(POOL_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    id: z
+      .string()
+      .optional()
+      .describe(
+        "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
+      ),
+    kind: kindSchema(POOL_KINDS).optional(),
+    min_eligible_count: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive lower bound on pool-eligible endpoint count; rows below it are excluded.",
+      ),
+    max_eligible_count: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive upper bound on pool-eligible endpoint count; rows above it are excluded.",
+      ),
+    min_endpoint_count: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive lower bound on endpoint count; rows below it are excluded.",
+      ),
+    max_endpoint_count: z
+      .number()
+      .optional()
+      .describe(
+        "Inclusive upper bound on endpoint count; rows above it are excluded.",
+      ),
+    sort: sortSchema(POOL_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListRpcPoolsInput = z.infer<typeof ListRpcPoolsInputSchema>;
@@ -199,12 +286,12 @@ const SOURCE_SORT_FIELDS = ["id", "kind", "path", "record_count"] as const;
 
 export const ListSourceSnapshotsInputSchema = z
   .object({
-    q: z.string().optional(),
-    sort: z.enum(SOURCE_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    q: querySchema().optional(),
+    sort: sortSchema(SOURCE_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListSourceSnapshotsInput = z.infer<
@@ -259,17 +346,36 @@ const PROFILE_SORT_FIELDS = [
 
 export const ListProfileCompletenessInputSchema = z
   .object({
-    netuid: z.int().min(0).optional(),
-    profile_level: z.enum(PROFILE_LEVELS).optional(),
-    confidence: z.enum(CONFIDENCE_LEVELS).optional(),
-    identity_level: z.enum(IDENTITY_LEVELS).optional(),
-    identity_promotion_kinds: z.enum(SURFACE_KINDS).optional(),
-    native_name_quality: z.enum(NATIVE_NAME_QUALITIES).optional(),
-    sort: z.enum(PROFILE_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    netuid: netuidSchema().optional(),
+    profile_level: z
+      .enum(PROFILE_LEVELS)
+      .optional()
+      .describe(
+        "How complete the subnet's profile is, from directory-only upward.",
+      ),
+    confidence: z
+      .enum(CONFIDENCE_LEVELS)
+      .optional()
+      .describe("How confident the machine assessment is."),
+    identity_level: z
+      .enum(IDENTITY_LEVELS)
+      .optional()
+      .describe("How complete the subnet's published identity is."),
+    identity_promotion_kinds: z
+      .enum(SURFACE_KINDS)
+      .optional()
+      .describe(
+        "Restrict to subnets where surfaces of this kind would promote the subnet's identity. One kind per call; see this parameter's enum.",
+      ),
+    native_name_quality: z
+      .enum(NATIVE_NAME_QUALITIES)
+      .optional()
+      .describe("Whether the on-chain name is real, a placeholder, or empty."),
+    sort: sortSchema(PROFILE_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListProfileCompletenessInput = z.infer<

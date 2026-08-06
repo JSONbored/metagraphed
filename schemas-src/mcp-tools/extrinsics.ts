@@ -3,7 +3,12 @@
 // schemas-src/routes/'s covered pilot routes -- no existing Zod schema to
 // reuse. Modeled fresh, matching each hand-written literal field-for-field.
 import { z } from "zod";
-import { limitSchema, offsetSchema } from "./shared.ts";
+import {
+  blockBoundSchema,
+  keysetCursorSchema,
+  limitSchema,
+  offsetSchema,
+} from "./shared.ts";
 
 /**
  * Page-size ceiling for the extrinsics feeds and the two fixed-call_module feeds
@@ -21,19 +26,55 @@ const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
 
 export const ListExtrinsicsInputSchema = z
   .object({
-    block: z.int().min(0).optional(),
-    signer: Ss58Schema.optional(),
-    call_module: z.string().optional(),
-    call_function: z.string().optional(),
-    call_hash: z.string().optional(),
-    success: z.boolean().optional(),
-    block_start: z.int().min(0).optional(),
-    block_end: z.int().min(0).optional(),
-    from: z.int().min(0).optional(),
-    to: z.int().min(0).optional(),
+    block: z
+      .int()
+      .min(0)
+      .optional()
+      .describe("Restrict to this exact block height."),
+    signer: Ss58Schema.optional().describe(
+      "Restrict to extrinsics signed by this SS58 account. Unsigned (inherent) extrinsics never match.",
+    ),
+    call_module: z
+      .string()
+      .optional()
+      .describe(
+        "Restrict to one pallet, by its runtime name (`SubtensorModule`). Case-sensitive.",
+      ),
+    call_function: z
+      .string()
+      .optional()
+      .describe(
+        "Restrict to one call within the pallet (`add_stake`). Case-sensitive; pair with `call_module` to disambiguate.",
+      ),
+    call_hash: z
+      .string()
+      .optional()
+      .describe("Restrict to the extrinsic with this 0x-prefixed hash."),
+    success: z
+      .boolean()
+      .optional()
+      .describe(
+        "Restrict to successful (`true`) or failed (`false`) extrinsics. Omit for both.",
+      ),
+    block_start: blockBoundSchema("first").optional(),
+    block_end: blockBoundSchema("last").optional(),
+    from: z
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "Inclusive start of the range. A block height on chain tools, an ISO-8601 date on time-series ones.",
+      ),
+    to: z
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "Inclusive end of the range. A block height on chain tools, an ISO-8601 date on time-series ones; an EVM address on decode_evm_call.",
+      ),
     limit: limitSchema(EXTRINSICS_LIMIT_MAX).optional(),
     offset: offsetSchema().optional(),
-    cursor: z.string().optional(),
+    cursor: keysetCursorSchema().optional(),
   })
   .strict();
 export type ListExtrinsicsInput = z.infer<typeof ListExtrinsicsInputSchema>;
@@ -52,7 +93,11 @@ export type ListExtrinsicsOutput = z.infer<typeof ListExtrinsicsOutputSchema>;
 
 export const GetExtrinsicInputSchema = z
   .object({
-    ref: z.string(),
+    ref: z
+      .string()
+      .describe(
+        "Block reference: either a block NUMBER or a 0x-prefixed block HASH. Both forms are accepted and resolve to the same block.",
+      ),
   })
   .strict();
 export type GetExtrinsicInput = z.infer<typeof GetExtrinsicInputSchema>;

@@ -7,13 +7,14 @@
 // (require the key) the existing contract in different ways -- modeled
 // fresh instead, matching the original exactly.
 import { z } from "zod";
+import { netuidSchema, windowSchema } from "./shared.ts";
 
 const HISTORY_WINDOWS = ["7d", "30d", "90d", "1y", "all"] as const;
 
 export const GetSubnetHistoryInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    window: z.enum(HISTORY_WINDOWS).optional(),
+    netuid: netuidSchema(),
+    window: windowSchema(HISTORY_WINDOWS).optional(),
   })
   .strict();
 export type GetSubnetHistoryInput = z.infer<typeof GetSubnetHistoryInputSchema>;
@@ -33,7 +34,7 @@ const SubnetHistoryPointSchema = z
 export const GetSubnetHistoryOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string().nullable().optional(),
     point_count: z.int(),
     points: z.array(SubnetHistoryPointSchema),

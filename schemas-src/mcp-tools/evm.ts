@@ -16,8 +16,13 @@ const H160Schema = z.string().regex(/^0x[0-9a-fA-F]{40}$/);
 
 export const DecodeEvmCallInputSchema = z
   .object({
-    to: H160Schema,
-    input: z.string().regex(/^0x[0-9a-fA-F]*$/),
+    to: H160Schema.describe(
+      "Inclusive end of the range. A block height on chain tools, an ISO-8601 date on time-series ones; an EVM address on decode_evm_call.",
+    ),
+    input: z
+      .string()
+      .regex(/^0x[0-9a-fA-F]*$/)
+      .describe("ABI-encoded EVM call data (0x-prefixed) to decode."),
   })
   .strict();
 export type DecodeEvmCallInput = z.infer<typeof DecodeEvmCallInputSchema>;
@@ -35,7 +40,9 @@ export type DecodeEvmCallOutput = z.infer<typeof DecodeEvmCallOutputSchema>;
 
 export const GetEvmAddressMappingInputSchema = z
   .object({
-    h160: H160Schema,
+    h160: H160Schema.describe(
+      "A 20-byte EVM address (0x-prefixed, 40 hex characters) to resolve to its SS58 mirror.",
+    ),
     // #8700: which chain to read. These routes answer from live storage, and
     // the storage keys are twox128 hashes of pallet+item names — identical on
     // every chain running the same runtime — so the endpoint is the only thing

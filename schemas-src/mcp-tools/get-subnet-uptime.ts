@@ -3,15 +3,26 @@
 // covered pilot routes -- no existing Zod schema to reuse. Modeled fresh,
 // shallow, from the hand-written literal it replaces.
 import { z } from "zod";
-import { OpenObjectArraySchema, OpenObjectSchema } from "./shared.ts";
+import {
+  OpenObjectArraySchema,
+  OpenObjectSchema,
+  netuidSchema,
+  windowSchema,
+} from "./shared.ts";
 
 const UPTIME_WINDOWS = ["90d", "1y"] as const;
 
 export const GetSubnetUptimeInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    window: z.enum(UPTIME_WINDOWS).optional(),
-    min_samples: z.int().min(0).optional(),
+    netuid: netuidSchema(),
+    window: windowSchema(UPTIME_WINDOWS).optional(),
+    min_samples: z
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "Drop rows computed from fewer than this many samples, so a thin sample cannot look like a trend.",
+      ),
   })
   .strict();
 export type GetSubnetUptimeInput = z.infer<typeof GetSubnetUptimeInputSchema>;
@@ -19,7 +30,7 @@ export type GetSubnetUptimeInput = z.infer<typeof GetSubnetUptimeInputSchema>;
 export const GetSubnetUptimeOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string().nullable(),
     observed_at: z.string().nullable().optional(),
     surfaces: OpenObjectArraySchema,

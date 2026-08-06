@@ -11,21 +11,34 @@
 // schemas-src/routes/ REST schema -- modeled fresh, matching each
 // hand-written literal field-for-field.
 import { z } from "zod";
-import { OpenObjectSchema, NotesFieldSchema } from "./shared.ts";
+import {
+  NotesFieldSchema,
+  OpenObjectSchema,
+  fieldsStringSchema,
+  limitSchema,
+  netuidSchema,
+  numericCursorSchema,
+  orderSchema,
+  querySchema,
+  sortSchema,
+} from "./shared.ts";
 
 const DOCUMENT_TYPES = ["subnet", "surface", "provider"] as const;
 const DOCUMENT_SORT_FIELDS = ["netuid", "slug", "title", "type"] as const;
 
 export const ListSearchIndexInputSchema = z
   .object({
-    q: z.string().optional(),
-    type: z.enum(DOCUMENT_TYPES).optional(),
-    netuid: z.int().min(0).optional(),
-    sort: z.enum(DOCUMENT_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    q: querySchema().optional(),
+    type: z
+      .enum(DOCUMENT_TYPES)
+      .optional()
+      .describe("Which entity kind to search over."),
+    netuid: netuidSchema().optional(),
+    sort: sortSchema(DOCUMENT_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListSearchIndexInput = z.infer<typeof ListSearchIndexInputSchema>;
@@ -48,14 +61,17 @@ export type ListSearchIndexOutput = z.infer<typeof ListSearchIndexOutputSchema>;
 
 export const ListSearchInputSchema = z
   .object({
-    q: z.string().optional(),
-    type: z.enum(DOCUMENT_TYPES).optional(),
-    netuid: z.int().min(0).optional(),
-    sort: z.enum(DOCUMENT_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    q: querySchema().optional(),
+    type: z
+      .enum(DOCUMENT_TYPES)
+      .optional()
+      .describe("Which entity kind to search over."),
+    netuid: netuidSchema().optional(),
+    sort: sortSchema(DOCUMENT_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListSearchInput = z.infer<typeof ListSearchInputSchema>;

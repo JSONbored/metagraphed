@@ -10,13 +10,15 @@
 // {type:"object"}), so reusing them here would be a real tightening the
 // issue's wire-compatibility constraint doesn't require.
 import { z } from "zod";
-import { OpenObjectArraySchema, OpenObjectSchema } from "./shared.ts";
-
-const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
+import {
+  OpenObjectArraySchema,
+  OpenObjectSchema,
+  ss58Schema,
+} from "./shared.ts";
 
 export const GetAccountPortfolioInputSchema = z
   .object({
-    ss58: Ss58Schema,
+    ss58: ss58Schema(),
   })
   .strict();
 export type GetAccountPortfolioInput = z.infer<
@@ -45,7 +47,7 @@ export type GetAccountPortfolioOutput = z.infer<
 
 export const GetAccountPositionsInputSchema = z
   .object({
-    ss58: Ss58Schema,
+    ss58: ss58Schema(),
   })
   .strict();
 export type GetAccountPositionsInput = z.infer<
@@ -68,8 +70,15 @@ export type GetAccountPositionsOutput = z.infer<
 
 export const GetAccountSnapshotInputSchema = z
   .object({
-    ss58: Ss58Schema,
-    recent_events_limit: z.int().min(1).max(1000).optional(),
+    ss58: ss58Schema(),
+    recent_events_limit: z
+      .int()
+      .min(1)
+      .max(1000)
+      .optional()
+      .describe(
+        "How many recent events to embed. Clamped to the tool's ceiling rather than rejected.",
+      ),
   })
   .strict();
 export type GetAccountSnapshotInput = z.infer<

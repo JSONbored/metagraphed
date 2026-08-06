@@ -3,10 +3,11 @@
 // schemas-src/routes/'s covered pilot routes -- no existing Zod schema to
 // reuse. Modeled fresh, shallow, from the hand-written literal it replaces.
 import { z } from "zod";
+import { netuidSchema } from "./shared.ts";
 
 export const GetSubnetIdleStakeInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
   })
   .strict();
 export type GetSubnetIdleStakeInput = z.infer<
@@ -16,7 +17,7 @@ export type GetSubnetIdleStakeInput = z.infer<
 export const GetSubnetIdleStakeOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     captured_at: z.string().nullable().optional(),
     neuron_count: z.int(),
     idle_neuron_count: z.int(),

@@ -8,7 +8,18 @@
 // REST schema -- modeled fresh, matching each hand-written literal
 // field-for-field.
 import { z } from "zod";
-import { OpenObjectSchema, NotesFieldSchema } from "./shared.ts";
+import {
+  NotesFieldSchema,
+  OpenObjectSchema,
+  fieldsStringSchema,
+  kindSchema,
+  limitSchema,
+  netuidSchema,
+  numericCursorSchema,
+  orderSchema,
+  querySchema,
+  sortSchema,
+} from "./shared.ts";
 
 const SURFACE_KINDS = [
   "archive",
@@ -81,23 +92,58 @@ const QUEUE_SORT_FIELDS = [
 
 export const ListEnrichmentQueueInputSchema = z
   .object({
-    q: z.string().optional(),
-    netuid: z.int().min(0).optional(),
-    lane: z.enum(LANES).optional(),
-    evidence_action: z.enum(EVIDENCE_ACTIONS).optional(),
-    identity_level: z.enum(IDENTITY_LEVELS).optional(),
-    curation_level: z.enum(CURATION_LEVELS).optional(),
-    profile_level: z.enum(PROFILE_LEVELS).optional(),
-    direct_submission_kinds: z.enum(SURFACE_KINDS).optional(),
-    missing_kinds: z.enum(SURFACE_KINDS).optional(),
-    manual_review_required: z.enum(BOOLEAN_STRINGS).optional(),
-    reason_codes: z.string().optional(),
-    review_state: z.string().optional(),
-    sort: z.enum(QUEUE_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    q: querySchema().optional(),
+    netuid: netuidSchema().optional(),
+    lane: z
+      .enum(LANES)
+      .optional()
+      .describe("Which contribution lane the item belongs to."),
+    evidence_action: z
+      .enum(EVIDENCE_ACTIONS)
+      .optional()
+      .describe("What the evidence is asking a contributor to do."),
+    identity_level: z
+      .enum(IDENTITY_LEVELS)
+      .optional()
+      .describe("How complete the subnet's published identity is."),
+    curation_level: kindSchema(CURATION_LEVELS).optional(),
+    profile_level: z
+      .enum(PROFILE_LEVELS)
+      .optional()
+      .describe(
+        "How complete the subnet's profile is, from directory-only upward.",
+      ),
+    direct_submission_kinds: z
+      .enum(SURFACE_KINDS)
+      .optional()
+      .describe(
+        "Restrict to subnets where surfaces of this kind a contributor can submit directly. One kind per call; see this parameter's enum.",
+      ),
+    missing_kinds: z
+      .enum(SURFACE_KINDS)
+      .optional()
+      .describe(
+        "Restrict to subnets where surfaces of this kind the subnet is MISSING. One kind per call; see this parameter's enum.",
+      ),
+    manual_review_required: z
+      .enum(BOOLEAN_STRINGS)
+      .optional()
+      .describe("Restrict to items that do (or do not) need a human reviewer."),
+    reason_codes: z
+      .string()
+      .optional()
+      .describe(
+        "Comma-separated reason codes to filter by; an item matches if it carries any of them.",
+      ),
+    review_state: z
+      .string()
+      .optional()
+      .describe("Where the item sits in maintainer review."),
+    sort: sortSchema(QUEUE_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListEnrichmentQueueInput = z.infer<
@@ -142,17 +188,35 @@ const ADAPTER_CANDIDATES_SORT_FIELDS = [
 
 export const ListAdapterCandidatesInputSchema = z
   .object({
-    netuid: z.int().min(0).optional(),
-    curation_level: z.enum(CURATION_LEVELS).optional(),
-    candidate_api_kinds: z.enum(SURFACE_KINDS).optional(),
-    operational_kinds: z.enum(SURFACE_KINDS).optional(),
-    recommended_adapter_kind: z.enum(RECOMMENDED_ADAPTER_KINDS).optional(),
-    reason_codes: z.string().optional(),
-    sort: z.enum(ADAPTER_CANDIDATES_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    netuid: netuidSchema().optional(),
+    curation_level: kindSchema(CURATION_LEVELS).optional(),
+    candidate_api_kinds: z
+      .enum(SURFACE_KINDS)
+      .optional()
+      .describe(
+        "Restrict to subnets where surfaces of this kind exist as unreviewed API candidates. One kind per call; see this parameter's enum.",
+      ),
+    operational_kinds: z
+      .enum(SURFACE_KINDS)
+      .optional()
+      .describe(
+        "Restrict to subnets where surfaces of this kind are operational. One kind per call; see this parameter's enum.",
+      ),
+    recommended_adapter_kind: z
+      .enum(RECOMMENDED_ADAPTER_KINDS)
+      .optional()
+      .describe("Which adapter shape suits this surface."),
+    reason_codes: z
+      .string()
+      .optional()
+      .describe(
+        "Comma-separated reason codes to filter by; an item matches if it carries any of them.",
+      ),
+    sort: sortSchema(ADAPTER_CANDIDATES_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListAdapterCandidatesInput = z.infer<

@@ -8,9 +8,16 @@
 // shared ACCOUNT_EVENT_ITEM/ACCOUNT_REGISTRATION_ITEM object literals
 // src/mcp-server.ts's objectItems() wraps) field-for-field.
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
-
-const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
+import {
+  OpenObjectSchema,
+  blockBoundSchema,
+  keysetCursorSchema,
+  kindStringSchema,
+  limitSchema,
+  netuidSchema,
+  offsetSchema,
+  ss58Schema,
+} from "./shared.ts";
 
 // objectItems(...) properties, none required at the item level (see
 // search-subnets.ts's same note from the pilot batch).
@@ -21,7 +28,7 @@ const AccountEventItemSchema = z
     event_kind: z.string().nullable().optional(),
     hotkey: z.string().nullable().optional(),
     coldkey: z.string().nullable().optional(),
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     uid: z.int().nullable().optional(),
     amount_tao: z.unknown().optional(),
     alpha_amount: z.unknown().optional(),
@@ -32,7 +39,7 @@ const AccountEventItemSchema = z
 
 const AccountRegistrationItemSchema = z
   .object({
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     uid: z.int().nullable().optional(),
     stake_tao: z.unknown().optional(),
     validator_permit: z.boolean().optional(),
@@ -51,7 +58,7 @@ const AccountLabelItemSchema = z
 
 export const GetAccountInputSchema = z
   .object({
-    ss58: Ss58Schema,
+    ss58: ss58Schema(),
   })
   .strict();
 export type GetAccountInput = z.infer<typeof GetAccountInputSchema>;
@@ -84,7 +91,7 @@ export type GetAccountOutput = z.infer<typeof GetAccountOutputSchema>;
 
 export const GetAccountEntitiesInputSchema = z
   .object({
-    ss58: Ss58Schema,
+    ss58: ss58Schema(),
   })
   .strict();
 export type GetAccountEntitiesInput = z.infer<
@@ -100,7 +107,7 @@ export const GetAccountEntitiesOutputSchema = z
     ownership_ties: z.array(
       z
         .object({
-          netuid: z.int().nullable().optional(),
+          netuid: netuidSchema().nullable().optional(),
           role: z.string().optional(),
           block_number: z.int().nullable().optional(),
           observed_at: z.string().nullable().optional(),
@@ -115,14 +122,14 @@ export type GetAccountEntitiesOutput = z.infer<
 
 export const GetAccountEventsInputSchema = z
   .object({
-    ss58: Ss58Schema,
-    kind: z.string().optional(),
-    netuid: z.int().min(0).optional(),
-    block_start: z.int().min(0).optional(),
-    block_end: z.int().min(0).optional(),
-    limit: z.int().min(1).max(1000).optional(),
-    offset: z.int().min(0).optional(),
-    cursor: z.string().optional(),
+    ss58: ss58Schema(),
+    kind: kindStringSchema().optional(),
+    netuid: netuidSchema().optional(),
+    block_start: blockBoundSchema("first").optional(),
+    block_end: blockBoundSchema("last").optional(),
+    limit: limitSchema(1000).optional(),
+    offset: offsetSchema().optional(),
+    cursor: keysetCursorSchema().optional(),
   })
   .strict();
 export type GetAccountEventsInput = z.infer<typeof GetAccountEventsInputSchema>;
@@ -144,7 +151,7 @@ export type GetAccountEventsOutput = z.infer<
 
 export const GetAccountSubnetsInputSchema = z
   .object({
-    ss58: Ss58Schema,
+    ss58: ss58Schema(),
   })
   .strict();
 export type GetAccountSubnetsInput = z.infer<

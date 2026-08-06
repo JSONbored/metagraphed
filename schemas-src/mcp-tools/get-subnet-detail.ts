@@ -9,12 +9,12 @@
 // look-but-don't-reuse finding as get-network-health.ts/get-economics.ts in
 // the pilot batch).
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import { OpenObjectSchema, netuidSchema } from "./shared.ts";
 import { McpNetworkSchema } from "../shared.ts";
 
 export const GetSubnetDetailInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
     network: McpNetworkSchema.optional(),
   })
   .strict();

@@ -4,15 +4,18 @@
 // schema to reuse. Modeled fresh, matching the hand-written literal it
 // replaces field-for-field.
 import { z } from "zod";
-import { OpenObjectArraySchema } from "./shared.ts";
-
-const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
+import {
+  OpenObjectArraySchema,
+  netuidSchema,
+  ss58Schema,
+  windowSchema,
+} from "./shared.ts";
 
 export const GetAccountPositionHistoryInputSchema = z
   .object({
-    ss58: Ss58Schema,
-    netuid: z.int().min(0),
-    window: z.enum(["7d", "30d", "90d", "1y", "all"]).optional(),
+    ss58: ss58Schema(),
+    netuid: netuidSchema(),
+    window: windowSchema(["7d", "30d", "90d", "1y", "all"]).optional(),
   })
   .strict();
 export type GetAccountPositionHistoryInput = z.infer<
@@ -23,7 +26,7 @@ export const GetAccountPositionHistoryOutputSchema = z
   .object({
     schema_version: z.int().optional(),
     ss58: z.string(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string().nullable().optional(),
     point_count: z.int(),
     points: OpenObjectArraySchema,

@@ -9,7 +9,18 @@
 // mcp-server.ts. None mirror an existing schemas-src/routes/ REST schema --
 // modeled fresh, matching each hand-written literal field-for-field.
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import {
+  OpenObjectSchema,
+  fieldsStringSchema,
+  kindSchema,
+  limitSchema,
+  netuidSchema,
+  numericCursorSchema,
+  orderSchema,
+  providerSlugSchema,
+  querySchema,
+  sortSchema,
+} from "./shared.ts";
 
 const SURFACE_KINDS = [
   "archive",
@@ -30,7 +41,7 @@ const SURFACE_KINDS = [
 
 export const GetSubnetCandidatesInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
   })
   .strict();
 export type GetSubnetCandidatesInput = z.infer<
@@ -39,7 +50,7 @@ export type GetSubnetCandidatesInput = z.infer<
 
 export const GetSubnetCandidatesOutputSchema = z
   .object({
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     candidates: z.array(OpenObjectSchema).optional(),
     generated_at: z.string().nullable().optional(),
     schema_version: z.union([z.string(), z.int()]).nullable().optional(),
@@ -70,17 +81,28 @@ const CANDIDATES_SORT_FIELDS = [
 
 export const ListSubnetCandidatesInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    kind: z.enum(SURFACE_KINDS).optional(),
-    provider: z.string().optional(),
-    state: z.enum(CANDIDATE_STATES).optional(),
-    id: z.string().optional(),
-    confidence: z.enum(CONFIDENCE_LEVELS).optional(),
-    sort: z.enum(CANDIDATES_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    netuid: netuidSchema(),
+    kind: kindSchema(SURFACE_KINDS).optional(),
+    provider: providerSlugSchema().optional(),
+    state: z
+      .enum(CANDIDATE_STATES)
+      .optional()
+      .describe("The incident's lifecycle state."),
+    id: z
+      .string()
+      .optional()
+      .describe(
+        "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
+      ),
+    confidence: z
+      .enum(CONFIDENCE_LEVELS)
+      .optional()
+      .describe("How confident the machine assessment is."),
+    sort: sortSchema(CANDIDATES_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListSubnetCandidatesInput = z.infer<
@@ -90,7 +112,7 @@ export type ListSubnetCandidatesInput = z.infer<
 export const ListSubnetCandidatesOutputSchema = z
   .object({
     generated_at: z.string().nullable().optional(),
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     candidates: z.array(OpenObjectSchema),
     total: z.int().optional(),
     returned: z.int().optional(),
@@ -107,7 +129,7 @@ export type ListSubnetCandidatesOutput = z.infer<
 
 export const GetSubnetEvidenceInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
   })
   .strict();
 export type GetSubnetEvidenceInput = z.infer<
@@ -116,7 +138,7 @@ export type GetSubnetEvidenceInput = z.infer<
 
 export const GetSubnetEvidenceOutputSchema = z
   .object({
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     claims: z.array(OpenObjectSchema).optional(),
     generated_at: z.string().nullable().optional(),
     schema_version: z.union([z.string(), z.int()]).nullable().optional(),
@@ -135,13 +157,13 @@ const CLAIM_SORT_FIELDS = [
 
 export const ListSubnetEvidenceInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    q: z.string().optional(),
-    sort: z.enum(CLAIM_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    netuid: netuidSchema(),
+    q: querySchema().optional(),
+    sort: sortSchema(CLAIM_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type ListSubnetEvidenceInput = z.infer<
@@ -151,7 +173,7 @@ export type ListSubnetEvidenceInput = z.infer<
 export const ListSubnetEvidenceOutputSchema = z
   .object({
     generated_at: z.string().nullable().optional(),
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     claims: z.array(OpenObjectSchema),
     total: z.int().optional(),
     returned: z.int().optional(),
@@ -168,7 +190,7 @@ export type ListSubnetEvidenceOutput = z.infer<
 
 export const GetSubnetSurfacesInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
   })
   .strict();
 export type GetSubnetSurfacesInput = z.infer<
@@ -177,7 +199,7 @@ export type GetSubnetSurfacesInput = z.infer<
 
 export const GetSubnetSurfacesOutputSchema = z
   .object({
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     surfaces: z.array(OpenObjectSchema).optional(),
     generated_at: z.string().nullable().optional(),
     schema_version: z.union([z.string(), z.int()]).nullable().optional(),

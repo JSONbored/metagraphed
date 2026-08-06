@@ -8,26 +8,57 @@
 // identical JSON Schema and the diff-audit script already treats them as
 // equal (see list_accounts/get_top_holders in #8070).
 import { z } from "zod";
-import { limitSchema, offsetSchema } from "./shared.ts";
+import {
+  blockBoundSchema,
+  keysetCursorSchema,
+  limitSchema,
+  offsetSchema,
+} from "./shared.ts";
 import { EXTRINSICS_LIMIT_MAX } from "./extrinsics.ts";
 import { ExtrinsicItemSchema } from "./shared.ts";
 import { FieldSourcesSchema, McpNetworkSchema } from "../shared.ts";
 
 export const GetSudoInputSchema = z
   .object({
-    block: z.int().min(0).optional(),
-    call_function: z.string().optional(),
-    success: z.boolean().optional(),
-    block_start: z.int().min(0).optional(),
-    block_end: z.int().min(0).optional(),
-    from: z.int().min(0).optional(),
-    to: z.int().min(0).optional(),
+    block: z
+      .int()
+      .min(0)
+      .optional()
+      .describe("Restrict to this exact block height."),
+    call_function: z
+      .string()
+      .optional()
+      .describe(
+        "Restrict to one call within the pallet (`add_stake`). Case-sensitive; pair with `call_module` to disambiguate.",
+      ),
+    success: z
+      .boolean()
+      .optional()
+      .describe(
+        "Restrict to successful (`true`) or failed (`false`) extrinsics. Omit for both.",
+      ),
+    block_start: blockBoundSchema("first").optional(),
+    block_end: blockBoundSchema("last").optional(),
+    from: z
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "Inclusive start of the range. A block height on chain tools, an ISO-8601 date on time-series ones.",
+      ),
+    to: z
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "Inclusive end of the range. A block height on chain tools, an ISO-8601 date on time-series ones; an EVM address on decode_evm_call.",
+      ),
     // Both feeds say "same filters as list_extrinsics" and were modelled on it,
     // but dropped its `.max(100)` — declaring unbounded while the tier they forward to
     // caps at 100. A copy-paste omission, not a wider ceiling.
     limit: limitSchema(EXTRINSICS_LIMIT_MAX).optional(),
     offset: offsetSchema().optional(),
-    cursor: z.string().optional(),
+    cursor: keysetCursorSchema().optional(),
   })
   .strict();
 export type GetSudoInput = z.infer<typeof GetSudoInputSchema>;
@@ -67,19 +98,45 @@ export type GetSudoKeyOutput = z.infer<typeof GetSudoKeyOutputSchema>;
 
 export const GetGovernanceConfigChangesInputSchema = z
   .object({
-    block: z.int().min(0).optional(),
-    call_function: z.string().optional(),
-    success: z.boolean().optional(),
-    block_start: z.int().min(0).optional(),
-    block_end: z.int().min(0).optional(),
-    from: z.int().min(0).optional(),
-    to: z.int().min(0).optional(),
+    block: z
+      .int()
+      .min(0)
+      .optional()
+      .describe("Restrict to this exact block height."),
+    call_function: z
+      .string()
+      .optional()
+      .describe(
+        "Restrict to one call within the pallet (`add_stake`). Case-sensitive; pair with `call_module` to disambiguate.",
+      ),
+    success: z
+      .boolean()
+      .optional()
+      .describe(
+        "Restrict to successful (`true`) or failed (`false`) extrinsics. Omit for both.",
+      ),
+    block_start: blockBoundSchema("first").optional(),
+    block_end: blockBoundSchema("last").optional(),
+    from: z
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "Inclusive start of the range. A block height on chain tools, an ISO-8601 date on time-series ones.",
+      ),
+    to: z
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "Inclusive end of the range. A block height on chain tools, an ISO-8601 date on time-series ones; an EVM address on decode_evm_call.",
+      ),
     // Both feeds say "same filters as list_extrinsics" and were modelled on it,
     // but dropped its `.max(100)` — declaring unbounded while the tier they forward to
     // caps at 100. A copy-paste omission, not a wider ceiling.
     limit: limitSchema(EXTRINSICS_LIMIT_MAX).optional(),
     offset: offsetSchema().optional(),
-    cursor: z.string().optional(),
+    cursor: keysetCursorSchema().optional(),
   })
   .strict();
 export type GetGovernanceConfigChangesInput = z.infer<

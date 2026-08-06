@@ -1,12 +1,19 @@
 // get_emission_changes (#9615): the emission-gate change log, mirroring
 // GET /api/v1/chain/governance/emission-changes.
 import { z } from "zod";
-import { EMISSION_CHANGES_LIMIT_MAX } from "../../src/route-limits.ts";
+import { kindSchema, limitSchema } from "./shared.ts";
+import {
+  EMISSION_CHANGES_LIMIT_DEFAULT,
+  EMISSION_CHANGES_LIMIT_MAX,
+} from "../../src/route-limits.ts";
 
 export const GetEmissionChangesInputSchema = z
   .object({
-    kind: z.enum(["param", "subnet", "flow"]).optional(),
-    limit: z.int().min(1).max(EMISSION_CHANGES_LIMIT_MAX).optional(),
+    kind: kindSchema(["param", "subnet", "flow"]).optional(),
+    limit: limitSchema(
+      EMISSION_CHANGES_LIMIT_MAX,
+      EMISSION_CHANGES_LIMIT_DEFAULT,
+    ).optional(),
   })
   .strict();
 export type GetEmissionChangesInput = z.infer<

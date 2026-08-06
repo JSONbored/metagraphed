@@ -6,15 +6,20 @@
 // writing (mirrors the pilot batch's ECONOMICS_SORT_FIELDS precedent -- not
 // cross-imported).
 import { z } from "zod";
-import { OpenObjectArraySchema } from "./shared.ts";
+import { OpenObjectArraySchema, netuidSchema, windowSchema } from "./shared.ts";
 
 const HISTORY_WINDOWS = ["7d", "30d", "90d", "1y", "all"] as const;
 
 export const GetSubnetTurnoverInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    window: z.enum(HISTORY_WINDOWS).optional(),
-    changes: z.boolean().optional(),
+    netuid: netuidSchema(),
+    window: windowSchema(HISTORY_WINDOWS).optional(),
+    changes: z
+      .boolean()
+      .optional()
+      .describe(
+        "When true, return only entries that changed rather than every entry.",
+      ),
   })
   .strict();
 export type GetSubnetTurnoverInput = z.infer<
@@ -35,7 +40,7 @@ const TurnoverChangesSchema = z
 export const GetSubnetTurnoverOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string().nullable().optional(),
     start_date: z.string().nullable().optional(),
     end_date: z.string().nullable().optional(),

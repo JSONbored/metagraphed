@@ -24,8 +24,14 @@ import { OpenObjectSchema } from "./shared.ts";
 
 export const QueryGraphqlInputSchema = z
   .object({
-    query: z.string(),
-    variables: OpenObjectSchema.optional(),
+    query: z
+      .string()
+      .describe(
+        "The request payload or search text this surface expects. Shape depends on the surface; see its schema.",
+      ),
+    variables: OpenObjectSchema.optional().describe(
+      "GraphQL variables for the query, as an object.",
+    ),
   })
   .strict();
 export type QueryGraphqlInput = z.infer<typeof QueryGraphqlInputSchema>;
@@ -48,8 +54,14 @@ const SAVED_QUERY_IDS = [
 
 export const RunSavedQueryInputSchema = z
   .object({
-    query_id: z.enum(SAVED_QUERY_IDS),
-    params: OpenObjectSchema.optional(),
+    query_id: z
+      .enum(SAVED_QUERY_IDS)
+      .describe(
+        "Which saved query template to run. See this parameter's enum for the available ids.",
+      ),
+    params: OpenObjectSchema.optional().describe(
+      "Positional or named parameters for the RPC method, matching what that method expects.",
+    ),
   })
   .strict();
 export type RunSavedQueryInput = z.infer<typeof RunSavedQueryInputSchema>;

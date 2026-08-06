@@ -1,21 +1,26 @@
 // get_chain_holders (#9607): every subnet ranked by alpha-ownership
 // concentration, mirroring GET /api/v1/chain/holders.
 import { z } from "zod";
-import { CHAIN_HOLDERS_LIMIT_MAX } from "../../src/route-limits.ts";
+import { limitSchema, netuidSchema, sortSchema } from "./shared.ts";
+import {
+  CHAIN_HOLDERS_LIMIT_DEFAULT,
+  CHAIN_HOLDERS_LIMIT_MAX,
+} from "../../src/route-limits.ts";
 
 export const GetChainHoldersInputSchema = z
   .object({
-    sort: z
-      .enum([
-        "top1_share",
-        "top5_share",
-        "top10_share",
-        "top20_share",
-        "holder_count",
-        "total_alpha",
-      ])
-      .optional(),
-    limit: z.int().min(1).max(CHAIN_HOLDERS_LIMIT_MAX).optional(),
+    sort: sortSchema([
+      "top1_share",
+      "top5_share",
+      "top10_share",
+      "top20_share",
+      "holder_count",
+      "total_alpha",
+    ]).optional(),
+    limit: limitSchema(
+      CHAIN_HOLDERS_LIMIT_MAX,
+      CHAIN_HOLDERS_LIMIT_DEFAULT,
+    ).optional(),
   })
   .strict();
 export type GetChainHoldersInput = z.infer<typeof GetChainHoldersInputSchema>;
@@ -39,7 +44,7 @@ export const GetChainHoldersOutputSchema = z
     subnets: z.array(
       z
         .object({
-          netuid: z.int(),
+          netuid: netuidSchema(),
           holder_count: z.int().nullable(),
           total_alpha: z.number().nullable(),
           top1_share: z.number().nullable(),

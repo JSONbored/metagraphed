@@ -9,8 +9,12 @@
 // breakdown array) -- the two were never the same contract. Modeled fresh,
 // matching the hand-written literal it replaces field-for-field.
 import { z } from "zod";
-
-const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
+import {
+  kindSchema,
+  netuidSchema,
+  ss58Schema,
+  windowSchema,
+} from "./shared.ts";
 
 // Symbolic in the hand-written original (src/stake-flow.ts's
 // STAKE_FLOW_WINDOWS/STAKE_FLOW_DIRECTIONS), cross-checked against the
@@ -20,9 +24,9 @@ const ACCOUNT_STAKE_FLOW_DIRECTIONS = ["all", "in", "out"] as const;
 
 export const GetAccountStakeFlowInputSchema = z
   .object({
-    ss58: Ss58Schema,
-    window: z.enum(ACCOUNT_STAKE_FLOW_WINDOWS).optional(),
-    direction: z.enum(ACCOUNT_STAKE_FLOW_DIRECTIONS).optional(),
+    ss58: ss58Schema(),
+    window: windowSchema(ACCOUNT_STAKE_FLOW_WINDOWS).optional(),
+    direction: kindSchema(ACCOUNT_STAKE_FLOW_DIRECTIONS).optional(),
   })
   .strict();
 export type GetAccountStakeFlowInput = z.infer<
@@ -33,7 +37,7 @@ export type GetAccountStakeFlowInput = z.infer<
 // search-subnets.ts's same note from the pilot batch).
 const AccountStakeFlowSubnetSchema = z
   .object({
-    netuid: z.int().optional(),
+    netuid: netuidSchema().optional(),
     staked_tao: z.unknown().optional(),
     unstaked_tao: z.unknown().optional(),
     net_flow_tao: z.unknown().optional(),

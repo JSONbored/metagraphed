@@ -4,13 +4,12 @@
 // reuse. Modeled fresh, matching the hand-written literal it replaces
 // field-for-field.
 import { z } from "zod";
+import { netuidSchema, ss58Schema } from "./shared.ts";
 import { FieldSourcesSchema, McpNetworkSchema } from "../shared.ts";
-
-const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
 
 export const GetAccountRootClaimInputSchema = z
   .object({
-    ss58: Ss58Schema,
+    ss58: ss58Schema(),
     // #8700: which chain to read. These routes answer from live storage, and
     // the storage keys are twox128 hashes of pallet+item names — identical on
     // every chain running the same runtime — so the endpoint is the only thing
@@ -31,7 +30,7 @@ const RootClaimTypeSchema = z
 
 const RootClaimEntrySchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     claimable_rate: z.number(),
     claimed: z.string(),
     threshold: z.number(),

@@ -7,7 +7,18 @@
 // .sort_fields at the time of writing (mirrors the pilot batch's
 // ECONOMICS_SORT_FIELDS precedent -- not cross-imported).
 import { z } from "zod";
-import { OpenObjectArraySchema, OpenObjectSchema } from "./shared.ts";
+import {
+  OpenObjectArraySchema,
+  OpenObjectSchema,
+  fieldsStringSchema,
+  kindSchema,
+  limitSchema,
+  netuidSchema,
+  numericCursorSchema,
+  orderSchema,
+  providerSlugSchema,
+  sortSchema,
+} from "./shared.ts";
 
 const SURFACE_KIND = [
   "archive",
@@ -55,17 +66,28 @@ const HEALTH_SURFACE_SORT_FIELDS = [
 
 export const GetHealthHistoryInputSchema = z
   .object({
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    netuid: z.int().min(0).optional(),
-    kind: z.enum(SURFACE_KIND).optional(),
-    provider: z.string().optional(),
-    status: z.enum(HEALTH_STATUS).optional(),
-    classification: z.enum(HEALTH_CLASSIFICATION).optional(),
-    sort: z.enum(HEALTH_SURFACE_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(1000).optional(),
-    cursor: z.int().min(0).optional(),
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .describe("A single UTC day, `YYYY-MM-DD`."),
+    netuid: netuidSchema().optional(),
+    kind: kindSchema(SURFACE_KIND).optional(),
+    provider: providerSlugSchema().optional(),
+    status: z
+      .enum(HEALTH_STATUS)
+      .optional()
+      .describe("Restrict to rows with this health status."),
+    classification: z
+      .enum(HEALTH_CLASSIFICATION)
+      .optional()
+      .describe(
+        "Why a probe ended as it did — the reason behind the status, not the status itself.",
+      ),
+    sort: sortSchema(HEALTH_SURFACE_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(1000).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type GetHealthHistoryInput = z.infer<typeof GetHealthHistoryInputSchema>;

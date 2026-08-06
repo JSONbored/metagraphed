@@ -9,11 +9,12 @@
 // this tool's existing required set. Modeled fresh instead, matching each
 // hand-written literal exactly.
 import { z } from "zod";
+import { netuidSchema, windowSchema } from "./shared.ts";
 import { FieldSourcesSchema, McpNetworkSchema } from "../shared.ts";
 
 export const GetSubnetRecycledInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
     // #8700: which chain to read. These routes answer from live storage, and
     // the storage keys are twox128 hashes of pallet+item names — identical on
     // every chain running the same runtime — so the endpoint is the only thing
@@ -28,7 +29,7 @@ export type GetSubnetRecycledInput = z.infer<
 export const GetSubnetRecycledOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     recycled_tao: z.number().nullable().optional(),
     queried_at: z.string().nullable(),
     // #9104 provenance, mirroring the REST artifact field for field.
@@ -41,7 +42,7 @@ export type GetSubnetRecycledOutput = z.infer<
 
 export const GetSubnetBurnInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
     // #8700: which chain to read. These routes answer from live storage, and
     // the storage keys are twox128 hashes of pallet+item names — identical on
     // every chain running the same runtime — so the endpoint is the only thing
@@ -54,7 +55,7 @@ export type GetSubnetBurnInput = z.infer<typeof GetSubnetBurnInputSchema>;
 export const GetSubnetBurnOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     burn_tao: z.number().nullable().optional(),
     queried_at: z.string().nullable(),
     // #9104 provenance, mirroring the REST artifact field for field.
@@ -91,8 +92,8 @@ export type GetChainBurnOutput = z.infer<typeof GetChainBurnOutputSchema>;
 // #9402: one subnet's registration-cost series.
 export const GetSubnetBurnHistoryInputSchema = z
   .object({
-    netuid: z.int().min(0).max(65535),
-    window: z.enum(["24h", "7d", "30d", "90d"]).optional(),
+    netuid: netuidSchema(),
+    window: windowSchema(["24h", "7d", "30d", "90d"]).optional(),
   })
   .strict();
 export type GetSubnetBurnHistoryInput = z.infer<
@@ -102,7 +103,7 @@ export type GetSubnetBurnHistoryInput = z.infer<
 export const GetSubnetBurnHistoryOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string().nullable(),
     point_count: z.int(),
     current_burn_tao: z.number().nullable(),

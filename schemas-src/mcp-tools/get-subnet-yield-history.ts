@@ -3,14 +3,14 @@
 // schemas-src/routes/'s covered pilot routes -- no existing Zod schema to
 // reuse. Modeled fresh, shallow, from the hand-written literal it replaces.
 import { z } from "zod";
-import { OpenObjectArraySchema } from "./shared.ts";
+import { OpenObjectArraySchema, netuidSchema, windowSchema } from "./shared.ts";
 
 const YIELD_HISTORY_WINDOWS = ["7d", "30d", "90d"] as const;
 
 export const GetSubnetYieldHistoryInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    window: z.enum(YIELD_HISTORY_WINDOWS).optional(),
+    netuid: netuidSchema(),
+    window: windowSchema(YIELD_HISTORY_WINDOWS).optional(),
   })
   .strict();
 export type GetSubnetYieldHistoryInput = z.infer<
@@ -20,7 +20,7 @@ export type GetSubnetYieldHistoryInput = z.infer<
 export const GetSubnetYieldHistoryOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string().nullable(),
     point_count: z.int(),
     points: OpenObjectArraySchema,

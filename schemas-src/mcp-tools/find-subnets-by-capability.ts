@@ -4,12 +4,17 @@
 // response. Modeled field-for-field from the hand-written literals this
 // replaces, same as search-subnets.ts in the pilot batch.
 import { z } from "zod";
+import { limitSchema, netuidSchema, numericCursorSchema } from "./shared.ts";
 
 export const FindSubnetsByCapabilityInputSchema = z
   .object({
-    capability: z.string(),
-    cursor: z.int().min(0).optional(),
-    limit: z.int().min(1).max(50).optional(),
+    capability: z
+      .string()
+      .describe(
+        "A capability keyword to match against subnet descriptions and surfaces, e.g. `inference` or `storage`.",
+      ),
+    cursor: numericCursorSchema().optional(),
+    limit: limitSchema(50).optional(),
   })
   .strict();
 export type FindSubnetsByCapabilityInput = z.infer<
@@ -18,7 +23,7 @@ export type FindSubnetsByCapabilityInput = z.infer<
 
 const FindSubnetsByCapabilityResultItemSchema = z
   .object({
-    netuid: z.int().optional(),
+    netuid: netuidSchema().optional(),
     slug: z.string().optional(),
     name: z.string().nullable().optional(),
     categories: z.array(z.unknown()).optional(),

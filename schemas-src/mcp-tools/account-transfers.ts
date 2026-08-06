@@ -4,19 +4,31 @@
 // covered pilot routes -- no existing Zod schema to reuse. Modeled fresh,
 // matching each hand-written literal field-for-field.
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import {
+  OpenObjectSchema,
+  blockBoundSchema,
+  keysetCursorSchema,
+  limitSchema,
+  offsetSchema,
+  ss58Schema,
+} from "./shared.ts";
 
 const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
 
 export const GetAccountTransfersInputSchema = z
   .object({
-    ss58: Ss58Schema,
-    direction: z.enum(["all", "sent", "received"]).optional(),
-    block_start: z.int().min(0).optional(),
-    block_end: z.int().min(0).optional(),
-    limit: z.int().min(1).max(1000).optional(),
-    offset: z.int().min(0).optional(),
-    cursor: z.string().optional(),
+    ss58: ss58Schema(),
+    direction: z
+      .enum(["all", "sent", "received"])
+      .optional()
+      .describe(
+        "Which side of the flow to include: everything, only outgoing, or only incoming.",
+      ),
+    block_start: blockBoundSchema("first").optional(),
+    block_end: blockBoundSchema("last").optional(),
+    limit: limitSchema(1000).optional(),
+    offset: offsetSchema().optional(),
+    cursor: keysetCursorSchema().optional(),
   })
   .strict();
 export type GetAccountTransfersInput = z.infer<
@@ -54,9 +66,11 @@ export type GetAccountTransfersOutput = z.infer<
 
 export const GetAccountCounterpartiesInputSchema = z
   .object({
-    ss58: Ss58Schema,
-    counterparty: Ss58Schema.optional(),
-    limit: z.int().min(1).max(100).optional(),
+    ss58: ss58Schema(),
+    counterparty: Ss58Schema.optional().describe(
+      "The other SS58 account in the transfer pair — results are restricted to flows between the subject account and this one.",
+    ),
+    limit: limitSchema(100).optional(),
   })
   .strict();
 export type GetAccountCounterpartiesInput = z.infer<

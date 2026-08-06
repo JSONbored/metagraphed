@@ -8,12 +8,19 @@ import {
   OpenArraySchema,
   OpenObjectArraySchema,
   OpenObjectSchema,
+  netuidSchema,
+  surfaceIdSchema,
 } from "./shared.ts";
 
 export const HowDoICallInputSchema = z
   .object({
-    netuid: z.int().min(0).optional(),
-    subnet: z.string().optional(),
+    netuid: netuidSchema().optional(),
+    subnet: z
+      .string()
+      .optional()
+      .describe(
+        "A subnet by slug (`chutes`) or chain name. Use `netuid` instead when you have the numeric id.",
+      ),
   })
   .strict();
 export type HowDoICallInput = z.infer<typeof HowDoICallInputSchema>;
@@ -24,7 +31,7 @@ export type HowDoICallInput = z.infer<typeof HowDoICallInputSchema>;
 // as-is.
 export const HowDoICallOutputSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     name: z.string().nullable().optional(),
     slug: z.string().nullable().optional(),
     integration_readiness: z.unknown().optional(),
@@ -41,8 +48,8 @@ export type HowDoICallOutput = z.infer<typeof HowDoICallOutputSchema>;
 
 export const VerifyIntegrationInputSchema = z
   .object({
-    surface_id: z.string().optional(),
-    netuid: z.int().min(0).optional(),
+    surface_id: surfaceIdSchema().optional(),
+    netuid: netuidSchema().optional(),
   })
   .strict();
 export type VerifyIntegrationInput = z.infer<
@@ -57,7 +64,7 @@ export const VerifyIntegrationOutputSchema = z
   .object({
     surface_id: z.string(),
     surface_key: z.string().nullable().optional(),
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     kind: z.string().optional(),
     url: z.string().optional(),
     provider: z.string().nullable().optional(),
@@ -77,19 +84,47 @@ export type VerifyIntegrationOutput = z.infer<
 
 export const CallSubnetSurfaceInputSchema = z
   .object({
-    surface_id: z.string(),
+    surface_id: surfaceIdSchema(),
     query: z
       .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
-      .optional(),
-    path: z.string().optional(),
-    method: z.enum(["GET", "HEAD", "POST", "PUT"]).optional(),
+      .optional()
+      .describe(
+        "Query-string parameters to append, as a flat object of " +
+          "string/number/boolean values. Nested objects and arrays are not " +
+          "supported — encode them into `path` or `body` instead.",
+      ),
+    path: z
+      .string()
+      .optional()
+      .describe(
+        "Path appended to the surface's base URL, e.g. `/v1/status`. Leading slash optional.",
+      ),
+    method: z
+      .enum(["GET", "HEAD", "POST", "PUT"])
+      .optional()
+      .describe("HTTP method to use for the call."),
     // Branch order (object, then string) mirrors the hand-written original's
     // `type: ["object", "string"]`.
-    body: z.union([OpenObjectSchema, z.string()]).optional(),
-    content_type: z.string().optional(),
+    body: z
+      .union([OpenObjectSchema, z.string()])
+      .optional()
+      .describe(
+        "Request body: an object (sent as JSON) or a pre-serialized string.",
+      ),
+    content_type: z
+      .string()
+      .optional()
+      .describe(
+        "Overrides the Content-Type header. Defaults to `application/json` when the body is an object.",
+      ),
     // Branch order (string, then object) mirrors the hand-written original's
     // `type: ["string", "object"]` -- the reverse of `body` above.
-    credential: z.union([z.string(), OpenObjectSchema]).optional(),
+    credential: z
+      .union([z.string(), OpenObjectSchema])
+      .optional()
+      .describe(
+        "Secret for an authenticated surface: a bearer token string, or an object of header/query values. Sent to the surface and never stored unless you use store_surface_credential.",
+      ),
   })
   .strict();
 export type CallSubnetSurfaceInput = z.infer<
@@ -127,13 +162,22 @@ export type CallSubnetSurfaceOutput = z.infer<
 
 export const StoreSurfaceCredentialInputSchema = z
   .object({
-    surface_id: z.string(),
+    surface_id: surfaceIdSchema(),
     // Same two shapes call_subnet_surface accepts in-band: a single opaque
     // string for bearer/api-key/basic schemes, or a {name: value} bundle
     // for scheme:signature. Branch order (string, then object) mirrors
     // CallSubnetSurfaceInputSchema's `credential`.
-    credential: z.union([z.string(), OpenObjectSchema]),
-    ttl_seconds: z.int().min(60).max(7_776_000).optional(),
+    credential: z
+      .union([z.string(), OpenObjectSchema])
+      .describe(
+        "Secret for an authenticated surface: a bearer token string, or an object of header/query values. Sent to the surface and never stored unless you use store_surface_credential.",
+      ),
+    ttl_seconds: z
+      .int()
+      .min(60)
+      .max(7_776_000)
+      .optional()
+      .describe("How long the stored credential remains valid, in seconds."),
   })
   .strict();
 export type StoreSurfaceCredentialInput = z.infer<
@@ -169,7 +213,7 @@ export type ListSurfaceCredentialsOutput = z.infer<
 
 export const DeleteSurfaceCredentialInputSchema = z
   .object({
-    surface_id: z.string(),
+    surface_id: surfaceIdSchema(),
   })
   .strict();
 export type DeleteSurfaceCredentialInput = z.infer<

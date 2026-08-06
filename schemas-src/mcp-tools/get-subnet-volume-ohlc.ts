@@ -9,10 +9,11 @@
 // routes -- no existing Zod schema to reuse either. Both modeled fresh,
 // shallow, from the hand-written literals they replace.
 import { z } from "zod";
+import { netuidSchema } from "./shared.ts";
 
 export const GetSubnetVolumeInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
   })
   .strict();
 export type GetSubnetVolumeInput = z.infer<typeof GetSubnetVolumeInputSchema>;
@@ -20,7 +21,7 @@ export type GetSubnetVolumeInput = z.infer<typeof GetSubnetVolumeInputSchema>;
 export const GetSubnetVolumeOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string(),
     buy_volume_alpha: z.unknown().optional(),
     sell_volume_alpha: z.unknown().optional(),
@@ -43,9 +44,17 @@ const MAX_OHLC_WINDOW_DAYS = 365;
 
 export const GetSubnetOhlcInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    interval: z.enum(OHLC_INTERVALS).optional(),
-    days: z.int().min(1).max(MAX_OHLC_WINDOW_DAYS).optional(),
+    netuid: netuidSchema(),
+    interval: z
+      .enum(OHLC_INTERVALS)
+      .optional()
+      .describe("Bucket size for the returned series."),
+    days: z
+      .int()
+      .min(1)
+      .max(MAX_OHLC_WINDOW_DAYS)
+      .optional()
+      .describe("How many trailing days to cover, ending today (UTC)."),
   })
   .strict();
 export type GetSubnetOhlcInput = z.infer<typeof GetSubnetOhlcInputSchema>;
@@ -69,7 +78,7 @@ const OhlcCandleSchema = z
 export const GetSubnetOhlcOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     interval: z.string(),
     candles: z.array(OhlcCandleSchema),
     root_excluded: z.boolean(),

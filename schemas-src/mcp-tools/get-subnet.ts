@@ -13,10 +13,11 @@
 // constraint (deep-typing them would accept LESS than the original, a
 // regression, not an improvement).
 import { z } from "zod";
+import { netuidSchema } from "./shared.ts";
 
 export const GetSubnetInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
   })
   .strict();
 export type GetSubnetInput = z.infer<typeof GetSubnetInputSchema>;
@@ -25,7 +26,7 @@ const OpenObjectSchema = z.object({}).passthrough();
 
 export const GetSubnetOutputSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     name: z.string().nullable().optional(),
     slug: z.string().nullable().optional(),
     status: z.string().nullable().optional(),

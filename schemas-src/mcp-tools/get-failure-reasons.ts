@@ -1,13 +1,19 @@
 // get_failure_reasons (#9622): why surfaces fail and whether the mix is
 // changing, mirroring GET /api/v1/health/failure-reasons.
 import { z } from "zod";
+import { kindStringSchema, netuidSchema } from "./shared.ts";
 import { FAILURE_REASONS_WINDOWS } from "../../src/route-limits.ts";
 
 export const GetFailureReasonsInputSchema = z
   .object({
-    window: z.enum(FAILURE_REASONS_WINDOWS as [string, ...string[]]).optional(),
-    netuid: z.int().min(0).max(65535).optional(),
-    kind: z.string().optional(),
+    window: z
+      .enum(FAILURE_REASONS_WINDOWS as [string, ...string[]])
+      .optional()
+      .describe(
+        "Trailing time window to aggregate over, ending at the latest data point rather than a calendar boundary. Options are per-tool; see this parameter's enum.",
+      ),
+    netuid: netuidSchema().optional(),
+    kind: kindStringSchema().optional(),
   })
   .strict();
 export type GetFailureReasonsInput = z.infer<
@@ -18,7 +24,7 @@ export const GetFailureReasonsOutputSchema = z
   .object({
     schema_version: z.int().optional(),
     window: z.string().nullable(),
-    netuid: z.int().nullable(),
+    netuid: netuidSchema().nullable(),
     kind: z.string().nullable(),
     days_covered: z.int().nullable(),
     oldest_day: z.string().nullable(),

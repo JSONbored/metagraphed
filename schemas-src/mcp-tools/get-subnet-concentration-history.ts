@@ -4,13 +4,14 @@
 // Zod schema to reuse. Modeled fresh, shallow, from the hand-written
 // literal it replaces.
 import { z } from "zod";
+import { netuidSchema, windowSchema } from "./shared.ts";
 
 const CONCENTRATION_HISTORY_WINDOWS = ["7d", "30d", "90d"] as const;
 
 export const GetSubnetConcentrationHistoryInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    window: z.enum(CONCENTRATION_HISTORY_WINDOWS).optional(),
+    netuid: netuidSchema(),
+    window: windowSchema(CONCENTRATION_HISTORY_WINDOWS).optional(),
   })
   .strict();
 export type GetSubnetConcentrationHistoryInput = z.infer<
@@ -35,7 +36,7 @@ const ConcentrationHistoryPointSchema = z
 export const GetSubnetConcentrationHistoryOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string().nullable().optional(),
     point_count: z.int(),
     points: z.array(ConcentrationHistoryPointSchema),

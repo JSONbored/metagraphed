@@ -4,7 +4,7 @@
 // schema to reuse. Modeled fresh, matching each hand-written literal
 // field-for-field.
 import { z } from "zod";
-import { OpenObjectArraySchema } from "./shared.ts";
+import { OpenObjectArraySchema, limitSchema, sortSchema } from "./shared.ts";
 
 // Symbolic in the hand-written originals (src/accounts-list.ts's
 // ACCOUNTS_LIST_SORTS/*_LIMIT_*, src/top-holders.ts's TOP_HOLDERS_SORTS/
@@ -30,8 +30,8 @@ const TOP_HOLDERS_SORTS = [
 
 export const ListAccountsInputSchema = z
   .object({
-    sort: z.enum(ACCOUNTS_LIST_SORTS).optional(),
-    limit: z.int().min(1).max(100).optional(),
+    sort: sortSchema(ACCOUNTS_LIST_SORTS).optional(),
+    limit: limitSchema(100).optional(),
   })
   .strict();
 export type ListAccountsInput = z.infer<typeof ListAccountsInputSchema>;
@@ -70,8 +70,8 @@ export type ListAccountsOutput = z.infer<typeof ListAccountsOutputSchema>;
 
 export const GetTopHoldersInputSchema = z
   .object({
-    sort: z.enum(TOP_HOLDERS_SORTS).optional(),
-    limit: z.int().min(1).max(100).optional(),
+    sort: sortSchema(TOP_HOLDERS_SORTS).optional(),
+    limit: limitSchema(100).optional(),
   })
   .strict();
 export type GetTopHoldersInput = z.infer<typeof GetTopHoldersInputSchema>;

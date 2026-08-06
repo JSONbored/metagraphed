@@ -208,3 +208,74 @@ describe("the published tool registry", () => {
     assert.ok(re.test("netuid,,name"), "the parser drops empty segments");
   });
 });
+
+// #9645: the shared input primitives in schemas-src/mcp-tools/shared.ts carry
+// the sentence explaining each parameter, so every tool that uses one inherits
+// it. Measured before the change: exactly ONE of 773 published parameters had a
+// `description`.
+//
+// Derived from listToolDefinitions() rather than a fixed tool list, so a tool
+// registered tomorrow is covered tonight -- the same construction the enum and
+// `required` gates in mcp-schema-enforcement.test.ts use. That is what makes
+// this a gate rather than a snapshot: a new tool that hand-rolls
+// `netuid: z.int()` instead of `netuidSchema()` fails here.
+describe("shared input parameters publish their own description (#9645)", () => {
+  const params = () => {
+    const rows: Array<{ tool: string; name: string; schema: Row }> = [];
+    for (const tool of listToolDefinitions() as Row[]) {
+      const props = (tool.inputSchema as Row)?.properties ?? {};
+      for (const [name, schema] of Object.entries(props)) {
+        rows.push({ tool: tool.name as string, name, schema: schema as Row });
+      }
+    }
+    return rows;
+  };
+
+  // EVERY parameter, not a named list. The families were migrated onto shared
+  // builders and the long tail was written per name, so there is no residue to
+  // exempt -- and a whitelist would quietly stop covering whatever came next.
+  test("every published tool parameter carries a description", () => {
+    const rows = params();
+    assert.ok(
+      rows.length > 700,
+      `expected the full surface, got ${rows.length}`,
+    );
+    const missing = rows
+      .filter((p) => !String(p.schema.description ?? "").trim())
+      .map((p) => `${p.tool}.${p.name}`);
+    assert.deepEqual(
+      missing,
+      [],
+      "add the sentence to the shared builder in schemas-src/mcp-tools/shared.ts, " +
+        "or inline where the parameter's meaning is genuinely tool-specific",
+    );
+  });
+
+  // netuid is a u16 on chain. Before the shared builder, 95 of them published
+  // no upper bound at all and several published no lower bound either, so the
+  // schema permitted values the route rejects.
+  test("every `netuid` parameter is bounded to the chain's own u16 range", () => {
+    const rows = params().filter((p) => p.name === "netuid");
+    const wrong = rows
+      .filter((p) => p.schema.minimum !== 0 || p.schema.maximum !== 65535)
+      .map((p) => `${p.tool}: [${p.schema.minimum}, ${p.schema.maximum}]`);
+    assert.deepEqual(wrong, []);
+  });
+
+  // A declared default must be a real default, not a plausible one: it is read
+  // off the same `*_LIMIT_DEFAULT` constant in src/route-limits.ts that the
+  // handler uses, so the published contract and the runtime cannot disagree.
+  test("a declared limit default sits inside the declared range", () => {
+    const rows = params().filter(
+      (p) => p.name === "limit" && p.schema.default !== undefined,
+    );
+    assert.ok(rows.length > 0, "expected some limits to declare a default");
+    for (const p of rows) {
+      const d = p.schema.default as number;
+      assert.ok(
+        Number.isInteger(d) && d >= 1 && d <= (p.schema.maximum as number),
+        `${p.tool}.limit default ${d} outside 1..${p.schema.maximum}`,
+      );
+    }
+  });
+});

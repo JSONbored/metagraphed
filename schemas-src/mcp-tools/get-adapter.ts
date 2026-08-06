@@ -4,7 +4,7 @@
 // schemas-src/routes/ REST schema -- modeled fresh, matching the
 // hand-written literal field-for-field.
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import { OpenObjectSchema, netuidSchema } from "./shared.ts";
 
 // `notes: {type:["array","string","null"], items:{type:"string"}}` -- this
 // batch's shared.ts predates the NotesFieldSchema helper hoisted in batch 10
@@ -17,7 +17,12 @@ const NotesFieldSchema = z
 
 export const GetAdapterInputSchema = z
   .object({
-    slug: z.string().regex(/^[a-z0-9-]+$/),
+    slug: z
+      .string()
+      .regex(/^[a-z0-9-]+$/)
+      .describe(
+        "The registry slug — lowercase, hyphenated (`chutes`), not the display name. Slugs are stable across renames.",
+      ),
   })
   .strict();
 export type GetAdapterInput = z.infer<typeof GetAdapterInputSchema>;
@@ -29,7 +34,7 @@ export const GetAdapterOutputSchema = z
     generated_at: z.string().nullable().optional(),
     slug: z.string(),
     subnet: z.string().nullable().optional(),
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     notes: NotesFieldSchema,
     snapshot: OpenObjectSchema.nullable().optional(),
     extensions: OpenObjectSchema.nullable().optional(),

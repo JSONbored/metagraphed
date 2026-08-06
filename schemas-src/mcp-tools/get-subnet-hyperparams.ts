@@ -4,11 +4,17 @@
 // covered pilot routes -- no existing Zod schema to reuse. Modeled fresh,
 // shallow, from the hand-written literals they replace.
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import {
+  OpenObjectSchema,
+  keysetCursorSchema,
+  limitSchema,
+  netuidSchema,
+  offsetSchema,
+} from "./shared.ts";
 
 export const GetSubnetHyperparamsInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
   })
   .strict();
 export type GetSubnetHyperparamsInput = z.infer<
@@ -18,7 +24,7 @@ export type GetSubnetHyperparamsInput = z.infer<
 export const GetSubnetHyperparamsOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     captured_at: z.string().nullable().optional(),
     block_number: z.int().nullable().optional(),
     hyperparameters: OpenObjectSchema.nullable().optional(),
@@ -30,10 +36,10 @@ export type GetSubnetHyperparamsOutput = z.infer<
 
 export const GetSubnetHyperparamsHistoryInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    limit: z.int().min(1).max(1000).optional(),
-    offset: z.int().min(0).optional(),
-    cursor: z.string().optional(),
+    netuid: netuidSchema(),
+    limit: limitSchema(1000).optional(),
+    offset: offsetSchema().optional(),
+    cursor: keysetCursorSchema().optional(),
   })
   .strict();
 export type GetSubnetHyperparamsHistoryInput = z.infer<
@@ -54,7 +60,7 @@ const HyperparamsHistoryEntrySchema = z
 export const GetSubnetHyperparamsHistoryOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     entry_count: z.int(),
     limit: z.int().nullable().optional(),
     offset: z.int().nullable().optional(),

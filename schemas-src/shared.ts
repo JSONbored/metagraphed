@@ -22,7 +22,17 @@ export type CoverageLevel = z.infer<typeof CoverageLevelSchema>;
 // not have to learn that the RPC lane says "test" while a data lane says
 // "testnet". Only the tools whose artifact is actually published per-network
 // (list_subnets, get_subnet_detail) take this; everything else stays mainnet.
-export const McpNetworkSchema = z.enum(["finney", "test"]);
+// #9645: described here rather than at each of the 18 tools that accept it —
+// the two names are chain names, not environment names, and "test" reads as a
+// staging copy of mainnet when it is a separate chain with its own subnets,
+// its own netuids and its own history.
+export const McpNetworkSchema = z
+  .enum(["finney", "test"])
+  .describe(
+    "Which Bittensor chain to read: `finney` is mainnet (the default when " +
+      "omitted), `test` is testnet. They are separate chains — a netuid on one " +
+      "is unrelated to the same netuid on the other.",
+  );
 export type McpNetwork = z.infer<typeof McpNetworkSchema>;
 
 export const CurationLevelSchema = z.enum([

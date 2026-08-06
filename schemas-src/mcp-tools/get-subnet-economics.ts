@@ -4,11 +4,11 @@
 // SubnetEconomicsSchema (schemas-src/shared.ts) or EconomicsArtifactSchema.
 // Modeled fresh, shallow, from the hand-written literal it replaces.
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import { OpenObjectSchema, netuidSchema } from "./shared.ts";
 
 export const GetSubnetEconomicsInputSchema = z
   .object({
-    netuid: z.int().min(0),
+    netuid: netuidSchema(),
   })
   .strict();
 export type GetSubnetEconomicsInput = z.infer<
@@ -17,7 +17,7 @@ export type GetSubnetEconomicsInput = z.infer<
 
 export const GetSubnetEconomicsOutputSchema = z
   .object({
-    netuid: z.int(),
+    netuid: netuidSchema(),
     source: z.string().nullable().optional(),
     captured_at: z.string().nullable().optional(),
     summary: OpenObjectSchema.nullable().optional(),

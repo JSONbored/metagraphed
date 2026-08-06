@@ -3,7 +3,16 @@
 // pilot routes -- no existing Zod schema to reuse. Modeled fresh, shallow,
 // from the hand-written literal it replaces.
 import { z } from "zod";
-import { OpenObjectArraySchema, OpenObjectSchema } from "./shared.ts";
+import {
+  OpenObjectArraySchema,
+  OpenObjectSchema,
+  limitSchema,
+  netuidSchema,
+  numericCursorSchema,
+  orderSchema,
+  sortSchema,
+  windowSchema,
+} from "./shared.ts";
 
 // Symbolic in the hand-written original (src/contracts.ts's
 // API_QUERY_COLLECTIONS.incidents.sort_fields), cross-checked against the
@@ -17,12 +26,12 @@ const GLOBAL_INCIDENTS_SORT_FIELDS = [
 
 export const GetGlobalIncidentsInputSchema = z
   .object({
-    window: z.enum(["7d", "30d"]).optional(),
-    netuid: z.int().min(0).optional(),
-    sort: z.enum(GLOBAL_INCIDENTS_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
+    window: windowSchema(["7d", "30d"]).optional(),
+    netuid: netuidSchema().optional(),
+    sort: sortSchema(GLOBAL_INCIDENTS_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    limit: limitSchema(100).optional(),
+    cursor: numericCursorSchema().optional(),
   })
   .strict();
 export type GetGlobalIncidentsInput = z.infer<

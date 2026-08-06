@@ -7,16 +7,24 @@
 // schema_version optional too. Modeled fresh instead, matching the
 // hand-written literal it replaces field-for-field.
 import { z } from "zod";
+import {
+  blockBoundSchema,
+  keysetCursorSchema,
+  kindStringSchema,
+  limitSchema,
+  netuidSchema,
+  offsetSchema,
+} from "./shared.ts";
 
 export const GetSubnetEventsInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    kind: z.string().optional(),
-    block_start: z.int().min(0).optional(),
-    block_end: z.int().min(0).optional(),
-    limit: z.int().min(1).max(1000).optional(),
-    offset: z.int().min(0).optional(),
-    cursor: z.string().optional(),
+    netuid: netuidSchema(),
+    kind: kindStringSchema().optional(),
+    block_start: blockBoundSchema("first").optional(),
+    block_end: blockBoundSchema("last").optional(),
+    limit: limitSchema(1000).optional(),
+    offset: offsetSchema().optional(),
+    cursor: keysetCursorSchema().optional(),
   })
   .strict();
 export type GetSubnetEventsInput = z.infer<typeof GetSubnetEventsInputSchema>;
@@ -30,7 +38,7 @@ const AccountEventItemSchema = z
     event_kind: z.string().nullable().optional(),
     hotkey: z.string().nullable().optional(),
     coldkey: z.string().nullable().optional(),
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     uid: z.int().nullable().optional(),
     amount_tao: z.unknown().optional(),
     alpha_amount: z.unknown().optional(),
@@ -42,7 +50,7 @@ const AccountEventItemSchema = z
 export const GetSubnetEventsOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     event_count: z.int(),
     limit: z.int().nullable().optional(),
     offset: z.int().nullable().optional(),

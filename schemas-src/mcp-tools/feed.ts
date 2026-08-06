@@ -6,6 +6,7 @@
 // symbolic in the hand-written original (src/feeds.ts's own exports),
 // cross-checked against the actual runtime source at the time of writing.
 import { z } from "zod";
+import { kindSchema, limitSchema, netuidSchema } from "./shared.ts";
 
 // Single source of truth for get_feed kind enums (input + output) and the
 // runtime requireKind allow-list in src/feed-mcp.ts.
@@ -22,12 +23,27 @@ const FEED_MAX_ITEMS = 50;
 
 export const GetFeedInputSchema = z
   .object({
-    kind: z.enum(FEED_KINDS),
-    netuid: z.int().min(0).optional(),
-    tag: z.string().optional(),
-    since: z.string().optional(),
-    until: z.string().optional(),
-    limit: z.int().min(1).max(FEED_MAX_ITEMS).optional(),
+    kind: kindSchema(FEED_KINDS),
+    netuid: netuidSchema().optional(),
+    tag: z
+      .string()
+      .optional()
+      .describe(
+        "Restrict the feed to items carrying this tag. Exact match against the item's own tags.",
+      ),
+    since: z
+      .string()
+      .optional()
+      .describe(
+        "ISO-8601 timestamp; only items at or after this instant are returned.",
+      ),
+    until: z
+      .string()
+      .optional()
+      .describe(
+        "ISO-8601 timestamp; only items at or before this instant are returned.",
+      ),
+    limit: limitSchema(FEED_MAX_ITEMS).optional(),
   })
   .strict();
 export type GetFeedInput = z.infer<typeof GetFeedInputSchema>;
@@ -46,7 +62,7 @@ const FeedItemSchema = z
 export const GetFeedOutputSchema = z
   .object({
     kind: z.enum(FEED_KINDS),
-    netuid: z.int().nullable().optional(),
+    netuid: netuidSchema().nullable().optional(),
     filters: z
       .object({
         tag: z.string().nullable().optional(),

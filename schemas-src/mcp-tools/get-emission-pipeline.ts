@@ -12,13 +12,14 @@
 // together and there is exactly one place to fix — which is the whole point of
 // not keeping a second copy here.
 import { z } from "zod";
+import { netuidSchema } from "./shared.ts";
 import { EMISSION_PIPELINE_BODY } from "../routes/emission-pipeline.ts";
 
 export const GetEmissionPipelineInputSchema = z
   .object({
     // Narrows the per-subnet rows only; the aggregate and the identity checks
     // stay network-wide, matching ?netuid= on the REST route.
-    netuid: z.int().min(0).optional(),
+    netuid: netuidSchema().optional(),
   })
   .strict();
 export type GetEmissionPipelineInput = z.infer<

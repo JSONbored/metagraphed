@@ -7,10 +7,18 @@
 // src/account-events.ts's SUBNET_EVENT_SUMMARY_WINDOWS at the time of
 // writing.
 import { z } from "zod";
-import { OpenObjectArraySchema } from "./shared.ts";
+import {
+  SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
+  SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+} from "../../src/route-limits.ts";
+import {
+  OpenObjectArraySchema,
+  limitSchema,
+  netuidSchema,
+  windowSchema,
+} from "./shared.ts";
 
 const SUBNET_EVENT_SUMMARY_WINDOWS = ["7d", "30d", "90d"] as const;
-const SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX = 50;
 
 // objectItems(...) properties, none required at the item level (see
 // search-subnets.ts's same note from the pilot batch).
@@ -46,9 +54,12 @@ const EventKindSummarySchema = z
 
 export const GetSubnetEventSummaryInputSchema = z
   .object({
-    netuid: z.int().min(0),
-    window: z.enum(SUBNET_EVENT_SUMMARY_WINDOWS).optional(),
-    limit: z.int().min(1).max(SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX).optional(),
+    netuid: netuidSchema(),
+    window: windowSchema(SUBNET_EVENT_SUMMARY_WINDOWS).optional(),
+    limit: limitSchema(
+      SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
+      SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
+    ).optional(),
   })
   .strict();
 export type GetSubnetEventSummaryInput = z.infer<
@@ -58,7 +69,7 @@ export type GetSubnetEventSummaryInput = z.infer<
 export const GetSubnetEventSummaryOutputSchema = z
   .object({
     schema_version: z.int().optional(),
-    netuid: z.int(),
+    netuid: netuidSchema(),
     window: z.string().nullable(),
     observed_at: z.string().nullable().optional(),
     total_events: z.int(),

@@ -7,15 +7,26 @@
 // symbolic *_WINDOWS import), backed by the shared parseAnalyticsWindow()
 // runtime helper -- modeled the same way here, no shared constant.
 import { z } from "zod";
+import { limitSchema, sortSchema, windowSchema } from "./shared.ts";
 
 const WINDOWS_2 = ["7d", "30d"] as const;
 
 export const GetChainCallsInputSchema = z
   .object({
-    window: z.enum(WINDOWS_2).optional(),
-    group_by: z.enum(["module", "module_function"]).optional(),
-    limit: z.int().min(1).max(100).optional(),
-    call_module: z.string().optional(),
+    window: windowSchema(WINDOWS_2).optional(),
+    group_by: z
+      .enum(["module", "module_function"])
+      .optional()
+      .describe(
+        "How to bucket the counts: by pallet, or by pallet and call together.",
+      ),
+    limit: limitSchema(100).optional(),
+    call_module: z
+      .string()
+      .optional()
+      .describe(
+        "Restrict to one pallet, by its runtime name (`SubtensorModule`). Case-sensitive.",
+      ),
   })
   .strict();
 export type GetChainCallsInput = z.infer<typeof GetChainCallsInputSchema>;
@@ -46,10 +57,15 @@ export type GetChainCallsOutput = z.infer<typeof GetChainCallsOutputSchema>;
 
 export const GetChainSignersInputSchema = z
   .object({
-    window: z.enum(WINDOWS_2).optional(),
-    sort: z.enum(["tx_count", "total_fee_tao"]).optional(),
-    limit: z.int().min(1).max(100).optional(),
-    call_module: z.string().optional(),
+    window: windowSchema(WINDOWS_2).optional(),
+    sort: sortSchema(["tx_count", "total_fee_tao"]).optional(),
+    limit: limitSchema(100).optional(),
+    call_module: z
+      .string()
+      .optional()
+      .describe(
+        "Restrict to one pallet, by its runtime name (`SubtensorModule`). Case-sensitive.",
+      ),
   })
   .strict();
 export type GetChainSignersInput = z.infer<typeof GetChainSignersInputSchema>;
@@ -79,9 +95,14 @@ export type GetChainSignersOutput = z.infer<typeof GetChainSignersOutputSchema>;
 
 export const GetChainFeesInputSchema = z
   .object({
-    window: z.enum(WINDOWS_2).optional(),
-    limit: z.int().min(1).max(100).optional(),
-    call_module: z.string().optional(),
+    window: windowSchema(WINDOWS_2).optional(),
+    limit: limitSchema(100).optional(),
+    call_module: z
+      .string()
+      .optional()
+      .describe(
+        "Restrict to one pallet, by its runtime name (`SubtensorModule`). Case-sensitive.",
+      ),
   })
   .strict();
 export type GetChainFeesInput = z.infer<typeof GetChainFeesInputSchema>;
