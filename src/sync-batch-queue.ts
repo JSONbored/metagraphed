@@ -45,6 +45,27 @@ export interface SyncBatchMessage {
    * and inventing a total would mark an unproven load complete. */
   pass_total?: number;
   rows: Record<string, unknown>[];
+  /**
+   * "Every row for each KEY named in this message is IN this message."
+   *
+   * Only a pruning lane needs it, and only because its write DELETES: the
+   * writer removes rows for a key older than the newest `captured_at` it just
+   * saw for that key. Computed from a partial chunk, that would delete rows the
+   * chunk simply did not carry -- silent data loss, not a slowdown.
+   *
+   * WHICH key is the lane's own business -- `nominator-positions` prunes per
+   * `coldkey`, `neurons` per netuid -- so the flag is deliberately named for
+   * the property rather than for the column. A per-column field would have to
+   * be renamed the moment the second pruning lane moved, and renaming a wire
+   * field after cutover is not free.
+   *
+   * The producer's `pack_coldkey_chunks` already guarantees it, and has a test
+   * that a flat slice would fail. But once the write moves to a consumer, that
+   * guarantee is load-bearing across a repo boundary, and an assumption that
+   * crosses a boundary should be an assertion. Absent, the consumer refuses to
+   * prune rather than pruning on trust.
+   */
+  key_complete?: boolean;
 }
 
 /**
@@ -74,6 +95,16 @@ export const SYNC_BATCH_LANES = [
   "chain-detail",
   "subnet-hyperparams",
 ] as const;
+
+/**
+ * Lanes whose write PRUNES, and therefore may not be applied from a chunk that
+ * could be missing rows for a key it names.
+ *
+ * `neurons` belongs here too -- it prunes per netuid -- but is not on the queue
+ * yet, and listing a lane before its producer asserts completeness would reject
+ * every one of its messages. It joins when it moves.
+ */
+export const PRUNING_LANES: readonly string[] = ["nominator-positions"];
 
 export type SyncBatchLane = (typeof SYNC_BATCH_LANES)[number];
 
@@ -108,6 +139,11 @@ export function validSyncBatchMessage(body: unknown): body is SyncBatchMessage {
     return false;
   }
   if (!Array.isArray(m.rows) || m.rows.length === 0) return false;
+  // A pruning lane must SAY its chunk is key-complete. Refusing here beats
+  // pruning on trust: the failure mode is deleted rows, which no retry undoes.
+  if (PRUNING_LANES.includes(m.lane) && m.key_complete !== true) {
+    return false;
+  }
   if (m.rows.length > SYNC_BATCH_MAX_ROWS) return false;
   if (m.pass_total !== undefined && m.pass_total < m.rows.length) return false;
   return m.rows.every((r) => r !== null && typeof r === "object");

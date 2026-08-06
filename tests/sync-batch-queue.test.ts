@@ -17,6 +17,7 @@ import {
   SYNC_BATCH_LANES,
   SYNC_BATCH_MAX_ROWS,
   passTallyFor,
+  PRUNING_LANES,
   syncLaneUsesQueue,
   validSyncBatchMessage,
   writeSyncBatch,
@@ -41,7 +42,13 @@ describe("validSyncBatchMessage", () => {
     // lane means an unrecognised table, and a guess is worse than a DLQ entry.
     assert.equal(validSyncBatchMessage({ ...OK, lane: "brand-new" }), false);
     for (const lane of SYNC_BATCH_LANES) {
-      assert.equal(validSyncBatchMessage({ ...OK, lane }), true, lane);
+      // A pruning lane additionally has to assert key-completeness; see below.
+      const extra = PRUNING_LANES.includes(lane) ? { key_complete: true } : {};
+      assert.equal(
+        validSyncBatchMessage({ ...OK, ...extra, lane }),
+        true,
+        lane,
+      );
     }
   });
 
@@ -230,5 +237,41 @@ describe("writeSyncBatch", () => {
       3,
       "the sum is order-independent",
     );
+  });
+});
+
+describe("pruning lanes must declare key-completeness", () => {
+  const positions = {
+    lane: "nominator-positions",
+    captured_at: 1_785_990_000_000,
+    rows: [{ coldkey: "5C", hotkey: "5H", netuid: 7, captured_at: 1 }],
+  };
+
+  test("rejects a pruning lane's chunk that does not claim completeness", () => {
+    // THE DATA-LOSS CASE. nominator_positions' write DELETES a coldkey's rows
+    // older than the max captured_at it just saw for that coldkey. Computed
+    // from a partial chunk, that deletes rows the chunk did not carry -- and no
+    // retry undoes a delete. Refusing beats pruning on trust.
+    assert.equal(validSyncBatchMessage(positions), false);
+    assert.equal(
+      validSyncBatchMessage({ ...positions, key_complete: false }),
+      false,
+    );
+  });
+
+  test("accepts it once the producer asserts completeness", () => {
+    assert.equal(
+      validSyncBatchMessage({ ...positions, key_complete: true }),
+      true,
+    );
+  });
+
+  test("non-pruning lanes are unaffected", () => {
+    // Only a pruning write can delete what a chunk did not carry, so requiring
+    // the flag everywhere would be ceremony that teaches people to set it
+    // reflexively -- which is how a real guarantee becomes a habit.
+    assert.equal(validSyncBatchMessage(OK), true);
+    assert.equal(PRUNING_LANES.includes("hotkey-alpha"), false);
+    assert.equal(PRUNING_LANES.includes("nominator-positions"), true);
   });
 });
