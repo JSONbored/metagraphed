@@ -63,6 +63,16 @@ export const SCHEMA_VERSION = 1;
 export const PRIMARY_DOMAIN = "api.metagraph.sh";
 
 /**
+ * The human-facing origin — the block explorer, not the API.
+ *
+ * Lives here beside PRIMARY_DOMAIN because it had three copies before
+ * (src/feeds.ts, src/subnet-news.ts, and the MCP server's icon URLs wanted a
+ * fourth). Anything a person is meant to open in a browser -- feed item links,
+ * the MCP handshake's websiteUrl and icons -- resolves against this.
+ */
+export const SITE_ORIGIN = "https://metagraph.sh";
+
+/**
  * This repository's canonical URL, as published to consumers.
  *
  * One constant because it is published twice -- by the worker-computed MCP

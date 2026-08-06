@@ -102,6 +102,21 @@ describe("every published tool is contract-complete (#9663)", () => {
     assert.deepEqual(missing, []);
   });
 
+  // #9680. Tool.execution.taskSupport (MCP 2025-11-25). This server registers
+  // no task store, so a task-augmented call cannot be honoured -- and absent
+  // the declaration a client discovers that by trying one and failing.
+  // Asserted for EVERY tool because it is emitted once at listToolDefinitions,
+  // so a failure here means someone moved it somewhere per-tool, which is how
+  // the next tool added would ship without it.
+  test("every tool declares that it cannot be run as a task", () => {
+    const all = tools();
+    assertFullCatalogue(all);
+    const wrong = all
+      .filter((t) => (t.execution as Row)?.taskSupport !== "forbidden")
+      .map((t) => String(t.name));
+    assert.deepEqual(wrong, []);
+  });
+
   // Tool names are the identifier an agent types. The spec's own guidance is
   // 1-128 characters from [A-Za-z0-9_.-]; ours are snake_case throughout, and a
   // stray camelCase or space would be a silent inconsistency in a namespace

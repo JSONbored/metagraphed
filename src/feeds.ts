@@ -51,9 +51,12 @@ import type { StorageReadResult } from "../workers/storage.ts";
 import { loadUpgradeFeedItems } from "./upgrade-radar.ts";
 import type { NewsItem } from "./subnet-news.ts";
 
-// Exported so the MCP feed loader (src/feed-mcp.ts) builds identical item URLs
-// rather than keeping a second copy of the origin that could drift.
-export const SITE_URL = "https://metagraph.sh";
+// Re-exported so the MCP feed loader (src/feed-mcp.ts) builds identical item
+// URLs rather than keeping a second copy of the origin that could drift. The
+// value itself now lives in contracts.ts beside PRIMARY_DOMAIN, which is where
+// the other published origin already was.
+import { SITE_ORIGIN as SITE_URL } from "./contracts.ts";
+export { SITE_URL };
 const API_URL = "https://api.metagraph.sh";
 export const FEED_MAX_ITEMS = 50;
 const FEED_CACHE_SECONDS = 600;

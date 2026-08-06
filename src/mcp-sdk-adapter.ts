@@ -1,12 +1,12 @@
-// Step 2 of the @modelcontextprotocol/sdk migration (#9647): the SDK owns the
+// The @modelcontextprotocol/sdk migration (#9647), CUT OVER: the SDK owns the
 // ENVELOPE, src/mcp-server.ts still owns every METHOD.
 //
-// NOT YET SERVED BY DEFAULT. `/mcp` reaches this only when
-// `MCP_SDK_ENVELOPE` is set (see mcpSdkEnvelopeEnabled in mcp-server.ts);
-// unset, the hand-rolled path answers exactly as before. The flag exists so
-// the swap can be proved in production traffic and reverted with a config
-// change rather than a deploy, on a surface answering ~14K tool calls a month.
-// #9647 step 4 deletes the hand-rolled envelope once it has baked.
+// THIS SERVES ALL PRODUCTION TRAFFIC. Every well-formed request to `/mcp`
+// arrives here -- no flag, no second envelope, nothing to fall back to. The
+// single exception is malformed JSON-RPC, which dispatchMcpRequest answers
+// itself because the SDK handles it measurably worse: wrong error code, wrong
+// HTTP status, and it drops the valid members of a mixed batch. That carve-out
+// is a permanent part of the design, not a rollback path.
 //
 // ## Total delegation, which is the whole design
 //

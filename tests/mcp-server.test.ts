@@ -226,6 +226,11 @@ describe("MCP tool registry", () => {
       // declaration is held equal to real behaviour by
       // tests/mcp-tool-auth-declaration.test.ts.
       "_meta",
+      // #9680: Tool.execution (MCP 2025-11-25), carrying taskSupport. Declared
+      // on every tool as "forbidden" -- this server registers no task store.
+      // The value is held to that by tests/mcp-contract-completeness.test.ts;
+      // this list only governs which keys may appear at all.
+      "execution",
     ]);
     for (const def of defs) {
       for (const key of Object.keys(def)) {
