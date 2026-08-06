@@ -120,6 +120,14 @@ interface Env {
    * is deploy-time so a cutover and its rollback are both a setting rather than
    * a code change. */
   SYNC_QUEUE_LANES?: string;
+  /** The webhook-deliveries producer binding (metagraphed-infra#354). Absent
+   * means the fan-out route declines rather than silently dropping an event --
+   * a webhook nobody was told failed is worse than one that visibly did. */
+  WEBHOOK_DELIVERIES?: Queue<unknown>;
+  /** Gates the internal fan-out route. Same shape as every other internal sync
+   * secret; unset means the route 503s rather than accepting unauthenticated
+   * dispatch of arbitrary events to subscribers. */
+  WEBHOOK_DISPATCH_SECRET?: string;
   METAGRAPH_ALLOW_R2_STATIC_FALLBACK?: string;
   METAGRAPH_DISABLE_REQUEST_LOGS?: string;
   METAGRAPH_HEALTH_MAX_AGE_HOURS?: string;

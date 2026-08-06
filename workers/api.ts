@@ -286,7 +286,12 @@ import {
 import { handleFullnodeRpcProxyRequest } from "./request-handlers/fullnode-rpc-proxy.ts";
 import {
   buildChangeEvent,
+  deliverChangeEvent,
   deliveryStoragePrefix,
+  eventMatchesFilters,
+  webhookEventId,
+  WEBHOOK_KV_PREFIX,
+  resolveWebhookHostnamesWithDoh,
   generateSecret,
   generateSubscriptionId,
   isValidSubscriptionId,
@@ -301,6 +306,13 @@ import {
   WEBHOOK_SECRET_HEADER,
   WEBHOOK_SIGNATURE_HEADER,
 } from "../src/webhooks.ts";
+import {
+  classifyWebhookBatch,
+  planWebhookFanOut,
+  webhookDeliveryDisposition,
+  webhookRetryDelaySeconds,
+  WEBHOOK_QUEUE_MAX_ATTEMPTS,
+} from "../src/webhook-queue.ts";
 import {
   ALERT_TRIGGER_CREATE_TOKEN_HEADER,
   ALERT_TRIGGER_OWNER_TOKEN_HEADER,
@@ -1558,7 +1570,259 @@ export default {
   ) {
     return handleScheduled(controller, env, ctx);
   },
+  /**
+   * Webhook delivery (metagraphed-infra#354).
+   *
+   * One message is one (subscription, event). What used to be a KV-parked
+   * record swept on the next publish run, with its own persisted round counter
+   * and a per-subscription share of a 64-redelivery budget, is now a message
+   * that reschedules itself.
+   *
+   * THE SUBSCRIPTION IS READ AT DELIVERY, not carried on the message: a
+   * subscription deleted or re-pointed between enqueue and delivery must not be
+   * delivered to from a stale copy, and a 12-hour retry window makes that a
+   * real interval rather than a theoretical one.
+   *
+   * THE BODY IS CARRIED, because the signature is over those exact bytes. A
+   * retry that re-serialised the event could produce different key order, and a
+   * subscriber verifying the signature would read a legitimate redelivery as a
+   * forgery.
+   */
+  async queue(
+    batch: MessageBatch<unknown>,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<void> {
+    return handleWebhookQueue(batch, env, ctx);
+  },
 };
+
+/**
+ * POST /api/v1/internal/webhook-dispatch -- fan one change event out to the queue.
+ *
+ * THE FAN-OUT IS THE PRODUCER, and it lives here rather than in the publish
+ * script for a reason worth stating: the script runs on a GitHub Actions runner
+ * with no queue binding, and the alternative -- having it deliver inline, as it
+ * did -- is what made a hand-written retry system necessary in the first place.
+ *
+ * Enqueuing is all this does. It does not deliver, so a slow or dead subscriber
+ * cannot make the publish that triggered it slow or dead, which was already the
+ * stated rule ("a bad subscriber must not block the data pipeline") and is now
+ * structural rather than maintained by care.
+ */
+/** Same shape as every other internal sync token header in this Worker. */
+const WEBHOOK_DISPATCH_TOKEN_HEADER = "x-webhook-dispatch-token";
+
+async function handleWebhookDispatch(request: Request, env: Env) {
+  if (request.method !== "POST") {
+    return errorResponse(
+      "webhook_dispatch_method_not_allowed",
+      "Use POST.",
+      405,
+    );
+  }
+  if (!env.WEBHOOK_DISPATCH_SECRET) {
+    return errorResponse(
+      "webhook_dispatch_unavailable",
+      "Webhook dispatch is not provisioned on this deployment.",
+      503,
+    );
+  }
+  const provided = request.headers.get(WEBHOOK_DISPATCH_TOKEN_HEADER) || "";
+  if (!provided || !timingSafeEqual(provided, env.WEBHOOK_DISPATCH_SECRET)) {
+    return errorResponse(
+      "webhook_dispatch_unauthorized",
+      `Provide a valid ${WEBHOOK_DISPATCH_TOKEN_HEADER} header.`,
+      401,
+    );
+  }
+  // DECLINES rather than dropping. An event silently discarded because a
+  // binding is missing is a webhook nobody was told failed, which is worse than
+  // one that visibly did.
+  if (!env.WEBHOOK_DELIVERIES) {
+    return errorResponse(
+      "webhook_dispatch_unavailable",
+      "The webhook-deliveries queue is not bound to this deployment.",
+      503,
+    );
+  }
+  if (!env.METAGRAPH_CONTROL?.list) {
+    return errorResponse(
+      "webhook_dispatch_unavailable",
+      "The control KV namespace is not bound to this deployment.",
+      503,
+    );
+  }
+
+  let event: Record<string, unknown>;
+  try {
+    event = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return errorResponse(
+      "webhook_dispatch_invalid_body",
+      "Body must be JSON.",
+      400,
+    );
+  }
+  if (!event || typeof event !== "object") {
+    return errorResponse(
+      "webhook_dispatch_invalid_body",
+      "Body must be a change event object.",
+      400,
+    );
+  }
+
+  // ONE BODY FOR EVERY SUBSCRIBER, serialised once. Only the per-subscriber
+  // signature and idempotency header differ, and both are computed at delivery
+  // -- so what is enqueued is byte-identical to what is signed, on the first
+  // attempt and on the eighth.
+  const bodyText = JSON.stringify(event);
+  const eventId = await webhookEventId(bodyText);
+
+  const { keys } = await env.METAGRAPH_CONTROL.list({
+    prefix: WEBHOOK_KV_PREFIX,
+  });
+  const subscriptions = (
+    await Promise.all(
+      keys.map((entry: { name: string }) =>
+        env.METAGRAPH_CONTROL!.get(entry.name, { type: "json" }),
+      ),
+    )
+  ).filter(Boolean) as Record<string, unknown>[];
+
+  const { messages, skipped, oversize } = planWebhookFanOut({
+    subscriptions,
+    eventId,
+    bodyText,
+    matches: (subscription) =>
+      eventMatchesFilters(
+        event,
+        subscription.filters as Parameters<typeof eventMatchesFilters>[1],
+      ),
+  });
+
+  try {
+    await Promise.all(
+      messages.map((message) => env.WEBHOOK_DELIVERIES!.send(message)),
+    );
+  } catch (err) {
+    console.error("webhook fan-out enqueue failed:", err);
+    return errorResponse(
+      "webhook_dispatch_enqueue_failed",
+      "The queue refused the fan-out; the caller should retry.",
+      502,
+    );
+  }
+
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      event_id: eventId,
+      subscriptions: subscriptions.length,
+      enqueued: messages.length,
+      skipped,
+      oversize,
+    }),
+    { headers: apiHeaders("short") },
+  );
+}
+
+export async function handleWebhookQueue(
+  batch: MessageBatch<unknown>,
+  env: Env,
+  _ctx: ExecutionContext,
+  /** Injected so the unmodelled-throw path is reachable from a test. Every
+   * other seam in this delivery path (`fetchFn`, `resolveHostnames`, the
+   * delivery store) is injected for the same reason -- see src/webhooks.ts. */
+  deliver: typeof deliverChangeEvent = deliverChangeEvent,
+): Promise<void> {
+  const { valid, invalid } = classifyWebhookBatch(batch.messages);
+  console.log(
+    `webhook-deliveries: ${batch.messages.length} message(s), ` +
+      `${valid.length} valid, ${invalid} unparseable`,
+  );
+
+  for (const message of batch.messages) {
+    const body = message.body as {
+      subscription_id?: unknown;
+      event_id?: unknown;
+      body?: unknown;
+    } | null;
+    // Unparseable is ACKED, not retried -- it will not parse on the eighth
+    // attempt either, and the DLQ is more useful holding deliveries that might
+    // still succeed. Same rule the sync-batches consumer follows.
+    if (
+      !body ||
+      typeof body.subscription_id !== "string" ||
+      typeof body.body !== "string"
+    ) {
+      message.ack();
+      continue;
+    }
+
+    const subscription = (await env.METAGRAPH_CONTROL?.get(
+      subscriptionStorageKey(body.subscription_id),
+      { type: "json" },
+    )) as Record<string, unknown> | null;
+    // A deleted subscription is done, not failed: acking is how an unsubscribe
+    // takes effect on a delivery already in flight.
+    if (!subscription) {
+      message.ack();
+      continue;
+    }
+
+    // PARSED BEFORE THE TRY, and a failure here ACKS. A body that is not JSON
+    // will not become JSON on the eighth attempt, so retrying it would spend
+    // the whole budget and dead-letter anyway -- the same rule the unparseable
+    // message above follows.
+    let event: Record<string, unknown>;
+    try {
+      event = JSON.parse(body.body) as Record<string, unknown>;
+    } catch {
+      message.ack();
+      continue;
+    }
+
+    let result: Record<string, unknown>;
+    try {
+      result = (await deliver({
+        subscription,
+        event,
+        bodyText: body.body,
+        fetchFn: fetch,
+        now: () => new Date().toISOString(),
+        // Delivery-time DNS re-resolution is the SSRF guard, not an
+        // optimisation: a hostname that resolved public at subscribe time can
+        // point at a private address by the time a 12-hour-old retry fires.
+        resolveHostnames: (host: string) =>
+          resolveWebhookHostnamesWithDoh(host, { fetchImpl: fetch }),
+      })) as Record<string, unknown>;
+    } catch (err) {
+      // deliverChangeEvent turns every KNOWN failure into a result, so reaching
+      // here means something unmodelled -- and unmodelled is exactly what a
+      // retry is for. Letting it propagate instead would fail the whole batch,
+      // punishing nine healthy subscribers for one broken one.
+      console.error("webhook delivery threw:", err);
+      result = { status: "failed", retryable: true };
+    }
+
+    const disposition = webhookDeliveryDisposition(
+      result,
+      message.attempts,
+      WEBHOOK_QUEUE_MAX_ATTEMPTS,
+    );
+    if (disposition === "retry") {
+      message.retry({
+        delaySeconds: webhookRetryDelaySeconds(message.attempts),
+      });
+    } else {
+      // Delivered, or terminal. A terminal failure acks so the platform routes
+      // it to the dead-letter queue on the final attempt rather than spinning
+      // out the remaining budget on a 400 that will never become a 200.
+      message.ack();
+    }
+  }
+}
 
 // Durable Object classes must be named exports of this Worker's main entry
 // module (wrangler.jsonc's "main": "workers/api.entry.ts") -- re-exporting the
@@ -3848,6 +4112,14 @@ export async function handleRequest(
   // which owns the postgres.js driver + this database's own Hyperdrive
   // binding, keeping this Worker's bundle lean the same way DATA_API does
   // for the chain-data tier.
+  // Webhook fan-out (metagraphed-infra#354): turn ONE published change event
+  // into one queue message per matching subscriber. The publish lane calls this
+  // instead of delivering inline, so delivery gets the queue's retry, backoff
+  // and dead-lettering instead of a hand-rolled copy of them.
+  if (url.pathname === "/api/v1/internal/webhook-dispatch") {
+    return handleWebhookDispatch(request, env);
+  }
+
   if (url.pathname === "/api/v1/internal/registry-sync") {
     return handleRegistrySyncProxy(request, env);
   }

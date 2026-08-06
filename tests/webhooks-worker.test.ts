@@ -774,3 +774,381 @@ describe("webhook route edge cases", () => {
     assert.equal((await res.json()).error.code, "subscription_not_found");
   });
 });
+
+// --- delivery on a queue (metagraphed-infra#354) ----------------------------
+//
+// The fan-out route replaces the publish script's inline delivery, and the
+// queue consumer replaces `dispatchWithRedelivery`'s parking, sweeping,
+// round-counting and per-subscription budget. What these assert is that the
+// subscriber-visible behaviour survived: matching subscribers get exactly one
+// message each, the body is byte-identical to what will be signed, a deleted
+// subscription stops delivery, and a failure is rescheduled rather than lost.
+const DISPATCH_TOKEN = "test-webhook-dispatch-token";
+
+function makeQueue() {
+  const sent: Record<string, unknown>[] = [];
+  return {
+    sent,
+    async send(body: Record<string, unknown>) {
+      sent.push(body);
+    },
+  };
+}
+
+const dispatch = (env: Row, event: unknown, token = DISPATCH_TOKEN) =>
+  handleRequest(
+    req("/api/v1/internal/webhook-dispatch", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-webhook-dispatch-token": token,
+      },
+      body: JSON.stringify(event),
+    }),
+    env as unknown as Env,
+    {},
+  );
+
+async function seedSubscription(kv: ReturnType<typeof makeKv>, url: string) {
+  const res = await postSub(envWith(kv), { url });
+  return ((await res.json()) as Row).data as Row;
+}
+
+/** A fetch double that answers the DoH lookup with a real public address and
+ * the webhook URL with whatever status the test is about.
+ *
+ * Blunt mocks fail this path in a way that looks like the code is wrong: a
+ * failed DNS lookup makes `resolvedWebhookUrlStatus` fail CLOSED, so the
+ * delivery is "skipped" (terminal) rather than "failed" (retryable), and the
+ * consumer correctly acks something the test meant to see retried.
+ */
+function makeDeliveryFetch(status: number) {
+  return vi.fn(async (input: unknown) => {
+    const url = String(input);
+    if (url.startsWith("https://cloudflare-dns.com/dns-query")) {
+      return new Response(
+        JSON.stringify({ Answer: [{ type: 1, data: "93.184.216.34" }] }),
+        { status: 200, headers: { "content-type": "application/dns-json" } },
+      );
+    }
+    return new Response("body", { status });
+  });
+}
+
+describe("webhook fan-out route", () => {
+  const EVENT = { type: "metagraph.publish", changes: { subnets: [7] } };
+
+  test("enqueues one message per subscriber and delivers nothing itself", async () => {
+    const kv = makeKv();
+    await seedSubscription(kv, "https://hooks.example.com/a");
+    await seedSubscription(kv, "https://hooks.example.com/b");
+    const queue = makeQueue();
+
+    const res = await dispatch(
+      envWith(kv, {
+        WEBHOOK_DELIVERIES: queue,
+        WEBHOOK_DISPATCH_SECRET: DISPATCH_TOKEN,
+      }),
+      EVENT,
+    );
+
+    assert.equal(res.status, 200);
+    const body = (await res.json()) as Row;
+    assert.equal(body.ok, true);
+    assert.equal(body.subscriptions, 2);
+    assert.equal(body.enqueued, 2);
+    assert.equal(queue.sent.length, 2);
+    // ONE BODY, byte-identical on every message: the per-subscriber signature
+    // is computed over these exact bytes at delivery.
+    const bodies = new Set(queue.sent.map((m) => m.body));
+    assert.equal(bodies.size, 1);
+    assert.equal(JSON.parse(queue.sent[0]!.body as string).type, EVENT.type);
+    // Every message carries the same content-addressed event id -- half of the
+    // idempotency key a subscriber dedupes retries on.
+    assert.equal(
+      new Set(queue.sent.map((m) => m.event_id)).size,
+      1,
+      "one event, one id",
+    );
+  });
+
+  test("401s without the token, 503s with no queue bound", async () => {
+    const kv = makeKv();
+    await seedSubscription(kv, "https://hooks.example.com/a");
+    const queue = makeQueue();
+
+    assert.equal(
+      (
+        await dispatch(
+          envWith(kv, {
+            WEBHOOK_DELIVERIES: queue,
+            WEBHOOK_DISPATCH_SECRET: DISPATCH_TOKEN,
+          }),
+          EVENT,
+          "wrong",
+        )
+      ).status,
+      401,
+    );
+    // DECLINES rather than dropping: an event discarded because a binding is
+    // missing is a webhook nobody was told failed.
+    assert.equal(
+      (
+        await dispatch(
+          envWith(kv, { WEBHOOK_DISPATCH_SECRET: DISPATCH_TOKEN }),
+          EVENT,
+        )
+      ).status,
+      503,
+    );
+    assert.equal(queue.sent.length, 0);
+  });
+});
+
+describe("webhook queue consumer", () => {
+  const EVENT_BODY = JSON.stringify({
+    type: "metagraph.publish",
+    changes: { subnets: [7] },
+  });
+
+  async function runQueue(env: Row, body: unknown) {
+    const acts: string[] = [];
+    const delays: number[] = [];
+    const worker = (await import("../workers/api.ts")).default;
+    await worker.queue!(
+      {
+        messages: [
+          {
+            body,
+            attempts: (body as Row)?.__attempts ?? 1,
+            ack: () => acts.push("ack"),
+            retry: (opts?: { delaySeconds?: number }) => {
+              acts.push("retry");
+              if (opts?.delaySeconds !== undefined)
+                delays.push(opts.delaySeconds);
+            },
+          },
+        ],
+      } as never,
+      env as unknown as Env,
+      { waitUntil: (p: Promise<unknown>) => void p } as never,
+    );
+    return { acts, delays };
+  }
+
+  test("acks an unparseable message rather than retrying it", async () => {
+    // It will not parse on the eighth attempt either, and the DLQ is more
+    // useful holding deliveries that might still succeed.
+    const { acts } = await runQueue(envWith(makeKv()), { nope: true });
+    assert.deepEqual(acts, ["ack"]);
+  });
+
+  test("acks when the subscription is gone, so an unsubscribe takes effect", async () => {
+    // A delivery already in flight must not outlive the subscription it was
+    // for -- the 12-hour retry window makes that a real interval.
+    const { acts } = await runQueue(envWith(makeKv()), {
+      subscription_id: "sub_deleted",
+      event_id: "evt_1",
+      body: EVENT_BODY,
+    });
+    assert.deepEqual(acts, ["ack"]);
+  });
+
+  test("delivers to the subscription read at delivery time", async () => {
+    const kv = makeKv();
+    const sub = await seedSubscription(kv, "https://hooks.example.com/a");
+    const fetchMock = makeDeliveryFetch(200);
+    const original = globalThis.fetch;
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    try {
+      const { acts } = await runQueue(envWith(kv), {
+        subscription_id: sub.id,
+        event_id: "evt_1",
+        body: EVENT_BODY,
+      });
+      assert.deepEqual(acts, ["ack"], "a delivered event is done");
+      assert.equal(fetchMock.mock.calls.length > 0, true);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  test("reschedules a retryable failure instead of losing it", async () => {
+    const kv = makeKv();
+    const sub = await seedSubscription(kv, "https://hooks.example.com/a");
+    const fetchMock = makeDeliveryFetch(503);
+    const original = globalThis.fetch;
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    try {
+      const { acts, delays } = await runQueue(envWith(kv), {
+        subscription_id: sub.id,
+        event_id: "evt_1",
+        body: EVENT_BODY,
+      });
+      assert.deepEqual(acts, ["retry"]);
+      // The schedule the hand-rolled system published: 5 minutes on the first
+      // failure, doubling from there.
+      assert.deepEqual(delays, [300]);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+});
+
+describe("webhook fan-out route: the ways it declines", () => {
+  const EVENT = { type: "metagraph.publish", changes: { subnets: [7] } };
+  const fullEnv = (kv: ReturnType<typeof makeKv>, queue: unknown) =>
+    envWith(kv, {
+      WEBHOOK_DELIVERIES: queue,
+      WEBHOOK_DISPATCH_SECRET: DISPATCH_TOKEN,
+    });
+
+  test("401s with the header absent, not just wrong", async () => {
+    // Absent and wrong must land the same way -- a missing header falling
+    // through to an empty-string comparison is how an auth gate accidentally
+    // accepts an unset secret.
+    const res = await handleRequest(
+      req("/api/v1/internal/webhook-dispatch", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(EVENT),
+      }),
+      fullEnv(makeKv(), makeQueue()) as unknown as Env,
+      {},
+    );
+    assert.equal(res.status, 401);
+  });
+
+  test("405s on a method other than POST", async () => {
+    const res = await handleRequest(
+      req("/api/v1/internal/webhook-dispatch", { method: "GET" }),
+      fullEnv(makeKv(), makeQueue()) as unknown as Env,
+      {},
+    );
+    assert.equal(res.status, 405);
+  });
+
+  test("503s where the dispatch secret is not provisioned", async () => {
+    // Unset means the route refuses rather than accepting unauthenticated
+    // dispatch of arbitrary events to real subscribers.
+    const res = await dispatch(
+      envWith(makeKv(), { WEBHOOK_DELIVERIES: makeQueue() }),
+      EVENT,
+    );
+    assert.equal(res.status, 503);
+  });
+
+  test("503s where the control KV is not bound", async () => {
+    const res = await dispatch(
+      envWith(
+        { get: async () => null, put: async () => {} },
+        {
+          WEBHOOK_DELIVERIES: makeQueue(),
+          WEBHOOK_DISPATCH_SECRET: DISPATCH_TOKEN,
+        },
+      ),
+      EVENT,
+    );
+    assert.equal(res.status, 503);
+  });
+
+  test("400s on a body that is not a JSON object", async () => {
+    const kv = makeKv();
+    const env = fullEnv(kv, makeQueue()) as unknown as Env;
+    const bad = await handleRequest(
+      req("/api/v1/internal/webhook-dispatch", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-webhook-dispatch-token": DISPATCH_TOKEN,
+        },
+        body: "not json",
+      }),
+      env,
+      {},
+    );
+    assert.equal(bad.status, 400);
+    // Valid JSON, wrong shape: a bare array or scalar is not a change event.
+    assert.equal((await dispatch(fullEnv(kv, makeQueue()), null)).status, 400);
+  });
+
+  test("502s when the queue refuses, so the caller knows to retry", async () => {
+    // Reporting success on an event the queue never took would lose it
+    // silently, and nobody would learn the subscribers were not told.
+    const kv = makeKv();
+    await seedSubscription(kv, "https://hooks.example.com/a");
+    const res = await dispatch(
+      fullEnv(kv, {
+        send: async () => Promise.reject(new Error("over capacity")),
+      }),
+      EVENT,
+    );
+    assert.equal(res.status, 502);
+  });
+});
+
+describe("webhook queue consumer: the terminal and transient edges", () => {
+  const msg = (body: unknown, attempts = 1) => ({
+    body,
+    attempts,
+    ack: () => {},
+    retry: () => {},
+  });
+
+  async function run(
+    kv: ReturnType<typeof makeKv>,
+    body: unknown,
+    deliver?: unknown,
+  ) {
+    const acts: string[] = [];
+    const { handleWebhookQueue } = await import("../workers/api.ts");
+    await handleWebhookQueue(
+      {
+        messages: [
+          {
+            ...msg(body),
+            ack: () => acts.push("ack"),
+            retry: () => acts.push("retry"),
+          },
+        ],
+      } as never,
+      envWith(kv) as unknown as Env,
+      { waitUntil: (p: Promise<unknown>) => void p } as never,
+      deliver as never,
+    );
+    return acts;
+  }
+
+  test("a delivery that throws is retried, not dropped", async () => {
+    // deliverChangeEvent turns every KNOWN failure into a result, so a throw is
+    // something unmodelled -- and letting it propagate would fail the whole
+    // batch, punishing nine healthy subscribers for one broken one.
+    const kv = makeKv();
+    const sub = await seedSubscription(kv, "https://hooks.example.com/a");
+    const acts = await run(
+      kv,
+      {
+        subscription_id: sub.id,
+        event_id: "evt_1",
+        body: JSON.stringify({ type: "metagraph.publish" }),
+      },
+      () => {
+        throw new Error("socket exploded");
+      },
+    );
+    assert.deepEqual(acts, ["retry"]);
+  });
+
+  test("a body that is not JSON is acked, because it never will be", async () => {
+    // Retrying it would spend the whole eight-attempt budget to dead-letter in
+    // 12 hours what is already known to be undeliverable.
+    const kv = makeKv();
+    const sub = await seedSubscription(kv, "https://hooks.example.com/a");
+    const acts = await run(kv, {
+      subscription_id: sub.id,
+      event_id: "evt_1",
+      body: "{not json",
+    });
+    assert.deepEqual(acts, ["ack"]);
+  });
+});
