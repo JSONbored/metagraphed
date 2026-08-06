@@ -1246,6 +1246,34 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/chain/holders",
+    (body) => {
+      // #9607. Never 404s and never serves a bare empty ranking: either
+      // `subnets` is real, or it is empty WITH a degraded.reason. An empty array
+      // alone would read as "no subnet has any holders".
+      assert.equal(Array.isArray(body.data.subnets), true);
+      if (body.data.subnets.length === 0) {
+        assert.equal(typeof body.data.degraded?.reason, "string");
+      }
+      // Ranked by the requested sort, descending, nulls last.
+      const shares = body.data.subnets
+        .map((s: { top1_share: number | null }) => s.top1_share)
+        .filter((v: number | null) => v !== null);
+      assert.deepEqual(
+        shares,
+        [...shares].sort((a: number, b: number) => b - a),
+      );
+      // The network rollup carries NO cross-subnet alpha sum -- adding different
+      // subnets' alpha is the #8803 dimensional bug, and its absence is the
+      // contract, not an omission.
+      assert.equal("total_alpha" in (body.data.network ?? {}), false);
+      // subnet_count describes the network, so it is never bounded by the page.
+      if (body.data.subnet_count !== null) {
+        assert.equal(body.data.subnet_count >= body.data.subnets.length, true);
+      }
+    },
+  ],
+  [
     "/api/v1/chain/burn",
     (body) => {
       // #9399. The two counts stay separate on purpose: subnet_count is what the

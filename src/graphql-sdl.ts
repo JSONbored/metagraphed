@@ -306,6 +306,8 @@ export const SDL = /* GraphQL */ `
     subnet_concentration(netuid: Int!): SubnetConcentration!
     "Who OWNS a subnet's alpha: the top coldkeys by alpha held on that netuid, each with its share of the subnet total and how many hotkeys it holds through, plus whole-subnet aggregates (distinct holder count, total measured alpha, top5/top10/top20 concentration). The reverse index of account_positions, which reads the same ledger one coldkey (one account) at a time, and distinct from subnet_concentration: that card is computed off registered UIDs' stake, while this one includes alpha staked to UNREGISTERED hotkeys. Ranked in ALPHA, not TAO. limit caps the rows (default 20, max 100); the aggregates are always computed over the FULL holder set, so holder_count is not the length of what you got back. TWO STATES DECLINE rather than answer, both with an empty holders list, a degraded block and NULL counts: pool_totals_unproven while the pool ledger has no complete pass, and root_not_in_alpha_map for netuid 0, which the chain's Alpha map does not cover. An empty holders list WITHOUT a degraded block is therefore a measurement. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/holders."
     subnet_holders(netuid: Int!, limit: Int): SubnetHolders!
+    "Every subnet ranked by how concentrated its alpha OWNERSHIP is: per subnet the distinct holder count, measured alpha total, top1/top5/top10/top20 shares and the largest holder's coldkey (an ss58 address). The cross-subnet companion to subnet_holders, which answers one subnet at a time. NOT chain_concentration, which computes Gini/HHI/Nakamoto off registered UIDs' stake and cannot see alpha held on hotkeys with no UID. ALPHA IS NEVER SUMMED ACROSS SUBNETS -- each subnet's alpha is a different token, so total_alpha is per subnet and the network block carries only counts plus the median top-1 share. sort is one of top1_share (default), top5_share, top10_share, top20_share, holder_count, total_alpha; unmeasurable subnets sort LAST. Declines with an empty list plus a degraded block while the pool ledger has no complete pass, so an empty list WITHOUT that block is a measurement. Mainnet only. Mirrors GET /api/v1/chain/holders."
+    chain_holders(sort: String, limit: Int): ChainHolders!
     "Per-subnet per-day stake and emission concentration trend from the neuron_daily rollup over a 7d/30d/90d window (default 30d): each day's stake/emission Gini, Nakamoto coefficient, and top-10% share, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/concentration/history."
     subnet_concentration_history(
       netuid: Int!
@@ -2792,6 +2794,44 @@ export const SDL = /* GraphQL */ `
     deregistrations: Int!
     deregistrations_per_hotkey: Float
     derivation: DeregistrationDerivation
+    degraded: DegradedInfo
+  }
+
+  "One subnet's alpha-ownership concentration."
+  type ChainHoldersSubnet {
+    netuid: Int!
+    holder_count: Int
+    "ALPHA, comparable only WITHIN this subnet -- each subnet's alpha is a different token."
+    total_alpha: Float
+    top1_share: Float
+    top5_share: Float
+    top10_share: Float
+    top20_share: Float
+    "The largest holder's coldkey (an ss58 address)."
+    top_holder: String
+  }
+
+  "Dimension-free network facts. There is deliberately no cross-subnet alpha total: summing different subnets' alpha has no unit."
+  type ChainHoldersNetwork {
+    subnets_measured: Int
+    "Subnets where ONE account holds a majority of the measured alpha."
+    subnets_with_majority_holder: Int
+    "Subnets whose entire measured alpha sits in a single wallet."
+    subnets_with_single_holder: Int
+    median_top1_share: Float
+  }
+
+  type ChainHolders {
+    schema_version: Int!
+    sort: String!
+    limit: Int
+    "Subnets measured -- NOT the length of the subnets list when limit bites."
+    subnet_count: Int
+    network: ChainHoldersNetwork
+    captured_at: String
+    positions_captured_at: String
+    subnets: [ChainHoldersSubnet!]!
+    "Present ONLY on a decline. An empty subnets list WITHOUT this block is a measurement."
     degraded: DegradedInfo
   }
 

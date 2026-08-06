@@ -3008,6 +3008,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/holders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch every subnet ranked by alpha-ownership concentration. Every subnet ranked by how concentrated its alpha OWNERSHIP is (#9607) — per subnet: the distinct holder count, the measured alpha total, top1/top5/top10/top20 shares, and the largest holder's coldkey (an ss58 address). The cross-subnet companion to /subnets/{netuid}/holders, which answers this one subnet at a time and so costs 129 requests to compare the network. DISTINCT FROM /chain/concentration, which computes Gini/HHI/Nakamoto off neurons.stake_tao and therefore sees REGISTERED UIDs only — on netuid 74 that is 10 of the 92 hotkeys actually carrying positions. This reads the position ledger, so alpha parked on hotkeys holding no UID is measured rather than invisible, and the two routes disagree by design. ALPHA IS NEVER SUMMED ACROSS SUBNETS: each subnet's alpha is a different token, so total_alpha is reported per subnet and the network rollup carries only dimension-free facts — subnets measured, how many have a single account holding a majority, how many have exactly one holder, and the MEDIAN of the top-1 shares. A cross-subnet total requires pricing each subnet's alpha through its own alpha_price_tao first, which is what /accounts/top-holders does. ?sort=top1_share (default), top5_share, top10_share, top20_share, holder_count or total_alpha; a subnet whose share could not be computed sorts LAST rather than reading as the least concentrated. limit caps the returned subnets (default 20, max 512) and the max sits above the subnet count so ranking the whole network is one request. DECLINES rather than answering while the hotkey_alpha pool ledger has no complete pass — an empty subnets array with degraded.reason pool_totals_unproven and a NULL subnet_count, never a zero one. Mainnet-only: neither source table carries a network dimension. */
+        get: operations["chainHolders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/identity-history": {
         parameters: {
             query?: never;
@@ -7322,6 +7339,38 @@ export interface components {
             window: string;
         } & {
             [key: string]: unknown;
+        };
+        ChainHoldersArtifact: {
+            captured_at: string | null;
+            degraded?: {
+                /** @enum {string} */
+                reason: "pool_totals_unproven" | "unavailable";
+            };
+            limit: number | null;
+            network: components["schemas"]["ChainHoldersNetwork"];
+            positions_captured_at: string | null;
+            schema_version: number;
+            sort: string;
+            subnet_count: number | null;
+            subnets: components["schemas"]["ChainHoldersSubnet"][];
+        } & {
+            [key: string]: unknown;
+        };
+        ChainHoldersNetwork: {
+            median_top1_share: number | null;
+            subnets_measured: number | null;
+            subnets_with_majority_holder: number | null;
+            subnets_with_single_holder: number | null;
+        };
+        ChainHoldersSubnet: {
+            holder_count: number | null;
+            netuid: number;
+            top_holder: string | null;
+            top1_share: number | null;
+            top10_share: number | null;
+            top20_share: number | null;
+            top5_share: number | null;
+            total_alpha: number | null;
         };
         ChainIdentityHistoryArtifact: {
             changes: ({
@@ -34679,6 +34728,135 @@ export interface operations {
                      *     2026-07-01,15000,9200,42.5,0.004620,0.0025,0,0,0
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainHolders: {
+        parameters: {
+            query?: {
+                sort?: "top1_share" | "top5_share" | "top10_share" | "top20_share" | "holder_count" | "total_alpha";
+                /** @description Maximum number of rows to return in one page (at most 512). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "degraded": {
+                     *           "reason": "pool_totals_unproven"
+                     *         },
+                     *         "limit": 1,
+                     *         "network": {
+                     *           "median_top1_share": 0.5,
+                     *           "subnets_measured": 1,
+                     *           "subnets_with_majority_holder": 1,
+                     *           "subnets_with_single_holder": 1
+                     *         },
+                     *         "positions_captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "schema_version": 1,
+                     *         "sort": "example",
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "holder_count": 1,
+                     *             "netuid": 7,
+                     *             "top_holder": "example",
+                     *             "top1_share": 0.5,
+                     *             "top10_share": 0.5,
+                     *             "top20_share": 0.5,
+                     *             "top5_share": 0.5,
+                     *             "total_alpha": 0.5
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainHoldersArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

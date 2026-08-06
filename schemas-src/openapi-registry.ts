@@ -122,6 +122,11 @@ import {
   SubnetHoldersArtifactSchema,
 } from "./routes/subnet-holders.ts";
 import {
+  ChainHoldersSubnetSchema,
+  ChainHoldersNetworkSchema,
+  ChainHoldersArtifactSchema,
+} from "./routes/chain-holders.ts";
+import {
   AccountEventSchema,
   SubnetEventsArtifactSchema,
 } from "./routes/subnet-events.ts";
@@ -473,6 +478,9 @@ register(SubnetHolderSchema, "SubnetHolder");
 register(SubnetHoldersConcentrationSchema, "SubnetHoldersConcentration");
 register(SubnetHoldersDegradedSchema, "SubnetHoldersDegraded");
 register(SubnetHoldersArtifactSchema, "SubnetHoldersArtifact");
+register(ChainHoldersSubnetSchema, "ChainHoldersSubnet");
+register(ChainHoldersNetworkSchema, "ChainHoldersNetwork");
+register(ChainHoldersArtifactSchema, "ChainHoldersArtifact");
 register(AccountEventSchema, "AccountEvent");
 register(SubnetEventsArtifactSchema, "SubnetEventsArtifact");
 register(SubnetEventSummaryArtifactSchema, "SubnetEventSummaryArtifact");

@@ -167,6 +167,14 @@ import {
   SUBNET_HOLDERS_LIMIT_MAX,
 } from "../../src/subnet-holders.ts";
 import {
+  buildChainHolders,
+  loadChainHolders,
+  CHAIN_HOLDERS_LIMIT_DEFAULT,
+  CHAIN_HOLDERS_LIMIT_MAX,
+  CHAIN_HOLDERS_SORTS,
+  DEFAULT_CHAIN_HOLDERS_SORT,
+} from "../../src/chain-holders.ts";
+import {
   buildValidatorEconomics,
   buildValidatorEconomicsHistory,
   DEFAULT_VALIDATOR_ECONOMICS_HISTORY_WINDOW,
@@ -6001,6 +6009,48 @@ export async function handleSubnetHolders(
     { limit: limit.value },
   );
   const data = buildSubnetHolders(read, netuid, { limit: limit.value });
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/chain/holders (#9607): every subnet ranked by how concentrated its
+// alpha ownership is -- the cross-subnet companion to /subnets/{netuid}/holders,
+// which answers this one subnet at a time and so takes 129 requests to compare
+// the network.
+//
+// Distinct from /chain/concentration, which reads neurons.stake_tao and
+// therefore sees registered UIDs only. This reads the position ledger, so a
+// subnet whose alpha sits on unregistered hotkeys is measured rather than
+// invisible.
+export async function handleChainHolders(request: Request, env: Env, url: URL) {
+  const validationError = validateEntityQuery(url, ["sort", "limit", "format"]);
+  if (validationError) return analyticsQueryError(validationError);
+
+  const sort = url.searchParams.get("sort") || DEFAULT_CHAIN_HOLDERS_SORT;
+  if (
+    !CHAIN_HOLDERS_SORTS.includes(sort as (typeof CHAIN_HOLDERS_SORTS)[number])
+  ) {
+    return analyticsQueryError({
+      parameter: "sort",
+      message: `"${sort}" is not a supported sort. Supported: ${CHAIN_HOLDERS_SORTS.join(", ")}.`,
+    });
+  }
+  const limit = parseBoundedIntParam(url, "limit", {
+    def: CHAIN_HOLDERS_LIMIT_DEFAULT,
+    min: 1,
+    max: CHAIN_HOLDERS_LIMIT_MAX,
+  });
+  if ("error" in limit) return analyticsQueryError(limit.error);
+
+  const read = await loadChainHolders(
+    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+      typeof loadChainHolders
+    >[0],
+  );
+  const data = buildChainHolders(read, { sort, limit: limit.value });
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },

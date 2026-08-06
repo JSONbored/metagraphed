@@ -154,6 +154,7 @@ import {
   handleSubnetRecycled,
   handleSubnetBurn,
   handleChainBurn,
+  handleChainHolders,
   handleSubnetBurnHistory,
   handleSubnetHolders,
   handleCrowdloan,
@@ -5486,6 +5487,8 @@ export function isMainnetOnlyApiPath(pathname: string) {
     // request would serve MAINNET holders as testnet's. Same posture as
     // /accounts/{ss58}/positions, which reads the first of those two.
     SUBNET_HOLDERS_PATH_PATTERN.test(pathname) ||
+    // #9607: the cross-subnet twin of the route above, same two tables.
+    pathname === "/api/v1/chain/holders" ||
     SUBNET_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_IDENTITY_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_CONCENTRATION_PATH_PATTERN.test(pathname) ||
@@ -5570,6 +5573,12 @@ async function dispatchLiveChainRoute(
   const burnMatch = SUBNET_BURN_PATH_PATTERN.exec(pathname);
   if (burnMatch) {
     return handleSubnetBurn(request, env, Number(burnMatch[1]), chain);
+  }
+  // #9607: the cross-subnet alpha-ownership ranking. Matched on an exact path so
+  // it can never shadow the {netuid} patterns above, and mainnet-only because
+  // both source tables are -- see MAINNET_ONLY_ROUTE_PATHS.
+  if (pathname === "/api/v1/chain/holders") {
+    return handleChainHolders(request, env, new URL(request.url));
   }
   // #9399: the cross-subnet ranking. Beside its per-subnet sibling so the two live
   // burn reads stay visibly related, and matched on an exact path so it can never

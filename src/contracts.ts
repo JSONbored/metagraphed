@@ -20,6 +20,8 @@ import {
   TOP_HOLDERS_LIMIT_MAX,
   SUBNET_HOLDERS_LIMIT_DEFAULT,
   SUBNET_HOLDERS_LIMIT_MAX,
+  CHAIN_HOLDERS_LIMIT_DEFAULT,
+  CHAIN_HOLDERS_LIMIT_MAX,
 } from "./route-limits.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1643,6 +1645,13 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/subnets/{netuid}/holders.json",
     `Who owns one subnet's alpha (#9557) — the top coldkeys by alpha held on that netuid, with each holder's share of the subnet total, how many hotkeys they hold it through, and whole-subnet aggregates (distinct holder count, total measured alpha, top5/top10/top20 concentration). The reverse index of /accounts/{ss58}/positions, which reads the same ledger one coldkey (one account) at a time. Distinct from /subnets/{netuid}/concentration, which computes its scalars off neurons.stake_tao and therefore sees REGISTERED UIDs only: this reads nominator_positions, keyed on (coldkey, hotkey, netuid) whether or not the hotkey holds a UID on the subnet, so alpha staked to UNREGISTERED hotkeys is included — on netuid 74, 92 hotkeys carry positions and 10 are registered there. Valued as share_fraction x hotkey_alpha.total_alpha against ONE proven pool pass, and ranked in ALPHA rather than TAO: within a single subnet alpha is already a common unit, so there is no subnet_snapshots price join and none of its up-to-24h staleness. limit caps the returned rows (default ${SUBNET_HOLDERS_LIMIT_DEFAULT}, max ${SUBNET_HOLDERS_LIMIT_MAX}); the aggregates are computed across the FULL holder set and then sliced, never over the capped rows, because the top of a sum is not contained in the union of the tops of its addends. TWO STATES DECLINE rather than answer, both with holders:[] plus a degraded.reason and NULL counts: pool_totals_unproven while no hotkey_alpha pass is recorded complete (a partially loaded pool ledger silently UNDERPRICES holders rather than visibly dropping them, so the ranking would be plausible and wrong), and root_not_in_alpha_map for netuid 0, which SubtensorModule::Alpha does not cover at all. A zero in any count is therefore a measured zero, never a decline.`,
     "SubnetHoldersArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
+    "chain-holders",
+    "/metagraph/chain/holders.json",
+    `Every subnet ranked by how concentrated its alpha OWNERSHIP is (#9607) — per subnet: the distinct holder count, the measured alpha total, top1/top5/top10/top20 shares, and the largest holder's coldkey (an ss58 address). The cross-subnet companion to /subnets/{netuid}/holders, which answers this one subnet at a time and so costs 129 requests to compare the network. DISTINCT FROM /chain/concentration, which computes Gini/HHI/Nakamoto off neurons.stake_tao and therefore sees REGISTERED UIDs only — on netuid 74 that is 10 of the 92 hotkeys actually carrying positions. This reads the position ledger, so alpha parked on hotkeys holding no UID is measured rather than invisible, and the two routes disagree by design. ALPHA IS NEVER SUMMED ACROSS SUBNETS: each subnet's alpha is a different token, so total_alpha is reported per subnet and the network rollup carries only dimension-free facts — subnets measured, how many have a single account holding a majority, how many have exactly one holder, and the MEDIAN of the top-1 shares. A cross-subnet total requires pricing each subnet's alpha through its own alpha_price_tao first, which is what /accounts/top-holders does. ?sort=top1_share (default), top5_share, top10_share, top20_share, holder_count or total_alpha; a subnet whose share could not be computed sorts LAST rather than reading as the least concentrated. limit caps the returned subnets (default ${CHAIN_HOLDERS_LIMIT_DEFAULT}, max ${CHAIN_HOLDERS_LIMIT_MAX}) and the max sits above the subnet count so ranking the whole network is one request. DECLINES rather than answering while the hotkey_alpha pool ledger has no complete pass — an empty subnets array with degraded.reason pool_totals_unproven and a NULL subnet_count, never a zero one. Mainnet-only: neither source table carries a network dimension.`,
+    "ChainHoldersArtifact",
     COMPUTED_LIVE,
   ),
   artifact(
@@ -3835,6 +3844,40 @@ export const API_ROUTES = [
     ],
   ),
   route(
+    "chain-holders",
+    "GET",
+    "/api/v1/chain/holders",
+    "/metagraph/chain/holders.json",
+    `Fetch every subnet ranked by alpha-ownership concentration. Every subnet ranked by how concentrated its alpha OWNERSHIP is (#9607) — per subnet: the distinct holder count, the measured alpha total, top1/top5/top10/top20 shares, and the largest holder's coldkey (an ss58 address). The cross-subnet companion to /subnets/{netuid}/holders, which answers this one subnet at a time and so costs 129 requests to compare the network. DISTINCT FROM /chain/concentration, which computes Gini/HHI/Nakamoto off neurons.stake_tao and therefore sees REGISTERED UIDs only — on netuid 74 that is 10 of the 92 hotkeys actually carrying positions. This reads the position ledger, so alpha parked on hotkeys holding no UID is measured rather than invisible, and the two routes disagree by design. ALPHA IS NEVER SUMMED ACROSS SUBNETS: each subnet's alpha is a different token, so total_alpha is reported per subnet and the network rollup carries only dimension-free facts — subnets measured, how many have a single account holding a majority, how many have exactly one holder, and the MEDIAN of the top-1 shares. A cross-subnet total requires pricing each subnet's alpha through its own alpha_price_tao first, which is what /accounts/top-holders does. ?sort=top1_share (default), top5_share, top10_share, top20_share, holder_count or total_alpha; a subnet whose share could not be computed sorts LAST rather than reading as the least concentrated. limit caps the returned subnets (default ${CHAIN_HOLDERS_LIMIT_DEFAULT}, max ${CHAIN_HOLDERS_LIMIT_MAX}) and the max sits above the subnet count so ranking the whole network is one request. DECLINES rather than answering while the hotkey_alpha pool ledger has no complete pass — an empty subnets array with degraded.reason pool_totals_unproven and a NULL subnet_count, never a zero one. Mainnet-only: neither source table carries a network dimension.`,
+    "short",
+    ["chain"],
+    [
+      {
+        name: "sort",
+        schema: {
+          type: "string",
+          enum: [
+            "top1_share",
+            "top5_share",
+            "top10_share",
+            "top20_share",
+            "holder_count",
+            "total_alpha",
+          ],
+        },
+      },
+      {
+        name: "limit",
+        schema: {
+          type: "integer",
+          minimum: 1,
+          maximum: CHAIN_HOLDERS_LIMIT_MAX,
+        },
+      },
+    ],
+    [],
+  ),
+  route(
     "chain-burn",
     "GET",
     "/api/v1/chain/burn",
@@ -5160,6 +5203,8 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // served MAINNET holders. Same posture as /accounts/{ss58}/positions below,
   // which reads the first of those two tables.
   "/api/v1/subnets/{netuid}/holders",
+  // #9607: the cross-subnet twin, reading the same two mainnet-only tables.
+  "/api/v1/chain/holders",
   "/api/v1/economics/trends",
   "/api/v1/health",
   "/api/v1/subnets/{netuid}/health",
