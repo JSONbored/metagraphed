@@ -556,8 +556,23 @@ export function liveSmokeApiRoutes(
   // Fixture detail is a live, R2-only detail route whose path requires a
   // currently published surface id. The smoke runner derives that id from the
   // fixture index when the deployment does not supply an explicit override.
+  //
+  // GET ROUTES ONLY (#9650). Every check below asserts a CACHEABLE READ
+  // CONTRACT -- 200, `access-control-allow-origin`, an ETag, a contract-version
+  // header -- and a route with a body has none of those by design. Until #9101
+  // registered /api/v1/ask as POST, every route in the contract was a GET, so
+  // fetching all of them was the same thing as fetching the read surface. It is
+  // not any more: the runner's plain GET drew 405 from that one route and
+  // failed the publish lane on every run from 2026-08-02, taking
+  // `webhooks:dispatch` -- which runs later in the same job -- down with it.
+  //
+  // Skipping rather than POSTing is deliberate. A smoke POST to a grounded-RAG
+  // endpoint would invoke the AI binding on every publish, to assert response
+  // properties that endpoint does not promise.
   return API_ROUTES.filter(
-    (route) => route.id !== "fixture-detail" || fixtureSurfaceId,
+    (route) =>
+      (route.method ?? "GET") === "GET" &&
+      (route.id !== "fixture-detail" || fixtureSurfaceId),
   );
 }
 
