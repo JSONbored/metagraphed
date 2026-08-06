@@ -120,23 +120,31 @@
     // would silently replace this one wholesale, which is the trap the tier-flag
     // comment above already records.
     //
-    // account-balances joins hotkey-alpha as of 2026-08-06. This is THE lane:
-    // `D1_ERROR: D1 DB is overloaded` aborted its pass at 147,000 of 364,000
-    // rows and took wallet-auth and tao-usd-index down with it, and it is ~8x
-    // hotkey-alpha's size, so it is the first real test of whether the queue's
-    // backpressure replaces the producer's deleted inter-chunk sleep.
+    // EMPTY, ROLLED BACK 2026-08-06 (metagraphed-infra#360). Every enqueue
+    // exceeds the 128 KB Queues message cap by ~24x: the route hands `send()`
+    // the whole posted chunk and the producer chunks at CHUNK_SIZE = 25_000,
+    // which is 3,116 KB at a measured 127.6 bytes/row. `send()` throws, the
+    // route returns 502, and the producer retries 6x and abandons the pass --
+    // so a cut-over lane does not degrade, it STOPS.
     //
-    // Cut over on evidence, not on hope: hotkey-alpha's two queued passes
-    // tallied exactly (47,032/47,032) and ran 35s/95s against 123s/177s on the
-    // old path. That is consistent with the sleep having been the dominant
-    // cost -- it is NOT proof at 364k rows, which is why this lane goes alone.
+    // Both lanes had completed ZERO passes while named here. The earlier
+    // "cut over on evidence" note cited hotkey-alpha passes at 04:40 and 05:01
+    // as queued; #9619 -- the commit that first added the name -- did not
+    // deploy until 05:20:12Z, so those two ran on the inline path. THE DEPLOY
+    // TIMESTAMP IS THE CHECK, not the pass table: a pass row proves a lane is
+    // healthy, not which path carried it.
+    //
+    // Re-adding a lane requires the fan-out in #360 first, and that split must
+    // be KEY-AWARE -- nominator-positions asserts `key_complete`, and a naive
+    // slice can split a coldkey across sub-messages, which is exactly the
+    // delete-what-you-did-not-carry bug the guard exists to stop.
     //
     // ROLLBACK IS DROPPING A WORD FROM THIS STRING. These are latest-only
     // upsert tables refreshed on a tick, so the next pass simply writes the old
     // way. No backfill, no reconciliation. Watch account_balances_passes: an
     // incomplete pass is the signal, and completeness is a fact the queue does
     // not itself provide.
-    "SYNC_QUEUE_LANES": "hotkey-alpha,account-balances",
+    "SYNC_QUEUE_LANES": "",
     // #9430's $exception storm guard reads this var per-Worker
     // (src/usage-telemetry.ts), and `vars` are per-config -- declaring it
     // only in wrangler.jsonc left THIS Worker's captures entirely unguarded,
