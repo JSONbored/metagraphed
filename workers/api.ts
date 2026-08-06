@@ -3091,6 +3091,26 @@ async function handleHotkeyAlphaSyncProxy(request: Request, env: Env) {
   });
 }
 
+// Proxies POST /api/v1/internal/poller-lane-health-sync -- the poller's own
+// tick outcomes (#9599). NOT a data lane: this is the DIAGNOSTIC channel, and
+// it exists because hotkey_alpha failed 95 seconds into every run for ten hours
+// with nothing anywhere able to say so.
+//
+// THIS FILE IS THE FOURTH PLACE A SYNC ROUTE MUST BE REGISTERED, and the one
+// that is easiest to miss: the route can be complete and deployed in data-api
+// and still 404, because api.metagraph.sh is fronted by THIS Worker and it
+// forwards only the paths it names. That is exactly how #9600 shipped a route
+// nothing could reach.
+async function handlePollerLaneHealthSyncProxy(request: Request, env: Env) {
+  return proxyToDataApi(request, env, {
+    code: "poller_lane_health_sync_unavailable",
+    notBoundMessage:
+      "The poller lane-health sink is not bound to this deployment.",
+    unreadableMessage:
+      "The poller lane-health sink returned an unreadable response.",
+  });
+}
+
 // --- POST /api/v1/internal/emission-gate-sync (#8748/#8750 restored) --------
 // The persistence half of the emission-gate sampling lane, moved off the
 // decommissioned box's Postgres onto D1. scripts/sample-emission-gate.ts (now
@@ -3881,6 +3901,11 @@ export async function handleRequest(
   // scan POSTs here. Same DATA_API service binding.
   if (url.pathname === "/api/v1/internal/hotkey-alpha-sync") {
     return handleHotkeyAlphaSyncProxy(request, env);
+  }
+  // The poller's own tick outcomes (#9599) -- the diagnostic channel, not a
+  // data lane. Same DATA_API service binding.
+  if (url.pathname === "/api/v1/internal/poller-lane-health-sync") {
+    return handlePollerLaneHealthSyncProxy(request, env);
   }
   // The write path into the emission-gate history tables on D1 (#8748/#8750,
   // box decommission) -- sample-emission-gate.yml's 10-minute schedule POSTs
