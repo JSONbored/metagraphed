@@ -1522,6 +1522,17 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "One subnet's emission-pipeline decomposition OVER TIME (#9625). /chain/emission-pipeline decomposes the v440 pipeline for every subnet as of ONE BLOCK; subnet_snapshots has persisted that decomposition daily since 2026-08-02 -- emission_share, tao_in_pool_tao, the TAO split (tao_in_emission_tao pool-liquidity injection vs excess_tao chain buys), alpha_in/out_emission, miner_burned_fraction, emission_enabled, first_emission_block, alpha_price_tao, each pinned by pipeline_block/pipeline_block_hash -- and no route read the series, so 'was this subnet's miner burn climbing before its emission dropped?' was unanswerable from data already in the table. THE DEPTH IS FIVE DAYS AND THE ROUTE SAYS SO. subnet_snapshots holds 50,762 rows across 409 days; the PIPELINE columns hold 645 across 5 (measured 2026-08-06, 129 subnets a day, no gaps). oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day rides on every response so a caller receiving 5 points for a 90d window reads it as 'the series begins here' rather than '85 days were dropped'. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED. The daily snapshot writer carries the last pipeline capture forward when a fresh one has not landed for that day -- measured 2026-08-06, that day's row was captured at 05:00 UTC carrying block 8777280, yesterday's, while the chain was at 8782513. So two consecutive points can be THE SAME OBSERVATION, and a consumer reading them as two daily samples would conclude a value was flat when it was simply not re-measured. pipeline_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the number of times the pipeline was actually READ, which is the honest denominator for any claim about how it moved. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily snapshot. An EMPTY series is a measurement, not an error: a subnet registered after the capture began, or a window narrower than the days that exist, both return one legitimately. Mainnet-only: subnet_snapshots carries no network dimension.",
+      "id": "subnet-emission-pipeline-history",
+      "path": "/metagraph/subnets/{netuid}/emission-pipeline/history.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/PipelineHistoryArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Every subnet's live registration/burn cost in ONE response, ranked cheapest-first (#9399). The cross-subnet companion to /subnets/{netuid}/burn, which answers the same question one subnet at a time — 129 requests to compare them all. Served from a single chain read: Burn is an Identity-hashed map, so every key is derivable from its netuid and state_queryStorageAt returns them together. 120s KV cache, matching the per-subnet route (burn moves within minutes during registration bursts). A subnet whose burn is a genuine 0 is included, not dropped. subnet_count is what the chain reports exists (TotalNetworks) and read_count is how many were actually read — a gap between them means the read was partial. NOTE: there is no separate validator-permit price; permits are granted by the StakeThreshold, not purchased.",
       "id": "chain-burn",
       "path": "/metagraph/chain/burn.json",
@@ -2688,7 +2699,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 92,
+    "mainnet_only_route_count": 93,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },

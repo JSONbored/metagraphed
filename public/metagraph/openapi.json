@@ -6483,6 +6483,66 @@
           "schema_version": 1
         }
       },
+      "PipelineHistoryArtifactResponse": {
+        "value": {
+          "data": {
+            "degraded": {
+              "reason": "unavailable"
+            },
+            "distinct_observations": 1,
+            "first_captured_day": "2026-06-01T00:00:00.000Z",
+            "netuid": 7,
+            "newest_day": "example",
+            "oldest_day": "example",
+            "point_count": 1,
+            "points": [
+              {
+                "alpha_in_emission": 0.5,
+                "alpha_out_emission": 0.5,
+                "alpha_price_tao": 0.5,
+                "captured_at": "2026-06-01T00:00:00.000Z",
+                "day": "2026-06-01",
+                "emission_enabled": false,
+                "emission_share": 0.5,
+                "excess_tao": 0.5,
+                "first_emission_block": 5000000,
+                "miner_burned_fraction": 0.5,
+                "pipeline_block": 5000000,
+                "pipeline_block_hash": "a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                "repeats_previous_observation": false,
+                "tao_in_emission_tao": 0.5,
+                "tao_in_pool_tao": 0.5
+              }
+            ],
+            "schema_version": 1,
+            "window": "30d"
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
+      },
       "ProviderArtifactResponse": {
         "value": {
           "data": {
@@ -33910,6 +33970,269 @@
         "enum": [
           "pilot"
         ]
+      },
+      "PipelineHistoryArtifact": {
+        "additionalProperties": {},
+        "properties": {
+          "degraded": {
+            "additionalProperties": false,
+            "properties": {
+              "reason": {
+                "enum": [
+                  "unavailable"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "reason"
+            ],
+            "type": "object"
+          },
+          "distinct_observations": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_captured_day": {
+            "type": "string"
+          },
+          "netuid": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "newest_day": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "oldest_day": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "point_count": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/PipelineHistoryPoint"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "window": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "window",
+          "point_count",
+          "distinct_observations",
+          "oldest_day",
+          "newest_day",
+          "first_captured_day",
+          "points"
+        ],
+        "type": "object"
+      },
+      "PipelineHistoryPoint": {
+        "additionalProperties": false,
+        "properties": {
+          "alpha_in_emission": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "alpha_out_emission": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "alpha_price_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "day": {
+            "type": "string"
+          },
+          "emission_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "emission_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "excess_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_emission_block": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "miner_burned_fraction": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pipeline_block": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "pipeline_block_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "repeats_previous_observation": {
+            "type": "boolean"
+          },
+          "tao_in_emission_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tao_in_pool_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "day",
+          "pipeline_block",
+          "pipeline_block_hash",
+          "repeats_previous_observation",
+          "captured_at",
+          "emission_share",
+          "alpha_price_tao",
+          "tao_in_pool_tao",
+          "tao_in_emission_tao",
+          "excess_tao",
+          "alpha_in_emission",
+          "alpha_out_emission",
+          "miner_burned_fraction",
+          "emission_enabled",
+          "first_emission_block"
+        ],
+        "type": "object"
       },
       "ProbeConfig": {
         "additionalProperties": false,
@@ -94222,6 +94545,129 @@
           "mainnet",
           "test",
           "testnet"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/emission-pipeline/history": {
+      "get": {
+        "operationId": "subnetEmissionPipelineHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`, `180d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed.",
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d",
+                "90d",
+                "180d"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "PipelineHistoryArtifactResponse": {
+                    "$ref": "#/components/examples/PipelineHistoryArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/PipelineHistoryArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch one subnet's emission-pipeline series. One subnet's emission-pipeline decomposition OVER TIME (#9625). /chain/emission-pipeline decomposes the v440 pipeline for every subnet as of ONE BLOCK; subnet_snapshots has persisted that decomposition daily since 2026-08-02 -- emission_share, tao_in_pool_tao, the TAO split (tao_in_emission_tao pool-liquidity injection vs excess_tao chain buys), alpha_in/out_emission, miner_burned_fraction, emission_enabled, first_emission_block, alpha_price_tao, each pinned by pipeline_block/pipeline_block_hash -- and no route read the series, so 'was this subnet's miner burn climbing before its emission dropped?' was unanswerable from data already in the table. THE DEPTH IS FIVE DAYS AND THE ROUTE SAYS SO. subnet_snapshots holds 50,762 rows across 409 days; the PIPELINE columns hold 645 across 5 (measured 2026-08-06, 129 subnets a day, no gaps). oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day rides on every response so a caller receiving 5 points for a 90d window reads it as 'the series begins here' rather than '85 days were dropped'. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED. The daily snapshot writer carries the last pipeline capture forward when a fresh one has not landed for that day -- measured 2026-08-06, that day's row was captured at 05:00 UTC carrying block 8777280, yesterday's, while the chain was at 8782513. So two consecutive points can be THE SAME OBSERVATION, and a consumer reading them as two daily samples would conclude a value was flat when it was simply not re-measured. pipeline_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the number of times the pipeline was actually READ, which is the honest denominator for any claim about how it moved. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily snapshot. An EMPTY series is a measurement, not an error: a subnet registered after the capture began, or a window narrower than the days that exist, both return one legitimately. Mainnet-only: subnet_snapshots carries no network dimension.",
+        "tags": [
+          "subnets"
+        ],
+        "x-metagraphed-mainnet-only": true,
+        "x-metagraphed-networks": [
+          "mainnet"
         ]
       }
     },

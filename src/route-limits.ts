@@ -159,3 +159,24 @@ export const CHAIN_CONCENTRATION_HISTORY_WINDOWS = Object.keys(
   CHAIN_CONCENTRATION_HISTORY_WINDOW_DAYS,
 );
 export const DEFAULT_CHAIN_CONCENTRATION_HISTORY_WINDOW = "30d";
+
+/**
+ * `/api/v1/subnets/{netuid}/emission-pipeline/history` -- one subnet's pipeline
+ * series (#9625).
+ *
+ * Windows rather than a free day count, because the source is a DAILY snapshot
+ * and an arbitrary number would imply a resolution it does not have. 30d is the
+ * default even though only 5 days of pipeline captures exist: the window a
+ * reader already thinks in, and the payload reports the depth it actually
+ * found rather than the one it was asked for.
+ */
+export const PIPELINE_HISTORY_WINDOW_DAYS: Record<string, number> = {
+  "7d": 7,
+  "30d": 30,
+  "90d": 90,
+  "180d": 180,
+};
+export const PIPELINE_HISTORY_WINDOWS = Object.keys(
+  PIPELINE_HISTORY_WINDOW_DAYS,
+);
+export const DEFAULT_PIPELINE_HISTORY_WINDOW = "30d";

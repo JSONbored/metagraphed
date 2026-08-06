@@ -22,6 +22,7 @@
     "subnet-deregistrations-by-network",
     "subnet-detail",
     "subnet-detail-by-network",
+    "subnet-emission-pipeline-history",
     "subnet-event-summary",
     "subnet-event-summary-by-network",
     "subnet-events",

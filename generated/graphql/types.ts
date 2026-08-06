@@ -2660,6 +2660,34 @@ export type OpportunityEntry = {
   validator_headroom?: Maybe<Scalars['Int']['output']>;
 };
 
+export type PipelineHistoryDegraded = {
+  __typename?: 'PipelineHistoryDegraded';
+  reason: Scalars['String']['output'];
+};
+
+export type PipelineHistoryPoint = {
+  __typename?: 'PipelineHistoryPoint';
+  alpha_in_emission?: Maybe<Scalars['Float']['output']>;
+  alpha_out_emission?: Maybe<Scalars['Float']['output']>;
+  alpha_price_tao?: Maybe<Scalars['Float']['output']>;
+  captured_at?: Maybe<Scalars['String']['output']>;
+  day: Scalars['String']['output'];
+  emission_enabled?: Maybe<Scalars['Boolean']['output']>;
+  emission_share?: Maybe<Scalars['Float']['output']>;
+  /** Chain buys. */
+  excess_tao?: Maybe<Scalars['Float']['output']>;
+  first_emission_block?: Maybe<Scalars['Int']['output']>;
+  miner_burned_fraction?: Maybe<Scalars['Float']['output']>;
+  /** The chain state this point describes. A point that cannot say which block it came from is not served. */
+  pipeline_block: Scalars['Int']['output'];
+  pipeline_block_hash?: Maybe<Scalars['String']['output']>;
+  /** True when the snapshot writer carried the previous capture forward: this point is NOT an independent sample. */
+  repeats_previous_observation: Scalars['Boolean']['output'];
+  /** Pool liquidity injection. */
+  tao_in_emission_tao?: Maybe<Scalars['Float']['output']>;
+  tao_in_pool_tao?: Maybe<Scalars['Float']['output']>;
+};
+
 /** Shared by endpoint_pools and rpc_pools -- same pools[] row shape, filter/sort/page surface, and pagination-metadata fields (#6570); rpc_pools additionally populates source/operational_observed_at from its live cron overlay, which endpoint_pools leaves null. */
 export type PoolList = {
   __typename?: 'PoolList';
@@ -2994,6 +3022,8 @@ export type Query = {
   subnet_conviction: SubnetConviction;
   /** Per-subnet neuron-deregistration activity over a 7d/30d window (distinct deregistered hotkeys, deregistration count, and deregistrations per hotkey), DERIVED from UID reuse in the NeuronRegistered stream -- NeuronDeregistered has never been emitted by the runtime (#9307). A subnet with no slot turnover in the window resolves to a schema-stable zeroed card, never null; when nothing derived the window the card carries a degraded block instead of a confident zero. Mirrors GET /api/v1/subnets/{netuid}/deregistrations. */
   subnet_deregistrations: SubnetDeregistrations;
+  /** One subnet's emission-pipeline decomposition OVER TIME: emission share, the TAO split (pool-liquidity injection vs chain buys), alpha in/out emission, miner burned fraction and whether emission is enabled, one point per day, each pinned to the block it was captured at. chain_emission_pipeline answers ONE BLOCK for every subnet; this answers one subnet across days. READ THE DEPTH: the pipeline columns began on 2026-08-02, so a wide window returns the days that EXIST -- first_captured_day says where the series starts. READ distinct_observations, NOT point_count, when claiming a value moved: the snapshot writer carries the last capture forward when a fresh one has not landed, so two consecutive points can be THE SAME OBSERVATION, flagged per point as repeats_previous_observation. Treating one as an independent sample reports a value as FLAT when it was simply not re-measured. window is 7d, 30d (default), 90d or 180d. An empty series is a measurement. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/emission-pipeline/history. */
+  subnet_emission_pipeline_history: SubnetPipelineHistory;
   /** One subnet's endpoint/resource registry as a filtered/sorted/paged list — the baked per-subnet /metagraph/endpoints/{netuid}.json artifact the REST route and list_subnet_endpoints MCP tool read. Filter with kind, layer, provider, publication_state, status, and pool_eligible (a true/false string); threshold with min_/max_latency_ms and min_/max_score; project with fields; sort with sort + order; and page with limit (1-100) / cursor, exactly as REST does — an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the endpoints rows. Null when no endpoint artifact has been baked for the netuid (rather than a GraphQL error). Distinct from endpoints(...) (the filterable network-wide endpoint registry). Mirrors GET /api/v1/subnets/{netuid}/endpoints. */
   subnet_endpoints?: Maybe<Scalars['JSON']['output']>;
   /** One subnet's chain-event activity summary over a 7d/30d/90d window (default 30d): total events, the per-kind and per-category breakdowns with hotkey/coldkey participation and TAO/alpha amounts, and a bounded newest-first recent-event list (limit 1-50, default 10). A subnet with no events resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/event-summary. */
@@ -4048,6 +4078,12 @@ export type QuerySubnet_ConvictionArgs = {
 
 
 export type QuerySubnet_DeregistrationsArgs = {
+  netuid: Scalars['Int']['input'];
+  window?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QuerySubnet_Emission_Pipeline_HistoryArgs = {
   netuid: Scalars['Int']['input'];
   window?: InputMaybe<Scalars['String']['input']>;
 };
@@ -5437,6 +5473,24 @@ export type SubnetPerformanceHistoryPoint = {
   validator_trust_median?: Maybe<Scalars['Float']['output']>;
 };
 
+export type SubnetPipelineHistory = {
+  __typename?: 'SubnetPipelineHistory';
+  /** Present ONLY on a decline. An empty series is a measurement. */
+  degraded?: Maybe<PipelineHistoryDegraded>;
+  /** Independent samples -- the honest denominator for any claim about how a value moved. */
+  distinct_observations?: Maybe<Scalars['Int']['output']>;
+  /** The first day the pipeline columns were ever written, so a short series reads as a start rather than a gap. */
+  first_captured_day: Scalars['String']['output'];
+  netuid: Scalars['Int']['output'];
+  newest_day?: Maybe<Scalars['String']['output']>;
+  oldest_day?: Maybe<Scalars['String']['output']>;
+  /** Rows returned. NOT the number of times the pipeline was read. */
+  point_count?: Maybe<Scalars['Int']['output']>;
+  points: Array<PipelineHistoryPoint>;
+  schema_version: Scalars['Int']['output'];
+  window?: Maybe<Scalars['String']['output']>;
+};
+
 /** Per-subnet Prometheus-endpoint serving activity (#7172) over a 7d/30d window. Zeroed card on a cold/absent store. Mirrors GET /api/v1/subnets/{netuid}/prometheus. */
 export type SubnetPrometheus = {
   __typename?: 'SubnetPrometheus';
@@ -6452,6 +6506,8 @@ export type ResolversTypes = ResolversObject<{
   NominatorPosition: ResolverTypeWrapper<NominatorPosition>;
   OpportunityBoards: ResolverTypeWrapper<OpportunityBoards>;
   OpportunityEntry: ResolverTypeWrapper<OpportunityEntry>;
+  PipelineHistoryDegraded: ResolverTypeWrapper<PipelineHistoryDegraded>;
+  PipelineHistoryPoint: ResolverTypeWrapper<PipelineHistoryPoint>;
   PoolList: ResolverTypeWrapper<PoolList>;
   ProfileList: ResolverTypeWrapper<ProfileList>;
   Provider: ResolverTypeWrapper<Provider>;
@@ -6526,6 +6582,7 @@ export type ResolversTypes = ResolversObject<{
   SubnetPerformance: ResolverTypeWrapper<SubnetPerformance>;
   SubnetPerformanceHistory: ResolverTypeWrapper<SubnetPerformanceHistory>;
   SubnetPerformanceHistoryPoint: ResolverTypeWrapper<SubnetPerformanceHistoryPoint>;
+  SubnetPipelineHistory: ResolverTypeWrapper<SubnetPipelineHistory>;
   SubnetPrometheus: ResolverTypeWrapper<SubnetPrometheus>;
   SubnetRecycled: ResolverTypeWrapper<SubnetRecycled>;
   SubnetRegistrations: ResolverTypeWrapper<SubnetRegistrations>;
@@ -6793,6 +6850,8 @@ export type ResolversParentTypes = ResolversObject<{
   NominatorPosition: NominatorPosition;
   OpportunityBoards: OpportunityBoards;
   OpportunityEntry: OpportunityEntry;
+  PipelineHistoryDegraded: PipelineHistoryDegraded;
+  PipelineHistoryPoint: PipelineHistoryPoint;
   PoolList: PoolList;
   ProfileList: ProfileList;
   Provider: Provider;
@@ -6867,6 +6926,7 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetPerformance: SubnetPerformance;
   SubnetPerformanceHistory: SubnetPerformanceHistory;
   SubnetPerformanceHistoryPoint: SubnetPerformanceHistoryPoint;
+  SubnetPipelineHistory: SubnetPipelineHistory;
   SubnetPrometheus: SubnetPrometheus;
   SubnetRecycled: SubnetRecycled;
   SubnetRegistrations: SubnetRegistrations;
@@ -9039,6 +9099,28 @@ export type OpportunityEntryResolvers<ContextType = GqlContext, ParentType exten
   validator_headroom?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
+export type PipelineHistoryDegradedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['PipelineHistoryDegraded'] = ResolversParentTypes['PipelineHistoryDegraded']> = ResolversObject<{
+  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type PipelineHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['PipelineHistoryPoint'] = ResolversParentTypes['PipelineHistoryPoint']> = ResolversObject<{
+  alpha_in_emission?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  alpha_out_emission?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  alpha_price_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  day?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  emission_enabled?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  emission_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  excess_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  first_emission_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  miner_burned_fraction?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  pipeline_block?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  pipeline_block_hash?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  repeats_previous_observation?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  tao_in_emission_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  tao_in_pool_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
 export type PoolListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['PoolList'] = ResolversParentTypes['PoolList']> = ResolversObject<{
   cursor?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   generated_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -9230,6 +9312,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_concentration_history?: Resolver<ResolversTypes['SubnetConcentrationHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Concentration_HistoryArgs, 'netuid'>>;
   subnet_conviction?: Resolver<ResolversTypes['SubnetConviction'], ParentType, ContextType, RequireFields<QuerySubnet_ConvictionArgs, 'netuid'>>;
   subnet_deregistrations?: Resolver<ResolversTypes['SubnetDeregistrations'], ParentType, ContextType, RequireFields<QuerySubnet_DeregistrationsArgs, 'netuid'>>;
+  subnet_emission_pipeline_history?: Resolver<ResolversTypes['SubnetPipelineHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Emission_Pipeline_HistoryArgs, 'netuid'>>;
   subnet_endpoints?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_EndpointsArgs, 'netuid'>>;
   subnet_event_summary?: Resolver<ResolversTypes['SubnetEventSummary'], ParentType, ContextType, RequireFields<QuerySubnet_Event_SummaryArgs, 'netuid'>>;
   subnet_events?: Resolver<ResolversTypes['SubnetEvents'], ParentType, ContextType, RequireFields<QuerySubnet_EventsArgs, 'netuid'>>;
@@ -10013,6 +10096,19 @@ export type SubnetPerformanceHistoryPointResolvers<ContextType = GqlContext, Par
   validator_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   validator_trust_mean?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_trust_median?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type SubnetPipelineHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetPipelineHistory'] = ResolversParentTypes['SubnetPipelineHistory']> = ResolversObject<{
+  degraded?: Resolver<Maybe<ResolversTypes['PipelineHistoryDegraded']>, ParentType, ContextType>;
+  distinct_observations?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  first_captured_day?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  newest_day?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  oldest_day?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  point_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  points?: Resolver<Array<ResolversTypes['PipelineHistoryPoint']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 }>;
 
 export type SubnetPrometheusResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetPrometheus'] = ResolversParentTypes['SubnetPrometheus']> = ResolversObject<{
@@ -10804,6 +10900,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   NominatorPosition?: NominatorPositionResolvers<ContextType>;
   OpportunityBoards?: OpportunityBoardsResolvers<ContextType>;
   OpportunityEntry?: OpportunityEntryResolvers<ContextType>;
+  PipelineHistoryDegraded?: PipelineHistoryDegradedResolvers<ContextType>;
+  PipelineHistoryPoint?: PipelineHistoryPointResolvers<ContextType>;
   PoolList?: PoolListResolvers<ContextType>;
   ProfileList?: ProfileListResolvers<ContextType>;
   Provider?: ProviderResolvers<ContextType>;
@@ -10877,6 +10975,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetPerformance?: SubnetPerformanceResolvers<ContextType>;
   SubnetPerformanceHistory?: SubnetPerformanceHistoryResolvers<ContextType>;
   SubnetPerformanceHistoryPoint?: SubnetPerformanceHistoryPointResolvers<ContextType>;
+  SubnetPipelineHistory?: SubnetPipelineHistoryResolvers<ContextType>;
   SubnetPrometheus?: SubnetPrometheusResolvers<ContextType>;
   SubnetRecycled?: SubnetRecycledResolvers<ContextType>;
   SubnetRegistrations?: SubnetRegistrationsResolvers<ContextType>;

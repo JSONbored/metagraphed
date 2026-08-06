@@ -24,6 +24,7 @@ import {
   CHAIN_HOLDERS_LIMIT_MAX,
   FAILURE_REASONS_WINDOWS,
   CHAIN_CONCENTRATION_HISTORY_WINDOWS,
+  PIPELINE_HISTORY_WINDOWS,
   SURFACE_HISTORY_LIMIT_DEFAULT,
   SURFACE_HISTORY_LIMIT_MAX,
   EMISSION_CHANGES_LIMIT_DEFAULT,
@@ -1700,6 +1701,13 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/chain/concentration/history.json",
     "Is the NETWORK getting more concentrated (#9628) -- the network-wide concentration card as a per-day series. /subnets/{netuid}/concentration/history has answered that one subnet at a time since it shipped; /chain/concentration had no series at all, so 'is subnet 74 concentrating?' was one request and 'is Bittensor concentrating?' was unanswerable. Each point carries the same five lenses the live card does -- stake, emission, entity_stake, entity_emission, validator_stake, each with holders/total/gini/hhi/hhi_normalized/nakamoto_coefficient/top-K shares/entropy -- plus uids_per_entity and the shape of the day it was computed over (neuron_count, subnet_count, entity_count). THIS READS A ROLLUP, AND THE ROLLUP RAN THE SERVING BUILDER. The per-subnet route computes Gini/HHI/Nakamoto in JS from raw per-UID rows, which works because a netuid slice is about 256 of them; network-wide it is not a slice -- neuron_daily holds 816,803 rows across 27 days, ~30,100 a day (measured 2026-08-06), so a 30-day series computed that way would pull ~900,000 rows into one request. An hourly cron instead computes each COMPLETE day once with buildChainConcentration, the same function /chain/concentration serves, so a historical point and the live card are the same computation by construction rather than a SQL reimplementation that agrees until it quietly does not. The rollup BACKFILLS ITSELF, bounded to a few days a tick, so the history that already exists fills in without a separate recovery path. A STORED COMPUTATION FREEZES THE CODE THAT PRODUCED IT, and that is published rather than hidden: if the builder changes, points computed before and after disagree BY CONSTRUCTION, not because the network moved. Every point carries the builder_version it was computed under and the series reports builder_versions -- more than one means the series changes DEFINITION partway along, and a trend drawn across that boundary is not a trend. THE DEPTH IS THE ROLLUP'S, NOT THE WINDOW'S. neuron_daily is itself only ~27 days deep and the rollup cannot predate it, so a 90d window returns what EXISTS; oldest_day/newest_day and point_count come from the rows, and a day the capture did not run is ABSENT rather than a zero-concentration point, which would read as a perfectly distributed network on a day nothing was measured. Today is never rolled up: neuron_daily gains rows as the capture proceeds, so a mid-day card would be computed over a partial network and then never revisited. A NULL scorecard means no measurable distribution, not a missing one -- computeConcentration returns null when a distribution has no positive values, and substituting zeros would invent a perfectly equal one. ?window= is 7d, 30d (default) or 90d. An EMPTY window is a measurement, not an error. Mainnet-only: neuron_daily carries no network dimension.",
     "ChainConcentrationHistoryArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
+    "subnet-emission-pipeline-history",
+    "/metagraph/subnets/{netuid}/emission-pipeline/history.json",
+    "One subnet's emission-pipeline decomposition OVER TIME (#9625). /chain/emission-pipeline decomposes the v440 pipeline for every subnet as of ONE BLOCK; subnet_snapshots has persisted that decomposition daily since 2026-08-02 -- emission_share, tao_in_pool_tao, the TAO split (tao_in_emission_tao pool-liquidity injection vs excess_tao chain buys), alpha_in/out_emission, miner_burned_fraction, emission_enabled, first_emission_block, alpha_price_tao, each pinned by pipeline_block/pipeline_block_hash -- and no route read the series, so 'was this subnet's miner burn climbing before its emission dropped?' was unanswerable from data already in the table. THE DEPTH IS FIVE DAYS AND THE ROUTE SAYS SO. subnet_snapshots holds 50,762 rows across 409 days; the PIPELINE columns hold 645 across 5 (measured 2026-08-06, 129 subnets a day, no gaps). oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day rides on every response so a caller receiving 5 points for a 90d window reads it as 'the series begins here' rather than '85 days were dropped'. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED. The daily snapshot writer carries the last pipeline capture forward when a fresh one has not landed for that day -- measured 2026-08-06, that day's row was captured at 05:00 UTC carrying block 8777280, yesterday's, while the chain was at 8782513. So two consecutive points can be THE SAME OBSERVATION, and a consumer reading them as two daily samples would conclude a value was flat when it was simply not re-measured. pipeline_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the number of times the pipeline was actually READ, which is the honest denominator for any claim about how it moved. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily snapshot. An EMPTY series is a measurement, not an error: a subnet registered after the capture began, or a window narrower than the days that exist, both return one legitimately. Mainnet-only: subnet_snapshots carries no network dimension.",
+    "PipelineHistoryArtifact",
     COMPUTED_LIVE,
   ),
   artifact(
@@ -4046,6 +4054,27 @@ export const API_ROUTES = [
     [],
   ),
   route(
+    "subnet-emission-pipeline-history",
+    "GET",
+    "/api/v1/subnets/{netuid}/emission-pipeline/history",
+    "/metagraph/subnets/{netuid}/emission-pipeline/history.json",
+    "Fetch one subnet's emission-pipeline series. One subnet's emission-pipeline decomposition OVER TIME (#9625). /chain/emission-pipeline decomposes the v440 pipeline for every subnet as of ONE BLOCK; subnet_snapshots has persisted that decomposition daily since 2026-08-02 -- emission_share, tao_in_pool_tao, the TAO split (tao_in_emission_tao pool-liquidity injection vs excess_tao chain buys), alpha_in/out_emission, miner_burned_fraction, emission_enabled, first_emission_block, alpha_price_tao, each pinned by pipeline_block/pipeline_block_hash -- and no route read the series, so 'was this subnet's miner burn climbing before its emission dropped?' was unanswerable from data already in the table. THE DEPTH IS FIVE DAYS AND THE ROUTE SAYS SO. subnet_snapshots holds 50,762 rows across 409 days; the PIPELINE columns hold 645 across 5 (measured 2026-08-06, 129 subnets a day, no gaps). oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day rides on every response so a caller receiving 5 points for a 90d window reads it as 'the series begins here' rather than '85 days were dropped'. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED. The daily snapshot writer carries the last pipeline capture forward when a fresh one has not landed for that day -- measured 2026-08-06, that day's row was captured at 05:00 UTC carrying block 8777280, yesterday's, while the chain was at 8782513. So two consecutive points can be THE SAME OBSERVATION, and a consumer reading them as two daily samples would conclude a value was flat when it was simply not re-measured. pipeline_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the number of times the pipeline was actually READ, which is the honest denominator for any claim about how it moved. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily snapshot. An EMPTY series is a measurement, not an error: a subnet registered after the capture began, or a window narrower than the days that exist, both return one legitimately. Mainnet-only: subnet_snapshots carries no network dimension.",
+    "short",
+    ["subnets"],
+    [
+      {
+        name: "window",
+        schema: { type: "string", enum: PIPELINE_HISTORY_WINDOWS },
+      },
+    ],
+    [
+      {
+        name: "netuid",
+        schema: { type: "integer", minimum: 0, maximum: 65535 },
+      },
+    ],
+  ),
+  route(
     "chain-burn",
     "GET",
     "/api/v1/chain/burn",
@@ -5391,6 +5420,9 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // #9628: neuron_daily carries no network dimension, and /chain/concentration
   // is already mainnet-only for the same reason.
   "/api/v1/chain/concentration/history",
+  // #9625: subnet_snapshots carries no network dimension, so a testnet-
+  // addressed request would be served MAINNET pipeline captures.
+  "/api/v1/subnets/{netuid}/emission-pipeline/history",
   "/api/v1/economics/trends",
   "/api/v1/health",
   "/api/v1/subnets/{netuid}/health",

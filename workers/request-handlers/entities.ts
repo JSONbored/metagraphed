@@ -183,6 +183,13 @@ import {
 } from "../../src/chain-concentration-history.ts";
 import { DEFAULT_CHAIN_CONCENTRATION_HISTORY_WINDOW } from "../../src/route-limits.ts";
 import {
+  buildPipelineHistory,
+  declinePipelineHistory,
+  loadPipelineHistory,
+  PIPELINE_HISTORY_WINDOWS,
+} from "../../src/emission-pipeline-history.ts";
+import { DEFAULT_PIPELINE_HISTORY_WINDOW } from "../../src/route-limits.ts";
+import {
   buildEmissionChanges,
   loadEmissionChanges,
   EMISSION_CHANGE_KINDS,
@@ -6395,6 +6402,47 @@ export async function handleChainConcentrationHistory(
     rows === null
       ? declineChainConcentrationHistory("unavailable", { window })
       : buildChainConcentrationHistory(rows, { window });
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/subnets/{netuid}/emission-pipeline/history (#9625): one subnet's
+// pipeline decomposition over time. /chain/emission-pipeline answers one block;
+// this answers the series, with each point pinned to the block it came from.
+export async function handleSubnetPipelineHistory(
+  request: Request,
+  env: Env,
+  netuid: number,
+  url: URL,
+) {
+  const validationError = validateEntityQuery(url, ["window", "format"]);
+  if (validationError) return analyticsQueryError(validationError);
+
+  const window =
+    url.searchParams.get("window") || DEFAULT_PIPELINE_HISTORY_WINDOW;
+  if (!PIPELINE_HISTORY_WINDOWS.includes(window)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: `"${window}" is not a supported window. Supported: ${PIPELINE_HISTORY_WINDOWS.join(", ")}.`,
+    });
+  }
+
+  const rows = await loadPipelineHistory(
+    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+      typeof loadPipelineHistory
+    >[0],
+    netuid,
+    { window },
+  );
+  // An empty series is a MEASUREMENT -- a subnet registered after the capture
+  // began returns one legitimately -- so only a failed read declines.
+  const data =
+    rows === null
+      ? declinePipelineHistory("unavailable", netuid, { window })
+      : buildPipelineHistory(rows, netuid, { window });
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },
