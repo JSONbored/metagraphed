@@ -3461,7 +3461,36 @@ function validateToolArguments(tool: Row, args: Row) {
       `Invalid arguments for tool ${tool.name}.`,
     );
   }
-  return args;
+  // #9642: the intent argument is analytics metadata, never tool input, so it
+  // is removed before any handler sees it -- the same contract @posthog/mcp's
+  // SDK documents ("It strips that argument before your handler runs"). Not
+  // merely a courtesy: several handlers forward their whole argument object
+  // into a query builder or an upstream call, where an unexpected key becomes
+  // a filter, a cache-key difference, or a 400 from someone else's API.
+  return splitMcpIntent(args).rest;
+}
+
+/**
+ * Separate the intent argument from the real tool arguments.
+ *
+ * ONE splitter for both readers -- the dispatch path (which must not hand it
+ * to a handler) and the telemetry path (which must not duplicate it inside
+ * `$mcp_parameters`, where it would be a second copy of free-form agent text
+ * on an event that is never sampled). Two implementations of "which key is the
+ * intent" is exactly the drift this avoids.
+ *
+ * Returns the ORIGINAL object when there is nothing to strip, so the
+ * overwhelmingly common case allocates nothing.
+ */
+export function splitMcpIntent(args: Row): { intent?: string; rest: Row } {
+  if (!args || typeof args !== "object" || !Object.hasOwn(args, MCP_INTENT_ARG))
+    return { rest: args };
+  const { [MCP_INTENT_ARG]: intent, ...rest } = args;
+  return {
+    // A non-string, or a caller sending only whitespace, is not an intent.
+    ...(typeof intent === "string" && intent.trim() ? { intent } : {}),
+    rest,
+  };
 }
 
 function requireNonNegativeInt(args: Row, key: string) {
@@ -4193,7 +4222,70 @@ export function requireFeedNetuidDependency(
   };
 }
 
-export const MCP_TOOLS: McpToolDefinition[] = [
+/**
+ * The argument an agent uses to say WHY it is calling, and the property
+ * PostHog's MCP Analytics reads it as (#9642).
+ *
+ * `context` is @posthog/mcp's own name for it, kept verbatim so an agent that
+ * already knows the convention from another instrumented server needs to learn
+ * nothing here. Verified against all 224 published schemas before choosing it:
+ * none declares `context`, `intent`, `reason` or `why`, so nothing collides.
+ */
+const MCP_INTENT_ARG = "context";
+const MCP_INTENT_ARG_SCHEMA = {
+  type: "string",
+  description:
+    "Why are you calling this tool? Briefly describe the user's goal. " +
+    "Optional, recorded for analytics only -- it does not affect the result.",
+} as const;
+
+/**
+ * Add the intent argument to one tool's published schema.
+ *
+ * OPTIONAL, WHERE THE SDK MAKES IT REQUIRED. That divergence is deliberate and
+ * is the whole reason this is hand-rolled rather than delegated: every one of
+ * these tools declares `additionalProperties: false` and is already serving
+ * live traffic, so a required argument would make the next deploy reject every
+ * call from every existing client, on every tool at once. Coverage is worth
+ * less than not breaking the public surface.
+ *
+ * NON-MUTATING. The `inputSchema` objects come from `z.toJSONSchema(...)` in
+ * the per-tool modules and several are exported and read elsewhere, so this
+ * builds new objects rather than writing into shared ones.
+ *
+ * Exported for tests only. Every registered tool currently declares both
+ * `type` and `properties`, so the two fallbacks below cannot be reached
+ * through MCP_TOOLS -- but a hand-written literal is still permitted by
+ * JsonSchemaLike, and a defensive branch nobody can exercise is one nobody can
+ * trust. Tested directly rather than annotated away.
+ */
+export function withIntentArgument(tool: McpToolDefinition): McpToolDefinition {
+  const schema = tool.inputSchema as Row;
+  return {
+    ...tool,
+    inputSchema: {
+      ...schema,
+      type: schema?.type ?? "object",
+      properties: {
+        ...((schema?.properties as Row) ?? {}),
+        [MCP_INTENT_ARG]: MCP_INTENT_ARG_SCHEMA,
+      },
+    } as JsonSchemaLike,
+  };
+}
+
+// Applied ONCE, here, rather than in listToolDefinitions() -- and that is the
+// point rather than a detail. There are two tool objects: listToolDefinitions()
+// builds what tools/list ADVERTISES, while dispatchTool validates against the
+// raw entry via TOOLS_BY_NAME, where validateToolArguments rejects any key not
+// in `properties`. Injecting into the advertise path alone would publish an
+// argument and then throw invalid_params on every call that used it -- strictly
+// worse than not offering it, because agents would start sending it. Injecting
+// upstream of both is what makes the two incapable of disagreeing.
+//
+// Once at module load, not per request: 224 shallow copies at cold start
+// against one on every tools/list.
+const MCP_TOOLS_BASE: McpToolDefinition[] = [
   {
     name: "search_subnets",
     title: "Search Bittensor subnets",
@@ -13143,6 +13235,9 @@ export const MCP_TOOLS: McpToolDefinition[] = [
   },
 ];
 
+export const MCP_TOOLS: McpToolDefinition[] =
+  MCP_TOOLS_BASE.map(withIntentArgument);
+
 const TOOLS_BY_NAME = new Map(MCP_TOOLS.map((tool) => [tool.name, tool]));
 
 // JSON Schema 2020-12 output schemas for each tool's `structuredContent`. They
@@ -14413,13 +14508,23 @@ async function callTool(params: Row, ctx: McpCtx) {
       ? { errorCode: result?.structuredContent?.error?.code }
       : {}),
   });
+  // #9642: `context` is the argument an agent uses to say WHY it called, and
+  // PostHog records it as $mcp_intent. Split here rather than read in place so
+  // `parameters` below carries the real arguments only -- the intent travels
+  // as its own property, not as a second copy inside the parameter blob.
+  const { intent, rest: toolParameters } = splitMcpIntent(
+    params?.arguments as Row,
+  );
   scheduleMcpToolCallEvent(ctx, {
     toolName: typeof params?.name === "string" ? params.name : undefined,
     isError: result.isError === true,
     durationMs,
     sessionId: ctx?.sessionId,
-    parameters: params?.arguments,
+    parameters: toolParameters,
     response: result?.structuredContent,
+    // Omitted entirely when the agent said nothing, so "did not explain" stays
+    // distinguishable from "explained with an empty string".
+    ...(intent ? { intent } : {}),
     // #8963: the same structuredContent.error.code usage_event already
     // threads above, projected onto PostHog's $mcp_error_type by
     // classifyMcpErrorType inside the recorder. Omitted on success.

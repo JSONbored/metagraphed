@@ -23574,11 +23574,20 @@ describe("get_coverage_depth MCP tool (#6983)", () => {
     const tool = MCP_TOOLS.find((t) => t.name === "get_coverage_depth");
     assert.ok(tool, "get_coverage_depth should be registered");
     assert.equal(typeof tool.description, "string");
-    assert.deepEqual(tool.inputSchema, {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    });
+    assert.equal(tool.inputSchema.type, "object");
+    assert.equal(tool.inputSchema.additionalProperties, false);
+    // #9642 added a universal `context` argument to every tool for agent-intent
+    // capture, so "no-arg" now means "no arguments OF ITS OWN" rather than an
+    // empty properties object. Asserted by subtraction so this keeps testing
+    // what it was written to test -- that this tool takes no input -- instead
+    // of being loosened to a shape check that would also pass if a real
+    // argument were added tomorrow.
+    assert.deepEqual(
+      Object.keys(tool.inputSchema.properties ?? {}).filter(
+        (key) => key !== "context",
+      ),
+      [],
+    );
   });
 
   test("returns the coverage-depth artifact verbatim", async () => {
