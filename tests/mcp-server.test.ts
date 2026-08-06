@@ -363,7 +363,7 @@ describe("MCP JSON-RPC lifecycle", () => {
     assert.equal(res.body.result.tools.length, MCP_TOOLS.length);
   });
 
-  test("initialize advertises tools + resources + prompts capabilities", async () => {
+  test("initialize advertises tools + resources + prompts + completions", async () => {
     const res = await rpc({
       jsonrpc: "2.0",
       id: 1,
@@ -376,6 +376,10 @@ describe("MCP JSON-RPC lifecycle", () => {
       // subscribable; see resources/subscribe's own tests below.
       resources: { subscribe: true, listChanged: false },
       prompts: { listChanged: false },
+      // #9686: completion/complete for prompt arguments and resource-template
+      // variables. An empty object is the spec's shape for a capability with
+      // no sub-options -- it is a declaration, not a placeholder.
+      completions: {},
     });
   });
 
