@@ -73,3 +73,40 @@ describe("smoke route substitution", () => {
     assert.equal(fixtureSurfaceIdFromIndex({ data: { fixtures: [] } }), null);
   });
 });
+
+describe("the live smoke set is GET-only (#9650)", () => {
+  test("no route with a body is smoked", () => {
+    // Every check in the runner asserts a CACHEABLE READ CONTRACT -- 200, CORS,
+    // an ETag, a contract-version header -- so a route with a request body has
+    // nothing the assertions are about. The runner fetches with a plain GET, so
+    // including one draws 405 and fails the whole publish lane.
+    //
+    // This is not hypothetical. Until #9101 registered /api/v1/ask as POST,
+    // every route in the contract was a GET, so "all routes" and "the read
+    // surface" were the same set. Publishing broke on 2026-08-02 and stayed
+    // broken for four days, taking `webhooks:dispatch` -- later in the same
+    // job -- with it.
+    for (const route of liveSmokeApiRoutes("7:subnet-api:new_v2")) {
+      assert.equal(
+        route.method ?? "GET",
+        "GET",
+        `${route.path} is ${route.method}; the smoke runner only issues GET`,
+      );
+    }
+  });
+
+  test("and the contract does still carry a non-GET route, or this proves nothing", () => {
+    // A filter with nothing to filter passes forever. Assert the input set
+    // really does contain the case being excluded.
+    assert.equal(
+      API_ROUTES.some((route) => (route.method ?? "GET") !== "GET"),
+      true,
+      "no non-GET route in the contract -- this guard is now vacuous",
+    );
+    assert.equal(
+      liveSmokeApiRoutes("7:subnet-api:new_v2").length < API_ROUTES.length,
+      true,
+      "the smoke set must be strictly smaller than the contract",
+    );
+  });
+});
