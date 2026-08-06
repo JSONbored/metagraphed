@@ -627,6 +627,10 @@ import {
   GetChainHoldersOutputSchema,
 } from "../schemas-src/mcp-tools/get-chain-holders.ts";
 import {
+  GetChainConcentrationHistoryInputSchema,
+  GetChainConcentrationHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/get-chain-concentration-history.ts";
+import {
   GetEmissionChangesInputSchema,
   GetEmissionChangesOutputSchema,
 } from "../schemas-src/mcp-tools/get-emission-changes.ts";
@@ -1459,6 +1463,13 @@ import {
   DEFAULT_CHAIN_HOLDERS_SORT,
 } from "./chain-holders.ts";
 import { buildIndexerLag, loadIndexerLag } from "./indexer-lag.ts";
+import {
+  buildChainConcentrationHistory,
+  declineChainConcentrationHistory,
+  loadChainConcentrationHistory,
+  CHAIN_CONCENTRATION_HISTORY_WINDOWS,
+} from "./chain-concentration-history.ts";
+import { DEFAULT_CHAIN_CONCENTRATION_HISTORY_WINDOW } from "./route-limits.ts";
 import {
   buildEmissionChanges,
   loadEmissionChanges,
@@ -8175,6 +8186,53 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_chain_concentration_history",
+    title: "Get whether the network is concentrating",
+    description:
+      "Fetch WHETHER THE NETWORK IS GETTING MORE CONCENTRATED (#9628) -- the " +
+      "network-wide concentration card as a per-day series, each point " +
+      "carrying the same five lenses the live card does (stake, emission, " +
+      "entity_stake, entity_emission, validator_stake, each with " +
+      "holders/gini/hhi/nakamoto_coefficient/top-K shares/entropy) plus " +
+      "uids_per_entity. get_subnet_concentration_history answers this one " +
+      "subnet at a time; this answers the whole network, which had no series " +
+      "at all. " +
+      "READ builder_versions BEFORE DRAWING A TREND: each point is a STORED " +
+      "computation, so if the builder changed, points before and after " +
+      "disagree BY CONSTRUCTION rather than because the network moved. More " +
+      "than one version in the series means it changes DEFINITION partway " +
+      "along, and a trend across that boundary is not a trend. " +
+      "READ THE DEPTH TOO: the source rollup is only as deep as neuron_daily " +
+      "(~27 days), so a 90d window returns what EXISTS -- oldest_day and " +
+      "newest_day say what was covered, and a day the capture did not run is " +
+      "ABSENT rather than a zero-concentration point, which would read as a " +
+      "perfectly distributed network. A NULL scorecard means no measurable " +
+      "distribution, not a missing one. window is 7d, 30d (default) or 90d. " +
+      "An empty window is a measurement. Mainnet only. Mirrors GET " +
+      "/api/v1/chain/concentration/history.",
+    inputSchema: z.toJSONSchema(GetChainConcentrationHistoryInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetChainConcentrationHistoryInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const window =
+        optionalEnum(args, "window", [
+          ...CHAIN_CONCENTRATION_HISTORY_WINDOWS,
+        ]) ?? DEFAULT_CHAIN_CONCENTRATION_HISTORY_WINDOW;
+      const rows = await loadChainConcentrationHistory(
+        ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+          typeof loadChainConcentrationHistory
+        >[0],
+        { window },
+      );
+      return rows === null
+        ? declineChainConcentrationHistory("unavailable", { window })
+        : buildChainConcentrationHistory(rows, { window });
+    },
+  },
+  {
     name: "get_subnet_holders",
     title: "Get a subnet's alpha holder leaderboard",
     description:
@@ -13297,6 +13355,10 @@ const TOOL_OUTPUT_SCHEMAS = {
   get_chain_holders: z.toJSONSchema(GetChainHoldersOutputSchema, {
     target: "draft-2020-12",
   }),
+  get_chain_concentration_history: z.toJSONSchema(
+    GetChainConcentrationHistoryOutputSchema,
+    { target: "draft-2020-12" },
+  ),
   get_emission_changes: z.toJSONSchema(GetEmissionChangesOutputSchema, {
     target: "draft-2020-12",
   }),

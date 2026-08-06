@@ -176,6 +176,13 @@ import {
 } from "../../src/chain-holders.ts";
 import { buildIndexerLag, loadIndexerLag } from "../../src/indexer-lag.ts";
 import {
+  buildChainConcentrationHistory,
+  declineChainConcentrationHistory,
+  loadChainConcentrationHistory,
+  CHAIN_CONCENTRATION_HISTORY_WINDOWS,
+} from "../../src/chain-concentration-history.ts";
+import { DEFAULT_CHAIN_CONCENTRATION_HISTORY_WINDOW } from "../../src/route-limits.ts";
+import {
   buildEmissionChanges,
   loadEmissionChanges,
   EMISSION_CHANGE_KINDS,
@@ -6347,6 +6354,47 @@ export async function handleIndexerLag(request: Request, env: Env, url: URL) {
   // The handler owns the clock, so the module whose subject is two clocks does
   // not quietly introduce a third of its own.
   const data = buildIndexerLag(row, Date.now());
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/chain/concentration/history (#9628): is the NETWORK getting more
+// concentrated? Reads the daily rollup, which ran the same builder
+// /chain/concentration serves -- see src/chain-concentration-history.ts for why
+// this is not computed live.
+export async function handleChainConcentrationHistory(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
+  const validationError = validateEntityQuery(url, ["window", "format"]);
+  if (validationError) return analyticsQueryError(validationError);
+
+  const window =
+    url.searchParams.get("window") ||
+    DEFAULT_CHAIN_CONCENTRATION_HISTORY_WINDOW;
+  if (!CHAIN_CONCENTRATION_HISTORY_WINDOWS.includes(window)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: `"${window}" is not a supported window. Supported: ${CHAIN_CONCENTRATION_HISTORY_WINDOWS.join(", ")}.`,
+    });
+  }
+
+  const rows = await loadChainConcentrationHistory(
+    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+      typeof loadChainConcentrationHistory
+    >[0],
+    { window },
+  );
+  // An empty window is a MEASUREMENT -- a window narrower than the rollup's
+  // depth returns nothing legitimately -- so only a failed read declines.
+  const data =
+    rows === null
+      ? declineChainConcentrationHistory("unavailable", { window })
+      : buildChainConcentrationHistory(rows, { window });
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },

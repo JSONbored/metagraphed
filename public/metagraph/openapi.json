@@ -2582,6 +2582,108 @@
           "schema_version": 1
         }
       },
+      "ChainConcentrationHistoryArtifactResponse": {
+        "value": {
+          "data": {
+            "builder_versions": [
+              1
+            ],
+            "degraded": {
+              "reason": "unavailable"
+            },
+            "newest_day": "example",
+            "oldest_day": "example",
+            "point_count": 1,
+            "points": [
+              {
+                "builder_version": 1,
+                "day": "2026-06-01",
+                "emission": {
+                  "entropy": 0.5,
+                  "entropy_normalized": 0.5,
+                  "gini": 0.5,
+                  "hhi": 0.5,
+                  "hhi_normalized": 0.5,
+                  "holders": 1,
+                  "nakamoto_coefficient": 1,
+                  "total": 1
+                },
+                "entity_count": 1,
+                "entity_emission": {
+                  "entropy": 0.5,
+                  "entropy_normalized": 0.5,
+                  "gini": 0.5,
+                  "hhi": 0.5,
+                  "hhi_normalized": 0.5,
+                  "holders": 1,
+                  "nakamoto_coefficient": 1,
+                  "total": 1
+                },
+                "entity_stake": {
+                  "entropy": 0.5,
+                  "entropy_normalized": 0.5,
+                  "gini": 0.5,
+                  "hhi": 0.5,
+                  "hhi_normalized": 0.5,
+                  "holders": 1,
+                  "nakamoto_coefficient": 1,
+                  "total": 1
+                },
+                "neuron_count": 1,
+                "source_captured_at": "2026-06-01T00:00:00.000Z",
+                "stake": {
+                  "entropy": 0.5,
+                  "entropy_normalized": 0.5,
+                  "gini": 0.5,
+                  "hhi": 0.5,
+                  "hhi_normalized": 0.5,
+                  "holders": 1,
+                  "nakamoto_coefficient": 1,
+                  "total": 1
+                },
+                "subnet_count": 1,
+                "uids_per_entity": 0.5,
+                "validator_stake": {
+                  "entropy": 0.5,
+                  "entropy_normalized": 0.5,
+                  "gini": 0.5,
+                  "hhi": 0.5,
+                  "hhi_normalized": 0.5,
+                  "holders": 1,
+                  "nakamoto_coefficient": 1,
+                  "total": 1
+                }
+              }
+            ],
+            "schema_version": 1,
+            "window": "30d"
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
+      },
       "ChainDeregistrationsArtifactResponse": {
         "value": {
           "data": {
@@ -19924,6 +20026,326 @@
           "entity_stake",
           "entity_emission",
           "validator_stake"
+        ],
+        "type": "object"
+      },
+      "ChainConcentrationHistoryArtifact": {
+        "additionalProperties": {},
+        "properties": {
+          "builder_versions": {
+            "items": {
+              "maximum": 9007199254740991,
+              "minimum": -9007199254740991,
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "degraded": {
+            "additionalProperties": false,
+            "properties": {
+              "reason": {
+                "enum": [
+                  "unavailable"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "reason"
+            ],
+            "type": "object"
+          },
+          "newest_day": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "oldest_day": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "point_count": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/ChainConcentrationHistoryPoint"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "window": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "schema_version",
+          "window",
+          "point_count",
+          "oldest_day",
+          "newest_day",
+          "builder_versions",
+          "points"
+        ],
+        "type": "object"
+      },
+      "ChainConcentrationHistoryPoint": {
+        "additionalProperties": false,
+        "properties": {
+          "builder_version": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "day": {
+            "type": "string"
+          },
+          "emission": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChainConcentrationScorecard"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entity_count": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entity_emission": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChainConcentrationScorecard"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entity_stake": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChainConcentrationScorecard"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "neuron_count": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stake": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChainConcentrationScorecard"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "subnet_count": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "uids_per_entity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "validator_stake": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChainConcentrationScorecard"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "day",
+          "neuron_count",
+          "subnet_count",
+          "entity_count",
+          "source_captured_at",
+          "builder_version",
+          "uids_per_entity",
+          "stake",
+          "emission",
+          "entity_stake",
+          "entity_emission",
+          "validator_stake"
+        ],
+        "type": "object"
+      },
+      "ChainConcentrationScorecard": {
+        "additionalProperties": {},
+        "properties": {
+          "entropy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entropy_normalized": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "gini": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hhi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hhi_normalized": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "holders": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "nakamoto_coefficient": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "holders",
+          "total",
+          "gini",
+          "hhi",
+          "hhi_normalized",
+          "nakamoto_coefficient",
+          "entropy",
+          "entropy_normalized"
         ],
         "type": "object"
       },
@@ -76838,6 +77260,118 @@
         "tags": [
           "chain",
           "analytics"
+        ],
+        "x-metagraphed-mainnet-only": true,
+        "x-metagraphed-networks": [
+          "mainnet"
+        ]
+      }
+    },
+    "/api/v1/chain/concentration/history": {
+      "get": {
+        "operationId": "chainConcentrationHistory",
+        "parameters": [
+          {
+            "description": "Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`, `90d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed.",
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d",
+                "90d"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ChainConcentrationHistoryArtifactResponse": {
+                    "$ref": "#/components/examples/ChainConcentrationHistoryArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ChainConcentrationHistoryArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch the network-wide concentration series. Is the NETWORK getting more concentrated (#9628) -- the network-wide concentration card as a per-day series. /subnets/{netuid}/concentration/history has answered that one subnet at a time since it shipped; /chain/concentration had no series at all, so 'is subnet 74 concentrating?' was one request and 'is Bittensor concentrating?' was unanswerable. Each point carries the same five lenses the live card does -- stake, emission, entity_stake, entity_emission, validator_stake, each with holders/total/gini/hhi/hhi_normalized/nakamoto_coefficient/top-K shares/entropy -- plus uids_per_entity and the shape of the day it was computed over (neuron_count, subnet_count, entity_count). THIS READS A ROLLUP, AND THE ROLLUP RAN THE SERVING BUILDER. The per-subnet route computes Gini/HHI/Nakamoto in JS from raw per-UID rows, which works because a netuid slice is about 256 of them; network-wide it is not a slice -- neuron_daily holds 816,803 rows across 27 days, ~30,100 a day (measured 2026-08-06), so a 30-day series computed that way would pull ~900,000 rows into one request. An hourly cron instead computes each COMPLETE day once with buildChainConcentration, the same function /chain/concentration serves, so a historical point and the live card are the same computation by construction rather than a SQL reimplementation that agrees until it quietly does not. The rollup BACKFILLS ITSELF, bounded to a few days a tick, so the history that already exists fills in without a separate recovery path. A STORED COMPUTATION FREEZES THE CODE THAT PRODUCED IT, and that is published rather than hidden: if the builder changes, points computed before and after disagree BY CONSTRUCTION, not because the network moved. Every point carries the builder_version it was computed under and the series reports builder_versions -- more than one means the series changes DEFINITION partway along, and a trend drawn across that boundary is not a trend. THE DEPTH IS THE ROLLUP'S, NOT THE WINDOW'S. neuron_daily is itself only ~27 days deep and the rollup cannot predate it, so a 90d window returns what EXISTS; oldest_day/newest_day and point_count come from the rows, and a day the capture did not run is ABSENT rather than a zero-concentration point, which would read as a perfectly distributed network on a day nothing was measured. Today is never rolled up: neuron_daily gains rows as the capture proceeds, so a mid-day card would be computed over a partial network and then never revisited. A NULL scorecard means no measurable distribution, not a missing one -- computeConcentration returns null when a distribution has no positive values, and substituting zeros would invent a perfectly equal one. ?window= is 7d, 30d (default) or 90d. An EMPTY window is a measurement, not an error. Mainnet-only: neuron_daily carries no network dimension.",
+        "tags": [
+          "chain"
         ],
         "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [

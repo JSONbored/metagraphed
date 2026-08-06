@@ -1001,6 +1001,46 @@ export type ChainConcentration = {
   validator_stake?: Maybe<ConcentrationMetrics>;
 };
 
+export type ChainConcentrationHistory = {
+  __typename?: 'ChainConcentrationHistory';
+  /** Every distinct builder version in the series. More than one means it changes DEFINITION partway along. */
+  builder_versions: Array<Scalars['Int']['output']>;
+  /** Present ONLY on a decline. An empty window is a measurement. */
+  degraded?: Maybe<ChainConcentrationHistoryDegraded>;
+  newest_day?: Maybe<Scalars['String']['output']>;
+  oldest_day?: Maybe<Scalars['String']['output']>;
+  /** From the ROWS. A day the capture did not run is absent, never a zero-concentration point. */
+  point_count?: Maybe<Scalars['Int']['output']>;
+  points: Array<ChainConcentrationHistoryPoint>;
+  schema_version: Scalars['Int']['output'];
+  window?: Maybe<Scalars['String']['output']>;
+};
+
+export type ChainConcentrationHistoryDegraded = {
+  __typename?: 'ChainConcentrationHistoryDegraded';
+  reason: Scalars['String']['output'];
+};
+
+export type ChainConcentrationHistoryPoint = {
+  __typename?: 'ChainConcentrationHistoryPoint';
+  /** Which definition of the metrics produced this point. */
+  builder_version?: Maybe<Scalars['Int']['output']>;
+  day: Scalars['String']['output'];
+  emission?: Maybe<Scalars['JSON']['output']>;
+  entity_count?: Maybe<Scalars['Int']['output']>;
+  entity_emission?: Maybe<Scalars['JSON']['output']>;
+  entity_stake?: Maybe<Scalars['JSON']['output']>;
+  /** The shape of the day the card was computed over -- a point across half the network is not comparable to one across all of it. */
+  neuron_count?: Maybe<Scalars['Int']['output']>;
+  /** WHEN the network looked like this, as distinct from when it was computed. */
+  source_captured_at?: Maybe<Scalars['String']['output']>;
+  /** NULL means no measurable distribution, NOT missing. */
+  stake?: Maybe<Scalars['JSON']['output']>;
+  subnet_count?: Maybe<Scalars['Int']['output']>;
+  uids_per_entity?: Maybe<Scalars['Float']['output']>;
+  validator_stake?: Maybe<Scalars['JSON']['output']>;
+};
+
 export type ChainDeregistrations = {
   __typename?: 'ChainDeregistrations';
   degraded?: Maybe<DegradedInfo>;
@@ -2767,6 +2807,8 @@ export type Query = {
   chain_calls: ChainCalls;
   /** Network-wide stake & emission decentralization across every subnet's neurons at once: the raw stake/emission distribution, the same two lenses collapsed per controlling entity (an operator running hotkeys in ten subnets counts once, not ten times), and the permitted-validator stake distribution -- each as gini/HHI/Nakamoto/top-share/entropy. uids_per_entity is the network consolidation signal (1.0 = every UID a distinct owner). Current snapshot only (no window/params). Every metric block is null (never a GraphQL error) on a cold store. The network analog of subnet concentration. Mirrors GET /api/v1/chain/concentration. */
   chain_concentration: ChainConcentration;
+  /** Whether the NETWORK is getting more concentrated: the network-wide concentration card as a per-day series, each point carrying the same five lenses the live card does (stake, emission, entity_stake, entity_emission, validator_stake) plus uids_per_entity and the shape of the day it was computed over. subnet_concentration_history answers one subnet at a time; this answers the whole network. READ builder_versions BEFORE DRAWING A TREND -- each point is a STORED computation, so if the builder changed, points before and after disagree BY CONSTRUCTION rather than because the network moved, and more than one version means the series changes DEFINITION partway along. The depth is the rollup's: neuron_daily is ~27 days deep and the rollup cannot predate it, so a 90d window returns what EXISTS, and a day the capture did not run is ABSENT rather than a zero-concentration point. A NULL scorecard means no measurable distribution, not a missing one. window is 7d, 30d (default) or 90d. An empty window is a measurement. Mainnet only. Mirrors GET /api/v1/chain/concentration/history. */
+  chain_concentration_history: ChainConcentrationHistory;
   /** Network-wide neuron-deregistration leaderboard over a 7d/30d window (default 7d): subnets ranked by deregistration events with each's distinct-hotkey count and deregistrations-per-hotkey churn intensity, plus a network rollup and the per-subnet intensity spread, DERIVED from UID reuse in the NeuronRegistered stream by a scheduled projection -- NeuronDeregistered has never been emitted by the runtime (#9307). The network-wide, exit-side counterpart of subnet_deregistrations -- where neurons are being pushed out. limit caps the leaderboard (default 20, max 100). A window nothing derived carries a degraded block rather than a confident zero. Mirrors GET /api/v1/chain/deregistrations. */
   chain_deregistrations: ChainDeregistrations;
   /** Paginated all-events feed (newest first) from the chain_events lakehouse table: each event's block, event index, pallet, method, decoded args, phase, and emitting extrinsic index. Filter by pallet/method/block/extrinsic; page with limit (1-200, default 50) and the opaque keyset cursor (or legacy before=block_number). An invalid filter combo is a GraphQL BAD_USER_INPUT error; a cold/unbound tier resolves to a schema-stable empty feed, never a GraphQL error. Reads the raw all-events tier -- distinct from account_events/subnet_events (the curated account-attributed streams, a different data source) and from Subscription.chainEvents (live WebSocket firehose). Pass network to read testnet's decoded history instead of mainnet's. Mirrors GET /api/v1/chain-events. */
@@ -3331,6 +3373,11 @@ export type QueryChain_CallsArgs = {
   call_module?: InputMaybe<Scalars['String']['input']>;
   group_by?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
+  window?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryChain_Concentration_HistoryArgs = {
   window?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -6275,6 +6322,9 @@ export type ResolversTypes = ResolversObject<{
   ChainCall: ResolverTypeWrapper<ChainCall>;
   ChainCalls: ResolverTypeWrapper<ChainCalls>;
   ChainConcentration: ResolverTypeWrapper<ChainConcentration>;
+  ChainConcentrationHistory: ResolverTypeWrapper<ChainConcentrationHistory>;
+  ChainConcentrationHistoryDegraded: ResolverTypeWrapper<ChainConcentrationHistoryDegraded>;
+  ChainConcentrationHistoryPoint: ResolverTypeWrapper<ChainConcentrationHistoryPoint>;
   ChainDeregistrations: ResolverTypeWrapper<ChainDeregistrations>;
   ChainDeregistrationsIntensityDistribution: ResolverTypeWrapper<ChainDeregistrationsIntensityDistribution>;
   ChainDeregistrationsNetwork: ResolverTypeWrapper<ChainDeregistrationsNetwork>;
@@ -6615,6 +6665,9 @@ export type ResolversParentTypes = ResolversObject<{
   ChainCall: ChainCall;
   ChainCalls: ChainCalls;
   ChainConcentration: ChainConcentration;
+  ChainConcentrationHistory: ChainConcentrationHistory;
+  ChainConcentrationHistoryDegraded: ChainConcentrationHistoryDegraded;
+  ChainConcentrationHistoryPoint: ChainConcentrationHistoryPoint;
   ChainDeregistrations: ChainDeregistrations;
   ChainDeregistrationsIntensityDistribution: ChainDeregistrationsIntensityDistribution;
   ChainDeregistrationsNetwork: ChainDeregistrationsNetwork;
@@ -7668,6 +7721,36 @@ export type ChainConcentrationResolvers<ContextType = GqlContext, ParentType ext
   subnet_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   uids_per_entity?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   validator_stake?: Resolver<Maybe<ResolversTypes['ConcentrationMetrics']>, ParentType, ContextType>;
+}>;
+
+export type ChainConcentrationHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainConcentrationHistory'] = ResolversParentTypes['ChainConcentrationHistory']> = ResolversObject<{
+  builder_versions?: Resolver<Array<ResolversTypes['Int']>, ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['ChainConcentrationHistoryDegraded']>, ParentType, ContextType>;
+  newest_day?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  oldest_day?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  point_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  points?: Resolver<Array<ResolversTypes['ChainConcentrationHistoryPoint']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  window?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type ChainConcentrationHistoryDegradedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainConcentrationHistoryDegraded'] = ResolversParentTypes['ChainConcentrationHistoryDegraded']> = ResolversObject<{
+  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type ChainConcentrationHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainConcentrationHistoryPoint'] = ResolversParentTypes['ChainConcentrationHistoryPoint']> = ResolversObject<{
+  builder_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  day?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  emission?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  entity_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  entity_emission?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  entity_stake?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  neuron_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  source_captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  stake?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  subnet_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  uids_per_entity?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  validator_stake?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
 }>;
 
 export type ChainDeregistrationsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainDeregistrations'] = ResolversParentTypes['ChainDeregistrations']> = ResolversObject<{
@@ -9053,6 +9136,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   chain_burn?: Resolver<Maybe<ResolversTypes['ChainBurn']>, ParentType, ContextType, Partial<QueryChain_BurnArgs>>;
   chain_calls?: Resolver<ResolversTypes['ChainCalls'], ParentType, ContextType, Partial<QueryChain_CallsArgs>>;
   chain_concentration?: Resolver<ResolversTypes['ChainConcentration'], ParentType, ContextType>;
+  chain_concentration_history?: Resolver<ResolversTypes['ChainConcentrationHistory'], ParentType, ContextType, Partial<QueryChain_Concentration_HistoryArgs>>;
   chain_deregistrations?: Resolver<ResolversTypes['ChainDeregistrations'], ParentType, ContextType, Partial<QueryChain_DeregistrationsArgs>>;
   chain_events?: Resolver<ResolversTypes['ChainEventsFeed'], ParentType, ContextType, Partial<QueryChain_EventsArgs>>;
   chain_events_stats?: Resolver<ResolversTypes['ChainEventsStats'], ParentType, ContextType, Partial<QueryChain_Events_StatsArgs>>;
@@ -10594,6 +10678,9 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ChainCall?: ChainCallResolvers<ContextType>;
   ChainCalls?: ChainCallsResolvers<ContextType>;
   ChainConcentration?: ChainConcentrationResolvers<ContextType>;
+  ChainConcentrationHistory?: ChainConcentrationHistoryResolvers<ContextType>;
+  ChainConcentrationHistoryDegraded?: ChainConcentrationHistoryDegradedResolvers<ContextType>;
+  ChainConcentrationHistoryPoint?: ChainConcentrationHistoryPointResolvers<ContextType>;
   ChainDeregistrations?: ChainDeregistrationsResolvers<ContextType>;
   ChainDeregistrationsIntensityDistribution?: ChainDeregistrationsIntensityDistributionResolvers<ContextType>;
   ChainDeregistrationsNetwork?: ChainDeregistrationsNetworkResolvers<ContextType>;

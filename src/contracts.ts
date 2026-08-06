@@ -23,6 +23,7 @@ import {
   CHAIN_HOLDERS_LIMIT_DEFAULT,
   CHAIN_HOLDERS_LIMIT_MAX,
   FAILURE_REASONS_WINDOWS,
+  CHAIN_CONCENTRATION_HISTORY_WINDOWS,
   SURFACE_HISTORY_LIMIT_DEFAULT,
   SURFACE_HISTORY_LIMIT_MAX,
   EMISSION_CHANGES_LIMIT_DEFAULT,
@@ -1692,6 +1693,13 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/chain/indexer-lag.json",
     `How long after a block is produced it becomes queryable here (#9620). chain_detail_blocks has carried two clocks since migration 0010 -- observed_at, the chain's own timestamp as the firehose poller read it, and synced_at, the wall clock of the sync handler that wrote the row -- and nothing had ever selected the second: the writer binds it on every row and no route, watchdog or artifact read it back. Their difference is the end-to-end age of a block at the moment it became answerable, which is the headline latency question for an API over a chain. TWO DIFFERENT NUMBERS, NAMED SEPARATELY: write_latency_ms is the distribution of synced_at - observed_at -- how long each block took to land, as min/p50/p95/p99/max/mean over the retained window (nearest-rank percentiles). head_age_ms is now - the newest observed_at: how far behind the lane is RIGHT NOW. They diverge exactly when it matters, because a stalled lane keeps a perfect write-latency distribution -- every block it did write, it wrote promptly -- while its head age climbs without bound, so serving either under the other's name would report a dead lane as healthy. THE WINDOW IS PUBLISHED because the table is pruned on a rolling basis (1,862 contiguous blocks, about 6.2 hours, measured 2026-08-05): the block range and the observed_at bounds ride on every response, so this reads as the RECENT distribution it is rather than a lifetime one. A NEGATIVE LATENCY IS SERVED AS MEASURED, never clamped to zero -- the two timestamps come from two clocks, so under block-author clock skew a block can appear to have been written before it was produced, and clamping would suppress that evidence on the one route whose whole subject is the difference between those clocks. DECLINES rather than answering on an empty table: degraded.reason no_retained_blocks with NULL measurements, because a zero-millisecond lag is the most flattering thing this route could say about a dead pipeline. Mainnet-only: the D1 hot tier is written by the mainnet firehose poller and carries no network column, the same reason every off-mainnet block ref resolves against the lakehouse instead.`,
     "IndexerLagArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
+    "chain-concentration-history",
+    "/metagraph/chain/concentration/history.json",
+    "Is the NETWORK getting more concentrated (#9628) -- the network-wide concentration card as a per-day series. /subnets/{netuid}/concentration/history has answered that one subnet at a time since it shipped; /chain/concentration had no series at all, so 'is subnet 74 concentrating?' was one request and 'is Bittensor concentrating?' was unanswerable. Each point carries the same five lenses the live card does -- stake, emission, entity_stake, entity_emission, validator_stake, each with holders/total/gini/hhi/hhi_normalized/nakamoto_coefficient/top-K shares/entropy -- plus uids_per_entity and the shape of the day it was computed over (neuron_count, subnet_count, entity_count). THIS READS A ROLLUP, AND THE ROLLUP RAN THE SERVING BUILDER. The per-subnet route computes Gini/HHI/Nakamoto in JS from raw per-UID rows, which works because a netuid slice is about 256 of them; network-wide it is not a slice -- neuron_daily holds 816,803 rows across 27 days, ~30,100 a day (measured 2026-08-06), so a 30-day series computed that way would pull ~900,000 rows into one request. An hourly cron instead computes each COMPLETE day once with buildChainConcentration, the same function /chain/concentration serves, so a historical point and the live card are the same computation by construction rather than a SQL reimplementation that agrees until it quietly does not. The rollup BACKFILLS ITSELF, bounded to a few days a tick, so the history that already exists fills in without a separate recovery path. A STORED COMPUTATION FREEZES THE CODE THAT PRODUCED IT, and that is published rather than hidden: if the builder changes, points computed before and after disagree BY CONSTRUCTION, not because the network moved. Every point carries the builder_version it was computed under and the series reports builder_versions -- more than one means the series changes DEFINITION partway along, and a trend drawn across that boundary is not a trend. THE DEPTH IS THE ROLLUP'S, NOT THE WINDOW'S. neuron_daily is itself only ~27 days deep and the rollup cannot predate it, so a 90d window returns what EXISTS; oldest_day/newest_day and point_count come from the rows, and a day the capture did not run is ABSENT rather than a zero-concentration point, which would read as a perfectly distributed network on a day nothing was measured. Today is never rolled up: neuron_daily gains rows as the capture proceeds, so a mid-day card would be computed over a partial network and then never revisited. A NULL scorecard means no measurable distribution, not a missing one -- computeConcentration returns null when a distribution has no positive values, and substituting zeros would invent a perfectly equal one. ?window= is 7d, 30d (default) or 90d. An EMPTY window is a measurement, not an error. Mainnet-only: neuron_daily carries no network dimension.",
+    "ChainConcentrationHistoryArtifact",
     COMPUTED_LIVE,
   ),
   artifact(
@@ -4019,6 +4027,25 @@ export const API_ROUTES = [
     [],
   ),
   route(
+    "chain-concentration-history",
+    "GET",
+    "/api/v1/chain/concentration/history",
+    "/metagraph/chain/concentration/history.json",
+    "Fetch the network-wide concentration series. Is the NETWORK getting more concentrated (#9628) -- the network-wide concentration card as a per-day series. /subnets/{netuid}/concentration/history has answered that one subnet at a time since it shipped; /chain/concentration had no series at all, so 'is subnet 74 concentrating?' was one request and 'is Bittensor concentrating?' was unanswerable. Each point carries the same five lenses the live card does -- stake, emission, entity_stake, entity_emission, validator_stake, each with holders/total/gini/hhi/hhi_normalized/nakamoto_coefficient/top-K shares/entropy -- plus uids_per_entity and the shape of the day it was computed over (neuron_count, subnet_count, entity_count). THIS READS A ROLLUP, AND THE ROLLUP RAN THE SERVING BUILDER. The per-subnet route computes Gini/HHI/Nakamoto in JS from raw per-UID rows, which works because a netuid slice is about 256 of them; network-wide it is not a slice -- neuron_daily holds 816,803 rows across 27 days, ~30,100 a day (measured 2026-08-06), so a 30-day series computed that way would pull ~900,000 rows into one request. An hourly cron instead computes each COMPLETE day once with buildChainConcentration, the same function /chain/concentration serves, so a historical point and the live card are the same computation by construction rather than a SQL reimplementation that agrees until it quietly does not. The rollup BACKFILLS ITSELF, bounded to a few days a tick, so the history that already exists fills in without a separate recovery path. A STORED COMPUTATION FREEZES THE CODE THAT PRODUCED IT, and that is published rather than hidden: if the builder changes, points computed before and after disagree BY CONSTRUCTION, not because the network moved. Every point carries the builder_version it was computed under and the series reports builder_versions -- more than one means the series changes DEFINITION partway along, and a trend drawn across that boundary is not a trend. THE DEPTH IS THE ROLLUP'S, NOT THE WINDOW'S. neuron_daily is itself only ~27 days deep and the rollup cannot predate it, so a 90d window returns what EXISTS; oldest_day/newest_day and point_count come from the rows, and a day the capture did not run is ABSENT rather than a zero-concentration point, which would read as a perfectly distributed network on a day nothing was measured. Today is never rolled up: neuron_daily gains rows as the capture proceeds, so a mid-day card would be computed over a partial network and then never revisited. A NULL scorecard means no measurable distribution, not a missing one -- computeConcentration returns null when a distribution has no positive values, and substituting zeros would invent a perfectly equal one. ?window= is 7d, 30d (default) or 90d. An EMPTY window is a measurement, not an error. Mainnet-only: neuron_daily carries no network dimension.",
+    "short",
+    ["chain"],
+    [
+      {
+        name: "window",
+        schema: {
+          type: "string",
+          enum: CHAIN_CONCENTRATION_HISTORY_WINDOWS,
+        },
+      },
+    ],
+    [],
+  ),
+  route(
     "chain-burn",
     "GET",
     "/api/v1/chain/burn",
@@ -5361,6 +5388,9 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // and carries no network column -- the same reason resolveChainDetail sends
   // every off-mainnet block ref to the lakehouse rather than consulting D1.
   "/api/v1/chain/indexer-lag",
+  // #9628: neuron_daily carries no network dimension, and /chain/concentration
+  // is already mainnet-only for the same reason.
+  "/api/v1/chain/concentration/history",
   "/api/v1/economics/trends",
   "/api/v1/health",
   "/api/v1/subnets/{netuid}/health",

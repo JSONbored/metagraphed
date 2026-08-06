@@ -127,6 +127,11 @@ import {
   ChainHoldersArtifactSchema,
 } from "./routes/chain-holders.ts";
 import {
+  ChainConcentrationScorecardSchema,
+  ChainConcentrationHistoryPointSchema,
+  ChainConcentrationHistoryArtifactSchema,
+} from "./routes/chain-concentration-history.ts";
+import {
   EmissionParamChangeSchema,
   EmissionSubnetChangeSchema,
   EmissionFlowChangeSchema,
@@ -506,6 +511,15 @@ register(SubnetHoldersArtifactSchema, "SubnetHoldersArtifact");
 register(ChainHoldersSubnetSchema, "ChainHoldersSubnet");
 register(ChainHoldersNetworkSchema, "ChainHoldersNetwork");
 register(ChainHoldersArtifactSchema, "ChainHoldersArtifact");
+register(ChainConcentrationScorecardSchema, "ChainConcentrationScorecard");
+register(
+  ChainConcentrationHistoryPointSchema,
+  "ChainConcentrationHistoryPoint",
+);
+register(
+  ChainConcentrationHistoryArtifactSchema,
+  "ChainConcentrationHistoryArtifact",
+);
 register(EmissionParamChangeSchema, "EmissionParamChange");
 register(EmissionSubnetChangeSchema, "EmissionSubnetChange");
 register(EmissionFlowChangeSchema, "EmissionFlowChange");

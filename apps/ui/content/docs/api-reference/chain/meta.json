@@ -11,6 +11,7 @@
     "chain-calls",
     "chain-calls-by-network",
     "chain-concentration",
+    "chain-concentration-history",
     "chain-deregistrations",
     "chain-deregistrations-by-network",
     "chain-events-feed",

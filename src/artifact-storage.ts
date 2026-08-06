@@ -78,6 +78,10 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // the whole point is how current the lane is RIGHT NOW, which a baked file
   // would freeze at build time.
   /^chain\/indexer-lag\.json$/,
+  // The network-wide concentration series (#9628), read live from the daily
+  // rollup -- a baked copy would stop the day it built, on a route whose whole
+  // subject is whether concentration is CHANGING.
+  /^chain\/concentration\/history\.json$/,
   // The emission-gate change log (#9615), read live from three append-on-change
   // D1 tables -- a baked copy would stop recording the moment it built.
   /^chain\/governance\/emission-changes\.json$/,
