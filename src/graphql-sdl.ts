@@ -308,6 +308,8 @@ export const SDL = /* GraphQL */ `
     subnet_holders(netuid: Int!, limit: Int): SubnetHolders!
     "Every subnet ranked by how concentrated its alpha OWNERSHIP is: per subnet the distinct holder count, measured alpha total, top1/top5/top10/top20 shares and the largest holder's coldkey (an ss58 address). The cross-subnet companion to subnet_holders, which answers one subnet at a time. NOT chain_concentration, which computes Gini/HHI/Nakamoto off registered UIDs' stake and cannot see alpha held on hotkeys with no UID. ALPHA IS NEVER SUMMED ACROSS SUBNETS -- each subnet's alpha is a different token, so total_alpha is per subnet and the network block carries only counts plus the median top-1 share. sort is one of top1_share (default), top5_share, top10_share, top20_share, holder_count, total_alpha; unmeasurable subnets sort LAST. Declines with an empty list plus a degraded block while the pool ledger has no complete pass, so an empty list WITHOUT that block is a measurement. Mainnet only. Mirrors GET /api/v1/chain/holders."
     chain_holders(sort: String, limit: Int): ChainHolders!
+    "Every recorded change to the emission gate -- its governance parameters, the per-subnet emission switches, and the dormant TAO-flow path, in one chronological feed. network_parameters serves these as CURRENT state; this says when they became that and what they were before. CRITICAL FOR COUNTING: predates_capture means the entry is the FIRST OBSERVATION of a value, not a change to it, so subtract predates_capture_count before reporting how often something changed. Each entry carries only the fields its kind has. kind filters to param, subnet or flow; newest first across all three tables. An empty feed is the steady state, not an error. Mainnet only. Mirrors GET /api/v1/chain/governance/emission-changes."
+    emission_changes(kind: String, limit: Int): EmissionGateChanges!
     "The USD price of one TAO with the derivation behind it, plus the recent series. Composed per ADR 0025 -- a liquidity-weighted median across qualifying wTAO/WETH pools with 2% outlier rejection and a two-pool quorum, multiplied through an ETH/USDC anchor -- because no TAO/USD pair exists on chain. A null usd_per_tao is a STATED OUTCOME (price_basis insufficient_pools), never a zero price. window is 1h, 24h (default), 7d or 30d. The series begins 2026-08-02, so a wide window returns everything that exists and oldest_observed_at says how far back that is. Mainnet only. Mirrors GET /api/v1/network/tao-usd."
     tao_usd(window: String): TaoUsd!
     "When one subnet's public surfaces were added, changed or removed, and in which commit. subnet_surfaces says what a subnet exposes TODAY; this says when that became true. A delete entry is the ONLY evidence a surface ever existed -- the registry keeps no trace of a removed surface. surface_count counts distinct surfaces with a recorded mutation, which is NOT the current surface count. The full surface record is not repeated here; read subnet_surfaces for that. Newest first. A subnet whose surfaces never changed resolves to an empty trail, never an error. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/surface-history."
@@ -2860,6 +2862,40 @@ export const SDL = /* GraphQL */ `
     surface_count: Int!
     latest_change_at: String
     changes: [SurfaceHistoryChange!]!
+  }
+
+  "One recorded change to the emission gate. Shape varies by kind: a param entry has no netuid, a subnet entry has no numeric value."
+  type EmissionGateChange {
+    "param, subnet or flow."
+    kind: String!
+    observed_at: String!
+    block_number: Int
+    "TRUE means this row is the FIRST OBSERVATION of a value, not a change to it -- subtract these before counting governance events."
+    predates_capture: Boolean!
+    "param entries only."
+    param: String
+    value: Float
+    previous_value: Float
+    "governance set it, or the runtime recomputed it."
+    source: String
+    "subnet and flow entries."
+    netuid: Int
+    enabled: Boolean
+    previous_enabled: Boolean
+    "flow entries only."
+    item: String
+    is_set: Boolean
+  }
+
+  type EmissionGateChanges {
+    schema_version: Int!
+    kind: String
+    limit: Int
+    change_count: Int!
+    "How many returned entries are first observations rather than changes."
+    predates_capture_count: Int!
+    latest_change_at: String
+    changes: [EmissionGateChange!]!
   }
 
   "One subnet's alpha-ownership concentration."

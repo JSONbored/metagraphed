@@ -95,6 +95,17 @@ export const CHAIN_HOLDERS_LIMIT_MAX = 512;
 export const SURFACE_HISTORY_LIMIT_DEFAULT = 50;
 export const SURFACE_HISTORY_LIMIT_MAX = 200;
 
+/**
+ * `/api/v1/chain/governance/emission-changes` -- the emission-gate change log (#9615).
+ *
+ * Analytics-feed sizing, like the identity-history feed below. The three source
+ * tables gain a row only when a value actually moves, so the whole log is 171
+ * rows today -- the cap exists for the day it is not, and because the union
+ * read is unbounded without one.
+ */
+export const EMISSION_CHANGES_LIMIT_DEFAULT = 50;
+export const EMISSION_CHANGES_LIMIT_MAX = 200;
+
 /** `/api/v1/accounts` -- site-wide accounts leaderboard. */
 export const ACCOUNTS_LIST_LIMIT_DEFAULT = 20;
 export const ACCOUNTS_LIST_LIMIT_MAX = 100;

@@ -1305,6 +1305,37 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/chain/governance/emission-changes",
+    (body) => {
+      // #9615. These tables gain a row only when a value MOVED, so an empty
+      // feed is the steady state -- never a 404.
+      assert.equal(Array.isArray(body.data.changes), true);
+      assert.equal(typeof body.data.change_count, "number");
+      // Newest first ACROSS all three tables: the union is taken in SQL so the
+      // cap means "the newest N changes", not the newest N of each.
+      const at = body.data.changes.map((c: { observed_at: string }) =>
+        Date.parse(c.observed_at),
+      );
+      assert.deepEqual(
+        at,
+        [...at].sort((a: number, b: number) => b - a),
+      );
+      // predates_capture rides on EVERY entry -- a first observation is not a
+      // governance event, and the count is what lets a reader subtract them.
+      for (const c of body.data.changes) {
+        assert.equal(typeof c.predates_capture, "boolean");
+        assert.equal(["param", "subnet", "flow"].includes(c.kind), true);
+        // Each kind carries only its own fields: a param entry has no netuid.
+        if (c.kind === "param") assert.equal("netuid" in c, false);
+        if (c.kind === "subnet") assert.equal("value" in c, false);
+      }
+      assert.equal(
+        body.data.predates_capture_count <= body.data.change_count,
+        true,
+      );
+    },
+  ],
+  [
     "/api/v1/chain/holders",
     (body) => {
       // #9607. Never 404s and never serves a bare empty ranking: either

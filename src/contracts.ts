@@ -24,6 +24,8 @@ import {
   CHAIN_HOLDERS_LIMIT_MAX,
   SURFACE_HISTORY_LIMIT_DEFAULT,
   SURFACE_HISTORY_LIMIT_MAX,
+  EMISSION_CHANGES_LIMIT_DEFAULT,
+  EMISSION_CHANGES_LIMIT_MAX,
 } from "./route-limits.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1661,6 +1663,13 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/subnets/{netuid}/surface-history.json",
     `When one subnet's public surfaces were added, changed or removed, and in which commit (#9612). The registry publishes what a subnet exposes TODAY; this answers when that became true -- the question behind 'did this API move?' and 'when did this subnet stop publishing an OpenAPI spec?'. Each entry names the surface (id, kind, url, name lifted from the recorded overlay), the action (insert, update or delete), the source_commit that produced it, and when it was recorded. A DELETE entry is the only evidence a surface ever existed -- the registry itself carries no trace of a removed surface, which is what makes this trail rather than the surface list the place to ask. IDENTITY IS COALESCED: the upsert path omitted surface_id from its INSERT column list, so 8,831 of the table's 8,892 rows carried a NULL and only the 61 deletes recorded one. Migration 0024 backfilled the column from the overlay's own id -- present on every row -- and the writer now records it, but this route still falls back to the overlay because migrations here are applied by hand and a fresh or restored database will have the nulls back. The overlay itself is READ, not republished: only the fields identifying WHAT changed are lifted out, and a caller wanting the full surface record reads /subnets/{netuid}/surfaces, which is that document's home. surface_count counts distinct surfaces with a recorded mutation, which is NOT the subnet's current surface count -- a deleted surface appears here and not there, and that difference is the point. limit caps the entries (default ${SURFACE_HISTORY_LIMIT_DEFAULT}, max ${SURFACE_HISTORY_LIMIT_MAX}), newest first. A subnet whose surfaces have never changed returns an empty trail, never a 404 -- stability is the common case. Mainnet-only: the registry sync that writes this table is mainnet's.`,
     "SubnetSurfaceHistoryArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
+    "emission-gate-changes",
+    "/metagraph/chain/governance/emission-changes.json",
+    `Every recorded change to the emission gate (#9615) -- its governance parameters, the per-subnet emission switches, and the dormant TAO-flow path, in one chronological feed. Three append-on-change tables written only when a value actually MOVED, so the tables ARE the change log. /network/parameters serves these as CURRENT state; this answers when they became that and what they were before, which is the question behind 'did governance move the gate before that emission shift?'. ONE FEED, THREE SHAPES: each entry declares its kind (param, subnet or flow) and carries ONLY the fields that kind has -- a param entry has no netuid, a subnet entry has no numeric value -- with the rest ABSENT rather than null, because an absent field says 'this kind has no such thing' where a null would say 'it has one and we do not know it'. predates_capture IS PUBLISHED ON EVERY ENTRY and matters: the sampler records a row the first time it OBSERVES a value, not the first time that value changed, so on such a row previous_value is null and the flag is true -- it is NOT a governance event. predates_capture_count reports how many of the returned entries are first observations, because a reader counting governance events must subtract them. source separates a value governance SET from one the runtime RECOMPUTED, two different events a bare value cannot tell apart. ?kind= filters to one of the three; ?limit= caps the feed (default ${EMISSION_CHANGES_LIMIT_DEFAULT}, max ${EMISSION_CHANGES_LIMIT_MAX}), newest first ACROSS all three tables -- the union is taken in SQL so the cap means 'the newest N changes' rather than the newest N of each. An empty feed is the steady state, never a 404: these tables only gain rows when something moves. Mainnet-only: the sampler that writes them reads finney.`,
+    "EmissionGateChangesArtifact",
     COMPUTED_LIVE,
   ),
   artifact(
@@ -3901,6 +3910,30 @@ export const API_ROUTES = [
     ],
   ),
   route(
+    "emission-gate-changes",
+    "GET",
+    "/api/v1/chain/governance/emission-changes",
+    "/metagraph/chain/governance/emission-changes.json",
+    `Fetch the emission-gate change log. Every recorded change to the emission gate (#9615) -- its governance parameters, the per-subnet emission switches, and the dormant TAO-flow path, in one chronological feed. Three append-on-change tables written only when a value actually MOVED, so the tables ARE the change log. /network/parameters serves these as CURRENT state; this answers when they became that and what they were before, which is the question behind 'did governance move the gate before that emission shift?'. ONE FEED, THREE SHAPES: each entry declares its kind (param, subnet or flow) and carries ONLY the fields that kind has -- a param entry has no netuid, a subnet entry has no numeric value -- with the rest ABSENT rather than null, because an absent field says 'this kind has no such thing' where a null would say 'it has one and we do not know it'. predates_capture IS PUBLISHED ON EVERY ENTRY and matters: the sampler records a row the first time it OBSERVES a value, not the first time that value changed, so on such a row previous_value is null and the flag is true -- it is NOT a governance event. predates_capture_count reports how many of the returned entries are first observations, because a reader counting governance events must subtract them. source separates a value governance SET from one the runtime RECOMPUTED, two different events a bare value cannot tell apart. ?kind= filters to one of the three; ?limit= caps the feed (default ${EMISSION_CHANGES_LIMIT_DEFAULT}, max ${EMISSION_CHANGES_LIMIT_MAX}), newest first ACROSS all three tables -- the union is taken in SQL so the cap means 'the newest N changes' rather than the newest N of each. An empty feed is the steady state, never a 404: these tables only gain rows when something moves. Mainnet-only: the sampler that writes them reads finney.`,
+    "short",
+    ["chain"],
+    [
+      {
+        name: "kind",
+        schema: { type: "string", enum: ["param", "subnet", "flow"] },
+      },
+      {
+        name: "limit",
+        schema: {
+          type: "integer",
+          minimum: 1,
+          maximum: EMISSION_CHANGES_LIMIT_MAX,
+        },
+      },
+    ],
+    [],
+  ),
+  route(
     "chain-holders",
     "GET",
     "/api/v1/chain/holders",
@@ -5267,6 +5300,8 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   "/api/v1/network/tao-usd",
   // #9612: written by the registry sync, which is mainnet's.
   "/api/v1/subnets/{netuid}/surface-history",
+  // #9615: the sampler that writes these tables reads finney.
+  "/api/v1/chain/governance/emission-changes",
   "/api/v1/economics/trends",
   "/api/v1/health",
   "/api/v1/subnets/{netuid}/health",

@@ -1202,6 +1202,15 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "emission-gate-changes",
+      "path": "/metagraph/chain/governance/emission-changes.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/EmissionGateChangesArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "chain-holders",
       "path": "/metagraph/chain/holders.json",
       "retirement": null,
@@ -2227,7 +2236,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 88,
+    "mainnet_only_route_count": 89,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -9003,6 +9012,42 @@
       "query_collection": null,
       "query_filter_names": [],
       "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 200,
+            "minimum": 1,
+            "type": "integer"
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/chain/governance/emission-changes.json",
+      "cache": "short",
+      "description": "Fetch the emission-gate change log. Every recorded change to the emission gate (#9615) -- its governance parameters, the per-subnet emission switches, and the dormant TAO-flow path, in one chronological feed. Three append-on-change tables written only when a value actually MOVED, so the tables ARE the change log. /network/parameters serves these as CURRENT state; this answers when they became that and what they were before, which is the question behind 'did governance move the gate before that emission shift?'. ONE FEED, THREE SHAPES: each entry declares its kind (param, subnet or flow) and carries ONLY the fields that kind has -- a param entry has no netuid, a subnet entry has no numeric value -- with the rest ABSENT rather than null, because an absent field says 'this kind has no such thing' where a null would say 'it has one and we do not know it'. predates_capture IS PUBLISHED ON EVERY ENTRY and matters: the sampler records a row the first time it OBSERVES a value, not the first time that value changed, so on such a row previous_value is null and the flag is true -- it is NOT a governance event. predates_capture_count reports how many of the returned entries are first observations, because a reader counting governance events must subtract them. source separates a value governance SET from one the runtime RECOMPUTED, two different events a bare value cannot tell apart. ?kind= filters to one of the three; ?limit= caps the feed (default 50, max 200), newest first ACROSS all three tables -- the union is taken in SQL so the cap means 'the newest N changes' rather than the newest N of each. An empty feed is the steady state, never a 404: these tables only gain rows when something moves. Mainnet-only: the sampler that writes them reads finney.",
+      "id": "emission-gate-changes",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/chain/governance/emission-changes",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "kind",
+          "schema": {
+            "enum": [
+              "param",
+              "subnet",
+              "flow"
+            ],
+            "type": "string"
+          }
+        },
         {
           "name": "limit",
           "schema": {
