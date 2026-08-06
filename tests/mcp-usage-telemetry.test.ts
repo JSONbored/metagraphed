@@ -1,10 +1,17 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
+  POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV,
   POSTHOG_PROJECT_TOKEN_ENV,
   USAGE_EVENT_DISTINCT_ID,
+  admitMcpRefusalCapture,
 } from "../src/usage-telemetry.ts";
-import { handleMcpRequest, mcpDistinctId } from "../src/mcp-server.ts";
+import {
+  handleMcpRequest,
+  mcpDistinctId,
+  mcpRefusalReason,
+  scheduleMcpRefusalEvent,
+} from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
 
 const CONFIGURED_ENV = { [POSTHOG_PROJECT_TOKEN_ENV]: "phc_test_token" };
@@ -1191,6 +1198,321 @@ describe("mcpDistinctId precedence (#9054)", () => {
     assert.notEqual(
       mcpDistinctId(undefined, "github:someone"),
       "github:someone",
+    );
+  });
+});
+
+// #9639: every refusal that returns before dispatchMessage used to emit
+// nothing. `/mcp` is excluded from withUsageTelemetry because the dispatch
+// loop instruments itself (#8993), so a request refused ABOVE the loop fell
+// between the two and a throttled or quota-exhausted client just stopped
+// appearing.
+describe("MCP pre-dispatch refusal telemetry (#9639)", () => {
+  const refusalEvents = (spy: { events: Row[] }) =>
+    spy.events.filter((e) =>
+      String((e.event as Row)?.route ?? "").startsWith("mcp:refused:"),
+    );
+
+  test("a 405 refusal is recorded with its reason", async () => {
+    const spy = recorder();
+    const ctx = fakeExecutionCtx();
+    const response = await handleMcpRequest(
+      new Request("https://api.metagraph.sh/mcp", { method: "PUT" }),
+      CONFIGURED_ENV as unknown as Env,
+      makeDeps({
+        recordUsageEvent: spy.recordUsageEvent,
+        executionCtx: ctx,
+      }),
+    );
+    // The response itself must be untouched by the instrumentation.
+    assert.equal(response.status, 405);
+    assert.equal(response.headers.get("allow"), "GET, POST, DELETE, OPTIONS");
+
+    const events = refusalEvents(spy);
+    assert.equal(events.length, 1);
+    const event = events[0]!.event as Row;
+    assert.equal(event.route, "mcp:refused:method_not_allowed");
+    assert.equal(event.ok, false);
+    assert.equal(event.status, 405);
+    assert.equal(event.method, "PUT");
+  });
+
+  // The other half of the boundary rule: a DISPATCHED call must not be
+  // counted as a refusal. Dispatch answers 2xx even when the JSON-RPC body
+  // carries an error, which is exactly why `response.ok` is the discriminator.
+  test("a dispatched tools/call records no refusal, even when it errors", async () => {
+    const spy = recorder();
+    const body = await callMcp(toolCall("definitely_not_a_real_tool"), {
+      ...CONFIGURED_ENV,
+    });
+    assert.equal((body.result as Row)?.isError, true);
+    assert.deepEqual(refusalEvents(spy), []);
+  });
+
+  test("a malformed JSON body is recorded as bad_request", async () => {
+    const spy = recorder();
+    const ctx = fakeExecutionCtx();
+    const response = await handleMcpRequest(
+      new Request("https://api.metagraph.sh/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{not json",
+      }),
+      CONFIGURED_ENV as unknown as Env,
+      makeDeps({
+        recordUsageEvent: spy.recordUsageEvent,
+        executionCtx: ctx,
+      }),
+    );
+    assert.equal(response.ok, false);
+    const events = refusalEvents(spy);
+    assert.equal(events.length, 1);
+    assert.equal((events[0]!.event as Row).ok, false);
+  });
+
+  // The storm guard is the whole reason this is safe to unsample. A caller
+  // hammering the same refusal must produce ONE event per window carrying the
+  // suppressed count, not one per request.
+  test("repeated identical refusals collapse into one event per window", async () => {
+    const spy = recorder();
+    // The window is env-gated and DISABLED when unset (the schema's
+    // .positive().catch(0) sentinel), so it has to be configured here or this
+    // test would assert the guard while measuring the disabled path.
+    // Production sets 300000 in wrangler.jsonc.
+    const env = {
+      ...CONFIGURED_ENV,
+      [POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV]: "300000",
+    };
+    const refuse = () =>
+      handleMcpRequest(
+        new Request("https://api.metagraph.sh/mcp", { method: "PUT" }),
+        env as unknown as Env,
+        makeDeps({
+          recordUsageEvent: spy.recordUsageEvent,
+          executionCtx: fakeExecutionCtx(),
+        }),
+      );
+    for (let i = 0; i < 5; i += 1) await refuse();
+    assert.equal(
+      refusalEvents(spy).length,
+      1,
+      "five refusals, one event -- the rest are suppressed into its counter",
+    );
+  });
+
+  // The counter itself, driven directly so the window boundary is exact
+  // rather than wall-clock dependent.
+  test("the guard reports how many it suppressed on the next admission", () => {
+    const env = {
+      [POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV]: "1000",
+    } as unknown as Env;
+    assert.equal(admitMcpRefusalCapture(env, "rate_limited", 0), 0);
+    assert.equal(admitMcpRefusalCapture(env, "rate_limited", 10), null);
+    assert.equal(admitMcpRefusalCapture(env, "rate_limited", 20), null);
+    // Next window opens: the two held occurrences are reported, not lost.
+    assert.equal(admitMcpRefusalCapture(env, "rate_limited", 1000), 2);
+    // A DIFFERENT reason keeps its own window -- a rate-limit storm must not
+    // silence the first daily-quota refusal.
+    assert.equal(admitMcpRefusalCapture(env, "daily_quota", 20), 0);
+  });
+
+  test("an unset window disables the guard rather than blocking every event", () => {
+    assert.equal(admitMcpRefusalCapture({} as unknown as Env, "x", 0), 0);
+    assert.equal(admitMcpRefusalCapture({} as unknown as Env, "x", 1), 0);
+  });
+
+  // Telemetry must never surface into the MCP path: a recorder that throws
+  // has to leave the refusal response exactly as it was.
+  test("a throwing recorder cannot change the response", async () => {
+    const response = await handleMcpRequest(
+      new Request("https://api.metagraph.sh/mcp", { method: "PUT" }),
+      CONFIGURED_ENV as unknown as Env,
+      makeDeps({
+        recordUsageEvent: () => {
+          throw new Error("recorder exploded");
+        },
+        executionCtx: fakeExecutionCtx(),
+      }),
+    );
+    assert.equal(response.status, 405);
+  });
+
+  // With no PostHog token the whole path is a no-op -- it must not throw and
+  // must not attempt to record.
+  test("an unconfigured environment records nothing and still refuses", async () => {
+    const spy = recorder();
+    const response = await handleMcpRequest(
+      new Request("https://api.metagraph.sh/mcp", { method: "PUT" }),
+      {} as unknown as Env,
+      makeDeps({
+        recordUsageEvent: spy.recordUsageEvent,
+        executionCtx: fakeExecutionCtx(),
+      }),
+    );
+    assert.equal(response.status, 405);
+    assert.deepEqual(refusalEvents(spy), []);
+  });
+});
+
+// The reason mapper, driven directly. Every arm is a distinct operational
+// question, and only 405/400 are reachable by constructing a Request -- a 429
+// needs a rate-limiter verdict and a 413 an oversized body, so asserting them
+// through the HTTP path would test the gate rather than the mapping.
+describe("mcpRefusalReason (#9639)", () => {
+  const withScope = (status: number, scope?: string) =>
+    new Response(null, {
+      status,
+      headers: scope ? { "x-ratelimit-scope": scope } : {},
+    });
+
+  test("429 splits on x-ratelimit-scope, the header #8608 added for this", () => {
+    assert.equal(
+      mcpRefusalReason(withScope(429, "daily-quota")),
+      "daily_quota",
+    );
+    assert.equal(mcpRefusalReason(withScope(429, "blocked")), "blocked");
+    assert.equal(
+      mcpRefusalReason(withScope(429, "per-minute")),
+      "rate_limited",
+    );
+    // A 429 with no scope header is still a refusal, not an unlabelled one.
+    assert.equal(mcpRefusalReason(withScope(429)), "rate_limited");
+  });
+
+  test("each other refusal status maps to its own reason", () => {
+    assert.equal(mcpRefusalReason(withScope(405)), "method_not_allowed");
+    assert.equal(mcpRefusalReason(withScope(413)), "body_too_large");
+    assert.equal(mcpRefusalReason(withScope(400)), "bad_request");
+    assert.equal(mcpRefusalReason(withScope(401)), "unauthorized");
+  });
+
+  // The point of instrumenting at the boundary: a refusal added later is
+  // counted without editing this mapper.
+  test("an unmapped 4xx/5xx still gets a stable label", () => {
+    assert.equal(mcpRefusalReason(withScope(418)), "status_418");
+    assert.equal(mcpRefusalReason(withScope(503)), "status_503");
+  });
+
+  test("a non-error status is not a refusal", () => {
+    assert.equal(mcpRefusalReason(withScope(302)), null);
+    assert.equal(mcpRefusalReason(withScope(200)), null);
+  });
+});
+
+describe("scheduleMcpRefusalEvent guards (#9639)", () => {
+  const req = () =>
+    new Request("https://api.metagraph.sh/mcp", { method: "POST" });
+
+  test("a non-2xx the mapper does not recognise records nothing", () => {
+    const spy = recorder();
+    const ctx = fakeExecutionCtx();
+    scheduleMcpRefusalEvent(
+      req(),
+      CONFIGURED_ENV as unknown as Env,
+      { recordUsageEvent: spy.recordUsageEvent, executionCtx: ctx },
+      new Response(null, { status: 302 }),
+    );
+    assert.deepEqual(spy.events, []);
+  });
+
+  test("a throttled reason is held back entirely", () => {
+    const env = {
+      ...CONFIGURED_ENV,
+      [POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV]: "300000",
+    } as unknown as Env;
+    const spy = recorder();
+    const fire = () =>
+      scheduleMcpRefusalEvent(
+        req(),
+        env,
+        {
+          recordUsageEvent: spy.recordUsageEvent,
+          executionCtx: fakeExecutionCtx(),
+        },
+        new Response(null, { status: 413 }),
+      );
+    fire();
+    fire();
+    fire();
+    assert.equal(spy.events.length, 1);
+  });
+
+  // suppressed_occurrences rides on the NEXT admission, and is omitted rather
+  // than sent as 0 when nothing was held -- a zero would read as a measured
+  // quiet window instead of "first sighting".
+  test("suppressed_occurrences is omitted on a clean window and present after a burst", () => {
+    const spy = recorder();
+    scheduleMcpRefusalEvent(
+      req(),
+      CONFIGURED_ENV as unknown as Env,
+      {
+        recordUsageEvent: spy.recordUsageEvent,
+        executionCtx: fakeExecutionCtx(),
+      },
+      new Response(null, { status: 401 }),
+    );
+    const event = spy.events[0]!.event as Row;
+    assert.equal(event.route, "mcp:refused:unauthorized");
+    assert.equal("suppressed_occurrences" in event, false);
+  });
+
+  // The other side of that ternary: once a window rolls over, the count of
+  // what was held is carried on the next event rather than discarded. Uses a
+  // 1ms window and a real rollover -- admitMcpRefusalCapture takes an explicit
+  // clock but scheduleMcpRefusalEvent deliberately does not, so this is the
+  // honest way to cross the boundary through the real call path. A distinct
+  // status keys its own reason, so no earlier test in this file can prime it.
+  test("suppressed_occurrences rides the first event of the next window", async () => {
+    const env = {
+      ...CONFIGURED_ENV,
+      [POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV]: "1",
+    } as unknown as Env;
+    const spy = recorder();
+    const fire = () =>
+      scheduleMcpRefusalEvent(
+        req(),
+        env,
+        {
+          recordUsageEvent: spy.recordUsageEvent,
+          executionCtx: fakeExecutionCtx(),
+        },
+        new Response(null, { status: 418 }),
+      );
+    fire();
+    fire();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    fire();
+    assert.equal(spy.events.length, 2, "one per window, not one per call");
+    const second = spy.events[1]!.event as Row;
+    assert.equal(second.route, "mcp:refused:status_418");
+    assert.equal(second.suppressed_occurrences, 1);
+  });
+
+  test("a recorder that rejects is swallowed, never surfaced", async () => {
+    const ctx = fakeExecutionCtx();
+    scheduleMcpRefusalEvent(
+      req(),
+      CONFIGURED_ENV as unknown as Env,
+      {
+        recordUsageEvent: () => Promise.reject(new Error("posthog down")),
+        executionCtx: ctx,
+      },
+      new Response(null, { status: 400 }),
+    );
+    // The scheduled promise must settle rather than reject -- an unhandled
+    // rejection inside waitUntil is a Worker-level error.
+    assert.equal(await ctx.scheduled[0], false);
+  });
+
+  test("falls back to the module recorder when deps supply none", () => {
+    // No executionCtx either: the optional-chained waitUntil must not throw.
+    assert.doesNotThrow(() =>
+      scheduleMcpRefusalEvent(
+        req(),
+        CONFIGURED_ENV as unknown as Env,
+        {},
+        new Response(null, { status: 405 }),
+      ),
     );
   });
 });

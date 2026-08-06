@@ -123,6 +123,8 @@ registerModuleStateReset("src/usage-telemetry.ts", () => {
   // the next file, which is precisely the cross-file channel this registry
   // exists to close.
   exceptionThrottle.clear();
+  // Same hazard, same reason, for the MCP refusal guard (#9639).
+  mcpRefusalThrottle.clear();
 });
 
 function parseRate(value: unknown): number | undefined {
@@ -1195,6 +1197,47 @@ export function admitExceptionCapture(
   const state = exceptionThrottle.get(fingerprint);
   if (state === undefined || nowMs - state.windowStartedAtMs >= windowMs) {
     exceptionThrottle.set(fingerprint, {
+      windowStartedAtMs: nowMs,
+      suppressed: 0,
+    });
+    return state?.suppressed ?? 0;
+  }
+  state.suppressed += 1;
+  return null;
+}
+
+// The MCP pre-dispatch refusal guard (#9639). Its own map, not a shared
+// namespace on exceptionThrottle: these are analytics `usage_event`s, not
+// $exception captures, and a burst of one must never consume the other's
+// window. It reuses exceptionStormWindowMs deliberately -- the question
+// ("how often may one repeating signal speak") is identical, and a second
+// knob would be one more thing to set correctly on four wrangler configs.
+const mcpRefusalThrottle = new Map<string, ExceptionThrottleState>();
+
+/**
+ * Decide whether this MCP refusal reason may emit now. Same contract as
+ * admitExceptionCapture: the number of occurrences suppressed since the last
+ * emission when it may (0 on first sighting), or null when it must be held.
+ *
+ * WHY A REFUSAL NEEDS A GUARD AT ALL. resolveUsageSampleRate returns 1 for
+ * `ok: false` AND for the `mcp:` route prefix, so a refusal event is
+ * unsampled twice over -- correct for a signal that should never be lost, and
+ * a quota hazard for one a single caller can generate without bound. A client
+ * hammering the rate limiter produces one refusal per request; that is the
+ * shape that spent a month's event budget in two days. One event per reason
+ * per window, carrying the suppressed count, keeps the signal and drops the
+ * storm.
+ */
+export function admitMcpRefusalCapture(
+  env: Env | null | undefined,
+  reason: string,
+  nowMs: number = Date.now(),
+): number | null {
+  const windowMs = exceptionStormWindowMs(env);
+  if (windowMs === 0) return 0;
+  const state = mcpRefusalThrottle.get(reason);
+  if (state === undefined || nowMs - state.windowStartedAtMs >= windowMs) {
+    mcpRefusalThrottle.set(reason, {
       windowStartedAtMs: nowMs,
       suppressed: 0,
     });
