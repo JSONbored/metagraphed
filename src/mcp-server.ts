@@ -36,6 +36,7 @@
 // a dedicated ADR amendment with its own consent model, not as an incremental
 // tool addition.
 import { loadSubnetWeightSettersColdTier } from "./subnet-weight-setters-loader.ts";
+import { serveWithSdk } from "./mcp-sdk-adapter.ts";
 import { z } from "zod";
 import {
   SearchSubnetsInputSchema,
@@ -14975,6 +14976,24 @@ async function dispatchTool(
   }
 }
 
+/**
+ * Is this a JSON-RPC 2.0 message this server will route?
+ *
+ * Extracted from dispatchMessage's own guard (#9647) so there is exactly one
+ * definition. serveMcpThroughSdk needs the same answer BEFORE handing a
+ * request to the SDK, and two copies of "well-formed" is precisely how the two
+ * envelopes would start disagreeing about what a malformed request is.
+ */
+export function isDispatchableJsonRpcMessage(message: unknown): boolean {
+  const row = message as Row | null;
+  return (
+    row !== null &&
+    typeof row === "object" &&
+    row.jsonrpc === JSONRPC_VERSION &&
+    typeof row.method === "string"
+  );
+}
+
 // Dispatch a single JSON-RPC message. Returns the response object for requests,
 // or null for notifications (no id).
 async function dispatchMessage(message: Row, ctx: McpCtx) {
@@ -14985,12 +15004,7 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
     message.id === null;
   const id = isNotification ? null : message.id;
 
-  if (
-    message === null ||
-    typeof message !== "object" ||
-    message.jsonrpc !== JSONRPC_VERSION ||
-    typeof message.method !== "string"
-  ) {
+  if (!isDispatchableJsonRpcMessage(message)) {
     if (isNotification) return null;
     return rpcError(id, RPC_INVALID_REQUEST, "Invalid JSON-RPC request.");
   }
@@ -15877,6 +15891,112 @@ export function scheduleMcpRefusalEvent(
   }
 }
 
+/**
+ * Is `/mcp` answering through @modelcontextprotocol/sdk (#9647)?
+ *
+ * DEFAULT OFF, and deliberately a runtime flag rather than a build constant:
+ * the point of shipping the SDK envelope dark is that turning it on -- and
+ * more importantly turning it back off -- is a `wrangler secret put` away
+ * rather than a deploy, on the surface with the most external callers.
+ *
+ * Accepts only the exact string "1", not any truthy value. A flag whose off
+ * state depends on a variable being unset is one stray empty-string binding
+ * away from silently enabling itself.
+ */
+export function mcpSdkEnvelopeEnabled(env: Env): boolean {
+  return (env as unknown as Row)?.MCP_SDK_ENVELOPE === "1";
+}
+
+/**
+ * Is every message in this request body one the SDK envelope may handle?
+ *
+ * A batch qualifies only if ALL its members do -- the SDK rejects a mixed
+ * batch wholesale, so routing one there because most of it was fine is how the
+ * valid members would get dropped. Empty arrays never reach this (the batch
+ * guard above answers them).
+ */
+function jsonRpcBodyIsDispatchable(body: Row | Row[]): boolean {
+  return Array.isArray(body)
+    ? body.every(isDispatchableJsonRpcMessage)
+    : isDispatchableJsonRpcMessage(body);
+}
+
+/**
+ * Serve one already-gauntleted MCP request through the SDK envelope.
+ *
+ * Everything metagraphed-specific has ALREADY RUN by the time this is called:
+ * the tiered rate limit, the cost-weighted quota, the 64 KB body cap, the
+ * protocol-version header check and both batch guards. This is only the
+ * envelope -- JSON-RPC framing, batch correlation, 202-on-notification -- with
+ * every method still answered by dispatchMessage.
+ */
+async function serveMcpThroughSdk(
+  request: Request,
+  body: Row | Row[],
+  ctx: McpCtx,
+  env: Env,
+) {
+  // The single message's response, captured on the way past so session minting
+  // can read it without parsing the SDK's serialized body back into an object.
+  // Left null for a batch, which is what mintMcpSessionHeaderIfNeeded already
+  // expects: a batched initialize mints no session.
+  let single: Row | null = null;
+  const isBatch = Array.isArray(body);
+
+  const sdkResponse = await serveWithSdk(
+    // REBUILT, not forwarded: readLimitedMcpBody has already consumed the
+    // original stream, so the transport would find an empty body on it.
+    new Request(request.url, {
+      method: "POST",
+      headers: {
+        // NORMALIZED, and this is the one place the SDK is deliberately
+        // overruled. Its transport 406s any POST whose Accept header does not
+        // literally contain BOTH "application/json" and "text/event-stream".
+        // The spec does tell clients to send that, but this server has never
+        // required it, and most of its traffic is scripted callers (curl,
+        // python-requests) that send `*/*` -- which fails a substring test.
+        // Enforcing it at the same moment we swap envelopes would present as
+        // "the migration broke every script", so the guarantee is stated on
+        // the caller's behalf: we do accept both, and answer JSON.
+        accept: "application/json, text/event-stream",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }),
+    {
+      serverInfo: MCP_SERVER_INFO,
+      capabilities: MCP_CAPABILITIES,
+      instructions: MCP_INSTRUCTIONS,
+      dispatch: async (message) => {
+        const response = await dispatchMessage(message, ctx);
+        if (!isBatch) single = response;
+        return response;
+      },
+    },
+  );
+
+  const sessionHeaders = mintMcpSessionHeaderIfNeeded(
+    body,
+    single,
+    ctx.pendingSessionId ?? null,
+  );
+  // Awaited before the id reaches the client, for the same reason as the
+  // hand-rolled path: the client may open the GET stream on the next tick, and
+  // registering after the response is a race the client wins.
+  await registerMcpSession(env, sessionHeaders["mcp-session-id"]);
+
+  // MCP_HEADERS overlaid rather than appended. The transport sets a bare
+  // `content-type: application/json` on a JSON reply and NOTHING on a 202, so
+  // without this the CORS headers, the charset and `cache-control: no-store`
+  // would all silently disappear the moment the flag flipped -- a caching
+  // change and a browser-client breakage, neither of them anything to do with
+  // JSON-RPC.
+  return new Response(sdkResponse.body, {
+    status: sdkResponse.status,
+    headers: { ...MCP_HEADERS, ...sessionHeaders },
+  });
+}
+
 // Entry point wired into the Worker at `/mcp`. `deps` injects the shared
 // artifact/KV readers from workers/api.ts. POST carries the stateless
 // JSON-RPC 2.0 envelope; GET opens the SSE push stream; DELETE terminates a
@@ -15983,6 +16103,12 @@ async function dispatchMcpRequest(
 
   // Legacy JSON-RPC batch (array). MCP 2025-06-18 removed batching, but cap
   // older-client compatibility so one HTTP request cannot fan out unboundedly.
+  //
+  // HOISTED OUT of the dispatch branch below (#9647) so both envelopes are
+  // capped by it. The SDK's transport fans a batch out with no ceiling of its
+  // own, so leaving this inside the hand-rolled branch would have made the
+  // flag that swaps envelopes also silently remove the fan-out bound -- a
+  // resource limit quietly becoming conditional on an unrelated flag.
   if (Array.isArray(body)) {
     if (body.length === 0) {
       return jsonResponse(
@@ -16000,6 +16126,37 @@ async function dispatchMcpRequest(
         400,
       );
     }
+  }
+
+  // THE SDK ONLY EVER SEES WELL-FORMED MESSAGES (#9647). Its transport parses
+  // every member against its own JSON-RPC schema first and, on any failure,
+  // answers `400 -32700 Parse error: Invalid JSON-RPC message` for the WHOLE
+  // request. That differs from this server three ways, and each one is a
+  // regression rather than a preference:
+  //
+  //   classification  a well-formed JSON body that is not a valid JSON-RPC
+  //                   message is Invalid Request (-32600), not Parse error
+  //                   (-32700) -- the spec reserves -32700 for JSON that did
+  //                   not parse. We answer -32600; the SDK answers -32700.
+  //   status          ours rides inside a 200 (a JSON-RPC error is a
+  //                   successful HTTP exchange). The SDK's 400 would also make
+  //                   every malformed request start emitting the #9639 refusal
+  //                   event, quietly changing what that metric counts.
+  //   batch           ours answers the VALID members of a mixed batch and
+  //                   reports an error only for the bad one. The SDK rejects
+  //                   the entire batch, so a client with one bad member
+  //                   silently loses the results of its good ones.
+  //
+  // Rather than shim any of that back afterwards, malformed input simply never
+  // reaches the SDK: it is answered by dispatchMessage below, which is the
+  // funnel being KEPT (step 4 deletes the envelope, not this). One cheap
+  // predicate, shared with dispatchMessage itself, makes the flag
+  // behaviour-neutral by construction instead of by inspection.
+  if (mcpSdkEnvelopeEnabled(env) && jsonRpcBodyIsDispatchable(body)) {
+    return serveMcpThroughSdk(request, body, ctx, env);
+  }
+
+  if (Array.isArray(body)) {
     // Dispatch independent batch members concurrently (#2060): JSON-RPC 2.0
     // correlates responses by `id`, not position, and the handlers are read-only
     // over D1/artifacts with no shared mutable `ctx` state, so a batch's
