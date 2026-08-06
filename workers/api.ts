@@ -287,6 +287,7 @@ import { handleFullnodeRpcProxyRequest } from "./request-handlers/fullnode-rpc-p
 import {
   buildChangeEvent,
   deliverChangeEvent,
+  deliveryStorageKey,
   deliveryStoragePrefix,
   eventMatchesFilters,
   webhookEventId,
@@ -301,6 +302,7 @@ import {
   WEBHOOK_REDELIVERY_LIST_LIMIT,
   timingSafeEqual,
   validateSubscriptionInput,
+  WEBHOOK_DELIVERY_TTL_SECONDS,
   WEBHOOK_EVENT_ID_HEADER,
   WEBHOOK_IDEMPOTENCY_HEADER,
   WEBHOOK_SECRET_HEADER,
@@ -309,6 +311,8 @@ import {
 import {
   classifyWebhookBatch,
   planWebhookFanOut,
+  shouldDispatchChangeEvent,
+  WEBHOOK_LAST_DISPATCHED_KEY,
   webhookDeliveryDisposition,
   webhookRetryDelaySeconds,
   WEBHOOK_QUEUE_MAX_ATTEMPTS,
@@ -484,6 +488,7 @@ import {
   BULK_TRENDS_PATH_PATTERN,
   ABUSE_SCAN_CRON,
   UPGRADE_RADAR_CRON,
+  WEBHOOK_DISPATCH_CRON,
   EMBEDDING_SYNC_CRON,
   GITHUB_SIGNALS_SYNC_CRON,
   RAW_CAPTURE_CRON,
@@ -1610,6 +1615,130 @@ export default {
  * stated rule ("a bad subscriber must not block the data pipeline") and is now
  * structural rather than maintained by care.
  */
+/**
+ * List every subscription, select the ones this event matches, and enqueue one
+ * delivery each.
+ *
+ * Shared by the internal route and the cron below so there is ONE fan-out rule.
+ * Two would be two chances to disagree about which subscribers an event reaches,
+ * and the disagreement would be invisible -- a subscriber simply would not hear
+ * about something, which looks exactly like nothing having changed.
+ */
+async function fanOutChangeEvent(
+  env: Env,
+  event: Record<string, unknown>,
+): Promise<{
+  eventId: string;
+  subscriptions: number;
+  messages: number;
+  skipped: number;
+  oversize: number;
+}> {
+  // ONE BODY FOR EVERY SUBSCRIBER, serialised once. Only the per-subscriber
+  // signature and idempotency header differ, and both are computed at delivery
+  // -- so what is enqueued is byte-identical to what is signed, on the first
+  // attempt and on the eighth.
+  const bodyText = JSON.stringify(event);
+  const eventId = await webhookEventId(bodyText);
+
+  const { keys } = await env.METAGRAPH_CONTROL!.list({
+    prefix: WEBHOOK_KV_PREFIX,
+  });
+  const subscriptions = (
+    await Promise.all(
+      keys.map((entry: { name: string }) =>
+        env.METAGRAPH_CONTROL!.get(entry.name, { type: "json" }),
+      ),
+    )
+  ).filter(Boolean) as Record<string, unknown>[];
+
+  const { messages, skipped, oversize } = planWebhookFanOut({
+    subscriptions,
+    eventId,
+    bodyText,
+    matches: (subscription) =>
+      eventMatchesFilters(
+        event,
+        subscription.filters as Parameters<typeof eventMatchesFilters>[1],
+      ),
+  });
+
+  await Promise.all(
+    messages.map((message) => env.WEBHOOK_DELIVERIES!.send(message)),
+  );
+  return {
+    eventId,
+    subscriptions: subscriptions.length,
+    messages: messages.length,
+    skipped,
+    oversize,
+  };
+}
+
+/** The published change event, as the SSE feed builds it -- one construction,
+ * so a webhook and the feed can never describe the same publish differently. */
+async function defaultChangeEvent(env: Env): Promise<Record<string, unknown>> {
+  const [pointer, changelogArtifact] = await Promise.all([
+    latestPointer(env),
+    readArtifact(env, "/metagraph/changelog.json"),
+  ]);
+  // A FAILED READ IS "NOTHING CHANGED", not an error: buildChangeEvent treats a
+  // null changelog as no changes, and shouldDispatchChangeEvent then declines --
+  // so a bad tick costs one quiet cycle rather than firing an empty
+  // notification at every subscriber, and the next tick recovers on its own.
+  return buildChangeEvent({
+    changelog: (changelogArtifact.ok ? changelogArtifact.data : null) as Row,
+    pointer: pointer as unknown as Row,
+  }) as Record<string, unknown>;
+}
+
+/**
+ * The webhook trigger, as a cron (metagraphed-infra#354).
+ *
+ * WHY A CRON AND NOT THE PUBLISH. Delivery used to be a step inside the publish
+ * workflow, which made it hostage to every earlier step: when `Smoke live API`
+ * broke on 2026-08-02, subscribers heard nothing for four days and no webhook
+ * alarm fired, because the thing that would have fired was downstream of the
+ * failure (#9650). A trigger that is not part of the publish cannot be taken
+ * down by it.
+ *
+ * NOTHING TELLS IT A PUBLISH HAPPENED, and it does not need to be told. The
+ * event id is content-addressed, so an unchanged snapshot hashes to the id
+ * already dispatched and is skipped; any real change hashes differently. That
+ * makes the cadence a cost decision rather than a correctness one, and makes a
+ * missed tick self-healing -- the next one still sees the change.
+ */
+export async function dispatchWebhooksFromChangelog(
+  env: Env,
+  /** Injected so a test can drive a snapshot that actually changed. The local
+   * artifact fixture is whatever the last build wrote, so without this the
+   * dispatch path is only reachable when that fixture happens to carry
+   * changes -- which is a test that passes for the wrong reason. */
+  loadEvent: (
+    env: Env,
+  ) => Promise<Record<string, unknown>> = defaultChangeEvent,
+): Promise<{ ok: boolean; reason?: string; enqueued?: number }> {
+  if (!env.WEBHOOK_DELIVERIES || !env.METAGRAPH_CONTROL?.list) {
+    return { ok: true, reason: "not_provisioned" };
+  }
+  const event = await loadEvent(env);
+
+  const eventId = await webhookEventId(JSON.stringify(event));
+  const last = (await env.METAGRAPH_CONTROL.get(
+    WEBHOOK_LAST_DISPATCHED_KEY,
+  )) as string | null;
+  if (!shouldDispatchChangeEvent(event, eventId, last)) {
+    return { ok: true, reason: "unchanged" };
+  }
+
+  const result = await fanOutChangeEvent(env, event);
+  // Recorded only AFTER the fan-out succeeds. Recording first would mark an
+  // event dispatched that the queue refused, and the next tick would skip it --
+  // one failed enqueue would silently cost subscribers a whole publish.
+  await env.METAGRAPH_CONTROL.put(WEBHOOK_LAST_DISPATCHED_KEY, eventId);
+  return { ok: true, enqueued: result.messages };
+}
+
 /** Same shape as every other internal sync token header in this Worker. */
 const WEBHOOK_DISPATCH_TOKEN_HEADER = "x-webhook-dispatch-token";
 
@@ -1672,39 +1801,9 @@ async function handleWebhookDispatch(request: Request, env: Env) {
     );
   }
 
-  // ONE BODY FOR EVERY SUBSCRIBER, serialised once. Only the per-subscriber
-  // signature and idempotency header differ, and both are computed at delivery
-  // -- so what is enqueued is byte-identical to what is signed, on the first
-  // attempt and on the eighth.
-  const bodyText = JSON.stringify(event);
-  const eventId = await webhookEventId(bodyText);
-
-  const { keys } = await env.METAGRAPH_CONTROL.list({
-    prefix: WEBHOOK_KV_PREFIX,
-  });
-  const subscriptions = (
-    await Promise.all(
-      keys.map((entry: { name: string }) =>
-        env.METAGRAPH_CONTROL!.get(entry.name, { type: "json" }),
-      ),
-    )
-  ).filter(Boolean) as Record<string, unknown>[];
-
-  const { messages, skipped, oversize } = planWebhookFanOut({
-    subscriptions,
-    eventId,
-    bodyText,
-    matches: (subscription) =>
-      eventMatchesFilters(
-        event,
-        subscription.filters as Parameters<typeof eventMatchesFilters>[1],
-      ),
-  });
-
+  let fanOut: Awaited<ReturnType<typeof fanOutChangeEvent>>;
   try {
-    await Promise.all(
-      messages.map((message) => env.WEBHOOK_DELIVERIES!.send(message)),
-    );
+    fanOut = await fanOutChangeEvent(env, event);
   } catch (err) {
     console.error("webhook fan-out enqueue failed:", err);
     return errorResponse(
@@ -1713,13 +1812,14 @@ async function handleWebhookDispatch(request: Request, env: Env) {
       502,
     );
   }
+  const { eventId, subscriptions, messages, skipped, oversize } = fanOut;
 
   return new Response(
     JSON.stringify({
       ok: true,
       event_id: eventId,
-      subscriptions: subscriptions.length,
-      enqueued: messages.length,
+      subscriptions,
+      enqueued: messages,
       skipped,
       oversize,
     }),
@@ -1811,6 +1911,30 @@ export async function handleWebhookQueue(
       message.attempts,
       WEBHOOK_QUEUE_MAX_ATTEMPTS,
     );
+
+    // THE STATUS SURFACE STILL HAS TO ANSWER. GET
+    // /api/v1/webhooks/subscriptions/{id} reports recent delivery outcomes from
+    // these records, and it is part of the product -- a subscriber debugging a
+    // missed event reads it. The PARKING is gone (the queue schedules retries
+    // now), but the RECORD is not: this writes the outcome, it does not drive
+    // anything. Best-effort, because a KV hiccup must not turn a delivered
+    // event into a retried one.
+    try {
+      await env.METAGRAPH_CONTROL?.put?.(
+        deliveryStorageKey(body.subscription_id, body.event_id),
+        JSON.stringify({
+          subscription_id: body.subscription_id,
+          event_id: body.event_id,
+          status: disposition === "retry" ? "parked" : disposition,
+          attempts: message.attempts,
+          last_status: (result?.status as string) ?? null,
+          updated_at: new Date().toISOString(),
+        }),
+        { expirationTtl: WEBHOOK_DELIVERY_TTL_SECONDS },
+      );
+    } catch {
+      /* status reporting must never change a delivery's disposition */
+    }
     if (disposition === "retry") {
       message.retry({
         delaySeconds: webhookRetryDelaySeconds(message.attempts),
@@ -2014,6 +2138,9 @@ async function dispatchScheduled(
   // GitHub Actions + R2 staging -- see workers/request-handlers/staging.mjs's
   // deletion. The trigger itself is removed from wrangler.jsonc; nothing
   // dispatches on it here anymore.
+  if (cron === WEBHOOK_DISPATCH_CRON) {
+    return dispatchWebhooksFromChangelog(env);
+  }
   if (cron === HEALTH_PRUNE_CRON) {
     // Roll the day's raw checks into the durable daily uptime table BEFORE
     // pruning, so long-term history is never lost when 30-day raw rows are

@@ -15,6 +15,7 @@ import { describe, test } from "vitest";
 import {
   classifyWebhookBatch,
   planWebhookFanOut,
+  shouldDispatchChangeEvent,
   validWebhookDeliveryMessage,
   webhookDeliveryDisposition,
   webhookRetryDelaySeconds,
@@ -239,5 +240,49 @@ describe("planWebhookFanOut", () => {
       });
       assert.equal(messages.length, 0);
     }
+  });
+});
+
+describe("shouldDispatchChangeEvent", () => {
+  const withChanges = { changes: { subnets: [7] } };
+
+  test("dispatches a change the last tick did not", () => {
+    assert.equal(
+      shouldDispatchChangeEvent(withChanges, "evt_2", "evt_1"),
+      true,
+    );
+    assert.equal(shouldDispatchChangeEvent(withChanges, "evt_1", null), true);
+  });
+
+  test("skips a snapshot that has not moved", () => {
+    // The event id is content-addressed, so this is exact rather than
+    // heuristic -- which is what lets the trigger be a frequent cron instead of
+    // something the publish has to tell about itself.
+    assert.equal(
+      shouldDispatchChangeEvent(withChanges, "evt_1", "evt_1"),
+      false,
+    );
+  });
+
+  test("never fires an event where nothing actually changed", () => {
+    // buildChangeEvent returns a well-formed event even when nothing moved.
+    // Firing that every tick would be a notification that means nothing, and
+    // subscribers would learn to ignore the feed.
+    for (const empty of [
+      { changes: {} },
+      { changes: { subnets: [], artifacts: [] } },
+      {},
+      null,
+    ]) {
+      assert.equal(
+        shouldDispatchChangeEvent(empty, "evt_new", "evt_old"),
+        false,
+        JSON.stringify(empty),
+      );
+    }
+  });
+
+  test("an absent event id is never dispatched", () => {
+    assert.equal(shouldDispatchChangeEvent(withChanges, "", null), false);
   });
 });

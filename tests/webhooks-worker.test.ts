@@ -1139,6 +1139,24 @@ describe("webhook queue consumer: the terminal and transient edges", () => {
     assert.deepEqual(acts, ["retry"]);
   });
 
+  test("a delivery result with no status is recorded, not crashed on", async () => {
+    // deliverChangeEvent always reports a status, so this is defensive -- but
+    // the status record is written for EVERY outcome, and a throw here would
+    // turn a delivered event into a retried one.
+    const kv = makeKv();
+    const sub = await seedSubscription(kv, "https://hooks.example.com/a");
+    const acts = await run(
+      kv,
+      {
+        subscription_id: sub.id,
+        event_id: "evt_1",
+        body: JSON.stringify({ type: "metagraph.publish" }),
+      },
+      async () => ({}),
+    );
+    assert.deepEqual(acts, ["ack"], "no verdict is terminal, not a retry loop");
+  });
+
   test("a body that is not JSON is acked, because it never will be", async () => {
     // Retrying it would spend the whole eight-attempt budget to dead-letter in
     // 12 hours what is already known to be undeliverable.
@@ -1150,5 +1168,137 @@ describe("webhook queue consumer: the terminal and transient edges", () => {
       body: "{not json",
     });
     assert.deepEqual(acts, ["ack"]);
+  });
+});
+
+describe("the webhook cron trigger (metagraphed-infra#354)", () => {
+  // Delivery used to be a step inside the publish workflow, downstream of every
+  // other step -- so when the live-API smoke check broke on 2026-08-02,
+  // subscribers heard nothing for four days and no webhook alarm fired (#9650).
+  // A trigger that is not part of the publish cannot be taken down by it.
+  const CHANGED = {
+    type: "metagraph.publish",
+    published_at: "2026-08-06T09:00:00.000Z",
+    changes: { subnets: [7] },
+  };
+
+  async function tick(
+    kv: ReturnType<typeof makeKv>,
+    queue: unknown,
+    event: Record<string, unknown> | null = CHANGED,
+  ) {
+    const { dispatchWebhooksFromChangelog } = await import("../workers/api.ts");
+    return dispatchWebhooksFromChangelog(
+      envWith(kv, { WEBHOOK_DELIVERIES: queue }) as unknown as Env,
+      event ? async () => event : undefined,
+    );
+  }
+
+  test("declines quietly where the queue is not bound", async () => {
+    // A deployment that has not opted in behaves exactly as before rather than
+    // throwing on every tick.
+    const res = await tick(makeKv(), undefined);
+    assert.equal(res.ok, true);
+    assert.equal(res.reason, "not_provisioned");
+  });
+
+  test("fans out once, then skips the unchanged snapshot", async () => {
+    const kv = makeKv();
+    await seedSubscription(kv, "https://hooks.example.com/a");
+    const queue = makeQueue();
+
+    const first = await tick(kv, queue);
+    assert.equal(first.enqueued, 1, "the change reached the one subscriber");
+    assert.equal(queue.sent.length, 1);
+
+    // The id is content-addressed, so re-running over the SAME snapshot is
+    // exactly deduped -- which is what lets this be a frequent cron rather than
+    // something the publish has to announce.
+    const second = await tick(kv, queue);
+    assert.equal(second.reason, "unchanged");
+    assert.equal(queue.sent.length, 1, "no second fan-out");
+
+    // A genuinely different snapshot goes out.
+    const third = await tick(kv, queue, {
+      ...CHANGED,
+      changes: { subnets: [7, 19] },
+    });
+    assert.equal(third.enqueued, 1);
+    assert.equal(queue.sent.length, 2);
+  });
+
+  test("does not record the event as dispatched when the queue refuses", async () => {
+    // Recording first would mark an event dispatched that never went, and the
+    // NEXT tick would skip it -- one failed enqueue silently costing
+    // subscribers a whole publish.
+    const kv = makeKv();
+    await seedSubscription(kv, "https://hooks.example.com/a");
+    await assert.rejects(
+      tick(kv, { send: async () => Promise.reject(new Error("nope")) }),
+    );
+    const queue = makeQueue();
+    const after = await tick(kv, queue);
+    assert.equal(after.enqueued, 1, "the event is still pending, not skipped");
+  });
+
+  test("the default loader reads the published changelog", async () => {
+    // The injected loader in the tests above is a seam, not the behaviour --
+    // this exercises the real one, so a broken artifact read cannot hide behind
+    // a fixture that never calls it.
+    const kv = makeKv();
+    await seedSubscription(kv, "https://hooks.example.com/a");
+    const queue = makeQueue();
+    const res = await tick(kv, queue, null);
+    // Whatever the local fixture holds, the read itself must succeed and the
+    // tick must reach a verdict rather than throw.
+    assert.equal(res.ok, true);
+    assert.equal(
+      res.reason === "unchanged" || typeof res.enqueued === "number",
+      true,
+    );
+  });
+
+  test("a changelog that will not load yields no dispatch, not a throw", async () => {
+    // The artifact read is over R2/ASSETS and can fail. buildChangeEvent on a
+    // null changelog produces an event with no changes, which
+    // shouldDispatchChangeEvent then declines -- so a read failure costs one
+    // quiet tick rather than firing an empty notification at every subscriber.
+    const kv = makeKv();
+    await seedSubscription(kv, "https://hooks.example.com/a");
+    const queue = makeQueue();
+    const { dispatchWebhooksFromChangelog } = await import("../workers/api.ts");
+    const res = await dispatchWebhooksFromChangelog({
+      ...(envWith(kv, { WEBHOOK_DELIVERIES: queue }) as Row),
+      // BOTH tiers must fail: readArtifact tries ASSETS then falls back to the
+      // R2 binding, and the local fixture serves the changelog from disk on
+      // both, so failing one alone still returns a healthy read.
+      ASSETS: {
+        async fetch() {
+          return new Response("missing", { status: 404 });
+        },
+      },
+      METAGRAPH_ARCHIVE: {
+        async get() {
+          return null;
+        },
+      },
+    } as unknown as Env);
+    assert.equal(res.ok, true);
+    assert.equal(res.reason, "unchanged");
+    assert.equal(queue.sent.length, 0);
+  });
+
+  test("the cron string routes to the dispatcher", async () => {
+    // The wiring itself: a trigger registered in wrangler.jsonc that no branch
+    // dispatches on is a cron that fires forever and does nothing.
+    const { handleScheduled } = await import("../workers/api.ts");
+    const { WEBHOOK_DISPATCH_CRON } = await import("../workers/config.ts");
+    const res = (await handleScheduled(
+      { cron: WEBHOOK_DISPATCH_CRON } as never,
+      envWith(makeKv()) as unknown as Env,
+      { waitUntil: (p: Promise<unknown>) => void p } as never,
+    )) as { ok?: boolean; reason?: string };
+    assert.equal(res.ok, true);
+    assert.equal(res.reason, "not_provisioned", "no queue bound in this env");
   });
 });

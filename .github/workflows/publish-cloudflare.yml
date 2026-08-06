@@ -374,19 +374,16 @@ jobs:
           METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
           METAGRAPH_ALLOW_KV_WRITE: "1"
 
-      # Change-feed webhooks: now that the new data is live in R2/KV, fire
-      # HMAC-signed POSTs to matching subscribers. No-ops when there are no
-      # subscriptions. The dispatcher always exits 0 — per-subscriber and KV
-      # hiccups are logged as warnings but never fail the run, so a broken
-      # endpoint can't block the data pipeline or the smoke step below.
-      - name: Dispatch change-feed webhooks
-        if: steps.cloudflare-secrets.outputs.kv_publish == 'true' && steps.cloudflare-secrets.outputs.dry_run != 'true'
-        run: npm run webhooks:dispatch
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
-          METAGRAPH_ALLOW_WEBHOOK_DISPATCH: "1"
+      # Change-feed webhooks are NOT dispatched here anymore
+      # (metagraphed-infra#354). They are a Worker cron reading the published
+      # changelog (WEBHOOK_DISPATCH_CRON), fanning out to the
+      # webhook-deliveries queue.
+      #
+      # The step that used to live here is exactly why: it ran AFTER the smoke
+      # check, so when that check broke on 2026-08-02 subscribers heard nothing
+      # for four days and no webhook alarm fired, because the alarm was
+      # downstream of the failure (#9650). A trigger that is not part of this
+      # workflow cannot be taken down by it.
 
       # Worker CODE is deployed by Cloudflare Workers Builds on push to main;
       # this workflow only refreshes the DATA in R2/KV. The live Worker reads
