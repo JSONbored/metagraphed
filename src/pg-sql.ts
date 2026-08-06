@@ -96,3 +96,55 @@ export function createPgSql(
   sql.unsafe = (text: string, values: unknown[] = []) => run(text, values);
   return sql;
 }
+
+/**
+ * A `D1Runner`-shaped adapter over Postgres.
+ *
+ * `D1Runner` is `(sql, params) => Promise<Row[]>`, and four analytics modules
+ * (`movers`, `turnover`, `chain-turnover`, `concentration`) already take one as
+ * a parameter rather than reaching for a binding. That injection is what makes
+ * moving them a matter of handing over a different runner instead of editing
+ * their queries -- the same property `createPgSql` gives the tagged-template
+ * routes.
+ *
+ * THE TRANSLATION IS THE WHOLE RISK. Those modules write SQLite's positional
+ * `?`, and Postgres needs `$1, $2, ...` numbered in the same order. Getting it
+ * wrong does not throw: it binds a value to the wrong column and returns a
+ * confident wrong answer. So `toPositionalPlaceholders` is exported and
+ * asserted directly rather than trusted through a query that happens to pass.
+ */
+export function toPositionalPlaceholders(sql: string): string {
+  let n = 0;
+  let out = "";
+  let quote: string | null = null;
+  for (let i = 0; i < sql.length; i += 1) {
+    const ch = sql[i]!;
+    // A `?` inside a string literal is data, not a placeholder. SQLite escapes
+    // a quote by doubling it, and since the doubled pair reads as close-then-
+    // open the state ends up correct either way.
+    if (quote) {
+      if (ch === quote) quote = null;
+      out += ch;
+      continue;
+    }
+    if (ch === "'" || ch === '"') {
+      quote = ch;
+      out += ch;
+      continue;
+    }
+    out += ch === "?" ? `$${(n += 1)}` : ch;
+  }
+  return out;
+}
+
+/** Build a D1Runner backed by Hyperdrive. Callers pass this where they would
+ * otherwise pass the D1-backed runner; the modules themselves are untouched. */
+export function createPgD1Runner(
+  hyperdrive: HyperdriveLike,
+  ctx: WaitUntilLike,
+  clientFactory?: (connectionString: string) => Client,
+): (sql: string, params: unknown[]) => Promise<PgSqlRows> {
+  const sql = createPgSql(hyperdrive, ctx, clientFactory);
+  return (text: string, params: unknown[] = []) =>
+    sql.unsafe(toPositionalPlaceholders(text), params);
+}

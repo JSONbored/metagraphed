@@ -11,7 +11,12 @@
 // that a query ran.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
-import { createPgSql, pgStatementText } from "../src/pg-sql.ts";
+import {
+  createPgD1Runner,
+  createPgSql,
+  pgStatementText,
+  toPositionalPlaceholders,
+} from "../src/pg-sql.ts";
 
 /** A `pg` Client stand-in that records what it was asked to do. */
 function fakeClient(rows: Record<string, unknown>[] = []) {
@@ -190,5 +195,95 @@ describe("createPgSql", () => {
       () => client as never,
     );
     assert.deepEqual(await sql`SELECT 1`, []);
+  });
+});
+
+describe("toPositionalPlaceholders", () => {
+  test("numbers each ? in order", () => {
+    assert.equal(
+      toPositionalPlaceholders(
+        "SELECT * FROM t WHERE a = ? AND b = ? ORDER BY c LIMIT ?",
+      ),
+      "SELECT * FROM t WHERE a = $1 AND b = $2 ORDER BY c LIMIT $3",
+    );
+  });
+
+  test("leaves a ? inside a string literal alone", () => {
+    // THE CASE THAT SILENTLY CORRUPTS. Renumbering a `?` that is data shifts
+    // every placeholder after it, so values bind one column off -- and the
+    // query still runs.
+    assert.equal(
+      toPositionalPlaceholders(
+        "SELECT ? WHERE label = 'why? really' AND b = ?",
+      ),
+      "SELECT $1 WHERE label = 'why? really' AND b = $2",
+    );
+  });
+
+  test("handles a doubled quote inside a literal", () => {
+    // SQLite escapes a quote by doubling it. Read as close-then-open the state
+    // still lands correct, which this pins rather than leaves to luck.
+    assert.equal(
+      toPositionalPlaceholders("SELECT ? WHERE s = 'it''s ok' AND t = ?"),
+      "SELECT $1 WHERE s = 'it''s ok' AND t = $2",
+    );
+  });
+
+  test("handles double-quoted identifiers", () => {
+    assert.equal(
+      toPositionalPlaceholders('SELECT "od?d" FROM t WHERE a = ?'),
+      'SELECT "od?d" FROM t WHERE a = $1',
+    );
+  });
+
+  test("a statement with no placeholders is unchanged", () => {
+    const s = "SELECT count(*) FROM neuron_daily";
+    assert.equal(toPositionalPlaceholders(s), s);
+  });
+
+  test("placeholder count is preserved exactly", () => {
+    // The property that actually has to hold at any width: n placeholders in,
+    // n numbered placeholders out, numbered 1..n with no gaps or repeats.
+    const sql = "a=? b=? c=? d=? e=? f=? g=? h=? i=? j=? k=?";
+    const out = toPositionalPlaceholders(sql);
+    assert.deepEqual(
+      out.match(/\$\d+/g),
+      Array.from({ length: 11 }, (_, i) => `$${i + 1}`),
+    );
+    assert.equal(out.includes("?"), false);
+  });
+});
+
+describe("createPgD1Runner", () => {
+  test("translates and binds, so an injected module needs no change", async () => {
+    const { client, calls } = fakeClient([{ n: 1 }]);
+    const { ctx } = ctxSpy();
+    const run = createPgD1Runner(
+      { connectionString: "postgres://x" },
+      ctx,
+      () => client as never,
+    );
+    const rows = await run(
+      "SELECT * FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ?",
+      [64, "2026-08-01"],
+    );
+    assert.deepEqual(rows, [{ n: 1 }]);
+    assert.equal(
+      calls[0]!.text,
+      "SELECT * FROM neuron_daily WHERE netuid = $1 AND snapshot_date >= $2",
+    );
+    assert.deepEqual(calls[0]!.values, [64, "2026-08-01"]);
+  });
+
+  test("defaults params, matching the D1Runner contract", async () => {
+    const { client, calls } = fakeClient();
+    const { ctx } = ctxSpy();
+    const run = createPgD1Runner(
+      { connectionString: "postgres://x" },
+      ctx,
+      () => client as never,
+    );
+    await run("SELECT 1", []);
+    assert.deepEqual(calls[0]!.values, []);
   });
 });
