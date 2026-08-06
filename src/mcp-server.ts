@@ -13983,6 +13983,10 @@ export function listToolDefinitions() {
 // the generated server-card so the two can never drift.
 export const MCP_CAPABILITIES = {
   tools: { listChanged: false },
+  // #9686: completion/complete is served for prompt arguments and
+  // resource-template variables. An empty object is how the spec declares a
+  // capability that carries no sub-options.
+  completions: {},
   // subscribe: true (#4983 MCP half + #6034) -- metagraph://chain/stream and
   // metagraph://subnet/{netuid}/status are subscribable
   // (isSubscribableMcpResourceUri); every other resource is a static R2
@@ -14172,6 +14176,113 @@ async function listAllResources(ctx: McpCtx) {
     );
   }
   return out;
+}
+
+// ─── completion/complete (#9686) ───────────────────────────────────────────
+//
+// Argument autocompletion for prompt arguments and resource-template
+// variables. Before this, an agent filling in `netuid` on a prompt or
+// `{slug}` on metagraph://provider/{slug} had two options: guess, or call a
+// list tool first and read the result. Both are worse than the server simply
+// saying which values exist -- it already knows, and the answer is the same
+// registry data the resource list is built from.
+//
+// SCOPE IS NARROWER THAN IT LOOKS, and that is the spec's doing rather than
+// ours: `ref` is only ever `ref/prompt` or `ref/resource`. There is no
+// `ref/tool`, so this does nothing for the 224 tools -- it covers the six
+// prompts and four resource templates. Worth having, not worth overselling.
+//
+// The spec caps a response at 100 values, so `total`/`hasMore` carry the rest.
+const MCP_COMPLETION_PAGE_SIZE = 100;
+
+/**
+ * Which registry column, if any, completes this (ref, argument) pair.
+ *
+ * Returns null for everything else -- `task` and `ss58` are free text, and a
+ * completion list for them would be a guess dressed as an answer.
+ */
+function mcpCompletionSource(ref: Row, argumentName: string): string | null {
+  const type = ref?.type;
+  if (type === "ref/prompt") {
+    // Every prompt that takes a netuid takes the same netuid.
+    return argumentName === "netuid" ? "netuid" : null;
+  }
+  if (type !== "ref/resource") return null;
+  // Matched on the TEMPLATE's variable, not a parsed uri: the client sends the
+  // uriTemplate (with `{netuid}` still in it), not a concrete resource uri.
+  const uri = String(ref.uri ?? "");
+  if (uri.startsWith("metagraph://subnet/") && argumentName === "netuid") {
+    return "netuid";
+  }
+  if (uri.startsWith("metagraph://provider/") && argumentName === "slug") {
+    return "slug";
+  }
+  if (uri.startsWith("metagraph://schema/") && argumentName === "surface_id") {
+    return "surface_id";
+  }
+  return null;
+}
+
+/** Every candidate value for one source, in registry order. */
+async function mcpCompletionCandidates(
+  source: string,
+  ctx: McpCtx,
+): Promise<string[]> {
+  if (source === "netuid") {
+    const subnets = await loadArtifactData(
+      ctx,
+      "/metagraph/subnets.json",
+    ).catch(() => null);
+    return ((subnets?.subnets || []) as Row[])
+      .filter((s) => typeof s.netuid === "number")
+      .map((s) => String(s.netuid));
+  }
+  if (source === "slug") {
+    const providers = await loadArtifactData(
+      ctx,
+      "/metagraph/providers.json",
+    ).catch(() => null);
+    return ((providers?.providers || []) as Row[])
+      .map((p) => String(p.slug ?? ""))
+      .filter(Boolean);
+  }
+  const schemas = await loadArtifactData(
+    ctx,
+    "/metagraph/schemas/index.json",
+  ).catch(() => null);
+  return ((schemas?.schemas || []) as Row[])
+    .map((s) => String(s.surface_id ?? s.id ?? ""))
+    .filter(Boolean);
+}
+
+/**
+ * Answer completion/complete.
+ *
+ * An unknown ref or an argument with no source completes to nothing rather
+ * than erroring: the spec models completion as best-effort, and a client
+ * probing an argument we cannot complete has done nothing wrong.
+ */
+async function completeArgument(params: Row, ctx: McpCtx) {
+  const argument = (params?.argument ?? {}) as Row;
+  const source = mcpCompletionSource(
+    (params?.ref ?? {}) as Row,
+    String(argument.name ?? ""),
+  );
+  if (!source) return { completion: { values: [], total: 0, hasMore: false } };
+
+  // Prefix match, case-insensitive. `netuid` is numeric so a prefix is what a
+  // caller typing "6" means; slugs and surface ids are typed left to right too.
+  const typed = String(argument.value ?? "").toLowerCase();
+  const all = (await mcpCompletionCandidates(source, ctx)).filter((v) =>
+    v.toLowerCase().startsWith(typed),
+  );
+  return {
+    completion: {
+      values: all.slice(0, MCP_COMPLETION_PAGE_SIZE),
+      total: all.length,
+      hasMore: all.length > MCP_COMPLETION_PAGE_SIZE,
+    },
+  };
 }
 
 function decodeResourceCursor(cursor: unknown) {
@@ -15189,6 +15300,13 @@ async function dispatchMessage(message: Row, ctx: McpCtx) {
           : rpcResult(id, { prompts: listPromptDefinitions() });
       case "prompts/get":
         return isNotification ? null : rpcResult(id, getPrompt(params));
+      // #9686. Declared in MCP_CAPABILITIES as `completions`, so a client that
+      // reads the handshake knows to offer it rather than discovering it by
+      // trying.
+      case "completion/complete":
+        return isNotification
+          ? null
+          : rpcResult(id, await completeArgument(params, ctx));
       case "notifications/initialized":
       case "notifications/cancelled":
         return null;
