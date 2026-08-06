@@ -24,19 +24,22 @@ export const GetSudoInputSchema = z
       .int()
       .min(0)
       .optional()
-      .describe("Restrict to this exact block height."),
+      .describe("Restrict to this exact block height.")
+      .meta({ examples: [8783000] }),
     call_function: z
       .string()
       .optional()
       .describe(
         "Restrict to one call within the pallet (`add_stake`). Case-sensitive; pair with `call_module` to disambiguate.",
-      ),
+      )
+      .meta({ examples: ["add_stake"] }),
     success: z
       .boolean()
       .optional()
       .describe(
         "Restrict to successful (`true`) or failed (`false`) extrinsics. Omit for both.",
-      ),
+      )
+      .meta({ examples: [true] }),
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
     from: z
@@ -45,14 +48,16 @@ export const GetSudoInputSchema = z
       .optional()
       .describe(
         "Inclusive start of the range. A block height on chain tools, an ISO-8601 date on time-series ones.",
-      ),
+      )
+      .meta({ examples: [8700000] }),
     to: z
       .int()
       .min(0)
       .optional()
       .describe(
         "Inclusive end of the range. A block height on chain tools, an ISO-8601 date on time-series ones; an EVM address on decode_evm_call.",
-      ),
+      )
+      .meta({ examples: [8783000] }),
     // Both feeds say "same filters as list_extrinsics" and were modelled on it,
     // but dropped its `.max(100)` — declaring unbounded while the tier they forward to
     // caps at 100. A copy-paste omission, not a wider ceiling.
@@ -102,19 +107,22 @@ export const GetGovernanceConfigChangesInputSchema = z
       .int()
       .min(0)
       .optional()
-      .describe("Restrict to this exact block height."),
+      .describe("Restrict to this exact block height.")
+      .meta({ examples: [8783000] }),
     call_function: z
       .string()
       .optional()
       .describe(
         "Restrict to one call within the pallet (`add_stake`). Case-sensitive; pair with `call_module` to disambiguate.",
-      ),
+      )
+      .meta({ examples: ["add_stake"] }),
     success: z
       .boolean()
       .optional()
       .describe(
         "Restrict to successful (`true`) or failed (`false`) extrinsics. Omit for both.",
-      ),
+      )
+      .meta({ examples: [true] }),
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
     from: z
@@ -123,14 +131,16 @@ export const GetGovernanceConfigChangesInputSchema = z
       .optional()
       .describe(
         "Inclusive start of the range. A block height on chain tools, an ISO-8601 date on time-series ones.",
-      ),
+      )
+      .meta({ examples: [8700000] }),
     to: z
       .int()
       .min(0)
       .optional()
       .describe(
         "Inclusive end of the range. A block height on chain tools, an ISO-8601 date on time-series ones; an EVM address on decode_evm_call.",
-      ),
+      )
+      .meta({ examples: [8783000] }),
     // Both feeds say "same filters as list_extrinsics" and were modelled on it,
     // but dropped its `.max(100)` — declaring unbounded while the tier they forward to
     // caps at 100. A copy-paste omission, not a wider ceiling.

@@ -44,18 +44,20 @@ export const ListSubnetValidatorsInputSchema = z
           "fetched, so it trims the response rather than the query, and has " +
           "no fixed ceiling: the subnet's own validator count is the bound.",
       )
-      .optional(),
+      .optional()
+      .meta({ examples: [20] }),
     min_stake_tao: z
       .number()
       .min(0)
       .optional()
       .describe(
         "Drop rows whose stake is below this many TAO. Applied after the set is fetched.",
-      ),
+      )
+      .meta({ examples: [1000] }),
     // #9082: narrow each returned row to these fields. Omit for the full
     // row. Valid names are NeuronSchema's own, so this enum cannot drift
     // from what the route can project.
-    fields: NeuronFieldsInputSchema,
+    fields: NeuronFieldsInputSchema.meta({ examples: ["netuid,name,slug"] }),
   })
   .strict();
 export type ListSubnetValidatorsInput = z.infer<
@@ -193,7 +195,10 @@ export const CompareValidatorsInputSchema = z
       .max(COMPARE_VALIDATORS_MAX)
       .describe(
         "SS58 hotkeys to compare, as an array. Each is a validator/neuron key, not a coldkey.",
-      ),
+      )
+      .meta({
+        examples: [["5CS3g6nVJM6ouns8n9buN9CzFf2C1YDHVcVGRcxoirKs2xbV"]],
+      }),
     netuid: netuidSchema().optional(),
   })
   .strict();

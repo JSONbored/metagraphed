@@ -22,7 +22,7 @@ const ActivityInputSchema = z
     netuid: netuidSchema(),
     window: ActivityWindowSchema.describe(
       "Trailing time window to aggregate over, ending at the latest data point rather than a calendar boundary. Options are per-tool; see this parameter's enum.",
-    ),
+    ).meta({ examples: [ACTIVITY_WINDOWS[0]] }),
   })
   .strict();
 

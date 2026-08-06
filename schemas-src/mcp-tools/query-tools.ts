@@ -28,10 +28,11 @@ export const QueryGraphqlInputSchema = z
       .string()
       .describe(
         "The request payload or search text this surface expects. Shape depends on the surface; see its schema.",
-      ),
-    variables: OpenObjectSchema.optional().describe(
-      "GraphQL variables for the query, as an object.",
-    ),
+      )
+      .meta({ examples: ["inference"] }),
+    variables: OpenObjectSchema.optional()
+      .describe("GraphQL variables for the query, as an object.")
+      .meta({ examples: [{ netuid: 64 }] }),
   })
   .strict();
 export type QueryGraphqlInput = z.infer<typeof QueryGraphqlInputSchema>;
@@ -58,10 +59,13 @@ export const RunSavedQueryInputSchema = z
       .enum(SAVED_QUERY_IDS)
       .describe(
         "Which saved query template to run. See this parameter's enum for the available ids.",
-      ),
-    params: OpenObjectSchema.optional().describe(
-      "Positional or named parameters for the RPC method, matching what that method expects.",
-    ),
+      )
+      .meta({ examples: [SAVED_QUERY_IDS[0]] }),
+    params: OpenObjectSchema.optional()
+      .describe(
+        "Positional or named parameters for the RPC method, matching what that method expects.",
+      )
+      .meta({ examples: [[]] }),
   })
   .strict();
 export type RunSavedQueryInput = z.infer<typeof RunSavedQueryInputSchema>;

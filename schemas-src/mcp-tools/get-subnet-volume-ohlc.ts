@@ -48,13 +48,15 @@ export const GetSubnetOhlcInputSchema = z
     interval: z
       .enum(OHLC_INTERVALS)
       .optional()
-      .describe("Bucket size for the returned series."),
+      .describe("Bucket size for the returned series.")
+      .meta({ examples: [OHLC_INTERVALS[0]] }),
     days: z
       .int()
       .min(1)
       .max(MAX_OHLC_WINDOW_DAYS)
       .optional()
-      .describe("How many trailing days to cover, ending today (UTC)."),
+      .describe("How many trailing days to cover, ending today (UTC).")
+      .meta({ examples: [7, 30] }),
   })
   .strict();
 export type GetSubnetOhlcInput = z.infer<typeof GetSubnetOhlcInputSchema>;

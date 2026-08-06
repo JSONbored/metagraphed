@@ -32,7 +32,8 @@ export const McpNetworkSchema = z
     "Which Bittensor chain to read: `finney` is mainnet (the default when " +
       "omitted), `test` is testnet. They are separate chains — a netuid on one " +
       "is unrelated to the same netuid on the other.",
-  );
+  )
+  .meta({ examples: ["finney"] });
 export type McpNetwork = z.infer<typeof McpNetworkSchema>;
 
 export const CurationLevelSchema = z.enum([

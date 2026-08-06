@@ -82,45 +82,52 @@ export const ListSubnetEndpointsInputSchema = z
       .optional()
       .describe(
         "Which layer of the stack the endpoint belongs to: the Bittensor base chain, a data or docs provider, or a subnet's own app.",
-      ),
+      )
+      .meta({ examples: [ENDPOINT_LAYERS[0]] }),
     provider: providerSlugSchema().optional(),
     publication_state: z
       .enum(ENDPOINT_PUBLICATION_STATES)
       .optional()
       .describe(
         "Where the endpoint sits in the review pipeline, from unreviewed candidate through to pool-eligible or rejected.",
-      ),
+      )
+      .meta({ examples: [ENDPOINT_PUBLICATION_STATES[0]] }),
     status: kindSchema(HEALTH_STATUSES).optional(),
     pool_eligible: z
       .enum(BOOLEAN_STRINGS)
       .optional()
       .describe(
         "Restrict to endpoints that are (or are not) eligible for the public RPC pool.",
-      ),
+      )
+      .meta({ examples: [BOOLEAN_STRINGS[0]] }),
     min_latency_ms: z
       .number()
       .optional()
       .describe(
         "Inclusive lower bound on probe latency in milliseconds; rows below it are excluded.",
-      ),
+      )
+      .meta({ examples: [50] }),
     max_latency_ms: z
       .number()
       .optional()
       .describe(
         "Inclusive upper bound on probe latency in milliseconds; rows above it are excluded.",
-      ),
+      )
+      .meta({ examples: [500] }),
     min_score: z
       .number()
       .optional()
       .describe(
         "Inclusive lower bound on endpoint score; rows below it are excluded.",
-      ),
+      )
+      .meta({ examples: [50] }),
     max_score: z
       .number()
       .optional()
       .describe(
         "Inclusive upper bound on endpoint score; rows above it are excluded.",
-      ),
+      )
+      .meta({ examples: [100] }),
     sort: sortSchema(ENDPOINT_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),
@@ -168,7 +175,8 @@ export const ListSubnetSurfacesInputSchema = z
       .optional()
       .describe(
         "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
-      ),
+      )
+      .meta({ examples: ["sn-64-chutes-subnet-api"] }),
     sort: sortSchema(SURFACE_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     limit: limitSchema(100).optional(),
@@ -235,7 +243,8 @@ export const ListSubnetHealthInputSchema = z
       .optional()
       .describe(
         "Why a probe ended as it did — the reason behind the status, not the status itself.",
-      ),
+      )
+      .meta({ examples: [HEALTH_CLASSIFICATIONS[0]] }),
     sort: sortSchema(HEALTH_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     limit: limitSchema(100).optional(),

@@ -32,7 +32,8 @@ export const FindSubnetOpportunitiesInputSchema = z
     board: z
       .enum(ECONOMIC_LEADERBOARD_BOARDS)
       .optional()
-      .describe("Which leaderboard to return."),
+      .describe("Which leaderboard to return.")
+      .meta({ examples: [ECONOMIC_LEADERBOARD_BOARDS[0]] }),
     limit: limitSchema(100).optional(),
   })
   .strict();
@@ -74,9 +75,12 @@ export const SemanticSearchInputSchema = z
       .string()
       .describe(
         "The request payload or search text this surface expects. Shape depends on the surface; see its schema.",
-      ),
+      )
+      .meta({ examples: ["inference"] }),
     limit: limitSchema(20).optional(),
-    type: SemanticTypeSchema.describe("Which entity kind to search over."),
+    type: SemanticTypeSchema.describe("Which entity kind to search over.").meta(
+      { examples: ["subnet"] },
+    ),
   })
   .strict();
 export type SemanticSearchInput = z.infer<typeof SemanticSearchInputSchema>;
@@ -109,8 +113,11 @@ export const AskInputSchema = z
       .string()
       .describe(
         "A natural-language question. Answered from indexed registry content with citations, not from model recall.",
-      ),
-    type: SemanticTypeSchema.describe("Which entity kind to search over."),
+      )
+      .meta({ examples: ["Which subnets expose a public inference API?"] }),
+    type: SemanticTypeSchema.describe("Which entity kind to search over.").meta(
+      { examples: ["subnet"] },
+    ),
   })
   .strict();
 export type AskInput = z.infer<typeof AskInputSchema>;
@@ -143,7 +150,8 @@ export const FindSubnetForTaskInputSchema = z
       .string()
       .describe(
         "Describe the task in plain language; subnets are ranked by how well their published capabilities match it.",
-      ),
+      )
+      .meta({ examples: ["summarise long documents"] }),
     limit: limitSchema(20).optional(),
   })
   .strict();

@@ -17,7 +17,8 @@ export const SearchSubnetsInputSchema = z
       .string()
       .describe(
         "The request payload or search text this surface expects. Shape depends on the surface; see its schema.",
-      ),
+      )
+      .meta({ examples: ["inference"] }),
     cursor: numericCursorSchema().optional(),
     limit: limitSchema(50).optional(),
   })

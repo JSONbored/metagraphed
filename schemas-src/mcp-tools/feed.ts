@@ -30,19 +30,22 @@ export const GetFeedInputSchema = z
       .optional()
       .describe(
         "Restrict the feed to items carrying this tag. Exact match against the item's own tags.",
-      ),
+      )
+      .meta({ examples: ["incident"] }),
     since: z
       .string()
       .optional()
       .describe(
         "ISO-8601 timestamp; only items at or after this instant are returned.",
-      ),
+      )
+      .meta({ examples: ["2026-08-01T00:00:00Z"] }),
     until: z
       .string()
       .optional()
       .describe(
         "ISO-8601 timestamp; only items at or before this instant are returned.",
-      ),
+      )
+      .meta({ examples: ["2026-08-06T00:00:00Z"] }),
     limit: limitSchema(FEED_MAX_ITEMS).optional(),
   })
   .strict();

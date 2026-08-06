@@ -45,7 +45,8 @@ export const ListCurationInputSchema = z
       .optional()
       .describe(
         "How much of the subnet is covered: on-chain data only, a manifest, or actively probed surfaces.",
-      ),
+      )
+      .meta({ examples: [COVERAGE_LEVELS[0]] }),
     curation_level: kindSchema(CURATION_LEVELS).optional(),
     sort: sortSchema(CURATION_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
@@ -88,7 +89,8 @@ export const ListGapsInputSchema = z
       .optional()
       .describe(
         "How much of the subnet is covered: on-chain data only, a manifest, or actively probed surfaces.",
-      ),
+      )
+      .meta({ examples: [COVERAGE_LEVELS[0]] }),
     curation_level: kindSchema(CURATION_LEVELS).optional(),
     sort: sortSchema(GAPS_SORT_FIELDS).optional(),
     order: orderSchema().optional(),

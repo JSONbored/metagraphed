@@ -17,11 +17,12 @@ export const GetSubnetMetagraphInputSchema = z
       .optional()
       .describe(
         "Restrict to neurons that hold (`true`) or lack (`false`) a validator permit.",
-      ),
+      )
+      .meta({ examples: [true] }),
     // #9082: narrow each returned row to these fields. Omit for the full
     // row. Valid names are NeuronSchema's own, so this enum cannot drift
     // from what the route can project.
-    fields: NeuronFieldsInputSchema,
+    fields: NeuronFieldsInputSchema.meta({ examples: ["netuid,name,slug"] }),
   })
   .strict();
 export type GetSubnetMetagraphInput = z.infer<

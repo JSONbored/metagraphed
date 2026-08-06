@@ -62,13 +62,15 @@ export const ListValidatorEconomicsInputSchema = z
       .optional()
       .describe(
         "Restrict to subnets whose emission gate is open (`true`) or closed (`false`).",
-      ),
+      )
+      .meta({ examples: [true] }),
     cap_binding: z
       .boolean()
       .optional()
       .describe(
         "Restrict to subnets where the validator cap is actually binding (`true`).",
-      ),
+      )
+      .meta({ examples: [true] }),
   })
   .strict();
 export type ListValidatorEconomicsInput = z.infer<
@@ -98,7 +100,10 @@ export const GetSubnetValidatorEconomicsHistoryInputSchema = z
       .optional()
       .describe(
         "Trailing time window to aggregate over, ending at the latest data point rather than a calendar boundary. Options are per-tool; see this parameter's enum.",
-      ),
+      )
+      .meta({
+        examples: [Object.keys(VALIDATOR_ECONOMICS_HISTORY_WINDOWS)[0]],
+      }),
   })
   .strict();
 export type GetSubnetValidatorEconomicsHistoryInput = z.infer<

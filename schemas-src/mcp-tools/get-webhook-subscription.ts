@@ -12,7 +12,8 @@ export const GetWebhookSubscriptionInputSchema = z
       .string()
       .describe(
         "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
-      ),
+      )
+      .meta({ examples: ["sn-64-chutes-subnet-api"] }),
   })
   .strict();
 export type GetWebhookSubscriptionInput = z.infer<

@@ -97,48 +97,57 @@ export const ListEnrichmentQueueInputSchema = z
     lane: z
       .enum(LANES)
       .optional()
-      .describe("Which contribution lane the item belongs to."),
+      .describe("Which contribution lane the item belongs to.")
+      .meta({ examples: [LANES[0]] }),
     evidence_action: z
       .enum(EVIDENCE_ACTIONS)
       .optional()
-      .describe("What the evidence is asking a contributor to do."),
+      .describe("What the evidence is asking a contributor to do.")
+      .meta({ examples: [EVIDENCE_ACTIONS[0]] }),
     identity_level: z
       .enum(IDENTITY_LEVELS)
       .optional()
-      .describe("How complete the subnet's published identity is."),
+      .describe("How complete the subnet's published identity is.")
+      .meta({ examples: [IDENTITY_LEVELS[0]] }),
     curation_level: kindSchema(CURATION_LEVELS).optional(),
     profile_level: z
       .enum(PROFILE_LEVELS)
       .optional()
       .describe(
         "How complete the subnet's profile is, from directory-only upward.",
-      ),
+      )
+      .meta({ examples: [PROFILE_LEVELS[0]] }),
     direct_submission_kinds: z
       .enum(SURFACE_KINDS)
       .optional()
       .describe(
         "Restrict to subnets where surfaces of this kind a contributor can submit directly. One kind per call; see this parameter's enum.",
-      ),
+      )
+      .meta({ examples: [SURFACE_KINDS[0]] }),
     missing_kinds: z
       .enum(SURFACE_KINDS)
       .optional()
       .describe(
         "Restrict to subnets where surfaces of this kind the subnet is MISSING. One kind per call; see this parameter's enum.",
-      ),
+      )
+      .meta({ examples: [SURFACE_KINDS[0]] }),
     manual_review_required: z
       .enum(BOOLEAN_STRINGS)
       .optional()
-      .describe("Restrict to items that do (or do not) need a human reviewer."),
+      .describe("Restrict to items that do (or do not) need a human reviewer.")
+      .meta({ examples: [BOOLEAN_STRINGS[0]] }),
     reason_codes: z
       .string()
       .optional()
       .describe(
         "Comma-separated reason codes to filter by; an item matches if it carries any of them.",
-      ),
+      )
+      .meta({ examples: ["stale-evidence"] }),
     review_state: z
       .string()
       .optional()
-      .describe("Where the item sits in maintainer review."),
+      .describe("Where the item sits in maintainer review.")
+      .meta({ examples: ["pending"] }),
     sort: sortSchema(QUEUE_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),
@@ -195,23 +204,27 @@ export const ListAdapterCandidatesInputSchema = z
       .optional()
       .describe(
         "Restrict to subnets where surfaces of this kind exist as unreviewed API candidates. One kind per call; see this parameter's enum.",
-      ),
+      )
+      .meta({ examples: [SURFACE_KINDS[0]] }),
     operational_kinds: z
       .enum(SURFACE_KINDS)
       .optional()
       .describe(
         "Restrict to subnets where surfaces of this kind are operational. One kind per call; see this parameter's enum.",
-      ),
+      )
+      .meta({ examples: [SURFACE_KINDS[0]] }),
     recommended_adapter_kind: z
       .enum(RECOMMENDED_ADAPTER_KINDS)
       .optional()
-      .describe("Which adapter shape suits this surface."),
+      .describe("Which adapter shape suits this surface.")
+      .meta({ examples: [RECOMMENDED_ADAPTER_KINDS[0]] }),
     reason_codes: z
       .string()
       .optional()
       .describe(
         "Comma-separated reason codes to filter by; an item matches if it carries any of them.",
-      ),
+      )
+      .meta({ examples: ["stale-evidence"] }),
     sort: sortSchema(ADAPTER_CANDIDATES_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),

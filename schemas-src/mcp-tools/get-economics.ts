@@ -51,7 +51,8 @@ export const GetEconomicsInputSchema = z
     registration_allowed: z
       .enum(["true", "false"])
       .optional()
-      .describe("Restrict to subnets currently accepting registrations."),
+      .describe("Restrict to subnets currently accepting registrations.")
+      .meta({ examples: ["true"] }),
     q: querySchema().optional(),
     sort: sortSchema(ECONOMICS_SORT_FIELDS).optional(),
     order: orderSchema().optional(),

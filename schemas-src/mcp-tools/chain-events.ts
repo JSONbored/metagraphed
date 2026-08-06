@@ -9,7 +9,11 @@ import { McpNetworkSchema } from "../shared.ts";
 
 export const GetBlockChainEventsInputSchema = z
   .object({
-    block_number: z.int().min(0).describe("The block height to read."),
+    block_number: z
+      .int()
+      .min(0)
+      .describe("The block height to read.")
+      .meta({ examples: [8783000] }),
     // #8700: which chain's history to read. The same published finney/test
     // enum every network-aware tool takes.
     network: McpNetworkSchema.optional(),
@@ -60,7 +64,8 @@ export const GetExtrinsicChainEventsInputSchema = z
       .string()
       .describe(
         "Block reference: either a block NUMBER or a 0x-prefixed block HASH. Both forms are accepted and resolve to the same block.",
-      ),
+      )
+      .meta({ examples: ["8783000", "0x9f1e...c3"] }),
     limit: limitSchema(200).optional(),
     cursor: keysetCursorSchema().optional(),
     network: McpNetworkSchema.optional(),

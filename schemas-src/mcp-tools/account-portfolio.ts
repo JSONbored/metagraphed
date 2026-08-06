@@ -78,7 +78,8 @@ export const GetAccountSnapshotInputSchema = z
       .optional()
       .describe(
         "How many recent events to embed. Clamped to the tool's ceiling rather than rejected.",
-      ),
+      )
+      .meta({ examples: [10] }),
   })
   .strict();
 export type GetAccountSnapshotInput = z.infer<

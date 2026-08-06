@@ -39,32 +39,37 @@ export const ListEndpointPoolsInputSchema = z
       .optional()
       .describe(
         "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
-      ),
+      )
+      .meta({ examples: ["sn-64-chutes-subnet-api"] }),
     kind: kindSchema(POOL_KINDS).optional(),
     min_eligible_count: z
       .number()
       .optional()
       .describe(
         "Inclusive lower bound on pool-eligible endpoint count; rows below it are excluded.",
-      ),
+      )
+      .meta({ examples: [1] }),
     max_eligible_count: z
       .number()
       .optional()
       .describe(
         "Inclusive upper bound on pool-eligible endpoint count; rows above it are excluded.",
-      ),
+      )
+      .meta({ examples: [10] }),
     min_endpoint_count: z
       .number()
       .optional()
       .describe(
         "Inclusive lower bound on endpoint count; rows below it are excluded.",
-      ),
+      )
+      .meta({ examples: [1] }),
     max_endpoint_count: z
       .number()
       .optional()
       .describe(
         "Inclusive upper bound on endpoint count; rows above it are excluded.",
-      ),
+      )
+      .meta({ examples: [10] }),
     sort: sortSchema(POOL_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),
@@ -134,11 +139,13 @@ export const ListEndpointIncidentsInputSchema = z
     severity: z
       .enum(INCIDENT_SEVERITIES)
       .optional()
-      .describe("How serious the incident is."),
+      .describe("How serious the incident is.")
+      .meta({ examples: [INCIDENT_SEVERITIES[0]] }),
     state: z
       .enum(INCIDENT_STATES)
       .optional()
-      .describe("The incident's lifecycle state."),
+      .describe("The incident's lifecycle state.")
+      .meta({ examples: [INCIDENT_STATES[0]] }),
     sort: sortSchema(INCIDENT_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),
@@ -203,52 +210,60 @@ export const ListProviderEndpointsInputSchema = z
       .regex(/^[a-z0-9-]+$/)
       .describe(
         "The registry slug — lowercase, hyphenated (`chutes`), not the display name. Slugs are stable across renames.",
-      ),
+      )
+      .meta({ examples: ["chutes"] }),
     kind: kindSchema(SURFACE_KINDS).optional(),
     layer: z
       .enum(ENDPOINT_LAYERS)
       .optional()
       .describe(
         "Which layer of the stack the endpoint belongs to: the Bittensor base chain, a data or docs provider, or a subnet's own app.",
-      ),
+      )
+      .meta({ examples: [ENDPOINT_LAYERS[0]] }),
     netuid: netuidSchema().optional(),
     publication_state: z
       .enum(ENDPOINT_PUBLICATION_STATES)
       .optional()
       .describe(
         "Where the endpoint sits in the review pipeline, from unreviewed candidate through to pool-eligible or rejected.",
-      ),
+      )
+      .meta({ examples: [ENDPOINT_PUBLICATION_STATES[0]] }),
     status: kindSchema(HEALTH_STATUSES).optional(),
     pool_eligible: z
       .boolean()
       .optional()
       .describe(
         "Restrict to endpoints that are (or are not) eligible for the public RPC pool.",
-      ),
+      )
+      .meta({ examples: [true] }),
     min_latency_ms: z
       .number()
       .optional()
       .describe(
         "Inclusive lower bound on probe latency in milliseconds; rows below it are excluded.",
-      ),
+      )
+      .meta({ examples: [50] }),
     max_latency_ms: z
       .number()
       .optional()
       .describe(
         "Inclusive upper bound on probe latency in milliseconds; rows above it are excluded.",
-      ),
+      )
+      .meta({ examples: [500] }),
     min_score: z
       .number()
       .optional()
       .describe(
         "Inclusive lower bound on endpoint score; rows below it are excluded.",
-      ),
+      )
+      .meta({ examples: [50] }),
     max_score: z
       .number()
       .optional()
       .describe(
         "Inclusive upper bound on endpoint score; rows above it are excluded.",
-      ),
+      )
+      .meta({ examples: [100] }),
     sort: sortSchema(ENDPOINT_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),

@@ -34,7 +34,8 @@ export const GetDomainSummaryInputSchema = z
     domain: z
       .enum(DOMAIN_TAGS)
       .optional()
-      .describe("The subnet's primary domain of use."),
+      .describe("The subnet's primary domain of use.")
+      .meta({ examples: [DOMAIN_TAGS[0]] }),
   })
   .strict();
 export type GetDomainSummaryInput = z.infer<typeof GetDomainSummaryInputSchema>;

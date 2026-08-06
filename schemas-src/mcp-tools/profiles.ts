@@ -60,27 +60,32 @@ export const ListProfilesInputSchema = z
     subnet_type: z
       .enum(SUBNET_TYPE)
       .optional()
-      .describe("Root subnet or an application subnet."),
+      .describe("Root subnet or an application subnet.")
+      .meta({ examples: [SUBNET_TYPE[0]] }),
     curation_level: z
       .enum(CURATION_LEVEL)
       .optional()
       .describe(
         "How the record entered the registry — native chain data, discovered candidate, community submission, or machine-derived.",
-      ),
+      )
+      .meta({ examples: [CURATION_LEVEL[0]] }),
     review_state: z
       .string()
       .optional()
-      .describe("Where the item sits in maintainer review."),
+      .describe("Where the item sits in maintainer review.")
+      .meta({ examples: ["pending"] }),
     confidence: z
       .enum(["low", "medium", "high"])
       .optional()
-      .describe("How confident the machine assessment is."),
+      .describe("How confident the machine assessment is.")
+      .meta({ examples: ["low"] }),
     profile_level: z
       .enum(PROFILE_LEVEL)
       .optional()
       .describe(
         "How complete the subnet's profile is, from directory-only upward.",
-      ),
+      )
+      .meta({ examples: [PROFILE_LEVEL[0]] }),
     q: querySchema().optional(),
     sort: sortSchema(PROFILES_SORT_FIELDS).optional(),
     order: orderSchema().optional(),

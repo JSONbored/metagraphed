@@ -73,13 +73,15 @@ export const GetProviderDetailInputSchema = z
       .string()
       .describe(
         "The registry slug — lowercase, hyphenated (`chutes`), not the display name. Slugs are stable across renames.",
-      ),
+      )
+      .meta({ examples: ["chutes"] }),
     include_endpoints: z
       .boolean()
       .optional()
       .describe(
         "When true, embed each provider's endpoints instead of counts alone.",
-      ),
+      )
+      .meta({ examples: [true] }),
   })
   .strict();
 export type GetProviderDetailInput = z.infer<

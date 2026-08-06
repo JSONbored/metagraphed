@@ -22,7 +22,8 @@ export const GetAdapterInputSchema = z
       .regex(/^[a-z0-9-]+$/)
       .describe(
         "The registry slug — lowercase, hyphenated (`chutes`), not the display name. Slugs are stable across renames.",
-      ),
+      )
+      .meta({ examples: ["chutes"] }),
   })
   .strict();
 export type GetAdapterInput = z.infer<typeof GetAdapterInputSchema>;

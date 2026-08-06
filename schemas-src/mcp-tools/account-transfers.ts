@@ -23,7 +23,8 @@ export const GetAccountTransfersInputSchema = z
       .optional()
       .describe(
         "Which side of the flow to include: everything, only outgoing, or only incoming.",
-      ),
+      )
+      .meta({ examples: ["all"] }),
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
     limit: limitSchema(1000).optional(),
@@ -67,9 +68,11 @@ export type GetAccountTransfersOutput = z.infer<
 export const GetAccountCounterpartiesInputSchema = z
   .object({
     ss58: ss58Schema(),
-    counterparty: Ss58Schema.optional().describe(
-      "The other SS58 account in the transfer pair — results are restricted to flows between the subject account and this one.",
-    ),
+    counterparty: Ss58Schema.optional()
+      .describe(
+        "The other SS58 account in the transfer pair — results are restricted to flows between the subject account and this one.",
+      )
+      .meta({ examples: ["5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F"] }),
     limit: limitSchema(100).optional(),
   })
   .strict();

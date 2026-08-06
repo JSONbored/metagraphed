@@ -21,13 +21,15 @@ export const GetAccountHistoryInputSchema = z
       .optional()
       .describe(
         "Inclusive start of the range. A block height on chain tools, an ISO-8601 date on time-series ones.",
-      ),
+      )
+      .meta({ examples: [8700000] }),
     to: z
       .string()
       .optional()
       .describe(
         "Inclusive end of the range. A block height on chain tools, an ISO-8601 date on time-series ones; an EVM address on decode_evm_call.",
-      ),
+      )
+      .meta({ examples: [8783000] }),
     limit: limitSchema(1000).optional(),
     offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
