@@ -208,6 +208,39 @@
   // TAO/USD index (migrations/d1/0004_user_state.sql). Chain-scale data
   // (blocks/extrinsics/chain_events/...) never goes to D1; those reads live
   // in the R2 lakehouse cold tier.
+  // The bulk sync path (metagraphed-infra#346/#347). Producers enqueue chunks
+  // instead of POSTing them at a sync route; this Worker consumes and writes.
+  //
+  // WHY. Each bulk lane grew its own substitute for what a queue provides --
+  // retry loops, a 1-second inter-chunk sleep standing in for backpressure, a
+  // pass tally standing in for "did the batch set drain". Every piece was a
+  // correct local fix for the D1 saturation on 2026-08-05
+  // (`D1_ERROR: D1 DB is overloaded`, which also failed wallet-auth and
+  // tao-usd-index), and together they are an orchestration layer nobody
+  // designed.
+  //
+  // NO DUAL WRITE, ever. A lane enqueues OR posts, never both -- writing
+  // everything twice during a migration doubles exactly the load that caused
+  // the incident, and duplicate arrivals corrupt the completeness tally that
+  // stopped a partial ledger publishing a leaderboard missing its #2.
+  //
+  // max_batch_size / max_concurrency ARE the backpressure. They replace the
+  // hand-rolled sleep, and are deliberately conservative until measured against
+  // real traffic: the failure this exists to prevent is overwhelming D1, so
+  // starting slow and raising on evidence is the whole point.
+  "queues": {
+    "producers": [{ "binding": "SYNC_BATCHES", "queue": "sync-batches" }],
+    "consumers": [
+      {
+        "queue": "sync-batches",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "max_concurrency": 2,
+        "dead_letter_queue": "sync-batches-dlq",
+      },
+    ],
+  },
   "d1_databases": [
     {
       "binding": "METAGRAPH_HEALTH_DB",
