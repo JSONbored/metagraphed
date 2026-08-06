@@ -138,7 +138,20 @@
     // lane on its own. That is why this does not violate the epic's
     // one-lane-at-a-time rule so much as satisfy its reason.
     //
-    // nominator-positions IS THE ONE TO WATCH. It PRUNES per coldkey, so a
+    // nominator-positions IS ROLLED BACK, 12:5xZ, and the reason is a real
+    // measurement rather than caution. Its largest coldkey holds 722 positions;
+    // at ~150 bytes a row that is ~108 KB, and SYNC_BATCH_MAX_BYTES is 96 KB.
+    // packSyncBatchMessages CORRECTLY refuses to split a coldkey -- doing so
+    // would delete rows the message never carried -- so it throws, the route
+    // 502s, and the producer logs `post nominator_positions: sync POST failed:
+    // curl: (22) ... error: 502`. Observed at 12:47Z.
+    //
+    // The packer is right and the budget is wrong: 96 KB is the budget for
+    // COMBINING groups, but a single indivisible group only has to fit the
+    // 128 KB transport. Fixed separately; this lane rejoins after that.
+    //
+    // The original note, still true, on why it is the one to watch: it PRUNES
+    // per coldkey, so a
     // message missing rows for a coldkey it names deletes rows it never
     // carried, and no retry undoes a delete. Three things have to hold at once:
     // pack_coldkey_chunks never splits a coldkey across POSTs (producer,
@@ -157,7 +170,7 @@
     // INCOMPLETE pass is the signal -- received_rows short of expected_rows with
     // a null completed_at -- and completeness is a fact the queue does not
     // itself provide.
-    "SYNC_QUEUE_LANES": "account-balances,hotkey-alpha,validator-nominator-counts,nominator-positions",
+    "SYNC_QUEUE_LANES": "account-balances,hotkey-alpha,validator-nominator-counts",
     // #9430's $exception storm guard reads this var per-Worker
     // (src/usage-telemetry.ts), and `vars` are per-config -- declaring it
     // only in wrangler.jsonc left THIS Worker's captures entirely unguarded,
