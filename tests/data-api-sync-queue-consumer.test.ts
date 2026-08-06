@@ -15,10 +15,19 @@ import { beforeEach, describe, test } from "vitest";
 
 const { default: worker } = await import("../workers/data-api.ts");
 
-const SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0011_nominator_positions.sql"),
-  "utf8",
-);
+const SCHEMA =
+  fs.readFileSync(
+    path.join(process.cwd(), "migrations/d1/0011_nominator_positions.sql"),
+    "utf8",
+  ) +
+  fs.readFileSync(
+    path.join(process.cwd(), "migrations/d1/0017_account_balances.sql"),
+    "utf8",
+  ) +
+  fs.readFileSync(
+    path.join(process.cwd(), "migrations/d1/0020_account_balances_passes.sql"),
+    "utf8",
+  );
 
 const COLDKEY = "5CXRfP2ekFhYQ6BCwEy5V8YyxgLmUmTNzHZTKAfTHKhKPBqE";
 const HOTKEY = "5FyVinYphF6JS5FZHzhMQffxtgbz1WxwUEBAxTRo9nABwb5g";
@@ -107,7 +116,45 @@ const rows = () =>
     unknown
   >[];
 
+const balances = () =>
+  db.prepare("SELECT * FROM account_balances").all() as Record<
+    string,
+    unknown
+  >[];
+
 describe("the sync queue consumer", () => {
+  test("writes account-balances and credits its declared pass", async () => {
+    // The lane whose truncation started all of this. The tally has to survive
+    // the transport: a queue knows a message arrived, not whether the whole
+    // scan did, and only the second fact catches a short pass.
+    const m = message({
+      lane: "account-balances",
+      captured_at: 1_780_000_000_000,
+      pass_total: 2,
+      rows: [
+        {
+          ss58: COLDKEY,
+          free_tao: 1000.5,
+          reserved_tao: 25.25,
+          captured_at: 1_780_000_000_000,
+        },
+      ],
+    });
+    await consume([m]);
+    assert.deepEqual(m.calls, ["ack"]);
+    assert.equal(balances().length, 1);
+    const pass = db
+      .prepare("SELECT * FROM account_balances_passes")
+      .all()[0] as Record<string, unknown>;
+    assert.equal(pass.expected_rows, 2);
+    assert.equal(pass.received_rows, 1);
+    assert.equal(
+      pass.completed_at,
+      null,
+      "one of two rows delivered is not a complete pass",
+    );
+  });
+
   test("writes a valid message and acks it", async () => {
     const m = positionMessage();
     await consume([m]);
