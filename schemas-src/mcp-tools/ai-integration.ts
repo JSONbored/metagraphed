@@ -101,7 +101,10 @@ export const CallSubnetSurfaceInputSchema = z
       .describe(
         "Path appended to the surface's base URL, e.g. `/v1/status`. Leading slash optional.",
       )
-      .meta({ examples: ["/v1/status"] }),
+      // uri-reference, not uri: this is a RELATIVE path resolved against the
+      // surface's own base URL, so `uri` (which wants a scheme) would be the
+      // wrong assertion (#9659).
+      .meta({ format: "uri-reference", examples: ["/v1/status"] }),
     method: z
       .enum(["GET", "HEAD", "POST", "PUT"])
       .optional()

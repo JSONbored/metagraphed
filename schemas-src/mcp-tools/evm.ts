@@ -16,8 +16,13 @@ const H160Schema = z.string().regex(/^0x[0-9a-fA-F]{40}$/);
 
 export const DecodeEvmCallInputSchema = z
   .object({
+    // #9645 gave every `to` the shared range-bound sentence, which is right on
+    // the fifteen tools where `to` IS a range bound and wrong here: this one is
+    // the call's destination address. A shared name is not a shared meaning.
     to: H160Schema.describe(
-      "Inclusive end of the range. A block height on chain tools, an ISO-8601 date on time-series ones; an EVM address on decode_evm_call.",
+      "The contract address the call is directed at: a 20-byte EVM address, " +
+        "0x-prefixed, 40 hex characters. Not a range bound, despite the name " +
+        "it shares with the block/date bounds on other tools.",
     ).meta({ examples: ["0x1234567890abcdef1234567890abcdef12345678"] }),
     input: z
       .string()

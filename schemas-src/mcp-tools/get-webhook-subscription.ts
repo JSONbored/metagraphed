@@ -8,12 +8,23 @@ import { OpenObjectSchema } from "./shared.ts";
 
 export const GetWebhookSubscriptionInputSchema = z
   .object({
+    // A UUID v4, and the handler ENFORCES it -- `src/webhooks.ts` mints it with
+    // crypto.randomUUID() and validates the shape before using it as a KV key,
+    // refusing anything else with "Argument `id` must be a valid subscription
+    // id (UUID v4)". So the pattern is PUBLISHED here, unlike `date` above
+    // which is annotation-only: this one is a real constraint (#9659).
+    //
+    // #9645's shared `id` sentence was wrong on both counts: there is no list
+    // tool to get it from -- it is returned once, at creation -- and an unknown
+    // id is an error, not an empty result.
     id: z
-      .string()
+      .uuidv4()
       .describe(
-        "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
+        "The subscription's id, a UUID v4, as returned when the subscription " +
+          "was created. There is no listing tool: an id that was not kept " +
+          "cannot be recovered. A malformed id is rejected outright.",
       )
-      .meta({ examples: ["sn-64-chutes-subnet-api"] }),
+      .meta({ examples: ["3f2a1c6e-9b7d-4e21-8c5a-2d4f6b8e0a13"] }),
   })
   .strict();
 export type GetWebhookSubscriptionInput = z.infer<

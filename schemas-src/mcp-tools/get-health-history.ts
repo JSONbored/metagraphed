@@ -66,11 +66,17 @@ const HEALTH_SURFACE_SORT_FIELDS = [
 
 export const GetHealthHistoryInputSchema = z
   .object({
+    // `format` as an ANNOTATION, keeping the existing pattern as the enforced
+    // part (#9659). Not `z.iso.date()`: that emits a full calendar-validity
+    // pattern which rejects 2026-02-30, while the handler's own gate is
+    // DAY_PATTERN -- the shape only. Publishing the stricter pattern would make
+    // a generated client refuse input this server accepts, the same defect as
+    // declaring a page-size ceiling a route does not enforce.
     date: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .describe("A single UTC day, `YYYY-MM-DD`.")
-      .meta({ examples: ["2026-08-05"] }),
+      .meta({ format: "date", examples: ["2026-08-05"] }),
     netuid: netuidSchema().optional(),
     kind: kindSchema(SURFACE_KIND).optional(),
     provider: providerSlugSchema().optional(),

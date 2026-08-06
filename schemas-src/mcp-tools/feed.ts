@@ -32,20 +32,34 @@ export const GetFeedInputSchema = z
         "Restrict the feed to items carrying this tag. Exact match against the item's own tags.",
       )
       .meta({ examples: ["incident"] }),
+    // TWO ACCEPTED FORMS, and the bare-date one is not shorthand for midnight
+    // on both bounds -- `parseSinceParam` (src/feeds.ts) resolves a date to the
+    // START of that UTC day for `since` and to its LAST instant for `until`,
+    // deliberately, so `?until=DATE` keeps that whole day instead of dropping
+    // everything after its midnight tick. That asymmetry is invisible from the
+    // parameter name and is the thing a caller gets wrong.
+    //
+    // Neither gets `format: "date-time"` for the same reason: the parser takes
+    // a bare calendar date too, so declaring date-time would advertise a
+    // constraint narrower than the handler's and reject input it accepts.
     since: z
       .string()
       .optional()
       .describe(
-        "ISO-8601 timestamp; only items at or after this instant are returned.",
+        "Lower bound, inclusive. Either an ISO calendar date (`2026-08-01`) or " +
+          "an ISO date-time with an explicit UTC/offset designator " +
+          "(`2026-08-01T12:00:00Z`). A bare date means the START of that UTC day.",
       )
-      .meta({ examples: ["2026-08-01T00:00:00Z"] }),
+      .meta({ examples: ["2026-08-01T00:00:00Z", "2026-08-01"] }),
     until: z
       .string()
       .optional()
       .describe(
-        "ISO-8601 timestamp; only items at or before this instant are returned.",
+        "Upper bound, inclusive. Either an ISO calendar date (`2026-08-06`) or " +
+          "an ISO date-time with an explicit UTC/offset designator. A bare date " +
+          "means the END of that UTC day, so the whole day is kept.",
       )
-      .meta({ examples: ["2026-08-06T00:00:00Z"] }),
+      .meta({ examples: ["2026-08-06T23:59:59Z", "2026-08-06"] }),
     limit: limitSchema(FEED_MAX_ITEMS).optional(),
   })
   .strict();
