@@ -23948,3 +23948,61 @@ describe("tools/list cursor handling (#9648)", () => {
     }
   });
 });
+
+// #9646: a deliberate divergence from the spec's classification, pinned so it
+// stays a decision rather than drifting back by accident. MCP 2025-11-25 lists
+// unknown tools under Protocol Errors (-32602); we answer with a tool-execution
+// error because the same section says clients hand those to the model for
+// self-correction, and because `unknown_tool` is what feeds $mcp_error_code.
+describe("unknown tools are a tool-execution error, deliberately (#9646)", () => {
+  const callUnknown = async () => {
+    const res = await handleMcpRequest(
+      new Request("https://api.metagraph.sh/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name: "no_such_tool_anywhere", arguments: {} },
+        }),
+      }),
+      {} as unknown as Env,
+      {},
+    );
+    return (await res.json()) as Row;
+  };
+
+  test("answers isError, not a JSON-RPC protocol error", () => {
+    return callUnknown().then((body) => {
+      assert.equal(
+        "error" in body,
+        false,
+        "a protocol error here would abort the agent instead of letting it retry",
+      );
+      assert.equal((body.result as Row).isError, true);
+    });
+  });
+
+  // The attribution half: this code is what callTool threads into
+  // $mcp_error_code, so "agents are guessing tool names" stays countable.
+  test("carries the unknown_tool code the analytics path reads", async () => {
+    const body = await callUnknown();
+    assert.equal(
+      ((body.result as Row).structuredContent as Row).error.code,
+      "unknown_tool",
+    );
+  });
+
+  // The recovery half: the model has to see WHICH name failed to pick another.
+  test("names the tool that was not found", async () => {
+    const body = await callUnknown();
+    assert.match(
+      String(((body.result as Row).content as Row[])[0]!.text),
+      /no_such_tool_anywhere/,
+    );
+  });
+});
