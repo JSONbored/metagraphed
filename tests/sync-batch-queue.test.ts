@@ -15,7 +15,9 @@ import { describe, test } from "vitest";
 import {
   classifySyncBatch,
   enqueueSyncBatch,
+  packMultiFamilyMessage,
   packSyncBatchMessages,
+  syncBatchRowCount,
   QUEUE_MESSAGE_MAX_BYTES,
   SYNC_BATCH_LANES,
   SYNC_BATCH_MAX_ROWS,
@@ -628,5 +630,171 @@ describe("packSyncBatchMessages: neurons (metagraphed-infra#357)", () => {
     assert.equal(validSyncBatchMessage(message), true);
     const { key_complete: _drop, ...unclaimed } = message!;
     assert.equal(validSyncBatchMessage(unclaimed), false);
+  });
+});
+
+describe("multi-family messages (metagraphed-infra#359)", () => {
+  // chain-detail posts four row families in one request because they must land
+  // in one write: a block whose drill-down shows no calls is readable and
+  // wrong. `rows` cannot express that, and four independent messages would let
+  // the families retry apart -- exactly the state the single POST prevents.
+  const families = (n: number) => ({
+    blockRows: Array.from({ length: n }, (_, i) => ({ number: i })),
+    extrinsicRows: Array.from({ length: n }, (_, i) => ({ hash: `0x${i}` })),
+    chainEventRows: [{ kind: "x" }],
+    accountEventRows: [{ account: "5A" }],
+  });
+
+  test("carries families instead of rows, and validates", () => {
+    const m = packMultiFamilyMessage({
+      lane: "chain-detail",
+      capturedAt: 1_785_970_245_474,
+      families: families(2),
+    });
+    assert.equal("rows" in m, false, "families REPLACE rows, never accompany");
+    assert.equal(validSyncBatchMessage(m), true);
+    assert.deepEqual(Object.keys(m.families!).sort(), [
+      "accountEventRows",
+      "blockRows",
+      "chainEventRows",
+      "extrinsicRows",
+    ]);
+  });
+
+  test("the row count is the SUM, so the pass tally can close", () => {
+    // Counting only `rows` would credit zero and a declared pass would never
+    // reach its total.
+    const m = packMultiFamilyMessage({
+      lane: "chain-detail",
+      capturedAt: 1,
+      passTotal: 6,
+      families: families(2),
+    });
+    assert.equal(syncBatchRowCount(m), 6);
+    assert.equal(passTallyFor(m, 0)!.receivedRows, 6);
+  });
+
+  test("refuses a message carrying BOTH shapes", () => {
+    // Which one is authoritative? Accepting both leaves the writer to guess,
+    // and a lane sending both would have one silently dropped.
+    assert.equal(
+      validSyncBatchMessage({
+        lane: "chain-detail",
+        captured_at: 1,
+        rows: [{ a: 1 }],
+        families: families(1),
+      }),
+      false,
+    );
+  });
+
+  test("refuses families from a lane that does not declare them", () => {
+    assert.equal(
+      validSyncBatchMessage({
+        lane: "hotkey-alpha",
+        captured_at: 1,
+        families: { blockRows: [{ a: 1 }] },
+      }),
+      false,
+    );
+  });
+
+  test("refuses a family name the consumer would have to guess a table for", () => {
+    assert.equal(
+      validSyncBatchMessage({
+        lane: "chain-detail",
+        captured_at: 1,
+        families: { mysteryRows: [{ a: 1 }] },
+      }),
+      false,
+    );
+  });
+
+  test("refuses an empty family set, and non-array families", () => {
+    for (const bad of [{}, { blockRows: "nope" }, { blockRows: [1, 2] }]) {
+      assert.equal(
+        validSyncBatchMessage({
+          lane: "chain-detail",
+          captured_at: 1,
+          families: bad,
+        }),
+        false,
+        JSON.stringify(bad),
+      );
+    }
+  });
+
+  test("THROWS rather than splitting an oversize chunk", () => {
+    // The families must land together, so there is no correct way to split
+    // them here. The producer has to post a smaller batch -- and this error is
+    // how that gets discovered, instead of a silently split write.
+    assert.throws(
+      () =>
+        packMultiFamilyMessage({
+          lane: "chain-detail",
+          capturedAt: 1,
+          families: families(5_000),
+        }),
+      /must land together/,
+    );
+  });
+
+  test("the producer's CURRENT batch does not fit, and that is the finding", () => {
+    // chain-detail batches 2 blocks per POST at ~350-662 KiB (workers/data-api.ts
+    // header). The cap is 128 KB. So this lane cannot be cut over until the
+    // producer posts smaller batches -- asserting it here means the constraint
+    // is recorded in the code rather than rediscovered at cutover.
+    const bigBatch = {
+      blockRows: [{ number: 1, blob: "x".repeat(200_000) }],
+      extrinsicRows: [],
+      chainEventRows: [],
+      accountEventRows: [],
+    };
+    assert.throws(
+      () =>
+        packMultiFamilyMessage({
+          lane: "chain-detail",
+          capturedAt: 1,
+          families: bigBatch,
+        }),
+      /over the \d+-byte budget/,
+    );
+  });
+
+  test("writeSyncBatch routes a family message to the family writer", async () => {
+    const seen: Record<string, unknown>[] = [];
+    await writeSyncBatch(
+      packMultiFamilyMessage({
+        lane: "chain-detail",
+        capturedAt: 1,
+        families: families(1),
+      }),
+      {},
+      1,
+      {
+        "chain-detail": async (f) => {
+          seen.push(f as Record<string, unknown>);
+        },
+      },
+    );
+    assert.equal(seen.length, 1, "ONE call -- one D1 batch, not four writes");
+    assert.equal((seen[0]!.blockRows as unknown[]).length, 1);
+  });
+
+  test("throws when no family writer is wired, rather than skipping", async () => {
+    // A silently skipped lane is a pass that never completes.
+    await assert.rejects(
+      writeSyncBatch(
+        packMultiFamilyMessage({
+          lane: "chain-detail",
+          capturedAt: 1,
+          families: families(1),
+        }),
+        {},
+        1,
+        {},
+      ),
+      /no family writer for lane chain-detail/,
+    );
   });
 });

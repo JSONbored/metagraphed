@@ -416,6 +416,8 @@ import { recordLaneVerdict } from "../src/lane-health.ts";
 import {
   classifySyncBatch,
   enqueueSyncBatch,
+  packMultiFamilyMessage,
+  type SyncBatchFamilyWriters,
   syncLaneUsesQueue,
   validSyncBatchMessage,
   writeSyncBatch,
@@ -798,6 +800,43 @@ async function handleChainDetailSync(request: Request, env: Env) {
   // ordering, and the same reason, as handleNeuronsSync above.
   if (!env.METAGRAPH_HEALTH_DB) {
     return writeJson({ error: "d1 binding unavailable" }, 503);
+  }
+
+  // Enqueue or write, never both -- see handleHotkeyAlphaSync's own note.
+  //
+  // FOUR FAMILIES, ONE MESSAGE (metagraphed-infra#359). blocks, extrinsics,
+  // chain events and account events are posted together because they must land
+  // together: a block whose drill-down shows no calls is readable and wrong.
+  // packMultiFamilyMessage refuses to split them, so an oversize batch throws
+  // here rather than silently becoming the split this shape exists to prevent.
+  if (syncLaneUsesQueue(env, "chain-detail")) {
+    try {
+      await env.SYNC_BATCHES!.send(
+        packMultiFamilyMessage({
+          lane: "chain-detail",
+          capturedAt: Date.now(),
+          families: {
+            blockRows: batch.rows.blockRows,
+            extrinsicRows: batch.rows.extrinsicRows,
+            chainEventRows: batch.rows.chainEventRows,
+            accountEventRows: batch.rows.accountEventRows,
+          },
+        }),
+      );
+    } catch (err) {
+      console.error("data-api chain-detail enqueue failed:", err);
+      await captureDataApiError(err, "chain-detail-sync-queue", env);
+      return writeJson({ error: "enqueue failed" }, 502);
+    }
+    return writeJson({
+      ok: true,
+      blocks_written: batch.rows.blockRows.length,
+      extrinsics_written: batch.rows.extrinsicRows.length,
+      chain_events_written: batch.rows.chainEventRows.length,
+      account_events_written: batch.rows.accountEventRows.length,
+      head: batch.rows.head,
+      stores: ["queue"],
+    });
   }
 
   let statements: number;
@@ -7271,6 +7310,25 @@ export default {
     // WRITES NOW, per message (metagraphed-infra#348). Per message rather than
     // per batch so one bad chunk is retried alone instead of dragging its nine
     // neighbours through the retry budget with it.
+    // ONE CALL per message, so the four families land in a single D1 batch --
+    // writeChainDetailToD1 already does that, which is why this is a straight
+    // hand-off rather than four writes.
+    const familyWriters: SyncBatchFamilyWriters = env.METAGRAPH_HEALTH_DB
+      ? {
+          "chain-detail": (families) =>
+            writeChainDetailToD1(
+              env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+                typeof writeChainDetailToD1
+              >[0],
+              {
+                blockRows: families.blockRows ?? [],
+                extrinsicRows: families.extrinsicRows ?? [],
+                chainEventRows: families.chainEventRows ?? [],
+                accountEventRows: families.accountEventRows ?? [],
+              } as Parameters<typeof writeChainDetailToD1>[1],
+            ),
+        }
+      : {};
     const writers: SyncBatchWriters = env.METAGRAPH_HEALTH_DB
       ? {
           "hotkey-alpha": (rows, pass) =>
@@ -7328,7 +7386,7 @@ export default {
         continue;
       }
       try {
-        await writeSyncBatch(message.body, writers);
+        await writeSyncBatch(message.body, writers, Date.now(), familyWriters);
         message.ack();
       } catch (err) {
         console.error("sync-batches: write failed:", err);
