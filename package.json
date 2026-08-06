@@ -142,6 +142,7 @@
     "@cloudflare/workers-oauth-provider": "^0.8.3",
     "@duckdb/node-api": "^1.5.4-r.1",
     "@jsonbored/chain-summaries": "*",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@noble/hashes": "^2.2.0",
     "@posthog/core": "^1.45.1",
     "@resvg/resvg-js": "^2.6.2",
