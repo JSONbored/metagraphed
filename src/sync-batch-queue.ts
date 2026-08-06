@@ -47,11 +47,33 @@ export interface SyncBatchMessage {
   rows: Record<string, unknown>[];
 }
 
-/** Lanes the consumer will accept. An allowlist here, unlike the deliberately
- * permissive lane field on the health sink, because this one WRITES: an
- * unrecognised lane means an unrecognised table, and guessing is worse than
- * dead-lettering. */
-export const SYNC_BATCH_LANES = ["hotkey-alpha", "account-balances"] as const;
+/**
+ * Lanes the consumer will accept.
+ *
+ * AN ALLOWLIST, unlike the deliberately permissive lane field on the health
+ * sink, because this one WRITES: an unrecognised lane means an unrecognised
+ * table, and guessing is worse than dead-lettering.
+ *
+ * EVERY BULK LANE BELONGS HERE EVENTUALLY, not just the two that broke. The D1
+ * saturation was never one lane's doing -- it is the SUM of every sync route
+ * writing unthrottled, and `neurons` alone writes ~30k rows every 15 minutes
+ * through the same path. One queue with one concurrency limit is what turns
+ * that into global backpressure; a lane left out is a lane that can still
+ * overwhelm the database the others are being polite about.
+ *
+ * They are cut over ONE AT A TIME regardless (see SYNC_QUEUE_LANES), so this
+ * list is what the consumer can accept, not what is currently routed.
+ */
+export const SYNC_BATCH_LANES = [
+  "hotkey-alpha",
+  "account-balances",
+  "neurons",
+  "nominator-positions",
+  "validator-nominator-counts",
+  "account-identity",
+  "chain-detail",
+  "subnet-hyperparams",
+] as const;
 
 export type SyncBatchLane = (typeof SYNC_BATCH_LANES)[number];
 
@@ -118,4 +140,93 @@ export function classifySyncBatch(
     else invalid += 1;
   }
   return { valid, invalid };
+}
+
+/**
+ * Which lanes route through the queue rather than writing D1 inline.
+ *
+ * ONE PLACE DECIDES, and it is a per-lane env flag rather than a constant, so a
+ * cutover and its rollback are both a deploy-time setting instead of a code
+ * change. That matters because rollback needs to be boring: these are
+ * latest-only upsert tables refreshed on a tick, so flipping back simply means
+ * the next pass writes the old way -- no backfill, no reconciliation.
+ *
+ * NEVER BOTH. The flag SELECTS a path, it does not fan out. Dual-writing would
+ * double the D1 load that caused the saturation this migration exists to fix,
+ * and duplicate arrivals would corrupt the completeness tally that caught a
+ * ledger publishing 147,000 of 364,000 rows while looking perfectly fresh.
+ *
+ * Absent flag means the old path, so a deployment that has not opted in behaves
+ * exactly as before -- the same posture every other switch here takes.
+ */
+export function syncLaneUsesQueue(
+  env: { SYNC_BATCHES?: unknown; SYNC_QUEUE_LANES?: string },
+  lane: SyncBatchLane,
+): boolean {
+  if (!env.SYNC_BATCHES) return false;
+  const enabled = (env.SYNC_QUEUE_LANES ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return enabled.includes(lane);
+}
+
+/** The D1 surface the consumer writes through -- structural, so a test can hand
+ * a plain object instead of standing up a binding. */
+export type SyncBatchWriter = (
+  rows: Record<string, unknown>[],
+  pass: PassTally | null,
+) => Promise<unknown>;
+
+/** Lane -> its D1 writer. PARTIAL on purpose: a lane may be accepted by the
+ * validator before its writer is wired, and writeSyncBatch throws rather than
+ * silently skipping so a half-migrated lane fails loudly instead of leaving a
+ * pass that never completes. */
+export type SyncBatchWriters = Partial<Record<SyncBatchLane, SyncBatchWriter>>;
+
+/** The completeness tally a chunk carries, when its producer declared one. */
+export interface PassTally {
+  capturedAt: number;
+  expectedRows: number;
+  receivedRows: number;
+  nowMs: number;
+}
+
+/**
+ * Turn one queue message into the write its lane needs.
+ *
+ * THE TALLY IS COMMUTATIVE, which is what makes this safe off a queue at all.
+ * `received_rows` accumulates and `completed_at` is stamped by whichever write
+ * closes the gap, so messages arriving out of order -- which a queue permits and
+ * concurrency guarantees -- still land on the same answer. An accounting scheme
+ * that depended on arrival order could not have moved here without changing its
+ * meaning.
+ */
+export function passTallyFor(
+  message: SyncBatchMessage,
+  nowMs: number,
+): PassTally | null {
+  if (message.pass_total === undefined) return null;
+  return {
+    capturedAt: message.captured_at,
+    expectedRows: message.pass_total,
+    receivedRows: message.rows.length,
+    nowMs,
+  };
+}
+
+/** Dispatch one validated message to its lane's writer. Separated from the
+ * Worker handler so the routing is testable without a queue. */
+export async function writeSyncBatch(
+  message: SyncBatchMessage,
+  writers: SyncBatchWriters,
+  nowMs: number = Date.now(),
+): Promise<void> {
+  const writer = writers[message.lane as SyncBatchLane];
+  if (!writer) {
+    // Unreachable given validSyncBatchMessage's allowlist, and thrown rather
+    // than ignored: a silently skipped lane is a pass that never completes.
+    throw new Error(`sync-batches: no writer for lane ${message.lane}`);
+  }
+  await writer(message.rows, passTallyFor(message, nowMs));
 }

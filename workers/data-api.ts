@@ -411,7 +411,13 @@ import { BLOCKLIST_KV_KEY, BLOCKLIST_KV_TTL } from "./tiered-rate-limit.ts";
 import { MCP_TIERED_RATE_LIMIT } from "../src/mcp-server.ts";
 import { createPgSql } from "../src/pg-sql.ts";
 import { recordLaneVerdict } from "../src/lane-health.ts";
-import { classifySyncBatch } from "../src/sync-batch-queue.ts";
+import {
+  classifySyncBatch,
+  syncLaneUsesQueue,
+  validSyncBatchMessage,
+  writeSyncBatch,
+  type SyncBatchWriters,
+} from "../src/sync-batch-queue.ts";
 import {
   coercePollerJobOutcome,
   validPollerJobOutcome,
@@ -2245,6 +2251,43 @@ async function handleHotkeyAlphaSync(request: Request, env: Env) {
       receivedRows: rows.length,
       nowMs: Date.now(),
     };
+  }
+
+  // ENQUEUE OR WRITE, NEVER BOTH (metagraphed-infra#348). The producer is a
+  // Rust container that cannot hold queue credentials, so the switch lives
+  // here rather than in the producer: the route either hands the chunk to the
+  // queue or writes it directly, and `syncLaneUsesQueue` is the single place
+  // that decides. Dual-writing would double exactly the D1 load that caused the
+  // saturation this migration exists to fix, and duplicate arrivals would
+  // corrupt the completeness tally -- `received_rows` against a declared
+  // `pass_total` is what caught a ledger publishing 147,000 of 364,000 rows
+  // while looking fresh.
+  //
+  // WHY THIS IS THE USEFUL HALF OF THE MIGRATION. The problem was never the
+  // HTTP hop; it was the D1 WRITE landing unthrottled. Moving that write onto
+  // the consumer puts it behind `max_concurrency`, which is the backpressure
+  // the producer's one-second sleep was standing in for.
+  if (syncLaneUsesQueue(env, "hotkey-alpha")) {
+    try {
+      await env.SYNC_BATCHES!.send({
+        lane: "hotkey-alpha",
+        captured_at: rows[0]!.captured_at as number,
+        ...(pass ? { pass_total: pass.expectedRows } : {}),
+        rows,
+      });
+    } catch (err) {
+      console.error("data-api hotkey-alpha-sync enqueue failed:", err);
+      await captureDataApiError(err, "hotkey-alpha-sync-queue", env);
+      // 502, not 200: the producer must retry a chunk that was never accepted,
+      // and reporting success here would lose it silently.
+      return writeJson({ error: "enqueue failed" }, 502);
+    }
+    return writeJson({
+      ok: true,
+      hotkey_alpha_written: rows.length,
+      stores: ["queue"],
+      pass_total: pass?.expectedRows ?? null,
+    });
   }
 
   // D1 is the binding this path REQUIRES -- the only store this family has.
@@ -7128,10 +7171,44 @@ export default {
       `sync-batches: ${batch.messages.length} message(s), ${valid.length} valid ` +
         `(${rows} row(s), lanes=${lanes || "none"}), ${invalid} unparseable`,
     );
-    // Everything is acked: nothing is written yet, so nothing can fail in a way
-    // a retry would fix, and leaving messages unacked would build a backlog
-    // that says nothing about the lanes it is meant to carry.
-    batch.ackAll();
+    // WRITES NOW, per message (metagraphed-infra#348). Per message rather than
+    // per batch so one bad chunk is retried alone instead of dragging its nine
+    // neighbours through the retry budget with it.
+    const writers: SyncBatchWriters = env.METAGRAPH_HEALTH_DB
+      ? {
+          "hotkey-alpha": (rows, pass) =>
+            writeHotkeyAlphaToD1(
+              env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+                typeof writeHotkeyAlphaToD1
+              >[0],
+              rows,
+              pass,
+            ),
+        }
+      : {};
+    for (const message of batch.messages) {
+      if (!validSyncBatchMessage(message.body)) {
+        // Acked, not retried: a message that cannot parse will not parse on the
+        // fifth attempt either, and burning the budget only delays the DLQ.
+        message.ack();
+        continue;
+      }
+      try {
+        await writeSyncBatch(message.body, writers);
+        message.ack();
+      } catch (err) {
+        console.error("sync-batches: write failed:", err);
+        await captureDataApiError(
+          err,
+          `sync-batches/${message.body.lane}`,
+          env,
+        );
+        // Retried: a D1 write that failed under load is exactly what the queue's
+        // backoff exists for, and this is the failure the one-second producer
+        // sleep was standing in for.
+        message.retry();
+      }
+    }
     if (invalid > 0) {
       ctx.waitUntil(
         recordLaneVerdict(env.METAGRAPH_HEALTH_DB, {
