@@ -3966,6 +3966,33 @@ export interface SemanticSearchResult {
 }
 
 /** /api/v1/search/semantic response envelope. */
+/** One place a pasted query could lead (metagraphed-infra#362). */
+export interface ResolvedIdentifier {
+  kind: "account" | "block" | "extrinsic" | "evm-account" | "subnet" | "neuron";
+  value: string;
+  api_path: string;
+  ui_path: string;
+  /**
+   * Whether this is the ONLY reading of the input.
+   *
+   * `false` means another kind matches the same shape -- a 64-hex string is a
+   * block hash OR an extrinsic hash, a small integer is a netuid AND a block
+   * height -- so the UI must show the alternatives rather than navigate. It is
+   * NOT a claim that the entity exists; the route looks nothing up.
+   */
+  exact: boolean;
+}
+
+/** What the user pasted, resolved to chain entities. */
+export interface SearchResolveResponse {
+  query: string;
+  matches: ResolvedIdentifier[];
+  match_count: number;
+  /** Exactly one candidate, and it is exact -- the only case where navigating
+   * straight there is correct. */
+  unambiguous: boolean;
+}
+
 export interface SemanticSearchResponse {
   query: string;
   count: number;

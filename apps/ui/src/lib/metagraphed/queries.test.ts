@@ -16,6 +16,7 @@ import {
   normalizeSubnetGaps,
   validateNextCursor,
   normalizeFreshnessSources,
+  searchResolveQuery,
 } from "./queries";
 
 // These tests lock the canonical-only reads after #1756 collapsed the redundant
@@ -790,5 +791,34 @@ describe("validateNextCursor", () => {
       cursor: null,
       invalid: true,
     });
+  });
+});
+
+describe("searchResolveQuery (metagraphed-infra#362)", () => {
+  it("keys on the raw query, network-scoped like every other read", () => {
+    // The key carries the network because the same string can resolve on
+    // testnet as well -- the route is in LIVE_CHAIN_ROUTE_PATHS precisely
+    // because a checksum means the same thing on every chain.
+    expect(searchResolveQuery("0xabc").queryKey).toEqual([
+      "metagraphed",
+      { network: "mainnet" },
+      "search-resolve",
+      "0xabc",
+    ]);
+  });
+
+  it("never runs on an empty or whitespace query", () => {
+    // The route would answer with an empty `matches`, but a request per
+    // keystroke-that-is-only-spaces is a request for nothing.
+    expect(searchResolveQuery("").enabled).toBe(false);
+    expect(searchResolveQuery("   ").enabled).toBe(false);
+    expect(searchResolveQuery("7").enabled).toBe(true);
+  });
+
+  it("caches forever, because the answer is a pure function of the query", () => {
+    // Unlike every other query here, nothing on the server can change this
+    // result: the same string resolves to the same destinations always. A
+    // finite staleTime would re-request an answer that cannot have moved.
+    expect(searchResolveQuery("7").staleTime).toBe(Infinity);
   });
 });

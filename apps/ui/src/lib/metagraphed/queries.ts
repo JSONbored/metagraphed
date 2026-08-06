@@ -184,6 +184,7 @@ import type {
   RpcEndpointsSummary,
   RpcUsage,
   SchemaInfo,
+  SearchResolveResponse,
   SemanticSearchResponse,
   Subnet,
   SubnetAxonRemovals,
@@ -9013,6 +9014,30 @@ export const searchQuery = (q: string, limit = 20) =>
 // Response is a single object with `results` nested inside (not a bare list or
 // a { <collection>: T[] } wrapper), so this builds directly on apiFetch rather
 // than the fetchList list-unwrapping helper.
+/**
+ * What did the user paste (metagraphed-infra#362)?
+ *
+ * Deliberately SEPARATE from semanticSearchQuery and safe to run alongside it:
+ * this route is deterministic, needs no AI binding, and answers from the shape
+ * of the query alone -- so an explorer's most common search never waits on, or
+ * pays for, an embedding.
+ *
+ * `staleTime: Infinity` because the answer is a pure function of the query. The
+ * same string resolves to the same destinations forever; there is nothing on
+ * the server that can change it.
+ */
+export const searchResolveQuery = (q: string) =>
+  queryOptions({
+    queryKey: k("search-resolve", q),
+    queryFn: ({ signal }) =>
+      apiFetch<SearchResolveResponse>("/api/v1/search/resolve", {
+        params: { q },
+        signal,
+      }),
+    enabled: q.trim().length > 0,
+    staleTime: Infinity,
+  });
+
 export const semanticSearchQuery = (q: string, limit = 10, types?: string[]) =>
   queryOptions({
     queryKey: k("search-semantic", q, limit, types ?? []),
