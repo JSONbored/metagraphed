@@ -279,3 +279,62 @@ describe("shared input parameters publish their own description (#9645)", () => 
     }
   });
 });
+
+// #9654: the sentinel is an artifact of `z.int()`, not of which side of the
+// call a schema describes, so it was on every OUTPUT integer field while
+// inputs were clean -- 1,083 of them, against the 287 input parameters that
+// motivated stripping it in the first place. The spec says clients SHOULD
+// validate structured results against this schema, so it is read.
+describe("published output schemas are normalised like inputs (#9654)", () => {
+  const MAX = Number.MAX_SAFE_INTEGER;
+  const MIN = Number.MIN_SAFE_INTEGER;
+
+  /** Every integer subschema anywhere in a published schema, however nested. */
+  const integers = (node: unknown, out: Row[] = []): Row[] => {
+    if (Array.isArray(node)) {
+      for (const entry of node) integers(entry, out);
+      return out;
+    }
+    if (!node || typeof node !== "object") return out;
+    const row = node as Row;
+    if (row.type === "integer") out.push(row);
+    for (const value of Object.values(row)) integers(value, out);
+    return out;
+  };
+
+  test("no output integer field carries the safe-integer sentinel", () => {
+    const offenders: string[] = [];
+    let checked = 0;
+    for (const tool of listToolDefinitions() as Row[]) {
+      if (!tool.outputSchema) continue;
+      for (const schema of integers(tool.outputSchema)) {
+        checked += 1;
+        if (
+          schema.maximum === MAX ||
+          schema.minimum === MIN ||
+          schema.exclusiveMaximum === MAX ||
+          schema.exclusiveMinimum === MIN
+        ) {
+          offenders.push(tool.name as string);
+        }
+      }
+    }
+    // Guards the guard: a walker that found nothing would pass vacuously.
+    assert.ok(checked > 500, `expected many output integers, saw ${checked}`);
+    assert.deepEqual([...new Set(offenders)], []);
+  });
+
+  // The same assertion inputs already carry, restated here so both sides are
+  // pinned in one place -- they are normalised by the same call now.
+  test("no input parameter carries the safe-integer sentinel", () => {
+    const offenders: string[] = [];
+    for (const tool of listToolDefinitions() as Row[]) {
+      for (const schema of integers(tool.inputSchema)) {
+        if (schema.maximum === MAX || schema.minimum === MIN) {
+          offenders.push(tool.name as string);
+        }
+      }
+    }
+    assert.deepEqual([...new Set(offenders)], []);
+  });
+});

@@ -13871,8 +13871,21 @@ const TOOL_OUTPUT_SCHEMAS = {
 
 export function listToolDefinitions() {
   return MCP_TOOLS.map((tool: Row) => {
-    const outputSchema =
-      tool.outputSchema || (TOOL_OUTPUT_SCHEMAS as Row)[tool.name];
+    // NORMALISED HERE, not at the spread below (#9654). The sentinel is a Zod
+    // artifact of `z.int()`, not a property of which side of the call a schema
+    // describes, so it landed on 1,083 of 1,083 output integer fields while
+    // inputs were clean -- `total`, `count`, `limit`, `next_cursor`, every
+    // block height. The spec says clients SHOULD validate structured results
+    // against this schema, so it is read, and it was telling them a row count
+    // is bounded by 2^53 because nobody chose anything.
+    //
+    // Not a loosening: stripSentinelIntegerBounds removes only values EQUAL to
+    // the safe-integer sentinels, so a deliberate `.max()` survives. It also
+    // passes a non-object straight through, which is what keeps the
+    // absent-schema case below unchanged rather than adding a branch to it.
+    const outputSchema = stripSentinelIntegerBounds(
+      tool.outputSchema || (TOOL_OUTPUT_SCHEMAS as Row)[tool.name],
+    );
     return {
       name: tool.name,
       title: tool.title,
@@ -13883,6 +13896,7 @@ export function listToolDefinitions() {
       inputSchema: stripSentinelIntegerBounds(tool.inputSchema),
       // outputSchema (optional) lets a client validate the structuredContent the
       // tool returns; included only when the tool declares one.
+      //
       ...(outputSchema ? { outputSchema } : {}),
       // Behaviour hints (#8964): closed-world read-only by default; the 20
       // tools that leave our infrastructure are named in
