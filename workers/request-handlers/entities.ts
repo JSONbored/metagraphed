@@ -182,6 +182,12 @@ import {
   EMISSION_CHANGES_LIMIT_MAX,
 } from "../../src/emission-gate-changes.ts";
 import {
+  buildNominatorPositions,
+  loadNominatorPositions,
+  NOMINATOR_BASES,
+  DEFAULT_NOMINATOR_BASIS,
+} from "../../src/validator-nominator-positions.ts";
+import {
   buildTaoUsdSeries,
   loadTaoUsdSeries,
   DEFAULT_TAO_USD_WINDOW,
@@ -1457,6 +1463,7 @@ export async function handleValidatorNominators(
   url: URL,
 ) {
   const validationError = validateEntityQuery(url, [
+    "basis",
     "window",
     "sort",
     "limit",
@@ -1465,6 +1472,64 @@ export async function handleValidatorNominators(
     "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
+
+  // #9617: `basis` selects WHICH QUESTION is answered, not how well. `flow`
+  // (the default, unchanged) is TAO moved in a window; `positions` is alpha
+  // held right now off the position ledger, which sees the dormant delegators
+  // a window cannot. Different units over different time semantics, so the
+  // default must not move -- it would silently change what every existing
+  // caller's numbers mean.
+  const basisParam = url.searchParams.get("basis") ?? DEFAULT_NOMINATOR_BASIS;
+  if (
+    !NOMINATOR_BASES.includes(basisParam as (typeof NOMINATOR_BASES)[number])
+  ) {
+    return analyticsQueryError({
+      parameter: "basis",
+      message: `basis must be one of ${NOMINATOR_BASES.join(", ")}.`,
+    });
+  }
+  if (basisParam === "positions") {
+    // window and sort belong to the flow aggregation and mean nothing here.
+    // Accepting them silently would imply this basis honoured them.
+    for (const unsupported of ["window", "sort"]) {
+      if (url.searchParams.has(unsupported)) {
+        return analyticsQueryError({
+          parameter: unsupported,
+          message: `"${unsupported}" applies to basis=flow only; the positions basis is a current-holdings snapshot, not a windowed aggregation.`,
+        });
+      }
+    }
+    const positionsLimit = parseBoundedIntParam(url, "limit", {
+      def: GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+      min: 1,
+      max: GLOBAL_VALIDATOR_LIMIT_MAX,
+    });
+    if ("error" in positionsLimit)
+      return analyticsQueryError(positionsLimit.error);
+    const positionsOffset = parseBoundedIntParam(url, "offset", {
+      def: 0,
+      min: 0,
+      max: Number.MAX_SAFE_INTEGER,
+    });
+    if ("error" in positionsOffset)
+      return analyticsQueryError(positionsOffset.error);
+    const read = await loadNominatorPositions(
+      env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof loadNominatorPositions
+      >[0],
+      hotkey,
+    );
+    const positionsData = buildNominatorPositions(read, hotkey, {
+      limit: positionsLimit.value,
+      offset: positionsOffset.value,
+    });
+    return envelopeResponse(
+      request,
+      { data: positionsData, meta: { contract_version: contractVersion(env) } },
+      "short",
+    );
+  }
+
   const windowParam =
     url.searchParams.get("window") || DEFAULT_NOMINATOR_WINDOW;
   if (!Object.hasOwn(NOMINATOR_WINDOWS, windowParam)) {

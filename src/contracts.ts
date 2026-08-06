@@ -3145,10 +3145,14 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/validators/{hotkey}/nominators",
     "/metagraph/validators/{hotkey}/nominators.json",
-    "Fetch the nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, each with staked/unstaked/net/gross TAO and last activity, ranked by net_staked (default), gross_staked, or last_activity. ?coldkey= narrows to one nominator's own flow (exact match). Summed live from the account_events StakeAdded/StakeRemoved stream. Cold/absent hotkey returns an empty list, never a 404.",
+    "Fetch the nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, each with staked/unstaked/net/gross TAO and last activity, ranked by net_staked (default), gross_staked, or last_activity. ?coldkey= narrows to one nominator's own flow (exact match). Summed live from the account_events StakeAdded/StakeRemoved stream. Cold/absent hotkey returns an empty list, never a 404. ?basis= selects WHICH QUESTION is answered (#9617), not how well it is answered. basis=flow (the DEFAULT, and everything above) is TAO MOVED within the window, so it cannot see a nominator who staked before the window and has not touched it since -- a dormant delegator is invisible and a long-standing one reads as smaller than they are. basis=positions instead reads the standing position ledger keyed (coldkey, hotkey, netuid): every coldkey (an ss58 address) currently delegating to this hotkey, and how much ALPHA each holds per subnet, whenever they staked. The two are different units over different time semantics -- TAO moved in a window versus alpha held now -- so they are not comparable and the default does not move. On the positions basis, window and sort are REJECTED rather than ignored, because accepting them would imply the snapshot honoured them; nominator_count is the whole delegator set rather than the returned page; and alpha is reported PER SUBNET with no cross-subnet total, since each subnet's alpha is a different token. Nominators are ranked by how many subnets they hold on, then by their largest single-subnet holding, for the same reason. The positions basis DECLINES with degraded.reason pool_totals_unproven while the hotkey_alpha pool ledger has no complete pass -- a partial ledger underprices a nominator rather than dropping them.",
     "short",
     ["validators", "analytics"],
     [
+      {
+        name: "basis",
+        schema: { type: "string", enum: ["flow", "positions"] },
+      },
       {
         name: "window",
         schema: { type: "string", enum: ["7d", "30d", "90d"] },
