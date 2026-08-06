@@ -4,6 +4,8 @@
 
 ### Every subnet, metagraphed.
 
+[![MCP Toplist](https://mcptoplist.com/badge/io.github.JSONbored%2Fmetagraphed.svg)](https://mcptoplist.com/server/io.github.JSONbored%2Fmetagraphed)
+
 Bittensor didn't ship with a map, so we drew one. For every subnet: **what does it expose** (public APIs, docs, schemas), **is it healthy**, and **how do I call it** — machine-readable and agent-native from the ground up.
 
 [![Website](https://img.shields.io/badge/website-metagraph.sh-111?logo=cloudflare&logoColor=white)](https://metagraph.sh)
