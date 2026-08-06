@@ -631,6 +631,10 @@ import {
   GetTaoUsdOutputSchema,
 } from "../schemas-src/mcp-tools/get-tao-usd.ts";
 import {
+  GetSubnetSurfaceHistoryInputSchema,
+  GetSubnetSurfaceHistoryOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-surface-history.ts";
+import {
   GetSubnetValidatorEconomicsInputSchema,
   GetSubnetValidatorEconomicsOutputSchema,
   ListValidatorEconomicsInputSchema,
@@ -1448,6 +1452,12 @@ import {
   DEFAULT_TAO_USD_WINDOW,
   TAO_USD_WINDOWS,
 } from "./tao-usd-series.ts";
+import {
+  buildSurfaceHistory,
+  loadSurfaceHistory,
+  SURFACE_HISTORY_LIMIT_DEFAULT,
+  SURFACE_HISTORY_LIMIT_MAX,
+} from "./surface-history.ts";
 import { buildSubnetHyperparams } from "./subnet-hyperparams.ts";
 import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.ts";
 import { buildAlphaVolume } from "./alpha-volume.ts";
@@ -7910,6 +7920,56 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_subnet_surface_history",
+    title: "Get when a subnet's public surfaces changed",
+    description:
+      "Fetch WHEN one subnet's public surfaces were added, changed or removed, " +
+      "and in which commit (#9612). get_subnet_surfaces says what a subnet " +
+      "exposes TODAY; this says when that became true -- use it for 'did this " +
+      "API move?', 'when did this subnet stop publishing an OpenAPI spec?', or " +
+      "to date a surface's arrival. Each entry names the surface (id, kind, " +
+      "url, name), the action (insert, update or delete), the source_commit " +
+      "that produced it, and when it was recorded. A DELETE entry is the ONLY " +
+      "evidence a surface ever existed -- the registry keeps no trace of a " +
+      "removed surface, so this trail is the only place that question can be " +
+      "answered. Note surface_count counts distinct surfaces with a recorded " +
+      "mutation, which is NOT the subnet's current surface count: a deleted " +
+      "surface is counted here and absent there. The full surface record is " +
+      "not repeated here -- read get_subnet_surfaces for that. limit caps the " +
+      `entries (default ${SURFACE_HISTORY_LIMIT_DEFAULT}, max ${SURFACE_HISTORY_LIMIT_MAX}), newest first. A subnet whose ` +
+      "surfaces have never changed returns an empty trail, not an error -- " +
+      "stability is the common case. Mainnet only. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/surface-history.",
+    inputSchema: z.toJSONSchema(GetSubnetSurfaceHistoryInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetSubnetSurfaceHistoryInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      if (!isU16Netuid(netuid)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `netuid` must be an integer in the u16 range 0..65535.",
+        );
+      }
+      const limit = clampLimit(
+        args?.limit,
+        SURFACE_HISTORY_LIMIT_DEFAULT,
+        SURFACE_HISTORY_LIMIT_MAX,
+      );
+      const rows = await loadSurfaceHistory(
+        ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+          typeof loadSurfaceHistory
+        >[0],
+        netuid,
+        { limit },
+      );
+      return buildSurfaceHistory(rows, netuid, { limit });
+    },
+  },
+  {
     name: "get_chain_holders",
     title: "Rank every subnet by alpha-ownership concentration",
     description:
@@ -13082,6 +13142,10 @@ const TOOL_OUTPUT_SCHEMAS = {
   get_tao_usd: z.toJSONSchema(GetTaoUsdOutputSchema, {
     target: "draft-2020-12",
   }),
+  get_subnet_surface_history: z.toJSONSchema(
+    GetSubnetSurfaceHistoryOutputSchema,
+    { target: "draft-2020-12" },
+  ),
   get_chain_burn: z.toJSONSchema(GetChainBurnOutputSchema, {
     target: "draft-2020-12",
   }),

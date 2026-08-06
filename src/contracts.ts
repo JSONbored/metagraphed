@@ -22,6 +22,8 @@ import {
   SUBNET_HOLDERS_LIMIT_MAX,
   CHAIN_HOLDERS_LIMIT_DEFAULT,
   CHAIN_HOLDERS_LIMIT_MAX,
+  SURFACE_HISTORY_LIMIT_DEFAULT,
+  SURFACE_HISTORY_LIMIT_MAX,
 } from "./route-limits.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1652,6 +1654,13 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/network/tao-usd.json",
     "The TAO/USD index (#9609) -- the current USD price of one TAO with the derivation that produced it, plus the recent series. There is no TAO/USD pair on chain, so this is COMPOSED per ADR 0025 (src/tao-usd-index.ts): a LIQUIDITY-WEIGHTED median across qualifying wTAO/WETH pools, rejecting any pool more than 2% from the unweighted median, refusing to publish below a two-pool quorum, multiplied through an ETH/USDC anchor leg. Composed rather than read from a wTAO/USDC pool deliberately: measured 2026-07-31 all three such pools traded $81k/day combined against WETH/USDC's $118M, ~1,455x deeper, and the thin pools demonstrably misprice -- two well-priced hops beat one badly-priced one. `latest` carries the whole reading together (price, price_basis, eth_usd, block_number, pool_count and the per-pool breakdown) so the number and its audit trail always describe the same block. A NULL usd_per_tao is a STATED OUTCOME, not a gap: the producer writes price_basis `insufficient_pools` when the quorum was not met, and the schema enforces that pairing as a CHECK constraint -- read it as 'not priceable at that block', never as a zero price. ?window=1h|24h|7d|30d (default 24h), newest first, capped at 2000 points; change_usd/change_pct describe the movement across the RETURNED window over PRICED points only, and are null when there is nothing to compare against. point_count and priced_point_count are reported separately: a gap between them is how a window with unpriceable blocks announces itself. THE SERIES BEGINS 2026-08-02 and accrues about one point per minute, so a 30d window today returns everything that exists rather than a month -- `oldest_observed_at` says exactly how far back the answer reaches. Mainnet-only: wrapped TAO on Ethereum has no testnet counterpart.",
     "TaoUsdArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
+    "subnet-surface-history",
+    "/metagraph/subnets/{netuid}/surface-history.json",
+    `When one subnet's public surfaces were added, changed or removed, and in which commit (#9612). The registry publishes what a subnet exposes TODAY; this answers when that became true -- the question behind 'did this API move?' and 'when did this subnet stop publishing an OpenAPI spec?'. Each entry names the surface (id, kind, url, name lifted from the recorded overlay), the action (insert, update or delete), the source_commit that produced it, and when it was recorded. A DELETE entry is the only evidence a surface ever existed -- the registry itself carries no trace of a removed surface, which is what makes this trail rather than the surface list the place to ask. IDENTITY IS COALESCED: the upsert path omitted surface_id from its INSERT column list, so 8,831 of the table's 8,892 rows carried a NULL and only the 61 deletes recorded one. Migration 0024 backfilled the column from the overlay's own id -- present on every row -- and the writer now records it, but this route still falls back to the overlay because migrations here are applied by hand and a fresh or restored database will have the nulls back. The overlay itself is READ, not republished: only the fields identifying WHAT changed are lifted out, and a caller wanting the full surface record reads /subnets/{netuid}/surfaces, which is that document's home. surface_count counts distinct surfaces with a recorded mutation, which is NOT the subnet's current surface count -- a deleted surface appears here and not there, and that difference is the point. limit caps the entries (default ${SURFACE_HISTORY_LIMIT_DEFAULT}, max ${SURFACE_HISTORY_LIMIT_MAX}), newest first. A subnet whose surfaces have never changed returns an empty trail, never a 404 -- stability is the common case. Mainnet-only: the registry sync that writes this table is mainnet's.`,
+    "SubnetSurfaceHistoryArtifact",
     COMPUTED_LIVE,
   ),
   artifact(
@@ -3867,6 +3876,31 @@ export const API_ROUTES = [
     ],
   ),
   route(
+    "subnet-surface-history",
+    "GET",
+    "/api/v1/subnets/{netuid}/surface-history",
+    "/metagraph/subnets/{netuid}/surface-history.json",
+    `Fetch one subnet's surface audit trail. When one subnet's public surfaces were added, changed or removed, and in which commit (#9612). The registry publishes what a subnet exposes TODAY; this answers when that became true -- the question behind 'did this API move?' and 'when did this subnet stop publishing an OpenAPI spec?'. Each entry names the surface (id, kind, url, name lifted from the recorded overlay), the action (insert, update or delete), the source_commit that produced it, and when it was recorded. A DELETE entry is the only evidence a surface ever existed -- the registry itself carries no trace of a removed surface, which is what makes this trail rather than the surface list the place to ask. IDENTITY IS COALESCED: the upsert path omitted surface_id from its INSERT column list, so 8,831 of the table's 8,892 rows carried a NULL and only the 61 deletes recorded one. Migration 0024 backfilled the column from the overlay's own id -- present on every row -- and the writer now records it, but this route still falls back to the overlay because migrations here are applied by hand and a fresh or restored database will have the nulls back. The overlay itself is READ, not republished: only the fields identifying WHAT changed are lifted out, and a caller wanting the full surface record reads /subnets/{netuid}/surfaces, which is that document's home. surface_count counts distinct surfaces with a recorded mutation, which is NOT the subnet's current surface count -- a deleted surface appears here and not there, and that difference is the point. limit caps the entries (default ${SURFACE_HISTORY_LIMIT_DEFAULT}, max ${SURFACE_HISTORY_LIMIT_MAX}), newest first. A subnet whose surfaces have never changed returns an empty trail, never a 404 -- stability is the common case. Mainnet-only: the registry sync that writes this table is mainnet's.`,
+    "short",
+    ["subnets"],
+    [
+      {
+        name: "limit",
+        schema: {
+          type: "integer",
+          minimum: 1,
+          maximum: SURFACE_HISTORY_LIMIT_MAX,
+        },
+      },
+    ],
+    [
+      {
+        name: "netuid",
+        schema: { type: "integer", minimum: 0, maximum: 65535 },
+      },
+    ],
+  ),
+  route(
     "chain-holders",
     "GET",
     "/api/v1/chain/holders",
@@ -5231,6 +5265,8 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // #9609: wrapped TAO on Ethereum has no testnet counterpart, and the table
   // carries no network column.
   "/api/v1/network/tao-usd",
+  // #9612: written by the registry sync, which is mainnet's.
+  "/api/v1/subnets/{netuid}/surface-history",
   "/api/v1/economics/trends",
   "/api/v1/health",
   "/api/v1/subnets/{netuid}/health",

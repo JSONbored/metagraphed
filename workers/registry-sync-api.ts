@@ -332,6 +332,13 @@ export async function applyRegistrySyncToD1(
     );
     if (existing && existing.overlay === overlay) continue;
     const action = existing ? "update" : "insert";
+    // HOISTED, and that is the point rather than tidiness. The D1 schema
+    // deliberately has NO default for surfaces.id (a fabricated surrogate is
+    // worse than a failed insert), so the caller supplies it -- and the audit
+    // row below has to name the SAME surface. Computing the expression twice
+    // would mint a second UUID on every insert and record history against a
+    // surface that does not exist.
+    const surfaceId = (existing?.id as string) ?? crypto.randomUUID();
     writes.push(
       bound(
         db,
@@ -351,11 +358,7 @@ export async function applyRegistrySyncToD1(
            source_commit = excluded.source_commit,
            updated_at = ${NOW_MS}`,
         [
-          // The D1 schema deliberately has NO default for surfaces.id (a
-          // fabricated surrogate is worse than a failed insert), so the caller
-          // supplies it. Ignored on the UPDATE branch, which keeps the row's
-          // existing id.
-          (existing?.id as string) ?? crypto.randomUUID(),
+          surfaceId,
           surf.subnet_netuid as number,
           surf.provider_id ?? null,
           surf.surface_key,
@@ -372,9 +375,20 @@ export async function applyRegistrySyncToD1(
       ),
       bound(
         db,
-        `INSERT INTO surface_history (subnet_netuid, action, overlay, source_commit, recorded_at)
-         VALUES (?, ?, ?, ?, ${NOW_MS})`,
-        [surf.subnet_netuid as number, action, overlay, surf.source_commit],
+        // #9612: surface_id was omitted from this column list entirely, so
+        // every insert and update wrote a NULL -- 8,831 of the table's 8,892
+        // rows, measured 2026-08-06. Only the delete path recorded it. An audit
+        // trail that cannot say WHICH surface changed is not one, and the id
+        // was in scope the whole time.
+        `INSERT INTO surface_history (surface_id, subnet_netuid, action, overlay, source_commit, recorded_at)
+         VALUES (?, ?, ?, ?, ?, ${NOW_MS})`,
+        [
+          surfaceId,
+          surf.subnet_netuid as number,
+          action,
+          overlay,
+          surf.source_commit,
+        ],
       ),
     );
     summary.surfaces_written += 1;

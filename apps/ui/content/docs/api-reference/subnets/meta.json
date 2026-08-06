@@ -61,6 +61,7 @@
     "subnet-stake-quote",
     "subnet-stake-transfers",
     "subnet-stake-transfers-by-network",
+    "subnet-surface-history",
     "subnet-trajectory",
     "subnet-turnover",
     "subnet-validator-economics",

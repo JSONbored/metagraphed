@@ -1274,6 +1274,37 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/subnets/7/surface-history",
+    (body) => {
+      // #9612. A subnet whose surfaces never changed is an EMPTY trail, never a
+      // 404 -- stability is the common case.
+      assert.equal(body.data.netuid, 7);
+      assert.equal(Array.isArray(body.data.changes), true);
+      // Newest first, so a caller reading recent churn does not have to sort.
+      const at = body.data.changes.map((c: { recorded_at: string }) =>
+        Date.parse(c.recorded_at),
+      );
+      assert.deepEqual(
+        at,
+        [...at].sort((a: number, b: number) => b - a),
+      );
+      // surface_count counts DISTINCT surfaces, so it can never exceed the
+      // number of changes it was derived from.
+      assert.equal(body.data.surface_count <= body.data.change_count, true);
+      // Every action is one this API actually defines -- an unrecognised
+      // string would teach a consumer a vocabulary that does not exist.
+      for (const c of body.data.changes) {
+        if (c.action !== null) {
+          assert.equal(
+            ["insert", "update", "delete"].includes(c.action),
+            true,
+            `unknown action ${c.action}`,
+          );
+        }
+      }
+    },
+  ],
+  [
     "/api/v1/chain/holders",
     (body) => {
       // #9607. Never 404s and never serves a bare empty ranking: either
