@@ -113,6 +113,13 @@ interface Env {
    * poller logs "job will not run" rather than failing quietly. */
   HOTKEY_ALPHA_SYNC_SECRET?: string;
   POLLER_LANE_HEALTH_SYNC_SECRET?: string;
+  /** The sync-batches producer binding (metagraphed-infra#346). Absent means
+   * every lane writes D1 inline, exactly as before. */
+  SYNC_BATCHES?: Queue<unknown>;
+  /** Comma-separated lanes routed through the queue. One place decides, and it
+   * is deploy-time so a cutover and its rollback are both a setting rather than
+   * a code change. */
+  SYNC_QUEUE_LANES?: string;
   METAGRAPH_ALLOW_R2_STATIC_FALLBACK?: string;
   METAGRAPH_DISABLE_REQUEST_LOGS?: string;
   METAGRAPH_HEALTH_MAX_AGE_HOURS?: string;

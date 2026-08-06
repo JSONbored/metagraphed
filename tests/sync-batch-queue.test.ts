@@ -16,7 +16,10 @@ import {
   classifySyncBatch,
   SYNC_BATCH_LANES,
   SYNC_BATCH_MAX_ROWS,
+  passTallyFor,
+  syncLaneUsesQueue,
   validSyncBatchMessage,
+  writeSyncBatch,
 } from "../src/sync-batch-queue.ts";
 
 const OK = {
@@ -133,5 +136,99 @@ describe("classifySyncBatch", () => {
     // then hide.
     const frozen = Object.freeze([Object.freeze({ body: OK })]);
     assert.equal(classifySyncBatch(frozen).valid.length, 1);
+  });
+});
+
+describe("syncLaneUsesQueue", () => {
+  const bound = { SYNC_BATCHES: {} };
+
+  test("off without the binding, whatever the flag says", () => {
+    // A lane cannot be routed to a queue that is not bound, and reading the
+    // flag alone would send it nowhere.
+    assert.equal(
+      syncLaneUsesQueue({ SYNC_QUEUE_LANES: "hotkey-alpha" }, "hotkey-alpha"),
+      false,
+    );
+  });
+
+  test("off when the flag is absent, so an un-opted deployment is unchanged", () => {
+    assert.equal(syncLaneUsesQueue(bound, "hotkey-alpha"), false);
+  });
+
+  test("selects per lane, so a cutover is one lane at a time", () => {
+    const env = { ...bound, SYNC_QUEUE_LANES: "hotkey-alpha" };
+    assert.equal(syncLaneUsesQueue(env, "hotkey-alpha"), true);
+    assert.equal(syncLaneUsesQueue(env, "account-balances"), false);
+  });
+
+  test("tolerates spacing in the list", () => {
+    const env = { ...bound, SYNC_QUEUE_LANES: " hotkey-alpha , neurons " };
+    assert.equal(syncLaneUsesQueue(env, "hotkey-alpha"), true);
+    assert.equal(syncLaneUsesQueue(env, "neurons"), true);
+  });
+});
+
+describe("passTallyFor", () => {
+  test("is null when the producer declared nothing", () => {
+    // Inventing a total would mark an unproven load complete -- the exact lie
+    // the completeness gate exists to prevent.
+    const { pass_total: _d, ...noDecl } = OK;
+    assert.equal(passTallyFor(noDecl as never, 1), null);
+  });
+
+  test("counts THIS chunk's rows against the whole pass", () => {
+    const tally = passTallyFor(OK as never, 12345)!;
+    assert.equal(tally.expectedRows, 46_998);
+    assert.equal(tally.receivedRows, OK.rows.length);
+    assert.equal(tally.capturedAt, OK.captured_at);
+    assert.equal(tally.nowMs, 12345);
+  });
+});
+
+describe("writeSyncBatch", () => {
+  test("routes a message to its lane's writer", async () => {
+    const seen: { rows: number; expected?: number }[] = [];
+    await writeSyncBatch(
+      OK as never,
+      {
+        "hotkey-alpha": async (rows, pass) => {
+          seen.push({ rows: rows.length, expected: pass?.expectedRows });
+        },
+      },
+      1,
+    );
+    assert.deepEqual(seen, [{ rows: 1, expected: 46_998 }]);
+  });
+
+  test("throws when a lane has no writer, rather than skipping it", async () => {
+    // A silently skipped lane is a pass that never completes -- rows vanish and
+    // received_rows never reaches expected_rows, so the gate stays shut forever
+    // with nothing explaining why.
+    await assert.rejects(
+      () => writeSyncBatch(OK as never, {}, 1),
+      /no writer for lane hotkey-alpha/,
+    );
+  });
+
+  test("tally arrival order does not change the outcome", async () => {
+    // The queue permits reordering and concurrency guarantees it. received_rows
+    // accumulates and completed_at is stamped by whichever write closes the
+    // gap, so the accounting is commutative -- which is what made it safe to
+    // move off an ordered HTTP sequence at all.
+    const totals: number[] = [];
+    const writers = {
+      "hotkey-alpha": async (rows: Record<string, unknown>[]) => {
+        totals.push(rows.length);
+      },
+    };
+    const a = { ...OK, rows: [OK.rows[0]!] };
+    const b = { ...OK, rows: [OK.rows[0]!, OK.rows[0]!] };
+    await writeSyncBatch(b as never, writers, 1);
+    await writeSyncBatch(a as never, writers, 1);
+    assert.equal(
+      totals.reduce((x, y) => x + y, 0),
+      3,
+      "the sum is order-independent",
+    );
   });
 });
