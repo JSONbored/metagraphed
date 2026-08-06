@@ -110,3 +110,39 @@ describe("the live smoke set is GET-only (#9650)", () => {
     );
   });
 });
+
+describe("the live smoke supplies every required query param (#9663)", () => {
+  // Routes whose bare GET is a correct 400. The smoke iterates the whole
+  // contract, so each one has to be given what it requires or the publish lane
+  // fails on a route that is working exactly as designed.
+  //
+  // The contract does not declare requiredness, so this list cannot be derived
+  // -- which is why it is asserted here instead: each entry was found by a
+  // failing production publish, one per run, and this is what stops the next
+  // one being found the same way.
+  const REQUIRES = [
+    ["/api/v1/compare", "netuids"],
+    ["/api/v1/compare/validators", "hotkeys"],
+    ["/api/v1/subnets/{netuid}/stake-quote", "amount"],
+    ["/api/v1/search/semantic", "q"],
+  ] as const;
+
+  test("each known required param is present in the built URL", () => {
+    for (const [routePath, param] of REQUIRES) {
+      const url = new URL(apiRouteUrl(routePath, "2026-08-06"));
+      assert.ok(
+        url.searchParams.get(param),
+        `${routePath} needs ?${param}= or it answers 400`,
+      );
+    }
+  });
+
+  test("every route in the smoke set is one the contract still has", () => {
+    // A required-param entry for a route that no longer exists is a guard that
+    // silently stops guarding.
+    const paths = new Set(API_ROUTES.map((route) => route.path));
+    for (const [routePath] of REQUIRES) {
+      assert.ok(paths.has(routePath), `${routePath} is no longer a route`);
+    }
+  });
+});
