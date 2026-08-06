@@ -312,6 +312,8 @@ export const SDL = /* GraphQL */ `
     emission_changes(kind: String, limit: Int): EmissionGateChanges!
     "WHY registry surfaces fail and whether the mix is changing: the classification breakdown (live, redirected, transient, rate-limited, timeout, dead, content-mismatch, unsupported, auth-required) over a window, plus a per-day series. NOT health_history, which filters one dated snapshot BY classification; this aggregates the reasons themselves. Successful probes are counted too, because a rate needs its denominator -- share is of every probe in the window, failure_share is of the failing ones only and is NULL rather than zero on a succeeding classification. redirected is NOT a failure: a surface answering from a new location is serving. days_covered is counted from the rows, so a day the prober did not run is ABSENT rather than a day of perfect health. window is 7d, 30d (default), 90d or 180d. An empty window is a MEASUREMENT, not a decline. Mainnet only. Mirrors GET /api/v1/health/failure-reasons."
     failure_reasons(window: String, netuid: Int, kind: String): FailureReasons!
+    "How long after a block is produced it becomes queryable here: the write-latency distribution (min/p50/p95/p99/max/mean, in ms) over the retained block window, plus how far behind the lane is right now. TWO DIFFERENT NUMBERS -- write_latency_ms is how long each block TOOK to land, head_age_ms is how stale the newest block IS, and a stalled lane keeps a perfect latency distribution while its head age climbs without bound, so read head_age_ms for staleness. The window is pruned on a rolling basis, so this is the RECENT distribution and window reports which blocks it covers. A NEGATIVE latency is real -- the two timestamps come from different clocks -- and is served as measured rather than clamped. Null measurements are a DECLINE, not a zero-latency lane; check degraded.reason. Mainnet only. Mirrors GET /api/v1/chain/indexer-lag."
+    indexer_lag: IndexerLag!
     "The USD price of one TAO with the derivation behind it, plus the recent series. Composed per ADR 0025 -- a liquidity-weighted median across qualifying wTAO/WETH pools with 2% outlier rejection and a two-pool quorum, multiplied through an ETH/USDC anchor -- because no TAO/USD pair exists on chain. A null usd_per_tao is a STATED OUTCOME (price_basis insufficient_pools), never a zero price. window is 1h, 24h (default), 7d or 30d. The series begins 2026-08-02, so a wide window returns everything that exists and oldest_observed_at says how far back that is. Mainnet only. Mirrors GET /api/v1/network/tao-usd."
     tao_usd(window: String): TaoUsd!
     "When one subnet's public surfaces were added, changed or removed, and in which commit. subnet_surfaces says what a subnet exposes TODAY; this says when that became true. A delete entry is the ONLY evidence a surface ever existed -- the registry keeps no trace of a removed surface. surface_count counts distinct surfaces with a recorded mutation, which is NOT the current surface count. The full surface record is not repeated here; read subnet_surfaces for that. Newest first. A subnet whose surfaces never changed resolves to an empty trail, never an error. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/surface-history."
@@ -2965,6 +2967,42 @@ export const SDL = /* GraphQL */ `
     series: [FailureReasonsDay!]!
     "Present ONLY on a decline. An empty window is a measurement, not a decline."
     degraded: FailureReasonsDegraded
+  }
+
+  type IndexerLagWindow {
+    oldest_block: Int
+    newest_block: Int
+    oldest_observed_at: String
+    newest_observed_at: String
+  }
+
+  "Milliseconds from a block's own timestamp to the moment it became queryable here. Unbounded below: a negative value is block-author clock skew, served as measured."
+  type IndexerLagLatency {
+    min: Float
+    p50: Float
+    p95: Float
+    p99: Float
+    max: Float
+    mean: Float
+  }
+
+  type IndexerLagDegraded {
+    reason: String!
+    detail: String
+  }
+
+  type IndexerLag {
+    schema_version: Int!
+    "Blocks the distribution was computed over. Null only on a decline."
+    block_count: Int
+    "What was actually measured -- the table is pruned, so a distribution without its bounds would read as a lifetime one."
+    window: IndexerLagWindow
+    write_latency_ms: IndexerLagLatency
+    "now - the newest observed_at. The number that moves when the lane stalls."
+    head_age_ms: Float
+    measured_at: String!
+    "Present ONLY on a decline; its absence says the measurement is real."
+    degraded: IndexerLagDegraded
   }
 
   type ChainHolders {

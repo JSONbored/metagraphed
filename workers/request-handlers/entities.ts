@@ -174,6 +174,7 @@ import {
   CHAIN_HOLDERS_SORTS,
   DEFAULT_CHAIN_HOLDERS_SORT,
 } from "../../src/chain-holders.ts";
+import { buildIndexerLag, loadIndexerLag } from "../../src/indexer-lag.ts";
 import {
   buildEmissionChanges,
   loadEmissionChanges,
@@ -6325,6 +6326,27 @@ export async function handleFailureReasons(
     rows === null
       ? declineFailureReasons("unavailable", { window, netuid, kind })
       : buildFailureReasons(rows, { window, netuid, kind });
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/chain/indexer-lag (#9620): how long after a block is produced it
+// becomes queryable here -- the write-latency distribution over the retained
+// window, plus how far behind the lane is right now. Two different numbers; see
+// src/indexer-lag.ts for why they are named separately.
+export async function handleIndexerLag(request: Request, env: Env, url: URL) {
+  const validationError = validateEntityQuery(url, ["format"]);
+  if (validationError) return analyticsQueryError(validationError);
+
+  const row = await loadIndexerLag(
+    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<typeof loadIndexerLag>[0],
+  );
+  // The handler owns the clock, so the module whose subject is two clocks does
+  // not quietly introduce a third of its own.
+  const data = buildIndexerLag(row, Date.now());
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },

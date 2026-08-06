@@ -157,6 +157,7 @@ import {
   handleChainHolders,
   handleEmissionChanges,
   handleFailureReasons,
+  handleIndexerLag,
   handleTaoUsd,
   handleSubnetSurfaceHistory,
   handleSubnetBurnHistory,
@@ -5539,6 +5540,9 @@ export function isMainnetOnlyApiPath(pathname: string) {
     // #9622: the rollup is aggregated from probes of REGISTRY surfaces, and
     // the registry is mainnet's.
     pathname === "/api/v1/health/failure-reasons" ||
+    // #9620: chain_detail_blocks is the mainnet firehose poller's own hot tier
+    // and carries no network column.
+    pathname === "/api/v1/chain/indexer-lag" ||
     SUBNET_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_IDENTITY_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_CONCENTRATION_PATH_PATTERN.test(pathname) ||
@@ -5639,6 +5643,11 @@ async function dispatchLiveChainRoute(
   // match for the same reason as the line above.
   if (pathname === "/api/v1/health/failure-reasons") {
     return handleFailureReasons(request, env, new URL(request.url));
+  }
+  // #9620: block-indexing latency, read from the mainnet firehose poller's own
+  // hot tier. Exact-path match for the same reason as the line above.
+  if (pathname === "/api/v1/chain/indexer-lag") {
+    return handleIndexerLag(request, env, new URL(request.url));
   }
   // #9609: the TAO/USD index, read from the D1 series the minute tick writes.
   // Mainnet-only: wrapped TAO on Ethereum has no testnet counterpart.

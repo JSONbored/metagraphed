@@ -309,6 +309,7 @@ import {
   CHAIN_HOLDERS_SORTS,
   DEFAULT_CHAIN_HOLDERS_SORT,
 } from "./chain-holders.ts";
+import { buildIndexerLag, loadIndexerLag } from "./indexer-lag.ts";
 import {
   buildEmissionChanges,
   loadEmissionChanges,
@@ -1196,6 +1197,7 @@ export const FIELD_COMPLEXITY = {
   // #9615: one bounded union over three small append-only tables.
   emission_changes: RELATIONSHIP_FIELD_COMPLEXITY,
   failure_reasons: RELATIONSHIP_FIELD_COMPLEXITY,
+  indexer_lag: RELATIONSHIP_FIELD_COMPLEXITY,
   // #9609: one bounded window read off an indexed column.
   tao_usd: RELATIONSHIP_FIELD_COMPLEXITY,
   // #9612: one indexed, bounded read of the registry history table.
@@ -2931,6 +2933,16 @@ const rootValue = {
     return rows === null
       ? declineFailureReasons("unavailable", args)
       : buildFailureReasons(rows, args);
+  },
+
+  async indexer_lag(_args: Record<string, never>, context: GqlContext) {
+    // #9620. Shares the REST/MCP loader for #9540's reason.
+    const row = await loadIndexerLag(
+      context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof loadIndexerLag
+      >[0],
+    );
+    return buildIndexerLag(row, Date.now());
   },
 
   async subnet_holders(

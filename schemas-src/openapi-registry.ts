@@ -138,6 +138,11 @@ import {
   FailureReasonsArtifactSchema,
 } from "./routes/failure-reasons.ts";
 import {
+  IndexerLagWindowSchema,
+  IndexerLagLatencySchema,
+  IndexerLagArtifactSchema,
+} from "./routes/indexer-lag.ts";
+import {
   TaoUsdPointSchema,
   TaoUsdLatestSchema,
   TaoUsdArtifactSchema,
@@ -508,6 +513,9 @@ register(EmissionGateChangesArtifactSchema, "EmissionGateChangesArtifact");
 register(FailureReasonSchema, "FailureReason");
 register(FailureReasonsDaySchema, "FailureReasonsDay");
 register(FailureReasonsArtifactSchema, "FailureReasonsArtifact");
+register(IndexerLagWindowSchema, "IndexerLagWindow");
+register(IndexerLagLatencySchema, "IndexerLagLatency");
+register(IndexerLagArtifactSchema, "IndexerLagArtifact");
 register(TaoUsdPointSchema, "TaoUsdPoint");
 register(TaoUsdLatestSchema, "TaoUsdLatest");
 register(TaoUsdArtifactSchema, "TaoUsdArtifact");

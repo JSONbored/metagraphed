@@ -2395,6 +2395,46 @@ export type IncidentList = {
   total: Scalars['Int']['output'];
 };
 
+export type IndexerLag = {
+  __typename?: 'IndexerLag';
+  /** Blocks the distribution was computed over. Null only on a decline. */
+  block_count?: Maybe<Scalars['Int']['output']>;
+  /** Present ONLY on a decline; its absence says the measurement is real. */
+  degraded?: Maybe<IndexerLagDegraded>;
+  /** now - the newest observed_at. The number that moves when the lane stalls. */
+  head_age_ms?: Maybe<Scalars['Float']['output']>;
+  measured_at: Scalars['String']['output'];
+  schema_version: Scalars['Int']['output'];
+  /** What was actually measured -- the table is pruned, so a distribution without its bounds would read as a lifetime one. */
+  window?: Maybe<IndexerLagWindow>;
+  write_latency_ms?: Maybe<IndexerLagLatency>;
+};
+
+export type IndexerLagDegraded = {
+  __typename?: 'IndexerLagDegraded';
+  detail?: Maybe<Scalars['String']['output']>;
+  reason: Scalars['String']['output'];
+};
+
+/** Milliseconds from a block's own timestamp to the moment it became queryable here. Unbounded below: a negative value is block-author clock skew, served as measured. */
+export type IndexerLagLatency = {
+  __typename?: 'IndexerLagLatency';
+  max?: Maybe<Scalars['Float']['output']>;
+  mean?: Maybe<Scalars['Float']['output']>;
+  min?: Maybe<Scalars['Float']['output']>;
+  p50?: Maybe<Scalars['Float']['output']>;
+  p95?: Maybe<Scalars['Float']['output']>;
+  p99?: Maybe<Scalars['Float']['output']>;
+};
+
+export type IndexerLagWindow = {
+  __typename?: 'IndexerLagWindow';
+  newest_block?: Maybe<Scalars['Int']['output']>;
+  newest_observed_at?: Maybe<Scalars['String']['output']>;
+  oldest_block?: Maybe<Scalars['Int']['output']>;
+  oldest_observed_at?: Maybe<Scalars['String']['output']>;
+};
+
 /** The Bittensor network whose static subnet artifact to read: finney (mainnet, default) or test (testnet). Mirrors the list_subnets MCP tool's network argument. */
 export enum Network {
   Finney = 'finney',
@@ -2833,6 +2873,8 @@ export type Query = {
   health_trends: HealthTrends;
   /** Global endpoint-incident ledger over a 7d/30d window; degrades to a schema-stable empty ledger (never a GraphQL error) on a cold/retired health tier. Mirrors GET /api/v1/incidents. */
   incidents: GlobalIncidents;
+  /** How long after a block is produced it becomes queryable here: the write-latency distribution (min/p50/p95/p99/max/mean, in ms) over the retained block window, plus how far behind the lane is right now. TWO DIFFERENT NUMBERS -- write_latency_ms is how long each block TOOK to land, head_age_ms is how stale the newest block IS, and a stalled lane keeps a perfect latency distribution while its head age climbs without bound, so read head_age_ms for staleness. The window is pruned on a rolling basis, so this is the RECENT distribution and window reports which blocks it covers. A NEGATIVE latency is real -- the two timestamps come from different clocks -- and is served as measured rather than clamped. Null measurements are a DECLINE, not a zero-latency lane; check degraded.reason. Mainnet only. Mirrors GET /api/v1/chain/indexer-lag. */
+  indexer_lag: IndexerLag;
   /** The maintainer-approved cross-network subnet lineage: which testnet subnets have graduated to mainnet (mainnet <-> testnet pairs with match evidence), plus any flagged broken links. Null when the lineage has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_lineage MCP/REST shape. Mirrors GET /api/v1/lineage. */
   lineage?: Maybe<Scalars['JSON']['output']>;
   /** Live global Subtensor protocol/governance parameters (TaoWeight, StakeThreshold, PendingChildKeyCooldown), read directly from chain via RPC (not the Postgres tier). Each field is independently null on its own RPC failure, schema-stable, never a GraphQL error. Mirrors GET /api/v1/network/parameters. */
@@ -6342,6 +6384,10 @@ export type ResolversTypes = ResolversObject<{
   HyperparamsHistoryEntry: ResolverTypeWrapper<HyperparamsHistoryEntry>;
   Identity: ResolverTypeWrapper<Identity>;
   IncidentList: ResolverTypeWrapper<IncidentList>;
+  IndexerLag: ResolverTypeWrapper<IndexerLag>;
+  IndexerLagDegraded: ResolverTypeWrapper<IndexerLagDegraded>;
+  IndexerLagLatency: ResolverTypeWrapper<IndexerLagLatency>;
+  IndexerLagWindow: ResolverTypeWrapper<IndexerLagWindow>;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
   JSON: ResolverTypeWrapper<Scalars['JSON']['output']>;
   Network: ResolverTypeWrapper<Network>;
@@ -6677,6 +6723,10 @@ export type ResolversParentTypes = ResolversObject<{
   HyperparamsHistoryEntry: HyperparamsHistoryEntry;
   Identity: Identity;
   IncidentList: IncidentList;
+  IndexerLag: IndexerLag;
+  IndexerLagDegraded: IndexerLagDegraded;
+  IndexerLagLatency: IndexerLagLatency;
+  IndexerLagWindow: IndexerLagWindow;
   Int: Scalars['Int']['output'];
   JSON: Scalars['JSON']['output'];
   NetworkParameters: NetworkParameters;
@@ -8726,6 +8776,37 @@ export type IncidentListResolvers<ContextType = GqlContext, ParentType extends R
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type IndexerLagResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['IndexerLag'] = ResolversParentTypes['IndexerLag']> = ResolversObject<{
+  block_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  degraded?: Resolver<Maybe<ResolversTypes['IndexerLagDegraded']>, ParentType, ContextType>;
+  head_age_ms?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  measured_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  window?: Resolver<Maybe<ResolversTypes['IndexerLagWindow']>, ParentType, ContextType>;
+  write_latency_ms?: Resolver<Maybe<ResolversTypes['IndexerLagLatency']>, ParentType, ContextType>;
+}>;
+
+export type IndexerLagDegradedResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['IndexerLagDegraded'] = ResolversParentTypes['IndexerLagDegraded']> = ResolversObject<{
+  detail?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type IndexerLagLatencyResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['IndexerLagLatency'] = ResolversParentTypes['IndexerLagLatency']> = ResolversObject<{
+  max?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  mean?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  min?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  p50?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  p95?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  p99?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type IndexerLagWindowResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['IndexerLagWindow'] = ResolversParentTypes['IndexerLagWindow']> = ResolversObject<{
+  newest_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  newest_observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  oldest_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  oldest_observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
 export interface JsonScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['JSON'], any> {
   name: 'JSON';
 }
@@ -9025,6 +9106,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   health_history?: Resolver<ResolversTypes['HealthHistory'], ParentType, ContextType, RequireFields<QueryHealth_HistoryArgs, 'date'>>;
   health_trends?: Resolver<ResolversTypes['HealthTrends'], ParentType, ContextType>;
   incidents?: Resolver<ResolversTypes['GlobalIncidents'], ParentType, ContextType, Partial<QueryIncidentsArgs>>;
+  indexer_lag?: Resolver<ResolversTypes['IndexerLag'], ParentType, ContextType>;
   lineage?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   network_parameters?: Resolver<Maybe<ResolversTypes['NetworkParameters']>, ParentType, ContextType, Partial<QueryNetwork_ParametersArgs>>;
   network_randomness?: Resolver<Maybe<ResolversTypes['NetworkRandomness']>, ParentType, ContextType, Partial<QueryNetwork_RandomnessArgs>>;
@@ -10619,6 +10701,10 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   HyperparamsHistoryEntry?: HyperparamsHistoryEntryResolvers<ContextType>;
   Identity?: IdentityResolvers<ContextType>;
   IncidentList?: IncidentListResolvers<ContextType>;
+  IndexerLag?: IndexerLagResolvers<ContextType>;
+  IndexerLagDegraded?: IndexerLagDegradedResolvers<ContextType>;
+  IndexerLagLatency?: IndexerLagLatencyResolvers<ContextType>;
+  IndexerLagWindow?: IndexerLagWindowResolvers<ContextType>;
   JSON?: GraphQLScalarType;
   NetworkParameters?: NetworkParametersResolvers<ContextType>;
   NetworkRandomness?: NetworkRandomnessResolvers<ContextType>;
