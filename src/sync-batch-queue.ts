@@ -81,6 +81,24 @@ export interface SyncBatchMessage {
    * prune rather than pruning on trust.
    */
   key_complete?: boolean;
+  /**
+   * The prune key HOISTED off every row, for a message holding exactly one key.
+   *
+   * WHY THIS EXISTS (metagraphed-infra#355). `nominator-positions`' largest
+   * coldkey holds 722 positions. A real row measures 200 bytes, so that group is
+   * **141 KB** -- over the 128 KB transport cap -- and it cannot be split,
+   * because splitting a coldkey deletes rows the message never carried.
+   *
+   * The coldkey is IDENTICAL on all 722 rows by construction: it is what groups
+   * them. Carrying it once instead of 722 times removes ~62 bytes a row and
+   * brings the message to ~97 KB. The consumer re-injects it before writing, so
+   * the WRITER is untouched -- this is a wire encoding, not a schema change.
+   *
+   * Present only when a message holds a single key AND needed the room. Every
+   * other message carries whole rows, so the common path is unchanged.
+   */
+  key_column?: string;
+  key_value?: string;
 }
 
 /**
@@ -175,6 +193,12 @@ export const QUEUE_MESSAGE_MAX_BYTES = 128 * 1024;
  * failure whose signature is a stopped lane rather than an error.
  */
 export const SYNC_BATCH_MAX_BYTES = 96 * 1024;
+
+/** Room left for the message envelope when deciding whether a LONE group needs
+ * its key hoisted -- the lane name, timestamps, flags, brackets and the
+ * platform's own ~100 bytes. Small, because at this point the question is only
+ * "does this one group fit at all". */
+const ENVELOPE_HEADROOM = 2 * 1024;
 
 /**
  * Which column a pruning lane's write DELETES by, so the packer never splits
@@ -304,13 +328,23 @@ export function packSyncBatchMessages(input: {
   // call is gated on `current.length > 0` -- so an "if empty, return" here would
   // be a branch no test could reach, which is how a file starts collecting
   // coverage pragmas instead of reasons.
+  let hoistKey: string | null = null;
   const flush = () => {
+    const hoisted = hoistKey;
+    const keyValue = hoisted ? String(current[0]![hoisted]) : undefined;
+    const rows = hoisted
+      ? current.map((row) => {
+          const { [hoisted]: _key, ...rest } = row;
+          return rest;
+        })
+      : current;
     const message: SyncBatchMessage = {
       lane,
       captured_at: capturedAt,
       ...(passTotal !== undefined ? { pass_total: passTotal } : {}),
       ...(prunes ? { key_complete: true as const } : {}),
-      rows: current,
+      ...(hoisted ? { key_column: hoisted, key_value: keyValue } : {}),
+      rows,
     };
     // THE ASSERTION THIS BUG COST US. Nothing measured the message before
     // sending it, so an oversize payload surfaced as a 502 the producer read as
@@ -322,7 +356,8 @@ export function packSyncBatchMessages(input: {
       throw new Error(
         `sync-batches: ${lane} message of ${current.length} row(s) is ` +
           `${bytes} bytes, over the ${QUEUE_MESSAGE_MAX_BYTES}-byte transport ` +
-          `cap; lower SYNC_BATCH_MAX_BYTES`,
+          `cap. A single ${keyColumn ?? "row"} group this large cannot be ` +
+          `split without breaking key_complete, so the PRODUCER must reduce it.`,
       );
     }
     messages.push(message);
@@ -332,13 +367,38 @@ export function packSyncBatchMessages(input: {
 
   for (const group of groups) {
     const groupBytes = group.reduce((n, row) => n + rowBytes(row), 0);
+    // AN INDIVISIBLE GROUP ANSWERS TO THE TRANSPORT, NOT TO THE BUDGET.
+    //
+    // `maxBytes` decides when to stop COMBINING groups into one message. A
+    // group that exceeds it alone cannot be combined with anything -- but it
+    // can still be a message, because the only real limit on one message is the
+    // 128 KB transport cap. Treating both with one number is what made a
+    // legitimate coldkey unpackable: nominator-positions' largest holds 722
+    // positions, ~108 KB, over the 96 KB budget and comfortably under the cap.
+    // The lane 502'd on its first tick (metagraphed-infra#355) until this
+    // distinction existed.
+    //
+    // It goes ALONE, and `flush()` checks it against the real cap -- so a group
+    // that genuinely cannot fit still fails loudly rather than being split.
     if (groupBytes > maxBytes) {
-      throw new Error(
-        `sync-batches: ${lane} ${keyColumn ?? "row"} group of ` +
-          `${group.length} row(s) is ${groupBytes} bytes, over the ` +
-          `${maxBytes}-byte message budget; it cannot be split without ` +
-          `breaking key_complete`,
-      );
+      if (current.length > 0) flush();
+      current = [...group];
+      currentBytes = groupBytes;
+      // HOIST THE KEY when the group alone would still not fit. It is identical
+      // on every row of the group by construction, so carrying it once instead
+      // of N times is free room -- ~62 bytes a row for a coldkey, which is what
+      // brings a 722-position group from 141 KB under the 128 KB cap. The
+      // consumer re-injects before writing, so the writer never sees the
+      // difference.
+      if (
+        keyColumn &&
+        groupBytes > QUEUE_MESSAGE_MAX_BYTES - ENVELOPE_HEADROOM
+      ) {
+        hoistKey = keyColumn;
+      }
+      flush();
+      hoistKey = null;
+      continue;
     }
     if (
       current.length > 0 &&
@@ -350,7 +410,7 @@ export function packSyncBatchMessages(input: {
     current.push(...group);
     currentBytes += groupBytes;
   }
-  flush();
+  if (current.length > 0) flush();
 
   return messages;
 }
@@ -506,6 +566,17 @@ export function validSyncBatchMessage(body: unknown): body is SyncBatchMessage {
     return false;
   }
   if (m.rows.length > SYNC_BATCH_MAX_ROWS) return false;
+  // A hoisted key needs both halves, and only makes sense for a pruning lane --
+  // it is the prune key that is constant, and nothing else is.
+  if (m.key_column !== undefined || m.key_value !== undefined) {
+    if (typeof m.key_column !== "string" || !m.key_column) return false;
+    if (typeof m.key_value !== "string" || !m.key_value) return false;
+    if (!PRUNING_LANES.includes(m.lane)) return false;
+    if (PRUNING_LANE_KEYS[m.lane] !== m.key_column) return false;
+    // The rows must NOT also carry it, or the two could disagree and the
+    // consumer would have to decide which is authoritative.
+    if (m.rows.some((r) => m.key_column! in r)) return false;
+  }
   if (m.pass_total !== undefined && m.pass_total < m.rows.length) return false;
   return m.rows.every((r) => r !== null && typeof r === "object");
 }
@@ -625,6 +696,22 @@ export function passTallyFor(
   };
 }
 
+/**
+ * The rows a message means, with a hoisted key re-injected.
+ *
+ * The writer never sees the wire encoding: it gets whole rows either way, so
+ * hoisting stayed a transport optimisation rather than becoming a schema the
+ * D1 layer has to know about.
+ */
+export function syncBatchRows(
+  message: SyncBatchMessage,
+): Record<string, unknown>[] {
+  if (!message.key_column) return message.rows;
+  const column = message.key_column;
+  const value = message.key_value;
+  return message.rows.map((row) => ({ ...row, [column]: value }));
+}
+
 /** How many rows a message actually carries, whichever shape it uses. */
 export function syncBatchRowCount(message: SyncBatchMessage): number {
   if (message.families) {
@@ -663,5 +750,7 @@ export async function writeSyncBatch(
     // than ignored: a silently skipped lane is a pass that never completes.
     throw new Error(`sync-batches: no writer for lane ${message.lane}`);
   }
-  await writer(message.rows, passTallyFor(message, nowMs));
+  // syncBatchRows, not message.rows: a hoisted key is re-injected here so the
+  // writer -- and the prune map it derives -- see whole rows.
+  await writer(syncBatchRows(message), passTallyFor(message, nowMs));
 }
