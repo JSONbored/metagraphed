@@ -11,12 +11,12 @@
 // the served path.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
+import { handleMcpRequest, listToolDefinitions } from "../src/mcp-server.ts";
 import {
-  handleMcpRequest,
-  listToolDefinitions,
-  MCP_SERVER_VERSION,
-} from "../src/mcp-server.ts";
-import { closeQuietly, serveWithSdk } from "../src/mcp-sdk-adapter.ts";
+  closeQuietly,
+  mergeInitializeMeta,
+  serveWithSdk,
+} from "../src/mcp-sdk-adapter.ts";
 import type { Row } from "./row-type.ts";
 
 const MCP_HEADERS = {
@@ -93,7 +93,15 @@ describe("SDK envelope parity with the hand-rolled dispatcher (#9647)", () => {
     );
   });
 
-  test("initialize reports the same server identity and protocol", async () => {
+  // THE WHOLE PAYLOAD, not a field or two. The first version of this test
+  // compared serverInfo.version and protocolVersion and called it "identity" --
+  // which would have passed while silently dropping `instructions` (what tells
+  // a model what this server is FOR), serverInfo.title/description, and the
+  // `_meta` registry backlink. `initialize` is handled INSIDE the SDK's Server
+  // rather than by a handler we register, so every one of those fields has to
+  // arrive through the constructor or a shim, and only a whole-payload compare
+  // proves it did.
+  test("initialize is byte-identical, every field", async () => {
     const body = {
       jsonrpc: "2.0",
       id: 1,
@@ -106,13 +114,21 @@ describe("SDK envelope parity with the hand-rolled dispatcher (#9647)", () => {
     };
     const mine = (await viaHandRolled(body)).result as Row;
     const sdk = (await viaSdk(body)).result as Row;
-    assert.equal((sdk.serverInfo as Row).version, MCP_SERVER_VERSION);
-    assert.equal(
-      (sdk.serverInfo as Row).version,
-      (mine.serverInfo as Row).version,
-      "one version constant, both envelopes",
+
+    // Named first so a failure says WHICH field went missing rather than
+    // dumping two large objects at the reader.
+    assert.deepEqual(
+      Object.keys(sdk).sort(),
+      Object.keys(mine).sort(),
+      "the handshake's field set must not change",
     );
-    assert.equal(sdk.protocolVersion, mine.protocolVersion);
+    for (const key of ["instructions", "protocolVersion"]) {
+      assert.deepEqual(sdk[key], mine[key], `initialize.${key} differs`);
+    }
+    assert.deepEqual(sdk.serverInfo, mine.serverInfo);
+    assert.deepEqual(sdk.capabilities, mine.capabilities);
+    assert.deepEqual(sdk._meta, mine._meta, "the registry backlink survives");
+    assert.deepEqual(sdk, mine);
   });
 
   test("tools/call reaches the dispatch funnel with the caller's arguments", async () => {
@@ -193,5 +209,54 @@ describe("closeQuietly (#9668)", () => {
       },
     });
     assert.equal(closed, true);
+  });
+});
+
+// The shim restoring the one initialize field the SDK drops. Narrow by design:
+// a compatibility patch that can turn a valid response into an invalid one is
+// worse than the gap it closes, so every guard is exercised.
+describe("mergeInitializeMeta (#9668)", () => {
+  const initResult = (extra: Row = {}) =>
+    JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      result: {
+        protocolVersion: "2025-11-25",
+        serverInfo: { name: "x" },
+        ...extra,
+      },
+    });
+
+  test("adds _meta to an initialize result that lacks it", () => {
+    const out = JSON.parse(mergeInitializeMeta(initResult())) as Row;
+    assert.ok((out.result as Row)._meta, "the registry backlink is restored");
+  });
+
+  test("never overwrites a _meta the SDK did produce", () => {
+    const out = JSON.parse(
+      mergeInitializeMeta(initResult({ _meta: { mine: true } })),
+    ) as Row;
+    assert.deepEqual((out.result as Row)._meta, { mine: true });
+  });
+
+  // Anything that is not an initialize result must come back untouched --
+  // byte-identical, not merely equivalent, since this runs on every response.
+  test("leaves a non-initialize payload byte-identical", () => {
+    for (const body of [
+      JSON.stringify({ jsonrpc: "2.0", id: 1, result: { tools: [] } }),
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        error: { code: -32602, message: "no" },
+      }),
+      JSON.stringify([{ jsonrpc: "2.0", id: 1, result: {} }]),
+      "",
+    ]) {
+      assert.equal(mergeInitializeMeta(body), body);
+    }
+  });
+
+  test("returns unparseable input unchanged rather than throwing", () => {
+    assert.equal(mergeInitializeMeta("{not json"), "{not json");
   });
 });

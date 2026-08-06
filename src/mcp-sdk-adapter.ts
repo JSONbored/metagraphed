@@ -56,7 +56,12 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { MCP_SERVER_VERSION } from "./mcp-server.ts";
+import {
+  MCP_CAPABILITIES,
+  MCP_INSTRUCTIONS,
+  MCP_REGISTRY_META,
+  MCP_SERVER_INFO,
+} from "./mcp-server.ts";
 
 /** The published tool shape, as listToolDefinitions() already emits it. */
 type PublishedTool = Record<string, unknown> & { name: string };
@@ -72,7 +77,6 @@ interface SdkServeOptions {
   tools: PublishedTool[];
   /** The single funnel every tools/call passes through. */
   dispatch: SdkToolDispatch;
-  serverName?: string;
 }
 
 /**
@@ -86,12 +90,22 @@ interface SdkServeOptions {
  */
 export async function serveWithSdk(
   request: Request,
-  { tools, dispatch, serverName = "metagraphed" }: SdkServeOptions,
+  { tools, dispatch }: SdkServeOptions,
 ): Promise<Response> {
-  const server = new Server(
-    { name: serverName, version: MCP_SERVER_VERSION },
-    { capabilities: { tools: {} } },
-  );
+  // THE HANDSHAKE IS READ FROM THE SAME CONSTANTS THE HAND-ROLLED PATH USES,
+  // not restated here. `initialize` is handled inside the SDK's Server rather
+  // than by a handler we register, so every field it reports has to arrive
+  // through this constructor -- and a second copy of the server's identity is
+  // exactly the drift this migration must not introduce.
+  //
+  // Measured against production before wiring it: our initialize returns
+  // `_meta`, `capabilities`, `instructions`, `protocolVersion` and a
+  // `serverInfo` carrying name/title/description. The SDK reproduces all of
+  // those EXCEPT `_meta`, which it drops -- see mergeInitializeMeta below.
+  const server = new Server(MCP_SERVER_INFO, {
+    capabilities: MCP_CAPABILITIES,
+    instructions: MCP_INSTRUCTIONS,
+  });
 
   // The published definitions are handed back verbatim. Any reshaping here
   // would be a second place that decides what the contract is, and the whole
@@ -130,7 +144,7 @@ export async function serveWithSdk(
     // Reading to completion here, then returning a fresh Response, makes the
     // payload independent of the objects that produced it.
     const body = await response.text();
-    return new Response(body, {
+    return new Response(mergeInitializeMeta(body), {
       status: response.status,
       headers: response.headers,
     });
@@ -162,3 +176,43 @@ export async function closeQuietly(target: {
     // Deliberately silent: see the caller.
   }
 }
+
+/**
+ * Restore the one initialize field the SDK does not carry.
+ *
+ * Our handshake reports a `_meta` registry backlink alongside `serverInfo`.
+ * The SDK's Server builds the initialize result itself and has no way to
+ * attach it, so it would silently vanish at cutover -- the kind of loss that
+ * shows up as a missing link in a client months later rather than as a failure.
+ *
+ * Narrow on purpose: it touches ONLY a result that already looks like an
+ * initialize response, leaves any other payload byte-identical, and never
+ * overwrites a `_meta` the SDK did produce. A parse failure returns the body
+ * untouched, because a shim must not be able to turn a valid response into
+ * an invalid one.
+ */
+export function mergeInitializeMeta(body: string): string {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return body;
+  }
+  const payload = parsed as Row | undefined;
+  const result = payload?.result as Row | undefined;
+  if (
+    !result ||
+    typeof result !== "object" ||
+    !result.serverInfo ||
+    !result.protocolVersion ||
+    result._meta !== undefined
+  ) {
+    return body;
+  }
+  return JSON.stringify({
+    ...payload,
+    result: { ...result, _meta: MCP_REGISTRY_META },
+  });
+}
+
+type Row = Record<string, unknown>;
