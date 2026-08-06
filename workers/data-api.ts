@@ -358,6 +358,8 @@ import {
   NEURON_INSERT_COLUMNS,
 } from "../src/metagraph-neurons.ts";
 import {
+  neuronSnapshotDate,
+  neuronSnapshotWrite,
   writeNeuronDailyBackfillToD1,
   writeNeuronSnapshotToD1,
 } from "../src/neurons-d1-write.ts";
@@ -539,9 +541,7 @@ const NEURON_SYNC_ROW_SCHEMA = neuronSyncRowSchema({
 
 // captured_at is epoch ms; snapshot_date is the UTC day, matching D1's
 // rollupNeuronDaily (`date(captured_at / 1000, 'unixepoch')`).
-function neuronSyncSnapshotDate(capturedAtMs: number) {
-  return new Date(capturedAtMs).toISOString().slice(0, 10);
-}
+const neuronSyncSnapshotDate = neuronSnapshotDate;
 
 // Coerce one validated row into the exact JS types each Postgres column
 // expects: 0/1 -> boolean for the BOOLEAN columns (the fetch script emits
@@ -640,46 +640,49 @@ async function handleNeuronsSync(request: Request, env: Env) {
   }
 
   const rows = validatedIncoming.map(coerceNeuronSyncRow);
-  // Per-netuid max captured_at, NOT one batch-wide value -- a global max would
-  // let one netuid's later capture prune rows this SAME request just upserted
-  // for a different, earlier-captured netuid in the same batch (the max would
-  // exceed that netuid's own captured_at, so its own just-written rows would
-  // satisfy `captured_at < max` and be deleted as if deregistered).
-  const netuidMaxCapturedAt = new Map();
-  for (const row of rows) {
-    const prev = netuidMaxCapturedAt.get(row.netuid) ?? 0;
-    if (row.captured_at > prev)
-      netuidMaxCapturedAt.set(row.netuid, row.captured_at);
-  }
+  // Derived by the SAME functions the queue consumer uses (#9636's fan-out
+  // means this snapshot can now arrive either way). Two implementations of a
+  // prune cutoff would be two chances to compute a different one, and the
+  // failure mode there is deleted rows.
+  const { dailyRows, positionRows, netuidMaxCapturedAt } = neuronSnapshotWrite(
+    rows,
+    Date.now(),
+  );
   const netuids = [...netuidMaxCapturedAt.keys()];
 
-  // Shaped ONCE, outside the transaction, so the D1 and Postgres writers put
-  // the same rows in the same shape into both stores -- two shapings would be
-  // two chances to diverge.
-  const dailyRows = rows.map((row: Row) => ({
-    ...row,
-    snapshot_date: neuronSyncSnapshotDate(row.captured_at),
-    updated_at: Date.now(),
-  }));
-  const positionRows = dailyRows
-    .filter((row: Row) => row.hotkey != null)
-    .map((row: Row) => ({
-      account: row.hotkey,
-      netuid: row.netuid,
-      snapshot_date: row.snapshot_date,
-      uid: row.uid,
-      coldkey: row.coldkey,
-      active: row.active,
-      validator_permit: row.validator_permit,
-      rank: row.rank,
-      trust: row.trust,
-      incentive: row.incentive,
-      dividends: row.dividends,
-      stake_tao: row.stake_tao,
-      emission_tao: row.emission_tao,
-      captured_at: row.captured_at,
-      updated_at: row.updated_at,
-    }));
+  // Enqueue or write, never both -- see handleHotkeyAlphaSync's own note.
+  //
+  // THE PRUNE IS WHY THIS LANE WAITED (metagraphed-infra#357). Its write
+  // DELETES rows for a netuid older than the newest captured_at it saw for that
+  // netuid, so a message missing some of a netuid's rows would delete rows it
+  // never carried. The packer groups by netuid and asserts `key_complete`
+  // because it made that true -- and it CAN, because this producer never
+  // chunks: metagraph.rs bails rather than truncate a partial snapshot, so the
+  // whole pass arrives in one POST or none of it does.
+  //
+  // No pass declaration: this lane has never had one, and inventing one would
+  // mark an unproven load complete.
+  if (syncLaneUsesQueue(env, "neurons")) {
+    try {
+      await enqueueSyncBatch(env.SYNC_BATCHES!, {
+        lane: "neurons",
+        capturedAt: rows[0]!.captured_at as number,
+        rows,
+      });
+    } catch (err) {
+      console.error("data-api neurons enqueue failed:", err);
+      await captureDataApiError(err, "neurons-sync-queue", env);
+      return writeJson({ error: "enqueue failed" }, 502);
+    }
+    return writeJson({
+      ok: true,
+      neurons_written: rows.length,
+      neuron_daily_written: dailyRows.length,
+      account_position_daily_written: positionRows.length,
+      netuids_covered: netuids.length,
+      stores: ["queue"],
+    });
+  }
 
   // D1 is the binding this path REQUIRES -- it is the only store left (#9146,
   // #9193), so the sync has to keep working with nothing else bound or the
@@ -7296,6 +7299,17 @@ export default {
               >[0],
               rows,
               pass,
+            ),
+          // Redoes both derivations from THIS message's rows, which is sound
+          // only because the message asserted `key_complete` -- the validator
+          // rejects a neurons message without it, so this writer never sees a
+          // chunk whose prune map would delete rows it did not carry.
+          neurons: (rows) =>
+            writeNeuronSnapshotToD1(
+              env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+                typeof writeNeuronSnapshotToD1
+              >[0],
+              neuronSnapshotWrite(rows, Date.now()),
             ),
           "validator-nominator-counts": (rows) =>
             writeValidatorNominatorCountsToD1(

@@ -566,3 +566,67 @@ describe("enqueueSyncBatch", () => {
     );
   });
 });
+
+describe("packSyncBatchMessages: neurons (metagraphed-infra#357)", () => {
+  // neurons prunes per NETUID, and its producer never chunks: metagraph.rs
+  // bails rather than truncate a partial snapshot above its 50,000-row ceiling,
+  // and a pass is ~33,000 rows. So a POST always carries every row for every
+  // netuid it names, and the packer only has to not break that.
+  const neuronRows = (netuids: number, perNetuid: number) =>
+    Array.from({ length: netuids * perNetuid }, (_, i) => ({
+      netuid: Math.floor(i / perNetuid),
+      uid: i % perNetuid,
+      hotkey: ss58(i),
+      coldkey: ss58(100_000 + i),
+      stake_tao: 1234.5678 + i,
+      captured_at: 1_785_970_245_474,
+    }));
+
+  test("never splits a netuid across messages", () => {
+    const rows = neuronRows(129, 256);
+    const messages = packSyncBatchMessages({
+      lane: "neurons",
+      capturedAt: 1_785_970_245_474,
+      rows,
+    });
+
+    assert.equal(messages.length > 1, true, "one message could not hold 33k");
+
+    const seen = new Map<number, number>();
+    for (const [index, message] of messages.entries()) {
+      for (const row of message.rows) {
+        const netuid = row.netuid as number;
+        const previous = seen.get(netuid);
+        if (previous !== undefined) assert.equal(previous, index);
+        else seen.set(netuid, index);
+      }
+    }
+    assert.equal(seen.size, 129, "every netuid accounted for");
+  });
+
+  test("every message is accepted by the validator", () => {
+    // A neurons message without key_complete is REFUSED, and a refused message
+    // is acked rather than retried -- so a packer that forgot the flag would
+    // drop the whole snapshot silently.
+    for (const message of packSyncBatchMessages({
+      lane: "neurons",
+      capturedAt: 1_785_970_245_474,
+      rows: neuronRows(20, 256),
+    })) {
+      assert.equal(message.key_complete, true);
+      assert.equal(validSyncBatchMessage(message), true);
+    }
+  });
+
+  test("the validator refuses a neurons chunk that does not claim it", () => {
+    // Prove the guard bites: same message, flag removed.
+    const [message] = packSyncBatchMessages({
+      lane: "neurons",
+      capturedAt: 1_785_970_245_474,
+      rows: neuronRows(1, 4),
+    });
+    assert.equal(validSyncBatchMessage(message), true);
+    const { key_complete: _drop, ...unclaimed } = message!;
+    assert.equal(validSyncBatchMessage(unclaimed), false);
+  });
+});

@@ -100,11 +100,22 @@ export const SYNC_BATCH_LANES = [
  * Lanes whose write PRUNES, and therefore may not be applied from a chunk that
  * could be missing rows for a key it names.
  *
- * `neurons` belongs here too -- it prunes per netuid -- but is not on the queue
- * yet, and listing a lane before its producer asserts completeness would reject
- * every one of its messages. It joins when it moves.
+ * A lane belongs here only once its POSTs are known to carry whole keys --
+ * listing one earlier makes every message assert something false, on the one
+ * field whose failure mode is deleted rows. `PRUNING_LANE_KEYS` says WHICH key;
+ * this says which lanes have earned the claim.
  */
-export const PRUNING_LANES: readonly string[] = ["nominator-positions"];
+export const PRUNING_LANES: readonly string[] = [
+  "nominator-positions",
+  // metagraphed-infra#357. It prunes per netuid, and it can assert
+  // key-completeness for a reason worth stating: its producer NEVER chunks.
+  // `metagraph.rs` bails -- "refusing to truncate a partial snapshot" -- if a
+  // pass exceeds its 50,000-row ceiling, and a pass is ~33,000 rows, so the
+  // whole snapshot arrives in one POST or none of it does. The packer then
+  // groups that POST by netuid, so every message really does carry every row
+  // for each netuid it names.
+  "neurons",
+];
 
 export type SyncBatchLane = (typeof SYNC_BATCH_LANES)[number];
 
@@ -163,8 +174,7 @@ export const SYNC_BATCH_MAX_BYTES = 96 * 1024;
  */
 export const PRUNING_LANE_KEYS: Readonly<Record<string, string>> = {
   "nominator-positions": "coldkey",
-  // `neurons` prunes per netuid and joins PRUNING_LANES when it moves
-  // (metagraphed-infra#357); its key is declared here at the same time.
+  neurons: "netuid",
 };
 
 /** Bytes one row costs inside the `rows` array, including its separating
@@ -204,9 +214,10 @@ export function packSyncBatchMessages(input: {
   maxRows?: number;
   /** Overridable so the "listed as pruning, no key declared" guard below is
    * reachable from a test. PRUNING_LANES and PRUNING_LANE_KEYS are deliberately
-   * NOT one list -- a lane can have a known prune key while its producer does
-   * not yet assert key-completeness, which is exactly `neurons` today -- so the
-   * mismatch is possible and the guard is not decorative. */
+   * NOT one list -- a lane can have a known prune key while its producer cannot
+   * yet guarantee whole keys per POST, and listing it before then would make
+   * every message assert something false -- so the mismatch is possible and the
+   * guard is not decorative. */
   pruningKeys?: Readonly<Record<string, string>>;
 }): SyncBatchMessage[] {
   const {

@@ -1697,3 +1697,139 @@ test("a missing subnet_hyperparams table degrades apy_estimate, never the valida
   assert.equal(entry.apy_estimate, null, "only the APY opinion is lost");
   assert.equal(entry.apy_estimate_eligible_subnet_count, 0);
 });
+
+// --- routed to the sync queue (metagraphed-infra#357) -----------------------
+//
+// This lane waited on the queue because its write PRUNES: it deletes rows for a
+// netuid older than the newest captured_at it saw for that netuid. Applied to a
+// message holding only part of a netuid, that deletes rows the message never
+// carried, and no retry undoes a delete.
+//
+// What makes the claim safe is the producer, not the transport: metagraph.rs
+// bails -- "refusing to truncate a partial snapshot" -- rather than chunk above
+// its 50,000-row ceiling, and a pass is ~33,000 rows. So a POST always holds
+// every row for every netuid it names, and the packer only has to not break it.
+function queueEnv(send: (m: unknown) => Promise<void>) {
+  return env({ SYNC_BATCHES: { send }, SYNC_QUEUE_LANES: "neurons" });
+}
+
+test("neurons-sync enqueues instead of writing, and never both", async () => {
+  const sent: Record<string, unknown>[] = [];
+  const res = await postSync(
+    [syncRow(), syncRow({ uid: 1, hotkey: "5Hot7-1" })],
+    queueEnv(async (m) => {
+      sent.push(m as Record<string, unknown>);
+    }),
+  );
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.deepEqual(body.stores, ["queue"]);
+  assert.equal(body.neurons_written, 2);
+  assert.equal(sent.length, 1);
+  // The derived counts are still reported, because a caller reads them to know
+  // the snapshot was understood -- they are computed either way.
+  assert.equal(body.neuron_daily_written, 2);
+  assert.equal(body.netuids_covered, 1);
+});
+
+test("neurons-sync claims key-completeness on what it enqueues", async () => {
+  // The consumer REFUSES a neurons message without this, and a refused message
+  // is acked rather than retried -- so a missing flag drops the snapshot.
+  const sent: Record<string, unknown>[] = [];
+  await postSync(
+    [syncRow()],
+    queueEnv(async (m) => {
+      sent.push(m as Record<string, unknown>);
+    }),
+  );
+  assert.equal(sent[0]!.key_complete, true);
+  assert.equal(sent[0]!.lane, "neurons");
+  // No pass declaration: this lane has never had one, and inventing a total
+  // would mark an unproven load complete.
+  assert.equal("pass_total" in sent[0]!, false);
+});
+
+test("neurons-sync 502s when the enqueue fails, so the producer retries", async () => {
+  const res = await postSync(
+    [syncRow()],
+    queueEnv(async () => Promise.reject(new Error("over capacity"))),
+  );
+  assert.equal(res.status, 502);
+});
+
+test("the queue consumer writes a neurons message, prune included", async () => {
+  // Drives the Worker's own queue() handler against a real D1, so the writer
+  // wired into the consumer map is exercised rather than a stand-in. The prune
+  // is the part worth proving end to end: it is what made this lane wait.
+  await postSync([
+    syncRow({ uid: 0, hotkey: "5Hot7-0", captured_at: CAPTURED_AT }),
+    syncRow({ uid: 1, hotkey: "5Hot7-1", captured_at: CAPTURED_AT }),
+  ]);
+  assert.equal(count("neurons"), 2);
+
+  // A later capture naming only uid 0 must retire uid 1 -- it is the shape of a
+  // deregistration, and the reason a partial message could never be applied.
+  const acked: string[] = [];
+  await worker.queue(
+    {
+      messages: [
+        {
+          body: {
+            lane: "neurons",
+            captured_at: CAPTURED_AT + 60_000,
+            key_complete: true,
+            rows: [
+              syncRow({
+                uid: 0,
+                hotkey: "5Hot7-0",
+                captured_at: CAPTURED_AT + 60_000,
+              }),
+            ],
+          },
+          ack: () => acked.push("ack"),
+          retry: () => acked.push("retry"),
+        },
+      ],
+    } as never,
+    env(),
+    { waitUntil: (p: Promise<unknown>) => void p } as never,
+  );
+
+  assert.deepEqual(acked, ["ack"], "a written message is acked, never retried");
+  assert.equal(count("neurons"), 1, "uid 1 pruned by the later capture");
+  assert.equal(
+    one("SELECT * FROM neurons WHERE uid = 0").captured_at,
+    CAPTURED_AT + 60_000,
+  );
+  // The derived tables are redone by the consumer from the message's rows.
+  assert.equal(count("neuron_daily") > 0, true);
+});
+
+test("the consumer refuses a neurons message that does not claim key-completeness", async () => {
+  // Refused, not written: applying it would prune netuid 7 down to the one row
+  // this message happens to carry, deleting rows it never saw.
+  await postSync([
+    syncRow({ uid: 0, captured_at: CAPTURED_AT }),
+    syncRow({ uid: 1, hotkey: "5Hot7-1", captured_at: CAPTURED_AT }),
+  ]);
+  const acked: string[] = [];
+  await worker.queue(
+    {
+      messages: [
+        {
+          body: {
+            lane: "neurons",
+            captured_at: CAPTURED_AT + 60_000,
+            rows: [syncRow({ uid: 0, captured_at: CAPTURED_AT + 60_000 })],
+          },
+          ack: () => acked.push("ack"),
+          retry: () => acked.push("retry"),
+        },
+      ],
+    } as never,
+    env(),
+    { waitUntil: (p: Promise<unknown>) => void p } as never,
+  );
+  assert.deepEqual(acked, ["ack"], "unparseable is acked, not retried");
+  assert.equal(count("neurons"), 2, "nothing written, nothing pruned");
+});

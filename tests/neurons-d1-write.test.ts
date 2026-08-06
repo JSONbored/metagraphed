@@ -21,6 +21,7 @@ import {
   rowsPerStatement,
   D1_JSON_BUDGET_BYTES,
   writeNeuronSnapshotToD1,
+  netuidMaxCapturedAt,
 } from "../src/neurons-d1-write.ts";
 import { NEURON_INSERT_COLUMNS } from "../src/metagraph-neurons.ts";
 
@@ -297,5 +298,39 @@ describe("the neurons D1 write path (#9146)", () => {
     });
     assert.equal(result.statements, 0);
     assert.equal(batched(), null, "an empty write must not open a transaction");
+  });
+});
+
+describe("netuidMaxCapturedAt", () => {
+  test("takes the LATEST capture per netuid, not one batch-wide max", () => {
+    // A batch-wide max would let one netuid's later capture delete rows this
+    // same write just upserted for a different, earlier-captured netuid.
+    const cutoffs = netuidMaxCapturedAt([
+      { netuid: 7, captured_at: 100 },
+      { netuid: 7, captured_at: 300 },
+      { netuid: 8, captured_at: 200 },
+    ]);
+    assert.equal(cutoffs.get(7), 300);
+    assert.equal(cutoffs.get(8), 200);
+  });
+
+  test("skips a row with no usable netuid rather than keying on NaN", () => {
+    const cutoffs = netuidMaxCapturedAt([
+      { netuid: null, captured_at: 100 },
+      { captured_at: 100 },
+      { netuid: 7, captured_at: 100 },
+    ]);
+    assert.deepEqual([...cutoffs.keys()], [7]);
+  });
+
+  test("skips a row with no usable captured_at, which would delete everything", () => {
+    // A NaN cutoff makes `captured_at < cutoff` false for every row, but a
+    // null one binds as NULL and the comparison stops being a guard at all --
+    // either way the safe move is to not seed a cutoff from an unusable row.
+    const cutoffs = netuidMaxCapturedAt([
+      { netuid: 7, captured_at: null },
+      { netuid: 8, captured_at: "soon" },
+    ]);
+    assert.equal(cutoffs.size, 0);
   });
 });
