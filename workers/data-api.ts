@@ -1850,6 +1850,39 @@ async function handleNominatorPositionsSync(request: Request, env: Env) {
   const rows = incoming.map(coerceNominatorPositionSyncRow);
   const cutoffs = coldkeyMaxCapturedAt(rows);
 
+  // Enqueue or write, never both -- see handleHotkeyAlphaSync's own note.
+  //
+  // `coldkey_complete` is this lane's alone, and it is not ceremony. The write
+  // below PRUNES: it deletes rows for a `coldkey` older than the newest
+  // captured_at just seen for it. Applied to a chunk missing some of those
+  // rows, that deletes rows the chunk never carried -- and no retry undoes a
+  // delete. The producer's `pack_coldkey_chunks` guarantees a per-coldkey group
+  // is never split, with a test a flat slice would fail; asserting it here
+  // turns a cross-repo assumption into something the consumer can refuse.
+  //
+  // Note the guarantee is ALREADY load-bearing on the HTTP path -- `cutoffs`
+  // above is computed from one POSTed chunk, not the whole pass. The queue
+  // changes the transport, not the contract.
+  if (syncLaneUsesQueue(env, "nominator-positions")) {
+    try {
+      await env.SYNC_BATCHES!.send({
+        lane: "nominator-positions",
+        captured_at: rows[0]!.captured_at as number,
+        coldkey_complete: true,
+        rows,
+      });
+    } catch (err) {
+      console.error("data-api nominator-positions enqueue failed:", err);
+      await captureDataApiError(err, "nominator-positions-sync-queue", env);
+      return writeJson({ error: "enqueue failed" }, 502);
+    }
+    return writeJson({
+      ok: true,
+      nominator_positions_written: rows.length,
+      stores: ["queue"],
+    });
+  }
+
   // D1 is the binding this path REQUIRES -- the only store this family has.
   // Checked HERE, after validation, not at the top: a malformed body is a 400
   // whether or not a store happens to be bound (handleSubnetHyperparamsSync's
@@ -7168,13 +7201,15 @@ export default {
   /**
    * The bulk sync path's consumer (metagraphed-infra#347).
    *
-   * NO-OP BY DESIGN AT THIS STAGE. It validates, classifies and reports, and
-   * writes nothing. The point of a first cut is to observe the queue's real
-   * behaviour -- batch sizes, retry timing, dead-letter routing, what
-   * `max_concurrency` actually does to throughput -- against production traffic
-   * shape BEFORE any lane depends on it. Those are precisely the properties the
-   * hand-rolled retry and pacing currently substitute for, so they get measured
-   * rather than assumed.
+   * IT WRITES. The first cut deliberately did not -- it validated, classified
+   * and reported, so the queue's real behaviour (batch sizes, retry timing,
+   * dead-letter routing, what `max_concurrency` does to throughput) could be
+   * observed against production traffic shape before any lane depended on it.
+   * Those are the properties the hand-rolled retry and pacing substituted for,
+   * and measuring them first is what made deleting the pacing defensible.
+   *
+   * A lane only reaches here once SYNC_QUEUE_LANES names it, so wiring a lane
+   * and cutting it over stay separate deploys.
    *
    * A MALFORMED MESSAGE IS ACKED, NOT RETRIED. Retrying something that can
    * never parse burns five attempts and dead-letters anyway; acking it keeps
@@ -7205,6 +7240,17 @@ export default {
               >[0],
               rows,
               pass,
+            ),
+          // Recomputes the prune map from THIS message's rows, which is sound
+          // only because the message asserted `coldkey_complete` -- the
+          // validator rejects it otherwise, so this writer never sees a chunk
+          // that could prune rows it did not carry.
+          "nominator-positions": (rows) =>
+            writeNominatorPositionsToD1(
+              env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+                typeof writeNominatorPositionsToD1
+              >[0],
+              { rows, coldkeyMaxCapturedAt: coldkeyMaxCapturedAt(rows) },
             ),
           "validator-nominator-counts": (rows) =>
             writeValidatorNominatorCountsToD1(

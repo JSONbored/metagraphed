@@ -14,6 +14,7 @@ import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
 import { beforeEach, describe, test } from "vitest";
+import { validSyncBatchMessage } from "../src/sync-batch-queue.ts";
 import type { Row } from "./row-type.ts";
 
 const { default: worker } = await import("../workers/data-api.ts");
@@ -299,5 +300,82 @@ describe("POST /api/v1/internal/nominator-positions-sync", () => {
       (await response.json<{ error: string }>()).error,
       /d1 write failed/,
     );
+  });
+});
+
+describe("routed to the sync queue (metagraphed-infra#355)", () => {
+  function queueEnv(send: (m: unknown) => Promise<void>) {
+    return env({
+      SYNC_BATCHES: { send },
+      SYNC_QUEUE_LANES: "nominator-positions",
+    });
+  }
+
+  test("enqueues instead of writing, and never both", async () => {
+    // NO DUAL WRITE. Writing twice during the migration doubles the D1 load the
+    // queue exists to relieve, and a duplicate arrival would double-count any
+    // completeness tally. The flag SELECTS a path; it does not fan out.
+    const sent: Record<string, unknown>[] = [];
+    const response = await post(
+      { rows: [positionRow(), positionRow({ coldkey: COLDKEY_B, netuid: 1 })] },
+      SECRET,
+      queueEnv(async (m) => {
+        sent.push(m as Record<string, unknown>);
+      }),
+    );
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      ok: true,
+      nominator_positions_written: 2,
+      stores: ["queue"],
+    });
+    assert.equal(sent.length, 1);
+    assert.equal(rows().length, 0, "D1 must not also have been written");
+  });
+
+  test("asserts coldkey-completeness on the message it sends", async () => {
+    // The consumer REFUSES a nominator-positions chunk without this flag,
+    // because its write prunes. A producer that stopped setting it would
+    // dead-letter loudly rather than silently deleting rows the chunk did not
+    // carry -- which is the whole reason the flag exists rather than a comment.
+    const sent: Record<string, unknown>[] = [];
+    await post(
+      { rows: [positionRow()] },
+      SECRET,
+      queueEnv(async (m) => {
+        sent.push(m as Record<string, unknown>);
+      }),
+    );
+    assert.equal(sent[0]!.lane, "nominator-positions");
+    assert.equal(sent[0]!.coldkey_complete, true);
+    assert.equal(sent[0]!.captured_at, 1_780_000_000_000);
+    assert.equal(validSyncBatchMessage(sent[0]), true);
+  });
+
+  test("a failed enqueue is a 502, not a silent success", async () => {
+    // The producer retries on a non-2xx. Reporting ok on a dropped chunk would
+    // lose the rows outright, since nothing else is writing them now.
+    const response = await post(
+      { rows: [positionRow()] },
+      SECRET,
+      queueEnv(async () => {
+        throw new Error("queue unavailable");
+      }),
+    );
+    assert.equal(response.status, 502);
+    assert.equal(rows().length, 0, "no fallback write -- the lane is cut over");
+  });
+
+  test("an un-opted deployment still writes D1", async () => {
+    // Rollback has to be boring: these are latest-only upsert tables refreshed
+    // on a tick, so unsetting the flag simply means the next pass writes the
+    // old way. No backfill, no reconciliation.
+    const response = await post(
+      { rows: [positionRow()] },
+      SECRET,
+      env({ SYNC_BATCHES: { send: async () => {} } }),
+    );
+    assert.equal(response.status, 200);
+    assert.equal(rows().length, 1);
   });
 });
