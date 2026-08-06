@@ -4237,6 +4237,13 @@ const MCP_INTENT_ARG_SCHEMA = {
   description:
     "Why are you calling this tool? Briefly describe the user's goal. " +
     "Optional, recorded for analytics only -- it does not affect the result.",
+  // A worked example, because "describe the user's goal" is exactly the kind
+  // of instruction a model satisfies with one vague word. It shows the shape
+  // that is useful in the intent view: the user's actual objective, not a
+  // restatement of the tool name.
+  examples: [
+    "Checking whether SN64's API is healthy before recommending it to a user",
+  ],
 } as const;
 
 /**

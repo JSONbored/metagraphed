@@ -69,20 +69,23 @@ export const GetHealthHistoryInputSchema = z
     date: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
-      .describe("A single UTC day, `YYYY-MM-DD`."),
+      .describe("A single UTC day, `YYYY-MM-DD`.")
+      .meta({ examples: ["2026-08-05"] }),
     netuid: netuidSchema().optional(),
     kind: kindSchema(SURFACE_KIND).optional(),
     provider: providerSlugSchema().optional(),
     status: z
       .enum(HEALTH_STATUS)
       .optional()
-      .describe("Restrict to rows with this health status."),
+      .describe("Restrict to rows with this health status.")
+      .meta({ examples: [HEALTH_STATUS[0]] }),
     classification: z
       .enum(HEALTH_CLASSIFICATION)
       .optional()
       .describe(
         "Why a probe ended as it did — the reason behind the status, not the status itself.",
-      ),
+      )
+      .meta({ examples: [HEALTH_CLASSIFICATION[0]] }),
     sort: sortSchema(HEALTH_SURFACE_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),

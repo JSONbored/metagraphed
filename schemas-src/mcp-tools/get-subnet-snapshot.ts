@@ -15,7 +15,8 @@ export const GetSubnetSnapshotInputSchema = z
       .optional()
       .describe(
         "How many top validators to include in the embedded validator list.",
-      ),
+      )
+      .meta({ examples: [10] }),
     recent_events_limit: z
       .int()
       .min(1)
@@ -23,7 +24,8 @@ export const GetSubnetSnapshotInputSchema = z
       .optional()
       .describe(
         "How many recent events to embed. Clamped to the tool's ceiling rather than rejected.",
-      ),
+      )
+      .meta({ examples: [10] }),
   })
   .strict();
 export type GetSubnetSnapshotInput = z.infer<

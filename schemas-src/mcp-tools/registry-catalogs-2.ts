@@ -117,7 +117,8 @@ export const ListRpcEndpointsInputSchema = z
       .optional()
       .describe(
         "Which layer of the stack the endpoint belongs to: the Bittensor base chain, a data or docs provider, or a subnet's own app.",
-      ),
+      )
+      .meta({ examples: [ENDPOINT_LAYERS[0]] }),
     netuid: netuidSchema().optional(),
     provider: providerSlugSchema().optional(),
     publication_state: z
@@ -125,38 +126,44 @@ export const ListRpcEndpointsInputSchema = z
       .optional()
       .describe(
         "Where the endpoint sits in the review pipeline, from unreviewed candidate through to pool-eligible or rejected.",
-      ),
+      )
+      .meta({ examples: [ENDPOINT_PUBLICATION_STATES[0]] }),
     status: kindSchema(HEALTH_STATUSES).optional(),
     pool_eligible: z
       .boolean()
       .optional()
       .describe(
         "Restrict to endpoints that are (or are not) eligible for the public RPC pool.",
-      ),
+      )
+      .meta({ examples: [true] }),
     min_latency_ms: z
       .number()
       .optional()
       .describe(
         "Inclusive lower bound on probe latency in milliseconds; rows below it are excluded.",
-      ),
+      )
+      .meta({ examples: [50] }),
     max_latency_ms: z
       .number()
       .optional()
       .describe(
         "Inclusive upper bound on probe latency in milliseconds; rows above it are excluded.",
-      ),
+      )
+      .meta({ examples: [500] }),
     min_score: z
       .number()
       .optional()
       .describe(
         "Inclusive lower bound on endpoint score; rows below it are excluded.",
-      ),
+      )
+      .meta({ examples: [50] }),
     max_score: z
       .number()
       .optional()
       .describe(
         "Inclusive upper bound on endpoint score; rows above it are excluded.",
-      ),
+      )
+      .meta({ examples: [100] }),
     sort: sortSchema(ENDPOINT_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     // Both `fields` and `cursor` are UNIONS here, unlike everywhere else, so
@@ -168,7 +175,8 @@ export const ListRpcEndpointsInputSchema = z
         "Row fields to project. Accepts either a comma-separated string " +
           "(`id,url,status`) or an array of bare names. Omit for the full row.",
       )
-      .optional(),
+      .optional()
+      .meta({ examples: ["netuid,name,slug"] }),
     // Ceiling is MAX_LIMIT (workers/request-params.ts:21); a literal here
     // because schemas-src/ imports from neither src/ nor workers/.
     limit: limitSchema(1000).optional(),
@@ -179,7 +187,8 @@ export const ListRpcEndpointsInputSchema = z
           "`next_cursor` token from the previous response; pass a token back " +
           "verbatim, since its contents are not stable.",
       )
-      .optional(),
+      .optional()
+      .meta({ examples: [0] }),
   })
   .strict();
 export type ListRpcEndpointsInput = z.infer<typeof ListRpcEndpointsInputSchema>;
@@ -224,32 +233,37 @@ export const ListRpcPoolsInputSchema = z
       .optional()
       .describe(
         "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
-      ),
+      )
+      .meta({ examples: ["sn-64-chutes-subnet-api"] }),
     kind: kindSchema(POOL_KINDS).optional(),
     min_eligible_count: z
       .number()
       .optional()
       .describe(
         "Inclusive lower bound on pool-eligible endpoint count; rows below it are excluded.",
-      ),
+      )
+      .meta({ examples: [1] }),
     max_eligible_count: z
       .number()
       .optional()
       .describe(
         "Inclusive upper bound on pool-eligible endpoint count; rows above it are excluded.",
-      ),
+      )
+      .meta({ examples: [10] }),
     min_endpoint_count: z
       .number()
       .optional()
       .describe(
         "Inclusive lower bound on endpoint count; rows below it are excluded.",
-      ),
+      )
+      .meta({ examples: [1] }),
     max_endpoint_count: z
       .number()
       .optional()
       .describe(
         "Inclusive upper bound on endpoint count; rows above it are excluded.",
-      ),
+      )
+      .meta({ examples: [10] }),
     sort: sortSchema(POOL_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),
@@ -352,25 +366,30 @@ export const ListProfileCompletenessInputSchema = z
       .optional()
       .describe(
         "How complete the subnet's profile is, from directory-only upward.",
-      ),
+      )
+      .meta({ examples: [PROFILE_LEVELS[0]] }),
     confidence: z
       .enum(CONFIDENCE_LEVELS)
       .optional()
-      .describe("How confident the machine assessment is."),
+      .describe("How confident the machine assessment is.")
+      .meta({ examples: [CONFIDENCE_LEVELS[0]] }),
     identity_level: z
       .enum(IDENTITY_LEVELS)
       .optional()
-      .describe("How complete the subnet's published identity is."),
+      .describe("How complete the subnet's published identity is.")
+      .meta({ examples: [IDENTITY_LEVELS[0]] }),
     identity_promotion_kinds: z
       .enum(SURFACE_KINDS)
       .optional()
       .describe(
         "Restrict to subnets where surfaces of this kind would promote the subnet's identity. One kind per call; see this parameter's enum.",
-      ),
+      )
+      .meta({ examples: [SURFACE_KINDS[0]] }),
     native_name_quality: z
       .enum(NATIVE_NAME_QUALITIES)
       .optional()
-      .describe("Whether the on-chain name is real, a placeholder, or empty."),
+      .describe("Whether the on-chain name is real, a placeholder, or empty.")
+      .meta({ examples: [NATIVE_NAME_QUALITIES[0]] }),
     sort: sortSchema(PROFILE_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),

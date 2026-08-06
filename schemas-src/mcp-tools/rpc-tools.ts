@@ -168,13 +168,15 @@ export const CallRpcInputSchema = z
         "The JSON-RPC method to call. Restricted to a read-only allowlist — " +
           "the enum is the complete set, and it is the same set the proxy " +
           "enforces, so anything absent here is refused rather than forwarded.",
-      ),
+      )
+      .meta({ examples: [...SAFE_RPC_METHODS] }),
     params: z
       .array(z.unknown())
       .optional()
       .describe(
         "Positional or named parameters for the RPC method, matching what that method expects.",
-      ),
+      )
+      .meta({ examples: [[]] }),
     network: McpNetworkSchema.optional(),
   })
   .strict();

@@ -37,45 +37,59 @@ export const ListSubnetsInputSchema = z
     status: z
       .string()
       .optional()
-      .describe("Restrict to rows with this health status."),
+      .describe("Restrict to rows with this health status.")
+      .meta({ examples: ["ok"] }),
     subnet_type: z
       .string()
       .optional()
-      .describe("Root subnet or an application subnet."),
+      .describe("Root subnet or an application subnet.")
+      .meta({ examples: ["application"] }),
     domain: z
       .string()
       .optional()
-      .describe("The subnet's primary domain of use."),
+      .describe("The subnet's primary domain of use.")
+      .meta({ examples: ["inference"] }),
     not_status: z
       .string()
       .optional()
       .describe(
         "EXCLUDE rows with this status. Applied after any positive `status` filter, so the two can be combined.",
-      ),
+      )
+      .meta({ examples: ["unknown"] }),
     not_subnet_type: z
       .string()
       .optional()
       .describe(
         "EXCLUDE rows with this subnet type. Applied after any positive `subnet_type` filter, so the two can be combined.",
-      ),
+      )
+      .meta({ examples: ["root"] }),
     not_domain: z
       .string()
       .optional()
       .describe(
         "EXCLUDE rows with this domain. Applied after any positive `domain` filter, so the two can be combined.",
-      ),
-    coverage_level: CoverageLevelSchema.optional().describe(
-      "How much of the subnet is covered: on-chain data only, a manifest, or actively probed surfaces.",
-    ),
-    not_coverage_level: CoverageLevelSchema.optional().describe(
-      "EXCLUDE rows with this coverage level. Applied after any positive `coverage_level` filter, so the two can be combined.",
-    ),
-    curation_level: CurationLevelSchema.optional().describe(
-      "How the record entered the registry — native chain data, discovered candidate, community submission, or machine-derived.",
-    ),
-    not_curation_level: CurationLevelSchema.optional().describe(
-      "EXCLUDE rows with this curation level. Applied after any positive `curation_level` filter, so the two can be combined.",
-    ),
+      )
+      .meta({ examples: ["media"] }),
+    coverage_level: CoverageLevelSchema.optional()
+      .describe(
+        "How much of the subnet is covered: on-chain data only, a manifest, or actively probed surfaces.",
+      )
+      .meta({ examples: [CoverageLevelSchema.options[0]] }),
+    not_coverage_level: CoverageLevelSchema.optional()
+      .describe(
+        "EXCLUDE rows with this coverage level. Applied after any positive `coverage_level` filter, so the two can be combined.",
+      )
+      .meta({ examples: [CoverageLevelSchema.options[0]] }),
+    curation_level: CurationLevelSchema.optional()
+      .describe(
+        "How the record entered the registry — native chain data, discovered candidate, community submission, or machine-derived.",
+      )
+      .meta({ examples: [CurationLevelSchema.options[0]] }),
+    not_curation_level: CurationLevelSchema.optional()
+      .describe(
+        "EXCLUDE rows with this curation level. Applied after any positive `curation_level` filter, so the two can be combined.",
+      )
+      .meta({ examples: [CurationLevelSchema.options[0]] }),
     min_readiness: z
       .int()
       .min(0)
@@ -83,7 +97,8 @@ export const ListSubnetsInputSchema = z
       .optional()
       .describe(
         "Inclusive lower bound on readiness score; rows below it are excluded.",
-      ),
+      )
+      .meta({ examples: [50] }),
     max_readiness: z
       .int()
       .min(0)
@@ -91,117 +106,134 @@ export const ListSubnetsInputSchema = z
       .optional()
       .describe(
         "Inclusive upper bound on readiness score; rows above it are excluded.",
-      ),
+      )
+      .meta({ examples: [100] }),
     min_surface_count: z
       .int()
       .min(0)
       .optional()
       .describe(
         "Inclusive lower bound on surface count; rows below it are excluded.",
-      ),
+      )
+      .meta({ examples: [1] }),
     max_surface_count: z
       .int()
       .min(0)
       .optional()
       .describe(
         "Inclusive upper bound on surface count; rows above it are excluded.",
-      ),
+      )
+      .meta({ examples: [20] }),
     min_block: z
       .number()
       .optional()
       .describe(
         "Inclusive lower bound on block height; rows below it are excluded.",
-      ),
+      )
+      .meta({ examples: [8700000] }),
     max_block: z
       .number()
       .optional()
       .describe(
         "Inclusive upper bound on block height; rows above it are excluded.",
-      ),
+      )
+      .meta({ examples: [8783000] }),
     min_candidate_count: z
       .int()
       .min(0)
       .optional()
       .describe(
         "Inclusive lower bound on candidate surface count; rows below it are excluded.",
-      ),
+      )
+      .meta({ examples: [1] }),
     max_candidate_count: z
       .int()
       .min(0)
       .optional()
       .describe(
         "Inclusive upper bound on candidate surface count; rows above it are excluded.",
-      ),
+      )
+      .meta({ examples: [20] }),
     min_mechanism_count: z
       .int()
       .min(0)
       .optional()
       .describe(
         "Inclusive lower bound on mechanism count; rows below it are excluded.",
-      ),
+      )
+      .meta({ examples: [1] }),
     max_mechanism_count: z
       .int()
       .min(0)
       .optional()
       .describe(
         "Inclusive upper bound on mechanism count; rows above it are excluded.",
-      ),
+      )
+      .meta({ examples: [8] }),
     min_participant_count: z
       .int()
       .min(0)
       .optional()
       .describe(
         "Inclusive lower bound on participant count; rows below it are excluded.",
-      ),
+      )
+      .meta({ examples: [1] }),
     max_participant_count: z
       .int()
       .min(0)
       .optional()
       .describe(
         "Inclusive upper bound on participant count; rows above it are excluded.",
-      ),
+      )
+      .meta({ examples: [256] }),
     min_probed_surface_count: z
       .int()
       .min(0)
       .optional()
       .describe(
         "Inclusive lower bound on probed surface count; rows below it are excluded.",
-      ),
+      )
+      .meta({ examples: [1] }),
     max_probed_surface_count: z
       .int()
       .min(0)
       .optional()
       .describe(
         "Inclusive upper bound on probed surface count; rows above it are excluded.",
-      ),
+      )
+      .meta({ examples: [20] }),
     min_tempo: z
       .int()
       .min(0)
       .optional()
       .describe(
         "Inclusive lower bound on subnet tempo; rows below it are excluded.",
-      ),
+      )
+      .meta({ examples: [99] }),
     max_tempo: z
       .int()
       .min(0)
       .optional()
       .describe(
         "Inclusive upper bound on subnet tempo; rows above it are excluded.",
-      ),
+      )
+      .meta({ examples: [360] }),
     min_netuid: z
       .int()
       .min(0)
       .optional()
       .describe(
         "Inclusive lower bound on subnet id; rows below it are excluded.",
-      ),
+      )
+      .meta({ examples: [1] }),
     max_netuid: z
       .int()
       .min(0)
       .optional()
       .describe(
         "Inclusive upper bound on subnet id; rows above it are excluded.",
-      ),
+      )
+      .meta({ examples: [128] }),
     sort: sortSchema(LIST_SUBNETS_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     network: McpNetworkSchema.optional(),

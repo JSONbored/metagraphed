@@ -11,7 +11,8 @@ export const GetFailureReasonsInputSchema = z
       .optional()
       .describe(
         "Trailing time window to aggregate over, ending at the latest data point rather than a calendar boundary. Options are per-tool; see this parameter's enum.",
-      ),
+      )
+      .meta({ examples: [FAILURE_REASONS_WINDOWS[0]] }),
     netuid: netuidSchema().optional(),
     kind: kindStringSchema().optional(),
   })

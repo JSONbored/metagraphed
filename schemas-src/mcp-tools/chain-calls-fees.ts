@@ -19,14 +19,16 @@ export const GetChainCallsInputSchema = z
       .optional()
       .describe(
         "How to bucket the counts: by pallet, or by pallet and call together.",
-      ),
+      )
+      .meta({ examples: ["module"] }),
     limit: limitSchema(100).optional(),
     call_module: z
       .string()
       .optional()
       .describe(
         "Restrict to one pallet, by its runtime name (`SubtensorModule`). Case-sensitive.",
-      ),
+      )
+      .meta({ examples: ["SubtensorModule"] }),
   })
   .strict();
 export type GetChainCallsInput = z.infer<typeof GetChainCallsInputSchema>;
@@ -65,7 +67,8 @@ export const GetChainSignersInputSchema = z
       .optional()
       .describe(
         "Restrict to one pallet, by its runtime name (`SubtensorModule`). Case-sensitive.",
-      ),
+      )
+      .meta({ examples: ["SubtensorModule"] }),
   })
   .strict();
 export type GetChainSignersInput = z.infer<typeof GetChainSignersInputSchema>;
@@ -102,7 +105,8 @@ export const GetChainFeesInputSchema = z
       .optional()
       .describe(
         "Restrict to one pallet, by its runtime name (`SubtensorModule`). Case-sensitive.",
-      ),
+      )
+      .meta({ examples: ["SubtensorModule"] }),
   })
   .strict();
 export type GetChainFeesInput = z.infer<typeof GetChainFeesInputSchema>;

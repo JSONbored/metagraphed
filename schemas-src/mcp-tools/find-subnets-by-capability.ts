@@ -12,7 +12,8 @@ export const FindSubnetsByCapabilityInputSchema = z
       .string()
       .describe(
         "A capability keyword to match against subnet descriptions and surfaces, e.g. `inference` or `storage`.",
-      ),
+      )
+      .meta({ examples: ["inference"] }),
     cursor: numericCursorSchema().optional(),
     limit: limitSchema(50).optional(),
   })

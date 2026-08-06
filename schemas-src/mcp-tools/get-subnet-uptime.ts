@@ -22,7 +22,8 @@ export const GetSubnetUptimeInputSchema = z
       .optional()
       .describe(
         "Drop rows computed from fewer than this many samples, so a thin sample cannot look like a trend.",
-      ),
+      )
+      .meta({ examples: [10] }),
   })
   .strict();
 export type GetSubnetUptimeInput = z.infer<typeof GetSubnetUptimeInputSchema>;

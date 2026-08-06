@@ -338,3 +338,89 @@ describe("published output schemas are normalised like inputs (#9654)", () => {
     assert.deepEqual([...new Set(offenders)], []);
   });
 });
+
+// #9655: `examples` was 0/773. A description says what a parameter means; an
+// example says what a valid value LOOKS like, which is the part a model gets
+// wrong on an SS58 address, a block hash or a comma-separated projection.
+describe("every published tool parameter carries an example (#9655)", () => {
+  const params = () => {
+    const rows: Array<{ tool: string; name: string; schema: Row }> = [];
+    for (const tool of listToolDefinitions() as Row[]) {
+      const props = (tool.inputSchema as Row)?.properties ?? {};
+      for (const [name, schema] of Object.entries(props)) {
+        rows.push({ tool: tool.name as string, name, schema: schema as Row });
+      }
+    }
+    return rows;
+  };
+
+  test("no parameter is published without one", () => {
+    const rows = params();
+    assert.ok(
+      rows.length > 700,
+      `expected the full surface, got ${rows.length}`,
+    );
+    const missing = rows
+      .filter(
+        (p) => !Array.isArray(p.schema.examples) || !p.schema.examples.length,
+      )
+      .map((p) => `${p.tool}.${p.name}`);
+    assert.deepEqual(
+      missing,
+      [],
+      "add .meta({ examples: [...] }) -- on the shared builder in " +
+        "schemas-src/mcp-tools/shared.ts where the parameter is a shared one",
+    );
+  });
+
+  // THE FAILURE MODE THAT MATTERS. An example outside its own enum is worse
+  // than none: it reads as authoritative and is guaranteed to be rejected.
+  // The generated ones are derived from each tool's own value list precisely
+  // so this cannot happen, and this is what proves it stays that way.
+  test("no example falls outside its own enum", () => {
+    const offenders = params()
+      .filter((p) => Array.isArray(p.schema.enum))
+      .filter((p) =>
+        ((p.schema.examples as unknown[]) ?? []).some(
+          (e) => !(p.schema.enum as unknown[]).includes(e),
+        ),
+      )
+      .map((p) => `${p.tool}.${p.name}`);
+    assert.deepEqual(offenders, []);
+  });
+
+  test("no example is null or undefined", () => {
+    const offenders = params()
+      .filter((p) =>
+        (p.schema.examples as unknown[]).some(
+          (e) => e === null || e === undefined,
+        ),
+      )
+      .map((p) => `${p.tool}.${p.name}`);
+    assert.deepEqual(offenders, []);
+  });
+
+  // An integer example outside a declared bound would be the numeric twin of
+  // the enum case above.
+  test("a numeric example sits inside its declared bounds", () => {
+    const offenders: string[] = [];
+    for (const p of params()) {
+      const { minimum, maximum } = p.schema as {
+        minimum?: number;
+        maximum?: number;
+      };
+      for (const e of (p.schema.examples as unknown[]) ?? []) {
+        if (typeof e !== "number") continue;
+        if (
+          (minimum !== undefined && e < minimum) ||
+          (maximum !== undefined && e > maximum)
+        ) {
+          offenders.push(
+            `${p.tool}.${p.name}=${e} outside [${minimum}, ${maximum}]`,
+          );
+        }
+      }
+    }
+    assert.deepEqual(offenders, []);
+  });
+});

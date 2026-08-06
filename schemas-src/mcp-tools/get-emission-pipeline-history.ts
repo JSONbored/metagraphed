@@ -12,7 +12,8 @@ export const GetPipelineHistoryInputSchema = z
       .optional()
       .describe(
         "Trailing time window to aggregate over, ending at the latest data point rather than a calendar boundary. Options are per-tool; see this parameter's enum.",
-      ),
+      )
+      .meta({ examples: [PIPELINE_HISTORY_WINDOWS[0]] }),
   })
   .strict();
 export type GetPipelineHistoryInput = z.infer<

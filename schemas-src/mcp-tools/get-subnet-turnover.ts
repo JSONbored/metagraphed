@@ -19,7 +19,8 @@ export const GetSubnetTurnoverInputSchema = z
       .optional()
       .describe(
         "When true, return only entries that changed rather than every entry.",
-      ),
+      )
+      .meta({ examples: [true] }),
   })
   .strict();
 export type GetSubnetTurnoverInput = z.infer<

@@ -19,7 +19,8 @@ export const GetStakeActionPreviewInputSchema = z
       .gt(0)
       .describe(
         "Amount to quote, in TAO when staking and in alpha when unstaking. Must be greater than 0.",
-      ),
+      )
+      .meta({ examples: [10] }),
     direction: kindSchema(STAKE_QUOTE_DIRECTIONS).optional(),
   })
   .strict();

@@ -65,11 +65,13 @@ export const ListEnrichmentTargetsInputSchema = z
     tier: z
       .enum(COVERAGE_DEPTH_TIERS)
       .optional()
-      .describe("How agent-ready the subnet is."),
+      .describe("How agent-ready the subnet is.")
+      .meta({ examples: [COVERAGE_DEPTH_TIERS[0]] }),
     severity: z
       .enum(COVERAGE_DEPTH_SEVERITIES)
       .optional()
-      .describe("How serious the incident is."),
+      .describe("How serious the incident is.")
+      .meta({ examples: [COVERAGE_DEPTH_SEVERITIES[0]] }),
     gap_code: z
       .string()
       .regex(/^[a-z0-9-]+$/)
@@ -77,11 +79,13 @@ export const ListEnrichmentTargetsInputSchema = z
       .describe(
         "The machine-readable gap identifier (`missing-openapi`), lowercase " +
           "and hyphenated — not the human-readable label shown beside it.",
-      ),
+      )
+      .meta({ examples: ["missing-openapi"] }),
     agent_status: z
       .enum(AGENT_READINESS_STATUSES)
       .optional()
-      .describe("How usable the subnet is to an agent right now."),
+      .describe("How usable the subnet is to an agent right now.")
+      .meta({ examples: [AGENT_READINESS_STATUSES[0]] }),
     netuid: netuidSchema().optional(),
   })
   .strict();
@@ -191,11 +195,13 @@ export const ListSubnetGapsInputSchema = z
       .optional()
       .describe(
         "Restrict to subnets where surfaces of this kind the subnet is MISSING. One kind per call; see this parameter's enum.",
-      ),
+      )
+      .meta({ examples: [SURFACE_KINDS[0]] }),
     review_state: z
       .string()
       .optional()
-      .describe("Where the item sits in maintainer review."),
+      .describe("Where the item sits in maintainer review.")
+      .meta({ examples: ["pending"] }),
     sort: sortSchema(GAP_PRIORITY_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),

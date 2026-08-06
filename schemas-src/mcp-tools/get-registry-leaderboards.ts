@@ -27,7 +27,8 @@ export const GetRegistryLeaderboardsInputSchema = z
     board: z
       .enum(LEADERBOARD_BOARDS)
       .optional()
-      .describe("Which leaderboard to return."),
+      .describe("Which leaderboard to return.")
+      .meta({ examples: [LEADERBOARD_BOARDS[0]] }),
     limit: limitSchema(100).optional(),
   })
   .strict();

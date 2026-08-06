@@ -30,32 +30,43 @@ export const ListExtrinsicsInputSchema = z
       .int()
       .min(0)
       .optional()
-      .describe("Restrict to this exact block height."),
-    signer: Ss58Schema.optional().describe(
-      "Restrict to extrinsics signed by this SS58 account. Unsigned (inherent) extrinsics never match.",
-    ),
+      .describe("Restrict to this exact block height.")
+      .meta({ examples: [8783000] }),
+    signer: Ss58Schema.optional()
+      .describe(
+        "Restrict to extrinsics signed by this SS58 account. Unsigned (inherent) extrinsics never match.",
+      )
+      .meta({ examples: ["5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F"] }),
     call_module: z
       .string()
       .optional()
       .describe(
         "Restrict to one pallet, by its runtime name (`SubtensorModule`). Case-sensitive.",
-      ),
+      )
+      .meta({ examples: ["SubtensorModule"] }),
     call_function: z
       .string()
       .optional()
       .describe(
         "Restrict to one call within the pallet (`add_stake`). Case-sensitive; pair with `call_module` to disambiguate.",
-      ),
+      )
+      .meta({ examples: ["add_stake"] }),
     call_hash: z
       .string()
       .optional()
-      .describe("Restrict to the extrinsic with this 0x-prefixed hash."),
+      .describe("Restrict to the extrinsic with this 0x-prefixed hash.")
+      .meta({
+        examples: [
+          "0x9f1e2d3c4b5a69788796a5b4c3d2e1f009182736455463728190abcdef012345",
+        ],
+      }),
     success: z
       .boolean()
       .optional()
       .describe(
         "Restrict to successful (`true`) or failed (`false`) extrinsics. Omit for both.",
-      ),
+      )
+      .meta({ examples: [true] }),
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
     from: z
@@ -64,14 +75,16 @@ export const ListExtrinsicsInputSchema = z
       .optional()
       .describe(
         "Inclusive start of the range. A block height on chain tools, an ISO-8601 date on time-series ones.",
-      ),
+      )
+      .meta({ examples: [8700000] }),
     to: z
       .int()
       .min(0)
       .optional()
       .describe(
         "Inclusive end of the range. A block height on chain tools, an ISO-8601 date on time-series ones; an EVM address on decode_evm_call.",
-      ),
+      )
+      .meta({ examples: [8783000] }),
     limit: limitSchema(EXTRINSICS_LIMIT_MAX).optional(),
     offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
@@ -97,7 +110,8 @@ export const GetExtrinsicInputSchema = z
       .string()
       .describe(
         "Block reference: either a block NUMBER or a 0x-prefixed block HASH. Both forms are accepted and resolve to the same block.",
-      ),
+      )
+      .meta({ examples: ["8783000", "0x9f1e...c3"] }),
   })
   .strict();
 export type GetExtrinsicInput = z.infer<typeof GetExtrinsicInputSchema>;

@@ -32,7 +32,8 @@ export const ListSearchIndexInputSchema = z
     type: z
       .enum(DOCUMENT_TYPES)
       .optional()
-      .describe("Which entity kind to search over."),
+      .describe("Which entity kind to search over.")
+      .meta({ examples: [DOCUMENT_TYPES[0]] }),
     netuid: netuidSchema().optional(),
     sort: sortSchema(DOCUMENT_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
@@ -65,7 +66,8 @@ export const ListSearchInputSchema = z
     type: z
       .enum(DOCUMENT_TYPES)
       .optional()
-      .describe("Which entity kind to search over."),
+      .describe("Which entity kind to search over.")
+      .meta({ examples: [DOCUMENT_TYPES[0]] }),
     netuid: netuidSchema().optional(),
     sort: sortSchema(DOCUMENT_SORT_FIELDS).optional(),
     order: orderSchema().optional(),

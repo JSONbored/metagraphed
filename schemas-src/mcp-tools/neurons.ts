@@ -20,7 +20,7 @@ export const GetNeuronInputSchema = z
     // #9082: narrow each returned row to these fields. Omit for the full
     // row. Valid names are NeuronSchema's own, so this enum cannot drift
     // from what the route can project.
-    fields: NeuronFieldsInputSchema,
+    fields: NeuronFieldsInputSchema.meta({ examples: ["netuid,name,slug"] }),
   })
   .strict();
 export type GetNeuronInput = z.infer<typeof GetNeuronInputSchema>;

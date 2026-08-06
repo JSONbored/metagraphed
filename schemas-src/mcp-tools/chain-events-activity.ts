@@ -20,7 +20,8 @@ export const GetChainActivityInputSchema = z
       .min(1)
       .max(5000)
       .optional()
-      .describe("How many trailing blocks to cover, ending at the chain head."),
+      .describe("How many trailing blocks to cover, ending at the chain head.")
+      .meta({ examples: [1200] }),
     // #8700: which chain's decoded history to aggregate. The same published
     // finney/test enum every network-aware tool takes, so one vocabulary
     // covers the whole surface.
@@ -57,20 +58,27 @@ export const ListChainEventsInputSchema = z
       .optional()
       .describe(
         "Restrict to events emitted by this pallet, by runtime name (`SubtensorModule`). Case-sensitive.",
-      ),
-    method: z.string().optional().describe("HTTP method to use for the call."),
+      )
+      .meta({ examples: ["SubtensorModule"] }),
+    method: z
+      .string()
+      .optional()
+      .describe("HTTP method to use for the call.")
+      .meta({ examples: ["set_weights"] }),
     block: z
       .int()
       .min(0)
       .optional()
-      .describe("Restrict to this exact block height."),
+      .describe("Restrict to this exact block height.")
+      .meta({ examples: [8783000] }),
     extrinsic: z
       .int()
       .min(0)
       .optional()
       .describe(
         "Restrict to one extrinsic's events by its index within the block. Requires `block`.",
-      ),
+      )
+      .meta({ examples: [14] }),
     cursor: keysetCursorSchema().optional(),
     before: z
       .int()
@@ -78,7 +86,8 @@ export const ListChainEventsInputSchema = z
       .optional()
       .describe(
         "Legacy cursor: return rows strictly BEFORE this block height. Prefer `cursor` where a tool offers one.",
-      ),
+      )
+      .meta({ examples: [8783000] }),
     limit: limitSchema(200).optional(),
     network: McpNetworkSchema.optional(),
   })

@@ -87,17 +87,20 @@ export const ListSubnetCandidatesInputSchema = z
     state: z
       .enum(CANDIDATE_STATES)
       .optional()
-      .describe("The incident's lifecycle state."),
+      .describe("The incident's lifecycle state.")
+      .meta({ examples: [CANDIDATE_STATES[0]] }),
     id: z
       .string()
       .optional()
       .describe(
         "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
-      ),
+      )
+      .meta({ examples: ["sn-64-chutes-subnet-api"] }),
     confidence: z
       .enum(CONFIDENCE_LEVELS)
       .optional()
-      .describe("How confident the machine assessment is."),
+      .describe("How confident the machine assessment is.")
+      .meta({ examples: [CONFIDENCE_LEVELS[0]] }),
     sort: sortSchema(CANDIDATES_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),

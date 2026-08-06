@@ -10,7 +10,8 @@ export const GetChainConcentrationHistoryInputSchema = z
       .optional()
       .describe(
         "Trailing time window to aggregate over, ending at the latest data point rather than a calendar boundary. Options are per-tool; see this parameter's enum.",
-      ),
+      )
+      .meta({ examples: [CHAIN_CONCENTRATION_HISTORY_WINDOWS[0]] }),
   })
   .strict();
 export type GetChainConcentrationHistoryInput = z.infer<

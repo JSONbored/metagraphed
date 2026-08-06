@@ -11,12 +11,14 @@ export const GetAlertTriggerInputSchema = z
       .string()
       .describe(
         "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
-      ),
+      )
+      .meta({ examples: ["sn-64-chutes-subnet-api"] }),
     owner_token: z
       .string()
       .describe(
         "The secret token issued when the alert was created. Required to read it back; it is not recoverable if lost.",
-      ),
+      )
+      .meta({ examples: ["mg_alert_..."] }),
   })
   .strict();
 export type GetAlertTriggerInput = z.infer<typeof GetAlertTriggerInputSchema>;

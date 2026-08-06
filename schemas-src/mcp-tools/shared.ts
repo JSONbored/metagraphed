@@ -43,7 +43,8 @@ export const netuidSchema = () =>
     .describe(
       "Subnet id (netuid), 0-65535. 0 is the root subnet, which is special: " +
         "it has no AMM pool and is emission-ineligible.",
-    );
+    )
+    .meta({ examples: [64, 0] });
 
 /**
  * A page size, capped at the mirrored route's own ceiling.
@@ -60,13 +61,15 @@ export const netuidSchema = () =>
 export const limitSchema = (max: number, fallback?: number) => {
   const schema = z.int().min(1).max(max);
   return fallback === undefined
-    ? schema.describe(`Maximum rows to return (1-${max}).`)
+    ? schema
+        .describe(`Maximum rows to return (1-${max}).`)
+        .meta({ examples: [Math.min(20, max)] })
     : schema
         .describe(
           `Maximum rows to return (1-${max}). Defaults to ${fallback} when omitted; ` +
             "a larger value is clamped to the ceiling rather than rejected.",
         )
-        .meta({ default: fallback });
+        .meta({ default: fallback, examples: [fallback] });
 };
 
 /**
@@ -81,7 +84,8 @@ export const offsetSchema = () =>
     .describe(
       `Rows to skip before the first returned row (0-${MAX_OFFSET}). ` +
         "Defaults to 0; a non-numeric value resolves to 0 and the response reports it.",
-    );
+    )
+    .meta({ examples: [0, 100] });
 
 /**
  * An SS58 address. The pattern is the one 26 tool modules each declared
@@ -99,7 +103,8 @@ export const ss58Schema = () =>
     .describe(
       "An SS58 account address (47-48 base58 characters). Coldkey or hotkey " +
         "depending on the tool — see the tool description for which this expects.",
-    );
+    )
+    .meta({ examples: ["5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F"] });
 
 /**
  * Sort direction. 31 of the 32 `order` parameters are this exact pair and mean
@@ -111,7 +116,8 @@ export const orderSchema = () =>
     .describe(
       "Sort direction for the chosen sort key: `asc` smallest-first, " +
         "`desc` largest-first.",
-    );
+    )
+    .meta({ examples: ["desc"] });
 
 // --- Descriptions for families whose VALUES are per-tool ---------------------
 //
@@ -136,7 +142,8 @@ export const windowSchema = <T extends readonly [string, ...string[]]>(
       "Trailing time window to aggregate over, ending at the latest data " +
         "point rather than a calendar boundary. Options are per-tool; see this " +
         "parameter's enum.",
-    );
+    )
+    .meta({ examples: [values[0]] });
 
 /** Which column the result is ranked by. Values are per-tool. */
 export const sortSchema = <T extends readonly [string, ...string[]]>(
@@ -147,7 +154,8 @@ export const sortSchema = <T extends readonly [string, ...string[]]>(
     .describe(
       "Column to rank the result by; pair with `order` for direction. " +
         "Options are per-tool; see this parameter's enum.",
-    );
+    )
+    .meta({ examples: [values[0]] });
 
 /**
  * A block height bound. Inclusive on both ends, which is the one thing a
@@ -160,7 +168,8 @@ export const blockBoundSchema = (edge: "first" | "last") =>
     .describe(
       `Inclusive ${edge} block height of the range to read. ` +
         "Omit for an unbounded end.",
-    );
+    )
+    .meta({ examples: [8783000] });
 
 /**
  * A free-text search query. Substring/keyword, not a query language — worth
@@ -172,7 +181,8 @@ export const querySchema = () =>
     .describe(
       "Free-text search terms, matched as case-insensitive substrings. " +
         "Not a query language: operators, quotes and wildcards are matched literally.",
-    );
+    )
+    .meta({ examples: ["inference", "text embedding"] });
 
 /**
  * A page cursor. TWO kinds, and conflating them is the mistake this pair
@@ -189,7 +199,8 @@ export const numericCursorSchema = () =>
       "Row offset to resume from — the numeric position of the first row to " +
         "return, not an opaque token. Rows inserted since the previous page " +
         "shift it, so prefer the keyset cursor where a tool offers one.",
-    );
+    )
+    .meta({ examples: [0, 100] });
 
 export const keysetCursorSchema = () =>
   z
@@ -198,7 +209,8 @@ export const keysetCursorSchema = () =>
       "Opaque pagination token: pass back the `next_cursor` from the previous " +
         "response verbatim. Its contents are not stable and must not be parsed " +
         "or constructed. Stable across inserts, unlike a row offset.",
-    );
+    )
+    .meta({ examples: ["eyJiIjo4NzgzMDAwLCJpIjo0fQ"] });
 
 /**
  * The `fields=` projection as a bare string. Same syntax as `fieldsSchema()`
@@ -212,7 +224,8 @@ export const fieldsStringSchema = () =>
       "Comma-separated row field names to project, e.g. `netuid,name,slug`. " +
         "Bare identifiers only — not a JSON array, no paths or indices. " +
         "Omit for the full row.",
-    );
+    )
+    .meta({ examples: ["netuid,name,slug"] });
 
 /**
  * A `kind` filter. Like `window`/`sort`, the value sets are per-tool (surface
@@ -226,7 +239,8 @@ export const kindSchema = <T extends readonly [string, ...string[]]>(
     .describe(
       "Restrict the result to this kind. Options are per-tool; see this " +
         "parameter's enum.",
-    );
+    )
+    .meta({ examples: [values[0]] });
 
 /**
  * A `kind` filter whose accepted values are NOT a closed set — the handler
@@ -241,7 +255,8 @@ export const kindStringSchema = () =>
       "Restrict the result to this kind, matched exactly against the value " +
         "the rows carry. Open set, so a value nothing matches yields an empty " +
         "result rather than an error. Omit for every kind.",
-    );
+    )
+    .meta({ examples: ["subnet-api"] });
 
 /**
  * A provider slug. Says it is the slug rather than the display name, which is
@@ -253,7 +268,8 @@ export const providerSlugSchema = () =>
     .describe(
       "Restrict to one provider, by SLUG (`opentensor-foundation`), not " +
         "display name. Unknown slugs yield an empty result, not an error.",
-    );
+    )
+    .meta({ examples: ["opentensor-foundation"] });
 
 /** A surface id, the stable key a surface keeps across renames. */
 export const surfaceIdSchema = () =>
@@ -262,7 +278,8 @@ export const surfaceIdSchema = () =>
     .describe(
       "The surface's stable id (`sn-64-chutes-subnet-api`), as returned by " +
         "the surface-listing tools. Stable across renames, unlike the name.",
-    );
+    )
+    .meta({ examples: ["sn-64-chutes-subnet-api"] });
 
 /**
  * A hotkey or coldkey the caller must pick. Distinct from `ss58Schema()` only
@@ -279,7 +296,10 @@ export const accountKeySchema = (role: "hotkey" | "coldkey") =>
             "sets weights, not the coldkey that owns the funds."
         : "The owning SS58 coldkey — the key that holds balances and " +
             "delegations, not the hotkey that serves on a subnet.",
-    );
+    )
+    .meta({
+      examples: ["5CS3g6nVJM6ouns8n9buN9CzFf2C1YDHVcVGRcxoirKs2xbV"],
+    });
 
 /** A neuron's position within one subnet. */
 export const uidSchema = () =>
@@ -290,7 +310,8 @@ export const uidSchema = () =>
       "Neuron UID: a slot number within ONE subnet, not a global id. The same " +
         "UID on another netuid is a different neuron, and a UID is reused " +
         "after deregistration.",
-    );
+    )
+    .meta({ examples: [0, 128] });
 
 /**
  * The accepted `fields` syntax, which was documented NOWHERE a caller could see it:
@@ -315,7 +336,8 @@ export const fieldsSchema = () =>
       "Comma-separated row field names to project, e.g. `netuid,name,slug`. " +
         "Bare identifiers only — not a JSON array, no paths or indices. " +
         "An unknown name is rejected rather than ignored.",
-    );
+    )
+    .meta({ examples: ["netuid,name,slug"] });
 
 // Bare `{type:"object"}` (hand-written, no `properties`/`additionalProperties`
 // declared -- JSON Schema's own default for an omitted additionalProperties

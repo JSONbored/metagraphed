@@ -20,7 +20,8 @@ export const HowDoICallInputSchema = z
       .optional()
       .describe(
         "A subnet by slug (`chutes`) or chain name. Use `netuid` instead when you have the numeric id.",
-      ),
+      )
+      .meta({ examples: ["chutes"] }),
   })
   .strict();
 export type HowDoICallInput = z.infer<typeof HowDoICallInputSchema>;
@@ -92,17 +93,20 @@ export const CallSubnetSurfaceInputSchema = z
         "Query-string parameters to append, as a flat object of " +
           "string/number/boolean values. Nested objects and arrays are not " +
           "supported — encode them into `path` or `body` instead.",
-      ),
+      )
+      .meta({ examples: ["inference"] }),
     path: z
       .string()
       .optional()
       .describe(
         "Path appended to the surface's base URL, e.g. `/v1/status`. Leading slash optional.",
-      ),
+      )
+      .meta({ examples: ["/v1/status"] }),
     method: z
       .enum(["GET", "HEAD", "POST", "PUT"])
       .optional()
-      .describe("HTTP method to use for the call."),
+      .describe("HTTP method to use for the call.")
+      .meta({ examples: ["GET"] }),
     // Branch order (object, then string) mirrors the hand-written original's
     // `type: ["object", "string"]`.
     body: z
@@ -110,13 +114,15 @@ export const CallSubnetSurfaceInputSchema = z
       .optional()
       .describe(
         "Request body: an object (sent as JSON) or a pre-serialized string.",
-      ),
+      )
+      .meta({ examples: [{ prompt: "hello" }] }),
     content_type: z
       .string()
       .optional()
       .describe(
         "Overrides the Content-Type header. Defaults to `application/json` when the body is an object.",
-      ),
+      )
+      .meta({ examples: ["application/json"] }),
     // Branch order (string, then object) mirrors the hand-written original's
     // `type: ["string", "object"]` -- the reverse of `body` above.
     credential: z
@@ -124,7 +130,8 @@ export const CallSubnetSurfaceInputSchema = z
       .optional()
       .describe(
         "Secret for an authenticated surface: a bearer token string, or an object of header/query values. Sent to the surface and never stored unless you use store_surface_credential.",
-      ),
+      )
+      .meta({ examples: ["Bearer <token>"] }),
   })
   .strict();
 export type CallSubnetSurfaceInput = z.infer<
@@ -171,13 +178,15 @@ export const StoreSurfaceCredentialInputSchema = z
       .union([z.string(), OpenObjectSchema])
       .describe(
         "Secret for an authenticated surface: a bearer token string, or an object of header/query values. Sent to the surface and never stored unless you use store_surface_credential.",
-      ),
+      )
+      .meta({ examples: ["Bearer <token>"] }),
     ttl_seconds: z
       .int()
       .min(60)
       .max(7_776_000)
       .optional()
-      .describe("How long the stored credential remains valid, in seconds."),
+      .describe("How long the stored credential remains valid, in seconds.")
+      .meta({ examples: [3600] }),
   })
   .strict();
 export type StoreSurfaceCredentialInput = z.infer<

@@ -15,11 +15,13 @@ export const CompareSubnetsInputSchema = z
       .max(128)
       .describe(
         "Subnet ids to include, as an array of integers. Omit for every subnet.",
-      ),
+      )
+      .meta({ examples: [[64, 8, 1]] }),
     dimensions: z
       .array(z.enum(COMPARE_DIMENSIONS))
       .optional()
-      .describe("Which breakdown dimensions to return, as an array of names."),
+      .describe("Which breakdown dimensions to return, as an array of names.")
+      .meta({ examples: [COMPARE_DIMENSIONS[0]] }),
   })
   .strict();
 export type CompareSubnetsInput = z.infer<typeof CompareSubnetsInputSchema>;
