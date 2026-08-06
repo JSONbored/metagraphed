@@ -27,9 +27,7 @@ import { beforeEach, describe, test } from "vitest";
 import type { Row } from "./row-type.ts";
 
 const { default: worker } = await import("../workers/data-api.ts");
-const { QUEUE_MESSAGE_MAX_BYTES } = await import(
-  "../src/sync-batch-queue.ts"
-);
+const { QUEUE_MESSAGE_MAX_BYTES } = await import("../src/sync-batch-queue.ts");
 
 const SCHEMA = fs.readFileSync(
   path.join(process.cwd(), "migrations/d1/0019_hotkey_alpha.sql"),

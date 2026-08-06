@@ -20,9 +20,7 @@ import { beforeEach, describe, test } from "vitest";
 import type { Row } from "./row-type.ts";
 
 const { default: worker } = await import("../workers/data-api.ts");
-const { QUEUE_MESSAGE_MAX_BYTES } = await import(
-  "../src/sync-batch-queue.ts"
-);
+const { QUEUE_MESSAGE_MAX_BYTES } = await import("../src/sync-batch-queue.ts");
 
 const SCHEMA = fs.readFileSync(
   path.join(process.cwd(), "migrations/d1/0012_validator_nominator_counts.sql"),
@@ -274,9 +272,13 @@ describe("routed to the sync queue (metagraphed-infra#355)", () => {
       countRow({ hotkey: `5${String(i).padStart(47, "N")}` }),
     );
     const sent: Record<string, unknown>[] = [];
-    const response = await post({ rows: big }, SECRET, queueEnv(async (m) => {
-      sent.push(m as Record<string, unknown>);
-    }));
+    const response = await post(
+      { rows: big },
+      SECRET,
+      queueEnv(async (m) => {
+        sent.push(m as Record<string, unknown>);
+      }),
+    );
 
     assert.equal(response.status, 200);
     assert.equal(sent.length > 1, true, "one message could not have held it");
