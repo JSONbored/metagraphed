@@ -704,6 +704,37 @@
   // shape as ALERT_TRIGGERS_INTERNAL_TOKEN above. Until set on both sides,
   // every key lookup is a clean miss (fails closed as "invalid key", never
   // a crash).
+  // WEBHOOK DELIVERY (metagraphed-infra#354). One message per
+  // (subscription, event); the consumer POSTs it and reschedules its own
+  // failures. Replaces the parking/sweep/round-counter machinery in
+  // src/webhooks.ts, which was a message queue written by hand because there
+  // was not one.
+  //
+  // ON THIS WORKER, not data-api: the subscriptions live in METAGRAPH_CONTROL
+  // KV and every /api/v1/webhooks/ route is served here, so the consumer reads
+  // the subscription from the same binding that wrote it.
+  //
+  // max_retries is 8 to match WEBHOOK_MAX_DELIVERY_ROUNDS -- subscribers were
+  // told that number, and the transport changing is not a reason to change what
+  // they were promised. max_concurrency is 4 rather than sync-batches' 2: these
+  // deliveries are outbound HTTP to third parties, so they are latency-bound
+  // rather than contending for one D1 database, and a slow subscriber must not
+  // hold the whole lane.
+  "queues": {
+    "producers": [
+      { "binding": "WEBHOOK_DELIVERIES", "queue": "webhook-deliveries" },
+    ],
+    "consumers": [
+      {
+        "queue": "webhook-deliveries",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 8,
+        "max_concurrency": 4,
+        "dead_letter_queue": "webhook-deliveries-dlq",
+      },
+    ],
+  },
   "durable_objects": {
     "bindings": [
       { "name": "CHAIN_FIREHOSE_HUB", "class_name": "ChainFirehoseHub" },
