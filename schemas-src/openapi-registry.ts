@@ -133,6 +133,11 @@ import {
   EmissionGateChangesArtifactSchema,
 } from "./routes/emission-gate-changes.ts";
 import {
+  FailureReasonSchema,
+  FailureReasonsDaySchema,
+  FailureReasonsArtifactSchema,
+} from "./routes/failure-reasons.ts";
+import {
   TaoUsdPointSchema,
   TaoUsdLatestSchema,
   TaoUsdArtifactSchema,
@@ -500,6 +505,9 @@ register(EmissionParamChangeSchema, "EmissionParamChange");
 register(EmissionSubnetChangeSchema, "EmissionSubnetChange");
 register(EmissionFlowChangeSchema, "EmissionFlowChange");
 register(EmissionGateChangesArtifactSchema, "EmissionGateChangesArtifact");
+register(FailureReasonSchema, "FailureReason");
+register(FailureReasonsDaySchema, "FailureReasonsDay");
+register(FailureReasonsArtifactSchema, "FailureReasonsArtifact");
 register(TaoUsdPointSchema, "TaoUsdPoint");
 register(TaoUsdLatestSchema, "TaoUsdLatest");
 register(TaoUsdArtifactSchema, "TaoUsdArtifact");

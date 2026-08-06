@@ -631,6 +631,10 @@ import {
   GetEmissionChangesOutputSchema,
 } from "../schemas-src/mcp-tools/get-emission-changes.ts";
 import {
+  GetFailureReasonsInputSchema,
+  GetFailureReasonsOutputSchema,
+} from "../schemas-src/mcp-tools/get-failure-reasons.ts";
+import {
   GetTaoUsdInputSchema,
   GetTaoUsdOutputSchema,
 } from "../schemas-src/mcp-tools/get-tao-usd.ts";
@@ -1457,6 +1461,13 @@ import {
   EMISSION_CHANGES_LIMIT_DEFAULT,
   EMISSION_CHANGES_LIMIT_MAX,
 } from "./emission-gate-changes.ts";
+import {
+  buildFailureReasons,
+  declineFailureReasons,
+  loadFailureReasons,
+  FAILURE_REASONS_WINDOWS,
+} from "./failure-reasons.ts";
+import { DEFAULT_FAILURE_REASONS_WINDOW } from "./route-limits.ts";
 import {
   buildTaoUsdSeries,
   loadTaoUsdSeries,
@@ -8076,6 +8087,53 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_failure_reasons",
+    title: "Get why surfaces fail",
+    description:
+      "Fetch WHY registry surfaces fail and whether the mix is changing " +
+      "(#9622) -- the classification breakdown (live, redirected, transient, " +
+      "rate-limited, timeout, dead, content-mismatch, unsupported, " +
+      "auth-required) over a window, plus a per-day series. Use it for 'why " +
+      "are these endpoints failing' and 'did timeouts spike this week'. NOT " +
+      "the same as get_health_history, which FILTERS one dated snapshot by " +
+      "classification to list which surfaces were dead on a given day; this " +
+      "one aggregates the reasons themselves. SUCCESSFUL PROBES ARE COUNTED " +
+      "TOO, because a rate needs its denominator -- `share` is of every probe " +
+      "in the window and `failure_share` is of the failing ones only, and " +
+      "failure_share is NULL rather than zero on a succeeding " +
+      "classification. `redirected` is NOT a failure: a surface answering " +
+      "from a new location is serving. days_covered is counted from the rows, " +
+      "so a day the prober did not run is ABSENT rather than a day of perfect " +
+      "health -- read oldest_day/newest_day for what was actually covered. " +
+      "window is 7d, 30d (default), 90d or 180d; netuid scopes to one subnet " +
+      "and kind to one surface kind. An EMPTY window is a measurement, not a " +
+      "failure -- it means the prober recorded nothing in that range, and " +
+      "only `degraded` says the read itself could not be made. Mainnet only. " +
+      "Mirrors GET /api/v1/health/failure-reasons.",
+    inputSchema: z.toJSONSchema(GetFailureReasonsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetFailureReasonsInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const window =
+        optionalEnum(args, "window", [...FAILURE_REASONS_WINDOWS]) ??
+        DEFAULT_FAILURE_REASONS_WINDOW;
+      const netuid = typeof args?.netuid === "number" ? args.netuid : undefined;
+      const kind = typeof args?.kind === "string" ? args.kind : undefined;
+      const rows = await loadFailureReasons(
+        ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+          typeof loadFailureReasons
+        >[0],
+        { window, netuid, kind },
+      );
+      return rows === null
+        ? declineFailureReasons("unavailable", { window, netuid, kind })
+        : buildFailureReasons(rows, { window, netuid, kind });
+    },
+  },
+  {
     name: "get_subnet_holders",
     title: "Get a subnet's alpha holder leaderboard",
     description:
@@ -13199,6 +13257,9 @@ const TOOL_OUTPUT_SCHEMAS = {
     target: "draft-2020-12",
   }),
   get_emission_changes: z.toJSONSchema(GetEmissionChangesOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_failure_reasons: z.toJSONSchema(GetFailureReasonsOutputSchema, {
     target: "draft-2020-12",
   }),
   get_tao_usd: z.toJSONSchema(GetTaoUsdOutputSchema, {

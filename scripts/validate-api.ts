@@ -1336,6 +1336,58 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/health/failure-reasons",
+    (body) => {
+      // #9622. An empty window is a MEASUREMENT, not a decline: only a failed
+      // read carries `degraded`.
+      if (body.data.degraded) {
+        assert.equal(body.data.total_checks, null);
+        assert.equal(body.data.days_covered, null);
+        return;
+      }
+      assert.equal(Array.isArray(body.data.reasons), true);
+      assert.equal(Array.isArray(body.data.series), true);
+      // days_covered comes from the ROWS, so it can never exceed the days the
+      // series actually carries -- a gap in probing must not read as coverage.
+      assert.equal(body.data.days_covered, body.data.series.length);
+      // The failures are a subset of the checks, by construction.
+      assert.equal(body.data.failing_checks <= body.data.total_checks, true);
+      const summed = body.data.reasons.reduce(
+        (n: number, r: { checks: number }) => n + r.checks,
+        0,
+      );
+      assert.equal(summed, body.data.total_checks);
+      for (const r of body.data.reasons) {
+        // Vocabulary the API actually defines -- an unrecognised string would
+        // teach a consumer one it does not.
+        assert.equal(
+          [
+            "live",
+            "redirected",
+            "transient",
+            "rate-limited",
+            "timeout",
+            "dead",
+            "content-mismatch",
+            "unsupported",
+            "auth-required",
+          ].includes(r.classification),
+          true,
+          `unknown classification ${r.classification}`,
+        );
+        // redirected is serving, not failing.
+        if (r.classification === "live" || r.classification === "redirected") {
+          assert.equal(r.is_failure, false);
+          // NULL rather than zero: the question does not apply.
+          assert.equal(r.failure_share, null);
+        }
+      }
+      // Newest last, so a caller plotting the series need not reverse it.
+      const days = body.data.series.map((d: { day: string }) => d.day);
+      assert.deepEqual(days, [...days].sort());
+    },
+  ],
+  [
     "/api/v1/chain/holders",
     (body) => {
       // #9607. Never 404s and never serves a bare empty ranking: either

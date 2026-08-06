@@ -70,6 +70,10 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // The cross-subnet holder ranking (#9607), computed live from the same two
   // D1 tables -- a baked ranking would freeze exactly the fact it reports.
   /^chain\/holders\.json$/,
+  // The probe failure-reason mix (#9622), computed live from the daily rollup
+  // -- a baked copy would stop the day it built, on a route whose subject is
+  // whether the mix is CHANGING.
+  /^health\/failure-reasons\.json$/,
   // The emission-gate change log (#9615), read live from three append-on-change
   // D1 tables -- a baked copy would stop recording the moment it built.
   /^chain\/governance\/emission-changes\.json$/,

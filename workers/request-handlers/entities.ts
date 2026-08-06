@@ -188,6 +188,13 @@ import {
   DEFAULT_NOMINATOR_BASIS,
 } from "../../src/validator-nominator-positions.ts";
 import {
+  buildFailureReasons,
+  declineFailureReasons,
+  loadFailureReasons,
+  FAILURE_REASONS_WINDOWS,
+} from "../../src/failure-reasons.ts";
+import { DEFAULT_FAILURE_REASONS_WINDOW } from "../../src/route-limits.ts";
+import {
   buildTaoUsdSeries,
   loadTaoUsdSeries,
   DEFAULT_TAO_USD_WINDOW,
@@ -6260,6 +6267,64 @@ export async function handleChainHolders(request: Request, env: Env, url: URL) {
     >[0],
   );
   const data = buildChainHolders(read, { sort, limit: limit.value });
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/health/failure-reasons (#9622): why surfaces fail and whether the
+// mix is changing, read from the daily rollup 0025 added -- the raw checks are
+// pruned at 30 days and the pre-existing rollup kept no classification at all.
+export async function handleFailureReasons(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
+  const validationError = validateEntityQuery(url, [
+    "window",
+    "netuid",
+    "kind",
+    "format",
+  ]);
+  if (validationError) return analyticsQueryError(validationError);
+
+  const window =
+    url.searchParams.get("window") || DEFAULT_FAILURE_REASONS_WINDOW;
+  if (!FAILURE_REASONS_WINDOWS.includes(window)) {
+    return analyticsQueryError({
+      parameter: "window",
+      message: `"${window}" is not a supported window. Supported: ${FAILURE_REASONS_WINDOWS.join(", ")}.`,
+    });
+  }
+  const netuidParam = url.searchParams.get("netuid");
+  let netuid: number | undefined;
+  if (netuidParam !== null) {
+    const parsed = Number(netuidParam);
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed > 65535) {
+      return analyticsQueryError({
+        parameter: "netuid",
+        message: "netuid must be an integer between 0 and 65535.",
+      });
+    }
+    netuid = parsed;
+  }
+  const kind = url.searchParams.get("kind") ?? undefined;
+
+  const rows = await loadFailureReasons(
+    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+      typeof loadFailureReasons
+    >[0],
+    { window, netuid, kind },
+  );
+  // An empty window is a MEASUREMENT and reaches buildFailureReasons; only a
+  // failed read declines, because "the prober recorded nothing" and "we could
+  // not ask" are different answers.
+  const data =
+    rows === null
+      ? declineFailureReasons("unavailable", { window, netuid, kind })
+      : buildFailureReasons(rows, { window, netuid, kind });
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },
