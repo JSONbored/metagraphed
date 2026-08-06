@@ -24,18 +24,20 @@ export const WEBHOOK_EVENT_ID_HEADER = "x-metagraph-event-id";
 export const WEBHOOK_IDEMPOTENCY_HEADER = "x-metagraph-idempotency-key";
 export const WEBHOOK_EVENT_TYPE = "metagraph.publish";
 
-// Redelivery schedule: a parked delivery becomes due `min(base * 2^(round-1), max)`
-// after its last attempt, and dead-letters after MAX_DELIVERY_ROUNDS failed rounds.
+// THE PUBLISHED REDELIVERY CONTRACT. These are what subscribers were told, and
+// they outlive the mechanism that first implemented them: src/webhook-queue.ts
+// derives the queue's `max_retries` and `delaySeconds` curve from exactly these
+// numbers, so the transport can change without the promise changing.
 export const WEBHOOK_MAX_DELIVERY_ROUNDS = 8;
 export const WEBHOOK_REDELIVERY_BASE_MS = 5 * 60 * 1000; // 5 min
 export const WEBHOOK_REDELIVERY_MAX_MS = 12 * 60 * 60 * 1000; // 12 h
 // Parked deliveries self-clean on the same 180-day horizon as dormant subscriptions.
 export const WEBHOOK_DELIVERY_TTL_SECONDS = 180 * 24 * 60 * 60;
-// Redelivery sweeps are intentionally budgeted so a long-lived failing endpoint
-// cannot make publish runs retry an unbounded parked backlog.
+// How many delivery records the subscription-status surface reads back. The
+// per-run and per-subscription redelivery budgets that used to sit here are
+// GONE (metagraphed-infra#354): they rationed a shared per-run sweep, and a
+// queue has no such resource -- see src/webhook-queue.ts for the full argument.
 export const WEBHOOK_REDELIVERY_LIST_LIMIT = 256;
-export const WEBHOOK_REDELIVERY_MAX_PER_RUN = 64;
-export const WEBHOOK_REDELIVERY_MAX_PER_SUBSCRIPTION = 8;
 
 const MAX_FILTER_NETUIDS = 64;
 const MAX_FILTER_KINDS = 8;
@@ -791,45 +793,14 @@ export async function dispatchChangeEvent({
   );
 }
 
-// --- at-least-once delivery (persisted redelivery + dead-letter) --------------
-// Fold one failed round into a parked record: bump the round, schedule the next
-// attempt with bounded backoff, and dead-letter at the cap or on a hard failure.
-function nextDeliveryRecord({
-  existing,
-  result,
-  bodyText,
-  nowIso,
-  nowMs,
-  maxRounds,
-  baseMs,
-  maxMs,
-}: {
-  existing: Row | null | undefined;
-  result: Row;
-  bodyText: string;
-  nowIso: string;
-  nowMs: number;
-  maxRounds: number;
-  baseMs: number;
-  maxMs: number;
-}): Row {
-  const round = ((existing?.round as number) || 0) + 1;
-  const dead = result.retryable === false || round >= maxRounds;
-  const delayMs = Math.min(baseMs * 2 ** (round - 1), maxMs);
-  return {
-    subscription_id: result.id,
-    event_id: result.event_id,
-    idempotency_key: result.idempotency_key,
-    body: bodyText,
-    state: dead ? "dead" : "pending",
-    round,
-    reason: result.reason,
-    status_code: result.status_code ?? null,
-    first_failed_at: existing?.first_failed_at || nowIso,
-    last_attempt_at: nowIso,
-    next_attempt_at: dead ? null : new Date(nowMs + delayMs).toISOString(),
-  };
-}
+// The scheduler that used to live here -- `nextDeliveryRecord`, folding a
+// failed round into a parked record with its own backoff and dead-letter cap --
+// is GONE (metagraphed-infra#354). The queue schedules retries now, and the
+// round counter it maintained by hand is carried by the platform's `attempts`.
+//
+// What survives is the READ below: a subscriber debugging a missed event still
+// needs to see delivery outcomes, so the consumer writes a record and this
+// summarises it. Reporting, not control.
 
 // Roll a subscription's parked records into a compact health view for the public
 // GET. Pure — the caller injects the records it listed from the store.
@@ -868,233 +839,4 @@ export function summarizeDeliveryRecords(
         }
       : null,
   };
-}
-
-interface DeliveryStore {
-  listKeys: (prefix: string, options: { limit?: number }) => Promise<string[]>;
-  get: (key: string) => Promise<Row | null>;
-  put: (
-    key: string,
-    value: Row,
-    options: { ttlSeconds: number },
-  ) => Promise<void>;
-  delete: (key: string) => Promise<void>;
-}
-
-// At-least-once dispatch: deliver the current event, then redeliver the backlog of
-// previously-failed deliveries now due, persisting state to an injected `store`
-// ({ listKeys, get, put, delete }). Store calls are best-effort — a hiccup degrades
-// to a redelivery next run (the idempotency key keeps that safe), never a throw.
-export async function dispatchWithRedelivery({
-  subscriptions,
-  event,
-  fetchFn,
-  now,
-  store,
-  resolveHostnames,
-  timeoutMs,
-  maxAttempts,
-  concurrency = 8,
-  ttlSeconds = WEBHOOK_DELIVERY_TTL_SECONDS,
-  maxRounds = WEBHOOK_MAX_DELIVERY_ROUNDS,
-  redeliveryBaseMs = WEBHOOK_REDELIVERY_BASE_MS,
-  redeliveryMaxMs = WEBHOOK_REDELIVERY_MAX_MS,
-  redeliveryListLimit = WEBHOOK_REDELIVERY_LIST_LIMIT,
-  maxRedeliveriesPerRun = WEBHOOK_REDELIVERY_MAX_PER_RUN,
-  maxRedeliveriesPerSubscription = WEBHOOK_REDELIVERY_MAX_PER_SUBSCRIPTION,
-}: {
-  subscriptions: Row[] | null | undefined;
-  event: Row;
-  fetchFn: typeof fetch;
-  now?: () => string;
-  store: DeliveryStore | null | undefined;
-  resolveHostnames?: (host: string) => Promise<string[]>;
-  timeoutMs?: number;
-  maxAttempts?: number;
-  concurrency?: number;
-  ttlSeconds?: number;
-  maxRounds?: number;
-  redeliveryBaseMs?: number;
-  redeliveryMaxMs?: number;
-  redeliveryListLimit?: number;
-  maxRedeliveriesPerRun?: number;
-  maxRedeliveriesPerSubscription?: number;
-}): Promise<{ delivered: Row[]; redelivered: Row[] }> {
-  const nowIso = typeof now === "function" ? now() : new Date(0).toISOString();
-  const nowMs = Date.parse(nowIso) || 0; // 0 on the epoch fallback or a bad clock
-  const subList = (subscriptions || []).filter(Boolean);
-  const subById = new Map(
-    subList
-      .filter((sub) => sub.id)
-      .map((sub) => [sub.id as string, sub] as [string, Row]),
-  );
-
-  // Store wrappers: a control-store hiccup degrades to a retry next run, never throws.
-  const safeListKeys = async (
-    prefix: string,
-    limit: number,
-  ): Promise<string[]> => {
-    try {
-      const keys = await store!.listKeys(prefix, { limit });
-      return Number.isFinite(limit) && limit >= 0 ? keys.slice(0, limit) : keys;
-    } catch {
-      return [];
-    }
-  };
-  const safeGet = async (key: string): Promise<Row | null> => {
-    try {
-      return await store!.get(key);
-    } catch {
-      return null;
-    }
-  };
-  const safePut = async (key: string, value: Row): Promise<void> => {
-    try {
-      await store!.put(key, value, { ttlSeconds });
-    } catch {
-      /* deduped via the idempotency key on the next run's retry */
-    }
-  };
-  const safeDelete = async (key: string): Promise<void> => {
-    try {
-      await store!.delete(key);
-    } catch {
-      /* a stale record is harmless and TTL-reaped */
-    }
-  };
-  const park = (
-    key: string,
-    existing: Row | null | undefined,
-    result: Row,
-    bodyText: string,
-  ) =>
-    safePut(
-      key,
-      nextDeliveryRecord({
-        existing,
-        result,
-        bodyText,
-        nowIso,
-        nowMs,
-        maxRounds,
-        baseMs: redeliveryBaseMs,
-        maxMs: redeliveryMaxMs,
-      }),
-    );
-
-  // Snapshot the parked backlog once. Phase 1 consumes the keys it touches so it
-  // only reads/writes KV when a record actually exists (no blind deletes on the
-  // healthy path); Phase 2 then sweeps whatever remains.
-  const parked = store
-    ? new Set(await safeListKeys(WEBHOOK_DELIVERY_PREFIX, redeliveryListLimit))
-    : new Set<string>();
-
-  // --- Phase 1: deliver the freshly-published event ---------------------------
-  // One body for all subscribers (only the per-subscriber signature/key differ),
-  // so what we send is exactly what we park.
-  const freshBody = JSON.stringify(event);
-  const delivered = await dispatchChangeEvent({
-    subscriptions: subList,
-    event,
-    bodyText: freshBody,
-    fetchFn,
-    now,
-    timeoutMs,
-    maxAttempts,
-    resolveHostnames,
-    concurrency,
-  });
-  if (store) {
-    for (const result of delivered) {
-      if (!result?.event_id) continue; // skipped/filtered → nothing was attempted
-      const key = deliveryStorageKey(result.id, result.event_id);
-      const wasParked = parked.delete(key); // claim it so Phase 2 won't redo it
-      if (result.status === "delivered") {
-        if (wasParked) await safeDelete(key); // recovered → clear the prior park
-      } else if (result.status === "failed" && result.retryable) {
-        // Read the prior record straight from KV, not via `wasParked`: the parked
-        // snapshot is capped at `redeliveryListLimit` and KV lists
-        // lexicographically, so a still-parked key sorting past the cap is absent
-        // from the snapshot. Trusting `wasParked` there would re-park it as a
-        // brand-new record (round reset to 1, backoff + first_failed_at reset), so
-        // a chronically-failing endpoint with a large backlog never reaches the
-        // dead-letter cap. safeGet returns null on a genuine miss, so the healthy
-        // "nothing parked yet" path still parks at round 1.
-        await park(key, await safeGet(key), result, freshBody);
-      }
-    }
-  }
-
-  // --- Phase 2: redeliver whatever is still parked and now due ----------------
-  // Records (re)parked in Phase 1 were removed from `parked`, so they can't be
-  // re-attempted this run. Independent keys → concurrent sweep.
-  const due: { key: string; record: Row }[] = [];
-  const dueBySubscription = new Map<string, number>();
-  // Sweep the parked backlog in a STABLE lexicographic key order — the order KV
-  // itself lists in — so the shared per-run / per-subscription budget always
-  // selects the same records for the same inputs, independent of the injected
-  // store's iteration order or the concurrent get-completion order.
-  for (const candidate of (
-    await mapBounded(
-      [...parked].sort(),
-      concurrency,
-      async (key): Promise<{ key: string; record: Row } | null> => {
-        const record = await safeGet(key);
-        return record &&
-          record.state === "pending" &&
-          subById.has(record.subscription_id as string) && // gone/beyond cap → TTL reaps it
-          !(
-            record.next_attempt_at &&
-            Date.parse(record.next_attempt_at as string) > nowMs
-          )
-          ? { key, record }
-          : null;
-      },
-    )
-  ).filter((entry): entry is { key: string; record: Row } => entry != null)) {
-    if (due.length >= maxRedeliveriesPerRun) break;
-    const subscriptionId = candidate.record.subscription_id as string;
-    const count = dueBySubscription.get(subscriptionId) || 0;
-    if (count >= maxRedeliveriesPerSubscription) continue;
-    dueBySubscription.set(subscriptionId, count + 1);
-    due.push(candidate);
-  }
-  const redelivered = await mapBounded(
-    due,
-    concurrency,
-    async ({ key, record }) => {
-      const result = await deliverChangeEvent({
-        subscription: subById.get(record.subscription_id as string),
-        event: safeParseJson(record.body as string) as Row,
-        bodyText: record.body as string,
-        fetchFn,
-        now,
-        timeoutMs,
-        maxAttempts,
-        resolveHostnames,
-      });
-      if (result.status === "failed") {
-        await park(key, record, result, record.body as string);
-      } else {
-        // delivered, or no longer applicable (filters/secret changed) → stop tracking
-        await safeDelete(key);
-      }
-      return {
-        id: record.subscription_id,
-        event_id: record.event_id,
-        status: result.status,
-        round: record.round,
-      };
-    },
-  );
-
-  return { delivered, redelivered };
-}
-
-function safeParseJson(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
 }

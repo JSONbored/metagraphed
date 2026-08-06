@@ -306,6 +306,21 @@ export const FRESHNESS_WATCHDOG_STATE_KEY = "watchdog:freshness:signature";
 // the Hyperdrive binding is, and a cross-Worker hop for a write the same
 // Worker could do is the shape #4832 spent a PR removing.
 export const TAO_USD_INDEX_CRON = "* * * * *";
+
+/**
+ * The webhook fan-out tick (metagraphed-infra#354).
+ *
+ * TWICE HOURLY on two free minutes. The cadence is a cost decision rather than a
+ * correctness one: the event id is content-addressed, so a tick over an
+ * unchanged snapshot is one KV read and a comparison, and a MISSED tick is
+ * self-healing because the next one still sees the change.
+ *
+ * It is deliberately not wired to the publish. Delivery used to be a step
+ * inside the publish workflow, which made it hostage to every earlier step --
+ * when the live-API smoke check broke on 2026-08-02, subscribers heard nothing
+ * for four days (#9650).
+ */
+export const WEBHOOK_DISPATCH_CRON = "29,59 * * * *";
 // Trend windows for /api/v1/subnets/{netuid}/health/trends and
 // /api/v1/health/trends.
 export const RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN =

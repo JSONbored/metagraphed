@@ -213,3 +213,35 @@ export function webhookDeliveryDisposition(
   if (result?.retryable !== true) return "dead";
   return attempts >= maxAttempts ? "dead" : "retry";
 }
+
+/** Where the last dispatched event id is remembered, so a cron that runs far
+ * more often than a publish does not re-fan an event subscribers already got. */
+export const WEBHOOK_LAST_DISPATCHED_KEY = "webhooks:last-dispatched";
+
+/**
+ * Decide whether a change event is new, given what was dispatched last.
+ *
+ * THE EVENT ID IS CONTENT-ADDRESSED, so this is exact rather than heuristic: an
+ * unchanged snapshot hashes to the same id and is skipped, and any real change
+ * produces a different one. That is what lets the trigger be a frequent cron
+ * instead of something wired to the publish -- the publish no longer has to tell
+ * anyone it happened.
+ *
+ * An EMPTY event is never dispatched. `buildChangeEvent` returns a well-formed
+ * event even when nothing moved, and firing that at subscribers every tick would
+ * be a notification that means nothing.
+ */
+export function shouldDispatchChangeEvent(
+  event: { changes?: unknown } | null | undefined,
+  eventId: string,
+  lastDispatchedId: string | null | undefined,
+): boolean {
+  if (!event || !eventId) return false;
+  if (eventId === lastDispatchedId) return false;
+  const changes = event.changes as Record<string, unknown> | undefined;
+  if (!changes || typeof changes !== "object") return false;
+  // "Something actually moved" -- any non-empty array under changes.
+  return Object.values(changes).some(
+    (value) => Array.isArray(value) && value.length > 0,
+  );
+}

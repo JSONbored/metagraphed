@@ -824,6 +824,13 @@
       // which do not survive the boxes -- see FRESHNESS_WATCHDOG_CRON in
       // workers/config.ts and src/freshness-watchdog.ts's header.
       "23 * * * *",
+      // 29,59 = twice-hourly webhook fan-out (metagraphed-infra#354),
+      // Worker-native rather than a publish-workflow step: delivery used to be
+      // downstream of every other publish step, so a smoke-check failure on
+      // 2026-08-02 silently stopped webhooks for four days (#9650). The event
+      // id is content-addressed, so a tick over an unchanged snapshot costs one
+      // KV read -- see WEBHOOK_DISPATCH_CRON in workers/config.ts.
+      "29,59 * * * *",
       // 18 = hourly network-wide concentration rollup (#9628). The only free
       // minute on the hourly grid; hourly rather than daily so the
       // self-backfill of the days already in neuron_daily drains in a working
