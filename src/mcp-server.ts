@@ -627,6 +627,10 @@ import {
   GetChainHoldersOutputSchema,
 } from "../schemas-src/mcp-tools/get-chain-holders.ts";
 import {
+  GetEmissionChangesInputSchema,
+  GetEmissionChangesOutputSchema,
+} from "../schemas-src/mcp-tools/get-emission-changes.ts";
+import {
   GetTaoUsdInputSchema,
   GetTaoUsdOutputSchema,
 } from "../schemas-src/mcp-tools/get-tao-usd.ts";
@@ -1446,6 +1450,13 @@ import {
   CHAIN_HOLDERS_SORTS,
   DEFAULT_CHAIN_HOLDERS_SORT,
 } from "./chain-holders.ts";
+import {
+  buildEmissionChanges,
+  loadEmissionChanges,
+  EMISSION_CHANGE_KINDS,
+  EMISSION_CHANGES_LIMIT_DEFAULT,
+  EMISSION_CHANGES_LIMIT_MAX,
+} from "./emission-gate-changes.ts";
 import {
   buildTaoUsdSeries,
   loadTaoUsdSeries,
@@ -7970,6 +7981,54 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_emission_changes",
+    title: "Get the emission-gate change log",
+    description:
+      "Fetch EVERY recorded change to the emission gate (#9615) -- its " +
+      "governance parameters, the per-subnet emission switches, and the " +
+      "dormant TAO-flow path, in one chronological feed. get_network_parameters " +
+      "serves these as CURRENT state; this says when they became that and what " +
+      "they were before, which is what answers 'did governance move the gate " +
+      "before that emission shift?'. Each entry declares its kind (param, " +
+      "subnet or flow) and carries only the fields that kind has -- a param " +
+      "entry has no netuid, a subnet entry has no numeric value. CRITICAL FOR " +
+      "COUNTING: predates_capture on an entry means the row is the FIRST " +
+      "OBSERVATION of a value, not a change to it -- previous_value is null " +
+      "and no governance event occurred. Subtract predates_capture_count " +
+      "before reporting how many times something changed, or you will " +
+      "overstate it. `source` separates a value governance SET from one the " +
+      "runtime RECOMPUTED. kind filters to one of the three; limit caps the " +
+      `feed (default ${EMISSION_CHANGES_LIMIT_DEFAULT}, max ${EMISSION_CHANGES_LIMIT_MAX}), newest first across ALL three ` +
+      "tables. An empty feed is the steady state, not an error: these tables " +
+      "only gain rows when a value moves. Mainnet only. Mirrors GET " +
+      "/api/v1/chain/governance/emission-changes.",
+    inputSchema: z.toJSONSchema(GetEmissionChangesInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof GetEmissionChangesInputSchema>,
+      ctx: McpCtx,
+    ) {
+      // optionalEnum returns null for "absent"; the loader's contract is an
+      // OPTIONAL string, where absent means "all three kinds" rather than "no
+      // kind". Normalising here keeps that distinction at the boundary.
+      const kind =
+        optionalEnum(args, "kind", [...EMISSION_CHANGE_KINDS]) ?? undefined;
+      const limit = clampLimit(
+        args?.limit,
+        EMISSION_CHANGES_LIMIT_DEFAULT,
+        EMISSION_CHANGES_LIMIT_MAX,
+      );
+      const rows = await loadEmissionChanges(
+        ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+          typeof loadEmissionChanges
+        >[0],
+        { limit, kind },
+      );
+      return buildEmissionChanges(rows, { limit, kind });
+    },
+  },
+  {
     name: "get_chain_holders",
     title: "Rank every subnet by alpha-ownership concentration",
     description:
@@ -13137,6 +13196,9 @@ const TOOL_OUTPUT_SCHEMAS = {
     target: "draft-2020-12",
   }),
   get_chain_holders: z.toJSONSchema(GetChainHoldersOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_emission_changes: z.toJSONSchema(GetEmissionChangesOutputSchema, {
     target: "draft-2020-12",
   }),
   get_tao_usd: z.toJSONSchema(GetTaoUsdOutputSchema, {

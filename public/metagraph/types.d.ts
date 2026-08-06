@@ -3008,6 +3008,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/governance/emission-changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch the emission-gate change log. Every recorded change to the emission gate (#9615) -- its governance parameters, the per-subnet emission switches, and the dormant TAO-flow path, in one chronological feed. Three append-on-change tables written only when a value actually MOVED, so the tables ARE the change log. /network/parameters serves these as CURRENT state; this answers when they became that and what they were before, which is the question behind 'did governance move the gate before that emission shift?'. ONE FEED, THREE SHAPES: each entry declares its kind (param, subnet or flow) and carries ONLY the fields that kind has -- a param entry has no netuid, a subnet entry has no numeric value -- with the rest ABSENT rather than null, because an absent field says 'this kind has no such thing' where a null would say 'it has one and we do not know it'. predates_capture IS PUBLISHED ON EVERY ENTRY and matters: the sampler records a row the first time it OBSERVES a value, not the first time that value changed, so on such a row previous_value is null and the flag is true -- it is NOT a governance event. predates_capture_count reports how many of the returned entries are first observations, because a reader counting governance events must subtract them. source separates a value governance SET from one the runtime RECOMPUTED, two different events a bare value cannot tell apart. ?kind= filters to one of the three; ?limit= caps the feed (default 50, max 200), newest first ACROSS all three tables -- the union is taken in SQL so the cap means 'the newest N changes' rather than the newest N of each. An empty feed is the steady state, never a 404: these tables only gain rows when something moves. Mainnet-only: the sampler that writes them reads finney. */
+        get: operations["emissionGateChanges"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/holders": {
         parameters: {
             query?: never;
@@ -8395,6 +8412,40 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        EmissionFlowChange: {
+            block_number: number | null;
+            is_set: boolean | null;
+            item: string | null;
+            /** @enum {string} */
+            kind: "param" | "subnet" | "flow";
+            netuid: number | null;
+            /** Format: date-time */
+            observed_at: string;
+            predates_capture: boolean;
+        };
+        EmissionGateChangesArtifact: {
+            change_count: number;
+            changes: (components["schemas"]["EmissionParamChange"] | components["schemas"]["EmissionSubnetChange"] | components["schemas"]["EmissionFlowChange"])[];
+            kind: string | null;
+            latest_change_at: string | null;
+            limit: number | null;
+            predates_capture_count: number;
+            schema_version: number;
+        } & {
+            [key: string]: unknown;
+        };
+        EmissionParamChange: {
+            block_number: number | null;
+            /** @enum {string} */
+            kind: "param" | "subnet" | "flow";
+            /** Format: date-time */
+            observed_at: string;
+            param: string | null;
+            predates_capture: boolean;
+            previous_value: number | null;
+            source: ("governance" | "runtime_recomputed") | null;
+            value: number | null;
+        };
         EmissionPipelineArtifact: {
             aggregate: {
                 disabled_count: number;
@@ -8456,6 +8507,17 @@ export interface components {
             };
         } & {
             [key: string]: unknown;
+        };
+        EmissionSubnetChange: {
+            block_number: number | null;
+            enabled: boolean | null;
+            /** @enum {string} */
+            kind: "param" | "subnet" | "flow";
+            netuid: number | null;
+            /** Format: date-time */
+            observed_at: string;
+            predates_capture: boolean;
+            previous_enabled: boolean | null;
         };
         EndpointIncident: {
             classification: components["schemas"]["Classification"];
@@ -34811,6 +34873,126 @@ export interface operations {
                      *     2026-07-01,15000,9200,42.5,0.004620,0.0025,0,0,0
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    emissionGateChanges: {
+        parameters: {
+            query?: {
+                kind?: "param" | "subnet" | "flow";
+                /** @description Maximum number of rows to return in one page (at most 200). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "change_count": 1,
+                     *         "changes": [
+                     *           {
+                     *             "block_number": 5000000,
+                     *             "kind": "param",
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "param": "example",
+                     *             "predates_capture": false,
+                     *             "previous_value": 0.5,
+                     *             "source": "governance",
+                     *             "value": 0.5
+                     *           }
+                     *         ],
+                     *         "kind": "example",
+                     *         "latest_change_at": "2026-06-01T00:00:00.000Z",
+                     *         "limit": 1,
+                     *         "predates_capture_count": 1,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["EmissionGateChangesArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

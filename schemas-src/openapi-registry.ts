@@ -127,6 +127,12 @@ import {
   ChainHoldersArtifactSchema,
 } from "./routes/chain-holders.ts";
 import {
+  EmissionParamChangeSchema,
+  EmissionSubnetChangeSchema,
+  EmissionFlowChangeSchema,
+  EmissionGateChangesArtifactSchema,
+} from "./routes/emission-gate-changes.ts";
+import {
   TaoUsdPointSchema,
   TaoUsdLatestSchema,
   TaoUsdArtifactSchema,
@@ -490,6 +496,10 @@ register(SubnetHoldersArtifactSchema, "SubnetHoldersArtifact");
 register(ChainHoldersSubnetSchema, "ChainHoldersSubnet");
 register(ChainHoldersNetworkSchema, "ChainHoldersNetwork");
 register(ChainHoldersArtifactSchema, "ChainHoldersArtifact");
+register(EmissionParamChangeSchema, "EmissionParamChange");
+register(EmissionSubnetChangeSchema, "EmissionSubnetChange");
+register(EmissionFlowChangeSchema, "EmissionFlowChange");
+register(EmissionGateChangesArtifactSchema, "EmissionGateChangesArtifact");
 register(TaoUsdPointSchema, "TaoUsdPoint");
 register(TaoUsdLatestSchema, "TaoUsdLatest");
 register(TaoUsdArtifactSchema, "TaoUsdArtifact");

@@ -155,6 +155,7 @@ import {
   handleSubnetBurn,
   handleChainBurn,
   handleChainHolders,
+  handleEmissionChanges,
   handleTaoUsd,
   handleSubnetSurfaceHistory,
   handleSubnetBurnHistory,
@@ -5532,6 +5533,7 @@ export function isMainnetOnlyApiPath(pathname: string) {
     SUBNET_SURFACE_HISTORY_PATH_PATTERN.test(pathname) ||
     // #9607: the cross-subnet twin of the route above, same two tables.
     pathname === "/api/v1/chain/holders" ||
+    pathname === "/api/v1/chain/governance/emission-changes" ||
     pathname === "/api/v1/network/tao-usd" ||
     SUBNET_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_IDENTITY_HISTORY_PATH_PATTERN.test(pathname) ||
@@ -5617,6 +5619,11 @@ async function dispatchLiveChainRoute(
   const burnMatch = SUBNET_BURN_PATH_PATTERN.exec(pathname);
   if (burnMatch) {
     return handleSubnetBurn(request, env, Number(burnMatch[1]), chain);
+  }
+  // #9615: the emission-gate change log. Exact-path, and placed with the other
+  // /chain/* exact matches so the router's ordering stays readable.
+  if (pathname === "/api/v1/chain/governance/emission-changes") {
+    return handleEmissionChanges(request, env, new URL(request.url));
   }
   // #9607: the cross-subnet alpha-ownership ranking. Matched on an exact path so
   // it can never shadow the {netuid} patterns above, and mainnet-only because

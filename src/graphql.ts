@@ -310,6 +310,13 @@ import {
   DEFAULT_CHAIN_HOLDERS_SORT,
 } from "./chain-holders.ts";
 import {
+  buildEmissionChanges,
+  loadEmissionChanges,
+  EMISSION_CHANGE_KINDS,
+  EMISSION_CHANGES_LIMIT_DEFAULT,
+  EMISSION_CHANGES_LIMIT_MAX,
+} from "./emission-gate-changes.ts";
+import {
   buildTaoUsdSeries,
   loadTaoUsdSeries,
   DEFAULT_TAO_USD_WINDOW,
@@ -1179,6 +1186,8 @@ export const FIELD_COMPLEXITY = {
   subnet_holders: RELATIONSHIP_FIELD_COMPLEXITY,
   // #9607: one bounded statement over the same two tables.
   chain_holders: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #9615: one bounded union over three small append-only tables.
+  emission_changes: RELATIONSHIP_FIELD_COMPLEXITY,
   // #9609: one bounded window read off an indexed column.
   tao_usd: RELATIONSHIP_FIELD_COMPLEXITY,
   // #9612: one indexed, bounded read of the registry history table.
@@ -2799,6 +2808,44 @@ const rootValue = {
       { limit: safeLimit },
     );
     return buildSurfaceHistory(rows, netuid, { limit: safeLimit });
+  },
+
+  async emission_changes(
+    { kind, limit }: { kind?: string | null; limit?: number | null },
+    context: GqlContext,
+  ) {
+    // #9615. Shares the REST/MCP loader for #9540's reason.
+    if (
+      kind != null &&
+      !EMISSION_CHANGE_KINDS.includes(
+        kind as (typeof EMISSION_CHANGE_KINDS)[number],
+      )
+    ) {
+      throw new GraphQLError(
+        `kind must be one of: ${EMISSION_CHANGE_KINDS.join(", ")}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    if (
+      limit != null &&
+      (!Number.isInteger(limit) ||
+        limit < 1 ||
+        limit > EMISSION_CHANGES_LIMIT_MAX)
+    ) {
+      throw new GraphQLError(
+        `limit must be an integer between 1 and ${EMISSION_CHANGES_LIMIT_MAX}.`,
+        { extensions: { code: "BAD_USER_INPUT" } },
+      );
+    }
+    const safeLimit = limit ?? EMISSION_CHANGES_LIMIT_DEFAULT;
+    const safeKind = kind ?? undefined;
+    const rows = await loadEmissionChanges(
+      context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof loadEmissionChanges
+      >[0],
+      { limit: safeLimit, kind: safeKind },
+    );
+    return buildEmissionChanges(rows, { limit: safeLimit, kind: safeKind });
   },
 
   async chain_holders(

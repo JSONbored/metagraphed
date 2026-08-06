@@ -175,6 +175,13 @@ import {
   DEFAULT_CHAIN_HOLDERS_SORT,
 } from "../../src/chain-holders.ts";
 import {
+  buildEmissionChanges,
+  loadEmissionChanges,
+  EMISSION_CHANGE_KINDS,
+  EMISSION_CHANGES_LIMIT_DEFAULT,
+  EMISSION_CHANGES_LIMIT_MAX,
+} from "../../src/emission-gate-changes.ts";
+import {
   buildTaoUsdSeries,
   loadTaoUsdSeries,
   DEFAULT_TAO_USD_WINDOW,
@@ -6096,6 +6103,56 @@ export async function handleSubnetSurfaceHistory(
   // A subnet whose surfaces have never changed is an EMPTY trail, not a 404 --
   // stability is the common case and a real answer.
   const data = buildSurfaceHistory(rows, netuid, { limit: limit.value });
+  return envelopeResponse(
+    request,
+    { data, meta: { contract_version: contractVersion(env) } },
+    "short",
+  );
+}
+
+// GET /api/v1/chain/governance/emission-changes (#9615): every recorded change
+// to the emission gate's parameters, the per-subnet emission switches, and the
+// dormant TAO-flow path. /network/parameters serves these as CURRENT state;
+// this says when they became that, and what they were before.
+export async function handleEmissionChanges(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
+  const validationError = validateEntityQuery(url, ["kind", "limit", "format"]);
+  if (validationError) return analyticsQueryError(validationError);
+
+  const kindParam = url.searchParams.get("kind");
+  if (
+    kindParam !== null &&
+    !EMISSION_CHANGE_KINDS.includes(
+      kindParam as (typeof EMISSION_CHANGE_KINDS)[number],
+    )
+  ) {
+    return analyticsQueryError({
+      parameter: "kind",
+      message: `kind must be one of ${EMISSION_CHANGE_KINDS.join(", ")}.`,
+    });
+  }
+  const limit = parseBoundedIntParam(url, "limit", {
+    def: EMISSION_CHANGES_LIMIT_DEFAULT,
+    min: 1,
+    max: EMISSION_CHANGES_LIMIT_MAX,
+  });
+  if ("error" in limit) return analyticsQueryError(limit.error);
+
+  const rows = await loadEmissionChanges(
+    env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+      typeof loadEmissionChanges
+    >[0],
+    { limit: limit.value, kind: kindParam ?? undefined },
+  );
+  // These tables gain a row only when a value MOVED, so an empty feed is the
+  // steady state -- never a 404.
+  const data = buildEmissionChanges(rows, {
+    limit: limit.value,
+    kind: kindParam ?? undefined,
+  });
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },

@@ -1967,6 +1967,42 @@ export type EconomicsTrendsDay = {
   validator_count?: Maybe<Scalars['Int']['output']>;
 };
 
+/** One recorded change to the emission gate. Shape varies by kind: a param entry has no netuid, a subnet entry has no numeric value. */
+export type EmissionGateChange = {
+  __typename?: 'EmissionGateChange';
+  block_number?: Maybe<Scalars['Int']['output']>;
+  enabled?: Maybe<Scalars['Boolean']['output']>;
+  is_set?: Maybe<Scalars['Boolean']['output']>;
+  /** flow entries only. */
+  item?: Maybe<Scalars['String']['output']>;
+  /** param, subnet or flow. */
+  kind: Scalars['String']['output'];
+  /** subnet and flow entries. */
+  netuid?: Maybe<Scalars['Int']['output']>;
+  observed_at: Scalars['String']['output'];
+  /** param entries only. */
+  param?: Maybe<Scalars['String']['output']>;
+  /** TRUE means this row is the FIRST OBSERVATION of a value, not a change to it -- subtract these before counting governance events. */
+  predates_capture: Scalars['Boolean']['output'];
+  previous_enabled?: Maybe<Scalars['Boolean']['output']>;
+  previous_value?: Maybe<Scalars['Float']['output']>;
+  /** governance set it, or the runtime recomputed it. */
+  source?: Maybe<Scalars['String']['output']>;
+  value?: Maybe<Scalars['Float']['output']>;
+};
+
+export type EmissionGateChanges = {
+  __typename?: 'EmissionGateChanges';
+  change_count: Scalars['Int']['output'];
+  changes: Array<EmissionGateChange>;
+  kind?: Maybe<Scalars['String']['output']>;
+  latest_change_at?: Maybe<Scalars['String']['output']>;
+  limit?: Maybe<Scalars['Int']['output']>;
+  /** How many returned entries are first observations rather than changes. */
+  predates_capture_count: Scalars['Int']['output'];
+  schema_version: Scalars['Int']['output'];
+};
+
 /** One identity, reported whether it passed or failed. */
 export type EmissionIdentityCheck = {
   __typename?: 'EmissionIdentityCheck';
@@ -2708,6 +2744,8 @@ export type Query = {
   economics: EconomicsList;
   /** Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends. */
   economics_trends: EconomicsTrends;
+  /** Every recorded change to the emission gate -- its governance parameters, the per-subnet emission switches, and the dormant TAO-flow path, in one chronological feed. network_parameters serves these as CURRENT state; this says when they became that and what they were before. CRITICAL FOR COUNTING: predates_capture means the entry is the FIRST OBSERVATION of a value, not a change to it, so subtract predates_capture_count before reporting how often something changed. Each entry carries only the fields its kind has. kind filters to param, subnet or flow; newest first across all three tables. An empty feed is the steady state, not an error. Mainnet only. Mirrors GET /api/v1/chain/governance/emission-changes. */
+  emission_changes: EmissionGateChanges;
   /** The v440 emission pipeline decomposed per subnet at the block the economics capture was pinned to: each subnet's stage-1 price share, its MinerBurned-reweighted and Hill-gated shares, its final share of block emission, and the split of its TAO intake between pool injection (tao_in_emission) and chain buys (excess_tao). netuid narrows the per-subnet rows only -- aggregate and verification stay network-wide, since a one-subnet slice of a network identity cannot be verified. ALWAYS read verification.verified: false means the four identities did not hold on these exact rows and the response is not defensible. field_sources labels every field measured or reconstructed. A capture with no chain_state is an EMISSION_PIPELINE_UNAVAILABLE error, never a partial body. Mirrors GET /api/v1/chain/emission-pipeline. */
   emission_pipeline: EmissionPipeline;
   /** Probe-derived endpoint incident feed -- active endpoint failures/degradations with severity, state, provider, and subnet. Filter by netuid/kind/provider/status/severity/state, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/endpoint-incidents. */
@@ -3364,6 +3402,12 @@ export type QueryEconomicsArgs = {
 
 export type QueryEconomics_TrendsArgs = {
   window?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryEmission_ChangesArgs = {
+  kind?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -6213,6 +6257,8 @@ export type ResolversTypes = ResolversObject<{
   EconomicsSummary: ResolverTypeWrapper<EconomicsSummary>;
   EconomicsTrends: ResolverTypeWrapper<EconomicsTrends>;
   EconomicsTrendsDay: ResolverTypeWrapper<EconomicsTrendsDay>;
+  EmissionGateChange: ResolverTypeWrapper<EmissionGateChange>;
+  EmissionGateChanges: ResolverTypeWrapper<EmissionGateChanges>;
   EmissionIdentityCheck: ResolverTypeWrapper<EmissionIdentityCheck>;
   EmissionPipeline: ResolverTypeWrapper<EmissionPipeline>;
   EmissionPipelineAggregate: ResolverTypeWrapper<EmissionPipelineAggregate>;
@@ -6542,6 +6588,8 @@ export type ResolversParentTypes = ResolversObject<{
   EconomicsSummary: EconomicsSummary;
   EconomicsTrends: EconomicsTrends;
   EconomicsTrendsDay: EconomicsTrendsDay;
+  EmissionGateChange: EmissionGateChange;
+  EmissionGateChanges: EmissionGateChanges;
   EmissionIdentityCheck: EmissionIdentityCheck;
   EmissionPipeline: EmissionPipeline;
   EmissionPipelineAggregate: EmissionPipelineAggregate;
@@ -8264,6 +8312,32 @@ export type EconomicsTrendsDayResolvers<ContextType = GqlContext, ParentType ext
   validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
+export type EmissionGateChangeResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EmissionGateChange'] = ResolversParentTypes['EmissionGateChange']> = ResolversObject<{
+  block_number?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  enabled?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  is_set?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  item?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  netuid?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  observed_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  param?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  predates_capture?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  previous_enabled?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  previous_value?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  value?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+}>;
+
+export type EmissionGateChangesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EmissionGateChanges'] = ResolversParentTypes['EmissionGateChanges']> = ResolversObject<{
+  change_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  changes?: Resolver<Array<ResolversTypes['EmissionGateChange']>, ParentType, ContextType>;
+  kind?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  latest_change_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  limit?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  predates_capture_count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type EmissionIdentityCheckResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EmissionIdentityCheck'] = ResolversParentTypes['EmissionIdentityCheck']> = ResolversObject<{
   detail?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -8830,6 +8904,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   domains?: Resolver<ResolversTypes['DomainOverview'], ParentType, ContextType>;
   economics?: Resolver<ResolversTypes['EconomicsList'], ParentType, ContextType, Partial<QueryEconomicsArgs>>;
   economics_trends?: Resolver<ResolversTypes['EconomicsTrends'], ParentType, ContextType, Partial<QueryEconomics_TrendsArgs>>;
+  emission_changes?: Resolver<ResolversTypes['EmissionGateChanges'], ParentType, ContextType, Partial<QueryEmission_ChangesArgs>>;
   emission_pipeline?: Resolver<ResolversTypes['EmissionPipeline'], ParentType, ContextType, Partial<QueryEmission_PipelineArgs>>;
   endpoint_incidents?: Resolver<ResolversTypes['IncidentList'], ParentType, ContextType, Partial<QueryEndpoint_IncidentsArgs>>;
   endpoint_pools?: Resolver<ResolversTypes['PoolList'], ParentType, ContextType, Partial<QueryEndpoint_PoolsArgs>>;
@@ -10415,6 +10490,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   EconomicsSummary?: EconomicsSummaryResolvers<ContextType>;
   EconomicsTrends?: EconomicsTrendsResolvers<ContextType>;
   EconomicsTrendsDay?: EconomicsTrendsDayResolvers<ContextType>;
+  EmissionGateChange?: EmissionGateChangeResolvers<ContextType>;
+  EmissionGateChanges?: EmissionGateChangesResolvers<ContextType>;
   EmissionIdentityCheck?: EmissionIdentityCheckResolvers<ContextType>;
   EmissionPipeline?: EmissionPipelineResolvers<ContextType>;
   EmissionPipelineAggregate?: EmissionPipelineAggregateResolvers<ContextType>;
