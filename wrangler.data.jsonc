@@ -119,7 +119,24 @@
     // Declared INSIDE this block deliberately: a second top-level "vars" key
     // would silently replace this one wholesale, which is the trap the tier-flag
     // comment above already records.
-    "SYNC_QUEUE_LANES": "hotkey-alpha",
+    //
+    // account-balances joins hotkey-alpha as of 2026-08-06. This is THE lane:
+    // `D1_ERROR: D1 DB is overloaded` aborted its pass at 147,000 of 364,000
+    // rows and took wallet-auth and tao-usd-index down with it, and it is ~8x
+    // hotkey-alpha's size, so it is the first real test of whether the queue's
+    // backpressure replaces the producer's deleted inter-chunk sleep.
+    //
+    // Cut over on evidence, not on hope: hotkey-alpha's two queued passes
+    // tallied exactly (47,032/47,032) and ran 35s/95s against 123s/177s on the
+    // old path. That is consistent with the sleep having been the dominant
+    // cost -- it is NOT proof at 364k rows, which is why this lane goes alone.
+    //
+    // ROLLBACK IS DROPPING A WORD FROM THIS STRING. These are latest-only
+    // upsert tables refreshed on a tick, so the next pass simply writes the old
+    // way. No backfill, no reconciliation. Watch account_balances_passes: an
+    // incomplete pass is the signal, and completeness is a fact the queue does
+    // not itself provide.
+    "SYNC_QUEUE_LANES": "hotkey-alpha,account-balances",
     // #9430's $exception storm guard reads this var per-Worker
     // (src/usage-telemetry.ts), and `vars` are per-config -- declaring it
     // only in wrangler.jsonc left THIS Worker's captures entirely unguarded,
