@@ -411,6 +411,7 @@ import { BLOCKLIST_KV_KEY, BLOCKLIST_KV_TTL } from "./tiered-rate-limit.ts";
 import { MCP_TIERED_RATE_LIMIT } from "../src/mcp-server.ts";
 import { createPgSql } from "../src/pg-sql.ts";
 import { recordLaneVerdict } from "../src/lane-health.ts";
+import { classifySyncBatch } from "../src/sync-batch-queue.ts";
 import {
   coercePollerJobOutcome,
   validPollerJobOutcome,
@@ -7096,6 +7097,51 @@ export default {
       if (typeof ctx?.waitUntil === "function") {
         ctx.waitUntil(pending);
       }
+    }
+  },
+
+  /**
+   * The bulk sync path's consumer (metagraphed-infra#347).
+   *
+   * NO-OP BY DESIGN AT THIS STAGE. It validates, classifies and reports, and
+   * writes nothing. The point of a first cut is to observe the queue's real
+   * behaviour -- batch sizes, retry timing, dead-letter routing, what
+   * `max_concurrency` actually does to throughput -- against production traffic
+   * shape BEFORE any lane depends on it. Those are precisely the properties the
+   * hand-rolled retry and pacing currently substitute for, so they get measured
+   * rather than assumed.
+   *
+   * A MALFORMED MESSAGE IS ACKED, NOT RETRIED. Retrying something that can
+   * never parse burns five attempts and dead-letters anyway; acking it keeps
+   * the DLQ holding things that might yet succeed rather than things that never
+   * could.
+   */
+  async queue(
+    batch: MessageBatch<unknown>,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<void> {
+    const { valid, invalid } = classifySyncBatch(batch.messages);
+    const rows = valid.reduce((n: number, m) => n + m.rows.length, 0);
+    const lanes = [...new Set(valid.map((m) => m.lane))].sort().join(",");
+    console.log(
+      `sync-batches: ${batch.messages.length} message(s), ${valid.length} valid ` +
+        `(${rows} row(s), lanes=${lanes || "none"}), ${invalid} unparseable`,
+    );
+    // Everything is acked: nothing is written yet, so nothing can fail in a way
+    // a retry would fix, and leaving messages unacked would build a backlog
+    // that says nothing about the lanes it is meant to carry.
+    batch.ackAll();
+    if (invalid > 0) {
+      ctx.waitUntil(
+        recordLaneVerdict(env.METAGRAPH_HEALTH_DB, {
+          lane: "sync-batches",
+          verdict: "stale",
+          age_ms: null,
+          detail: `${invalid} unparseable message(s) in a batch of ${batch.messages.length}`,
+          checked_at: Date.now(),
+        }).then(() => undefined),
+      );
     }
   },
 };
