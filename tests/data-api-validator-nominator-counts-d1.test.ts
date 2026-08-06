@@ -20,6 +20,7 @@ import { beforeEach, describe, test } from "vitest";
 import type { Row } from "./row-type.ts";
 
 const { default: worker } = await import("../workers/data-api.ts");
+const { QUEUE_MESSAGE_MAX_BYTES } = await import("../src/sync-batch-queue.ts");
 
 const SCHEMA = fs.readFileSync(
   path.join(process.cwd(), "migrations/d1/0012_validator_nominator_counts.sql"),
@@ -236,5 +237,68 @@ describe("POST /api/v1/internal/validator-nominator-counts-sync", () => {
     const response = await post({ rows: [countRow()] });
     assert.equal(response.status, 502);
     assert.deepEqual(await response.json(), { error: "d1 write failed" });
+  });
+});
+
+describe("routed to the sync queue (metagraphed-infra#355)", () => {
+  function queueEnv(send: (m: unknown) => Promise<void>) {
+    return env({
+      SYNC_BATCHES: { send },
+      SYNC_QUEUE_LANES: "validator-nominator-counts",
+    });
+  }
+
+  test("enqueues instead of writing, and never both", async () => {
+    const sent: Record<string, unknown>[] = [];
+    const response = await post(
+      { rows: [countRow(), countRow({ hotkey: HOTKEY_B })] },
+      SECRET,
+      queueEnv(async (m) => {
+        sent.push(m as Record<string, unknown>);
+      }),
+    );
+    assert.equal(response.status, 200);
+    assert.equal(sent.length, 1);
+    // This lane declares no pass, so the message must not invent one --
+    // a fabricated total would mark an unproven load complete.
+    assert.equal("pass_total" in sent[0]!, false);
+    assert.equal(rows().length, 0, "D1 must not also have been written");
+  });
+
+  test("a chunk too large for one message is split, not dropped", async () => {
+    // metagraphed-infra#360: this lane's producer ceiling is 50,000 rows, which
+    // is ~49x the 128 KB transport cap.
+    const big = Array.from({ length: 4_000 }, (_, i) =>
+      countRow({ hotkey: `5${String(i).padStart(47, "N")}` }),
+    );
+    const sent: Record<string, unknown>[] = [];
+    const response = await post(
+      { rows: big },
+      SECRET,
+      queueEnv(async (m) => {
+        sent.push(m as Record<string, unknown>);
+      }),
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(sent.length > 1, true, "one message could not have held it");
+    for (const m of sent) {
+      assert.equal(JSON.stringify(m).length <= QUEUE_MESSAGE_MAX_BYTES, true);
+    }
+    assert.equal(
+      sent.flatMap((m) => m.rows as Row[]).length,
+      big.length,
+      "fanning out must not lose rows",
+    );
+  });
+
+  test("502s when the enqueue fails, so the producer retries the chunk", async () => {
+    const response = await post(
+      { rows: [countRow()] },
+      SECRET,
+      queueEnv(async () => Promise.reject(new Error("over capacity"))),
+    );
+    assert.equal(response.status, 502);
+    assert.equal(rows().length, 0);
   });
 });

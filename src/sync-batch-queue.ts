@@ -110,8 +110,239 @@ export type SyncBatchLane = (typeof SYNC_BATCH_LANES)[number];
 
 /** Rows per message. Sized against the sink's existing per-request ceiling
  * rather than re-derived: the D1 write shape is unchanged by the transport, and
- * `json_each` already made a chunk one statement (metagraphed#9550). */
+ * `json_each` already made a chunk one statement (metagraphed#9550).
+ *
+ * THIS IS NOT THE BINDING LIMIT and never was -- see SYNC_BATCH_MAX_BYTES.
+ * A row-count ceiling cannot bound a payload whose rows differ in size by lane,
+ * and 5,000 hotkey-alpha rows is already 5x the transport's cap. It survives as
+ * a cheap sanity bound on top of the byte budget, not as the thing that makes a
+ * message deliverable. */
 export const SYNC_BATCH_MAX_ROWS = 5_000;
+
+/**
+ * The transport's hard ceiling: a Cloudflare Queues message is capped at
+ * **128 KB**, of which up to ~100 bytes is internal metadata.
+ * https://developers.cloudflare.com/queues/platform/limits/
+ */
+export const QUEUE_MESSAGE_MAX_BYTES = 128 * 1024;
+
+/**
+ * The byte budget `packSyncBatchMessages` fills, deliberately under the cap.
+ *
+ * WHY A BYTE BUDGET AND NOT A ROW COUNT (metagraphed-infra#360). The route used
+ * to hand `send()` the whole posted chunk, and the producers chunk at 25,000
+ * rows. Measured against real `hotkey_alpha` rows at 127.6 bytes each, that is
+ * 3,116 KB -- **24x over** -- so `send()` threw, the route returned 502, and the
+ * producer read that as a transient network fault, retried six times and
+ * abandoned the pass. A cut-over lane did not degrade; it stopped.
+ *
+ * Rows are not a proxy for bytes. `hotkey_alpha` carries a 48-character ss58 and
+ * three scalars; `account_balances` and `nominator_positions` carry more. One
+ * row count that is safe for the widest lane wastes most of the budget on the
+ * narrowest, and one that suits the narrowest overflows on the widest. So the
+ * packer measures.
+ *
+ * The headroom covers the envelope (`lane`, `captured_at`, `pass_total`,
+ * `key_complete`, the array brackets and commas) plus the platform's own
+ * metadata, and leaves room for a row slightly larger than any sampled -- a
+ * subnet identity with a long description, say. Cheap insurance against a
+ * failure whose signature is a stopped lane rather than an error.
+ */
+export const SYNC_BATCH_MAX_BYTES = 96 * 1024;
+
+/**
+ * Which column a pruning lane's write DELETES by, so the packer never splits
+ * one key's rows across two messages.
+ *
+ * This is the packer's half of the `key_complete` contract. The consumer
+ * refuses a pruning lane's message that does not assert key-completeness; this
+ * is what makes the assertion true rather than merely claimed. A lane in
+ * PRUNING_LANES with no entry here is a programming error and
+ * `packSyncBatchMessages` throws rather than emitting an unsafe message -- the
+ * failure it would otherwise cause is deleted rows, which no retry undoes.
+ */
+export const PRUNING_LANE_KEYS: Readonly<Record<string, string>> = {
+  "nominator-positions": "coldkey",
+  // `neurons` prunes per netuid and joins PRUNING_LANES when it moves
+  // (metagraphed-infra#357); its key is declared here at the same time.
+};
+
+/** Bytes one row costs inside the `rows` array, including its separating
+ * comma. Measured rather than estimated -- see SYNC_BATCH_MAX_BYTES. */
+function rowBytes(row: Record<string, unknown>): number {
+  return JSON.stringify(row).length + 1;
+}
+
+/**
+ * Split one posted chunk into messages that each fit the transport.
+ *
+ * ONE POST BECOMES N MESSAGES, and the pass tally does not notice, because the
+ * tally is commutative: `received_rows` accumulates and `completed_at` is
+ * stamped by whichever write closes the gap. N messages summing to the same
+ * rows land on the same answer as one message would have, in any order. That
+ * property is what makes fanning out here safe without touching the producer,
+ * the declared `pass_total`, or the publish floor.
+ *
+ * KEY-AWARE FOR PRUNING LANES. A lane whose write deletes rows for a key older
+ * than the newest `captured_at` it saw for that key cannot be applied from a
+ * message missing some of that key's rows -- it would delete rows the message
+ * never carried. So for a pruning lane the packer groups by the lane's key and
+ * places whole groups, never part of one. Every emitted message then genuinely
+ * satisfies `key_complete`, which the consumer already refuses to take on trust.
+ *
+ * A single key whose rows exceed the budget THROWS rather than being split.
+ * Splitting it would silently reintroduce exactly the deletion this guards, and
+ * a coldkey needing more than 96 KB of positions is a fact worth surfacing
+ * loudly rather than a case to quietly degrade.
+ */
+export function packSyncBatchMessages(input: {
+  lane: SyncBatchLane;
+  capturedAt: number;
+  passTotal?: number;
+  rows: Record<string, unknown>[];
+  maxBytes?: number;
+  maxRows?: number;
+  /** Overridable so the "listed as pruning, no key declared" guard below is
+   * reachable from a test. PRUNING_LANES and PRUNING_LANE_KEYS are deliberately
+   * NOT one list -- a lane can have a known prune key while its producer does
+   * not yet assert key-completeness, which is exactly `neurons` today -- so the
+   * mismatch is possible and the guard is not decorative. */
+  pruningKeys?: Readonly<Record<string, string>>;
+}): SyncBatchMessage[] {
+  const {
+    lane,
+    capturedAt,
+    passTotal,
+    rows,
+    maxBytes = SYNC_BATCH_MAX_BYTES,
+    maxRows = SYNC_BATCH_MAX_ROWS,
+    pruningKeys = PRUNING_LANE_KEYS,
+  } = input;
+  if (rows.length === 0) return [];
+
+  const prunes = PRUNING_LANES.includes(lane);
+  const keyColumn = prunes ? pruningKeys[lane] : undefined;
+  if (prunes && !keyColumn) {
+    throw new Error(
+      `sync-batches: ${lane} prunes but declares no key column; ` +
+        `add it to PRUNING_LANE_KEYS before enqueuing`,
+    );
+  }
+
+  // Groups the packer places atomically. For a non-pruning lane every row is
+  // its own group, so the same code path handles both and there is no second
+  // packing rule to keep in step with this one.
+  const groups: Record<string, unknown>[][] = [];
+  if (keyColumn) {
+    const byKey = new Map<string, Record<string, unknown>[]>();
+    for (const row of rows) {
+      const key = String(row[keyColumn]);
+      const group = byKey.get(key);
+      if (group) group.push(row);
+      else byKey.set(key, [row]);
+    }
+    groups.push(...byKey.values());
+  } else {
+    for (const row of rows) groups.push([row]);
+  }
+
+  const messages: SyncBatchMessage[] = [];
+  let current: Record<string, unknown>[] = [];
+  let currentBytes = 0;
+
+  // NEVER CALLED EMPTY, and deliberately carries no guard saying so. The empty
+  // chunk returned above, every group holds at least one row, and the in-loop
+  // call is gated on `current.length > 0` -- so an "if empty, return" here would
+  // be a branch no test could reach, which is how a file starts collecting
+  // coverage pragmas instead of reasons.
+  const flush = () => {
+    const message: SyncBatchMessage = {
+      lane,
+      captured_at: capturedAt,
+      ...(passTotal !== undefined ? { pass_total: passTotal } : {}),
+      ...(prunes ? { key_complete: true as const } : {}),
+      rows: current,
+    };
+    // THE ASSERTION THIS BUG COST US. Nothing measured the message before
+    // sending it, so an oversize payload surfaced as a 502 the producer read as
+    // a transient network fault and retried into -- a stopped lane wearing the
+    // costume of a flaky one. Measured here, at the boundary, where the failure
+    // names itself.
+    const bytes = JSON.stringify(message).length;
+    if (bytes > QUEUE_MESSAGE_MAX_BYTES) {
+      throw new Error(
+        `sync-batches: ${lane} message of ${current.length} row(s) is ` +
+          `${bytes} bytes, over the ${QUEUE_MESSAGE_MAX_BYTES}-byte transport ` +
+          `cap; lower SYNC_BATCH_MAX_BYTES`,
+      );
+    }
+    messages.push(message);
+    current = [];
+    currentBytes = 0;
+  };
+
+  for (const group of groups) {
+    const groupBytes = group.reduce((n, row) => n + rowBytes(row), 0);
+    if (groupBytes > maxBytes) {
+      throw new Error(
+        `sync-batches: ${lane} ${keyColumn ?? "row"} group of ` +
+          `${group.length} row(s) is ${groupBytes} bytes, over the ` +
+          `${maxBytes}-byte message budget; it cannot be split without ` +
+          `breaking key_complete`,
+      );
+    }
+    if (
+      current.length > 0 &&
+      (currentBytes + groupBytes > maxBytes ||
+        current.length + group.length > maxRows)
+    ) {
+      flush();
+    }
+    current.push(...group);
+    currentBytes += groupBytes;
+  }
+  flush();
+
+  return messages;
+}
+
+/** The structural slice of a Queue binding the enqueue path uses, so a test can
+ * hand it a plain object rather than stand up a binding. */
+export interface SyncBatchQueue {
+  /** Returns `unknown` rather than `void` so the real `Queue<T>` binding, whose
+   * `send` resolves a `QueueSendResponse`, satisfies this structurally. */
+  send(body: SyncBatchMessage): Promise<unknown>;
+}
+
+/**
+ * Pack one posted chunk and enqueue every message it becomes.
+ *
+ * SENT IN PARALLEL, and order does not matter: the tally is commutative, the
+ * writes are upserts, and each message of a pruning lane is independently
+ * key-complete. Nothing downstream can tell which arrived first.
+ *
+ * A PARTIAL FAILURE OVER-DELIVERS RATHER THAN UNDER-DELIVERS. If some sends
+ * succeed and one throws, the route returns 502 and the producer retries the
+ * whole chunk, so the rows that did land are written twice. That is the
+ * at-least-once overshoot metagraphed-infra#352 already accepted and documented:
+ * `received_rows` can exceed `pass_total`, `completed_at` is stamped once and
+ * never cleared, and the gate asks "did everything arrive", not "how many
+ * times". The opposite trade -- acking a partial chunk -- would mark a pass
+ * complete that never was.
+ */
+export async function enqueueSyncBatch(
+  queue: SyncBatchQueue,
+  input: {
+    lane: SyncBatchLane;
+    capturedAt: number;
+    passTotal?: number;
+    rows: Record<string, unknown>[];
+  },
+): Promise<number> {
+  const messages = packSyncBatchMessages(input);
+  await Promise.all(messages.map((message) => queue.send(message)));
+  return messages.length;
+}
 
 /**
  * Validate one message off the queue.

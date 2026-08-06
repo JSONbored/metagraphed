@@ -27,6 +27,7 @@ import { beforeEach, describe, test } from "vitest";
 import type { Row } from "./row-type.ts";
 
 const { default: worker } = await import("../workers/data-api.ts");
+const { QUEUE_MESSAGE_MAX_BYTES } = await import("../src/sync-batch-queue.ts");
 
 const SCHEMA = fs.readFileSync(
   path.join(process.cwd(), "migrations/d1/0019_hotkey_alpha.sql"),
@@ -504,5 +505,75 @@ describe("only pools some position references are stored", () => {
     assert.equal(rows().length, 1, "one stored");
     assert.equal(passes()[0]!.received_rows, 2, "two received");
     assert.ok(passes()[0]!.completed_at, "and the pass is complete");
+  });
+});
+
+describe("routed to the sync queue (metagraphed-infra#348)", () => {
+  function queueEnv(send: (m: unknown) => Promise<void>) {
+    return env({
+      SYNC_BATCHES: { send },
+      SYNC_QUEUE_LANES: "hotkey-alpha",
+    });
+  }
+
+  test("enqueues instead of writing, and never both", async () => {
+    // NO DUAL WRITE. The flag SELECTS a path; writing twice would double the
+    // D1 load the queue exists to relieve and double-count the tally.
+    const sent: Record<string, unknown>[] = [];
+    const response = await post(
+      { rows: [alphaRow(), alphaRow({ hotkey: HOTKEY_B })], pass_total: 2 },
+      SECRET,
+      queueEnv(async (m) => {
+        sent.push(m as Record<string, unknown>);
+      }),
+    );
+    assert.equal(response.status, 200);
+    assert.equal(sent.length, 1);
+    assert.equal(sent[0]!.pass_total, 2, "the declaration rides along");
+    assert.equal(rows().length, 0, "D1 must not also have been written");
+  });
+
+  test("a chunk too large for one message is split, not dropped", async () => {
+    // metagraphed-infra#360. The route used to hand `send()` the whole posted
+    // chunk; at the producer's CHUNK_SIZE of 25,000 that is ~24x the 128 KB
+    // transport cap, so every enqueue threw, the route answered 502, and the
+    // producer retried six times and abandoned the pass. A cut-over lane did
+    // not degrade -- it stopped.
+    const big = Array.from({ length: 4_000 }, (_, i) =>
+      alphaRow({ hotkey: `5${String(i).padStart(47, "H")}`, netuid: i % 129 }),
+    );
+    const sent: Record<string, unknown>[] = [];
+    const response = await post(
+      { rows: big, pass_total: big.length },
+      SECRET,
+      queueEnv(async (m) => {
+        sent.push(m as Record<string, unknown>);
+      }),
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(sent.length > 1, true, "one message could not have held it");
+    for (const m of sent) {
+      assert.equal(
+        JSON.stringify(m).length <= QUEUE_MESSAGE_MAX_BYTES,
+        true,
+        "every message must fit the transport",
+      );
+    }
+    // Every row still arrives exactly once -- fanning out must not lose rows,
+    // or the tally would never close and the pass would sit incomplete.
+    const delivered = sent.flatMap((m) => m.rows as Row[]);
+    assert.equal(delivered.length, big.length);
+  });
+
+  test("502s when the enqueue fails, so the producer retries the chunk", async () => {
+    // Reporting 200 on a chunk the queue never accepted loses it silently.
+    const response = await post(
+      { rows: [alphaRow()] },
+      SECRET,
+      queueEnv(async () => Promise.reject(new Error("over capacity"))),
+    );
+    assert.equal(response.status, 502);
+    assert.equal(rows().length, 0);
   });
 });

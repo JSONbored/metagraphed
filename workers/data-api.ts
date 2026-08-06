@@ -413,6 +413,7 @@ import { createPgSql } from "../src/pg-sql.ts";
 import { recordLaneVerdict } from "../src/lane-health.ts";
 import {
   classifySyncBatch,
+  enqueueSyncBatch,
   syncLaneUsesQueue,
   validSyncBatchMessage,
   writeSyncBatch,
@@ -1672,9 +1673,9 @@ async function handleValidatorNominatorCountsSync(request: Request, env: Env) {
   // either: inventing one would mark an unproven load complete.
   if (syncLaneUsesQueue(env, "validator-nominator-counts")) {
     try {
-      await env.SYNC_BATCHES!.send({
+      await enqueueSyncBatch(env.SYNC_BATCHES!, {
         lane: "validator-nominator-counts",
-        captured_at: rows[0]!.captured_at as number,
+        capturedAt: rows[0]!.captured_at as number,
         rows,
       });
     } catch (err) {
@@ -1864,10 +1865,14 @@ async function handleNominatorPositionsSync(request: Request, env: Env) {
   // changes the transport, not the contract.
   if (syncLaneUsesQueue(env, "nominator-positions")) {
     try {
-      await env.SYNC_BATCHES!.send({
+      // key_complete is no longer asserted here -- packSyncBatchMessages
+      // groups by this lane's prune key and never splits one across messages,
+      // so it sets the flag on each message it emits BECAUSE it made the claim
+      // true. Asserting it at the call site and slicing blindly downstream is
+      // how a claim outlives the property it describes.
+      await enqueueSyncBatch(env.SYNC_BATCHES!, {
         lane: "nominator-positions",
-        captured_at: rows[0]!.captured_at as number,
-        key_complete: true,
+        capturedAt: rows[0]!.captured_at as number,
         rows,
       });
     } catch (err) {
@@ -2109,10 +2114,10 @@ async function handleAccountBalancesSync(request: Request, env: Env) {
   // that second fact is the one that caught the truncation.
   if (syncLaneUsesQueue(env, "account-balances")) {
     try {
-      await env.SYNC_BATCHES!.send({
+      await enqueueSyncBatch(env.SYNC_BATCHES!, {
         lane: "account-balances",
-        captured_at: pass?.capturedAt ?? (rows[0]!.captured_at as number),
-        ...(pass ? { pass_total: pass.expectedRows } : {}),
+        capturedAt: pass?.capturedAt ?? (rows[0]!.captured_at as number),
+        ...(pass ? { passTotal: pass.expectedRows } : {}),
         rows,
       });
     } catch (err) {
@@ -2356,10 +2361,10 @@ async function handleHotkeyAlphaSync(request: Request, env: Env) {
   // the producer's one-second sleep was standing in for.
   if (syncLaneUsesQueue(env, "hotkey-alpha")) {
     try {
-      await env.SYNC_BATCHES!.send({
+      await enqueueSyncBatch(env.SYNC_BATCHES!, {
         lane: "hotkey-alpha",
-        captured_at: rows[0]!.captured_at as number,
-        ...(pass ? { pass_total: pass.expectedRows } : {}),
+        capturedAt: rows[0]!.captured_at as number,
+        ...(pass ? { passTotal: pass.expectedRows } : {}),
         rows,
       });
     } catch (err) {
