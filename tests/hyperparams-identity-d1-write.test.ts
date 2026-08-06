@@ -471,3 +471,101 @@ describe("writeAccountIdentityToD1 against real SQLite", () => {
     }
   });
 });
+
+describe("the history append is guarded against the committed latest hash", () => {
+  // metagraphed-infra#358. These appends were a read-modify-write -- SELECT the
+  // group-wise MAX(id) hash, diff in JS, INSERT what moved -- safe only because
+  // the HTTP path is sequential. Two chunks arriving concurrently, which a queue
+  // consumer at max_concurrency 2 guarantees, both read the same pre-change
+  // latest and both append. These tables are append-only, so the duplicate
+  // never self-heals.
+  const database = () => d1() as never;
+
+  test("a second append of the same hash is a no-op, not a duplicate", async () => {
+    await writeAccountIdentityToD1(database(), {
+      rows: [identityRow({ account: "5Alice" })],
+      historyRows: [
+        identityHistoryRow({ account: "5Alice", identity_hash: "h1" }),
+      ],
+    });
+    assert.equal(count("account_identity_history"), 1);
+
+    // The racing writer: it read the same pre-change latest, so its JS diff
+    // also concluded "changed". The statement itself must decline it.
+    await writeAccountIdentityToD1(database(), {
+      rows: [identityRow({ account: "5Alice" })],
+      historyRows: [
+        identityHistoryRow({ account: "5Alice", identity_hash: "h1" }),
+      ],
+    });
+    assert.equal(
+      count("account_identity_history"),
+      1,
+      "the duplicate must not land",
+    );
+  });
+
+  test("a value returning to an earlier one is still recorded", async () => {
+    // The reason this is a guard and not a UNIQUE (account, identity_hash):
+    // A -> B -> A is a real history, and a constraint would silently drop the
+    // second A -- losing a change that actually happened, which is worse than
+    // the duplicate it prevents.
+    for (const hash of ["h1", "h2", "h1"]) {
+      await writeAccountIdentityToD1(database(), {
+        rows: [identityRow({ account: "5Alice" })],
+        historyRows: [
+          identityHistoryRow({ account: "5Alice", identity_hash: hash }),
+        ],
+      });
+    }
+    assert.equal(count("account_identity_history"), 3);
+    assert.deepEqual(
+      (
+        db
+          .prepare(
+            "SELECT identity_hash FROM account_identity_history ORDER BY id",
+          )
+          .all() as Row[]
+      ).map((r) => r.identity_hash),
+      ["h1", "h2", "h1"],
+    );
+  });
+
+  test("one account's repeat does not block another's first append", async () => {
+    await writeAccountIdentityToD1(database(), {
+      rows: [identityRow({ account: "5Alice" })],
+      historyRows: [
+        identityHistoryRow({ account: "5Alice", identity_hash: "h1" }),
+      ],
+    });
+    // Same batch: a repeat for Alice and a genuine first for Bob. The guard is
+    // per row, so the repeat must not suppress the neighbour.
+    await writeAccountIdentityToD1(database(), {
+      rows: [
+        identityRow({ account: "5Alice" }),
+        identityRow({ account: "5Bob" }),
+      ],
+      historyRows: [
+        identityHistoryRow({ account: "5Alice", identity_hash: "h1" }),
+        identityHistoryRow({ account: "5Bob", identity_hash: "hb" }),
+      ],
+    });
+    assert.equal(count("account_identity_history"), 2);
+    assert.equal(
+      one("SELECT * FROM account_identity_history WHERE account = '5Bob'")
+        .identity_hash,
+      "hb",
+    );
+  });
+
+  test("the same rule holds for hyperparams, which prunes as well as appends", async () => {
+    for (const hash of ["hp1", "hp1"]) {
+      await writeSubnetHyperparamsToD1(database(), {
+        rows: [hyperparamsRow({ netuid: 8 })],
+        netuids: [8],
+        historyRows: [historyRow({ netuid: 8, hyperparams_hash: hash })],
+      });
+    }
+    assert.equal(count("subnet_hyperparams_history"), 1);
+  });
+});

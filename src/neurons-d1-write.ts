@@ -175,11 +175,67 @@ export function buildJsonUpsert(
 export function buildJsonAppendInsert(
   table: string,
   columns: string[],
+  /** See buildLatestHashGuard. A predicate on the incoming row, evaluated
+   * INSIDE the statement -- which for an append-only table is the only place a
+   * concurrency-safe one can live. */
+  guard?: string,
 ): string {
   return (
     `INSERT INTO ${table} (${columns.join(", ")}) SELECT ` +
     columns.map((_, i) => `json_extract(value, '$[${i}]')`).join(", ") +
-    ` FROM json_each(?1)`
+    ` FROM json_each(?1)` +
+    (guard ? ` WHERE ${guard}` : "")
+  );
+}
+
+/**
+ * "Append this row only if the key's LATEST recorded hash is not already it."
+ *
+ * THE RACE THIS CLOSES (metagraphed-infra#358). These history appends were a
+ * read-modify-write: SELECT the group-wise MAX(id) hash per key, diff in JS,
+ * INSERT what moved. Safe only because the HTTP path is sequential. Two chunks
+ * arriving concurrently -- which a queue consumer at `max_concurrency: 2`
+ * guarantees -- both read the same pre-change latest, both see a diff, and both
+ * append. The result is a duplicate history row for a single change, and
+ * because these tables are append-only it never self-heals.
+ *
+ * Evaluating the test inside the INSERT moves it from a snapshot read to
+ * committed state at write time: the second of two concurrent appends sees the
+ * first and inserts nothing.
+ *
+ * WHY NOT A UNIQUE CONSTRAINT, which is the obvious fix. There is no column set
+ * that expresses this. `(key, hash)` forbids a value going A -> B -> A, which
+ * is a real history and losing it is worse than the duplicate. `(netuid,
+ * block_number)` works for hyperparams but `account_identity_history` carries
+ * no block. `(key, observed_at)` does not dedupe at all, since `observed_at` is
+ * each request's own clock. A constraint would also need a hand-applied D1
+ * migration, leaving a window where the deploy runs without its guard.
+ *
+ * The JS diff stays, demoted from authority to optimisation: it avoids
+ * attempting rows that certainly have not changed, and this catches the
+ * concurrent case it cannot see.
+ */
+export function buildLatestHashGuard(
+  table: string,
+  columns: string[],
+  keyColumn: string,
+  hashColumn: string,
+): string {
+  const keyIndex = columns.indexOf(keyColumn);
+  const hashIndex = columns.indexOf(hashColumn);
+  if (keyIndex < 0 || hashIndex < 0) {
+    throw new Error(
+      `${table}: guard needs ${keyColumn} and ${hashColumn} in its columns`,
+    );
+  }
+  const incomingKey = `json_extract(value, '$[${keyIndex}]')`;
+  const incomingHash = `json_extract(value, '$[${hashIndex}]')`;
+  // Compared against the LATEST row rather than against any row, so a value
+  // that returns to an earlier one is still recorded.
+  return (
+    `NOT EXISTS (SELECT 1 FROM ${table} h WHERE h.id = ` +
+    `(SELECT MAX(id) FROM ${table} WHERE ${keyColumn} = ${incomingKey}) ` +
+    `AND h.${hashColumn} = ${incomingHash})`
   );
 }
 
@@ -257,13 +313,15 @@ export function chunkStatements(
   columns: string[],
   conflict: string[],
   rows: Row[],
-  /** See buildJsonUpsert's own `filter`. Upsert-only: an append-only table has
-   * no key to decline a row against. */
+  /** See buildJsonUpsert's own `filter` for the upsert case, and
+   * buildLatestHashGuard for the append-only one -- an append-only table has no
+   * conflict target, so its predicate is the only thing that can decline a row
+   * against committed state. */
   filter?: string,
 ): D1PreparedStatement[] {
   const sql = conflict.length
     ? buildJsonUpsert(table, columns, conflict, filter)
-    : buildJsonAppendInsert(table, columns);
+    : buildJsonAppendInsert(table, columns, filter);
   return chunkRowsByJsonBytes(rows, columns).map((chunk) =>
     db.prepare(sql).bind(JSON.stringify(chunk)),
   );

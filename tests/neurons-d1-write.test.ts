@@ -22,6 +22,8 @@ import {
   D1_JSON_BUDGET_BYTES,
   writeNeuronSnapshotToD1,
   netuidMaxCapturedAt,
+  buildLatestHashGuard,
+  buildJsonAppendInsert,
 } from "../src/neurons-d1-write.ts";
 import { NEURON_INSERT_COLUMNS } from "../src/metagraph-neurons.ts";
 
@@ -332,5 +334,45 @@ describe("netuidMaxCapturedAt", () => {
       { netuid: 8, captured_at: "soon" },
     ]);
     assert.equal(cutoffs.size, 0);
+  });
+});
+
+describe("buildLatestHashGuard", () => {
+  const COLUMNS = ["account", "observed_at", "name", "identity_hash"];
+
+  test("compares against the LATEST row, not against any row", () => {
+    // The whole reason this is a guard and not a UNIQUE (key, hash): matching
+    // any row would forbid a value returning to an earlier one, which is a real
+    // history. Matching the latest one only forbids the duplicate.
+    const sql = buildLatestHashGuard(
+      "account_identity_history",
+      COLUMNS,
+      "account",
+      "identity_hash",
+    );
+    assert.match(sql, /MAX\(id\)/);
+    assert.match(sql, /json_extract\(value, '\$\[0\]'\)/, "keyed on account");
+    assert.match(sql, /json_extract\(value, '\$\[3\]'\)/, "hash at its index");
+  });
+
+  test("throws when a column it needs is not in the statement", () => {
+    // A guard built against the wrong column list would silently compare
+    // json_extract(value, '$[-1]') -- NULL -- and never suppress anything.
+    assert.throws(
+      () => buildLatestHashGuard("t", COLUMNS, "netuid", "identity_hash"),
+      /guard needs netuid and identity_hash/,
+    );
+    assert.throws(
+      () => buildLatestHashGuard("t", COLUMNS, "account", "nope"),
+      /guard needs account and nope/,
+    );
+  });
+
+  test("an append with no guard is unconditional, as it was", () => {
+    // The neurons history tables append every row; only the two diff-and-append
+    // lanes need the guard, so the unguarded form must stay exactly as it was.
+    const sql = buildJsonAppendInsert("neuron_daily", ["netuid", "uid"]);
+    assert.equal(sql.includes("WHERE"), false);
+    assert.match(sql, /FROM json_each\(\?1\)$/);
   });
 });
