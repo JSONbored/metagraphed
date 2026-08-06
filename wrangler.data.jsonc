@@ -120,32 +120,44 @@
     // would silently replace this one wholesale, which is the trap the tier-flag
     // comment above already records.
     //
-    // account-balances, re-cut over 2026-08-06 after the fan-out landed
-    // (metagraphed-infra#360, #9636). Before it, the route handed `send()` the
-    // whole posted chunk: at CHUNK_SIZE = 25_000 that is 3,116 KB against a
-    // 128 KB cap, so every enqueue would have thrown. The packer now splits one
-    // POST into byte-budgeted messages, key-aware where the lane prunes.
+    // THE REMAINING SIMPLE LANES, cut over 2026-08-06 on the strength of
+    // account-balances' first queued pass rather than on hope:
     //
-    // THE BIG LANE GOES FIRST HERE, reversing the epic's small-lane-first rule,
-    // and the reason is the timers. `HOTKEY_ALPHA_POLL_SECS` is 86400, so
-    // cutting the cheap lane over buys no signal until ~05:00 tomorrow.
-    // `ACCOUNT_BALANCES_POLL_SECS` is 21600 and its last pass was 04:38, so it
-    // reports around 10:38 today. The transport shape is already proven by
-    // tests that pack a real 25,000-row chunk; what is NOT proven is D1 under
-    // queue concurrency, and only this lane can answer that.
+    //   364,644/364,644 in 518s with ZERO producer errors, against 993s and
+    //   2,668 errors on the inline pass six hours earlier.
+    //
+    // Those 2,668 were the producer retrying through a saturated D1. The
+    // queue's max_concurrency: 2 removed them, which is the backpressure claim
+    // this migration was making and could not previously test. The 364k-row
+    // lane is the largest of the four, so the three joining it here are being
+    // cut over on a STRONGER result than any of them could produce alone.
+    //
+    // ATTRIBUTION SURVIVES THE BATCH because the timers separate them:
+    // hotkey-alpha and validator-nominators are both 86400 and account-balances
+    // is 21600, so their passes land hours apart and an incident points at one
+    // lane on its own. That is why this does not violate the epic's
+    // one-lane-at-a-time rule so much as satisfy its reason.
+    //
+    // nominator-positions IS THE ONE TO WATCH. It PRUNES per coldkey, so a
+    // message missing rows for a coldkey it names deletes rows it never
+    // carried, and no retry undoes a delete. Three things have to hold at once:
+    // pack_coldkey_chunks never splits a coldkey across POSTs (producer,
+    // tested), the packer never splits one across messages (route, tested), and
+    // the consumer refuses any message that does not assert key_complete. The
+    // first queued pass is the first time all three run together.
     //
     // WHAT "NO PASS YET" MEANS HERE. These lanes are timers, not streams. An
     // absence of rows is not a failure until it exceeds the interval -- reading
     // one as the other is what turned a preventive rollback into a reported
-    // incident earlier today. Judge this cutover at 10:38, not before.
+    // incident earlier today.
     //
     // ROLLBACK IS DROPPING A WORD FROM THIS STRING. These are latest-only
     // upsert tables refreshed on a tick, so the next pass simply writes the old
-    // way. No backfill, no reconciliation. Watch account_balances_passes: an
+    // way. No backfill, no reconciliation. Watch the *_passes tables: an
     // INCOMPLETE pass is the signal -- received_rows short of expected_rows with
     // a null completed_at -- and completeness is a fact the queue does not
     // itself provide.
-    "SYNC_QUEUE_LANES": "account-balances",
+    "SYNC_QUEUE_LANES": "account-balances,hotkey-alpha,validator-nominator-counts,nominator-positions",
     // #9430's $exception storm guard reads this var per-Worker
     // (src/usage-telemetry.ts), and `vars` are per-config -- declaring it
     // only in wrangler.jsonc left THIS Worker's captures entirely unguarded,
