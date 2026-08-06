@@ -50,29 +50,60 @@ async function runLiveSmoke(): Promise<void> {
   ];
   const results: Row[] = [];
 
+  // EVERY FAILING ROUTE, NOT THE FIRST. Throwing on the first one turns a
+  // broken smoke into a whack-a-mole: #9651 fixed /api/v1/ask, the very next
+  // publish surfaced /api/v1/search/semantic, and each round trip costs a full
+  // publish run to discover one route. Collecting means one run names them all.
+  const failures: string[] = [];
   for (const check of apiChecks) {
-    const result = await fetchJson(check.url);
-    assert.equal(result.status, 200, `${check.route}: expected HTTP 200`);
-    assertHeader(result, "access-control-allow-origin", "*", check.route);
-    assert.ok(result.headers.get("etag"), `${check.route}: missing ETag`);
-    assert.ok(
-      result.headers.get("x-metagraph-contract-version"),
-      `${check.route}: missing contract version header`,
+    try {
+      const result = await fetchJson(check.url);
+      assert.equal(result.status, 200, `${check.route}: expected HTTP 200`);
+      assertHeader(result, "access-control-allow-origin", "*", check.route);
+      // AN ETAG IS REQUIRED OF CACHEABLE RESPONSES, not of all of them. A
+      // route that answers `cache-control: no-store` is telling every cache not
+      // to keep it, and a validator for a response nobody may store validates
+      // nothing. /api/v1/search/semantic is the live case: it runs a query per
+      // request and is deliberately no-store, so demanding an ETag there was
+      // asserting a property the route correctly does not have.
+      if (!/no-store/i.test(result.headers.get("cache-control") || "")) {
+        assert.ok(
+          result.headers.get("etag"),
+          `${check.route}: missing ETag on a cacheable response`,
+        );
+      }
+      assert.ok(
+        result.headers.get("x-metagraph-contract-version"),
+        `${check.route}: missing contract version header`,
+      );
+      assert.equal(
+        result.body?.ok,
+        true,
+        `${check.route}: expected ok envelope`,
+      );
+      assert.equal(
+        result.body?.schema_version,
+        1,
+        `${check.route}: expected schema_version 1`,
+      );
+      assert.ok(result.body?.data, `${check.route}: expected data payload`);
+      assert.ok(result.body?.meta, `${check.route}: expected meta payload`);
+      results.push({
+        path: new URL(check.url).pathname,
+        route: check.route,
+        status: result.status,
+        source: result.body.meta.source || null,
+      });
+    } catch (error) {
+      failures.push(
+        `${check.route}: ${(error as Error)?.message || String(error)}`,
+      );
+    }
+  }
+  if (failures.length) {
+    throw new Error(
+      `${failures.length} live API route(s) failed:\n  ${failures.join("\n  ")}`,
     );
-    assert.equal(result.body?.ok, true, `${check.route}: expected ok envelope`);
-    assert.equal(
-      result.body?.schema_version,
-      1,
-      `${check.route}: expected schema_version 1`,
-    );
-    assert.ok(result.body?.data, `${check.route}: expected data payload`);
-    assert.ok(result.body?.meta, `${check.route}: expected meta payload`);
-    results.push({
-      path: new URL(check.url).pathname,
-      route: check.route,
-      status: result.status,
-      source: result.body.meta.source || null,
-    });
   }
 
   for (const artifactPath of rawArtifactChecks) {
@@ -529,6 +560,12 @@ export function apiRouteUrl(
     // stake-quote requires `amount` — a bare GET is a correct 400
     // invalid_amount, not a route failure (same #1682 class as compare above).
     url.searchParams.set("amount", "1");
+  } else if (routePath === "/api/v1/search/semantic") {
+    // semantic search requires `q` — a bare GET is a correct 400, not a route
+    // failure (same #1682 class as compare/stake-quote above). This one reached
+    // production: it failed the publish lane on 2026-08-06, immediately after
+    // #9651 unblocked the step that had been hiding it.
+    url.searchParams.set("q", "inference");
   } else if (routePath === "/api/v1/compare/validators") {
     // compare/validators requires `hotkeys` — a bare GET is a 400 invalid_query
     // (same #1682 class as compare/stake-quote above). Alice's address is the

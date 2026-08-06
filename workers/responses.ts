@@ -70,6 +70,15 @@ export function dataResponse(
 ): Response {
   const headers = apiHeaders("short");
   headers.set("cache-control", "no-store");
+  // THE HEADER, NOT JUST THE BODY. envelopeResponse sets both, and
+  // `access-control-expose-headers` advertises x-metagraph-contract-version on
+  // every response -- so a client told to read it found it absent on exactly
+  // the routes built here (semantic search, the ask/RPC proxies, the webhook
+  // subscription CRUD). Ten call sites shipped a contract they did not state.
+  //
+  // No ETag here, deliberately: these are no-store, and a validator for a
+  // response nobody may cache validates nothing.
+  headers.set("x-metagraph-contract-version", contractVersion(env));
   return new Response(
     JSON.stringify({
       ok: true,
