@@ -190,6 +190,7 @@ import {
 } from "../schemas-src/mcp-tools/get-emission-pipeline.ts";
 import {
   MCP_PROTOCOL_ROUTE_PREFIX,
+  admitMcpRefusalCapture,
   isUsageTelemetryConfigured,
   recordAiDegradedEvent,
   recordExceptionEvent,
@@ -15592,11 +15593,123 @@ async function handleMcpTerminateRequest(request: Request, env: Env) {
   return new Response(null, { status: 204, headers: MCP_HEADERS });
 }
 
+/**
+ * The refusal reason for a pre-dispatch status, or null when the status is not
+ * one this boundary refuses with.
+ *
+ * A LABEL PER STATUS, not per call site, because the call sites are what drift
+ * -- the whole point of instrumenting at the boundary is that a refusal added
+ * later needs no edit here to be counted, and `status_<n>` catches it.
+ *
+ * 429 is the one status two gates share, and they are operationally different
+ * questions: "asking too fast" is a client-pacing bug, "out of quota" is a
+ * limits conversation, and "blocked" is neither. They are split on
+ * `x-ratelimit-scope`, which tieredRateLimitHeaders already sets for exactly
+ * this purpose (#8608 added it so a 429 is actionable), rather than by
+ * threading a label up from each `return`.
+ */
+export function mcpRefusalReason(response: Response): string | null {
+  switch (response.status) {
+    case 429: {
+      const scope = response.headers.get("x-ratelimit-scope");
+      return scope === "daily-quota"
+        ? "daily_quota"
+        : scope === "blocked"
+          ? "blocked"
+          : "rate_limited";
+    }
+    case 405:
+      return "method_not_allowed";
+    case 413:
+      return "body_too_large";
+    case 400:
+      return "bad_request";
+    case 401:
+      return "unauthorized";
+    default:
+      return response.status >= 400 ? `status_${response.status}` : null;
+  }
+}
+
+/**
+ * Record a refusal that never reached a handler, without ever touching the
+ * response.
+ *
+ * Fire-and-forget through waitUntil on the same contract as
+ * scheduleToolUsageEvent: telemetry must never surface into the MCP path, so
+ * every failure here is swallowed.
+ *
+ * Exported for tests, same reasoning as admitExceptionCapture's own note: the
+ * guard branches here (an unrecognised non-2xx, the throttle holding one back,
+ * a recorder that rejects) are the entire point of the code, and every one of
+ * them is deliberately unreachable through the HTTP path -- a 3xx never leaves
+ * the MCP entry, so driving them from a Request would mean asserting on a
+ * state production cannot produce.
+ */
+export function scheduleMcpRefusalEvent(
+  request: Request,
+  env: Env,
+  deps: Row,
+  response: Response,
+) {
+  try {
+    if (!isUsageTelemetryConfigured(env)) return;
+    const reason = mcpRefusalReason(response);
+    if (reason === null) return;
+    const suppressed = admitMcpRefusalCapture(env, reason);
+    if (suppressed === null) return;
+    const record = (deps.recordUsageEvent ?? recordUsageEvent) as AnyFn;
+    const pending = Promise.resolve(
+      record(
+        env,
+        {
+          route: `${MCP_PROTOCOL_ROUTE_PREFIX}refused:${reason}`,
+          ok: false,
+          status: response.status,
+          method: request.method,
+          ...(suppressed > 0 ? { suppressed_occurrences: suppressed } : {}),
+        },
+        {},
+      ),
+    ).catch(() => false);
+    (deps.executionCtx as Row | undefined)?.waitUntil?.(pending);
+  } catch {
+    // Telemetry must never surface into the MCP path.
+  }
+}
+
 // Entry point wired into the Worker at `/mcp`. `deps` injects the shared
 // artifact/KV readers from workers/api.ts. POST carries the stateless
 // JSON-RPC 2.0 envelope; GET opens the SSE push stream; DELETE terminates a
 // session (see the two handlers above for both).
+//
+// #9639: EVERY REFUSAL BELOW USED TO BE POSTHOG-DARK. `/mcp` is excluded from
+// withUsageTelemetry (workers/api.ts) because the dispatch loop instruments
+// itself (#8993) -- but that instrumentation starts at dispatchMessage, so the
+// rate limit, the daily quota, the 405, the body-size gate, the protocol-
+// version check and both batch guards all returned before anything recorded
+// them. A client that got throttled or ran out of quota simply stopped
+// appearing, with nothing saying why: the events that EXPLAIN a drop in usage
+// were exactly the ones missing.
+//
+// Instrumented at the BOUNDARY rather than at each `return`, which is #8993's
+// own rule ("a new case is instrumented by existing") applied one layer out.
+// The discriminator is exact rather than heuristic: dispatch always answers
+// 2xx -- a JSON-RPC error rides INSIDE a 200 body, jsonResponse defaults to
+// 200, and the only other successes are 202 for a notification and 204 for a
+// terminated session. So a non-2xx leaving this function is, by construction,
+// a request that never reached a handler.
 export async function handleMcpRequest(
+  request: Request,
+  env: Env = {} as unknown as Env,
+  deps: Row = {},
+) {
+  const response = await dispatchMcpRequest(request, env, deps);
+  if (!response.ok) scheduleMcpRefusalEvent(request, env, deps, response);
+  return response;
+}
+
+async function dispatchMcpRequest(
   request: Request,
   env: Env = {} as unknown as Env,
   deps: Row = {},
