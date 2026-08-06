@@ -46,6 +46,21 @@ export interface SyncBatchMessage {
   pass_total?: number;
   rows: Record<string, unknown>[];
   /**
+   * Several row families that must land in ONE write (metagraphed-infra#359).
+   *
+   * `chain-detail` posts blocks, extrinsics, chain events and account events
+   * together because a block and its extrinsics landing separately is a
+   * readable-but-wrong state -- the drill-down shows a block with no calls. One
+   * `rows` array cannot express that, and splitting the lane into four messages
+   * would let the four retry independently, which is exactly the property the
+   * single POST exists to prevent.
+   *
+   * OPTIONAL, AND MUTUALLY EXCLUSIVE WITH `rows`. Every existing lane carries
+   * one array and is untouched by this; only a lane that declares `families`
+   * uses it, so widening the wire format costs the other lanes nothing.
+   */
+  families?: Record<string, Record<string, unknown>[]>;
+  /**
    * "Every row for each KEY named in this message is IN this message."
    *
    * Only a pruning lane needs it, and only because its write DELETES: the
@@ -172,6 +187,29 @@ export const SYNC_BATCH_MAX_BYTES = 96 * 1024;
  * `packSyncBatchMessages` throws rather than emitting an unsafe message -- the
  * failure it would otherwise cause is deleted rows, which no retry undoes.
  */
+/**
+ * Lanes whose write covers SEVERAL row families that must land together
+ * (metagraphed-infra#359).
+ *
+ * An allowlist rather than "any lane may send families", for the same reason
+ * SYNC_BATCH_LANES is one: the consumer has to know how to write what arrives,
+ * and a family name it does not recognise is a table it would have to guess at.
+ */
+export const MULTI_FAMILY_LANES: readonly string[] = ["chain-detail"];
+
+/** The family names each multi-family lane may send. A name outside this list
+ * is refused rather than written to a guessed table. */
+export const MULTI_FAMILY_LANE_ROW_FAMILIES: Readonly<
+  Record<string, readonly string[]>
+> = {
+  "chain-detail": [
+    "blockRows",
+    "extrinsicRows",
+    "chainEventRows",
+    "accountEventRows",
+  ],
+};
+
 export const PRUNING_LANE_KEYS: Readonly<Record<string, string>> = {
   "nominator-positions": "coldkey",
   neurons: "netuid",
@@ -317,6 +355,59 @@ export function packSyncBatchMessages(input: {
   return messages;
 }
 
+/**
+ * Pack one multi-family chunk (metagraphed-infra#359).
+ *
+ * ALL FAMILIES IN ONE MESSAGE OR NONE. Splitting them by byte budget the way
+ * `packSyncBatchMessages` splits rows would defeat the point: a block and its
+ * extrinsics arriving in two messages can retry independently, and the
+ * intermediate state -- a block whose drill-down shows no calls -- is readable
+ * and wrong. So an oversize chunk THROWS rather than degrading into the split
+ * this shape exists to prevent.
+ *
+ * That is a real constraint, not a hypothetical: the producer batches 2 blocks
+ * per POST at ~350-662 KiB, which is over the 128 KB cap. The producer has to
+ * post smaller batches for this lane to move -- and a loud error at the
+ * boundary is how that gets discovered, rather than a silently split write.
+ */
+export function packMultiFamilyMessage(input: {
+  lane: SyncBatchLane;
+  capturedAt: number;
+  passTotal?: number;
+  families: Record<string, Record<string, unknown>[]>;
+  maxBytes?: number;
+}): SyncBatchMessage {
+  const {
+    lane,
+    capturedAt,
+    passTotal,
+    families,
+    maxBytes = SYNC_BATCH_MAX_BYTES,
+  } = input;
+  const message: SyncBatchMessage = {
+    lane,
+    captured_at: capturedAt,
+    ...(passTotal !== undefined ? { pass_total: passTotal } : {}),
+    families,
+  } as SyncBatchMessage;
+  // `rows` is absent by construction here; the validator refuses a message
+  // carrying both, so the type's required `rows` is deliberately not set.
+  delete (message as { rows?: unknown }).rows;
+
+  const bytes = JSON.stringify(message).length;
+  if (bytes > maxBytes) {
+    const counts = Object.entries(families)
+      .map(([name, rows]) => `${name}=${rows.length}`)
+      .join(", ");
+    throw new Error(
+      `sync-batches: ${lane} multi-family message is ${bytes} bytes (${counts}), ` +
+        `over the ${maxBytes}-byte budget; these families must land together, ` +
+        `so the PRODUCER must post a smaller batch rather than this splitting them`,
+    );
+  }
+  return message;
+}
+
 /** The structural slice of a Queue binding the enqueue path uses, so a test can
  * hand it a plain object rather than stand up a binding. */
 export interface SyncBatchQueue {
@@ -379,6 +470,34 @@ export function validSyncBatchMessage(body: unknown): body is SyncBatchMessage {
     (!Number.isInteger(m.pass_total) || m.pass_total <= 0)
   ) {
     return false;
+  }
+  // A multi-family message carries `families` INSTEAD of `rows`. Accepting both
+  // would leave the writer to guess which one is authoritative, and a lane that
+  // sent both would write one of them silently.
+  if (m.families !== undefined) {
+    if (m.rows !== undefined) return false;
+    if (!MULTI_FAMILY_LANES.includes(m.lane)) return false;
+    const families = m.families as Record<string, unknown> | null;
+    if (!families || typeof families !== "object" || Array.isArray(families)) {
+      return false;
+    }
+    const names = Object.keys(families);
+    if (names.length === 0) return false;
+    const expected = MULTI_FAMILY_LANE_ROW_FAMILIES[m.lane];
+    let total = 0;
+    for (const name of names) {
+      if (expected && !expected.includes(name)) return false;
+      const rows = families[name];
+      if (!Array.isArray(rows)) return false;
+      if (!rows.every((r) => r !== null && typeof r === "object")) return false;
+      total += rows.length;
+    }
+    // The row ceiling is on the WHOLE message, not per family: the transport
+    // caps the payload, and four families of 5,000 is 20,000 rows in one
+    // message however it is spelled.
+    if (total === 0 || total > SYNC_BATCH_MAX_ROWS) return false;
+    if (m.pass_total !== undefined && m.pass_total < total) return false;
+    return true;
   }
   if (!Array.isArray(m.rows) || m.rows.length === 0) return false;
   // A pruning lane must SAY its chunk is key-complete. Refusing here beats
@@ -456,11 +575,22 @@ export type SyncBatchWriter = (
   pass: PassTally | null,
 ) => Promise<unknown>;
 
+/** A multi-family lane's writer. Separate from SyncBatchWriter rather than a
+ * union, so a lane cannot be wired to the wrong one by accident: the type says
+ * which shape it consumes. */
+export type SyncBatchFamilyWriter = (
+  families: Record<string, Record<string, unknown>[]>,
+  pass: PassTally | null,
+) => Promise<unknown>;
+
 /** Lane -> its D1 writer. PARTIAL on purpose: a lane may be accepted by the
  * validator before its writer is wired, and writeSyncBatch throws rather than
  * silently skipping so a half-migrated lane fails loudly instead of leaving a
  * pass that never completes. */
 export type SyncBatchWriters = Partial<Record<SyncBatchLane, SyncBatchWriter>>;
+export type SyncBatchFamilyWriters = Partial<
+  Record<SyncBatchLane, SyncBatchFamilyWriter>
+>;
 
 /** The completeness tally a chunk carries, when its producer declared one. */
 export interface PassTally {
@@ -488,9 +618,22 @@ export function passTallyFor(
   return {
     capturedAt: message.captured_at,
     expectedRows: message.pass_total,
-    receivedRows: message.rows.length,
+    // A multi-family message delivers the SUM of its families. Counting only
+    // `rows` there would credit zero and the pass would never close.
+    receivedRows: syncBatchRowCount(message),
     nowMs,
   };
+}
+
+/** How many rows a message actually carries, whichever shape it uses. */
+export function syncBatchRowCount(message: SyncBatchMessage): number {
+  if (message.families) {
+    return Object.values(message.families).reduce(
+      (n, rows) => n + rows.length,
+      0,
+    );
+  }
+  return message.rows?.length ?? 0;
 }
 
 /** Dispatch one validated message to its lane's writer. Separated from the
@@ -499,7 +642,21 @@ export async function writeSyncBatch(
   message: SyncBatchMessage,
   writers: SyncBatchWriters,
   nowMs: number = Date.now(),
+  familyWriters: SyncBatchFamilyWriters = {},
 ): Promise<void> {
+  if (message.families) {
+    const familyWriter = familyWriters[message.lane as SyncBatchLane];
+    if (!familyWriter) {
+      throw new Error(
+        `sync-batches: no family writer for lane ${message.lane}`,
+      );
+    }
+    // ONE CALL, so the families land in one D1 batch -- which is the entire
+    // reason they travel together. Writing them in a loop here would restore
+    // the split the message shape exists to prevent.
+    await familyWriter(message.families, passTallyFor(message, nowMs));
+    return;
+  }
   const writer = writers[message.lane as SyncBatchLane];
   if (!writer) {
     // Unreachable given validSyncBatchMessage's allowlist, and thrown rather
