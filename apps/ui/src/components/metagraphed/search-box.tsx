@@ -2,10 +2,13 @@ import { useState, useRef, useEffect, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "@/lib/metagraphed/client";
-import { semanticSearchQuery } from "@/lib/metagraphed/queries";
+import { searchResolveQuery, semanticSearchQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
 import { captureEvent } from "@/lib/analytics";
-import type { SemanticSearchResult } from "@/lib/metagraphed/types";
+import type {
+  ResolvedIdentifier,
+  SemanticSearchResult,
+} from "@/lib/metagraphed/types";
 
 const RESULT_LIMIT = 8;
 
@@ -77,6 +80,73 @@ function ResultRow({ result }: { result: SemanticSearchResult }) {
   return <li>{content}</li>;
 }
 
+/** Human label for a resolved kind — the word a user would use for it. */
+export function identifierKindLabel(kind: ResolvedIdentifier["kind"]): string {
+  switch (kind) {
+    case "account":
+      return "Account";
+    case "block":
+      return "Block";
+    case "extrinsic":
+      return "Extrinsic";
+    case "evm-account":
+      return "EVM address";
+    case "subnet":
+      return "Subnet";
+    case "neuron":
+      return "Neuron";
+  }
+}
+
+/** A resolved value, shortened in the middle so both ends stay readable — the
+ * ends are what a user recognises in a hash or an address. */
+export function shortenIdentifier(value: string): string {
+  return value.length > 24 ? `${value.slice(0, 10)}…${value.slice(-8)}` : value;
+}
+
+function IdentifierRow({ match }: { match: ResolvedIdentifier }) {
+  return (
+    <li>
+      <a href={match.ui_path} className="block px-3 py-2 hover:bg-card">
+        <div className="flex items-center gap-2">
+          <span className="shrink-0 rounded border border-border px-1.5 py-0.5 mg-type-data-sm text-ink-muted">
+            {identifierKindLabel(match.kind)}
+          </span>
+          <span className="truncate font-mono mg-type-caption text-ink">
+            {shortenIdentifier(match.value)}
+          </span>
+        </div>
+      </a>
+    </li>
+  );
+}
+
+/**
+ * Where the query could lead, shown ABOVE corpus results.
+ *
+ * A user who pasted a hash is not looking for a subnet whose description
+ * happens to score well, so these come first. They are NOT shown instead:
+ * `exact` is a claim about SHAPE, not existence — the route looks nothing up,
+ * so a well-formed hash for a block that does not exist still resolves here.
+ * Keeping the corpus results visible means that case degrades to "here is what
+ * else matched" rather than a dead end.
+ */
+function IdentifierMatches({ matches }: { matches: ResolvedIdentifier[] }) {
+  if (matches.length === 0) return null;
+  return (
+    <section className="mt-4">
+      <h3 className="mg-type-caption text-ink-muted">
+        {matches.length > 1 ? "Could be" : "Go to"}
+      </h3>
+      <ul className="mt-2 divide-y divide-border rounded-md border border-border bg-card">
+        {matches.map((m) => (
+          <IdentifierRow key={`${m.kind}:${m.value}`} match={m} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function SearchResults({ results }: { results: SemanticSearchResult[] }) {
   if (results.length === 0) {
     return (
@@ -103,6 +173,12 @@ export function SearchBox() {
     ...semanticSearchQuery(submitted, RESULT_LIMIT),
     retry: 0,
   });
+  // RUN ALONGSIDE, not instead. Resolve is deterministic and needs no AI
+  // binding; semantic needs both. An explorer's most common search -- a pasted
+  // hash or address -- must never wait on, or fail because of, the embedding
+  // path, so a 503 from semantic search leaves these matches intact.
+  const resolved = useQuery({ ...searchResolveQuery(submitted), retry: 0 });
+  const matches = resolved.data?.data.matches ?? [];
 
   useEffect(() => {
     if (!isFetching && startedAtRef.current != null) {
@@ -146,6 +222,10 @@ export function SearchBox() {
           {isFetching ? "Searching…" : "Search"}
         </button>
       </form>
+
+      {/* Identifier matches survive a semantic failure -- they are the whole
+          point of resolving separately. */}
+      {submitted ? <IdentifierMatches matches={matches} /> : null}
 
       {isError ? (
         <p role="alert" className="mt-3 font-mono mg-type-caption text-health-warn">
