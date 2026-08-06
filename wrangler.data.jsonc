@@ -107,6 +107,19 @@
     "METAGRAPH_NEURONS_SOURCE": "d1",
     "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "d1",
     "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "d1",
+    // THE QUEUE CUTOVER (metagraphed-infra#348). Comma-separated lanes whose D1
+    // write goes through sync-batches instead of landing inline on the request.
+    // One lane at a time; adding a name routes it, removing a name routes it
+    // back, and neither is a code change.
+    //
+    // NEVER BOTH PATHS AT ONCE. The flag selects, it does not fan out --
+    // dual-writing would double the D1 load that caused the saturation, and
+    // duplicate arrivals would corrupt the completeness tally.
+    //
+    // Declared INSIDE this block deliberately: a second top-level "vars" key
+    // would silently replace this one wholesale, which is the trap the tier-flag
+    // comment above already records.
+    "SYNC_QUEUE_LANES": "hotkey-alpha",
     // #9430's $exception storm guard reads this var per-Worker
     // (src/usage-telemetry.ts), and `vars` are per-config -- declaring it
     // only in wrangler.jsonc left THIS Worker's captures entirely unguarded,
