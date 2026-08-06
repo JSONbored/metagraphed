@@ -14846,6 +14846,32 @@ async function dispatchTool(
   const name = params?.name;
   const tool = typeof name === "string" ? TOOLS_BY_NAME.get(name) : undefined;
   if (!tool) {
+    // A DELIBERATE DIVERGENCE FROM THE SPEC'S CLASSIFICATION (#9646), decided
+    // rather than inherited -- the audit that raised it found no comment
+    // saying it had ever been considered, so here it is.
+    //
+    // MCP 2025-11-25 sorts failures into two mechanisms and puts unknown tools
+    // in the first: "Protocol Errors: Standard JSON-RPC errors for issues
+    // like: Unknown tools, Malformed requests, Server errors", with -32602 as
+    // the worked example. We answer with the second -- a tool-execution error,
+    // isError: true -- for two reasons the same section supplies.
+    //
+    // RECOVERY. "Clients SHOULD provide tool execution errors to language
+    // models to enable self-correction. Clients MAY provide protocol errors to
+    // language models, though these are less likely to result in successful
+    // recovery." An agent that guessed a tool name is precisely the case that
+    // recovers: it needs to see the name it got wrong and try another. A
+    // protocol error is the shape most likely to abort the attempt instead.
+    //
+    // ATTRIBUTION. `unknown_tool` is a real code in structuredContent.error,
+    // which is what callTool threads into $mcp_error_code and
+    // classifyMcpErrorType. Moving to a protocol error returns before that
+    // wiring, so the dimension would have to be re-threaded separately or the
+    // failure would stop being countable -- and "agents are guessing tool
+    // names" is a thing worth counting.
+    //
+    // If this is ever revisited, the cost of switching is those two things,
+    // not the code change.
     return {
       content: [{ type: "text", text: `Unknown tool: ${String(name)}` }],
       // metagraphed#7726: the one isError path that doesn't go through
