@@ -61,6 +61,14 @@ describe("get_feed published inputSchema netuid dependency (#8829)", () => {
     const expected = requireFeedNetuidDependency(
       GET_FEED_MCP_TOOL.inputSchema as Record<string, unknown>,
     );
-    assert.deepEqual(tool.inputSchema, expected);
+    // #9642 adds a universal `context` argument to EVERY tool for agent-intent
+    // capture, so the registered schema is the wrapper's output plus that one
+    // property. Subtracted rather than added to the expectation, so this still
+    // asserts the wrapper's full output exactly -- including the `anyOf` that
+    // is the whole point of it -- instead of being relaxed into a partial
+    // match that would no longer notice the wrapper being dropped.
+    const actual = tool.inputSchema as Record<string, unknown>;
+    const { context: _context, ...properties } = actual.properties as Row;
+    assert.deepEqual({ ...actual, properties }, expected);
   });
 });

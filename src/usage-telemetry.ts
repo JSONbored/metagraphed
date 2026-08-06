@@ -216,6 +216,27 @@ export function resolveUsageSampleRate(
 // Cap free-form string fields so a buggy caller can't ship unbounded payloads.
 const MAX_LABEL_CHARS = 256;
 
+// Agent intent is prose, not an identifier, so it needs a ceiling of its own
+// (#9642). MAX_LABEL_CHARS is sized for a tool or route name and would cut a
+// real sentence mid-clause; this is long enough for the one-or-two-sentence
+// answer the argument's description asks for, and short enough that an agent
+// pasting an entire system prompt into it cannot ship that on every call.
+const MAX_MCP_INTENT_CHARS = 1024;
+
+/**
+ * A trimmed string capped at `max`, or undefined when there is nothing to say.
+ *
+ * Separate from sanitizeLabel purely because the LIMIT differs -- the
+ * empty/non-string/trim rules are identical, and duplicating them was the
+ * alternative.
+ */
+function trimToLength(value: unknown, max: number): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  return trimmed.length > max ? trimmed.slice(0, max) : trimmed;
+}
+
 // ─── deployment dimensions (environment / release) ──────────────────────────
 //
 // Every event this module emits was, until now, indistinguishable from every
@@ -509,12 +530,7 @@ export function resolvePostHogHost(env: Env | null | undefined): string {
 }
 
 function sanitizeLabel(value: unknown): string | undefined {
-  if (typeof value !== "string") return undefined;
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-  return trimmed.length > MAX_LABEL_CHARS
-    ? trimmed.slice(0, MAX_LABEL_CHARS)
-    : trimmed;
+  return trimToLength(value, MAX_LABEL_CHARS);
 }
 
 // ─── $mcp_error_type projection (#8963) ────────────────────────────────────
@@ -796,6 +812,17 @@ export interface McpToolCallEvent extends McpServerIdentity {
    * when isError is true.
    */
   errorCode?: string;
+  /**
+   * The agent's own statement of WHY it made this call, taken from the
+   * `context` argument (#9642). Emitted as $mcp_intent, which is what
+   * PostHog's MCP Analytics intent view and clustering read.
+   *
+   * Free-form model output, so it is trimmed and hard-capped by the recorder
+   * rather than trusted: this rides on an event that is never sampled, and an
+   * agent that pastes a whole prompt into it would otherwise ship that
+   * verbatim on every call.
+   */
+  intent?: string;
   clientName?: string;
   clientVersion?: string;
   clientNameSource?: McpClientNameSource;
@@ -885,6 +912,23 @@ export async function recordMcpToolCallEvent(
 
     const toolName = sanitizeLabel(event.toolName);
     if (toolName !== undefined) properties["$mcp_tool_name"] = toolName;
+
+    // Agent intent (#9642). NOT sanitizeLabel: that caps at MAX_LABEL_CHARS,
+    // which is sized for identifiers like a tool or route name, and would
+    // truncate a real sentence into uselessness. This is meant to be prose,
+    // so it gets its own, longer ceiling -- but a ceiling all the same,
+    // because it is model output on an unsampled event.
+    //
+    // $mcp_intent_source is part of the wire contract rather than decoration:
+    // PostHog distinguishes an intent the agent actually stated
+    // ("context_parameter") from one a server inferred on its behalf
+    // ("inferred"). We only ever emit the former, and saying so explicitly is
+    // what stops a future inference fallback from being read as agent speech.
+    const intent = trimToLength(event.intent, MAX_MCP_INTENT_CHARS);
+    if (intent !== undefined) {
+      properties["$mcp_intent"] = intent;
+      properties["$mcp_intent_source"] = "context_parameter";
+    }
 
     // Failure classification (#8963). Emitted only on failure: an
     // $mcp_error_type on a successful call would poison every breakdown.
