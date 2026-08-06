@@ -57,6 +57,27 @@ export async function runD1StatementBatches(
 // upsert. The status upsert targets BOTH conflict paths (#1005): surface_key
 // when present so a display-id rename updates the alias in place, surface_id
 // as the fallback for keyless rows.
+//
+// LAST_OK IS A HIGH-WATER MARK AND THE UPSERT TREATS IT AS ONE (#9634). Every
+// other column is overwritten with what this run measured, because that is what
+// "latest status" means. `last_ok` is the exception: it records the last time
+// the surface was seen WORKING, so a run that did not see it working has
+// observed nothing about it and must not be able to clear it.
+//
+// It could. `src/health-prober.ts` computes `last_ok_ms` as `ok ? runAt :
+// (prior?.last_ok ?? null)`, and `prior` comes from readLiveSurfaceStatus,
+// which DEGRADES TO AN EMPTY ARRAY on a missing flag, missing binding,
+// transport failure, non-2xx, or unparseable body (see that module's header).
+// With a bare `last_ok=excluded.last_ok`, one such degrade rewrote every non-ok
+// surface's history to NULL permanently -- a read-side degrade silently
+// promoted into write-side data loss. #9522 fixed the read; COALESCE is what
+// makes the write survive the NEXT time that read comes back empty, whatever
+// the reason. Recovery for the rows already wiped is migration 0027.
+//
+// COALESCE and not a WHERE guard because the two conflict paths must stay
+// column-symmetric, and because `excluded.last_ok` is authoritative whenever it
+// is non-null: an ok run supplies runAt, a non-ok run with prior supplies the
+// carried value, and only "we do not know" arrives as null.
 export async function persistProbesToD1(
   db: ObservationsDb | undefined,
   probed: Row[],
@@ -83,7 +104,8 @@ export async function persistProbesToD1(
          provider=excluded.provider, status=excluded.status,
          classification=excluded.classification, latency_ms=excluded.latency_ms,
          status_code=excluded.status_code, last_checked=excluded.last_checked,
-         last_ok=excluded.last_ok, consecutive_failures=excluded.consecutive_failures,
+         last_ok=COALESCE(excluded.last_ok, surface_status.last_ok),
+         consecutive_failures=excluded.consecutive_failures,
          updated_at=excluded.updated_at
        ON CONFLICT(surface_id) DO UPDATE SET
          surface_key=excluded.surface_key,
@@ -91,7 +113,8 @@ export async function persistProbesToD1(
          provider=excluded.provider, status=excluded.status,
          classification=excluded.classification, latency_ms=excluded.latency_ms,
          status_code=excluded.status_code, last_checked=excluded.last_checked,
-         last_ok=excluded.last_ok, consecutive_failures=excluded.consecutive_failures,
+         last_ok=COALESCE(excluded.last_ok, surface_status.last_ok),
+         consecutive_failures=excluded.consecutive_failures,
          updated_at=excluded.updated_at`,
     );
     const statements: unknown[] = [];
