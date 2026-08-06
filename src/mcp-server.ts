@@ -627,6 +627,10 @@ import {
   GetChainHoldersOutputSchema,
 } from "../schemas-src/mcp-tools/get-chain-holders.ts";
 import {
+  GetTaoUsdInputSchema,
+  GetTaoUsdOutputSchema,
+} from "../schemas-src/mcp-tools/get-tao-usd.ts";
+import {
   GetSubnetValidatorEconomicsInputSchema,
   GetSubnetValidatorEconomicsOutputSchema,
   ListValidatorEconomicsInputSchema,
@@ -1438,6 +1442,12 @@ import {
   CHAIN_HOLDERS_SORTS,
   DEFAULT_CHAIN_HOLDERS_SORT,
 } from "./chain-holders.ts";
+import {
+  buildTaoUsdSeries,
+  loadTaoUsdSeries,
+  DEFAULT_TAO_USD_WINDOW,
+  TAO_USD_WINDOWS,
+} from "./tao-usd-series.ts";
 import { buildSubnetHyperparams } from "./subnet-hyperparams.ts";
 import { buildSubnetHyperparamsHistory } from "./subnet-hyperparams-history.ts";
 import { buildAlphaVolume } from "./alpha-volume.ts";
@@ -7860,6 +7870,46 @@ export const MCP_TOOLS: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_tao_usd",
+    title: "Get the TAO/USD price and how it was derived",
+    description:
+      "Fetch the USD price of one TAO (#9609) with the derivation behind it, " +
+      "plus the recent series. Use this to convert any TAO-denominated figure " +
+      "in this API into USD. There is no TAO/USD pair on chain, so the number " +
+      "is COMPOSED: a liquidity-weighted median across qualifying wTAO/WETH " +
+      "pools, rejecting pools more than 2% from the unweighted median, " +
+      "refusing to publish below a two-pool quorum, multiplied through an " +
+      "ETH/USDC anchor leg (ADR 0025). `latest` carries the price together " +
+      "with price_basis, eth_usd, block_number, pool_count and the per-pool " +
+      "breakdown, so the figure and its audit trail always describe the same " +
+      "block. IMPORTANT: a null usd_per_tao is a STATED OUTCOME, not missing " +
+      "data -- price_basis `insufficient_pools` means the quorum was not met " +
+      "at that block. Read it as 'not priceable', never as a zero price, and " +
+      "never substitute 0. window is 1h, 24h (default), 7d or 30d; " +
+      "change_usd/change_pct describe movement across the RETURNED window over " +
+      "priced points only. point_count and priced_point_count are separate " +
+      "because a gap between them means part of the window could not be " +
+      "priced. The series begins 2026-08-02 at about one point per minute, so " +
+      "a 30d window today returns everything that exists rather than a month " +
+      "-- oldest_observed_at says how far back it reaches. Mainnet only. " +
+      "Mirrors GET /api/v1/network/tao-usd.",
+    inputSchema: z.toJSONSchema(GetTaoUsdInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof GetTaoUsdInputSchema>, ctx: McpCtx) {
+      const label =
+        optionalEnum(args, "window", Object.keys(TAO_USD_WINDOWS)) ??
+        DEFAULT_TAO_USD_WINDOW;
+      const rows = await loadTaoUsdSeries(
+        ctx.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+          typeof loadTaoUsdSeries
+        >[0],
+        { windowHours: TAO_USD_WINDOWS[label] },
+      );
+      return buildTaoUsdSeries(rows, { window: label });
+    },
+  },
+  {
     name: "get_chain_holders",
     title: "Rank every subnet by alpha-ownership concentration",
     description:
@@ -13027,6 +13077,9 @@ const TOOL_OUTPUT_SCHEMAS = {
     target: "draft-2020-12",
   }),
   get_chain_holders: z.toJSONSchema(GetChainHoldersOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_tao_usd: z.toJSONSchema(GetTaoUsdOutputSchema, {
     target: "draft-2020-12",
   }),
   get_chain_burn: z.toJSONSchema(GetChainBurnOutputSchema, {

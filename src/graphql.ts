@@ -309,6 +309,12 @@ import {
   CHAIN_HOLDERS_SORTS,
   DEFAULT_CHAIN_HOLDERS_SORT,
 } from "./chain-holders.ts";
+import {
+  buildTaoUsdSeries,
+  loadTaoUsdSeries,
+  DEFAULT_TAO_USD_WINDOW,
+  TAO_USD_WINDOWS,
+} from "./tao-usd-series.ts";
 import { loadTopHoldersFromArtifact } from "./top-holders-artifact.ts";
 import { loadTopHoldersFlowTier } from "./top-holders-flow-tier.ts";
 import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.ts";
@@ -1167,6 +1173,8 @@ export const FIELD_COMPLEXITY = {
   subnet_holders: RELATIONSHIP_FIELD_COMPLEXITY,
   // #9607: one bounded statement over the same two tables.
   chain_holders: RELATIONSHIP_FIELD_COMPLEXITY,
+  // #9609: one bounded window read off an indexed column.
+  tao_usd: RELATIONSHIP_FIELD_COMPLEXITY,
   neuron: RELATIONSHIP_FIELD_COMPLEXITY,
   neuron_history: RELATIONSHIP_FIELD_COMPLEXITY,
   subnet_identity_history: RELATIONSHIP_FIELD_COMPLEXITY,
@@ -2737,6 +2745,24 @@ const rootValue = {
       consensus: data.consensus ?? null,
       validator_trust: data.validator_trust ?? null,
     };
+  },
+
+  async tao_usd({ window }: { window?: string | null }, context: GqlContext) {
+    // #9609. Same loader REST and MCP use -- see chain_holders above for why a
+    // resolver-local query is the thing this surface has historically got wrong.
+    const label = window ?? DEFAULT_TAO_USD_WINDOW;
+    if (!Object.hasOwn(TAO_USD_WINDOWS, label)) {
+      throw new GraphQLError(unsupportedWindowMessage(label, TAO_USD_WINDOWS), {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    const rows = await loadTaoUsdSeries(
+      context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
+        typeof loadTaoUsdSeries
+      >[0],
+      { windowHours: TAO_USD_WINDOWS[label] },
+    );
+    return buildTaoUsdSeries(rows, { window: label });
   },
 
   async chain_holders(

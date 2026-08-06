@@ -1246,6 +1246,34 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/network/tao-usd",
+    (body) => {
+      // #9609. An empty series is a real state (nothing priced in the window),
+      // so this never 404s and `latest` is simply null.
+      assert.equal(Array.isArray(body.data.points), true);
+      assert.equal(typeof body.data.point_count, "number");
+      // Newest first, so a caller charting it does not have to sort.
+      const at = body.data.points.map((p: { observed_at: string }) =>
+        Date.parse(p.observed_at),
+      );
+      assert.deepEqual(
+        at,
+        [...at].sort((a: number, b: number) => b - a),
+      );
+      // A null price is `insufficient_pools`, never a zero -- the CHECK
+      // constraint pairs them and this route must not collapse the pair.
+      for (const p of body.data.points) {
+        assert.notEqual(p.usd_per_tao, 0);
+      }
+      // priced_point_count can never exceed the points it counts.
+      assert.equal(body.data.priced_point_count <= body.data.point_count, true);
+      if (body.data.latest !== null) {
+        assert.equal(typeof body.data.latest.price_basis, "string");
+        assert.equal(Array.isArray(body.data.latest.pools), true);
+      }
+    },
+  ],
+  [
     "/api/v1/chain/holders",
     (body) => {
       // #9607. Never 404s and never serves a bare empty ranking: either

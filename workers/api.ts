@@ -155,6 +155,7 @@ import {
   handleSubnetBurn,
   handleChainBurn,
   handleChainHolders,
+  handleTaoUsd,
   handleSubnetBurnHistory,
   handleSubnetHolders,
   handleCrowdloan,
@@ -5514,6 +5515,7 @@ export function isMainnetOnlyApiPath(pathname: string) {
     SUBNET_HOLDERS_PATH_PATTERN.test(pathname) ||
     // #9607: the cross-subnet twin of the route above, same two tables.
     pathname === "/api/v1/chain/holders" ||
+    pathname === "/api/v1/network/tao-usd" ||
     SUBNET_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_IDENTITY_HISTORY_PATH_PATTERN.test(pathname) ||
     SUBNET_CONCENTRATION_PATH_PATTERN.test(pathname) ||
@@ -5604,6 +5606,11 @@ async function dispatchLiveChainRoute(
   // both source tables are -- see MAINNET_ONLY_ROUTE_PATHS.
   if (pathname === "/api/v1/chain/holders") {
     return handleChainHolders(request, env, new URL(request.url));
+  }
+  // #9609: the TAO/USD index, read from the D1 series the minute tick writes.
+  // Mainnet-only: wrapped TAO on Ethereum has no testnet counterpart.
+  if (pathname === "/api/v1/network/tao-usd") {
+    return handleTaoUsd(request, env, new URL(request.url));
   }
   // #9399: the cross-subnet ranking. Beside its per-subnet sibling so the two live
   // burn reads stay visibly related, and matched on an exact path so it can never

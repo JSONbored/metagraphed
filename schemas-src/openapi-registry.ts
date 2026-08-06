@@ -127,6 +127,11 @@ import {
   ChainHoldersArtifactSchema,
 } from "./routes/chain-holders.ts";
 import {
+  TaoUsdPointSchema,
+  TaoUsdLatestSchema,
+  TaoUsdArtifactSchema,
+} from "./routes/tao-usd.ts";
+import {
   AccountEventSchema,
   SubnetEventsArtifactSchema,
 } from "./routes/subnet-events.ts";
@@ -481,6 +486,9 @@ register(SubnetHoldersArtifactSchema, "SubnetHoldersArtifact");
 register(ChainHoldersSubnetSchema, "ChainHoldersSubnet");
 register(ChainHoldersNetworkSchema, "ChainHoldersNetwork");
 register(ChainHoldersArtifactSchema, "ChainHoldersArtifact");
+register(TaoUsdPointSchema, "TaoUsdPoint");
+register(TaoUsdLatestSchema, "TaoUsdLatest");
+register(TaoUsdArtifactSchema, "TaoUsdArtifact");
 register(AccountEventSchema, "AccountEvent");
 register(SubnetEventsArtifactSchema, "SubnetEventsArtifact");
 register(SubnetEventSummaryArtifactSchema, "SubnetEventSummaryArtifact");
