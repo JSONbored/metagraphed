@@ -16,6 +16,7 @@ import {
   normalizeSubnetGaps,
   validateNextCursor,
   normalizeFreshnessSources,
+  searchResolveQuery,
 } from "./queries";
 
 // These tests lock the canonical-only reads after #1756 collapsed the redundant
