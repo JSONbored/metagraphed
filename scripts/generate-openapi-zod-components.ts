@@ -46,6 +46,28 @@ export function generateOpenApiZodComponents(): Record<string, Row> {
   return components;
 }
 
+// `--check` compiles the registry and reports the count; bare prints the JSON.
+//
+// The build passes --check (scripts/build.ts). Without it this step wrote
+// ~1,040,000 bytes / 42,664 lines to stdout -- 99.8% of the whole build log,
+// against 2,358 bytes from every other step combined -- and nothing read a
+// byte of it: both real consumers (scripts/openapi-components.ts,
+// scripts/validate-single-schema-source.ts) import the function and call it
+// in-process. A log that noisy is a log nobody reads, which is how a healthy
+// build got reported as a failing one (#9945).
+//
+// The step still earns its place: compiling the registry is exactly the
+// fast-fail check build.ts wants, and it fails identically either way -- the
+// count line just proves it ran. Same shape as generate-client.ts's flagged
+// summary-vs-payload split, and the same --check verb as
+// generate-registry-readme-section.ts.
 if (import.meta.url === `file://${process.argv[1]}`) {
-  console.log(JSON.stringify(generateOpenApiZodComponents(), null, 2));
+  const components = generateOpenApiZodComponents();
+  if (process.argv.includes("--check")) {
+    console.log(
+      `openapi-zod: ${Object.keys(components).length} component schema(s) compiled.`,
+    );
+  } else {
+    console.log(JSON.stringify(components, null, 2));
+  }
 }
