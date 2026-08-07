@@ -2938,7 +2938,11 @@ function mcpAccountIdentityHistoryRequest(
 
 // One subnet's economics: live KV tier (KV-primary), else the committed R2
 // snapshot — the precedence /api/v1/economics uses. A missing row → economics:null.
-async function loadSubnetEconomics(ctx: McpCtx, netuid: number) {
+async function loadSubnetEconomics(
+  ctx: McpCtx,
+  netuid: number,
+  { includeSummary = true }: { includeSummary?: boolean } = {},
+) {
   const live = await resolveLiveEconomics({
     readHealthKv: ctx.readHealthKv,
     env: ctx.env,
@@ -2950,7 +2954,12 @@ async function loadSubnetEconomics(ctx: McpCtx, netuid: number) {
     netuid,
     source: live?.source || "r2-fallback",
     captured_at: blob?.captured_at ?? null,
-    summary: blob?.summary ?? null,
+    // #9874: null rather than omitted when the caller opted out. `summary` is
+    // already nullable (no economics blob yields null), so a caller reading it
+    // branches on the same value it always did -- an omitted key would make
+    // "you asked me not to" indistinguishable from "there is no blob" only by
+    // remembering which argument you sent.
+    summary: includeSummary ? (blob?.summary ?? null) : null,
     economics:
       withSpotPrice(
         blob?.subnets?.find((row: Row) => row?.netuid === netuid),
@@ -4917,7 +4926,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "subnet receives — spec 440 separates them by MinerBurned reweighting, " +
       "the Hill emission gate, the SubnetEmissionEnabled filter, the alpha " +
       "injection cap, and the liquidity balancer. Do not present it as TAO " +
-      "earned or emitted. get_network_parameters carries the gate parameters.",
+      "earned or emitted. get_network_parameters carries the gate parameters. " +
+      "SWEEPING SEVERAL SUBNETS? Pass `include_summary: false` — the `summary` " +
+      "block is network-wide and identical on every call, so it is about 19% " +
+      "of each response repeated once per subnet.",
     inputSchema: z.toJSONSchema(GetSubnetEconomicsInputSchema, {
       target: "draft-2020-12",
     }),
@@ -4926,7 +4938,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      return loadSubnetEconomics(ctx, netuid);
+      return loadSubnetEconomics(ctx, netuid, {
+        // Absent means include, matching the published default -- optionalBoolean
+        // defaults an absent flag to false, which is the wrong way round here.
+        includeSummary:
+          optionalNullableBoolean(args, "include_summary") ?? true,
+      });
     },
   },
   {
