@@ -9,6 +9,23 @@ import { OpenObjectSchema, netuidSchema } from "./shared.ts";
 export const GetSubnetEconomicsInputSchema = z
   .object({
     netuid: netuidSchema(),
+    // #9874: the summary block is network-wide, so a per-subnet sweep receives
+    // the identical object once per subnet. Defaulted to `true` rather than to
+    // the reporter's suggested `false`: dropping a field every existing caller
+    // currently receives is a breaking change, and this parameter is worth
+    // having on its own before that is worth arguing about.
+    include_summary: z
+      .boolean()
+      .optional()
+      .describe(
+        "Include the network-wide `summary` block (default `true`). PASS " +
+          "`false` WHEN SWEEPING MORE THAN ONE SUBNET: the block is identical " +
+          "on every call, so 129 subnets means receiving the same aggregate " +
+          "129 times — about 19% of the response, measured on 2026-08-07. " +
+          "With `false` the key is `null` rather than absent, so a caller " +
+          "reading it does not have to branch on presence.",
+      )
+      .meta({ examples: [false] }),
   })
   .strict();
 export type GetSubnetEconomicsInput = z.infer<
