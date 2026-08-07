@@ -100,6 +100,63 @@ describe("createPgSql", () => {
     assert.deepEqual(calls[0]!.values, ["5A", 64]);
   });
 
+  test("unsafe() rewrites `?` placeholders, like the D1 runner does", async () => {
+    // THE BUG THIS PINS (#9821). `unsafe` is the escape hatch route handlers
+    // use when the statement is built from a column-list constant, and they
+    // write SQLite's `?` because D1 is what they were written against. This
+    // path was the only one of the three that did not convert, so six routes
+    // served an EMPTY 200 the moment the read flag moved them: Postgres does
+    // not recognise `?`, so nothing matched.
+    const { client, calls } = fakeClient([{ n: 1 }]);
+    const { ctx } = ctxSpy();
+    const sql = createPgSql(
+      { connectionString: "postgres://x" },
+      ctx,
+      () => client as never,
+    );
+    const rows = await sql.unsafe(
+      "SELECT a, b FROM neuron_daily WHERE netuid = ? AND snapshot_date >= ? ORDER BY snapshot_date DESC LIMIT ?",
+      [1, "2026-07-08", 500],
+    );
+    assert.deepEqual(rows, [{ n: 1 }]);
+    assert.equal(
+      calls[0]!.text,
+      "SELECT a, b FROM neuron_daily WHERE netuid = $1 AND snapshot_date >= $2 ORDER BY snapshot_date DESC LIMIT $3",
+    );
+    assert.deepEqual(calls[0]!.values, [1, "2026-07-08", 500]);
+  });
+
+  test("unsafe() leaves an already-numbered statement alone", async () => {
+    // Applying the conversion here must not be a behaviour change for callers
+    // that were already correct -- otherwise fixing the broken path would
+    // break the working one.
+    const { client, calls } = fakeClient([]);
+    const { ctx } = ctxSpy();
+    const sql = createPgSql(
+      { connectionString: "postgres://x" },
+      ctx,
+      () => client as never,
+    );
+    const text = "SELECT n FROM t WHERE a = $1 AND b = $2";
+    await sql.unsafe(text, ["x", "y"]);
+    assert.equal(calls[0]!.text, text);
+  });
+
+  test("unsafe() does not renumber a `?` inside a string literal", async () => {
+    // The conversion is shared with createPgD1Runner and already handles this;
+    // asserting it through THIS path too, because a caller reaching for
+    // `unsafe` is the one most likely to embed a literal.
+    const { client, calls } = fakeClient([]);
+    const { ctx } = ctxSpy();
+    const sql = createPgSql(
+      { connectionString: "postgres://x" },
+      ctx,
+      () => client as never,
+    );
+    await sql.unsafe("SELECT '? ok' AS q FROM t WHERE a = ?", ["v"]);
+    assert.equal(calls[0]!.text, "SELECT '? ok' AS q FROM t WHERE a = $1");
+  });
+
   test("returns the connection via waitUntil, not on the response path", async () => {
     // Hyperdrive holds the real pool; this handle must go back to it. Awaiting
     // the teardown would add its latency to every read, and leaking it would

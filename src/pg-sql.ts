@@ -93,7 +93,24 @@ export function createPgSql(
   };
   const sql = ((strings: TemplateStringsArray, ...values: unknown[]) =>
     run(pgStatementText(strings), values)) as PgSql;
-  sql.unsafe = (text: string, values: unknown[] = []) => run(text, values);
+  // `?` -> `$n`, exactly as createPgD1Runner does it, and for the same reason
+  // -- this is the escape hatch route handlers reach for when the statement is
+  // assembled from a column-list constant, and they write SQLite's `?` because
+  // D1 is what they were written against.
+  //
+  // WITHOUT THIS, SIX ROUTES SERVED EMPTY (#9821). Postgres does not recognise
+  // `?` as a placeholder, so `WHERE netuid = ? AND snapshot_date >= ?` never
+  // matched and /subnets/{n}/performance/history went 28 rows -> 0, along with
+  // /subnets/{n}/validators, /subnets/{n}/performance, /subnets/{n}/neurons/
+  // {uid}, that route's /history, and /validators/{hotkey}/history.
+  //
+  // The conversion existed and was wired into createPgD1Runner ONLY, so the
+  // tagged-template path and the injected-runner path were both safe and the
+  // third path -- this one -- was not. A statement that already uses `$n` and
+  // no `?` passes through unchanged, so applying it here is not a behaviour
+  // change for any caller that was already correct.
+  sql.unsafe = (text: string, values: unknown[] = []) =>
+    run(toPositionalPlaceholders(text), values);
   return sql;
 }
 
