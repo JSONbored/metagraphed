@@ -229,7 +229,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/curation-playbook.md`](docs/
 - **[eni](https://metagraph.sh/subnets/101)** `SN101` · [site](http://tag101.ai/) · [repo](https://github.com/tag101-ai/tag101)
 - **[ConnitoAI](https://metagraph.sh/subnets/102)** `SN102` · [site](https://connito.ai/) · [repo](https://github.com/Connito-AI/Connito)
 - **[Djinn](https://metagraph.sh/subnets/103)** `SN103` · [site](https://www.djinn.gg/) · [repo](https://github.com/Djinn-Inc/djinn)
-- **[for sale (burn to uid1)](https://metagraph.sh/subnets/104)** `SN104` — `no-public-project-surface`
+- **[Masx.ai](https://metagraph.sh/subnets/104)** `SN104` — `no-public-project-surface`
 - **[Beam](https://metagraph.sh/subnets/105)** `SN105` · [site](https://b1m.ai/) · [repo](https://github.com/Beam-Network/beam)
 - **[Nodexo](https://metagraph.sh/subnets/106)** `SN106` — `compute` `gpu` · [site](https://nodexo.ai/) · [docs](https://docs.nodexo.ai/) · [repo](https://github.com/nodexo-ai/nodexo)
 - **[Minos](https://metagraph.sh/subnets/107)** `SN107` · [site](https://theminos.ai/) · [repo](https://github.com/minos-protocol/minos_subnet)
