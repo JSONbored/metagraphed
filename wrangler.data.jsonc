@@ -145,7 +145,25 @@
     //
     // Rollback is deleting the entry: the gate falls back to createD1Sql on
     // the same query text, so the store moves by choosing a runner.
-    "NEON_READ_LANES": "account_position_daily",
+    // Three tables, each proven before it was named:
+    //   account_position_daily  reconciled `in sync` (#9752), route verified
+    //                           against its D1 baseline across four deploys
+    //   neurons                 mirror green every producer tick since #9714,
+    //                           content-checksum identical to D1
+    //   neuron_daily            816,803 rows backfilled and reconciled
+    //                           `in sync` 2026-08-07 09:19
+    //
+    // `neurons` is named EXPLICITLY rather than ridden in on another lane's
+    // flag. Before this, the position-history gate checked only
+    // account_position_daily while its handler also read `neurons` -- safe by
+    // luck, not by gate. NEON_READ_ROUTE_TABLES now requires every table a
+    // route reads.
+    //
+    // NOT here: nominator_positions, hotkey_alpha, account_balances. Their
+    // mirrors have never fired (12h/30h/48h producers), which #9772's watchdog
+    // reports as never-mirrored-not-alarmed. Naming one would move a read onto
+    // a store with no proven writer -- #9704 exactly.
+    "NEON_READ_LANES": "account_position_daily,neurons,neuron_daily",
     // The two ACCUMULATING tables, and only those (src/neon-backfill.ts).
     //
     // The mirror above writes what each request carries, which finishes the job
