@@ -30,18 +30,36 @@ const LATENCY_WEIGHT =
 export async function loadBulkHealthTrends({
   observedAt = null,
   db = null,
+  window = null,
+  limit = null,
+  offset = 0,
 }: {
   observedAt?: string | null;
   db?: ObservationsReadDb | null;
+  /**
+   * One window label, or null for every window (#9981).
+   *
+   * This narrows the D1 SCAN as well as the response: an unfiltered request
+   * reads the widest window because it has to answer for all of them, but a
+   * 7d-only request has no reason to read 30 days of rows to throw 23 away.
+   */
+  window?: string | null;
+  /** Subnets per window; null means every subnet, the historical behaviour. */
+  limit?: number | null;
+  offset?: number;
 } = {}): Promise<{
   data: Record<string, unknown>;
   rows: unknown[];
 }> {
   const now = Date.now();
-  // One read over the widest window, then filtered per window in memory. The
-  // windows are nested (7d is a suffix of 30d), so N reads would be N scans of
-  // overlapping data for the same answer.
-  const maxWindowDays = Math.max(...Object.values(HEALTH_TREND_WINDOWS));
+  // One read over the widest window REQUESTED, then filtered per window in
+  // memory. The windows are nested (7d is a suffix of 30d), so N reads would
+  // be N scans of overlapping data for the same answer.
+  const requested =
+    window !== null && Object.hasOwn(HEALTH_TREND_WINDOWS, window)
+      ? { [window]: HEALTH_TREND_WINDOWS[window]! }
+      : HEALTH_TREND_WINDOWS;
+  const maxWindowDays = Math.max(...Object.values(requested));
   const cutoffDay = utcWindowCutoffDay(now, maxWindowDays);
 
   const rows = await d1All(
@@ -67,7 +85,7 @@ export async function loadBulkHealthTrends({
   );
 
   const windows: Record<string, unknown[]> = {};
-  for (const [label, days] of Object.entries(HEALTH_TREND_WINDOWS)) {
+  for (const [label, days] of Object.entries(requested)) {
     const windowCutoff = utcWindowCutoffDay(now, days);
     windows[label] = rows.filter((row) => String(row.date) >= windowCutoff);
   }
@@ -75,7 +93,9 @@ export async function loadBulkHealthTrends({
   const data = formatBulkTrends({
     observedAt,
     windows,
-    windowDays: HEALTH_TREND_WINDOWS,
+    windowDays: requested,
+    limit,
+    offset,
   });
   return { data, rows };
 }

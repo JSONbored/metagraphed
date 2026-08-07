@@ -1082,6 +1082,7 @@ import { DOMAIN_TAGS } from "./domain-tags.ts";
 import { buildDomainOverview, buildDomainSummary } from "./domain-summary.ts";
 import { CHAIN_SIGNERS_SORTS } from "./chain-query-loaders.ts";
 import { loadBulkHealthTrends } from "./bulk-health-trends.ts";
+import { HEALTH_TREND_WINDOW_VALUES } from "../schemas-src/routes/health-surfaces.ts";
 import { answerRpcUsage } from "./rpc-usage-answer.ts";
 import { loadChainServingColdTier } from "./chain-serving-loader.ts";
 import {
@@ -4924,25 +4925,53 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Fetch the compact all-subnet 7d/30d daily uptime + latency trend " +
       "matrix aggregated from the live health-probe history (probed every " +
       "~15 minutes). Each subnet carries daily points (uptime ratio, avg " +
-      "latency, sample counts) for sparklines and cross-subnet sorting. Use " +
+      "latency, sample counts) for sparklines and cross-subnet sorting. " +
+      "THIS RESPONSE IS LARGE -- every window for every subnet is ~487 KB, " +
+      "more than a 200K-token context window holds. Pass `window` to get one " +
+      "window instead of all of them (which also narrows the query behind " +
+      "it), and `limit`/`offset` to page the subnets within each. " +
+      "`subnet_count` always spans every subnet the window measured, not the " +
+      "page, so paging does not cost you the denominator. Use " +
       "get_subnet_health_trends for one subnet's per-surface breakdown. " +
       "Mirrors GET /api/v1/health/trends.",
     inputSchema: z.toJSONSchema(GetHealthTrendsInputSchema, {
       target: "draft-2020-12",
     }),
     async handler(
-      _args: z.infer<typeof GetHealthTrendsInputSchema>,
+      args: z.infer<typeof GetHealthTrendsInputSchema>,
       ctx: McpCtx,
     ) {
+      const row = args as Row;
+      // An unserved window THROWS, a bad number is forgiven -- the same
+      // asymmetry every other tool here uses, and it is deliberate: tools/call
+      // does not enforce the inputSchema, so `optionalEnum` is the only thing
+      // standing between a typo and a silent fallback to every window, while
+      // clamping a limit degrades to a usable page instead of an error.
+      const window = optionalEnum(row, "window", HEALTH_TREND_WINDOW_VALUES);
+      const limit = row?.limit == null ? null : clampLimit(row.limit, 512, 512);
+      const offset = Number.isFinite(row?.offset)
+        ? Math.max(0, Math.floor(row.offset as number))
+        : 0;
+      // Forwarded on the tier request too, so the narrowing survives whichever
+      // tier answers -- a parameter honoured on one path and dropped on the
+      // other is the "looks filtered, is not" failure.
+      const query = new URLSearchParams();
+      if (window) query.set("window", window);
+      if (limit !== null) query.set("limit", String(limit));
+      if (offset) query.set("offset", String(offset));
+      const suffix = query.size ? `?${query}` : "";
       const postgres = await tryPostgresTier(
         ctx.env,
-        mcpNeuronsTierRequest("/api/v1/health/trends"),
+        mcpNeuronsTierRequest(`/api/v1/health/trends${suffix}`),
         "METAGRAPH_HEALTH_SOURCE",
       );
       if (postgres) return postgres;
       const { data } = await loadBulkHealthTrends({
         observedAt: await mcpObservedAt(ctx),
         db: ctx.env.METAGRAPH_HEALTH_DB,
+        window,
+        limit,
+        offset,
       });
       return data;
     },

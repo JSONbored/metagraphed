@@ -34,7 +34,11 @@ import {
   type ChainNetworkId,
   DEFAULT_CHAIN_NETWORK,
 } from "../../src/chain-network.ts";
-import { parseLimitParam } from "../request-params.ts";
+import {
+  parseLimitParam,
+  parseNonNegativeIntParam,
+} from "../request-params.ts";
+import { HEALTH_TREND_WINDOW_VALUES } from "../../schemas-src/routes/health-surfaces.ts";
 import { loadChainServingColdTier } from "../../src/chain-serving-loader.ts";
 import { loadChainWeightsColdTier } from "../../src/chain-weights-loader.ts";
 import { loadChainWeightSettersColdTier } from "../../src/chain-weight-setters-loader.ts";
@@ -670,7 +674,11 @@ export async function handleBulkHealthTrends(
   url: URL = new URL(request.url),
   ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
+  // #9989: three narrowing parameters, all optional. Absent means "everything",
+  // which is what this route served before it had any -- so no existing caller
+  // changes behaviour. Anything else is still rejected outright.
   for (const key of url.searchParams.keys()) {
+    if (key === "window" || key === "limit" || key === "offset") continue;
     return errorResponse(
       "invalid_query",
       `${key} is not supported for this route.`,
@@ -678,6 +686,17 @@ export async function handleBulkHealthTrends(
       { parameter: key },
     );
   }
+  const windowError = validateEnumParam(url, "window", [
+    ...HEALTH_TREND_WINDOW_VALUES,
+  ]);
+  if (windowError) return analyticsQueryError(windowError);
+  const trendsLimit = parseLimitParam(url, { maxLimit: 512 });
+  if ("error" in trendsLimit) return analyticsQueryError(trendsLimit.error);
+  const trendsOffset = parseNonNegativeIntParam(
+    url.searchParams.get("offset"),
+    "offset",
+  );
+  if ("error" in trendsOffset) return analyticsQueryError(trendsOffset.error);
 
   return withEdgeCache(
     request,
@@ -714,6 +733,9 @@ export async function handleBulkHealthTrends(
         const result = await loadBulkHealthTrends({
           observedAt: meta?.last_run_at || null,
           db: env.METAGRAPH_HEALTH_DB,
+          window: url.searchParams.get("window"),
+          limit: trendsLimit.limit ?? null,
+          offset: trendsOffset.value ?? 0,
         });
         data = result.data;
         isFallback =

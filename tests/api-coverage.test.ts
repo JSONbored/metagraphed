@@ -2975,6 +2975,41 @@ describe("health trends D1 error handling", () => {
     assert.deepEqual(body.data.windows["7d"].subnets, []);
   });
 
+  test("bulk route accepts its three narrowing params and rejects others", async () => {
+    // #9989: this route took NO query parameters and rejected every one, which
+    // is why the tool mirroring it had no way to ask for less than ~487 KB.
+    const env = createLocalArtifactEnv({});
+    const ok = await handleRequest(
+      req("/api/v1/health/trends?window=7d&limit=2&offset=1"),
+      env as unknown as Env,
+      {},
+    );
+    assert.equal(ok.status, 200);
+    const body = await ok.json();
+    assert.deepEqual(
+      Object.keys(body.data.windows),
+      ["7d"],
+      "window must select one window, not merely filter the rows inside both",
+    );
+
+    for (const [query, parameter] of [
+      ["?window=90d", "window"],
+      ["?limit=0", "limit"],
+      ["?offset=-1", "offset"],
+      ["?sort=name", "sort"],
+    ] as [string, string][]) {
+      const res = await handleRequest(
+        req(`/api/v1/health/trends${query}`),
+        env as unknown as Env,
+        {},
+      );
+      assert.equal(res.status, 400, query);
+      const err = await res.json();
+      assert.equal(err.error.code, "invalid_query", query);
+      assert.equal(err.error.details?.parameter ?? parameter, parameter, query);
+    }
+  });
+
   test("bulk route treats a D1 response without results as empty", async () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_HEALTH_DB: {
