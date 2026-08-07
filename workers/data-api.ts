@@ -2125,7 +2125,10 @@ function coerceAccountBalanceSyncRow(row: Row) {
 async function handleAccountBalancesSync(
   request: Request,
   env: Env,
-  ctx?: ExecutionContext,
+  // Kept in the signature, unused: the router passes it positionally to every
+  // handler, and the Neon mirror this route used to run moved to the queue
+  // consumer with the write (metagraphed-infra#353).
+  _ctx?: ExecutionContext,
 ) {
   if (!env.ACCOUNT_BALANCES_SYNC_SECRET) {
     return writeJson(
@@ -2241,77 +2244,48 @@ async function handleAccountBalancesSync(
     };
   }
 
-  // Enqueue or write, never both -- see handleHotkeyAlphaSync's own note.
+  // ENQUEUE-ONLY (metagraphed-infra#353). The inline D1 write that used to
+  // stand behind a `syncLaneUsesQueue` check is gone, and this route no longer
+  // touches D1 at all -- the sync-batches consumer owns the write, the pass
+  // tally and the Neon mirror.
   //
-  // THE LANE THAT CAUSED THE INCIDENT. `D1_ERROR: D1 DB is overloaded` aborted
-  // this pass at 147,000 of 364,000 rows, and took `wallet-auth` and
-  // `tao-usd-index` down with it on the database everything shares. It is
-  // therefore the real test of whether queue-provided backpressure replaces the
-  // producer's one-second inter-chunk sleep -- which is why it moves last of
-  // the simple lanes, after the cheap ones proved the shape.
+  // THE LANE THAT CAUSED THE INCIDENT, so the bar for deleting its rollback was
+  // evidence rather than confidence. `D1_ERROR: D1 DB is overloaded` aborted a
+  // pass at 147,000 of 364,000 rows and took `wallet-auth` and `tao-usd-index`
+  // down with it on the shared database. Since the 2026-08-06 cutover it has
+  // run SIX consecutive complete passes on the queue -- 364,644 / 364,654 /
+  // 364,668 / 364,747 / 364,819 / 364,817 rows, each `completed_at` stamped --
+  // which is what #353 asked for before the `else` branch could go.
+  //
+  // WHAT ROLLBACK MEANS NOW. Dropping this lane from SYNC_QUEUE_LANES no longer
+  // restores an inline write; it makes the route enqueue to a queue nothing is
+  // routed to, which fails loudly rather than quietly writing. Reverting this
+  // commit is the rollback.
   //
   // The declared pass rides along unchanged. A queue knows a message was
   // delivered; it does not know whether a producer's whole SCAN arrived, and
   // that second fact is the one that caught the truncation.
-  if (syncLaneUsesQueue(env, "account-balances")) {
-    try {
-      await enqueueSyncBatch(env.SYNC_BATCHES!, {
-        lane: "account-balances",
-        capturedAt: pass?.capturedAt ?? (rows[0]!.captured_at as number),
-        ...(pass ? { passTotal: pass.expectedRows } : {}),
-        rows,
-      });
-    } catch (err) {
-      console.error("data-api account-balances enqueue failed:", err);
-      await captureDataApiError(err, "account-balances-sync-queue", env);
-      return writeJson({ error: "enqueue failed" }, 502);
-    }
-    return writeJson({
-      ok: true,
-      account_balances_written: rows.length,
-      stores: ["queue"],
-      pass_total: pass?.expectedRows ?? null,
-    });
+  if (!env.SYNC_BATCHES) {
+    return writeJson({ error: "sync-batches queue unavailable" }, 503);
   }
-
-  // D1 is the binding this path REQUIRES -- the only store this family has.
-  // Checked HERE, after validation, not at the top: a malformed body is a 400
-  // whether or not a store happens to be bound (handleNominatorPositionsSync's
-  // own 400-before-503 reasoning).
-  if (!env.METAGRAPH_HEALTH_DB) {
-    return writeJson({ error: "d1 binding unavailable" }, 503);
-  }
-
-  let d1Statements: number;
   try {
-    ({ statements: d1Statements } = await writeAccountBalancesToD1(
-      env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-        typeof writeAccountBalancesToD1
-      >[0],
+    await enqueueSyncBatch(env.SYNC_BATCHES, {
+      lane: "account-balances",
+      capturedAt: pass?.capturedAt ?? (rows[0]!.captured_at as number),
+      ...(pass ? { passTotal: pass.expectedRows } : {}),
       rows,
-      pass,
-    ));
+    });
   } catch (err) {
-    console.error("data-api account-balances-sync D1 write failed:", err);
-    await captureDataApiError(err, "account-balances-sync-d1", env);
-    return writeJson({ error: "d1 write failed" }, 502);
+    console.error("data-api account-balances enqueue failed:", err);
+    await captureDataApiError(err, "account-balances-sync-queue", env);
+    // 502, not 200: the producer must retry a chunk that was never accepted,
+    // and reporting success here would lose it silently.
+    return writeJson({ error: "enqueue failed" }, 502);
   }
-
-  // ONE OF THIS LANE'S TWO WRITERS. The sync-batches queue consumer is the
-  // other and mirrors too -- #9728 was a single unmirrored writer leaving a
-  // table short while the row count looked nearly right.
-  await mirrorLedgerToNeon(
-    env as unknown as Record<string, unknown>,
-    ctx,
-    "account-balances",
-    rows,
-  );
-
   return writeJson({
     ok: true,
     account_balances_written: rows.length,
-    stores: ["d1"],
-    d1_statements: d1Statements,
+    stores: ["queue"],
     // Echoed so a producer can see its declaration was understood rather than
     // silently dropped -- the failure mode a purely optional field invites.
     pass_total: pass?.expectedRows ?? null,

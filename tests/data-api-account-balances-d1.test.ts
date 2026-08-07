@@ -76,12 +76,57 @@ function d1() {
   };
 }
 
+// Every message the route enqueued during the current test. The route is
+// ENQUEUE-ONLY (metagraphed-infra#353), so this is now the only thing it
+// produces -- the D1 write happens at the other end, in the consumer.
+let enqueued: Record<string, unknown>[] = [];
+
 function env(overrides: Record<string, unknown> = {}): Env {
   return {
     METAGRAPH_HEALTH_DB: d1(),
     ACCOUNT_BALANCES_SYNC_SECRET: SECRET,
+    SYNC_BATCHES: {
+      send: async (m: unknown) => {
+        enqueued.push(m as Record<string, unknown>);
+      },
+    },
     ...overrides,
   } as unknown as Env;
+}
+
+/**
+ * Post, then drive what was enqueued through the real consumer.
+ *
+ * THE WRITE MOVED, NOT THE BEHAVIOUR. These assertions -- latest-capture-wins,
+ * never-prune, one statement per batch, the whole pass-completeness suite --
+ * were written against the route's inline D1 write. That write is now the
+ * consumer's, so running them through `worker.queue` keeps them testing the
+ * same guarantee against the path that actually runs, rather than quietly
+ * becoming assertions about a code path production no longer takes.
+ */
+async function postAndConsume(
+  body: unknown,
+  token: string | null = SECRET,
+  envOverride?: Env,
+) {
+  const e = envOverride ?? env();
+  const response = await post(body, token, e);
+  const messages = enqueued.splice(0);
+  if (messages.length) {
+    await worker.queue!(
+      {
+        queue: "sync-batches",
+        messages: messages.map((m) => ({
+          body: m,
+          ack: () => {},
+          retry: () => {},
+        })),
+      } as never,
+      e as never,
+      { waitUntil: () => {} } as never,
+    );
+  }
+  return response;
 }
 
 function post(body: unknown, token: string | null = SECRET, envOverride?: Env) {
@@ -119,6 +164,7 @@ const passes = () =>
     .all() as Row[];
 
 beforeEach(() => {
+  enqueued = [];
   db = new DatabaseSync(":memory:");
   db.exec(SCHEMA);
   db.exec(PASSES_SCHEMA);
@@ -126,18 +172,21 @@ beforeEach(() => {
 
 describe("POST /api/v1/internal/account-balances-sync", () => {
   test("writes a batch to D1 and reports what it did", async () => {
-    const response = await post({
+    const response = await postAndConsume({
       rows: [
         balanceRow(),
         balanceRow({ ss58: SS58_B, free_tao: 0, reserved_tao: 7 }),
       ],
     });
     assert.equal(response.status, 200);
+    // `stores: ["queue"]` and no `d1_statements`: the route is enqueue-only
+    // (metagraphed-infra#353), so it has no statement count to report. The rows
+    // below still land -- postAndConsume drives the real consumer, which is
+    // where the write moved to.
     assert.deepEqual(await response.json(), {
       ok: true,
       account_balances_written: 2,
-      stores: ["d1"],
-      d1_statements: 1,
+      stores: ["queue"],
       // null, not absent: an undeclared pass is reported as undeclared rather
       // than dropped, so a producer can tell the field was understood.
       pass_total: null,
@@ -153,7 +202,7 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
   test("accepts a bare array as well as {rows:[...]}", async () => {
     // Every other sync route here speaks {rows:[...]}; a producer that posts a
     // bare array must not cost a whole six-hour cycle.
-    const response = await post([balanceRow()]);
+    const response = await postAndConsume([balanceRow()]);
     assert.equal(response.status, 200);
     assert.equal(rows().length, 1);
   });
@@ -162,13 +211,13 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
     // The staleness guard is what makes a replayed or out-of-order batch safe.
     // It matters more on this lane than most: the producer chunks one pass
     // across ~22 requests and re-sends on failure.
-    await post({ rows: [balanceRow({ free_tao: 1000.5 })] });
-    await post({
+    await postAndConsume({ rows: [balanceRow({ free_tao: 1000.5 })] });
+    await postAndConsume({
       rows: [balanceRow({ free_tao: 2000.75, captured_at: 1_780_000_100_000 })],
     });
     assert.equal(rows()[0]!.free_tao, 2000.75);
 
-    await post({
+    await postAndConsume({
       rows: [balanceRow({ free_tao: 1, captured_at: 1_779_000_000_000 })],
     });
     assert.equal(
@@ -184,10 +233,12 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
     // wallet that emptied simply stops appearing -- pruning on absence would
     // delete exactly those accounts, and this table has always been "every
     // account that has ever held a balance".
-    await post({ rows: [balanceRow(), balanceRow({ ss58: SS58_B })] });
+    await postAndConsume({
+      rows: [balanceRow(), balanceRow({ ss58: SS58_B })],
+    });
     assert.equal(rows().length, 2);
 
-    await post({
+    await postAndConsume({
       rows: [balanceRow({ captured_at: 1_780_000_100_000 })],
     });
     assert.equal(rows().length, 2, "the absent account survived the batch");
@@ -195,13 +246,19 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
   });
 
   test("rejects a missing or wrong token (401)", async () => {
-    assert.equal((await post({ rows: [balanceRow()] }, null)).status, 401);
-    assert.equal((await post({ rows: [balanceRow()] }, "nope")).status, 401);
+    assert.equal(
+      (await postAndConsume({ rows: [balanceRow()] }, null)).status,
+      401,
+    );
+    assert.equal(
+      (await postAndConsume({ rows: [balanceRow()] }, "nope")).status,
+      401,
+    );
     assert.equal(rows().length, 0);
   });
 
   test("is disabled (503) when the secret is not configured", async () => {
-    const response = await post(
+    const response = await postAndConsume(
       { rows: [balanceRow()] },
       SECRET,
       env({ ACCOUNT_BALANCES_SYNC_SECRET: undefined }),
@@ -212,22 +269,32 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
   test("answers 503 when D1 is not bound -- but only after validating (400 wins)", async () => {
     // A malformed body is a 400 whether or not a store happens to be bound;
     // answering 503 would blame the infrastructure for the caller's payload.
-    const unbound = env({ METAGRAPH_HEALTH_DB: undefined });
+    // The binding this route REQUIRES is the queue, not D1 -- it stopped
+    // touching D1 when the inline write went (metagraphed-infra#353). The
+    // 400-before-503 ordering is the part worth keeping: a malformed body is
+    // the caller's fault whether or not a binding happens to be present.
+    const unbound = env({ SYNC_BATCHES: undefined });
     assert.equal(
-      (await post({ rows: [balanceRow()] }, SECRET, unbound)).status,
+      (await postAndConsume({ rows: [balanceRow()] }, SECRET, unbound)).status,
       503,
     );
     assert.equal(
-      (await post({ rows: [balanceRow({ ss58: 1 })] }, SECRET, unbound)).status,
+      (
+        await postAndConsume(
+          { rows: [balanceRow({ ss58: 1 })] },
+          SECRET,
+          unbound,
+        )
+      ).status,
       400,
       "validation runs before the binding check",
     );
   });
 
   test("rejects a body that is not JSON, or not a row array", async () => {
-    assert.equal((await post("not json")).status, 400);
-    assert.equal((await post({ rows: "nope" })).status, 400);
-    assert.equal((await post({ rows: [] })).status, 400);
+    assert.equal((await postAndConsume("not json")).status, 400);
+    assert.equal((await postAndConsume({ rows: "nope" })).status, 400);
+    assert.equal((await postAndConsume({ rows: [] })).status, 400);
   });
 
   test("rejects rows that do not match the column shape", async () => {
@@ -255,7 +322,7 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
       [] as unknown as Row,
     ];
     for (const row of bad) {
-      const response = await post({ rows: [row] });
+      const response = await postAndConsume({ rows: [row] });
       assert.equal(
         response.status,
         400,
@@ -269,7 +336,7 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
     const tooMany = Array.from({ length: 25_001 }, (_unused, i) =>
       balanceRow({ ss58: `acct-${i}` }),
     );
-    assert.equal((await post({ rows: tooMany })).status, 413);
+    assert.equal((await postAndConsume({ rows: tooMany })).status, 413);
 
     // Body bound is checked before a row count exists -- a handful of enormous
     // strings passes the row bound and must still be refused.
@@ -277,7 +344,7 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
       8_000_001,
       " ",
     );
-    assert.equal((await post(huge)).status, 413);
+    assert.equal((await postAndConsume(huge)).status, 413);
     assert.equal(rows().length, 0);
   });
 
@@ -290,13 +357,12 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
     const many = Array.from({ length: 60 }, (_unused, i) =>
       balanceRow({ ss58: `acct-${i}` }),
     );
-    const response = await post({ rows: many });
+    const response = await postAndConsume({ rows: many });
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), {
       ok: true,
       account_balances_written: 60,
-      stores: ["d1"],
-      d1_statements: 1,
+      stores: ["queue"],
       pass_total: null,
     });
     assert.equal(rows().length, 60, "every row landed");
@@ -308,11 +374,25 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
     assert.equal(first.reserved_tao, balanceRow().reserved_tao);
   });
 
-  test("a D1 failure is a 502, not a silent success", async () => {
-    db.exec("DROP TABLE account_balances");
-    const response = await post({ rows: [balanceRow()] });
+  test("a failed enqueue is a 502, not a silent success", async () => {
+    // The route's only remaining failure mode. A D1 write failure is no longer
+    // one of them: the write is the consumer's, and it RETRIES rather than
+    // answering the producer -- which is the point of the transport moving.
+    // Covered end to end in data-api-sync-queue-consumer.test.ts.
+    const response = await post(
+      { rows: [balanceRow()] },
+      SECRET,
+      env({
+        SYNC_BATCHES: {
+          send: async () => {
+            throw new Error("queue unavailable");
+          },
+        },
+      }),
+    );
     assert.equal(response.status, 502);
-    assert.deepEqual(await response.json(), { error: "d1 write failed" });
+    assert.deepEqual(await response.json(), { error: "enqueue failed" });
+    assert.equal(rows().length, 0, "no fallback write -- the lane is cut over");
   });
 });
 
@@ -323,13 +403,15 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
 // producer therefore declares its pass size, and these assert the accounting.
 describe("pass_total completeness accounting", () => {
   test("a single-request pass completes immediately", async () => {
-    const response = await post({ rows: [balanceRow()], pass_total: 1 });
+    const response = await postAndConsume({
+      rows: [balanceRow()],
+      pass_total: 1,
+    });
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), {
       ok: true,
       account_balances_written: 1,
-      stores: ["d1"],
-      d1_statements: 2,
+      stores: ["queue"],
       pass_total: 1,
     });
     const [row] = passes();
@@ -342,7 +424,7 @@ describe("pass_total completeness accounting", () => {
     // THE REGRESSION. Rows are present and correct after the first request, and
     // ranking over them would drop real top holders -- which is exactly what
     // production did on 2026-08-05.
-    await post({ rows: [balanceRow()], pass_total: 3 });
+    await postAndConsume({ rows: [balanceRow()], pass_total: 3 });
     assert.equal(rows().length, 1);
     assert.equal(passes()[0]!.received_rows, 1);
     assert.equal(
@@ -351,11 +433,17 @@ describe("pass_total completeness accounting", () => {
       "one of three requests is NOT a complete pass",
     );
 
-    await post({ rows: [balanceRow({ ss58: SS58_B })], pass_total: 3 });
+    await postAndConsume({
+      rows: [balanceRow({ ss58: SS58_B })],
+      pass_total: 3,
+    });
     assert.equal(passes()[0]!.received_rows, 2);
     assert.equal(passes()[0]!.completed_at, null);
 
-    await post({ rows: [balanceRow({ ss58: "5Third" })], pass_total: 3 });
+    await postAndConsume({
+      rows: [balanceRow({ ss58: "5Third" })],
+      pass_total: 3,
+    });
     assert.equal(passes()[0]!.received_rows, 3);
     assert.ok(passes()[0]!.completed_at, "the closing request stamps it");
   });
@@ -363,9 +451,9 @@ describe("pass_total completeness accounting", () => {
   test("a replayed request never un-completes a finished pass", async () => {
     // The producer re-sends on failure, so received can exceed expected. The
     // stamp is set once and must survive the overshoot.
-    await post({ rows: [balanceRow()], pass_total: 1 });
+    await postAndConsume({ rows: [balanceRow()], pass_total: 1 });
     const stamped = passes()[0]!.completed_at;
-    await post({ rows: [balanceRow()], pass_total: 1 });
+    await postAndConsume({ rows: [balanceRow()], pass_total: 1 });
     assert.equal(passes()[0]!.received_rows, 2, "the replay is counted");
     assert.equal(
       passes()[0]!.completed_at,
@@ -375,8 +463,8 @@ describe("pass_total completeness accounting", () => {
   });
 
   test("a second pass is tracked separately from the first", async () => {
-    await post({ rows: [balanceRow()], pass_total: 1 });
-    await post({
+    await postAndConsume({ rows: [balanceRow()], pass_total: 1 });
+    await postAndConsume({
       rows: [balanceRow({ captured_at: 1_790_000_000_000 })],
       pass_total: 2,
     });
@@ -385,21 +473,24 @@ describe("pass_total completeness accounting", () => {
   });
 
   test("omitting pass_total writes no tally at all -- the bare-array envelope", async () => {
-    await post([balanceRow()]);
+    await postAndConsume([balanceRow()]);
     assert.equal(rows().length, 1);
     assert.deepEqual(passes(), [], "an undeclared pass is not half-tracked");
   });
 
   test("rejects a pass_total that is absent-shaped, negative, fractional or absurd", async () => {
     for (const bad of [0, -1, 1.5, "3", null, 10_000_001]) {
-      const response = await post({ rows: [balanceRow()], pass_total: bad });
+      const response = await postAndConsume({
+        rows: [balanceRow()],
+        pass_total: bad,
+      });
       assert.equal(response.status, 400, `expected 400 for ${bad}`);
     }
     assert.equal(rows().length, 0, "no partial write from a rejected batch");
   });
 
   test("rejects a pass_total smaller than the request it arrived with", async () => {
-    const response = await post({
+    const response = await postAndConsume({
       rows: [balanceRow(), balanceRow({ ss58: SS58_B })],
       pass_total: 1,
     });
@@ -410,7 +501,7 @@ describe("pass_total completeness accounting", () => {
     // The tally is keyed on captured_at, so two stamps in one request would
     // credit rows to whichever the code happened to pick -- and the reader
     // would trust a total never delivered under that key.
-    const response = await post({
+    const response = await postAndConsume({
       rows: [
         balanceRow(),
         balanceRow({ ss58: SS58_B, captured_at: 1_790_000_000_000 }),
@@ -505,13 +596,18 @@ describe("routed to the sync queue (metagraphed-infra#350)", () => {
     assert.equal(rows().length, 0, "no fallback write -- the lane is cut over");
   });
 
-  test("an un-opted deployment still writes D1", async () => {
+  test("an unbound queue is a loud 503, not a silent drop", async () => {
+    // There is no un-opted deployment for this lane any more: the inline write
+    // was deleted after six consecutive complete queued passes
+    // (metagraphed-infra#353), so dropping the lane from SYNC_QUEUE_LANES no
+    // longer restores a D1 path -- and the route must say so rather than
+    // accepting rows it cannot deliver.
     const response = await post(
       { rows: [balanceRow()] },
       SECRET,
-      env({ SYNC_BATCHES: { send: async () => {} } }),
+      env({ SYNC_BATCHES: undefined }),
     );
-    assert.equal(response.status, 200);
-    assert.equal(rows().length, 1);
+    assert.equal(response.status, 503);
+    assert.equal(rows().length, 0);
   });
 });

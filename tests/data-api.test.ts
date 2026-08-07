@@ -1307,12 +1307,17 @@ test("account-balances-sync is disabled (503) when ACCOUNT_BALANCES_SYNC_SECRET 
   expect(res.status).toBe(503);
 });
 
-test("account-balances-sync writes to D1 -- the lane is live again (#9478)", async () => {
+test("account-balances-sync accepts the lane onto the queue (#9478)", async () => {
   // It answered 503 for the whole period top-holders was frozen (#9193 retired
   // it with the box), which is why /api/v1/accounts/top-holders served a
   // `captured_at` stuck at 2026-08-02. The end-to-end write contract lives in
   // tests/data-api-account-balances-d1.test.ts against a real SQLite database;
   // this asserts only that the route no longer dead-ends here.
+  //
+  // `stores: ["queue"]` since metagraphed-infra#353: the route is enqueue-only,
+  // and the D1 write it used to do inline is the consumer's now. So the binding
+  // this route needs is SYNC_BATCHES, which this env did not have.
+  const enqueued: unknown[] = [];
   const res = await worker.fetch(
     new Request("https://d/api/v1/internal/account-balances-sync", {
       method: "POST",
@@ -1322,15 +1327,23 @@ test("account-balances-sync writes to D1 -- the lane is live again (#9478)", asy
       },
       body: JSON.stringify([accountBalanceRow()]),
     }),
-    env as unknown as Env,
+    {
+      ...env,
+      SYNC_BATCHES: {
+        send: async (m: unknown) => {
+          enqueued.push(m);
+        },
+      },
+    } as unknown as Env,
     ctx,
   );
   expect(res.status).toBe(200);
   expect(await res.json()).toMatchObject({
     ok: true,
     account_balances_written: 1,
-    stores: ["d1"],
+    stores: ["queue"],
   });
+  expect(enqueued).toHaveLength(1);
 });
 
 const SUBNET_IDENTITY_NETUID = 8;
