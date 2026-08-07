@@ -878,7 +878,7 @@ export interface RpcUsageSegment {
  * would be worse: the floor's stamp is the only freshness reading available
  * when no store answered, and it is real.
  */
-function epochMs(value: unknown): number | null {
+export function epochMs(value: unknown): number | null {
   const n = Number(value);
   if (Number.isFinite(n) && n > 0) return Math.trunc(n);
   if (typeof value === "string" && value) {

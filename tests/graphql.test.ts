@@ -18985,7 +18985,12 @@ describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () =
     const usage = body.data.rpc_usage;
     assert.equal(usage.window, "30d");
     assert.equal(usage.bucket_granularity, "6h");
-    assert.equal(usage.observed_at, "2026-07-10T00:00:00.000Z");
+    // The mocked upstream sends an ISO string and the composer normalises it to
+    // epoch ms on the way out (#9811). This arm forwards a tier's payload
+    // verbatim rather than building it, so it is the one path that could publish
+    // a stamp the composer never shaped -- which is the exact defect being
+    // fixed, so the composer states the type here too.
+    assert.equal(usage.observed_at, Date.parse("2026-07-10T00:00:00.000Z"));
     assert.equal(usage.summary.total_requests, 100);
     assert.equal(usage.summary.error_rate, 0.05);
     assert.equal(usage.summary.cache_hit_rate, 0.4);
@@ -19091,18 +19096,16 @@ describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () =
     // milliseconds before publication (#9794), so what used to surface here as
     // "2026-06-23T00:00:00.000Z" is the parsed stamp.
     //
-    // It arrives as a numeric STRING rather than a number because
-    // src/graphql-sdl.ts declares `RpcUsage.observed_at: String` and GraphQL
-    // coerces. That is self-consistent for this surface but it no longer
-    // matches REST or MCP, which both publish an integer -- one field, two
-    // representations across three surfaces. Asserted as it actually is rather
-    // than as it ought to be; #9811 tracks reconciling them, which is a
-    // breaking SDL change and not this issue's to make (epoch millis also
-    // overflow GraphQL's 32-bit Int, so it would have to be Float or a custom
-    // scalar).
+    // A NUMBER, matching REST and MCP (#9811). This used to arrive as a numeric
+    // string because src/graphql-sdl.ts declared `RpcUsage.observed_at: String`
+    // and GraphQL coerced -- one field, two representations across three
+    // surfaces. Float rather than Int because epoch millis overflow GraphQL's
+    // 32-bit Int, which is also why every sibling epoch-ms field on
+    // RpcUsageCoverage was already Float. observed_at was the odd one out
+    // inside its own type family.
     assert.equal(
       body.data.rpc_usage.observed_at,
-      String(Date.parse("2026-06-23T00:00:00.000Z")),
+      Date.parse("2026-06-23T00:00:00.000Z"),
     );
   });
 
