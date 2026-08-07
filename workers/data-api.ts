@@ -364,6 +364,7 @@ import {
   writeNeuronSnapshotToD1,
 } from "../src/neurons-d1-write.ts";
 import { mirrorNeuronSnapshotToNeon } from "../src/neurons-neon-write.ts";
+import { mirrorNominatorPositionsToNeon } from "../src/nominator-positions-neon-write.ts";
 import { neonReadEnabled } from "../src/neon-write.ts";
 import {
   writeAccountIdentityToD1,
@@ -1876,7 +1877,11 @@ function coerceNominatorPositionSyncRow(row: Row) {
   return out;
 }
 
-async function handleNominatorPositionsSync(request: Request, env: Env) {
+async function handleNominatorPositionsSync(
+  request: Request,
+  env: Env,
+  ctx?: ExecutionContext,
+) {
   if (!env.NOMINATOR_POSITIONS_SYNC_SECRET) {
     return writeJson(
       {
@@ -2005,6 +2010,15 @@ async function handleNominatorPositionsSync(request: Request, env: Env) {
     await captureDataApiError(err, "nominator-positions-sync-d1", env);
     return writeJson({ error: "d1 write failed" }, 502);
   }
+
+  // ONE OF THIS LANE'S TWO WRITERS. The other is the queue consumer below, and
+  // it mirrors too -- #9728 was a single unmirrored writer leaving a table 92
+  // rows short while the count looked nearly right.
+  await mirrorNominatorPositionsToNeon(
+    env as unknown as Record<string, unknown>,
+    ctx,
+    { rows, coldkeyMaxCapturedAt: cutoffs },
+  );
 
   return writeJson({
     ok: true,
@@ -6743,7 +6757,7 @@ async function dispatchDataApiRequest(
       request.method === "POST" &&
       url.pathname === "/api/v1/internal/nominator-positions-sync"
     ) {
-      return handleNominatorPositionsSync(request, env);
+      return handleNominatorPositionsSync(request, env, ctx);
     }
     if (
       request.method === "POST" &&
@@ -7366,13 +7380,24 @@ export default {
           // only because the message asserted `key_complete` -- the
           // validator rejects it otherwise, so this writer never sees a chunk
           // that could prune rows it did not carry.
-          "nominator-positions": (rows) =>
-            writeNominatorPositionsToD1(
+          "nominator-positions": async (rows) => {
+            const cutoffs = coldkeyMaxCapturedAt(rows);
+            const result = await writeNominatorPositionsToD1(
               env.METAGRAPH_HEALTH_DB as unknown as Parameters<
                 typeof writeNominatorPositionsToD1
               >[0],
-              { rows, coldkeyMaxCapturedAt: coldkeyMaxCapturedAt(rows) },
-            ),
+              { rows, coldkeyMaxCapturedAt: cutoffs },
+            );
+            // THE LANE'S OTHER WRITER. Mirrored here as well as on the HTTP
+            // path: a mirror that covers one of two writers is a lie the
+            // moment traffic takes the other, which is exactly #9728.
+            await mirrorNominatorPositionsToNeon(
+              env as unknown as Record<string, unknown>,
+              ctx,
+              { rows, coldkeyMaxCapturedAt: cutoffs },
+            );
+            return result;
+          },
           "account-balances": (rows, pass) =>
             writeAccountBalancesToD1(
               env.METAGRAPH_HEALTH_DB as unknown as Parameters<
