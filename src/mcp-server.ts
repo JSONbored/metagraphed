@@ -6980,7 +6980,18 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "NeuronDeregistered event count, and the average deregistrations per " +
       "hotkey, computed live from the account_events NeuronDeregistered stream. " +
       "Raw deregistration/eviction activity — the exit-side companion to " +
-      "NeuronRegistered demand. Mirrors GET /api/v1/subnets/{netuid}/deregistrations.",
+      "NeuronRegistered demand. `events` carries the INDIVIDUAL evictions " +
+      "behind those counts (#9873): per row the UID that turned over, the " +
+      "hotkey that LOST it, the hotkey that took it, the block, and how long " +
+      'the loser had held the slot. Use it to answer "is MY uid at risk" — ' +
+      "a subnet-wide rate cannot, and the tenure/incentive ordering across " +
+      "rows is what tells you whether pruning is oldest-first or " +
+      "lowest-incentive-first. There is deliberately NO risk score: that " +
+      "would be a model presented as a measurement. `derivation.is_lower_bound` " +
+      "applies to `events` too — an eviction whose displaced holder registered " +
+      "before the lookback cannot be attributed and is counted in " +
+      "`unattributed_registrations` rather than guessed at here. " +
+      "Mirrors GET /api/v1/subnets/{netuid}/deregistrations.",
     inputSchema: z.toJSONSchema(GetSubnetDeregistrationsInputSchema, {
       target: "draft-2020-12",
     }),

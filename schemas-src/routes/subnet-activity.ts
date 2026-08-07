@@ -51,6 +51,44 @@ export const SubnetDeregistrationsArtifactSchema = z
     distinct_deregistered_hotkeys: z.int().min(0),
     deregistrations: z.int().min(0),
     deregistrations_per_hotkey: z.number().min(0).nullable(),
+    /**
+     * The individual evictions behind the counts above (#9873).
+     *
+     * The scalar answers "how much churn does this subnet have"; an operator
+     * asking "is MY uid at risk, and how soon" needs the events. Each row
+     * names the UID that turned over, the hotkey that LOST it, the hotkey that
+     * took it, and how long the loser had held it -- enough for a caller to
+     * work out whether pruning is oldest-first, lowest-incentive-first or
+     * something else, which is what the reporter actually asked for.
+     *
+     * DELIBERATELY NOT A RISK SCORE. Publishing one would be a model presented
+     * as a measurement, the failure `is_lower_bound` exists to prevent.
+     *
+     * Same lower-bound caveat as the counts: an eviction whose displaced
+     * holder registered before the lookback cannot be attributed, and those
+     * are counted in `derivation.unattributed_registrations` rather than
+     * appearing here with a guessed hotkey.
+     */
+    events: z
+      .array(
+        z
+          .object({
+            uid: z.int().min(0),
+            /** The DISPLACED holder — this event is a deregistration OF it. */
+            hotkey: z.string(),
+            replaced_by_hotkey: z.string(),
+            block_number: z.int().min(0),
+            observed_at: z.iso.datetime(),
+            /**
+             * Blocks the displaced holder kept the slot. Null when the two
+             * registrations carry no usable ordering — never 0, which would
+             * read as "evicted instantly" rather than "not measurable".
+             */
+            tenure_blocks: z.int().min(1).nullable(),
+          })
+          .strict(),
+      )
+      .optional(),
     // #9307: derived from UID reuse out of the same projection rows the chain
     // leaderboard ranks; `degraded` when nothing derived it.
     derivation: DeregistrationDerivationSchema.optional(),

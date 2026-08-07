@@ -85,11 +85,13 @@ import { CHAIN_REGISTRATIONS_PROJECTION_KEY } from "./chain-registrations-artifa
 import { CHAIN_DEREGISTRATIONS_WINDOWS } from "./chain-deregistrations.ts";
 import {
   CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY,
+  CHAIN_DEREGISTRATIONS_UID_PROJECTION_KEY,
   CHAIN_DEREGISTRATIONS_PROJECTION_KEY,
 } from "./chain-deregistrations-artifact.ts";
 import {
   deregistrationsByHotkey,
   deregistrationsByNetuid,
+  deregistrationsByNetuidUid,
   deregistrationsNetworkRollup,
   deriveDeregistrations,
   DEREGISTRATION_DERIVATION_METHOD,
@@ -1191,6 +1193,14 @@ async function computeChainDeregistrations(
     };
     rowCount += subnetRows.length;
   }
+  // THE WIDEST WINDOW ONLY, and sliced per request rather than published per
+  // window (#9873). Every event carries observed_at, so a 7d view is a filter
+  // over the 30d list -- publishing both would duplicate ~6,300 events to save
+  // a comparison. The derivation makes the same argument for pulling once and
+  // slicing, one level up.
+  const widest = deriveDeregistrations(rows, {
+    since: generatedAt - lookbackDays * DAY_MS,
+  });
   return {
     schema_version: 1,
     generated_at: new Date(generatedAt).toISOString(),
@@ -1200,6 +1210,14 @@ async function computeChainDeregistrations(
     // Carried on the computed body and split off by the lane below, so the
     // expensive pull is paid for exactly once.
     hotkey_windows: hotkeyWindows,
+    // Same deal: the individual evictions the rollup counts, keyed by netuid,
+    // so "is MY uid at risk" is answerable at all (#9873).
+    uid_events: {
+      lookback_days: lookbackDays,
+      unattributed_registrations: widest.unattributed,
+      window_registrations: widest.registrations,
+      by_netuid: deregistrationsByNetuidUid(widest.events),
+    },
   };
 }
 
@@ -1209,7 +1227,11 @@ async function computeChainDeregistrations(
 function splitChainDeregistrations(
   body: Record<string, unknown>,
 ): Record<string, unknown> {
-  const { hotkey_windows: hotkeyWindows, ...rollup } = body;
+  const {
+    hotkey_windows: hotkeyWindows,
+    uid_events: uidEvents,
+    ...rollup
+  } = body;
   return {
     [CHAIN_DEREGISTRATIONS_PROJECTION_KEY]: rollup,
     [CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY]: {
@@ -1217,6 +1239,14 @@ function splitChainDeregistrations(
       generated_at: rollup.generated_at,
       lookback_days: rollup.lookback_days,
       windows: hotkeyWindows,
+    },
+    // A third object for the same reason the hotkey index is a second one:
+    // only the per-subnet scope reads it, and the rollup is ~8 KB against
+    // this one's per-event detail.
+    [CHAIN_DEREGISTRATIONS_UID_PROJECTION_KEY]: {
+      schema_version: rollup.schema_version,
+      generated_at: rollup.generated_at,
+      ...(uidEvents as Record<string, unknown>),
     },
   };
 }

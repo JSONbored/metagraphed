@@ -52,6 +52,7 @@ import {
 import {
   deregistrationRowsForHotkey,
   type DeregistrationDerivation,
+  type DeregistrationUidTuple,
 } from "./deregistration-derivation.ts";
 import { DEREGISTRATIONS_DEGRADED_NOT_DERIVED } from "./uncurated-event-streams.ts";
 
@@ -62,6 +63,16 @@ export const CHAIN_DEREGISTRATIONS_PROJECTION_KEY =
 /** The per-displaced-hotkey index, ~1.5 MB — read only by the account scope. */
 export const CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY =
   "metagraph/projections/chain-deregistrations-by-hotkey.json";
+
+/**
+ * The per-(netuid, uid) eviction index (#9873) — read only by the per-subnet
+ * scope.
+ *
+ * Widest window only: every tuple carries its own `observed_at`, so a narrower
+ * window is a filter rather than a second copy.
+ */
+export const CHAIN_DEREGISTRATIONS_UID_PROJECTION_KEY =
+  "metagraph/projections/chain-deregistrations-by-uid.json";
 
 interface ArtifactBucket {
   get(key: string): Promise<{ json(): Promise<unknown> } | null>;
@@ -95,6 +106,29 @@ async function readProjection(
   key: string,
   network: ChainNetworkId,
 ): Promise<Record<string, ProjectionWindow> | null> {
+  const body = await readProjectionBody(env, key, network);
+  const windows = body?.windows;
+  // A body that is not the artifact the lane wrote is a decline, not a
+  // guess -- same contract as the sibling chain-* readers.
+  if (typeof windows !== "object" || windows === null) return null;
+  return windows as Record<string, ProjectionWindow>;
+}
+
+/**
+ * The validated projection body, before any window unwrapping.
+ *
+ * The three objects this lane writes do NOT share one shape: the rollup and
+ * the per-hotkey index are keyed by window, while the per-uid index publishes
+ * a single widest-window list that readers slice by `observed_at` (#9873).
+ * Only `schema_version` is common, so that is all this checks -- pushing the
+ * `windows` requirement down here would silently decline the uid object on
+ * every call.
+ */
+async function readProjectionBody(
+  env: Env | null | undefined,
+  key: string,
+  network: ChainNetworkId,
+): Promise<Record<string, unknown> | null> {
   const bucket = (env as { METAGRAPH_ARCHIVE?: ArtifactBucket } | null)
     ?.METAGRAPH_ARCHIVE;
   if (!bucket?.get) return null;
@@ -103,18 +137,9 @@ async function readProjection(
     if (!object) return null;
     const body = (await object.json()) as {
       schema_version?: unknown;
-      windows?: unknown;
     } | null;
-    // A body that is not the artifact the lane wrote is a decline, not a
-    // guess -- same contract as the sibling chain-* readers.
-    if (
-      body?.schema_version !== 1 ||
-      typeof body.windows !== "object" ||
-      body.windows === null
-    ) {
-      return null;
-    }
-    return body.windows as Record<string, ProjectionWindow>;
+    if (body?.schema_version !== 1) return null;
+    return body as Record<string, unknown>;
   } catch {
     return null;
   }
@@ -203,8 +228,17 @@ export async function loadSubnetDeregistrationsFromArtifact(
   /** Which chain's projection to read (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ): Promise<Record<string, unknown> | null> {
+  // Two objects, one round trip. The counts come from the rollup the
+  // leaderboard ranks (so a subnet card can never disagree with its own row);
+  // the events come from the per-uid index. Neither read depends on the
+  // other's result -- only the SLICE depends on which window won -- so issuing
+  // them serially would buy nothing but latency (#9873).
+  const [rollup, evictions] = await Promise.all([
+    readProjection(env, CHAIN_DEREGISTRATIONS_PROJECTION_KEY, network),
+    readProjectionBody(env, CHAIN_DEREGISTRATIONS_UID_PROJECTION_KEY, network),
+  ]);
   const selected = selectWindow(
-    await readProjection(env, CHAIN_DEREGISTRATIONS_PROJECTION_KEY, network),
+    rollup,
     SUBNET_DEREGISTRATIONS_WINDOWS,
     DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
     query.window,
@@ -222,7 +256,64 @@ export async function loadSubnetDeregistrationsFromArtifact(
   });
   const derivation = derivationOf(selected.window);
   if (derivation) data.derivation = derivation;
+  // selectWindow only returns a label it found in SUBNET_DEREGISTRATIONS_WINDOWS,
+  // so this lookup cannot miss -- which is why the slice takes a plain number
+  // and carries no "window unknown" branch to guard.
+  data.events = subnetUidEvictions(
+    evictions,
+    target,
+    SUBNET_DEREGISTRATIONS_WINDOWS[selected.label]!,
+  );
   return data;
+}
+
+/**
+ * The individual evictions behind this subnet's count (#9873).
+ *
+ * WHY THE SCALAR WAS NOT ENOUGH. An operator asking "how likely is MY uid to be
+ * evicted, and how soon" cannot answer it from a subnet-wide rate. These rows
+ * carry which UID turned over, when, who lost it and who took it, so a caller
+ * can work out whether pruning is oldest-first, lowest-incentive-first or
+ * something else, and where they sit in that ordering. That is the reporter's
+ * own framing: they wanted to determine the rule, not be handed a score.
+ *
+ * DELIBERATELY NOT A RISK MODEL. Publishing a "pruning score" would be a model
+ * presented as a measurement -- the failure `is_lower_bound` and `derivation`
+ * exist to prevent (#9307).
+ *
+ * Sliced from the widest window: every tuple carries its own observed_at, so a
+ * 7d view is a filter over the published 30d list rather than a second copy.
+ * Returns [] when the projection is missing, which reads the same as "no slot
+ * changed hands" -- the sibling counts carry the degraded signal.
+ */
+function subnetUidEvictions(
+  projection: unknown,
+  netuid: number,
+  windowDays: number,
+): Record<string, unknown>[] {
+  const rows = (
+    projection as {
+      by_netuid?: Record<string, DeregistrationUidTuple[]>;
+    } | null
+  )?.by_netuid?.[String(netuid)];
+  if (!Array.isArray(rows)) return [];
+  const since = Date.now() - windowDays * 24 * 60 * 60 * 1000;
+  const out: Record<string, unknown>[] = [];
+  for (const tuple of rows) {
+    if (!Array.isArray(tuple) || tuple.length < 6) continue;
+    const [uid, hotkey, successor, block, observedAt, tenure] = tuple;
+    if (typeof observedAt !== "number" || observedAt < since) continue;
+    out.push({
+      uid,
+      // The DISPLACED holder -- this event is a deregistration OF this hotkey.
+      hotkey,
+      replaced_by_hotkey: successor,
+      block_number: block,
+      observed_at: new Date(observedAt).toISOString(),
+      tenure_blocks: tenure,
+    });
+  }
+  return out;
 }
 
 /**

@@ -10180,6 +10180,15 @@ export interface components {
                 window_registrations: number;
             };
             distinct_deregistered_hotkeys: number;
+            events?: {
+                block_number: number;
+                hotkey: string;
+                /** Format: date-time */
+                observed_at: string;
+                replaced_by_hotkey: string;
+                tenure_blocks: number | null;
+                uid: number;
+            }[];
             netuid: number;
             observed_at: string | null;
             schema_version: number;
@@ -38668,6 +38677,16 @@ export interface operations {
                      *           "window_registrations": 1
                      *         },
                      *         "distinct_deregistered_hotkeys": 1,
+                     *         "events": [
+                     *           {
+                     *             "block_number": 5000000,
+                     *             "hotkey": "example",
+                     *             "observed_at": "2026-06-01T00:00:00.000Z",
+                     *             "replaced_by_hotkey": "example",
+                     *             "tenure_blocks": 5000000,
+                     *             "uid": 1
+                     *           }
+                     *         ],
                      *         "netuid": 7,
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
                      *         "schema_version": 1,
