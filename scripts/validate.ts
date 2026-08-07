@@ -1271,6 +1271,25 @@ async function validateGeneratedArtifacts(
     "candidates artifact: count mismatch",
   );
 
+  // #9909: a build that discarded the committed schema index lost every
+  // captured schema in it -- get_api_schema, the agent catalog and
+  // operational-surfaces' schema_source all go empty, and until now that
+  // happened with nothing in the build log anyone had to act on.
+  //
+  // The control lives HERE rather than in the build because the fallback is a
+  // security property: a committed index that cannot be trusted must not be
+  // reused, and tests/artifacts-build-schema.test.ts models an attacker forging
+  // one. Throwing there would let a tampered file deny the whole pipeline. So
+  // the build degrades and records what it lost, and CI -- which a hostile file
+  // cannot reach -- refuses to pass on it.
+  const buildSummary = await readArtifactJson("build-summary.json");
+  const discard = buildSummary?.schema_index_discard as Row | null | undefined;
+  assert(
+    !discard || (discard.dropped_captured as number) === 0,
+    `the build discarded the committed schema index, dropping ${discard?.dropped_captured} captured schema(s): ${discard?.reason}. ` +
+      "Re-run the schema capture so the committed index matches the current surfaces.",
+  );
+
   // #9909: every SERVED display name must be the one subnetDisplayName resolves.
   //
   // This is an OUTCOME check, not a code check, and deliberately so. The same
