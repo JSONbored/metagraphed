@@ -11250,6 +11250,41 @@ describe("MCP economics + metagraph data tools", () => {
   // is still covered directly against the pure builder in
   // tests/chain-concentration.test.ts.
 
+  test("get_chain_concentration_subnets returns a schema-stable empty ranking on cold D1", async () => {
+    const res = await callTool("get_chain_concentration_subnets", {});
+    const out = res.body.result.structuredContent;
+    assert.equal(out.subnet_count, 0);
+    assert.deepEqual(out.subnets, []);
+    assert.equal(out.lens, "emission");
+    assert.equal(out.sort, "nakamoto_coefficient");
+    assert.equal(out.order, "desc");
+  });
+
+  test("get_chain_concentration_subnets echoes the caller's own query when cold", async () => {
+    // "your stake ranking is empty" and "here is an empty emission ranking you
+    // did not ask for" are different answers, and only one of them is true.
+    const res = await callTool("get_chain_concentration_subnets", {
+      lens: "entity_stake",
+      sort: "holders",
+      order: "asc",
+      limit: 3,
+    });
+    const out = res.body.result.structuredContent;
+    assert.equal(out.lens, "entity_stake");
+    assert.equal(out.sort, "holders");
+    assert.equal(out.order, "asc");
+    assert.equal(out.limit, 3);
+    assert.deepEqual(out.subnets, []);
+  });
+
+  test("get_chain_concentration_subnets rejects an out-of-enum argument", async () => {
+    // The zod inputSchema is the gate, so this never reaches the handler.
+    const res = await callTool("get_chain_concentration_subnets", {
+      lens: "vibes",
+    });
+    assert.equal(res.body.result?.isError ?? Boolean(res.body.error), true);
+  });
+
   test("get_chain_performance returns schema-stable null blocks on cold D1", async () => {
     const res = await callTool("get_chain_performance", {});
     const out = res.body.result.structuredContent;
@@ -21440,6 +21475,14 @@ describe("MCP chain-*/subnet-* analytics tools — Postgres tier wiring", () => 
       tool: "get_chain_concentration",
       args: {},
       path: "/api/v1/chain/concentration",
+    },
+    {
+      // #9717: the arguments must reach the tier as a query string -- a tool
+      // that forwards a bare path silently serves the default ranking to every
+      // caller, whatever they asked for.
+      tool: "get_chain_concentration_subnets",
+      args: { lens: "stake", sort: "gini", order: "asc", limit: 5 },
+      path: "/api/v1/chain/concentration/subnets?lens=stake&sort=gini&order=asc&limit=5",
     },
     {
       tool: "get_chain_performance",

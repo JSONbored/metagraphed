@@ -2994,6 +2994,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/concentration/subnets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetch every subnet ranked by distribution spread. Every subnet ranked by how widely one lens of its distribution is SPREAD (#9717) — the screening question a prospective miner actually asks, and the one that used to cost 129 requests. Per subnet: holders, the measured total, gini, hhi, hhi_normalized, nakamoto_coefficient, top1/top5/top10/top20 shares, entropy, plus neuron_count/entity_count/uids_per_entity. THE SAME COMPUTATION /subnets/{netuid}/concentration SERVES: this groups the neurons read by netuid and runs buildConcentration on each group, so a subnet's row here and its own detail route agree BY CONSTRUCTION rather than by two implementations staying in step — a SQL reimplementation of gini/nakamoto would agree until it quietly did not. DISTINCT FROM /chain/concentration, which performs this same read and then collapses every subnet into ONE network aggregate, discarding the per-subnet structure. DISTINCT FROM /chain/holders, which ranks alpha OWNERSHIP off the position ledger: who owns the token is a different question from who receives the emissions, and for "should I work here" it is the wrong one. ?lens= is emission, stake, entity_emission, entity_stake, validator_stake (default emission, the reward question) — ONE lens per response, because five scorecards across ~129 subnets is a payload nobody asked for and a flat row is what a sort can act on. ?sort= is nakamoto_coefficient, gini, holders, top_1pct_share, total, netuid (default nakamoto_coefficient). EACH SORT KEY HAS ITS OWN "WIDEST FIRST" DIRECTION and that is the default, because getting it wrong inverts the answer: a HIGH nakamoto coefficient means widely shared while a HIGH gini means the opposite. ?order= overrides. A subnet whose lens has no positive distribution sorts LAST in EITHER direction and is flagged unmeasured — riding its nulls up an ascending gini ranking would read as the most perfectly equal subnet on the network when in fact nothing was measured. limit caps the returned subnets (default 20, max 512) and the max sits above the subnet count on purpose, so ranking the whole network is one request. The network rollup carries dimension-free facts only — MEDIAN gini/nakamoto/top-1 share and how many subnets have a single holder taking the lens — because each subnet's alpha is a different token and a cross-subnet sum of it means nothing. Mainnet-only: the neurons tier carries no network dimension. */
+        get: operations["chainConcentrationSubnets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/deregistrations": {
         parameters: {
             query?: never;
@@ -7446,6 +7463,48 @@ export interface components {
             holders: number;
             nakamoto_coefficient: number | null;
             total: number;
+        } & {
+            [key: string]: unknown;
+        };
+        ChainConcentrationSubnetsArtifact: {
+            captured_at: string | null;
+            /** @enum {string} */
+            lens: "emission" | "stake" | "entity_emission" | "entity_stake" | "validator_stake";
+            limit: number;
+            measured_subnet_count: number;
+            network: {
+                median_gini: number | null;
+                median_nakamoto_coefficient: number | null;
+                median_top_1pct_share: number | null;
+                single_holder_subnet_count: number;
+            };
+            neuron_count: number;
+            /** @enum {string} */
+            order: "asc" | "desc";
+            returned: number;
+            schema_version: number;
+            /** @enum {string} */
+            sort: "nakamoto_coefficient" | "gini" | "holders" | "top_1pct_share" | "total" | "netuid";
+            subnet_count: number;
+            subnets: {
+                entity_count: number;
+                entropy: number | null;
+                entropy_normalized: number | null;
+                gini: number | null;
+                hhi: number | null;
+                hhi_normalized: number | null;
+                holders: number | null;
+                nakamoto_coefficient: number | null;
+                netuid: number;
+                neuron_count: number;
+                top_10pct_share: number | null;
+                top_1pct_share: number | null;
+                top_20pct_share: number | null;
+                top_5pct_share: number | null;
+                total: number | null;
+                uids_per_entity: number | null;
+                unmeasured: boolean;
+            }[];
         } & {
             [key: string]: unknown;
         };
@@ -35002,6 +35061,147 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ChainConcentrationHistoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    chainConcentrationSubnets: {
+        parameters: {
+            query?: {
+                lens?: "emission" | "stake" | "entity_emission" | "entity_stake" | "validator_stake";
+                sort?: "nakamoto_coefficient" | "gini" | "holders" | "top_1pct_share" | "total" | "netuid";
+                order?: "asc" | "desc";
+                /** @description Maximum number of rows to return in one page (at most 512). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "captured_at": "2026-06-01T00:00:00.000Z",
+                     *         "lens": "emission",
+                     *         "limit": 1,
+                     *         "measured_subnet_count": 1,
+                     *         "network": {
+                     *           "median_gini": 0.5,
+                     *           "median_nakamoto_coefficient": 0.5,
+                     *           "median_top_1pct_share": 0.5,
+                     *           "single_holder_subnet_count": 1
+                     *         },
+                     *         "neuron_count": 1,
+                     *         "order": "asc",
+                     *         "returned": 1,
+                     *         "schema_version": 1,
+                     *         "sort": "nakamoto_coefficient",
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "entity_count": 1,
+                     *             "entropy": 0.5,
+                     *             "entropy_normalized": 0.5,
+                     *             "gini": 0.5,
+                     *             "hhi": 0.5,
+                     *             "hhi_normalized": 0.5,
+                     *             "holders": 1,
+                     *             "nakamoto_coefficient": 1,
+                     *             "netuid": 7,
+                     *             "neuron_count": 1,
+                     *             "top_10pct_share": 0.5,
+                     *             "top_1pct_share": 0.5,
+                     *             "top_20pct_share": 0.5,
+                     *             "top_5pct_share": 0.5,
+                     *             "total": 1,
+                     *             "uids_per_entity": 0.5,
+                     *             "unmeasured": false
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainConcentrationSubnetsArtifact"];
                     };
                 };
             };

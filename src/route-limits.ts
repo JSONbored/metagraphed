@@ -200,3 +200,17 @@ export const DEFAULT_PIPELINE_HISTORY_WINDOW = "30d";
  */
 export const CANDIDATES_LIMIT_DEFAULT = 20;
 export const CANDIDATES_LIMIT_MAX = 1000;
+
+/**
+ * `/api/v1/chain/concentration/subnets` -- every subnet ranked by how widely
+ * one lens of its distribution is spread (#9717).
+ *
+ * Sized exactly like CHAIN_HOLDERS_LIMIT_*, and for the same reason: the
+ * collection is bounded by the network (one row per subnet, ~129 today), not by
+ * a scan. The default shows the tail a caller came for; the max sits above the
+ * subnet count on purpose, so "rank every subnet" is one request and is never
+ * silently truncated. Screening the whole network in a single call is the case
+ * this route exists for -- a ceiling below the subnet count would defeat it.
+ */
+export const CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT = 20;
+export const CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX = 512;

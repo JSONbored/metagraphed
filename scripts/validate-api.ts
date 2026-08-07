@@ -2046,6 +2046,31 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/chain/concentration/subnets",
+    (body) => {
+      assert.equal(body.data.schema_version, 1);
+      // The query is echoed back, so a caller can tell which ordering they are
+      // reading -- and so a cold-tier response says what it WOULD have ranked.
+      assert.equal(typeof body.data.lens, "string");
+      assert.equal(typeof body.data.sort, "string");
+      assert.equal(
+        body.data.order === "asc" || body.data.order === "desc",
+        true,
+      );
+      assert.equal(typeof body.data.subnet_count, "number");
+      assert.equal(typeof body.data.measured_subnet_count, "number");
+      assert.equal(typeof body.data.network, "object");
+      assert.equal(Array.isArray(body.data.subnets), true);
+      // A row always carries `unmeasured`, because "nobody earned anything
+      // measurable here" and "we did not measure" are different facts and the
+      // nulls alone cannot tell them apart.
+      for (const row of body.data.subnets) {
+        assert.equal(typeof row.netuid, "number");
+        assert.equal(typeof row.unmeasured, "boolean");
+      }
+    },
+  ],
+  [
     "/api/v1/chain/turnover",
     (body) => {
       assert.equal(body.data.schema_version, 1);

@@ -317,8 +317,14 @@ import {
   buildConcentration,
   buildChainConcentration,
   buildConcentrationHistory,
+  buildSubnetConcentrationRanking,
   parseConcentrationHistoryWindow,
+  parseConcentrationRankingQuery,
 } from "../../src/concentration.ts";
+import {
+  CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
+  CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
+} from "../../src/route-limits.ts";
 import { buildChainPerformance } from "../../src/chain-performance.ts";
 import { buildChainYield } from "../../src/chain-yield.ts";
 import { buildSelfHealth } from "../../src/self-health.ts";
@@ -1915,6 +1921,58 @@ export async function handleChainConcentration(
       meta: await metagraphMeta(
         env,
         "/metagraph/chain/concentration.json",
+        data.captured_at,
+      ),
+    },
+    "short",
+  );
+}
+
+// GET /api/v1/chain/concentration/subnets (#9717): every subnet RANKED by how
+// widely one lens of its distribution is spread — the screening question a
+// prospective miner asks, which used to cost 129 requests to /subnets/{netuid}/
+// concentration. Reads the same neurons rows /chain/concentration already pulls
+// and keeps them grouped by netuid instead of collapsing them into one
+// aggregate; the per-subnet scorecard comes from buildConcentration, the SAME
+// function the per-subnet route serves, so the two agree by construction.
+export async function handleChainConcentrationSubnets(
+  request: Request,
+  env: Env,
+  url: URL,
+) {
+  const validationError = validateQueryParams(url, [
+    "lens",
+    "sort",
+    "order",
+    "limit",
+  ]);
+  if (validationError) return analyticsQueryError(validationError);
+  // Rejected HERE, before the tier read, so a bad parameter costs a 400 rather
+  // than a ~30,000-row scan. The data-api side parses with this same function.
+  const query = parseConcentrationRankingQuery(url.searchParams, {
+    limitDefault: CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
+    limitMax: CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
+  });
+  if ("error" in query) return analyticsQueryError(query.error);
+
+  const data =
+    ((await tryPostgresTier(
+      env,
+      request,
+      "METAGRAPH_NEURONS_SOURCE",
+    )) as ReturnType<typeof buildSubnetConcentrationRanking> | null) ??
+    // A cold tier yields the schema-stable empty ranking rather than a 500 —
+    // the same posture handleChainConcentration takes. Built through the real
+    // builder so the shape is identical to a served one, echoing back the query
+    // that was asked rather than inventing a default the caller did not send.
+    buildSubnetConcentrationRanking([], query);
+  return envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/chain/concentration/subnets.json",
         data.captured_at,
       ),
     },

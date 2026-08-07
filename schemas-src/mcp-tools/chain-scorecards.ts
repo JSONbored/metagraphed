@@ -7,7 +7,82 @@
 // `{type:["object","null"]}` fields with no declared shape, which stay
 // untyped open objects here too (not "improved" with a guessed shape).
 import { z } from "zod";
-import { OpenObjectSchema, netuidSchema } from "./shared.ts";
+import {
+  OpenObjectSchema,
+  netuidSchema,
+  limitSchema,
+  orderSchema,
+  sortSchema,
+} from "./shared.ts";
+import {
+  CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
+  CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
+} from "../../src/route-limits.ts";
+
+// --- get_chain_concentration_subnets (#9717) ---------------------------------
+// The cross-subnet RANKING, as opposed to get_chain_concentration's single
+// network aggregate over the same read.
+
+const CONCENTRATION_LENSES = [
+  "emission",
+  "stake",
+  "entity_emission",
+  "entity_stake",
+  "validator_stake",
+] as const;
+
+const CONCENTRATION_RANKING_SORTS = [
+  "nakamoto_coefficient",
+  "gini",
+  "holders",
+  "top_1pct_share",
+  "total",
+  "netuid",
+] as const;
+
+export const GetChainConcentrationSubnetsInputSchema = z
+  .object({
+    lens: z
+      .enum(CONCENTRATION_LENSES)
+      .optional()
+      .describe(
+        "Which distribution to rank subnets by. `emission` (the default) is " +
+          "the reward question — who actually receives emissions. `stake` is " +
+          "who holds the alpha. The `entity_` variants collapse an operator's " +
+          "hotkeys into one holder, so a Sybil running twenty UIDs counts once.",
+      )
+      .meta({ examples: ["emission"] }),
+    sort: sortSchema(CONCENTRATION_RANKING_SORTS).optional(),
+    order: orderSchema().optional(),
+    limit: limitSchema(
+      CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
+      CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
+    ).optional(),
+  })
+  .strict();
+export type GetChainConcentrationSubnetsInput = z.infer<
+  typeof GetChainConcentrationSubnetsInputSchema
+>;
+
+export const GetChainConcentrationSubnetsOutputSchema = z
+  .object({
+    schema_version: z.int().optional(),
+    lens: z.string(),
+    sort: z.string(),
+    order: z.string(),
+    subnet_count: z.int(),
+    measured_subnet_count: z.int().optional(),
+    returned: z.int().optional(),
+    limit: z.int().optional(),
+    neuron_count: z.int().optional(),
+    captured_at: z.string().nullable().optional(),
+    network: OpenObjectSchema.nullable().optional(),
+    subnets: z.array(OpenObjectSchema),
+  })
+  .passthrough();
+export type GetChainConcentrationSubnetsOutput = z.infer<
+  typeof GetChainConcentrationSubnetsOutputSchema
+>;
 
 export const GetChainConcentrationInputSchema = z.object({}).strict();
 export type GetChainConcentrationInput = z.infer<

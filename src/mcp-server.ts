@@ -879,6 +879,8 @@ import {
 import {
   GetChainConcentrationInputSchema,
   GetChainConcentrationOutputSchema,
+  GetChainConcentrationSubnetsInputSchema,
+  GetChainConcentrationSubnetsOutputSchema,
   GetChainPerformanceInputSchema,
   GetChainPerformanceOutputSchema,
   GetChainIdleStakeInputSchema,
@@ -1058,8 +1060,14 @@ import {
   buildChainConcentration,
   buildConcentration,
   buildConcentrationHistory,
+  buildSubnetConcentrationRanking,
   parseConcentrationHistoryWindow,
+  parseConcentrationRankingQuery,
 } from "./concentration.ts";
+import {
+  CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
+  CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
+} from "./route-limits.ts";
 import { DOMAIN_TAGS } from "./domain-tags.ts";
 import { buildDomainOverview, buildDomainSummary } from "./domain-summary.ts";
 import { CHAIN_SIGNERS_SORTS } from "./chain-query-loaders.ts";
@@ -2175,6 +2183,10 @@ export const MCP_INSTRUCTIONS =
   "(directed pairs ranked by volume or count) with a network volume rollup, " +
   "get_chain_concentration " +
   "the network-wide stake/emission decentralization scorecard across all subnets, " +
+  "get_chain_concentration_subnets EVERY SUBNET RANKED by how widely its rewards " +
+  "(or stake) are spread -- holders, gini, nakamoto coefficient and top-K shares " +
+  "per subnet, the screening question a prospective miner asks, in one call " +
+  "instead of 129, " +
   "get_chain_performance the network-wide reward-distribution and trust/consensus " +
   "score spread across all subnets, get_chain_identity_history the network-wide " +
   "recent subnet-identity-change feed across all subnets, " +
@@ -5455,6 +5467,71 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           mcpNeuronsTierRequest("/api/v1/chain/concentration"),
           "METAGRAPH_NEURONS_SOURCE",
         )) ?? buildChainConcentration([])
+      );
+    },
+  },
+  {
+    name: "get_chain_concentration_subnets",
+    title: "Rank every subnet by how widely its rewards are spread",
+    description:
+      "Fetch EVERY subnet ranked by how widely one lens of its distribution is " +
+      "SPREAD — the screening question a prospective miner actually asks, in one " +
+      "call instead of 129 to get_subnet_concentration. Per subnet: holders, the " +
+      "measured total, gini, hhi, nakamoto_coefficient, top1/top5/top10/top20 " +
+      "shares, entropy, plus neuron_count/entity_count/uids_per_entity. THE SAME " +
+      "COMPUTATION get_subnet_concentration SERVES — the neurons read is grouped " +
+      "by netuid and each group runs through the same builder — so a subnet's row " +
+      "here and its own detail call agree by construction. DISTINCT FROM " +
+      "get_chain_concentration, which performs this same read and then collapses " +
+      "every subnet into ONE network aggregate. DISTINCT FROM get_chain_holders, " +
+      "which ranks alpha OWNERSHIP: who owns the token is a different question " +
+      'from who receives the emissions, and for "should I work here" it is the ' +
+      "wrong one. lens picks the distribution (emission by default — the reward " +
+      "question); ONE lens per response, because five scorecards across ~129 " +
+      "subnets is a payload nobody asked for. EACH SORT KEY DEFAULTS TO ITS OWN " +
+      '"WIDEST FIRST" DIRECTION, because a HIGH nakamoto coefficient means ' +
+      "widely shared while a HIGH gini means the opposite; order overrides. A " +
+      "subnet whose lens has no positive distribution sorts LAST in either " +
+      "direction and is flagged unmeasured, rather than riding its nulls to the " +
+      "top of an ascending gini ranking and reading as the most equal subnet on " +
+      "the network. The max limit sits above the subnet count on purpose, so " +
+      "ranking the whole network is one request. Mirrors GET " +
+      "/api/v1/chain/concentration/subnets.",
+    inputSchema: z.toJSONSchema(GetChainConcentrationSubnetsInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: unknown, ctx: McpCtx) {
+      const params = new URLSearchParams();
+      for (const key of ["lens", "sort", "order", "limit"] as const) {
+        const value = (args as Row | null | undefined)?.[key];
+        if (value != null) params.set(key, String(value));
+      }
+      // The published inputSchema shapes the JSON Schema and does NOT run at
+      // dispatch (validateToolArguments checks object-ness and unknown keys
+      // only), so every tool guards its own arguments by hand -- the settled
+      // convention #8942 measured and kept. Reusing the ROUTE's parser rather
+      // than writing a second guard is what stops the tool and the route from
+      // disagreeing about which values are legal.
+      const parsed = parseConcentrationRankingQuery(params, {
+        limitDefault: CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
+        limitMax: CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
+      });
+      if ("error" in parsed) {
+        throw toolError("invalid_params", parsed.error.message);
+      }
+      const query = params.toString();
+      return (
+        (await tryPostgresTier(
+          ctx.env,
+          mcpNeuronsTierRequest(
+            `/api/v1/chain/concentration/subnets${query ? `?${query}` : ""}`,
+          ),
+          "METAGRAPH_NEURONS_SOURCE",
+        )) ??
+        // Cold tier: the empty ranking echoes the CALLER's query, not the
+        // defaults -- "your stake ranking is empty" is a different statement
+        // from "here is an empty emission ranking you did not ask for".
+        buildSubnetConcentrationRanking([], parsed)
       );
     },
   },
@@ -13371,6 +13448,10 @@ const TOOL_OUTPUT_SCHEMAS = {
   get_chain_concentration: z.toJSONSchema(GetChainConcentrationOutputSchema, {
     target: "draft-2020-12",
   }),
+  get_chain_concentration_subnets: z.toJSONSchema(
+    GetChainConcentrationSubnetsOutputSchema,
+    { target: "draft-2020-12" },
+  ),
   get_chain_performance: z.toJSONSchema(GetChainPerformanceOutputSchema, {
     target: "draft-2020-12",
   }),
