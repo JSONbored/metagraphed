@@ -263,6 +263,24 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "webhook-subscription",
+      "path": "/metagraph/webhooks/subscriptions/{id}.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/WebhookSubscriptionArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "alert-trigger",
+      "path": "/metagraph/alerts/triggers/{id}.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/AlertTriggerArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "surface-verify",
       "path": "/metagraph/surfaces/{surface_id}/verify.json",
       "retirement": null,
@@ -2290,7 +2308,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 159,
+    "mainnet_only_route_count": 161,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -4416,6 +4434,38 @@
         "mainnet"
       ],
       "path": "/api/v1/ask",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/webhooks/subscriptions/{id}.json",
+      "cache": "short",
+      "description": "Read back one webhook subscription and its recent delivery outcomes. `delivery.status` is the one field to branch on: `ok` means nothing is outstanding, `retrying` means the queue has the event and will try again (not a loss), and `dead_letter` means an event will never arrive. `last_failure` carries the reason, the HTTP `status_code`, the attempt count and the next scheduled attempt, which is what a subscriber debugging a missed event actually needs. The id is a UUID v4 returned once at creation -- there is no listing route, and an id that was not kept cannot be recovered. Mirrored by the `get_webhook_subscription` MCP tool. Served live (no static file).",
+      "id": "webhook-subscription",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/webhooks/subscriptions/{id}",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/alerts/triggers/{id}.json",
+      "cache": "short",
+      "description": "Read back one alert trigger: what it watches (`table_filter` plus the four narrowing fields `netuid`, `event_kind`, `account`, `min_amount_tao` -- all nullable, so a trigger that sets none of them matches every event on its table), where it delivers (`channel`, `destination`), whether it is `active`, and its firing record. `last_matched_at` is null until the trigger has fired once, which is NOT the same as `match_count: 0` -- a trigger created and immediately disabled shows the latter too. Requires the owner token issued at creation; it is not recoverable if lost. Mirrored by the `get_alert_trigger` MCP tool. Served live (no static file).",
+      "id": "alert-trigger",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/alerts/triggers/{id}",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

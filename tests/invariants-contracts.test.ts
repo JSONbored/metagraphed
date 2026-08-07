@@ -161,6 +161,29 @@ describe("contracts — compileRoutePattern per token type", () => {
       ],
     },
     {
+      // #9967. One token serves both per-caller record routes, at the looser of
+      // their two shapes: /api/v1/webhooks/subscriptions/{id} takes a UUID v4
+      // and /api/v1/alerts/triggers/{id} an opaque string. Tightening this to
+      // a UUID would make the alerts route unmatchable -- which is the bug
+      // that hid both routes from the contract in the first place, since a
+      // template that matches nothing looks exactly like a route that is not
+      // registered.
+      token: "{id}",
+      group: "id",
+      template: "/api/v1/webhooks/subscriptions/{id}",
+      validPath:
+        "/api/v1/webhooks/subscriptions/3f2a1c6e-9b7d-4e21-8c5a-2d4f6b8e0a13",
+      captured: "3f2a1c6e-9b7d-4e21-8c5a-2d4f6b8e0a13",
+      invalid: [
+        // Empty, and a nested path -- an id may not swallow a slash, or a
+        // crafted path would reach the wrong handler.
+        "/api/v1/webhooks/subscriptions/",
+        "/api/v1/webhooks/subscriptions/abc/def",
+        // Leading punctuation: the class requires an alphanumeric first char.
+        "/api/v1/webhooks/subscriptions/-abc",
+      ],
+    },
+    {
       token: "{ss58}",
       group: "ss58",
       template: "/api/v1/accounts/{ss58}",

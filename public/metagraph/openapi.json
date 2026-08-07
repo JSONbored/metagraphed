@@ -1600,6 +1600,50 @@
           "schema_version": 1
         }
       },
+      "AlertTriggerArtifactResponse": {
+        "value": {
+          "data": {
+            "account": "example",
+            "active": false,
+            "channel": "example",
+            "created_at": "2026-06-01T00:00:00.000Z",
+            "destination": "example",
+            "event_kind": "example",
+            "id": "example",
+            "last_matched_at": "2026-06-01T00:00:00.000Z",
+            "match_count": 1,
+            "min_amount_tao": 0.5,
+            "name": "Example Subnet",
+            "netuid": 7,
+            "table_filter": "example",
+            "updated_at": "2026-06-01T00:00:00.000Z"
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
+      },
       "ApiIndexArtifactResponse": {
         "value": {
           "data": {
@@ -12386,6 +12430,49 @@
           "ok": true,
           "schema_version": 1
         }
+      },
+      "WebhookSubscriptionArtifactResponse": {
+        "value": {
+          "data": {
+            "active": false,
+            "created_at": "2026-06-01T00:00:00.000Z",
+            "delivery": {
+              "dead_letter": 1,
+              "last_failure": {},
+              "pending": 1,
+              "status": "ok"
+            },
+            "filters": {
+              "example": null
+            },
+            "id": "example",
+            "url": "https://api.metagraph.sh/example"
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
       }
     },
     "headers": {
@@ -17743,6 +17830,125 @@
           "copyable_agent",
           "mcp",
           "resources"
+        ],
+        "type": "object"
+      },
+      "AlertTriggerArtifact": {
+        "additionalProperties": {},
+        "properties": {
+          "account": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "destination": {
+            "type": "string"
+          },
+          "event_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "last_matched_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "match_count": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "min_amount_tao": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "netuid": {
+            "anyOf": [
+              {
+                "maximum": 65535,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "table_filter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "active"
         ],
         "type": "object"
       },
@@ -55125,6 +55331,136 @@
           "verified_at"
         ],
         "type": "object"
+      },
+      "WebhookSubscriptionArtifact": {
+        "additionalProperties": {},
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "delivery": {
+            "additionalProperties": {},
+            "properties": {
+              "dead_letter": {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              "last_failure": {
+                "anyOf": [
+                  {
+                    "additionalProperties": {},
+                    "properties": {
+                      "attempts": {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      "event_id": {
+                        "type": "string"
+                      },
+                      "last_attempt_at": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "next_attempt_at": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "reason": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "state": {
+                        "type": "string"
+                      },
+                      "status_code": {
+                        "anyOf": [
+                          {
+                            "maximum": 9007199254740991,
+                            "minimum": -9007199254740991,
+                            "type": "integer"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "pending": {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
+              },
+              "status": {
+                "enum": [
+                  "ok",
+                  "retrying",
+                  "dead_letter"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "pending",
+              "dead_letter"
+            ],
+            "type": "object"
+          },
+          "filters": {
+            "additionalProperties": {},
+            "properties": {},
+            "type": "object"
+          },
+          "id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "active"
+        ],
+        "type": "object"
       }
     }
   },
@@ -65653,6 +65989,112 @@
         "summary": "Fetch the AI-resources index: the copyable agent (/agent.md), the MCP server + its tools, the skill, llms.txt, OpenAPI, and the agent-facing APIs.",
         "tags": [
           "api-dx"
+        ],
+        "x-metagraphed-mainnet-only": true,
+        "x-metagraphed-networks": [
+          "mainnet"
+        ]
+      }
+    },
+    "/api/v1/alerts/triggers/{id}": {
+      "get": {
+        "operationId": "alertTrigger",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "AlertTriggerArtifactResponse": {
+                    "$ref": "#/components/examples/AlertTriggerArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AlertTriggerArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Read back one alert trigger: what it watches (`table_filter` plus the four narrowing fields `netuid`, `event_kind`, `account`, `min_amount_tao` -- all nullable, so a trigger that sets none of them matches every event on its table), where it delivers (`channel`, `destination`), whether it is `active`, and its firing record. `last_matched_at` is null until the trigger has fired once, which is NOT the same as `match_count: 0` -- a trigger created and immediately disabled shows the latter too. Requires the owner token issued at creation; it is not recoverable if lost. Mirrored by the `get_alert_trigger` MCP tool. Served live (no static file).",
+        "tags": [
+          "alerts"
         ],
         "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [
@@ -93410,6 +93852,113 @@
           "validators",
           "subnets",
           "analytics"
+        ],
+        "x-metagraphed-mainnet-only": true,
+        "x-metagraphed-networks": [
+          "mainnet"
+        ]
+      }
+    },
+    "/api/v1/webhooks/subscriptions/{id}": {
+      "get": {
+        "operationId": "webhookSubscription",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "WebhookSubscriptionArtifactResponse": {
+                    "$ref": "#/components/examples/WebhookSubscriptionArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/WebhookSubscriptionArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Read back one webhook subscription and its recent delivery outcomes. `delivery.status` is the one field to branch on: `ok` means nothing is outstanding, `retrying` means the queue has the event and will try again (not a loss), and `dead_letter` means an event will never arrive. `last_failure` carries the reason, the HTTP `status_code`, the attempt count and the next scheduled attempt, which is what a subscriber debugging a missed event actually needs. The id is a UUID v4 returned once at creation -- there is no listing route, and an id that was not kept cannot be recovered. Mirrored by the `get_webhook_subscription` MCP tool. Served live (no static file).",
+        "tags": [
+          "webhooks"
         ],
         "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [

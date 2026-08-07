@@ -542,6 +542,15 @@ export function apiRouteUrl(
     .replace("{ss58}", "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM")
     .replace("{hotkey}", "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM")
     .replace("{tag}", "inference")
+    // #9967. Synthetic and well-formed, the same shape {hash} and {h160} use:
+    // a valid UUID v4 that resolves nowhere. A REAL subscription/trigger id is
+    // another caller's private record and must never be committed, and there
+    // is no listing route to discover a safe one -- so the two routes taking
+    // this placeholder are excluded from the 200 sweep (see
+    // CALLER_OWNED_ROUTE_IDS) and probed for their documented error by
+    // scripts/validate-api.ts instead. This substitution exists so the URL is
+    // still fully formed, which is what the #1682 guard actually checks.
+    .replace("{id}", "00000000-0000-4000-8000-000000000000")
     .replace("{h160}", "0x0000000000000000000000000000000000000001");
   // Guard against the recurring #1682 class: any leftover `{` means a route
   // placeholder was never substituted, which silently 404s against a live URL
@@ -609,9 +618,35 @@ export function liveSmokeApiRoutes(
   return API_ROUTES.filter(
     (route) =>
       (route.method ?? "GET") === "GET" &&
-      (route.id !== "fixture-detail" || fixtureSurfaceId),
+      (route.id !== "fixture-detail" || fixtureSurfaceId) &&
+      !CALLER_OWNED_ROUTE_IDS.has(route.id),
   );
 }
+
+/**
+ * Routes this smoke structurally CANNOT assert a 200 on (#9967).
+ *
+ * Every check above asserts a cacheable public read. These two return one
+ * CALLER's own record, reached by an identifier that is minted once and never
+ * listed, behind a token only that caller holds:
+ *
+ *   /api/v1/webhooks/subscriptions/{id}  -- a UUID v4 handed back at creation
+ *   /api/v1/alerts/triggers/{id}         -- an owner-token-gated trigger
+ *
+ * There is no id that both exists and is safe to commit: a real one is another
+ * user's private record and would be a secret in the repo, and a synthetic one
+ * correctly answers 404/503 rather than 200. Skipping is not a gap in coverage
+ * -- `scripts/validate-api.ts` probes both at ids that resolve nowhere and
+ * asserts the documented error, which is the whole of what this smoke could
+ * honestly check anyway.
+ *
+ * Declared by id rather than filtered by shape so a new caller-owned route has
+ * to opt in deliberately.
+ */
+const CALLER_OWNED_ROUTE_IDS = new Set([
+  "webhook-subscription",
+  "alert-trigger",
+]);
 
 export async function discoverFixtureSurfaceId(): Promise<string | null> {
   const result = await fetchJson(`${baseUrl}/api/v1/fixtures`);

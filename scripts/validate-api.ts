@@ -190,6 +190,17 @@ const env = createLocalArtifactEnv({
           { status: 200, headers },
         );
       }
+      // #9967. An unknown id is a 404 upstream -- requireAlertTriggerOwner
+      // returns the SAME 404 for a nonexistent trigger and for one owned by
+      // someone else, so a caller cannot probe for other people's triggers.
+      // Mocked at that shape so the proxy's status->code mapping is what the
+      // check exercises.
+      if (/^\/api\/v1\/alerts\/triggers\//.test(pathname)) {
+        return new Response(JSON.stringify({ error: "not found" }), {
+          status: 404,
+          headers,
+        });
+      }
       if (pathname === "/api/v1/chain-events/stats") {
         return new Response(
           JSON.stringify({ window_blocks: 1000, groups: 0, activity: [] }),
@@ -2584,6 +2595,29 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     "/api/v1/search/semantic?q=developer%20tooling",
     (body) => assert.equal((body.error as Row).code, "ai_unavailable"),
     { expect_status: 503 },
+  ],
+  // --- The three routes #9967 documented ----------------------------------
+  // Each was SERVED and absent from the contract, which meant this table --
+  // and check-response-conformance, which skips a route with no spec entry --
+  // never looked at them. Probed with ids that resolve nowhere, the same
+  // posture as the surface-verify check below: the error still proves the
+  // route is registered and routed.
+  // The subscription store is a KV namespace this harness does not bind, so
+  // `webhooks_unavailable` IS the correct behaviour here -- same argument the
+  // two AI routes above make for their 503. It still proves the route is
+  // registered and routed.
+  [
+    "/api/v1/webhooks/subscriptions/3f2a1c6e-9b7d-4e21-8c5a-2d4f6b8e0a13",
+    (body) => assert.equal((body.error as Row).code, "webhooks_unavailable"),
+    { expect_status: 503 },
+  ],
+  // The proxy target is a service binding this harness does not stand up, so
+  // an upstream-unavailable verdict IS the correct behaviour here -- the same
+  // argument the two AI routes above make for their 503.
+  [
+    "/api/v1/alerts/triggers/definitely-not-a-trigger",
+    (body) => assert.equal((body.error as Row).code, "alert_trigger_not_found"),
+    { expect_status: 404 },
   ],
   // Probed with an id that resolves NOWHERE, on purpose. A real surface id
   // makes this a live outbound request to a third-party host (measured 252ms

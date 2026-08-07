@@ -150,15 +150,9 @@ export const MCP_TOOL_ROUTES: Readonly<Record<string, McpToolRoute>> = {
   get_validator_detail: { route: "/api/v1/validators/{hotkey}" },
   compare_validators: { route: "/api/v1/compare/validators" },
   get_webhook_subscription: {
-    route: null,
-    reason:
-      "SERVED at /api/v1/webhooks/subscriptions/{id} but absent from openapi.json -- see #9967.",
+    route: "/api/v1/webhooks/subscriptions/{id}",
   },
-  get_alert_trigger: {
-    route: null,
-    reason:
-      "SERVED at /api/v1/alerts/triggers/{id} but absent from openapi.json -- see #9967.",
-  },
+  get_alert_trigger: { route: "/api/v1/alerts/triggers/{id}" },
   get_validator_nominators: { route: "/api/v1/validators/{hotkey}/nominators" },
   get_validator_history: { route: "/api/v1/validators/{hotkey}/history" },
   get_neuron: { route: "/api/v1/subnets/{netuid}/neurons/{uid}" },
@@ -331,8 +325,17 @@ export const MCP_TOOL_ROUTES: Readonly<Record<string, McpToolRoute>> = {
   },
   query_graphql: {
     route: null,
+    // NOT a gap, and #9967 settled it on evidence rather than leaving the
+    // question open. /api/v1/graphql answers with
+    // `content-type: application/graphql-response+json` and a bare
+    // `{ data, errors }` -- the GraphQL-over-HTTP protocol, not this
+    // contract's `{ ok, schema_version, data }` envelope, and with neither an
+    // ETag nor a contract-version header. Modelling it as a REST route would
+    // publish a response shape production does not serve. Its schema is
+    // introspectable through the endpoint itself, which is the document that
+    // actually describes it.
     reason:
-      "SERVED at /api/v1/graphql but absent from openapi.json -- see #9967.",
+      "Speaks GraphQL-over-HTTP (application/graphql-response+json), not this contract's envelope; described by its own introspectable schema rather than by openapi.json.",
   },
   registry_summary: { route: "/api/v1/registry/summary" },
   get_coverage: { route: "/api/v1/coverage" },

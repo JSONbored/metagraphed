@@ -322,6 +322,28 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "One webhook subscription's own record, served live at GET /api/v1/webhooks/subscriptions/{id} (no static file -- it is one subscriber's record plus the delivery outcomes the queue wrote beside it). Carries the registered `url`, whether it is `active`, the caller-supplied `filters` echoed back, and a `delivery` summary: `status` (ok / retrying / dead_letter), how many events are `pending`, how many reached `dead_letter`, and the `last_failure` with its attempt count and next scheduled attempt. `retrying` is not a lost event -- the queue schedules the retry; `dead_letter` is the state that means an event will never arrive. There is no listing route: an id is returned once, at creation.",
+      "id": "webhook-subscription",
+      "path": "/metagraph/webhooks/subscriptions/{id}.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/WebhookSubscriptionArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "One alert trigger's own record, served live at GET /api/v1/alerts/triggers/{id} (no static file). Carries what the trigger watches -- `table_filter` and the four narrowing fields (`netuid`, `event_kind`, `account`, `min_amount_tao`), all nullable, so a trigger setting none of them matches every event on its table -- plus where it delivers (`channel`, `destination`), whether it is `active`, and its firing record (`last_matched_at`, `match_count`). `last_matched_at` is null until the trigger has fired once, which is distinct from a `match_count` of 0. Reading it back requires the owner token issued at creation.",
+      "id": "alert-trigger",
+      "path": "/metagraph/alerts/triggers/{id}.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/AlertTriggerArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "A catalog-resolved liveness probe of ONE registered surface, served live at /api/v1/surfaces/{surface_id}/verify (no static file -- a stored verdict would be a stale one). Deliberately not arbitrary URL fetching: the caller names a surface the registry already knows and the Worker probes the URL it has on file, echoing the resolved identity (`surface_key`, `netuid`, `kind`, `url`, `provider`, `auth_required`) beside the outcome so a client can see exactly what was called on its behalf. `status`/`classification`/`callable` are the verdict, `latency_ms`/`status_code`/`error` the evidence, and `from_cache` says whether this was a fresh probe. 404 surface_not_found when no catalogued surface matches the id.",
       "id": "surface-verify",
       "path": "/metagraph/surfaces/{surface_id}/verify.json",
@@ -2721,7 +2743,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 159,
+    "mainnet_only_route_count": 161,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },

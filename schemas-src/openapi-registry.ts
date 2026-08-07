@@ -479,6 +479,8 @@ import {
   EvidenceLedgerArtifactSchema,
   SubnetEvidenceArtifactSchema,
 } from "./routes/candidates-evidence.ts";
+import { WebhookSubscriptionArtifactSchema } from "./routes/webhooks.ts";
+import { AlertTriggerArtifactSchema } from "./routes/alert-triggers.ts";
 
 export const openApiComponentRegistry = z.registry<{ id: string }>();
 
@@ -609,6 +611,11 @@ register(AskArtifactSchema, "AskArtifact");
 // requestBodySchema argument in src/contracts.ts.
 register(AskRequestSchema, "AskRequest");
 register(SemanticSearchArtifactSchema, "SemanticSearchArtifact");
+// Three routes served since their features shipped and absent from this
+// document until #9967 -- each one NAMED in an MCP tool's own description, so
+// we were pointing agents at paths the contract did not describe.
+register(WebhookSubscriptionArtifactSchema, "WebhookSubscriptionArtifact");
+register(AlertTriggerArtifactSchema, "AlertTriggerArtifact");
 register(SurfaceVerifyArtifactSchema, "SurfaceVerifyArtifact");
 register(SubnetConcentrationArtifactSchema, "SubnetConcentrationArtifact");
 register(
@@ -1200,6 +1207,8 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "AskRequest",
   "SemanticSearchArtifact",
   "SurfaceVerifyArtifact",
+  "WebhookSubscriptionArtifact",
+  "AlertTriggerArtifact",
   // The last 27 (#9830) -- see the matching register() block above. With
   // these, the list stops being "the Zod-owned SUBSET of the published
   // components" and becomes simply the published components: there is no

@@ -154,30 +154,46 @@ describe("usageRouteLabel", () => {
   });
 
   // #9005 retargeted the :hash and :ss58 cases off /api/v1/internal/, which is
-  // now excluded outright and so can no longer demonstrate masking. The
-  // masking behaviour under test is unchanged -- only the example path is,
-  // and /api/v1/webhooks/ is a better one anyway: it is a REAL out-of-contract
-  // route that reaches this fallback in production, which /api/v1/internal/
-  // no longer does.
+  // now excluded outright and so can no longer demonstrate masking.
   test("masks identifier-shaped segments on routes outside the contract", () => {
-    // A synthetic path, deliberately. This case used `/api/v1/ask` until #9092
-    // registered it -- at which point the label correctly became its route id
-    // ("ask") and this assertion failed for the right reason. A fixture that
-    // depends on a real path STAYING unregistered rots the moment someone
-    // fixes the contract; one that can never be registered cannot.
+    // EVERY path here is synthetic, and that is the whole point.
+    //
+    // This case used `/api/v1/ask` until #9092 registered it, at which point
+    // the label correctly became its route id and the assertion failed. The
+    // lesson was written down -- "a fixture that depends on a real path
+    // STAYING unregistered rots the moment someone fixes the contract" -- and
+    // then the replacement used `/api/v1/webhooks/subscriptions/123`, a real
+    // path. #9967 registered it and this failed for the same right reason a
+    // second time.
+    //
+    // So: `/api/v1/not-a-route/...` for all of them. A path that can never be
+    // registered cannot rot, and masking is what is under test here, not the
+    // contract's membership.
     assert.equal(label("/api/v1/not-a-route"), "/api/v1/not-a-route");
+    assert.equal(label("/api/v1/not-a-route/123"), "/api/v1/not-a-route/:n");
     assert.equal(
-      label("/api/v1/webhooks/subscriptions/123"),
-      "/api/v1/webhooks/subscriptions/:n",
+      label("/api/v1/not-a-route/0xdeadbeefcafe"),
+      "/api/v1/not-a-route/:hash",
     );
     assert.equal(
-      label("/api/v1/webhooks/deliveries/0xdeadbeefcafe"),
-      "/api/v1/webhooks/deliveries/:hash",
+      label(`/api/v1/not-a-route/${SS58}`),
+      "/api/v1/not-a-route/:ss58",
     );
+  });
+
+  test("a REGISTERED route labels as its contract id, never a masked path", () => {
+    // The other half of the same behaviour, pinned so the next person does not
+    // rediscover it by breaking the test above. A contract route gets its
+    // stable id -- which is better than a masked path on both axes that matter
+    // here: it survives a path change, and it carries no identifier at all
+    // rather than a redacted one.
     assert.equal(
-      label(`/api/v1/webhooks/owners/${SS58}`),
-      "/api/v1/webhooks/owners/:ss58",
+      label(
+        "/api/v1/webhooks/subscriptions/3f2a1c6e-9b7d-4e21-8c5a-2d4f6b8e0a13",
+      ),
+      "webhook-subscription",
     );
+    assert.equal(label("/api/v1/alerts/triggers/anything"), "alert-trigger");
   });
 });
 
