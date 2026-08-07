@@ -183,6 +183,18 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
   // test doing its job: a new table arrived and was unwatched until named.
   // Pass ledgers are written with their parent table, so they share its
   // cadence.
+  // 0030, added while this map already existed -- the coverage test caught it
+  // the same way it caught 0029's pair. `neurons` is the 15-minute producer,
+  // so its pass ledger is the freshest of the four, but the threshold stays at
+  // the family's 36h: a pass table records COMPLETED passes, and a producer
+  // that stops mid-pass leaves the last completed one behind. Tightening this
+  // would alarm on the producer's cadence rather than on its failure.
+  neurons_passes: {
+    column: "captured_at",
+    kind: "ms",
+    maxAgeMs: 36 * HOUR,
+    reason: "written with neurons",
+  },
   nominator_positions_passes: {
     column: "captured_at",
     kind: "ms",
