@@ -4541,6 +4541,50 @@
             "minimum": 0,
             "type": "integer"
           }
+        },
+        {
+          "name": "sort",
+          "schema": {
+            "enum": [
+              "final_share",
+              "emission_share",
+              "weighted_share",
+              "gated_share",
+              "gate_delta",
+              "distance_to_bar",
+              "tao_in_emission",
+              "excess_tao",
+              "tao_total",
+              "liquidity_fraction",
+              "miner_burned",
+              "netuid"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "order",
+          "schema": {
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "maximum": 512,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "fields",
+          "schema": {
+            "type": "string"
+          }
         }
       ]
     },
@@ -8927,6 +8971,12 @@
               "30d"
             ],
             "type": "string"
+          }
+        },
+        {
+          "name": "include_points",
+          "schema": {
+            "type": "boolean"
           }
         }
       ]

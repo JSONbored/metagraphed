@@ -75,6 +75,17 @@ export const EMISSION_PIPELINE_BODY = {
   block_emission_tao: z.number().nullable(),
   block_emission_halvings: z.int().min(0).nullable(),
   subnets: z.array(SubnetEmissionDecompositionSchema),
+  // Present only when the caller narrowed the list with `limit`/`fields`
+  // (#9720), so today's body is byte-for-byte unchanged for everyone else.
+  // Published when they DO narrow it, because otherwise a 20-row page and a
+  // network that really has 20 subnets are the same response.
+  //
+  // The row schema above continues to describe the UNPROJECTED row: a `fields`
+  // projection returns a subset of these same keys, and this follows the
+  // convention /api/v1/economics already set rather than weakening the contract
+  // for every caller who does not project.
+  matched_subnet_count: z.int().min(0).optional(),
+  returned_subnet_count: z.int().min(0).optional(),
   aggregate: z
     .object({
       eligible_count: z.int().min(0),

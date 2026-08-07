@@ -1150,6 +1150,8 @@ import {
 import {
   EMISSION_PIPELINE_UNAVAILABLE_CODE,
   EMISSION_PIPELINE_UNAVAILABLE_MESSAGE,
+  narrowEmissionPipeline,
+  parseEmissionPipelineNarrowing,
   projectEmissionPipeline,
   resolveEmissionPipelineEconomics,
 } from "./emission-pipeline-surface.ts";
@@ -1491,6 +1493,11 @@ import {
   PIPELINE_HISTORY_WINDOWS,
 } from "./emission-pipeline-history.ts";
 import { DEFAULT_PIPELINE_HISTORY_WINDOW } from "./route-limits.ts";
+import {
+  EMISSION_PIPELINE_LIMIT_MAX,
+  EMISSION_PIPELINE_MCP_LIMIT_DEFAULT,
+} from "./route-limits.ts";
+import type { Row as FieldProjectionRow } from "./field-projection.ts";
 import {
   buildEmissionChanges,
   loadEmissionChanges,
@@ -5354,14 +5361,46 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         readArtifact: () =>
           loadOptionalArtifact(ctx, "/metagraph/economics.json"),
       });
-      const data = projectEmissionPipeline(economics, args?.netuid ?? null);
-      if (!data) {
+      const netuid = args?.netuid ?? null;
+      const surface = projectEmissionPipeline(economics, netuid);
+      if (!surface) {
         throw toolError(
           EMISSION_PIPELINE_UNAVAILABLE_CODE,
           EMISSION_PIPELINE_UNAVAILABLE_MESSAGE,
         );
       }
-      return data;
+      // #9720. The published inputSchema does not run at dispatch, so the tool
+      // guards with the ROUTE's parser rather than a second hand-written check
+      // -- the same reuse that keeps the two from disagreeing about which sort
+      // keys and field names are legal. `fields` is validated against the
+      // DECOMPOSED rows, which is why the projection runs first.
+      const params = new URLSearchParams();
+      for (const key of ["sort", "order", "fields"] as const) {
+        const value = (args as Row | null | undefined)?.[key];
+        if (value != null) params.set(key, String(value));
+      }
+      // The DEFAULT lives here and not on the REST route: a browser can stream
+      // 56 KB and a context window cannot. An explicit `netuid` already narrows
+      // to one subnet, so a default page on top of it would be noise.
+      const limit = (args as Row | null | undefined)?.limit;
+      params.set(
+        "limit",
+        String(
+          limit ??
+            (netuid === null
+              ? EMISSION_PIPELINE_MCP_LIMIT_DEFAULT
+              : EMISSION_PIPELINE_LIMIT_MAX),
+        ),
+      );
+      const narrowing = parseEmissionPipelineNarrowing(
+        params,
+        surface.subnets as unknown as FieldProjectionRow[],
+        { limitMax: EMISSION_PIPELINE_LIMIT_MAX },
+      );
+      if ("error" in narrowing) {
+        throw toolError("invalid_params", narrowing.error.message);
+      }
+      return narrowEmissionPipeline(surface, narrowing);
     },
   },
   {
@@ -8190,7 +8229,13 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         >[0],
         { windowHours: TAO_USD_WINDOWS[label] },
       );
-      return buildTaoUsdSeries(rows, { window: label });
+      // Defaults to FALSE here and to true on REST -- see the schema. The
+      // summary is computed over the whole window either way, so this narrows
+      // the response without narrowing the measurement.
+      return buildTaoUsdSeries(rows, {
+        window: label,
+        includePoints: args?.include_points === true,
+      });
     },
   },
   {

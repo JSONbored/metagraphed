@@ -214,3 +214,17 @@ export const CANDIDATES_LIMIT_MAX = 1000;
  */
 export const CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT = 20;
 export const CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX = 512;
+
+/**
+ * `/api/v1/chain/emission-pipeline` -- the v440 decomposition per subnet (#9720).
+ *
+ * A CEILING with no default: the collection is one row per subnet (~129 today)
+ * and the REST route has always served all of them, so imposing a default here
+ * would truncate every existing caller's body without their asking. The MCP
+ * tool carries the narrowing default instead -- a browser can stream 56 KB and
+ * a context window cannot, the same asymmetry CANDIDATES_LIMIT_DEFAULT is
+ * argued on. The max sits above the subnet count so "the whole pipeline" stays
+ * one request.
+ */
+export const EMISSION_PIPELINE_LIMIT_MAX = 512;
+export const EMISSION_PIPELINE_MCP_LIMIT_DEFAULT = 20;

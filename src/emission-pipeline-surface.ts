@@ -18,6 +18,119 @@ import {
   type EmissionDecomposition,
 } from "./emission-decomposition.ts";
 import { resolveLiveEconomics } from "./health-serving.ts";
+import {
+  parseFieldsParam,
+  projectRows,
+  unknownAgainstRows,
+  type Row,
+} from "./field-projection.ts";
+
+/**
+ * The per-subnet columns this surface can rank by (#9720).
+ *
+ * `final_share` leads deliberately. #9707 established that it, not
+ * `emission_share`, is the number that answers "where is the emission" --
+ * `emission_share` is the v440 STAGE-1 PRICE SHARE, and 52 subnets carry a
+ * positive one while receiving nothing. A ranking that offered only the
+ * stage-1 share would reproduce, on a new parameter, the exact defect that
+ * issue fixed on the leaderboard.
+ */
+export const EMISSION_PIPELINE_SORT_FIELDS = [
+  "final_share",
+  "emission_share",
+  "weighted_share",
+  "gated_share",
+  "gate_delta",
+  "distance_to_bar",
+  "tao_in_emission",
+  "excess_tao",
+  "tao_total",
+  "liquidity_fraction",
+  "miner_burned",
+  "netuid",
+] as const;
+export type EmissionPipelineSortField =
+  (typeof EMISSION_PIPELINE_SORT_FIELDS)[number];
+
+export interface EmissionPipelineNarrowing {
+  sort?: EmissionPipelineSortField | null;
+  order?: "asc" | "desc" | null;
+  limit?: number | null;
+  /** Already-parsed field names, or null for the full row. */
+  fields?: string[] | null;
+}
+
+/**
+ * Parse `?sort/order/limit/fields` for this surface.
+ *
+ * One parser for all three surfaces, same reason the projection is shared: the
+ * REST route, the GraphQL field and the MCP tool must not disagree about which
+ * values are legal. `fields` is validated against the ROWS rather than a fixed
+ * list, reusing the shared projection helper, so a column added to the
+ * decomposition is projectable the day it appears.
+ */
+export function parseEmissionPipelineNarrowing(
+  params: URLSearchParams,
+  rows: Row[],
+  { limitMax }: { limitMax: number },
+):
+  | EmissionPipelineNarrowing
+  | { error: { parameter: string; message: string } } {
+  const sort = params.get("sort");
+  if (
+    sort != null &&
+    !EMISSION_PIPELINE_SORT_FIELDS.includes(sort as EmissionPipelineSortField)
+  ) {
+    return {
+      error: {
+        parameter: "sort",
+        message: `"${sort}" is not a supported sort. Supported: ${EMISSION_PIPELINE_SORT_FIELDS.join(", ")}.`,
+      },
+    };
+  }
+  const order = params.get("order");
+  if (order != null && order !== "asc" && order !== "desc") {
+    return {
+      error: {
+        parameter: "order",
+        message: `"${order}" is not a supported order. Supported: asc, desc.`,
+      },
+    };
+  }
+  const rawLimit = params.get("limit");
+  let limit: number | null = null;
+  if (rawLimit != null && rawLimit !== "") {
+    const parsed = Number(rawLimit);
+    // Rejected rather than clamped: a caller who asked for 5000 and silently
+    // received 129 has a truncated list they believe is complete.
+    if (
+      !/^\d+$/.test(rawLimit.trim()) ||
+      !Number.isInteger(parsed) ||
+      parsed < 1 ||
+      parsed > limitMax
+    ) {
+      return {
+        error: {
+          parameter: "limit",
+          message: `limit must be an integer between 1 and ${limitMax}.`,
+        },
+      };
+    }
+    limit = parsed;
+  }
+  const fields = parseFieldsParam(
+    params,
+    unknownAgainstRows(rows),
+    "emission pipeline subnets",
+  );
+  if (fields.error) return { error: fields.error };
+  return {
+    sort: sort as EmissionPipelineSortField | null,
+    order,
+    limit,
+    fields: fields.fields,
+  };
+}
 
 /**
  * Why a capture with no `chain_state` is served as an error rather than as a
@@ -53,6 +166,9 @@ export interface EmissionPipelineSurface extends EmissionDecomposition {
    */
   schema_version: 1;
   field_sources: typeof EMISSION_FIELD_SOURCES;
+  /** Present only when {@link narrowEmissionPipeline} actually narrowed. */
+  matched_subnet_count?: number;
+  returned_subnet_count?: number;
 }
 
 interface EconomicsBlob {
@@ -118,5 +234,70 @@ export function projectEmissionPipeline(
         ? decomposition.subnets
         : decomposition.subnets.filter((subnet) => subnet.netuid === netuid),
     field_sources: EMISSION_FIELD_SOURCES,
+  };
+}
+
+/**
+ * Apply `sort`/`order`/`limit`/`fields` to an already-projected surface (#9720).
+ *
+ * Separate from the projection above, and downstream of it, for two reasons.
+ * The `fields` allow-list is derived from the DECOMPOSED rows, so the rows have
+ * to exist before the parameter can be validated -- and taking the surface
+ * rather than the blob means the caller projects once, never twice, so there is
+ * no second null-return to handle that cannot happen.
+ *
+ * NARROWING THE RESPONSE NEVER NARROWS THE MEASUREMENT. `aggregate` and
+ * `verification` arrive already computed over EVERY subnet and are passed
+ * through untouched, so a caller asking for ten rows still receives
+ * verification covering the whole distribution. An identity evaluated over a
+ * ten-row slice is not a thing that can be verified -- the same reason the
+ * pre-existing `netuid` filter leaves the aggregate network-wide.
+ */
+export function narrowEmissionPipeline(
+  surface: EmissionPipelineSurface,
+  narrowing: EmissionPipelineNarrowing = {},
+): EmissionPipelineSurface {
+  const matched = surface.subnets.length;
+  let subnets = surface.subnets;
+
+  if (narrowing.sort) {
+    const key = narrowing.sort;
+    // Largest-first by default for every key here: each is a magnitude ("how
+    // much of the emission", "how much TAO"), so desc is what the question
+    // means in all twelve cases -- unlike the concentration ranking, whose
+    // measures point in opposite directions and need per-key defaults.
+    const factor = narrowing.order === "asc" ? 1 : -1;
+    subnets = [...subnets].sort((a, b) => {
+      const left = (a as unknown as Row)[key];
+      const right = (b as unknown as Row)[key];
+      // A row missing the sort column sinks in EITHER direction rather than
+      // riding a null to the top of an ascending list.
+      const leftMissing = left == null || !Number.isFinite(Number(left));
+      const rightMissing = right == null || !Number.isFinite(Number(right));
+      if (leftMissing !== rightMissing) return leftMissing ? 1 : -1;
+      if (!leftMissing && Number(left) !== Number(right)) {
+        return (Number(left) - Number(right)) * factor;
+      }
+      return a.netuid - b.netuid;
+    });
+  }
+
+  const limited =
+    narrowing.limit != null ? subnets.slice(0, narrowing.limit) : subnets;
+  const narrowed = narrowing.limit != null || narrowing.fields != null;
+
+  return {
+    ...surface,
+    subnets: projectRows(
+      limited as unknown as Row[],
+      narrowing.fields,
+    ) as unknown as typeof surface.subnets,
+    // Published only when the list was actually narrowed, so today's body is
+    // byte-for-byte unchanged for every caller who does not narrow it -- and
+    // when they do, a 20-row page and a network that really has 20 subnets stop
+    // being the same response.
+    ...(narrowed
+      ? { matched_subnet_count: matched, returned_subnet_count: limited.length }
+      : {}),
   };
 }
