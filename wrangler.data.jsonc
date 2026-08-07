@@ -327,6 +327,31 @@
         "max_concurrency": 2,
         "dead_letter_queue": "sync-batches-dlq",
       },
+      // THE DEAD LETTER, finally read (metagraphed-infra#354/#363). It was
+      // declared above from the first deploy and consumed by nothing, so the
+      // one failure the migration to a queue was meant to make visible -- a
+      // chunk that exhausted every retry -- expired silently on the queue's
+      // own retention.
+      //
+      // SAME WORKER, and the handler branches on `batch.queue` BEFORE anything
+      // else. Without that branch this binding would hand a five-times-failed
+      // message back to the writer, which is a sixth attempt at the write that
+      // killed it.
+      //
+      // "max_retries": 0 because there is nothing to retry: the reader acks and
+      // records, and a failure to record must not put the message back. No
+      // dead_letter_queue of its own for the same reason -- a DLQ for the DLQ
+      // is a second place nobody looks.
+      {
+        "queue": "sync-batches-dlq",
+        // Bigger batch and a longer timeout than the live queue: this path is
+        // not latency-sensitive, and a burst of dead letters is exactly when
+        // reading them one small batch at a time is least useful.
+        "max_batch_size": 100,
+        "max_batch_timeout": 30,
+        "max_retries": 0,
+        "max_concurrency": 1,
+      },
     ],
   },
   "d1_databases": [

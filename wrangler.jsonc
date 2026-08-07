@@ -733,6 +733,25 @@
         "max_concurrency": 4,
         "dead_letter_queue": "webhook-deliveries-dlq",
       },
+      // THE DEAD LETTER, finally read (metagraphed-infra#354/#363). #354's bar
+      // was that "the DLQ holds what parking used to" -- but a parked record
+      // was READABLE by the subscriber through GET
+      // /api/v1/webhooks/subscriptions/{id}, and a dead-lettered message was
+      // readable by nobody. This is the half that was missing.
+      //
+      // SAME WORKER, and the handler branches on `batch.queue` BEFORE
+      // delivering. Without that branch this binding would POST an event at a
+      // subscriber who has already refused it eight times.
+      //
+      // "max_retries": 0 -- see the sync-batches-dlq consumer in
+      // wrangler.data.jsonc for the full argument; it is the same one.
+      {
+        "queue": "webhook-deliveries-dlq",
+        "max_batch_size": 100,
+        "max_batch_timeout": 30,
+        "max_retries": 0,
+        "max_concurrency": 1,
+      },
     ],
   },
   "durable_objects": {

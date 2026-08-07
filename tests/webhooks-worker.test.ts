@@ -1157,6 +1157,48 @@ describe("webhook queue consumer: the terminal and transient edges", () => {
     assert.deepEqual(acts, ["ack"], "no verdict is terminal, not a retry loop");
   });
 
+  test("a dead-letter batch is acked and NOT delivered (metagraphed-infra#363)", async () => {
+    // webhook-deliveries-dlq is bound to this same handler. Without the branch
+    // on batch.queue, an event a subscriber has already refused eight times
+    // would be POSTed at them a ninth -- the DLQ turned back into the retry
+    // loop it exists to end.
+    // `worker.queue` takes no injectable deliverer, so the observable proof is
+    // the DELIVERY RECORD: the live path writes one for every outcome, and the
+    // dead-letter path writes none. Asserting on a stubbed fetch would prove
+    // nothing here -- deliverChangeEvent closes over the global.
+    const { default: worker } = await import("../workers/api.ts");
+    const kv = makeKv();
+    const sub = await seedSubscription(kv, "https://hooks.example.com/a");
+    const acts: string[] = [];
+    await worker.queue!(
+      {
+        queue: "webhook-deliveries-dlq",
+        messages: [
+          {
+            body: {
+              subscription_id: sub.id,
+              event_id: "evt_1",
+              body: JSON.stringify({ type: "metagraph.publish" }),
+            },
+            attempts: 8,
+            ack: () => acts.push("ack"),
+            retry: () => acts.push("retry"),
+          },
+        ],
+      } as never,
+      envWith(kv) as unknown as Env,
+      { waitUntil: (p: Promise<unknown>) => void p } as never,
+    );
+    assert.deepEqual(acts, ["ack"]);
+    assert.deepEqual(
+      [...kv.store.keys()].filter((key) =>
+        key.startsWith(`webhooks:delivery:${sub.id}`),
+      ),
+      [],
+      "recorded as a dead letter, not run through delivery again",
+    );
+  });
+
   test("a body that is not JSON is acked, because it never will be", async () => {
     // Retrying it would spend the whole eight-attempt budget to dead-letter in
     // 12 hours what is already known to be undeliverable.

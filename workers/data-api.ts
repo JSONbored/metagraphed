@@ -416,6 +416,10 @@ import { MCP_TIERED_RATE_LIMIT } from "../src/mcp-server.ts";
 import { createPgSql } from "../src/pg-sql.ts";
 import { recordLaneVerdict } from "../src/lane-health.ts";
 import {
+  handleDeadLetterBatch,
+  isDeadLetterQueue,
+} from "../src/dead-letter.ts";
+import {
   classifySyncBatch,
   enqueueSyncBatch,
   packMultiFamilyMessage,
@@ -7291,6 +7295,15 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
+    // THE DEAD-LETTER BRANCH COMES FIRST (metagraphed-infra#354/#363). The DLQ
+    // is bound to this same handler, so without it a message that already
+    // failed five attempts would be handed to the writer again -- a sixth
+    // attempt wearing a different hat, writing rows whose write is what killed
+    // them. `handleDeadLetterBatch` acks and records; it never retries.
+    if (isDeadLetterQueue(batch.queue)) {
+      await handleDeadLetterBatch(batch, env.METAGRAPH_HEALTH_DB);
+      return;
+    }
     const { valid, invalid } = classifySyncBatch(batch.messages);
     // syncBatchRowCount, not `m.rows.length`: a multi-family message carries
     // `families` and no `rows` at all, so the direct read threw a TypeError HERE
