@@ -16,8 +16,8 @@ import {
   isCredentialedUrl,
   isValidUrl,
   normalizePublicHttpUrl,
-  nativeDisplayName,
   nativeNameQuality,
+  subnetDisplayName,
   listJsonFiles,
   listJsonFilesRecursive,
   cleanDescription,
@@ -780,9 +780,10 @@ function buildExpectedGeneratedSubnet(
     typeof nativeSubnet.raw_name === "string"
       ? nativeSubnet.raw_name
       : nativeSubnet.name || null;
-  const displayName =
-    overlay?.name ||
-    nativeDisplayName(nativeSubnet, `Subnet ${nativeSubnet.netuid}`);
+  // Same shared derivation the build uses -- this check compares its own
+  // recomputation against the build's output, so a second copy of this
+  // expression is exactly how the two come to disagree while both look right.
+  const displayName = subnetDisplayName(nativeSubnet, overlay?.name);
   const nativeSlug =
     nameQuality === "chain" && nativeName
       ? slugify(nativeName)
@@ -1843,15 +1844,29 @@ for (const subnet of subnets) {
   const native = chainIdentityByNetuid.get(subnet.netuid as number);
   const chainName = (native?.chain_identity as Row | undefined)?.subnet_name;
   if (!chainName) continue;
-  if (native?.native_name_quality !== "chain") continue;
+  // The TS classifier, not the capture's stored `native_name_quality`: the
+  // Python fetcher writes a weaker vocabulary and the BUILD recomputes with
+  // this one, so reading the stored value would warn about names the build
+  // itself treats as placeholders.
+  if (nativeNameQuality(native) !== "chain") continue;
   if (normIdentityName(subnet.name) === normIdentityName(chainName)) continue;
   identityDrift.push(
     `${subnet.slug} (netuid ${subnet.netuid}): curated "${subnet.name}" vs on-chain "${chainName}"`,
   );
 }
 if (identityDrift.length > 0) {
+  // HOUSEKEEPING, not a served defect. Since #9748 the display name follows the
+  // CHAIN (subnetDisplayName), so every subnet below already serves its
+  // on-chain name -- what is stale is the label stored in the manifest, which
+  // is now only consulted when the chain has nothing usable to say.
+  //
+  // Deliberately not auto-synced: validate-registry couples the filename AND
+  // the slug to `name`, so rewriting 31 labels would force 31 slug renames,
+  // and slugs appear in artifact paths, the search index and cross-references.
+  // Churning those to tidy a field nobody serves would trade a cosmetic
+  // inconsistency for a breaking one.
   console.warn(
-    `${identityDrift.length} subnet(s) whose curated name disagrees with their OWN on-chain identity — the chain is the operator's own declaration and outranks a curated label that has not caught up (#9748):\n  ${identityDrift.join("\n  ")}`,
+    `${identityDrift.length} manifest label(s) now stale against their own on-chain identity. The SERVED name already follows the chain (#9748); these are stored labels awaiting a slug rename, not wrong output:\n  ${identityDrift.join("\n  ")}`,
   );
 }
 

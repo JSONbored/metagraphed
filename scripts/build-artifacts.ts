@@ -46,6 +46,7 @@ import {
   nativeContactUrl,
   nativeDisplayName,
   nativeNameQuality,
+  subnetDisplayName,
   netuidForEvidenceClaim,
   normalizePublicHttpUrl,
   normalizePublicUrl,
@@ -2900,9 +2901,10 @@ function mergeSubnet(
     typeof nativeSubnet.raw_name === "string"
       ? nativeSubnet.raw_name
       : nativeSubnet.name || null;
-  const displayName =
-    overlay?.name ||
-    nativeDisplayName(nativeSubnet, `Subnet ${nativeSubnet.netuid}`);
+  // THE CHAIN NAMES THE SUBNET, the curated overlay is the fallback (#9748).
+  // One shared derivation with scripts/validate.ts's reproducibility check --
+  // see subnetDisplayName for why the precedence runs this way.
+  const displayName = subnetDisplayName(nativeSubnet, overlay?.name);
   const nativeSlug =
     nameQuality === "chain" && nativeName
       ? slugify(nativeName)
