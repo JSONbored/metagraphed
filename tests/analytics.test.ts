@@ -1070,8 +1070,6 @@ describe("formatTrajectory", () => {
 // and until this file changed, its guaranteed 503 was what the lane's verdict
 // was taken from -- so a healthy D1 write reported `stale` on every hourly
 // tick. These tests now assert against the write that actually happens.
-// The identity-history mirror (syncSubnetIdentityToPostgres, an unrelated
-// table) stays independent/best-effort exactly as before.
 describe("writeSubnetSnapshot", () => {
   const profiles = {
     ok: true,
@@ -1172,16 +1170,6 @@ describe("writeSubnetSnapshot", () => {
     assert.equal(r.ok, true);
     assert.equal(r.rows, 2); // null-netuid profile skipped
     assert.equal(r.date, "2026-06-10");
-  });
-  test("mirrors the same profiles into identity-sync, independent of the snapshot write", async () => {
-    const { env, captured } = snapshotEnv();
-    const r = await writeSubnetSnapshot(mockEnv(env), {
-      readArtifact: reader(profiles),
-      now: () => Date.UTC(2026, 5, 10),
-    });
-    assert.equal(r.ok, true);
-    assert.equal(r.rows, 2);
-    assert.deepEqual(captured.identity, profiles.data.profiles);
   });
   test("returns ok:false with the write's own reason when D1 fails", async () => {
     // The ONE way this can now fail. Before, it reported the Postgres POST's
