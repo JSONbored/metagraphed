@@ -18985,7 +18985,12 @@ describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () =
     const usage = body.data.rpc_usage;
     assert.equal(usage.window, "30d");
     assert.equal(usage.bucket_granularity, "6h");
-    assert.equal(usage.observed_at, "2026-07-10T00:00:00.000Z");
+    // The mocked upstream sends an ISO string and the composer normalises it to
+    // epoch ms on the way out (#9811). This arm forwards a tier's payload
+    // verbatim rather than building it, so it is the one path that could publish
+    // a stamp the composer never shaped -- which is the exact defect being
+    // fixed, so the composer states the type here too.
+    assert.equal(usage.observed_at, Date.parse("2026-07-10T00:00:00.000Z"));
     assert.equal(usage.summary.total_requests, 100);
     assert.equal(usage.summary.error_rate, 0.05);
     assert.equal(usage.summary.cache_hit_rate, 0.4);
@@ -19087,7 +19092,21 @@ describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () =
       METAGRAPH_HEALTH_DB: rpcUsageD1(),
     };
     const { body } = await gql(usageQuery(), env);
-    assert.equal(body.data.rpc_usage.observed_at, "2026-06-23T00:00:00.000Z");
+    // The KV holds an ISO string; the value is now normalised to epoch
+    // milliseconds before publication (#9794), so what used to surface here as
+    // "2026-06-23T00:00:00.000Z" is the parsed stamp.
+    //
+    // A NUMBER, matching REST and MCP (#9811). This used to arrive as a numeric
+    // string because src/graphql-sdl.ts declared `RpcUsage.observed_at: String`
+    // and GraphQL coerced -- one field, two representations across three
+    // surfaces. Float rather than Int because epoch millis overflow GraphQL's
+    // 32-bit Int, which is also why every sibling epoch-ms field on
+    // RpcUsageCoverage was already Float. observed_at was the odd one out
+    // inside its own type family.
+    assert.equal(
+      body.data.rpc_usage.observed_at,
+      Date.parse("2026-06-23T00:00:00.000Z"),
+    );
   });
 
   test("a D1 query error degrades to a schema-stable zeroed card (no throw)", async () => {

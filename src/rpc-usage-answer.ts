@@ -46,7 +46,11 @@
 // risking a double count.
 import { ANALYTICS_WINDOWS } from "../workers/config.ts";
 import { tryPostgresTier } from "../workers/postgres-tier.ts";
-import { formatRpcUsage, type RpcUsageSegment } from "./health-serving.ts";
+import {
+  epochMs,
+  formatRpcUsage,
+  type RpcUsageSegment,
+} from "./health-serving.ts";
 import { loadRpcUsage } from "./rpc-usage-loader.ts";
 import { loadRpcUsageColdTier, windowCutoffMs } from "./rpc-usage-cold-tier.ts";
 import { loadRpcUsageHotTier } from "./rpc-usage-hot-tier.ts";
@@ -336,7 +340,16 @@ export async function answerRpcUsage(
       postgresRequest,
       RPC_USAGE_SOURCE_FLAG,
     )) as Row | null;
-    if (postgres) return postgres;
+    // Normalised on the way out rather than trusted (#9794/#9811). This arm
+    // forwards an upstream payload verbatim instead of going through
+    // formatRpcUsage, so it is the one path that can publish a stamp this
+    // composer never shaped. The whole defect being fixed here was `observed_at`
+    // meaning different things depending on which tier answered, and a tier
+    // whose representation is taken on faith is how that happens -- so the
+    // composer states the type for every arm, including the ones it forwards.
+    if (postgres) {
+      return { ...postgres, observed_at: epochMs(postgres.observed_at) };
+    }
   }
 
   if (cold) return cold;

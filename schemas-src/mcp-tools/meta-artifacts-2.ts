@@ -5,12 +5,18 @@
 // their `GET_X_MCP_TOOL`/`GET_X_OUTPUT_SCHEMA` spread into mcp-server.ts's
 // MCP_TOOLS array); `get_coverage_depth` is defined inline in
 // src/mcp-server.ts. All four are no-input, baked-artifact passthrough
-// tools. None mirror an existing schemas-src/routes/ REST schema -- modeled
-// fresh, matching each hand-written literal field-for-field.
-// `get_coverage_depth`'s output declares NO `required` key at all (unlike
-// every sibling in this file, which declares an explicit list or an empty
-// array) -- a genuine, pre-existing difference, preserved as-is.
+// tools.
+//
+// This header used to say none of them "mirror an existing schemas-src/routes/
+// REST schema -- modeled fresh". For `get_coverage_depth` that was wrong:
+// CoverageDepthArtifactSchema in schemas-src/routes/coverage.ts models the same
+// artifact, and the fresh model disagreed with it on the type of
+// `coverage_depth_version` (#9794). It now reuses the route schema outright,
+// which also replaces its two bare open arrays with the row and queue-entry
+// shapes the route already declares. The remaining three are still local
+// models; #9796 covers deriving them.
 import { z } from "zod";
+import { CoverageDepthArtifactSchema } from "../routes/coverage.ts";
 import { SelfHealthArtifactSchema } from "../routes/self-health.ts";
 import { OpenObjectSchema } from "./shared.ts";
 
@@ -102,17 +108,17 @@ export type GetCoverageOutput = z.infer<typeof GetCoverageOutputSchema>;
 export const GetCoverageDepthInputSchema = z.object({}).strict();
 export type GetCoverageDepthInput = z.infer<typeof GetCoverageDepthInputSchema>;
 
-// No `required` key in the hand-written original, unlike this file's other
-// three tools.
-export const GetCoverageDepthOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    generated_at: z.string().nullable().optional(),
-    coverage_depth_version: z.string().nullable().optional(),
-    rows: z.array(OpenObjectSchema).optional(),
-    ranked_queue: z.array(OpenObjectSchema).optional(),
-  })
-  .passthrough();
+// DERIVED FROM THE ROUTE, NOT COPIED (#9794). The hand-written copy typed
+// `coverage_depth_version` as a string while CoverageDepthArtifactSchema in
+// schemas-src/routes/coverage.ts has always had `z.int().min(1)` and the served
+// value is `1`, so every response failed its own published schema.
+//
+// Reusing the artifact also stops this tool publishing `rows` and
+// `ranked_queue` as bare open arrays. The route declares CoverageDepthRowSchema
+// and CoverageDepthQueueEntrySchema in full, so an agent now gets the shape of
+// the thing it is ranking instead of {"type":"object"}. Verified against
+// production before the switch.
+export const GetCoverageDepthOutputSchema = CoverageDepthArtifactSchema;
 export type GetCoverageDepthOutput = z.infer<
   typeof GetCoverageDepthOutputSchema
 >;

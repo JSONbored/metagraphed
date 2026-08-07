@@ -1,10 +1,25 @@
 // MCP tool `get_economics_trends` (types-epic E batch 3, #8066). Mirrors
-// GET /api/v1/economics/trends, which is not one of schemas-src/routes/'s
-// covered pilot routes -- no existing Zod schema to reuse. Modeled fresh,
-// shallow, from the hand-written literal it replaces. Window enum
-// hardcoded from src/neuron-history.ts's HISTORY_WINDOWS at the time of
-// writing (mirrors get-subnet-turnover.ts's same precedent this batch).
+// GET /api/v1/economics/trends.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9794). This file used to re-declare the
+// response shape by hand, and its own header claimed there was "no existing Zod
+// schema to reuse" -- which stopped being true once schemas-src/routes/
+// economics-trends.ts landed, modelling the same bytes more precisely. The copy
+// never followed, and nothing detected the divergence: it typed
+// `total_stake_alpha` as a number, but network-wide alpha is summed in rao and
+// serialised at full precision ("345955059.947656252") because an IEEE double
+// cannot hold it. Every response failed its own published schema, and an agent
+// that trusted the schema parsed the wrong type.
+//
+// Reusing the artifact schema makes that class of drift impossible: a field
+// that changes shape in the route changes here, and a field that is renamed
+// stops compiling rather than silently disagreeing in production.
+//
+// The window enum below is still a local literal. It is duplicated across ten
+// schema files and is tracked separately in #9799 -- single-sourcing it is that
+// issue's job, not this one's.
 import { z } from "zod";
+import { EconomicsTrendsArtifactSchema } from "../routes/economics-trends.ts";
 import { windowSchema } from "./shared.ts";
 
 const HISTORY_WINDOWS = ["7d", "30d", "90d", "1y", "all"] as const;
@@ -18,29 +33,11 @@ export type GetEconomicsTrendsInput = z.infer<
   typeof GetEconomicsTrendsInputSchema
 >;
 
-// objectItems(...) properties, none required at the item level (see
-// search-subnets.ts's same note from the pilot batch).
-const EconomicsTrendsDaySchema = z
-  .object({
-    snapshot_date: z.string().nullable().optional(),
-    subnet_count: z.int().nullable().optional(),
-    total_stake_alpha: z.number().nullable().optional(),
-    alpha_price_tao_weighted: z.number().nullable().optional(),
-    alpha_price_tao_median: z.number().nullable().optional(),
-    validator_count: z.int().nullable().optional(),
-    miner_count: z.int().nullable().optional(),
-    mean_emission_share: z.number().nullable().optional(),
-  })
-  .passthrough();
-
-export const GetEconomicsTrendsOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    window: z.string().nullable(),
-    day_count: z.int(),
-    days: z.array(EconomicsTrendsDaySchema),
-  })
-  .passthrough();
+// The tool serves the route's artifact unchanged, so it publishes the route's
+// schema unchanged. Verified against production before the switch: every day
+// row the live tool returns satisfies this schema, including the precision
+// string that the hand-written copy rejected.
+export const GetEconomicsTrendsOutputSchema = EconomicsTrendsArtifactSchema;
 export type GetEconomicsTrendsOutput = z.infer<
   typeof GetEconomicsTrendsOutputSchema
 >;

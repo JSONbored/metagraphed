@@ -1068,6 +1068,7 @@ import {
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
 } from "./route-limits.ts";
+import { SUBNET_CONVICTION_FIELD_SOURCES } from "./subnet-conviction.ts";
 import { DOMAIN_TAGS } from "./domain-tags.ts";
 import { buildDomainOverview, buildDomainSummary } from "./domain-summary.ts";
 import { CHAIN_SIGNERS_SORTS } from "./chain-query-loaders.ts";
@@ -3099,6 +3100,18 @@ function narrowConviction(data: Row | null, netuid: number) {
     king: data?.king ?? null,
     count: data?.count ?? 0,
     leaderboard: Array.isArray(data?.leaderboard) ? data.leaderboard : [],
+    // #9794. This narrowing dropped it, so the MCP tool served LESS than REST
+    // for the same payload and failed its own published outputSchema on every
+    // call -- a schema whose comment says it mirrors the REST artifact "field
+    // for field". #9108's provenance is the whole point of the field: it says
+    // which values were read from chain and which were reconstructed, and an
+    // agent that cannot see that cannot tell the difference.
+    //
+    // Falls back to the builder's own constant rather than to undefined: both
+    // tiers compute the same conviction, so the vocabulary is the same either
+    // way, and a live-tier answer that arrived without the key must not be the
+    // one response that silently omits its provenance.
+    field_sources: data?.field_sources ?? SUBNET_CONVICTION_FIELD_SOURCES,
   };
 }
 

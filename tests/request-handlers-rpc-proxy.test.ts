@@ -16,6 +16,16 @@ import {
 } from "../workers/request-handlers/rpc-proxy.ts";
 import { MAX_RPC_BODY_BYTES } from "../workers/config.ts";
 
+// The health-meta KV's `last_run_at`, which is what this route hands the zeroed
+// floor as its freshness stamp. It is an ISO string here because that is what
+// the KV holds; the assertions below expect `Date.parse` of it, because the
+// PUBLISHED field is epoch milliseconds (#9794).
+//
+// It used to be published as-is, so `observed_at` was a number whenever a store
+// answered and this string whenever none did. These assertions were written
+// against that pass-through and so encoded the bug -- they are the reason it
+// survived. Asserting the parse keeps the fixture honest about what the KV
+// holds while pinning the contract to one type.
 const OBSERVED_AT = "2026-06-24T12:00:00.000Z";
 const SURFACE_ID = "sn-6-numinous-api-health";
 
@@ -136,7 +146,7 @@ describe("handleRpcUsage", () => {
     assert.equal(body.data.summary.total_requests, 0);
     assert.deepEqual(body.data.endpoints, []);
     assert.deepEqual(body.data.networks, []);
-    assert.equal(body.data.observed_at, OBSERVED_AT);
+    assert.equal(body.data.observed_at, Date.parse(OBSERVED_AT));
     assert.equal(body.meta.artifact_path, "/metagraph/rpc/usage.json");
   });
 
@@ -262,7 +272,7 @@ describe("handleRpcUsage", () => {
     );
     assert.equal(aeCalled, false);
     assert.equal(body.data.summary.total_requests, 0);
-    assert.equal(body.data.observed_at, OBSERVED_AT);
+    assert.equal(body.data.observed_at, Date.parse(OBSERVED_AT));
   });
 
   test("flag=postgres falls back to the empty payload when DATA_API fails", async () => {
@@ -720,7 +730,7 @@ describe("configureRpcProxy wiring", () => {
         url("/api/v1/rpc/usage"),
       ),
     );
-    assert.equal(body.data.observed_at, customObserved);
+    assert.equal(body.data.observed_at, Date.parse(customObserved));
   });
 });
 

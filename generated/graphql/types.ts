@@ -4645,7 +4645,8 @@ export type RpcUsage = {
   endpoints: Array<RpcUsageEndpoint>;
   /** Per-network request breakdown, ordered by request volume. */
   networks: Array<RpcUsageNetwork>;
-  observed_at?: Maybe<Scalars['String']['output']>;
+  /** Epoch ms of this reading, matching REST and MCP. Float rather than Int because epoch milliseconds overflow GraphQL's 32-bit Int, and the sibling epoch-ms fields on RpcUsageCoverage use Float for the same reason. Null when nothing measured it. */
+  observed_at?: Maybe<Scalars['Float']['output']>;
   schema_version: Scalars['Int']['output'];
   source?: Maybe<Scalars['String']['output']>;
   summary: RpcUsageSummary;
@@ -9481,7 +9482,7 @@ export type RpcUsageResolvers<ContextType = GqlContext, ParentType extends Resol
   coverage?: Resolver<ResolversTypes['RpcUsageCoverage'], ParentType, ContextType>;
   endpoints?: Resolver<Array<ResolversTypes['RpcUsageEndpoint']>, ParentType, ContextType>;
   networks?: Resolver<Array<ResolversTypes['RpcUsageNetwork']>, ParentType, ContextType>;
-  observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   summary?: Resolver<ResolversTypes['RpcUsageSummary'], ParentType, ContextType>;

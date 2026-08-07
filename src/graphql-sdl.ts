@@ -2064,7 +2064,8 @@ export const SDL = /* GraphQL */ `
     window: String
     "Time-bucket granularity for buckets: 1h for the 7d window, 6h for 30d. Null on a cold store."
     bucket_granularity: String
-    observed_at: String
+    "Epoch ms of this reading, matching REST and MCP. Float rather than Int because epoch milliseconds overflow GraphQL's 32-bit Int, and the sibling epoch-ms fields on RpcUsageCoverage use Float for the same reason. Null when nothing measured it."
+    observed_at: Float
     source: String
     "What the answer is actually about, as opposed to what window was asked for."
     coverage: RpcUsageCoverage!

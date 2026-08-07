@@ -23,6 +23,41 @@ describe("formatRpcUsage", () => {
     assert.deepEqual(out.networks, []);
   });
 
+  // #9794. `observed_at` used to change TYPE depending on which tier answered:
+  // the hot and cold tiers deal in epoch millis and rpc-usage-answer.ts takes a
+  // Math.max over both, but the zeroed floor is handed the health cron's
+  // `last_run_at`, an ISO string. So the published field was a number on a busy
+  // deployment and a string on a quiet one, no schema declared both, and
+  // nothing here asserted it either way -- which is why it went unnoticed until
+  // the route's own OpenAPI check caught it.
+  test("observed_at is epoch milliseconds whichever tier supplied it", () => {
+    const fromFloor = formatRpcUsage({
+      window: "7d",
+      observedAt: "2026-06-14T00:00:00Z",
+    }) as Row;
+    assert.equal(
+      fromFloor.observed_at,
+      Date.parse("2026-06-14T00:00:00Z"),
+      "the floor's ISO last_run_at is normalised, not passed through",
+    );
+
+    const fromTier = formatRpcUsage({
+      window: "7d",
+      observedAt: 1786099339000,
+    }) as Row;
+    assert.equal(fromTier.observed_at, 1786099339000, "millis pass through");
+
+    // "We don't know when" is a statement the schema can carry; NaN is not.
+    for (const value of [null, undefined, "", "not a date"]) {
+      assert.equal(
+        (formatRpcUsage({ window: "7d", observedAt: value }) as Row)
+          .observed_at,
+        null,
+        `${JSON.stringify(value)} yields null rather than NaN`,
+      );
+    }
+  });
+
   test("computes rates, ranks endpoints, and rounds latency/buckets", () => {
     const out = formatRpcUsage({
       window: "30d",

@@ -9341,7 +9341,11 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
-            observed_at?: string | null;
+            /**
+             * @description When this telemetry was observed, as epoch MILLISECONDS -- not an ISO-8601 string like this file's other observed_at fields. Request-scoped rather than build-scoped: it stamps the read, not a published artifact.
+             * @example 1786099339000
+             */
+            observed_at?: number | null;
             schema_version: number;
             source: string;
             summary: {
@@ -35600,7 +35604,7 @@ export interface operations {
                      *             "requests": 1
                      *           }
                      *         ],
-                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_at": 1,
                      *         "schema_version": 1,
                      *         "source": "live-cron-prober",
                      *         "summary": {

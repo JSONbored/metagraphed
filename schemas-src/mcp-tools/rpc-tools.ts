@@ -1,72 +1,20 @@
 // MCP tools `get_rpc_usage`, `get_best_rpc_endpoint`, `call_rpc`
 // (types-epic E batch 12, #8075). All three are defined inline in
-// src/mcp-server.ts's MCP_TOOLS array. None mirror an existing
-// schemas-src/routes/ REST schema -- modeled fresh, matching each
-// hand-written literal field-for-field. Unlike this epic's objectItems()-
-// built array items (which never declare item-level `required`),
-// get_rpc_usage's four nested shapes (summary/latency_ms/endpoints/
-// networks/buckets, formerly mcp-server.ts's own RPC_USAGE_* constants) DO
-// declare real item-level required fields -- preserved exactly, not loosened
-// to match this epic's usual item-shape convention.
+// src/mcp-server.ts's MCP_TOOLS array.
+//
+// This header used to say none of the three "mirror an existing
+// schemas-src/routes/ REST schema -- modeled fresh". For get_rpc_usage that was
+// wrong: RpcUsageArtifactSchema in schemas-src/routes/providers-rpc.ts models
+// the same bytes, and the fresh model disagreed with it on `observed_at`
+// (#9794). It now reuses the route schema outright.
 import { z } from "zod";
+import { RpcUsageArtifactSchema } from "../routes/providers-rpc.ts";
 import { McpNetworkSchema } from "../shared.ts";
 import { OpenObjectSchema, limitSchema, windowSchema } from "./shared.ts";
 import {
   SAFE_RPC_METHODS,
   SAFE_RPC_STATE_QUERY_METHODS,
 } from "../../workers/config.ts";
-
-const RpcUsageLatencyMsSchema = z
-  .object({
-    p50: z.int().nullable(),
-    p95: z.int().nullable(),
-    avg: z.int().nullable(),
-  })
-  .passthrough();
-
-const RpcUsageSummarySchema = z
-  .object({
-    total_requests: z.int().min(0),
-    ok_requests: z.int().min(0),
-    error_requests: z.int().min(0),
-    error_rate: z.number().nullable().optional(),
-    failover_requests: z.int().min(0).optional(),
-    failover_rate: z.number().nullable().optional(),
-    cache_hits: z.int().min(0).optional(),
-    cache_hit_rate: z.number().nullable().optional(),
-    latency_ms: RpcUsageLatencyMsSchema,
-  })
-  .passthrough();
-
-const RpcUsageEndpointItemSchema = z
-  .object({
-    rank: z.int().min(1).optional(),
-    endpoint_id: z.string().nullable(),
-    provider: z.string().nullable().optional(),
-    requests: z.int().min(0),
-    ok_requests: z.int().min(0),
-    error_rate: z.number().nullable().optional(),
-    avg_latency_ms: z.int().nullable().optional(),
-  })
-  .passthrough();
-
-const RpcUsageNetworkItemSchema = z
-  .object({
-    network: z.string(),
-    requests: z.int().min(0),
-    ok_requests: z.int().min(0),
-    error_rate: z.number().nullable().optional(),
-  })
-  .passthrough();
-
-const RpcUsageBucketItemSchema = z
-  .object({
-    ts: z.int().min(0),
-    requests: z.int().min(0),
-    errors: z.int().min(0),
-    avg_latency_ms: z.int().nullable(),
-  })
-  .passthrough();
 
 export const GetRpcUsageInputSchema = z
   .object({
@@ -75,46 +23,24 @@ export const GetRpcUsageInputSchema = z
   .strict();
 export type GetRpcUsageInput = z.infer<typeof GetRpcUsageInputSchema>;
 
-// The measured span, per contributing store -- see RpcUsageArtifactSchema in
-// schemas-src/routes/providers-rpc.ts for why `window` alone is not enough.
-const RpcUsageCoverageRangeItemSchema = z
-  .object({
-    start: z.int().nullable(),
-    end: z.int().nullable(),
-  })
-  .passthrough();
-
-const RpcUsageCoverageSegmentItemSchema = z
-  .object({
-    source: z.string(),
-    start: z.int().nullable(),
-    end: z.int().nullable(),
-  })
-  .passthrough();
-
-const RpcUsageCoverageItemSchema = z
-  .object({
-    start: z.int().nullable(),
-    end: z.int().nullable(),
-    segments: z.array(RpcUsageCoverageSegmentItemSchema),
-    latency_percentiles: RpcUsageCoverageRangeItemSchema.nullable(),
-  })
-  .passthrough();
-
-export const GetRpcUsageOutputSchema = z
-  .object({
-    schema_version: z.int(),
-    window: z.string().nullable().optional(),
-    bucket_granularity: z.string().nullable().optional(),
-    observed_at: z.string().nullable().optional(),
-    source: z.string(),
-    coverage: RpcUsageCoverageItemSchema,
-    summary: RpcUsageSummarySchema,
-    endpoints: z.array(RpcUsageEndpointItemSchema),
-    networks: z.array(RpcUsageNetworkItemSchema),
-    buckets: z.array(RpcUsageBucketItemSchema),
-  })
-  .passthrough();
+// DERIVED FROM THE ROUTE, NOT COPIED (#9794). This tool's `observed_at` is
+// EPOCH MILLISECONDS -- the served value is 1786099339000 -- and this file
+// declared a string, so every response failed its own published schema and an
+// agent was told to expect a date it could parse as text.
+//
+// The route contract said `string` too, so unlike the sibling fixes in #9794
+// this was not a copy drifting away from a correct source: the same field was
+// written wrong twice, independently, which is the clearest argument there is
+// for one declaration rather than two. Corrected at the source in
+// schemas-src/routes/providers-rpc.ts -- which fixes GET /api/v1/rpc/usage at
+// the same time -- and reused here. Verified against production after the
+// change.
+//
+// The nine hand-written item schemas this file used to carry (latency_ms,
+// summary, endpoints, networks, buckets and the three coverage shapes) are
+// gone with it: RpcUsageArtifactSchema declares all of them, so keeping local
+// copies would only recreate the divergence this issue exists to remove.
+export const GetRpcUsageOutputSchema = RpcUsageArtifactSchema;
 export type GetRpcUsageOutput = z.infer<typeof GetRpcUsageOutputSchema>;
 
 export const GetBestRpcEndpointInputSchema = z

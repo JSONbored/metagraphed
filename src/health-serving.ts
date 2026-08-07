@@ -863,9 +863,29 @@ export interface RpcUsageSegment {
 /** Epoch ms, or null when the input is not a usable reading. Every timestamp
  * `coverage` publishes goes through this, so a missing `min()`/`max()` from
  * either engine reads as "not measured" rather than as 1970. */
-function epochMs(value: unknown): number | null {
+/**
+ * Coerce a freshness stamp to epoch milliseconds, or null when there is none.
+ *
+ * Numeric input is tried first and behaves exactly as it always has, because
+ * the coverage bounds this was written for are already millis and a numeric
+ * STRING must stay a number -- `Date.parse("123")` is a valid date in year 123,
+ * which is not what a caller passing "123" means.
+ *
+ * The ISO fallback is for the zeroed floor (#9794), which is handed the health
+ * cron's `last_run_at` rather than a store's millis. Without it that stamp
+ * reached the published payload as a string, so `observed_at` was a number on a
+ * busy deployment and a string on a quiet one. Dropping it to null instead
+ * would be worse: the floor's stamp is the only freshness reading available
+ * when no store answered, and it is real.
+ */
+export function epochMs(value: unknown): number | null {
   const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : null;
+  if (Number.isFinite(n) && n > 0) return Math.trunc(n);
+  if (typeof value === "string" && value) {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+  return null;
 }
 
 /**
@@ -965,7 +985,15 @@ export function formatRpcUsage({
     schema_version: 1,
     window: window || null,
     bucket_granularity: bucketGranularity || null,
-    observed_at: observedAt || null,
+    // ALWAYS epoch milliseconds, whichever tier answered (#9794). The hot and
+    // cold tiers already agree on millis -- rpc-usage-answer.ts takes a
+    // Math.max over both -- but the zeroed floor is handed the health cron's
+    // `last_run_at`, which is an ISO STRING. So this one field changed type
+    // depending on whether any store had data: a number in production, a
+    // string whenever the floor answered. No schema declared both, and a
+    // client that switched on the type got a different answer on a quiet
+    // deployment than on a busy one.
+    observed_at: epochMs(observedAt),
     source: "rpc-proxy",
     coverage: formatCoverage(coverage),
     summary: {

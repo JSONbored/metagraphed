@@ -4646,6 +4646,65 @@ describe("MCP get_subnet_conviction (DATA_API binding)", () => {
     assert.deepEqual(out.leaderboard, []);
   });
 
+  // #9794. narrowConviction dropped `field_sources`, so this tool served LESS
+  // than REST for the same payload and failed its own published outputSchema on
+  // every call -- a schema that requires the key, and whose comment says it
+  // mirrors the REST artifact field for field. Provenance (#9108) is the whole
+  // point of the field: it says which values were read from chain and which
+  // were reconstructed, and an agent that cannot see that cannot tell the
+  // difference. Caught by validating production responses against their own
+  // published schemas; the local gate missed it (#9795).
+  test("publishes field_sources, and a tier that supplies its own wins", async () => {
+    const withoutProvenance = await callTool(
+      "get_subnet_conviction",
+      { netuid: 1 },
+      {
+        env: {
+          DATA_API: makeDataApi({
+            payload: {
+              schema_version: 1,
+              netuid: 1,
+              count: 0,
+              leaderboard: [],
+            },
+          }),
+        },
+      },
+    );
+    const fallback =
+      withoutProvenance.body.result.structuredContent.field_sources;
+    assert.ok(
+      fallback && typeof fallback === "object" && !Array.isArray(fallback),
+      "a tier that answers without provenance must not be the one response that silently omits it",
+    );
+
+    // Both tiers compute the same conviction, so the vocabulary is the same
+    // either way -- but a tier that states its own provenance is authoritative
+    // over the builder's constant.
+    const supplied = { conviction: { kind: "measured" } };
+    const withProvenance = await callTool(
+      "get_subnet_conviction",
+      { netuid: 1 },
+      {
+        env: {
+          DATA_API: makeDataApi({
+            payload: {
+              schema_version: 1,
+              netuid: 1,
+              count: 0,
+              leaderboard: [],
+              field_sources: supplied,
+            },
+          }),
+        },
+      },
+    );
+    assert.deepEqual(
+      withProvenance.body.result.structuredContent.field_sources,
+      supplied,
+    );
+  });
+
   test("rejects a missing/invalid netuid argument", async () => {
     const res = await callTool(
       "get_subnet_conviction",
