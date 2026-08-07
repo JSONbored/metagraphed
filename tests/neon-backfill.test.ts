@@ -237,16 +237,39 @@ describe("the deployed wiring", () => {
     assert.ok(wrangler.includes('"binding": "HYPERDRIVE"'));
   });
 
-  test("names only the two accumulating tables", () => {
-    // Naming a latest-only table would copy ~800,000 rows to prove they
-    // already agree: one producer cycle rewrites those whole.
-    const named = /"NEON_BACKFILL_LANES":\s*"([^"]*)"/.exec(wrangler)?.[1];
-    assert.deepEqual(named?.split(",").sort(), [
-      "account_position_daily",
-      "neuron_daily",
-    ]);
-    for (const table of named?.split(",") ?? []) {
-      assert.ok(NEON_BACKFILL_PLANS[table], `${table} has no plan`);
+  test("names only tables the mirror cannot finish on its own", () => {
+    // This used to hardcode the two accumulating tables, which stated the
+    // answer rather than the RULE and failed the moment #9814 added three
+    // more. The rule it was reaching for: naming a latest-only table that the
+    // mirror already covers would copy ~800,000 rows to prove they agree,
+    // because one producer cycle rewrites those whole.
+    //
+    // A table needs this lane when the mirror cannot finish the job -- either
+    // it ACCUMULATES (the mirror only ever covers the days it ran) or NOTHING
+    // MIRRORS IT AT ALL. subnet_hyperparams and account_identity are the
+    // second case: latest-only, but no dual-write lane writes them, so the
+    // reconciler is their only path into Neon.
+    const named =
+      /"NEON_BACKFILL_LANES":\s*"([^"]*)"/.exec(wrangler)?.[1]?.split(",") ??
+      [];
+    assert.ok(named.length > 0, "no backfill lanes named");
+
+    // Mirror lanes are hyphenated; the tables they write are underscored.
+    const mirrored = new Set(
+      (/"NEON_DUAL_WRITE_LANES":\s*"([^"]*)"/.exec(wrangler)?.[1] ?? "")
+        .split(",")
+        .map((l) => l.trim().replace(/-/g, "_"))
+        .filter(Boolean),
+    );
+
+    for (const table of named) {
+      const plan = NEON_BACKFILL_PLANS[table];
+      assert.ok(plan, `${table} has no plan`);
+      assert.ok(
+        plan.partition === "date" || !mirrored.has(table),
+        `${table} is latest-only AND mirrored, so the reconciler would copy ` +
+          `the whole table every tick to learn what the mirror already fixed`,
+      );
     }
   });
 });

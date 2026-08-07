@@ -121,9 +121,13 @@
     // `neurons` has no route asking for it yet, and `neuron_daily` is still
     // being backfilled.
     //
-    // Schema note: `neuron_daily` was created in Neon by hand on 2026-08-07
-    // before this flip, mirroring D1's DDL with Postgres types (SMALLINT for
-    // the 0/1 CHECK columns, BIGINT for the epoch-millisecond ones) and the
+    // Schema note: `neuron_daily` was created in Neon BY HAND on 2026-08-07,
+    // which is the practice migrations/neon/ + the `Neon migrate` workflow now
+    // end (#9814). This comment is why: it claimed SMALLINT for the 0/1 CHECK
+    // columns and information_schema reports BOOLEAN for every one of them, so
+    // the only written record of the schema had drifted from the schema. Read
+    // migrations/neon/*.sql instead. Postgres types otherwise as described --
+    // BIGINT for the epoch-millisecond columns -- and the
     // same PRIMARY KEY (netuid, uid, snapshot_date) the mirror's ON CONFLICT
     // names. An ON CONFLICT with no unique index behind it is a runtime error,
     // not a slower query.
@@ -200,7 +204,7 @@
     // Naming a latest-only table here would copy 800,000 rows to prove they
     // already agree, which is why this is a third flag rather than a reuse of
     // the write list.
-    "NEON_BACKFILL_LANES": "neuron_daily,account_position_daily",
+    "NEON_BACKFILL_LANES": "neuron_daily,account_position_daily,subnet_snapshots,subnet_hyperparams,account_identity",
     "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "d1",
     "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "d1",
     // THE QUEUE CUTOVER (metagraphed-infra#348). Comma-separated lanes whose D1
