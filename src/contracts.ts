@@ -31,7 +31,9 @@ import {
   EMISSION_CHANGES_LIMIT_MAX,
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
+  EMISSION_PIPELINE_LIMIT_MAX,
 } from "./route-limits.ts";
+import { EMISSION_PIPELINE_SORT_FIELDS } from "./emission-pipeline-surface.ts";
 import {
   CONCENTRATION_LENSES,
   CONCENTRATION_RANKING_SORTS,
@@ -2523,7 +2525,20 @@ export const API_ROUTES = [
     "short",
     ["subnets", "analytics"],
     {
-      parameters: [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+      parameters: [
+        { name: "netuid", schema: { type: "integer", minimum: 0 } },
+        { name: "sort", schema: enumSchema(EMISSION_PIPELINE_SORT_FIELDS) },
+        { name: "order", schema: enumSchema(["asc", "desc"]) },
+        {
+          name: "limit",
+          schema: {
+            type: "integer",
+            minimum: 1,
+            maximum: EMISSION_PIPELINE_LIMIT_MAX,
+          },
+        },
+        { name: "fields", schema: { type: "string" } },
+      ],
     },
     [],
   ),
@@ -3856,6 +3871,7 @@ export const API_ROUTES = [
         name: "window",
         schema: { type: "string", enum: ["1h", "24h", "7d", "30d"] },
       },
+      { name: "include_points", schema: { type: "boolean" } },
     ],
     [],
   ),

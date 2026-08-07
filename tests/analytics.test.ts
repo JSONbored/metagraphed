@@ -2097,6 +2097,62 @@ describe("emission-pipeline route", () => {
     assert.equal(body.error.code, "emission_pipeline_unavailable");
   });
 
+  test("narrows with sort/order/limit/fields, and reports what it narrowed (#9720)", async () => {
+    const env = envWithEconomics({
+      chain_state: CHAIN_STATE,
+      subnets: SUBNETS,
+    } as Row);
+    const base = "https://api.metagraph.sh/api/v1/chain/emission-pipeline";
+
+    // Unnarrowed: today's body, and no count fields at all.
+    const plain = await getJson(base, env);
+    assert.equal(plain.body.data.subnets.length, 2);
+    assert.equal("matched_subnet_count" in plain.body.data, false);
+
+    // final_share, not emission_share -- #9707's distinction, now sortable.
+    const ranked = await getJson(`${base}?sort=final_share`, env);
+    assert.ok(
+      ranked.body.data.subnets[0].final_share >=
+        ranked.body.data.subnets[1].final_share,
+    );
+
+    const paged = await getJson(`${base}?sort=final_share&limit=1`, env);
+    assert.equal(paged.body.data.subnets.length, 1);
+    assert.equal(paged.body.data.matched_subnet_count, 2);
+    assert.equal(paged.body.data.returned_subnet_count, 1);
+    // A one-row page must not silently redefine the network split, exactly as
+    // the ?netuid filter above does not.
+    assert.equal(paged.body.data.aggregate.eligible_count, 2);
+    assert.deepEqual(
+      paged.body.data.verification,
+      plain.body.data.verification,
+    );
+
+    const projected = await getJson(`${base}?fields=netuid,final_share`, env);
+    for (const row of projected.body.data.subnets) {
+      assert.deepEqual(Object.keys(row).sort(), ["final_share", "netuid"]);
+    }
+  });
+
+  test("rejects a bad sort, order, limit or field rather than ignoring it (#9720)", async () => {
+    const env = envWithEconomics({
+      chain_state: CHAIN_STATE,
+      subnets: SUBNETS,
+    } as Row);
+    const base = "https://api.metagraph.sh/api/v1/chain/emission-pipeline";
+    for (const qs of [
+      "sort=whatever",
+      "order=sideways",
+      "limit=0",
+      "limit=99999",
+      "limit=abc",
+      "fields=netuid,not_a_column",
+    ]) {
+      const { status } = await getJson(`${base}?${qs}`, env);
+      assert.equal(status, 400, `${qs} should have been rejected`);
+    }
+  });
+
   test("rejects an unsupported or malformed query param", async () => {
     const env = envWithEconomics({
       chain_state: CHAIN_STATE,

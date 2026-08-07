@@ -35,9 +35,13 @@ import { loadEconomicsTrends } from "../../src/economics-trends.ts";
 import {
   EMISSION_PIPELINE_UNAVAILABLE_CODE,
   EMISSION_PIPELINE_UNAVAILABLE_MESSAGE,
+  narrowEmissionPipeline,
+  parseEmissionPipelineNarrowing,
   projectEmissionPipeline,
   resolveEmissionPipelineEconomics,
 } from "../../src/emission-pipeline-surface.ts";
+import { EMISSION_PIPELINE_LIMIT_MAX } from "../../src/route-limits.ts";
+import type { Row as FieldProjectionRow } from "../../src/field-projection.ts";
 import { economicsCurrentKvReader } from "./analytics.ts";
 import {
   COMPARE_DIMENSIONS,
@@ -1171,7 +1175,13 @@ export async function handleEmissionPipeline(
   env: Env,
   url: URL,
 ): Promise<Response> {
-  const validationError = validateQueryParams(url, ["netuid"]);
+  const validationError = validateQueryParams(url, [
+    "netuid",
+    "sort",
+    "order",
+    "limit",
+    "fields",
+  ]);
   if (validationError) return analyticsQueryError(validationError);
   const netuidResult = parseNonNegativeIntParam(
     url.searchParams.get("netuid"),
@@ -1189,14 +1199,30 @@ export async function handleEmissionPipeline(
     },
   });
 
-  const data = projectEmissionPipeline(economics, netuidResult.value);
-  if (!data) {
+  // #9720: 129 subnets x 16 fields is ~56 KB, and ?netuid was the only filter
+  // -- it narrows to ONE subnet or leaves all of them. `fields` is validated
+  // against the DECOMPOSED rows, so parse it after the projection has produced
+  // them, then re-project with the narrowing applied. Two passes over 129 rows
+  // is not worth a bespoke path.
+  const surface = projectEmissionPipeline(economics, netuidResult.value);
+  if (!surface) {
     return errorResponse(
       EMISSION_PIPELINE_UNAVAILABLE_CODE,
       EMISSION_PIPELINE_UNAVAILABLE_MESSAGE,
       503,
     );
   }
+  // #9720: 129 subnets x 16 fields is ~56 KB, and ?netuid was the only filter
+  // -- it narrows to ONE subnet or leaves all of them. `fields` is validated
+  // against the DECOMPOSED rows, which is why this runs after the projection
+  // rather than before it.
+  const narrowing = parseEmissionPipelineNarrowing(
+    url.searchParams,
+    surface.subnets as unknown as FieldProjectionRow[],
+    { limitMax: EMISSION_PIPELINE_LIMIT_MAX },
+  );
+  if ("error" in narrowing) return analyticsQueryError(narrowing.error);
+  const data = narrowEmissionPipeline(surface, narrowing);
 
   return await envelopeResponse(
     request,

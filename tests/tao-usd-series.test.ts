@@ -446,6 +446,52 @@ describe("buildTaoUsdSeries", () => {
   });
 });
 
+describe("buildTaoUsdSeries — include_points (#9720)", () => {
+  // `observed_at` is epoch ms on the wire, newest first -- the shape
+  // loadTaoUsdSeries returns.
+  const BASE = Date.parse("2026-08-07T00:00:00.000Z");
+  const rows = [
+    { observed_at: BASE + 120_000, block_number: 3, usd_per_tao: 200 },
+    { observed_at: BASE + 60_000, block_number: 2, usd_per_tao: null },
+    { observed_at: BASE, block_number: 1, usd_per_tao: 100 },
+  ];
+
+  test("the series rides along by default", () => {
+    const card = buildTaoUsdSeries(rows, { window: "24h" });
+    assert.equal(Array.isArray(card.points), true);
+    assert.equal((card.points as Row[]).length, 3);
+  });
+
+  test("include_points false OMITS the key, never empties it", () => {
+    // An empty array is indistinguishable from a window that priced nothing.
+    // Absence is the only shape that says "you asked not to be sent these".
+    const card = buildTaoUsdSeries(rows, {
+      window: "24h",
+      includePoints: false,
+    });
+    assert.equal("points" in card, false);
+  });
+
+  test("NARROWING THE RESPONSE NEVER NARROWS THE MEASUREMENT", () => {
+    // Every summary must be computed over the FULL window either way -- the
+    // whole value of the toggle is that dropping the series costs nothing.
+    const withPoints = buildTaoUsdSeries(rows, { window: "24h" });
+    const without = buildTaoUsdSeries(rows, {
+      window: "24h",
+      includePoints: false,
+    });
+    const { points: _dropped, ...summary } = withPoints as Row;
+    assert.deepEqual(without, summary);
+    // Spelled out, because these are the numbers a caller keeps.
+    assert.equal(without.point_count, 3);
+    assert.equal(without.priced_point_count, 2);
+    assert.equal(without.change_usd, 100);
+    assert.equal(without.change_pct, 1);
+    assert.equal((without.latest as Row).usd_per_tao, 200);
+    assert.equal(without.oldest_observed_at, new Date(BASE).toISOString());
+  });
+});
+
 describe("GET /api/v1/network/tao-usd", () => {
   const get = (p: string, e?: Env) =>
     handleRequest(
@@ -479,6 +525,41 @@ describe("GET /api/v1/network/tao-usd", () => {
     const data = await body(await get("/api/v1/network/tao-usd?window=1h"));
     assert.equal(data.point_count, 0);
     assert.equal(data.latest, null);
+  });
+
+  test("REST keeps sending the points unless asked not to (#9720)", async () => {
+    // The REST default is deliberately UNCHANGED: a browser can stream the
+    // series and every existing caller expects it.
+    reading(0, 196.17);
+    reading(60_000, 196.2, 99);
+    const kept = await body(await get("/api/v1/network/tao-usd"));
+    assert.equal((kept.points as Row[]).length, 2);
+
+    const dropped = await body(
+      await get("/api/v1/network/tao-usd?include_points=false"),
+    );
+    assert.equal("points" in dropped, false);
+    // The summary survives intact, which is the point.
+    assert.equal(dropped.point_count, 2);
+    assert.equal((dropped.latest as Row).usd_per_tao, 196.17);
+
+    const explicit = await body(
+      await get("/api/v1/network/tao-usd?include_points=true"),
+    );
+    assert.equal((explicit.points as Row[]).length, 2);
+  });
+
+  test("include_points is STRICT — a near-miss is a 400, not a silent true", async () => {
+    // `raw === "true"` would read every one of these as false or as true by
+    // accident, and a toggle whose job is "send me less" that silently ignores
+    // its own value is the defect this route is being changed to fix.
+    for (const value of ["FALSE", "0", "1", "no", "yes", "True"]) {
+      assert.equal(
+        (await get(`/api/v1/network/tao-usd?include_points=${value}`)).status,
+        400,
+        `include_points=${value} should have been rejected`,
+      );
+    }
   });
 
   test("the exact-path match does not swallow a neighbouring path", async () => {
@@ -537,6 +618,11 @@ describe("tao_usd over GraphQL and MCP", () => {
     )) as Row;
     assert.equal(card.window, DEFAULT_TAO_USD_WINDOW);
     assert.equal((card.latest as Row).usd_per_tao, 196.17);
+    // #9720: the MCP tool defaults include_points to FALSE while REST defaults
+    // it to true. A browser can stream 143 KB and a context window cannot, so
+    // the surface with the hard constraint carries the default.
+    assert.equal("points" in card, false);
+    assert.equal(card.point_count, 1);
     // A model must not substitute 0 for an unpriceable block.
     assert.match(tool.description, /never as a zero price/);
   });

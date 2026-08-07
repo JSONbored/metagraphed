@@ -12,6 +12,9 @@ import { describe, test } from "vitest";
 import {
   EMISSION_PIPELINE_UNAVAILABLE_CODE,
   EMISSION_PIPELINE_UNAVAILABLE_MESSAGE,
+  EMISSION_PIPELINE_SORT_FIELDS,
+  narrowEmissionPipeline,
+  parseEmissionPipelineNarrowing,
   projectEmissionPipeline,
   resolveEmissionPipelineEconomics,
 } from "../src/emission-pipeline-surface.ts";
@@ -104,6 +107,226 @@ describe("emission-pipeline surface — projectEmissionPipeline", () => {
     assert.equal(projectEmissionPipeline(null), null);
     assert.equal(projectEmissionPipeline(undefined), null);
     assert.equal(projectEmissionPipeline({ subnets: SUBNETS }), null);
+  });
+});
+
+describe("emission-pipeline surface — narrowing (#9720)", () => {
+  const surface = () => projectEmissionPipeline(ECONOMICS)!;
+
+  test("an empty narrowing leaves the body byte-for-byte unchanged", () => {
+    // The whole back-compat claim in one assertion: every caller who does not
+    // narrow must receive exactly what they received before this shipped,
+    // including the ABSENCE of the two count fields.
+    const before = surface();
+    const after = narrowEmissionPipeline(before, {});
+    assert.deepEqual(after, before);
+    assert.equal("matched_subnet_count" in after, false);
+    assert.equal("returned_subnet_count" in after, false);
+  });
+
+  test("sorts by final_share largest-first, and order flips it", () => {
+    // final_share, not emission_share: #9707 established that the stage-1 price
+    // share is not the number that answers "where is the emission", and subnet
+    // 2 here is exactly that case -- a positive emission_share gated to zero.
+    const [first] = narrowEmissionPipeline(surface(), {
+      sort: "final_share",
+    }).subnets;
+    assert.equal(first.netuid, 1);
+    assert.ok((first.final_share as number) > 0);
+
+    const asc = narrowEmissionPipeline(surface(), {
+      sort: "final_share",
+      order: "asc",
+    }).subnets;
+    assert.equal(asc[0].netuid, 2);
+    assert.equal(asc[0].final_share, 0);
+
+    // The stage-1 share orders the other way round, which is the whole reason
+    // both are offered.
+    const byStage1 = narrowEmissionPipeline(surface(), {
+      sort: "emission_share",
+    }).subnets;
+    assert.equal(byStage1[0].netuid, 2);
+  });
+
+  test("limit pages without hiding how many matched", () => {
+    const narrowed = narrowEmissionPipeline(surface(), { limit: 1 });
+    assert.equal(narrowed.subnets.length, 1);
+    assert.equal(narrowed.matched_subnet_count, 2);
+    assert.equal(narrowed.returned_subnet_count, 1);
+  });
+
+  test("fields projects the row and nothing else", () => {
+    const narrowed = narrowEmissionPipeline(surface(), {
+      fields: ["netuid", "final_share"],
+    });
+    for (const row of narrowed.subnets) {
+      assert.deepEqual(Object.keys(row).sort(), ["final_share", "netuid"]);
+    }
+    assert.equal(narrowed.matched_subnet_count, 2);
+  });
+
+  test("NARROWING THE RESPONSE NEVER NARROWS THE MEASUREMENT", () => {
+    // The one that matters. A caller asking for one row must still receive an
+    // aggregate and a verification computed over EVERY subnet -- an identity
+    // evaluated on a one-row slice is not a thing that can be verified, and
+    // silently rescoping it would turn a narrowed response into an unsound one.
+    const full = surface();
+    const narrowed = narrowEmissionPipeline(full, {
+      limit: 1,
+      fields: ["netuid"],
+      sort: "final_share",
+    });
+    assert.deepEqual(narrowed.aggregate, full.aggregate);
+    assert.deepEqual(narrowed.verification, full.verification);
+    assert.deepEqual(narrowed.chain_state, full.chain_state);
+    assert.deepEqual(narrowed.field_sources, full.field_sources);
+    // Spelled out rather than left to deepEqual: the aggregate counts BOTH
+    // subnets while exactly one row is served, which is the property under
+    // test. Rescoping the aggregate to the page would make these read 1 and 0.
+    assert.equal(narrowed.subnets.length, 1);
+    assert.equal(narrowed.aggregate.eligible_count, 2);
+    assert.equal(narrowed.aggregate.disabled_count, 1);
+    assert.equal(narrowed.aggregate.total_final_share, 1);
+    assert.equal(
+      narrowed.verification.checks.length,
+      full.verification.checks.length,
+    );
+  });
+
+  test("a row missing the sort column sinks in EITHER direction", () => {
+    // `liquidity_fraction` is null on netuid 2 (tao_total is 0) and a real
+    // number on netuid 1 -- a genuine mixed column, so this cannot pass
+    // vacuously the way a fixture with no nulls in it would.
+    const full = surface();
+    assert.equal(
+      (full.subnets.find((row) => row.netuid === 2) as unknown as Row)
+        .liquidity_fraction,
+      null,
+      "fixture no longer produces a null sort value; the test would prove nothing",
+    );
+
+    for (const order of ["asc", "desc"] as const) {
+      const rows = narrowEmissionPipeline(full, {
+        sort: "liquidity_fraction",
+        order,
+      }).subnets;
+      assert.equal(
+        rows[rows.length - 1].netuid,
+        2,
+        `a null sort value floated on order=${order}`,
+      );
+      assert.equal(rows[0].netuid, 1);
+    }
+
+    // Nulls interleaved with values, so the comparator meets a missing value
+    // as its LEFT operand as well as its right -- two rows only ever exercise
+    // one of the two arms.
+    const zeroTao = { tao_in_emission_tao: "0", excess_tao: "0" };
+    const interleaved = projectEmissionPipeline({
+      ...ECONOMICS,
+      subnets: [
+        { ...SUBNETS[0], netuid: 1, ...zeroTao },
+        { ...SUBNETS[0], netuid: 2 },
+        { ...SUBNETS[0], netuid: 3, ...zeroTao },
+        { ...SUBNETS[0], netuid: 4 },
+      ],
+    })!;
+    for (const order of ["asc", "desc"] as const) {
+      const rows = narrowEmissionPipeline(interleaved, {
+        sort: "liquidity_fraction",
+        order,
+      }).subnets;
+      const measured = rows.filter(
+        (row) => (row as unknown as Row).liquidity_fraction != null,
+      );
+      const missing = rows.filter(
+        (row) => (row as unknown as Row).liquidity_fraction == null,
+      );
+      assert.equal(measured.length, 2);
+      assert.equal(missing.length, 2);
+      assert.deepEqual(
+        rows.slice(-2).map((row) => row.netuid),
+        missing.map((row) => row.netuid),
+        `nulls did not sink to the end on order=${order}`,
+      );
+    }
+  });
+
+  test("equal sort values break on netuid, so the order is total", () => {
+    const tied = projectEmissionPipeline({
+      ...ECONOMICS,
+      subnets: [
+        { ...SUBNETS[0], netuid: 5 },
+        { ...SUBNETS[0], netuid: 3 },
+        { ...SUBNETS[0], netuid: 4 },
+      ],
+    })!;
+    for (const order of ["asc", "desc"] as const) {
+      assert.deepEqual(
+        narrowEmissionPipeline(tied, {
+          sort: "emission_share",
+          order,
+        }).subnets.map((row) => row.netuid),
+        [3, 4, 5],
+        `tie-break was not netuid-ascending on order=${order}`,
+      );
+    }
+  });
+});
+
+describe("emission-pipeline surface — parseEmissionPipelineNarrowing (#9720)", () => {
+  const rows = () =>
+    projectEmissionPipeline(ECONOMICS)!.subnets as unknown as Row[];
+  const parse = (qs: string) =>
+    parseEmissionPipelineNarrowing(new URLSearchParams(qs), rows(), {
+      limitMax: 512,
+    });
+
+  test("an empty query narrows nothing", () => {
+    assert.deepEqual(parse(""), {
+      sort: null,
+      order: null,
+      limit: null,
+      fields: null,
+    });
+  });
+
+  test("accepts every published sort field", () => {
+    for (const sort of EMISSION_PIPELINE_SORT_FIELDS) {
+      assert.equal((parse(`sort=${sort}`) as Row).sort, sort);
+    }
+  });
+
+  test("names the offending parameter and lists what is valid", () => {
+    const sort = parse("sort=whatever") as { error: Row };
+    assert.equal(sort.error.parameter, "sort");
+    assert.match(sort.error.message as string, /final_share/);
+
+    const order = parse("order=sideways") as { error: Row };
+    assert.equal(order.error.parameter, "order");
+
+    const fields = parse("fields=netuid,not_a_column") as { error: Row };
+    assert.equal(fields.error.parameter, "fields");
+    assert.match(fields.error.message as string, /not_a_column/);
+    assert.match(fields.error.message as string, /emission pipeline subnets/);
+  });
+
+  test("an out-of-range limit is REJECTED, never clamped", () => {
+    for (const bad of ["0", "-1", "513", "1.5", "abc"]) {
+      const result = parse(`limit=${encodeURIComponent(bad)}`) as {
+        error: Row;
+      };
+      assert.ok("error" in result, `limit=${bad} should have been rejected`);
+      assert.equal(result.error.parameter, "limit");
+    }
+    assert.equal((parse("limit=1") as Row).limit, 1);
+    assert.equal((parse("limit=512") as Row).limit, 512);
+  });
+
+  test("a valid fields list comes back parsed and de-duplicated", () => {
+    const parsed = parse("fields=netuid,final_share,netuid") as Row;
+    assert.deepEqual(parsed.fields, ["netuid", "final_share"]);
   });
 });
 
@@ -334,9 +557,26 @@ describe("emission-pipeline surface — tri-surface parity", () => {
     const env = graphqlEnv(ECONOMICS as Row);
     const rows = (await gql(GQL_ROWS_QUERY, env)).data.emission_pipeline;
     const rollup = (await gql(GQL_ROLLUP_QUERY, env)).data.emission_pipeline;
-    const mcp = (await callTool({}, ECONOMICS as Row)).structuredContent;
+    // The MCP tool applies a narrowing DEFAULT the other two surfaces do not
+    // (#9720: a browser can stream 56 KB and a context window cannot), so
+    // parity is asserted on the decomposition rather than on the page. Passing
+    // an explicit limit above the subnet count removes the only difference.
+    const mcp = (await callTool({ limit: 512 }, ECONOMICS as Row))
+      .structuredContent;
 
-    assert.deepEqual(mcp, shared);
+    assert.deepEqual(mcp.subnets, shared.subnets);
+    assert.deepEqual(mcp.aggregate, shared.aggregate);
+    assert.deepEqual(mcp.verification, shared.verification);
+    assert.deepEqual(mcp.chain_state, shared.chain_state);
+    assert.deepEqual(mcp.field_sources, shared.field_sources);
+    assert.equal(mcp.block_emission_tao, shared.block_emission_tao);
+
+    // And the default really does narrow, so the asymmetry above is a
+    // deliberate difference rather than a test written around a bug.
+    const defaulted = (await callTool({}, ECONOMICS as Row)).structuredContent;
+    assert.equal(defaulted.returned_subnet_count, shared.subnets.length);
+    assert.equal(defaulted.matched_subnet_count, shared.subnets.length);
+    assert.deepEqual(defaulted.aggregate, shared.aggregate);
     // GraphQL is selection-shaped, so compare the fields each query selected
     // rather than the whole object.
     assert.deepEqual(rows.subnets, shared.subnets);

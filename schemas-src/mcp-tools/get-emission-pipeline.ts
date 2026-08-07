@@ -12,14 +12,38 @@
 // together and there is exactly one place to fix — which is the whole point of
 // not keeping a second copy here.
 import { z } from "zod";
-import { netuidSchema } from "./shared.ts";
+import {
+  netuidSchema,
+  fieldsSchema,
+  limitSchema,
+  orderSchema,
+  sortSchema,
+} from "./shared.ts";
 import { EMISSION_PIPELINE_BODY } from "../routes/emission-pipeline.ts";
+import { EMISSION_PIPELINE_SORT_FIELDS } from "../../src/emission-pipeline-surface.ts";
+import {
+  EMISSION_PIPELINE_LIMIT_MAX,
+  EMISSION_PIPELINE_MCP_LIMIT_DEFAULT,
+} from "../../src/route-limits.ts";
 
 export const GetEmissionPipelineInputSchema = z
   .object({
     // Narrows the per-subnet rows only; the aggregate and the identity checks
     // stay network-wide, matching ?netuid= on the REST route.
     netuid: netuidSchema().optional(),
+    // #9720. 129 subnets x 16 fields is ~56 KB, and `netuid` was the only
+    // filter -- it narrows to ONE subnet or leaves all of them, with nothing in
+    // between. NARROWING THE RESPONSE NEVER NARROWS THE MEASUREMENT: the
+    // aggregate and the four identity checks are computed over every subnet
+    // before any of this applies, so `verification` still covers the whole
+    // distribution.
+    sort: sortSchema(EMISSION_PIPELINE_SORT_FIELDS).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsSchema().optional(),
+    limit: limitSchema(
+      EMISSION_PIPELINE_LIMIT_MAX,
+      EMISSION_PIPELINE_MCP_LIMIT_DEFAULT,
+    ).optional(),
   })
   .strict();
 export type GetEmissionPipelineInput = z.infer<

@@ -8692,6 +8692,8 @@ export interface components {
                     storage: string | null;
                 };
             };
+            matched_subnet_count?: number;
+            returned_subnet_count?: number;
             schema_version: number;
             subnets: {
                 alpha_in_emission: number | null;
@@ -16473,6 +16475,12 @@ export interface operations {
             query?: {
                 /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
+                sort?: "final_share" | "emission_share" | "weighted_share" | "gated_share" | "gate_delta" | "distance_to_bar" | "tao_in_emission" | "excess_tao" | "tao_total" | "liquidity_fraction" | "miner_burned" | "netuid";
+                order?: "asc" | "desc";
+                /** @description Maximum number of rows to return in one page (at most 512). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
+                limit?: number;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
+                fields?: string;
             };
             header?: never;
             path: {
@@ -16520,6 +16528,8 @@ export interface operations {
                      *             "storage": "example"
                      *           }
                      *         },
+                     *         "matched_subnet_count": 1,
+                     *         "returned_subnet_count": 1,
                      *         "schema_version": 1,
                      *         "subnets": [
                      *           {
@@ -35409,6 +35419,12 @@ export interface operations {
             query?: {
                 /** @description Subnet id (netuid). `0` is the root subnet -- a stake-allocation construct rather than a running subnet. It IS present in the registry collections, but it is excluded from application-subnet counts, and stake on it is denominated in TAO rather than in a subnet alpha token, so its economics are not directly comparable to a running subnet's. */
                 netuid?: number;
+                sort?: "final_share" | "emission_share" | "weighted_share" | "gated_share" | "gate_delta" | "distance_to_bar" | "tao_in_emission" | "excess_tao" | "tao_total" | "liquidity_fraction" | "miner_burned" | "netuid";
+                order?: "asc" | "desc";
+                /** @description Maximum number of rows to return in one page (at most 512). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for. */
+                limit?: number;
+                /** @description Comma-separated allow-list projecting the response's primary row collection down to just these fields. A response carrying several collections projects only the primary one -- the others keep their full shape. An unrecognised field is a 400 `invalid_query` naming both the field and the collection it was resolved against, rather than being ignored. */
+                fields?: string;
             };
             header?: never;
             path?: never;
@@ -35453,6 +35469,8 @@ export interface operations {
                      *             "storage": "example"
                      *           }
                      *         },
+                     *         "matched_subnet_count": 1,
+                     *         "returned_subnet_count": 1,
                      *         "schema_version": 1,
                      *         "subnets": [
                      *           {
@@ -43948,6 +43966,7 @@ export interface operations {
             query?: {
                 /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `1h`, `24h`, `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "1h" | "24h" | "7d" | "30d";
+                include_points?: boolean;
             };
             header?: never;
             path?: never;

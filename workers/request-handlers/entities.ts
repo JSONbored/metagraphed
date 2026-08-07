@@ -823,6 +823,34 @@ function parseBoundedIntParam(
   return { value };
 }
 
+/**
+ * A strict boolean query parameter (#9720).
+ *
+ * STRICT on purpose. The `raw === "true"` idiom used elsewhere in this file is
+ * fine for a tri-state flag where absent means "both", but wrong for a toggle
+ * whose whole job is "send me less": `include_points=FALSE` or `=0` would read
+ * as true and quietly return the 143 KB body the caller asked to avoid -- a
+ * parameter accepted and ignored, which is the failure mode this route is being
+ * changed to fix, not to reproduce.
+ */
+function parseBooleanParam(
+  url: URL,
+  parameter: string,
+  def: boolean,
+): { value: boolean } | { error: QueryError } {
+  const raw = url.searchParams.get(parameter);
+  if (raw == null || raw === "") return { value: def };
+  if (raw !== "true" && raw !== "false") {
+    return {
+      error: {
+        parameter,
+        message: `${parameter} must be true or false.`,
+      },
+    };
+  }
+  return { value: raw === "true" };
+}
+
 // --- Per-UID metagraph (#1304/#1305) --- D1 fully eliminated (2026-07-17);
 // neurons' D1 write path was retired in #4772/#4909 (see handleSubnetMetagraph
 // below), so this now serves a schema-stable literal rather than a live
@@ -6178,8 +6206,19 @@ export async function handleSubnetHolders(
 // A null price is a stated outcome (`price_basis: insufficient_pools`), not a
 // gap -- see src/tao-usd-series.ts for why this must never coalesce it.
 export async function handleTaoUsd(request: Request, env: Env, url: URL) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateQueryParams(url, [
+    "window",
+    "include_points",
+  ]);
   if (validationError) return analyticsQueryError(validationError);
+  // #9720. The series is 1,428 points and ~143 KB on the default window, while
+  // every summary a caller usually wants -- latest, change_usd, change_pct, the
+  // two counts -- is a top-level scalar beside it. REST keeps sending the
+  // points unless asked not to; the MCP tool asks not to by default, because a
+  // browser can stream 143 KB and a context window cannot (the same asymmetry
+  // #9701 established for list_candidates).
+  const includePoints = parseBooleanParam(url, "include_points", true);
+  if ("error" in includePoints) return analyticsQueryError(includePoints.error);
   const label = url.searchParams.get("window") ?? DEFAULT_TAO_USD_WINDOW;
   const windowHours = TAO_USD_WINDOWS[label];
   if (windowHours === undefined) {
@@ -6196,7 +6235,10 @@ export async function handleTaoUsd(request: Request, env: Env, url: URL) {
   );
   // A cold or unwritten table yields an EMPTY series with a null `latest`, not
   // a 404: "we have not priced this window" is a real state.
-  const data = buildTaoUsdSeries(rows, { window: label });
+  const data = buildTaoUsdSeries(rows, {
+    window: label,
+    includePoints: includePoints.value,
+  });
   return envelopeResponse(
     request,
     { data, meta: { contract_version: contractVersion(env) } },

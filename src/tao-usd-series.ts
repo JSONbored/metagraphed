@@ -108,7 +108,10 @@ export async function loadTaoUsdSeries(
  */
 export function buildTaoUsdSeries(
   rows: Row[] | null | undefined,
-  { window }: { window?: unknown } = {},
+  {
+    window,
+    includePoints = true,
+  }: { window?: unknown; includePoints?: boolean } = {},
 ): Row {
   const points = (Array.isArray(rows) ? rows : [])
     .map((r) => ({
@@ -155,7 +158,13 @@ export function buildTaoUsdSeries(
       changeUsd === null || oldest === null || oldest === 0
         ? null
         : round(changeUsd / oldest),
-    points,
+    // OMITTED, not emptied, when the caller opts out (#9720). An empty array
+    // would be indistinguishable from a window that priced nothing, and the
+    // counts above already say how many points exist -- so absence is the only
+    // honest way to say "you asked not to be sent these". Every summary field
+    // above is computed over the FULL series either way: narrowing the response
+    // must not narrow the measurement.
+    ...(includePoints ? { points } : {}),
   };
 }
 
