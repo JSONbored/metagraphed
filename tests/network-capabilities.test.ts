@@ -175,22 +175,47 @@ describe("the matrix is derived, not copied", () => {
       "dropping the predicate must not make every route serve — publication still gates it",
     );
 
-    // Relax publication alone: the predicate still withholds mainnet-only
-    // families, so the two conditions are independent.
+    // Relax publication alone. Since #9754 this must change NOTHING, and that
+    // is the achievement rather than a weakened test.
+    //
+    // The rule is `!mainnetOnly && (published || servedWithoutArtifact)`.
+    // #9754 closed the set of routes that were in neither state -- 65 of them
+    // -- so every route now satisfies `mainnetOnly || published ||
+    // servedWithoutArtifact`, which makes `!mainnetOnly` alone sufficient.
+    // Publishing more cannot widen a set the declaration already bounds.
+    //
+    // The teeth are in the pair below: publication moves nothing WHILE the
+    // declaration is complete, and moves the output the moment it is not.
+    // tests/network-addressing.test.ts holds the completeness itself.
     const everythingPublished = buildNetworkCapabilities({
       routes: API_ROUTES,
       networks: NETWORKS,
       isMainnetOnly: isMainnetOnlyApiPath,
       publishedArtifacts: API_ROUTES.map((route) => route.artifact_path),
     }).find((network) => network.id === "testnet");
-    assert.ok(
-      (everythingPublished?.served_families.length ?? 0) >
-        (real.served_families.length ?? 0),
-      "publishing everything must widen the served set",
+    assert.equal(
+      everythingPublished?.served_families.length,
+      real.served_families.length,
+      "publishing everything must widen NOTHING while the mainnet-only " +
+        "declaration is complete -- a difference here means a route is served " +
+        "off mainnet without being published, which #9754 ruled out",
     );
     assert.ok(
       (everythingPublished?.unserved_families.length ?? 0) > 0,
       "mainnet-only families must stay unserved even when everything is published",
+    );
+    // ...and publication is still a real term: drop the declaration too, and
+    // what is published becomes the only thing holding the set down.
+    const noPredicateEverythingPublished = buildNetworkCapabilities({
+      routes: API_ROUTES,
+      networks: NETWORKS,
+      isMainnetOnly: () => false,
+      publishedArtifacts: API_ROUTES.map((route) => route.artifact_path),
+    }).find((network) => network.id === "testnet");
+    assert.ok(
+      (noPredicateEverythingPublished?.served_families.length ?? 0) >
+        (real.served_families.length ?? 0),
+      "with neither condition binding, the served set must widen",
     );
 
     // Publish nothing AND declare no live-chain routes: nothing serves,

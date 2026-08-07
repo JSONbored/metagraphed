@@ -2290,7 +2290,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 94,
+    "mainnet_only_route_count": 159,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -2314,13 +2314,10 @@
       "cache": "standard",
       "description": "List backend API routes and response envelope metadata.",
       "id": "api-index",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1",
       "public": true,
@@ -2631,13 +2628,10 @@
       "cache": "standard",
       "description": "List public-safe subnet profiles and completeness scores.",
       "id": "profiles",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/profiles",
       "public": true,
@@ -2789,13 +2783,10 @@
       "cache": "standard",
       "description": "Fetch public-safe profile detail for one subnet.",
       "id": "subnet-profile",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/profile",
       "public": true,
@@ -2808,13 +2799,10 @@
       "cache": "standard",
       "description": "Fetch a composed overview (profile + health + curation + gaps + counts) for one subnet.",
       "id": "subnet-overview",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/overview",
       "public": true,
@@ -2827,13 +2815,10 @@
       "cache": "standard",
       "description": "List subnets exposing callable services for AI agents (compact capability index).",
       "id": "agent-catalog",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/agent-catalog",
       "public": true,
@@ -2846,13 +2831,10 @@
       "cache": "standard",
       "description": "Fetch the callable-services catalog for one subnet (each service with its schema + health).",
       "id": "agent-catalog-subnet",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/agent-catalog/{netuid}",
       "public": true,
@@ -2865,13 +2847,10 @@
       "cache": "standard",
       "description": "List curated public surfaces.",
       "id": "surfaces",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/surfaces",
       "public": true,
@@ -3023,13 +3002,10 @@
       "cache": "standard",
       "description": "List curated public surfaces for one subnet.",
       "id": "subnet-surfaces",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/surfaces",
       "public": true,
@@ -3173,13 +3149,10 @@
       "cache": "short",
       "description": "List generalized endpoint resources and monitored public surfaces.",
       "id": "endpoints",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/endpoints",
       "public": true,
@@ -3371,13 +3344,10 @@
       "cache": "short",
       "description": "List generalized endpoint resources for one subnet.",
       "id": "subnet-endpoints",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/endpoints",
       "public": true,
@@ -3561,13 +3531,10 @@
       "cache": "standard",
       "description": "List unpromoted candidate surfaces.",
       "id": "candidates",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/candidates",
       "public": true,
@@ -3715,13 +3682,10 @@
       "cache": "standard",
       "description": "List unpromoted candidate surfaces for one subnet.",
       "id": "subnet-candidates",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/candidates",
       "public": true,
@@ -3861,13 +3825,10 @@
       "cache": "standard",
       "description": "List providers and sources.",
       "id": "providers",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/providers",
       "public": true,
@@ -3973,13 +3934,10 @@
       "cache": "standard",
       "description": "Fetch per-provider detail.",
       "id": "provider-detail",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/providers/{slug}",
       "public": true,
@@ -3992,13 +3950,10 @@
       "cache": "short",
       "description": "List endpoint resources for one provider or operator.",
       "id": "provider-endpoints",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/providers/{slug}/endpoints",
       "public": true,
@@ -4201,13 +4156,10 @@
       "cache": "standard",
       "description": "Fetch the machine-usable coverage depth scorecard and ranked enrichment queue.",
       "id": "coverage-depth",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/coverage-depth",
       "public": true,
@@ -4503,13 +4455,10 @@
       "cache": "short",
       "description": "Probe ONE registered surface right now and report whether it is actually callable. Catalog-resolved, not arbitrary URL fetching: name a surface the registry knows and the Worker probes the URL it has on file, echoing the resolved identity (surface_key, netuid, kind, url, provider, auth_required) beside the verdict (status, classification, callable) and its evidence (latency_ms, status_code, error). `from_cache` says whether this was a fresh probe. Use it as the last step before integrating, after list_subnet_apis/get_api_schema. Mirrored by the `verify_integration` MCP tool. Served live (no static file); 404 surface_not_found when no catalogued surface matches.",
       "id": "surface-verify",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/surfaces/{surface_id}/verify",
       "public": true,
@@ -4522,13 +4471,10 @@
       "cache": "short",
       "description": "Fetch the v440 emission pipeline decomposed per subnet (#8744): stage 1's price share, MinerBurned, the post-burn weighted share, the post-Hill-gate share, SubnetEmissionEnabled, the final share of block emission actually received, the gate's give-or-take (`gate_delta`), `distance_to_bar` measured against the WEIGHTED share (theta is computed over the post-burn distribution, so comparing stage 1 to it answers a question the gate does not ask), and the TAO split -- `tao_in_emission` (pool liquidity injection) vs `excess_tao` (chain buys), their `tao_total`, and `liquidity_fraction`. Plus the network aggregate and the issuance-derived block emission. EVERY SHARE IS RECONSTRUCTED, NOT READ: the chain publishes the inputs, not the decomposition. `field_sources` gives each field its kind (measured|reconstructed) and, for measurements, the storage item behind it; every value is pinned to `chain_state.block`; and the four pipeline identities are evaluated on the rows being served, so `verification.verified: false` means the response is not defensible and must not be used. `emission_enabled` is published rather than inferred because a deeply gated ENABLED subnet and a disabled one both read `final_share: 0`. The two TAO channels are point samples at that block -- measured across 14 consecutive blocks they move a few rao and `liquidity_fraction` varies by ~1e-5, so no rollup exists or is needed. ?netuid filters the subnet list and deliberately leaves the aggregate network-wide. Served live (no static file); 503 when the capture carries no pinned block, because an unverifiable decomposition is worse than none.",
       "id": "emission-pipeline",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/chain/emission-pipeline",
       "public": true,
@@ -4634,13 +4580,10 @@
       "cache": "standard",
       "description": "Fetch the registry-wide summary (completeness, top subnets, level counts, latest changes).",
       "id": "registry-summary",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/registry/summary",
       "public": true,
@@ -4653,13 +4596,10 @@
       "cache": "standard",
       "description": "Fetch maintainer-approved cross-network subnet lineage (graduated subnets + the deploying-soon testnet pipeline).",
       "id": "lineage",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/lineage",
       "public": true,
@@ -4672,13 +4612,10 @@
       "cache": "standard",
       "description": "Fetch the index of captured live request/response fixtures (which surfaces carry a sanitized sample). Fetch one with GET /api/v1/fixtures/{surface_id}, get_fixture, or GET /metagraph/fixtures/{surface_id}.json.",
       "id": "fixtures",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/fixtures",
       "public": true,
@@ -4691,13 +4628,10 @@
       "cache": "standard",
       "description": "Fetch one captured, sanitized live request/response fixture by surface id.",
       "id": "fixture-detail",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/fixtures/{surface_id}",
       "public": true,
@@ -4710,13 +4644,10 @@
       "cache": "standard",
       "description": "Fetch the AI-resources index: the copyable agent (/agent.md), the MCP server + its tools, the skill, llms.txt, OpenAPI, and the agent-facing APIs.",
       "id": "agent-resources",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/agent-resources",
       "public": true,
@@ -4729,13 +4660,10 @@
       "cache": "standard",
       "description": "Fetch curation states by subnet.",
       "id": "curation",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/curation",
       "public": true,
@@ -4830,13 +4758,10 @@
       "cache": "standard",
       "description": "Fetch interface gap report.",
       "id": "gaps",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/gaps",
       "public": true,
@@ -4932,13 +4857,10 @@
       "cache": "standard",
       "description": "Fetch contributor-targeted subnet gap priorities.",
       "id": "review-gaps",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/review/gaps",
       "public": true,
@@ -5067,13 +4989,10 @@
       "cache": "standard",
       "description": "Fetch interface gap priorities and enrichment queue for one subnet.",
       "id": "subnet-gaps",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/gaps",
       "public": true,
@@ -5194,13 +5113,10 @@
       "cache": "standard",
       "description": "Fetch profile completeness gaps for contributor targeting.",
       "id": "review-profile-completeness",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/review/profile-completeness",
       "public": true,
@@ -5363,13 +5279,10 @@
       "cache": "standard",
       "description": "Fetch subnets worth deeper adapter work.",
       "id": "review-adapter-candidates",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/review/adapter-candidates",
       "public": true,
@@ -5535,13 +5448,10 @@
       "cache": "standard",
       "description": "Fetch the prioritized all-subnet enrichment queue.",
       "id": "review-enrichment-queue",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/review/enrichment-queue",
       "public": true,
@@ -5785,13 +5695,10 @@
       "cache": "standard",
       "description": "Fetch detailed candidate evidence behind the enrichment queue.",
       "id": "review-enrichment-evidence",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/review/enrichment-evidence",
       "public": true,
@@ -5942,13 +5849,10 @@
       "cache": "standard",
       "description": "Fetch contributor-ready enrichment targets grouped by missing surface kind and review route.",
       "id": "review-enrichment-targets",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/review/enrichment-targets",
       "public": true,
@@ -6297,13 +6201,10 @@
       "cache": "short",
       "description": "Fetch compact daily health history.",
       "id": "health-history",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/health/history/{date}",
       "public": true,
@@ -6855,13 +6756,10 @@
       "cache": "short",
       "description": "Fetch validator weight-setting activity for one subnet over a 7d or 30d window: the distinct weight-setting validators, the WeightsSet event count, and the average updates per validator, computed live from the account_events WeightsSet stream. The per-subnet drill-in of GET /api/v1/chain/weights (which ranks only the top-N subnets and cannot be queried by netuid). Schema-stable zeroed card when the subnet has no WeightsSet events in the window.",
       "id": "subnet-weights",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/weights",
       "public": true,
@@ -6885,13 +6783,10 @@
       "cache": "short",
       "description": "Fetch the per-subnet weight-setter leaderboard over a 7d or 30d window: the individual validators behind /weights ranked by activity, each with its WeightsSet count, its share of the subnet's total weight-setting, and when it first and last set weights in the window, computed live from the account_events WeightsSet stream. The setter-level drill-in of GET /api/v1/subnets/{netuid}/weights (which reports only the aggregate and never names the setters). Schema-stable empty leaderboard when the subnet has no WeightsSet events in the window.",
       "id": "subnet-weight-setters",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/weights/setters",
       "public": true,
@@ -6915,13 +6810,10 @@
       "cache": "short",
       "description": "Fetch axon-serving announcement activity for one subnet over a 7d or 30d window: the distinct servers (hotkeys), the AxonServed event count, and the average announcements per server, computed live from the account_events AxonServed stream. The per-subnet drill-in of GET /api/v1/chain/serving (which ranks only the top-N subnets and cannot be queried by netuid). Schema-stable zeroed card when the subnet has no AxonServed events in the window.",
       "id": "subnet-serving",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/serving",
       "public": true,
@@ -6945,13 +6837,10 @@
       "cache": "short",
       "description": "Fetch Prometheus-endpoint serving activity for one subnet over a 7d or 30d window: the distinct exporters (hotkeys), the PrometheusServed event count, and the average announcements per exporter, read from the account_events PrometheusServed stream, which carries 0 of the 18,041 PrometheusServed events the chain emitted — an empty card is marked `degraded` rather than published as a measured zero. The per-subnet drill-in of GET /api/v1/chain/prometheus (which ranks only the top-N subnets and cannot be queried by netuid) and the telemetry-endpoint sibling of GET /api/v1/subnets/{netuid}/serving (axon endpoints). The zeroed card carries a `degraded` block whenever it is empty.",
       "id": "subnet-prometheus",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/prometheus",
       "public": true,
@@ -6975,13 +6864,10 @@
       "cache": "short",
       "description": "Fetch stake-transfer activity for one subnet over a 7d or 30d window: the distinct senders (accounts), the StakeTransferred event count, and the average transfers per sender, computed live from the account_events StakeTransferred stream. The per-subnet drill-in of GET /api/v1/chain/stake-transfers (which ranks only the top-N subnets and cannot be queried by netuid) and the between-coldkeys sibling of GET /api/v1/subnets/{netuid}/stake-moves (within-account re-delegation churn) — transfer_stake relocates staked alpha from one account to another on the same hotkey (origin leg only), so it moves ownership, not net capital. Schema-stable zeroed card when the subnet has no StakeTransferred events in the window.",
       "id": "subnet-stake-transfers",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/stake-transfers",
       "public": true,
@@ -7005,13 +6891,10 @@
       "cache": "short",
       "description": "Fetch stake-movement (re-delegation) activity for one subnet over a 7d or 30d window: the distinct movers (accounts), the StakeMoved event count, and the average movements per mover, computed live from the account_events StakeMoved stream. The per-subnet drill-in of GET /api/v1/chain/stake-moves (which ranks only the top-N subnets and cannot be queried by netuid) and the re-delegation-churn sibling of GET /api/v1/subnets/{netuid}/stake-flow (net capital flow) — move_stake relocates stake between hotkeys/subnets without unstaking, so it is churn, not flow. Schema-stable zeroed card when the subnet has no StakeMoved events in the window.",
       "id": "subnet-stake-moves",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/stake-moves",
       "public": true,
@@ -7035,13 +6918,10 @@
       "cache": "short",
       "description": "Fetch neuron-registration activity for one subnet over a 7d or 30d window: the distinct registrants (hotkeys), the NeuronRegistered event count, and the average registrations per registrant, computed live from the account_events NeuronRegistered stream. Raw registration demand — the account_events companion to the neuron_daily validator-set churn in GET /api/v1/subnets/{netuid}/turnover (net snapshot change, not raw event volume). Schema-stable zeroed card when the subnet has no NeuronRegistered events in the window.",
       "id": "subnet-registrations",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/registrations",
       "public": true,
@@ -7065,13 +6945,10 @@
       "cache": "short",
       "description": "Fetch axon-removal activity for one subnet over a 7d or 30d window: the distinct removers (hotkeys), the AxonInfoRemoved event count, and the average removals per remover, read from the account_events AxonInfoRemoved stream, which the runtime has never populated — an empty card is marked `degraded` rather than published as a measured zero. Raw axon-teardown activity — the removal-side companion to the AxonServed announcements in GET /api/v1/subnets/{netuid}/serving (which counts axon announcements, not teardowns). The zeroed card carries a `degraded` block whenever it is empty.",
       "id": "subnet-axon-removals",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/axon-removals",
       "public": true,
@@ -7095,13 +6972,10 @@
       "cache": "short",
       "description": "Fetch neuron-deregistration activity for one subnet over a 7d or 30d window: the distinct deregistered hotkeys, the NeuronDeregistered event count, and the average deregistrations per hotkey, DERIVED from UID reuse in the NeuronRegistered stream (NeuronDeregistered has never been emitted by the runtime). Raw deregistration/eviction activity — the exit-side companion to the NeuronRegistered demand in GET /api/v1/subnets/{netuid}/registrations and the account_events companion to the neuron_daily churn in GET /api/v1/subnets/{netuid}/turnover (net snapshot change, not raw event volume). The card carries a `derivation` block stating how many window registrations had no observable previous holder, and a `degraded` block when nothing derived it.",
       "id": "subnet-deregistrations",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/deregistrations",
       "public": true,
@@ -7505,13 +7379,10 @@
       "cache": "short",
       "description": "Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, delegated_tao, or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, net_flow_90d, #6886/#6887); limit caps the list (default 20, max 100). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own stake positions across every hotkey/subnet, VALUED IN TAO: every position is non-root and therefore denominated in its subnet's alpha token, so each is multiplied by that netuid's alpha_price_tao from the latest daily subnet_snapshots row before summing (#8803) -- a DAILY cadence, so the price can lag up to ~24h behind the live economics tier, and a netuid with no usable price is excluded from the sum rather than counted as zero. total_tao adds it to free_tao, which is valid because both are TAO; net_flow_* is StakeAdded minus StakeRemoved over the window -- a negative value is a real net outflow, not a missing value -- and null-valued rows sort last on the net_flow_* keys. TWO TIERS, SELECTED BY SORT (#9469/#9502). The net_flow_* sorts are LIVE: the top-holders-flow projection lane recomputes all three windows daily from chain.account_events, so captured_at advances and the ranking is a real one. The same lane composes the three holdings sorts from D1 -- free_tao from account_balances, delegated_tao by valuing each nominator_positions row as share_fraction x hotkey_alpha.total_alpha x that netuid's alpha_price_tao (#9502 captured the pool totals; neurons.stake_tao covers only hotkeys holding a UID on that exact subnet, 22.8% of position rows, so recomputing from it would drop real top holders out of the ranking), and total_tao as free + delegated ranked across the FULL tables rather than summed over the other two sorts' capped rows, since the top of a sum is not contained in the union of the tops of its addends. A holdings sort is served live ONLY while its producer's most recent pass is recorded COMPLETE: ranking over a partially-loaded ledger returns the largest values PRESENT rather than the largest that EXIST, which is a well-formed leaderboard quietly missing real top holders, and for the pool ledger a missing total silently UNDERPRICES rather than dropping a row. While an input is unproven that sort DECLINES and answers from a fixed materialization taken 2026-08-02 whose captured_at and last_updated do not advance -- an account that has moved TAO since is misreported and one first funded since is absent, so read that ranking as historical and use GET /api/v1/accounts/{ss58}/balance for the live per-account balance. Which sorts are currently live is a property of the artifact, not a fixed list. On a net_flow_*-sorted page the three holdings columns are null rather than zero, because a zero would assert an empty wallet.",
       "id": "top-holders",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/accounts/top-holders",
       "public": true,
@@ -7753,13 +7624,10 @@
       "cache": "short",
       "description": "Fetch the append-only hyperparameter-change timeline for one subnet (#4309): each entry is a subnet_hyperparams snapshot recorded when any hyperparameter changed. Forward-only (no pre-feature history). Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV.",
       "id": "subnet-hyperparameters-history",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/hyperparameters/history",
       "public": true,
@@ -7969,13 +7837,10 @@
       "cache": "short",
       "description": "Fetch a windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, plus a newest-first evidence slice. ?window=7d|30d|90d (default 30d); ?limit caps recent_events (default 10, max 50). Computed live from the account_events D1 tier.",
       "id": "subnet-event-summary",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/event-summary",
       "public": true,
@@ -9377,13 +9242,10 @@
       "cache": "short",
       "description": "Fetch every ownership transfer one subnet has undergone (#6637, part of the conviction/ownership-contest tracker epic #4302) — see docs/conviction-lock-mechanism.md for the on-chain mechanism: a permissionless, conviction-weighted contest that runs continuously for every subnet, where ownership transfers automatically once a challenger's rolled conviction overtakes the incumbent owner's (no vote, no owner cooperation required). Two sources, labelled per record by `source`: `chain-event` records are decoded from the chain_events SubnetOwnerChanged stream and carry the block that emitted them, while `owner-observation` records are inferred from two consecutive owner captures, so their observed_at is when the change was NOTICED and block_number is null. Both are needed because a subnet's owning account can change without that event ever being emitted. observed_through reports how far the observation source covers this subnet at all. Served live from the all-events tier (ADR 0013), falling to the R2 lakehouse reader when that tier cannot answer, no static file. A subnet that has never changed hands returns an empty ownership_changes array, not an error — that's the common case.",
       "id": "subnet-ownership-history",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/ownership-history",
       "public": true,
@@ -9396,13 +9258,10 @@
       "cache": "short",
       "description": "Fetch the live per-subnet conviction leaderboard (#6638, part of the conviction/ownership-contest tracker epic #4302) — who currently holds the most rolled conviction, i.e. how close the subnet is to an automatic ownership flip. Companion to /ownership-history (that's the event log of past flips; this is the current standings). Rolls the current lock state forward using the CURRENT live-queried unlock_rate/maturity_rate — never a hardcoded figure, both are independently governance-adjustable and confirmed to differ from each other. Read from chain storage at request time, no static file. A subnet with no active challengers/owner lock returns an empty leaderboard, not an error — that's the common case.",
       "id": "subnet-conviction",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/conviction",
       "public": true,
@@ -9472,13 +9331,10 @@
       "cache": "short",
       "description": "Fetch every SubnetLeaseCreated/SubnetLeaseTerminated event one subnet has had (#6719, part of epic #6717), decoded from the account_events stream #6718 started capturing. Served live from the chain_events lakehouse table, no static file. A subnet that has never been leased returns an empty lease_events array, not an error — that's the common case.",
       "id": "subnet-lease-history",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/lease/history",
       "public": true,
@@ -11491,13 +11347,10 @@
       "cache": "short",
       "description": "Fetch freshness and staleness state.",
       "id": "freshness",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/freshness",
       "public": true,
@@ -11510,13 +11363,10 @@
       "cache": "short",
       "description": "Fetch upstream source health.",
       "id": "source-health",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/source-health",
       "public": true,
@@ -11529,13 +11379,10 @@
       "cache": "standard",
       "description": "Fetch public evidence ledger.",
       "id": "evidence",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/evidence",
       "public": true,
@@ -11601,13 +11448,10 @@
       "cache": "standard",
       "description": "Fetch public evidence ledger claims for one subnet.",
       "id": "subnet-evidence",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/subnets/{netuid}/evidence",
       "public": true,
@@ -11673,13 +11517,10 @@
       "cache": "short",
       "description": "Fetch latest generated change summary.",
       "id": "changelog",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/changelog",
       "public": true,
@@ -11692,13 +11533,10 @@
       "cache": "standard",
       "description": "Fetch source input hashes and counts.",
       "id": "source-snapshots",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/source-snapshots",
       "public": true,
@@ -11764,13 +11602,10 @@
       "cache": "short",
       "description": "Fetch Bittensor RPC endpoint status.",
       "id": "rpc-endpoints",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/rpc/endpoints",
       "public": true,
@@ -11951,13 +11786,10 @@
       "cache": "short",
       "description": "Fetch endpoint pool scores.",
       "id": "rpc-pools",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/rpc/pools",
       "public": true,
@@ -12061,13 +11893,10 @@
       "cache": "short",
       "description": "Fetch generalized endpoint pool scores.",
       "id": "endpoint-pools",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/endpoint-pools",
       "public": true,
@@ -12171,13 +12000,10 @@
       "cache": "short",
       "description": "Fetch probe-derived endpoint incidents.",
       "id": "endpoint-incidents",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/endpoint-incidents",
       "public": true,
@@ -12398,13 +12224,10 @@
       "cache": "standard",
       "description": "Fetch captured schema index.",
       "id": "schemas",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/schemas",
       "public": true,
@@ -12417,13 +12240,10 @@
       "cache": "short",
       "description": "Fetch adapter-backed public metrics.",
       "id": "adapter",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/adapters/{slug}",
       "public": true,
@@ -12436,13 +12256,10 @@
       "cache": "standard",
       "description": "Fetch compact search index.",
       "id": "search",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/search",
       "public": true,
@@ -12529,13 +12346,10 @@
       "cache": "standard",
       "description": "Fetch the slim search index — the same documents as /search without the per-document token blobs, for fast browser typeahead and listing.",
       "id": "search-index",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/search-index",
       "public": true,
@@ -12622,13 +12436,10 @@
       "cache": "standard",
       "description": "Fetch artifact contract metadata.",
       "id": "contracts",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/contracts",
       "public": true,
@@ -12641,13 +12452,10 @@
       "cache": "standard",
       "description": "Fetch OpenAPI 3.1 contract.",
       "id": "openapi",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/openapi.json",
       "public": true,
@@ -12660,13 +12468,10 @@
       "cache": "short",
       "description": "Fetch generated build summary.",
       "id": "build",
-      "mainnet_only": false,
+      "mainnet_only": true,
       "method": "GET",
       "networks": [
-        "finney",
-        "mainnet",
-        "test",
-        "testnet"
+        "mainnet"
       ],
       "path": "/api/v1/build",
       "public": true,
