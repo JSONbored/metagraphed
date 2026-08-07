@@ -4,7 +4,9 @@
 // SubnetEconomicsSchema (schemas-src/shared.ts) or EconomicsArtifactSchema.
 // Modeled fresh, shallow, from the hand-written literal it replaces.
 import { z } from "zod";
-import { OpenObjectSchema, netuidSchema } from "./shared.ts";
+import { netuidSchema } from "./shared.ts";
+import { EconomicsSummarySchema } from "../routes/economics.ts";
+import { SubnetEconomicsSchema } from "../shared.ts";
 
 export const GetSubnetEconomicsInputSchema = z
   .object({
@@ -37,8 +39,11 @@ export const GetSubnetEconomicsOutputSchema = z
     netuid: netuidSchema(),
     source: z.string().nullable().optional(),
     captured_at: z.string().nullable().optional(),
-    summary: OpenObjectSchema.nullable().optional(),
-    economics: OpenObjectSchema.nullable(),
+    // Typed from the route's own schemas (#9797). Nullable rather than
+    // omitted when the caller passes `include_summary: false` (#9874), and
+    // this tool advertises no `fields`, so neither is partial.
+    summary: EconomicsSummarySchema.nullable().optional(),
+    economics: SubnetEconomicsSchema.nullable(),
   })
   .passthrough();
 export type GetSubnetEconomicsOutput = z.infer<
