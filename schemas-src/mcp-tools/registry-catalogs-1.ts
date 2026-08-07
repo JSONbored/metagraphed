@@ -92,6 +92,39 @@ export const ListSurfacesInputSchema = z
         "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
       )
       .meta({ examples: ["sn-64-chutes-subnet-api"] }),
+    // #10008: the three the curated-surfaces collection declares and this tool
+    // could not pass. Strings, not booleans, because that is what the route
+    // accepts -- these are query parameters, and `?auth_required=true` is a
+    // string on the wire. A boolean here would accept `true` and send
+    // "true" anyway, but would also reject the literal a REST caller uses.
+    //
+    // THE REASON THEY ARE SERVER-SIDE, from the collection's own comment: the
+    // UI once applied these client-side over one loaded page, and with 25 rows
+    // against 3,494 surfaces `?auth=required` showed 6 of the 1,184 matches --
+    // "a filter that silently under-reports by 99% is worse than one that
+    // errors, because it looks like it worked". An agent narrowing a page it
+    // fetched is in exactly that position.
+    auth_required: z
+      .enum(["true", "false"])
+      .optional()
+      .describe(
+        "Restrict to surfaces that do (`true`) or do not (`false`) require authentication. Applied server-side across the whole catalog, not to one page.",
+      )
+      .meta({ examples: ["false"] }),
+    public_safe: z
+      .enum(["true", "false"])
+      .optional()
+      .describe(
+        "Restrict to surfaces marked safe (`true`) or unsafe (`false`) to call from a public client.",
+      )
+      .meta({ examples: ["true"] }),
+    rate_limited: z
+      .enum(["true", "false"])
+      .optional()
+      .describe(
+        "Restrict to surfaces that declare rate-limit notes (`true`) or declare none (`false`). A presence filter over `rate_limit_notes`, not a claim that an unlimited surface exists.",
+      )
+      .meta({ examples: ["true"] }),
     sort: sortSchema(SURFACE_SORT_VALUES).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),

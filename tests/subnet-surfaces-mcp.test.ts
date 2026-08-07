@@ -31,6 +31,11 @@ const SAMPLE_BLOB = {
       kind: "subnet-api",
       provider: "allways",
       name: "Allways API",
+      // Explicit, because a `?auth_required=false` filter matches the VALUE
+      // false, not an absent field -- a fixture that omitted it would make the
+      // negative case look broken when it is the fixture that is unreal.
+      auth_required: false,
+      public_safe: true,
     },
     {
       id: "allways-openapi",
@@ -38,6 +43,12 @@ const SAMPLE_BLOB = {
       kind: "openapi",
       provider: "allways",
       name: "Allways OpenAPI",
+      // #10009: the fields the three boolean filters read. Only this row
+      // carries them, so a filter that is accepted and DROPPED returns both
+      // rows and fails -- the assertion cannot pass vacuously.
+      auth_required: true,
+      public_safe: false,
+      rate_limit_notes: "60/m",
     },
   ],
 };
@@ -163,6 +174,37 @@ describe("subnet-surfaces-mcp", () => {
     assert.equal(out.returned, 1);
     assert.equal(out.surfaces[0].kind, "subnet-api");
     assert.equal(out.netuid, NETUID);
+  });
+
+  test("loadSubnetSurfacesList honours the three boolean filters (#10009)", async () => {
+    // These are declared by the curated-surfaces collection and were not
+    // passable from MCP. The collection moved them server-side because the UI
+    // applied them client-side over one page and showed 6 of 1,184 matches.
+    for (const [args, expected] of [
+      [{ auth_required: "true" }, ["allways-openapi"]],
+      [{ auth_required: "false" }, ["allways-api"]],
+      [{ public_safe: "false" }, ["allways-openapi"]],
+      [{ rate_limited: "true" }, ["allways-openapi"]],
+    ] as [Record<string, unknown>, string[]][]) {
+      const out = await loadSubnetSurfacesList(
+        { env: {}, readArtifact } as unknown as LoadCtx,
+        { netuid: NETUID, ...args },
+      );
+      assert.deepEqual(
+        out.surfaces.map((row) => (row as { id: string }).id),
+        expected,
+        JSON.stringify(args),
+      );
+    }
+  });
+
+  test("an out-of-enum boolean is refused, not ignored", async () => {
+    await assert.rejects(() =>
+      loadSubnetSurfacesList({ env: {}, readArtifact } as unknown as LoadCtx, {
+        netuid: NETUID,
+        auth_required: "yes",
+      }),
+    );
   });
 
   test("loadSubnetSurfacesList sorts and pages the collection", async () => {

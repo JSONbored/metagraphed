@@ -31,6 +31,10 @@ import {
 } from "./shared.ts";
 import { SubnetEndpointsArtifactSchema } from "../routes/endpoints-pools.ts";
 import { SubnetSurfacesArtifactSchema } from "../routes/endpoints-pools.ts";
+// #10008: the per-subnet view is this with `netuid` required, so it is derived
+// rather than hand-copied -- which is how it came to lack the collection's
+// three boolean filters in the first place.
+import { ListSurfacesInputSchema } from "./registry-catalogs-1.ts";
 import {
   ENDPOINT_LAYER_VALUES,
   ENDPOINT_PUBLICATION_STATE_VALUES,
@@ -128,23 +132,24 @@ export type ListSubnetEndpointsOutput = z.infer<
   typeof ListSubnetEndpointsOutputSchema
 >;
 
-export const ListSubnetSurfacesInputSchema = z
-  .object({
-    netuid: netuidSchema(),
-    kind: kindSchema(SURFACE_KINDS).optional(),
-    provider: providerSlugSchema().optional(),
-    id: z
-      .string()
-      .optional()
-      .describe(
-        "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
-      )
-      .meta({ examples: ["sn-64-chutes-subnet-api"] }),
-    sort: sortSchema(SURFACE_SORT_VALUES).optional(),
-    order: orderSchema().optional(),
-    limit: limitSchema(100).optional(),
-    cursor: numericCursorSchema().optional(),
-  })
+/**
+ * DERIVED FROM THE NETWORK-WIDE SIBLING (#10008).
+ *
+ * This was a hand-copy of ListSurfacesInputSchema with `netuid` required --
+ * which is why it did not have the three boolean filters the curated-surfaces
+ * collection declares, and would not have gained them when that tool did.
+ *
+ * `fields` is omitted deliberately, not forgotten: the projection contract
+ * (#9884) says a tool may serve a partial object only if it advertises
+ * `fields`, and this tool's output schema is not partial. Adding it here would
+ * publish a projection the response does not honour, so it stays out until
+ * that side is converted with it.
+ */
+export const ListSubnetSurfacesInputSchema = ListSurfacesInputSchema.omit({
+  netuid: true,
+  fields: true,
+})
+  .extend({ netuid: netuidSchema() })
   .strict();
 export type ListSubnetSurfacesInput = z.infer<
   typeof ListSubnetSurfacesInputSchema

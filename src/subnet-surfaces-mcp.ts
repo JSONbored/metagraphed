@@ -15,7 +15,14 @@ import {
 const SURFACE_SORT_FIELDS =
   API_QUERY_COLLECTIONS["curated-surfaces"].sort_fields;
 const SURFACE_KINDS = QUERY_ENUMS.surfaceKind;
-const SUBNET_SURFACES_QUERY_FILTER_NAMES = ["kind", "provider", "id"];
+// DERIVED, not listed (#10009). This hand-named three of the collection's
+// filters, so the other three -- auth_required / public_safe / rate_limited --
+// were rejected as "unknown query parameter" even once the input schema
+// accepted them. `netuid` is excluded because a per-subnet view has already
+// resolved it: it is the subject, not a filter over the result.
+const SUBNET_SURFACES_QUERY_FILTER_NAMES = Object.keys(
+  API_QUERY_COLLECTIONS["curated-surfaces"].filters,
+).filter((name) => name !== "netuid");
 
 export function subnetSurfacesArtifactPath(netuid: unknown): string {
   return `/metagraph/surfaces/${netuid}.json`;
@@ -97,6 +104,19 @@ export function subnetSurfacesQueryUrl(
   if (provider) url.searchParams.set("provider", provider);
   const id = optionalString(args, "id");
   if (id) url.searchParams.set("id", id);
+  // #10009: the three the curated-surfaces collection declares. Copied here as
+  // well as declared on the input schema -- this builder hand-lists every
+  // parameter, so a schema field with no line here would be ACCEPTED and
+  // silently dropped, which is the same client-side under-report the
+  // collection moved these server-side to fix.
+  for (const name of [
+    "auth_required",
+    "public_safe",
+    "rate_limited",
+  ] as const) {
+    const value = optionalEnum(args, name, ["true", "false"]);
+    if (value) url.searchParams.set(name, value);
+  }
   const sort = optionalEnum(args, "sort", SURFACE_SORT_FIELDS);
   if (sort) url.searchParams.set("sort", sort);
   const order = optionalEnum(args, "order", ["asc", "desc"]);

@@ -84,6 +84,18 @@ export function surfacesQueryUrl(
   // GET /api/v1/surfaces already accepts (curated-surfaces filters.id).
   const id = optionalString(args, "id");
   if (id) url.searchParams.set("id", id);
+  // #10008. Copied here, not just declared on the input schema: this builder
+  // hand-lists every parameter, so a schema field with no line here would be
+  // ACCEPTED and silently dropped -- an answer that looks filtered and is not,
+  // which is the failure the collection moved these server-side to fix.
+  for (const name of [
+    "auth_required",
+    "public_safe",
+    "rate_limited",
+  ] as const) {
+    const value = optionalEnum(args, name, ["true", "false"]);
+    if (value) url.searchParams.set(name, value);
+  }
   const sort = optionalEnum(args, "sort", SURFACE_SORT_FIELDS);
   if (sort) url.searchParams.set("sort", sort);
   const order = optionalEnum(args, "order", ["asc", "desc"]);
