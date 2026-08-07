@@ -20,10 +20,14 @@ export const GetAdapterInputSchema = z
     slug: z
       .string()
       .regex(/^[a-z0-9-]+$/)
+      // `gittensor` rather than `chutes` (#9860): there is no `chutes` adapter,
+      // so the tool's own advertised example answered `not_found`. An example
+      // is the first thing an agent copies, and one that does not work is worse
+      // than none -- it teaches the wrong slug AND wastes the call.
       .describe(
-        "The registry slug — lowercase, hyphenated (`chutes`), not the display name. Slugs are stable across renames.",
+        "The registry slug — lowercase, hyphenated (`gittensor`), not the display name. Slugs are stable across renames. Only subnets with a captured adapter snapshot have one; `list_subnets` is the way to find which.",
       )
-      .meta({ examples: ["chutes"] }),
+      .meta({ examples: ["gittensor"] }),
   })
   .strict();
 export type GetAdapterInput = z.infer<typeof GetAdapterInputSchema>;

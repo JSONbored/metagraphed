@@ -6,7 +6,8 @@
 // MCP endpoint is not artifact-backed and must not enter the
 // `checks.length === API_ROUTES.length` invariant.
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import path from "node:path";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import { handleRequest } from "../workers/api.ts";
 import { PRIMARY_DOMAIN, REPOSITORY_URL } from "../src/contracts.ts";
@@ -42,6 +43,7 @@ import {
   artifactFilePath,
   createLocalArtifactEnv,
   latestArtifactDate,
+  repoRoot,
 } from "./lib.ts";
 
 // MCP tool call results are dynamic JSON-RPC payloads, read only for
@@ -1925,6 +1927,45 @@ function declaredExample(schema: Row | undefined): {
     }
   }
   return { found: false };
+}
+
+// --- Declared slug examples must name something that exists (#9860) --------
+//
+// A `slug` example is copied verbatim by the first agent that reads the tool,
+// so one naming a subnet/provider/adapter the registry does not have is not a
+// cosmetic error -- it teaches the wrong identifier AND wastes the call.
+// `get_adapter` advertised `chutes`, which has no adapter snapshot, and the
+// sweep below never caught it: that assertion only fires on `invalid_params`,
+// and this failure wears `not_found` instead.
+//
+// Checked against the COMMITTED registry rather than against a live response,
+// so it holds in any environment and cannot be masked by a cold tier.
+const SLUG_REGISTRIES: Record<string, string> = {
+  get_adapter: "registry/adapters/latest",
+  get_provider_detail: "registry/providers",
+  list_provider_endpoints: "registry/providers",
+};
+for (const [toolName, directory] of Object.entries(SLUG_REGISTRIES)) {
+  const def = listToolDefinitions().find((entry) => entry.name === toolName);
+  if (!def) continue;
+  const slug = ((def.inputSchema as Row)?.properties as Row)?.slug as
+    Row | undefined;
+  const examples = (slug?.examples ?? []) as unknown[];
+  if (examples.length === 0) continue;
+  const available = new Set(
+    readdirSync(path.join(repoRoot, directory))
+      .filter((entry) => entry.endsWith(".json"))
+      .map((entry) => entry.replace(/\.json$/, "")),
+  );
+  const missing = examples.filter(
+    (example) => typeof example === "string" && !available.has(example),
+  );
+  assert.deepEqual(
+    missing,
+    [],
+    `${toolName}: slug example(s) ${missing.join(", ")} name nothing in ${directory}/, so an agent ` +
+      `copying the tool's own example gets not_found. Available: ${[...available].sort().slice(0, 8).join(", ")}…`,
+  );
 }
 
 for (const def of listToolDefinitions()) {
