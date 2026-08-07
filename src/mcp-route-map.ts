@@ -199,6 +199,8 @@ export const MCP_TOOL_ROUTES: Readonly<Record<string, McpToolRoute>> = {
   },
   get_subnet_holders: { route: "/api/v1/subnets/{netuid}/holders" },
   get_chain_burn: { route: "/api/v1/chain/burn" },
+  list_crowdloans: { route: "/api/v1/crowdloans" },
+  get_crowdloan: { route: "/api/v1/crowdloans/{crowdloan_id}" },
   get_subnet_lease: { route: "/api/v1/subnets/{netuid}/lease" },
   get_subnet_lease_history: { route: "/api/v1/subnets/{netuid}/lease/history" },
   get_account: { route: "/api/v1/accounts/{ss58}" },

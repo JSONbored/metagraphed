@@ -685,6 +685,12 @@ import {
   GetSubnetLeaseHistoryOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-lease.ts";
 import {
+  ListCrowdloansInputSchema,
+  ListCrowdloansOutputSchema,
+  GetCrowdloanInputSchema,
+  GetCrowdloanOutputSchema,
+} from "../schemas-src/mcp-tools/crowdloans.ts";
+import {
   GetGlobalIncidentsInputSchema,
   GetGlobalIncidentsOutputSchema,
 } from "../schemas-src/mcp-tools/get-global-incidents.ts";
@@ -1558,6 +1564,7 @@ import {
   loadSubnetBurnHistory,
 } from "./subnet-burn-history.ts";
 import { loadSubnetLease } from "./subnet-lease.ts";
+import { isCrowdloanId, loadCrowdloan, loadCrowdloans } from "./crowdloans.ts";
 // coldTierChainEventsPayload is still reached for CONVICTION (#9319), which
 // has no composer of its own. The ownership-history branch no longer comes
 // through here -- it has one, and this tool answers from it below.
@@ -1993,6 +2000,8 @@ const TOOL_ANNOTATIONS_BY_NAME: Record<
   get_randomness_status: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_subnet_burn: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_subnet_lease: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  list_crowdloans: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
+  get_crowdloan: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_subnet_recycled: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   get_sudo_key: OPEN_WORLD_READ_ONLY_TOOL_ANNOTATIONS,
   // Two live RPC POSTs (mainnet + testnet) on a cache miss.
@@ -8826,6 +8835,97 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     },
   },
   {
+    name: "list_crowdloans",
+    title: "List every live crowdloan",
+    description:
+      "Fetch every crowdloan the chain currently holds a record for (#8696, " +
+      "part of the subnet-leasing/crowdloan-tracking epic #6717), decoded " +
+      "from the Crowdloan pallet's storage at request time (not a rollup). " +
+      "Each record carries creator, deposit_tao, min_contribution_tao, " +
+      "cap_tao, raised_tao, end, funds_account, contributors_count, " +
+      "finalized and percent_raised. crowdloan_count can be LOWER than " +
+      "next_crowdloan_id: `dissolve` removes a record while NextCrowdloanId " +
+      "keeps counting, so ids are not dense -- iterate `crowdloans`, do not " +
+      "count up to next_crowdloan_id. percent_raised is null when cap_tao is " +
+      "0 (representable on-chain, and dividing by it is not). " +
+      "has_dispatch_call is presence only: decoding the Option<Bounded<Call>> " +
+      "payload needs the full runtime type registry, which a Worker does not " +
+      "carry. Mirrors GET /api/v1/crowdloans.",
+    inputSchema: z.toJSONSchema(ListCrowdloansInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(
+      args: z.infer<typeof ListCrowdloansInputSchema>,
+      ctx: McpCtx,
+    ) {
+      // Live RPC, same budget the REST route charges against: these reads
+      // share the chain's per-client allowance, so the MCP path must pay it
+      // too or it becomes the way around the limit.
+      if (ctx.env.RPC_RATE_LIMITER?.limit) {
+        const { success } = await ctx.env.RPC_RATE_LIMITER.limit({
+          key: `crowdloans:mcp:${ctx.clientIp}`,
+        });
+        if (!success) {
+          throw toolError(
+            "rate_limited",
+            "Too many live crowdloan-state requests from this client; slow down.",
+          );
+        }
+      }
+      return loadCrowdloans(
+        ctx.env,
+        chainNetworkFromChainName(
+          optionalEnum(args, "network", MCP_NETWORK_VALUES),
+        ),
+      );
+    },
+  },
+  {
+    name: "get_crowdloan",
+    title: "Get one crowdloan's live state",
+    description:
+      "Fetch one crowdloan by id (#8696), decoded from the Crowdloan " +
+      "pallet's storage at request time. `exists` is null (NOT false) on an " +
+      "RPC failure, which is deliberately distinct from a confirmed-absent " +
+      "id (exists:false) -- an id can be absent legitimately, because " +
+      "`dissolve` removes the record while NextCrowdloanId keeps counting. " +
+      "Treating null as false would report a crowdloan we could not read as " +
+      "one that does not exist. Use list_crowdloans to discover valid ids " +
+      "rather than counting up to next_crowdloan_id. Mirrors GET " +
+      "/api/v1/crowdloans/{crowdloan_id}.",
+    inputSchema: z.toJSONSchema(GetCrowdloanInputSchema, {
+      target: "draft-2020-12",
+    }),
+    async handler(args: z.infer<typeof GetCrowdloanInputSchema>, ctx: McpCtx) {
+      const crowdloanId = (args as Row)?.crowdloan_id;
+      // The route's own guard, mirrored: u32, not the u16 a netuid is.
+      if (!isCrowdloanId(crowdloanId)) {
+        throw toolError(
+          "invalid_params",
+          "Argument `crowdloan_id` must be an integer in the u32 range 0..4294967295.",
+        );
+      }
+      if (ctx.env.RPC_RATE_LIMITER?.limit) {
+        const { success } = await ctx.env.RPC_RATE_LIMITER.limit({
+          key: `crowdloan:mcp:${ctx.clientIp}`,
+        });
+        if (!success) {
+          throw toolError(
+            "rate_limited",
+            "Too many live crowdloan-state requests from this client; slow down.",
+          );
+        }
+      }
+      return loadCrowdloan(
+        ctx.env,
+        Number(crowdloanId),
+        chainNetworkFromChainName(
+          optionalEnum(args, "network", MCP_NETWORK_VALUES),
+        ),
+      );
+    },
+  },
+  {
     name: "get_subnet_lease",
     title: "Get a subnet's live lease state",
     description:
@@ -13898,6 +13998,12 @@ const TOOL_OUTPUT_SCHEMAS = {
     target: "draft-2020-12",
   }),
   get_subnet_burn: z.toJSONSchema(GetSubnetBurnOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  list_crowdloans: z.toJSONSchema(ListCrowdloansOutputSchema, {
+    target: "draft-2020-12",
+  }),
+  get_crowdloan: z.toJSONSchema(GetCrowdloanOutputSchema, {
     target: "draft-2020-12",
   }),
   get_subnet_lease: z.toJSONSchema(GetSubnetLeaseOutputSchema, {

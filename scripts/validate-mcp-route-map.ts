@@ -32,9 +32,6 @@ const AGENT_UNREACHABLE: Record<string, string> = {
     "The API index. An agent discovers tools through tools/list, not through this.",
   "/api/v1/openapi.json":
     "The contract document itself. get_api_schema serves a SUBNET's captured schema; this one is ours, and get_contracts describes it.",
-  "/api/v1/crowdloans":
-    "Crowdloans have no MCP tool yet. Deliberately listed rather than silently absent -- see #9968.",
-  "/api/v1/crowdloans/{crowdloan_id}": "Same as /api/v1/crowdloans.",
   "/api/v1/search/resolve":
     "Identifier resolution (#9672). search_subnets and semantic_search are the agent-facing discovery paths; resolve is a UI affordance.",
   "/api/v1/subnets/{netuid}/overview":
