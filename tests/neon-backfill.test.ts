@@ -437,9 +437,51 @@ describe("neonBackfillLanes", () => {
 describe("keysetPredicate", () => {
   test("expands to one OR term per key column, with positional values", () => {
     assert.deepEqual(keysetPredicate(["netuid", "uid"], [12, 500]), {
-      sql: "((netuid > ?) OR (netuid = ? AND uid > ?))",
+      sql: "((netuid > ?) OR (netuid IS ? AND uid > ?))",
       values: [12, 12, 500],
     });
+  });
+
+  test("a NULL in the cursor does not make the term unsatisfiable", () => {
+    // THE BUG THIS PREVENTS (#9930). `NULL = NULL` is NULL, never true, so a
+    // `=` prefix makes every term containing a NULL cursor value match
+    // nothing: the page comes back empty, the copy stops there, and the lane
+    // reports a clean short page. Every row after that boundary is silently
+    // lost.
+    //
+    // `NULL > x` is NULL too, so "strictly after a NULL" cannot be written
+    // with `>` at all. SQLite sorts NULLs FIRST in the ASC order these pages
+    // read in, so everything after a NULL is everything that is not NULL.
+    const { sql, values } = keysetPredicate(
+      ["day", "netuid", "kind"],
+      ["2026-08-07", null, "openapi"],
+    );
+    assert.equal(
+      sql,
+      "((day > ?) OR (day IS ? AND netuid IS NOT NULL) OR " +
+        "(day IS ? AND netuid IS NULL AND kind > ?))",
+    );
+    // A NULL is never BOUND -- `IS NULL` and `IS NOT NULL` take no parameter,
+    // and binding one would shift every later value by a position.
+    assert.deepEqual(values, [
+      "2026-08-07",
+      "2026-08-07",
+      "2026-08-07",
+      "openapi",
+    ]);
+    assert.ok(
+      !/= \?/.test(sql),
+      "a plain = would be unsatisfiable against NULL",
+    );
+  });
+
+  test("a leading NULL still advances past every NULL-keyed row", () => {
+    const { sql, values } = keysetPredicate(["netuid", "kind"], [null, "rpc"]);
+    assert.equal(
+      sql,
+      "((netuid IS NOT NULL) OR (netuid IS NULL AND kind > ?))",
+    );
+    assert.deepEqual(values, ["rpc"]);
   });
 
   test("a single-column keyset is a plain comparison", () => {
@@ -609,7 +651,7 @@ describe("readDatePage", () => {
     await readDatePage(d1.db, PLAN, "2026-08-07", [12, 500], 500);
     assert.match(
       d1.calls[0].sql,
-      /WHERE snapshot_date = \? AND \(\(netuid > \?\) OR \(netuid = \? AND uid > \?\)\)/,
+      /WHERE snapshot_date = \? AND \(\(netuid > \?\) OR \(netuid IS \? AND uid > \?\)\)/,
     );
     assert.deepEqual(d1.calls[0].values, ["2026-08-07", 12, 12, 500, 500]);
   });
