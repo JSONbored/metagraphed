@@ -19087,7 +19087,23 @@ describe("graphql — rpc_usage (#5899, Postgres-tier + D1-live fallback)", () =
       METAGRAPH_HEALTH_DB: rpcUsageD1(),
     };
     const { body } = await gql(usageQuery(), env);
-    assert.equal(body.data.rpc_usage.observed_at, "2026-06-23T00:00:00.000Z");
+    // The KV holds an ISO string; the value is now normalised to epoch
+    // milliseconds before publication (#9794), so what used to surface here as
+    // "2026-06-23T00:00:00.000Z" is the parsed stamp.
+    //
+    // It arrives as a numeric STRING rather than a number because
+    // src/graphql-sdl.ts declares `RpcUsage.observed_at: String` and GraphQL
+    // coerces. That is self-consistent for this surface but it no longer
+    // matches REST or MCP, which both publish an integer -- one field, two
+    // representations across three surfaces. Asserted as it actually is rather
+    // than as it ought to be; #9811 tracks reconciling them, which is a
+    // breaking SDL change and not this issue's to make (epoch millis also
+    // overflow GraphQL's 32-bit Int, so it would have to be Float or a custom
+    // scalar).
+    assert.equal(
+      body.data.rpc_usage.observed_at,
+      String(Date.parse("2026-06-23T00:00:00.000Z")),
+    );
   });
 
   test("a D1 query error degrades to a schema-stable zeroed card (no throw)", async () => {
