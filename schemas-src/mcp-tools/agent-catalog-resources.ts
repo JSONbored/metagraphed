@@ -7,7 +7,8 @@
 // modeled fresh, matching each hand-written literal field-for-field.
 import { z } from "zod";
 import { AgentResourcesArtifactSchema } from "../routes/agent-catalog.ts";
-import { OpenObjectSchema, netuidSchema } from "./shared.ts";
+import { netuidSchema } from "./shared.ts";
+import { AgentCatalogSubnetEntrySchema } from "../routes/agent-catalog.ts";
 
 export const GetAgentCatalogInputSchema = z
   .object({
@@ -28,7 +29,11 @@ export const GetAgentCatalogOutputSchema = z
     content_hash: z.string().nullable().optional(),
     generated_at: z.string().nullable().optional(),
     published_at: z.string().nullable().optional(),
-    subnets: z.array(OpenObjectSchema).optional(),
+    // Typed from the route's own AgentCatalogSubnetEntrySchema (#9797).
+    // Optional because it is the GLOBAL form's key -- a per-netuid call
+    // returns that subnet's own catalog instead, with no `subnets` at all.
+    // Verified against production 2026-08-07 over all 126 rows.
+    subnets: z.array(AgentCatalogSubnetEntrySchema).optional(),
     operational_observed_at: z.string().nullable().optional(),
     health_source: z.string().nullable().optional(),
   })

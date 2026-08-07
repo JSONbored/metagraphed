@@ -97,7 +97,6 @@ const MCP_NOT_YET_TYPED: string[] = [
   "find_subnet_for_task.results[]",
   "get_account.activity",
   "get_account_counterparties.relationship",
-  "get_agent_catalog.subnets[]",
   "get_domain_summary.domains[]",
   "get_domain_summary.emission_concentration",
   "get_subnet_gaps.enrichment_queue[]",
@@ -108,7 +107,6 @@ const MCP_NOT_YET_TYPED: string[] = [
   "list_enrichment_targets.targets[].top_gaps[]",
   "list_profiles.profiles[]",
   "list_search.documents[]",
-  "list_subnet_apis.services[]",
   "list_subnet_health.surfaces[]",
   "list_surface_credentials.credentials[]",
 ];

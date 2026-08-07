@@ -42,6 +42,8 @@ const ROW_SITES: Array<[tool: string, key: string, projectable: boolean]> = [
   ["get_subnet_economics", "economics", false],
   ["get_health_history", "surfaces", true],
   ["get_subnet_health", "summary", false],
+  ["get_agent_catalog", "subnets", false],
+  ["list_subnet_apis", "services", false],
 ];
 
 describe("typed row sites (#9797)", () => {
