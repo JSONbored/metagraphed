@@ -128,9 +128,24 @@ const SQLITE_ONLY: readonly Rule[] = [
  * Kept in sync by a test below rather than by hand.
  */
 const BOOLEAN_COLUMNS = [
+  // neuron_daily / account_position_daily
   "validator_permit",
   "active",
   "is_immunity_period",
+  // subnet_snapshots (#9814)
+  "emission_enabled",
+  "subtoken_enabled",
+  // subnet_hyperparams (#9814). Every one is a 0/1 CHECK in D1 and a BOOLEAN
+  // in Neon, so every one is a `= 1` waiting to happen.
+  "registration_allowed",
+  "commit_reveal_enabled",
+  "liquid_alpha_enabled",
+  "subnet_is_active",
+  "transfers_enabled",
+  "bonds_reset_enabled",
+  "user_liquidity_enabled",
+  "owner_cut_enabled",
+  "owner_cut_auto_lock_enabled",
 ] as const;
 
 /** Comparisons and aggregates that only work against ONE of the two schemas. */

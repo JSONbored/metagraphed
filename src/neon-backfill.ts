@@ -1,4 +1,18 @@
-// The D1 -> Neon reconciler for the two ACCUMULATING daily tables (infra#336).
+// The D1 -> Neon reconciler (infra#336).
+//
+// Two kinds of table, two units of work -- see BackfillPartition:
+//
+//   date   the ACCUMULATING tables. One unit per snapshot_date; a past date is
+//          finished, so a per-date count difference is exact and a tick can
+//          copy a few dates and stop.
+//   whole  the DIMENSION tables (#9814). No date column to divide on, rewritten
+//          in place, and small enough that the whole table is one unit.
+//
+// The comparison differs with the unit, and for a real reason. A dated table
+// only grows, so counts alone settle it. A dimension table is UPDATED IN PLACE
+// -- an identity changes, a subnet retunes -- so both stores can hold the same
+// number of rows and different data indefinitely. Those compare on
+// (COUNT(*), MAX(captured_at)).
 //
 // ## Why the mirror alone does not finish the job
 //
@@ -103,14 +117,32 @@ export interface BackfillDb {
   };
 }
 
+/**
+ * How a table divides into units of work.
+ *
+ * `date` -- one unit per `snapshot_date`. Right for the ACCUMULATING tables:
+ * a past date is finished, so a per-date count difference is an exact and
+ * complete signal, and a tick can copy a few dates and stop.
+ *
+ * `whole` -- one unit, the entire table. Right for the DIMENSION tables, which
+ * have no date column to divide on and are rewritten in place. They are small
+ * enough that the whole table IS a reasonable unit: 129 rows for
+ * subnet_hyperparams and 497 for account_identity, measured 2026-08-07.
+ */
+export type BackfillPartition = "date" | "whole";
+
 export interface BackfillPlan {
   table: string;
   columns: readonly string[];
   /** Neon's primary key. Matches D1's, which is why one row shape serves both. */
   conflict: readonly string[];
   /** The primary key MINUS snapshot_date, in key order: the columns a page
-   * within one date resumes from. */
+   * within one date resumes from. For a `whole` plan, the full key. */
   keyset: readonly string[];
+  /** Declared on every plan rather than defaulted, because the wrong value is
+   * silent: a dated table read as `whole` would copy itself end to end every
+   * tick, and an undated one read as `date` would query a column it lacks. */
+  partition: BackfillPartition;
   /** Columns D1 stores as 0/1 and Neon declares BOOLEAN.
    *
    * NOT a stylistic difference -- it is the one shape mismatch between the two
@@ -122,13 +154,101 @@ export interface BackfillPlan {
   booleans: readonly string[];
 }
 
+/** subnet_snapshots, read off pragma_table_info 2026-08-07. */
+const SUBNET_SNAPSHOTS_COLUMNS = [
+  "netuid",
+  "snapshot_date",
+  "completeness_score",
+  "surface_count",
+  "endpoint_count",
+  "monitored_count",
+  "candidate_count",
+  "captured_at",
+  "validator_count",
+  "miner_count",
+  "total_stake_tao",
+  "alpha_price_tao",
+  "emission_share",
+  "tao_in_pool_tao",
+  "alpha_in_pool",
+  "alpha_out_pool",
+  "subnet_volume_tao",
+  "tao_in_emission_tao",
+  "excess_tao",
+  "alpha_in_emission",
+  "alpha_out_emission",
+  "miner_burned_fraction",
+  "emission_enabled",
+  "subtoken_enabled",
+  "first_emission_block",
+  "pipeline_block",
+  "pipeline_block_hash",
+] as const;
+
+/** subnet_hyperparams. Every `*_enabled` column is a 0/1 CHECK in D1. */
+const SUBNET_HYPERPARAMS_COLUMNS = [
+  "netuid",
+  "kappa_ratio",
+  "immunity_period",
+  "min_allowed_weights",
+  "max_weight_limit_ratio",
+  "tempo",
+  "weights_version",
+  "weights_rate_limit",
+  "activity_cutoff",
+  "activity_cutoff_factor",
+  "registration_allowed",
+  "target_regs_per_interval",
+  "min_burn_tao",
+  "max_burn_tao",
+  "burn_half_life",
+  "burn_increase_mult",
+  "bonds_moving_avg_raw",
+  "max_regs_per_block",
+  "serving_rate_limit",
+  "max_validators",
+  "commit_reveal_period",
+  "commit_reveal_enabled",
+  "alpha_high_ratio",
+  "alpha_low_ratio",
+  "liquid_alpha_enabled",
+  "alpha_sigmoid_steepness",
+  "yuma_version",
+  "subnet_is_active",
+  "transfers_enabled",
+  "bonds_reset_enabled",
+  "user_liquidity_enabled",
+  "owner_cut_enabled",
+  "owner_cut_auto_lock_enabled",
+  "min_childkey_take_ratio",
+  "block_number",
+  "captured_at",
+] as const;
+
+/** account_identity. */
+const ACCOUNT_IDENTITY_COLUMNS = [
+  "account",
+  "name",
+  "url",
+  "github",
+  "image",
+  "discord",
+  "description",
+  "additional",
+  "captured_at",
+] as const;
+
 /**
  * One plan per table, keyed by the name used in NEON_BACKFILL_LANES.
  *
- * The conflict keys are D1's declared PRIMARY KEYs, read off sqlite_master
- * 2026-08-07 rather than assumed, and they match Neon's. An ON CONFLICT naming
- * columns with no unique index behind them is a runtime error, not a slower
- * query.
+ * The conflict keys are D1's declared PRIMARY KEYs, read off sqlite_master /
+ * pragma_table_info rather than assumed, and they match Neon's. An ON CONFLICT
+ * naming columns with no unique index behind them is a runtime error, not a
+ * slower query.
+ *
+ * A plan here is INERT until NEON_BACKFILL_LANES names its table, so the three
+ * added for #9814 do nothing until both their Neon tables exist and the flag
+ * lists them.
  */
 export const NEON_BACKFILL_PLANS: Readonly<Record<string, BackfillPlan>> = {
   neuron_daily: {
@@ -136,6 +256,7 @@ export const NEON_BACKFILL_PLANS: Readonly<Record<string, BackfillPlan>> = {
     columns: NEURON_DAILY_COLUMNS,
     conflict: ["netuid", "uid", "snapshot_date"],
     keyset: ["netuid", "uid"],
+    partition: "date",
     booleans: ["active", "validator_permit", "is_immunity_period"],
   },
   account_position_daily: {
@@ -143,7 +264,46 @@ export const NEON_BACKFILL_PLANS: Readonly<Record<string, BackfillPlan>> = {
     columns: ACCOUNT_POSITION_DAILY_COLUMNS,
     conflict: ["account", "netuid", "snapshot_date"],
     keyset: ["account", "netuid"],
+    partition: "date",
     booleans: ["active", "validator_permit"],
+  },
+  // The three tables #9814 needs. Four routes read one of them through a side
+  // loader and therefore cannot move to Neon until they exist there:
+  // /validators, /subnets/{n}/concentration/history, /accounts and
+  // /accounts/{ss58}/subnets.
+  subnet_snapshots: {
+    table: "subnet_snapshots",
+    columns: SUBNET_SNAPSHOTS_COLUMNS,
+    conflict: ["netuid", "snapshot_date"],
+    keyset: ["netuid"],
+    partition: "date",
+    booleans: ["emission_enabled", "subtoken_enabled"],
+  },
+  subnet_hyperparams: {
+    table: "subnet_hyperparams",
+    columns: SUBNET_HYPERPARAMS_COLUMNS,
+    conflict: ["netuid"],
+    keyset: ["netuid"],
+    partition: "whole",
+    booleans: [
+      "registration_allowed",
+      "commit_reveal_enabled",
+      "liquid_alpha_enabled",
+      "subnet_is_active",
+      "transfers_enabled",
+      "bonds_reset_enabled",
+      "user_liquidity_enabled",
+      "owner_cut_enabled",
+      "owner_cut_auto_lock_enabled",
+    ],
+  },
+  account_identity: {
+    table: "account_identity",
+    columns: ACCOUNT_IDENTITY_COLUMNS,
+    conflict: ["account"],
+    keyset: ["account"],
+    partition: "whole",
+    booleans: [],
   },
 };
 
@@ -404,6 +564,219 @@ export interface BackfillDeps {
  * completion. #9698's alarm escalates a lane that stays stale, which during a
  * backfill is exactly the signal that it has stopped converging.
  */
+/**
+ * The unit label a whole-table plan reports, where a dated plan reports a date.
+ *
+ * Whole-table plans have exactly one unit of work, so the outcome shape and
+ * describeOutcome need no special case -- the lane verdict reads the same for
+ * both kinds of plan.
+ */
+export const WHOLE_TABLE_UNIT = "*";
+
+/**
+ * Row count and newest `captured_at` for a table, on either side.
+ *
+ * COUNT ALONE IS NOT ENOUGH for these tables, and that is the whole reason
+ * this is a pair. The dated plans divide into units that only ever grow, so a
+ * per-date count difference is a complete signal. A dimension table is
+ * UPDATED IN PLACE -- `account_identity` rewrites a row when an identity
+ * changes, `subnet_hyperparams` when a subnet retunes -- so the two stores can
+ * hold the same number of rows and different data indefinitely. `captured_at`
+ * moves on every write, so the pair catches drift the count cannot see.
+ */
+export interface TableSignature {
+  rows: number;
+  maxCapturedAt: number | null;
+}
+
+/**
+ * A signature row, or null if the store did not actually answer.
+ *
+ * `COUNT(*)` ALWAYS returns exactly one row, even over an empty table. So no
+ * row here does not mean "no data" -- it means the response was not the shape
+ * a count produces, and reading it as `{rows: 0}` would report the other
+ * store's entire contents as a deficit. That is the same rule d1DateCounts
+ * follows by returning null rather than an empty map, and it exists because
+ * the failure it prevents is a catastrophic mistaken copy.
+ */
+function signatureOf(raw: unknown): TableSignature | null {
+  if (raw == null || typeof raw !== "object") return null;
+  const row = raw as Row;
+  const rows = Number(row.n);
+  // MAX() over an empty table is SQL NULL, and `Number(null)` is 0 -- which
+  // would make an empty table indistinguishable from one written at epoch, and
+  // would let two empty stores agree for the wrong reason. Check the null
+  // before coercing.
+  const rawMax = row.max_captured;
+  const max = rawMax == null ? Number.NaN : Number(rawMax);
+  return {
+    rows: Number.isFinite(rows) ? rows : 0,
+    maxCapturedAt: Number.isFinite(max) ? max : null,
+  };
+}
+
+/** D1's signature. Null on failure, never a zeroed one -- see d1DateCounts. */
+export async function d1TableSignature(
+  db: BackfillDb | null | undefined,
+  table: string,
+): Promise<TableSignature | null> {
+  try {
+    const result = await db
+      ?.prepare(
+        `SELECT COUNT(*) AS n, MAX(captured_at) AS max_captured FROM ${table}`,
+      )
+      .all();
+    if (!result) return null;
+    return signatureOf((result.results ?? [])[0]);
+  } catch {
+    return null;
+  }
+}
+
+/** Neon's signature, in the same shape. */
+export async function neonTableSignature(
+  sql: PgUnsafe | null | undefined,
+  table: string,
+): Promise<TableSignature | null> {
+  if (!sql?.unsafe) return null;
+  try {
+    const rows = (await sql.unsafe(
+      `SELECT COUNT(*) AS n, MAX(captured_at) AS max_captured FROM ${table}`,
+    )) as unknown[];
+    if (!Array.isArray(rows)) return null;
+    return signatureOf(rows[0]);
+  } catch {
+    return null;
+  }
+}
+
+/** Two signatures agree when both the count and the newest write match. */
+export function signaturesAgree(a: TableSignature, b: TableSignature): boolean {
+  return a.rows === b.rows && a.maxCapturedAt === b.maxCapturedAt;
+}
+
+/** One page of a whole-table read, resumed from the keyset cursor. */
+export async function readWholePage(
+  db: BackfillDb,
+  plan: BackfillPlan,
+  cursor: readonly unknown[] | null,
+  limit: number,
+): Promise<Row[]> {
+  const keyset = cursor ? keysetPredicate(plan.keyset, cursor) : null;
+  const sql =
+    `SELECT ${plan.columns.join(", ")} FROM ${plan.table}` +
+    `${keyset ? ` WHERE ${keyset.sql}` : ""} ` +
+    `ORDER BY ${plan.keyset.join(", ")} LIMIT ?`;
+  const result = await db
+    .prepare(sql)
+    .bind(...(keyset?.values ?? []), limit)
+    .all();
+  return (result?.results ?? []) as Row[];
+}
+
+/**
+ * Copy an entire table, page by page. The whole-table twin of copyDateToNeon,
+ * and it stops at the first failed write for the same reason.
+ */
+export async function copyWholeTableToNeon(
+  db: BackfillDb,
+  sql: PgUnsafe,
+  plan: BackfillPlan,
+  pageRows: number = D1_PAGE_ROWS,
+): Promise<DateCopyResult> {
+  let cursor: unknown[] | null = null;
+  let rows = 0;
+  let statements = 0;
+  let pages = 0;
+  const date = WHOLE_TABLE_UNIT;
+  for (;;) {
+    let page: Row[];
+    try {
+      page = await readWholePage(db, plan, cursor, pageRows);
+    } catch (error) {
+      return {
+        ok: false,
+        rows,
+        statements,
+        pages,
+        date,
+        reason: reason(error),
+      };
+    }
+    if (page.length === 0) return { ok: true, rows, statements, pages, date };
+    pages += 1;
+    const result = await writeRowsToNeon(
+      sql,
+      plan.table,
+      plan.columns,
+      page.map((row) => shapeRowForNeon(row, plan.booleans)),
+      plan.conflict,
+      backfillGuard(plan.table),
+    );
+    rows += result.rows;
+    statements += result.statements;
+    if (!result.ok) {
+      return {
+        ok: false,
+        rows,
+        statements,
+        pages,
+        date,
+        reason: result.reason,
+      };
+    }
+    if (page.length < pageRows)
+      return { ok: true, rows, statements, pages, date };
+    const last = page[page.length - 1];
+    cursor = plan.keyset.map((column) => last[column]);
+  }
+}
+
+/**
+ * Reconcile an undated table by comparing its signature and copying if they
+ * differ.
+ *
+ * `missing` is a LOWER BOUND here, unlike the dated path where it is exact.
+ * An updated-in-place row is drift with no row-count difference at all, so a
+ * table can be out of sync with `missing: 0`. Reporting the count difference
+ * anyway keeps the field meaning the same thing on both paths -- rows Neon
+ * does not have -- rather than inventing a second meaning for one of them.
+ */
+async function reconcileWholeTable(
+  db: BackfillDb,
+  sql: PgUnsafe,
+  plan: BackfillPlan,
+): Promise<BackfillTableOutcome> {
+  const table = plan.table;
+  const base = { table, deficits: 0, missing: 0, remaining: 0, copied: [] };
+  const [d1Sig, neonSig] = await Promise.all([
+    d1TableSignature(db, table),
+    neonTableSignature(sql, table),
+  ]);
+  if (!d1Sig || !neonSig) {
+    return {
+      ...base,
+      ok: false,
+      reason: `signature failed: ${!d1Sig ? "d1" : "neon"}`,
+    };
+  }
+  if (signaturesAgree(d1Sig, neonSig)) return { ...base, ok: true };
+
+  const missing = Math.max(0, d1Sig.rows - neonSig.rows);
+  const result = await copyWholeTableToNeon(db, sql, plan);
+  return {
+    table,
+    deficits: 1,
+    missing,
+    // One unit of work, so reaching the end of it clears the backlog whatever
+    // the row arithmetic said going in.
+    remaining: result.ok ? 0 : missing,
+    copied: [result],
+    ok: result.ok,
+    ...(result.ok ? {} : { reason: result.reason }),
+  };
+}
+
 export async function reconcileTableToNeon(
   db: BackfillDb | null | undefined,
   sql: PgUnsafe | null | undefined,
@@ -420,6 +793,9 @@ export async function reconcileTableToNeon(
   };
   if (!db?.prepare || !sql?.unsafe) {
     return { ...base, ok: false, reason: "unbound" };
+  }
+  if (plan.partition === "whole") {
+    return await reconcileWholeTable(db, sql, plan);
   }
   const [d1Counts, neonCounts] = await Promise.all([
     d1DateCounts(db, table),
