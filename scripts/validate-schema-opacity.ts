@@ -94,13 +94,10 @@ const ROUTE_OPEN_SITES: Record<string, string> = {
  * #9797 has left to do. */
 const MCP_NOT_YET_TYPED: string[] = [
   "find_subnet_for_task.results[]",
-  "get_subnet_gaps.enrichment_queue[]",
-  "get_subnet_gaps.priorities[]",
   "how_do_i_call.services[]",
   "list_enrichment_targets.filters",
   "list_enrichment_targets.targets[].dimensions",
   "list_enrichment_targets.targets[].top_gaps[]",
-  "list_search.documents[]",
   "list_subnet_health.surfaces[]",
   "list_surface_credentials.credentials[]",
 ];

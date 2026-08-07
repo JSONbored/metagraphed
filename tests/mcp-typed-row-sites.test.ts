@@ -49,6 +49,8 @@ const ROW_SITES: Array<[tool: string, key: string, projectable: boolean]> = [
   ["compare_validators", "validators", false],
   ["list_profiles", "profiles", true],
   ["get_domain_summary", "domains", false],
+  ["get_subnet_gaps", "priorities", false],
+  ["list_search", "documents", true],
 ];
 
 describe("typed row sites (#9797)", () => {
