@@ -148,6 +148,7 @@ if (stale.length > 0) {
 // asserting.
 const MIRRORED_VOCABULARIES: Record<string, string> = {
   CANDIDATE_SORT_VALUES: "candidates",
+  COVERAGE_DEPTH_SORT_VALUES: "coverage-depth",
   ENDPOINT_POOL_SORT_VALUES: "endpoint-pools",
   ENDPOINT_SORT_VALUES: "endpoints",
   EVIDENCE_ENTRY_SORT_VALUES: "claims",

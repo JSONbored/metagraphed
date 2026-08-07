@@ -28,6 +28,7 @@ import {
 } from "../routes/coverage.ts";
 import {
   AGENT_READINESS_STATUSES,
+  BLOCKER_LEVELS,
   COVERAGE_DEPTH_SEVERITIES,
   COVERAGE_DEPTH_TIERS,
 } from "../routes/coverage.ts";
@@ -73,6 +74,16 @@ export const ListEnrichmentTargetsInputSchema = z
       .optional()
       .describe("How usable the subnet is to an agent right now.")
       .meta({ examples: [AGENT_READINESS_STATUSES[0]] }),
+    // #10011: the fourth filter the coverage-depth collection declares. Its
+    // three siblings above were already here, so this one's absence was an
+    // omission rather than a narrowing.
+    blocker_level: z
+      .enum(BLOCKER_LEVELS)
+      .optional()
+      .describe(
+        "How badly the subnet is blocked. `none` means nothing is blocking promotion.",
+      )
+      .meta({ examples: ["hard-blocked"] }),
     netuid: netuidSchema().optional(),
   })
   .strict();

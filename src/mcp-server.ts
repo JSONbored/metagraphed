@@ -4381,6 +4381,15 @@ function applySubnetListQuery(
   args: Row,
   collection: string,
   dataKey: string,
+  /**
+   * Argument names that are the SUBJECT of this view rather than filters over
+   * it (#10011). A per-subnet tool has already resolved `netuid` by reading
+   * that subnet's artifact, so passing it on as a filter would be redundant at
+   * best. A network-wide tool over the same collection has not, and there
+   * `netuid` is a real filter -- which is why this is a parameter and not the
+   * hard-coded skip it started as.
+   */
+  subjectKeys: readonly string[] = ["netuid"],
 ): Row {
   // Schema-stability guard, same as list_endpoints': an artifact with no rows
   // array must still report an empty list rather than fall through
@@ -4390,7 +4399,8 @@ function applySubnetListQuery(
   const body = Array.isArray(rows) ? data : { ...data, [dataKey]: [] };
   const queryUrl = new URL(`https://mcp.internal/${collection}`);
   for (const [key, value] of Object.entries(args ?? {})) {
-    if (key === "netuid" || key === "context") continue;
+    // `context` is MCP intent telemetry, never a query parameter.
+    if (key === "context" || subjectKeys.includes(key)) continue;
     if (value === undefined || value === null || value === "") continue;
     queryUrl.searchParams.set(key, String(value));
   }
@@ -4401,7 +4411,7 @@ function applySubnetListQuery(
     Object.keys(
       (API_QUERY_COLLECTIONS as Record<string, { filters?: Row }>)[collection]
         ?.filters ?? {},
-    ).filter((name) => name !== "netuid"),
+    ).filter((name) => !subjectKeys.includes(name)),
   );
   if (transformed.error) {
     throw toolError("invalid_params", transformed.error.message);
@@ -12788,8 +12798,19 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         target: "draft-2020-12",
       }),
     ),
-    async handler(_args: unknown, ctx: McpCtx) {
-      return loadArtifactData(ctx, "/metagraph/coverage-depth.json");
+    async handler(args: unknown, ctx: McpCtx) {
+      // #10011: this returned the whole ~293 KB scorecard on every call, with
+      // no way to ask for less. Same engine the route uses, so the two cannot
+      // filter differently. "rows" is the collection's own data_key.
+      return applySubnetListQuery(
+        await loadArtifactData(ctx, "/metagraph/coverage-depth.json"),
+        args as Row,
+        "coverage-depth",
+        "rows",
+        // Network-wide: nothing is the subject here, so `netuid` is a filter
+        // like any other.
+        [],
+      );
     },
   },
   {

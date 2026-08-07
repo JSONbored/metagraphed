@@ -25258,23 +25258,35 @@ describe("MCP health-tier analytics tools — Postgres tier wiring", () => {
 });
 
 describe("get_coverage_depth MCP tool (#6983)", () => {
-  test("is registered as a no-arg read-only tool", () => {
+  test("takes exactly the arguments its route publishes", () => {
     const tool = MCP_TOOLS.find((t) => t.name === "get_coverage_depth");
     assert.ok(tool, "get_coverage_depth should be registered");
     assert.equal(typeof tool.description, "string");
     assert.equal(tool.inputSchema.type, "object");
     assert.equal(tool.inputSchema.additionalProperties, false);
-    // #9642 added a universal `context` argument to every tool for agent-intent
-    // capture, so "no-arg" now means "no arguments OF ITS OWN" rather than an
-    // empty properties object. Asserted by subtraction so this keeps testing
-    // what it was written to test -- that this tool takes no input -- instead
-    // of being loosened to a shape check that would also pass if a real
-    // argument were added tomorrow.
+    // This asserted an EMPTY argument set until #10011, "by subtraction so
+    // this keeps testing what it was written to test... instead of being
+    // loosened to a shape check that would also pass if a real argument were
+    // added tomorrow". Tomorrow arrived: the tool returned ~293 KB with no way
+    // to ask for less, so it now takes its route's filters.
+    //
+    // Kept as an EXACT set for the same reason the original was written that
+    // way -- an argument appearing here by accident still fails.
     assert.deepEqual(
-      Object.keys(tool.inputSchema.properties ?? {}).filter(
-        (key) => key !== "context",
-      ),
-      [],
+      Object.keys(tool.inputSchema.properties ?? {})
+        .filter((key) => key !== "context")
+        .sort(),
+      [
+        "agent_status",
+        "blocker_level",
+        "cursor",
+        "fields",
+        "limit",
+        "netuid",
+        "order",
+        "sort",
+        "tier",
+      ],
     );
   });
 
@@ -25290,6 +25302,71 @@ describe("get_coverage_depth MCP tool (#6983)", () => {
     const out = res.body.result.structuredContent;
     assert.equal(out.rows[0].netuid, 1);
     assert.equal(out.ranked_queue[0].severity, "high");
+  });
+
+  test("filters the rows it used to return wholesale (#10011)", async () => {
+    // 293 KB with no arguments was the defect. Assertions check the ROWS: a
+    // filter accepted and dropped would pass a schema-only test while still
+    // returning everything, which is how #10009's third hand-listed array hid.
+    const deps = makeDeps({
+      "/metagraph/coverage-depth.json": {
+        schema_version: 1,
+        rows: [
+          {
+            netuid: 1,
+            tier: "agent-ready",
+            agent_status: "callable",
+            blocker_level: "none",
+          },
+          {
+            netuid: 2,
+            tier: "needs-evidence",
+            agent_status: "needs-evidence",
+            blocker_level: "missing-data",
+          },
+          {
+            netuid: 3,
+            tier: "agent-ready",
+            agent_status: "callable",
+            blocker_level: "none",
+          },
+        ],
+      },
+    });
+    const rows = async (args: Row) =>
+      (
+        (await callTool("get_coverage_depth", args, { deps })).body.result
+          .structuredContent.rows as Row[]
+      ).map((r: Row) => r.netuid);
+
+    assert.deepEqual(await rows({ tier: "agent-ready" }), [1, 3]);
+    assert.deepEqual(await rows({ blocker_level: "missing-data" }), [2]);
+    assert.deepEqual(await rows({ netuid: 3 }), [3]);
+    assert.deepEqual(await rows({ limit: 1 }), [1]);
+    // Two filters intersect rather than either winning.
+    assert.deepEqual(
+      await rows({ tier: "agent-ready", agent_status: "callable" }),
+      [1, 3],
+    );
+    // The compatibility floor: no arguments still returns every row.
+    assert.deepEqual(await rows({}), [1, 2, 3]);
+  });
+
+  test("refuses a tier the scorecard does not define", async () => {
+    const res = await callTool(
+      "get_coverage_depth",
+      { tier: "not-a-tier" },
+      {
+        deps: makeDeps({
+          "/metagraph/coverage-depth.json": { schema_version: 1, rows: [] },
+        }),
+      },
+    );
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "invalid_params",
+    );
   });
 
   test("maps a missing artifact to a clean not_found", async () => {

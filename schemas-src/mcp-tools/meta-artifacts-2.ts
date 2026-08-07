@@ -18,7 +18,21 @@ import { z } from "zod";
 import { ChangelogArtifactSchema } from "../routes/meta-contracts.ts";
 import { CoverageDepthArtifactSchema } from "../routes/coverage.ts";
 import { SelfHealthArtifactSchema } from "../routes/self-health.ts";
-import { CoverageArtifactSchema } from "../routes/coverage.ts";
+import {
+  AGENT_READINESS_STATUSES,
+  BLOCKER_LEVELS,
+  COVERAGE_DEPTH_TIERS,
+  CoverageArtifactSchema,
+} from "../routes/coverage.ts";
+import {
+  COVERAGE_DEPTH_SORT_VALUES,
+  fieldsStringSchema,
+  limitSchema,
+  netuidSchema,
+  numericCursorSchema,
+  orderSchema,
+  sortSchema,
+} from "./shared.ts";
 import { BuildSummaryArtifactSchema } from "../routes/meta-contracts.ts";
 
 export const GetChangelogInputSchema = z.object({}).strict();
@@ -60,7 +74,44 @@ export type GetCoverageInput = z.infer<typeof GetCoverageInputSchema>;
 export const GetCoverageOutputSchema = CoverageArtifactSchema;
 export type GetCoverageOutput = z.infer<typeof GetCoverageOutputSchema>;
 
-export const GetCoverageDepthInputSchema = z.object({}).strict();
+/**
+ * #10011. This took NO arguments and returned ~293 KB -- the whole
+ * coverage-depth scorecard, every subnet, on every call, while
+ * GET /api/v1/coverage/depth publishes every filter below. Not bad defaults:
+ * no lever at all, the same shape get_health_trends had before #9989.
+ *
+ * The vocabularies are the ROUTE's own, so a tier added to the scorecard
+ * cannot become one this tool rejects.
+ */
+export const GetCoverageDepthInputSchema = z
+  .object({
+    netuid: netuidSchema().optional(),
+    tier: z
+      .enum(COVERAGE_DEPTH_TIERS)
+      .optional()
+      .describe(
+        "Restrict to subnets in this readiness tier. Applied across the whole scorecard, not to one page.",
+      )
+      .meta({ examples: ["agent-ready"] }),
+    agent_status: z
+      .enum(AGENT_READINESS_STATUSES)
+      .optional()
+      .describe("Restrict to subnets with this agent-readiness status.")
+      .meta({ examples: ["callable"] }),
+    blocker_level: z
+      .enum(BLOCKER_LEVELS)
+      .optional()
+      .describe(
+        "Restrict to subnets blocked this badly. `none` means nothing is blocking promotion.",
+      )
+      .meta({ examples: ["hard-blocked"] }),
+    sort: sortSchema(COVERAGE_DEPTH_SORT_VALUES).optional(),
+    order: orderSchema().optional(),
+    fields: fieldsStringSchema().optional(),
+    limit: limitSchema(500).optional(),
+    cursor: numericCursorSchema().optional(),
+  })
+  .strict();
 export type GetCoverageDepthInput = z.infer<typeof GetCoverageDepthInputSchema>;
 
 // DERIVED FROM THE ROUTE, NOT COPIED (#9794). The hand-written copy typed
