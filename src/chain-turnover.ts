@@ -198,7 +198,7 @@ const EMPTY_SET = new Set<string>();
 // Null-safe: no data or an unresolvable boundary yields the schema-stable empty block
 // (comparable:false, empty leaderboard), never throws. `limit` caps the per-subnet leaderboard;
 // the network rollup, subnet_count, and distribution cover every subnet that had a validator set
-// at either boundary (the loader reads only validator_permit=1 rows, so subnets with no
+// at either boundary (the loader reads only validator_permit = TRUE rows, so subnets with no
 // validators in the window are absent) — subnet_count/distribution count all of those, not just
 // the returned page.
 export function buildChainTurnover(
@@ -311,7 +311,7 @@ export function buildChainTurnover(
 // Network-wide validator turnover, computed live: anchor the window to the newest STORED
 // snapshot (date() relative to MAX(snapshot_date)) so a lagging/restored store still compares
 // real boundary snapshots, read every subnet's validator rows at those two days (bounded by
-// validator_permit = 1; the date-first idx_neuron_daily_date_netuid_agg covers the boundary
+// validator_permit = TRUE; the date-first idx_neuron_daily_date_netuid_agg covers the boundary
 // scan), shape with buildChainTurnover. Cold/absent or single-snapshot D1 → comparable:false.
 export async function loadChainTurnover(
   d1: (
@@ -341,7 +341,7 @@ export async function loadChainTurnover(
   let rows: Array<Record<string, unknown>> = [];
   if (startDate != null && endDate != null && startDate !== endDate) {
     rows = await d1(
-      `SELECT ${CHAIN_TURNOVER_READ_COLUMNS} FROM neuron_daily WHERE validator_permit = 1 AND snapshot_date IN (?, ?)`,
+      `SELECT ${CHAIN_TURNOVER_READ_COLUMNS} FROM neuron_daily WHERE validator_permit = TRUE AND snapshot_date IN (?, ?)`,
       [startDate, endDate],
     );
   }

@@ -273,7 +273,7 @@ export interface NeuronAggregate {
  */
 export const NEURON_AGGREGATE_QUERY =
   "SELECT netuid, COUNT(*) AS uid_count, " +
-  "SUM(CASE WHEN validator_permit = 1 THEN 1 ELSE 0 END) AS validator_count, " +
+  "SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END) AS validator_count, " +
   "SUM(stake_tao) AS total_stake_alpha, MAX(stake_tao) AS max_stake_alpha " +
   "FROM neurons GROUP BY netuid";
 

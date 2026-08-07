@@ -178,22 +178,33 @@
     // Re-adding neuron_daily needs those two queries ported to portable SQL
     // (an explicit date literal computed in TS, not in the database) -- see
     // #9789.
-    // `neurons` PULLED 2026-08-07, immediately after neuron_daily (#9791).
-    // /api/v1/validators returned ZERO from Neon and fell back to an empty
-    // artifact -- 5 rows -> 0, measured across three deploys:
-    //   baseline (pre-cutover)  5 rows
-    //   f07234628 (pre-cutover) 5 rows
-    //   2df376f7e (post)        0 rows
+    // Re-enabled after the SQL was made PORTABLE (#9791/#9805). Two rollbacks
+    // preceded this -- #9792 pulled neuron_daily, #9802 pulled neurons -- and
+    // both had one cause: createD1Sql and createPgSql are interface-compatible,
+    // so a query moves stores by choosing a runner. True of the BINDING, false
+    // of the SQL.
     //
-    // Same root cause class as #9791: a query that is valid SQLite and not
-    // valid Postgres fails, and this route falls back to an artifact rather
-    // than erroring -- so the failure is invisible from the response alone.
+    //   date(MAX(snapshot_date), '-30 days')  -> boundary computed in TS
+    //   validator_permit = 1                  -> validator_permit = TRUE
+    //   SUM(validator_permit)                 -> SUM(CASE WHEN ... THEN 1 ELSE 0 END)
     //
-    // account_position_daily stays. Its one route was verified against a D1
-    // baseline across four deploys and is unchanged.
+    // The SECOND class is what emptied /api/v1/validators, measured across
+    // three deploys:
+    //   f07234628 (neurons + neuron_daily on)  5 rows
+    //   2df376f7e (neuron_daily pulled)        0 rows
+    //   c450947ac (neurons pulled)             1,014 rows
     //
-    // NOTHING goes back into this flag until #9793's dialect scan runs in CI.
-    "NEON_READ_LANES": "account_position_daily",
+    // D1 stores those columns as 0/1 integers; Neon declares them BOOLEAN,
+    // because that is what the mirror writes. Postgres rejects
+    // `boolean = integer`, the query errored, and the handler's `??` fallback
+    // built an EMPTY leaderboard -- a 200 with a plausible shape and no error
+    // anywhere. Both new forms were verified to return IDENTICAL results on D1
+    // (1,580 validators either way) before the change.
+    //
+    // tests/neon-sql-portability.test.ts now fails CI on any SQLite-only
+    // construct in a route this flag can move -- the gate that did not exist
+    // when #9784 shipped.
+    "NEON_READ_LANES": "account_position_daily,neurons,neuron_daily",
     // The two ACCUMULATING tables, and only those (src/neon-backfill.ts).
     //
     // The mirror above writes what each request carries, which finishes the job

@@ -378,6 +378,7 @@ import { mirrorNominatorPositionsToNeon } from "../src/nominator-positions-neon-
 import { mirrorLedgerToNeon } from "../src/ledger-neon-write.ts";
 import { neonReadEnabled } from "../src/neon-write.ts";
 import { runNeonBackfill } from "../src/neon-backfill.ts";
+import { neuronDailyWindow } from "../src/portable-date-window.ts";
 import { runNeonMirrorWatchdog } from "../src/neon-mirror-watchdog.ts";
 import {
   writeAccountIdentityToD1,
@@ -5533,7 +5534,7 @@ async function handleAccountKeysRoute(request: Request, env: Env, url: URL) {
 //   - no ::casts (snapshot_date is already TEXT 'YYYY-MM-DD'; SQLite compares
 //     it lexicographically, which for ISO dates IS date order)
 //   - validator_permit = TRUE            -> = 1 (INTEGER 0/1 schema)
-//   - SUM(validator_permit::int)         -> SUM(validator_permit)
+//   - SUM(validator_permit::int)         -> SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END)
 //   - DISTINCT ON (k) ... ORDER BY k, d  -> ROW_NUMBER() OVER (PARTITION BY
 //     k ORDER BY d DESC) = 1, or a group-wise-MAX join (SQLite has no
 //     DISTINCT ON)
@@ -5670,7 +5671,7 @@ async function loadAlphaPricesByNetuidD1(
 // chunking into a dozen round trips (what the lakehouse reader has to do,
 // having no join to reach for). Joining against `neurons` inside SQLite costs
 // ZERO bound parameters and one query, and keeps the filter exactly in step
-// with the leaderboard's own `validator_permit = 1 AND hotkey IS NOT NULL`.
+// with the leaderboard's own `validator_permit = TRUE AND hotkey IS NOT NULL`.
 //
 // Same degrade-to-empty-map contract as loadAlphaPricesByNetuidD1 above: on
 // any failure every nominator_count stays null, which is precisely the state
@@ -5707,7 +5708,7 @@ async function loadNominatorCountsD1(
              (SELECT MAX(captured_at) FROM validator_nominator_counts) AS scan_at
       FROM (
         SELECT DISTINCT hotkey FROM neurons
-        WHERE validator_permit = 1 AND hotkey IS NOT NULL
+        WHERE validator_permit = TRUE AND hotkey IS NOT NULL
       ) n
       LEFT JOIN validator_nominator_counts c ON c.hotkey = n.hotkey`;
     return fillConfirmedZeros(
@@ -5787,7 +5788,7 @@ async function loadRealizedStakeBaselinesD1(
             FROM neuron_daily nd
             LEFT JOIN subnet_snapshots s
               ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
-            WHERE nd.validator_permit = 1` +
+            WHERE nd.validator_permit = TRUE` +
           (hotkey ? " AND nd.hotkey = ?" : "") +
           ` AND nd.snapshot_date <= ? AND nd.snapshot_date >= ?
             GROUP BY nd.hotkey, nd.snapshot_date
@@ -5962,7 +5963,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         url.searchParams.get("validator_permit") === "true";
       const rows = validatorsOnly
         ? await sql.unsafe(
-            `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = 1 ORDER BY uid`,
+            `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = TRUE ORDER BY uid`,
             [netuid],
           )
         : await sql.unsafe(
@@ -6043,7 +6044,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
     return async (sql) => {
       const netuid = Number(subnetValidators[1]);
       const rows = await sql.unsafe(
-        `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = 1 ORDER BY stake_tao DESC, uid ASC`,
+        `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = TRUE ORDER BY stake_tao DESC, uid ASC`,
         [netuid],
       );
       return json(
@@ -6068,7 +6069,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
       // well-defined and are returned alongside the totals. Two things change
       // besides the projection: alpha is reported natively (the TAO conversion is
       // kept too, so the point is comparable with the unscoped series), and the
-      // `validator_permit = 1` filter is dropped -- a day the permit was lost is
+      // `validator_permit = TRUE` filter is dropped -- a day the permit was lost is
       // the event an operator most needs to see, and filtering it away makes it
       // look identical to a day the poller missed.
       // Same normalisation the account-family routes use for their own netuid
@@ -6136,7 +6137,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
           FROM neuron_daily nd
           LEFT JOIN subnet_snapshots s
             ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
-          WHERE nd.hotkey = ${hotkey} AND nd.validator_permit = 1 AND nd.snapshot_date >= ${cutoff}
+          WHERE nd.hotkey = ${hotkey} AND nd.validator_permit = TRUE AND nd.snapshot_date >= ${cutoff}
           GROUP BY nd.snapshot_date ORDER BY nd.snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
         : await sql`
           SELECT nd.snapshot_date AS snapshot_date, COUNT(DISTINCT nd.netuid) AS subnet_count,
@@ -6145,7 +6146,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
           FROM neuron_daily nd
           LEFT JOIN subnet_snapshots s
             ON s.netuid = nd.netuid AND s.snapshot_date = nd.snapshot_date
-          WHERE nd.hotkey = ${hotkey} AND nd.validator_permit = 1
+          WHERE nd.hotkey = ${hotkey} AND nd.validator_permit = TRUE
           GROUP BY nd.snapshot_date ORDER BY nd.snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`;
       return json(
         buildValidatorHistory(rows, hotkey, {
@@ -6186,7 +6187,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
       ] = await Promise.all([
         sql`
           SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, stake_tao, block_number, captured_at, take
-          FROM neurons WHERE validator_permit = 1 AND hotkey IS NOT NULL
+          FROM neurons WHERE validator_permit = TRUE AND hotkey IS NOT NULL
           ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC`,
         loadRealizedStakeBaselinesD1(sql, {}, env),
         loadAlphaPricesByNetuidD1(sql, env),
@@ -6225,7 +6226,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         identityByColdkey,
       ] = await Promise.all([
         sql.unsafe(
-          `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = 1 ORDER BY netuid ASC, uid ASC`,
+          `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = TRUE ORDER BY netuid ASC, uid ASC`,
           [hotkey],
         ),
         loadRealizedStakeBaselinesD1(sql, { hotkey }, env),
@@ -6563,14 +6564,14 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
       const rows = cutoff
         ? await sql`
           SELECT snapshot_date, COUNT(*) AS neuron_count,
-            SUM(validator_permit) AS validator_count,
+            SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END) AS validator_count,
             SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
           FROM neuron_daily
           WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}
           GROUP BY snapshot_date ORDER BY snapshot_date DESC LIMIT ${MAX_HISTORY_POINTS}`
         : await sql`
           SELECT snapshot_date, COUNT(*) AS neuron_count,
-            SUM(validator_permit) AS validator_count,
+            SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END) AS validator_count,
             SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
           FROM neuron_daily
           WHERE netuid = ${netuid}
@@ -6583,12 +6584,13 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
     };
   }
 
-  // GET /api/v1/chain/turnover?window=&limit=. The Postgres branch anchors
-  // the window with `MAX(snapshot_date) - ${days}::int`; SQLite's native
-  // equivalent is date(MAX(snapshot_date), '-N days') -- the exact idiom the
-  // pre-#4772 D1 route used. An empty table leaves the subquery NULL, the
-  // >= comparison matches nothing, and the same schema-stable empty shape
-  // falls out.
+  // GET /api/v1/chain/turnover?window=&limit=. The window floor is computed in
+  // TypeScript by neuronDailyWindow, NOT in the database.
+  //
+  // It used to be `date(MAX(snapshot_date), '-N days')`, which is SQLite-only.
+  // #9784 moved this route onto Neon and Postgres has no such function, so the
+  // subquery yielded nothing, the >= matched nothing, and the route served an
+  // empty result at 200 OK -- no error, just no data. See #9791.
   if (url.pathname === "/api/v1/chain/turnover") {
     return async (sql) => {
       const windowParam =
@@ -6602,18 +6604,15 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         limitRaw == null || limitRaw === ""
           ? CHAIN_TURNOVER_LIMIT_DEFAULT
           : Number(limitRaw);
-      const bounds = await sql`
-        SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date
-        FROM neuron_daily
-        WHERE snapshot_date >= (SELECT date(MAX(snapshot_date), ${`-${days} days`}) FROM neuron_daily)`;
-      const startDate = (bounds[0]?.start_date ?? null) as string | null;
-      const endDate = (bounds[0]?.end_date ?? null) as string | null;
+      // Boundary computed here, not in the database: `date(x, '-N days')` is
+      // SQLite-only and emptied this route on Neon (#9791).
+      const { startDate, endDate } = await neuronDailyWindow(sql, days);
       let rows: Row[] = [];
       if (startDate != null && endDate != null && startDate !== endDate) {
         rows = await sql`
           SELECT snapshot_date, netuid, hotkey, validator_permit
           FROM neuron_daily
-          WHERE validator_permit = 1 AND snapshot_date IN (${startDate}, ${endDate})`;
+          WHERE validator_permit = TRUE AND snapshot_date IN (${startDate}, ${endDate})`;
       }
       return json(
         buildChainTurnover(rows, {
@@ -6640,18 +6639,25 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         : DEFAULT_HISTORY_WINDOW;
       const windowDays = HISTORY_WINDOWS[windowLabel];
       const includeChanges = url.searchParams.get("changes") === "true";
-      const bounds =
-        windowDays == null
-          ? await sql`
-            SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date
-            FROM neuron_daily WHERE netuid = ${netuid}`
-          : await sql`
-            SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date
-            FROM neuron_daily
-            WHERE netuid = ${netuid}
-              AND snapshot_date >= (SELECT date(MAX(snapshot_date), ${`-${windowDays} days`}) FROM neuron_daily WHERE netuid = ${netuid})`;
-      const startDate = (bounds[0]?.start_date ?? null) as string | null;
-      const endDate = (bounds[0]?.end_date ?? null) as string | null;
+      // `all` means no window: take the subnet's full range. Otherwise the
+      // floor is computed in TypeScript, the same portable form
+      // /chain/turnover uses -- never `date(x, '-N days')`, which is
+      // SQLite-only and emptied this route on Neon (#9791).
+      let startDate: string | null;
+      let endDate: string | null;
+      if (windowDays == null) {
+        const all = await sql`
+          SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date
+          FROM neuron_daily WHERE netuid = ${netuid}`;
+        startDate = (all[0]?.start_date ?? null) as string | null;
+        endDate = (all[0]?.end_date ?? null) as string | null;
+      } else {
+        ({ startDate, endDate } = await neuronDailyWindow(
+          sql,
+          windowDays,
+          netuid,
+        ));
+      }
       const rows =
         startDate == null || endDate == null
           ? []
@@ -6690,18 +6696,14 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         limitRaw == null || limitRaw === ""
           ? MOVERS_LIMIT_DEFAULT
           : Number(limitRaw);
-      const bounds = await sql`
-        SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date
-        FROM neuron_daily
-        WHERE snapshot_date >= (SELECT date(MAX(snapshot_date), ${`-${days} days`}) FROM neuron_daily)`;
-      const startDate = (bounds[0]?.start_date ?? null) as string | null;
-      const endDate = (bounds[0]?.end_date ?? null) as string | null;
+      // Boundary computed here, not in the database (#9791).
+      const { startDate, endDate } = await neuronDailyWindow(sql, days);
       let startRows: Row[] = [];
       let endRows: Row[] = [];
       if (startDate != null && endDate != null && startDate !== endDate) {
         const rows = await sql`
           SELECT netuid, snapshot_date, COUNT(*) AS neuron_count,
-            SUM(validator_permit) AS validator_count,
+            SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END) AS validator_count,
             SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao
           FROM neuron_daily
           WHERE snapshot_date IN (${startDate}, ${endDate})

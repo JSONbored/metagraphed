@@ -987,7 +987,7 @@ export async function loadSubnetMetagraph(
 ): Promise<Row> {
   const rows = await d1(
     `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ?${
-      validatorsOnly ? " AND validator_permit = 1" : ""
+      validatorsOnly ? " AND validator_permit = TRUE" : ""
     } ORDER BY uid`,
     [netuid],
   );
@@ -1002,7 +1002,7 @@ export async function loadSubnetValidators(
   // across snapshot-replaced captures (without it, SQLite returns tied rows in
   // arbitrary physical order). Mirrors loadSubnetMetagraph's ORDER BY uid.
   const rows = await d1(
-    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = 1 ORDER BY stake_tao DESC, uid ASC`,
+    `SELECT ${NEURON_COLUMNS} FROM neurons WHERE netuid = ? AND validator_permit = TRUE ORDER BY stake_tao DESC, uid ASC`,
     [netuid],
   );
   return buildSubnetValidators(rows, netuid);
@@ -1054,7 +1054,7 @@ export async function loadGlobalValidators(
     d1(
       "SELECT netuid, uid, hotkey, coldkey, validator_trust, emission_tao, " +
         "stake_tao, block_number, captured_at FROM neurons " +
-        "WHERE validator_permit = 1 AND hotkey IS NOT NULL " +
+        "WHERE validator_permit = TRUE AND hotkey IS NOT NULL " +
         "ORDER BY hotkey ASC, stake_tao DESC, netuid ASC, uid ASC",
       [],
     ),
@@ -1100,7 +1100,7 @@ export interface BuildValidatorDetailOptions {
   realizedStake?: Row | null;
 }
 
-// Cross-subnet validator detail (#4334/7.1): one hotkey's validator_permit=1
+// Cross-subnet validator detail (#4334/7.1): one hotkey's validator_permit = TRUE
 // rows joined across every subnet it operates in — the single-entity
 // drill-in of the /api/v1/validators leaderboard above. Same aggregate shape
 // as buildGlobalValidatorEntry (rao-precision stake/emission sums, avg/max
@@ -1253,7 +1253,7 @@ export async function loadValidatorDetail(
 ): Promise<Row> {
   const [rows, priceByNetuid, identityByColdkey] = await Promise.all([
     d1(
-      `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = 1 ORDER BY netuid ASC, uid ASC`,
+      `SELECT ${NEURON_COLUMNS}, netuid FROM neurons WHERE hotkey = ? AND validator_permit = TRUE ORDER BY netuid ASC, uid ASC`,
       [hotkey],
     ),
     loadD1AlphaPricesByNetuid(d1),
