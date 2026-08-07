@@ -85,6 +85,8 @@ export const PARITY_TABLES = [
   "surface_status",
   "surface_uptime_daily",
   "surface_failure_daily",
+  "subnet_burn_history",
+  "tao_usd_index",
 ] as const;
 
 /**
@@ -140,6 +142,10 @@ export const PARITY_TOLERANCE: Readonly<Record<string, number>> = {
   // One hour of writes at the measured rate, plus the prune skew between two
   // independent hourly crons. Anything past this is not timing.
   surface_checks: 5_000,
+  // 12,255 rows a day, and pruned on a cron independent of D1's.
+  subnet_burn_history: 1_000,
+  // 1,440 a day, one per minute. No prune, so only write skew applies.
+  tao_usd_index: 200,
 };
 
 export interface ParityDb {

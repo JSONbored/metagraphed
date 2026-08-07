@@ -500,6 +500,25 @@ const SURFACE_FAILURE_DAILY_COLUMNS = [
   "updated_at",
 ] as const;
 
+/** subnet_burn_history and tao_usd_index, read off pragma_table_info
+ * 2026-08-07. Both are append plans (#9908) -- 12,255 and 1,440 rows a DAY
+ * measured, which is what makes a whole-table recopy untenable for them. */
+const SUBNET_BURN_HISTORY_COLUMNS = [
+  "netuid",
+  "observed_at",
+  "burn_tao",
+] as const;
+
+const TAO_USD_INDEX_COLUMNS = [
+  "block_number",
+  "observed_at",
+  "usd_per_tao",
+  "price_basis",
+  "eth_usd",
+  "pool_count",
+  "pools",
+] as const;
+
 export const NEON_BACKFILL_PLANS: Readonly<Record<string, BackfillPlan>> = {
   neuron_daily: {
     table: "neuron_daily",
@@ -664,6 +683,43 @@ export const NEON_BACKFILL_PLANS: Readonly<Record<string, BackfillPlan>> = {
   // and `>` (#9930). Its uniqueness is (day, netuid, kind, classification)
   // with netuid nullable by design, and Neon's index spells that
   // NULLS NOT DISTINCT to match D1's ifnull(netuid, -1).
+  // Both preconditions of the append partition hold, and both were CHECKED
+  // rather than assumed.
+  //
+  // The cursor is assigned at insert: every row in a tick shares one
+  // `observedAt`, taken when the tick runs, and it only moves forward.
+  //
+  // Rows are never rewritten. The D1 writer says INSERT OR REPLACE, which
+  // looks like a counterexample and is not -- its own comment gives the
+  // reason: "a retried tick at the same millisecond must be idempotent rather
+  // than a primary-key error". A replace only ever rewrites a row with the
+  // identical values it already held, at the same observed_at.
+  //
+  // This is also a PRUNED window, and adding it here activates its
+  // NEON_PRUNE_PLANS entry too, since that lane filters on the same flag.
+  // Deliberate ordering: the table is three days old against a 90-day
+  // retention, so the prune measures zero doomed rows until it fills.
+  subnet_burn_history: {
+    table: "subnet_burn_history",
+    columns: SUBNET_BURN_HISTORY_COLUMNS,
+    conflict: ["netuid", "observed_at"],
+    keyset: ["observed_at", "netuid"],
+    partition: "append",
+    booleans: [],
+    freshness: "observed_at",
+  },
+  // The cleanest append case in the set: the writer is ON CONFLICT DO NOTHING,
+  // so a row is written once and never touched again, and there is no prune at
+  // all -- it accumulates.
+  tao_usd_index: {
+    table: "tao_usd_index",
+    columns: TAO_USD_INDEX_COLUMNS,
+    conflict: ["block_number", "observed_at"],
+    keyset: ["observed_at", "block_number"],
+    partition: "append",
+    booleans: [],
+    freshness: "observed_at",
+  },
   surface_failure_daily: {
     table: "surface_failure_daily",
     columns: SURFACE_FAILURE_DAILY_COLUMNS,
