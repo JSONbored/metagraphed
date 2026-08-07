@@ -6070,6 +6070,18 @@ export const NEON_READ_ROUTE_TABLES: readonly {
   // the same latest revision and the (observed_at, id) cursor means the same
   // thing on either side. Each route reads ONE table -- no side loader to drag
   // along.
+  // The last two public routes in the D1 matchers. Both read a single table
+  // that is already served from Neon and already at exact parity -- 129/129
+  // and 498/498 -- so this is a declaration, not a migration: the tables moved
+  // long ago and these two handlers were simply never pointed at them.
+  {
+    pattern: /^\/api\/v1\/subnets\/\d+\/hyperparameters$/,
+    tables: ["subnet_hyperparams"],
+  },
+  {
+    pattern: /^\/api\/v1\/accounts\/[^/]+\/identity$/,
+    tables: ["account_identity"],
+  },
   {
     pattern: /^\/api\/v1\/subnets\/\d+\/hyperparameters\/history$/,
     tables: ["subnet_hyperparams_history"],
