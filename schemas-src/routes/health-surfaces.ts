@@ -257,7 +257,31 @@ export const HealthSurfaceSchema = z
     uptime_sample_ratio: z.number().min(0).max(1).nullable().optional(),
     archive_support: z.boolean().nullable().optional(),
     latest_block: z.int().min(0).nullable().optional(),
-    method_results: z.record(z.string(), z.object({}).passthrough()).optional(),
+    // Keyed by JSON-RPC method name, which is a typed record. The VALUE was
+    // the untyped half of it (#9800): src/health-probe-core.ts's
+    // NormalizedJsonRpcResult is a declared interface, and the prober's own
+    // verdict logic reads `.ok` off these entries -- so the shape was known
+    // all along, just never published.
+    method_results: z
+      .record(
+        z.string(),
+        z
+          .object({
+            ok: z.boolean(),
+            error: z.string().nullable(),
+            code: z.unknown(),
+            result_type: z.string(),
+            result_present: z.boolean(),
+            raw_header: z
+              .object({ number: z.unknown() })
+              .passthrough()
+              .optional(),
+            rpc_method_count: z.int().min(0).optional(),
+            raw_hex_result_present: z.boolean().optional(),
+          })
+          .passthrough(),
+      )
+      .optional(),
     methods_supported: z
       .union([z.record(z.string(), z.boolean()), z.array(z.string()), z.null()])
       .optional(),

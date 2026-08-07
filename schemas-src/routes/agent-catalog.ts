@@ -196,7 +196,61 @@ const AgentCatalogServiceSchema = z
     authority: z.string().nullable().optional(),
     auth_required: z.boolean().optional(),
     auth_schemes: z.array(z.string()).optional(),
-    auth: z.record(z.string(), z.unknown()).nullable().optional(),
+    // How to authenticate to this service, or null when it needs no
+    // credential. Was `z.record(z.string(), z.unknown())` -- a map with no
+    // declared value at all, on the one field an agent needs in order to
+    // CALL the service (#9800).
+    //
+    // The two vocabularies below are copied from
+    // schemas/subnet-manifest.schema.json's `$defs.surface.properties.auth`,
+    // which is what actually validates the registry records these come from
+    // -- NOT from the values production happens to serve. A sample of 121
+    // live rows showed four schemes; the authoring schema allows seven, and
+    // `basic` (absent from that sample, present on SN113) is exactly the hole
+    // that makes a sampled enum a bad contract. Single-sourcing the two
+    // declarations is #9799.
+    auth: z
+      .object({
+        scheme: z
+          .enum([
+            "none",
+            "bearer",
+            "api-key",
+            "basic",
+            "oauth2",
+            "signature",
+            "custom",
+          ])
+          .describe(
+            "`signature` means the request is signed per-call (a hotkey/nonce/signature header set, see `names`), not a static token.",
+          ),
+        location: z
+          .enum(["header", "query", "cookie", "body"])
+          .optional()
+          .describe(
+            "Where the credential is sent. `body` only applies to scheme:signature, whose values are merged into the outgoing JSON request body.",
+          ),
+        name: z
+          .string()
+          .optional()
+          .describe("The single header the credential goes in."),
+        names: z
+          .array(z.string())
+          .optional()
+          .describe(
+            "The header SET, for schemes that need more than one (signature schemes send hotkey + nonce + signature together). Present instead of `name`, not alongside it.",
+          ),
+        value_format: z.string().optional(),
+        scopes_note: z
+          .string()
+          .optional()
+          .describe(
+            "How the requirement was established -- often a live-checked 401, because a subnet's own OpenAPI frequently declares no securitySchemes at all.",
+          ),
+      })
+      .passthrough()
+      .nullable()
+      .optional(),
     snippets: z
       .object({
         curl: z.string().optional(),

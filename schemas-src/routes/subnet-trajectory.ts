@@ -8,6 +8,23 @@
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 
+/** One window's change, endpoint to endpoint. Every field is a DIFFERENCE
+ * (`to` minus `from`), not a level -- a negative `tao_in_pool_tao` means the
+ * pool shrank over the window, and the two dates say which two observations
+ * were subtracted. */
+const SubnetTrajectoryDeltaSchema = z
+  .object({
+    from_date: z.string(),
+    to_date: z.string(),
+    completeness_score: z.number().nullable().optional(),
+    surface_count: z.number().nullable().optional(),
+    endpoint_count: z.number().nullable().optional(),
+    tao_in_pool_tao: z.number().nullable().optional(),
+    alpha_in_pool: z.number().nullable().optional(),
+    alpha_out_pool: z.number().nullable().optional(),
+  })
+  .passthrough();
+
 const SubnetTrajectoryPointSchema = z
   .object({
     date: z.string(),
@@ -32,11 +49,14 @@ export const SubnetTrajectoryArtifactSchema = z
     netuid: z.int().min(0),
     point_count: z.int().min(0),
     points: z.array(SubnetTrajectoryPointSchema),
-    // Windowed deltas keyed by window label (e.g. "7d"/"30d") -- each value
-    // is an open object or null, matching the hand-written original's own
-    // `additionalProperties: {type:["object","null"], additionalProperties:true}`
-    // map shape (no fixed key set, no per-window field shape declared).
-    deltas: z.record(z.string(), z.object({}).passthrough().nullable()),
+    // Keyed by window label ("7d"/"30d") -- a typed record, so a new window
+    // adds a key rather than changing the contract. The VALUE was the untyped
+    // half of it (#9800): the hand-written original declared
+    // `{type:["object","null"], additionalProperties:true}` and stopped
+    // there, so the deltas this route exists to serve had no declared shape
+    // at all. Modeled from formatTrajectory() and verified against the live
+    // response for both windows.
+    deltas: z.record(z.string(), SubnetTrajectoryDeltaSchema.nullable()),
   })
   .passthrough();
 export type SubnetTrajectoryArtifact = z.infer<

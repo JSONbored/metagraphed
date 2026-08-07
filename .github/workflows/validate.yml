@@ -600,6 +600,14 @@ jobs:
       - name: Validate single schema source
         run: npm run validate:single-schema-source
 
+      # Permanent lock on schema opacity (#9797): an object site published with
+      # no declared properties and no declared record value must carry a written
+      # reason in scripts/validate-schema-opacity.ts. Unconditional for the same
+      # reason as the two locks above — it reads the committed contract and the
+      # tool registry, and costs well under a second.
+      - name: Validate schema opacity
+        run: npm run validate:schema-opacity
+
       # Module-level mutable state in src/ and workers/ must register a reset
       # (src/module-state-registry.ts), or it leaks across test files once the
       # coverage pass runs with `isolate: false` (#8922). Static scan of the

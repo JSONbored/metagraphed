@@ -5392,9 +5392,31 @@ export interface components {
             /** @constant */
             schema_version: 1;
             slug: string;
-            snapshot?: {
+            snapshot?: ({
+                adapter_kind?: string | null;
+                contract_version?: string;
+                dimensions?: {
+                    [key: string]: {
+                        captured_at?: string | null;
+                        notes?: string | null;
+                        source_url?: string | null;
+                        /** @description `docs-only` means the dimension is documented but has no verified unauthenticated API surface -- a gap, not a capture failure. */
+                        status?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+                excluded_dimensions?: string[];
+                generated_at?: string | null;
+                netuid?: number;
+                notes?: (string | string[]) | null;
+                schema_version?: number;
+                slug?: string;
+                source?: string | null;
+                status?: string | null;
+            } & {
                 [key: string]: unknown;
-            } | null;
+            }) | null;
             subnet: string;
         } & {
             [key: string]: unknown;
@@ -5490,9 +5512,27 @@ export interface components {
             schema_version: 1;
             service_count: number;
             services: ({
-                auth?: {
+                auth?: ({
+                    /**
+                     * @description Where the credential is sent. `body` only applies to scheme:signature, whose values are merged into the outgoing JSON request body.
+                     * @enum {string}
+                     */
+                    location?: "header" | "query" | "cookie" | "body";
+                    /** @description The single header the credential goes in. */
+                    name?: string;
+                    /** @description The header SET, for schemes that need more than one (signature schemes send hotkey + nonce + signature together). Present instead of `name`, not alongside it. */
+                    names?: string[];
+                    /**
+                     * @description `signature` means the request is signed per-call (a hotkey/nonce/signature header set, see `names`), not a static token.
+                     * @enum {string}
+                     */
+                    scheme: "none" | "bearer" | "api-key" | "basic" | "oauth2" | "signature" | "custom";
+                    /** @description How the requirement was established -- often a live-checked 401, because a subnet's own OpenAPI frequently declares no securitySchemes at all. */
+                    scopes_note?: string;
+                    value_format?: string;
+                } & {
                     [key: string]: unknown;
-                } | null;
+                }) | null;
                 auth_required?: boolean;
                 auth_schemes?: string[];
                 authority?: string | null;
@@ -6987,6 +7027,10 @@ export interface components {
                 average_score?: number;
                 dimension_coverage?: {
                     [key: string]: {
+                        pct: number;
+                        /** @description Subnets carrying at least one surface of this kind. */
+                        present: number;
+                    } & {
                         [key: string]: unknown;
                     };
                 };
@@ -8261,6 +8305,19 @@ export interface components {
             latest_block?: number | null;
             method_results?: {
                 [key: string]: {
+                    code: unknown;
+                    error: string | null;
+                    ok: boolean;
+                    raw_header?: {
+                        number: unknown;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                    raw_hex_result_present?: boolean;
+                    result_present: boolean;
+                    result_type: string;
+                    rpc_method_count?: number;
+                } & {
                     [key: string]: unknown;
                 };
             };
@@ -8816,9 +8873,41 @@ export interface components {
         RegistryLeaderboardsArtifact: {
             board?: string | null;
             boards: {
-                [key: string]: {
+                [key: string]: ({
+                    alpha_price_change_1d?: number | null;
+                    alpha_price_change_7d?: number | null;
+                    alpha_price_tao?: number | null;
+                    avg_latency_ms?: number | null;
+                    completeness_delta?: number | null;
+                    completeness_score?: number | null;
+                    emission_enabled?: boolean | null;
+                    emission_share?: number | null;
+                    grade?: string | null;
+                    latency_ms?: number | null;
+                    latency_sample_count?: number;
+                    max_uids?: number | null;
+                    max_validators?: number | null;
+                    miner_count?: number | null;
+                    name: string | null;
+                    netuid: number;
+                    open_slots?: number | null;
+                    operational_interface_count?: number;
+                    registration_allowed?: boolean | null;
+                    registration_cost_tao?: number | null;
+                    sample_count?: number;
+                    score?: number | null;
+                    slug: string;
+                    surface_count?: number;
+                    surfaces_ok?: number;
+                    surfaces_total?: number;
+                    tao_in_emission_tao?: number | null;
+                    total_stake_alpha?: number | null;
+                    uptime_ratio?: number | null;
+                    validator_count?: number | null;
+                    validator_headroom?: number | null;
+                } & {
                     [key: string]: unknown;
-                }[];
+                })[];
             };
             observed_at?: string | null;
             schema_version: number;
@@ -8840,6 +8929,10 @@ export interface components {
                 average_score?: number;
                 dimension_coverage?: {
                     [key: string]: {
+                        pct: number;
+                        /** @description Subnets carrying at least one surface of this kind. */
+                        present: number;
+                    } & {
                         [key: string]: unknown;
                     };
                 };
@@ -11192,9 +11285,18 @@ export interface components {
         };
         SubnetTrajectoryArtifact: {
             deltas: {
-                [key: string]: {
+                [key: string]: ({
+                    alpha_in_pool?: number | null;
+                    alpha_out_pool?: number | null;
+                    completeness_score?: number | null;
+                    endpoint_count?: number | null;
+                    from_date: string;
+                    surface_count?: number | null;
+                    tao_in_pool_tao?: number | null;
+                    to_date: string;
+                } & {
                     [key: string]: unknown;
-                } | null;
+                }) | null;
             };
             netuid: number;
             point_count: number;
@@ -21279,7 +21381,19 @@ export interface operations {
                      *         "schema_version": 1,
                      *         "slug": "example-subnet",
                      *         "snapshot": {
-                     *           "example": null
+                     *           "adapter_kind": "example",
+                     *           "contract_version": "2026-06-29.1",
+                     *           "dimensions": {},
+                     *           "excluded_dimensions": [
+                     *             "example"
+                     *           ],
+                     *           "generated_at": "2026-06-01T00:00:00.000Z",
+                     *           "netuid": 7,
+                     *           "notes": "Example description.",
+                     *           "schema_version": 1,
+                     *           "slug": "example-subnet",
+                     *           "source": "live-cron-prober",
+                     *           "status": "ok"
                      *         },
                      *         "subnet": "example"
                      *       },
@@ -34167,7 +34281,11 @@ export interface operations {
                      *         "board": "example",
                      *         "boards": {
                      *           "example": [
-                     *             {}
+                     *             {
+                     *               "name": "Example Subnet",
+                     *               "netuid": 7,
+                     *               "slug": "example-subnet"
+                     *             }
                      *           ]
                      *         },
                      *         "observed_at": "2026-06-01T00:00:00.000Z",
@@ -43866,7 +43984,10 @@ export interface operations {
                      * @example {
                      *       "data": {
                      *         "deltas": {
-                     *           "example": {}
+                     *           "example": {
+                     *             "from_date": "example",
+                     *             "to_date": "example"
+                     *           }
                      *         },
                      *         "netuid": 7,
                      *         "point_count": 1,
