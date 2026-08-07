@@ -45,7 +45,11 @@ import {
   rowFromBatch,
   type TaoUsdIndexRow,
 } from "../src/tao-usd-ingest.ts";
-import { NEON_BACKFILL_CRON, TAO_USD_INDEX_CRON } from "./config.ts";
+import {
+  NEON_BACKFILL_CRON,
+  NEON_MIRROR_LAG_CRON,
+  TAO_USD_INDEX_CRON,
+} from "./config.ts";
 import {
   buildConcentration,
   buildChainConcentration,
@@ -374,6 +378,7 @@ import { mirrorNominatorPositionsToNeon } from "../src/nominator-positions-neon-
 import { mirrorLedgerToNeon } from "../src/ledger-neon-write.ts";
 import { neonReadEnabled } from "../src/neon-write.ts";
 import { runNeonBackfill } from "../src/neon-backfill.ts";
+import { runNeonMirrorWatchdog } from "../src/neon-mirror-watchdog.ts";
 import {
   writeAccountIdentityToD1,
   writeSubnetHyperparamsToD1,
@@ -7311,6 +7316,11 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ) {
+    if (controller?.cron === NEON_MIRROR_LAG_CRON) {
+      // No ctx: this reads D1 only. It never touches Neon -- the whole point is
+      // to judge the mirrors from evidence they already left behind.
+      return runNeonMirrorWatchdog(env as unknown as Record<string, unknown>);
+    }
     if (controller?.cron === NEON_BACKFILL_CRON) {
       // `ctx` is threaded through rather than ignored: createPgSql needs a
       // waitUntil to hold the Hyperdrive connection open past the handler's
