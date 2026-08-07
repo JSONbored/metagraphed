@@ -1929,6 +1929,44 @@ function declaredExample(schema: Row | undefined): {
   return { found: false };
 }
 
+// Which arguments must be supplied to call this tool at all.
+//
+// `required` alone is not the whole answer once a tool publishes a choice
+// (#9872): `get_neuron` takes EITHER `uid` OR `hotkey`, so neither can appear
+// in `required` -- and a sweep that reads only `required` would call it with
+// no identifier at all and be told so, which looks exactly like a broken
+// contract. Taking the first `oneOf`/`anyOf` branch's own `required` picks one
+// side of the choice, which is what a caller does too.
+//
+// Only a branch that constrains PRESENCE is followed. `get_feed` publishes a
+// value-conditional one -- `kind: "subnet"` requires `netuid`, the other kinds
+// forbid it -- and adopting its first branch's `required` produced
+// `{kind: "registry", netuid: 64}`, which the server rightly rejects. Resolving
+// that needs the condition, not just the requirement, so a branch carrying
+// `properties`/`not`/`if` is left alone and the tool is swept from `required`
+// as before.
+//
+// Derived from the published schema rather than from a table of tools that
+// have a choice: a tool that grows one is swept correctly the day it lands,
+// and this cannot fall out of date because there is nothing to update.
+function requiredArgumentNames(inputSchema: Row | undefined): string[] {
+  const base = ((inputSchema?.required ?? []) as string[]).slice();
+  for (const key of ["oneOf", "anyOf"]) {
+    const branches = inputSchema?.[key];
+    if (!Array.isArray(branches) || branches.length === 0) continue;
+    const presenceOnly = branches.filter((branch) => {
+      const keys = Object.keys((branch ?? {}) as Row);
+      return keys.length === 1 && keys[0] === "required";
+    });
+    if (presenceOnly.length !== branches.length) break;
+    for (const name of ((presenceOnly[0] as Row)?.required ?? []) as string[]) {
+      if (!base.includes(name)) base.push(name);
+    }
+    break;
+  }
+  return base;
+}
+
 // --- Declared slug examples must name something that exists (#9860) --------
 //
 // A `slug` example is copied verbatim by the first agent that reads the tool,
@@ -1973,7 +2011,7 @@ for (const def of listToolDefinitions()) {
   if (RESPONSE_UNVALIDATED_REASONS.has(def.name)) continue;
   const inputSchema = def.inputSchema as Row | undefined;
   const properties = (inputSchema?.properties ?? {}) as Row;
-  const required = (inputSchema?.required ?? []) as string[];
+  const required = requiredArgumentNames(inputSchema);
   const args: Row = {};
   const undocumented: string[] = [];
   for (const key of required) {
@@ -2033,7 +2071,7 @@ for (const def of listToolDefinitions()) {
   if (!properties.fields) continue;
   if (RESPONSE_UNVALIDATED_REASONS.has(def.name)) continue;
   const args: Row = {};
-  for (const key of ((def.inputSchema as Row)?.required ?? []) as string[]) {
+  for (const key of requiredArgumentNames(def.inputSchema as Row | undefined)) {
     const example = declaredExample(properties[key] as Row);
     if (example.found) args[key] = example.value;
   }

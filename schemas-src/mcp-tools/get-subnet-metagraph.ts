@@ -4,8 +4,11 @@
 // reuse. Modeled fresh, shallow, from the hand-written literal it replaces.
 import { z } from "zod";
 import {
+  NEURON_SORT_FIELD_NAMES,
+  NEURON_SORT_NULLS_LAST_NOTE,
   NeuronFieldsInputSchema,
   OpenObjectArraySchema,
+  accountKeySchema,
   netuidSchema,
 } from "./shared.ts";
 
@@ -19,6 +22,76 @@ export const GetSubnetMetagraphInputSchema = z
         "Restrict to neurons that hold (`true`) or lack (`false`) a validator permit.",
       )
       .meta({ examples: [true] }),
+    // --- row selection (#9872) ---------------------------------------------
+    //
+    // The row count is the dominant cost of this tool, not the column count:
+    // a three-field projection of subnet 53 still came back at ~24k tokens
+    // because a hotkey is 48 characters and there are 256 of them. `fields`
+    // is a column fix for a row problem, so these five parameters cut rows.
+    hotkeys: z
+      .array(accountKeySchema("hotkey"))
+      .min(1)
+      .optional()
+      .describe(
+        "Return only the neurons holding these hotkeys. This is the lookup " +
+          "to use when you know a hotkey and want its row: every off-chain " +
+          "system (a subnet's own API, a dashboard, wallet tooling) " +
+          "identifies a miner by hotkey, while `uid` is an internal slot " +
+          "number that is REUSED after deregistration. A hotkey that is not " +
+          "registered on this subnet is simply absent from the result — that " +
+          "is the answer to 'is it registered', not an error.",
+      )
+      .meta({
+        examples: [["5CzcUxRe7rFbtGjw4DGfoJZTFqPnMwUFMTiMFURxCWmwBhqK"]],
+      }),
+    active: z
+      .boolean()
+      .optional()
+      .describe(
+        "Restrict to neurons the chain marks active (`true`) or inactive (`false`).",
+      )
+      .meta({ examples: [true] }),
+    min_incentive: z
+      .number()
+      .min(0)
+      .optional()
+      .describe(
+        "Drop neurons whose `incentive` is below this floor (inclusive, so " +
+          "`min_incentive: 0` keeps the whole zero-incentive population — " +
+          "which on most subnets is the majority). Rows with a null " +
+          "`incentive` never pass a floor. For 'only the neurons actually " +
+          "earning', either pass a small positive floor, or use `sort_by: " +
+          '"incentive"` with a `limit`, which needs no threshold at all.',
+      )
+      .meta({ examples: [0.001] }),
+    sort_by: z
+      .enum(NEURON_SORT_FIELD_NAMES)
+      .optional()
+      .describe(
+        `Order the rows by one numeric field. ${NEURON_SORT_NULLS_LAST_NOTE} ` +
+          "Omit to keep the snapshot's own UID order.",
+      )
+      .meta({ examples: ["incentive"] }),
+    order: z
+      .enum(["asc", "desc"])
+      .optional()
+      .describe(
+        "Sort direction for `sort_by`; defaults to `desc`, because the " +
+          "question a sort usually answers here is 'who is at the top'. " +
+          "Ignored when `sort_by` is omitted.",
+      )
+      .meta({ examples: ["desc"] }),
+    limit: z
+      .int()
+      .min(1)
+      .optional()
+      .describe(
+        "Return at most this many neurons, applied AFTER any filter and " +
+          "sort. There is deliberately no default: omitting it returns the " +
+          "whole snapshot, exactly as this tool always has. Pair it with " +
+          "`sort_by` — a limit on unsorted rows just truncates by UID.",
+      )
+      .meta({ examples: [12] }),
     // #9082: narrow each returned row to these fields. Omit for the full
     // row. Valid names are NeuronSchema's own, so this enum cannot drift
     // from what the route can project.
@@ -33,7 +106,27 @@ export const GetSubnetMetagraphOutputSchema = z
   .object({
     schema_version: z.int().optional(),
     netuid: netuidSchema(),
-    neuron_count: z.int(),
+    neuron_count: z
+      .int()
+      .describe(
+        "How many neurons are in `neurons` — the count AFTER any filter, " +
+          "sort or limit, so it always equals `neurons.length`. When that is " +
+          "fewer than the snapshot holds, `total_neuron_count` says how many " +
+          "there were.",
+      ),
+    // Emitted only when a selection parameter actually removed rows (#9872).
+    // Without it a filtered call answers `neuron_count: 12` for a 256-neuron
+    // subnet, which reads as a measurement of the subnet rather than of the
+    // response -- the same confident-zero failure #9307 is about.
+    total_neuron_count: z
+      .int()
+      .optional()
+      .describe(
+        "How many neurons the snapshot holds before `hotkeys`/`active`/" +
+          "`min_incentive`/`limit` were applied. Present only when one of " +
+          "them removed rows; its absence means `neuron_count` is the whole " +
+          "snapshot.",
+      ),
     captured_at: z.string().nullable().optional(),
     block_number: z.int().nullable().optional(),
     neurons: OpenObjectArraySchema,

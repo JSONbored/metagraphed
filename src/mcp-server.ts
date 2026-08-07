@@ -579,7 +579,10 @@ import {
   GetSubnetMetagraphInputSchema,
   GetSubnetMetagraphOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-metagraph.ts";
-import { NEURON_FIELD_NAMES } from "../schemas-src/mcp-tools/shared.ts";
+import {
+  NEURON_FIELD_NAMES,
+  NEURON_SORT_FIELD_NAMES,
+} from "../schemas-src/mcp-tools/shared.ts";
 import {
   GetSubnetHistoryInputSchema,
   GetSubnetHistoryOutputSchema,
@@ -1257,6 +1260,7 @@ import {
   buildNeuronDetail,
   buildSubnetMetagraph,
   projectNeuronPayload,
+  selectNeuronRows,
   buildSubnetValidators,
   buildGlobalValidators,
   NO_ALPHA_PRICES,
@@ -2372,6 +2376,10 @@ const MCP_NETWORK_VALUES = McpNetworkSchema.options;
 // dispatch (#8942) -- tests/mcp-schema-enforcement.test.ts holds every tool to
 // actually rejecting what its schema forbids, and this is that rejection.
 const NEURON_FIELD_VALUES = NEURON_FIELD_NAMES as readonly string[];
+// The sortable subset, same single source and same reason (#9872): the enum
+// get_subnet_metagraph publishes and the values its handler accepts are one
+// list, derived from NeuronSchema's numeric fields.
+const NEURON_SORT_FIELD_VALUES = NEURON_SORT_FIELD_NAMES as readonly string[];
 
 /**
  * An optional array-of-enum argument: null when absent, a validated list
@@ -3774,6 +3782,43 @@ function requireSs58(args: Row) {
     );
   }
   return value;
+}
+
+// The optional forms of requireHotkey, for the two neuron tools that take a
+// hotkey as an ALTERNATIVE to a UID rather than as the subject (#9872). Each
+// element is pattern-checked, so a caller who passes a coldkey-looking typo
+// or a name gets `invalid_params` naming the bad element rather than an empty
+// result they would read as "not registered".
+function optionalHotkey(args: Row, key: string): string | null {
+  const value = args?.[key];
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string" || !SS58_ADDRESS_PATTERN.test(value)) {
+    throw toolError(
+      "invalid_params",
+      `Argument \`${key}\` must be a valid SS58 hotkey (base58, 47-48 chars).`,
+    );
+  }
+  return value;
+}
+
+function optionalHotkeyArray(args: Row, key: string): string[] | null {
+  const value = args?.[key];
+  if (value === undefined || value === null) return null;
+  if (!Array.isArray(value) || value.length === 0) {
+    throw toolError(
+      "invalid_params",
+      `Argument \`${key}\` must be a non-empty array of SS58 hotkeys.`,
+    );
+  }
+  for (const entry of value) {
+    if (typeof entry !== "string" || !SS58_ADDRESS_PATTERN.test(entry)) {
+      throw toolError(
+        "invalid_params",
+        `Argument \`${key}\` contains an entry that is not a valid SS58 hotkey (base58, 47-48 chars).`,
+      );
+    }
+  }
+  return value as string[];
 }
 
 // A validator identity is the same SS58 shape as an account, just a different
@@ -7311,9 +7356,18 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "emission, validator permit, immunity, and axon, ordered by UID. Set " +
       "validator_permit to true to return only permit-holding validators. " +
       "Captured from the chain on a schedule; empty when no snapshot exists yet. " +
-      "PASS `fields` UNLESS YOU GENUINELY NEED EVERY COLUMN: the full response is " +
-      '256 rows x 17 fields (~95 KB, ~24k tokens on subnet 1). `fields: ["uid", ' +
-      "\"hotkey\"]` answers 'is this hotkey registered, and at which UID' in ~18 KB. " +
+      "SELECT ROWS BEFORE COLUMNS: the full response is 256 rows x 17 fields " +
+      "(~95 KB, ~24k tokens on subnet 1), and the ROW count dominates it — a " +
+      "three-field projection of a 256-neuron subnet is still ~24k tokens, " +
+      "because a hotkey is 48 characters. `hotkeys: [...]` returns just those " +
+      "neurons and is the right way to ask 'what is this hotkey's incentive' " +
+      "or 'is it still registered'; `sort_by` + `order` + `limit` answers " +
+      "'top N by incentive/stake/dividends' without a full dump; `active` and " +
+      "`min_incentive` drop the rows you were going to discard anyway. " +
+      "`neuron_count` is always the number returned, and `total_neuron_count` " +
+      "appears alongside it whenever a selection removed rows, so a narrowed " +
+      "count is never mistaken for the subnet's size. THEN narrow the columns " +
+      "with `fields`. " +
       "EPOCH PROVENANCE (#9871): `incentive`, `dividends`, `emission_tao`, `consensus`, `trust` and `rank` are derived from the weights validators set in the LAST COMPLETED tempo -- not from live activity, and not from the epoch currently open. `captured_at`/`block_number` say when WE sampled the chain, which is a different thing. Comparing these against an in-progress epoch from an off-chain source (a subnet's own API, a dashboard) will disagree, and the disagreement is expected rather than a defect. Read `tempo` from get_subnet_hyperparams to find the epoch length. ",
     inputSchema: z.toJSONSchema(GetSubnetMetagraphInputSchema, {
       target: "draft-2020-12",
@@ -7333,14 +7387,33 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // #9082: rejected before the tier read, so an unsupported field costs a
       // tool error rather than a full 256-row fetch the caller never sees.
       const fields = optionalEnumArray(args, "fields", NEURON_FIELD_VALUES);
+      // #9872: same argument -- every one of these is validated before the
+      // fetch, so a bad `sort_by` costs an error rather than a 95 KB response
+      // the caller then discovers they cannot use.
+      const selection = {
+        hotkeys: optionalHotkeyArray(args, "hotkeys"),
+        active: optionalNullableBoolean(args, "active"),
+        minIncentive: optionalNonNegativeNumber(args, "min_incentive"),
+        sortBy: optionalEnum(args, "sort_by", NEURON_SORT_FIELD_VALUES),
+        order: optionalEnum(args, "order", ["asc", "desc"] as const),
+        limit: optionalPositiveInt(args, "limit"),
+      };
+      // PROJECTED LAST, for the reason list_subnet_validators states: the
+      // selection filters and sorts on `hotkey`/`active`/`incentive` and on
+      // whichever field `sort_by` names, so narrowing the rows first would
+      // make the result depend on whether the caller happened to ask for the
+      // columns being filtered on.
       return projectNeuronPayload(
-        (await tryPostgresTier(
-          ctx.env,
-          mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/metagraph`, {
-            validator_permit: validatorPermit ? "true" : undefined,
-          }),
-          "METAGRAPH_NEURONS_SOURCE",
-        )) ?? buildSubnetMetagraph([], netuid),
+        selectNeuronRows(
+          (await tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/metagraph`, {
+              validator_permit: validatorPermit ? "true" : undefined,
+            }),
+            "METAGRAPH_NEURONS_SOURCE",
+          )) ?? buildSubnetMetagraph([], netuid),
+          selection,
+        ),
         fields,
       );
     },
@@ -7726,12 +7799,19 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
   },
   {
     name: "get_neuron",
-    title: "Get one neuron by UID",
+    title: "Get one neuron by UID or hotkey",
     description:
-      "Fetch a single neuron in one subnet by its UID: hot and cold keys, stake, " +
-      "rank, trust, consensus, incentive, dividends, emission, validator " +
-      "permit, immunity, and axon. Returns neuron: null when that UID is not " +
-      "in the latest snapshot. Narrow the row with `fields`. " +
+      "Fetch a single neuron in one subnet, named by EITHER its `uid` (slot " +
+      "number) OR its `hotkey` (SS58) — give one, not both. Returns hot and " +
+      "cold keys, stake, rank, trust, consensus, incentive, dividends, " +
+      "emission, validator permit, immunity, and axon. PREFER `hotkey` when " +
+      "you have one: a UID is an internal slot that is REUSED after a " +
+      "deregistration, so it can silently come to mean a different operator, " +
+      "while every off-chain system (a subnet's own API, a dashboard, wallet " +
+      "tooling) identifies a miner by hotkey. Returns neuron: null when that " +
+      "UID or hotkey is not in the latest snapshot — for a hotkey that is the " +
+      "answer to 'is it still registered', not an error. Narrow the row with " +
+      "`fields`. " +
       "EPOCH PROVENANCE (#9871): `incentive`, `dividends`, `emission_tao`, `consensus`, `trust` and `rank` are derived from the weights validators set in the LAST COMPLETED tempo -- not from live activity, and not from the epoch currently open. `captured_at`/`block_number` say when WE sampled the chain, which is a different thing. Comparing these against an in-progress epoch from an off-chain source (a subnet's own API, a dashboard) will disagree, and the disagreement is expected rather than a defect. Read `tempo` from get_subnet_hyperparams to find the epoch length. ",
     inputSchema: z.toJSONSchema(GetNeuronInputSchema, {
       target: "draft-2020-12",
@@ -7743,8 +7823,53 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // (#4772) -- buildNeuronDetail(null, ...) below never sees it. It IS
       // still forwarded in the synthetic path below, mirroring REST's
       // handleNeuron.
-      const uid = requireNonNegativeInt(args, "uid");
+      const uid = optionalNonNegativeInt(args, "uid");
+      const hotkey = optionalHotkey(args, "hotkey");
+      // #9872: exactly one identifier. Enforced here rather than in the
+      // schema because this server validates arguments in the handler by
+      // design (#8942) -- and because both failures need to say which pair
+      // they are about, not merely that the object did not match.
+      if (uid === null && hotkey === null) {
+        throw toolError(
+          "invalid_params",
+          "Name the neuron with either `uid` (its slot number on this subnet) or `hotkey` (its SS58 key). A UID is reused after a deregistration, so `hotkey` is the stable one.",
+        );
+      }
+      if (uid !== null && hotkey !== null) {
+        throw toolError(
+          "invalid_params",
+          "Give `uid` or `hotkey`, not both — they can name different neurons, and there is no rule for which should win.",
+        );
+      }
       const fields = optionalEnumArray(args, "fields", NEURON_FIELD_VALUES);
+      // The hotkey path reads the whole snapshot and picks the row out of it.
+      // The neurons tier addresses a neuron by (netuid, uid) only, so there is
+      // no per-hotkey read to issue -- but the caller still receives one row
+      // instead of every row, which is the cost this closes (#9872). If the
+      // tier ever grows a hotkey address, this is the only place that changes.
+      if (hotkey !== null) {
+        const snapshot =
+          (await tryPostgresTier(
+            ctx.env,
+            mcpNeuronsTierRequest(`/api/v1/subnets/${netuid}/metagraph`),
+            "METAGRAPH_NEURONS_SOURCE",
+          )) ?? buildSubnetMetagraph([], netuid);
+        const rows = Array.isArray(snapshot.neurons)
+          ? (snapshot.neurons as Row[])
+          : [];
+        const match = rows.find((row) => row.hotkey === hotkey) ?? null;
+        return projectNeuronPayload(
+          {
+            schema_version: snapshot.schema_version ?? 1,
+            netuid,
+            captured_at: snapshot.captured_at ?? null,
+            block_number: snapshot.block_number ?? null,
+            // null is a real answer: the hotkey holds no UID on this subnet.
+            neuron: match,
+          },
+          fields,
+        );
+      }
       return projectNeuronPayload(
         (await tryPostgresTier(
           ctx.env,
