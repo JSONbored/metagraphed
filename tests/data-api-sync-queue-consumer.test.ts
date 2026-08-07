@@ -217,6 +217,63 @@ describe("the sync queue consumer", () => {
     assert.equal(rows().length, 0);
   });
 
+  test("decompresses a compressed message before anything reads it", async () => {
+    // THE SILENT-LOSS PATH THIS CLOSES (metagraphed#9759). A compressed message
+    // arrives as BYTES, and validSyncBatchMessage calls bytes unparseable --
+    // which this consumer ACKS, on the reasoning that something which cannot
+    // parse now will not parse on the fifth attempt. For a compressed body that
+    // reasoning is wrong and the message is simply gone, so decompression has
+    // to happen above the validator, not inside the loop.
+    const { compressSyncBatchMessage } =
+      await import("../src/sync-batch-compress.ts");
+    const { SYNC_BATCH_MAX_BYTES } = await import("../src/sync-batch-queue.ts");
+    const packed = await compressSyncBatchMessage(
+      {
+        lane: "chain-detail",
+        captured_at: 1_780_000_000_000,
+        families: {
+          blockRows: [
+            {
+              block_number: 6_100_001,
+              block_hash: `0x${"ef".repeat(32)}`,
+              spec_version: 441,
+              extrinsic_count: 0,
+              chain_event_count: 0,
+              account_event_count: 0,
+              observed_at: 1_780_000_000_000,
+              synced_at: 1_780_000_000_000,
+            },
+          ],
+        },
+      },
+      SYNC_BATCH_MAX_BYTES,
+    );
+    const m = message(packed.buffer);
+    const neighbour = positionMessage();
+
+    await consume([m, neighbour]);
+
+    assert.deepEqual(m.calls, ["ack"]);
+    assert.deepEqual(neighbour.calls, ["ack"], "and its batch-mate is fine");
+    const blocks = db
+      .prepare("SELECT block_number FROM chain_detail_blocks")
+      .all() as Record<string, unknown>[];
+    assert.deepEqual(
+      blocks.map((row) => row.block_number),
+      [6_100_001],
+      "written, not acked into the void",
+    );
+  });
+
+  test("a compressed body that will not inflate is acked, not retried", async () => {
+    // Same rule the unparseable JSON path follows: truncated or corrupted bytes
+    // will not inflate on the fifth attempt either, so retrying only burns the
+    // budget and dead-letters anyway.
+    const m = message(new Uint8Array([0x1f, 0x8b, 0x00, 0x01]).buffer);
+    await consume([m]);
+    assert.deepEqual(m.calls, ["ack"]);
+  });
+
   test("a dead-letter batch is acked and NOT written (metagraphed-infra#363)", async () => {
     // sync-batches-dlq is bound to this same handler, so the branch on
     // batch.queue is the only thing standing between recording the loss and

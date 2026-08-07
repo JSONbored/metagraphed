@@ -429,9 +429,15 @@ import {
   isDeadLetterQueue,
 } from "../src/dead-letter.ts";
 import {
+  compressSyncBatchMessage,
+  decompressSyncBatchMessage,
+  isCompressedSyncBatchBody,
+} from "../src/sync-batch-compress.ts";
+import {
   classifySyncBatch,
   enqueueSyncBatch,
   packMultiFamilyMessage,
+  SYNC_BATCH_MAX_BYTES,
   type SyncBatchFamilyWriters,
   syncBatchRowCount,
   syncLaneUsesQueue,
@@ -850,19 +856,29 @@ async function handleChainDetailSync(request: Request, env: Env) {
   // together: a block whose drill-down shows no calls is readable and wrong.
   // packMultiFamilyMessage refuses to split them, so an oversize batch throws
   // here rather than silently becoming the split this shape exists to prevent.
+  //
+  // SENT COMPRESSED, because raw JSON does not fit and cannot be made to: one
+  // block measures 476.6 KiB against a 128 KiB cap, and the batch is already
+  // one block. gzip takes the same bytes to 40.5 KiB (metagraphed#9759). The
+  // budget is checked on the COMPRESSED size -- the only number the transport
+  // sees -- and still throws rather than degrading into a split.
   if (syncLaneUsesQueue(env, "chain-detail")) {
     try {
       await env.SYNC_BATCHES!.send(
-        packMultiFamilyMessage({
-          lane: "chain-detail",
-          capturedAt: Date.now(),
-          families: {
-            blockRows: batch.rows.blockRows,
-            extrinsicRows: batch.rows.extrinsicRows,
-            chainEventRows: batch.rows.chainEventRows,
-            accountEventRows: batch.rows.accountEventRows,
-          },
-        }),
+        await compressSyncBatchMessage(
+          packMultiFamilyMessage({
+            lane: "chain-detail",
+            capturedAt: Date.now(),
+            families: {
+              blockRows: batch.rows.blockRows,
+              extrinsicRows: batch.rows.extrinsicRows,
+              chainEventRows: batch.rows.chainEventRows,
+              accountEventRows: batch.rows.accountEventRows,
+            },
+          }),
+          SYNC_BATCH_MAX_BYTES,
+        ),
+        { contentType: "bytes" },
       );
     } catch (err) {
       console.error("data-api chain-detail enqueue failed:", err);
@@ -7399,7 +7415,23 @@ export default {
       await handleDeadLetterBatch(batch, env.METAGRAPH_HEALTH_DB);
       return;
     }
-    const { valid, invalid } = classifySyncBatch(batch.messages);
+    // DECOMPRESS BEFORE ANYTHING READS THE BODY (metagraphed#9759). A
+    // compressed message arrives as bytes, and `validSyncBatchMessage` would
+    // call those unparseable -- which the consumer ACKS. That is silent data
+    // loss for the largest lane on the platform, so it happens first, and a
+    // body that fails to decompress simply stays what it was and takes the
+    // existing unparseable path.
+    const decoded = await Promise.all(
+      batch.messages.map(async (message) =>
+        isCompressedSyncBatchBody(message.body)
+          ? {
+              message,
+              body: await decompressSyncBatchMessage(message.body),
+            }
+          : { message, body: message.body },
+      ),
+    );
+    const { valid, invalid } = classifySyncBatch(decoded);
     // syncBatchRowCount, not `m.rows.length`: a multi-family message carries
     // `families` and no `rows` at all, so the direct read threw a TypeError HERE
     // -- above the per-message try/catch below -- and failed the whole batch,
@@ -7521,23 +7553,19 @@ export default {
           },
         }
       : {};
-    for (const message of batch.messages) {
-      if (!validSyncBatchMessage(message.body)) {
+    for (const { message, body } of decoded) {
+      if (!validSyncBatchMessage(body)) {
         // Acked, not retried: a message that cannot parse will not parse on the
         // fifth attempt either, and burning the budget only delays the DLQ.
         message.ack();
         continue;
       }
       try {
-        await writeSyncBatch(message.body, writers, Date.now(), familyWriters);
+        await writeSyncBatch(body, writers, Date.now(), familyWriters);
         message.ack();
       } catch (err) {
         console.error("sync-batches: write failed:", err);
-        await captureDataApiError(
-          err,
-          `sync-batches/${message.body.lane}`,
-          env,
-        );
+        await captureDataApiError(err, `sync-batches/${body.lane}`, env);
         // Retried: a D1 write that failed under load is exactly what the queue's
         // backoff exists for, and this is the failure the one-second producer
         // sleep was standing in for.

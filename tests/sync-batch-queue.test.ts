@@ -21,6 +21,7 @@ import {
   syncBatchRows,
   QUEUE_MESSAGE_MAX_BYTES,
   SYNC_BATCH_LANES,
+  SYNC_BATCH_MAX_BYTES,
   SYNC_BATCH_MAX_ROWS,
   passTallyFor,
   PRUNING_LANE_KEYS,
@@ -882,41 +883,32 @@ describe("multi-family messages (metagraphed-infra#359)", () => {
     }
   });
 
-  test("THROWS rather than splitting an oversize chunk", () => {
-    // The families must land together, so there is no correct way to split
-    // them here. The producer has to post a smaller batch -- and this error is
-    // how that gets discovered, instead of a silently split write.
-    assert.throws(
-      () =>
-        packMultiFamilyMessage({
-          lane: "chain-detail",
-          capturedAt: 1,
-          families: families(5_000),
-        }),
-      /must land together/,
-    );
-  });
-
-  test("the producer's CURRENT batch does not fit, and that is the finding", () => {
-    // chain-detail batches 2 blocks per POST at ~350-662 KiB (workers/data-api.ts
-    // header). The cap is 128 KB. So this lane cannot be cut over until the
-    // producer posts smaller batches -- asserting it here means the constraint
-    // is recorded in the code rather than rediscovered at cutover.
-    const bigBatch = {
-      blockRows: [{ number: 1, blob: "x".repeat(200_000) }],
-      extrinsicRows: [],
-      chainEventRows: [],
-      accountEventRows: [],
-    };
-    assert.throws(
-      () =>
-        packMultiFamilyMessage({
-          lane: "chain-detail",
-          capturedAt: 1,
-          families: bigBatch,
-        }),
-      /over the \d+-byte budget/,
-    );
+  test("does not measure itself -- the budget moved to the compressor", () => {
+    // It used to check JSON.stringify(...) against the budget, and that was
+    // measuring the wrong thing once the message started travelling
+    // compressed: one chain-detail block is 476.6 KiB of JSON and 40.5 KiB on
+    // the wire, so a raw-bytes check refuses messages that fit.
+    // compressSyncBatchMessage owns the budget now, because it is the only
+    // place that knows the size the transport actually sees.
+    const message = packMultiFamilyMessage({
+      lane: "chain-detail",
+      capturedAt: 1,
+      // Well over the byte budget, comfortably under the row ceiling -- which
+      // is the combination the old check made unsendable and the new one does
+      // not, because these bytes compress.
+      families: {
+        blockRows: [{ number: 1 }],
+        extrinsicRows: Array.from({ length: 900 }, (_unused, i) => ({
+          hash: `0x${"ab".repeat(32)}`,
+          signer: "5FyVinYphF6JS5FZHzhMQffxtgbz1WxwUEBAxTRo9nABwb5g",
+          index: i,
+        })),
+        chainEventRows: [{ kind: "x" }],
+        accountEventRows: [{ account: "5A" }],
+      },
+    });
+    assert.equal(JSON.stringify(message).length > SYNC_BATCH_MAX_BYTES, true);
+    assert.equal(validSyncBatchMessage(message), true);
   });
 
   test("writeSyncBatch routes a family message to the family writer", async () => {

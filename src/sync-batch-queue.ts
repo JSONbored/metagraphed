@@ -501,25 +501,21 @@ export function packSyncBatchMessages(input: {
  * and wrong. So an oversize chunk THROWS rather than degrading into the split
  * this shape exists to prevent.
  *
- * That is a real constraint, not a hypothetical: the producer batches 2 blocks
- * per POST at ~350-662 KiB, which is over the 128 KB cap. The producer has to
- * post smaller batches for this lane to move -- and a loud error at the
- * boundary is how that gets discovered, rather than a silently split write.
+ * IT DOES NOT MEASURE ITSELF ANY MORE. It used to check `JSON.stringify(...)`
+ * against the budget, and that was measuring the wrong thing once the message
+ * started travelling compressed: one chain-detail block is 476.6 KiB of JSON
+ * and 40.5 KiB on the wire, so a raw-bytes check refuses messages that fit.
+ * `compressSyncBatchMessage` owns the budget now, because it is the only place
+ * that knows the size the transport actually sees -- and it keeps the same
+ * loud-throw posture, for the same reason.
  */
 export function packMultiFamilyMessage(input: {
   lane: SyncBatchLane;
   capturedAt: number;
   passTotal?: number;
   families: Record<string, Record<string, unknown>[]>;
-  maxBytes?: number;
 }): SyncBatchMessage {
-  const {
-    lane,
-    capturedAt,
-    passTotal,
-    families,
-    maxBytes = SYNC_BATCH_MAX_BYTES,
-  } = input;
+  const { lane, capturedAt, passTotal, families } = input;
   const message: SyncBatchMessage = {
     lane,
     captured_at: capturedAt,
@@ -527,20 +523,8 @@ export function packMultiFamilyMessage(input: {
     families,
   } as SyncBatchMessage;
   // `rows` is absent by construction here; the validator refuses a message
-  // carrying both, so the type's required `rows` is deliberately not set.
+  // carrying both, so the type's optional `rows` is deliberately not set.
   delete (message as { rows?: unknown }).rows;
-
-  const bytes = JSON.stringify(message).length;
-  if (bytes > maxBytes) {
-    const counts = Object.entries(families)
-      .map(([name, rows]) => `${name}=${rows.length}`)
-      .join(", ");
-    throw new Error(
-      `sync-batches: ${lane} multi-family message is ${bytes} bytes (${counts}), ` +
-        `over the ${maxBytes}-byte budget; these families must land together, ` +
-        `so the PRODUCER must post a smaller batch rather than this splitting them`,
-    );
-  }
   return message;
 }
 
