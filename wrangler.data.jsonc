@@ -190,7 +190,7 @@
     // the loader modules they reach and fails the build on either construct.
     //
     // Rollback remains deleting the entry.
-    "NEON_READ_LANES": "account_position_daily,neurons,neuron_daily,subnet_snapshots,subnet_hyperparams,account_identity,validator_nominator_counts",
+    "NEON_READ_LANES": "account_position_daily,neurons,neuron_daily,subnet_snapshots,subnet_hyperparams,account_identity,validator_nominator_counts,subnet_hyperparams_history,account_identity_history",
     // The two ACCUMULATING tables, and only those (src/neon-backfill.ts).
     //
     // The mirror above writes what each request carries, which finishes the job
