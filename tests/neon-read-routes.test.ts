@@ -221,8 +221,29 @@ describe("NEON_READ_ROUTE_TABLES", () => {
     const end = src.indexOf("\nfunction ", start + 10);
     const body = src.slice(start, end > 0 ? end : undefined);
 
-    // One block per `if (...) { return async (sql) => ... }` route guard.
-    const blocks = body.split(/\n {2}(?=if \()/).slice(1);
+    // One block per route, split at each mention of `url.pathname`.
+    //
+    // NOT at `\n  if (`, which is what this did first and which silently
+    // MISATTRIBUTED SQL TO THE WRONG ROUTE. A parameterised guard is two
+    // statements:
+    //
+    //     const validatorHistoryMatch = url.pathname.match(/…/);
+    //     if (validatorHistoryMatch) { … }
+    //
+    // so splitting before the `if` puts the path expression at the END of the
+    // PREVIOUS route's block. Every parameterised route was then compared
+    // against its neighbour's SQL, and `/validators/{hotkey}/history` passed
+    // while joining a table it does not declare -- which is how it reached
+    // production reading subnet_snapshots from a store that has no such table.
+    //
+    // Splitting at `url.pathname` puts the path expression FIRST in its own
+    // block, both spellings alike, with the handler that follows it.
+    const marks = [...body.matchAll(/url\.pathname(?: ===|\.match)/g)].map(
+      (m) => m.index!,
+    );
+    const blocks = marks.map((start, i) =>
+      body.slice(start, marks[i + 1] ?? body.length),
+    );
     let checked = 0;
     const problems: string[] = [];
 
