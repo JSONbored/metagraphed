@@ -52,6 +52,15 @@ const HYPERPARAMS_SCHEMA = fs.readFileSync(
   path.join(process.cwd(), "migrations/d1/0009_hyperparams_identity.sql"),
   "utf8",
 );
+// neurons_passes (#9812) -- the completeness contract this lane gained after
+// its producer started chunking. Loaded for the same reason as the tables
+// above: the real database carries it, and the write batches the tally
+// alongside the rows it describes, so a suite without it would exercise a
+// write path that cannot exist in production.
+const NEURONS_PASSES_SCHEMA = fs.readFileSync(
+  path.join(process.cwd(), "migrations/d1/0030_neurons_passes.sql"),
+  "utf8",
+);
 
 let db: InstanceType<typeof DatabaseSync>;
 
@@ -277,6 +286,7 @@ beforeEach(() => {
   db.exec(OBSERVATIONS_SCHEMA);
   db.exec(NOMINATOR_COUNTS_SCHEMA);
   db.exec(HYPERPARAMS_SCHEMA);
+  db.exec(NEURONS_PASSES_SCHEMA);
 });
 
 // netuid -> tempo(blocks), the row apy_estimate annualizes against. Values are
@@ -1852,9 +1862,78 @@ test("neurons-sync claims key-completeness on what it enqueues", async () => {
   );
   assert.equal(sent[0]!.key_complete, true);
   assert.equal(sent[0]!.lane, "neurons");
-  // No pass declaration: this lane has never had one, and inventing a total
-  // would mark an unproven load complete.
+  // This REQUEST declared none, so the message must not invent one -- a
+  // fabricated total would mark an unproven load complete. (The lane does have
+  // a pass contract now, #9812; the declaration is the producer's to make.)
   assert.equal("pass_total" in sent[0]!, false);
+});
+
+test("a declared pass_total rides the message and tallies to COMPLETE", async () => {
+  // The whole contract in one pass, split across two requests the way the
+  // producer actually chunks: the netuids that land are written immediately,
+  // so only the tally can say whether the REST of them ever arrived.
+  const passRow = (over: Record<string, unknown> = {}) =>
+    syncRow({ captured_at: 1_780_000_000_000, ...over });
+
+  const first = await call(
+    req("/api/v1/internal/neurons-sync", {
+      method: "POST",
+      headers: { "x-neurons-sync-token": SYNC_SECRET },
+      body: { rows: [passRow()], pass_total: 2 },
+    }),
+  );
+  assert.equal(first.status, 200);
+  let pass = db
+    .prepare(
+      "SELECT expected_rows, received_rows, completed_at FROM neurons_passes",
+    )
+    .all() as unknown as Row[];
+  assert.equal(pass.length, 1);
+  assert.equal(pass[0]!.expected_rows, 2);
+  assert.equal(pass[0]!.received_rows, 1);
+  assert.equal(
+    pass[0]!.completed_at,
+    null,
+    "one chunk of two is exactly the state that used to be invisible",
+  );
+
+  const second = await call(
+    req("/api/v1/internal/neurons-sync", {
+      method: "POST",
+      headers: { "x-neurons-sync-token": SYNC_SECRET },
+      body: { rows: [passRow({ netuid: 8, uid: 0 })], pass_total: 2 },
+    }),
+  );
+  assert.equal(second.status, 200);
+  pass = db
+    .prepare(
+      "SELECT expected_rows, received_rows, completed_at FROM neurons_passes",
+    )
+    .all() as unknown as Row[];
+  assert.equal(pass.length, 1, "one row per pass, keyed on its captured_at");
+  assert.equal(pass[0]!.received_rows, 2);
+  assert.ok(
+    pass[0]!.completed_at,
+    "the pass is complete once both chunks land",
+  );
+});
+
+test("a pass_total smaller than the rows sent is refused", async () => {
+  // The producer buffers before chunking, so a total under this request's own
+  // row count is a producer bug -- accepting it would complete a pass that
+  // never covered the network.
+  const res = await call(
+    req("/api/v1/internal/neurons-sync", {
+      method: "POST",
+      headers: { "x-neurons-sync-token": SYNC_SECRET },
+      body: { rows: [syncRow(), syncRow({ uid: 1 })], pass_total: 1 },
+    }),
+  );
+  assert.equal(res.status, 400);
+  assert.equal(
+    (db.prepare("SELECT COUNT(*) AS n FROM neurons_passes").get() as Row).n,
+    0,
+  );
 });
 
 test("neurons-sync 502s when the enqueue fails, so the producer retries", async () => {

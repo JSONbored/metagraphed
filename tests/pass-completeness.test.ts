@@ -10,6 +10,7 @@
 //     migrations are applied by hand, so the window between deploying the code
 //     and applying 0029 must degrade, not 500
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import {
   latestCompletePass,
@@ -195,8 +196,30 @@ describe("passTallyStatement", () => {
       assert.match(table, /_passes$/, lane);
     }
     assert.deepEqual(Object.keys(PASS_TABLES).sort(), [
+      "neurons",
       "nominator-positions",
       "validator-nominator-counts",
     ]);
+  });
+
+  test("every declared table is actually created by a migration", () => {
+    // The list above makes adding a lane a conscious act; this makes it a
+    // COMPLETE one. Migrations here are applied BY HAND, so a lane added to
+    // PASS_TABLES without its table does not fail at deploy -- it fails on
+    // every chunk, at runtime, and wedges the lane it was meant to protect.
+    //
+    // `latestCompletePass` declines on a missing table rather than throwing,
+    // which is right for a reader and is exactly why nothing else would notice.
+    const migrations = readdirSync("migrations/d1")
+      .filter((f) => f.endsWith(".sql"))
+      .map((f) => readFileSync(`migrations/d1/${f}`, "utf8"))
+      .join("\n");
+    for (const [lane, table] of Object.entries(PASS_TABLES)) {
+      assert.match(
+        migrations,
+        new RegExp(`CREATE TABLE IF NOT EXISTS ${table}\\b`),
+        `${lane} declares ${table}, which no migration creates`,
+      );
+    }
   });
 });

@@ -165,12 +165,22 @@ export const SYNC_BATCH_LANES = [
 export const PRUNING_LANES: readonly string[] = [
   "nominator-positions",
   // metagraphed-infra#357. It prunes per netuid, and it can assert
-  // key-completeness for a reason worth stating: its producer NEVER chunks.
-  // `metagraph.rs` bails -- "refusing to truncate a partial snapshot" -- if a
-  // pass exceeds its 50,000-row ceiling, and a pass is ~33,000 rows, so the
-  // whole snapshot arrives in one POST or none of it does. The packer then
-  // groups that POST by netuid, so every message really does carry every row
-  // for each netuid it names.
+  // key-completeness for a reason worth stating precisely: `pack_netuid_chunks`
+  // never SPLITS a netuid across two requests, so every message really does
+  // carry every row for each netuid it names.
+  //
+  // CORRECTED (#9812). This used to say the producer "NEVER chunks" -- that the
+  // whole snapshot arrives in one POST or none of it does. It packs ~7+
+  // requests per pass and has for some time; its own test asserts
+  // `chunks.len() >= 7`. The conclusion above survives because the guarantee
+  // that matters is per-NETUID, not per-pass -- but the old premise was false,
+  // and on a field whose failure mode is deleted rows, the next person to
+  // extend it would have been reasoning from something untrue.
+  //
+  // What chunking DID cost is separate and is why `neurons` now has a pass
+  // table: the posting loop continues past a failed chunk, so a partial pass
+  // leaves some netuids fresh and some stale, which key-completeness says
+  // nothing about.
   "neurons",
 ];
 

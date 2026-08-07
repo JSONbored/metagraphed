@@ -12,6 +12,10 @@
 // prune. SQLite supports `excluded.` and a WHERE clause on DO UPDATE, so the
 // two paths agree line for line rather than merely in spirit.
 import { NEURON_INSERT_COLUMNS } from "./metagraph-neurons.ts";
+import {
+  passTallyStatement,
+  type PassTallyInput,
+} from "./pass-completeness.ts";
 
 /** Columns of `neuron_daily` = the neuron row plus its day and write stamp. */
 export const NEURON_DAILY_COLUMNS = [
@@ -333,6 +337,12 @@ export interface NeuronSnapshotWrite {
   positionRows: Row[];
   /** Per-netuid max captured_at -- NOT one batch-wide value. */
   netuidMaxCapturedAt: Map<number, number>;
+  /**
+   * This request's contribution to the pass tally (#9812), when the producer
+   * declared one. Optional because a producer that has not been updated must
+   * keep working -- absent means "no declaration", never "zero rows".
+   */
+  pass?: PassTallyInput | null;
 }
 
 // --- The three derivations, pure and shared ---------------------------------
@@ -469,7 +479,13 @@ export async function batchInSlices(
 
 export async function writeNeuronSnapshotToD1(
   db: D1Like,
-  { rows, dailyRows, positionRows, netuidMaxCapturedAt }: NeuronSnapshotWrite,
+  {
+    rows,
+    dailyRows,
+    positionRows,
+    netuidMaxCapturedAt,
+    pass,
+  }: NeuronSnapshotWrite,
 ): Promise<{ statements: number }> {
   const statements: D1PreparedStatement[] = [
     ...chunkStatements(
@@ -502,6 +518,12 @@ export async function writeNeuronSnapshotToD1(
         .bind(netuid, capturedAt),
     );
   }
+
+  // Batched WITH the rows it describes, so a tally cannot survive a failed row
+  // write and report a pass complete that never landed (#9812). Appended after
+  // the prunes for the same reason they are appended last -- ordering inside
+  // one batch is the only ordering there is.
+  if (pass) statements.push(passTallyStatement(db, "neurons", pass));
 
   if (statements.length) await batchInSlices(db, statements);
   return { statements: statements.length };
