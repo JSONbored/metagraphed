@@ -13,6 +13,7 @@ import {
 } from "../src/crowdloans.ts";
 import { encodeAccountId32 } from "../src/ss58.ts";
 import { handleRequest } from "../workers/api.ts";
+import { handleMcpRequest } from "../src/mcp-server.ts";
 import { mockEnv } from "./row-type.ts";
 import type { AnyFn, Row } from "./row-type.ts";
 
@@ -788,5 +789,126 @@ describe("the on-chain layout", () => {
     assert.equal(decoded.finalized, true);
     assert.equal(decoded.contributors_count, 3);
     assert.equal(decoded.percent_raised, 100);
+  });
+});
+
+// The MCP half (#9968). Crowdloans were the one published route pair with no
+// tool at all -- every other AGENT_UNREACHABLE entry is a decision, this was an
+// omission, so an agent could not read crowdloan data by any path.
+describe("the crowdloan MCP tools", () => {
+  function callTool(name: string, args: Row, env: Row) {
+    return handleMcpRequest(
+      new Request("https://api.metagraph.sh/mcp", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name, arguments: args },
+        }),
+      }),
+      env as unknown as Env,
+    ).then(async (res) => (await res.json()) as Row);
+  }
+
+  const listStub = () =>
+    rpcStub({
+      state_getStorage: () => hex(u32le(1)),
+      state_queryStorageAt: (params: unknown[]) =>
+        queryStorageAtResult([
+          [(params[0] as string[])[0], hex(encodeCrowdloan())],
+        ]),
+    });
+
+  test("list_crowdloans serves the same body the route does", async () => {
+    const env = mockEnv({ METAGRAPH_CONTROL: kvStub() });
+    const body = await withFetchStub(listStub(), () =>
+      callTool("list_crowdloans", {}, env),
+    );
+    const out = body.result.structuredContent as Row;
+    assert.equal(out.crowdloan_count, 1);
+    // #9108: provenance is attached outside the loader, so a tool that reached
+    // the snapshot directly would silently drop it.
+    assert.deepEqual(out.field_sources, CROWDLOANS_FIELD_SOURCES);
+  });
+
+  test("get_crowdloan serves one record", async () => {
+    const env = mockEnv({ METAGRAPH_CONTROL: kvStub() });
+    const body = await withFetchStub(
+      rpcStub({ state_getStorage: () => hex(encodeCrowdloan()) }),
+      () => callTool("get_crowdloan", { crowdloan_id: 2 }, env),
+    );
+    const out = body.result.structuredContent as Row;
+    assert.equal(out.crowdloan_id, 2);
+    assert.equal(out.exists, true);
+    assert.deepEqual(out.field_sources, CROWDLOAN_FIELD_SOURCES);
+  });
+
+  test("an out-of-range id is rejected BEFORE any RPC", async () => {
+    // The router's \\d+ regex is what stops this on the REST side; a tool
+    // argument has no router, so the guard has to live in the handler.
+    const env = mockEnv({ METAGRAPH_CONTROL: kvStub() });
+    const body = await withFetchStub(
+      () => assert.fail("must not reach the RPC"),
+      () => callTool("get_crowdloan", { crowdloan_id: 4294967296 }, env),
+    );
+    assert.equal(body.result.isError, true);
+    assert.equal(
+      (body.result.structuredContent as Row).error.code,
+      "invalid_params",
+    );
+  });
+
+  test("both tools charge the same live-RPC budget the routes do", async () => {
+    // Otherwise the MCP path is simply the way around the per-client limit.
+    const env = mockEnv({
+      METAGRAPH_CONTROL: kvStub(),
+      RPC_RATE_LIMITER: { limit: async () => ({ success: false }) },
+    });
+    for (const [name, args] of [
+      ["list_crowdloans", {}],
+      ["get_crowdloan", { crowdloan_id: 1 }],
+    ] as [string, Row][]) {
+      const body = await withFetchStub(
+        () => assert.fail("a rate-limited call must not reach the RPC"),
+        () => callTool(name, args, env),
+      );
+      assert.equal(body.result.isError, true, name);
+      assert.equal(
+        (body.result.structuredContent as Row).error.code,
+        "rate_limited",
+        name,
+      );
+    }
+  });
+
+  test("a passing limiter lets both through", async () => {
+    const env = mockEnv({
+      METAGRAPH_CONTROL: kvStub(),
+      RPC_RATE_LIMITER: { limit: async () => ({ success: true }) },
+    });
+    const list = await withFetchStub(listStub(), () =>
+      callTool("list_crowdloans", {}, env),
+    );
+    assert.equal(list.result.isError, false);
+    const one = await withFetchStub(
+      rpcStub({ state_getStorage: () => hex(encodeCrowdloan()) }),
+      () => callTool("get_crowdloan", { crowdloan_id: 1 }, env),
+    );
+    assert.equal(one.result.isError, false);
+  });
+
+  test("an unreadable id is exists:null, NOT exists:false", async () => {
+    // The distinction the tool description promises: `dissolve` removes a
+    // record while NextCrowdloanId keeps counting, so a confirmed-absent id
+    // (false) is normal -- collapsing an RPC failure into it would report a
+    // crowdloan we could not read as one that does not exist.
+    const env = mockEnv({ METAGRAPH_CONTROL: kvStub() });
+    const body = await withFetchStub(
+      rpcStub({ state_getStorage: () => null }, { httpError: true }),
+      () => callTool("get_crowdloan", { crowdloan_id: 7 }, env),
+    );
+    assert.equal((body.result.structuredContent as Row).exists, null);
   });
 });

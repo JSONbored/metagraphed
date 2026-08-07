@@ -2197,6 +2197,10 @@ const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
   ["get_subnet_event_summary", HARNESS_SERVES_NO_ROWS],
   ["get_subnet_events", HARNESS_SERVES_NO_ROWS],
   ["get_subnet_history", HARNESS_SERVES_NO_ROWS],
+  // Live RPC against the Crowdloan pallet (#9968): the harness stands up no
+  // chain, so `crowdloans` is empty and the record shape inside it is checked
+  // by the production sweep, where it was verified before this tool shipped.
+  ["list_crowdloans", HARNESS_SERVES_NO_ROWS],
   ["get_subnet_holders", HARNESS_SERVES_NO_ROWS],
   ["get_subnet_hyperparams_history", HARNESS_SERVES_NO_ROWS],
   ["get_subnet_identity_history", HARNESS_SERVES_NO_ROWS],
