@@ -60,10 +60,6 @@ export const MCP_TOOL_COST_PATHS: Record<string, string> = {
   get_extrinsic: "/api/v1/extrinsics",
   get_subnet_conviction: "/api/v1/subnets/1/conviction",
   get_subnet_lease: "/api/v1/subnets/1/lease",
-  // Live-RPC reads, same family as the lease tools above: the concrete id is
-  // representative, not routed.
-  list_crowdloans: "/api/v1/crowdloans",
-  get_crowdloan: "/api/v1/crowdloans/1",
   get_subnet_ownership_history: "/api/v1/subnets/1/ownership-history",
 };
 

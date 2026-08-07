@@ -73,7 +73,10 @@ describe("MCP tool annotations", () => {
   // Not a style rule — an accidental widening of the open-world set is how the
   // signal gets diluted back to useless, which is the state this issue fixed.
   test("the open-world set stays small relative to the catalogue", () => {
-    assert.equal(OPEN_WORLD_TOOL_NAMES.length, 20);
+    // 22 since #9968 added list_crowdloans/get_crowdloan, which read the
+    // Crowdloan pallet over live RPC -- genuinely outside our closed world,
+    // the same reason get_subnet_lease carries the annotation.
+    assert.equal(OPEN_WORLD_TOOL_NAMES.length, 22);
     assert.ok(
       definitions.length > 200,
       `expected the full catalogue, saw ${definitions.length}`,
