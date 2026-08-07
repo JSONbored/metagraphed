@@ -428,7 +428,12 @@ describe("loadAccountsList", () => {
     };
     const data = await loadAccountsList(d1, { sort: "total_stake" });
     assert.match(captured!.sql, /FROM neurons/);
-    assert.doesNotMatch(captured!.sql, /validator_permit = 1/);
+    // Spelling-agnostic on purpose. This asserts the leaderboard covers EVERY
+    // registered hotkey, so it has to keep failing if a permit filter comes
+    // back -- and #9802 changed the portable spelling to `= TRUE`, which a
+    // `= 1` pattern would no longer see. A negative assertion pinned to one
+    // spelling stops testing anything the moment the other is used.
+    assert.doesNotMatch(captured!.sql, /validator_permit\s*=/i);
     assert.match(captured!.sql, /WHERE hotkey IS NOT NULL/);
     assert.deepEqual(captured!.params, []);
     assert.equal(data.account_count, 2);

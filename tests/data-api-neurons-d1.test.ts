@@ -1214,7 +1214,7 @@ test("GET /api/v1/validators/:hotkey/history?netuid= scopes to one subnet (#9383
 });
 
 test("GET /api/v1/validators/:hotkey/history?netuid= reports a lost permit (#9383)", async () => {
-  // The unscoped query filters validator_permit = 1, which turns a lost permit
+  // The unscoped query filters validator_permit = TRUE, which turns a lost permit
   // into an absent day -- indistinguishable from a day the poller missed. Scoped,
   // the day is returned with the permit false.
   const day = dayAgo(1);

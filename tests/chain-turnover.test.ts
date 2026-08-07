@@ -10,7 +10,7 @@ import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import type { Row } from "./row-type.ts";
 
-// One neuron_daily validator row (the loader scopes the read to validator_permit = 1).
+// One neuron_daily validator row (the loader scopes the read to validator_permit = TRUE).
 function vrow(
   snapshot_date: string,
   netuid: unknown,
@@ -311,7 +311,7 @@ describe("loadChainTurnover", () => {
     assert.equal(calls[0].params[0], "-30 days");
     assert.match(
       calls[1].sql,
-      /validator_permit = 1 AND snapshot_date IN \(\?, \?\)/,
+      /validator_permit = TRUE AND snapshot_date IN \(\?, \?\)/,
     );
     assert.deepEqual(calls[1].params, [START, END]);
     assert.equal(data.window, "30d");

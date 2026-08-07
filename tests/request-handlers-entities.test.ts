@@ -695,7 +695,7 @@ function dbWith({
                   }
                   // Validators ranking (stake_tao DESC).
                   if (
-                    /validator_permit = 1 ORDER BY stake_tao DESC/.test(sql)
+                    /validator_permit = TRUE ORDER BY stake_tao DESC/.test(sql)
                   ) {
                     const rows = neurons || [];
                     return { results: rows };

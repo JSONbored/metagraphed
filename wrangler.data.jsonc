@@ -163,37 +163,30 @@
     // mirrors have never fired (12h/30h/48h producers), which #9772's watchdog
     // reports as never-mirrored-not-alarmed. Naming one would move a read onto
     // a store with no proven writer -- #9704 exactly.
-    // neuron_daily PULLED 2026-08-07 after #9784: two routes returned ZERO
-    // rows from Neon. The runners are interface-compatible; the SQL DIALECT is
-    // not. /api/v1/subnets/movers and /api/v1/subnets/{netuid}/history both
-    // anchor their window with SQLite's `date(MAX(snapshot_date), '-30 days')`,
-    // which Postgres has no equivalent for -- so the subquery yields nothing
-    // and the >= matches nothing. Measured against a pre-cutover baseline:
-    // movers 5 rows -> 0, subnet history 28 -> 0.
     //
-    // `neurons` and `account_position_daily` stay: every route on them returned
-    // the same row counts, and the only differences were values that move with
-    // the 15-minute producer.
+    // `neurons` and `neuron_daily` are RE-ADDED here after two rollbacks. Both
+    // were pulled on 2026-08-07 for the same underlying reason -- a query that
+    // is valid SQLite and invalid Postgres -- surfacing in two different ways:
     //
-    // Re-adding neuron_daily needs those two queries ported to portable SQL
-    // (an explicit date literal computed in TS, not in the database) -- see
-    // #9789.
-    // `neurons` PULLED 2026-08-07, immediately after neuron_daily (#9791).
-    // /api/v1/validators returned ZERO from Neon and fell back to an empty
-    // artifact -- 5 rows -> 0, measured across three deploys:
-    //   baseline (pre-cutover)  5 rows
-    //   f07234628 (pre-cutover) 5 rows
-    //   2df376f7e (post)        0 rows
+    //   #9792  neuron_daily. /subnets/movers and /subnets/{netuid}/history
+    //          anchored a window with `date(MAX(snapshot_date), '-30 days')`,
+    //          which Postgres does not have. movers 5 rows -> 0, history
+    //          28 -> 0.
+    //   #9802  neurons. /validators compared `validator_permit = 1` against a
+    //          column Neon declares BOOLEAN. 5 rows -> 0, measured across three
+    //          deploys (baseline 5, f07234628 5, 2df376f7e 0).
     //
-    // Same root cause class as #9791: a query that is valid SQLite and not
-    // valid Postgres fails, and this route falls back to an artifact rather
-    // than erroring -- so the failure is invisible from the response alone.
+    // Both are fixed at the source rather than worked around: the window
+    // boundary is computed in TypeScript and bound (#9807), and the boolean
+    // comparisons and aggregates now use spellings both stores accept. Neither
+    // failure was visible from a response -- each returned a schema-stable 200
+    // with zero rows -- so what makes this re-add different from the last two
+    // is not confidence, it is that both classes are now checked in CI by
+    // tests/neon-sql-portability.test.ts, which scans the movable routes AND
+    // the loader modules they reach and fails the build on either construct.
     //
-    // account_position_daily stays. Its one route was verified against a D1
-    // baseline across four deploys and is unchanged.
-    //
-    // NOTHING goes back into this flag until #9793's dialect scan runs in CI.
-    "NEON_READ_LANES": "account_position_daily",
+    // Rollback remains deleting the entry.
+    "NEON_READ_LANES": "account_position_daily,neurons,neuron_daily",
     // The two ACCUMULATING tables, and only those (src/neon-backfill.ts).
     //
     // The mirror above writes what each request carries, which finishes the job
