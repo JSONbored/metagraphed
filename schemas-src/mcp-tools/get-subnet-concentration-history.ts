@@ -4,6 +4,7 @@
 // Zod schema to reuse. Modeled fresh, shallow, from the hand-written
 // literal it replaces.
 import { z } from "zod";
+import { SubnetConcentrationHistoryArtifactSchema } from "../routes/subnet-concentration.ts";
 import { netuidSchema, windowSchema } from "./shared.ts";
 
 const CONCENTRATION_HISTORY_WINDOWS = ["7d", "30d", "90d"] as const;
@@ -18,30 +19,12 @@ export type GetSubnetConcentrationHistoryInput = z.infer<
   typeof GetSubnetConcentrationHistoryInputSchema
 >;
 
-// objectItems(...) properties, none required at the item level (see
-// search-subnets.ts's same note from the pilot batch).
-const ConcentrationHistoryPointSchema = z
-  .object({
-    snapshot_date: z.string().nullable().optional(),
-    neuron_count: z.int().nullable().optional(),
-    stake_gini: z.unknown().optional(),
-    stake_nakamoto_coefficient: z.unknown().optional(),
-    stake_top_10pct_share: z.unknown().optional(),
-    emission_gini: z.unknown().optional(),
-    emission_nakamoto_coefficient: z.unknown().optional(),
-    emission_top_10pct_share: z.unknown().optional(),
-  })
-  .passthrough();
-
-export const GetSubnetConcentrationHistoryOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    netuid: netuidSchema(),
-    window: z.string().nullable().optional(),
-    point_count: z.int(),
-    points: z.array(ConcentrationHistoryPointSchema),
-  })
-  .passthrough();
+// DERIVED, NOT COPIED (#9796). The copy typed every metric this tool
+// reports -- stake_gini, the Nakamoto coefficients, the top-10% shares --
+// as `z.unknown()`, which is weaker than an open object: it declares that
+// nothing at all is known about the value. The route models each one.
+export const GetSubnetConcentrationHistoryOutputSchema =
+  SubnetConcentrationHistoryArtifactSchema;
 export type GetSubnetConcentrationHistoryOutput = z.infer<
   typeof GetSubnetConcentrationHistoryOutputSchema
 >;
