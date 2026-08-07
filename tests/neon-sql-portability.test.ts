@@ -239,10 +239,38 @@ describe("Neon-movable SQL is portable", () => {
     );
   });
 
+  test("every tagged statement in the matcher is portable", () => {
+    // The same scan at STATEMENT granularity rather than block granularity.
+    // Block-level scanning reports the route; this reports the query, which is
+    // the difference between "something in /subnets/movers is wrong" and a
+    // line you can go fix. Both are kept because they fail on different
+    // things: a statement built by concatenation is invisible here and caught
+    // above, and a construct in a comment-adjacent block is caught here.
+    const statements = [...matcherSource().matchAll(/sql`([^`]*)`/g)].map(
+      (m) => m[1]!,
+    );
+    assert.ok(
+      statements.length >= 10,
+      `only ${statements.length} tagged statements found -- the extraction ` +
+        `stopped working, so this assertion is passing on nothing`,
+    );
+    const problems: string[] = [];
+    for (const statement of statements) {
+      for (const v of violations(statement, ALL_RULES)) {
+        problems.push(
+          `${v}\n    in: ${statement.replace(/\s+/g, " ").trim().slice(0, 120)}`,
+        );
+      }
+    }
+    assert.deepEqual(problems, [], `\n  ${problems.join("\n  ")}\n`);
+  });
+
   test("the loaders a movable route reaches are portable too", () => {
-    // #9802 lived in src/metagraph-neurons.ts, not in the matcher. A gate that
-    // only read the matcher would have called that regression impossible while
-    // it was serving an empty leaderboard in production.
+    // #9802 lived in src/metagraph-neurons.ts, not in the matcher, and it was
+    // built by string concatenation rather than a tagged template -- so BOTH
+    // of the scans above are blind to it. A gate that only read the matcher
+    // would have called that regression impossible while it was serving an
+    // empty leaderboard in production.
     const problems: string[] = [];
     for (const file of REACHABLE_LOADERS) {
       const source = stripComments(readFileSync(file, "utf8"));
@@ -250,6 +278,54 @@ describe("Neon-movable SQL is portable", () => {
         problems.push(`${file}: ${v}`);
     }
     assert.deepEqual(problems, [], problems.join("\n"));
+  });
+
+  test("the scan actually covers every route the read map may move", () => {
+    // The matcher scans ONE function. That is only sufficient while every
+    // route in NEON_READ_ROUTE_TABLES is dispatched from it -- and the map is
+    // the thing that grows as tables move off D1 (#9787 has 46 to go).
+    // Without this, adding a route whose handler lives elsewhere silently
+    // shrinks the scan's coverage to nothing in particular, and it would still
+    // report green.
+    //
+    // Compare on a CONCRETE PATH, not on regex source: the dispatcher spells
+    // the parameterised routes with capture groups (`(\d+)`) and the map
+    // without them, so the two sources never match textually even when they
+    // describe the same route.
+    const body = matcherSource();
+    const guards = [
+      // `if (url.pathname === "...")`
+      ...[...body.matchAll(/pathname === "([^"]+)"/g)].map(
+        (m) => (path: string) => path === m[1],
+      ),
+      // `url.pathname.match(/^\/api\/v1\/.../)`
+      ...[...body.matchAll(/pathname\.match\(\s*(\/\^[^\n]*?\$\/)/g)].map(
+        (m) => {
+          const re = new RegExp(m[1]!.slice(1, -1));
+          return (path: string) => re.test(path);
+        },
+      ),
+    ];
+    assert.ok(
+      guards.length >= 12,
+      `only ${guards.length} route guards extracted -- the extraction stopped ` +
+        `working, so this test is passing on nothing`,
+    );
+
+    const uncovered = NEON_READ_ROUTE_TABLES.filter(({ pattern }) => {
+      const path = pattern.source
+        .replace(/^\^|\$$/g, "")
+        .replace(/\\\//g, "/")
+        .replace(/\[\^\/\]\+/g, "5Abc")
+        .replace(/\\d\+/g, "7");
+      return !guards.some((matches) => matches(path));
+    });
+    assert.deepEqual(
+      uncovered.map((u) => u.pattern.source),
+      [],
+      "these read-map routes are not dispatched from the scanned function, so " +
+        "the portability scan does not see their SQL",
+    );
   });
 });
 
