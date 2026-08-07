@@ -181,7 +181,49 @@ const REACHABLE_LOADERS = [
   "src/subnet-yield.ts",
   "src/subnet-performance.ts",
   "src/live-economics-refresh.ts",
+  // account_identity reached Neon in #9828, so this loader can now run there.
+  "src/account-identity.ts",
 ];
+
+/**
+ * Side loaders that live in workers/data-api.ts rather than in src/.
+ *
+ * These are named rather than scanned by file, because the file also holds
+ * every route that is NOT movable and scanning it whole would flag SQL no
+ * flag can send to Postgres. They are the loaders a movable handler calls for
+ * the tables it does not read inline -- prices, identities, tempos, nominator
+ * counts -- and they run on THE SAME RUNNER, which is the property that makes
+ * them in scope at all (#9814).
+ *
+ * All four read a table that only reached Neon in #9828's first migration, so
+ * before that they could not have been exercised there. They can now, which is
+ * exactly when their SQL starts having to be portable.
+ */
+const DATA_API_SIDE_LOADERS = [
+  "loadAlphaPricesByNetuidD1",
+  "loadSubnetTemposD1",
+  "loadNominatorCountsD1",
+  "loadRealizedStakeBaselinesD1",
+];
+
+/** A named function's body from workers/data-api.ts, by brace matching. */
+function namedFunctionBody(source: string, name: string): string | null {
+  const decl = new RegExp(`\\bfunction ${name}\\s*(?:<[^>]*>)?\\s*\\(`).exec(
+    source,
+  );
+  if (!decl) return null;
+  const open = source.indexOf("{", decl.index + decl[0].length);
+  if (open < 0) return null;
+  let depth = 0;
+  for (let i = open; i < source.length; i += 1) {
+    if (source[i] === "{") depth += 1;
+    else if (source[i] === "}") {
+      depth -= 1;
+      if (depth === 0) return source.slice(open, i + 1);
+    }
+  }
+  return null;
+}
 
 /**
  * Comments removed.
@@ -292,6 +334,37 @@ describe("Neon-movable SQL is portable", () => {
       for (const v of violations(source, ALL_RULES))
         problems.push(`${file}: ${v}`);
     }
+    assert.deepEqual(problems, [], problems.join("\n"));
+  });
+
+  test("the side loaders in workers/data-api.ts are portable too", () => {
+    // The tables these read only reached Neon in #9828, so until now they
+    // could never have run there and their SQL was never on this hook. The
+    // day a read flag names subnet_snapshots they run against Postgres on the
+    // handler's runner, and a `= 1` or a date() in one of them empties part of
+    // a response with no error -- the same shape as #9792 and #9802, one layer
+    // further from the route.
+    const src = readFileSync("workers/data-api.ts", "utf8");
+    const problems: string[] = [];
+    let found = 0;
+    for (const name of DATA_API_SIDE_LOADERS) {
+      const body = namedFunctionBody(src, name);
+      if (body == null) {
+        // A renamed or deleted loader must fail loudly. Skipping it silently
+        // is how a scan quietly stops covering what it claims to.
+        problems.push(`${name}: not found in workers/data-api.ts`);
+        continue;
+      }
+      found += 1;
+      for (const v of violations(stripComments(body), ALL_RULES)) {
+        problems.push(`${name}: ${v}`);
+      }
+    }
+    assert.equal(
+      found,
+      DATA_API_SIDE_LOADERS.length,
+      "not every named side loader was located",
+    );
     assert.deepEqual(problems, [], problems.join("\n"));
   });
 
