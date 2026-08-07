@@ -265,10 +265,23 @@ describe("the deployed wiring", () => {
     for (const table of named) {
       const plan = NEON_BACKFILL_PLANS[table];
       assert.ok(plan, `${table} has no plan`);
+      // A mirrored latest-only table normally needs no lane -- but "the
+      // mirror covers it" only holds for rows the producer still EMITS. A row
+      // written to D1 before the mirror existed, and never rewritten since,
+      // reaches Neon by no other path. validator_nominator_counts is the
+      // measured case: a 14-row deficit that did not move across repeated
+      // checks on 2026-08-07.
+      //
+      // So this is an allowlist with evidence rather than a derived rule,
+      // because the derived rule was wrong.
+      const provenStuck = new Set(["validator_nominator_counts"]);
       assert.ok(
-        plan.partition === "date" || !mirrored.has(table),
+        plan.partition === "date" ||
+          !mirrored.has(table) ||
+          provenStuck.has(table),
         `${table} is latest-only AND mirrored, so the reconciler would copy ` +
-          `the whole table every tick to learn what the mirror already fixed`,
+          `the whole table every tick to learn what the mirror already fixed` +
+          ` -- add it to provenStuck with a measurement if that is wrong`,
       );
     }
   });

@@ -204,7 +204,7 @@
     // Naming a latest-only table here would copy 800,000 rows to prove they
     // already agree, which is why this is a third flag rather than a reuse of
     // the write list.
-    "NEON_BACKFILL_LANES": "neuron_daily,account_position_daily,subnet_snapshots,subnet_hyperparams,account_identity",
+    "NEON_BACKFILL_LANES": "neuron_daily,account_position_daily,subnet_snapshots,subnet_hyperparams,account_identity,validator_nominator_counts",
     "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "d1",
     "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "d1",
     // THE QUEUE CUTOVER (metagraphed-infra#348). Comma-separated lanes whose D1
