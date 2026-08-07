@@ -228,7 +228,53 @@
     // INCOMPLETE pass is the signal -- received_rows short of expected_rows with
     // a null completed_at -- and completeness is a fact the queue does not
     // itself provide.
-    "SYNC_QUEUE_LANES": "account-balances,hotkey-alpha,validator-nominator-counts,nominator-positions",
+    // chain-detail JOINS, and it is the one the whole migration was for.
+    //
+    // It is the largest D1 writer here and the only CONTINUOUS one: ~1,245 rows
+    // every 12 seconds is ~9M rows/day, against account-balances' ~1.5M. The
+    // bulk lanes are bursty; this one never stops. #346's argument for one
+    // queue was global backpressure -- "a lane left out is a lane that can
+    // still overwhelm the database the others are being polite about" -- and
+    // this was that lane.
+    //
+    // IT COULD NOT TRAVEL RAW, at any producer setting. Its four families are
+    // posted together so a block and its extrinsics cannot land separately, so
+    // the batch is already ONE BLOCK -- and one block measured 476.6 KiB of
+    // JSON (#8790494, the busiest captured) against a 128 KiB cap. Not a
+    // batching problem, a units problem: the same class as #360's rows-vs-bytes.
+    //
+    // Three things had to land first, and all three are deployed:
+    //
+    //   metagraphed#9765            compress the message. 476.6 KiB -> 40.5 KiB,
+    //                               11.8x, and the budget now measures the
+    //                               COMPRESSED size, which is the only number
+    //                               the transport sees.
+    //   metagraphed#9718            the consumer's batch log read `rows` on a
+    //                               message that has none -- above the
+    //                               per-message try/catch, so one families
+    //                               message would have failed the whole batch,
+    //                               five retries, into the DLQ, taking these
+    //                               four lanes with it.
+    //   metagraphed-infra#386       the producer posts ONE block per POST, not
+    //                               two. Two compress to 64.9 KiB against a
+    //                               96 KiB budget -- and that pairs the busiest
+    //                               block with a QUIET neighbour. Two genuinely
+    //                               busy blocks land near 81 KiB, ~16% margin,
+    //                               on a lane where overflow does not degrade:
+    //                               the producer advances its cursor only on a
+    //                               POST that succeeded, so it WEDGES.
+    //
+    // WHAT TO WATCH, and it is not the row count. This lane declares no
+    // pass_total, so there is no completeness tally to read -- the signal is
+    // `chain-detail` in lane_health staying `ok` at its ~5-minute cadence with
+    // `1 scanned, 1 written, 0 error(s)`, and `chain_detail_blocks` continuing
+    // to advance. A wedge shows up as the SAME block retried, which the
+    // staleness watchdog and lane-alarm both reach.
+    //
+    // ROLLBACK IS DROPPING THE WORD. Unlike account-balances, this lane still
+    // has its inline D1 write, so removing it here restores the old path on the
+    // next tick with no backfill.
+    "SYNC_QUEUE_LANES": "account-balances,hotkey-alpha,validator-nominator-counts,nominator-positions,chain-detail",
     // #9430's $exception storm guard reads this var per-Worker
     // (src/usage-telemetry.ts), and `vars` are per-config -- declaring it
     // only in wrangler.jsonc left THIS Worker's captures entirely unguarded,
