@@ -207,12 +207,46 @@ describe("NEON_BACKFILL_PLANS", () => {
     // an updated-in-place row is drift with no count difference, and nothing
     // else would catch it. So the exemption is named per plan rather than
     // inherited by default.
-    const APPEND_ONLY: readonly string[] = [];
+    // Each of these was checked against production before being listed: a
+    // row, once written, is never rewritten. The AUTOINCREMENT four are
+    // append-only by construction (a new observation is a new row, never an
+    // edit of an old one), which is also why their natural keys are unique.
+    //
+    // chain_concentration_daily is NOT here on purpose -- today's row is
+    // recomputed as the day fills in, so it declares freshness "computed_at"
+    // and never reaches this check.
+    const APPEND_ONLY: readonly string[] = [
+      "account_identity_history",
+      "subnet_hyperparams_history",
+      "emission_gate_param_history",
+      "subnet_emission_enabled_history",
+    ];
     for (const [name, plan] of Object.entries(NEON_BACKFILL_PLANS)) {
       if (freshnessColumn(plan) !== null) continue;
       assert.ok(
         APPEND_ONLY.includes(name),
         `${name} has no freshness column; add it to APPEND_ONLY with the reason its rows are never rewritten`,
+      );
+    }
+  });
+
+  test("the AUTOINCREMENT histories conflict on the NATURAL key, not id", () => {
+    // Neon assigns its own id (GENERATED ALWAYS), so an id conflict target
+    // would never match and every reconcile would insert duplicates. The
+    // natural key is what identifies the row in BOTH stores -- measured unique
+    // in all four: 531/531, 137/137, 123/123, 77/77.
+    const byNaturalKey: Record<string, string[]> = {
+      account_identity_history: ["account", "observed_at"],
+      subnet_hyperparams_history: ["netuid", "observed_at"],
+      emission_gate_param_history: ["param", "observed_at"],
+      subnet_emission_enabled_history: ["netuid", "observed_at"],
+    };
+    for (const [name, key] of Object.entries(byNaturalKey)) {
+      const plan = NEON_BACKFILL_PLANS[name];
+      assert.deepEqual([...plan.conflict], key, `${name} conflict`);
+      assert.ok(
+        !plan.columns.includes("id"),
+        `${name} must not carry id: Neon declares it GENERATED ALWAYS and refuses an explicit value`,
       );
     }
   });

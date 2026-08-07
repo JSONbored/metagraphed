@@ -146,6 +146,18 @@ const BOOLEAN_COLUMNS = [
   "user_liquidity_enabled",
   "owner_cut_enabled",
   "owner_cut_auto_lock_enabled",
+  // #9895's history plans. `enabled` and `previous_enabled` are
+  // subnet_emission_enabled_history's, and `predates_capture` is shared by it
+  // and emission_gate_param_history.
+  //
+  // `enabled` is the one genuinely generic name in this list. It is still
+  // correct to guard: the rules only run over SQL that can reach Neon (the
+  // movable routes, their tagged templates and their loaders), and within that
+  // set `enabled` belongs to a BOOLEAN column. A D1-only query elsewhere is
+  // never scanned.
+  "enabled",
+  "previous_enabled",
+  "predates_capture",
 ] as const;
 
 /** Comparisons and aggregates that only work against ONE of the two schemas. */

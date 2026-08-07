@@ -70,6 +70,14 @@ export const PARITY_TABLES = [
   "subnet_snapshots",
   "subnet_hyperparams",
   "account_identity",
+  // The five low-churn history tables (#9895). Adding them takes the list past
+  // ten, which is why the sweep had to be batched first (#9881): D1 parses at
+  // most five UNION ALL terms and fails the WHOLE statement above that.
+  "account_identity_history",
+  "subnet_hyperparams_history",
+  "emission_gate_param_history",
+  "subnet_emission_enabled_history",
+  "chain_concentration_daily",
 ] as const;
 
 /**
