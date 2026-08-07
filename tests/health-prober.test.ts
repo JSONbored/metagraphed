@@ -711,8 +711,14 @@ describe("handleScheduled dispatch", () => {
       const cap = capture();
       const { waited, ctx } = waitingCtx();
       try {
+        // The emission-gate sampler: it returns ok:false/skipped when its
+        // secret is absent, which is the shape this needs. (It replaced the
+        // account-events rollup, whose branch was deleted with the retired
+        // Postgres tier it wrote into.)
         await handleScheduled(
-          { cron: "17 * * * *" } as unknown as ScheduledController,
+          {
+            cron: "3,13,23,33,43,53 * * * *",
+          } as unknown as ScheduledController,
           { POSTHOG_PROJECT_TOKEN: "phc_test_token" } as unknown as Env,
           ctx,
         );
@@ -721,7 +727,7 @@ describe("handleScheduled dispatch", () => {
           cap.posted.find((p) => (p.body as Row).event === "usage_event")!
             .body as Row
         ).properties as Row;
-        assert.equal(props.route, "cron:account-events-rollup");
+        assert.equal(props.route, "cron:emission-gate-sample");
         assert.equal(props.ok, false);
       } finally {
         cap.restore();
@@ -735,20 +741,19 @@ describe("handleScheduled dispatch", () => {
       const { waited, ctx } = waitingCtx();
       try {
         // The prune branch .catch-isolates its own failures by design, so it
-        // cannot demonstrate this. The rollup branch reads ROLLUP_SYNC_SECRET
-        // directly and has nothing between it and the caller.
+        // cannot demonstrate this. The emission-gate sampler reads its secret
+        // first thing, with nothing between it and the caller.
         const exploding = {
           POSTHOG_PROJECT_TOKEN: "phc_test_token",
-          // The retired-tier gate sits before the secret read, so the flag
-          // must say "postgres" for the throwing getter to be reached at all.
-          METAGRAPH_ACCOUNT_EVENTS_SOURCE: "postgres",
-          get ROLLUP_SYNC_SECRET(): never {
+          get EMISSION_GATE_SYNC_SECRET(): never {
             throw new Error("cron exploded");
           },
         } as unknown as Env;
         await assert.rejects(() =>
           handleScheduled(
-            { cron: "17 * * * *" } as unknown as ScheduledController,
+            {
+              cron: "3,13,23,33,43,53 * * * *",
+            } as unknown as ScheduledController,
             exploding,
             ctx,
           ),
@@ -764,7 +769,7 @@ describe("handleScheduled dispatch", () => {
         assert.ok(exception, "expected an $exception for a failing cron");
         assert.equal(
           ((exception!.body as Row).properties as Row).route,
-          "cron:account-events-rollup",
+          "cron:emission-gate-sample",
         );
       } finally {
         cap.restore();

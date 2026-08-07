@@ -31,11 +31,6 @@ export const ABUSE_SCAN_CRON = "53 4 * * *";
 // hour is still far inside the upstream's 2-3 day release cadence and the
 // days-scale testnet soak this exists to catch.
 export const UPGRADE_RADAR_CRON = "7,37 * * * *";
-// Hourly account_events_daily rollup (#4832 gap-closure), moved off the
-// former rollup-account-events-daily.yml GitHub Actions workflow onto this
-// Worker-native cron -- offset from the top-of-hour prune (0) so the two
-// don't tick on the same minute. Must match a wrangler.jsonc cron entry.
-export const ACCOUNT_EVENTS_ROLLUP_CRON = "17 * * * *";
 // Daily github-signals capture (#233 pattern), moved off the retired
 // sync-github-signals.yml GitHub Actions workflow (which regenerated the
 // committed registry/generated/github-signals.json via an auto-merged bot PR)

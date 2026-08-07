@@ -477,7 +477,6 @@ import {
   BLOCKS_FEED_PATH_PATTERN,
   EXTRINSIC_DETAIL_PATH_PATTERN,
   EXTRINSICS_FEED_PATH_PATTERN,
-  ACCOUNT_EVENTS_ROLLUP_CRON,
   FRESHNESS_WATCHDOG_CRON,
   LANE_ALARM_CRON,
   LAKEHOUSE_SEAM_CRON,
@@ -518,7 +517,6 @@ import {
   PERCENTILES_PATH_PATTERN,
   RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN,
   resolveClientIp,
-  ROLLUP_TOKEN_HEADER,
   RUNTIME_VERSIONS_PATH_PATTERN,
   SUBNET_BURN_HISTORY_PATH_PATTERN,
   SUBNET_HOLDERS_PATH_PATTERN,
@@ -2089,7 +2087,6 @@ function cronLabel(cron: string): string {
   if (cron === LAKEHOUSE_SEAM_CRON) return "lakehouse-seam-watchdog";
   if (cron === SAFE_MODE_WATCHDOG_CRON) return "safe-mode-watchdog";
   if (cron === PROJECTION_LANES_CRON) return "projection-lanes";
-  if (cron === ACCOUNT_EVENTS_ROLLUP_CRON) return "account-events-rollup";
   if (cron === EMISSION_GATE_SAMPLE_CRON) return "emission-gate-sample";
   if (cron === EMISSION_DRIFT_CHECK_CRON) return "emission-drift-check";
   if (cron === NEURONS_STALENESS_WATCHDOG_CRON)
@@ -2549,48 +2546,6 @@ async function dispatchScheduled(
       throw new Error(`emission drift: ${reasons.join("; ")}`);
     }
     return { ok: true, ...summary };
-  }
-  if (cron === ACCOUNT_EVENTS_ROLLUP_CRON) {
-    // #4832 gap-closure, moved off GitHub Actions (rollup-account-events-daily.yml,
-    // retired) onto this Worker-native cron -- eliminates a third-party trigger
-    // hop for what was already a same-Worker-owned Postgres write. Builds the
-    // identical trigger-only POST the GH Actions workflow used to make over the
-    // public internet, and dispatches it internally through the existing
-    // DATA_API service-binding proxy (handleRollupAccountEventsDailyProxy).
-    if (env.METAGRAPH_ACCOUNT_EVENTS_SOURCE !== "postgres") {
-      // The rollup writes account_events_daily in the box's Postgres. With
-      // that tier retired the write target no longer exists, and an hourly
-      // POST into a dead service would log an error and burn a PostHog
-      // $exception forever. Skipping is a deliberate state, same contract as
-      // the missing-secret skip below.
-      return {
-        ok: false,
-        skipped: true,
-        reason: "account_events postgres tier retired",
-      };
-    }
-    if (!env.ROLLUP_SYNC_SECRET) {
-      return {
-        ok: false,
-        skipped: true,
-        reason: "ROLLUP_SYNC_SECRET not configured",
-      };
-    }
-    const response = await handleRollupAccountEventsDailyProxy(
-      new Request(
-        "https://internal.metagraph.sh/api/v1/internal/rollup-account-events-daily",
-        {
-          method: "POST",
-          headers: { [ROLLUP_TOKEN_HEADER]: env.ROLLUP_SYNC_SECRET },
-        },
-      ),
-      env,
-    );
-    // proxyToDataApi (which handleRollupAccountEventsDailyProxy wraps) always
-    // resolves to a JSON body -- either the DATA_API passthrough or its own
-    // errorResponse envelope -- so this can never throw.
-    const body = await response.json();
-    return { ok: response.ok, status: response.status, body };
   }
   // #204: self-healing bootstrap for the firehose head poller, piggybacked on
   // the 15-minute probe tick. Idempotent (an armed alarm is left alone), and
@@ -3461,20 +3416,6 @@ async function handleNeuronDailyBackfillProxy(request: Request, env: Env) {
   });
 }
 
-// Proxies POST /api/v1/internal/rollup-account-events-daily -- the write
-// path into the chain-indexer Postgres's account_events_daily rollup
-// (#4832 gap-closure). Same DATA_API service binding as neurons-sync above;
-// see proxyToDataApi's comment for why this isn't a dedicated Worker.
-async function handleRollupAccountEventsDailyProxy(request: Request, env: Env) {
-  return proxyToDataApi(request, env, {
-    code: "rollup_account_events_daily_unavailable",
-    notBoundMessage:
-      "The account-events-daily rollup tier is not bound to this deployment.",
-    unreadableMessage:
-      "The account-events-daily rollup tier returned an unreadable response.",
-  });
-}
-
 // Proxies POST /api/v1/internal/subnet-hyperparams-sync -- the write path
 // into subnet_hyperparams/subnet_hyperparams_history (#4832 gap-closure).
 // Same DATA_API service binding as neurons-sync/rollup above.
@@ -3485,19 +3426,6 @@ async function handleSubnetHyperparamsSyncProxy(request: Request, env: Env) {
       "The subnet-hyperparams sync tier is not bound to this deployment.",
     unreadableMessage:
       "The subnet-hyperparams sync tier returned an unreadable response.",
-  });
-}
-
-// Proxies POST /api/v1/internal/subnet-locks-sync -- the write path into
-// subnet_locks (#6638, conviction/ownership-contest tracker epic #4302).
-// Same DATA_API service binding as the other internal sync routes above.
-async function handleSubnetLocksSyncProxy(request: Request, env: Env) {
-  return proxyToDataApi(request, env, {
-    code: "subnet_locks_sync_unavailable",
-    notBoundMessage:
-      "The subnet-locks sync tier is not bound to this deployment.",
-    unreadableMessage:
-      "The subnet-locks sync tier returned an unreadable response.",
   });
 }
 
@@ -4342,26 +4270,12 @@ export async function handleRequest(
   if (url.pathname === "/api/v1/internal/chain-detail-sync/head") {
     return handleChainDetailSyncHeadProxy(request, env);
   }
-  // The write path into the chain-indexer Postgres's account_events_daily
-  // rollup (#4832 gap-closure) -- a dedicated hourly GitHub Actions workflow
-  // calls this (there is no daily snapshot job to piggyback on, unlike
-  // neurons-sync above). Same DATA_API service binding.
-  if (url.pathname === "/api/v1/internal/rollup-account-events-daily") {
-    return handleRollupAccountEventsDailyProxy(request, env);
-  }
   // The write path into subnet_hyperparams/subnet_hyperparams_history
   // (#4832 gap-closure) -- refresh-subnet-hyperparams.yml's sign-and-stage
   // job calls this the same way refresh-metagraph.yml calls neurons-sync
   // above. Same DATA_API service binding.
   if (url.pathname === "/api/v1/internal/subnet-hyperparams-sync") {
     return handleSubnetHyperparamsSyncProxy(request, env);
-  }
-  // The write path into subnet_locks (#6638, conviction/ownership-contest
-  // tracker epic #4302) -- the fetch-subnet-locks.py box-side systemd timer
-  // calls this the same way the other periodic fetch scripts call their own
-  // sync endpoints. Same DATA_API service binding.
-  if (url.pathname === "/api/v1/internal/subnet-locks-sync") {
-    return handleSubnetLocksSyncProxy(request, env);
   }
   // The write path into account_identity/account_identity_history (#4832
   // gap-closure) -- refresh-account-identity.yml's sign-and-stage job calls

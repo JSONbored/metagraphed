@@ -848,7 +848,6 @@
     "crons": [
       "*/15 * * * *",
       "0 * * * *",
-      "17 * * * *",
       "37 3 * * *",
       "53 4 * * *",
       // 7,37 = twice-hourly runtime upgrade radar (#8702) -- see
