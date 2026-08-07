@@ -84,6 +84,7 @@ export const PARITY_TABLES = [
   "surface_checks",
   "surface_status",
   "surface_uptime_daily",
+  "surface_failure_daily",
 ] as const;
 
 /**

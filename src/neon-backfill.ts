@@ -487,6 +487,19 @@ const SURFACE_UPTIME_DAILY_COLUMNS = [
   "updated_at",
 ] as const;
 
+/** surface_failure_daily, read off pragma_table_info 2026-08-07. Its key
+ * carries a NULLABLE netuid -- a registry-level surface belongs to no subnet --
+ * which is why it could not be reconciled until keysetPredicate became
+ * null-safe (#9930). */
+const SURFACE_FAILURE_DAILY_COLUMNS = [
+  "day",
+  "netuid",
+  "kind",
+  "classification",
+  "checks",
+  "updated_at",
+] as const;
+
 export const NEON_BACKFILL_PLANS: Readonly<Record<string, BackfillPlan>> = {
   neuron_daily: {
     table: "neuron_daily",
@@ -647,6 +660,19 @@ export const NEON_BACKFILL_PLANS: Readonly<Record<string, BackfillPlan>> = {
   // is NULL against a NULL -- so a single registry-level row would silently
   // truncate the copy at that page boundary. Zero such rows exist today and
   // the schema explicitly permits them.
+  // Reconcilable only since keysetPredicate stopped comparing NULLs with `=`
+  // and `>` (#9930). Its uniqueness is (day, netuid, kind, classification)
+  // with netuid nullable by design, and Neon's index spells that
+  // NULLS NOT DISTINCT to match D1's ifnull(netuid, -1).
+  surface_failure_daily: {
+    table: "surface_failure_daily",
+    columns: SURFACE_FAILURE_DAILY_COLUMNS,
+    conflict: ["day", "netuid", "kind", "classification"],
+    keyset: ["day", "netuid", "kind", "classification"],
+    partition: "whole",
+    booleans: [],
+    freshness: "updated_at",
+  },
   surface_status: {
     table: "surface_status",
     columns: SURFACE_STATUS_COLUMNS,
@@ -739,9 +765,35 @@ export function keysetPredicate(
   const terms: string[] = [];
   const values: unknown[] = [];
   for (let i = 0; i < keyset.length; i += 1) {
-    const equals = keyset.slice(0, i).map((column) => `${column} = ?`);
-    terms.push([...equals, `${keyset[i]} > ?`].join(" AND "));
-    values.push(...cursor.slice(0, i), cursor[i]);
+    const parts: string[] = [];
+    // The EQUALITY prefix uses `IS`, not `=`. In SQL `NULL = NULL` is NULL,
+    // never true, so a `=` prefix makes every term containing a NULL cursor
+    // value unsatisfiable -- the page returns nothing matching and the copy
+    // stops there, silently, reporting a clean short page (#9930).
+    //
+    // SQLite's `IS` is null-safe equality and behaves exactly like `=` for
+    // non-null operands, so this is a strict widening. All three callers read
+    // D1, never Neon, which is why the SQLite spelling is the right one here;
+    // Postgres would need IS NOT DISTINCT FROM.
+    for (let j = 0; j < i; j += 1) {
+      if (cursor[j] == null) {
+        parts.push(`${keyset[j]} IS NULL`);
+      } else {
+        parts.push(`${keyset[j]} IS ?`);
+        values.push(cursor[j]);
+      }
+    }
+    // The ORDERING term. `NULL > x` is also NULL, so "strictly after a NULL"
+    // cannot be written with `>` at all. SQLite sorts NULLs FIRST in ASC
+    // order -- which is the order these pages read in -- so everything after a
+    // NULL is exactly everything that is not NULL.
+    if (cursor[i] == null) {
+      parts.push(`${keyset[i]} IS NOT NULL`);
+    } else {
+      parts.push(`${keyset[i]} > ?`);
+      values.push(cursor[i]);
+    }
+    terms.push(parts.join(" AND "));
   }
   return { sql: `(${terms.map((term) => `(${term})`).join(" OR ")})`, values };
 }
