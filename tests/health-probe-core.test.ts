@@ -412,6 +412,129 @@ describe("mapLimit", () => {
   });
 });
 
+describe("mapLimit groupKey (#9904)", () => {
+  // A flat pool decides what runs together purely from list order, which is a
+  // property of how the caller sorted its input. When the shared resource is a
+  // remote host that is how a sweep DDoSes one origin -- the prober's list is
+  // sorted (netuid, surface_id), so a subnet's surfaces sit adjacent, went out
+  // together, and the host answered 429. Every rate-limited verdict in
+  // production sat on two hosts and none on the other 120.
+
+  /** Runs `items` and reports peak concurrency overall and per key. */
+  async function observe(
+    items: string[],
+    limit: number,
+    groupKey?: (item: string) => string,
+  ) {
+    const live = new Map<string, number>();
+    const peakPerKey = new Map<string, number>();
+    let inFlight = 0;
+    let peak = 0;
+    const started: string[] = [];
+    const out = await mapLimit(
+      items,
+      limit,
+      async (item) => {
+        const key = groupKey ? groupKey(item) : item;
+        const now = (live.get(key) ?? 0) + 1;
+        live.set(key, now);
+        peakPerKey.set(key, Math.max(peakPerKey.get(key) ?? 0, now));
+        inFlight += 1;
+        peak = Math.max(peak, inFlight);
+        started.push(item);
+        // Two turns: enough for any overlapping scheduler to interleave here.
+        await Promise.resolve();
+        await Promise.resolve();
+        live.set(key, now - 1);
+        inFlight -= 1;
+        return item.toUpperCase();
+      },
+      groupKey ? { groupKey } : {},
+    );
+    return { out, peak, peakPerKey, started };
+  }
+
+  const host = (item: string) => item.split("/")[0];
+  // Five on one host (the real sn-62-ridges-* shape) plus ten singletons.
+  const items = [
+    ...Array.from({ length: 5 }, (_, i) => `ridges/${i}`),
+    ...Array.from({ length: 10 }, (_, i) => `host${i}/0`),
+  ];
+
+  test("never runs two items with the same key at once", async () => {
+    const { peakPerKey } = await observe(items, 8, host);
+    for (const [key, seen] of peakPerKey) {
+      assert.equal(seen, 1, `${key} peaked at ${seen} concurrent`);
+    }
+  });
+
+  test("WITHOUT groupKey the same items do overlap", async () => {
+    // Positive control. Without it, the assertion above could pass simply
+    // because the harness never overlapped anything.
+    const { peakPerKey } = await observe(items, 8, undefined);
+    const ridges = await observe(
+      Array.from({ length: 5 }, () => "ridges/x"),
+      8,
+    );
+    assert.equal(peakPerKey.size, items.length, "control sanity");
+    assert.ok(
+      (ridges.peakPerKey.get("ridges/x") ?? 0) > 1,
+      "flat pool did not overlap; the control proves nothing",
+    );
+  });
+
+  test("results stay in INPUT order, not group order", async () => {
+    // The prober ranks its RPC pool off these rows; reordering them would
+    // reshuffle tie-breaks between equally-healthy endpoints.
+    const { out } = await observe(items, 8, host);
+    assert.deepEqual(
+      out,
+      items.map((i) => i.toUpperCase()),
+    );
+  });
+
+  test("dispatches the largest group first", async () => {
+    // Not cosmetic: a grouped run is bounded by its largest group, so starting
+    // the biggest one last strands it after the pool has nothing else to run.
+    //
+    // The big group is deliberately LAST in input order here. With it first the
+    // assertion passes on insertion order alone and says nothing about the sort
+    // -- which is exactly what an earlier version of this test did.
+    const bigLast = [
+      ...Array.from({ length: 10 }, (_, i) => `host${i}/0`),
+      ...Array.from({ length: 5 }, (_, i) => `ridges/${i}`),
+    ];
+    const { started } = await observe(bigLast, 1, host);
+    assert.deepEqual(
+      started.slice(0, 5),
+      bigLast.slice(10),
+      "the 5-item group should be dispatched before the singletons",
+    );
+  });
+
+  test("still uses the whole pool when there are more groups than workers", async () => {
+    const { peak } = await observe(items, 8, host);
+    assert.equal(peak, 8);
+  });
+
+  test("one group is drained serially, in order, and nothing is dropped", async () => {
+    const only = Array.from({ length: 5 }, (_, i) => `ridges/${i}`);
+    const { out, peak, started } = await observe(only, 8, host);
+    assert.equal(peak, 1);
+    assert.deepEqual(started, only);
+    assert.deepEqual(
+      out,
+      only.map((i) => i.toUpperCase()),
+    );
+  });
+
+  test("an empty input returns empty without spawning a worker", async () => {
+    const { out, peak } = await observe([], 8, host);
+    assert.deepEqual(out, []);
+    assert.equal(peak, 0);
+  });
+});
+
 describe("probeSurface (injected fetch)", () => {
   const surface = {
     id: "sn7-api",

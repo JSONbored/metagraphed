@@ -15,6 +15,7 @@ import {
   syncRpcProxyEventsPruneToPostgres,
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
+  probeHostKey,
 } from "../src/health-prober.ts";
 import { OPERATIONAL_SURFACES_R2_KEY } from "../src/operational-surfaces-sync.ts";
 import { handleScheduled } from "../workers/api.ts";
@@ -2722,6 +2723,107 @@ describe("pipelineProvenance (#8744)", () => {
         CHAIN_STATE,
       ),
       {},
+    );
+  });
+});
+
+// --- #9904: the prober contends per HOST, not per surface --------------------
+
+describe("probeHostKey", () => {
+  test("keys on the hostname, normalized", () => {
+    assert.equal(probeHostKey("https://API.Example.com/a"), "api.example.com");
+    assert.equal(probeHostKey("https://api.example.com/b"), "api.example.com");
+    // Shares normalizedHostname with the SSRF guard on purpose: if a
+    // trailing-dot FQDN or a bracketed IPv6 literal keyed differently from its
+    // bare form, the grouping would quietly stop serializing them.
+    assert.equal(probeHostKey("https://api.example.com./x"), "api.example.com");
+    assert.equal(
+      probeHostKey("https://[2606:4700::1111]/x"),
+      "2606:4700::1111",
+    );
+  });
+
+  test("an unparseable url is its own key, not a shared empty one", () => {
+    assert.equal(probeHostKey("not a url"), "not a url");
+    assert.equal(probeHostKey(null), "");
+    assert.equal(probeHostKey(undefined), "");
+    // Collapsing every malformed entry into one key would make them a single
+    // serial group -- slower, and for no safety reason.
+    assert.notEqual(probeHostKey("not a url"), probeHostKey("also not a url"));
+  });
+});
+
+describe("runHealthProber groups its sweep by host (#9904)", () => {
+  // mapLimit's own tests prove the grouping; this proves the SWEEP asks for it.
+  // Without an end-to-end assertion, dropping the groupKey argument would leave
+  // every other test green.
+  const sameHost = ["a", "b", "c", "d", "e"].map((n) => ({
+    surface_id: `sn-62-ridges-${n}`,
+    surface_key: `srf-ridges-${n}`,
+    netuid: 62,
+    kind: "subnet-api",
+    url: `https://agent-upload.ridges.ai/${n}`,
+    provider: "ridges",
+    authority: "official",
+    auth_required: false,
+    public_safe: true,
+    probe: { enabled: true, method: "GET", expect: "json" },
+  }));
+
+  const okProbe = {
+    status: "ok",
+    classification: "live",
+    latency_ms: 10,
+    status_code: 200,
+  };
+
+  test("five surfaces on one host never overlap", async () => {
+    const { env } = makeProberEnv({ priorStatus: [] });
+    let inFlight = 0;
+    let peak = 0;
+    const started: string[] = [];
+    await runHealthProber(env, FAKE_CTX, {
+      now: () => 50000,
+      kv: makeKv(),
+      loadSurfaces: async () => sameHost,
+      probeSurface: (async (input: Row) => {
+        peak = Math.max(peak, (inFlight += 1));
+        started.push(input.id as string);
+        await Promise.resolve();
+        inFlight -= 1;
+        return okProbe;
+      }) as never,
+      probeOptions: {},
+    });
+    assert.equal(peak, 1, `peaked at ${peak} concurrent probes on one host`);
+    assert.deepEqual(
+      started,
+      sameHost.map((s) => s.surface_id),
+    );
+  });
+
+  test("rows keep input order, so RPC-pool tie-breaks do not move", async () => {
+    const mixed = [
+      { ...sameHost[0], surface_id: "r1", url: "https://one.example/1" },
+      { ...sameHost[1], surface_id: "s1", url: "https://two.example/1" },
+      { ...sameHost[2], surface_id: "r2", url: "https://one.example/2" },
+      { ...sameHost[3], surface_id: "s2", url: "https://two.example/2" },
+    ];
+    const { env } = makeProberEnv({ priorStatus: [] });
+    const kv = makeKv();
+    await runHealthProber(env, FAKE_CTX, {
+      now: () => 50000,
+      kv,
+      loadSurfaces: async () => mixed,
+      probeSurface: (async () => okProbe) as never,
+      probeOptions: {},
+    });
+    const current = JSON.parse(
+      (await kv.get(KV_HEALTH_CURRENT)) as string,
+    ) as Row;
+    assert.deepEqual(
+      (current.surfaces as Row[]).map((r) => r.surface_id),
+      ["r1", "s1", "r2", "s2"],
     );
   });
 });
