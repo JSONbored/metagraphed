@@ -42,6 +42,7 @@ export const CurationEntrySchema = z
     slug: z.string(),
     name: z.string(),
     coverage_level: CoverageLevelSchema,
+    curation_level: CurationLevelSchema.optional(),
     surface_count: z.int().min(0),
     candidate_count: z.int().min(0),
     gap_count: z.int().min(0).optional(),
@@ -89,6 +90,10 @@ export const GapsEntrySchema = z
     name: z.string(),
     coverage_level: CoverageLevelSchema,
     curation_level: CurationLevelSchema,
+    // Optional for the same reason CurationEntrySchema's is: the route serves a
+    // baked artifact, so an artifact published before #9710 has no such key and
+    // a required field would reject a body that is otherwise exactly correct.
+    gap_count: z.int().min(0).optional(),
     gaps: GapsSchema,
     gap_severity: z.enum(["critical", "warning", "info"]).optional(),
     gap_priority: z.int().min(0).optional(),

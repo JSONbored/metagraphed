@@ -116,6 +116,56 @@ describe("buildRpcEndpointArtifact", () => {
     assert.deepEqual(artifact.summary.by_status, { ok: 1, unknown: 1 });
     assert.equal(artifact.summary.archive_supported_count, 1);
   });
+
+  // #9710: /api/v1/endpoints and /api/v1/rpc/endpoints share ONE
+  // queryCollection config, so both advertise layer/publication_state/
+  // pool_eligible/score in the same sort enum -- and only the resource artifact
+  // emitted them. workers/list-query.ts sorts on a flat row[key] and sinks
+  // null/undefined to the end, so on the RPC route all four sank every row and
+  // the response came back in its natural provider/id order while
+  // meta.pagination.sort echoed the requested field. These assert the values,
+  // not just the keys: a null placeholder would sort exactly as badly.
+  test("emits the pool/score fields its sort enum advertises", () => {
+    const artifact = buildRpcEndpointArtifact({
+      surfaces: [
+        rpcSurface({ id: "healthy", provider: "alpha" }),
+        rpcSurface({ id: "gated", provider: "beta", auth_required: true }),
+      ],
+      healthSurfaces: [
+        {
+          surface_id: "healthy",
+          status: "ok",
+          classification: "live",
+          archive_support: true,
+          latest_block: 100,
+          latency_ms: 50,
+          last_ok: GENERATED_AT,
+        },
+      ],
+      generatedAt: GENERATED_AT,
+      contractVersion: CONTRACT,
+      source: "unit",
+    });
+
+    const [healthy, gated] = artifact.endpoints as Row[];
+
+    // Probing OK + public + unauthenticated + base-layer is the whole
+    // eligibility rule, so this one clears it and scores above zero.
+    assert.equal(healthy.layer, "bittensor-base");
+    assert.equal(healthy.pool_eligible, true);
+    assert.equal(healthy.publication_state, "pool-eligible");
+    assert.ok(
+      (healthy.score as number) > 0,
+      `expected a positive score, got ${healthy.score}`,
+    );
+
+    // Same surface behind auth: ineligible, and it must still carry the keys —
+    // absent is what made the sort inert in the first place.
+    assert.equal(gated.pool_eligible, false);
+    assert.equal(gated.publication_state, "monitored");
+    assert.equal(gated.layer, "bittensor-base");
+    assert.equal(typeof gated.score, "number");
+  });
 });
 
 // --- buildEndpointResourceArtifact ------------------------------------------

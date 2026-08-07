@@ -26221,6 +26221,9 @@
                 "curation": {
                   "$ref": "#/components/schemas/CurationMetadata"
                 },
+                "curation_level": {
+                  "$ref": "#/components/schemas/CurationLevel"
+                },
                 "description": {
                   "anyOf": [
                     {
@@ -30567,6 +30570,11 @@
                 },
                 "curation_level": {
                   "$ref": "#/components/schemas/CurationLevel"
+                },
+                "gap_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
                 },
                 "gap_priority": {
                   "maximum": 9007199254740991,
@@ -37050,6 +37058,9 @@
                     }
                   ]
                 },
+                "layer": {
+                  "type": "string"
+                },
                 "method_tested": {
                   "anyOf": [
                     {
@@ -37100,11 +37111,17 @@
                     }
                   ]
                 },
+                "pool_eligible": {
+                  "type": "boolean"
+                },
                 "provider": {
                   "type": "string"
                 },
                 "public_safe": {
                   "type": "boolean"
+                },
+                "publication_state": {
+                  "type": "string"
                 },
                 "rate_limit_notes": {
                   "anyOf": [
@@ -37127,6 +37144,9 @@
                       "type": "null"
                     }
                   ]
+                },
+                "score": {
+                  "type": "number"
                 },
                 "source_urls": {
                   "items": {

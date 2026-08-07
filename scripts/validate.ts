@@ -37,6 +37,7 @@ import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForRelativePath,
 } from "../src/artifact-storage.ts";
+import { API_QUERY_COLLECTIONS, API_ROUTES } from "../src/contracts.ts";
 import {
   type GithubSignalEntry,
   githubSignalsForSubnet,
@@ -924,12 +925,80 @@ async function validateR2OnlyArtifactsStayOutOfPublicGit(): Promise<void> {
   }
 }
 
+// Every field a list route advertises in its `sort` enum must exist on the rows
+// that route serves (#9710).
+//
+// workers/list-query.ts sorts with a FLAT `row[key]` lookup and deliberately
+// sinks rows whose value is null/undefined to the end. Those two together mean
+// a sort field no row carries is not an error and not a no-op the caller can
+// see: every row sinks, the original order survives, `meta.pagination.sort`
+// echoes the field back, and the response says it is ranked when it is not. A
+// wrong answer that announces itself as the right one.
+//
+// Four collections were shipping that way when this check was written -- gaps
+// (`gap_count`), curation (`curation_level`, reachable only at `curation.level`),
+// rpc-endpoints (`layer`/`publication_state`/`pool_eligible`/`score`, emitted by
+// the sibling resource artifact but not this one), and health-subnets (`name`,
+// tracked separately: those rows are written by the live prober cron, not by a
+// build artifact, so the fix does not live here -- #9715).
+//
+// Driven off the contract rather than a hand-kept list, so a collection added
+// later is covered the day it is added.
+async function validateAdvertisedSortFieldsExist(): Promise<void> {
+  const collections = API_QUERY_COLLECTIONS as Record<string, Row>;
+  for (const apiRoute of API_ROUTES as Row[]) {
+    const collectionName = apiRoute.query_collection as string | null;
+    const artifactRelative = String(apiRoute.artifact_path || "").replace(
+      /^\/metagraph\//,
+      "",
+    );
+    // A templated artifact path needs a concrete id to read; the same collection
+    // is reached through an untemplated sibling route, which this loop covers.
+    if (
+      !collectionName ||
+      !artifactRelative ||
+      artifactRelative.includes("{")
+    ) {
+      continue;
+    }
+    const collection = collections[collectionName];
+    const sortFields = (collection?.sort_fields as string[]) || [];
+    if (sortFields.length === 0) continue;
+
+    const artifactFullPath = artifactPathForRelative(artifactRelative);
+    // Not every contract artifact is produced by THIS build (some are published
+    // by other lanes). Absent is not a failure here -- the freshness gates own
+    // that question.
+    if (!existsSync(artifactFullPath)) continue;
+
+    const artifact = await readJson(artifactFullPath);
+    const rows = artifact[collection.data_key as string];
+    if (!Array.isArray(rows) || rows.length === 0) continue;
+
+    const present = new Set<string>();
+    for (const row of rows as Row[]) {
+      if (row && typeof row === "object" && !Array.isArray(row)) {
+        for (const key of Object.keys(row)) present.add(key);
+      }
+    }
+    for (const field of sortFields) {
+      assert(
+        present.has(field),
+        `${apiRoute.path}: sort enum advertises "${field}", but no row in ` +
+          `${artifactRelative} carries that key — the sort would silently ` +
+          `return the list unordered while meta echoes the field back`,
+      );
+    }
+  }
+}
+
 async function validateGeneratedArtifacts(
   nativeSnapshot: Row,
   overlays: Row[],
   candidates: Row[],
 ): Promise<void> {
   await validateR2OnlyArtifactsStayOutOfPublicGit();
+  await validateAdvertisedSortFieldsExist();
 
   const providersArtifact = await readArtifactJson("providers.json");
   const subnetsArtifact = await readArtifactJson("subnets.json");

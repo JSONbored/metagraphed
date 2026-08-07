@@ -165,6 +165,14 @@ const RpcEndpointSchema = z
     source_urls: z.array(z.url()).optional(),
     last_checked: z.string().nullable().optional(),
     error: z.string().nullable().optional(),
+    // #9710: the four the shared `endpoints` sort enum advertises. Optional
+    // because the route serves a baked artifact -- one published before #9710
+    // carries none of them, and a required field would reject a body that is
+    // otherwise exactly right.
+    layer: z.string().optional(),
+    publication_state: z.string().optional(),
+    pool_eligible: z.boolean().optional(),
+    score: z.number().optional(),
   })
   .strict();
 
