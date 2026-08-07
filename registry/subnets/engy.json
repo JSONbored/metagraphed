@@ -1,0 +1,146 @@
+{
+  "baseline_excluded_surface_ids": ["sn-53-taomarketcap-source-repo"],
+  "categories": [
+    "baseline-curated",
+    "identity-reviewed",
+    "inference",
+    "llm-serving",
+    "official-website",
+    "verified-compute"
+  ],
+  "curation": {
+    "gap_notes": [
+      "The on-chain SubnetIdentitiesV3 record is the authority for this subnet's identity and it declares all of it: subnet_name \"engy\", github_repo https://github.com/hanlinai/engy, subnet_url https://engy.ai/, logo_url https://engy.ai/icon.svg, description \"Verified inference for frontier open models.\" -- unchanged across every identity-history observation back to at least 2026-07-11 (block 8596770).",
+      "The 2026-07-16 pass saw that on-chain identity and deliberately declined to rename, recording that no GitHub presence for \"engy\" could be found. That was correct on the evidence then; hanlinai/engy was pushed publicly afterwards (first observed push 2026-07-29) and its description is character-for-character the on-chain description plus the netuid.",
+      "SubnetOwnerChanged events for netuid 53: zero. This is the same owner rebranding, not a handover, so the previous EfficientFrontier/SignalPlus surfaces are superseded branding rather than another team's property.",
+      "The previous source repository (oxylok/53-EfficientFrontier) is live but last pushed 2025-10-18, nine months before this pass, while the subnet ships from hanlinai/engy. The chain's own github_repo field has pointed at the latter throughout.",
+      "No verified machine-readable OpenAPI/Swagger schema yet: provider.engy.ai serves no /openapi.json and the repo publishes no spec file, only a prose design document.",
+      "No verified SSE/event stream yet."
+    ],
+    "level": "maintainer-reviewed",
+    "review_state": "maintainer-reviewed",
+    "reviewed_at": "2026-07-16T04:20:00.000Z",
+    "source_count": 5,
+    "verified_at": "2026-07-16T04:20:00.000Z"
+  },
+  "dashboard_url": "https://engy.ai/",
+  "name": "engy",
+  "netuid": 53,
+  "notes": "Maintainer pass renaming SN53 from EfficientFrontier/SignalPlus to engy, and repointing it at the operator's own infrastructure. Every identity field changed here is one the chain already declares: SubnetIdentitiesV3 gives subnet_name, github_repo, subnet_url and logo_url, and the registry disagreed with all four. The rename was held back on 2026-07-16 for want of corroborating infrastructure; that corroboration now exists (hanlinai/engy, engy.ai, hanlin.ai, and a live first-party API). Four first-party provider.engy.ai endpoints added, each verified 200 with a JSON body naming netuid 53. The superseded SignalPlus and oxylok surfaces are removed rather than left serving: with zero SubnetOwnerChanged events this is one team's rebrand, and continuing to answer \"what does SN53 expose?\" with the old brand's website is the stale-but-served failure the surface-history trail exists to make recoverable.",
+  "schema_version": 1,
+  "slug": "engy",
+  "source_repo": "https://github.com/hanlinai/engy",
+  "status": "active",
+  "surfaces": [
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-53-engy-epoch-index",
+      "kind": "subnet-api",
+      "name": "engy provider epoch by index",
+      "notes": "The PARAMETERIZED sibling of the /epoch/latest surface above: the same shape for any finalized epoch, so a caller can read history rather than only the current window. Tracked separately because /latest and /{index} are different capabilities -- one answers 'what is happening now', the other 'what happened then' -- and a probe of the first proves nothing about the second. Probed at index 1, the earliest finalized epoch, so the probe target does not age out.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "hanlinai",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/hanlinai/engy/blob/HEAD/docs/superpowers/specs/2026-07-18-provider-endpoint-design.md",
+        "https://github.com/hanlinai/engy/blob/HEAD/README.md"
+      ],
+      "url": "https://provider.engy.ai/api/subnet/v1/epoch/1"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-53-engy-epoch-latest",
+      "kind": "subnet-api",
+      "name": "engy provider epoch (latest)",
+      "notes": "First-party no-auth GET returning the current epoch's finalized state for netuid 53 -- epoch_index, window bounds, digest and per-miner weights. RENAMED IN PLACE: the repo's own design spec records an amendment dated 2026-07-21 moving this from /api/subnet/v1/weights/latest, and states the old path was deleted rather than redirected, so a capture taken before that date points at a 404.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "hanlinai",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/hanlinai/engy/blob/HEAD/docs/superpowers/specs/2026-07-18-provider-endpoint-design.md",
+        "https://github.com/hanlinai/engy/blob/HEAD/README.md"
+      ],
+      "url": "https://provider.engy.ai/api/subnet/v1/epoch/latest"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-53-engy-miners",
+      "kind": "subnet-api",
+      "name": "engy provider miner roster",
+      "notes": "First-party no-auth GET returning the miner roster the gateway routes to, with miner ids and labels. The operator's own view of who is serving, as distinct from the metagraph's view of who is registered.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "hanlinai",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/hanlinai/engy/blob/HEAD/docs/superpowers/specs/2026-07-18-provider-endpoint-design.md",
+        "https://github.com/hanlinai/engy/blob/HEAD/README.md"
+      ],
+      "url": "https://provider.engy.ai/api/subnet/v1/miners"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "id": "sn-53-engy-models",
+      "kind": "subnet-api",
+      "name": "engy provider model catalog",
+      "notes": "First-party no-auth GET returning the served model catalog with per-model pricing (input/output/cached per 1k in micro-units) and the TOPLOC verification parameters each model is checked under. The subnet's stated purpose is verified inference, so the parameters the verification runs at are part of what it publishes.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "hanlinai",
+      "public_safe": true,
+      "source_urls": [
+        "https://github.com/hanlinai/engy/blob/HEAD/docs/superpowers/specs/2026-07-18-provider-endpoint-design.md",
+        "https://github.com/hanlinai/engy/blob/HEAD/README.md"
+      ],
+      "url": "https://provider.engy.ai/api/subnet/v1/models"
+    },
+    {
+      "auth_required": false,
+      "authority": "community",
+      "id": "sn-53-taomarketcap-subnet-api",
+      "kind": "subnet-api",
+      "name": "EfficientFrontier TaoMarketCap subnet snapshot API",
+      "notes": "Public no-auth GET /public/v1/subnets/53/ on api.taomarketcap.com returning machine-readable JSON for SN53 on-chain subnet state, SubnetIdentitiesV3 metadata, economics, and dTAO market fields. SignalPlus EfficientFrontier documents validator scoring in its community source repository and mining app, but exposes no verified first-party no-auth public API endpoint; this indexed feed is documented in the TaoMarketCap developer API. TaoMarketCap now enforces a trailing slash (the non-slash path 301s); tracked URL updated to the canonical non-redirecting form. Rejects HEAD (405); probe uses GET.",
+      "probe": {
+        "enabled": true,
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "taomarketcap",
+      "public_safe": true,
+      "review": {
+        "state": "community-submitted",
+        "submitted_by": "thomasalvaedison7777-lgtm"
+      },
+      "source_urls": [
+        "https://api.taomarketcap.com/developer/documentation/",
+        "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/53/subnet.json"
+      ],
+      "url": "https://api.taomarketcap.com/public/v1/subnets/53/"
+    }
+  ],
+  "website_url": "https://engy.ai/"
+}

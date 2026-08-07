@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "hanlinai",
+  "name": "Hanlin AI",
+  "kind": "subnet-team",
+  "website_url": "https://hanlin.ai/",
+  "authority": "provider-claimed",
+  "notes": "Provider entry for Hanlin AI, the team behind SN53 engy. Named as the company in the engy repository README (\"Company: hanlin.ai\"), whose own description is character-for-character the subnet's on-chain description plus the netuid. The subnet's on-chain SubnetIdentitiesV3 record declares github.com/hanlinai/engy as its github_repo and https://engy.ai/ as its subnet_url."
+}
