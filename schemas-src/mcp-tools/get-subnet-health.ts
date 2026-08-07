@@ -3,7 +3,8 @@
 // schemas-src/routes/'s covered pilot routes -- no existing Zod schema to
 // reuse. Modeled fresh, shallow, from the hand-written literal it replaces.
 import { z } from "zod";
-import { OpenObjectSchema, netuidSchema } from "./shared.ts";
+import { netuidSchema } from "./shared.ts";
+import { HealthSubnetSummarySchema } from "../routes/health.ts";
 
 export const GetSubnetHealthInputSchema = z
   .object({
@@ -29,7 +30,10 @@ const GetSubnetHealthSurfaceSchema = z
 export const GetSubnetHealthOutputSchema = z
   .object({
     netuid: netuidSchema(),
-    summary: OpenObjectSchema,
+    // Typed from the route's own HealthSubnetSummarySchema (#9797). This tool
+    // advertises no `fields`, so it is not partial. Verified against
+    // production 2026-08-07.
+    summary: HealthSubnetSummarySchema,
     operational_observed_at: z.string().nullable().optional(),
     surfaces: z.array(GetSubnetHealthSurfaceSchema),
   })

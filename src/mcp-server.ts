@@ -1251,6 +1251,7 @@ import {
   overlayCatalogIndex,
   overlayOverviewHealth,
   overlayRpcPoolEligibility,
+  emptySubnetHealthSummary,
   overlaySubnetHealth,
   resolveLiveEconomics,
   resolveLiveHealth,
@@ -4806,7 +4807,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       return {
         schema_version: 1,
         netuid,
-        summary: { status: "unknown", surface_count: 0 },
+        // All six required counts, not two (#9797) -- see the builder.
+        summary: emptySubnetHealthSummary(),
         operational_observed_at: null,
         health_source: "unavailable",
         reliability,
@@ -14673,7 +14675,8 @@ async function readSubnetStatusResource(ctx: McpCtx, netuid: number) {
   return {
     schema_version: 1,
     netuid,
-    summary: { status: "unknown", surface_count: 0 },
+    // All six required counts, not two (#9797) -- see the builder.
+    summary: emptySubnetHealthSummary(),
     operational_observed_at: null,
     health_source: "unavailable",
     reliability,

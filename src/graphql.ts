@@ -281,6 +281,7 @@ import {
   loadSubnetReliability,
   overlayCatalogDetail,
   overlayCatalogIndex,
+  emptySubnetHealthSummary,
   overlaySubnetHealth,
   resolveLiveEconomics,
   resolveLiveHealth,
@@ -8584,7 +8585,9 @@ const rootValue = {
       : {
           schema_version: 1,
           netuid,
-          summary: { status: "unknown", surface_count: 0 },
+          // Same builder as the MCP arms (#9797): the cold summary must
+          // carry every count HealthSubnetSummarySchema requires.
+          summary: emptySubnetHealthSummary(),
           operational_observed_at: null,
           health_source: "unavailable",
           reliability,
