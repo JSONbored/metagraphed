@@ -71,6 +71,22 @@ export const HEALTH_CLASSIFICATION_VALUES = [
 ] as const;
 
 /** Shared across MCP tools that have no single route owner (#9799). */
+/**
+ * Mirrors API_QUERY_COLLECTIONS["coverage-depth"].sort_fields (#10011).
+ *
+ * A copy because schemas-src imports from neither src/ nor workers/;
+ * validate:schema-vocabularies asserts it still matches (#10005).
+ */
+export const COVERAGE_DEPTH_SORT_VALUES = [
+  "agent_status",
+  "blocker_level",
+  "name",
+  "netuid",
+  "priority_score",
+  "score",
+  "tier",
+] as const;
+
 export const ENDPOINT_SORT_VALUES = [
   "kind",
   "last_checked",

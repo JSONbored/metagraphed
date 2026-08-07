@@ -112,6 +112,21 @@ export const COVERAGE_DEPTH_SEVERITIES = [
   "missing-data",
   "needs-review",
 ] as const;
+/**
+ * How badly a subnet is blocked, single-sourced (#10011).
+ *
+ * Declared inline until now while the two sibling fields on the same row --
+ * `tier` and `agent_status` -- were already exported, so the MCP side could
+ * name those two and not this one. API_QUERY_COLLECTIONS["coverage-depth"]
+ * declares the same four as a filter.
+ */
+export const BLOCKER_LEVELS = [
+  "none",
+  "hard-blocked",
+  "needs-review",
+  "missing-data",
+] as const;
+
 export const AGENT_READINESS_STATUSES = [
   "callable",
   "base-layer",
@@ -165,12 +180,7 @@ export const CoverageDepthRowSchema = z
     tier: z.enum(COVERAGE_DEPTH_TIERS),
     priority_score: z.int().min(0).max(100),
     agent_status: z.enum(AGENT_READINESS_STATUSES),
-    blocker_level: z.enum([
-      "none",
-      "hard-blocked",
-      "needs-review",
-      "missing-data",
-    ]),
+    blocker_level: z.enum(BLOCKER_LEVELS),
     readiness_score: z.int().min(0).max(100),
     completeness_score: z.number().nullable().optional(),
     dimensions: CoverageDepthDimensionsSchema,
