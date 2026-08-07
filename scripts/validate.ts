@@ -999,6 +999,47 @@ async function validateAdvertisedSortFieldsExist(): Promise<void> {
   }
 }
 
+/**
+ * How long the on-chain capture may go unrefreshed before this fails (#9748).
+ *
+ * SIZED ON WHAT ACTUALLY DRIFTS. The capture sat at 54 days once, and by then
+ * 82 of 129 subnets disagreed with the live chain -- 28 of them renamed
+ * outright, including SN53, which served "EfficientFrontier" for eight weeks
+ * while the chain said "engy". Since #9767 the SERVED name follows this file,
+ * so its age is no longer a housekeeping matter: a stale capture is wrong
+ * output.
+ *
+ * 21 days is comfortably under the point where that many renames accumulate
+ * and comfortably over any normal gap between refreshes.
+ */
+const NATIVE_CAPTURE_MAX_AGE_DAYS = 21;
+
+/**
+ * Fails rather than warns, and can be cleared with one command.
+ *
+ * A warning is what this had before -- nothing -- and 54 days is what nothing
+ * bought. The producer is `npm run sync:subnets`, run by a person, so the
+ * failure names it: a gate you clear with one command is a reminder with
+ * teeth, not a blocker. It starts green because #9761 refreshed the capture.
+ *
+ * Deterministic apart from the clock, which is the one thing it is measuring.
+ */
+function validateNativeCaptureFreshness(nativeSnapshot: Row): void {
+  const capturedAt = Date.parse(String(nativeSnapshot.captured_at ?? ""));
+  if (!Number.isFinite(capturedAt)) {
+    errors.push(
+      `registry/native/finney-subnets.json: captured_at is missing or unparseable ("${nativeSnapshot.captured_at}") — the freshness of the chain capture cannot be established, and since #9767 the served subnet name follows it`,
+    );
+    return;
+  }
+  const ageDays = Math.floor((Date.now() - capturedAt) / 86_400_000);
+  if (ageDays > NATIVE_CAPTURE_MAX_AGE_DAYS) {
+    errors.push(
+      `registry/native/finney-subnets.json is ${ageDays} days old (limit ${NATIVE_CAPTURE_MAX_AGE_DAYS}). Since #9767 the served subnet name follows this capture, so a stale one is wrong output, not just old data — at 54 days, 82 of 129 subnets disagreed with the live chain and 28 had been renamed. Refresh it with \`npm run sync:subnets\`.`,
+    );
+  }
+}
+
 async function validateGeneratedArtifacts(
   nativeSnapshot: Row,
   overlays: Row[],
@@ -1006,6 +1047,7 @@ async function validateGeneratedArtifacts(
 ): Promise<void> {
   await validateR2OnlyArtifactsStayOutOfPublicGit();
   await validateAdvertisedSortFieldsExist();
+  validateNativeCaptureFreshness(nativeSnapshot);
 
   const providersArtifact = await readArtifactJson("providers.json");
   const subnetsArtifact = await readArtifactJson("subnets.json");
