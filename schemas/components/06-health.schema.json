@@ -20,6 +20,20 @@
               },
               "summary": {
                 "type": "object",
+                "description": "Network-wide health rollup for this observation (#9800). Was a bare open object, so the headline health figures were undeclared. `status_counts` is keyed by health verdict, so a new verdict adds a key rather than changing the contract -- a typed record, not opacity.",
+                "properties": {
+                  "surface_count": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "status_counts": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                },
                 "additionalProperties": true
               },
               "surfaces": {

@@ -8130,7 +8130,13 @@ export interface components {
         HealthLatestArtifact: components["schemas"]["ArtifactBase"] & ({
             /** Format: date-time */
             observed_at: string | null;
+            /** @description Network-wide health rollup for this observation (#9800). Was a bare open object, so the headline health figures were undeclared. `status_counts` is keyed by health verdict, so a new verdict adds a key rather than changing the contract -- a typed record, not opacity. */
             summary: {
+                status_counts?: {
+                    [key: string]: number;
+                };
+                surface_count?: number;
+            } & {
                 [key: string]: unknown;
             };
             surfaces: components["schemas"]["HealthSurface"][];
