@@ -11,7 +11,8 @@
 // preserved as-is.
 import { z } from "zod";
 import {
-  OpenObjectSchema,
+  McpListArtifactStamp,
+  McpListPageFields,
   fieldsStringSchema,
   kindSchema,
   limitSchema,
@@ -20,6 +21,8 @@ import {
   orderSchema,
   sortSchema,
 } from "./shared.ts";
+import { CurationArtifactSchema } from "../routes/curation-gaps.ts";
+import { GapsArtifactSchema } from "../routes/curation-gaps.ts";
 
 const COVERAGE_LEVELS = ["native-only", "manifested", "probed"] as const;
 const CURATION_LEVELS = [
@@ -57,20 +60,12 @@ export const ListCurationInputSchema = z
   .strict();
 export type ListCurationInput = z.infer<typeof ListCurationInputSchema>;
 
-export const ListCurationOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    notes: z.string().nullable().optional(),
-    curation: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListCurationOutputSchema = CurationArtifactSchema.pick({
+  curation: true,
+}).extend({
+  ...McpListArtifactStamp,
+  ...McpListPageFields,
+});
 export type ListCurationOutput = z.infer<typeof ListCurationOutputSchema>;
 
 const GAPS_SORT_FIELDS = [
@@ -101,18 +96,10 @@ export const ListGapsInputSchema = z
   .strict();
 export type ListGapsInput = z.infer<typeof ListGapsInputSchema>;
 
-export const ListGapsOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    notes: z.string().nullable().optional(),
-    gaps: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListGapsOutputSchema = GapsArtifactSchema.pick({
+  gaps: true,
+}).extend({
+  ...McpListArtifactStamp,
+  ...McpListPageFields,
+});
 export type ListGapsOutput = z.infer<typeof ListGapsOutputSchema>;

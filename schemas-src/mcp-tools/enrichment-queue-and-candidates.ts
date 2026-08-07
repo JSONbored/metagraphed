@@ -9,8 +9,8 @@
 // field-for-field.
 import { z } from "zod";
 import {
-  NotesFieldSchema,
-  OpenObjectSchema,
+  McpListArtifactStamp,
+  McpListPageFields,
   fieldsStringSchema,
   kindSchema,
   limitSchema,
@@ -20,6 +20,8 @@ import {
   querySchema,
   sortSchema,
 } from "./shared.ts";
+import { ReviewEnrichmentQueueArtifactSchema } from "../routes/review-enrichment.ts";
+import { ReviewAdapterCandidatesArtifactSchema } from "../routes/review-enrichment.ts";
 
 const SURFACE_KINDS = [
   "archive",
@@ -159,20 +161,13 @@ export type ListEnrichmentQueueInput = z.infer<
   typeof ListEnrichmentQueueInputSchema
 >;
 
-export const ListEnrichmentQueueOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    notes: NotesFieldSchema,
-    queue: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListEnrichmentQueueOutputSchema =
+  ReviewEnrichmentQueueArtifactSchema.pick({
+    queue: true,
+  }).extend({
+    ...McpListArtifactStamp,
+    ...McpListPageFields,
+  });
 export type ListEnrichmentQueueOutput = z.infer<
   typeof ListEnrichmentQueueOutputSchema
 >;
@@ -236,20 +231,13 @@ export type ListAdapterCandidatesInput = z.infer<
   typeof ListAdapterCandidatesInputSchema
 >;
 
-export const ListAdapterCandidatesOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    notes: NotesFieldSchema,
-    candidates: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListAdapterCandidatesOutputSchema =
+  ReviewAdapterCandidatesArtifactSchema.pick({
+    candidates: true,
+  }).extend({
+    ...McpListArtifactStamp,
+    ...McpListPageFields,
+  });
 export type ListAdapterCandidatesOutput = z.infer<
   typeof ListAdapterCandidatesOutputSchema
 >;

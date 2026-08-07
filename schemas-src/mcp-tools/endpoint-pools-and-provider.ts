@@ -12,8 +12,8 @@
 // file.
 import { z } from "zod";
 import {
-  NotesFieldSchema,
-  OpenObjectSchema,
+  McpListArtifactStamp,
+  McpListPageFields,
   fieldsStringSchema,
   kindSchema,
   limitSchema,
@@ -23,6 +23,9 @@ import {
   providerSlugSchema,
   sortSchema,
 } from "./shared.ts";
+import { EndpointPoolsArtifactSchema } from "../routes/endpoints-pools.ts";
+import { EndpointIncidentsArtifactSchema } from "../routes/endpoints-pools.ts";
+import { ProviderEndpointsArtifactSchema } from "../routes/providers-rpc.ts";
 
 const POOL_KINDS = ["subtensor-rpc", "subtensor-wss", "archive"] as const;
 const POOL_SORT_FIELDS = [
@@ -81,20 +84,12 @@ export type ListEndpointPoolsInput = z.infer<
   typeof ListEndpointPoolsInputSchema
 >;
 
-export const ListEndpointPoolsOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    notes: NotesFieldSchema,
-    pools: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListEndpointPoolsOutputSchema = EndpointPoolsArtifactSchema.pick({
+  pools: true,
+}).extend({
+  ...McpListArtifactStamp,
+  ...McpListPageFields,
+});
 export type ListEndpointPoolsOutput = z.infer<
   typeof ListEndpointPoolsOutputSchema
 >;
@@ -157,21 +152,14 @@ export type ListEndpointIncidentsInput = z.infer<
   typeof ListEndpointIncidentsInputSchema
 >;
 
-export const ListEndpointIncidentsOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    notes: NotesFieldSchema,
-    summary: OpenObjectSchema.nullable().optional(),
-    incidents: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListEndpointIncidentsOutputSchema =
+  EndpointIncidentsArtifactSchema.pick({
+    summary: true,
+    incidents: true,
+  }).extend({
+    ...McpListArtifactStamp,
+    ...McpListPageFields,
+  });
 export type ListEndpointIncidentsOutput = z.infer<
   typeof ListEndpointIncidentsOutputSchema
 >;
@@ -275,21 +263,17 @@ export type ListProviderEndpointsInput = z.infer<
   typeof ListProviderEndpointsInputSchema
 >;
 
-export const ListProviderEndpointsOutputSchema = z
-  .object({
+export const ListProviderEndpointsOutputSchema =
+  ProviderEndpointsArtifactSchema.pick({
+    endpoints: true,
+  }).extend({
+    ...McpListArtifactStamp,
+    // The handler echoes the requested slug rather than the route
+    // artifact's `provider` block: the tool is asked for one provider by
+    // slug, so the slug is what identifies the answer.
     slug: z.string(),
-    generated_at: z.string().nullable().optional(),
-    notes: NotesFieldSchema,
-    endpoints: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+    ...McpListPageFields,
+  });
 export type ListProviderEndpointsOutput = z.infer<
   typeof ListProviderEndpointsOutputSchema
 >;

@@ -2634,7 +2634,49 @@ describe("MCP tools (injected deps)", () => {
       "/metagraph/curation.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
         notes: "ok",
-        curation: [{ netuid: 7, coverage_level: "probed" }],
+        // A REAL captured production row. #9796 expressed this tool's
+        // projection as an explicit .pick() against the route schema, so the
+        // item shape is now specific; the stub that stood here only ever
+        // satisfied the open object the copy published.
+        curation: [
+          {
+            candidate_count: 1,
+            coverage_level: "probed",
+            curation: {
+              gap_notes: [
+                "Root/system is not expected to expose subnet-specific SSE or data artifacts.",
+                "Commercial RPC providers with API-key-gated endpoints are tracked as providers, not public probeable surfaces.",
+              ],
+              level: "maintainer-reviewed",
+              review_state: "maintainer-reviewed",
+              reviewed_at: "2026-06-06T00:00:00.000Z",
+              source_count: 12,
+              verified_at: null,
+            },
+            curation_level: "maintainer-reviewed",
+            gap_count: 4,
+            gaps: {
+              gap_notes: [
+                "Root/system is not expected to expose subnet-specific SSE or data artifacts.",
+                "Commercial RPC providers with API-key-gated endpoints are tracked as providers, not public probeable surfaces.",
+              ],
+              missing_kinds: ["openapi", "subnet-api", "sse", "data-artifact"],
+              moving_target_surfaces: [],
+              supported_kinds: [
+                "dashboard",
+                "docs",
+                "source-repo",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website",
+              ],
+            },
+            name: "root",
+            netuid: 0,
+            slug: "root",
+            surface_count: 17,
+          },
+        ],
       },
     });
     const res = await callTool("list_curation", { limit: 1 }, { deps });
@@ -2681,7 +2723,38 @@ describe("MCP tools (injected deps)", () => {
       "/metagraph/gaps.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
         notes: "ok",
-        gaps: [{ netuid: 7, gap_count: 1 }],
+        // A REAL captured production row. #9796 expressed this tool's
+        // projection as an explicit .pick() against the route schema, so the
+        // item shape is now specific; the stub that stood here only ever
+        // satisfied the open object the copy published.
+        gaps: [
+          {
+            coverage_level: "probed",
+            curation_level: "maintainer-reviewed",
+            gap_count: 4,
+            gap_priority: 0,
+            gap_severity: "warning",
+            gaps: {
+              gap_notes: [
+                "Root/system is not expected to expose subnet-specific SSE or data artifacts.",
+                "Commercial RPC providers with API-key-gated endpoints are tracked as providers, not public probeable surfaces.",
+              ],
+              missing_kinds: ["openapi", "subnet-api", "sse", "data-artifact"],
+              moving_target_surfaces: [],
+              supported_kinds: [
+                "dashboard",
+                "docs",
+                "source-repo",
+                "subtensor-rpc",
+                "subtensor-wss",
+                "website",
+              ],
+            },
+            name: "root",
+            netuid: 0,
+            slug: "root",
+          },
+        ],
       },
     });
     const res = await callTool("list_gaps", { limit: 1 }, { deps });
@@ -2740,7 +2813,73 @@ describe("MCP tools (injected deps)", () => {
     const deps = makeDeps({
       "/metagraph/review/enrichment-queue.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
-        queue: [{ netuid: 7, lane: "direct-submission", priority_score: 88 }],
+        // A REAL captured production row. #9796 expressed this tool's
+        // projection as an explicit .pick() against the route schema, so the
+        // item shape is now specific; the stub that stood here only ever
+        // satisfied the open object the copy published.
+        queue: [
+          {
+            adapter_score: 3181,
+            candidate_count: 14,
+            candidate_evidence_summary: {
+              candidate_count: 0,
+              kinds_with_candidates: [],
+              live_kinds: [],
+              live_or_redirected_count: 0,
+              reviewable_count: 0,
+              stale_kinds: [],
+              stale_or_failed_count: 0,
+              unverified_count: 0,
+              unverified_kinds: [],
+            },
+            completeness_score: 93,
+            contribution_hint:
+              "Maintainer should evaluate whether subnet-specific adapter metrics add useful public operational data.",
+            curation_level: "maintainer-reviewed",
+            direct_submission_kinds: [],
+            endpoint_count: 161,
+            evidence_action: "maintainer-review-existing-evidence",
+            identity_level: "complete",
+            identity_surface_count: 3,
+            lane: "adapter-candidate",
+            manual_review_required: true,
+            missing_identity: [],
+            missing_kinds: ["sse"],
+            name: "lium.io",
+            netuid: 51,
+            operational_interface_count: 3,
+            priority_score: 2214,
+            profile_level: "operational",
+            reason_codes: ["adapter-candidate"],
+            recommended_action:
+              "evaluate adapter support for data-artifact, openapi, subnet-api",
+            review_state: "maintainer-reviewed",
+            sample_candidate_ids: [
+              "sn-51-taostats-metagraph",
+              "sn-51-website-common-docs",
+              "sn-51-website-common-health",
+              "sn-51-website-common-openapi-json",
+              "sn-51-website-common-swagger",
+            ],
+            sample_live_candidate_ids: [],
+            sample_stale_candidate_ids: [],
+            sample_target_candidate_ids: [],
+            slug: "sn-51",
+            source_urls: [
+              "https://api.taomarketcap.com/public/v1/subnets/51",
+              "https://backprop.finance/dtao/subnets/51-lium-io",
+              "https://docs.lium.io/bittensor-subnet/overview",
+              "https://github.com/Datura-ai/lium-io",
+              "https://github.com/Datura-ai/lium-io/blob/main/README.md",
+              "https://github.com/e35ventura/taopedia-articles/blob/main/content/pages/subnet_51/index.mdx",
+              "https://github.com/tensorplex-labs/subnet-docs/blob/main/data/51/subnet.json",
+              "https://lium.io/",
+            ],
+            stale_candidate_count: 0,
+            surface_count: 161,
+            verified_candidate_count: 8,
+          },
+        ],
       },
     });
     const res = await callTool("list_enrichment_queue", { limit: 1 }, { deps });
@@ -2799,11 +2938,52 @@ describe("MCP tools (injected deps)", () => {
     const deps = makeDeps({
       "/metagraph/review/adapter-candidates.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
+        // A REAL captured production row. #9796 expressed this tool's
+        // projection as an explicit .pick() against the route schema, so the
+        // item shape is now specific; the stub that stood here only ever
+        // satisfied the open object the copy published.
         candidates: [
           {
-            netuid: 7,
-            priority_score: 88,
-            operational_kinds: ["openapi"],
+            candidate_api_count: 5,
+            candidate_api_ids: [
+              "sn-51-website-common-health",
+              "sn-51-website-common-openapi-json",
+              "sn-51-website-common-swagger",
+              "sn-51-website-common-swagger-json",
+              "sn-51-website-link-lium-io-subnet-api-9",
+            ],
+            candidate_api_kinds: ["openapi", "subnet-api"],
+            curation_level: "maintainer-reviewed",
+            name: "lium.io",
+            netuid: 51,
+            operational_kinds: ["data-artifact", "openapi", "subnet-api"],
+            operational_surface_count: 151,
+            operational_surface_ids: [
+              "sn-51-lium-admin-banned-machines",
+              "sn-51-lium-admin-banned-machines-ban-id",
+              "sn-51-lium-admin-custom-referral-links",
+              "sn-51-lium-admin-custom-referral-links-link-id",
+              "sn-51-lium-admin-custom-referral-links-stats",
+              "sn-51-lium-admin-custom-referral-links-validate-code",
+              "sn-51-lium-admin-expiring-credit-grants",
+              "sn-51-lium-auth-github-login",
+              "sn-51-lium-auth-github-login-complete",
+              "sn-51-lium-auth-google-login",
+              "sn-51-lium-auth-google-login-complete",
+              "sn-51-lium-auth-logout",
+            ],
+            priority_score: 3181,
+            reason_codes: [
+              "candidate-api-evidence",
+              "data-artifact-surface",
+              "multiple-operational-kinds",
+              "openapi-surface",
+              "subnet-api-surface",
+            ],
+            recommended_adapter_kind: "generic-openapi-or-custom",
+            slug: "sn-51",
+            suggested_next_action:
+              "snapshot schema shape and consider normalized metrics from stable read-only operations",
           },
         ],
       },
@@ -2868,11 +3048,42 @@ describe("MCP tools (injected deps)", () => {
     const deps = makeDeps({
       "/metagraph/review/enrichment-evidence.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
+        // A REAL captured production row. #9796 expressed this tool's
+        // projection as an explicit .pick() against the route schema, so the
+        // item shape is now specific; the stub that stood here only ever
+        // satisfied the open object the copy published.
         entries: [
           {
-            netuid: 7,
-            evidence_action: "replace-stale-evidence",
-            missing_kinds: ["openapi"],
+            candidate_evidence_by_kind: {
+              sse: {
+                candidate_count: 0,
+                classifications: {},
+                live_or_redirected_count: 0,
+                reviewable_count: 0,
+                sample_candidate_ids: [],
+                stale_or_failed_count: 0,
+                unverified_count: 0,
+              },
+            },
+            candidate_evidence_summary: {
+              candidate_count: 0,
+              kinds_with_candidates: [],
+              live_kinds: [],
+              live_or_redirected_count: 0,
+              reviewable_count: 0,
+              stale_kinds: [],
+              stale_or_failed_count: 0,
+              unverified_count: 0,
+              unverified_kinds: [],
+            },
+            direct_submission_kinds: [],
+            evidence_action: "maintainer-review-existing-evidence",
+            lane: "adapter-candidate",
+            missing_kinds: ["sse"],
+            name: "lium.io",
+            netuid: 51,
+            priority_score: 2214,
+            slug: "sn-51",
           },
         ],
       },
@@ -2933,11 +3144,23 @@ describe("MCP tools (injected deps)", () => {
     const deps = makeDeps({
       "/metagraph/review/gap-priorities.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
+        // A REAL captured production row. #9796 expressed this tool's
+        // projection as an explicit .pick() against the route schema, so the
+        // item shape is now specific; the stub that stood here only ever
+        // satisfied the open object the copy published.
         priorities: [
           {
-            netuid: 7,
-            priority_score: 88,
-            curation_level: "candidate-discovered",
+            candidate_count: 14,
+            curation_level: "maintainer-reviewed",
+            missing_kinds: ["sse"],
+            name: "lium.io",
+            netuid: 51,
+            priority_score: 1197,
+            review_state: "maintainer-reviewed",
+            slug: "sn-51",
+            suggested_next_action: "evaluate for subnet-specific adapter",
+            surface_count: 161,
+            verified_candidate_count: 8,
           },
         ],
       },
@@ -3000,11 +3223,63 @@ describe("MCP tools (injected deps)", () => {
     const deps = makeDeps({
       "/metagraph/review/enrichment-targets.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
+        // A REAL captured production row. #9796 expressed this tool's
+        // projection as an explicit .pick() against the route schema, so the
+        // item shape is now specific; the stub that stood here only ever
+        // satisfied the open object the copy published.
         targets: [
           {
-            netuid: 7,
-            priority_score: 88,
-            target_type: "surface-candidate",
+            auto_review_candidate: false,
+            candidate_command: null,
+            candidate_evidence: null,
+            contribution_prompt:
+              "Review whether the existing public API/schema/data surfaces justify a subnet-specific adapter. Adapter requests route to manual review.",
+            evidence_action: "maintainer-review-existing-evidence",
+            identity_level: "complete",
+            kind: null,
+            lane: "adapter-candidate",
+            manual_review_required: true,
+            missing_kinds: ["sse"],
+            name: "lium.io",
+            netuid: 51,
+            priority_score: 2214,
+            profile_level: "operational",
+            queue_context: {
+              adapter_score: 3181,
+              candidate_count: 14,
+              completeness_score: 93,
+              curation_level: "maintainer-reviewed",
+              direct_submission_kind_count: 0,
+              endpoint_count: 161,
+              identity_surface_count: 3,
+              operational_interface_count: 3,
+              profile_level: "operational",
+              review_state: "maintainer-reviewed",
+              source_url_count: 8,
+              stale_candidate_count: 0,
+              surface_count: 161,
+              verified_candidate_count: 8,
+            },
+            reason_codes: ["adapter-candidate"],
+            recommended_action:
+              "evaluate adapter support for data-artifact, openapi, subnet-api",
+            sample_live_candidate_ids: [],
+            sample_stale_candidate_ids: [],
+            sample_target_candidate_ids: [],
+            slug: "sn-51",
+            source_requirements: [
+              "Existing public API/schema/data evidence should be stable enough to normalize.",
+              "Adapter work requires maintainer review before publication.",
+            ],
+            source_urls: [
+              "https://api.taomarketcap.com/public/v1/subnets/51",
+              "https://backprop.finance/dtao/subnets/51-lium-io",
+              "https://docs.lium.io/bittensor-subnet/overview",
+            ],
+            submission_route: "adapter-request",
+            target_action: "adapter-review",
+            target_id: "sn-51-adapter-review-adapter-candidate",
+            target_type: "adapter-review",
           },
         ],
       },
@@ -3071,7 +3346,72 @@ describe("MCP tools (injected deps)", () => {
       "/metagraph/endpoints/7.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
         netuid: 7,
-        endpoints: [{ id: "allways-api", netuid: 7, kind: "subnet-api" }],
+        // A REAL captured production row. #9796 expressed this tool's
+        // projection as an explicit .pick() against the route schema, so the
+        // item shape is now specific; the stub that stood here only ever
+        // satisfied the open object the copy published.
+        endpoints: [
+          {
+            archive_support: null,
+            auth_required: false,
+            authority: "registry-observed",
+            chain: "bittensor",
+            classification: "unknown",
+            error: null,
+            health_source: "unavailable",
+            health_stale: true,
+            id: "endpoint-srf-5bdc3b128d0afd85",
+            kind: "docs",
+            last_checked: null,
+            last_ok: null,
+            latency_ms: null,
+            latest_block: null,
+            layer: "docs-provider",
+            method_support: null,
+            method_tested: "HEAD",
+            monitoring_policy: {
+              enabled: true,
+              expect: "any",
+              method: "HEAD",
+              source: "surface-probe-config",
+              timeout_ms: 10000,
+            },
+            monitoring_status: "monitored",
+            netuid: 7,
+            network: "finney",
+            observed_at: null,
+            operator: "allways",
+            pool_eligibility_reasons: [
+              "not-bittensor-base-layer",
+              "status-unknown",
+            ],
+            pool_eligible: false,
+            provider: "allways",
+            public_safe: true,
+            publication_state: "monitored",
+            rate_limit_notes:
+              "Candidate only; no recurring probe is configured until maintainer review.",
+            rpc_method_count: null,
+            score: 66,
+            score_reasons: [
+              {
+                points: 50,
+                reason: "status-ok",
+              },
+              {
+                points: 16,
+                reason: "latency",
+              },
+            ],
+            source_urls: ["https://all-ways.io/"],
+            status: "unknown",
+            subnet_name: "Allways",
+            subnet_slug: "allways",
+            surface_id: "sn-7-website-common-docs",
+            surface_key: "srf-5bdc3b128d0afd85",
+            url: "https://all-ways.io/docs",
+          },
+        ],
       },
     });
     const res = await callTool(
@@ -3205,7 +3545,34 @@ describe("MCP tools (injected deps)", () => {
       "/metagraph/surfaces/7.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
         netuid: 7,
-        surfaces: [{ id: "allways-api", netuid: 7, kind: "subnet-api" }],
+        // A REAL captured production row. #9796 expressed this tool's
+        // projection as an explicit .pick() against the route schema, so the
+        // item shape is now specific; the stub that stood here only ever
+        // satisfied the open object the copy published.
+        surfaces: [
+          {
+            auth_required: false,
+            authority: "provider-claimed",
+            curation_level: "machine-verified",
+            id: "allways-api-health",
+            key: "srf-e81528d66302ee51",
+            kind: "subnet-api",
+            last_verified_at: "2026-08-07T04:30:16.398Z",
+            name: "Allways API health",
+            netuid: 7,
+            probe: {
+              enabled: true,
+              expect: "json",
+              method: "GET",
+            },
+            provider: "allways",
+            public_safe: true,
+            stale: false,
+            subnet_name: "Allways",
+            subnet_slug: "allways",
+            url: "https://api.all-ways.io/health",
+          },
+        ],
       },
     });
     const res = await callTool(
@@ -3264,7 +3631,165 @@ describe("MCP tools (injected deps)", () => {
       "/metagraph/endpoint-pools.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
         notes: "ok",
-        pools: [{ id: "finney-rpc", eligible_count: 2 }],
+        // A REAL captured production row. #9796 expressed this tool's
+        // projection as an explicit .pick() against the route schema, so the
+        // item shape is now specific; the stub that stood here only ever
+        // satisfied the open object the copy published.
+        pools: [
+          {
+            best_endpoint_id: null,
+            eligible_count: 0,
+            endpoint_count: 5,
+            endpoints: [
+              {
+                archive_support: null,
+                auth_required: true,
+                health_source: "not-monitored",
+                health_stale: false,
+                id: "endpoint-srf-c814fc8dec297238",
+                kind: "subtensor-rpc",
+                last_ok: null,
+                latency_ms: null,
+                latest_block: null,
+                layer: "bittensor-base",
+                observed_at: null,
+                pool_eligibility_reasons: [
+                  "status-unknown",
+                  "auth-required",
+                  "not-public-safe",
+                ],
+                pool_eligible: false,
+                provider: "nodies",
+                public_safe: false,
+                score: 0,
+                score_reasons: [
+                  {
+                    points: -25,
+                    reason: "auth-required",
+                  },
+                ],
+                status: "unknown",
+                surface_id: "nodies-finney-rpc",
+                surface_key: "srf-c814fc8dec297238",
+                url: "https://bittensor-public.nodies.app",
+              },
+              {
+                archive_support: false,
+                auth_required: false,
+                health_source: "probe-derived",
+                health_stale: false,
+                id: "endpoint-srf-dece284ea80ec36c",
+                kind: "subtensor-rpc",
+                last_ok: null,
+                latency_ms: 2934,
+                latest_block: null,
+                layer: "bittensor-base",
+                observed_at: "2026-08-07T10:20:25.029Z",
+                pool_eligibility_reasons: ["status-degraded"],
+                pool_eligible: false,
+                provider: "onfinality",
+                public_safe: true,
+                score: 0,
+                score_reasons: [
+                  {
+                    points: -10,
+                    reason: "status-degraded",
+                  },
+                ],
+                status: "degraded",
+                surface_id: "onfinality-finney-rpc",
+                surface_key: "srf-dece284ea80ec36c",
+                url: "https://bittensor-finney.api.onfinality.io/public",
+              },
+              {
+                archive_support: false,
+                auth_required: false,
+                health_source: "probe-derived",
+                health_stale: false,
+                id: "endpoint-srf-2d3306d2cfa2223e",
+                kind: "subtensor-rpc",
+                last_ok: null,
+                latency_ms: 3486,
+                latest_block: null,
+                layer: "bittensor-base",
+                observed_at: "2026-08-07T10:20:25.956Z",
+                pool_eligibility_reasons: ["status-degraded"],
+                pool_eligible: false,
+                provider: "opentensor",
+                public_safe: true,
+                score: 0,
+                score_reasons: [
+                  {
+                    points: -10,
+                    reason: "status-degraded",
+                  },
+                ],
+                status: "degraded",
+                surface_id: "opentensor-lite-rpc",
+                surface_key: "srf-2d3306d2cfa2223e",
+                url: "https://lite.chain.opentensor.ai",
+              },
+              {
+                archive_support: false,
+                auth_required: false,
+                health_source: "probe-derived",
+                health_stale: false,
+                id: "endpoint-srf-3ffcb1a074d13547",
+                kind: "subtensor-rpc",
+                last_ok: null,
+                latency_ms: 4111,
+                latest_block: null,
+                layer: "bittensor-base",
+                observed_at: "2026-08-07T10:20:26.498Z",
+                pool_eligibility_reasons: ["status-degraded"],
+                pool_eligible: false,
+                provider: "opentensor",
+                public_safe: true,
+                score: 0,
+                score_reasons: [
+                  {
+                    points: -10,
+                    reason: "status-degraded",
+                  },
+                ],
+                status: "degraded",
+                surface_id: "opentensor-finney-rpc",
+                surface_key: "srf-3ffcb1a074d13547",
+                url: "https://entrypoint-finney.opentensor.ai",
+              },
+              {
+                archive_support: false,
+                auth_required: false,
+                health_source: "probe-derived",
+                health_stale: false,
+                id: "endpoint-srf-d6ad3703dbed701f",
+                kind: "subtensor-rpc",
+                last_ok: null,
+                latency_ms: 4256,
+                latest_block: null,
+                layer: "bittensor-base",
+                observed_at: "2026-08-07T10:20:26.530Z",
+                pool_eligibility_reasons: ["status-degraded"],
+                pool_eligible: false,
+                provider: "opentensor",
+                public_safe: true,
+                score: 0,
+                score_reasons: [
+                  {
+                    points: -10,
+                    reason: "status-degraded",
+                  },
+                ],
+                status: "degraded",
+                surface_id: "opentensor-archive-rpc",
+                surface_key: "srf-d6ad3703dbed701f",
+                url: "https://archive.chain.opentensor.ai",
+              },
+            ],
+            id: "finney-rpc",
+            kind: "subtensor-rpc",
+          },
+        ],
       },
     });
     const res = await callTool("list_endpoint_pools", { limit: 1 }, { deps });
@@ -3330,7 +3855,72 @@ describe("MCP tools (injected deps)", () => {
     )?.outputSchema;
     const deps = makeDeps({
       "/metagraph/providers/datura/endpoints.json": {
-        endpoints: [{ surface_id: "datura-api", status: "ok" }],
+        // A REAL captured production row. #9796 expressed this tool's
+        // projection as an explicit .pick() against the route schema, so the
+        // item shape is now specific; the stub that stood here only ever
+        // satisfied the open object the copy published.
+        endpoints: [
+          {
+            archive_support: false,
+            auth_required: false,
+            authority: "official",
+            chain: "bittensor",
+            classification: "live",
+            error: null,
+            health_source: "live-cron-prober",
+            health_stale: false,
+            id: "endpoint-srf-2d3306d2cfa2223e",
+            kind: "subtensor-rpc",
+            last_checked: "2026-08-07T14:00:40.129Z",
+            last_ok: "2026-08-07T14:00:40.129Z",
+            latency_ms: 2809,
+            latest_block: null,
+            layer: "bittensor-base",
+            method_support: {
+              chain_getBlockHash: false,
+              chain_getHeader: false,
+              rpc_methods: false,
+              system_health: false,
+            },
+            method_tested: "JSON-RPC",
+            monitoring_policy: {
+              enabled: true,
+              expect: "json",
+              method: "JSON-RPC",
+              source: "surface-probe-config",
+              timeout_ms: 12000,
+            },
+            monitoring_status: "monitored",
+            netuid: 0,
+            network: "finney",
+            observed_at: "2026-08-07T14:00:40.129Z",
+            operator: "opentensor",
+            pool_eligibility_reasons: ["eligible"],
+            pool_eligible: true,
+            provider: "opentensor",
+            public_safe: true,
+            publication_state: "monitored",
+            rate_limit_notes: null,
+            rpc_method_count: null,
+            score: 0,
+            score_reasons: [
+              {
+                points: -10,
+                reason: "status-degraded",
+              },
+            ],
+            source_urls: [
+              "https://docs.learnbittensor.org/concepts/bittensor-networks",
+              "https://docs.learnbittensor.org/subtensor-nodes/subtensor-node-requirements",
+            ],
+            status: "ok",
+            subnet_name: "root",
+            subnet_slug: "root",
+            surface_id: "opentensor-lite-rpc",
+            surface_key: "srf-2d3306d2cfa2223e",
+            url: "https://lite.chain.opentensor.ai",
+          },
+        ],
       },
     });
     const res = await callTool(
@@ -3396,8 +3986,93 @@ describe("MCP tools (injected deps)", () => {
       "/metagraph/endpoint-incidents.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
         notes: ["ok"],
-        summary: { incident_count: 1 },
-        incidents: [{ id: "incident-a", severity: "critical" }],
+        summary: {
+          active_count: 131,
+          by_kind: {
+            "data-artifact": 28,
+            openapi: 9,
+            "subnet-api": 90,
+            "subtensor-rpc": 4,
+          },
+          by_layer: {
+            "bittensor-base": 4,
+            "data-provider": 28,
+            "subnet-app": 99,
+          },
+          by_provider: {
+            affine: 6,
+            "alveus-labs": 13,
+            aurelius: 6,
+            "bitsec-ai": 1,
+            cacheon: 4,
+            chutes: 2,
+            connito: 7,
+            djinn: 10,
+            eightball: 1,
+            eirel: 15,
+            evolai: 1,
+            forevermoney: 2,
+            gittensory: 3,
+            handshake58: 5,
+            mobiusfund: 1,
+            nexisgen: 3,
+            onfinality: 1,
+            opentensor: 3,
+            "platform-network": 1,
+            poker44: 2,
+            ridges: 4,
+            "sundae-bar": 3,
+            swarm: 1,
+            "talisman-ai": 7,
+            taomarketcap: 20,
+            targon: 3,
+            unarbos: 1,
+            verathos: 3,
+            zipcode: 2,
+          },
+          by_severity: {
+            critical: 29,
+            warning: 102,
+          },
+          by_status: {
+            degraded: 102,
+            failed: 29,
+          },
+          incident_count: 131,
+        },
+        // A REAL captured production row. #9796 expressed this tool's
+        // projection as an explicit .pick() against the route schema, so the
+        // item shape is now specific; the stub that stood here only ever
+        // satisfied the open object the copy published.
+        incidents: [
+          {
+            classification: "dead",
+            detected_at: "2026-08-07T10:20:25.345Z",
+            endpoint_id: "endpoint-srf-d5daaf19626ba91f",
+            health_source: "probe-derived",
+            health_stale: false,
+            id: "incident-endpoint-srf-d5daaf19626ba91f",
+            kind: "subnet-api",
+            last_checked: "2026-08-07T10:20:25.345Z",
+            last_ok: null,
+            layer: "subnet-app",
+            netuid: 4,
+            observed_at: "2026-08-07T10:20:25.345Z",
+            operator: "targon",
+            pool_eligible: false,
+            provider: "targon",
+            reason: "dead",
+            severity: "critical",
+            source: "probe-derived",
+            state: "active",
+            status: "failed",
+            subnet_name: "Targon",
+            subnet_slug: "sn-4",
+            surface_id: "sn-4-targon-version-api",
+            surface_key: "srf-d5daaf19626ba91f",
+            user_reported: false,
+          },
+        ],
       },
     });
     const res = await callTool(
@@ -17930,7 +18605,20 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     )?.outputSchema;
     const deps = makeDeps({
       "/metagraph/search-index.json": {
-        documents: [{ id: "subnet-7", title: "Subnet Seven" }],
+        // A REAL captured production row. #9796 expressed this tool's
+        // projection as an explicit .pick() against the route schema, so the
+        // item shape is now specific; the stub that stood here only ever
+        // satisfied the open object the copy published.
+        documents: [
+          {
+            artifact_path: "/metagraph/providers.json",
+            id: "provider:404-gen",
+            subtitle: "subnet-team",
+            title: "404-GEN",
+            type: "provider",
+            url: "https://www.404.xyz/",
+          },
+        ],
       },
     });
     const res = await callTool("list_search_index", { limit: 1 }, { deps });
@@ -19386,7 +20074,182 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     const deps = makeDeps({
       "/metagraph/rpc/pools.json": {
         generated_at: "2026-01-01T00:00:00Z",
-        pools: [{ id: "finney-rpc", kind: "subtensor-rpc", eligible_count: 2 }],
+        // The route schema declares `source` as an enum; the live artifact
+        // serves "live-cron-prober".
+        source: "live-cron-prober",
+        // A REAL captured production row. #9796 expressed this tool's
+        // projection as an explicit .pick() against the route schema, so the
+        // item shape is now specific; the stub that stood here only ever
+        // satisfied the open object the copy published.
+        pools: [
+          {
+            best_endpoint_id: "opentensor-lite-rpc",
+            eligible_count: 4,
+            endpoint_count: 5,
+            endpoints: [
+              {
+                archive_support: false,
+                auth_required: false,
+                health_source: "live-cron-prober",
+                health_stale: false,
+                id: "opentensor-lite-rpc",
+                kind: "subtensor-rpc",
+                last_ok: null,
+                latency_ms: 2809,
+                latest_block: 8792882,
+                layer: "bittensor-base",
+                observed_at: "2026-08-07T10:20:25.956Z",
+                pool_eligibility_reasons: ["eligible"],
+                pool_eligible: true,
+                provider: "opentensor",
+                public_safe: true,
+                score: 60,
+                score_reasons: [
+                  {
+                    reason: "status-ok",
+                    points: 50,
+                  },
+                  {
+                    reason: "latest-block-observed",
+                    points: 10,
+                  },
+                ],
+                status: "ok",
+                url: "https://lite.chain.opentensor.ai",
+                reliability_score: 88,
+                reliability_grade: "D",
+              },
+              {
+                archive_support: false,
+                auth_required: false,
+                health_source: "live-cron-prober",
+                health_stale: false,
+                id: "onfinality-finney-rpc",
+                kind: "subtensor-rpc",
+                last_ok: null,
+                latency_ms: 3118,
+                latest_block: 8792882,
+                layer: "bittensor-base",
+                observed_at: "2026-08-07T10:20:25.029Z",
+                pool_eligibility_reasons: ["eligible"],
+                pool_eligible: true,
+                provider: "onfinality",
+                public_safe: true,
+                score: 60,
+                score_reasons: [
+                  {
+                    reason: "status-ok",
+                    points: 50,
+                  },
+                  {
+                    reason: "latest-block-observed",
+                    points: 10,
+                  },
+                ],
+                status: "ok",
+                url: "https://bittensor-finney.api.onfinality.io/public",
+                reliability_score: 88,
+                reliability_grade: "D",
+              },
+              {
+                archive_support: false,
+                auth_required: false,
+                health_source: "live-cron-prober",
+                health_stale: false,
+                id: "opentensor-archive-rpc",
+                kind: "subtensor-rpc",
+                last_ok: null,
+                latency_ms: 3277,
+                latest_block: 8792882,
+                layer: "bittensor-base",
+                observed_at: "2026-08-07T10:20:26.530Z",
+                pool_eligibility_reasons: ["eligible"],
+                pool_eligible: true,
+                provider: "opentensor",
+                public_safe: true,
+                score: 60,
+                score_reasons: [
+                  {
+                    reason: "status-ok",
+                    points: 50,
+                  },
+                  {
+                    reason: "latest-block-observed",
+                    points: 10,
+                  },
+                ],
+                status: "ok",
+                url: "https://archive.chain.opentensor.ai",
+                reliability_score: 88,
+                reliability_grade: "D",
+              },
+              {
+                archive_support: false,
+                auth_required: false,
+                health_source: "live-cron-prober",
+                health_stale: false,
+                id: "opentensor-finney-rpc",
+                kind: "subtensor-rpc",
+                last_ok: null,
+                latency_ms: 3767,
+                latest_block: 8792882,
+                layer: "bittensor-base",
+                observed_at: "2026-08-07T10:20:26.498Z",
+                pool_eligibility_reasons: ["eligible"],
+                pool_eligible: true,
+                provider: "opentensor",
+                public_safe: true,
+                score: 60,
+                score_reasons: [
+                  {
+                    reason: "status-ok",
+                    points: 50,
+                  },
+                  {
+                    reason: "latest-block-observed",
+                    points: 10,
+                  },
+                ],
+                status: "ok",
+                url: "https://entrypoint-finney.opentensor.ai",
+                reliability_score: 88,
+                reliability_grade: "D",
+              },
+              {
+                archive_support: null,
+                auth_required: true,
+                health_source: "missing-probe",
+                health_stale: true,
+                id: "nodies-finney-rpc",
+                kind: "subtensor-rpc",
+                last_ok: null,
+                latency_ms: null,
+                latest_block: null,
+                layer: "bittensor-base",
+                observed_at: null,
+                pool_eligibility_reasons: [
+                  "status-unknown",
+                  "auth-required",
+                  "not-public-safe",
+                ],
+                pool_eligible: false,
+                provider: "nodies",
+                public_safe: false,
+                score: 0,
+                score_reasons: [
+                  {
+                    reason: "auth-required",
+                    points: -25,
+                  },
+                ],
+                status: "unknown",
+                url: "https://bittensor-public.nodies.app",
+              },
+            ],
+            id: "finney-rpc",
+            kind: "subtensor-rpc",
+          },
+        ],
       },
     });
     const res = await callTool("list_rpc_pools", { limit: 1 }, { deps });
@@ -19504,7 +20367,26 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
       "/metagraph/evidence/7.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
         netuid: 7,
-        claims: [{ subject: "SN7", claim: "verified openapi" }],
+        // A REAL captured production row. #9796 expressed this tool's
+        // projection as an explicit .pick() against the route schema, so the
+        // item shape is now specific; the stub that stood here only ever
+        // satisfied the open object the copy published.
+        claims: [
+          {
+            claim:
+              "Allways Backprop Finance dashboard is a candidate dashboard surface for SN7.",
+            confidence: "medium",
+            limits:
+              "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+            source_tier: "third-party-index",
+            source_type: "backprop-dashboard",
+            source_url: "https://backprop.finance/dtao/subnets/7-allways",
+            subject: "candidate:sn-7-backprop-dashboard",
+            support_summary:
+              "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+            verified_at: null,
+          },
+        ],
       },
     });
     const res = await callTool(
