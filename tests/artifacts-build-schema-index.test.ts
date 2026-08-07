@@ -73,7 +73,7 @@ test("artifact build accepts an OpenAPI-vendor JSON content-type for a captured 
 
   // A real subnet (SN-71 Leadpoet) serves its OpenAPI document as
   // application/vnd.oai.openapi+json rather than plain application/json -- a
-  // spec-valid, OAI-registered media type. schemaIndexEntryMatchesSurface used
+  // spec-valid, OAI-registered media type. schemaIndexEntryMismatch used
   // to require an exact "application/json" match, so this one entry failed the
   // reconciler's forgery/staleness guard and wholesale-discarded the entire
   // committed index down to an empty placeholder (metagraphed#6411).
@@ -173,3 +173,68 @@ test("a renamed subnet does not wholesale-discard the committed schema index", (
     harness.restoreSupportArtifacts(supportArtifacts);
   }
 }, 120_000);
+
+test("a schema-index discard is named, counted, and recorded for CI", () => {
+  const schemaIndexPath = harness.artifactFilePath("schemas/index.json");
+  const summaryPath = harness.artifactFilePath("build-summary.json");
+  const originalSchemaIndex = readFileSync(schemaIndexPath, "utf8");
+  const originalSummary = readFileSync(summaryPath, "utf8");
+  const supportArtifacts = harness.snapshotSupportArtifacts();
+  const schemaIndex = JSON.parse(originalSchemaIndex);
+  const target = schemaIndex.schemas?.find(
+    (schema: Row) => schema.status === "captured",
+  );
+  assert(target, "expected a captured schema index entry to tamper");
+  const capturedBefore = schemaIndex.schemas.filter(
+    (schema: Row) => schema.status === "captured",
+  ).length;
+
+  // #9909: the discard itself is correct and stays -- an index that cannot be
+  // trusted must not be reused. What was wrong is that it was SILENT: captured
+  // schemas vanished from the agent catalog and operational-surfaces'
+  // schema_source with nothing in the build log, and the cause had to be found
+  // by diffing a pristine build against a changed one.
+  (target.snapshot ??= {}).hash = "forged-by-this-test";
+
+  try {
+    writeFileSync(schemaIndexPath, `${JSON.stringify(schemaIndex, null, 2)}\n`);
+    // The build must still SUCCEED. Failing here would let a tampered committed
+    // file deny the whole pipeline, which is why the CI control lives in
+    // validate.ts instead -- see tests/artifacts-build-schema.test.ts for the
+    // attacker case this protects.
+    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
+      cwd: harness.scriptCwd,
+      encoding: "utf8",
+      env: harness.env,
+      stdio: "pipe",
+    });
+
+    const discard = JSON.parse(readFileSync(summaryPath, "utf8"))
+      .schema_index_discard as Row;
+    assert(discard, "the discard must be recorded on the build summary");
+    assert.equal(discard.dropped_captured, capturedBefore);
+    // The reason names the entry AND the field, which is the difference between
+    // a one-line diagnosis and an isolation run.
+    assert.match(String(discard.reason), new RegExp(target.surface_id));
+    assert.match(String(discard.reason), /snapshot\.hash/);
+  } finally {
+    writeFileSync(schemaIndexPath, originalSchemaIndex);
+    writeFileSync(summaryPath, originalSummary);
+    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
+      cwd: harness.scriptCwd,
+      encoding: "utf8",
+      env: harness.env,
+      stdio: "pipe",
+    });
+    harness.restoreSupportArtifacts(supportArtifacts);
+  }
+}, 120_000);
+
+test("a healthy build records no discard", () => {
+  const summary = JSON.parse(
+    readFileSync(harness.artifactFilePath("build-summary.json"), "utf8"),
+  );
+  // Positive control: without this, the assertions above could pass against a
+  // build that always records a discard.
+  assert.equal(summary.schema_index_discard, null);
+});

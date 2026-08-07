@@ -351,6 +351,11 @@ const capturedSchemaDetails = new Map<string, Row>();
 // populated on the next refresh (same model as schemas).
 const capturedFixtures = new Map<string, Row>();
 let capturedFixtureReport: Row | null = null;
+/**
+ * The schema-index discard, if one happened, published on the build summary so
+ * CI can gate on it (#9909). Null on a healthy build.
+ */
+let schemaIndexDiscard: Row | null = null;
 {
   const fixturesDir = path.join(r2OutputRoot, "fixtures");
   let fixtureFiles: string[];
@@ -2840,6 +2845,11 @@ await writeJson(artifactFile("build-summary.json"), {
     (sum, artifact) => sum + artifact.size_bytes,
     0,
   ),
+  // #9909: null on a healthy build. Non-null with dropped_captured > 0 means
+  // this build lost every captured schema in the committed index, which
+  // validate.ts fails on -- the control lives in CI rather than in the build,
+  // so a tampered index degrades the catalog instead of denying the pipeline.
+  schema_index_discard: schemaIndexDiscard,
   storage_tier_counts: countByStorageTier(artifactSizes),
   storage_tier_size_bytes: sumBytesByStorageTier(artifactSizes),
   artifacts: reviewArtifactSizes.slice(0, 250),
@@ -4356,6 +4366,49 @@ function reusableSchemaDriftArtifact(
   return previous;
 }
 
+/**
+ * Discarding the committed schema index costs every captured schema in it, so
+ * it never happens quietly (#9912).
+ *
+ * The fallback itself is correct -- an index that cannot be trusted must not be
+ * reused. What was wrong is that it was silent: 227 captured schemas
+ * disappeared from the agent catalog and operational-surfaces.json with nothing
+ * in the build log, and the cause had to be found by diffing a pristine build
+ * against a changed one. One line naming the reason and the cost replaces that.
+ */
+/**
+ * Records a schema-index discard and returns null (#9909 follow-up).
+ *
+ * DOES NOT THROW, deliberately. The fallback is a security property: a
+ * committed index that cannot be trusted must not be reused, and
+ * tests/artifacts-build-schema.test.ts models an attacker forging one. Making
+ * that path fatal would let a tampered file deny the whole pipeline, which is a
+ * worse outcome than degrading.
+ *
+ * But it was also SILENT, which is how it hid: captured schemas disappeared
+ * from the agent catalog and operational-surfaces' schema_source with nothing
+ * in the build log, and the cause had to be found by diffing a pristine build
+ * against a changed one. So the discard is now named, counted, and recorded on
+ * the build summary -- and validate.ts fails when the count is non-zero, which
+ * puts the control in CI where a hostile file cannot reach it.
+ */
+function discardSchemaIndex(
+  reason: string,
+  previous: Row | null | undefined,
+): null {
+  const dropped = Array.isArray(previous?.schemas)
+    ? (previous.schemas as Row[]).filter((s) => s.status === "captured").length
+    : 0;
+  schemaIndexDiscard = { reason, dropped_captured: dropped };
+  console.warn(
+    dropped > 0
+      ? `schema index discarded (${reason}) — dropping ${dropped} captured schema(s). ` +
+          `Re-run the schema capture so the committed index matches the current surfaces.`
+      : `schema index not reusable (${reason}) — building a placeholder`,
+  );
+  return null;
+}
+
 function reusableSchemaIndexArtifact(
   surfaces: Row[],
   previous: Row | null | undefined,
@@ -4367,7 +4420,7 @@ function reusableSchemaIndexArtifact(
     !schemaSnapshotTimestamp(previous) ||
     !Array.isArray(previous.schemas)
   ) {
-    return null;
+    return discardSchemaIndex("no reusable committed index", previous);
   }
   // A captured entry must point at a real schema-detail artifact path; a
   // not-captured entry legitimately has none, so only captured claims are gated.
@@ -4378,7 +4431,10 @@ function reusableSchemaIndexArtifact(
         !schemaDetailArtifactRelativePath(schema.path || ""),
     )
   ) {
-    return null;
+    return discardSchemaIndex(
+      "a captured entry has no schema-detail artifact path",
+      previous,
+    );
   }
   const currentSurfaces = openApiSurfacesById(surfaces);
   // Forgery/staleness guard: a committed entry whose surface still exists but no
@@ -4386,11 +4442,13 @@ function reusableSchemaIndexArtifact(
   // trusted — discard it wholesale and fall back to the build placeholder.
   for (const entry of previous.schemas) {
     const surface = currentSurfaces.get(entry.surface_id);
-    if (
-      surface &&
-      !schemaIndexEntryMatchesSurface(entry, surface, capturedDetails)
-    ) {
-      return null;
+    if (!surface) continue;
+    const mismatch = schemaIndexEntryMismatch(entry, surface, capturedDetails);
+    if (mismatch) {
+      return discardSchemaIndex(
+        `entry ${entry.surface_id} no longer matches its surface on ${mismatch}`,
+        previous,
+      );
     }
   }
   // Reconcile incrementally with the current surface set instead of nuking the
@@ -4497,20 +4555,39 @@ function schemaSurfaceEntryMatchesSurface(
   );
 }
 
-function schemaIndexEntryMatchesSurface(
+/**
+ * Why a committed schema-index entry no longer matches its surface, or null if
+ * it does (#9912 follow-up to #9909).
+ *
+ * A NAMED FIELD, not a boolean, because rejecting one entry discards the ENTIRE
+ * index -- every captured schema, for every subnet -- and until now that
+ * happened in silence. 227 schemas vanished from the agent catalog and
+ * operational-surfaces.json with nothing in the build log saying so, and
+ * finding the cause took isolating a pristine build against a changed one. The
+ * field name turns that into a line of output.
+ *
+ * The comparisons live in one list so the verdict and the explanation cannot
+ * disagree -- a separate explainer beside a separate boolean is exactly the
+ * shape that lets them drift.
+ */
+function schemaIndexEntryMismatch(
   entry: Row,
   surface: Row | undefined,
   capturedDetails: Map<string, Row>,
-): boolean {
+): string | null {
   if (!schemaSurfaceEntryMatchesSurface(entry, surface)) {
-    return false;
+    return "surface identity (id/netuid/subnet_slug/url/schema_url)";
   }
   if (entry.status !== "captured") {
-    return (
-      (entry.path || null) === null &&
-      (entry.hash || null) === null &&
-      (!entry.snapshot || typeof entry.snapshot !== "object")
-    );
+    // A not-captured entry legitimately carries no document.
+    if ((entry.path || null) !== null)
+      return "path set on a not-captured entry";
+    if ((entry.hash || null) !== null)
+      return "hash set on a not-captured entry";
+    if (entry.snapshot && typeof entry.snapshot === "object") {
+      return "snapshot set on a not-captured entry";
+    }
+    return null;
   }
 
   const relativePath = schemaDetailArtifactRelativePath(entry.path);
@@ -4523,36 +4600,39 @@ function schemaIndexEntryMatchesSurface(
     (captured &&
       captured.documentHash === entry.hash &&
       stableStringify(captured.snapshot) === stableStringify(entry.snapshot));
-  return (
-    entry.path === `/metagraph/schemas/${surface.id}.json` &&
-    isJsonContentType(entry.content_type) &&
-    entry.snapshot &&
-    typeof entry.snapshot === "object" &&
-    entry.snapshot.surface_id === surface.id &&
-    entry.snapshot.netuid === surface.netuid &&
-    entry.snapshot.subnet_slug === surface.subnet_slug &&
-    // subnet_name is deliberately NOT compared (#9909). This guard asks "has
-    // this entry been tampered with or drifted from its surface", and answering
-    // yes discards the ENTIRE index wholesale -- every captured schema, for
-    // every subnet. A DISPLAY name cannot carry that weight: since #9748 the
-    // chain names the subnet, so a team renaming on-chain silently nukes the
-    // schema index on the next build. Measured: 26 subnets renamed and all 227
-    // captured schemas were dropped, `schema_source: null` across the whole
-    // agent catalog and operational-surfaces.json.
-    //
-    // Identity is what the guard needs and identity is fully covered without
-    // it -- surface_id, netuid, subnet_slug, the surface url, the schema url
-    // and the document hash all still have to match, which is exactly the set
-    // schemaSurfaceEntryMatchesSurface above compares. The snapshot still
-    // RECORDS subnet_name as provenance of what the subnet was called at
-    // capture time; it just no longer gates trust.
-    entry.snapshot.surface_url === surface.url &&
-    entry.snapshot.schema_url === entry.schema_url &&
-    entry.snapshot.hash === entry.hash &&
-    (entry.snapshot.previous_hash || null) === (entry.previous_hash || null) &&
-    entry.snapshot.drift_status === entry.drift_status &&
-    detailMatches
-  );
+
+  // subnet_name is deliberately absent from this list (#9909). The guard asks
+  // "has this entry been tampered with or drifted from its surface", and
+  // answering yes costs the whole index. A DISPLAY name cannot carry that
+  // weight: since #9748 the chain names the subnet, so a team renaming
+  // on-chain would silently nuke the schema index on the next build --
+  // measured at 26 renamed subnets taking all 227 captured schemas with them.
+  // Identity is fully covered without it, by schemaSurfaceEntryMatchesSurface
+  // above plus the document hash below. The snapshot still RECORDS
+  // subnet_name as provenance of what the subnet was called at capture time;
+  // it just does not gate trust.
+  const snapshot = (entry.snapshot ?? {}) as Row;
+  const checks: Array<[string, unknown]> = [
+    ["path", entry.path === `/metagraph/schemas/${surface.id}.json`],
+    ["content_type", isJsonContentType(entry.content_type)],
+    ["snapshot", Boolean(entry.snapshot) && typeof entry.snapshot === "object"],
+    ["snapshot.surface_id", snapshot.surface_id === surface.id],
+    ["snapshot.netuid", snapshot.netuid === surface.netuid],
+    ["snapshot.subnet_slug", snapshot.subnet_slug === surface.subnet_slug],
+    ["snapshot.surface_url", snapshot.surface_url === surface.url],
+    ["snapshot.schema_url", snapshot.schema_url === entry.schema_url],
+    ["snapshot.hash", snapshot.hash === entry.hash],
+    [
+      "snapshot.previous_hash",
+      (snapshot.previous_hash || null) === (entry.previous_hash || null),
+    ],
+    ["snapshot.drift_status", snapshot.drift_status === entry.drift_status],
+    ["schema detail document", detailMatches],
+  ];
+  for (const [field, ok] of checks) {
+    if (!ok) return field;
+  }
+  return null;
 }
 
 function candidateSchemaUrlsForSurface(surface: Row): string[] {
