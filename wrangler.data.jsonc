@@ -413,7 +413,7 @@
   // `controller.cron`, so the handler dispatches on the string rather than on
   // what minute it happens to be.
   "triggers": {
-    "crons": ["* * * * *", "*/3 * * * *", "26 * * * *"],
+    "crons": ["* * * * *", "*/3 * * * *", "26 * * * *", "46 * * * *"],
   },
 
   // HYPERDRIVE is gone with the box (2026-08-03): the Postgres it fronted was

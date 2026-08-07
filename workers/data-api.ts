@@ -48,6 +48,7 @@ import {
 import {
   NEON_BACKFILL_CRON,
   NEON_MIRROR_LAG_CRON,
+  TABLE_FRESHNESS_CRON,
   TAO_USD_INDEX_CRON,
 } from "./config.ts";
 import {
@@ -379,6 +380,7 @@ import { mirrorLedgerToNeon } from "../src/ledger-neon-write.ts";
 import { neonReadEnabled } from "../src/neon-write.ts";
 import { runNeonBackfill } from "../src/neon-backfill.ts";
 import { runNeonMirrorWatchdog } from "../src/neon-mirror-watchdog.ts";
+import { runTableFreshnessWatchdog } from "../src/table-freshness-watchdog.ts";
 import {
   writeAccountIdentityToD1,
   writeSubnetHyperparamsToD1,
@@ -7528,6 +7530,12 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ) {
+    if (controller?.cron === TABLE_FRESHNESS_CRON) {
+      // D1 only. It reads MAX(<timestamp>) per table and writes one verdict.
+      return runTableFreshnessWatchdog(
+        env as unknown as Record<string, unknown>,
+      );
+    }
     if (controller?.cron === NEON_MIRROR_LAG_CRON) {
       // No ctx: this reads D1 only. It never touches Neon -- the whole point is
       // to judge the mirrors from evidence they already left behind.

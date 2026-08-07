@@ -347,6 +347,19 @@ export const NEON_BACKFILL_CRON = "*/3 * * * *";
 export const NEON_MIRROR_LAG_CRON = "26 * * * *";
 
 /**
+ * The all-tables freshness sweep (metagraphed#9786).
+ *
+ * HOURLY. It reads `MAX(<timestamp>)` from every declared table, so a fast
+ * cadence would spend millions of D1 row reads re-learning facts that change
+ * at most every few minutes and, for most tables, every few hours. The
+ * tightest threshold it enforces is two hours, so an hourly tick cannot miss a
+ * breach -- only report it one tick later.
+ *
+ * Minute 46 is free of every other lane on this Worker.
+ */
+export const TABLE_FRESHNESS_CRON = "46 * * * *";
+
+/**
  * The webhook fan-out tick (metagraphed-infra#354).
  *
  * TWICE HOURLY on two free minutes. The cadence is a cost decision rather than a
