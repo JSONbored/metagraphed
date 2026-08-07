@@ -130,7 +130,7 @@ export const AgentReadinessBlockerSchema = z
   })
   .strict();
 
-const CoverageDepthDimensionsSchema = z
+export const CoverageDepthDimensionsSchema = z
   .object({
     surface_count: z.int().min(0),
     official_surface_count: z.int().min(0),

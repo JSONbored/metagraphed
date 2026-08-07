@@ -95,9 +95,6 @@ const ROUTE_OPEN_SITES: Record<string, string> = {
 const MCP_NOT_YET_TYPED: string[] = [
   "find_subnet_for_task.results[]",
   "how_do_i_call.services[]",
-  "list_enrichment_targets.filters",
-  "list_enrichment_targets.targets[].dimensions",
-  "list_enrichment_targets.targets[].top_gaps[]",
   "list_subnet_health.surfaces[]",
   "list_surface_credentials.credentials[]",
 ];
