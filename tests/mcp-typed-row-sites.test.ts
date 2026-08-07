@@ -44,6 +44,11 @@ const ROW_SITES: Array<[tool: string, key: string, projectable: boolean]> = [
   ["get_subnet_health", "summary", false],
   ["get_agent_catalog", "subnets", false],
   ["list_subnet_apis", "services", false],
+  ["get_account", "activity", false],
+  ["get_account_counterparties", "relationship", false],
+  ["compare_validators", "validators", false],
+  ["list_profiles", "profiles", true],
+  ["get_domain_summary", "domains", false],
 ];
 
 describe("typed row sites (#9797)", () => {

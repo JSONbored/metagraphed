@@ -11301,10 +11301,14 @@ describe("MCP economics + metagraph data tools", () => {
         slug: "allways",
         name: "Allways",
         completeness_score: 82,
-        curation_level: "machine-verified",
-        review_state: "verified",
+        // Real enum members, recaptured from production 2026-08-07 when
+        // list_profiles.profiles[] became SubnetProfileSchema.partial()
+        // (#9797). The stub used "verified"/"complete", neither of which is a
+        // declared value -- invisible while the site published a bare object.
+        curation_level: "maintainer-reviewed",
+        review_state: "maintainer-reviewed",
         confidence: "high",
-        profile_level: "complete",
+        profile_level: "operational",
       },
       {
         netuid: 1,

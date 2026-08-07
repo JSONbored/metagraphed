@@ -10,7 +10,7 @@ import { successEnvelopeSchema } from "../envelope.ts";
 import { ColdkeyIdentitySchema } from "./global-validators.ts";
 import { ValidatorDetailSubnetSchema } from "./validator-detail.ts";
 
-const CompareValidatorEntrySchema = z
+export const CompareValidatorEntrySchema = z
   .object({
     hotkey: z.string(),
     coldkey: z.string().nullable(),

@@ -12,7 +12,6 @@
 // now publishes.
 import { z } from "zod";
 import {
-  OpenObjectSchema,
   blockBoundSchema,
   keysetCursorSchema,
   limitSchema,
@@ -20,6 +19,7 @@ import {
   ss58Schema,
 } from "./shared.ts";
 import { AccountTransfersArtifactSchema } from "../routes/account-events-feed.ts";
+import { CounterpartyRelationshipSchema } from "../routes/account-counterparties.ts";
 
 const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
 
@@ -90,7 +90,10 @@ export const GetAccountCounterpartiesOutputSchema = z
     counterparties: z.array(CounterpartyItemSchema),
     // Present only in counterparty='<ss58>' drilldown mode (the per-pair
     // detail) -- bare open object, matching the hand-written original.
-    relationship: OpenObjectSchema.optional(),
+    // Typed from the route's own CounterpartyRelationshipSchema (#9797):
+    // the fund-flow totals plus the transfer list for one drilled-into
+    // counterparty. Verified against production 2026-08-07.
+    relationship: CounterpartyRelationshipSchema.optional(),
   })
   .passthrough();
 export type GetAccountCounterpartiesOutput = z.infer<

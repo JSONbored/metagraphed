@@ -58,7 +58,7 @@ const AccountEventKindCountSchema = z
   })
   .strict();
 
-const AccountActivitySchema = z
+export const AccountActivitySchema = z
   .object({
     tx_count: z.int().min(0),
     last_tx_block: z.int().nullable(),
