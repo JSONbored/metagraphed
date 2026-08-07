@@ -444,6 +444,44 @@ const SURFACE_CHECKS_COLUMNS = [
   "checked_at",
 ] as const;
 
+/** surface_status and surface_uptime_daily, read off pragma_table_info
+ * 2026-08-07. Both are rewritten in place by the rollup, so both compare on
+ * `updated_at` -- COUNT alone would let the stores hold the same number of
+ * rows and different uptime indefinitely. */
+const SURFACE_STATUS_COLUMNS = [
+  "surface_id",
+  "surface_key",
+  "netuid",
+  "kind",
+  "url",
+  "provider",
+  "status",
+  "classification",
+  "latency_ms",
+  "status_code",
+  "last_checked",
+  "last_ok",
+  "consecutive_failures",
+  "updated_at",
+] as const;
+
+const SURFACE_UPTIME_DAILY_COLUMNS = [
+  "surface_id",
+  "surface_key",
+  "netuid",
+  "day",
+  "samples",
+  "ok_count",
+  "uptime_ratio",
+  "avg_latency_ms",
+  "status",
+  "latency_samples",
+  "p50_latency_ms",
+  "p95_latency_ms",
+  "p99_latency_ms",
+  "updated_at",
+] as const;
+
 export const NEON_BACKFILL_PLANS: Readonly<Record<string, BackfillPlan>> = {
   neuron_daily: {
     table: "neuron_daily",
@@ -589,6 +627,39 @@ export const NEON_BACKFILL_PLANS: Readonly<Record<string, BackfillPlan>> = {
   // RECOMPUTED as the day fills in. COUNT alone would let the two stores hold
   // 27 rows each and disagree about today's card indefinitely, so this one
   // compares on computed_at.
+  // The two probe rollups. `whole` rather than `append`, and deliberately:
+  // both are UPDATED IN PLACE -- the hourly rollup rewrites today's and
+  // yesterday's rows -- so an append bound would copy a day once and never see
+  // it change again.
+  //
+  // Neither is pruned, so no retention plan pairs with them. surface_status is
+  // one row per surface (640) and surface_uptime_daily grows ~625 a day, which
+  // makes a whole-table recopy affordable now and worth revisiting when the
+  // latter passes a hundred thousand or so.
+  //
+  // surface_failure_daily is NOT here despite being the third rollup: its key
+  // includes a NULLABLE netuid, and keysetPredicate compares with `>`, which
+  // is NULL against a NULL -- so a single registry-level row would silently
+  // truncate the copy at that page boundary. Zero such rows exist today and
+  // the schema explicitly permits them.
+  surface_status: {
+    table: "surface_status",
+    columns: SURFACE_STATUS_COLUMNS,
+    conflict: ["surface_id"],
+    keyset: ["surface_id"],
+    partition: "whole",
+    booleans: [],
+    freshness: "updated_at",
+  },
+  surface_uptime_daily: {
+    table: "surface_uptime_daily",
+    columns: SURFACE_UPTIME_DAILY_COLUMNS,
+    conflict: ["surface_id", "day"],
+    keyset: ["surface_id", "day"],
+    partition: "whole",
+    booleans: [],
+    freshness: "updated_at",
+  },
   // THE FIRST append PLAN (#9908). `whole` is impossible here -- it would
   // recopy 1.35M rows whenever the signature moved, and copyWholeTableToNeon
   // has no tick budget at all.
