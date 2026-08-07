@@ -25,6 +25,7 @@ import {
   passTallyFor,
   PRUNING_LANE_KEYS,
   PRUNING_LANES,
+  QUEUE_INELIGIBLE_LANES,
   syncLaneUsesQueue,
   validSyncBatchMessage,
   writeSyncBatch,
@@ -179,6 +180,43 @@ describe("syncLaneUsesQueue", () => {
     const env = { ...bound, SYNC_QUEUE_LANES: " hotkey-alpha , neurons " };
     assert.equal(syncLaneUsesQueue(env, "hotkey-alpha"), true);
     assert.equal(syncLaneUsesQueue(env, "neurons"), true);
+  });
+
+  test("refuses a lane that cannot fit the transport, even when named", () => {
+    // THE ONE-WORD MISTAKE THIS CLOSES (metagraphed-infra#359). chain-detail's
+    // indivisible unit is one block -- its four families travel together so a
+    // block and its extrinsics cannot land apart -- and one block measures
+    // ~301 KiB against a 128 KiB cap. No producer setting reaches that.
+    //
+    // Without the guard, adding the word to SYNC_QUEUE_LANES turns every tick
+    // into a 502 from an oversize send(), and the producer advances its cursor
+    // only on a POST that succeeded -- so the lane does not degrade, it WEDGES,
+    // retrying the same oversized batch forever.
+    assert.equal(
+      syncLaneUsesQueue(
+        { ...bound, SYNC_QUEUE_LANES: "chain-detail,hotkey-alpha" },
+        "chain-detail",
+      ),
+      false,
+    );
+    // And it refuses only that lane -- a co-named healthy one still routes.
+    assert.equal(
+      syncLaneUsesQueue(
+        { ...bound, SYNC_QUEUE_LANES: "chain-detail,hotkey-alpha" },
+        "hotkey-alpha",
+      ),
+      true,
+    );
+  });
+
+  test("every ineligible lane carries a reason, and is a real lane", () => {
+    // The reason is what a future reader needs in order to decide whether the
+    // constraint still holds; an entry without one is a decision nobody can
+    // revisit. And a typo'd lane name would silently guard nothing.
+    for (const [lane, reason] of Object.entries(QUEUE_INELIGIBLE_LANES)) {
+      assert.equal(SYNC_BATCH_LANES.includes(lane as never), true, lane);
+      assert.equal(reason.length > 40, true, `${lane} needs a real reason`);
+    }
   });
 });
 
