@@ -69,6 +69,7 @@ import {
   writeJson,
   loadSurfaceProbeEvidence,
 } from "./lib.ts";
+import { deadLinkUrls, loadLinkStatusRecords } from "./link-status.ts";
 import {
   buildAgentReadiness,
   buildCoverageDepthArtifact,
@@ -221,8 +222,20 @@ const nativeByNetuid = new Map(
 // editing a registry file. Loaded through lib's shared loader so this and
 // validate.ts cannot disagree about the evidence and fail artifact parity.
 const surfaceProbeEvidence = await loadSurfaceProbeEvidence();
+// #9914: the link lane's confirmed-dead URLs. A surface whose source_urls have
+// ALL died has lost the evidence that it exists, and loses its verification the
+// same way a dead probe takes it — see surfaceEvidenceIsDead. Loaded here (and
+// re-loaded identically by validate.ts) so the two cannot disagree and fail
+// artifact parity, exactly like surfaceProbeEvidence above.
+const linkStatusRecords = await loadLinkStatusRecords();
+const deadLinks = deadLinkUrls(linkStatusRecords);
 const surfaces: Row[] = withSurfaceFreshness(
-  flattenSurfaces(activeOverlays, surfaceProbeEvidence, nativeByNetuid),
+  flattenSurfaces(
+    activeOverlays,
+    surfaceProbeEvidence,
+    nativeByNetuid,
+    deadLinks,
+  ),
   Date.parse(nativeSnapshot.captured_at),
 );
 // #1002: dedup candidate ↔ curated surface. A candidate that shares a curated

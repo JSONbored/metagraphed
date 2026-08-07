@@ -41,6 +41,15 @@ export const UPGRADE_RADAR_CRON = "7,37 * * * *";
 // that collides with none of the crons above. Must match a wrangler.jsonc
 // `triggers.crons` entry.
 export const GITHUB_SIGNALS_SYNC_CRON = "20 6 * * *";
+// Daily link-rot sweep over the registry's reference URLs (surface source_urls,
+// provider URLs, and the surface kinds the health prober deliberately skips) --
+// see src/link-status-sync.ts's header for the populations and the subrequest
+// budget. 07:35 is deliberately AFTER github-signals at 06:20: both lanes want
+// the same GITHUB_SIGNALS_TOKEN rate-limit budget, and spacing them by an hour
+// keeps a slow signals capture from colliding with this one. Daily because a
+// docs link rots on a scale of weeks, not minutes. Must match a wrangler.jsonc
+// `triggers.crons` entry.
+export const LINK_STATUS_SYNC_CRON = "35 7 * * *";
 // Raw chain capture (extrinsics/events bytes -> R2), every 5 minutes. The
 // chain produces ~5 blocks/minute and a tick captures up to 150, so this
 // out-runs head by ~6x -- a backlog DRAINS rather than merely holding, which

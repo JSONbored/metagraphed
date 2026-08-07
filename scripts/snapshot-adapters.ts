@@ -6,11 +6,13 @@ import {
   buildTimestamp,
   hashJson,
   isJsonContentType,
-  isUnsafeResolvedUrl,
   loadSubnets,
   readJson,
   repoRoot,
+  resolveUrlSafety,
   stableStringify,
+  URL_RESOLUTION_FAILURE_MESSAGE,
+  type UrlResolutionFailure,
   writeJson,
 } from "./lib.ts";
 
@@ -556,14 +558,37 @@ async function readResponseText(
   return { ok: true, text: new TextDecoder().decode(bodyBytes) };
 }
 
+/**
+ * The refusal record for a URL we will not connect to, naming WHICH refusal it
+ * was (#9870). Before this, every one of these came back `unsafe URL` — so
+ * `api.affine.io` (NXDOMAIN) and a host resolving to 10.0.0.1 were reported
+ * identically, and the adapter dashboard blamed our safety guard for what was
+ * really a dead domain.
+ */
+/**
+ * Redirect-hop wording. `unsafe` keeps its long-standing message verbatim —
+ * that case was already reported correctly and its phrasing is asserted by
+ * tests; only the two cases that used to be misfiled as unsafe are new.
+ */
+const REDIRECT_REFUSAL_MESSAGE: Record<UrlResolutionFailure, string> = {
+  unsafe: "redirect target is unsafe",
+  unresolvable: "redirect target does not resolve",
+  "resolve-error": "redirect target DNS lookup failed",
+};
+
+function urlRefusalRecord(failure: UrlResolutionFailure): Row {
+  return {
+    ok: false,
+    status: failure,
+    error: URL_RESOLUTION_FAILURE_MESSAGE[failure],
+    captured_at: new Date().toISOString(),
+  };
+}
+
 export async function fetchJson(url: string, redirectCount = 0): Promise<Row> {
-  if (await isUnsafeResolvedUrl(url)) {
-    return {
-      ok: false,
-      status: "unsafe",
-      error: "unsafe URL",
-      captured_at: new Date().toISOString(),
-    };
+  const safety = await resolveUrlSafety(url);
+  if (safety.failure) {
+    return urlRefusalRecord(safety.failure);
   }
 
   const controller = new AbortController();
@@ -585,13 +610,16 @@ export async function fetchJson(url: string, redirectCount = 0): Promise<Row> {
       redirectCount < 5
     ) {
       const redirectTarget = new URL(location, url).toString();
-      if (await isUnsafeResolvedUrl(redirectTarget)) {
+      const redirectSafety = await resolveUrlSafety(redirectTarget);
+      if (redirectSafety.failure) {
         await response.body?.cancel();
         return {
           ok: false,
-          status: "unsafe",
-          error: "redirect target is unsafe",
-          private_redirect_blocked: true,
+          status: redirectSafety.failure,
+          error: REDIRECT_REFUSAL_MESSAGE[redirectSafety.failure],
+          // Only a genuine safety verdict is a blocked private redirect; a
+          // redirect to a domain that no longer exists is rot, not an attack.
+          private_redirect_blocked: redirectSafety.failure === "unsafe",
           status_code: response.status,
           latency_ms: Math.round(performance.now() - started),
           captured_at: new Date().toISOString(),
@@ -758,13 +786,9 @@ function looksLikeYaml(contentType: unknown, url: unknown): boolean {
 }
 
 async function fetchSseSummary(url: string): Promise<Row> {
-  if (await isUnsafeResolvedUrl(url)) {
-    return {
-      status: "unsafe",
-      url,
-      error: "unsafe URL",
-      captured_at: new Date().toISOString(),
-    };
+  const safety = await resolveUrlSafety(url);
+  if (safety.failure) {
+    return { ...urlRefusalRecord(safety.failure), url };
   }
 
   const controller = new AbortController();

@@ -436,6 +436,7 @@ import {
   semanticSearch,
 } from "../src/ai-search.ts";
 import { runGithubSignalsSync } from "../src/github-signals-sync.ts";
+import { runLinkStatusSync } from "../src/link-status-sync.ts";
 import { runRawCaptureSync } from "../src/raw-capture-sync.ts";
 import {
   captureSubnetBurnHistory,
@@ -503,6 +504,7 @@ import {
   WEBHOOK_DISPATCH_CRON,
   EMBEDDING_SYNC_CRON,
   GITHUB_SIGNALS_SYNC_CRON,
+  LINK_STATUS_SYNC_CRON,
   RAW_CAPTURE_CRON,
   SUBNET_BURN_CAPTURE_CRON,
   OPERATIONAL_SURFACES_SYNC_CRON,
@@ -2073,6 +2075,7 @@ function cronLabel(cron: string): string {
   if (cron === HEALTH_PRUNE_CRON) return "health-prune";
   if (cron === EMBEDDING_SYNC_CRON) return "embedding-sync";
   if (cron === GITHUB_SIGNALS_SYNC_CRON) return "github-signals-sync";
+  if (cron === LINK_STATUS_SYNC_CRON) return "link-status-sync";
   if (cron === RAW_CAPTURE_CRON) return "raw-capture";
   if (cron === SUBNET_BURN_CAPTURE_CRON) return "subnet-burn-capture";
   if (cron === OPERATIONAL_SURFACES_SYNC_CRON)
@@ -2275,6 +2278,14 @@ async function dispatchScheduled(
     // see src/github-signals-sync.ts's header for the provenance, repo-list
     // sourcing, token posture, and subrequest budget.
     return runGithubSignalsSync(env, ctx, { readArtifact });
+  }
+  if (cron === LINK_STATUS_SYNC_CRON) {
+    // #9907/#9914/#9917: the daily link-rot sweep over the registry's
+    // REFERENCE urls -- source_urls, provider urls, and the surface kinds
+    // OPERATIONAL_SURFACE_KINDS keeps out of the prober. Writes its own R2
+    // store and never touches health/uptime/incidents; see
+    // src/link-status-sync.ts's header for why those are separate lanes.
+    return runLinkStatusSync(env, ctx, { readArtifact });
   }
   if (cron === OPERATIONAL_SURFACES_SYNC_CRON) {
     // #9096: hourly derivation of the prober's cold-start surface list from

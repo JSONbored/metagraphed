@@ -5,6 +5,8 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, test, vi } from "vitest";
 import {
   isUnsafeResolvedUrl,
+  resolvePublicUrlAddresses,
+  resolveUrlSafety,
   isUnsafeUrl,
   normalizePublicHttpUrl,
 } from "../scripts/lib.ts";
@@ -220,6 +222,92 @@ describe("public URL safety checks", () => {
 
   test("allows public literal IPs without DNS lookup", async () => {
     assert.equal(await isUnsafeResolvedUrl("http://8.8.8.8/dns-query"), false);
+  });
+
+  // #9870: `unsafe URL` is what we reported for a host that simply no longer
+  // exists. api.affine.io and autoresearch.bitsota.com were both filed that way
+  // in the adapter dashboard while the real cause was NXDOMAIN, and both
+  // classifications DEMOTE a surface (DEMOTING_CLASSIFICATIONS), so the wrong
+  // one was already reaching production verdicts. These assert the REASON, not
+  // just the boolean — a boolean-only test passes with the bug intact.
+  test("distinguishes a dead name from an unsafe one", async () => {
+    const nxdomain = async () => {
+      const error = new Error("getaddrinfo ENOTFOUND gone.invalid");
+      (error as NodeJS.ErrnoException).code = "ENOTFOUND";
+      throw error;
+    };
+    const privateAddress = async () => [{ address: "10.0.0.5", family: 4 }];
+    const empty = async () => [];
+
+    assert.equal(
+      (await resolveUrlSafety("https://gone.invalid/", nxdomain as never))
+        .failure,
+      "unresolvable",
+    );
+    assert.equal(
+      (
+        await resolveUrlSafety(
+          "https://internal.example/",
+          privateAddress as never,
+        )
+      ).failure,
+      "unsafe",
+    );
+    assert.equal(
+      (await resolveUrlSafety("https://empty.example/", empty as never))
+        .failure,
+      "unresolvable",
+      "no records is the same authoritative miss as NXDOMAIN",
+    );
+    assert.equal(
+      (await resolveUrlSafety("http://localhost:8080/", nxdomain as never))
+        .failure,
+      "unsafe",
+      "the literal guard must answer before DNS is even consulted",
+    );
+    assert.equal(
+      (await resolveUrlSafety("not-a-url", nxdomain as never)).failure,
+      "unsafe",
+      "a malformed input is a refusal, not a claim that some host is dead",
+    );
+  });
+
+  test("a transient resolver failure is never recorded as death", async () => {
+    // EAI_AGAIN is OUR resolver failing, not the target disappearing. Scoring
+    // it as `unresolvable` would let a DNS blip accrue strikes against a
+    // perfectly live link — "absence of evidence is not death".
+    const transient = async () => {
+      const error = new Error("getaddrinfo EAI_AGAIN flaky.example");
+      (error as NodeJS.ErrnoException).code = "EAI_AGAIN";
+      throw error;
+    };
+    const result = await resolveUrlSafety(
+      "https://flaky.example/",
+      transient as never,
+    );
+    assert.equal(result.failure, "resolve-error");
+    assert.notEqual(result.failure, "unresolvable");
+  });
+
+  test("every failure keeps refusing the connection, whatever its reason", async () => {
+    // The safety predicate must not regress: all three reasons still mean
+    // "there is no address here it is safe to connect to".
+    const nxdomain = async () => {
+      const error = new Error("nope");
+      (error as NodeJS.ErrnoException).code = "ENOTFOUND";
+      throw error;
+    };
+    assert.equal(
+      await isUnsafeResolvedUrl("https://gone.invalid/", nxdomain as never),
+      true,
+    );
+    assert.deepEqual(
+      await resolvePublicUrlAddresses(
+        "https://gone.invalid/",
+        nxdomain as never,
+      ),
+      [],
+    );
   });
 
   test("resolves public hosts and blocks failed DNS lookups", async () => {
