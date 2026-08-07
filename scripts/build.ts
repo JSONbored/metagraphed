@@ -97,7 +97,13 @@ function localSteps(): Step[] {
     // consumed by anything -- it exists to fail the build fast, and
     // separately, if the Zod schemas break. The bundle-schemas step that used
     // to run first is gone with the hand-written layer it compiled (#9830).
-    nodeStep("openapi-zod", "scripts/generate-openapi-zod-components.ts"),
+    // --check because of that: printing the payload nothing reads was 99.8%
+    // of the build log (#9945).
+    nodeStep(
+      "openapi-zod",
+      "scripts/generate-openapi-zod-components.ts",
+      "--check",
+    ),
     nodeStep("build-artifacts", "scripts/build-artifacts.ts", {
       METAGRAPH_PRESERVE_PROBE_HEALTH: "1",
     }),
@@ -115,8 +121,13 @@ function localSteps(): Step[] {
 function productionSteps(): Step[] {
   return [
     // See localSteps' own comment -- early, independently-failing checkpoint;
-    // build-artifacts further down is what writes them into openapi.json.
-    nodeStep("openapi-zod", "scripts/generate-openapi-zod-components.ts"),
+    // build-artifacts further down is what writes them into openapi.json,
+    // and --check keeps the payload out of the publish log (#9945).
+    nodeStep(
+      "openapi-zod",
+      "scripts/generate-openapi-zod-components.ts",
+      "--check",
+    ),
     // Refresh the finney native chain snapshot fresh each publish (ADR 0006
     // step 2) so the registry stays current without the retired scheduled
     // sync-subnets PR. Tolerant: a chain RPC failure keeps the last snapshot and
