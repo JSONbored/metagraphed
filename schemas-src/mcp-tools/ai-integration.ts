@@ -6,7 +6,6 @@
 import { z } from "zod";
 import {
   OpenArraySchema,
-  OpenObjectArraySchema,
   OpenObjectSchema,
   netuidSchema,
   surfaceIdSchema,
@@ -30,6 +29,54 @@ export type HowDoICallInput = z.infer<typeof HowDoICallInputSchema>;
 // several sibling AI tools' loosely-required fields in this batch, were
 // never added to the hand-written original's `required` array -- preserved
 // as-is.
+/**
+ * One callable service, as the integration guide RESHAPES it (#9797).
+ *
+ * Modeled, not derived. This is not a subset of the catalog service record:
+ * `auth` collapses the catalog's auth_required/auth_schemes pair into
+ * `{required, schemes}`, `health` keeps three of its seven fields, and
+ * `schema`/`fixture` are rewritten into "can I use this, and how" answers.
+ * Deriving from AgentCatalogServiceSchema fails against production on
+ * `auth.scheme` alone.
+ *
+ * Censused across 41 rows from three subnets on 2026-08-07: all ten keys
+ * present on every row. The nested blocks stay passthrough with only their
+ * always-present keys declared -- `fetch_with` appears once a schema or
+ * fixture is actually available, which is measured rather than assumed.
+ */
+const HowDoICallServiceSchema = z
+  .object({
+    surface_id: z.string(),
+    kind: z.string(),
+    capability: z.string(),
+    base_url: z.string(),
+    callable: z.boolean(),
+    auth: z
+      .object({ required: z.boolean(), schemes: z.array(z.string()) })
+      .passthrough(),
+    snippets: z
+      .object({ curl: z.string(), python: z.string(), typescript: z.string() })
+      .passthrough(),
+    schema: z
+      .object({ available: z.boolean(), schema_url: z.string().nullable() })
+      .passthrough(),
+    fixture: z.object({ available: z.boolean() }).passthrough(),
+    health: z
+      .object({
+        status: z.string(),
+        stale: z.boolean(),
+        // NULLABLE, and the emitter is the authority here rather than the
+        // capture: src/mcp-server.ts writes `s.health?.observed_by ?? null`.
+        // Production always had an observer so 41/41 censused rows carried a
+        // string, and modelling from the capture alone published a contract
+        // the cold path breaks -- caught by validate:mcp's hermetic harness,
+        // which is the only place that path runs. Same lesson as #9941.
+        observed_by: z.string().nullable(),
+      })
+      .passthrough(),
+  })
+  .passthrough();
+
 export const HowDoICallOutputSchema = z
   .object({
     netuid: netuidSchema(),
@@ -39,7 +86,7 @@ export const HowDoICallOutputSchema = z
     callable: z.boolean(),
     callable_count: z.int().optional(),
     guidance: z.unknown().optional(),
-    services: OpenObjectArraySchema,
+    services: z.array(HowDoICallServiceSchema),
     next_steps: OpenArraySchema.optional(),
     operational_observed_at: z.string().nullable().optional(),
     health_source: z.string().nullable().optional(),
@@ -215,7 +262,24 @@ export type ListSurfaceCredentialsInput = z.infer<
 
 export const ListSurfaceCredentialsOutputSchema = z
   .object({
-    credentials: OpenObjectArraySchema,
+    // Modeled from the producer, not from a capture (#9797): the store is
+    // authenticated, so production cannot be sampled without a credential.
+    // src/mcp-surface-credentials.ts builds exactly this object and coalesces
+    // every field, so none can be absent -- `expires_at`/`created_at` fall back
+    // to "" rather than undefined, which is why they are required strings
+    // rather than optional. `shape` is the two-value literal that file
+    // narrows to. NO credential VALUE appears here, and none ever should:
+    // this tool reads non-secret metadata and decrypts nothing.
+    credentials: z.array(
+      z
+        .object({
+          surface_id: z.string(),
+          shape: z.enum(["string", "object"]),
+          created_at: z.string(),
+          expires_at: z.string(),
+        })
+        .passthrough(),
+    ),
     count: z.int(),
   })
   .passthrough();

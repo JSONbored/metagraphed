@@ -3487,8 +3487,34 @@ describe("MCP tools (injected deps)", () => {
       "/metagraph/health/subnets/7.json": {
         generated_at: "2026-07-01T00:00:00.000Z",
         netuid: 7,
+        // A REAL surface row, recaptured from production 2026-08-07 when
+        // list_subnet_health.surfaces[] stopped being a bare object (#9797).
+        // The previous 4-key stub satisfied `{"type":"object"}` and is a shape
+        // the tool never serves -- the overlay always carries the registry
+        // record's identity/auth fields plus the probe's verdict.
         surfaces: [
-          { id: "allways-api", netuid: 7, kind: "subnet-api", status: "ok" },
+          {
+            surface_id: "sn-7-allways-api",
+            netuid: 7,
+            subnet_slug: "sn-7",
+            subnet_name: "Allways",
+            kind: "subnet-api",
+            provider: "allways",
+            url: "https://api.allways.example/v1",
+            auth_required: false,
+            public_safe: true,
+            method_tested: "HEAD",
+            status: "ok",
+            classification: "live",
+            latency_ms: 45,
+            last_checked: "2026-07-01T00:00:00.000Z",
+            last_ok: "2026-07-01T00:00:00.000Z",
+            verified_at: "2026-07-01T00:00:00.000Z",
+            uptime_sample_ratio: 0.5,
+            private_redirect_blocked: false,
+            status_code: 200,
+            content_type: "application/json",
+          },
         ],
       },
     });

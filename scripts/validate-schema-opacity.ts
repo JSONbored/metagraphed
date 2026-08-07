@@ -92,12 +92,7 @@ const ROUTE_OPEN_SITES: Record<string, string> = {
  * from its route yet. One entry per site, so a NEW opaque site still fails
  * this gate -- the list may only shrink, and it is the honest count of what
  * #9797 has left to do. */
-const MCP_NOT_YET_TYPED: string[] = [
-  "find_subnet_for_task.results[]",
-  "how_do_i_call.services[]",
-  "list_subnet_health.surfaces[]",
-  "list_surface_credentials.credentials[]",
-];
+const MCP_NOT_YET_TYPED: string[] = [];
 
 /** MCP sites that are open on purpose, same three categories as the REST list
  * above. Kept separate from the debt below so the two never blur. */
