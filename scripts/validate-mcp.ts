@@ -23,6 +23,11 @@ import {
 } from "../src/route-limits.ts";
 import { MCP_SERVER_INFO } from "../src/mcp-server.ts";
 import {
+  buildToolArguments,
+  projectableFieldFrom,
+  projectionArgumentFor,
+} from "./mcp-tool-arguments.ts";
+import {
   MCP_SERVER_VERSION,
   MCP_TOOLS,
   listToolDefinitions,
@@ -1904,68 +1909,11 @@ const RESPONSE_UNVALIDATED_REASONS = new Map<string, string>([
 ]);
 
 // Arguments come from each parameter's OWN declared example, not from a table
-// kept here. Every one of the published input parameters carries one, so there
-// is nothing to hand-maintain and a newly registered tool is swept correctly the
-// day it lands. It also means the examples are load-bearing rather than
-// decorative: an example that is not a valid argument now fails this gate, which
-// matters because an example is the first thing an agent copies.
-function declaredExample(schema: Row | undefined): {
-  found: boolean;
-  value?: unknown;
-} {
-  if (!schema) return { found: false };
-  const direct = schema.examples;
-  if (Array.isArray(direct) && direct.length > 0) {
-    return { found: true, value: direct[0] };
-  }
-  for (const key of ["anyOf", "oneOf"]) {
-    const branch = schema[key];
-    if (!Array.isArray(branch)) continue;
-    for (const entry of branch) {
-      const nested = declaredExample(entry as Row);
-      if (nested.found) return nested;
-    }
-  }
-  return { found: false };
-}
-
-// Which arguments must be supplied to call this tool at all.
-//
-// `required` alone is not the whole answer once a tool publishes a choice
-// (#9872): `get_neuron` takes EITHER `uid` OR `hotkey`, so neither can appear
-// in `required` -- and a sweep that reads only `required` would call it with
-// no identifier at all and be told so, which looks exactly like a broken
-// contract. Taking the first `oneOf`/`anyOf` branch's own `required` picks one
-// side of the choice, which is what a caller does too.
-//
-// Only a branch that constrains PRESENCE is followed. `get_feed` publishes a
-// value-conditional one -- `kind: "subnet"` requires `netuid`, the other kinds
-// forbid it -- and adopting its first branch's `required` produced
-// `{kind: "registry", netuid: 64}`, which the server rightly rejects. Resolving
-// that needs the condition, not just the requirement, so a branch carrying
-// `properties`/`not`/`if` is left alone and the tool is swept from `required`
-// as before.
-//
-// Derived from the published schema rather than from a table of tools that
-// have a choice: a tool that grows one is swept correctly the day it lands,
-// and this cannot fall out of date because there is nothing to update.
-function requiredArgumentNames(inputSchema: Row | undefined): string[] {
-  const base = ((inputSchema?.required ?? []) as string[]).slice();
-  for (const key of ["oneOf", "anyOf"]) {
-    const branches = inputSchema?.[key];
-    if (!Array.isArray(branches) || branches.length === 0) continue;
-    const presenceOnly = branches.filter((branch) => {
-      const keys = Object.keys((branch ?? {}) as Row);
-      return keys.length === 1 && keys[0] === "required";
-    });
-    if (presenceOnly.length !== branches.length) break;
-    for (const name of ((presenceOnly[0] as Row)?.required ?? []) as string[]) {
-      if (!base.includes(name)) base.push(name);
-    }
-    break;
-  }
-  return base;
-}
+// kept here -- and the rule for building them lives in
+// scripts/mcp-tool-arguments.ts, shared with the scheduled production
+// conformance check (#9879). Two copies would drift, and the production check
+// exists to catch what this one cannot see, so it has to call tools the same
+// way this one does or its findings would be its own.
 
 // --- Declared slug examples must name something that exists (#9860) --------
 //
@@ -2010,18 +1958,7 @@ for (const def of listToolDefinitions()) {
   if (RESPONSE_VALIDATED.has(def.name)) continue;
   if (RESPONSE_UNVALIDATED_REASONS.has(def.name)) continue;
   const inputSchema = def.inputSchema as Row | undefined;
-  const properties = (inputSchema?.properties ?? {}) as Row;
-  const required = requiredArgumentNames(inputSchema);
-  const args: Row = {};
-  const undocumented: string[] = [];
-  for (const key of required) {
-    const example = declaredExample(properties[key] as Row);
-    if (!example.found) {
-      undocumented.push(key);
-      continue;
-    }
-    args[key] = example.value;
-  }
+  const { args, undocumented } = buildToolArguments(inputSchema);
   assert.deepEqual(
     undocumented,
     [],
@@ -2070,11 +2007,7 @@ for (const def of listToolDefinitions()) {
     {}) as Row;
   if (!properties.fields) continue;
   if (RESPONSE_UNVALIDATED_REASONS.has(def.name)) continue;
-  const args: Row = {};
-  for (const key of requiredArgumentNames(def.inputSchema as Row | undefined)) {
-    const example = declaredExample(properties[key] as Row);
-    if (example.found) args[key] = example.value;
-  }
+  const { args } = buildToolArguments(def.inputSchema as Row | undefined);
   const plain = await call(def.name, args);
   if (plain.isError) {
     projectionUnexercised.push(def.name);
@@ -2083,16 +2016,7 @@ for (const def of listToolDefinitions()) {
   // The collection this tool returns, and one real field name off it. Derived
   // rather than hardcoded: the valid `fields` values are per-tool, and a
   // hardcoded list would be one more hand-maintained copy.
-  const rows = Object.values(plain).find(
-    (value) =>
-      Array.isArray(value) &&
-      value.length > 0 &&
-      typeof value[0] === "object" &&
-      value[0] !== null,
-  ) as Row[] | undefined;
-  const row = rows?.[0] ?? (plain.neuron as Row | undefined);
-  const field =
-    row && typeof row === "object" ? Object.keys(row)[0] : undefined;
+  const field = projectableFieldFrom(plain);
   if (!field) {
     // The harness has no rows for this tool, so there is nothing to project.
     // Counted rather than skipped silently: an unexercised check that reports
@@ -2100,7 +2024,13 @@ for (const def of listToolDefinitions()) {
     projectionUnexercised.push(def.name);
     continue;
   }
-  const projected = await call(def.name, { ...args, fields: field });
+  // The SHAPE comes from the tool's own `fields` schema, not from a guess:
+  // 28 tools take a comma-separated string and three take an array, and
+  // sending the wrong one is rejected rather than ignored (#9879).
+  const projected = await call(def.name, {
+    ...args,
+    fields: projectionArgumentFor(def.inputSchema as Row, field),
+  });
   if (projected.isError) {
     projectionUnexercised.push(def.name);
     continue;
@@ -2126,7 +2056,7 @@ console.log(
   `MCP projection coverage: ${projectionChecked} of ${projectionChecked + projectionUnexercised.length} ` +
     `\`fields\`-capable tools had their PROJECTED response validated` +
     (projectionUnexercised.length > 0
-      ? ` (${projectionUnexercised.length} serve no rows in the hermetic harness, so their projected shape rests on the production sweep: ${projectionUnexercised.join(", ")})`
+      ? ` (${projectionUnexercised.length} serve no rows in the hermetic harness, so their projected shape rests on the daily check-mcp-conformance workflow, which sweeps production and validates all 32: ${projectionUnexercised.join(", ")})`
       : ""),
 );
 
@@ -2356,7 +2286,13 @@ const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
     `MCP response coverage: ${RESPONSE_VALIDATED.size}/${listToolDefinitions().length} tools ` +
       `validated against a real response (${RESPONSE_UNVALIDATED_REASONS.size} declared ` +
       `unanswerable by the hermetic harness); ${COLLECTIONS_UNEXERCISED_REASONS.size} validated ` +
-      `over empty collections, so their item shapes rely on the production sweep.`,
+      // NAMED, and it exists (#9879). This line used to say "the production
+      // sweep", which was `npm run smoke:mcp` -- an opt-in script scheduled
+      // nowhere. CI claimed something else covered these and nothing did.
+      // check-mcp-conformance.yml runs daily against api.metagraph.sh and
+      // FAILS on a schema violation, so the deferral now has a receiver.
+      `over empty collections, so their item shapes are covered by the daily ` +
+      `check-mcp-conformance workflow rather than by this run.`,
   );
 }
 
