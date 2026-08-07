@@ -10,7 +10,6 @@ import { RegistrySummaryArtifactSchema } from "../routes/registry-summary-leader
 import {
   McpListPageFields,
   McpSubnetListArtifactStamp,
-  OpenObjectSchema,
   fieldsStringSchema,
   kindSchema,
   limitSchema,
@@ -23,6 +22,10 @@ import {
 import { SubnetGapsArtifactSchema } from "../routes/review-gaps-profile.ts";
 import { SURFACE_KIND_VALUES } from "../routes/subnet-detail.ts";
 import { CURATION_LEVEL_VALUES } from "../shared.ts";
+import {
+  AgentReadinessBlockerSchema,
+  CoverageDepthDimensionsSchema,
+} from "../routes/coverage.ts";
 
 export const RegistrySummaryInputSchema = z.object({}).strict();
 export type RegistrySummaryInput = z.infer<typeof RegistrySummaryInputSchema>;
@@ -104,9 +107,31 @@ const EnrichmentTargetItemSchema = z
     agent_status: z.string().optional(),
     blocker_level: z.string().optional(),
     top_gap_codes: z.array(z.unknown()).optional(),
-    top_gaps: z.array(OpenObjectSchema).optional(),
+    // DERIVED AS A SUBSET, not restated (#9797). This tool is the FILTERED
+    // companion of get_coverage_depth's raw passthrough, and it publishes a
+    // narrower view of the same two shapes -- `top_gaps` without the prose
+    // `message`, `dimensions` with 11 of the row's 18 counters. Both were
+    // censused across 50 live targets on 2026-08-07: every listed key present
+    // on every row, and every one a member of the route's own schema. `omit`
+    // and `pick` state that relationship, so a route field rename still lands
+    // here as a compile error the way a full derivation would.
+    top_gaps: z
+      .array(AgentReadinessBlockerSchema.omit({ message: true }))
+      .optional(),
     recommended_next_action: z.string().nullable().optional(),
-    dimensions: OpenObjectSchema.optional(),
+    dimensions: CoverageDepthDimensionsSchema.pick({
+      callable_service_count: true,
+      candidate_operational_count: true,
+      example_count: true,
+      fixture_available_count: true,
+      fixture_status_counts: true,
+      official_surface_count: true,
+      provider_claimed_surface_count: true,
+      schema_missing_count: true,
+      schema_service_count: true,
+      sdk_count: true,
+      service_kinds: true,
+    }).optional(),
   })
   .passthrough();
 
@@ -117,7 +142,22 @@ export const ListEnrichmentTargetsOutputSchema = z
     total_rows: z.int(),
     queue_count: z.int(),
     returned: z.int(),
-    filters: OpenObjectSchema.optional(),
+    // The filter set ECHOED back, one key per filtering input parameter, each
+    // null when it was not supplied. Modeled from the tool's own inputSchema
+    // rather than from a capture: the echo exists to tell a caller what was
+    // applied, so its keys ARE the parameters and a new filter must appear in
+    // both places or the echo is lying. Verified against production
+    // 2026-08-07.
+    filters: z
+      .object({
+        tier: z.string().nullable(),
+        severity: z.string().nullable(),
+        gap_code: z.string().nullable(),
+        agent_status: z.string().nullable(),
+        netuid: z.int().min(0).nullable(),
+      })
+      .passthrough()
+      .optional(),
     note: z.string().optional(),
     targets: z.array(EnrichmentTargetItemSchema),
   })
