@@ -43,13 +43,25 @@ import {
 } from "../routes/subnet-detail.ts";
 import { CONFIDENCE_LEVEL_VALUES } from "../shared.ts";
 import { CANDIDATE_SORT_VALUES, EVIDENCE_ENTRY_SORT_VALUES } from "./shared.ts";
+// #9998: the per-subnet views below are these two with `netuid` moved from an
+// optional filter to the required subject.
+import {
+  ListCandidatesInputSchema,
+  ListSurfacesInputSchema,
+} from "./registry-catalogs-1.ts";
 
 const SURFACE_KINDS = SURFACE_KIND_VALUES;
 
-export const GetSubnetCandidatesInputSchema = z
-  .object({
-    netuid: netuidSchema(),
-  })
+/**
+ * DERIVED FROM THE NETWORK-WIDE SIBLING (#9998). See
+ * GetSubnetSurfacesInputSchema below for the reasoning -- the per-subnet view
+ * is list_candidates with `netuid` moved from an optional FILTER to the
+ * required SUBJECT.
+ */
+export const GetSubnetCandidatesInputSchema = ListCandidatesInputSchema.omit({
+  netuid: true,
+})
+  .extend({ netuid: netuidSchema() })
   .strict();
 export type GetSubnetCandidatesInput = z.infer<
   typeof GetSubnetCandidatesInputSchema
@@ -152,10 +164,21 @@ export type ListSubnetEvidenceOutput = z.infer<
   typeof ListSubnetEvidenceOutputSchema
 >;
 
-export const GetSubnetSurfacesInputSchema = z
-  .object({
-    netuid: netuidSchema(),
-  })
+/**
+ * DERIVED FROM THE NETWORK-WIDE SIBLING, NOT DECLARED FRESH (#9998).
+ *
+ * This took `netuid` alone, so an agent could not filter or page a subnet's
+ * surfaces at all while any REST caller could -- and it is 159 KB precisely
+ * because it could not pass a `limit`.
+ *
+ * Expressed as the network-wide schema with `netuid` moved from an optional
+ * FILTER to the required SUBJECT, rather than restating filters that would
+ * then be free to drift from the list tool serving the same collection.
+ */
+export const GetSubnetSurfacesInputSchema = ListSurfacesInputSchema.omit({
+  netuid: true,
+})
+  .extend({ netuid: netuidSchema() })
   .strict();
 export type GetSubnetSurfacesInput = z.infer<
   typeof GetSubnetSurfacesInputSchema

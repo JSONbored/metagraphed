@@ -4358,6 +4358,70 @@ const ENDPOINTS_QUERY_FILTER_NAMES = [
   "status",
 ];
 
+/**
+ * Filter / sort / project / paginate a per-subnet list view (#9998).
+ *
+ * The four per-subnet tools took `netuid` alone: an agent could not narrow a
+ * subnet's endpoints, surfaces, health rows or candidates by anything, nor page
+ * them, while any REST caller could. Three of them were also fat for exactly
+ * that reason -- get_subnet_endpoints was 192 KB because it could not pass a
+ * `limit`. The narrowing already existed; it was never exposed.
+ *
+ * This hands the work to the SAME engine the route handler and the
+ * network-wide sibling both use, over a synthetic query URL -- the path
+ * list_endpoints already describes as "the REST-parity path". Nothing new is
+ * filtered here, which is the point: a second implementation is how the two
+ * surfaces start disagreeing.
+ *
+ * `netuid` and `context` are excluded deliberately. `netuid` is the SUBJECT of
+ * a per-subnet view rather than a filter over it (the artifact already holds
+ * one subnet), and `context` is MCP telemetry, not a query parameter.
+ */
+function applySubnetListQuery(
+  data: Row,
+  args: Row,
+  collection: string,
+  dataKey: string,
+): Row {
+  // Schema-stability guard, same as list_endpoints': an artifact with no rows
+  // array must still report an empty list rather than fall through
+  // applyQueryFilters' unknown-collection passthrough, which would omit
+  // total/returned/cursor entirely.
+  const rows = data?.[dataKey];
+  const body = Array.isArray(rows) ? data : { ...data, [dataKey]: [] };
+  const queryUrl = new URL(`https://mcp.internal/${collection}`);
+  for (const [key, value] of Object.entries(args ?? {})) {
+    if (key === "netuid" || key === "context") continue;
+    if (value === undefined || value === null || value === "") continue;
+    queryUrl.searchParams.set(key, String(value));
+  }
+  const transformed = applyMcpQueryFilters(
+    body,
+    queryUrl,
+    collection,
+    Object.keys(
+      (API_QUERY_COLLECTIONS as Record<string, { filters?: Row }>)[collection]
+        ?.filters ?? {},
+    ).filter((name) => name !== "netuid"),
+  );
+  if (transformed.error) {
+    throw toolError("invalid_params", transformed.error.message);
+  }
+  const page = transformed.meta?.pagination as Row | undefined;
+  return {
+    ...(transformed.data as Row),
+    ...(page
+      ? {
+          total: page.total,
+          returned: page.returned,
+          cursor: page.cursor,
+          limit: page.limit,
+          next_cursor: page.next_cursor,
+        }
+      : {}),
+  };
+}
+
 // z.toJSONSchema() always injects a `$schema` key. get_coverage_depth's own
 // pre-existing test (#6983, predates the Zod-conversion epic) asserts its
 // inputSchema strictly equals the bare {type,properties,additionalProperties}
@@ -4873,7 +4937,19 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ]);
       const overlaid = overlaySubnetHealth(null, live, netuid);
       if (overlaid) {
-        return { ...overlaid, reliability };
+        // #9998: filter/sort/page the surfaces the same way the route does.
+        // `summary` is deliberately left spanning EVERY surface, not the page --
+        // a caller narrowing to one kind still needs the subnet's real counts,
+        // the same contract subnet_count carries on the trends route.
+        return {
+          ...applySubnetListQuery(
+            overlaid as Row,
+            args as Row,
+            "health-surfaces",
+            "surfaces",
+          ),
+          reliability,
+        };
       }
       return {
         schema_version: 1,
@@ -11924,11 +12000,13 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      const data = await loadArtifactData(
+      let data = await loadArtifactData(
         ctx,
         `/metagraph/endpoints/${netuid}.json`,
       );
       // Live per-endpoint health overlay, same rule as list_endpoints above.
+      // Applied BEFORE the query so `status`/`latency` filter and sort on the
+      // live values a caller can see, not the baked ones they replaced.
       if (
         Array.isArray(data?.endpoints) &&
         data.endpoints.some((endpoint: Row) => endpoint?.surface_id)
@@ -11937,9 +12015,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           data,
           await mcpLiveHealth(ctx),
         );
-        if (overlaid) return overlaid;
+        if (overlaid) data = overlaid;
       }
-      return data;
+      return applySubnetListQuery(data, args as Row, "endpoints", "endpoints");
     },
   },
   {
@@ -11986,7 +12064,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      return loadArtifactData(ctx, `/metagraph/candidates/${netuid}.json`);
+      return applySubnetListQuery(
+        await loadArtifactData(ctx, `/metagraph/candidates/${netuid}.json`),
+        args as Row,
+        "candidates",
+        "candidates",
+      );
     },
   },
   {
@@ -12043,7 +12126,12 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const netuid = requireNetuid(args);
-      return loadArtifactData(ctx, `/metagraph/surfaces/${netuid}.json`);
+      return applySubnetListQuery(
+        await loadArtifactData(ctx, `/metagraph/surfaces/${netuid}.json`),
+        args as Row,
+        "curated-surfaces",
+        "surfaces",
+      );
     },
   },
   {

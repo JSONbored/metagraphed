@@ -20614,6 +20614,119 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(out.surfaces[0].kind, "openapi");
   });
 
+  describe("per-subnet list views honour their route's filters (#9998)", () => {
+    // These four took `netuid` alone: an agent could not narrow or page a
+    // subnet's rows at all, while any REST caller could -- and three of them
+    // were fat for exactly that reason. Advertising a filter the handler then
+    // ignores would be worse than not having it (an answer that looks filtered
+    // and is not), so each assertion checks the ROWS, not just the schema.
+    const surfaceDeps = () =>
+      makeDeps({
+        "/metagraph/surfaces/5.json": {
+          generated_at: "2026-01-01T00:00:00Z",
+          netuid: 5,
+          surfaces: [
+            { kind: "openapi", provider: "datura", id: "a" },
+            { kind: "docs", provider: "datura", id: "b" },
+            { kind: "openapi", provider: "opentensor", id: "c" },
+          ],
+        },
+      });
+
+    test("filters the rows, and reports the unfiltered total", async () => {
+      const res = await callTool(
+        "get_subnet_surfaces",
+        { netuid: 5, kind: "openapi" },
+        { deps: surfaceDeps() },
+      );
+      const out = res.body.result.structuredContent;
+      assert.deepEqual(
+        (out.surfaces as Row[]).map((s: Row) => s.id),
+        ["a", "c"],
+      );
+      // `total` is the MATCHING count, not the subnet's whole row count --
+      // the denominator for paging THIS query. That is the engine's semantics
+      // and therefore the route's, which is the property worth pinning: the
+      // two surfaces share one implementation, so they cannot report
+      // different numbers for the same question.
+      assert.equal(out.total, 2);
+      assert.equal(out.returned, 2);
+    });
+
+    test("two filters intersect rather than either winning", async () => {
+      const res = await callTool(
+        "get_subnet_surfaces",
+        { netuid: 5, kind: "openapi", provider: "datura" },
+        { deps: surfaceDeps() },
+      );
+      assert.deepEqual(
+        (res.body.result.structuredContent.surfaces as Row[]).map(
+          (s: Row) => s.id,
+        ),
+        ["a"],
+      );
+    });
+
+    test("limit pages the rows", async () => {
+      // The payload half: get_subnet_surfaces was 159 KB because it could not
+      // pass this.
+      const res = await callTool(
+        "get_subnet_surfaces",
+        { netuid: 5, limit: 1 },
+        { deps: surfaceDeps() },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal((out.surfaces as Row[]).length, 1);
+      assert.equal(out.total, 3);
+    });
+
+    test("no arguments still returns every row, exactly as before", async () => {
+      // The compatibility floor: every parameter is optional, so an existing
+      // caller sees no change.
+      const res = await callTool(
+        "get_subnet_surfaces",
+        { netuid: 5 },
+        { deps: surfaceDeps() },
+      );
+      const out = res.body.result.structuredContent;
+      assert.equal((out.surfaces as Row[]).length, 3);
+      assert.equal(out.netuid, 5);
+    });
+
+    test("an unknown filter value is rejected, not silently ignored", async () => {
+      // The failure this whole change is guarding against: a parameter the
+      // tool accepts and the engine drops returns an answer that LOOKS
+      // filtered. Better to refuse.
+      const res = await callTool(
+        "get_subnet_surfaces",
+        { netuid: 5, sort: "not_a_sort_field" },
+        { deps: surfaceDeps() },
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.equal(
+        res.body.result.structuredContent.error.code,
+        "invalid_params",
+      );
+    });
+
+    test("a subnet artifact with no rows array still reports an empty page", async () => {
+      // Schema stability: it must not fall through the engine's
+      // unknown-collection passthrough, which would omit total/returned.
+      const res = await callTool(
+        "get_subnet_surfaces",
+        { netuid: 5 },
+        {
+          deps: makeDeps({
+            "/metagraph/surfaces/5.json": { netuid: 5, surfaces: null },
+          }),
+        },
+      );
+      const out = res.body.result.structuredContent;
+      assert.deepEqual(out.surfaces, []);
+      assert.equal(out.total, 0);
+    });
+  });
+
   test("get_subnet_surfaces rejects a missing netuid", async () => {
     const res = await callTool("get_subnet_surfaces", {});
     assert.equal(res.body.result.isError, true);
