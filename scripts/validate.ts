@@ -28,6 +28,7 @@ import {
   readJson,
   registrySurfaceKey,
   repoRoot,
+  resolveWithinRoot,
   slugify,
   stableStringify,
   subnetSurfaceKey,
@@ -1400,9 +1401,17 @@ async function validateGeneratedArtifacts(
         path.join(repoRoot, "registry/generated/logo-cache.json"),
       ).catch(() => null)) as Row | null)
     : null;
+  // resolveWithinRoot, not path.join: both these paths come from
+  // CONTRIBUTOR-SUBMITTED registry files, and path.join normalizes `..` away
+  // instead of rejecting it. A logo_url of ".../logos/../../../etc/passwd"
+  // would otherwise turn this existence check into an arbitrary-path probe on
+  // the build machine. A path that escapes is reported as missing -- it is not
+  // a file we ship, which is exactly what the gate asserts.
   for (const entry of (logoCache?.entries as Row[]) || []) {
     const cachedPath = String(entry.cached_path || "");
-    if (cachedPath && !existsSync(path.join(logoPublicRoot, cachedPath))) {
+    if (!cachedPath) continue;
+    const resolved = resolveWithinRoot(logoPublicRoot, cachedPath);
+    if (!resolved || !existsSync(resolved)) {
       missingLogos.push(
         `${cachedPath} (logo-cache.json, for ${entry.source_url})`,
       );
@@ -1426,7 +1435,8 @@ async function validateGeneratedArtifacts(
     }
   }
   for (const [logoPath, citedBy] of citedLogos) {
-    if (!existsSync(path.join(logoPublicRoot, decodeURIComponent(logoPath)))) {
+    const resolved = resolveWithinRoot(logoPublicRoot, logoPath);
+    if (!resolved || !existsSync(resolved)) {
       missingLogos.push(
         `${logoPath} (cited by ${citedBy.slice(0, 3).join(", ")})`,
       );

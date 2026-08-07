@@ -67,6 +67,7 @@ import {
   subnetSurfaceKey,
   writeJson,
   writeRepositoryJson,
+  resolveWithinRoot,
 } from "../scripts/lib.ts";
 import {
   ARTIFACT_STORAGE_TIERS,
@@ -2698,4 +2699,57 @@ test("validate:intake rejects nested retired community candidate files", async (
   } finally {
     await rm(retiredDir, { recursive: true, force: true });
   }
+});
+
+// #9917: the logo referential-integrity gate joins paths taken from
+// CONTRIBUTOR-SUBMITTED registry files onto apps/ui/public. path.join
+// normalizes `..` away rather than rejecting it, so a crafted logo_url would
+// have turned an existence check into an arbitrary-path probe on the build
+// machine. resolveWithinRoot is the containment the gate calls instead.
+describe("resolveWithinRoot", () => {
+  const root = path.join(os.tmpdir(), "mg-root");
+
+  test("resolves ordinary relative paths under the root", () => {
+    assert.equal(
+      resolveWithinRoot(root, "/logos/oro.png"),
+      path.join(root, "logos/oro.png"),
+    );
+    assert.equal(
+      resolveWithinRoot(root, "logos/cache/abc.png"),
+      path.join(root, "logos/cache/abc.png"),
+    );
+  });
+
+  test("rejects traversal, however it is spelled", () => {
+    for (const attempt of [
+      "/logos/../../../../etc/passwd",
+      "/logos/../../secrets",
+      "../outside",
+      // %2e%2e is `..` after decoding, which is why decoding happens first.
+      "/logos/%2e%2e/%2e%2e/etc/passwd",
+    ]) {
+      assert.equal(resolveWithinRoot(root, attempt), null, attempt);
+    }
+  });
+
+  test("rejects a sibling directory that merely shares a name prefix", () => {
+    // `${root}-evil` startsWith `${root}` — the trailing separator is what
+    // stops that passing.
+    assert.equal(resolveWithinRoot(root, "../mg-root-evil/x.png"), null);
+  });
+
+  test("treats a leading slash as root-relative, not as the filesystem root", () => {
+    // Logo paths are served URLs, so they always start with "/" — that must
+    // mean "under the public root". An absolute-looking path therefore stays
+    // contained rather than escaping, and the gate reports it missing because
+    // we do not ship it.
+    assert.equal(
+      resolveWithinRoot(root, "/etc/passwd"),
+      path.join(root, "etc/passwd"),
+    );
+  });
+
+  test("rejects a malformed percent-escape rather than throwing", () => {
+    assert.equal(resolveWithinRoot(root, "/logos/%zz.png"), null);
+  });
 });

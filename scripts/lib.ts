@@ -45,6 +45,38 @@ type Row = Record<string, unknown>;
 // Deliberately not a general-purpose knob: unset (the normal case, including
 // all of CI's own build/publish steps) it resolves exactly as before.
 const defaultRepoRoot = fileURLToPath(new URL("..", import.meta.url));
+/**
+ * Join `relative` onto `root`, or return null if it would escape.
+ *
+ * Registry files are CONTRIBUTOR-SUBMITTED, so any path derived from one is
+ * attacker-influenced: a `logo_url` of
+ * `https://metagraph.sh/logos/../../../../etc/passwd` survives a naive
+ * `path.join`, which normalizes `..` away rather than rejecting it. Decoding
+ * happens before the check because `%2e%2e` is also `..`.
+ *
+ * Containment is asserted on the RESOLVED path with a trailing separator, so a
+ * sibling directory sharing a name prefix (`/public-evil` vs `/public`) cannot
+ * pass a bare startsWith.
+ */
+export function resolveWithinRoot(
+  root: string,
+  relative: string,
+): string | null {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(relative);
+  } catch {
+    // A malformed percent-escape is not a path we will look up.
+    return null;
+  }
+  const resolvedRoot = path.resolve(root);
+  const resolved = path.resolve(resolvedRoot, `.${path.sep}${decoded}`);
+  return resolved === resolvedRoot ||
+    resolved.startsWith(resolvedRoot + path.sep)
+    ? resolved
+    : null;
+}
+
 export const repoRoot = process.env.METAGRAPH_REPO_ROOT
   ? // Trailing separator to match fileURLToPath's directory form, so the
     // handful of `path.relative(repoRoot, …)` / string-prefix callers behave
