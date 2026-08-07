@@ -10464,7 +10464,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Returns extrinsic:null when the ref is unknown or the store is cold — never " +
       "errors. Use list_extrinsics to find extrinsic refs. For every raw pallet.method " +
       "event an extrinsic emitted, use get_extrinsic_chain_events. Mirrors " +
-      "GET /api/v1/extrinsics/{ref}.",
+      "GET /api/v1/extrinsics/{hash}.",
     inputSchema: z.toJSONSchema(GetExtrinsicInputSchema, {
       target: "draft-2020-12",
     }),
@@ -10831,7 +10831,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Distinct from get_block_events (the curated account-attributed D1 stream). " +
       "Returns event_count:0 + events:[] when the tier is empty for that block. " +
       "Requires the all-events data Worker (tier_unavailable in preview deploys). " +
-      "Mirrors GET /api/v1/blocks/{block_number}/chain-events.",
+      "Mirrors GET /api/v1/blocks/{ref}/chain-events.",
     inputSchema: z.toJSONSchema(GetBlockChainEventsInputSchema, {
       target: "draft-2020-12",
     }),

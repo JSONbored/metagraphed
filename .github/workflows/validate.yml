@@ -488,6 +488,10 @@ jobs:
         if: env.DOCS_ONLY != 'true'
         run: npm run validate:mcp
 
+      - name: Validate the MCP route map
+        if: env.DOCS_ONLY != 'true'
+        run: npm run validate:mcp-route-map
+
       - name: Validate AI routes
         if: env.DOCS_ONLY != 'true'
         run: npm run validate:ai

@@ -57,6 +57,7 @@
     "validate:api": "node scripts/validate-api.ts",
     "validate:committed-seed": "node scripts/validate-committed-seed.ts",
     "validate:mcp": "node scripts/validate-mcp.ts",
+    "validate:mcp-route-map": "node scripts/validate-mcp-route-map.ts",
     "validate:ai": "node scripts/validate-ai-routes.ts",
     "validate:openapi": "node scripts/validate-openapi.ts",
     "validate:types": "node scripts/validate-types.ts",
