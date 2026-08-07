@@ -6003,6 +6003,41 @@ export const NEON_READ_ROUTE_TABLES: readonly {
  * with no entry is never served from Neon, which is the safe default: an
  * unmapped route is one whose tables nobody has enumerated.
  */
+/**
+ * The store this request's handler should run against.
+ *
+ * ONE function because there are THREE dispatcher blocks, and until now only
+ * one of them asked. `matchNeuronsD1Route`'s block chose its runner from
+ * `neonServesRoute`; `matchHealthStatusD1Route`'s and
+ * `matchHyperparamsIdentityD1Route`'s both called `createD1Sql` outright.
+ *
+ * That was not a stylistic gap, it was a silent no-op. #9954 added
+ * NEON_READ_ROUTE_TABLES entries for `/subnets/{netuid}/hyperparameters`,
+ * `/subnets/{netuid}/hyperparameters/history`, `/accounts/{ss58}/identity` and
+ * `/accounts/{ss58}/identity-history`, and put all four of their tables in
+ * NEON_READ_LANES. None of those four routes is matched by
+ * matchNeuronsD1Route -- they are served by the hyperparams/identity block --
+ * so the declarations were read by nothing and the routes kept reading D1.
+ * Every piece of the cutover was in place except the line that consults it.
+ *
+ * Nothing about the decision changes here; it moves. The gate is still an
+ * explicit flag rather than the binding's presence (#9704: reading
+ * `env.HYPERDRIVE && ...` alone meant binding Hyperdrive for a WRITE pilot
+ * silently moved a READ onto a store nothing had written to). Every table a
+ * route touches must still be enabled, not just one, because a handler uses
+ * one runner for all its queries and a route touching two tables cannot
+ * half-move.
+ *
+ * A route with no NEON_READ_ROUTE_TABLES entry gets D1, which is why applying
+ * this to two more blocks moves nothing on its own.
+ */
+function routeStore(env: Env, ctx: ExecutionContext, url: URL): D1Sql {
+  return env.HYPERDRIVE &&
+    neonServesRoute(env as unknown as Record<string, unknown>, url)
+    ? createPgSql(env.HYPERDRIVE, ctx)
+    : createD1Sql(env.METAGRAPH_HEALTH_DB);
+}
+
 export function neonServesRoute(
   env: Record<string, unknown> | null | undefined,
   url: URL,
@@ -7364,13 +7399,8 @@ async function dispatchDataApiRequest(
         // Every table this route reads must be read-enabled, not just one --
         // the handler uses ONE runner for all its queries, so a route touching
         // two tables cannot half-move. See NEON_READ_ROUTE_TABLES.
-        const store =
-          env.HYPERDRIVE &&
-          neonServesRoute(env as unknown as Record<string, unknown>, url)
-            ? createPgSql(env.HYPERDRIVE, ctx)
-            : createD1Sql(env.METAGRAPH_HEALTH_DB);
         try {
-          return await neuronsD1Handler(store, env);
+          return await neuronsD1Handler(routeStore(env, ctx, url), env);
         } catch (err) {
           console.error("data-api neurons query failed:", err);
           await captureDataApiError(err, maskRouteParams(url.pathname), env);
@@ -7389,10 +7419,7 @@ async function dispatchDataApiRequest(
           return json({ error: "d1 binding unavailable" }, 503);
         }
         try {
-          return await healthStatusD1Handler(
-            createD1Sql(env.METAGRAPH_HEALTH_DB),
-            env,
-          );
+          return await healthStatusD1Handler(routeStore(env, ctx, url), env);
         } catch (err) {
           console.error("data-api health-status D1 query failed:", err);
           await captureDataApiError(err, maskRouteParams(url.pathname), env);
@@ -7417,7 +7444,7 @@ async function dispatchDataApiRequest(
         }
         try {
           return await hyperparamsIdentityD1Handler(
-            createD1Sql(env.METAGRAPH_HEALTH_DB),
+            routeStore(env, ctx, url),
             env,
           );
         } catch (err) {
