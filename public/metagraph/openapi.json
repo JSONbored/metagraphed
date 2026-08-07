@@ -1395,7 +1395,10 @@
               }
             ],
             "blocker_summary": {
-              "example": null
+              "by_code": {},
+              "by_level": {},
+              "by_severity": {},
+              "by_status": {}
             },
             "callable_service_count": 1,
             "contract_version": "2026-06-29.1",
@@ -2019,12 +2022,39 @@
             "artifact_count": 1,
             "artifact_size_bytes": 1,
             "artifacts": [
-              {}
+              {
+                "path": "example"
+              }
             ],
             "candidate_count": 1,
             "contract_version": "2026-06-29.1",
             "coverage": {
-              "example": null
+              "application_subnet_count": 1,
+              "candidate_count": 1,
+              "candidate_subnet_count": 1,
+              "chain_subnet_count": 1,
+              "completeness": {},
+              "contract_version": "2026-06-29.1",
+              "curated_overlay_count": 1,
+              "curation_level_counts": {},
+              "generated_at": "2026-06-01T00:00:00.000Z",
+              "manifested_count": 1,
+              "native_only_count": 1,
+              "native_only_with_candidates": 1,
+              "native_only_without_candidates": 1,
+              "native_snapshot_captured_at": "2026-06-01T00:00:00.000Z",
+              "network": "finney",
+              "notes": "Example description.",
+              "probed_count": 1,
+              "probed_surface_count": 1,
+              "root_subnet_count": 1,
+              "schema_version": 1,
+              "source": {
+                "candidates": "example",
+                "native": "example",
+                "overlays": "example"
+              },
+              "surface_count": 1
             },
             "endpoint_count": 1,
             "full_artifact_count": 1,
@@ -6083,7 +6113,8 @@
             "contract_version": "2026-06-29.1",
             "generated_at": "2026-06-01T00:00:00.000Z",
             "global": {
-              "example": null
+              "status_counts": {},
+              "surface_count": 1
             },
             "health_source": "probe-derived",
             "operational_observed_at": "2026-06-01T00:00:00.000Z",
@@ -6896,7 +6927,14 @@
               "surfaces": 1
             },
             "coverage": {
-              "example": null
+              "average_score": 100,
+              "dimension_coverage": {},
+              "fully_complete_count": 1,
+              "fully_complete_pct": 1,
+              "median_score": 100,
+              "methodology": "GET",
+              "score_distribution": {},
+              "scored_subnet_count": 1
             },
             "curation_level_counts": {
               "example": 1
@@ -6907,7 +6945,9 @@
               "example": 1
             },
             "recent_changes": {
-              "example": null
+              "artifacts": {},
+              "generated_at": "2026-06-01T00:00:00.000Z",
+              "subnets": {}
             },
             "schema_version": 1,
             "subnet_count": 1,
@@ -8835,7 +8875,10 @@
               "github_unreachable": false,
               "lifecycle": "active",
               "links": [
-                {}
+                {
+                  "label": "example",
+                  "url": "https://api.metagraph.sh/example"
+                }
               ],
               "logo_url": "https://api.metagraph.sh/example",
               "mechanism_count": 1,
@@ -10537,7 +10580,10 @@
               "github_unreachable": false,
               "lifecycle": "active",
               "links": [
-                {}
+                {
+                  "label": "example",
+                  "url": "https://api.metagraph.sh/example"
+                }
               ],
               "logo_url": "https://api.metagraph.sh/example",
               "mechanism_count": 1,
@@ -16434,8 +16480,51 @@
           },
           "blocker_summary": {
             "additionalProperties": {},
-            "propertyNames": {
-              "type": "string"
+            "properties": {
+              "by_code": {
+                "additionalProperties": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "by_level": {
+                "additionalProperties": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "by_severity": {
+                "additionalProperties": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "by_status": {
+                "additionalProperties": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              }
             },
             "type": "object"
           },
@@ -18842,9 +18931,39 @@
           "artifacts": {
             "items": {
               "additionalProperties": {},
-              "propertyNames": {
-                "type": "string"
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "size_bytes": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "storage_tier": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
               },
+              "required": [
+                "path"
+              ],
               "type": "object"
             },
             "type": "array"
@@ -18858,11 +18977,7 @@
             "type": "string"
           },
           "coverage": {
-            "additionalProperties": {},
-            "propertyNames": {
-              "type": "string"
-            },
-            "type": "object"
+            "$ref": "#/components/schemas/CoverageArtifact"
           },
           "endpoint_count": {
             "maximum": 9007199254740991,
@@ -25867,7 +25982,68 @@
                   },
                   {
                     "additionalProperties": {},
-                    "properties": {},
+                    "properties": {
+                      "identity_storage": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "kind": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "method": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "package": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "rpc_family": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "version": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
                     "type": "object"
                   }
                 ]
@@ -32640,8 +32816,23 @@
           },
           "global": {
             "additionalProperties": {},
-            "propertyNames": {
-              "type": "string"
+            "properties": {
+              "status_counts": {
+                "additionalProperties": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "propertyNames": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "surface_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              }
             },
             "type": "object"
           },
@@ -35474,7 +35665,58 @@
             "anyOf": [
               {
                 "additionalProperties": {},
-                "properties": {},
+                "properties": {
+                  "average_score": {
+                    "maximum": 100,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "dimension_coverage": {
+                    "additionalProperties": {
+                      "additionalProperties": {},
+                      "properties": {},
+                      "type": "object"
+                    },
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "fully_complete_count": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "fully_complete_pct": {
+                    "maximum": 100,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "median_score": {
+                    "maximum": 100,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "methodology": {
+                    "type": "string"
+                  },
+                  "score_distribution": {
+                    "additionalProperties": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "scored_subnet_count": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
                 "type": "object"
               },
               {
@@ -35506,7 +35748,60 @@
           },
           "recent_changes": {
             "additionalProperties": {},
-            "properties": {},
+            "properties": {
+              "artifacts": {
+                "additionalProperties": {},
+                "properties": {
+                  "added": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "modified": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "removed": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              },
+              "generated_at": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "subnets": {
+                "additionalProperties": {},
+                "properties": {
+                  "added": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "removed": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "renamed": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                },
+                "type": "object"
+              }
+            },
             "type": "object"
           },
           "schema_version": {
@@ -39017,8 +39312,246 @@
                 },
                 "snapshot": {
                   "additionalProperties": {},
-                  "propertyNames": {
-                    "type": "string"
+                  "properties": {
+                    "auth_detail": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": {},
+                          "properties": {
+                            "location": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "name": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "scheme": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "value_format": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "auth_required": {
+                      "type": "boolean"
+                    },
+                    "auth_schemes": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "component_schema_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "contract_version": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "drift_status": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "generated_at": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "hash": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "netuid": {
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "observed_at": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "openapi_version": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "path_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "previous_hash": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "schema_url": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "schema_version": {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer"
+                    },
+                    "server_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "subnet_name": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "subnet_slug": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "surface_id": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "surface_url": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "tag_count": {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "title": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "version": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
                   },
                   "type": "object"
                 },
@@ -41796,7 +42329,28 @@
           "links": {
             "items": {
               "additionalProperties": {},
-              "properties": {},
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "source_url": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "label",
+                "url"
+              ],
               "type": "object"
             },
             "type": "array"
@@ -41891,7 +42445,100 @@
           },
           "provenance": {
             "additionalProperties": {},
-            "properties": {},
+            "properties": {
+              "existence": {
+                "additionalProperties": {},
+                "properties": {
+                  "authority": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "captured_at": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "method": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "network": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "source_kind": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "type": "object"
+              },
+              "identity": {
+                "additionalProperties": {},
+                "properties": {
+                  "display_name_source": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "native_name_quality": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "type": "object"
+              },
+              "interface_metadata": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
             "type": "object"
           },
           "registered_at_block": {

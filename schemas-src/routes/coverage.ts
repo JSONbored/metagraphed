@@ -12,7 +12,7 @@ import {
 } from "../envelope.ts";
 import { BittensorNetworkSchema } from "../shared.ts";
 
-const CoverageCompletenessSchema = z
+export const CoverageCompletenessSchema = z
   .object({
     scored_subnet_count: z.int().min(0).optional(),
     average_score: z.int().min(0).max(100).optional(),
@@ -31,7 +31,23 @@ const CoverageCompletenessSchema = z
 const CoverageSourceSchema = z
   .object({
     candidates: z.string(),
-    native: z.union([z.string(), z.object({}).passthrough()]),
+    // #9800. The object arm was bare. It describes HOW the native identity was
+    // read -- which package, which RPC family, which storage item -- which is the
+    // provenance a caller needs to judge the figure. The string arm is the older
+    // shorthand form and is kept for wire compatibility.
+    native: z.union([
+      z.string(),
+      z
+        .object({
+          identity_storage: z.string().nullable().optional(),
+          kind: z.string().nullable().optional(),
+          method: z.string().nullable().optional(),
+          package: z.string().nullable().optional(),
+          rpc_family: z.string().nullable().optional(),
+          version: z.string().nullable().optional(),
+        })
+        .passthrough(),
+    ]),
     overlays: z.string(),
   })
   .strict();

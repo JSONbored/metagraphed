@@ -408,7 +408,17 @@ export const SubnetDetailSchema = z
     lifecycle: z.enum(["active", "deprecated", "parked", "pending"]).optional(),
     // Genuinely open shape in the source contract (additionalProperties:
     // true, no fixed properties) -- see this file's header.
-    links: z.array(z.object({}).passthrough()),
+    // #9800. Was an array of bare open objects, so the curated link list --
+    // website, docs, repo -- said nothing about what a link is.
+    links: z.array(
+      z
+        .object({
+          label: z.string(),
+          url: z.string(),
+          source_url: z.string().nullable().optional(),
+        })
+        .passthrough(),
+    ),
     logo_url: z.url().nullable().optional(),
     mechanism_count: z.int().min(0).optional(),
     name: z.string(),
@@ -422,7 +432,31 @@ export const SubnetDetailSchema = z
     previously_known_as: z.array(z.string()).optional(),
     probed_surface_count: z.int().min(0).optional(),
     // Same open-shape carve-out as `links` above.
-    provenance: z.object({}).passthrough(),
+    // #9800. Was a bare open object. This is the record's own audit trail --
+    // where each claim came from and how it was established -- so leaving it
+    // undeclared removed exactly the information a caller weighs the record by.
+    provenance: z
+      .object({
+        existence: z
+          .object({
+            authority: z.string().nullable().optional(),
+            captured_at: z.string().nullable().optional(),
+            method: z.string().nullable().optional(),
+            network: z.string().nullable().optional(),
+            source_kind: z.string().nullable().optional(),
+          })
+          .passthrough()
+          .optional(),
+        identity: z
+          .object({
+            display_name_source: z.string().nullable().optional(),
+            native_name_quality: z.string().nullable().optional(),
+          })
+          .passthrough()
+          .optional(),
+        interface_metadata: z.string().nullable().optional(),
+      })
+      .passthrough(),
     registered_at_block: z.int().min(0).optional(),
     slug: z.string(),
     social: z

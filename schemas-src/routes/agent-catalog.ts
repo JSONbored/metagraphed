@@ -123,7 +123,19 @@ export const AgentCatalogArtifactSchema = ArtifactBaseSchema.extend({
   subnet_count: z.int().min(0),
   blocked_subnet_count: z.int().min(0).optional(),
   callable_service_count: z.int().min(0).optional(),
-  blocker_summary: z.record(z.string(), z.unknown()).optional(),
+  // #9800. Was `z.record(z.string(), z.unknown())`. Each member is a genuine
+  // dynamic-key tally -- the keys are the blocker vocabulary itself -- so these
+  // are typed RECORDS rather than fixed property lists: a new blocker code adds
+  // a key without changing the contract, which is the point.
+  blocker_summary: z
+    .object({
+      by_code: z.record(z.string(), z.int().min(0)).optional(),
+      by_level: z.record(z.string(), z.int().min(0)).optional(),
+      by_severity: z.record(z.string(), z.int().min(0)).optional(),
+      by_status: z.record(z.string(), z.int().min(0)).optional(),
+    })
+    .passthrough()
+    .optional(),
   subnets: z.array(AgentCatalogSubnetEntrySchema),
   blocked_subnets: z.array(AgentCatalogBlockedSubnetEntrySchema).optional(),
 });

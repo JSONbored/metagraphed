@@ -20,6 +20,7 @@
 // the hand-edited schema was stale from before diffSubnets() gained name/slug.
 // Modeled here against the real (object) shape.
 import { z } from "zod";
+import { CoverageArtifactSchema } from "./coverage.ts";
 import { API_ROUTE_METHODS } from "../../src/contracts.ts";
 import { ArtifactBaseSchema, CacheProfileSchema } from "../envelope.ts";
 
@@ -229,7 +230,22 @@ export const BuildSummaryArtifactSchema = ArtifactBaseSchema.extend({
   full_artifact_size_bytes: z.int().min(0).optional(),
   storage_tier_counts: z.record(z.string(), z.int().min(0)).optional(),
   storage_tier_size_bytes: z.record(z.string(), z.int().min(0)).optional(),
-  artifacts: z.array(z.record(z.string(), z.unknown())).optional(),
+  // #9800. Was `z.record(z.string(), z.unknown())` -- a record whose value
+  // schema is `unknown`, which declares no more than a bare open object does.
+  // These are the published artifact inventory rows; each carries its path,
+  // digest, size and storage tier.
+  artifacts: z
+    .array(
+      z
+        .object({
+          path: z.string(),
+          sha256: z.string().nullable().optional(),
+          size_bytes: z.int().min(0).optional(),
+          storage_tier: z.string().nullable().optional(),
+        })
+        .passthrough(),
+    )
+    .optional(),
   artifact_budget_summary: z
     .object({
       fail_count: z.int().min(0),
@@ -240,7 +256,10 @@ export const BuildSummaryArtifactSchema = ArtifactBaseSchema.extend({
     .optional(),
   artifact_budgets: z.array(ArtifactSizeBudgetSchema).optional(),
   candidate_count: z.int().min(0).optional(),
-  coverage: z.record(z.string(), z.unknown()).optional(),
+  // The coverage artifact itself, reused rather than restated (#9800). Was
+  // `z.record(z.string(), z.unknown())`, so the build summary embedded the whole
+  // coverage card and declared nothing about it.
+  coverage: CoverageArtifactSchema.optional(),
   endpoint_count: z.int().min(0).optional(),
   profile_count: z.int().min(0).optional(),
   provider_count: z.int().min(0).optional(),
