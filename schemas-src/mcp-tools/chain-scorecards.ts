@@ -1,26 +1,29 @@
-// MCP tools `get_chain_concentration`, `get_chain_performance`,
-// `get_chain_idle_stake`, `get_chain_yield` (types-epic E batch 9, #8072).
-// Each mirrors a GET /api/v1/chain/* route that is not one of
-// schemas-src/routes/'s covered pilot routes -- no existing Zod schema to
-// reuse. All four take no input (bare `{}`). Modeled fresh, matching each
-// hand-written literal field-for-field -- including several bare nullable
-// `{type:["object","null"]}` fields with no declared shape, which stay
-// untyped open objects here too (not "improved" with a guessed shape).
+// MCP tools `get_chain_idle_stake`, `get_chain_yield`.
+// Mirror GET /api/v1/chain/idle-stake, GET /api/v1/chain/yield.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// What the copies were publishing:
+//   get_chain_yield: 1 bare `{"type":"object"}` site.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import { ChainConcentrationArtifactSchema } from "../routes/chain-concentration.ts";
 import { ChainConcentrationSubnetsArtifactSchema } from "../routes/chain-concentration-subnets.ts";
 import { ChainPerformanceArtifactSchema } from "../routes/chain-performance.ts";
-import {
-  OpenObjectSchema,
-  netuidSchema,
-  limitSchema,
-  orderSchema,
-  sortSchema,
-} from "./shared.ts";
+import { limitSchema, orderSchema, sortSchema } from "./shared.ts";
 import {
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
 } from "../../src/route-limits.ts";
+import { ChainIdleStakeArtifactSchema } from "../routes/chain-idle-stake.ts";
+import { ChainYieldArtifactSchema } from "../routes/chain-yield.ts";
 
 // --- get_chain_concentration_subnets (#9717) ---------------------------------
 // The cross-subnet RANKING, as opposed to get_chain_concentration's single
@@ -109,24 +112,7 @@ export type GetChainIdleStakeInput = z.infer<
   typeof GetChainIdleStakeInputSchema
 >;
 
-const ChainIdleStakeSubnetSchema = z
-  .object({
-    netuid: netuidSchema(),
-    neuron_count: z.int(),
-    idle_neuron_count: z.int(),
-    idle_stake_alpha: z.number(),
-  })
-  .passthrough();
-
-export const GetChainIdleStakeOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    captured_at: z.string().nullable().optional(),
-    subnet_count: z.int(),
-    total_idle_stake_alpha: z.number(),
-    subnets: z.array(ChainIdleStakeSubnetSchema),
-  })
-  .passthrough();
+export const GetChainIdleStakeOutputSchema = ChainIdleStakeArtifactSchema;
 export type GetChainIdleStakeOutput = z.infer<
   typeof GetChainIdleStakeOutputSchema
 >;
@@ -134,20 +120,5 @@ export type GetChainIdleStakeOutput = z.infer<
 export const GetChainYieldInputSchema = z.object({}).strict();
 export type GetChainYieldInput = z.infer<typeof GetChainYieldInputSchema>;
 
-export const GetChainYieldOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    subnet_count: z.int(),
-    neuron_count: z.int(),
-    validator_count: z.int().optional(),
-    miner_count: z.int().optional(),
-    captured_at: z.string().nullable().optional(),
-    total_stake_tao: z.number().optional(),
-    total_emission_tao: z.number().optional(),
-    network_yield: z.number().nullable().optional(),
-    validator_yield: z.number().nullable().optional(),
-    miner_yield: z.number().nullable().optional(),
-    distribution: OpenObjectSchema.nullable().optional(),
-  })
-  .passthrough();
+export const GetChainYieldOutputSchema = ChainYieldArtifactSchema;
 export type GetChainYieldOutput = z.infer<typeof GetChainYieldOutputSchema>;

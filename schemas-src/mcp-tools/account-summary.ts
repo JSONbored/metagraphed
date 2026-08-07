@@ -1,12 +1,16 @@
-// MCP tools `get_account`, `get_account_entities`, `get_account_events`,
-// `get_account_subnets` (types-epic E batch 6, #8069). Each mirrors a
-// GET /api/v1/accounts/{ss58}* route that is not one of schemas-src/routes/'s
-// covered pilot routes -- no existing Zod schema to reuse. AccountEventItem/
-// AccountRegistrationItem are deliberately NOT the same as any REST
-// schemas-src/routes/ AccountEvent-style schema (none exist yet for this
-// domain): modeled fresh, matching each hand-written literal (and the
-// shared ACCOUNT_EVENT_ITEM/ACCOUNT_REGISTRATION_ITEM object literals
-// src/mcp-server.ts's objectItems() wraps) field-for-field.
+// MCP tools `get_account_entities`, `get_account_events`.
+// Mirror GET /api/v1/accounts/{ss58}/entities, GET
+// /api/v1/accounts/{ss58}/events.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import {
   OpenObjectSchema,
@@ -18,6 +22,8 @@ import {
   offsetSchema,
   ss58Schema,
 } from "./shared.ts";
+import { AccountEntitiesArtifactSchema } from "../routes/account-entities.ts";
+import { AccountEventsArtifactSchema } from "../routes/account-events-feed.ts";
 
 // objectItems(...) properties, none required at the item level (see
 // search-subnets.ts's same note from the pilot batch).
@@ -98,24 +104,7 @@ export type GetAccountEntitiesInput = z.infer<
   typeof GetAccountEntitiesInputSchema
 >;
 
-export const GetAccountEntitiesOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    ss58: z.string(),
-    labels: z.array(AccountLabelItemSchema),
-    ownership_tie_count: z.int(),
-    ownership_ties: z.array(
-      z
-        .object({
-          netuid: netuidSchema().nullable().optional(),
-          role: z.string().optional(),
-          block_number: z.int().nullable().optional(),
-          observed_at: z.string().nullable().optional(),
-        })
-        .passthrough(),
-    ),
-  })
-  .passthrough();
+export const GetAccountEntitiesOutputSchema = AccountEntitiesArtifactSchema;
 export type GetAccountEntitiesOutput = z.infer<
   typeof GetAccountEntitiesOutputSchema
 >;
@@ -134,17 +123,7 @@ export const GetAccountEventsInputSchema = z
   .strict();
 export type GetAccountEventsInput = z.infer<typeof GetAccountEventsInputSchema>;
 
-export const GetAccountEventsOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    ss58: z.string(),
-    event_count: z.int(),
-    limit: z.int().nullable().optional(),
-    offset: z.int().nullable().optional(),
-    next_cursor: z.string().nullable().optional(),
-    events: z.array(AccountEventItemSchema),
-  })
-  .passthrough();
+export const GetAccountEventsOutputSchema = AccountEventsArtifactSchema;
 export type GetAccountEventsOutput = z.infer<
   typeof GetAccountEventsOutputSchema
 >;

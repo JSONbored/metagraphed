@@ -1,21 +1,15 @@
-// MCP tool `get_subnet_identity_history` (types-epic E batch 4, #8067).
-// Mirrors GET /api/v1/subnets/{netuid}/identity-history, backed by the SAME
-// src/subnet-identity-history.ts buildSubnetIdentityHistory()/
-// formatIdentityHistoryEntry() the REST route (schemas-src/routes/
-// subnet-identity-history.ts, #8055) uses -- NOT reused as a schema import:
-// this tool's own required set (schema_version IS required here, unlike
-// REST's envelope-relative posture) and additionalProperties posture
-// differ enough that a blind reuse would change what this tool's own
-// contract accepts. Modeled fresh instead, matching the hand-written
-// literal it replaces field-for-field.
+// MCP tool `get_subnet_identity_history`.
+// Mirrors GET /api/v1/subnets/{netuid}/identity-history.
 //
-// Real finding (bucket b), same root cause #8055 already found and fixed
-// on the REST side: the hand-written entry schema required identity_hash
-// as a non-nullable string, but formatIdentityHistoryEntry() builds it as
-// `record.identity_hash ?? null` -- a row with no computed hash yields
-// identity_hash: null, which the old schema would have rejected. Modeled
-// here as nullable (still required -- the key itself is always present),
-// matching real behavior.
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import {
   keysetCursorSchema,
@@ -23,6 +17,7 @@ import {
   netuidSchema,
   offsetSchema,
 } from "./shared.ts";
+import { SubnetIdentityHistoryArtifactSchema } from "../routes/subnet-identity-history.ts";
 
 export const GetSubnetIdentityHistoryInputSchema = z
   .object({
@@ -39,32 +34,8 @@ export type GetSubnetIdentityHistoryInput = z.infer<
 // objectItems(...) properties, none required at the item level (see
 // search-subnets.ts's same note from the pilot batch) -- except
 // identity_hash, which the original also required (see header).
-const SubnetIdentityHistoryEntrySchema = z
-  .object({
-    block_number: z.int().nullable().optional(),
-    observed_at: z.string().nullable().optional(),
-    subnet_name: z.string().nullable().optional(),
-    symbol: z.string().nullable().optional(),
-    description: z.string().nullable().optional(),
-    github_repo: z.string().nullable().optional(),
-    subnet_url: z.string().nullable().optional(),
-    discord: z.string().nullable().optional(),
-    logo_url: z.string().nullable().optional(),
-    identity_hash: z.string().nullable(),
-  })
-  .passthrough();
-
-export const GetSubnetIdentityHistoryOutputSchema = z
-  .object({
-    schema_version: z.int(),
-    netuid: netuidSchema(),
-    entry_count: z.int(),
-    limit: z.int().nullable().optional(),
-    offset: z.int().nullable().optional(),
-    next_cursor: z.string().nullable().optional(),
-    entries: z.array(SubnetIdentityHistoryEntrySchema),
-  })
-  .passthrough();
+export const GetSubnetIdentityHistoryOutputSchema =
+  SubnetIdentityHistoryArtifactSchema;
 export type GetSubnetIdentityHistoryOutput = z.infer<
   typeof GetSubnetIdentityHistoryOutputSchema
 >;

@@ -1,20 +1,21 @@
-// MCP tools `list_evidence`, `list_rpc_endpoints`, `list_rpc_pools`,
-// `list_source_snapshots`, `list_profile_completeness` (types-epic E batch
-// 9, #8073). Like registry-catalogs-1.ts's three tools, these five are NOT
-// defined inline in src/mcp-server.ts -- their `LIST_X_MCP_TOOL`/
-// `LIST_X_OUTPUT_SCHEMA` hand-written literals live in src/evidence-mcp.ts,
-// src/rpc-endpoints-mcp.ts, src/rpc-pools-mcp.ts, src/source-snapshots-mcp.ts,
-// and src/profile-completeness-mcp.ts respectively, imported into
-// mcp-server.ts's MCP_TOOLS array via object spread. The z.toJSONSchema(...)
-// wiring for these five happens in THEIR OWN files, not mcp-server.ts. None
-// mirror an existing schemas-src/routes/ REST schema -- modeled fresh,
-// matching each hand-written literal field-for-field. Genuine per-tool
-// variation worth flagging: list_rpc_pools and list_profile_completeness
-// have NO schema_version output field at all (their siblings all do);
-// list_rpc_endpoints' schema_version is a plain nullable integer (not the
-// string|integer|null union every other tool in this batch uses); and
-// list_rpc_endpoints' `fields`/`cursor` inputs are `oneOf` unions (string-or-
-// array, integer-or-string) unlike every other tool's single-type fields.
+// MCP tools `list_evidence`, `list_rpc_endpoints`, `list_source_snapshots`.
+// Mirror GET /api/v1/evidence, GET /api/v1/rpc/endpoints, GET
+// /api/v1/source-snapshots.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// What the copies were publishing:
+//   list_evidence: 2 bare `{"type":"object"}` sites.
+//   list_rpc_endpoints: 2 bare `{"type":"object"}` sites.
+//   list_source_snapshots: 2 bare `{"type":"object"}` sites.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import {
   OpenObjectSchema,
@@ -28,6 +29,9 @@ import {
   querySchema,
   sortSchema,
 } from "./shared.ts";
+import { EvidenceLedgerArtifactSchema } from "../routes/candidates-evidence.ts";
+import { SourceSnapshotsArtifactSchema } from "../routes/evidence-search.ts";
+import { RpcEndpointsArtifactSchema } from "../routes/providers-rpc.ts";
 
 const CLAIM_SORT_FIELDS = [
   "claim",
@@ -48,21 +52,7 @@ export const ListEvidenceInputSchema = z
   .strict();
 export type ListEvidenceInput = z.infer<typeof ListEvidenceInputSchema>;
 
-export const ListEvidenceOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    schema_version: z.union([z.string(), z.int()]).nullable().optional(),
-    summary: OpenObjectSchema.nullable().optional(),
-    claims: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListEvidenceOutputSchema = EvidenceLedgerArtifactSchema;
 export type ListEvidenceOutput = z.infer<typeof ListEvidenceOutputSchema>;
 
 const SURFACE_KINDS = [
@@ -193,27 +183,7 @@ export const ListRpcEndpointsInputSchema = z
   .strict();
 export type ListRpcEndpointsInput = z.infer<typeof ListRpcEndpointsInputSchema>;
 
-export const ListRpcEndpointsOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    notes: z
-      .union([z.array(z.string()), z.string()])
-      .nullable()
-      .optional(),
-    schema_version: z.int().nullable().optional(),
-    summary: OpenObjectSchema.nullable().optional(),
-    source: z.string().nullable().optional(),
-    operational_observed_at: z.string().nullable().optional(),
-    endpoints: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListRpcEndpointsOutputSchema = RpcEndpointsArtifactSchema;
 export type ListRpcEndpointsOutput = z.infer<
   typeof ListRpcEndpointsOutputSchema
 >;
@@ -312,21 +282,7 @@ export type ListSourceSnapshotsInput = z.infer<
   typeof ListSourceSnapshotsInputSchema
 >;
 
-export const ListSourceSnapshotsOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    schema_version: z.union([z.string(), z.int()]).nullable().optional(),
-    summary: OpenObjectSchema.nullable().optional(),
-    sources: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListSourceSnapshotsOutputSchema = SourceSnapshotsArtifactSchema;
 export type ListSourceSnapshotsOutput = z.infer<
   typeof ListSourceSnapshotsOutputSchema
 >;

@@ -1,16 +1,22 @@
-// MCP tool `get_subnet_detail` (types-epic E batch 2, #8065). Despite
-// "Mirrors GET /api/v1/subnets/{netuid}" in its description, the handler
-// reads the RAW /metagraph/subnets/{netuid}.json artifact and nests it under
-// a `subnet` key (`{schema_version, generated_at, subnet: {...}, ...}`) --
-// a different top-level wrapper shape than schemas-src/routes/subnet-detail.ts's
-// SubnetDetailArtifactSchema (the REST route's own `data`, which is the
-// subnet's fields directly, not nested under `subnet`). Not reusable;
-// modeled fresh, shallow, from the hand-written literal it replaces (same
-// look-but-don't-reuse finding as get-network-health.ts/get-economics.ts in
-// the pilot batch).
+// MCP tool `get_subnet_detail`.
+// Mirrors GET /api/v1/subnets/{netuid}.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// What the copies were publishing:
+//   get_subnet_detail: 2 bare `{"type":"object"}` sites.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
-import { OpenObjectSchema, netuidSchema } from "./shared.ts";
+import { netuidSchema } from "./shared.ts";
 import { McpNetworkSchema } from "../shared.ts";
+import { SubnetDetailArtifactSchema } from "../routes/subnet-detail.ts";
 
 export const GetSubnetDetailInputSchema = z
   .object({
@@ -20,18 +26,5 @@ export const GetSubnetDetailInputSchema = z
   .strict();
 export type GetSubnetDetailInput = z.infer<typeof GetSubnetDetailInputSchema>;
 
-export const GetSubnetDetailOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    generated_at: z.string().nullable().optional(),
-    subnet: OpenObjectSchema,
-    candidate_surfaces: z.array(z.unknown()).optional(),
-    candidates: z.array(z.unknown()).optional(),
-    endpoints: z.array(z.unknown()).optional(),
-    gaps: z.unknown().optional(),
-    surfaces: z.array(z.unknown()).optional(),
-    verified_surfaces: z.array(z.unknown()).optional(),
-    economics: OpenObjectSchema.nullable().optional(),
-  })
-  .passthrough();
+export const GetSubnetDetailOutputSchema = SubnetDetailArtifactSchema;
 export type GetSubnetDetailOutput = z.infer<typeof GetSubnetDetailOutputSchema>;

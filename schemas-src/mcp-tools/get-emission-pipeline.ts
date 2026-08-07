@@ -1,16 +1,15 @@
-// MCP tool `get_emission_pipeline` (#8744) — the v440 emission decomposition.
+// MCP tool `get_emission_pipeline`.
+// Mirrors GET /api/v1/chain/emission-pipeline.
 //
-// Unlike get-economics-trends.ts, this one's REST counterpart IS covered by
-// schemas-src/routes/, so the output schema reuses that route's own body
-// (EMISSION_PIPELINE_BODY) rather than being modelled fresh — the same
-// reuse-the-route-schema precedent get-subnet-stake-quote.ts set. The tool
-// returns the projection alone, with none of ArtifactBase's envelope fields,
-// which is why the route file exports the body separately.
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
 //
-// Strictness is inherited deliberately: the tool and the route describe the
-// same bytes, so if a capture ever grew a field, both contracts would be wrong
-// together and there is exactly one place to fix — which is the whole point of
-// not keeping a second copy here.
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import {
   netuidSchema,
@@ -19,12 +18,12 @@ import {
   orderSchema,
   sortSchema,
 } from "./shared.ts";
-import { EMISSION_PIPELINE_BODY } from "../routes/emission-pipeline.ts";
 import { EMISSION_PIPELINE_SORT_FIELDS } from "../../src/emission-pipeline-surface.ts";
 import {
   EMISSION_PIPELINE_LIMIT_MAX,
   EMISSION_PIPELINE_MCP_LIMIT_DEFAULT,
 } from "../../src/route-limits.ts";
+import { EmissionPipelineArtifactSchema } from "../routes/emission-pipeline.ts";
 
 export const GetEmissionPipelineInputSchema = z
   .object({
@@ -50,9 +49,7 @@ export type GetEmissionPipelineInput = z.infer<
   typeof GetEmissionPipelineInputSchema
 >;
 
-export const GetEmissionPipelineOutputSchema = z
-  .object(EMISSION_PIPELINE_BODY)
-  .strict();
+export const GetEmissionPipelineOutputSchema = EmissionPipelineArtifactSchema;
 export type GetEmissionPipelineOutput = z.infer<
   typeof GetEmissionPipelineOutputSchema
 >;

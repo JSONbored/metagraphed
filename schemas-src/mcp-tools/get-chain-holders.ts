@@ -1,11 +1,22 @@
-// get_chain_holders (#9607): every subnet ranked by alpha-ownership
-// concentration, mirroring GET /api/v1/chain/holders.
+// MCP tool `get_chain_holders`.
+// Mirrors GET /api/v1/chain/holders.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
-import { limitSchema, netuidSchema, sortSchema } from "./shared.ts";
+import { limitSchema, sortSchema } from "./shared.ts";
 import {
   CHAIN_HOLDERS_LIMIT_DEFAULT,
   CHAIN_HOLDERS_LIMIT_MAX,
 } from "../../src/route-limits.ts";
+import { ChainHoldersArtifactSchema } from "../routes/chain-holders.ts";
 
 export const GetChainHoldersInputSchema = z
   .object({
@@ -25,42 +36,5 @@ export const GetChainHoldersInputSchema = z
   .strict();
 export type GetChainHoldersInput = z.infer<typeof GetChainHoldersInputSchema>;
 
-export const GetChainHoldersOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    sort: z.string(),
-    limit: z.int().nullable(),
-    subnet_count: z.int().nullable(),
-    network: z
-      .object({
-        subnets_measured: z.int().nullable(),
-        subnets_with_majority_holder: z.int().nullable(),
-        subnets_with_single_holder: z.int().nullable(),
-        median_top1_share: z.number().nullable(),
-      })
-      .passthrough(),
-    captured_at: z.string().nullable(),
-    positions_captured_at: z.string().nullable(),
-    subnets: z.array(
-      z
-        .object({
-          netuid: netuidSchema(),
-          holder_count: z.int().nullable(),
-          total_alpha: z.number().nullable(),
-          top1_share: z.number().nullable(),
-          top5_share: z.number().nullable(),
-          top10_share: z.number().nullable(),
-          top20_share: z.number().nullable(),
-          top_holder: z.string().nullable(),
-        })
-        .passthrough(),
-    ),
-    // Present ONLY on a decline. A model seeing an empty `subnets` must read
-    // this before concluding the network has no measured holders.
-    degraded: z
-      .object({ reason: z.enum(["pool_totals_unproven", "unavailable"]) })
-      .passthrough()
-      .optional(),
-  })
-  .passthrough();
+export const GetChainHoldersOutputSchema = ChainHoldersArtifactSchema;
 export type GetChainHoldersOutput = z.infer<typeof GetChainHoldersOutputSchema>;

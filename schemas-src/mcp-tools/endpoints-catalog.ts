@@ -1,12 +1,21 @@
-// MCP tools `list_endpoints`, `get_subnet_endpoints` (types-epic E batch 9,
-// #8073). Both are defined inline in src/mcp-server.ts's MCP_TOOLS array
-// (unlike this batch's 11 other list_* tools, which live in separate
-// src/*-mcp.ts files). Neither mirrors an existing schemas-src/routes/ REST
-// schema -- modeled fresh, matching each hand-written literal
-// field-for-field.
+// MCP tools `list_endpoints`, `get_subnet_endpoints`.
+// Mirror GET /api/v1/endpoints, GET /api/v1/subnets/{netuid}/endpoints.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// What the copies were publishing:
+//   list_endpoints: 1 bare `{"type":"object"}` site.
+//   get_subnet_endpoints: 1 bare `{"type":"object"}` site.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import {
-  OpenObjectSchema,
   fieldsStringSchema,
   kindSchema,
   limitSchema,
@@ -16,6 +25,10 @@ import {
   providerSlugSchema,
   sortSchema,
 } from "./shared.ts";
+import {
+  EndpointsArtifactSchema,
+  SubnetEndpointsArtifactSchema,
+} from "../routes/endpoints-pools.ts";
 
 const SURFACE_KINDS = [
   "archive",
@@ -127,20 +140,7 @@ export const ListEndpointsInputSchema = z
   .strict();
 export type ListEndpointsInput = z.infer<typeof ListEndpointsInputSchema>;
 
-export const ListEndpointsOutputSchema = z
-  .object({
-    endpoints: z.array(OpenObjectSchema).optional(),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    cursor: z.int().optional(),
-    limit: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-    generated_at: z.string().nullable().optional(),
-    schema_version: z.union([z.string(), z.int()]).nullable().optional(),
-  })
-  .passthrough();
+export const ListEndpointsOutputSchema = EndpointsArtifactSchema;
 export type ListEndpointsOutput = z.infer<typeof ListEndpointsOutputSchema>;
 
 export const GetSubnetEndpointsInputSchema = z
@@ -152,14 +152,7 @@ export type GetSubnetEndpointsInput = z.infer<
   typeof GetSubnetEndpointsInputSchema
 >;
 
-export const GetSubnetEndpointsOutputSchema = z
-  .object({
-    netuid: netuidSchema().nullable().optional(),
-    endpoints: z.array(OpenObjectSchema).optional(),
-    generated_at: z.string().nullable().optional(),
-    schema_version: z.union([z.string(), z.int()]).nullable().optional(),
-  })
-  .passthrough();
+export const GetSubnetEndpointsOutputSchema = SubnetEndpointsArtifactSchema;
 export type GetSubnetEndpointsOutput = z.infer<
   typeof GetSubnetEndpointsOutputSchema
 >;

@@ -1,9 +1,21 @@
-// MCP tool `get_subnet_yield` (types-epic E batch 3, #8066). Mirrors GET
-// /api/v1/subnets/{netuid}/yield, which is not one of schemas-src/routes/'s
-// covered pilot routes -- no existing Zod schema to reuse. Modeled fresh,
-// shallow, from the hand-written literal it replaces.
+// MCP tool `get_subnet_yield`.
+// Mirrors GET /api/v1/subnets/{netuid}/yield.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// What the copies were publishing:
+//   get_subnet_yield: 1 bare `{"type":"object"}` site.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
-import { OpenObjectArraySchema, netuidSchema } from "./shared.ts";
+import { netuidSchema } from "./shared.ts";
+import { SubnetYieldArtifactSchema } from "../routes/subnet-yield.ts";
 
 export const GetSubnetYieldInputSchema = z
   .object({
@@ -12,24 +24,5 @@ export const GetSubnetYieldInputSchema = z
   .strict();
 export type GetSubnetYieldInput = z.infer<typeof GetSubnetYieldInputSchema>;
 
-export const GetSubnetYieldOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    netuid: netuidSchema(),
-    captured_at: z.string().nullable().optional(),
-    block_number: z.int().nullable().optional(),
-    neuron_count: z.int(),
-    validator_count: z.int().optional(),
-    miner_count: z.int().optional(),
-    total_stake_alpha: z.number().nullable().optional(),
-    total_emission_alpha: z.number().nullable().optional(),
-    subnet_yield: z.number().nullable().optional(),
-    mean_yield: z.number().nullable().optional(),
-    median_yield: z.number().nullable().optional(),
-    p25_yield: z.number().nullable().optional(),
-    p75_yield: z.number().nullable().optional(),
-    p90_yield: z.number().nullable().optional(),
-    neurons: OpenObjectArraySchema,
-  })
-  .passthrough();
+export const GetSubnetYieldOutputSchema = SubnetYieldArtifactSchema;
 export type GetSubnetYieldOutput = z.infer<typeof GetSubnetYieldOutputSchema>;

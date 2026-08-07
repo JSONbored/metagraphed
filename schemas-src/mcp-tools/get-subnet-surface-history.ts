@@ -1,11 +1,22 @@
-// get_subnet_surface_history (#9612): one subnet's surface audit trail,
-// mirroring GET /api/v1/subnets/{netuid}/surface-history.
+// MCP tool `get_subnet_surface_history`.
+// Mirrors GET /api/v1/subnets/{netuid}/surface-history.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import { limitSchema, netuidSchema } from "./shared.ts";
 import {
   SURFACE_HISTORY_LIMIT_DEFAULT,
   SURFACE_HISTORY_LIMIT_MAX,
 } from "../../src/route-limits.ts";
+import { SubnetSurfaceHistoryArtifactSchema } from "../routes/subnet-surface-history.ts";
 
 export const GetSubnetSurfaceHistoryInputSchema = z
   .object({
@@ -20,29 +31,8 @@ export type GetSubnetSurfaceHistoryInput = z.infer<
   typeof GetSubnetSurfaceHistoryInputSchema
 >;
 
-export const GetSubnetSurfaceHistoryOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    netuid: netuidSchema(),
-    limit: z.int().nullable(),
-    change_count: z.int(),
-    surface_count: z.int(),
-    latest_change_at: z.string().nullable(),
-    changes: z.array(
-      z
-        .object({
-          surface_id: z.string().nullable(),
-          action: z.string().nullable(),
-          kind: z.string().nullable(),
-          url: z.string().nullable(),
-          name: z.string().nullable(),
-          source_commit: z.string().nullable(),
-          recorded_at: z.string(),
-        })
-        .passthrough(),
-    ),
-  })
-  .passthrough();
+export const GetSubnetSurfaceHistoryOutputSchema =
+  SubnetSurfaceHistoryArtifactSchema;
 export type GetSubnetSurfaceHistoryOutput = z.infer<
   typeof GetSubnetSurfaceHistoryOutputSchema
 >;

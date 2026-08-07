@@ -1,13 +1,22 @@
-// MCP tools `get_subnet_candidates`, `list_subnet_candidates`,
-// `get_subnet_evidence`, `list_subnet_evidence`, `get_subnet_surfaces`
-// (types-epic E batch 11, #8074). The first, third, and fifth are defined
-// inline in src/mcp-server.ts's MCP_TOOLS array; `list_subnet_candidates`/
-// `list_subnet_evidence` live in src/subnet-candidates-mcp.ts and
-// src/subnet-evidence-mcp.ts respectively (their `LIST_X_MCP_TOOL`/
-// `LIST_X_OUTPUT_SCHEMA` spread into mcp-server.ts's MCP_TOOLS array) -- the
-// z.toJSONSchema(...) wiring for those two happens in THEIR OWN files, not
-// mcp-server.ts. None mirror an existing schemas-src/routes/ REST schema --
-// modeled fresh, matching each hand-written literal field-for-field.
+// MCP tools `get_subnet_candidates`, `get_subnet_evidence`,
+// `get_subnet_surfaces`.
+// Mirror GET /api/v1/subnets/{netuid}/candidates, GET
+// /api/v1/subnets/{netuid}/evidence, GET /api/v1/subnets/{netuid}/surfaces.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// What the copies were publishing:
+//   get_subnet_candidates: 1 bare `{"type":"object"}` site.
+//   get_subnet_evidence: 1 bare `{"type":"object"}` site.
+//   get_subnet_surfaces: 1 bare `{"type":"object"}` site.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import {
   OpenObjectSchema,
@@ -21,6 +30,11 @@ import {
   querySchema,
   sortSchema,
 } from "./shared.ts";
+import {
+  SubnetCandidatesArtifactSchema,
+  SubnetEvidenceArtifactSchema,
+} from "../routes/candidates-evidence.ts";
+import { SubnetSurfacesArtifactSchema } from "../routes/endpoints-pools.ts";
 
 const SURFACE_KINDS = [
   "archive",
@@ -48,14 +62,7 @@ export type GetSubnetCandidatesInput = z.infer<
   typeof GetSubnetCandidatesInputSchema
 >;
 
-export const GetSubnetCandidatesOutputSchema = z
-  .object({
-    netuid: netuidSchema().nullable().optional(),
-    candidates: z.array(OpenObjectSchema).optional(),
-    generated_at: z.string().nullable().optional(),
-    schema_version: z.union([z.string(), z.int()]).nullable().optional(),
-  })
-  .passthrough();
+export const GetSubnetCandidatesOutputSchema = SubnetCandidatesArtifactSchema;
 export type GetSubnetCandidatesOutput = z.infer<
   typeof GetSubnetCandidatesOutputSchema
 >;
@@ -139,14 +146,7 @@ export type GetSubnetEvidenceInput = z.infer<
   typeof GetSubnetEvidenceInputSchema
 >;
 
-export const GetSubnetEvidenceOutputSchema = z
-  .object({
-    netuid: netuidSchema().nullable().optional(),
-    claims: z.array(OpenObjectSchema).optional(),
-    generated_at: z.string().nullable().optional(),
-    schema_version: z.union([z.string(), z.int()]).nullable().optional(),
-  })
-  .passthrough();
+export const GetSubnetEvidenceOutputSchema = SubnetEvidenceArtifactSchema;
 export type GetSubnetEvidenceOutput = z.infer<
   typeof GetSubnetEvidenceOutputSchema
 >;
@@ -200,14 +200,7 @@ export type GetSubnetSurfacesInput = z.infer<
   typeof GetSubnetSurfacesInputSchema
 >;
 
-export const GetSubnetSurfacesOutputSchema = z
-  .object({
-    netuid: netuidSchema().nullable().optional(),
-    surfaces: z.array(OpenObjectSchema).optional(),
-    generated_at: z.string().nullable().optional(),
-    schema_version: z.union([z.string(), z.int()]).nullable().optional(),
-  })
-  .passthrough();
+export const GetSubnetSurfacesOutputSchema = SubnetSurfacesArtifactSchema;
 export type GetSubnetSurfacesOutput = z.infer<
   typeof GetSubnetSurfacesOutputSchema
 >;

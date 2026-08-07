@@ -1,8 +1,15 @@
-// MCP tools `get_account_transfers`, `get_account_counterparties`
-// (types-epic E batch 7, #8070). Each mirrors a GET /api/v1/accounts/{ss58}/
-// {transfers,counterparties} route that is not one of schemas-src/routes/'s
-// covered pilot routes -- no existing Zod schema to reuse. Modeled fresh,
-// matching each hand-written literal field-for-field.
+// MCP tool `get_account_transfers`.
+// Mirrors GET /api/v1/accounts/{ss58}/transfers.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import {
   OpenObjectSchema,
@@ -12,6 +19,7 @@ import {
   offsetSchema,
   ss58Schema,
 } from "./shared.ts";
+import { AccountTransfersArtifactSchema } from "../routes/account-events-feed.ts";
 
 const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
 
@@ -38,29 +46,7 @@ export type GetAccountTransfersInput = z.infer<
 
 // objectItems(...) properties, none required at the item level (see
 // search-subnets.ts's same note from the pilot batch).
-const AccountTransferItemSchema = z
-  .object({
-    block_number: z.int().nullable().optional(),
-    event_index: z.int().nullable().optional(),
-    from: z.string().nullable().optional(),
-    to: z.string().nullable().optional(),
-    amount_tao: z.unknown().optional(),
-    direction: z.string().nullable().optional(),
-    observed_at: z.string().nullable().optional(),
-  })
-  .passthrough();
-
-export const GetAccountTransfersOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    ss58: z.string(),
-    transfer_count: z.int(),
-    limit: z.int().nullable().optional(),
-    offset: z.int().nullable().optional(),
-    next_cursor: z.string().nullable().optional(),
-    transfers: z.array(AccountTransferItemSchema),
-  })
-  .passthrough();
+export const GetAccountTransfersOutputSchema = AccountTransfersArtifactSchema;
 export type GetAccountTransfersOutput = z.infer<
   typeof GetAccountTransfersOutputSchema
 >;

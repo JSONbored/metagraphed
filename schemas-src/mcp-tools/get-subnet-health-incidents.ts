@@ -1,9 +1,18 @@
-// MCP tool `get_subnet_health_incidents` (types-epic E batch 2, #8065).
-// Mirrors GET /api/v1/subnets/{netuid}/health/incidents, which is not one of
-// schemas-src/routes/'s covered pilot routes -- no existing Zod schema to
-// reuse. Modeled fresh, shallow, from the hand-written literal it replaces.
+// MCP tool `get_subnet_health_incidents`.
+// Mirrors GET /api/v1/subnets/{netuid}/health/incidents.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import { netuidSchema, windowSchema } from "./shared.ts";
+import { HealthIncidentsArtifactSchema } from "../routes/health-surfaces.ts";
 
 const HEALTH_WINDOWS = ["7d", "30d"] as const;
 
@@ -17,42 +26,8 @@ export type GetSubnetHealthIncidentsInput = z.infer<
   typeof GetSubnetHealthIncidentsInputSchema
 >;
 
-const GetSubnetHealthIncidentSchema = z
-  .object({
-    started_at: z.int().nullable().optional(),
-    ended_at: z.int().nullable().optional(),
-    duration_ms: z.int().nullable().optional(),
-    failed_samples: z.int().optional(),
-  })
-  .passthrough();
-
-const GetSubnetHealthIncidentsSurfaceSchema = z
-  .object({
-    surface_id: z.string().nullable().optional(),
-    samples: z.int().optional(),
-    uptime_ratio: z.number().nullable().optional(),
-    incident_count: z.int().optional(),
-    downtime_ms: z.int().optional(),
-    // #8824: sub-MIN_INCIDENT_SAMPLES gap-islands excluded from incidents --
-    // island count + their total failed probes -- mirrors the REST route.
-    transient_failure_count: z.int().optional(),
-    transient_failed_samples: z.int().optional(),
-    incidents: z.array(GetSubnetHealthIncidentSchema).optional(),
-  })
-  .passthrough();
-
-export const GetSubnetHealthIncidentsOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    netuid: netuidSchema(),
-    window: z.string().nullable().optional(),
-    observed_at: z.string().nullable().optional(),
-    source: z.string().nullable().optional(),
-    // #8824: the incident-qualifying threshold, mirrors the REST route.
-    min_incident_samples: z.int().optional(),
-    surfaces: z.array(GetSubnetHealthIncidentsSurfaceSchema),
-  })
-  .passthrough();
+export const GetSubnetHealthIncidentsOutputSchema =
+  HealthIncidentsArtifactSchema;
 export type GetSubnetHealthIncidentsOutput = z.infer<
   typeof GetSubnetHealthIncidentsOutputSchema
 >;

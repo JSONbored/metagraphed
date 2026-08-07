@@ -1,7 +1,8 @@
 // MCP tool `get_economics` (types-epic E pilot batch, #7863). The handler
 // (src/network-economics.ts's loadNetworkEconomics) calls resolveLiveEconomics
 // -- the SAME live/R2-fallback tier the REST `economics` route uses -- so the
-// underlying per-subnet row data is identical to schemas-src/routes/economics.ts's
+// underlying per-subnet row data is identical to
+// schemas-src/routes/economics.ts's
 // SubnetEconomicsSchema. The hand-written wire schema this replaces
 // (GET_ECONOMICS_OUTPUT_SCHEMA, src/network-economics.ts) deliberately left
 // `summary`/`subnets` shallow (bare `{type:["object","null"]}` /

@@ -1,7 +1,8 @@
 // MCP tools `get_account_portfolio`, `get_account_positions`,
 // `get_account_snapshot` (types-epic E batch 6, #8069). The first two mirror a
 // GET /api/v1/accounts/{ss58}/{portfolio,positions} route; get_account_snapshot
-// has no REST equivalent -- it fans out to five other tools' own live loaders in
+// has no REST equivalent -- it fans out to five other tools' own live loaders
+// in
 // one call.
 //
 // This file's header used to claim none of these routes were "covered by

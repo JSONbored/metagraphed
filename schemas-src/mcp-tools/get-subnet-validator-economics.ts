@@ -1,9 +1,18 @@
-// MCP tool contract for get_subnet_validator_economics (#9323, #9327) — the agent-facing
-// twin of GET /api/v1/subnets/{netuid}/validator-economics.
+// MCP tools `get_subnet_validator_economics_history`,
+// `list_validator_economics`, `get_subnet_validator_economics`.
+// Mirror GET /api/v1/subnets/{netuid}/validator-economics/history, GET
+// /api/v1/validators/economics, GET
+// /api/v1/subnets/{netuid}/validator-economics.
 //
-// The output is deliberately `.passthrough()` on the artifact: the REST payload carries
-// `field_sources`, which the tool returns verbatim so an agent can tell a derived floor
-// from a measured hyperparameter without a second call.
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import {
   SubnetValidatorEconomicsArtifactSchema,
@@ -35,7 +44,7 @@ export type GetSubnetValidatorEconomicsInput = z.infer<
 >;
 
 export const GetSubnetValidatorEconomicsOutputSchema =
-  SubnetValidatorEconomicsArtifactSchema.passthrough();
+  SubnetValidatorEconomicsArtifactSchema;
 export type GetSubnetValidatorEconomicsOutput = z.infer<
   typeof GetSubnetValidatorEconomicsOutputSchema
 >;
@@ -78,7 +87,7 @@ export type ListValidatorEconomicsInput = z.infer<
 >;
 
 export const ListValidatorEconomicsOutputSchema =
-  ValidatorEconomicsRankingArtifactSchema.passthrough();
+  ValidatorEconomicsRankingArtifactSchema;
 export type ListValidatorEconomicsOutput = z.infer<
   typeof ListValidatorEconomicsOutputSchema
 >;
@@ -111,4 +120,4 @@ export type GetSubnetValidatorEconomicsHistoryInput = z.infer<
 >;
 
 export const GetSubnetValidatorEconomicsHistoryOutputSchema =
-  SubnetValidatorEconomicsHistoryArtifactSchema.passthrough();
+  SubnetValidatorEconomicsHistoryArtifactSchema;

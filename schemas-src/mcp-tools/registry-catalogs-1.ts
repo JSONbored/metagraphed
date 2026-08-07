@@ -1,16 +1,22 @@
-// MCP tools `list_providers`, `list_surfaces`, `list_candidates` (types-epic
-// E batch 9, #8073). Unlike every other tool converted so far in this
-// epic, these three are NOT defined inline in src/mcp-server.ts -- their
-// `LIST_X_MCP_TOOL`/`LIST_X_OUTPUT_SCHEMA` hand-written literals live in
-// src/providers-mcp.ts, src/surfaces-mcp.ts, and src/candidates-mcp.ts
-// respectively, imported into mcp-server.ts's MCP_TOOLS array via object
-// spread (`{ ...LIST_PROVIDERS_MCP_TOOL, async handler(...) {...} }`). The
-// z.toJSONSchema(...) wiring for these three happens in THEIR OWN files, not
-// mcp-server.ts. None mirror an existing schemas-src/routes/ REST schema --
-// modeled fresh, matching each hand-written literal field-for-field.
+// MCP tools `list_providers`, `list_surfaces`, `list_candidates`.
+// Mirror GET /api/v1/providers, GET /api/v1/surfaces, GET /api/v1/candidates.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// What the copies were publishing:
+//   list_providers: 1 bare `{"type":"object"}` site.
+//   list_surfaces: 1 bare `{"type":"object"}` site.
+//   list_candidates: 1 bare `{"type":"object"}` site.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import {
-  OpenObjectSchema,
   fieldsStringSchema,
   kindSchema,
   limitSchema,
@@ -20,6 +26,9 @@ import {
   providerSlugSchema,
   sortSchema,
 } from "./shared.ts";
+import { CandidatesArtifactSchema } from "../routes/candidates-evidence.ts";
+import { SurfacesArtifactSchema } from "../routes/endpoints-pools.ts";
+import { ProvidersArtifactSchema } from "../routes/providers-rpc.ts";
 
 // Symbolic in each hand-written original (src/contracts.ts's QUERY_ENUMS /
 // API_QUERY_COLLECTIONS.*.sort_fields), cross-checked against the actual
@@ -65,20 +74,7 @@ export const ListProvidersInputSchema = z
   .strict();
 export type ListProvidersInput = z.infer<typeof ListProvidersInputSchema>;
 
-export const ListProvidersOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    schema_version: z.union([z.string(), z.int()]).nullable().optional(),
-    providers: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListProvidersOutputSchema = ProvidersArtifactSchema;
 export type ListProvidersOutput = z.infer<typeof ListProvidersOutputSchema>;
 
 const SURFACE_KINDS = [
@@ -126,20 +122,7 @@ export const ListSurfacesInputSchema = z
   .strict();
 export type ListSurfacesInput = z.infer<typeof ListSurfacesInputSchema>;
 
-export const ListSurfacesOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    schema_version: z.union([z.string(), z.int()]).nullable().optional(),
-    surfaces: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListSurfacesOutputSchema = SurfacesArtifactSchema;
 export type ListSurfacesOutput = z.infer<typeof ListSurfacesOutputSchema>;
 
 const CANDIDATE_STATES = [
@@ -192,22 +175,5 @@ export const ListCandidatesInputSchema = z
   .strict();
 export type ListCandidatesInput = z.infer<typeof ListCandidatesInputSchema>;
 
-export const ListCandidatesOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    notes: z
-      .union([z.array(z.string()), z.string()])
-      .nullable()
-      .optional(),
-    schema_version: z.union([z.string(), z.int()]).nullable().optional(),
-    candidates: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListCandidatesOutputSchema = CandidatesArtifactSchema;
 export type ListCandidatesOutput = z.infer<typeof ListCandidatesOutputSchema>;

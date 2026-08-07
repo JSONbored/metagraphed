@@ -1,46 +1,21 @@
-// get_indexer_lag (#9620): how long after a block is produced it becomes
-// queryable here, mirroring GET /api/v1/chain/indexer-lag.
+// MCP tool `get_indexer_lag`.
+// Mirrors GET /api/v1/chain/indexer-lag.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
+import { IndexerLagArtifactSchema } from "../routes/indexer-lag.ts";
 
 /** No inputs: the route measures one window and has nothing to filter. */
 export const GetIndexerLagInputSchema = z.object({}).strict();
 export type GetIndexerLagInput = z.infer<typeof GetIndexerLagInputSchema>;
 
-export const GetIndexerLagOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    block_count: z.int().nullable(),
-    window: z
-      .object({
-        oldest_block: z.int().nullable(),
-        newest_block: z.int().nullable(),
-        oldest_observed_at: z.string().nullable(),
-        newest_observed_at: z.string().nullable(),
-      })
-      .passthrough()
-      .nullable(),
-    write_latency_ms: z
-      .object({
-        min: z.number().nullable(),
-        p50: z.number().nullable(),
-        p95: z.number().nullable(),
-        p99: z.number().nullable(),
-        max: z.number().nullable(),
-        mean: z.number().nullable(),
-      })
-      .passthrough()
-      .nullable(),
-    head_age_ms: z.number().nullable(),
-    measured_at: z.string(),
-    // Present ONLY on a decline. A model seeing null measurements must read
-    // this before concluding the lane is instantaneous.
-    degraded: z
-      .object({
-        reason: z.enum(["no_retained_blocks", "unavailable"]),
-        detail: z.string().optional(),
-      })
-      .passthrough()
-      .optional(),
-  })
-  .passthrough();
+export const GetIndexerLagOutputSchema = IndexerLagArtifactSchema;
 export type GetIndexerLagOutput = z.infer<typeof GetIndexerLagOutputSchema>;

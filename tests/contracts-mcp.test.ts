@@ -25,10 +25,21 @@ const SAMPLE_CONTRACTS = {
   openapi_url: "/metagraph/openapi.json",
   type_definitions_url: "/metagraph/types.d.ts",
   notes: ["Native Bittensor chain data is canonical."],
+  status_domain: null,
+  // A real captured /api/v1/contracts row. #9796 derived get_contracts's
+  // outputSchema from ContractsArtifactSchema, which types every entry; the
+  // three-key stub only ever satisfied the open object the copy published.
   artifacts: [
     {
+      content_type: "application/json",
+      contract_version: "2026-07-03.2",
+      description:
+        "Public artifact contract metadata for metagraph.sh consumers.",
       id: "contracts",
       path: "/metagraph/contracts.json",
+      retirement: null,
+      schema_ref: "#/components/schemas/ContractsArtifact",
+      status: "live",
       storage_tier: "dual",
     },
   ],

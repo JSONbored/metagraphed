@@ -2,7 +2,8 @@
 // mirror -- src/mcp-server.ts's own handler builds this shape directly from
 // /metagraph/search.json + a ranking score, it isn't a route response. Both
 // schemas are modeled from the hand-written JSON Schema literals they
-// replace (src/mcp-server.ts's MCP_TOOLS entry + TOOL_OUTPUT_SCHEMAS.search_subnets),
+// replace (src/mcp-server.ts's MCP_TOOLS entry +
+// TOOL_OUTPUT_SCHEMAS.search_subnets),
 // field for field, preserving the EXACT wire contract -- required sets,
 // nullability, and additionalProperties posture all carried over unchanged.
 // This is a stricter constraint than types-epic B's OpenAPI components: no

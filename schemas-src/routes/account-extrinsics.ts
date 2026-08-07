@@ -49,8 +49,15 @@ export const AccountExtrinsicsArtifactSchema = z
     schema_version: z.int(),
     ss58: z.string(),
     extrinsic_count: z.int().min(0),
-    limit: z.int(),
-    offset: z.int(),
+    // NULLABLE, and this is not defensive (#9796). The REST layer defaults
+    // `limit`/`offset` before the loader runs, so a live route response always
+    // carries integers -- which is why validate:api never saw this. The same
+    // loader also serves the MCP tool, which passes the caller's arguments
+    // straight through, and an omitted limit reaches it as undefined:
+    // `limit: limit ?? null` then emits null. The contract said that was
+    // impossible.
+    limit: z.int().nullable(),
+    offset: z.int().nullable(),
     next_cursor: z.string().nullable().optional(),
     extrinsics: z.array(ExtrinsicSchema),
   })

@@ -1,5 +1,6 @@
 // MCP tool `get_domain_summary` (types-epic E batch 4, #8067). Composite
-// tool mirroring EITHER GET /api/v1/domains/{tag}/summary (DomainSummaryArtifact
+// tool mirroring EITHER GET /api/v1/domains/{tag}/summary
+// (DomainSummaryArtifact
 // shape) OR GET /api/v1/domains (DomainsArtifact shape), chosen by whether
 // `domain` was passed -- schemas-src/routes/domains.ts (#8055) models each
 // REST shape separately and strictly; this tool's single return value can be

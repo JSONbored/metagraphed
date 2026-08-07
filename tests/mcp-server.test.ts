@@ -3529,8 +3529,16 @@ describe("MCP tools (injected deps)", () => {
     )?.outputSchema;
     const deps = makeDeps({
       "/metagraph/build-summary.json": {
+        // A real captured production row, trimmed to one item. Deriving these
+        // tool schemas from their route ArtifactSchema (#9796) made the item
+        // shape specific; a three-key stub satisfied the open object the copy
+        // used to publish and nothing else.
         schema_version: 1,
-        artifact_count: 0,
+        generated_at: "2026-01-01T00:00:00Z",
+        artifact_count: 5,
+        artifact_size_bytes: 4025343,
+        subnet_count: 129,
+        surface_count: 3493,
         artifacts: [],
       },
     });
@@ -5805,7 +5813,7 @@ describe("MCP stake-flow and movers economics tools", () => {
         },
       ]),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -5858,7 +5866,7 @@ describe("MCP stake-flow and movers economics tools", () => {
         },
       ]),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -5911,7 +5919,7 @@ describe("MCP stake-flow and movers economics tools", () => {
         },
       ]),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -5964,7 +5972,7 @@ describe("MCP stake-flow and movers economics tools", () => {
         },
       ]),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -6017,7 +6025,7 @@ describe("MCP stake-flow and movers economics tools", () => {
         },
       ]),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -6070,7 +6078,7 @@ describe("MCP stake-flow and movers economics tools", () => {
         },
       ]),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -6123,7 +6131,7 @@ describe("MCP stake-flow and movers economics tools", () => {
         },
       ]),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -6408,7 +6416,7 @@ describe("MCP get_subnet_stake_moves", () => {
         newest_observed: 1_717_500_000_000,
       }),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 });
@@ -6448,7 +6456,7 @@ describe("MCP get_subnet_stake_transfers", () => {
         newest_observed: 1_717_500_000_000,
       }),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 });
@@ -6487,7 +6495,7 @@ describe("MCP get_subnet_registrations", () => {
         newest_observed: 1_717_500_000_000,
       }),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 });
@@ -6530,7 +6538,7 @@ describe("MCP get_subnet_weights", () => {
         newest_observed: 1_750_000_000_000,
       }),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 });
@@ -6639,7 +6647,7 @@ describe("MCP get_subnet_serving", () => {
         newest_observed: 1_750_000_000_000,
       }),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 });
@@ -6682,7 +6690,7 @@ describe("MCP get_subnet_prometheus", () => {
         newest_observed: 1_750_000_000_000,
       }),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 });
@@ -6829,7 +6837,7 @@ describe("MCP get_subnet_yield_history", () => {
         },
       },
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 });
@@ -11857,7 +11865,7 @@ describe("MCP economics + metagraph data tools", () => {
         turnoverRow("2026-06-30", 1, "V2"),
       ]),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -11968,7 +11976,7 @@ describe("MCP economics + metagraph data tools", () => {
         stakeFlowRow(1, "StakeRemoved", 20, 2),
       ]),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -12084,7 +12092,7 @@ describe("MCP economics + metagraph data tools", () => {
         alphaVolumeRow(1, "StakeRemoved", 20, 20, 2),
       ]),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -12192,7 +12200,7 @@ describe("MCP economics + metagraph data tools", () => {
         weightsRow(2, 10, 4),
       ]),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -12343,7 +12351,7 @@ describe("MCP economics + metagraph data tools", () => {
         },
       }),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -12448,7 +12456,7 @@ describe("MCP economics + metagraph data tools", () => {
         stakeMovesRow(2, 10, 4),
       ]),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -12557,7 +12565,7 @@ describe("MCP economics + metagraph data tools", () => {
         stakeTransfersRow(2, 10, 4),
       ]),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -12666,7 +12674,7 @@ describe("MCP economics + metagraph data tools", () => {
         axonRemovalsRow(2, 10, 4),
       ]),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -12775,7 +12783,7 @@ describe("MCP economics + metagraph data tools", () => {
         chainDeregistrationsRow(2, 10, 4),
       ]),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -12876,7 +12884,7 @@ describe("MCP economics + metagraph data tools", () => {
         chainServingRow(2, 10, 4),
       ]),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -12981,7 +12989,7 @@ describe("MCP economics + metagraph data tools", () => {
         chainPrometheusRow(2, 10, 4),
       ]),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -13131,7 +13139,7 @@ describe("MCP economics + metagraph data tools", () => {
         transferPairRow("C", "D", 100, 20),
       ]),
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -13328,11 +13336,26 @@ describe("MCP economics + metagraph data tools", () => {
     const globalLiveKv = {
       last_run_at: FRESH_RUN,
       summary: { surface_count: 1, status_counts: { ok: 1 } },
-      subnets: [{ netuid: 0, status: "ok" }],
+      // The per-subnet counts a live rollup always carries (verified against
+      // GET /api/v1/health). Deriving this tool's schema from
+      // HealthSummaryArtifactSchema (#9796) made them required; the two-key
+      // stub only ever satisfied the open object the copy published.
+      subnets: [
+        {
+          netuid: 0,
+          name: "root",
+          status: "ok",
+          surface_count: 8,
+          ok_count: 8,
+          degraded_count: 0,
+          failed_count: 0,
+          unknown_count: 0,
+        },
+      ],
     };
     const deps = makeDeps({}, { "health:current": globalLiveKv });
     const res = await callTool("get_network_health", {}, { deps });
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -13487,7 +13510,7 @@ describe("MCP economics + metagraph data tools", () => {
       { date: HEALTH_HISTORY_BLOB.date },
       { deps },
     );
-    const validate = new Ajv2020().compile(schema);
+    const validate = new Ajv2020({ strict: false }).compile(schema);
     assert.ok(validate(res.body.result.structuredContent));
   });
 
@@ -18015,7 +18038,22 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     )?.outputSchema;
     const deps = makeDeps({
       "/metagraph/providers.json": {
-        providers: [{ id: "datura", kind: "data-provider", name: "Datura" }],
+        // A real captured production row, trimmed to one item. Deriving these
+        // tool schemas from their route ArtifactSchema (#9796) made the item
+        // shape specific; a three-key stub satisfied the open object the copy
+        // used to publish and nothing else.
+        schema_version: 1,
+        generated_at: "2026-01-01T00:00:00Z",
+        providers: [
+          {
+            id: "404-gen",
+            name: "404-GEN",
+            kind: "subnet-team",
+            authority: "community",
+            website_url: "https://www.404.xyz/",
+            schema_version: 1,
+          },
+        ],
       },
     });
     const res = await callTool("list_providers", { limit: 1 }, { deps });
@@ -18166,7 +18204,24 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     )?.outputSchema;
     const deps = makeDeps({
       "/metagraph/surfaces.json": {
-        surfaces: [{ netuid: 7, kind: "openapi", provider: "datura" }],
+        // A real captured production row, trimmed to one item. Deriving these
+        // tool schemas from their route ArtifactSchema (#9796) made the item
+        // shape specific; a three-key stub satisfied the open object the copy
+        // used to publish and nothing else.
+        schema_version: 1,
+        generated_at: "2026-01-01T00:00:00Z",
+        surfaces: [
+          {
+            id: "bittensor-networks-docs",
+            netuid: 0,
+            kind: "docs",
+            provider: "opentensor",
+            url: "https://docs.learnbittensor.org/concepts/bittensor-networks",
+            authority: "official",
+            auth_required: false,
+            public_safe: true,
+          },
+        ],
       },
     });
     const res = await callTool("list_surfaces", { limit: 1 }, { deps });
@@ -18849,7 +18904,34 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     )?.outputSchema;
     const deps = makeDeps({
       "/metagraph/evidence-ledger.json": {
-        claims: [{ subject: "SN7", claim: "verified openapi" }],
+        // A real captured production row, trimmed to one item. Deriving these
+        // tool schemas from their route ArtifactSchema (#9796) made the item
+        // shape specific; a three-key stub satisfied the open object the copy
+        // used to publish and nothing else.
+        schema_version: 1,
+        generated_at: "2026-01-01T00:00:00Z",
+        summary: {
+          candidate_claim_count: 250,
+          claim_count: 3872,
+          subnet_claim_count: 129,
+          surface_claim_count: 3493,
+        },
+        claims: [
+          {
+            claim:
+              "root Backprop Finance dashboard is a candidate dashboard surface for SN0.",
+            confidence: "medium",
+            limits:
+              "Candidate records are discovery leads and are not promoted registry truth until verification and maintainer review.",
+            source_tier: "third-party-index",
+            source_type: "backprop-dashboard",
+            source_url: "https://backprop.finance/dtao/subnets/0-root",
+            subject: "candidate:sn-0-backprop-dashboard",
+            support_summary:
+              "Universal Backprop Finance dTAO subnet dashboard candidate. Third-party enrichment, not protocol authority.",
+            verified_at: null,
+          },
+        ],
       },
     });
     const res = await callTool("list_evidence", { limit: 1 }, { deps });
@@ -18976,7 +19058,30 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     )?.outputSchema;
     const deps = makeDeps({
       "/metagraph/source-snapshots.json": {
-        sources: [{ id: "chain", hash: "0xabc", record_count: 42 }],
+        // A real captured production row, trimmed to one item. Deriving these
+        // tool schemas from their route ArtifactSchema (#9796) made the item
+        // shape specific; a three-key stub satisfied the open object the copy
+        // used to publish and nothing else.
+        schema_version: 1,
+        generated_at: "2026-01-01T00:00:00Z",
+        summary: {
+          adapter_snapshot_count: 65,
+          candidate_count: 2174,
+          overlay_count: 129,
+          provider_count: 137,
+          source_count: 71,
+          verification_result_count: 2174,
+        },
+        sources: [
+          {
+            captured_at: "2026-08-07T10:09:18.055Z",
+            hash: "006308d85c72f62872e168dd5bbda6c0e9f07ec39ca093e27d5c7fa6073ff7f2",
+            id: "adapter:ain",
+            kind: "adapter-snapshot",
+            path: "registry/adapters/latest/ain.json",
+            record_count: 2,
+          },
+        ],
       },
     });
     const res = await callTool("list_source_snapshots", { limit: 1 }, { deps });
@@ -19475,8 +19580,32 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     )?.outputSchema;
     const deps = makeDeps({
       "/metagraph/contracts.json": {
+        // A real captured production row, trimmed to one item. Deriving these
+        // tool schemas from their route ArtifactSchema (#9796) made the item
+        // shape specific; a three-key stub satisfied the open object the copy
+        // used to publish and nothing else.
         schema_version: 1,
-        artifacts: [{ id: "contracts", path: "/metagraph/contracts.json" }],
+        generated_at: "2026-01-01T00:00:00Z",
+        name: "Metagraphed public backend artifact contract",
+        base_path: "/metagraph",
+        primary_domain: "api.metagraph.sh",
+        status_domain: null,
+        openapi_url: "/metagraph/openapi.json",
+        type_definitions_url: "/metagraph/types.d.ts",
+        artifacts: [
+          {
+            content_type: "application/json",
+            contract_version: "2026-07-03.2",
+            description:
+              "Public artifact contract metadata for metagraph.sh consumers.",
+            id: "contracts",
+            path: "/metagraph/contracts.json",
+            retirement: null,
+            schema_ref: "#/components/schemas/ContractsArtifact",
+            status: "live",
+            storage_tier: "dual",
+          },
+        ],
       },
     });
     const res = await callTool("get_contracts", {}, { deps });

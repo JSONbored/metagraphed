@@ -1,9 +1,18 @@
-// MCP tools `list_subnet_apis`, `get_api_schema`, `get_fixture`,
-// `get_provider_detail` (types-epic E batch 9, #8073). Each is defined
-// inline in src/mcp-server.ts's MCP_TOOLS array (unlike this batch's other
-// 13 tools, which live in separate src/*-mcp.ts files). None mirror an
-// existing schemas-src/routes/ REST schema -- modeled fresh, matching each
-// hand-written literal field-for-field.
+// MCP tool `get_provider_detail`.
+// Mirrors GET /api/v1/providers/{slug}.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// What the copies were publishing:
+//   get_provider_detail: 2 bare `{"type":"object"}` sites.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import {
   OpenArraySchema,
@@ -11,6 +20,7 @@ import {
   netuidSchema,
   surfaceIdSchema,
 } from "./shared.ts";
+import { ProviderArtifactSchema } from "../routes/providers-rpc.ts";
 
 export const ListSubnetApisInputSchema = z
   .object({
@@ -92,20 +102,7 @@ export type GetProviderDetailInput = z.infer<
 // when include_endpoints is set. Both are operator-controlled artifact
 // payloads, so nothing is required in the hand-written original; the keys
 // below describe each shape when present.
-export const GetProviderDetailOutputSchema = z
-  .object({
-    id: z.string().nullable().optional(),
-    slug: z.string().nullable().optional(),
-    name: z.string().nullable().optional(),
-    authority: z.string().nullable().optional(),
-    kind: z.string().nullable().optional(),
-    provider: OpenObjectSchema.nullable().optional(),
-    endpoints: z
-      .union([OpenObjectSchema, OpenArraySchema])
-      .nullable()
-      .optional(),
-  })
-  .passthrough();
+export const GetProviderDetailOutputSchema = ProviderArtifactSchema;
 export type GetProviderDetailOutput = z.infer<
   typeof GetProviderDetailOutputSchema
 >;

@@ -1,13 +1,18 @@
-// MCP tool `get_subnet_history` (types-epic E batch 4, #8067). Mirrors GET
-// /api/v1/subnets/{netuid}/history, covered by schemas-src/routes/
-// subnet-history.ts (#8055) -- NOT reused: that REST schema's `window`
-// field is required (bare nullable string, no enum); this tool's own
-// hand-written original leaves `window` optional and constrains it to a
-// 5-value enum. Reusing would both loosen (drop the enum) and tighten
-// (require the key) the existing contract in different ways -- modeled
-// fresh instead, matching the original exactly.
+// MCP tool `get_subnet_history`.
+// Mirrors GET /api/v1/subnets/{netuid}/history.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import { netuidSchema, windowSchema } from "./shared.ts";
+import { SubnetHistoryArtifactSchema } from "../routes/subnet-history.ts";
 
 const HISTORY_WINDOWS = ["7d", "30d", "90d", "1y", "all"] as const;
 
@@ -21,25 +26,7 @@ export type GetSubnetHistoryInput = z.infer<typeof GetSubnetHistoryInputSchema>;
 
 // objectItems(...) properties, none required at the item level (see
 // search-subnets.ts's same note from the pilot batch).
-const SubnetHistoryPointSchema = z
-  .object({
-    snapshot_date: z.string().nullable().optional(),
-    neuron_count: z.int().nullable().optional(),
-    validator_count: z.int().nullable().optional(),
-    total_stake_alpha: z.unknown().optional(),
-    total_emission_alpha: z.unknown().optional(),
-  })
-  .passthrough();
-
-export const GetSubnetHistoryOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    netuid: netuidSchema(),
-    window: z.string().nullable().optional(),
-    point_count: z.int(),
-    points: z.array(SubnetHistoryPointSchema),
-  })
-  .passthrough();
+export const GetSubnetHistoryOutputSchema = SubnetHistoryArtifactSchema;
 export type GetSubnetHistoryOutput = z.infer<
   typeof GetSubnetHistoryOutputSchema
 >;

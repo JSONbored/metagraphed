@@ -1,36 +1,31 @@
-// MCP tools `list_fixtures`, `list_schemas` (types-epic E batch 11, #8074).
-// Both are defined inline in src/mcp-server.ts's MCP_TOOLS array, take no
-// input, and mirror GET /api/v1/fixtures and GET /api/v1/schemas
-// respectively. Neither mirrors an existing schemas-src/routes/ REST schema
-// -- modeled fresh, matching each hand-written literal field-for-field.
-// `list_schemas`' `notes` is a PLAIN nullable string, unlike the
-// array-or-string-or-null `notes` shape most of this batch's other list_*
-// tools use (see shared.ts's NotesFieldSchema) -- a genuine, deliberate
-// difference, not something to "fix" to match its siblings.
+// MCP tools `list_fixtures`, `list_schemas`.
+// Mirror GET /api/v1/fixtures, GET /api/v1/schemas.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// What the copies were publishing:
+//   list_fixtures: 1 bare `{"type":"object"}` site.
+//   list_schemas: 1 bare `{"type":"object"}` site.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import { FixturesIndexArtifactSchema } from "../routes/fixtures.ts";
+import { SchemaIndexArtifactSchema } from "../routes/subnet-profiles.ts";
 
 export const ListFixturesInputSchema = z.object({}).strict();
 export type ListFixturesInput = z.infer<typeof ListFixturesInputSchema>;
 
-export const ListFixturesOutputSchema = z
-  .object({
-    candidate_count: z.int().optional(),
-    coverage: z.array(OpenObjectSchema).optional(),
-    generated_at: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListFixturesOutputSchema = FixturesIndexArtifactSchema;
 export type ListFixturesOutput = z.infer<typeof ListFixturesOutputSchema>;
 
 export const ListSchemasInputSchema = z.object({}).strict();
 export type ListSchemasInput = z.infer<typeof ListSchemasInputSchema>;
 
-export const ListSchemasOutputSchema = z
-  .object({
-    schemas: z.array(OpenObjectSchema).optional(),
-    observed_at: z.string().nullable().optional(),
-    generated_at: z.string().nullable().optional(),
-    notes: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListSchemasOutputSchema = SchemaIndexArtifactSchema;
 export type ListSchemasOutput = z.infer<typeof ListSchemasOutputSchema>;

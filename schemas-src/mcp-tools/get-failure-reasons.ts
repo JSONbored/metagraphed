@@ -1,8 +1,19 @@
-// get_failure_reasons (#9622): why surfaces fail and whether the mix is
-// changing, mirroring GET /api/v1/health/failure-reasons.
+// MCP tool `get_failure_reasons`.
+// Mirrors GET /api/v1/health/failure-reasons.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import { kindStringSchema, netuidSchema } from "./shared.ts";
 import { FAILURE_REASONS_WINDOWS } from "../../src/route-limits.ts";
+import { FailureReasonsArtifactSchema } from "../routes/failure-reasons.ts";
 
 export const GetFailureReasonsInputSchema = z
   .object({
@@ -21,49 +32,7 @@ export type GetFailureReasonsInput = z.infer<
   typeof GetFailureReasonsInputSchema
 >;
 
-export const GetFailureReasonsOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    window: z.string().nullable(),
-    netuid: netuidSchema().nullable(),
-    kind: z.string().nullable(),
-    days_covered: z.int().nullable(),
-    oldest_day: z.string().nullable(),
-    newest_day: z.string().nullable(),
-    total_checks: z.int().nullable(),
-    failing_checks: z.int().nullable(),
-    failure_rate: z.number().nullable(),
-    reasons: z.array(
-      z
-        .object({
-          classification: z.string(),
-          is_failure: z.boolean(),
-          checks: z.int(),
-          share: z.number().nullable(),
-          failure_share: z.number().nullable(),
-        })
-        .passthrough(),
-    ),
-    series: z.array(
-      z
-        .object({
-          day: z.string(),
-          total_checks: z.int(),
-          failing_checks: z.int(),
-          failure_rate: z.number().nullable(),
-          by_classification: z.record(z.string(), z.int()),
-        })
-        .passthrough(),
-    ),
-    // Present ONLY on a decline. An empty window is a MEASUREMENT -- the prober
-    // recorded nothing in that range -- so a model must read this before
-    // concluding the read failed.
-    degraded: z
-      .object({ reason: z.enum(["unavailable"]) })
-      .passthrough()
-      .optional(),
-  })
-  .passthrough();
+export const GetFailureReasonsOutputSchema = FailureReasonsArtifactSchema;
 export type GetFailureReasonsOutput = z.infer<
   typeof GetFailureReasonsOutputSchema
 >;

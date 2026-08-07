@@ -4926,9 +4926,9 @@ export interface components {
         AccountEventsArtifact: {
             event_count: number;
             events: components["schemas"]["AccountEvent"][];
-            limit: number;
+            limit: number | null;
             next_cursor?: string | null;
-            offset: number;
+            offset: number | null;
             schema_version: number;
             ss58: string;
         } & {
@@ -4950,9 +4950,9 @@ export interface components {
                 summary?: string | null;
                 tip_tao?: number | null;
             }[];
-            limit: number;
+            limit: number | null;
             next_cursor?: string | null;
-            offset: number;
+            offset: number | null;
             schema_version: number;
             ss58: string;
         } & {
@@ -4970,9 +4970,9 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
-            limit: number;
+            limit: number | null;
             next_cursor?: string | null;
-            offset: number;
+            offset: number | null;
             schema_version: number;
             ss58: string;
         } & {
@@ -5346,9 +5346,9 @@ export interface components {
             [key: string]: unknown;
         };
         AccountTransfersArtifact: {
-            limit: number;
+            limit: number | null;
             next_cursor?: string | null;
-            offset: number;
+            offset: number | null;
             schema_version: number;
             ss58: string;
             transfer_count: number;
@@ -5773,8 +5773,8 @@ export interface components {
             block_number: number | null;
             event_count: number;
             events: components["schemas"]["AccountEvent"][];
-            limit: number;
-            offset: number;
+            limit: number | null;
+            offset: number | null;
             ref: string | null;
             schema_version: number;
         } & {
@@ -5799,8 +5799,8 @@ export interface components {
                 summary: string | null;
                 tip_tao: number | null;
             }[];
-            limit: number;
-            offset: number;
+            limit: number | null;
+            offset: number | null;
             ref: string | null;
             schema_version: number;
         } & {
@@ -5818,9 +5818,9 @@ export interface components {
                 parent_hash: string | null;
                 spec_version: number | null;
             }[];
-            limit: number;
+            limit: number | null;
             next_cursor: string | null;
-            offset: number;
+            offset: number | null;
             schema_version: number;
         } & {
             [key: string]: unknown;
@@ -7770,9 +7770,9 @@ export interface components {
                 summary: string | null;
                 tip_tao: number | null;
             }[];
-            limit: number;
+            limit: number | null;
             next_cursor: string | null;
-            offset: number;
+            offset: number | null;
             schema_version: number;
         } & {
             [key: string]: unknown;

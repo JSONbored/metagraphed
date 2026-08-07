@@ -1,4 +1,5 @@
-// get_tao_usd (#9609): the TAO/USD index, mirroring GET /api/v1/network/tao-usd.
+// get_tao_usd (#9609): the TAO/USD index, mirroring GET
+// /api/v1/network/tao-usd.
 import { z } from "zod";
 import { windowSchema } from "./shared.ts";
 

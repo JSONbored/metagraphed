@@ -1,9 +1,18 @@
-// MCP tool `get_subnet_health_percentiles` (types-epic E batch 2, #8065).
-// Mirrors GET /api/v1/subnets/{netuid}/health/percentiles, which is not one
-// of schemas-src/routes/'s covered pilot routes -- no existing Zod schema to
-// reuse. Modeled fresh, shallow, from the hand-written literal it replaces.
+// MCP tool `get_subnet_health_percentiles`.
+// Mirrors GET /api/v1/subnets/{netuid}/health/percentiles.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import { netuidSchema, windowSchema } from "./shared.ts";
+import { HealthPercentilesArtifactSchema } from "../routes/health-surfaces.ts";
 
 const HEALTH_WINDOWS = ["7d", "30d"] as const;
 
@@ -17,35 +26,8 @@ export type GetSubnetHealthPercentilesInput = z.infer<
   typeof GetSubnetHealthPercentilesInputSchema
 >;
 
-const LatencyPercentilesSchema = z
-  .object({
-    p50: z.int().nullable().optional(),
-    p95: z.int().nullable().optional(),
-    p99: z.int().nullable().optional(),
-    avg: z.int().nullable().optional(),
-    min: z.int().nullable().optional(),
-    max: z.int().nullable().optional(),
-  })
-  .passthrough();
-
-const GetSubnetHealthPercentilesSurfaceSchema = z
-  .object({
-    surface_id: z.string().nullable().optional(),
-    samples: z.int().optional(),
-    latency_ms: LatencyPercentilesSchema.optional(),
-  })
-  .passthrough();
-
-export const GetSubnetHealthPercentilesOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    netuid: netuidSchema(),
-    window: z.string().nullable().optional(),
-    observed_at: z.string().nullable().optional(),
-    source: z.string().nullable().optional(),
-    surfaces: z.array(GetSubnetHealthPercentilesSurfaceSchema),
-  })
-  .passthrough();
+export const GetSubnetHealthPercentilesOutputSchema =
+  HealthPercentilesArtifactSchema;
 export type GetSubnetHealthPercentilesOutput = z.infer<
   typeof GetSubnetHealthPercentilesOutputSchema
 >;

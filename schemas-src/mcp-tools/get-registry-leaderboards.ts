@@ -1,11 +1,21 @@
-// MCP tool `get_registry_leaderboards` (types-epic E batch 4, #8067). Mirrors
-// GET /api/v1/registry/leaderboards, which is not one of schemas-src/routes/'s
-// covered pilot routes -- no existing Zod schema to reuse. Modeled fresh,
-// shallow, from the hand-written literal it replaces. Board enum hardcoded
-// from src/health-serving.ts's LEADERBOARD_BOARDS (base 6 boards +
-// ECONOMIC_BOARD_SPECS's 6 keys) at the time of writing.
+// MCP tool `get_registry_leaderboards`.
+// Mirrors GET /api/v1/registry/leaderboards.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// What the copies were publishing:
+//   get_registry_leaderboards: 1 bare `{"type":"object"}` site.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
-import { OpenObjectSchema, limitSchema } from "./shared.ts";
+import { limitSchema } from "./shared.ts";
+import { RegistryLeaderboardsArtifactSchema } from "../routes/registry-summary-leaderboards.ts";
 
 const LEADERBOARD_BOARDS = [
   "healthiest",
@@ -36,14 +46,8 @@ export type GetRegistryLeaderboardsInput = z.infer<
   typeof GetRegistryLeaderboardsInputSchema
 >;
 
-export const GetRegistryLeaderboardsOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    board: z.string().nullable().optional(),
-    observed_at: z.string().nullable().optional(),
-    boards: OpenObjectSchema,
-  })
-  .passthrough();
+export const GetRegistryLeaderboardsOutputSchema =
+  RegistryLeaderboardsArtifactSchema;
 export type GetRegistryLeaderboardsOutput = z.infer<
   typeof GetRegistryLeaderboardsOutputSchema
 >;
