@@ -232,7 +232,23 @@
     //
     // Rollback is deleting a name. When this holds every table D1 has, the D1
     // binding comes off.
-    "NEON_SOLE_STORE_TABLES": "",
+    //
+    // THE FIRST TEN (#9987). The whole user-state tier, moved together because
+    // its two runner-acquiring helpers are the unit that moves -- see
+    // userStateRunner. Copied and verified before this line changed, and
+    // verified structurally rather than by row count alone: github_accounts
+    // 3/3, rpc_accounts 2/2, api_usage_rollup 1162/1162, the other seven empty
+    // on both sides. The two identity sequences were setval-ed past D1's max,
+    // because an explicit insert does not advance them and the next mint would
+    // otherwise collide on id 1.
+    //
+    // ORDERED AFTER #9992, and that ordering is load bearing. node-postgres
+    // returns int8 as a STRING where D1 returns a number, and this tier's
+    // schema is BIGINT-heavy by necessity -- epoch-ms does not fit in int4.
+    // Setting this flag before that parser existed would have turned
+    // created_at, units_spent, request_count, github_user_id and every other
+    // *_at column into strings on the wire, with nothing failing anywhere.
+    "NEON_SOLE_STORE_TABLES": "rpc_accounts,github_accounts,api_keys,api_key_blocks,api_key_usage_daily,api_quota_daily,api_usage_rollup,chain_alert_triggers,chain_alert_deliveries,watch_push_subscriptions",
     "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "d1",
     "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "d1",
     // THE QUEUE CUTOVER (metagraphed-infra#348). Comma-separated lanes whose D1
