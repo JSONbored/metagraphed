@@ -115,6 +115,11 @@ export const TICK_ROW_BUDGET = 40_000;
  * rather than an overlap. */
 export const TICK_BUDGET_MS = 20_000;
 
+/** The reason an append tick stops early. Named, because describeOutcome has
+ * to tell it apart from a real failure and a copied string in two places is
+ * how that stops working. */
+export const TICK_BUDGET_REASON = "tick budget reached";
+
 /** How long a clean verdict suppresses the next comparison.
  *
  * The comparison is two grouped counts over ~840,000 rows each. During the
@@ -1366,7 +1371,7 @@ export async function copyAppendTailToNeon(
         statements,
         pages,
         date,
-        reason: "tick budget reached",
+        reason: TICK_BUDGET_REASON,
       };
     }
     const last = page[page.length - 1];
@@ -1510,6 +1515,17 @@ export function describeOutcome(outcome: BackfillTableOutcome): string {
   if (outcome.skipped) return "no deficit at last check";
   if (!outcome.ok) {
     const rows = outcome.copied.reduce((sum, c) => sum + c.rows, 0);
+    // A BUDGET STOP IS NOT A FAILURE, and the line has to say so. An append
+    // plan reports ok:false when it hits TICK_ROW_BUDGET -- deliberately, so
+    // a tick that copied 40,000 of 1,300,000 rows cannot read as in sync --
+    // but the reason it gives is "tick budget reached", and wrapping that in
+    // "copied before failure" describes healthy progress as a fault. Whoever
+    // reads this lane mid-backfill sees it once every three minutes for two
+    // hours; if it says failure, either they investigate nothing that is
+    // wrong or they learn to ignore the lane.
+    if (outcome.reason === TICK_BUDGET_REASON) {
+      return `${rows} row(s) copied, more to do next tick`;
+    }
     return `${rows} row(s) copied before failure: ${outcome.reason ?? "unknown"}`;
   }
   if (outcome.deficits === 0) return "in sync";

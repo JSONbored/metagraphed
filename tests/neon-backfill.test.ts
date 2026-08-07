@@ -21,6 +21,7 @@ import {
   TICK_ROW_BUDGET,
   NEON_BACKFILL_PLANS,
   TICK_BUDGET_MS,
+  TICK_BUDGET_REASON,
   WHOLE_TABLE_UNIT,
   backfillGuard,
   copyDateToNeon,
@@ -1534,7 +1535,7 @@ describe("the append partition (#9908)", () => {
       4,
     );
     assert.equal(out.ok, false);
-    assert.equal(out.reason, "tick budget reached");
+    assert.equal(out.reason, TICK_BUDGET_REASON);
     assert.ok(out.rows >= 6, `copied ${out.rows}`);
   });
 
@@ -1593,5 +1594,39 @@ describe("assertIdentifier", () => {
         `accepted: ${JSON.stringify(bad)}`,
       );
     }
+  });
+});
+
+describe("describeOutcome — a budget stop is not a failure", () => {
+  test("it reads as progress, because that is what it is", () => {
+    // This line is what a human sees every three minutes for the ~1.7 hours
+    // surface_checks takes to copy. Calling healthy progress a failure either
+    // sends someone chasing nothing or teaches them to ignore the lane.
+    const line = describeOutcome({
+      table: "surface_checks",
+      deficits: 1,
+      missing: 0,
+      remaining: 1,
+      copied: [
+        { ok: false, rows: 40000, statements: 20, pages: 20, date: "*" },
+      ],
+      ok: false,
+      reason: TICK_BUDGET_REASON,
+    });
+    assert.equal(line, "40000 row(s) copied, more to do next tick");
+    assert.ok(!/failure/.test(line));
+  });
+
+  test("a REAL failure still says so, with its reason", () => {
+    const line = describeOutcome({
+      table: "surface_checks",
+      deficits: 1,
+      missing: 0,
+      remaining: 1,
+      copied: [{ ok: false, rows: 12, statements: 1, pages: 1, date: "*" }],
+      ok: false,
+      reason: "relation missing",
+    });
+    assert.match(line, /before failure: relation missing/);
   });
 });
