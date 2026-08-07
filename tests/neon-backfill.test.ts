@@ -349,7 +349,9 @@ describe("d1DateCounts / neonDateCounts", () => {
       null,
     );
     assert.equal(await neonDateCounts(null, "neuron_daily"), null);
-    assert.equal(await neonDateCounts({}, "neuron_daily"), null);
+    // A runner object with no `unsafe` on it -- what createPgSql returns when
+    // the binding is present but the connection never opened.
+    assert.equal(await neonDateCounts({} as never, "neuron_daily"), null);
     assert.equal(
       await neonDateCounts(fakeSql([], "GROUP BY").sql, "neuron_daily"),
       null,
