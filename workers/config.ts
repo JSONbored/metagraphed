@@ -321,6 +321,21 @@ export const TAO_USD_INDEX_CRON = "* * * * *";
  * for four days (#9650).
  */
 export const WEBHOOK_DISPATCH_CRON = "29,59 * * * *";
+
+/**
+ * The lane-health READER's tick (#9330/#9340's missing half).
+ *
+ * TWICE HOURLY at :28 and :58, which are two of the four minutes left free on
+ * this Worker's hourly grid. Both sit near the end of a half hour, after the
+ * watchdogs that write at :02/:04/:06/:08/:14/:21/:22/:23 and their
+ * second-half twins -- so a tick reads verdicts written minutes ago rather
+ * than a half-hour-old picture.
+ *
+ * The cadence is not a latency decision. An alarm needs LANE_ALARM_MIN_STALE_MS
+ * (one hour) of continuous staleness before it fires at all, so reading twice
+ * an hour costs nothing against the threshold and halves the requests.
+ */
+export const LANE_ALARM_CRON = "28,58 * * * *";
 // Trend windows for /api/v1/subnets/{netuid}/health/trends and
 // /api/v1/health/trends.
 export const RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN =
