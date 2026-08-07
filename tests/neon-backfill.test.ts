@@ -18,6 +18,7 @@ import {
   D1_PAGE_ROWS,
   IDLE_RECHECK_MS,
   MAX_DATES_PER_TICK,
+  TICK_ROW_BUDGET,
   NEON_BACKFILL_PLANS,
   TICK_BUDGET_MS,
   WHOLE_TABLE_UNIT,
@@ -917,7 +918,35 @@ describe("reconcileTableToNeon", () => {
       elapsed: () => 0,
     });
     assert.equal(out.deficits, 6);
-    assert.equal(out.copied.length, MAX_DATES_PER_TICK);
+    // Six dates, all tiny, all copied: the DATE cap is a runaway guard now,
+    // not the working limit. Capping on date count is what made
+    // subnet_snapshots (129 rows a date) crawl at 516 rows a tick.
+    assert.equal(out.copied.length, 6);
+  });
+
+  test("stops on the ROW budget, which is the working limit", async () => {
+    // Rows are what a tick costs; dates are a proxy that only holds for one
+    // table. Each date here writes one short page of 1,999 rows, so the budget
+    // lands mid-run rather than at a date boundary chosen to suit it.
+    const dates = Array.from({ length: 30 }, (_, i) => ({
+      d: `2026-07-${String(i + 1).padStart(2, "0")}`,
+      n: 1,
+    }));
+    const page = Array.from({ length: 1999 }, (_, uid) => ({ netuid: 1, uid }));
+    const d1 = fakeDb([dates, ...dates.map(() => page)]);
+    const out = await reconcileTableToNeon(d1.db, fakeSql([]).sql, PLAN, {
+      elapsed: () => 0,
+    });
+    const expected = Math.ceil(TICK_ROW_BUDGET / 1999);
+    assert.equal(
+      out.copied.length,
+      expected,
+      "should stop at the first date that carries the tick past the budget",
+    );
+    assert.ok(
+      out.copied.length < MAX_DATES_PER_TICK,
+      "date cap not the binder",
+    );
   });
 
   test("stops on the budget BETWEEN dates, never inside one", async () => {
