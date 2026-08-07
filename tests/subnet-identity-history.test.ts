@@ -13,7 +13,6 @@ import {
   loadSubnetIdentityHistory,
   overlayPreviouslyKnownAs,
   recordSubnetIdentityChanges,
-  syncSubnetIdentityToPostgres,
 } from "../src/subnet-identity-history.ts";
 import { encodeCursor } from "../src/cursor.ts";
 import { mockEnv } from "./row-type.ts";
@@ -852,95 +851,5 @@ describe("deriveNetuidGroupedAliases", () => {
     );
     assert.deepEqual(map.get(86), ["MIAO"]);
     assert.deepEqual(map.get(7), ["Old7"]);
-  });
-});
-
-// #4832 gap-closure: syncSubnetIdentityToPostgres is called directly from
-// writeSubnetSnapshot (src/health-prober.ts) via the DATA_API service
-// binding, not through workers/api.ts's public proxy layer -- see that
-// function's own header comment for why.
-describe("syncSubnetIdentityToPostgres", () => {
-  const profiles = [{ netuid: 8, native_identity: { subnet_name: "MIAO" } }];
-
-  test("returns unavailable when DATA_API is not bound", async () => {
-    const result = await syncSubnetIdentityToPostgres(
-      { SUBNET_IDENTITY_SYNC_SECRET: "shh" } as unknown as Env,
-      { profiles },
-    );
-    assert.deepEqual(result, { synced: false, reason: "unavailable" });
-  });
-
-  test("returns unavailable when the secret is not configured", async () => {
-    const result = await syncSubnetIdentityToPostgres(
-      {
-        DATA_API: { fetch: async () => new Response("{}", { status: 200 }) },
-      } as unknown as Env,
-      { profiles },
-    );
-    assert.deepEqual(result, { synced: false, reason: "unavailable" });
-  });
-
-  test("returns no_profiles for an empty or missing profiles array", async () => {
-    const env = {
-      DATA_API: { fetch: async () => new Response("{}", { status: 200 }) },
-      SUBNET_IDENTITY_SYNC_SECRET: "shh",
-    } as unknown as Env;
-    assert.deepEqual(
-      await syncSubnetIdentityToPostgres(env, { profiles: [] }),
-      {
-        synced: false,
-        reason: "no_profiles",
-      },
-    );
-    assert.deepEqual(await syncSubnetIdentityToPostgres(env, {}), {
-      synced: false,
-      reason: "no_profiles",
-    });
-  });
-
-  test("POSTs the profiles array with the token header and reports synced:true on 200", async () => {
-    let receivedToken;
-    let receivedPath;
-    let receivedBody;
-    const env = {
-      DATA_API: {
-        fetch: async (request: Request) => {
-          receivedToken = request.headers.get("x-subnet-identity-sync-token");
-          receivedPath = new URL(request.url).pathname;
-          receivedBody = await request.json();
-          return new Response(JSON.stringify({ ok: true }), { status: 200 });
-        },
-      },
-      SUBNET_IDENTITY_SYNC_SECRET: "shh",
-    } as unknown as Env;
-    const result = await syncSubnetIdentityToPostgres(env, { profiles });
-    assert.deepEqual(result, { synced: true });
-    assert.equal(receivedToken, "shh");
-    assert.equal(receivedPath, "/api/v1/internal/subnet-identity-sync");
-    assert.deepEqual(receivedBody, profiles);
-  });
-
-  test("reports the upstream status when the response is not ok, never throws", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () => new Response("{}", { status: 502 }),
-      },
-      SUBNET_IDENTITY_SYNC_SECRET: "shh",
-    } as unknown as Env;
-    const result = await syncSubnetIdentityToPostgres(env, { profiles });
-    assert.deepEqual(result, { synced: false, reason: "status_502" });
-  });
-
-  test("reports fetch_failed and never throws when the binding call rejects", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("network down");
-        },
-      },
-      SUBNET_IDENTITY_SYNC_SECRET: "shh",
-    } as unknown as Env;
-    const result = await syncSubnetIdentityToPostgres(env, { profiles });
-    assert.deepEqual(result, { synced: false, reason: "fetch_failed" });
   });
 });

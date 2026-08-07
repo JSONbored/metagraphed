@@ -235,43 +235,11 @@ async function latestBlockNumber(env: Env): Promise<number | null> {
  * failure here must never block the D1 write above (the primary contract)
  * or the rest of writeSubnetSnapshot's own work.
  */
-export async function syncSubnetIdentityToPostgres(
-  env: Env,
-  { profiles }: { profiles?: Row[] } = {},
-): Promise<Row> {
-  if (!env?.DATA_API || !env?.SUBNET_IDENTITY_SYNC_SECRET) {
-    return { synced: false, reason: "unavailable" };
-  }
-  if (!Array.isArray(profiles) || profiles.length === 0) {
-    return { synced: false, reason: "no_profiles" };
-  }
-  try {
-    const upstream = await env.DATA_API.fetch(
-      new Request(
-        "https://api.metagraph.sh/api/v1/internal/subnet-identity-sync",
-        {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-subnet-identity-sync-token": env.SUBNET_IDENTITY_SYNC_SECRET,
-          },
-          body: JSON.stringify(profiles),
-        },
-      ),
-    );
-    if (!upstream.ok) {
-      return { synced: false, reason: `status_${upstream.status}` };
-    }
-    return { synced: true };
-  } catch {
-    return { synced: false, reason: "fetch_failed" };
-  }
-}
 
 /**
  * Diff profiles.json native_identity against the last stored hash per netuid.
  * D1 write retired (2026-07-16, item 8 of the D1->Postgres cleanup):
- * syncSubnetIdentityToPostgres (called right after this, from
+ * the retired Postgres mirror (removed with #9193's scaffolding; called from
  * writeSubnetSnapshot) is the real, working writer -- this function's own D1
  * INSERT had never successfully appended a single row to production D1
  * (confirmed via direct `wrangler d1 execute`, both before and after a live

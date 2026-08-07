@@ -40,10 +40,7 @@ import {
 } from "./observations-d1.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
-import {
-  recordSubnetIdentityChanges,
-  syncSubnetIdentityToPostgres,
-} from "./subnet-identity-history.ts";
+import { recordSubnetIdentityChanges } from "./subnet-identity-history.ts";
 import {
   KV_HEALTH_CURRENT,
   KV_HEALTH_META,
@@ -690,10 +687,9 @@ export async function runHealthProber(
   if (changedNetuids.length > 0) {
     await notifySubnetStatusChanged(env, changedNetuids);
   }
-  await syncHealthChecksToPostgres(env, probed);
-  // Dual-write (box decommission): the same observations land in D1, each
-  // store independently best-effort -- see src/observations-d1.ts's header.
-  // When the Postgres sync above starts no-op'ing (box gone), this is simply
+  // D1 is the only store here now. The Postgres mirror that used to run first
+  // was retired with the box (#9193) and its endpoint has answered 503 ever
+  // since; the call stayed behind and fired every sweep for nothing.
   // the copy that keeps accumulating; nothing about this sweep changes.
   await persistProbesToD1(
     env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
@@ -851,89 +847,6 @@ async function persistToKv(
   return current;
 }
 
-// #4832 gap-closure: best-effort Postgres mirror of the D1 write above --
-// never awaited-and-thrown into the caller, mirroring
-// syncSubnetIdentityToPostgres's own header comment (subnet-identity-history.ts)
-// for why this is a direct service-binding call rather than routing through
-// the public proxy layer. D1+KV remain the sole authoritative write target;
-// a Postgres failure here never affects live serving.
-export async function syncHealthChecksToPostgres(
-  env: Env,
-  probed: Row[],
-): Promise<Row> {
-  if (!env?.DATA_API || !env?.HEALTH_CHECKS_SYNC_SECRET) {
-    return { synced: false, reason: "unavailable" };
-  }
-  if (!Array.isArray(probed) || probed.length === 0) {
-    return { synced: false, reason: "no_rows" };
-  }
-  try {
-    const upstream = await env.DATA_API.fetch(
-      new Request(
-        "https://api.metagraph.sh/api/v1/internal/health-checks-sync",
-        {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-health-checks-sync-token": env.HEALTH_CHECKS_SYNC_SECRET,
-          },
-          body: JSON.stringify({ probed }),
-        },
-      ),
-    );
-    if (!upstream.ok) {
-      return { synced: false, reason: `status_${upstream.status}` };
-    }
-    return { synced: true };
-  } catch {
-    return { synced: false, reason: "fetch_failed" };
-  }
-}
-
-// #4832 gap-closure: best-effort Postgres mirror of rollupDailyUptime below.
-// Reuses HEALTH_CHECKS_SYNC_SECRET (same conceptual sync boundary as
-// syncHealthChecksToPostgres, not a separate secret) since this fires from
-// the same hourly cron right alongside it. Unlike syncHealthChecksToPostgres
-// -- which ships the already-computed probed batch -- this only ships the
-// UTC day *boundaries*; Postgres computes its own rollup from its own
-// surface_checks (already populated by the sibling sync), using
-// PERCENTILE_CONT for the p50/p95/p99 tail instead of D1/SQLite's
-// rank-based CTE (see src/health-sql.ts's rankedChecksCte/
-// latencyStatColumns, which this mirrors semantically, not textually).
-export async function syncHealthUptimeRollupToPostgres(
-  env: Env,
-  days: Row[],
-  updatedAt: number,
-): Promise<Row> {
-  if (!env?.DATA_API || !env?.HEALTH_CHECKS_SYNC_SECRET) {
-    return { synced: false, reason: "unavailable" };
-  }
-  if (!Array.isArray(days) || days.length === 0) {
-    return { synced: false, reason: "no_days" };
-  }
-  try {
-    const upstream = await env.DATA_API.fetch(
-      new Request(
-        "https://api.metagraph.sh/api/v1/internal/health-uptime-rollup-sync",
-        {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-health-checks-sync-token": env.HEALTH_CHECKS_SYNC_SECRET,
-          },
-          body: JSON.stringify({ days, updated_at: updatedAt }),
-        },
-      ),
-    );
-    if (!upstream.ok) {
-      return { synced: false, reason: `status_${upstream.status}` };
-    }
-    return { synced: true };
-  } catch {
-    return { synced: false, reason: "fetch_failed" };
-  }
-}
-
 // UTC day bounds for a given epoch-ms instant: { date: "YYYY-MM-DD", start, end }.
 function utcDayBounds(ms: number): {
   date: string;
@@ -960,7 +873,7 @@ function utcDayBounds(ms: number): {
 //
 // D1 write retired (2026-07-16, item 3 of the D1->Postgres cleanup): this
 // function's own `INSERT INTO surface_uptime_daily` is gone --
-// syncHealthUptimeRollupToPostgres (below) is the sole writer now.
+// rollupUptimeDailyToD1 is the sole writer now (#9193 retired the mirror).
 // METAGRAPH_HEALTH_SOURCE flipped to "postgres" in wrangler.jsonc confirms
 // Postgres's surface_uptime_daily already holds a full rolling window (see
 // that flag's own header comment). `rolled` now reflects whether the
@@ -999,16 +912,18 @@ export async function rollupDailyUptime(
     runAt,
     env,
   );
-  const result = await syncHealthUptimeRollupToPostgres(env, days, runAt);
-  if (!result.synced && !d1Rollup.rolled) {
-    return { rolled: false, reason: result.reason };
+  // The failure reason used to come from the Postgres mirror, which has
+  // returned 503 since #9193 -- so `result.synced` was always false and this
+  // guard had already reduced to "did D1 roll". Now it says so, and reports
+  // D1's own error rather than a dead tier's.
+  if (!d1Rollup.rolled) {
+    return { rolled: false, reason: d1Rollup.error ?? "d1_rollup_failed" };
   }
   return {
     rolled: true,
     days: days.map((d) => d.date),
     d1_rolled: d1Rollup.rolled && d1Failures.rolled,
     d1_failures_rolled: d1Failures.rolled,
-    postgres_rolled: result.synced === true,
   };
 }
 
@@ -1016,7 +931,7 @@ export async function rollupDailyUptime(
 // window so the hot table stays lean.
 // D1 retirement: this used to prune D1's own surface_checks/rpc_proxy_events
 // tables alongside their Postgres mirrors. Both D1 writes are gone (see
-// syncHealthChecksToPostgres/syncRpcUsageEventToPostgres's own header
+// the retired Postgres mirrors' own header
 // comments), so D1's copies are frozen and nothing reads them anymore --
 // pruning a table nobody reads is pointless upkeep on a store being retired
 // wholesale. Only the Postgres-side prune remains.
@@ -1036,7 +951,6 @@ export async function pruneHealthHistory(
 ): Promise<Row> {
   const now = overrides.now || (() => Date.now());
   const cutoff = now() - (overrides.retentionMs || HISTORY_RETENTION_MS);
-  await syncRpcProxyEventsPruneToPostgres(env, cutoff);
   if (overrides.pruneD1Checks === true) {
     await pruneChecksD1(
       env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
@@ -1045,38 +959,6 @@ export async function pruneHealthHistory(
     );
   }
   return { pruned: true, cutoff };
-}
-
-// #5497: mirrors pruneHealthHistory's D1 rpc_proxy_events delete into the
-// Postgres copy (#4832's read-resilience gap-closure), via the DATA_API
-// service binding -- same shape as writeSubnetSnapshotRows below.
-// Best-effort: never throws, and a failure here must never block the D1
-// prune above (the primary contract).
-export async function syncRpcProxyEventsPruneToPostgres(
-  env: Env,
-  cutoff: number,
-): Promise<Row> {
-  if (!env?.DATA_API || !env?.RPC_USAGE_SYNC_SECRET) {
-    return { synced: false, reason: "unavailable" };
-  }
-  try {
-    const upstream = await env.DATA_API.fetch(
-      new Request("https://api.metagraph.sh/api/v1/internal/rpc-usage-prune", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-rpc-usage-sync-token": env.RPC_USAGE_SYNC_SECRET,
-        },
-        body: JSON.stringify({ cutoff }),
-      }),
-    );
-    if (!upstream.ok) {
-      return { synced: false, reason: `status_${upstream.status}` };
-    }
-    return { synced: true };
-  } catch {
-    return { synced: false, reason: "fetch_failed" };
-  }
 }
 
 // The eight v440 pipeline inputs #8743 captures. A row is "pipeline-bearing"
@@ -1331,12 +1213,6 @@ export async function writeSubnetSnapshot(
   const capturedAt = now();
   const identityArgs = { profiles, now: capturedAt };
   const identityHistory = await recordSubnetIdentityChanges(env, identityArgs);
-  // #4832 gap-closure: best-effort Postgres mirror of the D1 write above --
-  // never awaited-and-thrown into the caller, see syncSubnetIdentityToPostgres's
-  // own header comment for why this is a direct service-binding call rather
-  // than routing through the public proxy layer.
-  await syncSubnetIdentityToPostgres(env, { profiles });
-
   // Per-subnet economics for the time series (#1307). Best-effort: a missing
   // economics artifact just leaves those columns null (structural trajectory
   // still records).
