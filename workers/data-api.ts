@@ -363,6 +363,8 @@ import {
   writeNeuronDailyBackfillToD1,
   writeNeuronSnapshotToD1,
 } from "../src/neurons-d1-write.ts";
+import { mirrorNeuronSnapshotToNeon } from "../src/neurons-neon-write.ts";
+import { neonReadEnabled } from "../src/neon-write.ts";
 import {
   writeAccountIdentityToD1,
   writeSubnetHyperparamsToD1,
@@ -581,7 +583,11 @@ function neuronsServedFromD1(env: Env) {
   return env.METAGRAPH_NEURONS_SOURCE !== "postgres";
 }
 
-async function handleNeuronsSync(request: Request, env: Env) {
+async function handleNeuronsSync(
+  request: Request,
+  env: Env,
+  ctx?: ExecutionContext,
+) {
   if (!env.NEURONS_SYNC_SECRET) {
     return writeJson(
       { error: "neurons sync is not provisioned on this deployment" },
@@ -715,18 +721,39 @@ async function handleNeuronsSync(request: Request, env: Env) {
     return writeJson({ error: "d1 write failed" }, 502);
   }
 
-  // #9193: the Postgres half of #9157's dual write is gone with the box, so the
-  // D1 write above IS the sync. Body unchanged from the D1-only branch this
-  // replaces -- `stores` stays reported rather than inferred, so a reader can
-  // still see which stores this snapshot actually reached.
+  // THE NEON MIRROR (metagraphed-infra#336), and it runs AFTER the D1 write
+  // returns, never instead of it and never in front of it.
+  //
+  // That ordering is the whole lesson of how the pilot broke: a read moved to
+  // Neon while nothing wrote to it, so a public route served a two-day-old
+  // snapshot. During dual-write, D1 is still the store every route reads, so a
+  // Neon failure must cost a mirror and a lane verdict -- not the pass. It
+  // reports its own outcome and cannot throw.
+  //
+  // Off unless NEON_DUAL_WRITE_LANES names the lane, so the deploy that
+  // introduces this changes nothing.
+  const neon = await mirrorNeuronSnapshotToNeon(
+    env as unknown as Record<string, unknown>,
+    ctx,
+    {
+      rows,
+      dailyRows,
+      positionRows,
+    },
+  );
+
+  // `stores` stays REPORTED rather than inferred, so a reader can see which
+  // stores this snapshot actually reached -- which is precisely the question
+  // nobody could answer while Neon was frozen.
   return writeJson({
     ok: true,
     neurons_written: rows.length,
     neuron_daily_written: dailyRows.length,
     account_position_daily_written: positionRows.length,
     netuids_covered: netuids.length,
-    stores: ["d1"],
+    stores: neon.attempted ? ["d1", "neon"] : ["d1"],
     d1_statements: d1Statements,
+    neon: neon.attempted ? neon.results : undefined,
   });
 }
 
@@ -6631,7 +6658,7 @@ async function dispatchDataApiRequest(
       request.method === "POST" &&
       url.pathname === "/api/v1/internal/neurons-sync"
     ) {
-      return handleNeuronsSync(request, env);
+      return handleNeuronsSync(request, env, ctx);
     }
     if (
       request.method === "POST" &&
@@ -6914,19 +6941,29 @@ async function dispatchDataApiRequest(
         if (!env.METAGRAPH_HEALTH_DB) {
           return json({ error: "d1 binding unavailable" }, 503);
         }
-        // `account_position_daily` lives in Neon (metagraphed-infra#336). The
-        // handler is unchanged -- it is written against a tagged template, and
-        // createPgSql is interface-compatible with createD1Sql -- so the store
-        // moves by choosing a runner, not by rewriting a query.
+        // `account_position_daily` can be served from Neon
+        // (metagraphed-infra#336). The handler is unchanged -- it is written
+        // against a tagged template, and createPgSql is interface-compatible
+        // with createD1Sql -- so the store moves by choosing a runner, not by
+        // rewriting a query.
         //
-        // FALLS BACK TO D1 WHEN THE BINDING IS ABSENT, which is what makes this
-        // reversible without a deploy: the D1 table is still written and still
-        // current, so unbinding HYPERDRIVE restores the previous behaviour
-        // exactly. That is deliberate for a first migration and should be
-        // removed once the D1 write is retired, or it becomes a fallback ladder
-        // hiding a dead dependency.
+        // THE GATE IS AN EXPLICIT FLAG, NOT THE BINDING'S PRESENCE, and that
+        // change is the whole lesson of metagraphed#9704. It used to read
+        // `env.HYPERDRIVE && ...`, so binding Hyperdrive for a WRITE pilot
+        // silently moved this READ onto a store nothing had ever written to --
+        // and it served a two-day-old snapshot until the binding was pulled.
+        //
+        // "The binding exists" and "this route should read Neon" are different
+        // questions. NEON_READ_LANES answers the second one, defaults to empty,
+        // and must not name a lane until that lane's `neon:` verdict has been
+        // green across several producer ticks.
         const store =
-          env.HYPERDRIVE && positionHistoryServedFromNeon(url)
+          env.HYPERDRIVE &&
+          neonReadEnabled(
+            env as unknown as Record<string, unknown>,
+            "account_position_daily",
+          ) &&
+          positionHistoryServedFromNeon(url)
             ? createPgSql(env.HYPERDRIVE, ctx)
             : createD1Sql(env.METAGRAPH_HEALTH_DB);
         try {
