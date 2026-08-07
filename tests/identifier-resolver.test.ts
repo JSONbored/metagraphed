@@ -14,6 +14,7 @@
 //      "you mistyped it".
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
+import { API_ROUTES } from "../src/contracts.ts";
 import {
   buildSearchResolve,
   resolveIdentifier,
@@ -181,13 +182,50 @@ describe("the resolver is safe on hostile input", () => {
     assert.deepEqual(kinds("\t74:12\n"), ["neuron"]);
   });
 
-  test("every result carries a usable api and ui path", () => {
-    for (const q of [ALICE, `0x${"a".repeat(64)}`, "7", "74:12"]) {
+  test("every api_path it hands out is a route that actually exists", () => {
+    // THE BUG THIS REPLACES A PREFIX CHECK WITH. The EVM branch emitted
+    // `/api/v1/evm/address-mapping/{h160}` -- the storage item's name, not the
+    // route's -- and the real path is `/api/v1/evm/address/{h160}`. It 404s.
+    // The old assertion only checked the `/api/v1/` prefix, and its query list
+    // never included an H160 at all, so the one kind that was wrong was also
+    // the one kind untested.
+    //
+    // Matching against API_ROUTES rather than a hand-kept list is the point: a
+    // future kind pointing at a route that does not exist fails here without
+    // anyone remembering to extend the fixture. This is a resolver that exists
+    // to stop sending people to 404s.
+    const declared = API_ROUTES.map(
+      (route) => new RegExp(`^${route.path.replace(/\{[^}]+\}/g, "[^/]+")}$`),
+    );
+    const seen = new Set<string>();
+    for (const q of [
+      ALICE,
+      `0x${"a".repeat(64)}`,
+      `0x${"b".repeat(40)}`, // the H160 the old fixture omitted
+      "7",
+      "5000000",
+      "74:12",
+    ]) {
       for (const hit of resolveIdentifier(q)) {
-        assert.match(hit.api_path, /^\/api\/v1\//, `${q}: ${hit.kind}`);
+        seen.add(hit.kind);
+        assert.equal(
+          declared.some((pattern) => pattern.test(hit.api_path)),
+          true,
+          `${hit.kind}: ${hit.api_path} matches no route in API_ROUTES`,
+        );
         assert.match(hit.ui_path, /^\//, `${q}: ${hit.kind}`);
       }
     }
+    // And the queries above really do exercise every kind, so "all paths are
+    // valid" is not vacuously true over a subset.
+    assert.deepEqual([...seen].sort(), [
+      "account",
+      "block",
+      "evm-account",
+      "extrinsic",
+      "neuron",
+      "subnet",
+    ]);
   });
 });
 
