@@ -20,7 +20,14 @@ import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 import { EventStreamDegradedSchema } from "./event-stream-honesty.ts";
 
-const WINDOW_ENUM = ["7d", "30d", "90d"] as const;
+/** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
+export const ACCOUNT_ACTIVITY_FLOW_DIRECTIONS_VALUES = [
+  "all",
+  "in",
+  "out",
+] as const;
+
+export const WINDOW_ENUM = ["7d", "30d", "90d"] as const;
 
 export const AccountServingArtifactSchema = z
   .object({
@@ -176,7 +183,7 @@ export const AccountStakeFlowResponseSchema = successEnvelopeSchema(
 export const AccountStakeFlowQuerySchema = z
   .object({
     window: z.enum(WINDOW_ENUM).optional(),
-    direction: z.enum(["all", "in", "out"]).optional(),
+    direction: z.enum(ACCOUNT_ACTIVITY_FLOW_DIRECTIONS_VALUES).optional(),
   })
   .strict();
 export type AccountStakeFlowQuery = z.infer<typeof AccountStakeFlowQuerySchema>;

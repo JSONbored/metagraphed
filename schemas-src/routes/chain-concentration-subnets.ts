@@ -10,7 +10,7 @@
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 
-const CONCENTRATION_LENSES = [
+export const CONCENTRATION_LENSES = [
   "emission",
   "stake",
   "entity_emission",
@@ -18,7 +18,7 @@ const CONCENTRATION_LENSES = [
   "validator_stake",
 ] as const;
 
-const CONCENTRATION_RANKING_SORTS = [
+export const CONCENTRATION_RANKING_SORTS = [
   "nakamoto_coefficient",
   "gini",
   "holders",

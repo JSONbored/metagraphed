@@ -11,6 +11,16 @@
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 
+/** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
+export const VALIDATOR_NOMINATORS_NOMINATOR_SORTS_VALUES = [
+  "net_staked",
+  "gross_staked",
+  "last_activity",
+] as const;
+
+/** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
+export const VALIDATOR_NOMINATORS_WINDOW_VALUES = ["7d", "30d", "90d"] as const;
+
 const ValidatorNominatorEntrySchema = z
   .object({
     coldkey: z.string(),
@@ -28,7 +38,7 @@ export const ValidatorNominatorsArtifactSchema = z
     schema_version: z.int(),
     hotkey: z.string(),
     window: z.string().nullable(),
-    sort: z.enum(["net_staked", "gross_staked", "last_activity"]),
+    sort: z.enum(VALIDATOR_NOMINATORS_NOMINATOR_SORTS_VALUES),
     limit: z.int().min(0).max(100),
     offset: z.int().min(0),
     nominator_count: z
@@ -55,7 +65,7 @@ export const ValidatorNominatorsResponseSchema = successEnvelopeSchema(
 );
 export const ValidatorNominatorsQuerySchema = z
   .object({
-    window: z.enum(["7d", "30d", "90d"]).optional(),
+    window: z.enum(VALIDATOR_NOMINATORS_WINDOW_VALUES).optional(),
     sort: z.enum(["net_staked", "gross_staked", "last_activity"]).optional(),
     limit: z.int().min(1).max(100).optional(),
     offset: z.int().min(0).optional(),

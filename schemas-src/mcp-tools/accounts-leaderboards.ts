@@ -14,32 +14,16 @@ import { z } from "zod";
 import { limitSchema, sortSchema } from "./shared.ts";
 import { AccountsListArtifactSchema } from "../routes/accounts-list.ts";
 import { TopHoldersArtifactSchema } from "../routes/top-holders.ts";
+import { ACCOUNTS_LIST_LIST_SORTS_VALUES } from "../routes/accounts-list.ts";
+import { TOP_HOLDERS_SORT_VALUES } from "../routes/top-holders.ts";
 
 // Symbolic in the hand-written originals (src/accounts-list.ts's
-// ACCOUNTS_LIST_SORTS/*_LIMIT_*, src/top-holders.ts's TOP_HOLDERS_SORTS/
+// ACCOUNTS_LIST_LIST_SORTS_VALUES/*_LIMIT_*, src/top-holders.ts's TOP_HOLDERS_SORT_VALUES/
 // *_LIMIT_*), cross-checked against the actual runtime source at the time
 // of writing.
-const ACCOUNTS_LIST_SORTS = [
-  "total_stake",
-  "total_emission",
-  "subnet_count",
-  "uid_count",
-  "validator_count",
-  "stake_dominance",
-  "last_active",
-] as const;
-const TOP_HOLDERS_SORTS = [
-  "total_tao",
-  "free_tao",
-  "delegated_tao",
-  "net_flow_7d",
-  "net_flow_30d",
-  "net_flow_90d",
-] as const;
-
 export const ListAccountsInputSchema = z
   .object({
-    sort: sortSchema(ACCOUNTS_LIST_SORTS).optional(),
+    sort: sortSchema(ACCOUNTS_LIST_LIST_SORTS_VALUES).optional(),
     limit: limitSchema(100).optional(),
   })
   .strict();
@@ -52,7 +36,7 @@ export type ListAccountsOutput = z.infer<typeof ListAccountsOutputSchema>;
 
 export const GetTopHoldersInputSchema = z
   .object({
-    sort: sortSchema(TOP_HOLDERS_SORTS).optional(),
+    sort: sortSchema(TOP_HOLDERS_SORT_VALUES).optional(),
     limit: limitSchema(100).optional(),
   })
   .strict();

@@ -23,10 +23,16 @@ import {
 } from "./subnet-detail.ts";
 import { SubnetProfileIdentityEvidenceSchema } from "./subnet-profile.ts";
 import { ReviewEnrichmentQueueEntrySchema } from "./review-enrichment.ts";
+import {
+  CONFIDENCE_LEVEL_VALUES,
+  IDENTITY_LEVEL_VALUES,
+  NATIVE_NAME_QUALITY_VALUES,
+  PROFILE_LEVEL_VALUES,
+} from "../shared.ts";
 
 const CURATION_LEVELS = CURATION_LEVEL_VALUES;
 const SURFACE_KINDS = SURFACE_KIND_VALUES;
-const PRIORITY_SORT_FIELDS = [
+export const PRIORITY_SORT_FIELDS = [
   "candidate_count",
   "curation_level",
   "missing_kinds",
@@ -90,17 +96,7 @@ export const SubnetGapsResponseSchema = successEnvelopeSchema(
   SubnetGapsArtifactSchema,
 );
 
-const PROFILE_LEVELS = [
-  "directory-only",
-  "identity-partial",
-  "identity-complete",
-  "operational",
-  "adapter-backed",
-] as const;
-const CONFIDENCE_LEVELS = ["low", "medium", "high"] as const;
-const IDENTITY_LEVELS = ["none", "directory", "partial", "complete"] as const;
-const NATIVE_NAME_QUALITIES = ["chain", "placeholder", "empty"] as const;
-const PROFILE_SORT_FIELDS = [
+export const PROFILE_SORT_FIELDS = [
   "candidate_count",
   "completeness_score",
   "identity_level",
@@ -120,11 +116,11 @@ const PROFILE_SORT_FIELDS = [
 export const ReviewProfileCompletenessQuerySchema = z
   .object({
     netuid: z.int().min(0).optional(),
-    profile_level: z.enum(PROFILE_LEVELS).optional(),
-    confidence: z.enum(CONFIDENCE_LEVELS).optional(),
-    identity_level: z.enum(IDENTITY_LEVELS).optional(),
+    profile_level: z.enum(PROFILE_LEVEL_VALUES).optional(),
+    confidence: z.enum(CONFIDENCE_LEVEL_VALUES).optional(),
+    identity_level: z.enum(IDENTITY_LEVEL_VALUES).optional(),
     identity_promotion_kinds: z.enum(SURFACE_KINDS).optional(),
-    native_name_quality: z.enum(NATIVE_NAME_QUALITIES).optional(),
+    native_name_quality: z.enum(NATIVE_NAME_QUALITY_VALUES).optional(),
     sort: z.enum(PROFILE_SORT_FIELDS).optional(),
     order: z.enum(["asc", "desc"]).optional(),
     fields: z.string().optional(),
@@ -140,10 +136,10 @@ export const ReviewProfileCompletenessEntrySchema = z
   .object({
     candidate_count: z.int().min(0),
     completeness_score: z.int().min(0).max(100),
-    confidence: z.enum(CONFIDENCE_LEVELS),
+    confidence: z.enum(CONFIDENCE_LEVEL_VALUES),
     curation_level: CurationLevelSchema,
     gap_reasons: z.array(z.string()),
-    identity_level: z.enum(IDENTITY_LEVELS),
+    identity_level: z.enum(IDENTITY_LEVEL_VALUES),
     identity_evidence: SubnetProfileIdentityEvidenceSchema,
     identity_promotion_kind_count: z.int().min(0),
     identity_promotion_kinds: z.array(SurfaceKindSchema),
@@ -154,12 +150,12 @@ export const ReviewProfileCompletenessEntrySchema = z
     missing_operational: z.array(SurfaceKindSchema),
     missing_required: z.array(SurfaceKindSchema),
     name: z.string(),
-    native_name_quality: z.enum(NATIVE_NAME_QUALITIES),
+    native_name_quality: z.enum(NATIVE_NAME_QUALITY_VALUES),
     native_identity_signal_count: z.int().min(0),
     netuid: z.int().min(0),
     operational_interface_count: z.int().min(0),
     priority_score: z.int().min(0),
-    profile_level: z.enum(PROFILE_LEVELS),
+    profile_level: z.enum(PROFILE_LEVEL_VALUES),
     review_state: ReviewStateSchema,
     slug: z.string(),
     source_count: z.int().min(0),

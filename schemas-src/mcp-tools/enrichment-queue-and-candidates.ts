@@ -29,41 +29,18 @@ import {
 import { ReviewAdapterCandidatesArtifactSchema } from "../routes/review-enrichment.ts";
 import { SURFACE_KIND_VALUES } from "../routes/subnet-detail.ts";
 import { CURATION_LEVEL_VALUES } from "../shared.ts";
+import {
+  ADAPTER_CANDIDATES_SORT_FIELDS,
+  QUEUE_SORT_FIELDS,
+  RECOMMENDED_ADAPTER_KINDS,
+} from "../routes/review-enrichment.ts";
+import { IDENTITY_LEVEL_VALUES, PROFILE_LEVEL_VALUES } from "../shared.ts";
 
 const SURFACE_KINDS = SURFACE_KIND_VALUES;
 const CURATION_LEVELS = CURATION_LEVEL_VALUES;
-const PROFILE_LEVELS = [
-  "directory-only",
-  "identity-partial",
-  "identity-complete",
-  "operational",
-  "adapter-backed",
-] as const;
 const EVIDENCE_ACTIONS = REVIEW_EVIDENCE_ACTION_VALUES;
-const IDENTITY_LEVELS = ["none", "directory", "partial", "complete"] as const;
 const LANES = REVIEW_ENRICHMENT_LANE_VALUES;
 const BOOLEAN_STRINGS = ["true", "false"] as const;
-const QUEUE_SORT_FIELDS = [
-  "adapter_score",
-  "candidate_count",
-  "completeness_score",
-  "curation_level",
-  "endpoint_count",
-  "evidence_action",
-  "identity_level",
-  "identity_surface_count",
-  "lane",
-  "name",
-  "netuid",
-  "operational_interface_count",
-  "priority_score",
-  "profile_level",
-  "review_state",
-  "stale_candidate_count",
-  "surface_count",
-  "verified_candidate_count",
-] as const;
-
 export const ListEnrichmentQueueInputSchema = z
   .object({
     q: querySchema().optional(),
@@ -79,18 +56,18 @@ export const ListEnrichmentQueueInputSchema = z
       .describe("What the evidence is asking a contributor to do.")
       .meta({ examples: [EVIDENCE_ACTIONS[0]] }),
     identity_level: z
-      .enum(IDENTITY_LEVELS)
+      .enum(IDENTITY_LEVEL_VALUES)
       .optional()
       .describe("How complete the subnet's published identity is.")
-      .meta({ examples: [IDENTITY_LEVELS[0]] }),
+      .meta({ examples: [IDENTITY_LEVEL_VALUES[0]] }),
     curation_level: kindSchema(CURATION_LEVELS).optional(),
     profile_level: z
-      .enum(PROFILE_LEVELS)
+      .enum(PROFILE_LEVEL_VALUES)
       .optional()
       .describe(
         "How complete the subnet's profile is, from directory-only upward.",
       )
-      .meta({ examples: [PROFILE_LEVELS[0]] }),
+      .meta({ examples: [PROFILE_LEVEL_VALUES[0]] }),
     direct_submission_kinds: z
       .enum(SURFACE_KINDS)
       .optional()
@@ -144,24 +121,6 @@ export const ListEnrichmentQueueOutputSchema =
 export type ListEnrichmentQueueOutput = z.infer<
   typeof ListEnrichmentQueueOutputSchema
 >;
-
-const RECOMMENDED_ADAPTER_KINDS = [
-  "custom-adapter",
-  "data-artifact-adapter",
-  "generic-openapi-or-custom",
-  "stream-adapter",
-] as const;
-const ADAPTER_CANDIDATES_SORT_FIELDS = [
-  "candidate_api_count",
-  "candidate_api_kinds",
-  "curation_level",
-  "name",
-  "netuid",
-  "operational_kinds",
-  "operational_surface_count",
-  "priority_score",
-  "recommended_adapter_kind",
-] as const;
 
 export const ListAdapterCandidatesInputSchema = z
   .object({

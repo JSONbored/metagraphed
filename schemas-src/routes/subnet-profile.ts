@@ -18,6 +18,12 @@ import {
   SubnetTypeSchema,
 } from "../shared.ts";
 import { ReviewStateSchema, SurfaceKindSchema } from "./subnet-detail.ts";
+import {
+  CONFIDENCE_LEVEL_VALUES,
+  IDENTITY_LEVEL_VALUES,
+  NATIVE_NAME_QUALITY_VALUES,
+  PROFILE_LEVEL_VALUES,
+} from "../shared.ts";
 
 export const SubnetProfileNativeIdentitySchema = z
   .object({
@@ -84,23 +90,13 @@ export type SubnetProfileIdentityEvidence = z.infer<
   typeof SubnetProfileIdentityEvidenceSchema
 >;
 
-const PROFILE_CONFIDENCE = ["low", "medium", "high"] as const;
-const PROFILE_LEVEL = [
-  "directory-only",
-  "identity-partial",
-  "identity-complete",
-  "operational",
-  "adapter-backed",
-] as const;
-const IDENTITY_LEVEL = ["none", "directory", "partial", "complete"] as const;
-
 export const SubnetProfileCompletenessSchema = z
   .object({
     score: z.int().min(0).max(100),
-    profile_level: z.enum(PROFILE_LEVEL),
-    identity_level: z.enum(IDENTITY_LEVEL),
+    profile_level: z.enum(PROFILE_LEVEL_VALUES),
+    identity_level: z.enum(IDENTITY_LEVEL_VALUES),
     identity_surface_count: z.int().min(0).max(3),
-    confidence: z.enum(PROFILE_CONFIDENCE),
+    confidence: z.enum(CONFIDENCE_LEVEL_VALUES),
     missing_identity: z.array(SurfaceKindSchema),
     missing_required: z.array(SurfaceKindSchema),
     missing_operational: z.array(SurfaceKindSchema),
@@ -156,15 +152,13 @@ export const IntegrationReadinessSchema = z
   .strict();
 export type IntegrationReadiness = z.infer<typeof IntegrationReadinessSchema>;
 
-const NATIVE_NAME_QUALITY = ["chain", "placeholder", "empty"] as const;
-
 export const SubnetProfileSchema = z
   .object({
     netuid: z.int().min(0),
     slug: z.string(),
     name: z.string(),
     native_name: z.string().nullable().optional(),
-    native_name_quality: z.enum(NATIVE_NAME_QUALITY).optional(),
+    native_name_quality: z.enum(NATIVE_NAME_QUALITY_VALUES).optional(),
     native_identity: SubnetProfileNativeIdentitySchema,
     injection_scrubbed: z.boolean().optional(),
     subnet_type: SubnetTypeSchema,
@@ -239,9 +233,9 @@ export const SubnetProfileSchema = z
     provenance: SubnetProfileProvenanceSchema,
     curation_level: CurationLevelSchema,
     review_state: ReviewStateSchema,
-    confidence: z.enum(PROFILE_CONFIDENCE),
-    profile_level: z.enum(PROFILE_LEVEL),
-    identity_level: z.enum(IDENTITY_LEVEL),
+    confidence: z.enum(CONFIDENCE_LEVEL_VALUES),
+    profile_level: z.enum(PROFILE_LEVEL_VALUES),
+    identity_level: z.enum(IDENTITY_LEVEL_VALUES),
     identity_surface_count: z.int().min(0).max(3),
     completeness_score: z.int().min(0).max(100),
     missing_identity: z.array(SurfaceKindSchema),

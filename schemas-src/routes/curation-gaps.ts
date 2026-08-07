@@ -11,11 +11,12 @@ import { z } from "zod";
 import { ArtifactBaseSchema, successEnvelopeSchema } from "../envelope.ts";
 import { COVERAGE_LEVEL_VALUES, CurationLevelSchema } from "../shared.ts";
 import { CurationMetadataSchema, GapsSchema } from "./subnet-detail.ts";
+import { ENDPOINT_INCIDENT_SEVERITY_VALUES } from "./endpoints-pools.ts";
 
 const COVERAGE_LEVELS = COVERAGE_LEVEL_VALUES;
 export const CoverageLevelSchema = z.enum(COVERAGE_LEVELS);
 
-const CURATION_SORT_FIELDS = [
+export const CURATION_SORT_FIELDS = [
   "coverage_level",
   "curation_level",
   "name",
@@ -61,7 +62,7 @@ export const CurationResponseSchema = successEnvelopeSchema(
   CurationArtifactSchema,
 );
 
-const GAPS_SORT_FIELDS = [
+export const GAPS_SORT_FIELDS = [
   "coverage_level",
   "curation_level",
   "gap_count",
@@ -95,7 +96,7 @@ export const GapsEntrySchema = z
     // a required field would reject a body that is otherwise exactly correct.
     gap_count: z.int().min(0).optional(),
     gaps: GapsSchema,
-    gap_severity: z.enum(["critical", "warning", "info"]).optional(),
+    gap_severity: z.enum(ENDPOINT_INCIDENT_SEVERITY_VALUES).optional(),
     gap_priority: z.int().min(0).optional(),
   })
   .strict();

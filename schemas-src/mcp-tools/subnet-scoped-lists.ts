@@ -37,25 +37,18 @@ import {
   SURFACE_KIND_VALUES,
 } from "../routes/subnet-detail.ts";
 import { HEALTH_STATUS_VALUES } from "../shared.ts";
+import {
+  ENDPOINT_SORT_VALUES,
+  HEALTH_CLASSIFICATION_VALUES,
+  HEALTH_SURFACE_SORT_VALUES,
+  SURFACE_SORT_VALUES,
+} from "./shared.ts";
 
 const SURFACE_KINDS = SURFACE_KIND_VALUES;
 const ENDPOINT_LAYERS = ENDPOINT_LAYER_VALUES;
 const ENDPOINT_PUBLICATION_STATES = ENDPOINT_PUBLICATION_STATE_VALUES;
 const HEALTH_STATUSES = HEALTH_STATUS_VALUES;
 const BOOLEAN_STRINGS = ["true", "false"] as const;
-const ENDPOINT_SORT_FIELDS = [
-  "kind",
-  "last_checked",
-  "latency_ms",
-  "layer",
-  "netuid",
-  "pool_eligible",
-  "provider",
-  "publication_state",
-  "score",
-  "status",
-] as const;
-
 export const ListSubnetEndpointsInputSchema = z
   .object({
     netuid: netuidSchema(),
@@ -111,7 +104,7 @@ export const ListSubnetEndpointsInputSchema = z
         "Inclusive upper bound on endpoint score; rows above it are excluded.",
       )
       .meta({ examples: [100] }),
-    sort: sortSchema(ENDPOINT_SORT_FIELDS).optional(),
+    sort: sortSchema(ENDPOINT_SORT_VALUES).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),
     limit: limitSchema(100).optional(),
@@ -135,14 +128,6 @@ export type ListSubnetEndpointsOutput = z.infer<
   typeof ListSubnetEndpointsOutputSchema
 >;
 
-const SURFACE_SORT_FIELDS = [
-  "id",
-  "kind",
-  "name",
-  "netuid",
-  "provider",
-] as const;
-
 export const ListSubnetSurfacesInputSchema = z
   .object({
     netuid: netuidSchema(),
@@ -155,7 +140,7 @@ export const ListSubnetSurfacesInputSchema = z
         "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
       )
       .meta({ examples: ["sn-64-chutes-subnet-api"] }),
-    sort: sortSchema(SURFACE_SORT_FIELDS).optional(),
+    sort: sortSchema(SURFACE_SORT_VALUES).optional(),
     order: orderSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),
@@ -178,33 +163,6 @@ export type ListSubnetSurfacesOutput = z.infer<
   typeof ListSubnetSurfacesOutputSchema
 >;
 
-const HEALTH_CLASSIFICATIONS = [
-  "auth-required",
-  "content-mismatch",
-  "dead",
-  "live",
-  "rate-limited",
-  "redirected",
-  "timeout",
-  "transient",
-  "unsupported",
-  "unsafe",
-  "wrong-chain",
-] as const;
-const HEALTH_SORT_FIELDS = [
-  "classification",
-  "kind",
-  "last_checked",
-  "last_ok",
-  "latency_ms",
-  "netuid",
-  "provider",
-  "status",
-  "status_code",
-  "surface_id",
-  "verified_at",
-] as const;
-
 export const ListSubnetHealthInputSchema = z
   .object({
     netuid: netuidSchema(),
@@ -212,13 +170,13 @@ export const ListSubnetHealthInputSchema = z
     provider: providerSlugSchema().optional(),
     status: kindSchema(HEALTH_STATUSES).optional(),
     classification: z
-      .enum(HEALTH_CLASSIFICATIONS)
+      .enum(HEALTH_CLASSIFICATION_VALUES)
       .optional()
       .describe(
         "Why a probe ended as it did — the reason behind the status, not the status itself.",
       )
-      .meta({ examples: [HEALTH_CLASSIFICATIONS[0]] }),
-    sort: sortSchema(HEALTH_SORT_FIELDS).optional(),
+      .meta({ examples: [HEALTH_CLASSIFICATION_VALUES[0]] }),
+    sort: sortSchema(HEALTH_SURFACE_SORT_VALUES).optional(),
     order: orderSchema().optional(),
     limit: limitSchema(100).optional(),
     cursor: numericCursorSchema().optional(),

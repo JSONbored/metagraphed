@@ -24,27 +24,14 @@ import {
 } from "../../src/route-limits.ts";
 import { ChainIdleStakeArtifactSchema } from "../routes/chain-idle-stake.ts";
 import { ChainYieldArtifactSchema } from "../routes/chain-yield.ts";
+import {
+  CONCENTRATION_LENSES,
+  CONCENTRATION_RANKING_SORTS,
+} from "../routes/chain-concentration-subnets.ts";
 
 // --- get_chain_concentration_subnets (#9717) ---------------------------------
 // The cross-subnet RANKING, as opposed to get_chain_concentration's single
 // network aggregate over the same read.
-
-const CONCENTRATION_LENSES = [
-  "emission",
-  "stake",
-  "entity_emission",
-  "entity_stake",
-  "validator_stake",
-] as const;
-
-const CONCENTRATION_RANKING_SORTS = [
-  "nakamoto_coefficient",
-  "gini",
-  "holders",
-  "top_1pct_share",
-  "total",
-  "netuid",
-] as const;
 
 export const GetChainConcentrationSubnetsInputSchema = z
   .object({

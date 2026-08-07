@@ -13,18 +13,19 @@
 import { z } from "zod";
 import { kindSchema, ss58Schema, windowSchema } from "./shared.ts";
 import { AccountStakeFlowArtifactSchema } from "../routes/account-activity.ts";
+import {
+  ACCOUNT_ACTIVITY_FLOW_DIRECTIONS_VALUES,
+  WINDOW_ENUM,
+} from "../routes/account-activity.ts";
 
 // Symbolic in the hand-written original (src/stake-flow.ts's
 // STAKE_FLOW_WINDOWS/STAKE_FLOW_DIRECTIONS), cross-checked against the
 // actual runtime source at the time of writing.
-const ACCOUNT_STAKE_FLOW_WINDOWS = ["7d", "30d", "90d"] as const;
-const ACCOUNT_STAKE_FLOW_DIRECTIONS = ["all", "in", "out"] as const;
-
 export const GetAccountStakeFlowInputSchema = z
   .object({
     ss58: ss58Schema(),
-    window: windowSchema(ACCOUNT_STAKE_FLOW_WINDOWS).optional(),
-    direction: kindSchema(ACCOUNT_STAKE_FLOW_DIRECTIONS).optional(),
+    window: windowSchema(WINDOW_ENUM).optional(),
+    direction: kindSchema(ACCOUNT_ACTIVITY_FLOW_DIRECTIONS_VALUES).optional(),
   })
   .strict();
 export type GetAccountStakeFlowInput = z.infer<

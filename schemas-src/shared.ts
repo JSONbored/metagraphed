@@ -10,6 +10,37 @@
 // against real handler output — see tests/zod-schemas.test.ts.
 import { z } from "zod";
 
+/** One vocabulary, owned by the leaf module so routes AND tools can import it
+ * without the cycle that owning it on a route would create (#9799). */
+export const NATIVE_NAME_QUALITY_VALUES = [
+  "chain",
+  "placeholder",
+  "empty",
+] as const;
+
+/** One vocabulary, owned by the leaf module so routes AND tools can import it
+ * without the cycle that owning it on a route would create (#9799). */
+export const CONFIDENCE_LEVEL_VALUES = ["low", "medium", "high"] as const;
+
+/** One vocabulary, owned by the leaf module so routes AND tools can import it
+ * without the cycle that owning it on a route would create (#9799). */
+export const IDENTITY_LEVEL_VALUES = [
+  "none",
+  "directory",
+  "partial",
+  "complete",
+] as const;
+
+/** One vocabulary, owned by the leaf module so routes AND tools can import it
+ * without the cycle that owning it on a route would create (#9799). */
+export const PROFILE_LEVEL_VALUES = [
+  "directory-only",
+  "identity-partial",
+  "identity-complete",
+  "operational",
+  "adapter-backed",
+] as const;
+
 /** The vocabulary, exported as a tuple so every other schema that needs
  * these values imports them instead of restating them (#9799). */
 export const COVERAGE_LEVEL_VALUES = [

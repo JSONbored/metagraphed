@@ -79,7 +79,7 @@ export const RegistrySummaryResponseSchema = successEnvelopeSchema(
   RegistrySummaryArtifactSchema,
 );
 
-const ECONOMIC_LEADERBOARD_BOARDS = [
+export const ECONOMIC_LEADERBOARD_BOARDS = [
   "open-slots",
   "cheapest-registration",
   "highest-emission",

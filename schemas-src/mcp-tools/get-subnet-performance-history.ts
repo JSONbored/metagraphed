@@ -6,13 +6,12 @@
 import { z } from "zod";
 import { SubnetPerformanceHistoryArtifactSchema } from "../routes/subnet-performance.ts";
 import { netuidSchema, windowSchema } from "./shared.ts";
-
-const PERFORMANCE_HISTORY_WINDOWS = ["7d", "30d", "90d"] as const;
+import { SUBNET_PERFORMANCE_WINDOW_VALUES } from "../routes/subnet-performance.ts";
 
 export const GetSubnetPerformanceHistoryInputSchema = z
   .object({
     netuid: netuidSchema(),
-    window: windowSchema(PERFORMANCE_HISTORY_WINDOWS).optional(),
+    window: windowSchema(SUBNET_PERFORMANCE_WINDOW_VALUES).optional(),
   })
   .strict();
 export type GetSubnetPerformanceHistoryInput = z.infer<

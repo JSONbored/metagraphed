@@ -41,6 +41,8 @@ import {
   CANDIDATE_STATE_VALUES,
   SURFACE_KIND_VALUES,
 } from "../routes/subnet-detail.ts";
+import { CONFIDENCE_LEVEL_VALUES } from "../shared.ts";
+import { CANDIDATE_SORT_VALUES, EVIDENCE_ENTRY_SORT_VALUES } from "./shared.ts";
 
 const SURFACE_KINDS = SURFACE_KIND_VALUES;
 
@@ -59,17 +61,6 @@ export type GetSubnetCandidatesOutput = z.infer<
 >;
 
 const CANDIDATE_STATES = CANDIDATE_STATE_VALUES;
-const CONFIDENCE_LEVELS = ["low", "medium", "high"] as const;
-const CANDIDATES_SORT_FIELDS = [
-  "confidence",
-  "id",
-  "kind",
-  "name",
-  "netuid",
-  "provider",
-  "state",
-] as const;
-
 export const ListSubnetCandidatesInputSchema = z
   .object({
     netuid: netuidSchema(),
@@ -88,11 +79,11 @@ export const ListSubnetCandidatesInputSchema = z
       )
       .meta({ examples: ["sn-64-chutes-subnet-api"] }),
     confidence: z
-      .enum(CONFIDENCE_LEVELS)
+      .enum(CONFIDENCE_LEVEL_VALUES)
       .optional()
       .describe("How confident the machine assessment is.")
-      .meta({ examples: [CONFIDENCE_LEVELS[0]] }),
-    sort: sortSchema(CANDIDATES_SORT_FIELDS).optional(),
+      .meta({ examples: [CONFIDENCE_LEVEL_VALUES[0]] }),
+    sort: sortSchema(CANDIDATE_SORT_VALUES).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),
     limit: limitSchema(100).optional(),
@@ -132,18 +123,11 @@ export type GetSubnetEvidenceOutput = z.infer<
   typeof GetSubnetEvidenceOutputSchema
 >;
 
-const CLAIM_SORT_FIELDS = [
-  "claim",
-  "source_url",
-  "subject",
-  "verified_at",
-] as const;
-
 export const ListSubnetEvidenceInputSchema = z
   .object({
     netuid: netuidSchema(),
     q: querySchema().optional(),
-    sort: sortSchema(CLAIM_SORT_FIELDS).optional(),
+    sort: sortSchema(EVIDENCE_ENTRY_SORT_VALUES).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),
     limit: limitSchema(100).optional(),

@@ -13,15 +13,16 @@
 import { z } from "zod";
 import { kindSchema, netuidSchema, windowSchema } from "./shared.ts";
 import { SubnetStakeFlowArtifactSchema } from "../routes/subnet-stake-flow.ts";
-
-const STAKE_FLOW_WINDOWS = ["7d", "30d", "90d"] as const;
-const STAKE_FLOW_DIRECTIONS = ["all", "in", "out"] as const;
+import {
+  SUBNET_STAKE_FLOW_FLOW_DIRECTIONS_VALUES,
+  SUBNET_STAKE_FLOW_WINDOW_VALUES,
+} from "../routes/subnet-stake-flow.ts";
 
 export const GetSubnetStakeFlowInputSchema = z
   .object({
     netuid: netuidSchema(),
-    window: windowSchema(STAKE_FLOW_WINDOWS).optional(),
-    direction: kindSchema(STAKE_FLOW_DIRECTIONS).optional(),
+    window: windowSchema(SUBNET_STAKE_FLOW_WINDOW_VALUES).optional(),
+    direction: kindSchema(SUBNET_STAKE_FLOW_FLOW_DIRECTIONS_VALUES).optional(),
   })
   .strict();
 export type GetSubnetStakeFlowInput = z.infer<

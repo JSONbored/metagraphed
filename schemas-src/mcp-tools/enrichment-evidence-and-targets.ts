@@ -34,18 +34,16 @@ import { ReviewGapPrioritiesArtifactSchema } from "../routes/review-gaps-profile
 import { ReviewEnrichmentTargetsArtifactSchema } from "../routes/review-enrichment.ts";
 import { SURFACE_KIND_VALUES } from "../routes/subnet-detail.ts";
 import { CURATION_LEVEL_VALUES } from "../shared.ts";
+import {
+  EVIDENCE_SORT_FIELDS,
+  TARGET_SORT_FIELDS,
+} from "../routes/review-enrichment.ts";
+import { PRIORITY_SORT_FIELDS } from "../routes/review-gaps-profile.ts";
+import { IDENTITY_LEVEL_VALUES, PROFILE_LEVEL_VALUES } from "../shared.ts";
 
 const SURFACE_KINDS = SURFACE_KIND_VALUES;
 const EVIDENCE_ACTIONS = REVIEW_EVIDENCE_ACTION_VALUES;
 const LANES = REVIEW_ENRICHMENT_LANE_VALUES;
-const EVIDENCE_SORT_FIELDS = [
-  "evidence_action",
-  "lane",
-  "name",
-  "netuid",
-  "priority_score",
-] as const;
-
 export const ListEnrichmentEvidenceInputSchema = z
   .object({
     q: querySchema().optional(),
@@ -100,17 +98,6 @@ export type ListEnrichmentEvidenceOutput = z.infer<
 >;
 
 const CURATION_LEVELS = CURATION_LEVEL_VALUES;
-const PRIORITY_SORT_FIELDS = [
-  "candidate_count",
-  "curation_level",
-  "missing_kinds",
-  "name",
-  "netuid",
-  "priority_score",
-  "surface_count",
-  "verified_candidate_count",
-] as const;
-
 export const ListReviewGapsInputSchema = z
   .object({
     netuid: netuidSchema().optional(),
@@ -148,34 +135,10 @@ export const ListReviewGapsOutputSchema =
   });
 export type ListReviewGapsOutput = z.infer<typeof ListReviewGapsOutputSchema>;
 
-const PROFILE_LEVELS = [
-  "directory-only",
-  "identity-partial",
-  "identity-complete",
-  "operational",
-  "adapter-backed",
-] as const;
-const IDENTITY_LEVELS = ["none", "directory", "partial", "complete"] as const;
 const BOOLEAN_STRINGS = ["true", "false"] as const;
 const SUBMISSION_ROUTES = REVIEW_ENRICHMENT_SUBMISSION_ROUTE_VALUES;
 const TARGET_ACTIONS = REVIEW_ENRICHMENT_TARGET_ACTION_VALUES;
 const TARGET_TYPES = REVIEW_ENRICHMENT_TARGET_TYPE_VALUES;
-const TARGET_SORT_FIELDS = [
-  "auto_review_candidate",
-  "evidence_action",
-  "identity_level",
-  "kind",
-  "lane",
-  "manual_review_required",
-  "name",
-  "netuid",
-  "priority_score",
-  "profile_level",
-  "submission_route",
-  "target_action",
-  "target_type",
-] as const;
-
 export const ListReviewEnrichmentTargetsInputSchema = z
   .object({
     q: querySchema().optional(),
@@ -202,17 +165,17 @@ export const ListReviewEnrichmentTargetsInputSchema = z
       .describe("What the evidence is asking a contributor to do.")
       .meta({ examples: [EVIDENCE_ACTIONS[0]] }),
     identity_level: z
-      .enum(IDENTITY_LEVELS)
+      .enum(IDENTITY_LEVEL_VALUES)
       .optional()
       .describe("How complete the subnet's published identity is.")
-      .meta({ examples: [IDENTITY_LEVELS[0]] }),
+      .meta({ examples: [IDENTITY_LEVEL_VALUES[0]] }),
     profile_level: z
-      .enum(PROFILE_LEVELS)
+      .enum(PROFILE_LEVEL_VALUES)
       .optional()
       .describe(
         "How complete the subnet's profile is, from directory-only upward.",
       )
-      .meta({ examples: [PROFILE_LEVELS[0]] }),
+      .meta({ examples: [PROFILE_LEVEL_VALUES[0]] }),
     submission_route: z
       .enum(SUBMISSION_ROUTES)
       .optional()

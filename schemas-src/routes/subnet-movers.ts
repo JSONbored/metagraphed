@@ -5,6 +5,17 @@
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 
+/** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
+export const SUBNET_MOVERS_MOVERS_SORTS_VALUES = [
+  "stake",
+  "emission",
+  "validators",
+  "neurons",
+] as const;
+
+/** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
+export const SUBNET_MOVERS_WINDOW_VALUES = ["7d", "30d", "90d"] as const;
+
 // Cumulative totals are never negative; a boundary delta genuinely can be
 // (network stake/emission can net-decrease over a window) -- two separate
 // patterns, matching the hand-written original exactly rather than loosening
@@ -54,7 +65,7 @@ const MoverEntrySchema = z
 export const SubnetMoversArtifactSchema = z
   .object({
     schema_version: z.int(),
-    window: z.enum(["7d", "30d", "90d"]).nullable(),
+    window: z.enum(SUBNET_MOVERS_WINDOW_VALUES).nullable(),
     start_date: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -63,7 +74,7 @@ export const SubnetMoversArtifactSchema = z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .nullable(),
-    sort: z.enum(["stake", "emission", "validators", "neurons"]),
+    sort: z.enum(SUBNET_MOVERS_MOVERS_SORTS_VALUES),
     subnet_count: z.int().min(0),
     network: MoversNetworkSummarySchema,
     movers: z.array(MoverEntrySchema),

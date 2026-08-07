@@ -17,10 +17,11 @@ import { ArtifactBaseSchema, CountMapSchema } from "../envelope.ts";
 import { CandidatesArtifactSchema } from "../routes/candidates-evidence.ts";
 import { ReviewAdapterCandidateSchema } from "../routes/review-enrichment.ts";
 import { ReviewGapPrioritySchema } from "../routes/review-gaps-profile.ts";
+import { CONFIDENCE_LEVEL_VALUES } from "../shared.ts";
 
 export const ReviewDecisionSchema = z
   .object({
-    confidence: z.enum(["low", "medium", "high"]),
+    confidence: z.enum(CONFIDENCE_LEVEL_VALUES),
     decision: z.enum([
       "maintainer-reviewed",
       "needs-review",

@@ -25,16 +25,13 @@ import {
 import { CurationArtifactSchema } from "../routes/curation-gaps.ts";
 import { GapsArtifactSchema } from "../routes/curation-gaps.ts";
 import { COVERAGE_LEVEL_VALUES, CURATION_LEVEL_VALUES } from "../shared.ts";
+import {
+  CURATION_SORT_FIELDS,
+  GAPS_SORT_FIELDS,
+} from "../routes/curation-gaps.ts";
 
 const COVERAGE_LEVELS = COVERAGE_LEVEL_VALUES;
 const CURATION_LEVELS = CURATION_LEVEL_VALUES;
-const CURATION_SORT_FIELDS = [
-  "coverage_level",
-  "curation_level",
-  "name",
-  "netuid",
-] as const;
-
 export const ListCurationInputSchema = z
   .object({
     netuid: netuidSchema().optional(),
@@ -63,14 +60,6 @@ export const ListCurationOutputSchema = CurationArtifactSchema.pick({
   ...McpListPageFields,
 });
 export type ListCurationOutput = z.infer<typeof ListCurationOutputSchema>;
-
-const GAPS_SORT_FIELDS = [
-  "coverage_level",
-  "curation_level",
-  "gap_count",
-  "name",
-  "netuid",
-] as const;
 
 export const ListGapsInputSchema = z
   .object({

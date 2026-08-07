@@ -27,6 +27,17 @@
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 
+/** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
+export const ACCOUNTS_LIST_LIST_SORTS_VALUES = [
+  "total_stake",
+  "total_emission",
+  "subnet_count",
+  "uid_count",
+  "validator_count",
+  "stake_dominance",
+  "last_active",
+] as const;
+
 const AccountsListSubnetSchema = z
   .object({
     netuid: z.int().min(0),
@@ -77,15 +88,7 @@ const AccountsListEntrySchema = z
 export const AccountsListArtifactSchema = z
   .object({
     schema_version: z.int(),
-    sort: z.enum([
-      "total_stake",
-      "total_emission",
-      "subnet_count",
-      "uid_count",
-      "validator_count",
-      "stake_dominance",
-      "last_active",
-    ]),
+    sort: z.enum(ACCOUNTS_LIST_LIST_SORTS_VALUES),
     limit: z.int().min(1).max(100),
     captured_at: z.string().nullable().optional(),
     block_number: z.int().nullable().optional(),

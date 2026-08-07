@@ -42,18 +42,23 @@ import {
   SURFACE_KIND_VALUES,
 } from "../routes/subnet-detail.ts";
 import { HEALTH_STATUS_VALUES } from "../shared.ts";
-
-const CLAIM_SORT_FIELDS = [
-  "claim",
-  "source_url",
-  "subject",
-  "verified_at",
-] as const;
+import { PROFILE_SORT_FIELDS } from "../routes/review-gaps-profile.ts";
+import {
+  CONFIDENCE_LEVEL_VALUES,
+  IDENTITY_LEVEL_VALUES,
+  NATIVE_NAME_QUALITY_VALUES,
+  PROFILE_LEVEL_VALUES,
+} from "../shared.ts";
+import {
+  ENDPOINT_POOL_SORT_VALUES,
+  ENDPOINT_SORT_VALUES,
+  EVIDENCE_ENTRY_SORT_VALUES,
+} from "./shared.ts";
 
 export const ListEvidenceInputSchema = z
   .object({
     q: querySchema().optional(),
-    sort: sortSchema(CLAIM_SORT_FIELDS).optional(),
+    sort: sortSchema(EVIDENCE_ENTRY_SORT_VALUES).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),
     limit: limitSchema(100).optional(),
@@ -71,19 +76,6 @@ const SURFACE_KINDS = SURFACE_KIND_VALUES;
 const ENDPOINT_LAYERS = ENDPOINT_LAYER_VALUES;
 const HEALTH_STATUSES = HEALTH_STATUS_VALUES;
 const ENDPOINT_PUBLICATION_STATES = ENDPOINT_PUBLICATION_STATE_VALUES;
-const ENDPOINT_SORT_FIELDS = [
-  "kind",
-  "last_checked",
-  "latency_ms",
-  "layer",
-  "netuid",
-  "pool_eligible",
-  "provider",
-  "publication_state",
-  "score",
-  "status",
-] as const;
-
 export const ListRpcEndpointsInputSchema = z
   .object({
     kind: kindSchema(SURFACE_KINDS).optional(),
@@ -139,7 +131,7 @@ export const ListRpcEndpointsInputSchema = z
         "Inclusive upper bound on endpoint score; rows above it are excluded.",
       )
       .meta({ examples: [100] }),
-    sort: sortSchema(ENDPOINT_SORT_FIELDS).optional(),
+    sort: sortSchema(ENDPOINT_SORT_VALUES).optional(),
     order: orderSchema().optional(),
     // Both `fields` and `cursor` are UNIONS here, unlike everywhere else, so
     // neither can take a shared builder -- the sentence has to say which forms
@@ -175,14 +167,6 @@ export type ListRpcEndpointsOutput = z.infer<
   typeof ListRpcEndpointsOutputSchema
 >;
 
-const POOL_KINDS = ["subtensor-rpc", "subtensor-wss", "archive"] as const;
-const POOL_SORT_FIELDS = [
-  "eligible_count",
-  "endpoint_count",
-  "id",
-  "kind",
-] as const;
-
 export const ListRpcPoolsInputSchema = z
   .object({
     id: z
@@ -192,7 +176,7 @@ export const ListRpcPoolsInputSchema = z
         "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
       )
       .meta({ examples: ["sn-64-chutes-subnet-api"] }),
-    kind: kindSchema(POOL_KINDS).optional(),
+    kind: kindSchema(ENDPOINT_LAYER_VALUES).optional(),
     min_eligible_count: z
       .number()
       .optional()
@@ -221,7 +205,7 @@ export const ListRpcPoolsInputSchema = z
         "Inclusive upper bound on endpoint count; rows above it are excluded.",
       )
       .meta({ examples: [10] }),
-    sort: sortSchema(POOL_SORT_FIELDS).optional(),
+    sort: sortSchema(ENDPOINT_POOL_SORT_VALUES).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),
     limit: limitSchema(100).optional(),
@@ -268,53 +252,26 @@ export type ListSourceSnapshotsOutput = z.infer<
   typeof ListSourceSnapshotsOutputSchema
 >;
 
-const PROFILE_LEVELS = [
-  "directory-only",
-  "identity-partial",
-  "identity-complete",
-  "operational",
-  "adapter-backed",
-] as const;
-const CONFIDENCE_LEVELS = ["low", "medium", "high"] as const;
-const IDENTITY_LEVELS = ["none", "directory", "partial", "complete"] as const;
-const NATIVE_NAME_QUALITIES = ["chain", "placeholder", "empty"] as const;
-const PROFILE_SORT_FIELDS = [
-  "candidate_count",
-  "completeness_score",
-  "identity_level",
-  "identity_promotion_kind_count",
-  "identity_surface_count",
-  "live_identity_candidate_kind_count",
-  "missing_critical_count",
-  "name",
-  "native_identity_signal_count",
-  "native_name_quality",
-  "netuid",
-  "priority_score",
-  "profile_level",
-  "stale_identity_candidate_kind_count",
-] as const;
-
 export const ListProfileCompletenessInputSchema = z
   .object({
     netuid: netuidSchema().optional(),
     profile_level: z
-      .enum(PROFILE_LEVELS)
+      .enum(PROFILE_LEVEL_VALUES)
       .optional()
       .describe(
         "How complete the subnet's profile is, from directory-only upward.",
       )
-      .meta({ examples: [PROFILE_LEVELS[0]] }),
+      .meta({ examples: [PROFILE_LEVEL_VALUES[0]] }),
     confidence: z
-      .enum(CONFIDENCE_LEVELS)
+      .enum(CONFIDENCE_LEVEL_VALUES)
       .optional()
       .describe("How confident the machine assessment is.")
-      .meta({ examples: [CONFIDENCE_LEVELS[0]] }),
+      .meta({ examples: [CONFIDENCE_LEVEL_VALUES[0]] }),
     identity_level: z
-      .enum(IDENTITY_LEVELS)
+      .enum(IDENTITY_LEVEL_VALUES)
       .optional()
       .describe("How complete the subnet's published identity is.")
-      .meta({ examples: [IDENTITY_LEVELS[0]] }),
+      .meta({ examples: [IDENTITY_LEVEL_VALUES[0]] }),
     identity_promotion_kinds: z
       .enum(SURFACE_KINDS)
       .optional()
@@ -323,10 +280,10 @@ export const ListProfileCompletenessInputSchema = z
       )
       .meta({ examples: [SURFACE_KINDS[0]] }),
     native_name_quality: z
-      .enum(NATIVE_NAME_QUALITIES)
+      .enum(NATIVE_NAME_QUALITY_VALUES)
       .optional()
       .describe("Whether the on-chain name is real, a placeholder, or empty.")
-      .meta({ examples: [NATIVE_NAME_QUALITIES[0]] }),
+      .meta({ examples: [NATIVE_NAME_QUALITY_VALUES[0]] }),
     sort: sortSchema(PROFILE_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),

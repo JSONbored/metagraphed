@@ -10,6 +10,15 @@
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 
+/** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
+export const SUBNET_HISTORY_WINDOW_VALUES = [
+  "7d",
+  "30d",
+  "90d",
+  "1y",
+  "all",
+] as const;
+
 const SubnetHistoryPointSchema = z
   .object({
     snapshot_date: z.string(),
@@ -36,7 +45,7 @@ export const SubnetHistoryResponseSchema = successEnvelopeSchema(
 
 export const SubnetHistoryQuerySchema = z
   .object({
-    window: z.enum(["7d", "30d", "90d", "1y", "all"]).optional(),
+    window: z.enum(SUBNET_HISTORY_WINDOW_VALUES).optional(),
   })
   .strict();
 export type SubnetHistoryQuery = z.infer<typeof SubnetHistoryQuerySchema>;

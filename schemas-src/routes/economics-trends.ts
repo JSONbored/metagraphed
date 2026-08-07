@@ -6,6 +6,15 @@
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 
+/** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
+export const ECONOMICS_TRENDS_WINDOW_VALUES = [
+  "7d",
+  "30d",
+  "90d",
+  "1y",
+  "all",
+] as const;
+
 const RaoPrecisionTaoStringSchema = z.string().regex(/^\d+\.\d{9}$/);
 
 const EconomicsTrendsDaySchema = z
@@ -38,7 +47,7 @@ export const EconomicsTrendsResponseSchema = successEnvelopeSchema(
 
 export const EconomicsTrendsQuerySchema = z
   .object({
-    window: z.enum(["7d", "30d", "90d", "1y", "all"]).optional(),
+    window: z.enum(ECONOMICS_TRENDS_WINDOW_VALUES).optional(),
   })
   .strict();
 export type EconomicsTrendsQuery = z.infer<typeof EconomicsTrendsQuerySchema>;

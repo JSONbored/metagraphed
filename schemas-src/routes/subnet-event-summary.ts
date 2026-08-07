@@ -10,6 +10,9 @@ import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 import { AccountEventSchema } from "./subnet-events.ts";
 
+/** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
+export const SUBNET_EVENT_SUMMARY_WINDOW_VALUES = ["7d", "30d", "90d"] as const;
+
 const EVENT_CATEGORIES = [
   "registration",
   "stake",
@@ -62,7 +65,7 @@ export const SubnetEventSummaryArtifactSchema = z
   .object({
     schema_version: z.int(),
     netuid: z.int(),
-    window: z.enum(["7d", "30d", "90d"]),
+    window: z.enum(SUBNET_EVENT_SUMMARY_WINDOW_VALUES),
     observed_at: z.iso.datetime().nullable(),
     total_events: z.int().min(0),
     kind_count: z.int().min(0),

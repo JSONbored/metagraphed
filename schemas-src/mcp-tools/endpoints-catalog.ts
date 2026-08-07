@@ -36,24 +36,12 @@ import {
   SURFACE_KIND_VALUES,
 } from "../routes/subnet-detail.ts";
 import { HEALTH_STATUS_VALUES } from "../shared.ts";
+import { ENDPOINT_SORT_VALUES } from "./shared.ts";
 
 const SURFACE_KINDS = SURFACE_KIND_VALUES;
 const ENDPOINT_LAYERS = ENDPOINT_LAYER_VALUES;
 const ENDPOINT_PUBLICATION_STATES = ENDPOINT_PUBLICATION_STATE_VALUES;
 const HEALTH_STATUSES = HEALTH_STATUS_VALUES;
-const ENDPOINT_SORT_FIELDS = [
-  "kind",
-  "last_checked",
-  "latency_ms",
-  "layer",
-  "netuid",
-  "pool_eligible",
-  "provider",
-  "publication_state",
-  "score",
-  "status",
-] as const;
-
 export const ListEndpointsInputSchema = z
   .object({
     kind: kindSchema(SURFACE_KINDS).optional(),
@@ -109,7 +97,7 @@ export const ListEndpointsInputSchema = z
         "Inclusive upper bound on endpoint score; rows above it are excluded.",
       )
       .meta({ examples: [100] }),
-    sort: sortSchema(ENDPOINT_SORT_FIELDS).optional(),
+    sort: sortSchema(ENDPOINT_SORT_VALUES).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),
     // Ceiling is MAX_LIMIT (workers/request-params.ts:21); a literal here

@@ -17,14 +17,15 @@ import {
 } from "../../src/route-limits.ts";
 import { limitSchema, sortSchema, windowSchema } from "./shared.ts";
 import { SubnetMoversArtifactSchema } from "../routes/subnet-movers.ts";
-
-const MOVERS_WINDOW_KEYS = ["7d", "30d", "90d"] as const;
-const MOVERS_SORTS = ["stake", "emission", "validators", "neurons"] as const;
+import {
+  SUBNET_MOVERS_MOVERS_SORTS_VALUES,
+  SUBNET_MOVERS_WINDOW_VALUES,
+} from "../routes/subnet-movers.ts";
 
 export const GetSubnetMoversInputSchema = z
   .object({
-    window: windowSchema(MOVERS_WINDOW_KEYS).optional(),
-    sort: sortSchema(MOVERS_SORTS).optional(),
+    window: windowSchema(SUBNET_MOVERS_WINDOW_VALUES).optional(),
+    sort: sortSchema(SUBNET_MOVERS_MOVERS_SORTS_VALUES).optional(),
     limit: limitSchema(MOVERS_LIMIT_MAX, MOVERS_LIMIT_DEFAULT).optional(),
   })
   .strict();

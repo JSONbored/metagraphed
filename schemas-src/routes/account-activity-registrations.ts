@@ -15,7 +15,7 @@ import {
   EventStreamDegradedSchema,
 } from "./event-stream-honesty.ts";
 
-const WINDOW_ENUM_90D = ["7d", "30d", "90d"] as const;
+export const WINDOW_ENUM_90D = ["7d", "30d", "90d"] as const;
 const WINDOW_ENUM_7_30D = ["7d", "30d"] as const;
 
 export const AccountAxonRemovalsArtifactSchema = z

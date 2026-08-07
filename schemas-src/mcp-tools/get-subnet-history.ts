@@ -13,13 +13,12 @@
 import { z } from "zod";
 import { netuidSchema, windowSchema } from "./shared.ts";
 import { SubnetHistoryArtifactSchema } from "../routes/subnet-history.ts";
-
-const HISTORY_WINDOWS = ["7d", "30d", "90d", "1y", "all"] as const;
+import { SUBNET_HISTORY_WINDOW_VALUES } from "../routes/subnet-history.ts";
 
 export const GetSubnetHistoryInputSchema = z
   .object({
     netuid: netuidSchema(),
-    window: windowSchema(HISTORY_WINDOWS).optional(),
+    window: windowSchema(SUBNET_HISTORY_WINDOW_VALUES).optional(),
   })
   .strict();
 export type GetSubnetHistoryInput = z.infer<typeof GetSubnetHistoryInputSchema>;

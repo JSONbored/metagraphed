@@ -5,6 +5,15 @@
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 
+/** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
+export const SUBNET_TURNOVER_WINDOW_VALUES = [
+  "7d",
+  "30d",
+  "90d",
+  "1y",
+  "all",
+] as const;
+
 const ValidatorDetailSchema = z
   .object({
     hotkey: z.string(),
@@ -61,7 +70,7 @@ export const SubnetTurnoverResponseSchema = successEnvelopeSchema(
 
 export const SubnetTurnoverQuerySchema = z
   .object({
-    window: z.enum(["7d", "30d", "90d", "1y", "all"]).optional(),
+    window: z.enum(SUBNET_TURNOVER_WINDOW_VALUES).optional(),
     changes: z.enum(["true"]).optional(),
   })
   .strict();

@@ -12,6 +12,93 @@ import { z } from "zod";
 import { NeuronSchema } from "../routes/subnet-metagraph.ts";
 import { MAX_OFFSET } from "../../workers/request-params.ts";
 
+/** Shared across MCP tools that have no single route owner (#9799). */
+export const EVIDENCE_ENTRY_SORT_VALUES = [
+  "claim",
+  "source_url",
+  "subject",
+  "verified_at",
+] as const;
+
+/** Shared across MCP tools that have no single route owner (#9799). */
+export const CANDIDATE_SORT_VALUES = [
+  "confidence",
+  "id",
+  "kind",
+  "name",
+  "netuid",
+  "provider",
+  "state",
+] as const;
+
+/** Shared across MCP tools that have no single route owner (#9799). */
+export const SURFACE_SORT_VALUES = [
+  "id",
+  "kind",
+  "name",
+  "netuid",
+  "provider",
+] as const;
+
+/** Shared across MCP tools that have no single route owner (#9799). */
+export const HEALTH_SURFACE_SORT_VALUES = [
+  "classification",
+  "kind",
+  "last_checked",
+  "last_ok",
+  "latency_ms",
+  "netuid",
+  "provider",
+  "status",
+  "status_code",
+  "surface_id",
+  "verified_at",
+] as const;
+
+/** Shared across MCP tools that have no single route owner (#9799). */
+export const HEALTH_CLASSIFICATION_VALUES = [
+  "auth-required",
+  "content-mismatch",
+  "dead",
+  "live",
+  "rate-limited",
+  "redirected",
+  "timeout",
+  "transient",
+  "unsupported",
+  "unsafe",
+  "wrong-chain",
+] as const;
+
+/** Shared across MCP tools that have no single route owner (#9799). */
+export const ENDPOINT_SORT_VALUES = [
+  "kind",
+  "last_checked",
+  "latency_ms",
+  "layer",
+  "netuid",
+  "pool_eligible",
+  "provider",
+  "publication_state",
+  "score",
+  "status",
+] as const;
+
+/** Shared across MCP tools that have no single route owner (#9799). */
+export const ENDPOINT_POOL_SORT_VALUES = [
+  "eligible_count",
+  "endpoint_count",
+  "id",
+  "kind",
+] as const;
+
+/** Shared across MCP tools that have no single route owner (#9799). */
+export const ENDPOINT_LAYER_VALUES = [
+  "subtensor-rpc",
+  "subtensor-wss",
+  "archive",
+] as const;
+
 // --- Bounded input primitives --------------------------------------
 //
 // Every tool author wrote `z.int().min(0)` inline, so no parameter declared a real
