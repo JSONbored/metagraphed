@@ -105,6 +105,13 @@
     // flipping one side alone is the split-brain this pins shut -- the main
     // Worker would stop forwarding while this one kept serving D1.
     "METAGRAPH_NEURONS_SOURCE": "d1",
+    // metagraphed-infra#336. Both EMPTY on purpose: this deploy introduces the
+    // Neon mirror and changes nothing. The order they are turned on in is
+    // fixed -- name a lane here, watch its `neon:` lane in lane_health go green
+    // across several producer ticks, and only then name it in NEON_READ_LANES.
+    // Never the other way round; that is exactly what #9704 was.
+    "NEON_DUAL_WRITE_LANES": "",
+    "NEON_READ_LANES": "",
     "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "d1",
     "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "d1",
     // THE QUEUE CUTOVER (metagraphed-infra#348). Comma-separated lanes whose D1
@@ -340,35 +347,33 @@
   // Never add `localConnectionString` here: Neon's own guide suggests it and it
   // would commit a live password to a public repository. Use `.dev.vars`, which
   // IS gitignored, for local work.
-  // UNBOUND 2026-08-07. The Neon pilot (metagraphed-infra#336) moved a READ
-  // without ever building a WRITE, and the two facts were never checked
-  // together.
+  // REBOUND 2026-08-07, with the two questions finally separated.
   //
-  // GET /api/v1/accounts/{ss58}/subnets/{netuid}/history reads Neon whenever
-  // this binding exists (see positionHistoryServedFromNeon in
-  // workers/data-api.ts). Neon's account_position_daily got ONE load on
-  // 2026-08-05 at 19:35 and nothing has written to it since, while the D1
-  // dual-write kept running. So the route served a snapshot that was two days
-  // old and getting older, and would have gone on doing that indefinitely.
+  // It was unbound hours earlier (#9704) because the Neon pilot moved a READ
+  // without ever building a WRITE: `account_position_daily` got ONE load on
+  // 2026-08-05 at 19:35, nothing wrote to it after, and
+  // GET /api/v1/accounts/{ss58}/subnets/{netuid}/history served a snapshot two
+  // days old and aging -- 26 points to 08-05 where D1 had 27 rows to 08-07.
   //
-  // Measured before unbinding, two accounts picked from the table itself:
+  // THE BINDING WAS NEVER THE PROBLEM. The read gate was
+  // `env.HYPERDRIVE && ...`, so a connection provisioned for a WRITE pilot
+  // silently moved a public route's read. "This Worker can reach Neon" and
+  // "this route should read Neon" are different questions, and they now have
+  // different answers:
   //
-  //   5C4hrjU8...t87s netuid 102   served 10 points to 2026-08-05
-  //                                D1 has 11 rows  to 2026-08-07
-  //   5C4ipx9Y...sw9bD netuid  80   served 26 points to 2026-08-05
-  //                                D1 has 27 rows  to 2026-08-07
+  //   NEON_DUAL_WRITE_LANES  which lanes MIRROR into Neon after their D1 write
+  //   NEON_READ_LANES        which lanes are SERVED from Neon
   //
-  // The code was written for exactly this rollback -- "unbinding HYPERDRIVE
-  // restores the previous behaviour exactly" -- so this is the intended
-  // control, not a workaround. Rebind it when a writer exists and its
-  // freshness has a watchdog, which is what let this run unnoticed: no lane in
-  // lane_health covers this route's store.
-  //
-  // The Hyperdrive config (metagraphed-neon,
-  // 8a09dc673733497f987434f59689287e) and the Neon project are both left in
-  // place. Nothing is lost by unbinding; the read simply goes back to the
-  // store that is current.
-  "hyperdrive": [],
+  // Both empty at this commit, so rebinding moves nothing. The order is fixed:
+  // name a lane in the write list, watch its `neon:` verdict in lane_health go
+  // green across several producer ticks -- metagraphed#9698 reads those, which
+  // is the check that did not exist -- and only then name it in the read list.
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "8a09dc673733497f987434f59689287e",
+    },
+  ],
   // Wallet-login challenge nonces (ADR 0021, #6835, src/wallet-auth.ts) --
   // the SAME namespace id as the main Worker's own METAGRAPH_CONTROL binding
   // (wrangler.jsonc), bound under the same name here so both Workers read/
