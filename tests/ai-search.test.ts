@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { ReadableStream } from "node:stream/web";
 import { describe, test } from "vitest";
-import Ajv2020 from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+import { Ajv2020 } from "ajv/dist/2020.js";
+import addFormatsPlugin from "ajv-formats";
 import { z } from "zod";
 import { SemanticSearchArtifactSchema } from "../schemas-src/routes/ai-native.ts";
 import {
@@ -757,9 +757,10 @@ describe("a provider result satisfies the PUBLISHED schema (#9903)", () => {
   // Validating the payload against its own published schema is the assertion
   // that catches this class; asserting the handler's own output shape never
   // could, because the handler and the test agreed with each other.
+  const addFormats = addFormatsPlugin as unknown as (i: Ajv2020) => void;
   const ajv = () => {
     const instance = new Ajv2020({ strict: false, allErrors: true });
-    (addFormats as unknown as (a: unknown) => void)(instance);
+    addFormats(instance);
     return instance;
   };
 
