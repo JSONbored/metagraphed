@@ -131,7 +131,10 @@ export function resolveIdentifier(query: unknown): ResolvedIdentifier[] {
       {
         kind: "evm-account",
         value: `0x${hex}`,
-        api_path: `/api/v1/evm/address-mapping/0x${hex}`,
+        // The route is `evm/address`, not `evm/address-mapping` --
+        // `AddressMapping.addressMapping` is the STORAGE item it reads, and the
+        // pallet name leaked into the path. The wrong one 404s.
+        api_path: `/api/v1/evm/address/0x${hex}`,
         ui_path: `/accounts?h160=0x${hex}`,
         exact: true,
       },
