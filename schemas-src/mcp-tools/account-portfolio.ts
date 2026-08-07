@@ -1,15 +1,17 @@
 // MCP tools `get_account_portfolio`, `get_account_positions`,
-// `get_account_snapshot` (types-epic E batch 6, #8069). Each mirrors a
-// GET /api/v1/accounts/{ss58}/{portfolio,positions} route (get_account_snapshot
-// has no REST equivalent -- it fans out to five other tools' own live loaders
-// in one call), none of which are covered by schemas-src/routes/ -- no
-// existing Zod schema to reuse. get_account_snapshot's balance/portfolio/
-// subnets/positions/recent_events fields are deliberately bare open objects,
-// NOT the sibling tools' own precise output schemas from this same batch --
-// the hand-written original never nested their real shapes either (bare
-// {type:"object"}), so reusing them here would be a real tightening the
-// issue's wire-compatibility constraint doesn't require.
+// `get_account_snapshot` (types-epic E batch 6, #8069). The first two mirror a
+// GET /api/v1/accounts/{ss58}/{portfolio,positions} route; get_account_snapshot
+// has no REST equivalent -- it fans out to five other tools' own live loaders in
+// one call.
+//
+// This file's header used to claim none of these routes were "covered by
+// schemas-src/routes/ -- no existing Zod schema to reuse". That stopped being
+// true, and the hand-written copies were never revisited, so they drifted from
+// the routes they mirror (#9794). `get_account_positions` is the sharpest case:
+// #8803 renamed total_stake_tao to total_stake_alpha, the copy kept requiring
+// the old name, and every response since has failed its own published contract.
 import { z } from "zod";
+import { AccountPortfolioArtifactSchema } from "../routes/account-portfolio.ts";
 import {
   OpenObjectArraySchema,
   OpenObjectSchema,
@@ -25,22 +27,19 @@ export type GetAccountPortfolioInput = z.infer<
   typeof GetAccountPortfolioInputSchema
 >;
 
-export const GetAccountPortfolioOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    ss58: z.string(),
-    captured_at: z.string().nullable().optional(),
-    subnet_count: z.int().optional(),
-    position_count: z.int(),
-    validator_count: z.int().optional(),
-    miner_count: z.int().optional(),
-    total_stake_tao: z.number().optional(),
-    total_emission_tao: z.number().optional(),
-    overall_yield: z.number().nullable().optional(),
-    stake_concentration: OpenObjectSchema.nullable().optional(),
-    positions: OpenObjectArraySchema,
-  })
-  .passthrough();
+// The tool serves the route's artifact unchanged, so it publishes the route's
+// schema unchanged. This is a strict improvement for callers as well as a drift
+// fix: the copy declared `positions` as a bare open array and
+// `stake_concentration` as a bare open object, so an agent was told nothing
+// about either. The route schema types every position and carries the
+// descriptions that matter for reading the numbers correctly -- that the totals
+// are genuine TAO converted through each subnet's SPOT price rather than a sum
+// of incomparable alpha, and that the valuation can lag the live economics tier
+// by up to ~24h because it is marked from the daily rollup.
+//
+// Verified against production before the switch: the live tool's response
+// satisfies this schema.
+export const GetAccountPortfolioOutputSchema = AccountPortfolioArtifactSchema;
 export type GetAccountPortfolioOutput = z.infer<
   typeof GetAccountPortfolioOutputSchema
 >;
@@ -54,14 +53,39 @@ export type GetAccountPositionsInput = z.infer<
   typeof GetAccountPositionsInputSchema
 >;
 
+// NOT YET DERIVED, deliberately. AccountPositionsArtifactSchema is the right
+// source and this should become `= AccountPositionsArtifactSchema` -- but the
+// live tool does not satisfy it today, so switching now would publish a
+// contract production violates, trading one drift for another.
+//
+// Two things block it, both filed:
+//   - the route's `degraded.reason` enum declares two values and production
+//     serves a third, `positions_unpriceable` (#9804);
+//   - the route requires `degraded.snapshot_captured_at` and
+//     `latest_stake_event_at`, and the handler emits neither (#9803).
+//
+// Checked against production rather than assumed: deriving today rejects real
+// responses on exactly those fields. The rename below is still fixed here,
+// because that one is a plain defect with nothing blocking it.
 export const GetAccountPositionsOutputSchema = z
   .object({
     schema_version: z.int().optional(),
     ss58: z.string(),
     captured_at: z.string().nullable().optional(),
     position_count: z.int(),
-    total_stake_tao: z.number(),
+    // RENAMED IN #8803, and this copy never followed (#9794). The field is
+    // total_stake_alpha -- schemas-src/routes/account-positions.ts says so and
+    // explains why it is alpha rather than TAO -- so this schema REQUIRED a
+    // key the response has never carried since that rename. Every
+    // get_account_positions response has been failing its own published
+    // contract, and an agent reading the schema was told to look for a field
+    // that is not there.
+    total_stake_alpha: z.number(),
     positions: OpenObjectArraySchema,
+    // #9273: present only when the payload's zero is not a measurement. Left
+    // open here rather than typed, because the shape it should reference is the
+    // one #9803/#9804 are still correcting.
+    degraded: OpenObjectSchema.optional(),
   })
   .passthrough();
 export type GetAccountPositionsOutput = z.infer<

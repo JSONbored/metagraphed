@@ -388,7 +388,23 @@ export const RpcUsageArtifactSchema = z
     schema_version: z.int(),
     window: z.string().nullable().optional(),
     bucket_granularity: z.string().nullable().optional(),
-    observed_at: z.string().nullable().optional(),
+    // EPOCH MILLISECONDS, not an ISO string (#9794). Both GET /api/v1/rpc/usage
+    // and the get_rpc_usage MCP tool serve a number here -- 1786099339000 --
+    // so this route contract has been wrong since it was written, and the
+    // hand-written MCP copy inherited the same mistake rather than causing it.
+    // Unlike this file's other observed_at fields, which are genuine ISO
+    // strings, this one is request-scoped telemetry stamped in millis. The
+    // example carries a real stamp rather than a bare `1`, because the unit is
+    // the whole point of the field and a placeholder integer teaches a reader
+    // nothing about it.
+    observed_at: z
+      .int()
+      .nullable()
+      .optional()
+      .describe(
+        "When this telemetry was observed, as epoch MILLISECONDS -- not an ISO-8601 string like this file's other observed_at fields. Request-scoped rather than build-scoped: it stamps the read, not a published artifact.",
+      )
+      .meta({ examples: [1786099339000] }),
     source: z.string(),
     coverage: RpcUsageCoverageSchema,
     summary: z

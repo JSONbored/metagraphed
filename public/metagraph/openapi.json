@@ -7702,7 +7702,7 @@
                 "requests": 1
               }
             ],
-            "observed_at": "2026-06-01T00:00:00.000Z",
+            "observed_at": 1,
             "schema_version": 1,
             "source": "live-cron-prober",
             "summary": {
@@ -38497,11 +38497,17 @@
           "observed_at": {
             "anyOf": [
               {
-                "type": "string"
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer"
               },
               {
                 "type": "null"
               }
+            ],
+            "description": "When this telemetry was observed, as epoch MILLISECONDS -- not an ISO-8601 string like this file's other observed_at fields. Request-scoped rather than build-scoped: it stamps the read, not a published artifact.",
+            "examples": [
+              1786099339000
             ]
           },
           "schema_version": {
