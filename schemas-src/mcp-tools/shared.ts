@@ -454,3 +454,59 @@ export const NeuronFieldsInputSchema = z
       "the full row; the enum lists every projectable field.",
   )
   .optional();
+
+// ---------------------------------------------------------------------------
+// The paginated-list projection (#9796).
+//
+// Nineteen artifact-backed `list_*` tools share one deliberate reshaping of
+// the route artifact they serve, in ~27 handlers that all build it the same
+// way (see src/curation-mcp.ts's loadCurationList for the canonical one):
+//
+//   - `schema_version` is dropped -- the tool result is not an artifact.
+//   - the whole pagination block is lifted OUT of the envelope's `meta` and
+//     onto the top level, so a model reading one object can see where it is in
+//     the collection without being told about envelopes.
+//   - `generated_at` and `notes` are null-coalesced rather than omitted, so a
+//     caller can always read them.
+//
+// That is a projection, not drift, and it is why these tools could not simply
+// derive from their route schema the way the other 149 did. Declaring it ONCE
+// here, and composing it with an explicit `.pick()` of the route's own fields
+// at each call site, keeps the derivation a derivation: every field that
+// survives still comes from the route, so a rename there is still a compile
+// error here.
+export const McpListPageFields = {
+  total: z
+    .int()
+    .min(0)
+    .describe("Rows in the whole collection, not just this page."),
+  returned: z.int().min(0),
+  limit: z.int().min(0),
+  cursor: z.int().min(0),
+  next_cursor: z
+    .int()
+    .min(0)
+    .nullable()
+    .describe("Null on the last page -- absence of a next page, not zero."),
+  sort: z.string().nullable(),
+  order: z.string().nullable(),
+};
+
+/** The artifact stamp as the list handlers emit it: coalesced to null rather
+ * than omitted when the artifact does not carry one. The route schemas declare
+ * `generated_at` non-nullable and `notes` optional, which is right for the
+ * ROUTE -- it serves the artifact untouched. */
+export const McpListArtifactStamp = {
+  generated_at: z.string().nullable(),
+  notes: z.union([z.string(), z.array(z.string())]).nullable(),
+};
+
+/** The same stamp for the SUBNET-SCOPED list tools, which carry no `notes` at
+ * all: their handlers echo the requested `netuid` in its place, because a
+ * per-subnet slice's provenance is the subnet, not a note about the whole
+ * artifact. Kept separate rather than making `notes` optional everywhere --
+ * the thirteen network-wide tools always send it, and a contract that says
+ * "maybe" where the answer is "always" is the weaker one. */
+export const McpSubnetListArtifactStamp = {
+  generated_at: z.string().nullable(),
+};

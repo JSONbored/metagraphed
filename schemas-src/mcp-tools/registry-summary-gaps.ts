@@ -8,6 +8,8 @@
 import { z } from "zod";
 import { RegistrySummaryArtifactSchema } from "../routes/registry-summary-leaderboards.ts";
 import {
+  McpListPageFields,
+  McpSubnetListArtifactStamp,
   OpenObjectSchema,
   fieldsStringSchema,
   kindSchema,
@@ -17,6 +19,7 @@ import {
   orderSchema,
   sortSchema,
 } from "./shared.ts";
+import { SubnetGapsArtifactSchema } from "../routes/review-gaps-profile.ts";
 
 export const RegistrySummaryInputSchema = z.object({}).strict();
 export type RegistrySummaryInput = z.infer<typeof RegistrySummaryInputSchema>;
@@ -204,18 +207,11 @@ export const ListSubnetGapsInputSchema = z
   .strict();
 export type ListSubnetGapsInput = z.infer<typeof ListSubnetGapsInputSchema>;
 
-export const ListSubnetGapsOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    netuid: netuidSchema().nullable().optional(),
-    priorities: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListSubnetGapsOutputSchema = SubnetGapsArtifactSchema.pick({
+  netuid: true,
+  priorities: true,
+}).extend({
+  ...McpSubnetListArtifactStamp,
+  ...McpListPageFields,
+});
 export type ListSubnetGapsOutput = z.infer<typeof ListSubnetGapsOutputSchema>;

@@ -19,7 +19,8 @@
 // now publishes.
 import { z } from "zod";
 import {
-  OpenObjectSchema,
+  McpListPageFields,
+  McpSubnetListArtifactStamp,
   fieldsStringSchema,
   kindSchema,
   limitSchema,
@@ -119,20 +120,14 @@ export type ListSubnetCandidatesInput = z.infer<
   typeof ListSubnetCandidatesInputSchema
 >;
 
-export const ListSubnetCandidatesOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    netuid: netuidSchema().nullable().optional(),
-    candidates: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListSubnetCandidatesOutputSchema =
+  SubnetCandidatesArtifactSchema.pick({
+    netuid: true,
+    candidates: true,
+  }).extend({
+    ...McpSubnetListArtifactStamp,
+    ...McpListPageFields,
+  });
 export type ListSubnetCandidatesOutput = z.infer<
   typeof ListSubnetCandidatesOutputSchema
 >;
@@ -173,20 +168,15 @@ export type ListSubnetEvidenceInput = z.infer<
   typeof ListSubnetEvidenceInputSchema
 >;
 
-export const ListSubnetEvidenceOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    netuid: netuidSchema().nullable().optional(),
-    claims: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListSubnetEvidenceOutputSchema = SubnetEvidenceArtifactSchema.pick(
+  {
+    netuid: true,
+    claims: true,
+  },
+).extend({
+  ...McpSubnetListArtifactStamp,
+  ...McpListPageFields,
+});
 export type ListSubnetEvidenceOutput = z.infer<
   typeof ListSubnetEvidenceOutputSchema
 >;

@@ -12,6 +12,8 @@
 // hand-written literal field-for-field.
 import { z } from "zod";
 import {
+  McpListArtifactStamp,
+  McpListPageFields,
   NotesFieldSchema,
   OpenObjectSchema,
   fieldsStringSchema,
@@ -22,6 +24,7 @@ import {
   querySchema,
   sortSchema,
 } from "./shared.ts";
+import { SearchIndexArtifactSchema } from "../routes/evidence-search.ts";
 
 const DOCUMENT_TYPES = ["subnet", "surface", "provider"] as const;
 const DOCUMENT_SORT_FIELDS = ["netuid", "slug", "title", "type"] as const;
@@ -44,20 +47,12 @@ export const ListSearchIndexInputSchema = z
   .strict();
 export type ListSearchIndexInput = z.infer<typeof ListSearchIndexInputSchema>;
 
-export const ListSearchIndexOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    notes: NotesFieldSchema,
-    documents: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListSearchIndexOutputSchema = SearchIndexArtifactSchema.pick({
+  documents: true,
+}).extend({
+  ...McpListArtifactStamp,
+  ...McpListPageFields,
+});
 export type ListSearchIndexOutput = z.infer<typeof ListSearchIndexOutputSchema>;
 
 export const ListSearchInputSchema = z

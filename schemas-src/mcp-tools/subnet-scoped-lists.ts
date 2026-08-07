@@ -17,6 +17,8 @@
 // at all, unlike every other list_* tool in this epic.
 import { z } from "zod";
 import {
+  McpListPageFields,
+  McpSubnetListArtifactStamp,
   OpenObjectSchema,
   fieldsStringSchema,
   kindSchema,
@@ -27,6 +29,8 @@ import {
   providerSlugSchema,
   sortSchema,
 } from "./shared.ts";
+import { SubnetEndpointsArtifactSchema } from "../routes/endpoints-pools.ts";
+import { SubnetSurfacesArtifactSchema } from "../routes/endpoints-pools.ts";
 
 const SURFACE_KINDS = [
   "archive",
@@ -139,20 +143,14 @@ export type ListSubnetEndpointsInput = z.infer<
   typeof ListSubnetEndpointsInputSchema
 >;
 
-export const ListSubnetEndpointsOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    netuid: netuidSchema().nullable().optional(),
-    endpoints: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListSubnetEndpointsOutputSchema =
+  SubnetEndpointsArtifactSchema.pick({
+    netuid: true,
+    endpoints: true,
+  }).extend({
+    ...McpSubnetListArtifactStamp,
+    ...McpListPageFields,
+  });
 export type ListSubnetEndpointsOutput = z.infer<
   typeof ListSubnetEndpointsOutputSchema
 >;
@@ -187,20 +185,15 @@ export type ListSubnetSurfacesInput = z.infer<
   typeof ListSubnetSurfacesInputSchema
 >;
 
-export const ListSubnetSurfacesOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    netuid: netuidSchema().nullable().optional(),
-    surfaces: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListSubnetSurfacesOutputSchema = SubnetSurfacesArtifactSchema.pick(
+  {
+    netuid: true,
+    surfaces: true,
+  },
+).extend({
+  ...McpSubnetListArtifactStamp,
+  ...McpListPageFields,
+});
 export type ListSubnetSurfacesOutput = z.infer<
   typeof ListSubnetSurfacesOutputSchema
 >;
@@ -253,6 +246,14 @@ export const ListSubnetHealthInputSchema = z
   .strict();
 export type ListSubnetHealthInput = z.infer<typeof ListSubnetHealthInputSchema>;
 
+// NOT DERIVED, deliberately (#9796). list_subnet_health does not mirror
+// HealthSubnetArtifact's row shape: the route serves overlaySubnetHealth()'s
+// live-merged 12-field row (strict, and requiring `observed_by`), while the
+// tool serves the registry surface record overlaid with health -- 20 fields,
+// including auth_required/public_safe/content_type/method_tested that the
+// route row has no place for. Verified against production: deriving it would
+// publish a contract the live response violates. It stays hand-written until
+// something types the tool's own row (#9797).
 export const ListSubnetHealthOutputSchema = z
   .object({
     generated_at: z.string().nullable().optional(),

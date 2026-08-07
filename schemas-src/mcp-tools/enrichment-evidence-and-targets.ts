@@ -10,8 +10,8 @@
 // matching each hand-written literal field-for-field.
 import { z } from "zod";
 import {
-  NotesFieldSchema,
-  OpenObjectSchema,
+  McpListArtifactStamp,
+  McpListPageFields,
   fieldsStringSchema,
   kindSchema,
   limitSchema,
@@ -21,6 +21,9 @@ import {
   querySchema,
   sortSchema,
 } from "./shared.ts";
+import { ReviewEnrichmentEvidenceArtifactSchema } from "../routes/review-enrichment.ts";
+import { ReviewGapPrioritiesArtifactSchema } from "../routes/review-gaps-profile.ts";
+import { ReviewEnrichmentTargetsArtifactSchema } from "../routes/review-enrichment.ts";
 
 const SURFACE_KINDS = [
   "archive",
@@ -100,20 +103,13 @@ export type ListEnrichmentEvidenceInput = z.infer<
   typeof ListEnrichmentEvidenceInputSchema
 >;
 
-export const ListEnrichmentEvidenceOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    notes: NotesFieldSchema,
-    entries: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListEnrichmentEvidenceOutputSchema =
+  ReviewEnrichmentEvidenceArtifactSchema.pick({
+    entries: true,
+  }).extend({
+    ...McpListArtifactStamp,
+    ...McpListPageFields,
+  });
 export type ListEnrichmentEvidenceOutput = z.infer<
   typeof ListEnrichmentEvidenceOutputSchema
 >;
@@ -162,20 +158,13 @@ export const ListReviewGapsInputSchema = z
   .strict();
 export type ListReviewGapsInput = z.infer<typeof ListReviewGapsInputSchema>;
 
-export const ListReviewGapsOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    notes: NotesFieldSchema,
-    priorities: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListReviewGapsOutputSchema =
+  ReviewGapPrioritiesArtifactSchema.pick({
+    priorities: true,
+  }).extend({
+    ...McpListArtifactStamp,
+    ...McpListPageFields,
+  });
 export type ListReviewGapsOutput = z.infer<typeof ListReviewGapsOutputSchema>;
 
 const PROFILE_LEVELS = [
@@ -301,20 +290,13 @@ export type ListReviewEnrichmentTargetsInput = z.infer<
   typeof ListReviewEnrichmentTargetsInputSchema
 >;
 
-export const ListReviewEnrichmentTargetsOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    notes: NotesFieldSchema,
-    targets: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListReviewEnrichmentTargetsOutputSchema =
+  ReviewEnrichmentTargetsArtifactSchema.pick({
+    targets: true,
+  }).extend({
+    ...McpListArtifactStamp,
+    ...McpListPageFields,
+  });
 export type ListReviewEnrichmentTargetsOutput = z.infer<
   typeof ListReviewEnrichmentTargetsOutputSchema
 >;

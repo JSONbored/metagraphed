@@ -18,7 +18,8 @@
 // now publishes.
 import { z } from "zod";
 import {
-  OpenObjectSchema,
+  McpListArtifactStamp,
+  McpListPageFields,
   fieldsStringSchema,
   kindSchema,
   limitSchema,
@@ -32,6 +33,8 @@ import {
 import { EvidenceLedgerArtifactSchema } from "../routes/candidates-evidence.ts";
 import { SourceSnapshotsArtifactSchema } from "../routes/evidence-search.ts";
 import { RpcEndpointsArtifactSchema } from "../routes/providers-rpc.ts";
+import { ReviewProfileCompletenessArtifactSchema } from "../routes/review-gaps-profile.ts";
+import { RpcPoolsArtifactSchema } from "../routes/providers-rpc.ts";
 
 const CLAIM_SORT_FIELDS = [
   "claim",
@@ -245,25 +248,15 @@ export type ListRpcPoolsInput = z.infer<typeof ListRpcPoolsInputSchema>;
 
 // No schema_version field in the hand-written original, unlike every other
 // tool in this batch.
-export const ListRpcPoolsOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    notes: z
-      .union([z.array(z.string()), z.string()])
-      .nullable()
-      .optional(),
-    source: z.string().nullable().optional(),
-    operational_observed_at: z.string().nullable().optional(),
-    pools: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListRpcPoolsOutputSchema = RpcPoolsArtifactSchema.pick({
+  source: true,
+  pools: true,
+}).extend({
+  ...McpListArtifactStamp,
+  // Added by the live overlay, so it is not on the route artifact.
+  operational_observed_at: z.string().nullable(),
+  ...McpListPageFields,
+});
 export type ListRpcPoolsOutput = z.infer<typeof ListRpcPoolsOutputSchema>;
 
 const SOURCE_SORT_FIELDS = ["id", "kind", "path", "record_count"] as const;
@@ -360,24 +353,14 @@ export type ListProfileCompletenessInput = z.infer<
 // No schema_version field in the hand-written original. summary declares
 // additionalProperties:true explicitly, unlike list_evidence's bare
 // nullable-object summary.
-export const ListProfileCompletenessOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    notes: z
-      .union([z.array(z.string()), z.string()])
-      .nullable()
-      .optional(),
-    summary: z.object({}).passthrough().nullable().optional(),
-    profiles: z.array(OpenObjectSchema),
-    total: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    cursor: z.int().optional(),
-    next_cursor: z.int().nullable().optional(),
-    sort: z.string().nullable().optional(),
-    order: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const ListProfileCompletenessOutputSchema =
+  ReviewProfileCompletenessArtifactSchema.pick({
+    summary: true,
+    profiles: true,
+  }).extend({
+    ...McpListArtifactStamp,
+    ...McpListPageFields,
+  });
 export type ListProfileCompletenessOutput = z.infer<
   typeof ListProfileCompletenessOutputSchema
 >;
