@@ -939,8 +939,14 @@ async function validateR2OnlyArtifactsStayOutOfPublicGit(): Promise<void> {
 // (`gap_count`), curation (`curation_level`, reachable only at `curation.level`),
 // rpc-endpoints (`layer`/`publication_state`/`pool_eligible`/`score`, emitted by
 // the sibling resource artifact but not this one), and health-subnets (`name`,
-// tracked separately: those rows are written by the live prober cron, not by a
-// build artifact, so the fix does not live here -- #9715).
+// fixed at the producer in #9715: the prober received subnet_name on its input
+// surface and dropped it before the per-netuid rollup).
+//
+// WHAT THIS CANNOT SEE. It reads BUILT artifacts, so a collection served from
+// KV or computed live is skipped -- /api/v1/health and /api/v1/incidents today.
+// tests/artifacts.test.ts asserts that skipped set is exactly those two, so a
+// route falling out of coverage fails rather than going quiet; both were
+// verified against live responses.
 //
 // Driven off the contract rather than a hand-kept list, so a collection added
 // later is covered the day it is added.
