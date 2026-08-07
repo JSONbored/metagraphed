@@ -225,6 +225,13 @@ const SUBNET_HYPERPARAMS_COLUMNS = [
   "captured_at",
 ] as const;
 
+/** validator_nominator_counts. */
+const VALIDATOR_NOMINATOR_COUNTS_COLUMNS = [
+  "hotkey",
+  "nominator_count",
+  "captured_at",
+] as const;
+
 /** account_identity. */
 const ACCOUNT_IDENTITY_COLUMNS = [
   "account",
@@ -296,6 +303,25 @@ export const NEON_BACKFILL_PLANS: Readonly<Record<string, BackfillPlan>> = {
       "owner_cut_enabled",
       "owner_cut_auto_lock_enabled",
     ],
+  },
+  // Latest-only AND mirrored, which by the rule below would need no lane --
+  // except measurement says otherwise. D1 held 112,250 rows and Neon 112,236
+  // on 2026-08-07, and the gap did not move across repeated checks. It is not
+  // churn: it is 14 hotkeys D1 wrote BEFORE the mirror lane existed and has
+  // not rewritten since, so no producer cycle will ever carry them.
+  //
+  // That is the hole in "a mirror covers a latest-only table": it does, but
+  // only for rows the producer still emits. A validator that stopped having
+  // nominators keeps its D1 row forever (upsert-only, no prune) and never
+  // reaches Neon. /validators reads this table, so 14 wrong rows is 14 wrong
+  // nominator counts on a leaderboard.
+  validator_nominator_counts: {
+    table: "validator_nominator_counts",
+    columns: VALIDATOR_NOMINATOR_COUNTS_COLUMNS,
+    conflict: ["hotkey"],
+    keyset: ["hotkey"],
+    partition: "whole",
+    booleans: [],
   },
   account_identity: {
     table: "account_identity",
