@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import {
   formatAccountPosition,
   buildAccountPositionHistory,
 } from "../src/account-position-history.ts";
 import { handleRequest } from "../workers/api.ts";
+import { POSITION_HISTORY_NEON_LANE } from "../workers/data-api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 
 const ctx = { waitUntil: (p: Promise<unknown>) => p };
@@ -367,5 +369,49 @@ describe("GET /accounts/{ss58}/subnets/{netuid}/history via the Worker dispatch"
       ctx,
     );
     assert.equal(res.status, 404);
+  });
+});
+
+describe("the Neon read cutover (metagraphed-infra#336)", () => {
+  const wrangler = readFileSync("wrangler.data.jsonc", "utf8");
+  const named = (/"NEON_READ_LANES":\s*"([^"]*)"/.exec(wrangler)?.[1] ?? "")
+    .split(",")
+    .map((lane) => lane.trim())
+    .filter(Boolean);
+
+  test("the deployed flag spells the lane the gate actually asks about", () => {
+    // The failure this exists for is SILENT. A typo in NEON_READ_LANES does
+    // not fail, warn or degrade -- `neonReadEnabled` simply returns false, the
+    // read stays on D1, and the result is indistinguishable from a cutover
+    // that has not happened yet. Nothing else in the system compares the two
+    // strings, and the route serves 200 either way.
+    assert.ok(
+      named.includes(POSITION_HISTORY_NEON_LANE),
+      `wrangler.data.jsonc names [${named}] but the gate asks about ` +
+        `"${POSITION_HISTORY_NEON_LANE}" -- this route is still reading D1`,
+    );
+  });
+
+  test("only lanes with a mirror behind them may be named", () => {
+    // Naming a lane nothing writes is #9704 exactly: the read moves to a store
+    // with no writer and serves whatever was last loaded there, forever, at
+    // 200 OK. Every entry here must also appear in NEON_DUAL_WRITE_LANES or be
+    // a table the reconciler keeps in step.
+    const writes = (
+      /"NEON_DUAL_WRITE_LANES":\s*"([^"]*)"/.exec(wrangler)?.[1] ?? ""
+    ).split(",");
+    const backfills = (
+      /"NEON_BACKFILL_LANES":\s*"([^"]*)"/.exec(wrangler)?.[1] ?? ""
+    ).split(",");
+    const written = new Set(
+      [...writes, ...backfills].map((lane) => lane.trim()).filter(Boolean),
+    );
+    for (const lane of named) {
+      assert.ok(
+        written.has(lane),
+        `NEON_READ_LANES names "${lane}" but nothing writes it -- a read with ` +
+          `no writer behind it serves a frozen store at 200 OK`,
+      );
+    }
   });
 });

@@ -5718,6 +5718,17 @@ export function positionHistoryServedFromNeon(url: URL): boolean {
   );
 }
 
+/**
+ * The lane name this route's read gate asks NEON_READ_LANES about.
+ *
+ * Exported so the flag's deployed value can be checked against it rather than
+ * eyeballed. A typo in NEON_READ_LANES does not fail, warn, or degrade -- it
+ * leaves the read on D1 and looks exactly like a cutover that has not happened
+ * yet, which is the one failure mode a flag-driven migration cannot detect from
+ * its own output.
+ */
+export const POSITION_HISTORY_NEON_LANE = "account_position_daily";
+
 function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
   // GET /api/v1/subnets/:netuid/metagraph -- twin of the Postgres route of
   // the same name below. immunity_period comes from subnet_hyperparams,
@@ -7071,7 +7082,7 @@ async function dispatchDataApiRequest(
           env.HYPERDRIVE &&
           neonReadEnabled(
             env as unknown as Record<string, unknown>,
-            "account_position_daily",
+            POSITION_HISTORY_NEON_LANE,
           ) &&
           positionHistoryServedFromNeon(url)
             ? createPgSql(env.HYPERDRIVE, ctx)
