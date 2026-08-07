@@ -51,7 +51,9 @@ services:
   # it, so it is a real archive (state queryable at ANY block), the first-party
   # RPC origin, and a self-sufficient backfill source for the indexer.
   #
-  #   Requires ~8 TB+ NVMe (chain ~3.5 TB + ~1.4 TB/yr) — see deploy/README.md.
+  #   Requires ~8 TB+ NVMe (chain ~3.5 TB + ~1.4 TB/yr) — the provisioning
+  #   detail moved to metagraphed-infra's docs/self-hosted-deployment-runbook.md
+  #   (ADR 0028); deploy/README.md now covers only these build inputs.
   #   A from-genesis full sync takes DAYS; import an opentensor archive snapshot
   #   into the volume first to skip the replay.
   #   Dev override (pruned, small): SUBTENSOR_PRUNING=2000 SUBTENSOR_SYNC=warp.
