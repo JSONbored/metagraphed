@@ -63,6 +63,70 @@ const OUTPUT_VALIDATORS = new Map(
     .map((def) => [def.name, ajv.compile(def.outputSchema)]),
 );
 
+// --- Response-shape coverage (#9795) ---------------------------------------
+//
+// The assertion above is correct and was still blind. Five tools shipped
+// responses that failed their own published outputSchema while this gate was
+// green (#9794), for two reasons that both amount to the check running over
+// nothing:
+//
+//   1. Only the tools this script explicitly calls were ever validated. The
+//      rest were listed, their input schemas inspected, and never invoked.
+//   2. Of the ones called, several answer from the local artifact harness with
+//      empty collections -- `days: []`, `positions: []`, `endpoints: []`. The
+//      offending field lived INSIDE those arrays, so with zero elements there
+//      was nothing to reject. `get_economics_trends` declared
+//      `days[].total_stake_alpha` as a number while production served a
+//      precision string, and this gate passed on it every run.
+//
+// A schema check over a zero-length array proves nothing, and reads as coverage.
+// So the run now keeps two ledgers and asserts against them at the end: which
+// tools had a response validated at all, and which of their declared
+// collections actually carried a row. Anything that cannot be exercised locally
+// has to say so out loud, with a reason, rather than passing quietly.
+const RESPONSE_VALIDATED = new Set<string>();
+const COLLECTIONS_EXERCISED = new Map<string, Set<string>>();
+
+function recordResponseCoverage(name: string, payload: Row): void {
+  RESPONSE_VALIDATED.add(name);
+  const exercised = COLLECTIONS_EXERCISED.get(name) ?? new Set<string>();
+  for (const [key, value] of Object.entries(payload)) {
+    if (Array.isArray(value) && value.length > 0) exercised.add(key);
+  }
+  COLLECTIONS_EXERCISED.set(name, exercised);
+}
+
+/**
+ * The top-level properties a tool's outputSchema declares as an array of
+ * objects -- the ones whose element shape is only checked when an element
+ * exists. Arrays of scalars are excluded: their item schema is asserted by the
+ * array's own type, so an empty one hides nothing.
+ */
+function declaredObjectCollections(schema: Row | undefined): string[] {
+  const properties = schema?.properties as Row | undefined;
+  if (!properties) return [];
+  return Object.entries(properties)
+    .filter(([, value]) => {
+      const node = value as Row;
+      if (node?.type !== "array") return false;
+      const items = node.items as Row | undefined;
+      if (!items) return false;
+      if (items.type === "object") return true;
+      // A nullable or unioned item shape still hides an object behind a branch.
+      for (const key of ["anyOf", "oneOf", "allOf"]) {
+        const branch = items[key];
+        if (
+          Array.isArray(branch) &&
+          branch.some((entry: Row) => entry?.type === "object")
+        ) {
+          return true;
+        }
+      }
+      return false;
+    })
+    .map(([key]) => key);
+}
+
 interface McpCallOptions {
   method?: string;
   headers?: Record<string, string>;
@@ -147,6 +211,7 @@ async function callOk(name: string, args: unknown): Promise<Row> {
       `${name}: structuredContent must validate against its declared outputSchema: ${JSON.stringify(validate.errors)}`,
     );
   }
+  recordResponseCoverage(name, result.structuredContent);
   return result.structuredContent;
 }
 
@@ -1739,6 +1804,400 @@ const statusUnsubscribe = await mcp(
   },
 );
 assert.deepEqual(statusUnsubscribe.body.result, {});
+
+// --- Generic sweep: every tool the targeted assertions never call ----------
+//
+// The calls above are hand-written because their assertions check MEANING as
+// well as shape -- that a sort actually sorted, that a filter actually
+// filtered. They cover 95 of the registered tools. The rest were listed, their
+// input schemas inspected, and never invoked, so their published outputSchema
+// was never compared against a response at all. That is half of why #9794
+// shipped through a green gate.
+//
+// This sweep closes it. Arguments are synthesized from each tool's own
+// inputSchema rather than hand-written per tool, so a newly registered tool is
+// swept the day it lands instead of the day someone remembers to add it. The
+// sweep asserts only what can be asserted generically: a successful result,
+// structuredContent present, and validation against the published schema.
+// callOk does all three, and records the coverage the assertions below read.
+// Error codes that mean the ARGUMENTS were refused rather than the data being
+// unavailable. Deliberately narrow: everything else is treated as a real
+// environment limit and lands on the allowlist, where a reviewer can see it.
+const ARGUMENT_REJECTED = /^(invalid_params|invalid_graphql_query)\b/;
+
+// Tools the hermetic harness cannot answer, and why. This is the one place a
+// tool is allowed to go unchecked, and every entry is a standing admission that
+// its published contract is not being compared against a real response -- so
+// each carries a reason a reviewer can weigh, and the list is meant to shrink.
+//
+// A tool listed here is skipped by the sweep entirely. A tool NOT listed here
+// that declines for an environment reason still runs the sweep's argument check
+// above; it simply contributes no schema validation, which the assertions at
+// the end then report.
+const RESPONSE_UNVALIDATED_REASONS = new Map<string, string>([
+  [
+    "ask",
+    "needs the AI layer, which is unbound in the hermetic harness (ai_unavailable)",
+  ],
+  [
+    "semantic_search",
+    "needs the AI layer, which is unbound in the hermetic harness (ai_unavailable)",
+  ],
+  [
+    "call_rpc",
+    "read-only RPC proxying is intentionally disabled until endpoint scoring and abuse controls land (rpc_proxy_disabled)",
+  ],
+  [
+    "query_graphql",
+    "executes against the live GraphQL schema, which the artifact harness does not serve",
+  ],
+  [
+    "get_webhook_subscription",
+    "the webhook subscription store is not configured on this deployment (webhooks_unavailable)",
+  ],
+  [
+    "get_alert_trigger",
+    "the alert-triggers tier is not bound to this deployment (alert_triggers_unavailable)",
+  ],
+  [
+    "store_surface_credential",
+    "the surface-credential store is authenticated-callers-only, and this gate holds no credential (auth_required)",
+  ],
+  [
+    "list_surface_credentials",
+    "the surface-credential store is authenticated-callers-only, and this gate holds no credential (auth_required)",
+  ],
+  [
+    "delete_surface_credential",
+    "the surface-credential store is authenticated-callers-only, and this gate holds no credential (auth_required)",
+  ],
+  [
+    "verify_integration",
+    "requires ONE OF surface_id/netuid, a cross-field constraint the published object schema cannot express -- MCP requires a top-level type:object, so zod cannot emit the anyOf that would say so, and the sweep has no required argument to synthesise from",
+  ],
+  [
+    "get_chain_activity",
+    "aggregates over the all-events tier, which the artifact harness does not stand up (tier_unavailable)",
+  ],
+  [
+    "list_chain_events",
+    "queries the all-events tier, which the artifact harness does not stand up (tier_unavailable)",
+  ],
+  [
+    "get_block_chain_events",
+    "the example block falls between the decoded lakehouse and the live follower; a fixed block number cannot stay inside a moving decoded window",
+  ],
+  [
+    "get_extrinsic_chain_events",
+    "same moving decoded window as its block-scoped sibling -- the example ref is well formed and production accepts it, but the harness holds no decoded events for that extrinsic",
+  ],
+  [
+    "get_fixture",
+    "resolves a recorded fixture by surface id, and the harness ships none for the example surface (not_found)",
+  ],
+  [
+    "list_subnet_health",
+    "no health snapshot exists for the example netuid in the harness (not_found)",
+  ],
+]);
+
+// Arguments come from each parameter's OWN declared example, not from a table
+// kept here. Every one of the published input parameters carries one, so there
+// is nothing to hand-maintain and a newly registered tool is swept correctly the
+// day it lands. It also means the examples are load-bearing rather than
+// decorative: an example that is not a valid argument now fails this gate, which
+// matters because an example is the first thing an agent copies.
+function declaredExample(schema: Row | undefined): {
+  found: boolean;
+  value?: unknown;
+} {
+  if (!schema) return { found: false };
+  const direct = schema.examples;
+  if (Array.isArray(direct) && direct.length > 0) {
+    return { found: true, value: direct[0] };
+  }
+  for (const key of ["anyOf", "oneOf"]) {
+    const branch = schema[key];
+    if (!Array.isArray(branch)) continue;
+    for (const entry of branch) {
+      const nested = declaredExample(entry as Row);
+      if (nested.found) return nested;
+    }
+  }
+  return { found: false };
+}
+
+for (const def of listToolDefinitions()) {
+  if (RESPONSE_VALIDATED.has(def.name)) continue;
+  if (RESPONSE_UNVALIDATED_REASONS.has(def.name)) continue;
+  const inputSchema = def.inputSchema as Row | undefined;
+  const properties = (inputSchema?.properties ?? {}) as Row;
+  const required = (inputSchema?.required ?? []) as string[];
+  const args: Row = {};
+  const undocumented: string[] = [];
+  for (const key of required) {
+    const example = declaredExample(properties[key] as Row);
+    if (!example.found) {
+      undocumented.push(key);
+      continue;
+    }
+    args[key] = example.value;
+  }
+  assert.deepEqual(
+    undocumented,
+    [],
+    `${def.name}: required argument(s) ${undocumented.join(", ")} declare no example, so the ` +
+      `sweep cannot call this tool and its response is never checked against its schema`,
+  );
+  // A tool that declines is not necessarily a failure here -- the hermetic
+  // harness has no AI layer, no webhook store, no RPC proxy. But there is one
+  // decline that always is: the server rejecting the ARGUMENTS. Those came
+  // from the tool's own published examples, so a rejection means the contract
+  // advertises something that does not work, and an example is the first thing
+  // an agent copies. That is a defect whatever the environment, so it fails
+  // here rather than being absorbed into the allowlist below.
+  const probe = await call(def.name, args);
+  if (probe.isError) {
+    const text = String(probe.content?.[0]?.text ?? "");
+    assert.ok(
+      !ARGUMENT_REJECTED.test(text),
+      `${def.name}: called with the arguments its own inputSchema advertises as examples ` +
+        `(${JSON.stringify(args)}) and the server rejected them -- ${text}`,
+    );
+    continue;
+  }
+  await callOk(def.name, args);
+}
+
+// --- Response-shape coverage assertions (#9795) ----------------------------
+//
+// See the ledgers' definition above for why these exist. Both allowlists are
+// deliberately noisy to add to: an entry is a standing admission that a tool's
+// published contract is not being checked against a real response, so it has to
+// carry a reason a reviewer can weigh.
+// The one cause behind most of this list, stated once rather than reworded 74
+// times. These are live and chain-backed tiers -- D1, the lakehouse, the
+// chain-events store -- which the hermetic harness does not stand up, so each
+// answers with a schema-stable zeroed payload. Item-shape conformance for them
+// is real work that a hermetic harness structurally cannot do; #9801 covers it
+// with a production sweep, which is what caught the #9794 drifts in the first
+// place.
+const HARNESS_SERVES_NO_ROWS =
+  "live/chain-backed tier: the hermetic harness answers with a schema-stable " +
+  "zeroed payload, so this collection carries no rows and the item shape inside " +
+  "it is checked by the production sweep (#9801) rather than here";
+
+// Tools whose response validated, but every declared collection came back
+// empty -- so the ITEM shape inside them was never checked. This is the exact
+// blindness that let #9794 ship: `get_economics_trends` declared
+// `days[].total_stake_alpha` as a number while production served a precision
+// string, and with `days: []` there was nothing for the assertion to reject.
+//
+// Every entry here is a live-tier surface the hermetic harness answers with a
+// schema-stable zeroed payload. Each is a standing gap, not a resolved one:
+// the list shrinks by giving the harness a row, and #9801 tracks doing that
+// plus the production-side conformance sweep that covers what a hermetic
+// harness structurally cannot.
+const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
+  [
+    "get_network_health",
+    "the harness's health artifact carries no per-subnet rows",
+  ],
+  ["get_subnet_health", "the harness's health artifact carries no surfaces"],
+  [
+    "get_subnet_health_percentiles",
+    "percentiles are computed over surfaces the harness's health artifact does not carry",
+  ],
+  [
+    "get_subnet_health_incidents",
+    "incidents are probe-derived and the harness runs no prober",
+  ],
+  [
+    "get_subnet_validator_economics_history",
+    "history points come from the validator-economics tier, unbound in the harness",
+  ],
+  [
+    "list_validator_economics",
+    "rows come from the validator-economics tier, unbound in the harness",
+  ],
+  [
+    "get_subnet_trajectory",
+    "trajectory points come from the daily rollup, which the harness does not stand up",
+  ],
+  [
+    "get_economics_trends",
+    "days come from the economics daily rollup, which the harness does not stand up -- the surface this gate was blind on",
+  ],
+  [
+    "get_chain_concentration_subnets",
+    "per-subnet concentration comes from the holders tier, unbound in the harness",
+  ],
+  [
+    "get_chain_idle_stake",
+    "per-subnet idle stake comes from the stake tier, unbound in the harness",
+  ],
+  [
+    "get_chain_identity_history",
+    "identity changes come from the chain-events tier, unbound in the harness",
+  ],
+  [
+    "get_chain_turnover",
+    "per-subnet turnover comes from the daily rollup, which the harness does not stand up",
+  ],
+  [
+    "get_chain_stake_flow",
+    "per-subnet stake flow comes from the chain-events tier, unbound in the harness",
+  ],
+  [
+    "get_chain_alpha_volume",
+    "per-subnet alpha volume comes from the daily rollup, which the harness does not stand up",
+  ],
+  ["get_account", HARNESS_SERVES_NO_ROWS],
+  ["get_account_axon_removals", HARNESS_SERVES_NO_ROWS],
+  ["get_account_deregistrations", HARNESS_SERVES_NO_ROWS],
+  ["get_account_entities", HARNESS_SERVES_NO_ROWS],
+  ["get_account_events", HARNESS_SERVES_NO_ROWS],
+  ["get_account_extrinsics", HARNESS_SERVES_NO_ROWS],
+  ["get_account_history", HARNESS_SERVES_NO_ROWS],
+  ["get_account_identity_history", HARNESS_SERVES_NO_ROWS],
+  ["get_account_portfolio", HARNESS_SERVES_NO_ROWS],
+  ["get_account_position_history", HARNESS_SERVES_NO_ROWS],
+  ["get_account_positions", HARNESS_SERVES_NO_ROWS],
+  ["get_account_prometheus", HARNESS_SERVES_NO_ROWS],
+  ["get_account_registrations", HARNESS_SERVES_NO_ROWS],
+  ["get_account_serving", HARNESS_SERVES_NO_ROWS],
+  ["get_account_stake_flow", HARNESS_SERVES_NO_ROWS],
+  ["get_account_stake_moves", HARNESS_SERVES_NO_ROWS],
+  ["get_account_subnets", HARNESS_SERVES_NO_ROWS],
+  ["get_account_transfers", HARNESS_SERVES_NO_ROWS],
+  ["get_account_weight_setters", HARNESS_SERVES_NO_ROWS],
+  ["get_chain_axon_removals", HARNESS_SERVES_NO_ROWS],
+  ["get_chain_burn", HARNESS_SERVES_NO_ROWS],
+  ["get_chain_concentration_history", HARNESS_SERVES_NO_ROWS],
+  ["get_chain_holders", HARNESS_SERVES_NO_ROWS],
+  ["get_chain_prometheus", HARNESS_SERVES_NO_ROWS],
+  ["get_chain_serving", HARNESS_SERVES_NO_ROWS],
+  ["get_chain_stake_moves", HARNESS_SERVES_NO_ROWS],
+  ["get_chain_stake_transfers", HARNESS_SERVES_NO_ROWS],
+  ["get_chain_weight_setters", HARNESS_SERVES_NO_ROWS],
+  ["get_chain_weights", HARNESS_SERVES_NO_ROWS],
+  ["get_emission_changes", HARNESS_SERVES_NO_ROWS],
+  ["get_emission_pipeline_history", HARNESS_SERVES_NO_ROWS],
+  ["get_failure_reasons", HARNESS_SERVES_NO_ROWS],
+  [
+    "get_feed",
+    "the harness's generated feed artifact carries no items; production serves 50 for kind=registry, so an entry appearing here is worth checking against the live feed before it is assumed to be the harness",
+  ],
+  ["get_global_incidents", HARNESS_SERVES_NO_ROWS],
+  ["get_neuron_history", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_burn_history", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_concentration_history", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_conviction", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_event_summary", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_events", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_history", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_holders", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_hyperparams_history", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_identity_history", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_lease_history", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_metagraph", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_movers", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_ohlc", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_ownership_history", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_performance_history", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_surface_history", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_uptime", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_weight_setters", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_yield", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_yield_history", HARNESS_SERVES_NO_ROWS],
+  ["get_tao_usd", HARNESS_SERVES_NO_ROWS],
+  ["get_validator_detail", HARNESS_SERVES_NO_ROWS],
+  ["get_validator_history", HARNESS_SERVES_NO_ROWS],
+  ["get_validator_nominators", HARNESS_SERVES_NO_ROWS],
+  ["list_global_validators", HARNESS_SERVES_NO_ROWS],
+  ["list_subnet_validators", HARNESS_SERVES_NO_ROWS],
+  ["get_account_counterparties", HARNESS_SERVES_NO_ROWS],
+  ["get_block_events", HARNESS_SERVES_NO_ROWS],
+  ["get_chain_calls", HARNESS_SERVES_NO_ROWS],
+  ["get_chain_deregistrations", HARNESS_SERVES_NO_ROWS],
+  ["get_chain_fees", HARNESS_SERVES_NO_ROWS],
+  ["get_chain_registrations", HARNESS_SERVES_NO_ROWS],
+  ["get_chain_signers", HARNESS_SERVES_NO_ROWS],
+  ["get_chain_transfer_pairs", HARNESS_SERVES_NO_ROWS],
+  ["get_chain_transfers", HARNESS_SERVES_NO_ROWS],
+  ["get_extrinsic", HARNESS_SERVES_NO_ROWS],
+  ["get_governance_config_changes", HARNESS_SERVES_NO_ROWS],
+  ["get_network_activity", HARNESS_SERVES_NO_ROWS],
+  ["get_rpc_usage", HARNESS_SERVES_NO_ROWS],
+  ["get_runtime", HARNESS_SERVES_NO_ROWS],
+  ["get_sudo", HARNESS_SERVES_NO_ROWS],
+  ["get_top_holders", HARNESS_SERVES_NO_ROWS],
+  ["list_accounts", HARNESS_SERVES_NO_ROWS],
+  ["list_block_extrinsics", HARNESS_SERVES_NO_ROWS],
+  ["list_blocks", HARNESS_SERVES_NO_ROWS],
+  ["list_endpoint_incidents", HARNESS_SERVES_NO_ROWS],
+  ["list_extrinsics", HARNESS_SERVES_NO_ROWS],
+  ["list_review_gaps", HARNESS_SERVES_NO_ROWS],
+]);
+
+{
+  const unvalidated = listToolDefinitions()
+    .filter((def) => def.outputSchema && !RESPONSE_VALIDATED.has(def.name))
+    .map((def) => def.name)
+    .sort();
+  const undeclared = unvalidated.filter(
+    (name) => !RESPONSE_UNVALIDATED_REASONS.has(name),
+  );
+  assert.deepEqual(
+    undeclared,
+    [],
+    `these tools publish an outputSchema that no response was ever checked against -- ` +
+      `call them here, or declare them in RESPONSE_UNVALIDATED_REASONS with a reason:\n  ` +
+      undeclared.join("\n  "),
+  );
+
+  const hollow: string[] = [];
+  for (const def of listToolDefinitions()) {
+    if (!RESPONSE_VALIDATED.has(def.name)) continue;
+    const declared = declaredObjectCollections(def.outputSchema as Row);
+    if (declared.length === 0) continue;
+    const exercised = COLLECTIONS_EXERCISED.get(def.name) ?? new Set<string>();
+    if (declared.some((key) => exercised.has(key))) continue;
+    hollow.push(`${def.name} (${declared.join(", ")})`);
+  }
+  const undeclaredHollow = hollow.filter(
+    (entry) =>
+      !COLLECTIONS_UNEXERCISED_REASONS.has(entry.slice(0, entry.indexOf(" ("))),
+  );
+  assert.deepEqual(
+    undeclaredHollow,
+    [],
+    `these tools were validated against a response whose every declared collection was EMPTY, ` +
+      `so the item shape inside them was never checked -- give the harness a row, or declare ` +
+      `them in COLLECTIONS_UNEXERCISED_REASONS with a reason:\n  ` +
+      undeclaredHollow.join("\n  "),
+  );
+
+  // A THIRD blindness, stated here because it is real and this gate does not
+  // close it: a nullable field that the harness only ever answers with `null`
+  // satisfies its schema whatever the declared non-null type is. `get_rpc_usage`
+  // is the worked example -- reverting its `observed_at` to `string` still
+  // passes this run, because the hermetic harness reaches the zeroed floor and
+  // the floor has no stamp.
+  //
+  // Empty collections and null-only fields are the same shape of problem, and a
+  // hermetic harness structurally cannot fix either: they need a response with
+  // real data in it. That is the production conformance sweep in #9801 -- the
+  // one that found all five drifts in #9794 by validating live responses. This
+  // gate covers what it can cover cheaply and deterministically, and says
+  // plainly what it cannot.
+  console.log(
+    `MCP response coverage: ${RESPONSE_VALIDATED.size}/${listToolDefinitions().length} tools ` +
+      `validated against a real response (${RESPONSE_UNVALIDATED_REASONS.size} declared ` +
+      `unanswerable by the hermetic harness); ${COLLECTIONS_UNEXERCISED_REASONS.size} validated ` +
+      `over empty collections, so their item shapes rely on the production sweep.`,
+  );
+}
 
 console.log(
   `MCP validation passed: ${MCP_TOOLS.length} tools, lifecycle + ${

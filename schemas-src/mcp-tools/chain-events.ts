@@ -60,12 +60,19 @@ export type GetBlockChainEventsOutput = z.infer<
 
 export const GetExtrinsicChainEventsInputSchema = z
   .object({
+    // This is an EXTRINSIC reference, not a block one (#9795). The description
+    // here was the sibling block tools' -- "a block NUMBER or a 0x-prefixed
+    // block HASH" -- and both examples followed it, so every agent that read
+    // the contract and copied the example got `invalid_params`. Verified
+    // against production: `8791987` and a full block hash are both rejected,
+    // and only the composite form is accepted.
     ref: z
       .string()
+      .regex(/^\d+-\d+$/)
       .describe(
-        "Block reference: either a block NUMBER or a 0x-prefixed block HASH. Both forms are accepted and resolve to the same block.",
+        "Extrinsic reference, as the composite id `block_number-extrinsic_index` -- the index is the extrinsic's position within that block, from 0. A bare block number or block hash is NOT accepted here, unlike the sibling block-scoped tools.",
       )
-      .meta({ examples: ["8783000", "0x9f1e...c3"] }),
+      .meta({ examples: ["8791987-0"] }),
     limit: limitSchema(200).optional(),
     cursor: keysetCursorSchema().optional(),
     network: McpNetworkSchema.optional(),
