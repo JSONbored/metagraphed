@@ -380,7 +380,7 @@ import {
 import { mirrorNeuronSnapshotToNeon } from "../src/neurons-neon-write.ts";
 import { mirrorNominatorPositionsToNeon } from "../src/nominator-positions-neon-write.ts";
 import { mirrorLedgerToNeon } from "../src/ledger-neon-write.ts";
-import { neonReadEnabled } from "../src/neon-write.ts";
+import { neonOwnsTable, neonReadEnabled } from "../src/neon-write.ts";
 import { runNeonBackfill } from "../src/neon-backfill.ts";
 import { runNeonMirrorWatchdog } from "../src/neon-mirror-watchdog.ts";
 import {
@@ -2926,14 +2926,73 @@ function normalizeDeliveryRow(row: Row): Row {
   return { ...row, success: d1Bool(row.success) };
 }
 
+/**
+ * The tables each user-state helper touches, named so the runner choice is a
+ * property of the DATA rather than of the helper.
+ *
+ * `userStateRunner` below requires EVERY table in the group to be listed in
+ * NEON_SOLE_STORE_TABLES before it hands out a Postgres runner. That is the
+ * same all-or-nothing rule `neonServesRoute` applies to a read route, and for
+ * the same reason: the helper picks ONE runner for the whole callback, so a
+ * half-listed group would send a statement to a store where its table does not
+ * exist. Naming the tables is what makes that impossible to get wrong by
+ * accident -- a table added to one of these groups cannot move until someone
+ * puts its name in the flag.
+ */
+export const ALERT_TRIGGER_TABLES = [
+  "chain_alert_triggers",
+  "chain_alert_deliveries",
+] as const;
+
+export const ACCOUNT_STATE_TABLES = [
+  "rpc_accounts",
+  "github_accounts",
+  "api_keys",
+  "api_key_blocks",
+  "api_key_usage_daily",
+  "api_quota_daily",
+  "api_usage_rollup",
+] as const;
+
+/**
+ * The runner for a user-state group: Postgres once Neon solely owns every
+ * table in it, D1 until then.
+ *
+ * `D1Sql` and `PgSql` are structurally identical -- a tagged template plus
+ * `unsafe(text, values)`, both resolving to `Record<string, unknown>[]` -- so
+ * this returns one type and the ~17 callbacks below are untouched by the move.
+ * That is the whole reason the user-state tier can change stores without
+ * changing a single statement: every one of its writes is already ordinary SQL
+ * (`INSERT ... ON CONFLICT DO UPDATE ... RETURNING`), which means the same
+ * text on either side.
+ *
+ * Returns null when neither store is available, which the callers turn into
+ * the 503 they already returned for a missing D1 binding.
+ */
+export function userStateRunner(
+  env: Env,
+  ctx: ExecutionContext,
+  tables: readonly string[],
+): D1Sql | null {
+  const neonOwnsAll = tables.every((table) =>
+    neonOwnsTable(env as unknown as Record<string, unknown>, table),
+  );
+  if (neonOwnsAll && env.HYPERDRIVE?.connectionString) {
+    return createPgSql(env.HYPERDRIVE, ctx);
+  }
+  if (!env.METAGRAPH_HEALTH_DB) return null;
+  return createD1Sql(env.METAGRAPH_HEALTH_DB);
+}
+
 async function withAlertTriggersSql(
   env: Env,
+  ctx: ExecutionContext,
   fn: (sql: D1Sql) => Promise<Response>,
 ) {
-  if (!env.METAGRAPH_HEALTH_DB) {
+  const sql = userStateRunner(env, ctx, ALERT_TRIGGER_TABLES);
+  if (!sql) {
     return writeJson({ error: "d1 binding unavailable" }, 503);
   }
-  const sql = createD1Sql(env.METAGRAPH_HEALTH_DB);
   try {
     return await fn(sql);
   } catch (err) {
@@ -3061,7 +3120,11 @@ async function resolveAlertTriggerCreateAuth(
   return { ok: true, ownerSs58: null };
 }
 
-async function handleAlertTriggerCreate(request: Request, env: Env) {
+async function handleAlertTriggerCreate(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const auth = await resolveAlertTriggerCreateAuth(request, env);
   if (!auth.ok) return auth.response;
   const ownerSs58 = auth.ownerSs58;
@@ -3103,7 +3166,7 @@ async function handleAlertTriggerCreate(request: Request, env: Env) {
     return writeJson({ error: validated.error }, 400);
   }
 
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, ctx, async (sql) => {
     if (ownerSs58) {
       const counted = await sql`
         SELECT COUNT(*) AS count FROM chain_alert_triggers
@@ -3144,11 +3207,16 @@ async function handleAlertTriggerCreate(request: Request, env: Env) {
   });
 }
 
-async function handleAlertTriggerGet(request: Request, env: Env, id: string) {
+async function handleAlertTriggerGet(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  id: string,
+) {
   if (!isValidAlertTriggerId(id)) {
     return writeJson({ error: "malformed trigger id" }, 400);
   }
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, ctx, async (sql) => {
     const [row] =
       await sql`SELECT * FROM chain_alert_triggers WHERE id = ${id}`;
     if (!row) return writeJson({ error: "no such trigger" }, 404);
@@ -3244,6 +3312,7 @@ async function runAlertTriggerUpdate(sql: D1Sql, id: string, merged: Row) {
 async function handleAlertTriggerUpdate(
   request: Request,
   env: Env,
+  ctx: ExecutionContext,
   id: string,
 ) {
   if (!isValidAlertTriggerId(id)) {
@@ -3254,7 +3323,7 @@ async function handleAlertTriggerUpdate(
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return writeJson({ error: "Request body must be a JSON object." }, 400);
   }
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, ctx, async (sql) => {
     const [existing] =
       await sql`SELECT * FROM chain_alert_triggers WHERE id = ${id}`;
     if (!existing) return writeJson({ error: "no such trigger" }, 404);
@@ -3274,12 +3343,13 @@ async function handleAlertTriggerUpdate(
 async function handleAlertTriggerDelete(
   request: Request,
   env: Env,
+  ctx: ExecutionContext,
   id: string,
 ) {
   if (!isValidAlertTriggerId(id)) {
     return writeJson({ error: "malformed trigger id" }, 400);
   }
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, ctx, async (sql) => {
     const [existing] =
       await sql`SELECT owner_token FROM chain_alert_triggers WHERE id = ${id}`;
     if (!existing) return writeJson({ error: "no such trigger" }, 404);
@@ -3296,7 +3366,11 @@ async function handleAlertTriggerDelete(
 // Internal-only: the #4984 Part 2 evaluator's cache-refresh scan. A
 // DIFFERENT secret from the create/owner tokens above -- it grants a wholly
 // different capability (read every trigger regardless of owner).
-async function handleAlertTriggersActiveList(request: Request, env: Env) {
+async function handleAlertTriggersActiveList(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
   if (!configured) {
     return writeJson(
@@ -3317,7 +3391,7 @@ async function handleAlertTriggersActiveList(request: Request, env: Env) {
       401,
     );
   }
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, ctx, async (sql) => {
     const rows = await sql`SELECT * FROM chain_alert_triggers WHERE active`;
     return writeJson({
       triggers: rows.map((row) =>
@@ -3337,7 +3411,11 @@ async function handleAlertTriggersActiveList(request: Request, env: Env) {
 // create/owner tokens (write access to every trigger's own bookkeeping
 // columns, not just its own row), so it reuses that same
 // ALERT_TRIGGERS_INTERNAL_TOKEN secret rather than minting a third one.
-async function handleAlertTriggersMatchedWriteback(request: Request, env: Env) {
+async function handleAlertTriggersMatchedWriteback(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
   if (!configured) {
     return writeJson(
@@ -3369,7 +3447,7 @@ async function handleAlertTriggersMatchedWriteback(request: Request, env: Env) {
       400,
     );
   }
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, ctx, async (sql) => {
     const now = Date.now();
     // Plain scalar positional binds via sql.unsafe -- the statement text is
     // built dynamically (one `?` per already-isValidAlertTriggerId-validated
@@ -3415,7 +3493,11 @@ const ALERT_TRIGGER_DELIVERY_LOG_RETAIN = 20;
 // "matched" vs "delivered" distinction). Gated the SAME way as the
 // active-list/matched-writeback/dereg-risk routes above (same
 // ALERT_TRIGGERS_INTERNAL_TOKEN secret).
-async function handleAlertTriggersDeliveryLogWrite(request: Request, env: Env) {
+async function handleAlertTriggersDeliveryLogWrite(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
   if (!configured) {
     return writeJson(
@@ -3453,7 +3535,7 @@ async function handleAlertTriggersDeliveryLogWrite(request: Request, env: Env) {
       400,
     );
   }
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, ctx, async (sql) => {
     // Distinct trigger ids touched by this batch -- pruned to the most
     // recent ALERT_TRIGGER_DELIVERY_LOG_RETAIN rows each, after every insert
     // in the batch lands, so a single request never leaves a trigger's
@@ -3492,7 +3574,12 @@ async function handleAlertTriggersDeliveryLogWrite(request: Request, env: Env) {
   });
 }
 
-async function handleAlertTriggersRoute(request: Request, env: Env, url: URL) {
+async function handleAlertTriggersRoute(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  url: URL,
+) {
   const segments = url.pathname.split("/").filter(Boolean);
   // ["api", "v1", "alerts", "triggers", <id?>]
   const id = segments[4];
@@ -3504,16 +3591,16 @@ async function handleAlertTriggersRoute(request: Request, env: Env, url: URL) {
   // with a fifth segment falls through to the 405 below.
   const sub = segments[5];
   if (!id && !sub && request.method === "POST") {
-    return handleAlertTriggerCreate(request, env);
+    return handleAlertTriggerCreate(request, env, ctx);
   }
   if (id && !sub && request.method === "GET") {
-    return handleAlertTriggerGet(request, env, id);
+    return handleAlertTriggerGet(request, env, ctx, id);
   }
   if (id && !sub && request.method === "PATCH") {
-    return handleAlertTriggerUpdate(request, env, id);
+    return handleAlertTriggerUpdate(request, env, ctx, id);
   }
   if (id && !sub && request.method === "DELETE") {
-    return handleAlertTriggerDelete(request, env, id);
+    return handleAlertTriggerDelete(request, env, ctx, id);
   }
   return writeJson(
     {
@@ -3566,10 +3653,14 @@ async function requireVerifiedWatchSs58(
   return { ok: true, ss58: verified.ss58 };
 }
 
-async function handleWatchTriggersList(request: Request, env: Env) {
+async function handleWatchTriggersList(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, ctx, async (sql) => {
     const rows = await sql`
       SELECT * FROM chain_alert_triggers
       WHERE owner_ss58 = ${auth.ss58}
@@ -3585,6 +3676,7 @@ async function handleWatchTriggersList(request: Request, env: Env) {
 async function handleWatchTriggerUpdate(
   request: Request,
   env: Env,
+  ctx: ExecutionContext,
   id: string,
 ) {
   if (!isValidAlertTriggerId(id)) {
@@ -3597,7 +3689,7 @@ async function handleWatchTriggerUpdate(
   if (!body || typeof body !== "object" || Array.isArray(body)) {
     return writeJson({ error: "Request body must be a JSON object." }, 400);
   }
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, ctx, async (sql) => {
     const [existing] =
       await sql`SELECT * FROM chain_alert_triggers WHERE id = ${id}`;
     if (!existing || existing.owner_ss58 !== auth.ss58) {
@@ -3614,6 +3706,7 @@ async function handleWatchTriggerUpdate(
 async function handleWatchTriggerDelete(
   request: Request,
   env: Env,
+  ctx: ExecutionContext,
   id: string,
 ) {
   if (!isValidAlertTriggerId(id)) {
@@ -3621,7 +3714,7 @@ async function handleWatchTriggerDelete(
   }
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, ctx, async (sql) => {
     const [existing] =
       await sql`SELECT owner_ss58 FROM chain_alert_triggers WHERE id = ${id}`;
     if (!existing || existing.owner_ss58 !== auth.ss58) {
@@ -3635,6 +3728,7 @@ async function handleWatchTriggerDelete(
 async function handleWatchTriggerDeliveries(
   request: Request,
   env: Env,
+  ctx: ExecutionContext,
   id: string,
 ) {
   if (!isValidAlertTriggerId(id)) {
@@ -3642,7 +3736,7 @@ async function handleWatchTriggerDeliveries(
   }
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, ctx, async (sql) => {
     const [existing] =
       await sql`SELECT owner_ss58 FROM chain_alert_triggers WHERE id = ${id}`;
     if (!existing || existing.owner_ss58 !== auth.ss58) {
@@ -3661,22 +3755,27 @@ async function handleWatchTriggerDeliveries(
   });
 }
 
-async function handleWatchTriggersRoute(request: Request, env: Env, url: URL) {
+async function handleWatchTriggersRoute(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  url: URL,
+) {
   const segments = url.pathname.split("/").filter(Boolean);
   // ["api", "v1", "watch", "triggers", <id?>, <"deliveries"?>]
   const id = segments[4];
   const sub = segments[5];
   if (!id && request.method === "GET") {
-    return handleWatchTriggersList(request, env);
+    return handleWatchTriggersList(request, env, ctx);
   }
   if (id && sub === "deliveries" && request.method === "GET") {
-    return handleWatchTriggerDeliveries(request, env, id);
+    return handleWatchTriggerDeliveries(request, env, ctx, id);
   }
   if (id && !sub && request.method === "PATCH") {
-    return handleWatchTriggerUpdate(request, env, id);
+    return handleWatchTriggerUpdate(request, env, ctx, id);
   }
   if (id && !sub && request.method === "DELETE") {
-    return handleWatchTriggerDelete(request, env, id);
+    return handleWatchTriggerDelete(request, env, ctx, id);
   }
   return writeJson(
     {
@@ -3715,10 +3814,14 @@ function pushSubscriptionView(row: Record<string, unknown>) {
   };
 }
 
-async function handleWatchPushSubscriptionsList(request: Request, env: Env) {
+async function handleWatchPushSubscriptionsList(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, ctx, async (sql) => {
     const rows = await sql`
       SELECT id, endpoint, user_agent, created_at, last_used_at
       FROM watch_push_subscriptions
@@ -3731,7 +3834,11 @@ async function handleWatchPushSubscriptionsList(request: Request, env: Env) {
   });
 }
 
-async function handleWatchPushSubscriptionCreate(request: Request, env: Env) {
+async function handleWatchPushSubscriptionCreate(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
 
@@ -3771,7 +3878,7 @@ async function handleWatchPushSubscriptionCreate(request: Request, env: Env) {
       : null;
   const now = Date.now();
 
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, ctx, async (sql) => {
     // Read the OWNER, not just existence. An endpoint is globally unique, so
     // without this check a verified address could POST an endpoint already
     // registered to someone else and the upsert below would silently reassign
@@ -3836,6 +3943,7 @@ async function handleWatchPushSubscriptionCreate(request: Request, env: Env) {
 async function handleWatchPushSubscriptionDelete(
   request: Request,
   env: Env,
+  ctx: ExecutionContext,
   id: string,
 ) {
   if (!/^[0-9]{1,19}$/.test(id)) {
@@ -3843,7 +3951,7 @@ async function handleWatchPushSubscriptionDelete(
   }
   const auth = await requireVerifiedWatchSs58(request, env);
   if (!auth.ok) return auth.response;
-  return withAlertTriggersSql(env, async (sql) => {
+  return withAlertTriggersSql(env, ctx, async (sql) => {
     // Scoped by address: another address' id returns the same 404 a
     // nonexistent one does (the anti-oracle posture the trigger routes use).
     const rows = await sql`
@@ -3866,6 +3974,7 @@ async function handleWatchPushSubscriptionDelete(
 async function handleInternalPushSubscription(
   request: Request,
   env: Env,
+  ctx: ExecutionContext,
   url: URL,
 ) {
   // Same inline gate the sibling internal routes use (no shared helper
@@ -3891,7 +4000,7 @@ async function handleInternalPushSubscription(
   if (request.method === "GET") {
     const endpoint = url.searchParams.get("endpoint") || "";
     if (!endpoint) return writeJson({ error: "endpoint is required" }, 400);
-    return withAlertTriggersSql(env, async (sql) => {
+    return withAlertTriggersSql(env, ctx, async (sql) => {
       const rows = await sql`
         SELECT endpoint, p256dh, auth FROM watch_push_subscriptions
         WHERE endpoint = ${endpoint}`;
@@ -3920,7 +4029,7 @@ async function handleInternalPushSubscription(
     }
     const endpoint = typeof body.endpoint === "string" ? body.endpoint : "";
     if (!endpoint) return writeJson({ error: "endpoint is required" }, 400);
-    return withAlertTriggersSql(env, async (sql) => {
+    return withAlertTriggersSql(env, ctx, async (sql) => {
       await sql`DELETE FROM watch_push_subscriptions WHERE endpoint = ${endpoint}`;
       // Idempotent: pruning an already-pruned device is a success, not a 404
       // -- the caller is fire-and-forget and must never see a spurious error.
@@ -3934,19 +4043,20 @@ async function handleInternalPushSubscription(
 async function handleWatchPushSubscriptionsRoute(
   request: Request,
   env: Env,
+  ctx: ExecutionContext,
   url: URL,
 ) {
   const segments = url.pathname.split("/").filter(Boolean);
   // ["api", "v1", "watch", "push-subscriptions", <id?>]
   const id = segments[4];
   if (!id && request.method === "GET") {
-    return handleWatchPushSubscriptionsList(request, env);
+    return handleWatchPushSubscriptionsList(request, env, ctx);
   }
   if (!id && request.method === "POST") {
-    return handleWatchPushSubscriptionCreate(request, env);
+    return handleWatchPushSubscriptionCreate(request, env, ctx);
   }
   if (id && request.method === "DELETE") {
-    return handleWatchPushSubscriptionDelete(request, env, id);
+    return handleWatchPushSubscriptionDelete(request, env, ctx, id);
   }
   return writeJson(
     {
@@ -3996,12 +4106,13 @@ const ACCOUNT_KEYS_MINT_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
 
 async function withAccountsSql<T>(
   env: Env,
+  ctx: ExecutionContext,
   fn: (sql: D1Sql) => Promise<T>,
 ): Promise<T | Response> {
-  if (!env.METAGRAPH_HEALTH_DB) {
+  const sql = userStateRunner(env, ctx, ACCOUNT_STATE_TABLES);
+  if (!sql) {
     return writeJson({ error: "d1 binding unavailable" }, 503);
   }
-  const sql = createD1Sql(env.METAGRAPH_HEALTH_DB);
   try {
     return await fn(sql);
   } catch (err) {
@@ -4101,7 +4212,11 @@ async function handleWalletChallenge(request: Request, env: Env) {
   });
 }
 
-async function handleWalletVerify(request: Request, env: Env) {
+async function handleWalletVerify(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const rateLimited = await walletAuthRateLimited(request, env);
   if (rateLimited) return rateLimited;
   const sessionSecret = env.WALLET_SESSION_SECRET;
@@ -4129,7 +4244,7 @@ async function handleWalletVerify(request: Request, env: Env) {
       result.code === "challenge_store_unavailable" ? 503 : 401,
     );
   }
-  return withAccountsSql(env, async (sql) => {
+  return withAccountsSql(env, ctx, async (sql) => {
     const now = Date.now();
     const [account] = await sql`
       INSERT INTO rpc_accounts (ss58, created_at, last_login_at)
@@ -4234,7 +4349,11 @@ async function handleWatchTokenMint(request: Request, env: Env) {
 // is still not an unauthenticated account-rebinding primitive. The caller is
 // our own Worker over the service binding, which already reads this secret, so
 // the existing internal-token pair (not a new secret) is the right gate.
-async function handleGithubAccountUpsert(request: Request, env: Env) {
+async function handleGithubAccountUpsert(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
     return writeJson(
@@ -4266,7 +4385,7 @@ async function handleGithubAccountUpsert(request: Request, env: Env) {
       400,
     );
   }
-  return withAccountsSql(env, async (sql) => {
+  return withAccountsSql(env, ctx, async (sql) => {
     const now = Date.now();
     const [account] = await sql`
       INSERT INTO github_accounts (github_user_id, github_login, created_at, last_login_at)
@@ -4313,7 +4432,11 @@ async function requireAccountSession(request: Request, env: Env) {
   return { session };
 }
 
-async function handleAccountKeyCreate(request: Request, env: Env) {
+async function handleAccountKeyCreate(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const { session, error: sessionError } = await requireAccountSession(
     request,
     env,
@@ -4345,7 +4468,7 @@ async function handleAccountKeyCreate(request: Request, env: Env) {
     }
   }
 
-  return withAccountsSql(env, async (sql) => {
+  return withAccountsSql(env, ctx, async (sql) => {
     // The session's signature already proved this account row exists at
     // verify time; a missing row here means it was removed since -- decline
     // rather than mint an orphaned key. Tier is the account's OWN tier
@@ -4388,13 +4511,17 @@ async function handleAccountKeyCreate(request: Request, env: Env) {
   });
 }
 
-async function handleAccountKeysList(request: Request, env: Env) {
+async function handleAccountKeysList(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const { session, error: sessionError } = await requireAccountSession(
     request,
     env,
   );
   if (sessionError) return sessionError;
-  return withAccountsSql(env, async (sql) => {
+  return withAccountsSql(env, ctx, async (sql) => {
     const rows = await sql`
       SELECT unkey_key_id AS key_id, tier, created_at, revoked_at, last_used_at
       FROM api_keys
@@ -4409,6 +4536,7 @@ const UNKEY_KEY_ID_PATTERN = /^key_[a-zA-Z0-9_]+$/;
 async function handleAccountKeyRevoke(
   request: Request,
   env: Env,
+  ctx: ExecutionContext,
   keyId: string,
 ) {
   const { session, error: sessionError } = await requireAccountSession(
@@ -4419,7 +4547,7 @@ async function handleAccountKeyRevoke(
   if (!UNKEY_KEY_ID_PATTERN.test(keyId)) {
     return writeJson({ error: "malformed key id" }, 400);
   }
-  return withAccountsSql(env, async (sql) => {
+  return withAccountsSql(env, ctx, async (sql) => {
     // Ownership check BEFORE ever calling Unkey -- a key_id that exists but
     // belongs to a different account gets the SAME 404 a nonexistent one
     // would (no existence oracle across accounts, same posture as
@@ -4461,7 +4589,11 @@ async function handleAccountKeyRevoke(
 // own key list, not the source of truth for anything) -- cheap now that
 // this route is only hit once per unique key per KV-cache TTL window, not
 // once per RPC request.
-async function handleApiKeyVerify(request: Request, env: Env) {
+async function handleApiKeyVerify(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
     return writeJson(
@@ -4490,7 +4622,7 @@ async function handleApiKeyVerify(request: Request, env: Env) {
     return writeJson({ valid: false, code: "NOT_FOUND" });
   }
   if (result.valid) {
-    void withAccountsSql(env, async (sql) => {
+    void withAccountsSql(env, ctx, async (sql) => {
       await sql`UPDATE api_keys SET last_used_at = ${Date.now()} WHERE unkey_key_id = ${result.keyId}`;
     });
   }
@@ -4515,7 +4647,11 @@ async function handleApiKeyVerify(request: Request, env: Env) {
 // must never affect the request that triggered it, so this always returns
 // 200 even on a swallowed write error; there is nothing for the caller to
 // react to either way.
-async function handleApiKeyUsageIncrement(request: Request, env: Env) {
+async function handleApiKeyUsageIncrement(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
     return writeJson(
@@ -4544,7 +4680,7 @@ async function handleApiKeyUsageIncrement(request: Request, env: Env) {
     return writeJson({ error: "provide account_id and route" }, 400);
   }
   try {
-    await withAccountsSql(env, async (sql) => {
+    await withAccountsSql(env, ctx, async (sql) => {
       const day = new Date().toISOString().slice(0, 10);
       await sql`
         INSERT INTO api_key_usage_daily
@@ -4579,7 +4715,11 @@ async function handleApiKeyUsageIncrement(request: Request, env: Env) {
 // spendDailyQuota) -- an unprovisioned or unhappy quota store must never
 // become an outage for a paying caller -- so a 503 here is a real signal, not
 // a swallowed one.
-async function handleApiQuotaSpend(request: Request, env: Env) {
+async function handleApiQuotaSpend(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
     return writeJson(
@@ -4625,7 +4765,7 @@ async function handleApiQuotaSpend(request: Request, env: Env) {
     return writeJson(applyQuotaSpend(0, cost, limit, now));
   }
 
-  const result = await withAccountsSql(env, async (sql) => {
+  const result = await withAccountsSql(env, ctx, async (sql) => {
     // The SPEND is one guarded upsert -- atomic on its own. The WHERE guard
     // is applyQuotaSpend's reject rule expressed as a conflict predicate:
     // when the new total would exceed the limit the DO UPDATE does not fire,
@@ -4673,7 +4813,11 @@ async function handleApiQuotaSpend(request: Request, env: Env) {
 // swallowed write error -- a usage-rollup miss must never affect the request
 // that triggered it, and there is nothing for the caller to react to either
 // way.
-async function handleUsageRollupIncrement(request: Request, env: Env) {
+async function handleUsageRollupIncrement(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
     return writeJson(
@@ -4696,7 +4840,7 @@ async function handleUsageRollupIncrement(request: Request, env: Env) {
   const buckets = Array.isArray(body?.buckets) ? body.buckets : [];
   if (buckets.length === 0) return writeJson({ ok: true, applied: 0 });
   try {
-    await withAccountsSql(env, async (sql) => {
+    await withAccountsSql(env, ctx, async (sql) => {
       for (const bucket of buckets as Row[]) {
         const day = typeof bucket?.day === "string" ? bucket.day : null;
         const family =
@@ -4738,7 +4882,11 @@ async function handleUsageRollupIncrement(request: Request, env: Env) {
 // shape". This is the deliverable -- the point of the issue is to make the
 // pricing question cheap to RE-ASK, so it must be answerable without a deploy
 // or an SSH session.
-async function handleUsageRollupRead(request: Request, env: Env) {
+async function handleUsageRollupRead(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const configured = env.API_KEY_LOOKUP_INTERNAL_TOKEN;
   if (!configured) {
     return writeJson(
@@ -4762,7 +4910,7 @@ async function handleUsageRollupRead(request: Request, env: Env) {
     .slice(0, 10);
   const groupBy =
     url.searchParams.get("group_by") === "shape" ? "shape" : "family";
-  const result = await withAccountsSql(env, async (sql) => {
+  const result = await withAccountsSql(env, ctx, async (sql) => {
     const rows =
       groupBy === "shape"
         ? await sql`
@@ -4828,7 +4976,11 @@ const ACCOUNT_TIER_PROMOTE_TOKEN_HEADER = "x-account-tier-promote-token";
 // needed, the caller's existing mg_... key keeps working at the new tier.
 // Gated by its own shared secret, matching the internal verify/alert-
 // trigger routes' "different capability, different secret" convention.
-async function handleAccountTierPromote(request: Request, env: Env) {
+async function handleAccountTierPromote(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const configured = env.ACCOUNT_TIER_PROMOTE_INTERNAL_TOKEN;
   if (!configured) {
     return writeJson(
@@ -4850,7 +5002,7 @@ async function handleAccountTierPromote(request: Request, env: Env) {
   if (!ss58 || !tier) {
     return writeJson({ error: "provide ss58 and tier" }, 400);
   }
-  return withAccountsSql(env, async (sql) => {
+  return withAccountsSql(env, ctx, async (sql) => {
     const [account] = await sql`
       UPDATE rpc_accounts SET tier = ${tier} WHERE ss58 = ${ss58} RETURNING id`;
     if (!account) return writeJson({ error: "no such account" }, 404);
@@ -4950,7 +5102,11 @@ function requireBlockToken(request: Request, env: Env) {
 // Account-level, not key-level: blocking a single key of an abusive account
 // just invites minting another. Reversible by design, with the whole history
 // kept -- see the api_key_blocks comment in schema.sql.
-async function handleApiKeyBlock(request: Request, env: Env) {
+async function handleApiKeyBlock(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const denied = requireBlockToken(request, env);
   if (denied) return denied;
   const { body, error } = await readAccountRouteBody(request);
@@ -4972,7 +5128,7 @@ async function handleApiKeyBlock(request: Request, env: Env) {
   const note = typeof body?.note === "string" ? body.note.slice(0, 2000) : null;
   const blockedBy =
     typeof body?.blocked_by === "string" ? body.blocked_by.slice(0, 200) : null;
-  return withAccountsSql(env, async (sql) => {
+  return withAccountsSql(env, ctx, async (sql) => {
     // ON CONFLICT DO NOTHING against the one-active-block-per-account partial
     // unique index: blocking an already-blocked account is a no-op rather than
     // an error, so an ops action that gets retried or double-clicked stays
@@ -4997,7 +5153,11 @@ async function handleApiKeyBlock(request: Request, env: Env) {
 // api_key_blocks is an append-only ledger rather than a boolean column -- this
 // closes the row instead of deleting it, so "blocked in error on the 3rd,
 // lifted on the 4th, here is why" stays answerable months later.
-async function handleApiKeyUnblock(request: Request, env: Env) {
+async function handleApiKeyUnblock(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const denied = requireBlockToken(request, env);
   if (denied) return denied;
   const { body, error } = await readAccountRouteBody(request);
@@ -5015,7 +5175,7 @@ async function handleApiKeyUnblock(request: Request, env: Env) {
       400,
     );
   }
-  return withAccountsSql(env, async (sql) => {
+  return withAccountsSql(env, ctx, async (sql) => {
     const [row] = await sql`
       UPDATE api_key_blocks
       SET unblocked_at = ${Date.now()}, unblocked_note = ${note.slice(0, 2000)}
@@ -5036,7 +5196,11 @@ async function handleApiKeyUnblock(request: Request, env: Env) {
 // human decides, using handleApiKeyBlock above. An automated block on a
 // heuristic like "used many route families" would eventually cut off a
 // legitimate integration doing exactly what the API is for.
-async function handleApiKeyAnomalies(request: Request, env: Env) {
+async function handleApiKeyAnomalies(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const denied = requireBlockToken(request, env);
   if (denied) return denied;
   const url = new URL(request.url);
@@ -5047,7 +5211,7 @@ async function handleApiKeyAnomalies(request: Request, env: Env) {
   const since = new Date(Date.now() - days * 86_400_000)
     .toISOString()
     .slice(0, 10);
-  return withAccountsSql(env, async (sql) => {
+  return withAccountsSql(env, ctx, async (sql) => {
     const usage = await sql`
       SELECT account_id, day, route, request_count
       FROM api_key_usage_daily
@@ -5116,13 +5280,17 @@ const USAGE_DASHBOARD_WINDOW_DAYS = 7;
 // maintainers and can name a person, a ticket or a suspicion. The unblock path
 // is a support conversation, not a self-serve button, so there is nothing to
 // action here beyond knowing.
-async function handleAccountKeyStatus(request: Request, env: Env) {
+async function handleAccountKeyStatus(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+) {
   const { session, error: sessionError } = await requireAccountSession(
     request,
     env,
   );
   if (sessionError) return sessionError;
-  return withAccountsSql(env, async (sql) => {
+  return withAccountsSql(env, ctx, async (sql) => {
     const [row] = await sql`
       SELECT reason_code, blocked_at FROM api_key_blocks
       WHERE account_id = ${session.accountId} AND unblocked_at IS NULL
@@ -5142,13 +5310,18 @@ async function handleAccountKeyStatus(request: Request, env: Env) {
   });
 }
 
-async function handleAccountKeyUsage(request: Request, env: Env, url: URL) {
+async function handleAccountKeyUsage(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  url: URL,
+) {
   const { session, error: sessionError } = await requireAccountSession(
     request,
     env,
   );
   if (sessionError) return sessionError;
-  return withAccountsSql(env, async (sql) => {
+  return withAccountsSql(env, ctx, async (sql) => {
     const since = new Date(
       Date.now() - USAGE_DASHBOARD_WINDOW_DAYS * 24 * 60 * 60 * 1000,
     )
@@ -5247,24 +5420,29 @@ async function handleAccountKeyUsage(request: Request, env: Env, url: URL) {
   });
 }
 
-async function handleAccountKeysRoute(request: Request, env: Env, url: URL) {
+async function handleAccountKeysRoute(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  url: URL,
+) {
   const segments = url.pathname.split("/").filter(Boolean);
   // ["api", "v1", "keys", <key_id?>, <"usage"?>]
   const keyId = segments[3];
   if (!keyId && request.method === "POST") {
-    return handleAccountKeyCreate(request, env);
+    return handleAccountKeyCreate(request, env, ctx);
   }
   if (!keyId && request.method === "GET") {
-    return handleAccountKeysList(request, env);
+    return handleAccountKeysList(request, env, ctx);
   }
   if (keyId === "usage" && request.method === "GET") {
-    return handleAccountKeyUsage(request, env, url);
+    return handleAccountKeyUsage(request, env, ctx, url);
   }
   if (keyId === "status" && request.method === "GET") {
-    return handleAccountKeyStatus(request, env);
+    return handleAccountKeyStatus(request, env, ctx);
   }
   if (keyId && request.method === "DELETE") {
-    return handleAccountKeyRevoke(request, env, keyId);
+    return handleAccountKeyRevoke(request, env, ctx, keyId);
   }
   return writeJson(
     {
@@ -7001,7 +7179,7 @@ async function dispatchDataApiRequest(
       request.method === "POST" &&
       url.pathname === "/api/v1/internal/keys/verify"
     ) {
-      return handleApiKeyVerify(request, env);
+      return handleApiKeyVerify(request, env, ctx);
     }
     // Internal-only usage-counter increment for the self-serve usage
     // dashboard (#8386) -- see handleApiKeyUsageIncrement's own header
@@ -7010,7 +7188,7 @@ async function dispatchDataApiRequest(
       request.method === "POST" &&
       url.pathname === "/api/v1/internal/keys/usage"
     ) {
-      return handleApiKeyUsageIncrement(request, env);
+      return handleApiKeyUsageIncrement(request, env, ctx);
     }
     // Internal-only all-traffic usage rollup (#8597) -- the measurement ADR
     // 0022's pricing decision is blocked on. Write is batched+fire-and-forget;
@@ -7019,13 +7197,13 @@ async function dispatchDataApiRequest(
       request.method === "POST" &&
       url.pathname === "/api/v1/internal/usage-rollup"
     ) {
-      return handleUsageRollupIncrement(request, env);
+      return handleUsageRollupIncrement(request, env, ctx);
     }
     if (
       request.method === "GET" &&
       url.pathname === "/api/v1/internal/usage-rollup"
     ) {
-      return handleUsageRollupRead(request, env);
+      return handleUsageRollupRead(request, env, ctx);
     }
     // Internal-only daily-quota spend (#8608) -- see handleApiQuotaSpend's own
     // header comment for why it shares the verify route's secret and why,
@@ -7034,7 +7212,7 @@ async function dispatchDataApiRequest(
       request.method === "POST" &&
       url.pathname === "/api/v1/internal/keys/quota"
     ) {
-      return handleApiQuotaSpend(request, env);
+      return handleApiQuotaSpend(request, env, ctx);
     }
     // Internal-only key-level abuse controls (#8611). Own shared secret --
     // blocking a paying customer is a higher-privilege act than recording a
@@ -7043,19 +7221,19 @@ async function dispatchDataApiRequest(
       request.method === "POST" &&
       url.pathname === "/api/v1/internal/keys/block"
     ) {
-      return handleApiKeyBlock(request, env);
+      return handleApiKeyBlock(request, env, ctx);
     }
     if (
       request.method === "POST" &&
       url.pathname === "/api/v1/internal/keys/unblock"
     ) {
-      return handleApiKeyUnblock(request, env);
+      return handleApiKeyUnblock(request, env, ctx);
     }
     if (
       request.method === "GET" &&
       url.pathname === "/api/v1/internal/keys/anomalies"
     ) {
-      return handleApiKeyAnomalies(request, env);
+      return handleApiKeyAnomalies(request, env, ctx);
     }
     // Internal-only, ops-triggered account tier promotion -- see
     // handleAccountTierPromote's own header comment.
@@ -7063,7 +7241,7 @@ async function dispatchDataApiRequest(
       request.method === "POST" &&
       url.pathname === "/api/v1/internal/accounts/tier"
     ) {
-      return handleAccountTierPromote(request, env);
+      return handleAccountTierPromote(request, env, ctx);
     }
     // #4984 Part 1: multi-method (POST/GET/PATCH/DELETE), so it can't join
     // the exact-path-and-method checks above -- handleAlertTriggersRoute
@@ -7073,23 +7251,23 @@ async function dispatchDataApiRequest(
     // `/api/v1/alerts/triggersanything` too, and this is the side that actually
     // reaches the create/delete handlers.
     if (isPathUnder(url.pathname, "/api/v1/alerts/triggers")) {
-      return handleAlertTriggersRoute(request, env, url);
+      return handleAlertTriggersRoute(request, env, ctx, url);
     }
     // #8375: the Alert Center's address-scoped counterpart -- GET (list),
     // PATCH/DELETE (single trigger), GET .../deliveries (history), all
     // watch-token authorized. Same "multi-method, can't join the exact-match
     // checks" shape as handleAlertTriggersRoute just above.
     if (isPathUnder(url.pathname, "/api/v1/watch/triggers")) {
-      return handleWatchTriggersRoute(request, env, url);
+      return handleWatchTriggersRoute(request, env, ctx, url);
     }
     // #8385: the same address-scoped shape for web-push device
     // subscriptions (GET list, POST subscribe, DELETE one device).
     if (isPathUnder(url.pathname, "/api/v1/watch/push-subscriptions")) {
-      return handleWatchPushSubscriptionsRoute(request, env, url);
+      return handleWatchPushSubscriptionsRoute(request, env, ctx, url);
     }
     // #8385: internal-only push-subscription resolve/prune for AlerterHub.
     if (url.pathname === "/api/v1/internal/push-subscription") {
-      return handleInternalPushSubscription(request, env, url);
+      return handleInternalPushSubscription(request, env, ctx, url);
     }
     // Wallet login + account-gated fullnode API keys (ADR 0021, #6835) --
     // same multi-method-can't-join-the-exact-match-checks shape as the
@@ -7104,7 +7282,7 @@ async function dispatchDataApiRequest(
       request.method === "POST" &&
       url.pathname === "/api/v1/auth/wallet/verify"
     ) {
-      return handleWalletVerify(request, env);
+      return handleWalletVerify(request, env, ctx);
     }
     // #8374: self-serve wallet-verified alert-trigger issuance -- same
     // exact-path-and-method dispatch shape as the wallet-login pair above.
@@ -7121,16 +7299,16 @@ async function dispatchDataApiRequest(
       request.method === "POST" &&
       url.pathname === "/api/v1/auth/github/upsert-account"
     ) {
-      return handleGithubAccountUpsert(request, env);
+      return handleGithubAccountUpsert(request, env, ctx);
     }
     if (url.pathname.startsWith("/api/v1/keys")) {
-      return handleAccountKeysRoute(request, env, url);
+      return handleAccountKeysRoute(request, env, ctx, url);
     }
     if (
       request.method === "GET" &&
       url.pathname === "/api/v1/internal/alert-triggers-active"
     ) {
-      return handleAlertTriggersActiveList(request, env);
+      return handleAlertTriggersActiveList(request, env, ctx);
     }
     // #5022: the evaluator's own write-back for match_count/last_matched_at
     // -- see handleAlertTriggersMatchedWriteback's own header comment.
@@ -7138,7 +7316,7 @@ async function dispatchDataApiRequest(
       request.method === "POST" &&
       url.pathname === "/api/v1/internal/alert-triggers/matched"
     ) {
-      return handleAlertTriggersMatchedWriteback(request, env);
+      return handleAlertTriggersMatchedWriteback(request, env, ctx);
     }
     // #8375: the evaluator's own delivery-history write-back -- see
     // handleAlertTriggersDeliveryLogWrite's own header comment.
@@ -7146,7 +7324,7 @@ async function dispatchDataApiRequest(
       request.method === "POST" &&
       url.pathname === "/api/v1/internal/alert-triggers/deliveries"
     ) {
-      return handleAlertTriggersDeliveryLogWrite(request, env);
+      return handleAlertTriggersDeliveryLogWrite(request, env, ctx);
     }
     if (request.method !== "GET")
       return json({ error: "method not allowed" }, 405);
