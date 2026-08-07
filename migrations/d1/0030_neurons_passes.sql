@@ -24,7 +24,7 @@
 -- 30 hours old."
 --
 -- MAX(captured_at) CANNOT SUBSTITUTE, and this is the specific trap: it
--- reflects only the netuids that DID land, so a pass covering 21 of 129 subnets
+-- reflects only the netuids that DID land, so a pass covering 21 of 129 netuids
 -- leaves a perfectly fresh-looking stamp behind it. That is the same shape as
 -- the 147,000-row account_balances incident this whole mechanism came from.
 --
