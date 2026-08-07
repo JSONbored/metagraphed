@@ -22,6 +22,10 @@ import {
   type HttpProbeResult,
   type ProbeSurface,
   type RpcProbeResult,
+  probeSlotDeadlineMs,
+  PROBE_SLOT_SLACK_MS,
+  SUBTENSOR_PROBE_CALLS,
+  withProbeDeadline,
 } from "../src/health-probe-core.ts";
 import type { Row } from "./row-type.ts";
 
@@ -1852,5 +1856,125 @@ describe("probeSurface field-default branches", () => {
     );
     assert.equal(row.content_type, null);
     assert.equal(row.redirect_target, null);
+  });
+});
+
+describe("probeSlotDeadlineMs (metagraphed#9769)", () => {
+  const surface = (kind: string, timeout_ms?: number) =>
+    ({
+      id: "s",
+      kind,
+      url: "https://example.com",
+      probe: {
+        method: "GET",
+        expect: "any",
+        ...(timeout_ms ? { timeout_ms } : {}),
+      },
+    }) as never;
+
+  test("an HTTP surface gets one request's worth, plus slack", () => {
+    assert.equal(
+      probeSlotDeadlineMs(surface("subnet-api")),
+      8_000 + PROBE_SLOT_SLACK_MS,
+    );
+    assert.equal(
+      probeSlotDeadlineMs(surface("subnet-api", 10_000)),
+      10_000 + PROBE_SLOT_SLACK_MS,
+    );
+  });
+
+  test("an RPC surface gets FIVE, because its calls are sequential", () => {
+    // THE CASE THIS EXISTS FOR. probeSubtensorHttp loops SUBTENSOR_PROBE_CALLS
+    // and short-circuits only on a transport error, so an endpoint that accepts
+    // connections and then stalls costs five full timeouts -- a minute in one
+    // of eight slots at the 12s default. A ceiling derived from one request
+    // would fire on a legitimately slow node; this one only fires on a stuck.
+    assert.equal(SUBTENSOR_PROBE_CALLS.length, 5);
+    for (const kind of ["subtensor-rpc", "subtensor-wss"]) {
+      assert.equal(
+        probeSlotDeadlineMs(surface(kind)),
+        12_000 * 5 + PROBE_SLOT_SLACK_MS,
+        kind,
+      );
+    }
+  });
+
+  test("derives from the surface's OWN timeout, not a constant", () => {
+    // A flat ceiling is either too low for the slowest legitimate surface or
+    // too high to bound anything. The seed carries 25s timeouts on four
+    // surfaces; those must not be cut short.
+    assert.equal(
+      probeSlotDeadlineMs(surface("subtensor-rpc", 25_000)),
+      25_000 * 5 + PROBE_SLOT_SLACK_MS,
+    );
+  });
+
+  test("survives a surface with no probe block at all", () => {
+    assert.equal(
+      probeSlotDeadlineMs({ id: "s", kind: "docs", url: "u" } as never),
+      8_000 + PROBE_SLOT_SLACK_MS,
+    );
+  });
+});
+
+describe("withProbeDeadline (metagraphed#9769)", () => {
+  test("returns the work when it finishes in time", async () => {
+    assert.equal(
+      await withProbeDeadline(Promise.resolve("done"), 50, () => "late"),
+      "done",
+    );
+  });
+
+  test("stops WAITING once the deadline passes", async () => {
+    // It does not cancel the probe -- every probe already aborts its own fetch.
+    // What it releases is the worker SLOT, which is the resource 614 other
+    // surfaces are queued behind.
+    const never = new Promise<string>(() => {});
+    assert.equal(await withProbeDeadline(never, 1, () => "late"), "late");
+  });
+
+  test("an abandoned probe's rejection does not escape", async () => {
+    // A dropped promise that rejects later becomes an unhandled rejection, which
+    // in a Worker is an error event on a run that otherwise succeeded. The catch
+    // is attached deliberately rather than the promise merely dropped.
+    let reject: (e: Error) => void = () => {};
+    const doomed = new Promise<string>((_resolve, r) => {
+      reject = r;
+    });
+    const result = await withProbeDeadline(doomed, 1, () => "late");
+    assert.equal(result, "late");
+    reject(new Error("the probe failed after we stopped waiting"));
+    // Settle a microtask later; an unhandled rejection would surface here.
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  });
+
+  test("clears its timer, so a fast probe leaves nothing pending", async () => {
+    // A Worker invocation that finishes with a live timer can be held open by
+    // it. The timer is cleared in a finally, and this asserts the scheduler
+    // handle is the one that gets cleared.
+    let cleared = false;
+    const scheduler = ((fn: () => void, ms: number) => {
+      const handle = setTimeout(fn, ms);
+      return {
+        handle,
+        [Symbol.toPrimitive]: () => 0,
+      } as unknown as ReturnType<typeof setTimeout>;
+    }) as typeof setTimeout;
+    const original = globalThis.clearTimeout;
+    globalThis.clearTimeout = ((h: never) => {
+      cleared = true;
+      original(h as never);
+    }) as typeof clearTimeout;
+    try {
+      await withProbeDeadline(
+        Promise.resolve("fast"),
+        10_000,
+        () => "late",
+        scheduler,
+      );
+    } finally {
+      globalThis.clearTimeout = original;
+    }
+    assert.equal(cleared, true);
   });
 });

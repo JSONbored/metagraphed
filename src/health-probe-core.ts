@@ -977,6 +977,75 @@ export async function mapLimit<T, R>(
   return results;
 }
 
+/**
+ * The longest a single surface's probe can legitimately take, plus slack
+ * (metagraphed#9769).
+ *
+ * DERIVED, NOT GUESSED, because a flat ceiling is either too low for the
+ * slowest legitimate surface or too high to bound anything. Each kind's
+ * worst case is knowable from its own configuration:
+ *
+ *   HTTP surfaces      one request                 -> timeout_ms
+ *   subtensor RPC/WSS  SUBTENSOR_PROBE_CALLS.length
+ *                      requests, issued SEQUENTIALLY, each with a fresh
+ *                      timeout                     -> timeout_ms x 5
+ *
+ * That second row is the one worth stating out loud: `probeSubtensorHttp`
+ * loops the five probe calls and short-circuits only on a transport error, so
+ * an endpoint that ACCEPTS connections and then stalls costs five full
+ * timeouts, not one. At the 12s default that is a minute in a single slot of
+ * eight, on a sweep of 615 surfaces driven by a 15-minute cron.
+ *
+ * The slack is generous on purpose. This is not a tighter timeout -- each
+ * request keeps its own abort -- it is a backstop for a probe that has stopped
+ * being subject to any timeout at all, so it should only ever fire on
+ * something genuinely stuck.
+ */
+export const PROBE_SLOT_SLACK_MS = 5_000;
+
+export function probeSlotDeadlineMs(surface: ProbeSurface): number {
+  const isRpc = ["subtensor-rpc", "subtensor-wss"].includes(surface.kind);
+  const timeoutMs = surface.probe?.timeout_ms || (isRpc ? 12_000 : 8_000);
+  const sequentialCalls = isRpc ? SUBTENSOR_PROBE_CALLS.length : 1;
+  return timeoutMs * sequentialCalls + PROBE_SLOT_SLACK_MS;
+}
+
+/**
+ * Resolve `work`, or a fallback once `deadlineMs` has passed.
+ *
+ * THE SLOT IS THE RESOURCE, not the request. Every probe already aborts its own
+ * fetch; what nothing bounded was how long the surface may hold one of the
+ * eight worker slots, and a slot held is a slot the other 614 surfaces queue
+ * behind. So this does not cancel the work -- it stops WAITING for it.
+ *
+ * The abandoned promise is left to settle on its own and its result discarded.
+ * That is deliberate: it has its own abort and will finish or fail shortly, and
+ * a rejection from an abandoned probe must not become an unhandled rejection,
+ * which is why the catch is attached rather than the promise merely dropped.
+ */
+export async function withProbeDeadline<T>(
+  work: Promise<T>,
+  deadlineMs: number,
+  onDeadline: () => T,
+  scheduler: typeof setTimeout = setTimeout,
+): Promise<T> {
+  work.catch(() => undefined);
+  // Assigned before the race, not merely probably assigned: `new Promise`'s
+  // executor runs SYNCHRONOUSLY, so this is set by the time the line below
+  // reads it. A `timer !== undefined` guard in the finally would be a branch no
+  // test can reach, which is how a file starts collecting coverage pragmas
+  // instead of reasons.
+  let timer!: ReturnType<typeof setTimeout>;
+  const expiry = new Promise<T>((resolve) => {
+    timer = scheduler(() => resolve(onDeadline()), deadlineMs);
+  });
+  try {
+    return await Promise.race([work, expiry]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // --- Top-level: probe one surface → common probe-derived row ------------------
 // Returns the fields both callers share. It does NOT compute `last_ok` or
 // `uptime_sample_ratio` (history/store-derived): the Node build computes those

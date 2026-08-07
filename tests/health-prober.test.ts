@@ -378,6 +378,47 @@ const probeImpl = async (input: Row) =>
         status_code: 404,
       };
 
+describe("a stuck surface releases its slot (metagraphed#9769)", () => {
+  test("a probe that never resolves does not stall the sweep", async () => {
+    // THE DEFECT. mapLimit runs eight workers over 615 surfaces; every probe
+    // aborts its own fetch, but nothing bounded how long ONE surface may hold a
+    // worker slot -- and a subtensor endpoint that accepts connections and then
+    // stalls costs five sequential timeouts, a minute in a slot, on a
+    // 15-minute cron. Here the probe never settles at all, which is the same
+    // failure with the clock removed.
+    const { env } = makeProberEnv({ priorStatus: [] });
+    const kv = makeKv();
+    const result = await runHealthProber(env, FAKE_CTX, {
+      now: () => 50000,
+      kv,
+      loadSurfaces: async () => SURFACES,
+      // The RPC surface hangs forever; the HTTP one answers immediately.
+      probeSurface: (async (input: Row) =>
+        input.kind === "subtensor-rpc"
+          ? new Promise(() => {})
+          : {
+              status: "ok",
+              classification: "live",
+              latency_ms: 10,
+              status_code: 200,
+            }) as never,
+      probeOptions: {},
+      // The real deadline is derived per surface (12s x 5 + slack for RPC);
+      // overridden here so the test does not wait a minute to prove a minute is
+      // too long.
+      probeDeadlineMs: () => 5,
+    });
+
+    assert.equal(result.ok, true);
+    assert.equal(result.probed, 2, "the sweep completed rather than hanging");
+    // And the stuck one is recorded as FAILED, not quietly omitted or left
+    // looking healthy -- it did not answer, which is what failed means.
+    const counts = result.counts as Record<string, number>;
+    assert.equal(counts.ok, 1);
+    assert.equal(counts.failed, 1);
+  });
+});
+
 describe("runHealthProber", () => {
   test("posts the probed batch to Postgres + writes the three KV snapshots with correct shapes", async () => {
     const { env, posted } = makeProberEnv({
