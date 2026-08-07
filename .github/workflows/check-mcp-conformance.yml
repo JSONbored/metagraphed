@@ -1,0 +1,77 @@
+name: Check MCP conformance
+
+# Do the MCP responses we SERVE match the outputSchemas we PUBLISH? (#9879)
+#
+# The REST half of this question has been answered out of band since #9141
+# (check-response-conformance.yml). The MCP half was answered nowhere.
+# `validate:mcp` runs in CI against a hermetic harness and reports, honestly,
+# that it cannot finish the job -- 97 of 225 tools are validated only over EMPTY
+# collections, where every declared property of an item is vacuously fine
+# because there are no items. It deferred those to "the production sweep", and
+# that sweep was never scheduled anywhere. CI said something else checks these
+# and nothing did.
+#
+# #9884 is the worked example: deriving MCP schemas from route schemas made row
+# objects strict, and 25 tools began failing their own published schema the
+# moment a caller used the `fields` parameter they advertise. CI stayed green
+# throughout, because the harness serves no rows to project.
+#
+# The first run of this check found three real violations in production
+# (#9910, #9911), both fixed before it was scheduled.
+#
+# Green is the steady state, and the summary prints every run so a healthy run
+# is still legible -- same shape as check-response-conformance.yml.
+on:
+  schedule:
+    # Daily, offset from check-response-conformance's 06:41 so the two are not
+    # sweeping the same Worker at once. Schema drift arrives with a deploy, not
+    # with traffic, so hourly would add noise without shortening the window
+    # that matters.
+    - cron: "17 7 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-mcp-conformance
+  cancel-in-progress: false
+
+jobs:
+  conformance:
+    name: Validate live MCP responses against their published outputSchemas
+    runs-on: ubuntu-latest
+    # ~225 tools plus ~32 projection calls at the endpoint's measured ~1.6s
+    # floor is ~8 minutes; the ceiling leaves room for rate-limit backoff
+    # without letting a hung fetch hold a runner all day.
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Enumerates tools from the LIVE server's own tools/list, not from this
+      # checkout: the question is whether what we serve matches what we
+      # publish, and both halves have to come from production for the answer
+      # to mean anything.
+      - name: Validate live MCP responses against their published outputSchemas
+        run: |
+          node scripts/check-mcp-conformance.ts | tee mcp-conformance.log
+          {
+            echo '## MCP conformance'
+            echo '```'
+            cat mcp-conformance.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
