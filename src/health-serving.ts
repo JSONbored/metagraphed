@@ -1292,16 +1292,50 @@ const ECONOMIC_BOARD_SPECS: EconomicBoardSpec[] = [
   },
   {
     // Where the emission is concentrated — the yield signal.
+    //
+    // RANKED BY TAO ACTUALLY RECEIVED, not by `emission_share` (#9706).
+    // emission_share is the v440 STAGE-1 PRICE SHARE, and the tool
+    // descriptions say so at length -- but the warning sat on the field while
+    // the mistake happened here, on a board NAMED "highest-emission" that
+    // ranked by it. Measured against mainnet 2026-08-07 over the 127
+    // emission-eligible subnets:
+    //
+    //   52 subnets have emission_share > 0 and final_share == 0. They are
+    //      gated to nothing and earn zero, yet ranked. Five sat in the top 30:
+    //      SN95 Actual at rank 6 (4.10%), SN90 DegenBrain 14, SN83 CliqueAI
+    //      24, SN14 Cacheon 27, SN69 ain 29.
+    //   105 of 127 move >= 3 rank places between the two orderings, and the
+    //      worst moves 70 places. The ratio is not even monotonic.
+    //
+    // That is a user-harm bug, not a naming preference: a prospective miner
+    // pays registration and rents hardware for the board's 6th-largest subnet
+    // and earns nothing.
+    //
+    // `tao_in_emission_tao` is on the economics row already, so this needs no
+    // join with get_emission_pipeline. It is not identical to the pipeline's
+    // reconstructed final_share -- ranking by it still moves 29 subnets by >=3
+    // places and at most 13 -- but it is measured rather than reconstructed,
+    // and it is the right KIND of number: TAO in, not price share.
+    //
+    // Eligibility keys off it too, deliberately in preference to
+    // `emission_enabled`: that flag is false on only 42 of the 52 zero-earners
+    // (the other 10 are gated further down the pipeline while still
+    // "enabled"), so filtering on the flag would have left ten of them on the
+    // board. No gated subnet carries tao_in_emission_tao > 0.
     key: "highest-emission",
     direction: "desc",
-    metric: (row) => finiteOrNull(row.emission_share),
-    project: (row, emissionShare) => ({
-      emission_share: emissionShare,
+    metric: (row) => finiteOrNull(row.tao_in_emission_tao),
+    project: (row, taoInEmission) => ({
+      tao_in_emission_tao: taoInEmission,
+      // Kept, and now next to the number that corrects it: a caller comparing
+      // the two sees the gap that made this board wrong.
+      emission_share: finiteOrNull(row.emission_share),
+      emission_enabled: row.emission_enabled ?? null,
       total_stake_alpha: finiteOrNull(row.total_stake_tao),
       validator_count: finiteOrNull(row.validator_count),
       miner_count: finiteOrNull(row.miner_count),
     }),
-    eligible: (entry) => (entry.emission_share as number) > 0,
+    eligible: (entry) => (entry.tao_in_emission_tao as number) > 0,
     tiebreak: (a, b) =>
       ((b.total_stake_alpha as number) ?? -1) -
       ((a.total_stake_alpha as number) ?? -1),

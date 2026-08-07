@@ -573,6 +573,7 @@ describe("formatLeaderboards", () => {
       registration_cost_tao: 1,
       registration_allowed: true,
       emission_share: 0.1,
+      tao_in_emission_tao: 10,
       total_stake_tao: 5000,
       validator_count: 10,
       miner_count: 46,
@@ -587,6 +588,7 @@ describe("formatLeaderboards", () => {
       registration_cost_tao: 0.5,
       registration_allowed: true,
       emission_share: 0.3,
+      tao_in_emission_tao: 30,
       total_stake_tao: 9000,
       validator_count: 60,
       miner_count: 18,
@@ -594,8 +596,13 @@ describe("formatLeaderboards", () => {
     },
     {
       // Full + registration closed + zero validator headroom → excluded from
-      // open-slots, cheapest-registration, and validator-headroom (but still has
-      // emission, so it shows on highest-emission).
+      // open-slots, cheapest-registration, and validator-headroom.
+      //
+      // ALSO THE GATED CASE (#9706): a non-zero emission_share with zero TAO
+      // actually flowing in. Measured on mainnet, 52 of 127 subnets look like
+      // this, and five of them sat in the board's top 30 — a miner reading it
+      // would pay registration for a subnet that pays nothing. It must NOT
+      // appear on highest-emission.
       netuid: 12,
       slug: "twelve",
       name: "Twelve",
@@ -604,6 +611,8 @@ describe("formatLeaderboards", () => {
       registration_cost_tao: 100,
       registration_allowed: false,
       emission_share: 0.05,
+      tao_in_emission_tao: 0,
+      emission_enabled: false,
       total_stake_tao: 1000,
       validator_count: 64,
       miner_count: 0,
@@ -618,6 +627,7 @@ describe("formatLeaderboards", () => {
       registration_cost_tao: null,
       registration_allowed: true,
       emission_share: null,
+      tao_in_emission_tao: null,
       total_stake_tao: null,
       validator_count: null,
       miner_count: null,
@@ -648,11 +658,18 @@ describe("formatLeaderboards", () => {
       out.boards["cheapest-registration"][0].registration_cost_tao,
       0.5,
     );
-    // highest-emission: largest share first; only null-emission excluded.
+    // highest-emission: ranked by TAO ACTUALLY RECEIVED (#9706). Netuid 12
+    // carries emission_share 0.05 but tao_in_emission_tao 0 — gated to
+    // nothing — so it must be absent, not merely last. Ranking by
+    // emission_share is what put five zero-earning subnets in the live board's
+    // top 30.
     assert.deepEqual(
       out.boards["highest-emission"].map((e: Row) => e.netuid),
-      [11, 10, 12],
+      [11, 10],
     );
+    assert.equal(out.boards["highest-emission"][0].tao_in_emission_tao, 30);
+    // The misleading number is still published, beside the one that corrects it.
+    assert.equal(out.boards["highest-emission"][0].emission_share, 0.3);
     // validator-headroom: max_validators - validator_count, desc; zero excluded.
     assert.deepEqual(
       out.boards["validator-headroom"].map((e: Row) => e.netuid),
@@ -888,9 +905,26 @@ describe("formatLeaderboards", () => {
     // highest-emission tie at 0.2: higher stake first, unknown last.
     assert.deepEqual(
       ranked("highest-emission", [
-        { netuid: 30, emission_share: 0.2, total_stake_tao: 100 },
-        { netuid: 31, emission_share: 0.2, total_stake_tao: null },
-        { netuid: 32, emission_share: 0.2, total_stake_tao: 999 },
+        // Tied on the BOARD METRIC, which is tao_in_emission_tao since #9706 --
+        // emission_share is carried alongside but no longer orders anything.
+        {
+          netuid: 30,
+          emission_share: 0.2,
+          tao_in_emission_tao: 20,
+          total_stake_tao: 100,
+        },
+        {
+          netuid: 31,
+          emission_share: 0.2,
+          tao_in_emission_tao: 20,
+          total_stake_tao: null,
+        },
+        {
+          netuid: 32,
+          emission_share: 0.2,
+          tao_in_emission_tao: 20,
+          total_stake_tao: 999,
+        },
       ]),
       [32, 30, 31],
     );
