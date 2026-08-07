@@ -1572,7 +1572,19 @@ describe("MCP agent intent capture (#9642)", () => {
   test("the advertised schema describes what to write", () => {
     const schema = (tools()[0]!.inputSchema as Row).properties.context as Row;
     assert.equal(schema.type, "string");
-    assert.match(String(schema.description), /why are you calling this tool/i);
+    // Asserted on CONTENT, not wording (#9696). This description is carried by
+    // all 224 tools, so its length is paid 224 times and shortening it is a
+    // legitimate size change -- a gate pinned to one phrasing turns that into
+    // a failure. What must survive is that it tells the caller what to write,
+    // that it is optional, and that it changes nothing about the result.
+    const described = String(schema.description);
+    assert.match(described, /goal/i, "says what to write");
+    assert.match(described, /optional/i, "says it is optional");
+    assert.match(
+      described,
+      /does not affect|analytics only/i,
+      "says it does not change the result",
+    );
   });
 
   // The trap this feature had to avoid: advertised by tools/list but rejected

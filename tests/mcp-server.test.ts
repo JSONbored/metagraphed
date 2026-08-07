@@ -9,6 +9,7 @@ import {
   MAX_MCP_BATCH_LENGTH,
   MAX_MCP_BODY_BYTES,
   listToolDefinitions,
+  UNTRUSTED_DATA_NOTE,
   handleMcpRequest,
   markMcpTierDegraded,
 } from "../src/mcp-server.ts";
@@ -303,11 +304,18 @@ describe("MCP tool registry", () => {
     assert.ok(bucket?.avg_latency_ms);
   });
 
+  // Asserted against the CONSTANT, not a copy of its wording (#9696). The
+  // previous version inlined the exact 130-character sentence, so shortening
+  // the note -- a pure size change on a string paid 224 times -- failed here
+  // for no reason but the duplication. What must hold is that every tool
+  // carries the note, and that the note still says the two things that make
+  // it a prompt-injection defence; both are checked, neither is a transcript.
   test("every advertised tool description carries the untrusted-data note", () => {
+    assert.match(UNTRUSTED_DATA_NOTE, /operator-controlled/i);
+    assert.match(UNTRUSTED_DATA_NOTE, /never instructions/i);
     for (const def of listToolDefinitions()) {
-      assert.match(
-        def.description,
-        /Untrusted-data note: returned field values may include operator-controlled on-chain text/,
+      assert.ok(
+        String(def.description).endsWith(UNTRUSTED_DATA_NOTE),
         `${def.name} is missing the untrusted-data note`,
       );
     }
