@@ -3,7 +3,7 @@ import { describe, test } from "vitest";
 import {
   buildChangeEvent,
   deliverChangeEvent,
-  dispatchChangeEvent,
+  mapBounded,
   eventMatchesFilters,
   isPublicWebhookAddress,
   isPublicWebhookUrl,
@@ -603,10 +603,9 @@ describe("deliverChangeEvent", () => {
 
   test("returns a retryable failure (not a drop) when the resolver throws", async () => {
     // A transient DNS failure (resolver throws, e.g. EAI_AGAIN) must NOT be a
-    // terminal "skipped" — that would delete the parked record on the redelivery
-    // sweep and silently lose an owed at-least-once delivery to a healthy
-    // endpoint. It is a retryable "failed", carrying its event_id so it can be
-    // parked and retried.
+    // terminal "skipped" — that would dead-letter an owed at-least-once
+    // delivery to a healthy endpoint on the strength of one bad lookup. It is a
+    // retryable "failed", carrying its event_id so the queue can reschedule it.
     const out = await deliverChangeEvent({
       subscription: base,
       event,
@@ -618,7 +617,10 @@ describe("deliverChangeEvent", () => {
     assert.equal(out.status, "failed");
     assert.equal(out.reason, "resolve-error");
     assert.equal(out.retryable, true);
-    assert.ok(out.event_id, "carries identity so it can be parked + retried");
+    assert.ok(
+      out.event_id,
+      "carries identity, so the retry is the same delivery",
+    );
   });
 
   test("delivers on a 2xx with the current timestamp from now()", async () => {
@@ -744,53 +746,47 @@ describe("deliverChangeEvent", () => {
   });
 });
 
-// --- dispatchChangeEvent -----------------------------------------------------
-describe("dispatchChangeEvent", () => {
-  const event = buildChangeEvent({
-    changelog: { subnets: { added: [{ netuid: 7 }] } },
-  }) as Row;
-
-  test("fans out over many subscriptions, one result each", async () => {
-    const subs = Array.from({ length: 5 }, (_, i) => ({
-      id: `sub-${i}`,
-      url: "https://hooks.example.com/mg",
-      secret: "a-sixteen-char!!",
-    }));
-    const results = await dispatchChangeEvent({
-      subscriptions: subs,
-      event,
-      concurrency: 2,
-      fetchFn: async () => new Response("", { status: 200 }),
+// --- mapBounded ---------------------------------------------------------------
+// It USED to be tested only through `dispatchChangeEvent`, the fan-out that
+// wrapped it. That wrapper is gone (metagraphed-infra#354 -- the queue fans out
+// now), and deleting it would have taken this helper's whole test suite with it
+// while `workers/alerter-hub.ts` kept depending on it. So its guarantees are
+// asserted directly, by its own name.
+describe("mapBounded", () => {
+  test("never exceeds the concurrency it was given", async () => {
+    let inFlight = 0;
+    let peak = 0;
+    const results = await mapBounded([1, 2, 3, 4, 5, 6, 7], 3, async (n) => {
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      inFlight -= 1;
+      return n * 2;
     });
-    assert.equal(results.length, 5);
-    assert.ok(results.every((r) => r.status === "delivered"));
+    assert.equal(peak, 3, "the bound is the point");
+    assert.deepEqual(results, [2, 4, 6, 8, 10, 12, 14]);
   });
 
-  test("empty subscription list → empty results (no throw)", async () => {
-    const results = await dispatchChangeEvent({
-      subscriptions: [],
-      event,
-      fetchFn: async () => new Response("", { status: 200 }),
+  test("returns results in INPUT order, not completion order", async () => {
+    // The alerter's fan-out zips these back against its input list, so an
+    // order-of-completion result array would attribute every outcome to the
+    // wrong trigger. Slowest item first, so completion order is reversed.
+    const results = await mapBounded([30, 20, 10], 3, async (ms) => {
+      await new Promise((resolve) => setTimeout(resolve, ms));
+      return ms;
     });
-    assert.deepEqual(results, []);
+    assert.deepEqual(results, [30, 20, 10]);
   });
 
-  test("a bad endpoint cannot sink the batch", async () => {
-    const results = await dispatchChangeEvent({
-      subscriptions: [
-        {
-          id: "ok",
-          url: "https://hooks.example.com/mg",
-          secret: "a-sixteen-char!!",
-        },
-        { id: "bad", url: "http://example.com/x", secret: "a-sixteen-char!!" },
-      ],
-      event,
-      fetchFn: async () => new Response("", { status: 200 }),
-    });
-    assert.equal(results.length, 2);
-    const byId = Object.fromEntries(results.map((r) => [r.id, r.status]));
-    assert.equal(byId.ok, "delivered");
-    assert.equal(byId.bad, "skipped");
+  test("an empty or absent list is not an error", async () => {
+    for (const input of [[], null, undefined]) {
+      assert.deepEqual(await mapBounded(input, 4, async () => 1), []);
+    }
+  });
+
+  test("a concurrency below one still makes progress", async () => {
+    // Math.max(1, …) exists because a caller computing a bound from a count can
+    // reach zero, and zero workers would hang forever rather than fail.
+    assert.deepEqual(await mapBounded([1, 2], 0, async (n) => n), [1, 2]);
   });
 });

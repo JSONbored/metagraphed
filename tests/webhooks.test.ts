@@ -3,7 +3,6 @@ import { describe, test } from "vitest";
 import {
   buildChangeEvent,
   deliverChangeEvent,
-  dispatchChangeEvent,
   eventMatchesFilters,
   generateSecret,
   generateSubscriptionId,
@@ -399,44 +398,5 @@ describe("deliverChangeEvent", () => {
     assert.equal(res.status, "failed");
     assert.equal(res.attempts, 3);
     assert.equal(res.reason, "http-502");
-  });
-});
-
-describe("dispatchChangeEvent", () => {
-  test("returns one result per subscription and respects filters/safety", async () => {
-    const event = { change_kinds: ["subnets"], affected_netuids: [7, 9] };
-    const subs = [
-      {
-        id: "a",
-        url: "https://a.example.com/h",
-        secret: "secret-value-aaaaaa",
-        filters: { netuids: [7] },
-      },
-      {
-        id: "b",
-        url: "https://b.example.com/h",
-        secret: "secret-value-bbbbbb",
-        filters: { netuids: [100] },
-      },
-      {
-        id: "c",
-        url: "https://10.0.0.1/h",
-        secret: "secret-value-cccccc",
-        filters: {},
-      },
-    ];
-    const fetchFn = async () => new Response("", { status: 200 });
-    const results = await dispatchChangeEvent({
-      subscriptions: subs,
-      event,
-      fetchFn,
-      now: () => "t",
-      concurrency: 2,
-    });
-    const byId = Object.fromEntries(results.map((r) => [r.id, r.status]));
-    assert.equal(byId.a, "delivered");
-    assert.equal(byId.b, "filtered");
-    assert.equal(byId.c, "skipped");
-    assert.equal(results.length, 3);
   });
 });
