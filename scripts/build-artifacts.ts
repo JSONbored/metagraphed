@@ -792,7 +792,15 @@ const candidateIndex: Row[] = candidates.map((candidate): Row => ({
     fullVerificationResultOrNull(candidate.verification),
   // Native netuid is unique (129/129), so the pre-built nativeByNetuid Map is
   // byte-identical to the per-candidate native scan it replaces (#2095).
-  subnet_name: nativeByNetuid.get(candidate.netuid)?.name || null,
+  // Resolved, not raw (#9909): `nativeSubnet.name` is the literal chain string,
+  // so this stamped "deprecated" / "pending..." / "Parked" / "Unknown" on 51
+  // candidates instead of the curated name, and skipped the prompt-injection
+  // defanging nativeDisplayName applies before a name reaches the search index,
+  // the embeddings and the /ask RAG context.
+  subnet_name: subnetDisplayName(
+    nativeByNetuid.get(candidate.netuid),
+    overlayByNetuid.get(candidate.netuid)?.name,
+  ),
 }));
 const canonicalCandidateIndex: Row[] = candidates.map((candidate): Row => ({
   ...candidate,
@@ -801,8 +809,11 @@ const canonicalCandidateIndex: Row[] = candidates.map((candidate): Row => ({
   verification:
     canonicalVerificationByCandidate.get(candidate.id) ||
     fullVerificationResultOrNull(candidate.verification),
-  // Same Map lookup as candidateIndex above (#2095).
-  subnet_name: nativeByNetuid.get(candidate.netuid)?.name || null,
+  // Same Map lookup and same resolution as candidateIndex above (#2095/#9909).
+  subnet_name: subnetDisplayName(
+    nativeByNetuid.get(candidate.netuid),
+    overlayByNetuid.get(candidate.netuid)?.name,
+  ),
 }));
 // Dedup'd projections of the candidate index (drop surface-superseded dupes) for
 // the per-subnet detail/profile candidate lists + the enrichment queue (#1002).

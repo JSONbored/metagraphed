@@ -1270,6 +1270,55 @@ async function validateGeneratedArtifacts(
     candidatesArtifact.candidates.length === candidates.length,
     "candidates artifact: count mismatch",
   );
+
+  // #9909: every SERVED display name must be the one subnetDisplayName resolves.
+  //
+  // This is an OUTCOME check, not a code check, and deliberately so. The same
+  // mistake -- a display name taken raw instead of resolved -- has now been made
+  // in three independent places: flattenSurfaces stamped the overlay name (so
+  // /api/v1/health and /api/v1/subnets disagreed on 26 subnets), the schema
+  // index's forgery guard compared one (so a rename discarded all 227 captured
+  // schemas), and the candidate index took `nativeSubnet.name` verbatim (so 51
+  // candidates were served as "deprecated" / "pending..." / "Parked" /
+  // "Unknown"). Fixing three call sites does not stop a fourth being written.
+  //
+  // Asserting the ARTIFACT closes the class: any future path that skips the
+  // resolver fails here regardless of how it is written. It also catches the two
+  // failure modes together -- a raw chain placeholder leaking through, and a
+  // stale pre-rename label -- because both are simply "not what the resolver
+  // returns".
+  const expectedDisplayName = new Map<unknown, string>(
+    (nativeSnapshot.subnets as Row[]).map((native) => [
+      native.netuid,
+      subnetDisplayName(native, overlayByNetuid.get(native.netuid)?.name),
+    ]),
+  );
+  const displayNameDrift: string[] = [];
+  const checkDisplayName = (owner: string, netuid: unknown, value: unknown) => {
+    const expected = expectedDisplayName.get(netuid);
+    if (expected === undefined || value === expected) return;
+    displayNameDrift.push(
+      `${owner} (netuid ${netuid}): serves ${JSON.stringify(value)}, resolver says ${JSON.stringify(expected)}`,
+    );
+  };
+  for (const surface of surfaces) {
+    checkDisplayName(
+      `surface ${surface.id}`,
+      surface.netuid,
+      surface.subnet_name,
+    );
+  }
+  for (const candidate of candidatesArtifact.candidates as Row[]) {
+    checkDisplayName(
+      `candidate ${candidate.id}`,
+      candidate.netuid,
+      candidate.subnet_name,
+    );
+  }
+  assert(
+    displayNameDrift.length === 0,
+    `served display names must come from subnetDisplayName (${displayNameDrift.length}):\n  ${displayNameDrift.slice(0, 12).join("\n  ")}`,
+  );
   assert(
     curationArtifact.curation.length === nativeSnapshot.subnets.length,
     "curation artifact: count mismatch",
