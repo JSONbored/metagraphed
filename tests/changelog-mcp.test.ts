@@ -16,11 +16,31 @@ import { mockEnv, type Row } from "./row-type.ts";
 type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
 
 const SAMPLE_CHANGELOG = {
+  // schema_version + generated_at are REQUIRED since #9796 derived
+  // GetChangelogOutputSchema from ChangelogArtifactSchema instead of copying it.
+  // Both are present on the real artifact -- verified against GET /api/v1/changelog
+  // -- so the fixture was the stale side, not the schema.
+  schema_version: 1,
+  generated_at: "2026-08-07T10:09:17.651Z",
   source: "generated-artifact-diff",
   summary: {
     artifact_added_count: 1,
     artifact_modified_count: 2,
     artifact_removed_count: 0,
+    // The real summary carries a coverage_delta and the netuid counts; the
+    // derived schema requires them. `provider_count: null` is deliberate --
+    // the live artifact reports null for a metric it could not diff, and a
+    // fixture that only ever shows the populated shape would not exercise it.
+    coverage_delta: {
+      candidate_count: { after: 2174, before: 2171, delta: 3 },
+      curated_overlay_count: { after: 129, before: 129, delta: 0 },
+      native_only_count: { after: 0, before: 0, delta: 0 },
+      provider_count: null,
+      surface_count: { after: 3493, before: 3493, delta: 0 },
+    },
+    netuid_added_count: 0,
+    netuid_removed_count: 0,
+    netuid_renamed_count: 31,
   },
   artifacts: { added: [], modified: [], removed: [] },
   subnets: { added: [], removed: [], renamed: [] },

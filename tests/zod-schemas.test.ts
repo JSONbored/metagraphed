@@ -3021,7 +3021,63 @@ describe("batch 10 (#8064) route artifact schemas parse real builder output", ()
       artifact_budget_summary: summarizeArtifactBudgets(budgets),
       artifact_budgets: budgets.filter((b) => b.status !== "ok"),
       candidate_count: 300,
-      coverage: { candidate_count: 300, surface_count: 900 },
+      // A FULL CoverageArtifact, because meta-contracts.ts now types this field
+      // as CoverageArtifactSchema rather than an open record -- the build summary
+      // embeds the whole coverage card. Taken from the live artifact rather than
+      // invented, which is what "real builder output" in this test's name means.
+      coverage: {
+        application_subnet_count: 128,
+        candidate_count: 2174,
+        candidate_subnet_count: 129,
+        chain_subnet_count: 129,
+        completeness: {
+          average_score: 81,
+          fully_complete_count: 4,
+          fully_complete_pct: 3,
+          median_score: 78,
+          methodology:
+            "Per-subnet completeness_score (0-100) weighs curated public identity and operational interface coverage. Full per-subnet scores and gaps live at /metagraph/review/profile-completeness.json; the sortable leaderboard is /api/v1/profiles?sort=completeness_score&order=asc.",
+          score_distribution: {
+            "0-24": 0,
+            "100": 3,
+            "25-49": 4,
+            "50-74": 25,
+            "75-99": 97,
+          },
+          scored_subnet_count: 129,
+        },
+        contract_version: "2026-07-03.2",
+        curated_overlay_count: 129,
+        curation_level_counts: {
+          "adapter-backed": 2,
+          "maintainer-reviewed": 127,
+        },
+        generated_at: "2026-08-07T10:09:18.055Z",
+        manifested_count: 0,
+        native_only_count: 0,
+        native_only_with_candidates: 0,
+        native_only_without_candidates: 0,
+        native_snapshot_captured_at: "2026-08-07T10:10:10Z",
+        network: "finney",
+        probed_count: 129,
+        probed_surface_count: 1859,
+        root_subnet_count: 1,
+        schema_version: 1,
+        source: {
+          candidates: "registry/candidates",
+          native: {
+            identity_storage: "SubtensorModule.SubnetIdentitiesV3",
+            kind: "bittensor-sdk",
+            method:
+              "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
+            package: "bittensor",
+            rpc_family: "subnetInfo",
+            version: "10.4.0",
+          },
+          overlays: "registry/subnets",
+        },
+        surface_count: 3493,
+      },
       endpoint_count: 3101,
       profile_count: 129,
       provider_count: 136,
