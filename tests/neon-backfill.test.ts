@@ -24,6 +24,8 @@ import {
   WHOLE_TABLE_UNIT,
   backfillGuard,
   copyDateToNeon,
+  assertIdentifier,
+  copyAppendTailToNeon,
   copyWholeTableToNeon,
   d1DateCounts,
   d1TableSignature,
@@ -32,7 +34,9 @@ import {
   describeOutcome,
   keysetPredicate,
   neonDateCounts,
+  neonHighWaterMark,
   neonTableSignature,
+  readAppendPage,
   readDatePage,
   readWholePage,
   reconcileTableToNeon,
@@ -1437,5 +1441,157 @@ describe("runNeonBackfill", () => {
         detail: "0 row(s) copied before failure: count failed: neon",
       },
     ]);
+  });
+});
+
+describe("the append partition (#9908)", () => {
+  const APPEND_PLAN = {
+    table: "surface_checks",
+    columns: ["surface_id", "checked_at", "ok"],
+    conflict: ["surface_id", "checked_at"],
+    keyset: ["checked_at", "surface_id"],
+    partition: "append" as const,
+    booleans: ["ok"],
+    freshness: "checked_at",
+  };
+
+  test("the high-water mark distinguishes empty, present and UNREACHABLE", () => {
+    // Three answers, not two. `null` means Neon holds nothing, so copy
+    // everything. `undefined` means Neon would not answer -- and copying from
+    // the beginning because it was briefly unreachable would re-send 1.3M rows.
+    return Promise.all([
+      neonHighWaterMark(
+        fakeSql([{ high: 1786000000000 }]).sql,
+        "t",
+        "checked_at",
+      ).then((v) => assert.equal(v, 1786000000000)),
+      neonHighWaterMark(fakeSql([{ high: null }]).sql, "t", "checked_at").then(
+        (v) => assert.equal(v, null),
+      ),
+      neonHighWaterMark(null, "t", "checked_at").then((v) =>
+        assert.equal(v, undefined),
+      ),
+      neonHighWaterMark(fakeSql([], "SELECT").sql, "t", "checked_at").then(
+        (v) => assert.equal(v, undefined),
+      ),
+    ]);
+  });
+
+  test("the bound is >=, so rows TYING with the mark are re-sent not skipped", async () => {
+    // The failure this prevents: one probe sweep writes many rows and only the
+    // millisecond separates them. With `>`, every row sharing the newest
+    // timestamp that had not yet been copied would be skipped forever -- a
+    // silent hole no count comparison would reveal, because the lane would
+    // report itself in sync.
+    const d1 = fakeDb([[]]);
+    await readAppendPage(d1.db, APPEND_PLAN, null, 1786000000000, 500);
+    const call = d1.calls[0]!;
+    assert.match(call.sql, /checked_at >= \?/);
+    assert.ok(
+      !/checked_at > \?/.test(call.sql),
+      "a strict > would drop rows tying with the high-water mark",
+    );
+    assert.deepEqual(call.values, [1786000000000, 500]);
+  });
+
+  test("an empty Neon side reads the table from the beginning", async () => {
+    const d1 = fakeDb([[]]);
+    await readAppendPage(d1.db, APPEND_PLAN, null, null, 500);
+    assert.ok(!/WHERE/.test(d1.calls[0]!.sql), d1.calls[0]!.sql);
+    assert.deepEqual(d1.calls[0]!.values, [500]);
+  });
+
+  test("it orders by the keyset so a page resumes where the last ended", async () => {
+    const d1 = fakeDb([[]]);
+    await readAppendPage(
+      d1.db,
+      APPEND_PLAN,
+      [1786000000000, "s1"],
+      1786000000000,
+      500,
+    );
+    assert.match(d1.calls[0]!.sql, /ORDER BY checked_at, surface_id LIMIT \?/);
+  });
+
+  test("a tick that hits the budget reports NOT ok, with what it did", async () => {
+    // The whole point. copyWholeTableToNeon loops until the table is
+    // exhausted, which is fine for 129 rows and impossible for 1,349,625. A
+    // budgeted tick that claimed `ok` would read as in sync to every watcher
+    // while 97% of the table was still missing.
+    const page = Array.from({ length: 4 }, (_, i) => ({
+      surface_id: `s${i}`,
+      checked_at: 1786000000000 + i,
+      ok: 1,
+    }));
+    const d1 = fakeDb([page, page, page, page]);
+    const pg = fakeSql([]);
+    const out = await copyAppendTailToNeon(
+      d1.db,
+      pg.sql,
+      APPEND_PLAN,
+      null,
+      6,
+      4,
+    );
+    assert.equal(out.ok, false);
+    assert.equal(out.reason, "tick budget reached");
+    assert.ok(out.rows >= 6, `copied ${out.rows}`);
+  });
+
+  test("a short page means the tail is exhausted, and that IS ok", async () => {
+    const d1 = fakeDb([[{ surface_id: "s1", checked_at: 1, ok: 1 }]]);
+    const out = await copyAppendTailToNeon(
+      d1.db,
+      fakeSql([]).sql,
+      APPEND_PLAN,
+      null,
+      1000,
+      500,
+    );
+    assert.equal(out.ok, true);
+    assert.equal(out.pages, 1);
+  });
+
+  test("D1 booleans still become Neon booleans on this path", async () => {
+    const d1 = fakeDb([[{ surface_id: "s1", checked_at: 1, ok: 1 }]]);
+    const pg = fakeSql([]);
+    await copyAppendTailToNeon(d1.db, pg.sql, APPEND_PLAN, null, 1000, 500);
+    const write = pg.calls.find((c) => c.text.startsWith("INSERT"))!;
+    assert.ok(
+      write.values.includes(true),
+      `0/1 reached Neon unconverted: ${JSON.stringify(write.values)}`,
+    );
+  });
+});
+
+describe("assertIdentifier", () => {
+  test("it passes the identifiers the real plans actually use", () => {
+    for (const [name, plan] of Object.entries(NEON_BACKFILL_PLANS)) {
+      assertIdentifier(plan.table, `${name} table`);
+      for (const c of [...plan.columns, ...plan.keyset, ...plan.conflict]) {
+        assertIdentifier(c, `${name} column`);
+      }
+      const f = freshnessColumn(plan);
+      if (f) assertIdentifier(f, `${name} freshness`);
+    }
+  });
+
+  test("it throws rather than escaping", () => {
+    // Escaping would put the value into the query anyway. A plan naming
+    // something that is not a bare identifier is a mistake in the PLAN, and
+    // the loud failure belongs at the lane.
+    for (const bad of [
+      "surface_checks; DROP TABLE neurons",
+      "checked_at)--",
+      'a" OR "1"="1',
+      "",
+      "1_starts_with_a_digit",
+    ]) {
+      assert.throws(
+        () => assertIdentifier(bad, "test"),
+        /not a bare SQL identifier/,
+        `accepted: ${JSON.stringify(bad)}`,
+      );
+    }
   });
 });

@@ -146,8 +146,24 @@ export interface BackfillDb {
  * have no date column to divide on and are rewritten in place. They are small
  * enough that the whole table IS a reasonable unit: 129 rows for
  * subnet_hyperparams and 497 for account_identity, measured 2026-08-07.
+ *
+ * `append` -- the tail above Neon's high-water mark. Right for the tables that
+ * only ever gain rows, in increasing order of a time column, and never rewrite
+ * one. `whole` is pathological for these: it recopies the ENTIRE table
+ * whenever the signature moves, which measured against production is 36,894
+ * rows an hour to add ~510 for subnet_burn_history, and exceeds the tick
+ * budget outright for surface_checks at 1,349,625 (#9908).
+ *
+ * Two properties a plan MUST have before claiming it, neither of which the
+ * type can check:
+ *
+ *   the cursor is assigned AT INSERT, so no row ever arrives with a timestamp
+ *   below the high-water mark -- a backdated row is invisible to this partition
+ *
+ *   rows are never rewritten, so "already above the mark" means "already
+ *   copied"
  */
-export type BackfillPartition = "date" | "whole";
+export type BackfillPartition = "date" | "whole" | "append";
 
 export interface BackfillPlan {
   table: string;
@@ -1063,6 +1079,233 @@ async function reconcileWholeTable(
   };
 }
 
+/**
+ * Guard for an identifier that is about to be INTERPOLATED into SQL.
+ *
+ * Every table and column name in this module comes from NEON_BACKFILL_PLANS,
+ * which is a frozen const in this file -- none of it is reachable from a
+ * request, so there is no injection path today. This exists because "today"
+ * is doing a lot of work in that sentence: the plans are the kind of thing a
+ * later change makes configurable, and `sql.unsafe` interpolation is exactly
+ * where that becomes a vulnerability rather than a bug.
+ *
+ * Throwing rather than escaping is deliberate. A plan naming something that is
+ * not a bare identifier is a mistake in the plan, and the loud failure belongs
+ * at the lane, not quoted into a query that then does something unintended.
+ */
+const BARE_IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+export function assertIdentifier(name: string, what: string): string {
+  if (!BARE_IDENTIFIER.test(name)) {
+    throw new Error(
+      `${what} is not a bare SQL identifier: ${JSON.stringify(name)}`,
+    );
+  }
+  return name;
+}
+
+/**
+ * Neon's high-water mark for an append plan, or null when it holds nothing.
+ *
+ * Null and 0 are different answers and the difference is the whole table: null
+ * means "copy everything", 0 would mean "copy everything above the epoch",
+ * which for a millisecond timestamp is the same set but for a signed or
+ * negative cursor would not be. Returning null explicitly keeps the caller's
+ * branch honest.
+ *
+ * `undefined` is returned for a store that would not ANSWER, which is again a
+ * third thing -- see d1DateCounts. Copying from the beginning because Neon was
+ * briefly unreachable would re-send the entire table.
+ */
+export async function neonHighWaterMark(
+  sql: PgUnsafe | null | undefined,
+  table: string,
+  cursor: string,
+): Promise<number | null | undefined> {
+  if (!sql?.unsafe) return undefined;
+  try {
+    const rows = (await sql.unsafe(
+      `SELECT MAX(${assertIdentifier(cursor, "append cursor")}) AS high ` +
+        `FROM ${assertIdentifier(table, "table")}`,
+    )) as unknown[];
+    if (!Array.isArray(rows) || rows.length === 0) return undefined;
+    const raw = (rows[0] as Row)?.high;
+    if (raw == null) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * One page of the tail, at or above the high-water mark.
+ *
+ * THE BOUND IS `>=`, NOT `>`, AND THAT IS NOT AN OFF-BY-ONE. Several rows can
+ * share the newest cursor value -- one probe sweep writes many rows and only
+ * the millisecond distinguishes them -- so `>` would skip every row that ties
+ * with the mark but had not been copied when the tick ended. `>=` re-sends the
+ * boundary rows instead, which the ON CONFLICT upsert makes free. Given a
+ * choice between re-sending a handful of rows and silently dropping them,
+ * this lane re-sends.
+ */
+export async function readAppendPage(
+  db: BackfillDb,
+  plan: BackfillPlan,
+  cursor: readonly unknown[] | null,
+  highWater: number | null,
+  limit: number,
+): Promise<Row[]> {
+  const column = freshnessColumn(plan);
+  if (!column) throw new Error(`${plan.table}: an append plan needs a cursor`);
+  const keyset = cursor ? keysetPredicate(plan.keyset, cursor) : null;
+  const bounds: string[] = [];
+  const values: unknown[] = [];
+  if (highWater != null) {
+    bounds.push(`${assertIdentifier(column, "append cursor")} >= ?`);
+    values.push(highWater);
+  }
+  if (keyset) {
+    bounds.push(keyset.sql);
+    values.push(...keyset.values);
+  }
+  const where = bounds.length > 0 ? ` WHERE ${bounds.join(" AND ")}` : "";
+  const result = await db
+    .prepare(
+      `SELECT ${plan.columns.map((c) => assertIdentifier(c, "column")).join(", ")} ` +
+        `FROM ${assertIdentifier(plan.table, "table")}${where} ` +
+        `ORDER BY ${plan.keyset.map((c) => assertIdentifier(c, "keyset column")).join(", ")} LIMIT ?`,
+    )
+    .bind(...values, limit)
+    .all();
+  return (result?.results ?? []) as Row[];
+}
+
+/**
+ * Copy the tail, stopping on the tick budget.
+ *
+ * UNLIKE copyWholeTableToNeon THIS IS BUDGETED, and it has to be: that one
+ * loops until the table is exhausted, which is fine for 129 rows and fatal for
+ * 1,349,625. A tick that stops early is not a failure here -- the next tick
+ * recomputes the high-water mark, which has moved, and continues. That is the
+ * same "the deficit IS the cursor" property the dated path has, and it is why
+ * no progress is stored anywhere.
+ *
+ * A partial copy reports `ok: false` with `remaining`, deliberately: a lane
+ * that said `ok` after copying 40,000 of 1,300,000 rows would read as in sync
+ * to every watcher.
+ */
+export async function copyAppendTailToNeon(
+  db: BackfillDb,
+  sql: PgUnsafe,
+  plan: BackfillPlan,
+  highWater: number | null,
+  budgetRows: number = TICK_ROW_BUDGET,
+  pageRows: number = D1_PAGE_ROWS,
+): Promise<DateCopyResult> {
+  let cursor: unknown[] | null = null;
+  let rows = 0;
+  let statements = 0;
+  let pages = 0;
+  const date = WHOLE_TABLE_UNIT;
+  for (;;) {
+    let page: Row[];
+    try {
+      page = await readAppendPage(db, plan, cursor, highWater, pageRows);
+    } catch (error) {
+      return {
+        ok: false,
+        rows,
+        statements,
+        pages,
+        date,
+        reason: reason(error),
+      };
+    }
+    if (page.length === 0) return { ok: true, rows, statements, pages, date };
+    pages += 1;
+    const result = await writeRowsToNeon(
+      sql,
+      plan.table,
+      plan.columns,
+      page.map((row) => shapeRowForNeon(row, plan.booleans)),
+      plan.conflict,
+      backfillGuard(plan.table, freshnessColumn(plan)),
+    );
+    rows += result.rows;
+    statements += result.statements;
+    if (!result.ok) {
+      return {
+        ok: false,
+        rows,
+        statements,
+        pages,
+        date,
+        reason: result.reason,
+      };
+    }
+    if (page.length < pageRows)
+      return { ok: true, rows, statements, pages, date };
+    if (rows >= budgetRows) {
+      return {
+        ok: false,
+        rows,
+        statements,
+        pages,
+        date,
+        reason: "tick budget reached",
+      };
+    }
+    const last = page[page.length - 1];
+    cursor = plan.keyset.map((column) => last[column]);
+  }
+}
+
+async function reconcileAppendTable(
+  db: BackfillDb,
+  sql: PgUnsafe,
+  plan: BackfillPlan,
+): Promise<BackfillTableOutcome> {
+  const table = plan.table;
+  const base = { table, deficits: 0, missing: 0, remaining: 0, copied: [] };
+  const column = freshnessColumn(plan);
+  if (!column) {
+    return { ...base, ok: false, reason: "append plan has no cursor column" };
+  }
+  const [d1Sig, highWater] = await Promise.all([
+    d1TableSignature(db, table, column),
+    neonHighWaterMark(sql, table, column),
+  ]);
+  if (!d1Sig || highWater === undefined) {
+    return {
+      ...base,
+      ok: false,
+      reason: `signature failed: ${!d1Sig ? "d1" : "neon"}`,
+    };
+  }
+  // Nothing above the mark means nothing to do. Note this compares the CURSOR,
+  // not the count: for a pruned table (#9891) D1's oldest rows are gone while
+  // Neon still holds them, so the counts legitimately differ forever and only
+  // the tail is this lane's business.
+  if (
+    highWater != null &&
+    d1Sig.maxCapturedAt != null &&
+    d1Sig.maxCapturedAt <= highWater
+  ) {
+    return { ...base, ok: true };
+  }
+  const result = await copyAppendTailToNeon(db, sql, plan, highWater);
+  return {
+    table,
+    deficits: 1,
+    missing: 0,
+    remaining: result.ok ? 0 : 1,
+    copied: [result],
+    ok: result.ok,
+    ...(result.ok ? {} : { reason: result.reason }),
+  };
+}
+
 export async function reconcileTableToNeon(
   db: BackfillDb | null | undefined,
   sql: PgUnsafe | null | undefined,
@@ -1082,6 +1325,9 @@ export async function reconcileTableToNeon(
   }
   if (plan.partition === "whole") {
     return await reconcileWholeTable(db, sql, plan);
+  }
+  if (plan.partition === "append") {
+    return await reconcileAppendTable(db, sql, plan);
   }
   const [d1Counts, neonCounts] = await Promise.all([
     d1DateCounts(db, table),
