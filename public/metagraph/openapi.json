@@ -18278,9 +18278,16 @@
               "additionalProperties": false,
               "properties": {
                 "netuid": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "ref": {
                   "maximum": 9007199254740991,
@@ -18291,7 +18298,14 @@
                   "type": "number"
                 },
                 "slug": {
-                  "type": "string"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "title": {
                   "type": "string"
@@ -41528,9 +41542,16 @@
                   "type": "array"
                 },
                 "netuid": {
-                  "maximum": 9007199254740991,
-                  "minimum": 0,
-                  "type": "integer"
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "score": {
                   "type": "number"
@@ -41542,7 +41563,14 @@
                   "type": "array"
                 },
                 "slug": {
-                  "type": "string"
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "subtitle": {
                   "anyOf": [

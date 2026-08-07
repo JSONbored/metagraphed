@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { ReadableStream } from "node:stream/web";
 import { describe, test } from "vitest";
+import { Ajv2020 } from "ajv/dist/2020.js";
+import addFormatsPlugin from "ajv-formats";
+import { z } from "zod";
+import { SemanticSearchArtifactSchema } from "../schemas-src/routes/ai-native.ts";
 import {
   EMBED_MODEL,
   ASK_MODEL,
@@ -707,7 +711,10 @@ function stubVectorizeMixed({ honorFilter = true, rejectFilter = false } = {}) {
     metadata: {
       type: m.type,
       netuid: m.netuid,
-      slug: `${m.type}-${i}`,
+      // A provider is a TEAM, not a subnet: no netuid and no slug. The fixture
+      // used to give it one, which is why the schema violation (#9903) lived
+      // here undetected -- production returns null for both.
+      slug: m.netuid === null ? null : `${m.type}-${i}`,
       title: `${m.type} ${i}`,
       subtitle: `summary ${i}`,
       url: `https://api.metagraph.sh/x/${i}`,
@@ -737,6 +744,60 @@ function stubVectorizeMixed({ honorFilter = true, rejectFilter = false } = {}) {
     },
   };
 }
+
+describe("a provider result satisfies the PUBLISHED schema (#9903)", () => {
+  // The behaviour was already covered -- stubVectorizeMixed has carried
+  // `{ type: "provider", netuid: null }` rows for as long as it has existed.
+  // What was missing is this: nothing validated the emitted payload against
+  // the schema we publish for it, so `netuid`/`slug` sat declared as required
+  // non-nullable integers/strings while production served null for every
+  // provider document. 1 of 10 semantic-search results and 3 of 6 `ask`
+  // citations, live.
+  //
+  // Validating the payload against its own published schema is the assertion
+  // that catches this class; asserting the handler's own output shape never
+  // could, because the handler and the test agreed with each other.
+  const addFormats = addFormatsPlugin as unknown as (i: Ajv2020) => void;
+  const ajv = () => {
+    const instance = new Ajv2020({ strict: false, allErrors: true });
+    addFormats(instance);
+    return instance;
+  };
+
+  test("semantic_search results validate with a provider row present", async () => {
+    const env = { AI: stubAi(), VECTORIZE: stubVectorizeMixed() };
+    const out = (await semanticSearch(mockEnv(env), "q", {})) as Row;
+    const providers = (out.results as Row[]).filter(
+      (r) => r.type === "provider",
+    );
+    assert.ok(
+      providers.length > 0,
+      "fixture must actually contain a provider, or this proves nothing",
+    );
+    assert.equal(providers[0]!.netuid, null);
+    assert.equal(providers[0]!.slug, null);
+    const validate = ajv().compile(
+      z.toJSONSchema(SemanticSearchArtifactSchema, {
+        target: "draft-2020-12",
+      }),
+    );
+    assert.ok(validate(out), JSON.stringify(validate.errors));
+  });
+
+  test("the schema would REJECT the pre-fix declaration", () => {
+    // Proves the fix is not a no-op: the same provider row against the
+    // non-nullable shape this replaced.
+    const validate = ajv().compile({
+      type: "object",
+      properties: {
+        netuid: { type: "integer", minimum: 0 },
+        slug: { type: "string" },
+      },
+      required: ["netuid", "slug"],
+    });
+    assert.equal(validate({ netuid: null, slug: null }), false);
+  });
+});
 
 describe("semanticSearch type scope", () => {
   for (const type of ["subnet", "surface", "provider"]) {
