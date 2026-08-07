@@ -2,8 +2,6 @@
   "title": "Candidates",
   "pages": [
     "candidates",
-    "candidates-by-network",
-    "subnet-candidates",
-    "subnet-candidates-by-network"
+    "subnet-candidates"
   ]
 }

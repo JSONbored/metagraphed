@@ -4,7 +4,6 @@
     "failure-reasons",
     "health",
     "health-history",
-    "health-history-by-network",
     "health-trends-bulk",
     "incidents",
     "self-health",

@@ -2,10 +2,7 @@
   "title": "Surfaces",
   "pages": [
     "subnet-surfaces",
-    "subnet-surfaces-by-network",
     "surface-verify",
-    "surface-verify-by-network",
-    "surfaces",
-    "surfaces-by-network"
+    "surfaces"
   ]
 }
