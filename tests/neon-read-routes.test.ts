@@ -127,6 +127,156 @@ describe("NEON_READ_ROUTE_TABLES", () => {
     assert.deepEqual(problems, [], problems.join("\n"));
   });
 
+  // THE DIALECT SCAN (#9798). The map's table assertion above answers "is this
+  // route's data in Neon". It cannot answer "will this route's SQL RUN on
+  // Neon", and that is the question #9784 got wrong: the runners are
+  // interface-compatible -- toPositionalPlaceholders rewrites `?` to `$n` --
+  // but the FUNCTION LIBRARY is not, and nothing checked it.
+  //
+  // The cost of missing it is what makes this worth a test rather than a
+  // review habit. `date(x, '-30 days')` does not raise on Postgres; the
+  // subquery yields nothing, `>=` matches nothing, and the route serves a
+  // schema-stable 200 with zero rows. `/subnets/{netuid}/history` went 28 -> 0
+  // and `/subnets/movers` 5 -> 0, and only a pre-cutover content baseline
+  // caught it. There are 46 tables left to move in #9787; the next one should
+  // fail here instead.
+  test("no route that may move to Neon uses SQLite-only SQL", () => {
+    // Each pattern is anchored to a call, so a bare mention in prose cannot
+    // trip it. `date(`/`strftime(` are listed with their opening paren for the
+    // same reason -- `snapshot_date` must not match `date(`.
+    const SQLITE_ONLY: readonly { pattern: RegExp; why: string }[] = [
+      {
+        // The one that actually shipped. Postgres spells it
+        // `max(snapshot_date)::date - N`, and neither spelling belongs in the
+        // SQL at all -- bind the boundary (neuronDailyWindowBounds).
+        pattern: /\b(?:date|datetime|julianday)\s*\(/i,
+        why: "SQLite date functions; Postgres has no date(x, modifier) -- compute the boundary in TypeScript and bind it",
+      },
+      {
+        pattern: /\bstrftime\s*\(/i,
+        why: "SQLite strftime; Postgres uses to_char/date_trunc",
+      },
+      {
+        pattern: /\bifnull\s*\(/i,
+        why: "SQLite IFNULL; both dialects have COALESCE",
+      },
+      {
+        pattern: /\bgroup_concat\s*\(/i,
+        why: "SQLite GROUP_CONCAT; Postgres uses string_agg",
+      },
+      {
+        pattern: /\bjson_extract\s*\(/i,
+        why: "SQLite json_extract; Postgres uses -> / ->>",
+      },
+      {
+        pattern: /\binstr\s*\(/i,
+        why: "SQLite INSTR; Postgres uses position()/strpos()",
+      },
+      {
+        pattern: /\bautoincrement\b/i,
+        why: "SQLite AUTOINCREMENT",
+      },
+    ];
+
+    const src = readFileSync("workers/data-api.ts", "utf8");
+    const start = src.indexOf("function matchNeuronsD1Route");
+    assert.ok(start > 0, "matchNeuronsD1Route not found");
+    const end = src.indexOf("\nfunction ", start + 10);
+    const body = src.slice(start, end > 0 ? end : undefined);
+
+    // Only the SQL, not the comments around it: this file explains the bug in
+    // prose directly above the fix, and a scan that cannot tell those apart
+    // would have to be weakened until it stopped working.
+    const statements = [...body.matchAll(/sql`([^`]*)`/g)].map((m) => m[1]);
+    assert.ok(
+      statements.length >= 10,
+      `only ${statements.length} tagged statements found -- the extraction ` +
+        `stopped working, so this test is passing on nothing`,
+    );
+
+    const problems: string[] = [];
+    for (const statement of statements) {
+      for (const { pattern, why } of SQLITE_ONLY) {
+        if (pattern.test(statement)) {
+          problems.push(
+            `${why}\n    in: ${statement.replace(/\s+/g, " ").trim().slice(0, 120)}`,
+          );
+        }
+      }
+    }
+    assert.deepEqual(problems, [], `\n  ${problems.join("\n  ")}\n`);
+  });
+
+  test("the scan actually covers every route the read map may move", () => {
+    // The scan reads ONE function. That is only sufficient while every route in
+    // NEON_READ_ROUTE_TABLES is dispatched from it -- and the map is the thing
+    // that grows as tables move off D1. Without this, adding a route whose
+    // handler lives elsewhere silently shrinks the scan's coverage to nothing
+    // in particular, and it would still report green.
+    const src = readFileSync("workers/data-api.ts", "utf8");
+    const start = src.indexOf("function matchNeuronsD1Route");
+    const end = src.indexOf("\nfunction ", start + 10);
+    const body = src.slice(start, end > 0 ? end : undefined);
+
+    // Compare on a CONCRETE PATH, not on regex source: the dispatcher spells
+    // the parameterised routes with capture groups (`(\d+)`) and the map
+    // without them, so the two sources never match textually even when they
+    // describe the same route.
+    const guards = [
+      // `if (url.pathname === "...")`
+      ...[...body.matchAll(/pathname === "([^"]+)"/g)].map(
+        (m) => (path: string) => path === m[1],
+      ),
+      // `url.pathname.match(/^\/api\/v1\/.../)`
+      ...[...body.matchAll(/pathname\.match\(\s*(\/\^[^\n]*?\$\/)/g)].map(
+        (m) => {
+          const re = new RegExp(m[1]!.slice(1, -1));
+          return (path: string) => re.test(path);
+        },
+      ),
+    ];
+    assert.ok(
+      guards.length >= 12,
+      `only ${guards.length} route guards extracted -- the extraction stopped ` +
+        `working, so this test is passing on nothing`,
+    );
+
+    const uncovered = NEON_READ_ROUTE_TABLES.filter(({ pattern }) => {
+      const path = pattern.source
+        .replace(/^\^|\$$/g, "")
+        .replace(/\\\//g, "/")
+        .replace(/\[\^\/\]\+/g, "5Abc")
+        .replace(/\\d\+/g, "7");
+      return !guards.some((matches) => matches(path));
+    });
+    assert.deepEqual(
+      uncovered.map((u) => u.pattern.source),
+      [],
+      "these read-map routes are not dispatched from the scanned function, so " +
+        "the dialect scan does not see their SQL",
+    );
+  });
+
+  test("the dialect scan would catch the construct that actually shipped", () => {
+    // A negative assertion passes on nothing unless the fixture could fail, and
+    // this one guards a regex list -- the failure mode is a pattern that
+    // matches nothing at all, which looks identical to a clean codebase.
+    const shipped =
+      "SELECT MIN(snapshot_date) FROM neuron_daily WHERE snapshot_date >= " +
+      "(SELECT date(MAX(snapshot_date), '-30 days') FROM neuron_daily)";
+    assert.ok(
+      /\b(?:date|datetime|julianday)\s*\(/i.test(shipped),
+      "the scan no longer matches the exact SQL that emptied two routes",
+    );
+    // And it must not fire on the column name it is spelled to avoid.
+    assert.ok(
+      !/\b(?:date|datetime|julianday)\s*\(/i.test(
+        "SELECT snapshot_date FROM neuron_daily WHERE netuid = ?",
+      ),
+      "the scan matches a plain snapshot_date column, which would make it noise",
+    );
+  });
+
   test("the position-history route declares BOTH tables it reads", () => {
     // The specific bug this map corrects. #9768 gated it on
     // account_position_daily alone.

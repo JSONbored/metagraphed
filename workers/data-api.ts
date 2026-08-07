@@ -330,6 +330,9 @@ function windowCutoffDate(
     .slice(0, 10);
 }
 
+// #9798: window boundaries computed here rather than in SQL, so no dialect
+// function survives into a query two stores have to agree about.
+import { shiftIsoDate } from "../src/iso-date-window.ts";
 import { isPublicWebhookUrl, timingSafeEqual } from "../src/webhooks.ts";
 // #8385: shape-check push key material at intake (see that module).
 import { isValidPushKeyMaterial } from "../src/web-push.ts";
@@ -5537,8 +5540,14 @@ async function handleAccountKeysRoute(request: Request, env: Env, url: URL) {
 //   - DISTINCT ON (k) ... ORDER BY k, d  -> ROW_NUMBER() OVER (PARTITION BY
 //     k ORDER BY d DESC) = 1, or a group-wise-MAX join (SQLite has no
 //     DISTINCT ON)
-//   - MAX(snapshot_date) - N::int        -> date(MAX(snapshot_date),
-//     '-N days')
+//   - MAX(snapshot_date) - N::int        -> NEITHER. This one is no longer a
+//     translation at all (#9798): the SQLite rendering was
+//     `date(MAX(snapshot_date), '-N days')`, and translating a dialect function
+//     into another dialect function is exactly what broke when these routes
+//     moved to Neon -- Postgres has no `date(x, modifier)`, so the subquery
+//     yielded nothing and two routes served an empty 200 (#9792). The shift now
+//     happens in TypeScript and the boundary is BOUND; see
+//     neuronDailyWindowBounds. Nothing here should acquire a fourth rendering.
 //
 // Cross-tier joins: subnet_snapshots has a live D1 home (migrations/d1/
 // 0002_observations.sql), so the alpha_price_tao joins/loads port for real.
@@ -5945,6 +5954,74 @@ export function neonServesRoute(
   );
   if (!entry) return false;
   return entry.tables.every((table) => neonReadEnabled(env, table));
+}
+
+/**
+ * The `[start, end]` snapshot dates of an N-day window over `neuron_daily`,
+ * anchored on the newest row the table HAS rather than on the clock.
+ *
+ * WHY IT IS TWO QUERIES AND NOT ONE (#9798). This used to be a single statement
+ * whose WHERE clause read `snapshot_date >= (SELECT date(MAX(snapshot_date),
+ * '-N days') FROM neuron_daily)`. `date(x, '-N days')` is SQLite's; Postgres
+ * has no such function, so the moment #9784 moved these routes to Neon the
+ * subquery yielded nothing, `>=` matched nothing, and `/subnets/{netuid}/
+ * history` and `/subnets/movers` each served a schema-stable 200 with ZERO rows
+ * until #9792 rolled the flag back.
+ *
+ * Splitting it removes the dialect from the question rather than translating
+ * it: reading a MAX is portable, `shiftIsoDate` is arithmetic, and binding a
+ * date literal is portable. There is no date function left for two dialects to
+ * disagree about, which is why this cannot regress the way the last one did.
+ *
+ * The extra round trip buys that outright. Both statements are single-row
+ * aggregate reads against the table's own index, on a path that already issues
+ * a second, far heavier query for the rows themselves.
+ *
+ * ANCHORED ON THE DATA, deliberately -- see iso-date-window.ts. Shifting from
+ * `Date.now()` (what windowCutoffDate does for the history routes) would return
+ * a SHORT window whenever the producer has fallen a day behind, which is the
+ * failure this whole family is being watched for.
+ *
+ * Returns nulls when the table (or the netuid's slice of it) is empty, which is
+ * exactly what the NULL subquery used to produce -- every caller already
+ * branches on that.
+ *
+ * EXPORTED FOR ASSERTION, the same reason positionHistoryServedFromNeon is:
+ * only two of its four query shapes are reachable from today's routes
+ * (`CHAIN_TURNOVER_WINDOWS`/`MOVERS_WINDOWS` are `Record<string, number>`, so a
+ * chain-wide call can never carry a null window, while HISTORY_WINDOWS's
+ * `all: null` makes the per-netuid one). Leaving the other two untested because
+ * no current caller reaches them is how a window function ends up wrong the
+ * first time a route needs it -- and annotating them out of coverage would say
+ * the same thing more quietly.
+ */
+export async function neuronDailyWindowBounds(
+  sql: D1Sql,
+  days: number | null,
+  netuid: number | null = null,
+): Promise<{ startDate: string | null; endDate: string | null }> {
+  const maxRows =
+    netuid == null
+      ? await sql`SELECT MAX(snapshot_date) AS end_date FROM neuron_daily`
+      : await sql`SELECT MAX(snapshot_date) AS end_date FROM neuron_daily WHERE netuid = ${netuid}`;
+  const endDate = (maxRows[0]?.end_date ?? null) as string | null;
+  if (endDate == null) return { startDate: null, endDate: null };
+
+  // A null window means "everything", so there is no cutoff to bind and the
+  // start is the table's own minimum.
+  const cutoff = days == null ? null : shiftIsoDate(endDate, -days);
+  const minRows =
+    netuid == null
+      ? cutoff == null
+        ? await sql`SELECT MIN(snapshot_date) AS start_date FROM neuron_daily`
+        : await sql`SELECT MIN(snapshot_date) AS start_date FROM neuron_daily WHERE snapshot_date >= ${cutoff}`
+      : cutoff == null
+        ? await sql`SELECT MIN(snapshot_date) AS start_date FROM neuron_daily WHERE netuid = ${netuid}`
+        : await sql`SELECT MIN(snapshot_date) AS start_date FROM neuron_daily WHERE netuid = ${netuid} AND snapshot_date >= ${cutoff}`;
+  return {
+    startDate: (minRows[0]?.start_date ?? null) as string | null,
+    endDate,
+  };
 }
 
 function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
@@ -6583,12 +6660,9 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
     };
   }
 
-  // GET /api/v1/chain/turnover?window=&limit=. The Postgres branch anchors
-  // the window with `MAX(snapshot_date) - ${days}::int`; SQLite's native
-  // equivalent is date(MAX(snapshot_date), '-N days') -- the exact idiom the
-  // pre-#4772 D1 route used. An empty table leaves the subquery NULL, the
-  // >= comparison matches nothing, and the same schema-stable empty shape
-  // falls out.
+  // GET /api/v1/chain/turnover?window=&limit=. The window is anchored on the
+  // newest row the table HAS, not on the clock -- see neuronDailyWindowBounds,
+  // which also explains why the shift no longer happens in SQL.
   if (url.pathname === "/api/v1/chain/turnover") {
     return async (sql) => {
       const windowParam =
@@ -6602,12 +6676,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         limitRaw == null || limitRaw === ""
           ? CHAIN_TURNOVER_LIMIT_DEFAULT
           : Number(limitRaw);
-      const bounds = await sql`
-        SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date
-        FROM neuron_daily
-        WHERE snapshot_date >= (SELECT date(MAX(snapshot_date), ${`-${days} days`}) FROM neuron_daily)`;
-      const startDate = (bounds[0]?.start_date ?? null) as string | null;
-      const endDate = (bounds[0]?.end_date ?? null) as string | null;
+      const { startDate, endDate } = await neuronDailyWindowBounds(sql, days);
       let rows: Row[] = [];
       if (startDate != null && endDate != null && startDate !== endDate) {
         rows = await sql`
@@ -6640,18 +6709,11 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         : DEFAULT_HISTORY_WINDOW;
       const windowDays = HISTORY_WINDOWS[windowLabel];
       const includeChanges = url.searchParams.get("changes") === "true";
-      const bounds =
-        windowDays == null
-          ? await sql`
-            SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date
-            FROM neuron_daily WHERE netuid = ${netuid}`
-          : await sql`
-            SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date
-            FROM neuron_daily
-            WHERE netuid = ${netuid}
-              AND snapshot_date >= (SELECT date(MAX(snapshot_date), ${`-${windowDays} days`}) FROM neuron_daily WHERE netuid = ${netuid})`;
-      const startDate = (bounds[0]?.start_date ?? null) as string | null;
-      const endDate = (bounds[0]?.end_date ?? null) as string | null;
+      const { startDate, endDate } = await neuronDailyWindowBounds(
+        sql,
+        windowDays,
+        netuid,
+      );
       const rows =
         startDate == null || endDate == null
           ? []
@@ -6690,12 +6752,7 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         limitRaw == null || limitRaw === ""
           ? MOVERS_LIMIT_DEFAULT
           : Number(limitRaw);
-      const bounds = await sql`
-        SELECT MIN(snapshot_date) AS start_date, MAX(snapshot_date) AS end_date
-        FROM neuron_daily
-        WHERE snapshot_date >= (SELECT date(MAX(snapshot_date), ${`-${days} days`}) FROM neuron_daily)`;
-      const startDate = (bounds[0]?.start_date ?? null) as string | null;
-      const endDate = (bounds[0]?.end_date ?? null) as string | null;
+      const { startDate, endDate } = await neuronDailyWindowBounds(sql, days);
       let startRows: Row[] = [];
       let endRows: Row[] = [];
       if (startDate != null && endDate != null && startDate !== endDate) {

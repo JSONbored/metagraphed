@@ -1302,6 +1302,73 @@ test("GET /api/v1/chain/turnover compares the window's boundary snapshots", asyn
   assert.equal(network.validators_exited, 1);
 });
 
+// THE WINDOW BOUNDARY ITSELF, which nothing asserted until #9798. Every test
+// above seeds rows entirely INSIDE the window, so they pass unchanged even if
+// the boundary is dropped altogether -- verified by mutation: replacing the
+// computed cutoff with `null` left all 75 tests green. That is the shape of gap
+// that let #9784 ship: the SQL said `date(MAX(snapshot_date), '-N days')`,
+// Postgres has no such function, the subquery yielded nothing, and two routes
+// served an empty 200 in production with a full suite behind them.
+//
+// So these seed a row OUTSIDE the window and require it to be excluded. Both
+// neuronDailyWindowBounds shapes are covered: chain-wide, and per-netuid.
+test("GET /api/v1/chain/turnover excludes snapshots older than the window", async () => {
+  const ancient = dayAgo(60);
+  const start = dayAgo(5);
+  const end = dayAgo(1);
+  for (const snapshot_date of [ancient, start, end]) {
+    insertDaily({
+      netuid: 7,
+      uid: 0,
+      hotkey: "5A",
+      validator_permit: 1,
+      snapshot_date,
+    });
+  }
+  const res = await call(req("/api/v1/chain/turnover?window=7d"));
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  // The 60-day-old row is the oldest in the table, so an unbounded MIN would
+  // return it -- which is exactly what a dropped boundary produces.
+  assert.equal(
+    body.start_date,
+    start,
+    "the window's start must be the oldest row INSIDE it, not the table's oldest",
+  );
+  assert.equal(body.end_date, end);
+});
+
+test("GET /api/v1/subnets/:netuid/history excludes snapshots older than the window", async () => {
+  const ancient = dayAgo(60);
+  const start = dayAgo(5);
+  for (const snapshot_date of [ancient, start, dayAgo(1)]) {
+    insertDaily({
+      netuid: 7,
+      uid: 0,
+      hotkey: "5A",
+      validator_permit: 1,
+      snapshot_date,
+    });
+  }
+  // A netuid the window must not reach across: its own bounds are computed
+  // per-netuid, so a row here must not become subnet 7's start date.
+  insertDaily({
+    netuid: 9,
+    uid: 0,
+    hotkey: "5Z",
+    validator_permit: 1,
+    snapshot_date: dayAgo(90),
+  });
+  const res = await call(req("/api/v1/subnets/7/turnover?window=7d"));
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.equal(
+    body.start_date,
+    start,
+    "the per-netuid window must exclude both the old row and the other netuid",
+  );
+});
+
 test("GET /api/v1/chain/turnover on an empty store serves the schema-stable empty shape", async () => {
   const res = await call(req("/api/v1/chain/turnover"));
   assert.equal(res.status, 200);
