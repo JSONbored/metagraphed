@@ -46,7 +46,23 @@ const SCHEMA = (() => {
   return sql.slice(start, endStmt + 1);
 })();
 
-const NOW = 1_785_979_535_000;
+// THE FIXTURE CLOCK MUST TRACK THE REAL ONE, and this was a hardcoded
+// 1_785_979_535_000 (2026-08-06T01:25:35Z) until it aged out.
+//
+// Two kinds of test share this file. The loader tests inject their own clock
+// (`now: () => NOW`) and are immune to what the wall clock says. The route,
+// GraphQL and MCP tests go through the SERVED path, which has no injection
+// point and filters against real `Date.now()` — so they seed rows at
+// `NOW - offset` and then ask a handler to select them relative to now.
+//
+// With an absolute NOW those two halves drift apart at one second per second.
+// Once the gap passed DEFAULT_TAO_USD_WINDOW (24h) every seeded row fell
+// outside the window and `point_count` went 2 → 0: three tests that had
+// passed for months began failing on 2026-08-07 and would have failed every
+// day after. Anchoring to Date.now() keeps the seeded rows a fixed distance
+// from whenever the suite actually runs, which is what the served-path tests
+// were always assuming.
+const NOW = Date.now();
 const POOLS = JSON.stringify([
   { address: "0x433a00819c771b33fa7223a5b3499b24fbcd1bbc", included: true },
   { address: "0x0000000000000000000000000000000000000002", included: false },
