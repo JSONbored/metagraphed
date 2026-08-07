@@ -15,7 +15,6 @@ import {
   McpListArtifactStamp,
   McpListPageFields,
   NotesFieldSchema,
-  OpenObjectSchema,
   fieldsStringSchema,
   limitSchema,
   netuidSchema,
@@ -26,6 +25,7 @@ import {
   sortSchema,
 } from "./shared.ts";
 import { SearchIndexArtifactSchema } from "../routes/evidence-search.ts";
+import { SearchArtifactSchema } from "../routes/evidence-search.ts";
 
 const DOCUMENT_TYPES = ["subnet", "surface", "provider"] as const;
 const DOCUMENT_SORT_FIELDS = ["netuid", "slug", "title", "type"] as const;
@@ -79,7 +79,10 @@ export const ListSearchOutputSchema = z
   .object({
     generated_at: z.string().nullable().optional(),
     notes: NotesFieldSchema,
-    documents: z.array(OpenObjectSchema),
+    // Typed from the route's own SearchArtifactSchema (#9797), PARTIAL
+    // because this tool advertises `fields` (#9884). Verified against
+    // production 2026-08-07, whole and projected.
+    documents: z.array(SearchArtifactSchema.shape.documents.element.partial()),
     total: z.int().optional(),
     returned: z.int().optional(),
     limit: z.int().optional(),

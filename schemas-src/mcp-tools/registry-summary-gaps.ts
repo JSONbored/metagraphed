@@ -141,8 +141,15 @@ export const GetSubnetGapsOutputSchema = z
     netuid: netuidSchema(),
     slug: z.string().nullable().optional(),
     name: z.string().nullable().optional(),
-    priorities: z.array(OpenObjectSchema),
-    enrichment_queue: z.array(OpenObjectSchema),
+    // Typed from the route's own SubnetGapsArtifactSchema (#9797) --
+    // routes/review-gaps-profile.ts, which is what
+    // /api/v1/subnets/{netuid}/gaps resolves to in openapi.json. An earlier
+    // attempt tested these against coverage.ts's CoverageDepth schemas on a
+    // filename guess and they failed; resolving the route through its
+    // published $ref finds the right one. Verified against production
+    // 2026-08-07.
+    priorities: SubnetGapsArtifactSchema.shape.priorities,
+    enrichment_queue: SubnetGapsArtifactSchema.shape.enrichment_queue,
   })
   .passthrough();
 export type GetSubnetGapsOutput = z.infer<typeof GetSubnetGapsOutputSchema>;
