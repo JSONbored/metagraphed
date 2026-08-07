@@ -126,7 +126,9 @@ function loaderTables(name: string, seen = new Set<string>()): string[] {
  * shows up as a drop in `checked` rather than as silent success.
  */
 function routePath(block: string): string | null {
-  const literal = /pathname === "([^"]+)"/.exec(block)?.[1];
+  const literal =
+    /pathname === "([^"]+)"/.exec(block)?.[1] ??
+    /pathname !== "([^"]+)"/.exec(block)?.[1];
   if (literal) return literal;
   const re = /pathname\.match\(\s*\/\^([^\n]*?)\$\//.exec(block)?.[1];
   if (!re) return null;
@@ -137,6 +139,34 @@ function routePath(block: string): string | null {
     .replace(/\\d\+/g, "7")
     .replace(/\[\^\/\]\+/g, "5Abc")
     .replace(/\\\./g, ".");
+}
+/**
+ * Every D1 route matcher in workers/data-api.ts, concatenated.
+ *
+ * NOT just matchNeuronsD1Route. One function was enough only while every
+ * route in NEON_READ_ROUTE_TABLES lived in it; the moment
+ * `/subnets/{n}/hyperparameters/history` and
+ * `/accounts/{ss58}/identity-history` moved, their SQL sat in
+ * matchHyperparamsIdentityD1Route where no scan reached it (#9947).
+ * Discovering matchers by NAME means the next one cannot fall outside the
+ * scan silently.
+ */
+function allMatcherSource(): string {
+  const src = readFileSync("workers/data-api.ts", "utf8");
+  const names = [...src.matchAll(/^function (match\w*D1Route)\b/gm)].map(
+    (m) => m[1]!,
+  );
+  assert.ok(
+    names.length >= 3,
+    `only ${names.length} D1 route matchers found -- discovery stopped working`,
+  );
+  return names
+    .map((name) => {
+      const start = src.indexOf(`function ${name}`);
+      const end = src.indexOf("\nfunction ", start + 10);
+      return src.slice(start, end > 0 ? end : undefined);
+    })
+    .join("\n");
 }
 
 describe("NEON_READ_ROUTE_TABLES", () => {
@@ -215,11 +245,7 @@ describe("NEON_READ_ROUTE_TABLES", () => {
     // So: split the matcher into its per-route blocks, resolve each block to a
     // concrete path, and compare the mirrored tables its SQL names against
     // what NEON_READ_ROUTE_TABLES declares for that path.
-    const src = readFileSync("workers/data-api.ts", "utf8");
-    const start = src.indexOf("function matchNeuronsD1Route");
-    assert.ok(start > 0, "matchNeuronsD1Route not found");
-    const end = src.indexOf("\nfunction ", start + 10);
-    const body = src.slice(start, end > 0 ? end : undefined);
+    const body = allMatcherSource();
 
     // One block per route, split at each mention of `url.pathname`.
     //
@@ -238,7 +264,12 @@ describe("NEON_READ_ROUTE_TABLES", () => {
     //
     // Splitting at `url.pathname` puts the path expression FIRST in its own
     // block, both spellings alike, with the handler that follows it.
-    const marks = [...body.matchAll(/url\.pathname(?: ===|\.match)/g)].map(
+    // `!==` is in here because a matcher may guard by EARLY RETURN --
+    // `if (url.pathname !== "...") return null;` -- which is how
+    // matchHealthStatusD1Route spells it. Without that alternative its SQL
+    // creates no mark and folds into the previous route's block, which is
+    // exactly the misattribution #9826 fixed for parameterised guards.
+    const marks = [...body.matchAll(/url\.pathname(?: ===| !==|\.match)/g)].map(
       (m) => m.index!,
     );
     const blocks = marks.map((start, i) =>
@@ -363,11 +394,7 @@ describe("NEON_READ_ROUTE_TABLES", () => {
       },
     ];
 
-    const src = readFileSync("workers/data-api.ts", "utf8");
-    const start = src.indexOf("function matchNeuronsD1Route");
-    assert.ok(start > 0, "matchNeuronsD1Route not found");
-    const end = src.indexOf("\nfunction ", start + 10);
-    const body = src.slice(start, end > 0 ? end : undefined);
+    const body = allMatcherSource();
 
     // Only the SQL, not the comments around it: this file explains the bug in
     // prose directly above the fix, and a scan that cannot tell those apart
@@ -393,23 +420,22 @@ describe("NEON_READ_ROUTE_TABLES", () => {
   });
 
   test("the scan actually covers every route the read map may move", () => {
-    // The scan reads ONE function. That is only sufficient while every route in
-    // NEON_READ_ROUTE_TABLES is dispatched from it -- and the map is the thing
-    // that grows as tables move off D1. Without this, adding a route whose
-    // handler lives elsewhere silently shrinks the scan's coverage to nothing
-    // in particular, and it would still report green.
-    const src = readFileSync("workers/data-api.ts", "utf8");
-    const start = src.indexOf("function matchNeuronsD1Route");
-    const end = src.indexOf("\nfunction ", start + 10);
-    const body = src.slice(start, end > 0 ? end : undefined);
+    // The scan reads EVERY match*D1Route function, discovered by name. It read
+    // only matchNeuronsD1Route until #9947, which was sufficient exactly as
+    // long as every route in NEON_READ_ROUTE_TABLES lived there -- and the map
+    // is the thing that grows as tables move off D1. A route whose handler
+    // lives in another matcher would otherwise shrink this check's coverage
+    // silently and still report green.
+    const body = allMatcherSource();
 
     // Compare on a CONCRETE PATH, not on regex source: the dispatcher spells
     // the parameterised routes with capture groups (`(\d+)`) and the map
     // without them, so the two sources never match textually even when they
     // describe the same route.
     const guards = [
-      // `if (url.pathname === "...")`
-      ...[...body.matchAll(/pathname === "([^"]+)"/g)].map(
+      // `if (url.pathname === "...")` and its early-return twin
+      // `if (url.pathname !== "...") return null;`
+      ...[...body.matchAll(/pathname [!=]== "([^"]+)"/g)].map(
         (m) => (path: string) => path === m[1],
       ),
       // `url.pathname.match(/^\/api\/v1\/.../)`

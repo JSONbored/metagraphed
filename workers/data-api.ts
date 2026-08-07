@@ -6065,6 +6065,18 @@ export const NEON_READ_ROUTE_TABLES: readonly {
       "validator_nominator_counts",
     ],
   },
+  // Cut over once both stores agreed exactly -- 137/137 and 531/531 measured,
+  // and the cursor stopped depending on a surrogate id whose value differs
+  // between them (#9947). Each reads ONE table, so there is no side loader to
+  // drag along.
+  {
+    pattern: /^\/api\/v1\/subnets\/\d+\/hyperparameters\/history$/,
+    tables: ["subnet_hyperparams_history"],
+  },
+  {
+    pattern: /^\/api\/v1\/accounts\/[^/]+\/identity-history$/,
+    tables: ["account_identity_history"],
+  },
   {
     pattern: /^\/api\/v1\/subnets\/\d+\/concentration\/history$/,
     tables: [
@@ -7047,9 +7059,8 @@ function matchHyperparamsIdentityD1Route(
     }
 
     // GET /api/v1/subnets/:netuid/hyperparameters/history?limit=&offset=
-    // &cursor= -- same FEED_PAGINATION bounds and (observed_at, id) keyset
-    // cursor as the Postgres route; SQLite supports the row-value comparison
-    // directly, so only the placeholder style moves.
+    // &cursor= -- FEED_PAGINATION bounds, keyed on observed_at alone so the
+    // cursor means the same thing in both stores (#9947).
     const subnetHyperparamsHistory = url.pathname.match(
       /^\/api\/v1\/subnets\/(\d+)\/hyperparameters\/history$/,
     );
@@ -7061,20 +7072,38 @@ function matchHyperparamsIdentityD1Route(
           FEED_PAGINATION,
         );
         const offset = clampRequestOffset(url.searchParams.get("offset"));
-        const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+        // ONE component, and it is observed_at -- NOT (observed_at, id).
+        //
+        // The id is a surrogate, and Neon assigns its own: the backfill
+        // inserted in keyset order while D1 numbered by insertion order, so
+        // `id = 1` is a different row in each store (verified, #9947). Putting
+        // it in a cursor made that difference part of the PUBLIC API, and a
+        // cursor minted before a read moved to Neon would be compared against
+        // ids that never meant the same thing.
+        //
+        // It was never carrying any weight. (netuid, observed_at) is unique --
+        // 137 rows, 137 distinct, measured -- so within the `netuid = ?` this
+        // query already pins, observed_at alone totally orders the rows and
+        // the id could not break a tie that cannot happen.
+        //
+        // An old two-part cursor now fails decodeCursor's arity check and
+        // returns null, which falls through to the offset path below. That is
+        // the right degradation: a stale cursor restarts a page rather than
+        // seeking to a row that is not there.
+        const cursor = decodeCursor(url.searchParams.get("cursor"), 1);
         const rows = cursor
           ? await sql.unsafe(
               `SELECT ${SUBNET_HYPERPARAMS_HISTORY_D1_READ_COLUMNS}
                FROM subnet_hyperparams_history
-               WHERE netuid = ? AND (observed_at, id) < (?, ?)
-               ORDER BY observed_at DESC, id DESC LIMIT ?`,
-              [netuid, cursor[0], cursor[1], limit],
+               WHERE netuid = ? AND observed_at < ?
+               ORDER BY observed_at DESC LIMIT ?`,
+              [netuid, cursor[0], limit],
             )
           : await sql.unsafe(
               `SELECT ${SUBNET_HYPERPARAMS_HISTORY_D1_READ_COLUMNS}
                FROM subnet_hyperparams_history
                WHERE netuid = ?
-               ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?`,
+               ORDER BY observed_at DESC LIMIT ? OFFSET ?`,
               [netuid, limit, offset],
             );
         if (
@@ -7084,10 +7113,7 @@ function matchHyperparamsIdentityD1Route(
           return d1TierCold();
         const last = rows.length === limit ? rows[rows.length - 1] : null;
         const nextCursor = last
-          ? encodeCursor([
-              numberOrNull(last.observed_at),
-              numberOrNull(last.id),
-            ])
+          ? encodeCursor([numberOrNull(last.observed_at)])
           : null;
         return json(
           buildSubnetHyperparamsHistory(rows, netuid, {
@@ -7132,20 +7158,25 @@ function matchHyperparamsIdentityD1Route(
           FEED_PAGINATION,
         );
         const offset = clampRequestOffset(url.searchParams.get("offset"));
-        const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+        // observed_at alone -- see the hyperparams-history route above for why
+        // the surrogate id must not appear in a cursor (#9947). (account,
+        // observed_at) is unique at 531 rows / 531 distinct, measured, so
+        // within the `account = ?` this query pins, observed_at totally orders
+        // the rows.
+        const cursor = decodeCursor(url.searchParams.get("cursor"), 1);
         const rows = cursor
           ? await sql.unsafe(
               `SELECT ${ACCOUNT_IDENTITY_HISTORY_D1_READ_COLUMNS}
                FROM account_identity_history
-               WHERE account = ? AND (observed_at, id) < (?, ?)
-               ORDER BY observed_at DESC, id DESC LIMIT ?`,
-              [ss58, cursor[0], cursor[1], limit],
+               WHERE account = ? AND observed_at < ?
+               ORDER BY observed_at DESC LIMIT ?`,
+              [ss58, cursor[0], limit],
             )
           : await sql.unsafe(
               `SELECT ${ACCOUNT_IDENTITY_HISTORY_D1_READ_COLUMNS}
                FROM account_identity_history
                WHERE account = ?
-               ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?`,
+               ORDER BY observed_at DESC LIMIT ? OFFSET ?`,
               [ss58, limit, offset],
             );
         if (
@@ -7155,10 +7186,7 @@ function matchHyperparamsIdentityD1Route(
           return d1TierCold();
         const last = rows.length === limit ? rows[rows.length - 1] : null;
         const nextCursor = last
-          ? encodeCursor([
-              numberOrNull(last.observed_at),
-              numberOrNull(last.id),
-            ])
+          ? encodeCursor([numberOrNull(last.observed_at)])
           : null;
         return json(
           buildAccountIdentityHistory(rows, ss58, {

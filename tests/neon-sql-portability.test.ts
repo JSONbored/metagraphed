@@ -257,12 +257,33 @@ function stripComments(source: string): string {
 }
 
 /** The matcher body, which is where the inline route SQL lives. */
+/**
+ * Every D1 route matcher in workers/data-api.ts, concatenated.
+ *
+ * NOT just matchNeuronsD1Route. Scanning one function was sufficient only
+ * while every route in NEON_READ_ROUTE_TABLES lived in it, and the moment
+ * `/subnets/{n}/hyperparameters/history` and `/accounts/{ss58}/identity-history`
+ * moved, their SQL sat in matchHyperparamsIdentityD1Route where no scan
+ * reached it (#9947). Discovering the matchers by NAME rather than listing
+ * them means the next one cannot silently fall outside the scan -- which is
+ * the failure this whole family of checks exists to prevent.
+ */
 function matcherSource(): string {
   const src = readFileSync("workers/data-api.ts", "utf8");
-  const start = src.indexOf("function matchNeuronsD1Route");
-  assert.ok(start > 0, "matchNeuronsD1Route not found");
-  const end = src.indexOf("\nfunction ", start + 10);
-  return src.slice(start, end > 0 ? end : undefined);
+  const names = [...src.matchAll(/^function (match\w*D1Route)\b/gm)].map(
+    (m) => m[1]!,
+  );
+  assert.ok(
+    names.length >= 3,
+    `only ${names.length} D1 route matchers found -- the discovery regex stopped working`,
+  );
+  return names
+    .map((name) => {
+      const start = src.indexOf(`function ${name}`);
+      const end = src.indexOf("\nfunction ", start + 10);
+      return src.slice(start, end > 0 ? end : undefined);
+    })
+    .join("\n");
 }
 
 /** Per-route blocks, keyed by the literal path each guard matches. */
