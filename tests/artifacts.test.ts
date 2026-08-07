@@ -31,6 +31,7 @@ import {
 } from "../scripts/lib.ts";
 import {
   CONTRACT_VERSION,
+  API_QUERY_COLLECTIONS,
   API_ROUTES,
   PRIMARY_DOMAIN,
 } from "../src/contracts.ts";
@@ -2430,6 +2431,78 @@ test("Worker API serves public artifact envelopes", async () => {
   const body = await response.json();
   assert.equal(body.ok, true);
   assert.equal(body.data.subnet.netuid, 7);
+});
+
+// #9710. workers/list-query.ts sorts with a flat `row[key]` lookup and sinks
+// rows whose value is null/undefined to the end. A sort field that NO row
+// carries therefore fails silently in the worst available way: every row sinks,
+// the original order survives untouched, `meta.pagination.sort` echoes the field
+// back, and the caller reads a list that says it is ranked and is not.
+//
+// Four collections shipped that way — gaps (`gap_count`), curation
+// (`curation_level`, reachable only at the nested `curation.level`),
+// rpc-endpoints (`layer`/`publication_state`/`pool_eligible`/`score`, computed
+// for the sibling resource artifact and not this one), and health-subnets
+// (`name`, whose rows are written by the live prober cron rather than a build
+// artifact — tracked separately in #9715, hence the exemption below).
+//
+// Driven off the contract, not a hand-kept list, so a collection added later is
+// covered on the day it is added rather than the day someone remembers to.
+const SORT_FIELDS_WITHOUT_A_BUILT_ROW: Record<string, string[]> = {
+  // Written by the health prober into KV, not by this build. See #9715.
+  "/api/v1/health": ["name"],
+};
+
+test("every advertised sort field exists on the rows that route serves", () => {
+  const collections = API_QUERY_COLLECTIONS as Record<string, Row>;
+  let checked = 0;
+
+  for (const apiRoute of API_ROUTES as Row[]) {
+    const collectionName = apiRoute.query_collection as string | null;
+    const relative = String(apiRoute.artifact_path || "").replace(
+      /^\/metagraph\//,
+      "",
+    );
+    // A templated path needs a concrete id to read. Every such collection is
+    // also reached through an untemplated sibling route, which this loop covers.
+    if (!collectionName || !relative || relative.includes("{")) continue;
+
+    const collection = collections[collectionName];
+    const sortFields = (collection?.sort_fields as string[]) || [];
+    if (sortFields.length === 0) continue;
+    if (!existsSync(artifactFilePath(relative))) continue;
+
+    const rows = readArtifact(relative)[collection.data_key as string];
+    if (!Array.isArray(rows) || rows.length === 0) continue;
+
+    const present = new Set<string>();
+    for (const row of rows as Row[]) {
+      if (row && typeof row === "object" && !Array.isArray(row)) {
+        for (const key of Object.keys(row)) present.add(key);
+      }
+    }
+
+    const exempt = new Set(
+      SORT_FIELDS_WITHOUT_A_BUILT_ROW[apiRoute.path as string] || [],
+    );
+    for (const field of sortFields) {
+      if (exempt.has(field)) continue;
+      checked += 1;
+      assert.ok(
+        present.has(field),
+        `${apiRoute.path}: sort enum advertises "${field}", but no row in ` +
+          `${relative} carries that key — sorting by it would return the list ` +
+          `unordered while meta.pagination.sort echoes the field back`,
+      );
+    }
+  }
+
+  // A pass over zero fields proves nothing. If the contract shape ever changes
+  // such that nothing matches, this fails rather than going quietly green.
+  assert.ok(
+    checked > 50,
+    `expected to check well over 50 advertised sort fields, checked ${checked}`,
+  );
 });
 
 function readArtifact(relativePath: string): Row {

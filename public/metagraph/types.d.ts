@@ -8413,6 +8413,7 @@ export interface components {
                 candidate_count: number;
                 coverage_level: components["schemas"]["CoverageLevel"];
                 curation: components["schemas"]["CurationMetadata"];
+                curation_level?: components["schemas"]["CurationLevel"];
                 description?: string | null;
                 gap_count?: number;
                 gaps: components["schemas"]["Gaps"];
@@ -9139,6 +9140,7 @@ export interface components {
             gaps: {
                 coverage_level: components["schemas"]["CoverageLevel"];
                 curation_level: components["schemas"]["CurationLevel"];
+                gap_count?: number;
                 gap_priority?: number;
                 /** @enum {string} */
                 gap_severity?: "critical" | "warning" | "info";
@@ -10389,6 +10391,7 @@ export interface components {
                 last_ok: string | null;
                 latency_ms?: number | null;
                 latest_block?: number | null;
+                layer?: string;
                 method_tested?: string | null;
                 methods_supported?: {
                     [key: string]: boolean;
@@ -10396,10 +10399,13 @@ export interface components {
                 netuid?: number;
                 network: components["schemas"]["BittensorNetwork"];
                 observed_at: string | null;
+                pool_eligible?: boolean;
                 provider: string;
                 public_safe?: boolean;
+                publication_state?: string;
                 rate_limit_notes?: string | null;
                 rpc_method_count?: number | null;
+                score?: number;
                 source_urls?: string[];
                 status: components["schemas"]["HealthStatus"];
                 subnet_name?: string;

@@ -982,6 +982,13 @@ const curationIndex = mergedSubnets.map((subnet) => ({
   candidate_count: subnet.candidate_count,
   coverage_level: subnet.coverage_level,
   curation: subnet.curation,
+  // #9710: flattened alongside the nested `curation` block, not instead of it.
+  // The collection's sort enum advertises `curation_level`, and sortRows does a
+  // flat row[key] lookup -- so with the level reachable only at `curation.level`
+  // every row sank to "missing" and `?sort=curation_level` returned the list
+  // untouched while meta.pagination.sort echoed the field back. The gaps row
+  // below has always flattened it; this is the sibling catching up.
+  curation_level: subnet.curation.level,
   gap_count: subnet.gaps.missing_kinds.length,
   gaps: subnet.gaps,
   name: subnet.name,
@@ -995,6 +1002,13 @@ const gapsIndex = mergedSubnets.map((subnet) => {
   return {
     coverage_level: subnet.coverage_level,
     curation_level: subnet.curation.level,
+    // #9710: the collection's sort enum has always advertised `gap_count`, and
+    // the row never carried it -- so `?sort=gap_count` was accepted, echoed
+    // back in meta.pagination.sort, and returned rows in natural netuid order.
+    // A silent no-op that announces itself as a ranking is worse than a
+    // rejected parameter. Same expression the curation row above uses, off the
+    // same array this block already has in hand.
+    gap_count: missingKinds.length,
     gaps: subnet.gaps,
     // #1757: per-gap-row severity + priority derived from the EXISTING backend
     // weighted model (the high-value identity/interface kinds reviewPriorityScore

@@ -53,6 +53,23 @@ export function buildRpcEndpointArtifact({
         health,
         monitored: true,
       });
+      // #9710: layer/publication_state/pool_eligible/score are advertised in
+      // this collection's sort enum -- /api/v1/endpoints and /api/v1/rpc/
+      // endpoints share one queryCollection config -- but only the resource
+      // artifact below ever emitted them. sortRows resolves row[key] flat, so
+      // on the RPC route all four sank every row to "missing" and returned the
+      // list in its natural provider/id order while echoing the requested sort.
+      // Computed from the SAME helpers the resource artifact uses, on the same
+      // monitored:true footing this builder already assumes for health.
+      const poolEligibility = endpointPoolEligibility({
+        ...surface,
+        status: health.status || "unknown",
+      });
+      const scoreBreakdown = endpointScoreBreakdown({
+        ...surface,
+        ...health,
+        status: health.status || "unknown",
+      });
       return {
         id: surface.id,
         netuid: surface.netuid,
@@ -60,12 +77,20 @@ export function buildRpcEndpointArtifact({
         subnet_name: surface.subnet_name,
         chain: "bittensor",
         network: "finney",
+        layer: endpointLayer(surface.kind),
         kind: surface.kind,
         url: surface.url,
         provider: surface.provider,
         authority: surface.authority,
         auth_required: surface.auth_required,
         public_safe: surface.public_safe,
+        publication_state: endpointPublicationState({
+          monitored: true,
+          poolEligible: poolEligibility.eligible,
+          surface,
+        }),
+        pool_eligible: poolEligibility.eligible,
+        score: scoreBreakdown.score,
         archive_support: health.archive_support ?? null,
         latest_block: health.latest_block ?? null,
         methods_supported: health.methods_supported || null,
