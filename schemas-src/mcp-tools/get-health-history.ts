@@ -21,24 +21,11 @@ import {
   providerSlugSchema,
   sortSchema,
 } from "./shared.ts";
+import { SURFACE_KIND_VALUES } from "../routes/subnet-detail.ts";
+import { HEALTH_STATUS_VALUES } from "../shared.ts";
 
-const SURFACE_KIND = [
-  "archive",
-  "dashboard",
-  "data-artifact",
-  "docs",
-  "example",
-  "openapi",
-  "repo-registry",
-  "sdk",
-  "source-repo",
-  "sse",
-  "subnet-api",
-  "subtensor-rpc",
-  "subtensor-wss",
-  "website",
-] as const;
-const HEALTH_STATUS = ["ok", "degraded", "failed", "unknown"] as const;
+const SURFACE_KIND = SURFACE_KIND_VALUES;
+const HEALTH_STATUS = HEALTH_STATUS_VALUES;
 const HEALTH_CLASSIFICATION = [
   "auth-required",
   "content-mismatch",

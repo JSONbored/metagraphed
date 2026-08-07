@@ -21,41 +21,22 @@ import {
   querySchema,
   sortSchema,
 } from "./shared.ts";
-import { ReviewEnrichmentEvidenceArtifactSchema } from "../routes/review-enrichment.ts";
+import {
+  REVIEW_ENRICHMENT_LANE_VALUES,
+  REVIEW_ENRICHMENT_SUBMISSION_ROUTE_VALUES,
+  REVIEW_ENRICHMENT_TARGET_ACTION_VALUES,
+  REVIEW_ENRICHMENT_TARGET_TYPE_VALUES,
+  REVIEW_EVIDENCE_ACTION_VALUES,
+  ReviewEnrichmentEvidenceArtifactSchema,
+} from "../routes/review-enrichment.ts";
 import { ReviewGapPrioritiesArtifactSchema } from "../routes/review-gaps-profile.ts";
 import { ReviewEnrichmentTargetsArtifactSchema } from "../routes/review-enrichment.ts";
+import { SURFACE_KIND_VALUES } from "../routes/subnet-detail.ts";
+import { CURATION_LEVEL_VALUES } from "../shared.ts";
 
-const SURFACE_KINDS = [
-  "archive",
-  "dashboard",
-  "data-artifact",
-  "docs",
-  "example",
-  "openapi",
-  "repo-registry",
-  "sdk",
-  "source-repo",
-  "sse",
-  "subnet-api",
-  "subtensor-rpc",
-  "subtensor-wss",
-  "website",
-] as const;
-const EVIDENCE_ACTIONS = [
-  "submit-new-evidence",
-  "verify-existing-evidence",
-  "replace-stale-evidence",
-  "review-existing-evidence",
-  "maintainer-review-existing-evidence",
-  "monitor",
-] as const;
-const LANES = [
-  "direct-submission",
-  "maintainer-review",
-  "adapter-candidate",
-  "monitoring-followup",
-  "baseline-monitoring",
-] as const;
+const SURFACE_KINDS = SURFACE_KIND_VALUES;
+const EVIDENCE_ACTIONS = REVIEW_EVIDENCE_ACTION_VALUES;
+const LANES = REVIEW_ENRICHMENT_LANE_VALUES;
 const EVIDENCE_SORT_FIELDS = [
   "evidence_action",
   "lane",
@@ -114,14 +95,7 @@ export type ListEnrichmentEvidenceOutput = z.infer<
   typeof ListEnrichmentEvidenceOutputSchema
 >;
 
-const CURATION_LEVELS = [
-  "native",
-  "candidate-discovered",
-  "community-seeded",
-  "machine-verified",
-  "maintainer-reviewed",
-  "adapter-backed",
-] as const;
+const CURATION_LEVELS = CURATION_LEVEL_VALUES;
 const PRIORITY_SORT_FIELDS = [
   "candidate_count",
   "curation_level",
@@ -176,27 +150,9 @@ const PROFILE_LEVELS = [
 ] as const;
 const IDENTITY_LEVELS = ["none", "directory", "partial", "complete"] as const;
 const BOOLEAN_STRINGS = ["true", "false"] as const;
-const SUBMISSION_ROUTES = [
-  "direct-candidate-pr",
-  "adapter-request",
-  "maintainer-review",
-  "status-report",
-] as const;
-const TARGET_ACTIONS = [
-  "submit-new-candidate",
-  "replace-stale-candidate",
-  "verify-existing-candidate",
-  "review-existing-candidate",
-  "adapter-review",
-  "maintainer-review",
-  "monitoring-followup",
-] as const;
-const TARGET_TYPES = [
-  "surface-candidate",
-  "adapter-review",
-  "maintainer-review",
-  "monitoring-followup",
-] as const;
+const SUBMISSION_ROUTES = REVIEW_ENRICHMENT_SUBMISSION_ROUTE_VALUES;
+const TARGET_ACTIONS = REVIEW_ENRICHMENT_TARGET_ACTION_VALUES;
+const TARGET_TYPES = REVIEW_ENRICHMENT_TARGET_TYPE_VALUES;
 const TARGET_SORT_FIELDS = [
   "auto_review_candidate",
   "evidence_action",

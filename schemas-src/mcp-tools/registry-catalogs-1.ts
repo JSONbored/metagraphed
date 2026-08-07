@@ -28,24 +28,21 @@ import {
 } from "./shared.ts";
 import { CandidatesArtifactSchema } from "../routes/candidates-evidence.ts";
 import { SurfacesArtifactSchema } from "../routes/endpoints-pools.ts";
-import { ProvidersArtifactSchema } from "../routes/providers-rpc.ts";
+import {
+  PROVIDER_KIND_VALUES,
+  ProvidersArtifactSchema,
+} from "../routes/providers-rpc.ts";
+import {
+  AUTHORITY_VALUES,
+  CANDIDATE_STATE_VALUES,
+  SURFACE_KIND_VALUES,
+} from "../routes/subnet-detail.ts";
 
 // Symbolic in each hand-written original (src/contracts.ts's QUERY_ENUMS /
 // API_QUERY_COLLECTIONS.*.sort_fields), cross-checked against the actual
 // runtime source at the time of writing.
-const PROVIDER_KINDS = [
-  "data-provider",
-  "docs-provider",
-  "infrastructure-provider",
-  "registry",
-  "subnet-team",
-] as const;
-const PROVIDER_AUTHORITIES = [
-  "community",
-  "official",
-  "provider-claimed",
-  "registry-observed",
-] as const;
+const PROVIDER_KINDS = PROVIDER_KIND_VALUES;
+const PROVIDER_AUTHORITIES = AUTHORITY_VALUES;
 const PROVIDER_SORT_FIELDS = ["authority", "id", "kind", "name"] as const;
 
 export const ListProvidersInputSchema = z
@@ -77,22 +74,7 @@ export type ListProvidersInput = z.infer<typeof ListProvidersInputSchema>;
 export const ListProvidersOutputSchema = ProvidersArtifactSchema;
 export type ListProvidersOutput = z.infer<typeof ListProvidersOutputSchema>;
 
-const SURFACE_KINDS = [
-  "archive",
-  "dashboard",
-  "data-artifact",
-  "docs",
-  "example",
-  "openapi",
-  "repo-registry",
-  "sdk",
-  "source-repo",
-  "sse",
-  "subnet-api",
-  "subtensor-rpc",
-  "subtensor-wss",
-  "website",
-] as const;
+const SURFACE_KINDS = SURFACE_KIND_VALUES;
 const SURFACE_SORT_FIELDS = [
   "id",
   "kind",
@@ -125,14 +107,7 @@ export type ListSurfacesInput = z.infer<typeof ListSurfacesInputSchema>;
 export const ListSurfacesOutputSchema = SurfacesArtifactSchema;
 export type ListSurfacesOutput = z.infer<typeof ListSurfacesOutputSchema>;
 
-const CANDIDATE_STATES = [
-  "schema-invalid",
-  "schema-valid",
-  "maintainer-review",
-  "verified",
-  "stale",
-  "rejected",
-] as const;
+const CANDIDATE_STATES = CANDIDATE_STATE_VALUES;
 const CONFIDENCE_LEVELS = ["low", "medium", "high"] as const;
 const CANDIDATES_SORT_FIELDS = [
   "confidence",

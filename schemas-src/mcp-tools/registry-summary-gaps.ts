@@ -20,6 +20,8 @@ import {
   sortSchema,
 } from "./shared.ts";
 import { SubnetGapsArtifactSchema } from "../routes/review-gaps-profile.ts";
+import { SURFACE_KIND_VALUES } from "../routes/subnet-detail.ts";
+import { CURATION_LEVEL_VALUES } from "../shared.ts";
 
 export const RegistrySummaryInputSchema = z.object({}).strict();
 export type RegistrySummaryInput = z.infer<typeof RegistrySummaryInputSchema>;
@@ -144,30 +146,8 @@ export const GetSubnetGapsOutputSchema = z
   .passthrough();
 export type GetSubnetGapsOutput = z.infer<typeof GetSubnetGapsOutputSchema>;
 
-const CURATION_LEVELS = [
-  "native",
-  "candidate-discovered",
-  "community-seeded",
-  "machine-verified",
-  "maintainer-reviewed",
-  "adapter-backed",
-] as const;
-const SURFACE_KINDS = [
-  "archive",
-  "dashboard",
-  "data-artifact",
-  "docs",
-  "example",
-  "openapi",
-  "repo-registry",
-  "sdk",
-  "source-repo",
-  "sse",
-  "subnet-api",
-  "subtensor-rpc",
-  "subtensor-wss",
-  "website",
-] as const;
+const CURATION_LEVELS = CURATION_LEVEL_VALUES;
+const SURFACE_KINDS = SURFACE_KIND_VALUES;
 // The REST route pages this artifact through the review-gap-priorities
 // collection (rows live under `priorities`), not the network-wide `gaps`
 // collection -- same sort fields as list_review_gaps (batch 10, #8074).

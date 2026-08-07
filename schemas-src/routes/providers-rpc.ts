@@ -39,13 +39,16 @@ import {
   SurfaceKindSchema,
 } from "./subnet-detail.ts";
 
-export const ProviderKindSchema = z.enum([
+/** The vocabulary, exported as a tuple so every other schema that needs
+ * these values imports them instead of restating them (#9799). */
+export const PROVIDER_KIND_VALUES = [
   "subnet-team",
   "infrastructure-provider",
   "data-provider",
   "docs-provider",
   "registry",
-]);
+] as const;
+export const ProviderKindSchema = z.enum(PROVIDER_KIND_VALUES);
 
 const HttpUrlSchema = z.string().regex(/^[Hh][Tt][Tt][Pp][Ss]?:\/\//);
 

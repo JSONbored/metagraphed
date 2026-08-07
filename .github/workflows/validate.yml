@@ -608,6 +608,13 @@ jobs:
       - name: Validate schema opacity
         run: npm run validate:schema-opacity
 
+      # Permanent lock on vocabulary ownership (#9799): a string-literal list of
+      # three or more members may appear in only ONE schema file unless it is
+      # declared debt. Unconditional for the same reason as the locks above — it
+      # reads schemas-src/ and costs well under a second.
+      - name: Validate schema vocabularies
+        run: npm run validate:schema-vocabularies
+
       # Module-level mutable state in src/ and workers/ must register a reset
       # (src/module-state-registry.ts), or it leaks across test files once the
       # coverage pass runs with `isolate: false` (#8922). Static scan of the

@@ -9,10 +9,10 @@
 // components they replace.
 import { z } from "zod";
 import { ArtifactBaseSchema, successEnvelopeSchema } from "../envelope.ts";
-import { CurationLevelSchema } from "../shared.ts";
+import { COVERAGE_LEVEL_VALUES, CurationLevelSchema } from "../shared.ts";
 import { CurationMetadataSchema, GapsSchema } from "./subnet-detail.ts";
 
-const COVERAGE_LEVELS = ["native-only", "manifested", "probed"] as const;
+const COVERAGE_LEVELS = COVERAGE_LEVEL_VALUES;
 export const CoverageLevelSchema = z.enum(COVERAGE_LEVELS);
 
 const CURATION_SORT_FIELDS = [

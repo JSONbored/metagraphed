@@ -7653,8 +7653,7 @@ export interface components {
             /** @enum {string} */
             monitoring_status: "monitored" | "not_monitored";
             netuid: number;
-            /** @enum {string} */
-            network?: "finney" | "test" | "local";
+            network?: components["schemas"]["BittensorNetwork"];
             observed_at: string | null;
             operator: string;
             pool_eligibility_reasons?: string[];

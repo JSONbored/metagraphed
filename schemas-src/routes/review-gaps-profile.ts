@@ -15,35 +15,17 @@ import {
   CountMapSchema,
   successEnvelopeSchema,
 } from "../envelope.ts";
-import { CurationLevelSchema } from "../shared.ts";
-import { ReviewStateSchema, SurfaceKindSchema } from "./subnet-detail.ts";
+import { CURATION_LEVEL_VALUES, CurationLevelSchema } from "../shared.ts";
+import {
+  ReviewStateSchema,
+  SURFACE_KIND_VALUES,
+  SurfaceKindSchema,
+} from "./subnet-detail.ts";
 import { SubnetProfileIdentityEvidenceSchema } from "./subnet-profile.ts";
 import { ReviewEnrichmentQueueEntrySchema } from "./review-enrichment.ts";
 
-const CURATION_LEVELS = [
-  "native",
-  "candidate-discovered",
-  "community-seeded",
-  "machine-verified",
-  "maintainer-reviewed",
-  "adapter-backed",
-] as const;
-const SURFACE_KINDS = [
-  "archive",
-  "dashboard",
-  "data-artifact",
-  "docs",
-  "example",
-  "openapi",
-  "repo-registry",
-  "sdk",
-  "source-repo",
-  "sse",
-  "subnet-api",
-  "subtensor-rpc",
-  "subtensor-wss",
-  "website",
-] as const;
+const CURATION_LEVELS = CURATION_LEVEL_VALUES;
+const SURFACE_KINDS = SURFACE_KIND_VALUES;
 const PRIORITY_SORT_FIELDS = [
   "candidate_count",
   "curation_level",

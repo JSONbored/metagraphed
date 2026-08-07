@@ -29707,12 +29707,7 @@
             "type": "integer"
           },
           "network": {
-            "enum": [
-              "finney",
-              "test",
-              "local"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/BittensorNetwork"
           },
           "observed_at": {
             "anyOf": [

@@ -23,16 +23,10 @@ import {
 } from "./shared.ts";
 import { CurationArtifactSchema } from "../routes/curation-gaps.ts";
 import { GapsArtifactSchema } from "../routes/curation-gaps.ts";
+import { COVERAGE_LEVEL_VALUES, CURATION_LEVEL_VALUES } from "../shared.ts";
 
-const COVERAGE_LEVELS = ["native-only", "manifested", "probed"] as const;
-const CURATION_LEVELS = [
-  "native",
-  "candidate-discovered",
-  "community-seeded",
-  "machine-verified",
-  "maintainer-reviewed",
-  "adapter-backed",
-] as const;
+const COVERAGE_LEVELS = COVERAGE_LEVEL_VALUES;
+const CURATION_LEVELS = CURATION_LEVEL_VALUES;
 const CURATION_SORT_FIELDS = [
   "coverage_level",
   "curation_level",

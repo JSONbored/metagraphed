@@ -17,6 +17,7 @@
 import { z } from "zod";
 import { ArtifactBaseSchema, successEnvelopeSchema } from "../envelope.ts";
 import {
+  BittensorNetworkSchema,
   CoverageLevelSchema,
   CurationLevelSchema,
   HealthStatusSchema,
@@ -31,7 +32,9 @@ const HttpOrWssUrlSchema = z
   .string()
   .regex(/^(?:[Hh][Tt][Tt][Pp][Ss]?|[Ww][Ss][Ss]?):\/\//);
 
-export const SurfaceKindSchema = z.enum([
+/** The vocabulary, exported as a tuple so every other schema that needs
+ * these values imports them instead of restating them (#9799). */
+export const SURFACE_KIND_VALUES = [
   "archive",
   "subtensor-rpc",
   "subtensor-wss",
@@ -46,7 +49,8 @@ export const SurfaceKindSchema = z.enum([
   "repo-registry",
   "docs",
   "data-artifact",
-]);
+] as const;
+export const SurfaceKindSchema = z.enum(SURFACE_KIND_VALUES);
 export type SurfaceKind = z.infer<typeof SurfaceKindSchema>;
 
 export const SourceTierSchema = z.enum([
@@ -73,14 +77,17 @@ export const ClassificationSchema = z.enum([
 ]);
 export type Classification = z.infer<typeof ClassificationSchema>;
 
-export const CandidateStateSchema = z.enum([
+/** The vocabulary, exported as a tuple so every other schema that needs
+ * these values imports them instead of restating them (#9799). */
+export const CANDIDATE_STATE_VALUES = [
   "schema-invalid",
   "schema-valid",
   "maintainer-review",
   "verified",
   "stale",
   "rejected",
-]);
+] as const;
+export const CandidateStateSchema = z.enum(CANDIDATE_STATE_VALUES);
 export type CandidateState = z.infer<typeof CandidateStateSchema>;
 
 const QualitySignalsSchema = z
@@ -210,30 +217,41 @@ export const CandidateSurfaceSchema = z
   .strict();
 export type CandidateSurface = z.infer<typeof CandidateSurfaceSchema>;
 
-export const AuthoritySchema = z.enum([
+/** The vocabulary, exported as a tuple so every other schema that needs
+ * these values imports them instead of restating them (#9799). */
+export const AUTHORITY_VALUES = [
   "official",
   "provider-claimed",
   "community",
   "registry-observed",
-]);
+] as const;
+export const AuthoritySchema = z.enum(AUTHORITY_VALUES);
 export type Authority = z.infer<typeof AuthoritySchema>;
 
-export const EndpointLayerSchema = z.enum([
+/** The vocabulary, exported as a tuple so every other schema that needs
+ * these values imports them instead of restating them (#9799). */
+export const ENDPOINT_LAYER_VALUES = [
   "bittensor-base",
   "subnet-app",
   "data-provider",
   "docs-provider",
-]);
+] as const;
+export const EndpointLayerSchema = z.enum(ENDPOINT_LAYER_VALUES);
 export type EndpointLayer = z.infer<typeof EndpointLayerSchema>;
 
-export const EndpointPublicationStateSchema = z.enum([
+/** The vocabulary, exported as a tuple so every other schema that needs
+ * these values imports them instead of restating them (#9799). */
+export const ENDPOINT_PUBLICATION_STATE_VALUES = [
   "candidate",
   "verified",
   "monitored",
   "pool-eligible",
   "disabled",
   "rejected",
-]);
+] as const;
+export const EndpointPublicationStateSchema = z.enum(
+  ENDPOINT_PUBLICATION_STATE_VALUES,
+);
 export type EndpointPublicationState = z.infer<
   typeof EndpointPublicationStateSchema
 >;
@@ -285,7 +303,7 @@ export const EndpointResourceSchema = z
     monitoring_policy: EndpointMonitoringPolicySchema,
     monitoring_status: z.enum(["monitored", "not_monitored"]),
     netuid: z.int().min(0),
-    network: z.enum(["finney", "test", "local"]).optional(),
+    network: BittensorNetworkSchema.optional(),
     observed_at: z.string().nullable(),
     operator: z.string(),
     pool_eligibility_reasons: z.array(z.string()).optional(),

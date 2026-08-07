@@ -36,23 +36,12 @@ import {
   SubnetEvidenceArtifactSchema,
 } from "../routes/candidates-evidence.ts";
 import { SubnetSurfacesArtifactSchema } from "../routes/endpoints-pools.ts";
+import {
+  CANDIDATE_STATE_VALUES,
+  SURFACE_KIND_VALUES,
+} from "../routes/subnet-detail.ts";
 
-const SURFACE_KINDS = [
-  "archive",
-  "dashboard",
-  "data-artifact",
-  "docs",
-  "example",
-  "openapi",
-  "repo-registry",
-  "sdk",
-  "source-repo",
-  "sse",
-  "subnet-api",
-  "subtensor-rpc",
-  "subtensor-wss",
-  "website",
-] as const;
+const SURFACE_KINDS = SURFACE_KIND_VALUES;
 
 export const GetSubnetCandidatesInputSchema = z
   .object({
@@ -68,14 +57,7 @@ export type GetSubnetCandidatesOutput = z.infer<
   typeof GetSubnetCandidatesOutputSchema
 >;
 
-const CANDIDATE_STATES = [
-  "schema-invalid",
-  "schema-valid",
-  "maintainer-review",
-  "verified",
-  "stale",
-  "rejected",
-] as const;
+const CANDIDATE_STATES = CANDIDATE_STATE_VALUES;
 const CONFIDENCE_LEVELS = ["low", "medium", "high"] as const;
 const CANDIDATES_SORT_FIELDS = [
   "confidence",

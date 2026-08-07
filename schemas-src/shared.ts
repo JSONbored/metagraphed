@@ -10,11 +10,14 @@
 // against real handler output — see tests/zod-schemas.test.ts.
 import { z } from "zod";
 
-export const CoverageLevelSchema = z.enum([
+/** The vocabulary, exported as a tuple so every other schema that needs
+ * these values imports them instead of restating them (#9799). */
+export const COVERAGE_LEVEL_VALUES = [
   "native-only",
   "manifested",
   "probed",
-]);
+] as const;
+export const CoverageLevelSchema = z.enum(COVERAGE_LEVEL_VALUES);
 export type CoverageLevel = z.infer<typeof CoverageLevelSchema>;
 
 // Chain network for the network-aware MCP tools (#8228). Same two values, and
@@ -36,14 +39,17 @@ export const McpNetworkSchema = z
   .meta({ examples: ["finney"] });
 export type McpNetwork = z.infer<typeof McpNetworkSchema>;
 
-export const CurationLevelSchema = z.enum([
+/** The vocabulary, exported as a tuple so every other schema that needs
+ * these values imports them instead of restating them (#9799). */
+export const CURATION_LEVEL_VALUES = [
   "native",
   "candidate-discovered",
   "community-seeded",
   "machine-verified",
   "maintainer-reviewed",
   "adapter-backed",
-]);
+] as const;
+export const CurationLevelSchema = z.enum(CURATION_LEVEL_VALUES);
 export type CurationLevel = z.infer<typeof CurationLevelSchema>;
 
 export const SubnetStatusSchema = z.enum(["active", "inactive", "unknown"]);
@@ -52,15 +58,21 @@ export type SubnetStatus = z.infer<typeof SubnetStatusSchema>;
 export const SubnetTypeSchema = z.enum(["root", "application"]);
 export type SubnetType = z.infer<typeof SubnetTypeSchema>;
 
-export const BittensorNetworkSchema = z.enum(["finney", "test", "local"]);
+/** The vocabulary, exported as a tuple so every other schema that needs
+ * these values imports them instead of restating them (#9799). */
+export const BITTENSOR_NETWORK_VALUES = ["finney", "test", "local"] as const;
+export const BittensorNetworkSchema = z.enum(BITTENSOR_NETWORK_VALUES);
 export type BittensorNetwork = z.infer<typeof BittensorNetworkSchema>;
 
-export const HealthStatusSchema = z.enum([
+/** The vocabulary, exported as a tuple so every other schema that needs
+ * these values imports them instead of restating them (#9799). */
+export const HEALTH_STATUS_VALUES = [
   "ok",
   "degraded",
   "failed",
   "unknown",
-]);
+] as const;
+export const HealthStatusSchema = z.enum(HEALTH_STATUS_VALUES);
 export type HealthStatus = z.infer<typeof HealthStatusSchema>;
 
 export const PartnershipTierSchema = z
