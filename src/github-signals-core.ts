@@ -248,10 +248,31 @@ export async function fetchRepoSignals(
     fetchReleases(owner, repo, options),
   ]);
   if (!metaRes.ok) {
+    // AGED AGAINST THIS RUN'S OWN TICK, not against whenever this particular
+    // repo happened to be reached (#9689). `capturedAt` is the run's tick time
+    // -- its own docstring above says it exists so this window "actually
+    // measures age" -- and captureGithubSignals already threads it into every
+    // call. Reading the global clock here instead meant two things:
+    //
+    //   1. Within one run, repos processed later were aged against a later
+    //      now. A repo sitting exactly on the 30-day boundary could be
+    //      retained or dropped depending on where it fell in the fan-out.
+    //   2. An injected clock was ignored at this one call site, which is what
+    //      made tests/github-signals-sync.test.ts time-dependent: it pins
+    //      `now: () => TICK_MS` and seeds captured_at relative to it, then had
+    //      the comparison silently read the real clock. The test would have
+    //      started failing ~30 days after TICK_MS.
+    //
+    // The `?? Date.now()` keeps the direct callers that pass no capturedAt
+    // (none in this repo today) on the previous behaviour rather than
+    // treating a missing tick as time zero.
+    const agedAt = options.capturedAt
+      ? Date.parse(options.capturedAt)
+      : Date.now();
     if (
       previousEntry &&
       previousEntry.captured_at &&
-      Date.now() - Date.parse(previousEntry.captured_at) <= RETENTION_MS
+      agedAt - Date.parse(previousEntry.captured_at) <= RETENTION_MS
     ) {
       return { ...previousEntry, owner, repo, unreachable: true };
     }

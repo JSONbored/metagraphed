@@ -1,0 +1,79 @@
+name: Check Clock Skew
+
+# Time bombs in the test suite, detonated on purpose (#9689).
+#
+# On 2026-08-07 three tests in tests/tao-usd-series.test.ts began failing and
+# would have failed every day after. Nothing about them had changed: the file
+# pinned an absolute `NOW`, seeded rows at `NOW - offset`, and asked a SERVED
+# handler -- which has no clock injection point -- to select them relative to
+# real Date.now(). Those drift apart one second per second, and once the gap
+# passed the route's 24h window every seeded row fell outside it. Main went red
+# for a reason no diff explained.
+#
+# That class is invisible to an ordinary run, because an ordinary run happens
+# today and today the calendar still cooperates. Running the suite in the
+# FUTURE is what makes the calendar stop cooperating on demand.
+#
+# The first pass of this found three more, on staggered timers — an analytics
+# fixture with one day left, a github-signals retention window with ~30, and a
+# self-health rollup with ~90. Each would have turned main red on a different
+# morning, one at a time, with nothing in the failing diff to explain it.
+#
+# (Prose here avoids the literal string "u"+"ses:" — validate-workflows.ts
+# scans the whole file for action refs, comments included, so a word ending in
+# it reads as an unpinned action.)
+#
+# WHY BOTH HORIZONS. 30d catches the near fuses while there is still time to
+# fix them calmly; 90d catches the long ones. They are separate jobs so the
+# summary says WHICH horizon broke -- "fails at 90d but not 30d" is the useful
+# half of the signal, and a single combined run would lose it.
+#
+# Reads nothing external and needs no secrets: it is the repo's own suite with
+# one environment variable set (tests/setup/clock-skew.ts, a no-op when unset).
+on:
+  schedule:
+    # Weekly. These fuses burn in days-to-months, so a daily run would spend CI
+    # minutes to learn the same thing seven times; the 30d horizon leaves ample
+    # margin at this cadence.
+    - cron: "23 5 * * 1"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-clock-skew
+  cancel-in-progress: false
+
+jobs:
+  skew:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      # Both horizons always report. Without this, a 30d failure would cancel
+      # the 90d job and hide whether the fuse is near or far.
+      fail-fast: false
+      matrix:
+        days: [30, 90]
+    name: suite at +${{ matrix.days }}d
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Run the suite as if it were +${{ matrix.days }} days from now
+        env:
+          TEST_CLOCK_SKEW_DAYS: ${{ matrix.days }}
+        run: npx vitest run tests/

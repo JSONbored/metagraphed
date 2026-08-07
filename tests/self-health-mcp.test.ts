@@ -362,9 +362,19 @@ describe("self-health-mcp", () => {
       // The live regression: REST returned seven days per component while this loader
       // returned days: [] and uptime_90d: null for all three, because #9153 gave the
       // cold tier to the route and not to us.
+      // DAYS RELATIVE TO NOW (#9689). The cold-tier loader filters to a
+      // trailing 90 calendar days off `Date.now()`, and nothing threads a
+      // clock into loadSelfHealth, so pinned days slide out of the window as
+      // the calendar moves: "2026-08-01"/"2026-08-02" would have started
+      // returning days: [] around 2026-10-30 and failed every run after.
+      // What this test asserts is PARITY -- that the rollup comes back at all
+      // -- not which dates it carries, so anchoring them keeps the assertion
+      // and drops the expiry.
+      const asDay = (daysAgo: number) =>
+        new Date(Date.now() - daysAgo * 86_400_000).toISOString().slice(0, 10);
       const { env, restore } = coldTierEnv([
-        { day: "2026-08-01", component: "api", checks: 1440, ok_count: 1439 },
-        { day: "2026-08-02", component: "api", checks: 482, ok_count: 482 },
+        { day: asDay(2), component: "api", checks: 1440, ok_count: 1439 },
+        { day: asDay(1), component: "api", checks: 482, ok_count: 482 },
       ]);
       try {
         const result = (await loadSelfHealth({
