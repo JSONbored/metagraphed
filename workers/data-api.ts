@@ -420,6 +420,7 @@ import {
   enqueueSyncBatch,
   packMultiFamilyMessage,
   type SyncBatchFamilyWriters,
+  syncBatchRowCount,
   syncLaneUsesQueue,
   validSyncBatchMessage,
   writeSyncBatch,
@@ -7291,7 +7292,12 @@ export default {
     ctx: ExecutionContext,
   ): Promise<void> {
     const { valid, invalid } = classifySyncBatch(batch.messages);
-    const rows = valid.reduce((n: number, m) => n + m.rows.length, 0);
+    // syncBatchRowCount, not `m.rows.length`: a multi-family message carries
+    // `families` and no `rows` at all, so the direct read threw a TypeError HERE
+    // -- above the per-message try/catch below -- and failed the whole batch,
+    // every co-batched lane with it, five times over, into the dead-letter
+    // queue. A log line is the last thing that should be able to do that.
+    const rows = valid.reduce((n: number, m) => n + syncBatchRowCount(m), 0);
     const lanes = [...new Set(valid.map((m) => m.lane))].sort().join(",");
     console.log(
       `sync-batches: ${batch.messages.length} message(s), ${valid.length} valid ` +

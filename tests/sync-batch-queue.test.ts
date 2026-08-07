@@ -478,6 +478,19 @@ describe("packSyncBatchMessages", () => {
     assert.deepEqual(rebuilt[0], rows[0]);
   });
 
+  test("a message with no rows reads as no rows, not as a crash", () => {
+    // A multi-family message has `families` and no `rows`, and never reaches
+    // here -- writeSyncBatch hands it to the family writer first. The fallback
+    // exists because the SAME missing field, read directly, crashed the
+    // consumer's batch log (metagraphed-infra#359): every read of `rows` now
+    // goes through a helper that survives its absence, and empty is the
+    // harmless answer -- a writer given nothing writes nothing.
+    assert.deepEqual(
+      syncBatchRows({ lane: "chain-detail", captured_at: 1, families: {} }),
+      [],
+    );
+  });
+
   test("a hoisted key is refused if the rows still carry it", () => {
     // Two copies of one value can disagree, and the consumer would have to pick.
     assert.equal(
