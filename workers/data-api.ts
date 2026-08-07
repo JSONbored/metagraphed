@@ -6065,6 +6065,19 @@ export const NEON_READ_ROUTE_TABLES: readonly {
       "validator_nominator_counts",
     ],
   },
+  // Cut over once the two stores agreed on BOTH the rows and the ids
+  // (#9954): 137/137 and 531/531, with `id` copied from D1 so `MAX(id)` picks
+  // the same latest revision and the (observed_at, id) cursor means the same
+  // thing on either side. Each route reads ONE table -- no side loader to drag
+  // along.
+  {
+    pattern: /^\/api\/v1\/subnets\/\d+\/hyperparameters\/history$/,
+    tables: ["subnet_hyperparams_history"],
+  },
+  {
+    pattern: /^\/api\/v1\/accounts\/[^/]+\/identity-history$/,
+    tables: ["account_identity_history"],
+  },
   {
     pattern: /^\/api\/v1\/subnets\/\d+\/concentration\/history$/,
     tables: [
