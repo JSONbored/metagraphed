@@ -1576,6 +1576,25 @@ export class ChainFirehoseHub implements DurableObject {
     } else {
       this.wsClientsByIp.set(ip, count - 1);
     }
+    // #9900 follow-up: the WS transport had no usage events at all, while SSE
+    // has had `sse-open`/`sse-close` since #8364 -- so "is anyone consuming the
+    // firehose" was answerable for one transport and silent for the other,
+    // which reads as "nobody uses WS" rather than "we never asked".
+    //
+    // Emitted from HERE, after the decrement guards above, for the same reason
+    // sse-close is emitted after its delete guard: this method is reached from
+    // both webSocketClose and webSocketError, and an already-released socket
+    // returns early above, so one disconnect counts once.
+    //
+    // THERE IS DELIBERATELY NO MATCHING `ws-open`, and that asymmetry is a
+    // constraint, not an oversight. The accept path (handleSubscribe's
+    // upgrade branch) is inside this file's `/* v8 ignore */` block because
+    // WebSocketPair/state.acceptWebSocket have no Node equivalent and the
+    // plain-vitest harness cannot drive them -- and codecov counts
+    // v8-ignored lines against the 99%/0%-threshold patch gate, so an emit
+    // there cannot land green. Closing that half needs a workerd-backed
+    // harness for this DO, not another annotation.
+    this.emitTelemetry("ws-close", true);
   }
 
   // Bounds-check helper for the hibernation-survival bug described in

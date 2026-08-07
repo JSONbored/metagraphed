@@ -2384,3 +2384,98 @@ test("#9440: the guard's state does not leak across test files", () => {
   resetModuleState();
   assert.equal(shouldEmitAlerterUnreachable(1), true);
 });
+
+// --- #9900 follow-up: the WS transport emits a disconnect event too ---------
+//
+// SSE has had sse-open/sse-close since #8997; WS had neither, so "is anyone
+// consuming the firehose" was answerable for one transport and silent for the
+// other. The RELEASE half is testable here for the same reason the per-IP
+// quota tests above are — webSocketClose/webSocketError run under plain Node
+// with a stubbed `ws`. The ACCEPT half stays untested (and therefore
+// un-emitted); see releaseWsIpSlot's own comment in the source.
+
+test("#9900: a WS disconnect emits one ws-close event", () => {
+  const cap = captureFirehoseTelemetry();
+  try {
+    const hub = new ChainFirehoseHub(
+      stubState(),
+      mockEnv(FIREHOSE_TELEMETRY_ENV),
+    );
+    hub.wsClientsByIp.set("203.0.113.9", 1);
+    hub.webSocketClose(
+      {
+        deserializeAttachment: () => ({ ip: "203.0.113.9" }),
+        close: () => {},
+      } as unknown as WebSocket,
+      1000,
+      "bye",
+    );
+    assert.deepEqual(cap.routes(), ["chain-firehose-hub:ws-close"]);
+  } finally {
+    cap.restore();
+  }
+});
+
+test("#9900: webSocketError also emits ws-close, so an errored socket is not a silent disconnect", () => {
+  const cap = captureFirehoseTelemetry();
+  try {
+    const hub = new ChainFirehoseHub(
+      stubState(),
+      mockEnv(FIREHOSE_TELEMETRY_ENV),
+    );
+    hub.wsClientsByIp.set("198.51.100.4", 1);
+    hub.webSocketError(
+      {
+        deserializeAttachment: () => ({ ip: "198.51.100.4" }),
+      } as unknown as WebSocket,
+      new Error("boom"),
+    );
+    assert.deepEqual(cap.routes(), ["chain-firehose-hub:ws-close"]);
+  } finally {
+    cap.restore();
+  }
+});
+
+// Same guarantee removeSseClient's own test asserts: releaseWsIpSlot is
+// reached from BOTH webSocketClose and webSocketError, and its early returns
+// mean an already-released socket must not emit a second disconnect.
+test("#9900: a repeated release counts one disconnect, not several", () => {
+  const cap = captureFirehoseTelemetry();
+  try {
+    const hub = new ChainFirehoseHub(
+      stubState(),
+      mockEnv(FIREHOSE_TELEMETRY_ENV),
+    );
+    hub.wsClientsByIp.set("203.0.113.9", 1);
+    const ws = {
+      deserializeAttachment: () => ({ ip: "203.0.113.9" }),
+      close: () => {},
+    } as unknown as WebSocket;
+    hub.webSocketClose(ws, 1000, "bye");
+    hub.webSocketClose(ws, 1000, "bye");
+    hub.webSocketClose(ws, 1000, "bye");
+    assert.equal(
+      cap.routes().filter((r) => r === "chain-firehose-hub:ws-close").length,
+      1,
+    );
+  } finally {
+    cap.restore();
+  }
+});
+
+test("#9900: a release with no ip in the attachment emits nothing", () => {
+  const cap = captureFirehoseTelemetry();
+  try {
+    const hub = new ChainFirehoseHub(
+      stubState(),
+      mockEnv(FIREHOSE_TELEMETRY_ENV),
+    );
+    hub.wsClientsByIp.set("203.0.113.9", 1);
+    hub.releaseWsIpSlot({
+      deserializeAttachment: () => ({ topics: null }),
+    } as unknown as WebSocket);
+    assert.deepEqual(cap.routes(), []);
+  } finally {
+    cap.restore();
+  }
+});
