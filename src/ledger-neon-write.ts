@@ -80,9 +80,27 @@ export const LEDGER_MIRROR_PLANS: Readonly<Record<string, LedgerPlan>> = {
     //
     // Postgres spelling of the same EXISTS the D1 writer passes to
     // chunkStatements; `src` is the alias buildPgUpsert gives the VALUES list.
+    //
+    // `::int` IS LOad BEARING, and its absence broke this lane outright. A
+    // bare parameter inside a `VALUES` list has no type context, so Postgres
+    // resolves every one of `src`'s columns to TEXT. `np.hotkey = src.hotkey`
+    // is text = text and passes; `np.netuid = src.netuid` is `integer = text`
+    // and there is no such operator, so the whole statement throws before a
+    // single row is written.
+    //
+    // Measured, not inferred: lane_health has `neon:hotkey-alpha` reporting
+    // `0 row(s) written before failure: operator does not exist: integer =
+    // text` on every pass since this filter shipped. The lane did not degrade,
+    // it stopped -- and `neon-parity` read the resulting divergence as the
+    // KNOWN one this filter was added to fix, which is why it looked like
+    // progress.
+    //
+    // Cast on the src side rather than the column side: `np.netuid::text`
+    // would also typecheck and would silently discard the index on
+    // nominator_positions.
     filter:
       "EXISTS (SELECT 1 FROM nominator_positions np" +
-      " WHERE np.hotkey = src.hotkey AND np.netuid = src.netuid)",
+      " WHERE np.hotkey = src.hotkey AND np.netuid = src.netuid::int)",
   },
   "validator-nominator-counts": {
     table: "validator_nominator_counts",

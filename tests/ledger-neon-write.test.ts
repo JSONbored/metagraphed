@@ -227,6 +227,36 @@ describe("the hotkey-alpha filter (#9832)", () => {
     assert.match(plan.filter!, /np\.netuid = src\.netuid/);
   });
 
+  test("every non-text src column in the predicate is CAST", () => {
+    // The bug this exists to stop, which it did not stop the first time. A
+    // bare parameter inside a `VALUES` list has no type context, so Postgres
+    // resolves EVERY column of `src` to text. `np.hotkey = src.hotkey` is
+    // text = text and passes; `np.netuid = src.netuid` is `integer = text`,
+    // for which there is no operator, and the whole statement throws before a
+    // single row is written.
+    //
+    // Measured against production 2026-08-07: lane_health had
+    // `neon:hotkey-alpha` reporting `0 row(s) written before failure:
+    // operator does not exist: integer = text` on every pass since the filter
+    // shipped. The lane did not degrade, it STOPPED -- and neon-parity read
+    // the resulting divergence as the known one this filter was added to fix,
+    // which is why it looked like progress.
+    //
+    // Confirmed both directions against real Postgres: the predicate without
+    // `::int` raises exactly that error, and with it returns the row.
+    const plan = LEDGER_MIRROR_PLANS["hotkey-alpha"]!;
+    // `netuid` is INTEGER on both sides everywhere in this schema.
+    assert.match(
+      plan.filter!,
+      /src\.netuid::int/,
+      "src.netuid is compared to an integer column and must be cast; " +
+        "without it the statement throws and the lane writes nothing",
+    );
+    // Cast on the SRC side, never the column side: `np.netuid::text` also
+    // typechecks and silently discards the index on nominator_positions.
+    assert.doesNotMatch(plan.filter!, /np\.\w+::/);
+  });
+
   test("the predicate names only columns the plan actually sends", () => {
     // `src` is the VALUES alias, so a predicate referring to a column outside
     // the plan's list is a runtime error on every write.
