@@ -26,7 +26,45 @@
 // wait. Leaking it instead would exhaust the origin's connection limit under
 // load -- the one way to turn a pooled setup back into an unpooled one.
 
-import { Client } from "pg";
+import { Client, types } from "pg";
+
+/** Postgres OID for `int8` / BIGINT. */
+const INT8_OID = 20;
+
+/**
+ * BIGINT comes back as a JS number, not a string.
+ *
+ * WHY THIS IS NOT A PREFERENCE. node-postgres returns `int8` as a STRING by
+ * default, because int8 spans a wider range than a JS number can hold exactly.
+ * D1 returns the same columns as numbers. So without this, moving a route
+ * between the two stores changes the TYPE of every epoch-ms and counter field
+ * in its response -- `created_at: 1785176950652` becomes
+ * `created_at: "1785176950652"` -- with no error anywhere, and a consumer
+ * doing arithmetic or a `>` comparison silently gets a different answer.
+ *
+ * Confirmed against production 2026-08-07, which is what makes this a fix and
+ * not a precaution: `SELECT registered_at_block FROM neurons` over this driver
+ * returns `"1404439"`, while the live `/subnets/1/metagraph` -- a route
+ * already served from Neon -- returns `8692121`. The two agree only because
+ * that handler happens to coerce. Every handler that does not is one field
+ * away from the divergence.
+ *
+ * THE RANGE CHECK IS THE POINT. Silently rounding a value past 2^53 would be a
+ * worse bug than the one this fixes, so anything outside the exactly-
+ * representable range stays a string -- a caller that sees a string knows it
+ * got something a number could not hold. Nothing in this schema is close:
+ * every int8 column here is epoch-milliseconds (~1.79e12) or a row counter,
+ * against a safe ceiling of ~9.01e15, so the guard is a backstop rather than a
+ * live path.
+ *
+ * Set on the module rather than per-connection because both callers of this
+ * file build their Client here, and a parser that applied to only some
+ * connections would reintroduce exactly the inconsistency it removes.
+ */
+types.setTypeParser(INT8_OID, (value: string) => {
+  const asNumber = Number(value);
+  return Number.isSafeInteger(asNumber) ? asNumber : value;
+});
 
 export type PgSqlRows = Record<string, unknown>[];
 
