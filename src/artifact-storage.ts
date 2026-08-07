@@ -319,6 +319,13 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   /^ai\/ask\.json$/,
   /^ai\/search-semantic\.json$/,
   /^surfaces\/[^/]+\/verify\.json$/,
+  // The two per-CALLER record routes documented by #9967: one webhook
+  // subscription and one alert trigger. Same argument as the three above, and
+  // a stronger one -- these are not merely request-specific, they are
+  // caller-specific and token-authenticated. A committed copy would be
+  // someone else's subscription baked into a public file.
+  /^webhooks\/subscriptions\/[^/]+\.json$/,
+  /^alerts\/triggers\/[^/]+\.json$/,
   // Network-wide rolling 24h buy/sell alpha-volume leaderboard, computed live from the
   // account_events stake stream at /api/v1/chain/alpha-volume — never a file.
   /^chain\/alpha-volume\.json$/,
