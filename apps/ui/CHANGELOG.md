@@ -9,6 +9,47 @@ versioning and this changelog are managed by `release-please` from
 [Conventional Commits](https://www.conventionalcommits.org/) touching
 `apps/ui/**`, independent of the backend's release cadence.
 
+## [0.17.0](https://github.com/JSONbored/metagraphed/compare/ui-v0.16.0...ui-v0.17.0) (2026-08-07)
+
+
+### Features
+
+* **api:** add a positions basis to validator nominators, so dormant delegators appear ([#9618](https://github.com/JSONbored/metagraphed/issues/9618)) ([990ab94](https://github.com/JSONbored/metagraphed/commit/990ab94d15354af014c842e65b24043ff8609a94))
+* **api:** keep the REASON a probe failed, not just the rate ([#9624](https://github.com/JSONbored/metagraphed/issues/9624)) ([27d1925](https://github.com/JSONbored/metagraphed/commit/27d1925aa1c3a7f87accdd2250c0c81d49043d90)), closes [#9622](https://github.com/JSONbored/metagraphed/issues/9622)
+* **api:** publish how long a slot survived, from data already paired ([#9745](https://github.com/JSONbored/metagraphed/issues/9745)) ([2efb644](https://github.com/JSONbored/metagraphed/commit/2efb6445424fe5ef0e9896e174dff3445fd882bb)), closes [#9742](https://github.com/JSONbored/metagraphed/issues/9742)
+* **api:** rank every subnet by alpha-ownership concentration ([#9608](https://github.com/JSONbored/metagraphed/issues/9608)) ([6287517](https://github.com/JSONbored/metagraphed/commit/6287517889654a630d910092017336652551fd2c))
+* **api:** rank every subnet by how widely its rewards are spread ([#9719](https://github.com/JSONbored/metagraphed/issues/9719)) ([1e0037d](https://github.com/JSONbored/metagraphed/commit/1e0037d37f990eee2eb87122cf9c97aed80c3f7b)), closes [#9717](https://github.com/JSONbored/metagraphed/issues/9717)
+* **api:** resolve what the user pasted, so the explorer finally has search ([#9672](https://github.com/JSONbored/metagraphed/issues/9672)) ([ebc781b](https://github.com/JSONbored/metagraphed/commit/ebc781bb3d1f2d6b4c386daf01d1f000843f1970))
+* **api:** serve a per-subnet alpha holder leaderboard ([#9568](https://github.com/JSONbored/metagraphed/issues/9568)) ([86a28c2](https://github.com/JSONbored/metagraphed/commit/86a28c24ad621c2661e82166bff0de0b2cfa20ba)), closes [#9557](https://github.com/JSONbored/metagraphed/issues/9557)
+* **api:** serve indexer lag, computed from a column nothing had ever read ([#9621](https://github.com/JSONbored/metagraphed/issues/9621)) ([f96bc00](https://github.com/JSONbored/metagraphed/commit/f96bc004f1b5c242e8ae0d0d30db3e1aca168c58)), closes [#9620](https://github.com/JSONbored/metagraphed/issues/9620)
+* **api:** serve the emission pipeline as a series, not just a snapshot ([#9626](https://github.com/JSONbored/metagraphed/issues/9626)) ([69c1e11](https://github.com/JSONbored/metagraphed/commit/69c1e11fd3d80f1cc41095748aa4586ab5735447)), closes [#9625](https://github.com/JSONbored/metagraphed/issues/9625)
+* **api:** serve the emission-gate change log, written by a differ and read by nothing ([#9616](https://github.com/JSONbored/metagraphed/issues/9616)) ([a7f2dd8](https://github.com/JSONbored/metagraphed/commit/a7f2dd87aef0f719b1c27815aacedf798bbaa452)), closes [#9615](https://github.com/JSONbored/metagraphed/issues/9615)
+* **api:** serve the network-wide concentration series, computed by the serving builder ([#9631](https://github.com/JSONbored/metagraphed/issues/9631)) ([460acf2](https://github.com/JSONbored/metagraphed/commit/460acf26e435f8c118dcbce306462d26dfc0667d)), closes [#9628](https://github.com/JSONbored/metagraphed/issues/9628)
+* **api:** serve the surface audit trail, and record which surface it is about ([#9613](https://github.com/JSONbored/metagraphed/issues/9613)) ([137e652](https://github.com/JSONbored/metagraphed/commit/137e652cd3ff13d71e1e190014a22016f99dacef)), closes [#9612](https://github.com/JSONbored/metagraphed/issues/9612)
+* **api:** serve the TAO/USD index, captured every minute and read by nothing ([#9610](https://github.com/JSONbored/metagraphed/issues/9610)) ([78025c6](https://github.com/JSONbored/metagraphed/commit/78025c6f759986b655a01638a36cf26a55fddefe)), closes [#9609](https://github.com/JSONbored/metagraphed/issues/9609)
+* **registry:** flag surfaces whose URL names a moving target ([#9777](https://github.com/JSONbored/metagraphed/issues/9777)) ([4dd3cb7](https://github.com/JSONbored/metagraphed/commit/4dd3cb740e425c5ef32009b85d32240fb62a26bb)), closes [#9780](https://github.com/JSONbored/metagraphed/issues/9780)
+* **ui:** add the search-resolve query and types ([#9675](https://github.com/JSONbored/metagraphed/issues/9675)) ([a6fba17](https://github.com/JSONbored/metagraphed/commit/a6fba17d3997b90e67e04c5c0d46126729ba68eb))
+* **ui:** show where a pasted identifier leads, above corpus results ([#9679](https://github.com/JSONbored/metagraphed/issues/9679)) ([f708ff4](https://github.com/JSONbored/metagraphed/commit/f708ff4065ec244f3ffc76dc460bbf11164ecaef))
+* **ui:** surface the alpha holder leaderboard on the subnet page ([#9598](https://github.com/JSONbored/metagraphed/issues/9598)) ([53fe066](https://github.com/JSONbored/metagraphed/commit/53fe0663de1a560170afb9ac43d5ec934ecc8b0b)), closes [#9597](https://github.com/JSONbored/metagraphed/issues/9597)
+* **ui:** verify the checksum in the search boxes, and recognise what they missed ([#9755](https://github.com/JSONbored/metagraphed/issues/9755)) ([37e10a7](https://github.com/JSONbored/metagraphed/commit/37e10a73ecf742759222a9a57a4353b4edf63794))
+
+
+### Bug Fixes
+
+* **api:** declare the 65 registry routes that testnet answers 404 for ([#9764](https://github.com/JSONbored/metagraphed/issues/9764)) ([89dbee5](https://github.com/JSONbored/metagraphed/commit/89dbee5114e02bb007a436b2ee9ae8247606287a))
+* **api:** name the store that actually answers, not the retired Postgres tier ([#9573](https://github.com/JSONbored/metagraphed/issues/9573)) ([da48c0f](https://github.com/JSONbored/metagraphed/commit/da48c0f664037590171cc226e617f398c3be254b)), closes [#9571](https://github.com/JSONbored/metagraphed/issues/9571)
+* **registry:** fail when the chain capture goes stale, with the command to fix it ([#9778](https://github.com/JSONbored/metagraphed/issues/9778)) ([08f3418](https://github.com/JSONbored/metagraphed/commit/08f34186cb4e63d191d0cfe5207417be46cf87f8)), closes [#9780](https://github.com/JSONbored/metagraphed/issues/9780)
+* **registry:** SN104 is Masx.ai, not a for-sale notice ([#9780](https://github.com/JSONbored/metagraphed/issues/9780)) ([c65c391](https://github.com/JSONbored/metagraphed/commit/c65c391e545faab26da66ec899415a0d21f2bbf9))
+* **ui:** make the mobile holders list read as a leaderboard ([#9602](https://github.com/JSONbored/metagraphed/issues/9602)) ([4736215](https://github.com/JSONbored/metagraphed/commit/4736215917eb4fe546354a2f04cb4e8dd1a29255)), closes [#9601](https://github.com/JSONbored/metagraphed/issues/9601)
+* **ui:** pin the compatibility date, which was floating to today ([#9726](https://github.com/JSONbored/metagraphed/issues/9726)) ([182e4d9](https://github.com/JSONbored/metagraphed/commit/182e4d9e814351150cefe20f1f3ff6c83a83eec4)), closes [#9725](https://github.com/JSONbored/metagraphed/issues/9725)
+* **ui:** regenerate the subnet catalog, which went stale on main ([#9756](https://github.com/JSONbored/metagraphed/issues/9756)) ([7ede386](https://github.com/JSONbored/metagraphed/commit/7ede3866bd2a1b98d56edddd853da3c7bbc98cf9))
+* **ui:** take a pasted EVM address to the account it maps to ([#9750](https://github.com/JSONbored/metagraphed/issues/9750)) ([102abf1](https://github.com/JSONbored/metagraphed/commit/102abf1f483b57862a793591bf8d802aa8d66bad))
+
+
+### Documentation
+
+* **ui:** the deep-history tier is the lakehouse, not Postgres ([#9574](https://github.com/JSONbored/metagraphed/issues/9574)) ([1a24a9f](https://github.com/JSONbored/metagraphed/commit/1a24a9fb516977c13d7f85eae4701578e90ef8ca))
+
 ## [0.16.0](https://github.com/JSONbored/metagraphed/compare/ui-v0.15.0...ui-v0.16.0) (2026-08-05)
 
 
