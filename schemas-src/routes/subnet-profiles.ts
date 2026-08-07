@@ -73,7 +73,53 @@ const SchemaIndexEntrySchema = z
     path: z.string().nullable().optional(),
     previous_hash: z.string().nullable().optional(),
     schema_url: z.url().nullable(),
-    snapshot: z.record(z.string(), z.unknown()).optional(),
+    // #9800. Was `z.record(z.string(), z.unknown())` -- a record whose value
+    // schema is `unknown`, which declares no more than a bare open object does.
+    // This is the captured OpenAPI snapshot's own metadata: what was fetched,
+    // when, from where, and whether it has drifted since. Verified field by
+    // field against a live list_schemas response.
+    snapshot: z
+      .object({
+        surface_id: z.string().nullable().optional(),
+        surface_url: z.string().nullable().optional(),
+        schema_url: z.string().nullable().optional(),
+        netuid: z.int().min(0).nullable().optional(),
+        subnet_name: z.string().nullable().optional(),
+        subnet_slug: z.string().nullable().optional(),
+        title: z.string().nullable().optional(),
+        version: z.string().nullable().optional(),
+        openapi_version: z.string().nullable().optional(),
+        path_count: z.int().min(0).optional(),
+        component_schema_count: z.int().min(0).optional(),
+        server_count: z.int().min(0).optional(),
+        tag_count: z.int().min(0).optional(),
+        auth_required: z.boolean().optional(),
+        // An OBJECT, not a string -- 30 of 65 rows carry one and 29 are null,
+        // so a single-row sample reads as "always null" (#9800). It describes
+        // HOW the surface authenticates: which scheme, in which header, and the
+        // shape of the value. `value_format` is a placeholder like `<api-key>`,
+        // never a credential.
+        auth_detail: z
+          .object({
+            scheme: z.string().nullable().optional(),
+            location: z.string().nullable().optional(),
+            name: z.string().nullable().optional(),
+            value_format: z.string().nullable().optional(),
+          })
+          .passthrough()
+          .nullable()
+          .optional(),
+        auth_schemes: z.array(z.string()).optional(),
+        hash: z.string().nullable().optional(),
+        previous_hash: z.string().nullable().optional(),
+        drift_status: z.string().nullable().optional(),
+        observed_at: z.string().nullable().optional(),
+        generated_at: z.string().nullable().optional(),
+        contract_version: z.string().nullable().optional(),
+        schema_version: z.int().optional(),
+      })
+      .passthrough()
+      .optional(),
     status: z.enum([
       "captured",
       "error",

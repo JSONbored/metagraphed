@@ -5417,6 +5417,19 @@ export interface components {
                 [key: string]: unknown;
             })[];
             blocker_summary?: {
+                by_code?: {
+                    [key: string]: number;
+                };
+                by_level?: {
+                    [key: string]: number;
+                };
+                by_severity?: {
+                    [key: string]: number;
+                };
+                by_status?: {
+                    [key: string]: number;
+                };
+            } & {
                 [key: string]: unknown;
             };
             callable_service_count?: number;
@@ -5861,14 +5874,17 @@ export interface components {
             }[];
             artifact_count: number;
             artifact_size_bytes: number;
-            artifacts?: {
+            artifacts?: ({
+                path: string;
+                sha256?: string | null;
+                size_bytes?: number;
+                storage_tier?: string | null;
+            } & {
                 [key: string]: unknown;
-            }[];
+            })[];
             candidate_count?: number;
             contract_version?: string;
-            coverage?: {
-                [key: string]: unknown;
-            };
+            coverage?: components["schemas"]["CoverageArtifact"];
             endpoint_count?: number;
             full_artifact_count?: number;
             full_artifact_size_bytes?: number;
@@ -7005,9 +7021,16 @@ export interface components {
             schema_version: 1;
             source: {
                 candidates: string;
-                native: string | {
+                native: string | ({
+                    identity_storage?: string | null;
+                    kind?: string | null;
+                    method?: string | null;
+                    package?: string | null;
+                    rpc_family?: string | null;
+                    version?: string | null;
+                } & {
                     [key: string]: unknown;
-                };
+                });
                 overlays: string;
             };
             surface_count: number;
@@ -8188,6 +8211,11 @@ export interface components {
             contract_version?: string;
             generated_at?: string | null;
             global: {
+                status_counts?: {
+                    [key: string]: number;
+                };
+                surface_count?: number;
+            } & {
                 [key: string]: unknown;
             };
             health_source?: string;
@@ -8732,14 +8760,45 @@ export interface components {
             } & {
                 [key: string]: unknown;
             };
-            coverage?: {
+            coverage?: ({
+                average_score?: number;
+                dimension_coverage?: {
+                    [key: string]: {
+                        [key: string]: unknown;
+                    };
+                };
+                fully_complete_count?: number;
+                fully_complete_pct?: number;
+                median_score?: number;
+                methodology?: string;
+                score_distribution?: {
+                    [key: string]: number;
+                };
+                scored_subnet_count?: number;
+            } & {
                 [key: string]: unknown;
-            } | null;
+            }) | null;
             curation_level_counts?: components["schemas"]["CountMap"];
             generated_at: string;
             notes?: string | string[];
             profile_level_counts?: components["schemas"]["CountMap"];
             recent_changes?: {
+                artifacts?: {
+                    added?: number;
+                    modified?: number;
+                    removed?: number;
+                } & {
+                    [key: string]: unknown;
+                };
+                generated_at?: string | null;
+                subnets?: {
+                    added?: number;
+                    removed?: number;
+                    renamed?: number;
+                } & {
+                    [key: string]: unknown;
+                };
+            } & {
                 [key: string]: unknown;
             };
             /** @constant */
@@ -9437,6 +9496,37 @@ export interface components {
                 previous_hash?: string | null;
                 schema_url: string | null;
                 snapshot?: {
+                    auth_detail?: ({
+                        location?: string | null;
+                        name?: string | null;
+                        scheme?: string | null;
+                        value_format?: string | null;
+                    } & {
+                        [key: string]: unknown;
+                    }) | null;
+                    auth_required?: boolean;
+                    auth_schemes?: string[];
+                    component_schema_count?: number;
+                    contract_version?: string | null;
+                    drift_status?: string | null;
+                    generated_at?: string | null;
+                    hash?: string | null;
+                    netuid?: number | null;
+                    observed_at?: string | null;
+                    openapi_version?: string | null;
+                    path_count?: number;
+                    previous_hash?: string | null;
+                    schema_url?: string | null;
+                    schema_version?: number;
+                    server_count?: number;
+                    subnet_name?: string | null;
+                    subnet_slug?: string | null;
+                    surface_id?: string | null;
+                    surface_url?: string | null;
+                    tag_count?: number;
+                    title?: string | null;
+                    version?: string | null;
+                } & {
                     [key: string]: unknown;
                 };
                 /** @enum {string} */
@@ -9934,9 +10024,13 @@ export interface components {
             github_unreachable?: boolean;
             /** @enum {string} */
             lifecycle?: "active" | "deprecated" | "parked" | "pending";
-            links: {
+            links: ({
+                label: string;
+                source_url?: string | null;
+                url: string;
+            } & {
                 [key: string]: unknown;
-            }[];
+            })[];
             logo_url?: string | null;
             mechanism_count?: number;
             name: string;
@@ -9951,6 +10045,23 @@ export interface components {
             previously_known_as?: string[];
             probed_surface_count?: number;
             provenance: {
+                existence?: {
+                    authority?: string | null;
+                    captured_at?: string | null;
+                    method?: string | null;
+                    network?: string | null;
+                    source_kind?: string | null;
+                } & {
+                    [key: string]: unknown;
+                };
+                identity?: {
+                    display_name_source?: string | null;
+                    native_name_quality?: string | null;
+                } & {
+                    [key: string]: unknown;
+                };
+                interface_metadata?: string | null;
+            } & {
                 [key: string]: unknown;
             };
             registered_at_block?: number;
@@ -17024,7 +17135,10 @@ export interface operations {
                      *           "github_unreachable": false,
                      *           "lifecycle": "active",
                      *           "links": [
-                     *             {}
+                     *             {
+                     *               "label": "example",
+                     *               "url": "https://api.metagraph.sh/example"
+                     *             }
                      *           ],
                      *           "logo_url": "https://api.metagraph.sh/example",
                      *           "mechanism_count": 1,
@@ -21147,7 +21261,10 @@ export interface operations {
                      *           }
                      *         ],
                      *         "blocker_summary": {
-                     *           "example": null
+                     *           "by_code": {},
+                     *           "by_level": {},
+                     *           "by_severity": {},
+                     *           "by_status": {}
                      *         },
                      *         "callable_service_count": 1,
                      *         "contract_version": "2026-06-29.1",
@@ -22420,12 +22537,39 @@ export interface operations {
                      *         "artifact_count": 1,
                      *         "artifact_size_bytes": 1,
                      *         "artifacts": [
-                     *           {}
+                     *           {
+                     *             "path": "example"
+                     *           }
                      *         ],
                      *         "candidate_count": 1,
                      *         "contract_version": "2026-06-29.1",
                      *         "coverage": {
-                     *           "example": null
+                     *           "application_subnet_count": 1,
+                     *           "candidate_count": 1,
+                     *           "candidate_subnet_count": 1,
+                     *           "chain_subnet_count": 1,
+                     *           "completeness": {},
+                     *           "contract_version": "2026-06-29.1",
+                     *           "curated_overlay_count": 1,
+                     *           "curation_level_counts": {},
+                     *           "generated_at": "2026-06-01T00:00:00.000Z",
+                     *           "manifested_count": 1,
+                     *           "native_only_count": 1,
+                     *           "native_only_with_candidates": 1,
+                     *           "native_only_without_candidates": 1,
+                     *           "native_snapshot_captured_at": "2026-06-01T00:00:00.000Z",
+                     *           "network": "finney",
+                     *           "notes": "Example description.",
+                     *           "probed_count": 1,
+                     *           "probed_surface_count": 1,
+                     *           "root_subnet_count": 1,
+                     *           "schema_version": 1,
+                     *           "source": {
+                     *             "candidates": "example",
+                     *             "native": "example",
+                     *             "overlays": "example"
+                     *           },
+                     *           "surface_count": 1
                      *         },
                      *         "endpoint_count": 1,
                      *         "full_artifact_count": 1,
@@ -31766,7 +31910,8 @@ export interface operations {
                      *         "contract_version": "2026-06-29.1",
                      *         "generated_at": "2026-06-01T00:00:00.000Z",
                      *         "global": {
-                     *           "example": null
+                     *           "status_counts": {},
+                     *           "surface_count": 1
                      *         },
                      *         "health_source": "probe-derived",
                      *         "operational_observed_at": "2026-06-01T00:00:00.000Z",
@@ -33992,7 +34137,14 @@ export interface operations {
                      *           "surfaces": 1
                      *         },
                      *         "coverage": {
-                     *           "example": null
+                     *           "average_score": 100,
+                     *           "dimension_coverage": {},
+                     *           "fully_complete_count": 1,
+                     *           "fully_complete_pct": 1,
+                     *           "median_score": 100,
+                     *           "methodology": "GET",
+                     *           "score_distribution": {},
+                     *           "scored_subnet_count": 1
                      *         },
                      *         "curation_level_counts": {
                      *           "example": 1
@@ -34003,7 +34155,9 @@ export interface operations {
                      *           "example": 1
                      *         },
                      *         "recent_changes": {
-                     *           "example": null
+                     *           "artifacts": {},
+                     *           "generated_at": "2026-06-01T00:00:00.000Z",
+                     *           "subnets": {}
                      *         },
                      *         "schema_version": 1,
                      *         "subnet_count": 1,
@@ -37184,7 +37338,10 @@ export interface operations {
                      *           "github_unreachable": false,
                      *           "lifecycle": "active",
                      *           "links": [
-                     *             {}
+                     *             {
+                     *               "label": "example",
+                     *               "url": "https://api.metagraph.sh/example"
+                     *             }
                      *           ],
                      *           "logo_url": "https://api.metagraph.sh/example",
                      *           "mechanism_count": 1,
@@ -42263,7 +42420,10 @@ export interface operations {
                      *           "github_unreachable": false,
                      *           "lifecycle": "active",
                      *           "links": [
-                     *             {}
+                     *             {
+                     *               "label": "example",
+                     *               "url": "https://api.metagraph.sh/example"
+                     *             }
                      *           ],
                      *           "logo_url": "https://api.metagraph.sh/example",
                      *           "mechanism_count": 1,

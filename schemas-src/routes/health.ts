@@ -38,7 +38,16 @@ export const HealthSummaryArtifactSchema = z
     // surface_count -- src/contracts.ts documents this as an open shape
     // (additionalProperties: true), matching the incident by_kind pattern
     // the issue calls out.
-    global: z.record(z.string(), z.unknown()),
+    // #9800. Was `z.record(z.string(), z.unknown())` -- a record whose value
+    // schema is `unknown`, which declares no more than a bare open object. This
+    // is the network-wide health rollup; `status_counts` is a typed record
+    // because its keys ARE the verdict vocabulary.
+    global: z
+      .object({
+        surface_count: z.int().min(0).optional(),
+        status_counts: z.record(z.string(), z.int().min(0)).optional(),
+      })
+      .passthrough(),
     health_source: z.string().optional(),
     operational_observed_at: z.string().nullable().optional(),
     schema_version: z.int(),

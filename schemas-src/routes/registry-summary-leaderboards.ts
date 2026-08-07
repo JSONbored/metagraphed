@@ -17,10 +17,14 @@ import {
   CountMapSchema,
   successEnvelopeSchema,
 } from "../envelope.ts";
+import { CoverageCompletenessSchema } from "./coverage.ts";
 
 export const RegistrySummaryArtifactSchema = ArtifactBaseSchema.extend({
   subnet_count: z.int().min(0),
-  coverage: z.object({}).passthrough().nullable().optional(),
+  // The completeness block from GET /api/v1/coverage, not a restatement of it
+  // (#9800). This was a bare open object, so the headline coverage figure the
+  // registry summary exists to report told a reader nothing about its own shape.
+  coverage: CoverageCompletenessSchema.nullable().optional(),
   counts: z
     .object({
       surfaces: z.int().min(0),
@@ -43,7 +47,30 @@ export const RegistrySummaryArtifactSchema = ArtifactBaseSchema.extend({
       })
       .passthrough(),
   ),
-  recent_changes: z.object({}).passthrough().optional(),
+  // #9800. Was a bare open object; this is the publish-time diff summary, and
+  // the counts inside it are the whole point of the field.
+  recent_changes: z
+    .object({
+      generated_at: z.string().nullable().optional(),
+      artifacts: z
+        .object({
+          added: z.int().min(0).optional(),
+          modified: z.int().min(0).optional(),
+          removed: z.int().min(0).optional(),
+        })
+        .passthrough()
+        .optional(),
+      subnets: z
+        .object({
+          added: z.int().min(0).optional(),
+          removed: z.int().min(0).optional(),
+          renamed: z.int().min(0).optional(),
+        })
+        .passthrough()
+        .optional(),
+    })
+    .passthrough()
+    .optional(),
 }).passthrough();
 export type RegistrySummaryArtifact = z.infer<
   typeof RegistrySummaryArtifactSchema
