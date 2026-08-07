@@ -5903,6 +5903,36 @@ export const POSITION_HISTORY_NEON_LANE = "account_position_daily";
  * handler's own SQL in tests/neon-read-routes.test.ts -- a map that drifts from
  * the queries would gate on the wrong evidence, which is worse than no gate.
  */
+/**
+ * EVERY table the handler reads, mirrored or not -- including the ones reached
+ * through a side loader.
+ *
+ * This list used to name only MIRRORED tables, and that was the defect, not a
+ * simplification. The dispatcher picks ONE runner for the whole handler, so a
+ * route sent to Neon sends ALL of its queries there, side loaders included. A
+ * table that is not mirrored does not exist on that side; the read comes back
+ * empty and the response degrades silently.
+ *
+ * `/api/v1/validators` is the worked example, and it was mapped as
+ * `["neurons"]`. Its handler also calls loadAlphaPricesByNetuidD1
+ * (subnet_snapshots), loadIdentityByColdkeyMap (account_identity),
+ * loadSubnetTemposD1 (subnet_hyperparams) and loadNominatorCountsD1
+ * (validator_nominator_counts). Three of those five tables have no Neon copy
+ * at all and the fourth has a mirror that has never fired -- so enabling
+ * `neurons` moved a route whose data was 3/5 absent on the other side.
+ *
+ * Naming the unmirrored tables is what makes that safe WITHOUT a second
+ * mechanism: neonServesRoute requires every listed table to appear in
+ * NEON_READ_LANES, and a table nothing mirrors can never legitimately be
+ * listed there (tests/neon-read-routes.test.ts enforces that separately). So
+ * an unmirrored dependency blocks the move by construction, and the route
+ * un-blocks on its own the day that table gets a proven mirror.
+ *
+ * The lists are asserted against the handler's TRANSITIVE reads in
+ * tests/neon-read-routes.test.ts. Over-declaring is safe and under-declaring
+ * is the bug, so that test checks one direction: everything the code reads
+ * must be named here.
+ */
 export const NEON_READ_ROUTE_TABLES: readonly {
   pattern: RegExp;
   tables: readonly string[];
@@ -5924,11 +5954,20 @@ export const NEON_READ_ROUTE_TABLES: readonly {
     pattern: /^\/api\/v1\/subnets\/\d+\/yield\/history$/,
     tables: ["neuron_daily"],
   },
-  // Both: the live card comes from `neurons`, the series from `neuron_daily`.
   {
-    pattern: /^\/api\/v1\/subnets\/\d+\/concentration\/history$/,
-    tables: ["neurons", "neuron_daily"],
+    pattern: /^\/api\/v1\/subnets\/\d+\/concentration$/,
+    tables: ["neuron_daily"],
   },
+  {
+    pattern: /^\/api\/v1\/subnets\/\d+\/performance$/,
+    tables: ["neuron_daily"],
+  },
+  { pattern: /^\/api\/v1\/subnets\/\d+\/yield$/, tables: ["neuron_daily"] },
+  {
+    pattern: /^\/api\/v1\/subnets\/\d+\/neurons\/\d+$/,
+    tables: ["neuron_daily"],
+  },
+  // Both: the live card comes from `neurons`, the series from `neuron_daily`.
   {
     pattern: /^\/api\/v1\/subnets\/\d+\/performance\/history$/,
     tables: ["neurons", "neuron_daily"],
@@ -5942,8 +5981,6 @@ export const NEON_READ_ROUTE_TABLES: readonly {
     tables: ["neurons", "neuron_daily"],
   },
   // `neurons` only.
-  { pattern: /^\/api\/v1\/validators$/, tables: ["neurons"] },
-  { pattern: /^\/api\/v1\/accounts$/, tables: ["neurons"] },
   { pattern: /^\/api\/v1\/chain\/concentration$/, tables: ["neurons"] },
   {
     pattern: /^\/api\/v1\/chain\/concentration\/subnets$/,
@@ -5952,9 +5989,45 @@ export const NEON_READ_ROUTE_TABLES: readonly {
   { pattern: /^\/api\/v1\/chain\/performance$/, tables: ["neurons"] },
   { pattern: /^\/api\/v1\/chain\/idle-stake$/, tables: ["neurons"] },
   { pattern: /^\/api\/v1\/chain\/yield$/, tables: ["neurons"] },
+  { pattern: /^\/api\/v1\/subnets\/\d+\/validators$/, tables: ["neurons"] },
+  { pattern: /^\/api\/v1\/accounts\/[^/]+\/portfolio$/, tables: ["neurons"] },
   {
     pattern: /^\/api\/v1\/subnets\/\d+\/metagraph$/,
     tables: ["neurons"],
+  },
+  // BLOCKED until the unmirrored tables below get a proven Neon lane. These
+  // are not aspirational entries -- listing the real dependency is what keeps
+  // neonServesRoute returning false for them today (#9811).
+  {
+    // + loadAlphaPricesByNetuidD1.
+    pattern: /^\/api\/v1\/accounts$/,
+    tables: ["neurons", "subnet_snapshots"],
+  },
+  {
+    pattern: /^\/api\/v1\/accounts\/[^/]+\/subnets$/,
+    tables: ["neurons", "subnet_snapshots"],
+  },
+  {
+    // + prices, identities, tempos and nominator counts.
+    pattern: /^\/api\/v1\/validators$/,
+    tables: [
+      "neurons",
+      "subnet_snapshots",
+      "account_identity",
+      "subnet_hyperparams",
+      "validator_nominator_counts",
+    ],
+  },
+  {
+    pattern: /^\/api\/v1\/subnets\/\d+\/concentration\/history$/,
+    tables: [
+      "neurons",
+      "neuron_daily",
+      "subnet_snapshots",
+      "account_identity",
+      "subnet_hyperparams",
+      "validator_nominator_counts",
+    ],
   },
 ];
 
