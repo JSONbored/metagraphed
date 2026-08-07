@@ -241,6 +241,21 @@ describe("laneAlarmPlan", () => {
     assert.equal(plan.open[0].kind, "silent");
   });
 
+  test("ignores a RETIRED lane whose last verdict is a week old", () => {
+    // A retired lane's final row sits in lane_health until retention expires
+    // it. If that row said `stale`, staleLanes() keeps returning it -- and the
+    // alarm would re-raise a lane that no longer exists for 90 days.
+    const plan = laneAlarmPlan({
+      ...base,
+      latest: { a: record({ lane: "a", checked_at: NOW - 9 * 24 * HOUR }) },
+      runs: { a: { since: NOW - 30 * 24 * HOUR, ticks: 4000 } },
+    });
+    assert.deepEqual(plan.open, []);
+    // And it cannot come back as `silent` either: the cadence read looks at the
+    // same window, so a lane with nothing in it is uncalibrated.
+    assert.equal(plan.suppressed, 0);
+  });
+
   test("does not re-open a lane that already has an issue", () => {
     const plan = laneAlarmPlan({
       ...base,

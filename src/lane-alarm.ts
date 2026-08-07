@@ -114,6 +114,23 @@ export const LANE_ALARM_MIN_CADENCE_SAMPLES = 3;
 export const LANE_ALARM_SILENCE_INTERVALS = 3;
 export const LANE_ALARM_MIN_SILENCE_MS = 90 * 60 * 1000;
 
+/**
+ * How old a lane's newest verdict may be before the lane stops counting as one.
+ *
+ * THE SAME SEVEN DAYS the cadence window reads, and this exists because of a
+ * state found while retiring two lanes: a RETIRED lane's last row sits in
+ * `lane_health` forever, and if that row said `stale`, `staleLanes()` keeps
+ * returning it for the life of the table. Without this guard the alarm would
+ * re-raise a lane that no longer exists, every tick, until retention expired it
+ * 90 days later -- an alarm about nothing, which is how alarms get muted.
+ *
+ * A lane that has written nothing in a week is residue, not an outage. It is
+ * also uncalibratable by construction, since the cadence estimate reads the
+ * same window -- so this guard and that one agree by sharing the constant
+ * rather than by two numbers that must be kept equal.
+ */
+export const LANE_ALARM_MAX_VERDICT_AGE_MS = LANE_ALARM_CADENCE_WINDOW_MS;
+
 /** Title prefix. The dedup key: stable across ticks, and greppable by a human. */
 export const LANE_ALARM_TITLE_PREFIX = "alarm(lane): ";
 
@@ -225,6 +242,8 @@ export function laneAlarmPlan(input: LaneAlarmPlanInput): LaneAlarmPlan {
 
   const stale = staleLanes(latest);
   for (const record of stale) {
+    // Residue, not an outage: see LANE_ALARM_MAX_VERDICT_AGE_MS.
+    if (nowMs - record.checked_at > LANE_ALARM_MAX_VERDICT_AGE_MS) continue;
     const run = runs[record.lane];
     // No run row for a lane whose newest verdict IS stale means the two reads
     // disagree -- a verdict landed between them. Treat the newest verdict as
