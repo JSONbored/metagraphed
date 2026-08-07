@@ -158,6 +158,11 @@ const BOOLEAN_COLUMNS = [
   "enabled",
   "previous_enabled",
   "predates_capture",
+  // surface_checks' (#9891). The most generic name in this list by far, and
+  // still correct to guard: the rules run only over SQL that can REACH Neon,
+  // and within that set `ok` is a BOOLEAN column. D1-only SQL is never
+  // scanned.
+  "ok",
 ] as const;
 
 /** Comparisons and aggregates that only work against ONE of the two schemas. */
