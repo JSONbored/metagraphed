@@ -10378,10 +10378,21 @@ describe("MCP economics + metagraph data tools", () => {
     captured_at: FRESH_RUN,
     schema_version: 1,
     network: "finney",
+    // ALL NINE KEYS, and the TAO totals as rao-precision decimal strings --
+    // recaptured from production 2026-08-07 when EconomicsSummarySchema
+    // replaced the bare object this tool used to publish (#9927 follow-up).
+    // A three-key stub satisfied `{"type":"object"}` and satisfies nothing
+    // now, which is the point of typing it.
     summary: {
       with_economics_count: 1,
       subnet_count: 1,
       registration_open_count: 1,
+      total_stake_alpha: "345787658.736724210",
+      total_validators: 1574,
+      total_miners: 28536,
+      total_root_value_tao: "6614951.927666010",
+      total_alpha_value_tao: "3789922.889944185",
+      total_network_value_tao: "10404874.817610195",
     },
     subnets: [ECON_ROW],
   };

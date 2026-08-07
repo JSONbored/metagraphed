@@ -21,6 +21,8 @@ import {
   querySchema,
   sortSchema,
 } from "./shared.ts";
+import { EconomicsSummarySchema } from "../routes/economics.ts";
+import { SubnetEconomicsSchema } from "../shared.ts";
 
 const ECONOMICS_SORT_FIELDS = [
   "alpha_fdv_tao",
@@ -67,15 +69,20 @@ export const GetEconomicsInputSchema = z
   .strict();
 export type GetEconomicsInput = z.infer<typeof GetEconomicsInputSchema>;
 
-const OpenObjectSchema = z.object({}).passthrough();
-
 export const GetEconomicsOutputSchema = z
   .object({
     source: z.string().nullable(),
     captured_at: z.string().nullable().optional(),
     network: z.string().nullable().optional(),
-    summary: OpenObjectSchema.nullable().optional(),
-    subnets: z.array(OpenObjectSchema),
+    // Typed from the route's own schemas (#9797). Verified against production
+    // 2026-08-07, including the rao-precision decimal STRINGS on the summary
+    // totals -- nine decimal places, exactly, and a caller reading them as
+    // floats loses rao.
+    summary: EconomicsSummarySchema.nullable().optional(),
+    // PARTIAL: this tool advertises `fields`, so a caller can project a row
+    // down to one column and a strict row schema would break the tool's own
+    // contract the moment they do (#9884).
+    subnets: z.array(SubnetEconomicsSchema.partial()),
     total: z.int().optional(),
     returned: z.int().optional(),
     limit: z.int().optional(),

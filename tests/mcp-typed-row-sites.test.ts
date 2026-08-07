@@ -38,6 +38,8 @@ const ROW_SITES: Array<[tool: string, key: string, projectable: boolean]> = [
   ["get_extrinsic", "extrinsic", false],
   ["get_subnet_trajectory", "points", false],
   ["get_adapter", "snapshot", false],
+  ["get_economics", "subnets", true],
+  ["get_subnet_economics", "economics", false],
 ];
 
 describe("typed row sites (#9797)", () => {
@@ -101,10 +103,21 @@ describe("typed row sites (#9797)", () => {
     }
   });
 
-  test("a projected row still satisfies the published schema", () => {
-    // The regression #9884 fixed, pinned at the three sites this PR types.
+  test("a projected neuron row still satisfies the published schema", () => {
+    // The regression #9884 fixed, pinned end to end on the three tools whose
+    // ENVELOPE this synthetic payload models. The other projectable sites are
+    // covered by the requiredness invariant above plus the production sweep --
+    // building a per-tool envelope here would be restating each output schema
+    // in the test, which is the duplication this whole epic removes.
+    const NEURON_ENVELOPES = new Set([
+      "get_subnet_metagraph",
+      "get_neuron",
+      "list_subnet_validators",
+    ]);
     const ajv = new Ajv2020({ strict: false });
-    for (const [tool, key] of ROW_SITES.filter(([, , p]) => p)) {
+    for (const [tool, key] of ROW_SITES.filter(
+      ([t, , p]) => p && NEURON_ENVELOPES.has(t),
+    )) {
       const output = toolSchemas(tool).output;
       const validate = ajv.compile(output);
       const projectedRow = { uid: 3 };
@@ -169,5 +182,23 @@ describe("typed row sites (#9797)", () => {
       Object.keys((object?.properties ?? {}) as Row).includes("from_date"),
       "the delta value schema is still open",
     );
+  });
+  test("the economics summary keeps its rao-precision STRING totals", () => {
+    // The TAO totals are decimal strings with exactly nine places, not
+    // numbers. A caller reading them as floats loses rao -- and `{"type":
+    // "object"}` did not even say which fields they were.
+    for (const tool of ["get_economics", "get_subnet_economics"]) {
+      const summary = siteSchema(toolSchemas(tool).output, "summary");
+      const total = (summary.properties as Row).total_stake_alpha as Row;
+      assert.equal(
+        total.type,
+        "string",
+        `${tool}.summary.total_stake_alpha is not published as a string`,
+      );
+      assert.ok(
+        total.pattern,
+        `${tool}.summary declares no rao-precision pattern`,
+      );
+    }
   });
 });
