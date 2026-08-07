@@ -5734,6 +5734,96 @@ export function positionHistoryServedFromNeon(url: URL): boolean {
  */
 export const POSITION_HISTORY_NEON_LANE = "account_position_daily";
 
+/**
+ * Every mirrored table each neurons-family route reads.
+ *
+ * ALL OF THEM MUST BE READ-ENABLED FOR THE ROUTE TO MOVE, and that is a
+ * correction to how #9768 shipped. The handler picks ONE runner and uses it for
+ * every query it makes, so a route touching two tables cannot half-move. The
+ * position-history gate checked only `account_position_daily` -- but its
+ * handler also reads `neurons`, so naming one table silently moved both. It
+ * happened to be safe (`neurons` mirrors on every producer tick and matched D1
+ * on a content checksum), but "happened to be safe" is not the property a gate
+ * is for.
+ *
+ * Ordered longest-prefix-last so the first match wins on the specific route
+ * rather than a broader one. Each entry's table list is asserted against the
+ * handler's own SQL in tests/neon-read-routes.test.ts -- a map that drifts from
+ * the queries would gate on the wrong evidence, which is worse than no gate.
+ */
+export const NEON_READ_ROUTE_TABLES: readonly {
+  pattern: RegExp;
+  tables: readonly string[];
+}[] = [
+  // Reads `neurons` for the account's current UIDs, then the dated positions.
+  {
+    pattern: /^\/api\/v1\/accounts\/[^/]+\/subnets\/\d+\/history$/,
+    tables: ["neurons", "account_position_daily"],
+  },
+  // neuron_daily only -- the day-over-day aggregates.
+  { pattern: /^\/api\/v1\/subnets\/movers$/, tables: ["neuron_daily"] },
+  { pattern: /^\/api\/v1\/chain\/turnover$/, tables: ["neuron_daily"] },
+  {
+    pattern: /^\/api\/v1\/subnets\/\d+\/turnover$/,
+    tables: ["neuron_daily"],
+  },
+  { pattern: /^\/api\/v1\/subnets\/\d+\/history$/, tables: ["neuron_daily"] },
+  {
+    pattern: /^\/api\/v1\/subnets\/\d+\/yield\/history$/,
+    tables: ["neuron_daily"],
+  },
+  // Both: the live card comes from `neurons`, the series from `neuron_daily`.
+  {
+    pattern: /^\/api\/v1\/subnets\/\d+\/concentration\/history$/,
+    tables: ["neurons", "neuron_daily"],
+  },
+  {
+    pattern: /^\/api\/v1\/subnets\/\d+\/performance\/history$/,
+    tables: ["neurons", "neuron_daily"],
+  },
+  {
+    pattern: /^\/api\/v1\/subnets\/\d+\/neurons\/\d+\/history$/,
+    tables: ["neurons", "neuron_daily"],
+  },
+  {
+    pattern: /^\/api\/v1\/validators\/[^/]+\/history$/,
+    tables: ["neurons", "neuron_daily"],
+  },
+  // `neurons` only.
+  { pattern: /^\/api\/v1\/validators$/, tables: ["neurons"] },
+  { pattern: /^\/api\/v1\/accounts$/, tables: ["neurons"] },
+  { pattern: /^\/api\/v1\/chain\/concentration$/, tables: ["neurons"] },
+  {
+    pattern: /^\/api\/v1\/chain\/concentration\/subnets$/,
+    tables: ["neurons"],
+  },
+  { pattern: /^\/api\/v1\/chain\/performance$/, tables: ["neurons"] },
+  { pattern: /^\/api\/v1\/chain\/idle-stake$/, tables: ["neurons"] },
+  { pattern: /^\/api\/v1\/chain\/yield$/, tables: ["neurons"] },
+  {
+    pattern: /^\/api\/v1\/subnets\/\d+\/metagraph$/,
+    tables: ["neurons"],
+  },
+];
+
+/**
+ * Whether THIS request may be served from Neon.
+ *
+ * False unless every table the route reads is named in NEON_READ_LANES. A route
+ * with no entry is never served from Neon, which is the safe default: an
+ * unmapped route is one whose tables nobody has enumerated.
+ */
+export function neonServesRoute(
+  env: Record<string, unknown> | null | undefined,
+  url: URL,
+): boolean {
+  const entry = NEON_READ_ROUTE_TABLES.find((r) =>
+    r.pattern.test(url.pathname),
+  );
+  if (!entry) return false;
+  return entry.tables.every((table) => neonReadEnabled(env, table));
+}
+
 function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
   // GET /api/v1/subnets/:netuid/metagraph -- twin of the Postgres route of
   // the same name below. immunity_period comes from subnet_hyperparams,
@@ -7083,13 +7173,12 @@ async function dispatchDataApiRequest(
         // questions. NEON_READ_LANES answers the second one, defaults to empty,
         // and must not name a lane until that lane's `neon:` verdict has been
         // green across several producer ticks.
+        // Every table this route reads must be read-enabled, not just one --
+        // the handler uses ONE runner for all its queries, so a route touching
+        // two tables cannot half-move. See NEON_READ_ROUTE_TABLES.
         const store =
           env.HYPERDRIVE &&
-          neonReadEnabled(
-            env as unknown as Record<string, unknown>,
-            POSITION_HISTORY_NEON_LANE,
-          ) &&
-          positionHistoryServedFromNeon(url)
+          neonServesRoute(env as unknown as Record<string, unknown>, url)
             ? createPgSql(env.HYPERDRIVE, ctx)
             : createD1Sql(env.METAGRAPH_HEALTH_DB);
         try {
