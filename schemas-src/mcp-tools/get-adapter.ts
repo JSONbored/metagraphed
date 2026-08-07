@@ -5,6 +5,7 @@
 // hand-written literal field-for-field.
 import { z } from "zod";
 import { OpenObjectSchema, netuidSchema } from "./shared.ts";
+import { AdapterSnapshotSchema } from "../routes/adapter.ts";
 
 // `notes: {type:["array","string","null"], items:{type:"string"}}` -- this
 // batch's shared.ts predates the NotesFieldSchema helper hoisted in batch 10
@@ -41,7 +42,9 @@ export const GetAdapterOutputSchema = z
     subnet: z.string().nullable().optional(),
     netuid: netuidSchema().nullable().optional(),
     notes: NotesFieldSchema,
-    snapshot: OpenObjectSchema.nullable().optional(),
+    // Typed from the route's own AdapterSnapshotSchema (#9797). Verified
+    // against production 2026-08-07 (slug `gittensor`).
+    snapshot: AdapterSnapshotSchema.nullable().optional(),
     extensions: OpenObjectSchema.nullable().optional(),
   })
   .passthrough();

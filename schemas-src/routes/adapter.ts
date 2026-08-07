@@ -15,7 +15,7 @@ import { ArtifactBaseSchema, successEnvelopeSchema } from "../envelope.ts";
  * observed reports a `status`, and the documentation-only ones carry the
  * `notes`/`source_url` explaining why -- and `.passthrough()` keeps the
  * adapter-specific rest. */
-const AdapterSnapshotSchema = z
+export const AdapterSnapshotSchema = z
   .object({
     schema_version: z.int().optional(),
     contract_version: z.string().optional(),

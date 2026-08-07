@@ -36,6 +36,8 @@ const ROW_SITES: Array<[tool: string, key: string, projectable: boolean]> = [
   ["list_subnet_validators", "validators", true],
   ["get_block", "block", false],
   ["get_extrinsic", "extrinsic", false],
+  ["get_subnet_trajectory", "points", false],
+  ["get_adapter", "snapshot", false],
 ];
 
 describe("typed row sites (#9797)", () => {
@@ -147,5 +149,25 @@ describe("typed row sites (#9797)", () => {
         `${site} is typed now but still listed as NOT_YET_TYPED`,
       );
     }
+  });
+  test("get_subnet_trajectory declares its deltas as a TYPED record", () => {
+    // `deltas` is keyed by window label, so a new window must add a key rather
+    // than change the contract -- a typed record says that, an untyped object
+    // says nothing. The route already carried the load-bearing note that these
+    // values are DIFFERENCES, not levels; an agent reading only the tool could
+    // not have known it.
+    const output = toolSchemas("get_subnet_trajectory").output;
+    const deltas = (output.properties as Row).deltas as Row;
+    const value = deltas.additionalProperties as Row;
+    assert.ok(
+      value && typeof value === "object",
+      "deltas declares no value schema",
+    );
+    const branches = (value.anyOf ?? value.oneOf ?? [value]) as Row[];
+    const object = branches.find((b) => b.type === "object") as Row;
+    assert.ok(
+      Object.keys((object?.properties ?? {}) as Row).includes("from_date"),
+      "the delta value schema is still open",
+    );
   });
 });
