@@ -7313,7 +7313,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Captured from the chain on a schedule; empty when no snapshot exists yet. " +
       "PASS `fields` UNLESS YOU GENUINELY NEED EVERY COLUMN: the full response is " +
       '256 rows x 17 fields (~95 KB, ~24k tokens on subnet 1). `fields: ["uid", ' +
-      "\"hotkey\"]` answers 'is this hotkey registered, and at which UID' in ~18 KB.",
+      "\"hotkey\"]` answers 'is this hotkey registered, and at which UID' in ~18 KB. " +
+      "EPOCH PROVENANCE (#9871): `incentive`, `dividends`, `emission_tao`, `consensus`, `trust` and `rank` are derived from the weights validators set in the LAST COMPLETED tempo -- not from live activity, and not from the epoch currently open. `captured_at`/`block_number` say when WE sampled the chain, which is a different thing. Comparing these against an in-progress epoch from an off-chain source (a subnet's own API, a dashboard) will disagree, and the disagreement is expected rather than a defect. Read `tempo` from get_subnet_hyperparams to find the epoch length. ",
     inputSchema: z.toJSONSchema(GetSubnetMetagraphInputSchema, {
       target: "draft-2020-12",
     }),
@@ -7730,7 +7731,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Fetch a single neuron in one subnet by its UID: hot and cold keys, stake, " +
       "rank, trust, consensus, incentive, dividends, emission, validator " +
       "permit, immunity, and axon. Returns neuron: null when that UID is not " +
-      "in the latest snapshot. Narrow the row with `fields`.",
+      "in the latest snapshot. Narrow the row with `fields`. " +
+      "EPOCH PROVENANCE (#9871): `incentive`, `dividends`, `emission_tao`, `consensus`, `trust` and `rank` are derived from the weights validators set in the LAST COMPLETED tempo -- not from live activity, and not from the epoch currently open. `captured_at`/`block_number` say when WE sampled the chain, which is a different thing. Comparing these against an in-progress epoch from an off-chain source (a subnet's own API, a dashboard) will disagree, and the disagreement is expected rather than a defect. Read `tempo` from get_subnet_hyperparams to find the epoch length. ",
     inputSchema: z.toJSONSchema(GetNeuronInputSchema, {
       target: "draft-2020-12",
     }),
