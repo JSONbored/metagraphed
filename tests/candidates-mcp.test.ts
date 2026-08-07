@@ -12,6 +12,7 @@ import {
   loadCandidatesList,
 } from "../src/candidates-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.ts";
+import { CANDIDATES_LIMIT_DEFAULT } from "../src/route-limits.ts";
 import type { Row } from "./row-type.ts";
 
 type CandidatesCtx = Parameters<typeof loadCandidatesList>[0];
@@ -142,6 +143,29 @@ describe("candidates-mcp (#7889)", () => {
   test("candidatesQueryUrl trims and forwards a fields projection", () => {
     const url = candidatesQueryUrl({ fields: " id,confidence " });
     assert.equal(url.searchParams.get("fields"), "id,confidence");
+  });
+
+  // THE BUG THIS TOOL SHIPPED WITH (#9700). `limit` was forwarded only when the
+  // caller passed one, so an absent limit meant unbounded -- and this tool has
+  // no required arguments, making `list_candidates {}` the obvious first call.
+  // Measured against production 2026-08-07: 7,537,056 bytes for 2,037 rows,
+  // roughly 1.9M tokens, about ten 200K context windows. Not a large answer;
+  // no usable answer. `limit: 10` returned 37,850 bytes, so the volume was
+  // never the data's fault.
+  test("an absent limit is defaulted, not left unbounded", () => {
+    const url = candidatesQueryUrl({});
+    assert.equal(
+      url.searchParams.get("limit"),
+      String(CANDIDATES_LIMIT_DEFAULT),
+      "no limit must mean the default, never the whole catalog",
+    );
+  });
+
+  test("an explicit limit still wins over the default", () => {
+    assert.equal(
+      candidatesQueryUrl({ limit: 7 }).searchParams.get("limit"),
+      "7",
+    );
   });
 
   test("candidatesQueryUrl rejects a non-numeric limit", () => {

@@ -180,3 +180,23 @@ export const PIPELINE_HISTORY_WINDOWS = Object.keys(
   PIPELINE_HISTORY_WINDOW_DAYS,
 );
 export const DEFAULT_PIPELINE_HISTORY_WINDOW = "30d";
+
+/**
+ * `list_candidates` (MCP) -- the network-wide candidate-surface catalog.
+ *
+ * A DEFAULT, not just a ceiling, and the MCP tool is the reason. With no
+ * `limit` the loader forwarded none, so the route served every row: measured
+ * 2026-08-07 at **7,537,056 bytes for 2,037 candidates** -- roughly 1.9M
+ * tokens, about ten times a 200K context window. An agent calling
+ * list_candidates while exploring (the obvious first move, since it takes no
+ * required arguments) did not get a large answer, it got no usable answer at
+ * all. `limit: 10` returns 37,850 bytes, so the data was never the problem.
+ *
+ * Deliberately narrower than the REST route, which still serves unbounded:
+ * a browser can stream 7.5 MB and a context window cannot, so the surface with
+ * the hard constraint is the one that carries the default. `total` and
+ * `next_cursor` ride in the envelope either way, so the full set stays
+ * reachable by paging -- it is no longer reachable by accident.
+ */
+export const CANDIDATES_LIMIT_DEFAULT = 20;
+export const CANDIDATES_LIMIT_MAX = 1000;
