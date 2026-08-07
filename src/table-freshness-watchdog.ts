@@ -123,6 +123,15 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
     maxAgeMs: 2 * HOUR,
     reason: "metagraph sync every 15 min",
   },
+  // Added by 0030, the same way 0029's pair was: the coverage test caught it
+  // unwatched. Written in the same batch as `neurons` -- deliberately, so a
+  // tally cannot outlive the rows it describes -- so it shares that cadence.
+  neurons_passes: {
+    column: "captured_at",
+    kind: "ms",
+    maxAgeMs: 2 * HOUR,
+    reason: "written with neurons",
+  },
   neuron_daily: {
     column: "captured_at",
     kind: "ms",
