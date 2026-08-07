@@ -7,6 +7,9 @@
 // `{type:["object","null"]}` fields with no declared shape, which stay
 // untyped open objects here too (not "improved" with a guessed shape).
 import { z } from "zod";
+import { ChainConcentrationArtifactSchema } from "../routes/chain-concentration.ts";
+import { ChainConcentrationSubnetsArtifactSchema } from "../routes/chain-concentration-subnets.ts";
+import { ChainPerformanceArtifactSchema } from "../routes/chain-performance.ts";
 import {
   OpenObjectSchema,
   netuidSchema,
@@ -64,22 +67,11 @@ export type GetChainConcentrationSubnetsInput = z.infer<
   typeof GetChainConcentrationSubnetsInputSchema
 >;
 
-export const GetChainConcentrationSubnetsOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    lens: z.string(),
-    sort: z.string(),
-    order: z.string(),
-    subnet_count: z.int(),
-    measured_subnet_count: z.int().optional(),
-    returned: z.int().optional(),
-    limit: z.int().optional(),
-    neuron_count: z.int().optional(),
-    captured_at: z.string().nullable().optional(),
-    network: OpenObjectSchema.nullable().optional(),
-    subnets: z.array(OpenObjectSchema),
-  })
-  .passthrough();
+// DERIVED, NOT COPIED (#9796). The copy published `network` as a bare open
+// object and `subnets` as a bare open ARRAY -- the ranked list this tool exists
+// to return, with nothing said about a row.
+export const GetChainConcentrationSubnetsOutputSchema =
+  ChainConcentrationSubnetsArtifactSchema;
 export type GetChainConcentrationSubnetsOutput = z.infer<
   typeof GetChainConcentrationSubnetsOutputSchema
 >;
@@ -89,21 +81,12 @@ export type GetChainConcentrationInput = z.infer<
   typeof GetChainConcentrationInputSchema
 >;
 
-export const GetChainConcentrationOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    subnet_count: z.int(),
-    neuron_count: z.int(),
-    entity_count: z.int().optional(),
-    uids_per_entity: z.number().nullable().optional(),
-    captured_at: z.string().nullable().optional(),
-    stake: OpenObjectSchema.nullable().optional(),
-    emission: OpenObjectSchema.nullable().optional(),
-    entity_stake: OpenObjectSchema.nullable().optional(),
-    entity_emission: OpenObjectSchema.nullable().optional(),
-    validator_stake: OpenObjectSchema.nullable().optional(),
-  })
-  .passthrough();
+// DERIVED, NOT COPIED (#9796). Five bare open objects -- stake, emission,
+// entity_stake, entity_emission, validator_stake -- on a tool whose entire
+// purpose is those five distributions. The network-wide twin of
+// get_subnet_concentration, fixed the same way in the same batch.
+export const GetChainConcentrationOutputSchema =
+  ChainConcentrationArtifactSchema;
 export type GetChainConcentrationOutput = z.infer<
   typeof GetChainConcentrationOutputSchema
 >;
@@ -113,21 +96,10 @@ export type GetChainPerformanceInput = z.infer<
   typeof GetChainPerformanceInputSchema
 >;
 
-export const GetChainPerformanceOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    subnet_count: z.int(),
-    neuron_count: z.int(),
-    validator_count: z.int().optional(),
-    active_count: z.int().optional(),
-    captured_at: z.string().nullable().optional(),
-    incentive: OpenObjectSchema.nullable().optional(),
-    dividends: OpenObjectSchema.nullable().optional(),
-    trust: OpenObjectSchema.nullable().optional(),
-    consensus: OpenObjectSchema.nullable().optional(),
-    validator_trust: OpenObjectSchema.nullable().optional(),
-  })
-  .passthrough();
+// DERIVED, NOT COPIED (#9796). Same five-bare-objects shape as its
+// concentration sibling above: incentive, dividends, trust, consensus and
+// validator_trust were each {"type":"object"} and nothing more.
+export const GetChainPerformanceOutputSchema = ChainPerformanceArtifactSchema;
 export type GetChainPerformanceOutput = z.infer<
   typeof GetChainPerformanceOutputSchema
 >;

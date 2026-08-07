@@ -4,7 +4,8 @@
 // schema to reuse. Modeled fresh, shallow, from the hand-written literal it
 // replaces.
 import { z } from "zod";
-import { OpenObjectArraySchema, netuidSchema, windowSchema } from "./shared.ts";
+import { SubnetPerformanceHistoryArtifactSchema } from "../routes/subnet-performance.ts";
+import { netuidSchema, windowSchema } from "./shared.ts";
 
 const PERFORMANCE_HISTORY_WINDOWS = ["7d", "30d", "90d"] as const;
 
@@ -18,15 +19,10 @@ export type GetSubnetPerformanceHistoryInput = z.infer<
   typeof GetSubnetPerformanceHistoryInputSchema
 >;
 
-export const GetSubnetPerformanceHistoryOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    netuid: netuidSchema(),
-    window: z.string().nullable(),
-    point_count: z.int(),
-    points: OpenObjectArraySchema,
-  })
-  .passthrough();
+// DERIVED, NOT COPIED (#9796). The copy published `points` as a bare open
+// array -- the whole time series, with nothing said about a point.
+export const GetSubnetPerformanceHistoryOutputSchema =
+  SubnetPerformanceHistoryArtifactSchema;
 export type GetSubnetPerformanceHistoryOutput = z.infer<
   typeof GetSubnetPerformanceHistoryOutputSchema
 >;
