@@ -157,6 +157,12 @@ describe("userStateRunner", () => {
     assert.deepEqual([...ALERT_TRIGGER_TABLES].sort(), [
       "chain_alert_deliveries",
       "chain_alert_triggers",
+      // The five web-push handlers (#8385) share withAlertTriggersSql, so
+      // this table moves with the alert pair whether or not anyone remembers
+      // it. It was missing from the group on the first cut of this change,
+      // which is precisely the under-declaration the all-or-nothing rule
+      // exists to make harmless -- and this assertion is what caught it.
+      "watch_push_subscriptions",
     ]);
   });
 });

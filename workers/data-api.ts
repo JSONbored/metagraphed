@@ -2942,6 +2942,12 @@ function normalizeDeliveryRow(row: Row): Row {
 export const ALERT_TRIGGER_TABLES = [
   "chain_alert_triggers",
   "chain_alert_deliveries",
+  // withAlertTriggersSql is ALSO the runner for the five web-push handlers
+  // (#8385), which read and write this table and nothing in the alert pair.
+  // Named here because the group is the unit that moves: leaving it out would
+  // let the two alert tables be listed, send the push handlers to Postgres
+  // with them, and have those handlers query a table the flag never claimed.
+  "watch_push_subscriptions",
 ] as const;
 
 export const ACCOUNT_STATE_TABLES = [
