@@ -6144,6 +6144,11 @@ export interface components {
                 reason: string;
             };
             derivation?: {
+                /**
+                 * @description True when the count is a floor rather than a measurement: some registrations in the window displaced a holder the derivation's lookback cannot name, so the real figure is higher by at least `unattributed_registrations`. Treat the value as 'at least this many', never as a total.
+                 * @example true
+                 */
+                is_lower_bound: boolean;
                 lookback_days: number;
                 method: string;
                 unattributed_registrations: number;
@@ -7450,6 +7455,11 @@ export interface components {
                 reason: string;
             };
             derivation?: {
+                /**
+                 * @description True when the count is a floor rather than a measurement: some registrations in the window displaced a holder the derivation's lookback cannot name, so the real figure is higher by at least `unattributed_registrations`. Treat the value as 'at least this many', never as a total.
+                 * @example true
+                 */
+                is_lower_bound: boolean;
                 lookback_days: number;
                 method: string;
                 unattributed_registrations: number;
@@ -11082,6 +11092,11 @@ export interface components {
             deregistrations: number;
             deregistrations_per_hotkey: number | null;
             derivation?: {
+                /**
+                 * @description True when the count is a floor rather than a measurement: some registrations in the window displaced a holder the derivation's lookback cannot name, so the real figure is higher by at least `unattributed_registrations`. Treat the value as 'at least this many', never as a total.
+                 * @example true
+                 */
+                is_lower_bound: boolean;
                 lookback_days: number;
                 method: string;
                 unattributed_registrations: number;
@@ -16267,6 +16282,7 @@ export interface operations {
                      *           "reason": "example"
                      *         },
                      *         "derivation": {
+                     *           "is_lower_bound": false,
                      *           "lookback_days": 1,
                      *           "method": "GET",
                      *           "unattributed_registrations": 1,
@@ -25314,6 +25330,7 @@ export interface operations {
                      *         "deregistrations": 1,
                      *         "deregistrations_per_hotkey": 0.5,
                      *         "derivation": {
+                     *           "is_lower_bound": false,
                      *           "lookback_days": 1,
                      *           "method": "GET",
                      *           "unattributed_registrations": 1,
@@ -29551,6 +29568,7 @@ export interface operations {
                      *           "reason": "example"
                      *         },
                      *         "derivation": {
+                     *           "is_lower_bound": false,
                      *           "lookback_days": 1,
                      *           "method": "GET",
                      *           "unattributed_registrations": 1,
@@ -35059,6 +35077,7 @@ export interface operations {
                      *           "reason": "example"
                      *         },
                      *         "derivation": {
+                     *           "is_lower_bound": false,
                      *           "lookback_days": 1,
                      *           "method": "GET",
                      *           "unattributed_registrations": 1,
@@ -49201,6 +49220,7 @@ export interface operations {
                      *         "deregistrations": 1,
                      *         "deregistrations_per_hotkey": 0.5,
                      *         "derivation": {
+                     *           "is_lower_bound": false,
                      *           "lookback_days": 1,
                      *           "method": "GET",
                      *           "unattributed_registrations": 1,

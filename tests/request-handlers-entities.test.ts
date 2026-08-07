@@ -158,6 +158,8 @@ function deregistrationProjectionEnv(): Row {
     lookback_days: 30,
     window_registrations: 8064,
     unattributed_registrations: 1726,
+    // #9708: the payload now says out loud what the docs always said.
+    is_lower_bound: true,
   };
   const bodies: Record<string, unknown> = {
     [CHAIN_DEREGISTRATIONS_PROJECTION_KEY]: {
@@ -2546,6 +2548,10 @@ describe("handleSubnetDeregistrations", () => {
     assert.equal(body.data.deregistrations, 441);
     assert.equal(body.data.distinct_deregistered_hotkeys, 432);
     assert.equal(body.data.derivation.unattributed_registrations, 1726);
+    // The floor is flagged in the payload, not only in the documentation
+    // (#9708). Two mainnet subnets published a literal 0 against two dozen
+    // registrations each, and a reader took that to mean "no churn".
+    assert.equal(body.data.derivation.is_lower_bound, true);
     assert.equal(body.data.degraded, undefined);
     await assertValidComponent("SubnetDeregistrationsArtifact", body.data);
   });
@@ -5668,6 +5674,10 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     assert.equal(body.data.total_deregistrations, 2);
     assert.equal(body.data.derivation.unattributed_registrations, 1726);
+    // The floor is flagged in the payload, not only in the documentation
+    // (#9708). Two mainnet subnets published a literal 0 against two dozen
+    // registrations each, and a reader took that to mean "no churn".
+    assert.equal(body.data.derivation.is_lower_bound, true);
     assert.equal(body.data.degraded, undefined);
     await assertValidComponent("AccountDeregistrationsArtifact", body.data);
   });

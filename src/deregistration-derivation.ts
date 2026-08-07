@@ -62,6 +62,30 @@ export interface DeregistrationDerivation {
   window_registrations: number;
   /** Of those, the ones with no observed previous holder. */
   unattributed_registrations: number;
+  /**
+   * True when the published count is a floor rather than a measurement.
+   *
+   * The prose above, the SDL description, and `unattributed_registrations`
+   * itself have all said this since #9307 -- but only to a human reading the
+   * docs. The PAYLOAD published a bare number, and a bare number reads as a
+   * measurement no matter what the documentation says. Measured on mainnet
+   * 2026-08-07, against subnets whose UIDs are full so every registration must
+   * displace someone:
+   *
+   *   SN64 Chutes    24 registrations/30d,   0 deregistrations   100% under
+   *   SN51 lium.io   26 registrations/30d,   0 deregistrations   100% under
+   *   SN120 Affine  470 registrations/30d, 219 deregistrations    53% under
+   *   SN53 engy     540 registrations/30d, 287 deregistrations    47% under
+   *
+   * Two subnets publish a literal zero while two dozen hotkeys register into a
+   * subnet with no free slots. A reader concluded "no churn, nobody
+   * registering" from that zero -- the opposite of the truth -- and the number
+   * gave them no reason to doubt it.
+   *
+   * A wrong number that looks authoritative is worse than a null, and worse
+   * than a flagged floor. This is the flag.
+   */
+  is_lower_bound: boolean;
 }
 
 /** One NeuronRegistered row as the lakehouse returns it. */
