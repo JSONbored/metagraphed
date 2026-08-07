@@ -107,13 +107,65 @@ export type RegistryLeaderboardsQuery = z.infer<
   typeof RegistryLeaderboardsQuerySchema
 >;
 
+/** One row of one leaderboard. `netuid`/`slug`/`name` identify the subnet on
+ * every board; everything after that is the metric the board it came from
+ * ranks by, so each is optional and only the relevant handful is present on
+ * any given row. `.passthrough()` because a new board brings its own metric
+ * and must not be rejected by a contract written before it existed. */
+const LeaderboardEntrySchema = z
+  .object({
+    netuid: z.int().min(0),
+    slug: z.string(),
+    name: z.string().nullable(),
+    // healthiest / most-reliable
+    uptime_ratio: z.number().min(0).max(1).nullable().optional(),
+    surfaces_ok: z.int().min(0).optional(),
+    surfaces_total: z.int().min(0).optional(),
+    avg_latency_ms: z.number().nullable().optional(),
+    sample_count: z.int().min(0).optional(),
+    latency_sample_count: z.int().min(0).optional(),
+    score: z.number().nullable().optional(),
+    grade: z.string().nullable().optional(),
+    // fastest-rpc
+    latency_ms: z.number().nullable().optional(),
+    // most-complete / fastest-growing / most-enriched
+    completeness_score: z.int().min(0).max(100).nullable().optional(),
+    completeness_delta: z.number().nullable().optional(),
+    surface_count: z.int().min(0).optional(),
+    operational_interface_count: z.int().min(0).optional(),
+    // open-slots / cheapest-registration
+    open_slots: z.int().min(0).nullable().optional(),
+    max_uids: z.int().min(0).nullable().optional(),
+    registration_cost_tao: z.number().nullable().optional(),
+    registration_allowed: z.boolean().nullable().optional(),
+    // highest-emission / validator-headroom
+    tao_in_emission_tao: z.number().nullable().optional(),
+    emission_share: z.number().nullable().optional(),
+    emission_enabled: z.boolean().nullable().optional(),
+    total_stake_alpha: z.number().nullable().optional(),
+    validator_count: z.int().min(0).nullable().optional(),
+    miner_count: z.int().min(0).nullable().optional(),
+    validator_headroom: z.int().nullable().optional(),
+    max_validators: z.int().min(0).nullable().optional(),
+    // biggest-alpha-gain-1d / -7d
+    alpha_price_tao: z.number().nullable().optional(),
+    alpha_price_change_1d: z.number().nullable().optional(),
+    alpha_price_change_7d: z.number().nullable().optional(),
+  })
+  .passthrough();
+
 export const RegistryLeaderboardsArtifactSchema = z
   .object({
     schema_version: z.int(),
     board: z.string().nullable().optional(),
     observed_at: z.string().nullable().optional(),
     source: z.string(),
-    boards: z.record(z.string(), z.array(z.object({}).passthrough())),
+    // Keyed by board name (LEADERBOARD_BOARDS), which is a typed record. The
+    // ENTRY was the untyped half of it (#9800): every board's rows share the
+    // same three identity fields and then carry the metric that board ranks
+    // by, so the union below is a real description rather than a shrug.
+    // Modeled from all twelve boards' live rows.
+    boards: z.record(z.string(), z.array(LeaderboardEntrySchema)),
   })
   .passthrough();
 export type RegistryLeaderboardsArtifact = z.infer<

@@ -1339,7 +1339,19 @@
             "schema_version": 1,
             "slug": "example-subnet",
             "snapshot": {
-              "example": null
+              "adapter_kind": "example",
+              "contract_version": "2026-06-29.1",
+              "dimensions": {},
+              "excluded_dimensions": [
+                "example"
+              ],
+              "generated_at": "2026-06-01T00:00:00.000Z",
+              "netuid": 7,
+              "notes": "Example description.",
+              "schema_version": 1,
+              "slug": "example-subnet",
+              "source": "live-cron-prober",
+              "status": "ok"
             },
             "subnet": "example"
           },
@@ -6883,7 +6895,11 @@
             "board": "example",
             "boards": {
               "example": [
-                {}
+                {
+                  "name": "Example Subnet",
+                  "netuid": 7,
+                  "slug": "example-subnet"
+                }
               ]
             },
             "observed_at": "2026-06-01T00:00:00.000Z",
@@ -11291,7 +11307,10 @@
         "value": {
           "data": {
             "deltas": {
-              "example": {}
+              "example": {
+                "from_date": "example",
+                "to_date": "example"
+              }
             },
             "netuid": 7,
             "point_count": 1,
@@ -16433,7 +16452,136 @@
             "anyOf": [
               {
                 "additionalProperties": {},
-                "properties": {},
+                "properties": {
+                  "adapter_kind": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "contract_version": {
+                    "type": "string"
+                  },
+                  "dimensions": {
+                    "additionalProperties": {
+                      "additionalProperties": {},
+                      "properties": {
+                        "captured_at": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "notes": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "source_url": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "status": {
+                          "description": "`docs-only` means the dimension is documented but has no verified unauthenticated API surface -- a gap, not a capture failure.",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "excluded_dimensions": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "generated_at": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "netuid": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "notes": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "items": {
+                              "type": "string"
+                            },
+                            "type": "array"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "schema_version": {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer"
+                  },
+                  "slug": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "status": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
                 "type": "object"
               },
               {
@@ -16855,9 +17003,52 @@
                   "anyOf": [
                     {
                       "additionalProperties": {},
-                      "propertyNames": {
-                        "type": "string"
+                      "properties": {
+                        "location": {
+                          "description": "Where the credential is sent. `body` only applies to scheme:signature, whose values are merged into the outgoing JSON request body.",
+                          "enum": [
+                            "header",
+                            "query",
+                            "cookie",
+                            "body"
+                          ],
+                          "type": "string"
+                        },
+                        "name": {
+                          "description": "The single header the credential goes in.",
+                          "type": "string"
+                        },
+                        "names": {
+                          "description": "The header SET, for schemes that need more than one (signature schemes send hotkey + nonce + signature together). Present instead of `name`, not alongside it.",
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        "scheme": {
+                          "description": "`signature` means the request is signed per-call (a hotkey/nonce/signature header set, see `names`), not a static token.",
+                          "enum": [
+                            "none",
+                            "bearer",
+                            "api-key",
+                            "basic",
+                            "oauth2",
+                            "signature",
+                            "custom"
+                          ],
+                          "type": "string"
+                        },
+                        "scopes_note": {
+                          "description": "How the requirement was established -- often a live-checked 401, because a subnet's own OpenAPI frequently declares no securitySchemes at all.",
+                          "type": "string"
+                        },
+                        "value_format": {
+                          "type": "string"
+                        }
                       },
+                      "required": [
+                        "scheme"
+                      ],
                       "type": "object"
                     },
                     {
@@ -25940,7 +26131,23 @@
               "dimension_coverage": {
                 "additionalProperties": {
                   "additionalProperties": {},
-                  "properties": {},
+                  "properties": {
+                    "pct": {
+                      "maximum": 100,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "present": {
+                      "description": "Subnets carrying at least one surface of this kind.",
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "pct",
+                    "present"
+                  ],
                   "type": "object"
                 },
                 "propertyNames": {
@@ -33168,7 +33375,53 @@
           "method_results": {
             "additionalProperties": {
               "additionalProperties": {},
-              "properties": {},
+              "properties": {
+                "code": {},
+                "error": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "ok": {
+                  "type": "boolean"
+                },
+                "raw_header": {
+                  "additionalProperties": {},
+                  "properties": {
+                    "number": {}
+                  },
+                  "required": [
+                    "number"
+                  ],
+                  "type": "object"
+                },
+                "raw_hex_result_present": {
+                  "type": "boolean"
+                },
+                "result_present": {
+                  "type": "boolean"
+                },
+                "result_type": {
+                  "type": "string"
+                },
+                "rpc_method_count": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "ok",
+                "error",
+                "code",
+                "result_type",
+                "result_present"
+              ],
               "type": "object"
             },
             "propertyNames": {
@@ -35971,7 +36224,297 @@
             "additionalProperties": {
               "items": {
                 "additionalProperties": {},
-                "properties": {},
+                "properties": {
+                  "alpha_price_change_1d": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "alpha_price_change_7d": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "alpha_price_tao": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "avg_latency_ms": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "completeness_delta": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "completeness_score": {
+                    "anyOf": [
+                      {
+                        "maximum": 100,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "emission_enabled": {
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "emission_share": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "grade": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "latency_ms": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "latency_sample_count": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "max_uids": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "max_validators": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "miner_count": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "name": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "netuid": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "open_slots": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "operational_interface_count": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "registration_allowed": {
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "registration_cost_tao": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "sample_count": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "score": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "slug": {
+                    "type": "string"
+                  },
+                  "surface_count": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "surfaces_ok": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "surfaces_total": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "tao_in_emission_tao": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "total_stake_alpha": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "uptime_ratio": {
+                    "anyOf": [
+                      {
+                        "maximum": 1,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "validator_count": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "validator_headroom": {
+                    "anyOf": [
+                      {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "netuid",
+                  "slug",
+                  "name"
+                ],
                 "type": "object"
               },
               "type": "array"
@@ -36058,7 +36601,23 @@
                   "dimension_coverage": {
                     "additionalProperties": {
                       "additionalProperties": {},
-                      "properties": {},
+                      "properties": {
+                        "pct": {
+                          "maximum": 100,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "present": {
+                          "description": "Subnets carrying at least one surface of this kind.",
+                          "maximum": 9007199254740991,
+                          "minimum": 0,
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "pct",
+                        "present"
+                      ],
                       "type": "object"
                     },
                     "propertyNames": {
@@ -49428,7 +49987,78 @@
               "anyOf": [
                 {
                   "additionalProperties": {},
-                  "properties": {},
+                  "properties": {
+                    "alpha_in_pool": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "alpha_out_pool": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "completeness_score": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "endpoint_count": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "from_date": {
+                      "type": "string"
+                    },
+                    "surface_count": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "tao_in_pool_tao": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "to_date": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "from_date",
+                    "to_date"
+                  ],
                   "type": "object"
                 },
                 {

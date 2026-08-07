@@ -12,6 +12,19 @@ import {
 } from "../envelope.ts";
 import { BittensorNetworkSchema } from "../shared.ts";
 
+/** One surface kind's share of the registry: how many subnets have it, and
+ * that as a whole-number percentage. Exported because
+ * RegistrySummaryArtifact embeds the same map and must not restate it. */
+export const CoverageDimensionSchema = z
+  .object({
+    pct: z.int().min(0).max(100),
+    present: z
+      .int()
+      .min(0)
+      .describe("Subnets carrying at least one surface of this kind."),
+  })
+  .passthrough();
+
 export const CoverageCompletenessSchema = z
   .object({
     scored_subnet_count: z.int().min(0).optional(),
@@ -20,8 +33,12 @@ export const CoverageCompletenessSchema = z
     fully_complete_count: z.int().min(0).optional(),
     fully_complete_pct: z.int().min(0).max(100).optional(),
     score_distribution: z.record(z.string(), z.int().min(0)).optional(),
+    // Keyed by surface kind (docs, openapi, subnet-api, …), so a new kind
+    // adds a key rather than changing the contract -- a typed record. The
+    // VALUE was the untyped half of it (#9800): every entry carries the same
+    // two numbers, verified across all eight kinds the live artifact serves.
     dimension_coverage: z
-      .record(z.string(), z.object({}).passthrough())
+      .record(z.string(), CoverageDimensionSchema)
       .optional(),
     methodology: z.string().optional(),
   })
