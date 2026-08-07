@@ -106,7 +106,12 @@ export const GetBlockInputSchema = z
       .describe(
         "Block reference: either a block NUMBER or a 0x-prefixed block HASH. Both forms are accepted and resolve to the same block.",
       )
-      .meta({ examples: ["8783000", "0x9f1e...c3"] }),
+      .meta({
+        examples: [
+          "8783000",
+          "0x9f1e2d3c4b5a69788796a5b4c3d2e1f009182736455463728190abcdef012345",
+        ],
+      }),
   })
   .strict();
 export type GetBlockInput = z.infer<typeof GetBlockInputSchema>;
@@ -129,7 +134,12 @@ export const ListBlockExtrinsicsInputSchema = z
       .describe(
         "Block reference: either a block NUMBER or a 0x-prefixed block HASH. Both forms are accepted and resolve to the same block.",
       )
-      .meta({ examples: ["8783000", "0x9f1e...c3"] }),
+      .meta({
+        examples: [
+          "8783000",
+          "0x9f1e2d3c4b5a69788796a5b4c3d2e1f009182736455463728190abcdef012345",
+        ],
+      }),
     limit: limitSchema(100).optional(),
     offset: offsetSchema().optional(),
   })
@@ -160,7 +170,12 @@ export const GetBlockEventsInputSchema = z
       .describe(
         "Block reference: either a block NUMBER or a 0x-prefixed block HASH. Both forms are accepted and resolve to the same block.",
       )
-      .meta({ examples: ["8783000", "0x9f1e...c3"] }),
+      .meta({
+        examples: [
+          "8783000",
+          "0x9f1e2d3c4b5a69788796a5b4c3d2e1f009182736455463728190abcdef012345",
+        ],
+      }),
     limit: limitSchema(1000).optional(),
     offset: offsetSchema().optional(),
   })

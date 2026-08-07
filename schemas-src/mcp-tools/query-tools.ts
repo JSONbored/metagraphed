@@ -24,12 +24,22 @@ import { OpenObjectSchema } from "./shared.ts";
 
 export const QueryGraphqlInputSchema = z
   .object({
+    // A GraphQL DOCUMENT, not search text (#9795). This carried the search
+    // tools' generic description -- "the request payload or search text this
+    // surface expects" -- and their `"inference"` example, so an agent that
+    // copied the example got `Syntax Error: Unexpected Name "inference"`. The
+    // example below is a real query, verified against the live schema
+    // alongside this file's `variables` example.
     query: z
       .string()
       .describe(
-        "The request payload or search text this surface expects. Shape depends on the surface; see its schema.",
+        "The GraphQL document to execute against metagraphed's schema -- a full `query { ... }` operation, not search text. Pair named variables with the sibling `variables` object; use get_api_schema to discover the available fields.",
       )
-      .meta({ examples: ["inference"] }),
+      .meta({
+        examples: [
+          "query SubnetById($netuid: Int!) { subnet(netuid: $netuid) { netuid name } }",
+        ],
+      }),
     variables: OpenObjectSchema.optional()
       .describe("GraphQL variables for the query, as an object.")
       .meta({ examples: [{ netuid: 64 }] }),
