@@ -938,7 +938,11 @@ async function handleChainDetailSyncHead(request: Request, env: Env) {
 // fresher row -- it can only fill a genuinely missing past snapshot_date.
 const NEURON_DAILY_BACKFILL_TOKEN_HEADER = "x-neuron-daily-backfill-token";
 
-async function handleNeuronDailyBackfill(request: Request, env: Env) {
+async function handleNeuronDailyBackfill(
+  request: Request,
+  env: Env,
+  ctx?: ExecutionContext,
+) {
   if (!env.NEURON_DAILY_BACKFILL_SECRET) {
     return writeJson(
       { error: "neuron-daily backfill is not provisioned on this deployment" },
@@ -1046,13 +1050,36 @@ async function handleNeuronDailyBackfill(request: Request, env: Env) {
     return writeJson({ error: "d1 write failed" }, 502);
   }
 
-  // #9193: same deletion as handleNeuronsSync above -- the D1 write IS the sync.
+  // THE SECOND WRITER, mirrored too (#9717).
+  //
+  // This route writes the SAME two derived tables handleNeuronsSync does, and
+  // for a while only that one mirrored. The gap was measurable and stable:
+  // `account_position_daily` for 2026-08-07 held 30,216 rows in D1 against
+  // 30,124 in Neon -- 92 rows across 69 accounts, unchanged across
+  // measurements minutes apart, so not tick skew. `neurons` matched exactly on
+  // a content checksum, because it has only one writer.
+  //
+  // A store is not a mirror of another store until EVERY path that writes the
+  // first also writes the second. One unmirrored writer is all it takes to make
+  // a cutover serve a quietly incomplete table -- which the row count would
+  // have called nearly right.
+  //
+  // `rows: []` because this route carries no `neurons` rows: the mirror treats
+  // an empty table as a clean no-op and still records its verdict, so the
+  // absence is visible rather than assumed.
+  const neon = await mirrorNeuronSnapshotToNeon(
+    env as unknown as Record<string, unknown>,
+    ctx,
+    { rows: [], dailyRows, positionRows },
+  );
+
   return writeJson({
     ok: true,
     neuron_daily_written: dailyRows.length,
     account_position_daily_written: positionRows.length,
-    stores: ["d1"],
+    stores: neon.attempted ? ["d1", "neon"] : ["d1"],
     d1_statements: d1Statements,
+    neon: neon.attempted ? neon.results : undefined,
   });
 }
 
@@ -6665,7 +6692,7 @@ async function dispatchDataApiRequest(
       request.method === "POST" &&
       url.pathname === "/api/v1/internal/backfill-neuron-daily"
     ) {
-      return handleNeuronDailyBackfill(request, env);
+      return handleNeuronDailyBackfill(request, env, ctx);
     }
     // #9208's live-follow lane. The head read is a GET and therefore has to be
     // matched HERE too rather than left to the read dispatcher: the gate below
