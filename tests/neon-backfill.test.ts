@@ -27,6 +27,7 @@ import {
   copyWholeTableToNeon,
   d1DateCounts,
   d1TableSignature,
+  freshnessColumn,
   dateDeficits,
   describeOutcome,
   keysetPredicate,
@@ -37,6 +38,7 @@ import {
   reconcileTableToNeon,
   runNeonBackfill,
   shapeRowForNeon,
+  signatureSql,
   signaturesAgree,
 } from "../src/neon-backfill.ts";
 import { neonBackfillLanes } from "../src/neon-write.ts";
@@ -185,14 +187,32 @@ describe("NEON_BACKFILL_PLANS", () => {
     }
   });
 
-  test("every plan can compare signatures, which needs captured_at", () => {
-    // Both the whole-table sync check and backfillGuard read captured_at, so a
-    // plan without it would compare on row count alone and never notice an
-    // updated-in-place row.
+  test("every plan's freshness column is one of its own columns", () => {
+    // Both the whole-table sync check and backfillGuard read this column by
+    // name. A name the table does not have does not degrade -- the guard fails
+    // every write, and the signature query throws and is swallowed as "the
+    // store did not answer".
     for (const [name, plan] of Object.entries(NEON_BACKFILL_PLANS)) {
+      const freshness = freshnessColumn(plan);
+      if (freshness === null) continue;
       assert.ok(
-        plan.columns.includes("captured_at"),
-        `${name} has no captured_at`,
+        plan.columns.includes(freshness),
+        `${name} declares freshness "${freshness}" but has no such column`,
+      );
+    }
+  });
+
+  test("a plan without a freshness column has to argue for it", () => {
+    // Comparing on COUNT alone is allowed, but only for append-only tables --
+    // an updated-in-place row is drift with no count difference, and nothing
+    // else would catch it. So the exemption is named per plan rather than
+    // inherited by default.
+    const APPEND_ONLY: readonly string[] = [];
+    for (const [name, plan] of Object.entries(NEON_BACKFILL_PLANS)) {
+      if (freshnessColumn(plan) !== null) continue;
+      assert.ok(
+        APPEND_ONLY.includes(name),
+        `${name} has no freshness column; add it to APPEND_ONLY with the reason its rows are never rewritten`,
       );
     }
   });
@@ -215,6 +235,72 @@ describe("NEON_BACKFILL_PLANS", () => {
     assert.equal(
       backfillGuard("neuron_daily"),
       "neuron_daily.captured_at < EXCLUDED.captured_at",
+    );
+  });
+
+  test("the guard names the plan's OWN freshness column", () => {
+    // The probe tables call it checked_at, the rollups updated_at. A guard
+    // hardcoded to captured_at names a column they do not have, and every
+    // backfill write for them fails.
+    assert.equal(
+      backfillGuard("surface_checks", "checked_at"),
+      "surface_checks.checked_at < EXCLUDED.checked_at",
+    );
+  });
+
+  test("a table with no freshness column gets NO guard", () => {
+    // Not "a guard that always passes" -- no guard at all. Safe precisely
+    // because such a table is append-only: nothing rewrites a row, so a stale
+    // page has no newer version to clobber.
+    assert.equal(backfillGuard("surface_history", null), undefined);
+  });
+
+  test("freshnessColumn distinguishes unstated from absent", () => {
+    const base = NEON_BACKFILL_PLANS.neuron_daily;
+    assert.equal(freshnessColumn(base), "captured_at");
+    assert.equal(
+      freshnessColumn({ ...base, freshness: "checked_at" }),
+      "checked_at",
+    );
+    // Explicit null is a CLAIM that the table has none, and must not fall back
+    // to the family default.
+    assert.equal(freshnessColumn({ ...base, freshness: null }), null);
+  });
+
+  test("signatureSql omits MAX() when there is nothing to take it over", () => {
+    assert.equal(
+      signatureSql("surface_checks", "checked_at"),
+      "SELECT COUNT(*) AS n, MAX(checked_at) AS max_captured FROM surface_checks",
+    );
+    // Selecting a column the table lacks throws, and both signature readers
+    // swallow a throw as "the store did not answer" -- so a schema mistake
+    // would present as an indefinite `unknown` rather than an error.
+    assert.equal(
+      signatureSql("surface_history", null),
+      "SELECT COUNT(*) AS n FROM surface_history",
+    );
+  });
+
+  test("two freshness-less signatures agree on the count alone", async () => {
+    const d1 = fakeDb([[{ n: 8892 }]]);
+    const pg = fakeSql([{ n: 8892 }]);
+    assert.deepEqual(await d1TableSignature(d1.db, "surface_history", null), {
+      rows: 8892,
+      maxCapturedAt: null,
+    });
+    assert.deepEqual(
+      await neonTableSignature(pg.sql, "surface_history", null),
+      {
+        rows: 8892,
+        maxCapturedAt: null,
+      },
+    );
+    assert.equal(
+      signaturesAgree(
+        { rows: 8892, maxCapturedAt: null },
+        { rows: 8892, maxCapturedAt: null },
+      ),
+      true,
     );
   });
 });
