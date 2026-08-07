@@ -245,58 +245,6 @@ const ENVELOPE_HEADROOM = 2 * 1024;
  */
 export const MULTI_FAMILY_LANES: readonly string[] = ["chain-detail"];
 
-/**
- * Lanes refused this transport **as it is currently encoded**.
- *
- * MEASURED, not assumed (metagraphed-infra#359). `chain-detail`'s indivisible
- * unit is one block: its four families are posted together precisely so a block
- * and its extrinsics cannot land separately, and `packMultiFamilyMessage`
- * refuses to split them for that reason. So the question is never "how many
- * blocks per message" — it is whether ONE block fits.
- *
- * As raw JSON it does not. Built from the real rows of the busiest block
- * captured (#8790494 — 35 extrinsics, 694 chain events, 515 account events,
- * 1,245 rows):
- *
- *   raw JSON     476.6 KiB      against a 128 KiB per-message cap — 3.7x over
- *
- * No producer setting reaches that, because the batch is already one block.
- *
- * THE FIX IS COMPRESSION, AND IT IS NOT CLOSE. The payload is enormously
- * repetitive — the same ss58 addresses, pallet names and event kinds over and
- * over — and gzip gets **11.8x** on exactly these bytes:
- *
- *   gzip -9       40.5 KiB      87.5 KiB of headroom, ~3 blocks per message
- *
- * That is a real design change (`CompressionStream` at the route,
- * `DecompressionStream` at the consumer, a measured ceiling, and a loud failure
- * when a pathological block still overflows), which is why it is its own issue
- * rather than something smuggled in here.
- *
- * WHY THIS IS A GUARD AND NOT A COMMENT, in the meantime. Adding a lane to
- * SYNC_QUEUE_LANES is deliberately a one-word deploy-time change. Without this,
- * that one word turns every chain-detail tick into a 502 from an oversize
- * `send()` — and the producer advances its cursor only on a POST that
- * succeeded, so the lane does not degrade, it WEDGES, retrying the same
- * oversized batch forever. The cheapest possible mistake would take out the
- * highest-cadence lane, and chain-detail is also the largest D1 writer here:
- * ~1,245 rows every 12 seconds is ~9M rows/day, against account-balances'
- * ~1.5M. It is the lane the queue most wants, which is exactly why the
- * placeholder must fail closed.
- *
- * Everything else stays: the message shape, the packer and the consumer's
- * family writer are correct and tested, and compression drops in behind them
- * without touching any of it.
- */
-export const QUEUE_INELIGIBLE_LANES: Readonly<Record<string, string>> = {
-  "chain-detail":
-    "one block is 476.6 KiB of raw JSON (measured on #8790494) against a " +
-    "128 KiB per-message cap, and its four families cannot be split without " +
-    "losing the atomicity they travel together for. gzip takes the same bytes " +
-    "to 40.5 KiB, so this is a compression change rather than a permanent " +
-    "exclusion -- see metagraphed-infra#383",
-};
-
 /** The family names each multi-family lane may send. A name outside this list
  * is refused rather than written to a guessed table. */
 export const MULTI_FAMILY_LANE_ROW_FAMILIES: Readonly<
@@ -501,25 +449,21 @@ export function packSyncBatchMessages(input: {
  * and wrong. So an oversize chunk THROWS rather than degrading into the split
  * this shape exists to prevent.
  *
- * That is a real constraint, not a hypothetical: the producer batches 2 blocks
- * per POST at ~350-662 KiB, which is over the 128 KB cap. The producer has to
- * post smaller batches for this lane to move -- and a loud error at the
- * boundary is how that gets discovered, rather than a silently split write.
+ * IT DOES NOT MEASURE ITSELF ANY MORE. It used to check `JSON.stringify(...)`
+ * against the budget, and that was measuring the wrong thing once the message
+ * started travelling compressed: one chain-detail block is 476.6 KiB of JSON
+ * and 40.5 KiB on the wire, so a raw-bytes check refuses messages that fit.
+ * `compressSyncBatchMessage` owns the budget now, because it is the only place
+ * that knows the size the transport actually sees -- and it keeps the same
+ * loud-throw posture, for the same reason.
  */
 export function packMultiFamilyMessage(input: {
   lane: SyncBatchLane;
   capturedAt: number;
   passTotal?: number;
   families: Record<string, Record<string, unknown>[]>;
-  maxBytes?: number;
 }): SyncBatchMessage {
-  const {
-    lane,
-    capturedAt,
-    passTotal,
-    families,
-    maxBytes = SYNC_BATCH_MAX_BYTES,
-  } = input;
+  const { lane, capturedAt, passTotal, families } = input;
   const message: SyncBatchMessage = {
     lane,
     captured_at: capturedAt,
@@ -527,20 +471,8 @@ export function packMultiFamilyMessage(input: {
     families,
   } as SyncBatchMessage;
   // `rows` is absent by construction here; the validator refuses a message
-  // carrying both, so the type's required `rows` is deliberately not set.
+  // carrying both, so the type's optional `rows` is deliberately not set.
   delete (message as { rows?: unknown }).rows;
-
-  const bytes = JSON.stringify(message).length;
-  if (bytes > maxBytes) {
-    const counts = Object.entries(families)
-      .map(([name, rows]) => `${name}=${rows.length}`)
-      .join(", ");
-    throw new Error(
-      `sync-batches: ${lane} multi-family message is ${bytes} bytes (${counts}), ` +
-        `over the ${maxBytes}-byte budget; these families must land together, ` +
-        `so the PRODUCER must post a smaller batch rather than this splitting them`,
-    );
-  }
   return message;
 }
 
@@ -702,18 +634,12 @@ export function classifySyncBatch(
  *
  * Absent flag means the old path, so a deployment that has not opted in behaves
  * exactly as before -- the same posture every other switch here takes.
- *
- * ONE LANE OVERRIDES THE FLAG. A lane in QUEUE_INELIGIBLE_LANES does not fit
- * the transport at any producer setting, so naming it here is a mistake the
- * flag cannot express -- and an unexpressible mistake should be refused, not
- * obeyed. See that constant for the measurement.
  */
 export function syncLaneUsesQueue(
   env: { SYNC_BATCHES?: unknown; SYNC_QUEUE_LANES?: string },
   lane: SyncBatchLane,
 ): boolean {
   if (!env.SYNC_BATCHES) return false;
-  if (lane in QUEUE_INELIGIBLE_LANES) return false;
   const enabled = (env.SYNC_QUEUE_LANES ?? "")
     .split(",")
     .map((s) => s.trim())
