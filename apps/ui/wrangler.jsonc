@@ -10,6 +10,25 @@
   // deploy` would create a NEW worker and never update the live `metagraphed-ui`
   // worker that holds the `metagraph.sh/*` route.
   "name": "metagraphed-ui",
+  // PINNED, and it has to be (#9725). Nitro's cloudflare-module preset supplies
+  // its own `compatibility_date` default when this file does not
+  // (nitro/dist/_presets.mjs:490), and that default is `"latest"` -- which
+  // resolves to THE DAY THE BUILD RUNS. So the generated
+  // dist/server/wrangler.json asked for today's date, every day, while the
+  // pinned wrangler (4.118.0) ships a workerd that supports dates only up to
+  // 2026-08-06. On 2026-08-07 the calendar passed the binary and every e2e run
+  // stopped booting -- "This Worker requires compatibility date 2026-08-07, but
+  // the newest date supported by this server binary is 2026-08-06" -- with
+  // nothing in the failing diff to explain it. Same class as #9689's expiring
+  // fixtures: a build whose output depends on the wall clock.
+  //
+  // BUMP THIS WITH THE WRANGLER VERSION, NOT ON ITS OWN. The date and the
+  // binary that has to support it are one decision; pinning makes it a reviewed
+  // value in a commit rather than a number that changes under every build.
+  //
+  // Nitro merges with defu(overrides, ctxConfig, userConfig, defaults) and defu
+  // gives earlier arguments priority, so this beats that default.
+  "compatibility_date": "2026-08-06",
   // #9004: the whole site was ALSO being served, in parallel, from the
   // account's leftover workers.dev subdomain --
   // https://metagraphed-ui.zeronode.workers.dev returned 200 for every route.
