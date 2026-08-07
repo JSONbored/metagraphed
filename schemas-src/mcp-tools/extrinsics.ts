@@ -24,8 +24,11 @@ import {
  * read it rather than restating it — they previously declared no maximum at all.
  */
 export const EXTRINSICS_LIMIT_MAX = 100;
-import { AccountEventItemSchema, OpenObjectSchema } from "./shared.ts";
-import { ExtrinsicsFeedArtifactSchema } from "../routes/extrinsics.ts";
+import { AccountEventItemSchema } from "./shared.ts";
+import {
+  ExtrinsicSchema,
+  ExtrinsicsFeedArtifactSchema,
+} from "../routes/extrinsics.ts";
 
 const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
 
@@ -121,7 +124,10 @@ export const GetExtrinsicOutputSchema = z
   .object({
     schema_version: z.int().optional(),
     ref: z.unknown(),
-    extrinsic: OpenObjectSchema.nullable().optional(),
+    // Typed from the route's own ExtrinsicSchema (#9797). Not partial --
+    // get_extrinsic advertises no `fields`. Verified against production
+    // 2026-08-07 against both a hash ref and a block-number ref.
+    extrinsic: ExtrinsicSchema.nullable().optional(),
     events: z.array(AccountEventItemSchema).optional(),
   })
   .passthrough();

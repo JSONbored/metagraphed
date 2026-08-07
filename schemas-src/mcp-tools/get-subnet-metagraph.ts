@@ -3,11 +3,11 @@
 // schemas-src/routes/'s covered pilot routes -- no existing Zod schema to
 // reuse. Modeled fresh, shallow, from the hand-written literal it replaces.
 import { z } from "zod";
+import { NeuronSchema } from "../routes/subnet-metagraph.ts";
 import {
   NEURON_SORT_FIELD_NAMES,
   NEURON_SORT_NULLS_LAST_NOTE,
   NeuronFieldsInputSchema,
-  OpenObjectArraySchema,
   accountKeySchema,
   netuidSchema,
 } from "./shared.ts";
@@ -129,7 +129,12 @@ export const GetSubnetMetagraphOutputSchema = z
       ),
     captured_at: z.string().nullable().optional(),
     block_number: z.int().nullable().optional(),
-    neurons: OpenObjectArraySchema,
+    // Typed from the route's own NeuronSchema (#9797), PARTIAL because this
+    // tool advertises `fields`: a caller who projects the row must still
+    // satisfy the schema the tool publishes, which is the contract #9884
+    // restored after the derivation in #9855/#9859 broke it. Verified against
+    // production 2026-08-07, whole and projected.
+    neurons: z.array(NeuronSchema.partial()),
   })
   .passthrough();
 export type GetSubnetMetagraphOutput = z.infer<

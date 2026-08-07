@@ -16,13 +16,15 @@
 import { z } from "zod";
 import {
   NeuronFieldsInputSchema,
-  OpenObjectSchema,
   accountKeySchema,
   netuidSchema,
   uidSchema,
   windowSchema,
 } from "./shared.ts";
-import { NeuronHistoryArtifactSchema } from "../routes/subnet-metagraph.ts";
+import {
+  NeuronHistoryArtifactSchema,
+  NeuronSchema,
+} from "../routes/subnet-metagraph.ts";
 
 // EXACTLY ONE of `uid` / `hotkey` identifies the neuron (#9872), and that is
 // PUBLISHED rather than only described.
@@ -70,7 +72,13 @@ export const GetNeuronOutputSchema = z
     netuid: netuidSchema(),
     captured_at: z.string().nullable().optional(),
     block_number: z.int().nullable().optional(),
-    neuron: OpenObjectSchema.nullable(),
+    // Typed from the route's own NeuronSchema (#9797), PARTIAL because this
+    // tool advertises `fields`: a caller who projects the row must still
+    // satisfy the schema the tool publishes, which is the contract #9884
+    // restored after the derivation in #9855/#9859 broke it. Verified against
+    // production 2026-08-07, whole and projected.
+    // Null is a real answer: the uid/hotkey holds no slot on this subnet.
+    neuron: NeuronSchema.partial().nullable(),
   })
   .passthrough();
 export type GetNeuronOutput = z.infer<typeof GetNeuronOutputSchema>;
