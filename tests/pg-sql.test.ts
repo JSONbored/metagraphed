@@ -10,6 +10,7 @@
 // So the assertions are about the built TEXT and the value order, not merely
 // that a query ran.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import {
   createPgD1Runner,
@@ -308,6 +309,83 @@ describe("toPositionalPlaceholders", () => {
       Array.from({ length: 11 }, (_, i) => `$${i + 1}`),
     );
     assert.equal(out.includes("?"), false);
+  });
+});
+
+describe("every dispatch path to Postgres converts placeholders", () => {
+  // THE GATE FOR #9821'S CLASS, and it exists because neither of the other two
+  // gates could have caught it.
+  //
+  // tests/neon-sql-portability.test.ts scans query TEXT for constructs that
+  // are SQLite-only. `?` is not one of those: it is correct SQL on two of the
+  // three paths into Postgres and wrong only on the third. The defect was
+  // never in a query -- it was in HOW A STATEMENT IS DISPATCHED, and
+  // createPgSql.unsafe was the one path that passed its text straight through.
+  // Six routes served an empty 200 until #9822.
+  //
+  // So this asserts the property per PATH rather than per query, and the
+  // coverage check below is the load-bearing half: a fourth factory added
+  // without conversion fails here instead of in production.
+  const bad = "SELECT a FROM t WHERE x = ? AND y = ?";
+  const good = "SELECT a FROM t WHERE x = $1 AND y = $2";
+
+  /** One invoker per factory, because their public shapes differ. */
+  const PATHS: Record<
+    string,
+    (h: { connectionString: string }, c: never, f: () => never) => Promise<void>
+  > = {
+    createPgSql: async (h, c, f) => {
+      await createPgSql(h, c, f).unsafe(bad, [1, 2]);
+    },
+    createPgD1Runner: async (h, c, f) => {
+      await createPgD1Runner(h, c, f)(bad, [1, 2]);
+    },
+  };
+
+  for (const [name, invoke] of Object.entries(PATHS)) {
+    test(`${name} rewrites ? to $n`, async () => {
+      const { client, calls } = fakeClient([]);
+      const { ctx } = ctxSpy();
+      await invoke(
+        { connectionString: "postgres://x" },
+        ctx as never,
+        (() => client) as never,
+      );
+      assert.equal(
+        calls[0]!.text,
+        good,
+        `${name} sent \`?\` to Postgres, which does not recognise it -- the ` +
+          `query matches nothing and the route serves an empty 200 (#9821)`,
+      );
+    });
+  }
+
+  test("every factory in src/pg-sql.ts is covered above", () => {
+    // The half that keeps this honest. Without it, adding a third way to reach
+    // Postgres leaves the new path unasserted while this suite still reports
+    // green -- which is exactly how `unsafe` went unchecked for as long as it
+    // did.
+    const src = readFileSync("src/pg-sql.ts", "utf8");
+    const factories = [...src.matchAll(/export function (createPg\w+)/g)].map(
+      (m) => m[1]!,
+    );
+    assert.ok(factories.length > 0, "no createPg* factories found");
+    assert.deepEqual(
+      factories.sort(),
+      Object.keys(PATHS).sort(),
+      "a factory that dispatches to Postgres is not exercised by the " +
+        "placeholder assertions above -- add an invoker for it",
+    );
+  });
+
+  test("the tagged-template path numbers its own placeholders", () => {
+    // The third path, asserted where it actually happens: the template form
+    // never sees a `?` at all, because pgStatementText builds `$n` from the
+    // interpolation count.
+    assert.equal(
+      pgStatementText(["SELECT a FROM t WHERE x = ", " AND y = ", ""]),
+      good,
+    );
   });
 });
 

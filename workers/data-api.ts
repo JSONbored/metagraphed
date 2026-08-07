@@ -5972,50 +5972,35 @@ export const NEON_READ_ROUTE_TABLES: readonly {
   pattern: RegExp;
   tables: readonly string[];
 }[] = [
-  // Reads `neurons` for the account's current UIDs, then the dated positions.
-  {
-    pattern: /^\/api\/v1\/accounts\/[^/]+\/subnets\/\d+\/history$/,
-    tables: ["neurons", "account_position_daily"],
-  },
-  // neuron_daily only -- the day-over-day aggregates.
+  // neuron_daily only.
   { pattern: /^\/api\/v1\/subnets\/movers$/, tables: ["neuron_daily"] },
   { pattern: /^\/api\/v1\/chain\/turnover$/, tables: ["neuron_daily"] },
-  {
-    pattern: /^\/api\/v1\/subnets\/\d+\/turnover$/,
-    tables: ["neuron_daily"],
-  },
+  { pattern: /^\/api\/v1\/subnets\/\d+\/turnover$/, tables: ["neuron_daily"] },
   { pattern: /^\/api\/v1\/subnets\/\d+\/history$/, tables: ["neuron_daily"] },
   {
     pattern: /^\/api\/v1\/subnets\/\d+\/yield\/history$/,
     tables: ["neuron_daily"],
   },
   {
-    pattern: /^\/api\/v1\/subnets\/\d+\/concentration$/,
-    tables: ["neuron_daily"],
-  },
-  {
-    pattern: /^\/api\/v1\/subnets\/\d+\/performance$/,
-    tables: ["neuron_daily"],
-  },
-  { pattern: /^\/api\/v1\/subnets\/\d+\/yield$/, tables: ["neuron_daily"] },
-  {
-    pattern: /^\/api\/v1\/subnets\/\d+\/neurons\/\d+$/,
-    tables: ["neuron_daily"],
-  },
-  // Both: the live card comes from `neurons`, the series from `neuron_daily`.
-  {
     pattern: /^\/api\/v1\/subnets\/\d+\/performance\/history$/,
-    tables: ["neurons", "neuron_daily"],
+    tables: ["neuron_daily"],
   },
   {
     pattern: /^\/api\/v1\/subnets\/\d+\/neurons\/\d+\/history$/,
-    tables: ["neurons", "neuron_daily"],
+    tables: ["neuron_daily"],
   },
-  {
-    pattern: /^\/api\/v1\/validators\/[^/]+\/history$/,
-    tables: ["neurons", "neuron_daily"],
-  },
-  // `neurons` only.
+  // `neurons` only. Several of these declared `neuron_daily` until the map
+  // test's block split was corrected (#9825): a parameterised guard is two
+  // statements, so splitting before the `if` attributed each route's SQL to
+  // its NEIGHBOUR. Gating on the wrong table is what that test exists to stop,
+  // and it was doing the opposite.
+  { pattern: /^\/api\/v1\/subnets\/\d+\/metagraph$/, tables: ["neurons"] },
+  { pattern: /^\/api\/v1\/subnets\/\d+\/neurons\/\d+$/, tables: ["neurons"] },
+  { pattern: /^\/api\/v1\/subnets\/\d+\/validators$/, tables: ["neurons"] },
+  { pattern: /^\/api\/v1\/subnets\/\d+\/concentration$/, tables: ["neurons"] },
+  { pattern: /^\/api\/v1\/subnets\/\d+\/performance$/, tables: ["neurons"] },
+  { pattern: /^\/api\/v1\/subnets\/\d+\/yield$/, tables: ["neurons"] },
+  { pattern: /^\/api\/v1\/subnets\/\d+\/idle-stake$/, tables: ["neurons"] },
   { pattern: /^\/api\/v1\/chain\/concentration$/, tables: ["neurons"] },
   {
     pattern: /^\/api\/v1\/chain\/concentration\/subnets$/,
@@ -6024,17 +6009,30 @@ export const NEON_READ_ROUTE_TABLES: readonly {
   { pattern: /^\/api\/v1\/chain\/performance$/, tables: ["neurons"] },
   { pattern: /^\/api\/v1\/chain\/idle-stake$/, tables: ["neurons"] },
   { pattern: /^\/api\/v1\/chain\/yield$/, tables: ["neurons"] },
-  { pattern: /^\/api\/v1\/subnets\/\d+\/validators$/, tables: ["neurons"] },
-  { pattern: /^\/api\/v1\/accounts\/[^/]+\/portfolio$/, tables: ["neurons"] },
+  // Reads `neurons` for the account's current UIDs, then the dated positions.
   {
-    pattern: /^\/api\/v1\/subnets\/\d+\/metagraph$/,
-    tables: ["neurons"],
+    pattern: /^\/api\/v1\/accounts\/[^/]+\/subnets\/\d+\/history$/,
+    tables: ["neurons", "account_position_daily"],
   },
-  // BLOCKED until the unmirrored tables below get a proven Neon lane. These
-  // are not aspirational entries -- listing the real dependency is what keeps
-  // neonServesRoute returning false for them today (#9811).
+  // BLOCKED until their unmirrored tables have a proven Neon lane (#9814).
+  // Listing the real dependency is what keeps neonServesRoute returning false
+  // for them, and what will un-block them automatically once the mirror exists.
+  //
+  // The first two are LIVE REGRESSIONS this corrects (#9825). Both were
+  // declared without `subnet_snapshots` and both moved to Neon when #9810
+  // enabled `neurons`/`neuron_daily`; the join found no such table and each
+  // served an empty 200.
   {
     // + loadAlphaPricesByNetuidD1.
+    pattern: /^\/api\/v1\/accounts\/[^/]+\/portfolio$/,
+    tables: ["neurons", "subnet_snapshots"],
+  },
+  {
+    // Joins subnet_snapshots directly for the alpha -> TAO conversion.
+    pattern: /^\/api\/v1\/validators\/[^/]+\/history$/,
+    tables: ["neuron_daily", "subnet_snapshots"],
+  },
+  {
     pattern: /^\/api\/v1\/accounts$/,
     tables: ["neurons", "subnet_snapshots"],
   },
@@ -6049,6 +6047,15 @@ export const NEON_READ_ROUTE_TABLES: readonly {
       "neurons",
       "subnet_snapshots",
       "account_identity",
+      "subnet_hyperparams",
+      "validator_nominator_counts",
+    ],
+  },
+  {
+    pattern: /^\/api\/v1\/validators\/[^/]+$/,
+    tables: [
+      "neurons",
+      "subnet_snapshots",
       "subnet_hyperparams",
       "validator_nominator_counts",
     ],
