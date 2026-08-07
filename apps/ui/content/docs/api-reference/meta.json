@@ -5,6 +5,7 @@
     "accounts",
     "adapters",
     "agents",
+    "alerts",
     "api-dx",
     "blocks",
     "candidates",
@@ -24,6 +25,7 @@
     "search",
     "subnets",
     "surfaces",
-    "validators"
+    "validators",
+    "webhooks"
   ]
 }
