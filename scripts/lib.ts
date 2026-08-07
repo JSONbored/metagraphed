@@ -2895,6 +2895,7 @@ export {
   classifyNativeName,
   nativeNameQuality,
   nativeDisplayName,
+  subnetDisplayName,
   sanitizeChainText,
   stripUrls,
   cleanDescription,

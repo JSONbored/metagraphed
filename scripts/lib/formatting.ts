@@ -87,12 +87,73 @@ export function classifyNativeName(
       "to be confirmed",
       "to be determined",
       "to be announced",
-    ].includes(normalized) || /\b(?:tbc|tbd|tba)\b/.test(normalized);
+      // #9748: exact placeholders the chain actually carries today. Measured
+      // against all 129 finney identities rather than imagined.
+      "pending",
+      "reserved",
+      "available",
+      "not set",
+      "no name",
+      // STATUS words, not identities. The chain carries "deprecated" on three
+      // separate netuids and "Parked" on a fourth -- adopting them as display
+      // names would replace Templar, Basilica and Grail with three subnets
+      // indistinguishably called "deprecated". Lifecycle is what the manifest's
+      // `status` field is for; this field is what the subnet is CALLED.
+      "deprecated",
+      "parked",
+      "inactive",
+      "retired",
+      "dead",
+      "sold",
+      "closed",
+      "abandoned",
+    ].includes(normalized) ||
+    /\b(?:tbc|tbd|tba)\b/.test(normalized) ||
+    // LEADING-TOKEN placeholders, because owners decorate them: the chain
+    // carries "pending..." on netuid 94 and "wait (reproduce paper)" on 47,
+    // neither of which the exact-match list above could ever catch. Anchored
+    // and word-bounded so a real name beginning with these letters is
+    // untouched -- verified against every current on-chain name, where the
+    // only two it reclassifies are exactly those.
+    /^(?:pending|waiting|wait|for sale|reserved|available|placeholder|deprecated|parked)\b/.test(
+      normalized,
+    );
   if (genericName || placeholderName || !/[\p{L}\p{N}]/u.test(raw)) {
     return { raw_name: raw, quality: "placeholder" };
   }
 
   return { raw_name: raw, quality: "chain" };
+}
+
+/**
+ * The subnet's display name: THE CHAIN NAMES IT, the overlay is the fallback
+ * (#9748).
+ *
+ * Extracted because scripts/build-artifacts.ts and scripts/validate.ts each
+ * carried their own copy, and the reproducibility check compares one against
+ * the other -- so two copies of this expression is precisely the shape that
+ * lets them disagree while both look right.
+ *
+ * The precedence used to run the other way (`overlay?.name || chain`), so a
+ * curated label won unconditionally and a rebrand had to be noticed by a
+ * human. Measured 2026-08-07 across the refreshed capture: 33 of 129 curated
+ * names disagreed with their own on-chain identity, 30 of them plain rebrands
+ * where the chain was simply right. Inverted, a rename flows through on the
+ * next capture with nobody in the loop.
+ *
+ * The overlay still wins where the chain has nothing usable to say --
+ * classifyNativeName decides that, and defanging happens either way inside
+ * nativeDisplayName.
+ */
+export function subnetDisplayName(
+  nativeSubnet: Row | undefined,
+  overlayName: unknown,
+): string {
+  const fallback =
+    typeof overlayName === "string" && overlayName.trim()
+      ? overlayName
+      : `Subnet ${nativeSubnet?.netuid ?? "unknown"}`;
+  return nativeDisplayName(nativeSubnet, fallback);
 }
 
 export function nativeNameQuality(subnet: Row | undefined): string {
