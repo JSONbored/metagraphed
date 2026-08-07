@@ -314,6 +314,105 @@ const ACCOUNT_IDENTITY_COLUMNS = [
  * added for #9814 do nothing until both their Neon tables exist and the flag
  * lists them.
  */
+/**
+ * The five LOW-CHURN history tables (#9895), read off pragma_table_info
+ * 2026-08-07. 895 rows between them.
+ *
+ * `subnet_burn_history` and `tao_usd_index` are deliberately NOT here despite
+ * sharing the schema family. They are high-churn -- 12,255 and 1,440 rows a
+ * DAY respectively, measured -- and a `whole` plan recopies the entire table
+ * whenever the signature moves. For subnet_burn_history that is 36,894 rows
+ * rewritten every hour to add ~510. Those two need a live mirror so the
+ * reconciler idles, and get plans once they have one.
+ *
+ * `id` IS ABSENT FROM ALL FOUR AUTOINCREMENT TABLES, deliberately. Neon
+ * declares it GENERATED ALWAYS and assigns its own, because a mirror cannot
+ * preserve a value D1 hands out at insert time. That costs nothing: the
+ * natural key is unique in every one of them (531/531, 137/137, 123/123,
+ * 77/77 measured), so D1's own `(account, observed_at DESC, id DESC)` ordering
+ * never reaches the id tiebreaker.
+ */
+const ACCOUNT_IDENTITY_HISTORY_COLUMNS = [
+  "account",
+  "observed_at",
+  "name",
+  "url",
+  "github",
+  "image",
+  "discord",
+  "description",
+  "additional",
+  "identity_hash",
+] as const;
+
+const SUBNET_HYPERPARAMS_HISTORY_COLUMNS = [
+  "netuid",
+  "block_number",
+  "observed_at",
+  "kappa_ratio",
+  "immunity_period",
+  "min_allowed_weights",
+  "max_weight_limit_ratio",
+  "tempo",
+  "weights_version",
+  "weights_rate_limit",
+  "activity_cutoff",
+  "activity_cutoff_factor",
+  "registration_allowed",
+  "target_regs_per_interval",
+  "min_burn_tao",
+  "max_burn_tao",
+  "burn_half_life",
+  "burn_increase_mult",
+  "bonds_moving_avg_raw",
+  "max_regs_per_block",
+  "serving_rate_limit",
+  "max_validators",
+  "commit_reveal_period",
+  "commit_reveal_enabled",
+  "alpha_high_ratio",
+  "alpha_low_ratio",
+  "liquid_alpha_enabled",
+  "alpha_sigmoid_steepness",
+  "yuma_version",
+  "subnet_is_active",
+  "transfers_enabled",
+  "bonds_reset_enabled",
+  "user_liquidity_enabled",
+  "owner_cut_enabled",
+  "owner_cut_auto_lock_enabled",
+  "min_childkey_take_ratio",
+  "hyperparams_hash",
+] as const;
+
+const EMISSION_GATE_PARAM_HISTORY_COLUMNS = [
+  "param",
+  "value",
+  "previous_value",
+  "source",
+  "block_number",
+  "observed_at",
+  "predates_capture",
+] as const;
+
+const SUBNET_EMISSION_ENABLED_HISTORY_COLUMNS = [
+  "netuid",
+  "enabled",
+  "previous_enabled",
+  "block_number",
+  "observed_at",
+  "predates_capture",
+] as const;
+
+const CHAIN_CONCENTRATION_DAILY_COLUMNS = [
+  "day",
+  "neuron_count",
+  "card",
+  "source_captured_at",
+  "computed_at",
+  "builder_version",
+] as const;
+
 export const NEON_BACKFILL_PLANS: Readonly<Record<string, BackfillPlan>> = {
   neuron_daily: {
     table: "neuron_daily",
@@ -405,6 +504,68 @@ export const NEON_BACKFILL_PLANS: Readonly<Record<string, BackfillPlan>> = {
     keyset: ["account"],
     partition: "whole",
     booleans: [],
+  },
+  // The five low-churn history tables (#9895). Four are APPEND-ONLY -- a row,
+  // once written, is never rewritten -- so `freshness: null` and the signature
+  // degrades to COUNT, which is complete for them.
+  account_identity_history: {
+    table: "account_identity_history",
+    columns: ACCOUNT_IDENTITY_HISTORY_COLUMNS,
+    conflict: ["account", "observed_at"],
+    keyset: ["account", "observed_at"],
+    partition: "whole",
+    booleans: [],
+    freshness: null,
+  },
+  subnet_hyperparams_history: {
+    table: "subnet_hyperparams_history",
+    columns: SUBNET_HYPERPARAMS_HISTORY_COLUMNS,
+    conflict: ["netuid", "observed_at"],
+    keyset: ["netuid", "observed_at"],
+    partition: "whole",
+    booleans: [
+      "registration_allowed",
+      "commit_reveal_enabled",
+      "liquid_alpha_enabled",
+      "subnet_is_active",
+      "transfers_enabled",
+      "bonds_reset_enabled",
+      "user_liquidity_enabled",
+      "owner_cut_enabled",
+      "owner_cut_auto_lock_enabled",
+    ],
+    freshness: null,
+  },
+  emission_gate_param_history: {
+    table: "emission_gate_param_history",
+    columns: EMISSION_GATE_PARAM_HISTORY_COLUMNS,
+    conflict: ["param", "observed_at"],
+    keyset: ["param", "observed_at"],
+    partition: "whole",
+    booleans: ["predates_capture"],
+    freshness: null,
+  },
+  subnet_emission_enabled_history: {
+    table: "subnet_emission_enabled_history",
+    columns: SUBNET_EMISSION_ENABLED_HISTORY_COLUMNS,
+    conflict: ["netuid", "observed_at"],
+    keyset: ["netuid", "observed_at"],
+    partition: "whole",
+    booleans: ["enabled", "previous_enabled", "predates_capture"],
+    freshness: null,
+  },
+  // The ONE exception in the family: keyed on `day`, and today's row is
+  // RECOMPUTED as the day fills in. COUNT alone would let the two stores hold
+  // 27 rows each and disagree about today's card indefinitely, so this one
+  // compares on computed_at.
+  chain_concentration_daily: {
+    table: "chain_concentration_daily",
+    columns: CHAIN_CONCENTRATION_DAILY_COLUMNS,
+    conflict: ["day"],
+    keyset: ["day"],
+    partition: "whole",
+    booleans: [],
+    freshness: "computed_at",
   },
 };
 
