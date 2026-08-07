@@ -3021,7 +3021,117 @@ describe("batch 10 (#8064) route artifact schemas parse real builder output", ()
       artifact_budget_summary: summarizeArtifactBudgets(budgets),
       artifact_budgets: budgets.filter((b) => b.status !== "ok"),
       candidate_count: 300,
-      coverage: { candidate_count: 300, surface_count: 900 },
+      // A REAL captured /api/v1/coverage response (2026-08-07), not a stub.
+      // #9827 made this field the CoverageArtifact rather than an open
+      // object; the two-key stub that stood here satisfied the open object
+      // and nothing else, so the test started failing the moment the field
+      // was typed. A partial fixture cannot exercise a full schema.
+      coverage: {
+        application_subnet_count: 128,
+        candidate_count: 2174,
+        candidate_subnet_count: 129,
+        chain_subnet_count: 129,
+        completeness: {
+          average_score: 81,
+          dimension_coverage: {
+            community: {
+              pct: 72,
+              present: 93,
+            },
+            "data-artifact": {
+              pct: 92,
+              present: 119,
+            },
+            docs: {
+              pct: 100,
+              present: 129,
+            },
+            openapi: {
+              pct: 50,
+              present: 65,
+            },
+            "source-repo": {
+              pct: 95,
+              present: 123,
+            },
+            sse: {
+              pct: 4,
+              present: 5,
+            },
+            "subnet-api": {
+              pct: 94,
+              present: 121,
+            },
+            website: {
+              pct: 95,
+              present: 122,
+            },
+          },
+          fully_complete_count: 4,
+          fully_complete_pct: 3,
+          median_score: 78,
+          methodology:
+            "Per-subnet completeness_score (0-100) weighs curated public identity and operational interface coverage. Full per-subnet scores and gaps live at /metagraph/review/profile-completeness.json; the sortable leaderboard is /api/v1/profiles?sort=completeness_score&order=asc.",
+          score_distribution: {
+            "100": 3,
+            "0-24": 0,
+            "25-49": 4,
+            "50-74": 25,
+            "75-99": 97,
+          },
+          scored_subnet_count: 129,
+        },
+        contract_version: "2026-07-03.2",
+        curated_overlay_count: 129,
+        curation_level_counts: {
+          "adapter-backed": 2,
+          "maintainer-reviewed": 127,
+        },
+        domain_coverage: {
+          agents: 13,
+          compute: 9,
+          data: 9,
+          finance: 9,
+          inference: 16,
+          media: 4,
+          prediction: 7,
+          privacy: 2,
+          robotics: 3,
+          science: 5,
+          search: 2,
+          security: 4,
+          storage: 1,
+        },
+        first_party_subnet_count: 116,
+        generated_at: "2026-08-07T10:09:17.651Z",
+        manifested_count: 0,
+        native_only_count: 0,
+        native_only_with_candidates: 0,
+        native_only_without_candidates: 0,
+        native_snapshot_captured_at: "2026-08-07T10:10:10Z",
+        network: "finney",
+        official_surface_count: 444,
+        probed_count: 129,
+        probed_surface_count: 1859,
+        registry_observed_surface_count: 785,
+        root_subnet_count: 1,
+        schema_version: 1,
+        source: {
+          candidates: "registry/candidates",
+          native: {
+            identity_storage: "SubtensorModule.SubnetIdentitiesV3",
+            kind: "bittensor-sdk",
+            method:
+              "SubtensorApi.metagraphs.get_all_metagraphs_info(all_mechanisms=True)",
+            package: "bittensor",
+            rpc_family: "subnetInfo",
+            version: "10.4.0",
+          },
+          overlays: "registry/subnets",
+        },
+        subnets_without_official_surface: 13,
+        surface_count: 3493,
+      },
       endpoint_count: 3101,
       profile_count: 129,
       provider_count: 136,
