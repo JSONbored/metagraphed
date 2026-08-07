@@ -301,11 +301,33 @@ export const FRESHNESS_WATCHDOG_STATE_KEY = "watchdog:freshness:signature";
 // #8600: TAO/USD index tick. Every minute, which is ADR 0025 decision 5's
 // cadence and also Cloudflare's finest cron granularity -- the 300s staleness
 // threshold in the same decision assumes it, giving a reading four ticks of
-// headroom before it is served as stale. This is the only cron on the data-api
-// Worker; it lives there rather than on the api Worker because that is where
-// the Hyperdrive binding is, and a cross-Worker hop for a write the same
-// Worker could do is the shape #4832 spent a PR removing.
+// headroom before it is served as stale. It lives on the data-api Worker
+// rather than the api Worker because that is where the Hyperdrive binding is,
+// and a cross-Worker hop for a write the same Worker could do is the shape
+// #4832 spent a PR removing.
 export const TAO_USD_INDEX_CRON = "* * * * *";
+
+/**
+ * The D1 -> Neon reconciler tick (metagraphed-infra#336).
+ *
+ * On the data-api Worker for the same reason as the line above -- it is the
+ * only Worker holding BOTH the D1 binding the rows come from and the Hyperdrive
+ * binding they go to, so anywhere else this would be a copy over HTTP.
+ *
+ * EVERY THREE MINUTES, which is a backfill cadence rather than a watchdog one.
+ * The first run has ~817,000 rows of `neuron_daily` history to move at up to
+ * four dates a tick, and at this cadence that converges in well under an hour;
+ * an hourly cron would take a day. It does not stay expensive once it lands:
+ * the lane skips its comparison entirely for an hour after a clean verdict
+ * (IDLE_RECHECK_MS), so the steady state is one grouped count per store per
+ * hour and every tick in between is a single read of `lane_health`.
+ *
+ * Distinct from TAO_USD_INDEX_CRON's `* * * * *` rather than folded into it:
+ * two expressions deliver two events with two `controller.cron` values, which
+ * is what lets the handler dispatch without a minute-of-the-hour test that
+ * would drift the moment either cadence changed.
+ */
+export const NEON_BACKFILL_CRON = "*/3 * * * *";
 
 /**
  * The webhook fan-out tick (metagraphed-infra#354).

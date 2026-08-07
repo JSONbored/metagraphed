@@ -289,7 +289,13 @@ export async function recordNeonWriteVerdict(
 export function neonDualWriteLanes(
   env: Record<string, unknown> | null | undefined,
 ): Set<string> {
-  const raw = env?.NEON_DUAL_WRITE_LANES;
+  return parseLaneList(env?.NEON_DUAL_WRITE_LANES);
+}
+
+/** A comma list, empty on anything that is not one. Shared by all three Neon
+ * flags so "unset", "empty string" and "trailing comma" cannot mean different
+ * things depending on which stage of the cutover is reading them. */
+function parseLaneList(raw: unknown): Set<string> {
   if (typeof raw !== "string" || raw.trim() === "") return new Set();
   return new Set(
     raw
@@ -315,14 +321,24 @@ export function neonDualWriteLanes(
 export function neonReadLanes(
   env: Record<string, unknown> | null | undefined,
 ): Set<string> {
-  const raw = env?.NEON_READ_LANES;
-  if (typeof raw !== "string" || raw.trim() === "") return new Set();
-  return new Set(
-    raw
-      .split(",")
-      .map((lane) => lane.trim())
-      .filter((lane) => lane.length > 0),
-  );
+  return parseLaneList(env?.NEON_READ_LANES);
+}
+
+/**
+ * Which tables the D1 -> Neon reconciler covers (src/neon-backfill.ts).
+ *
+ * A THIRD flag rather than a reuse of the write list, because it answers a
+ * third question. Mirroring a lane says new writes reach Neon; reconciling one
+ * says everything written BEFORE the mirror does too. The five latest-only
+ * tables need only the first -- one producer cycle rewrites them whole -- so
+ * naming them here would copy 800,000 rows to prove they already match.
+ *
+ * Names TABLES, not lanes, because that is what a deficit is measured over.
+ */
+export function neonBackfillLanes(
+  env: Record<string, unknown> | null | undefined,
+): Set<string> {
+  return parseLaneList(env?.NEON_BACKFILL_LANES);
 }
 
 /** Whether `lane`'s reads should be served from Neon on this deployment. */

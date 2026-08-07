@@ -45,7 +45,7 @@ import {
   rowFromBatch,
   type TaoUsdIndexRow,
 } from "../src/tao-usd-ingest.ts";
-import { TAO_USD_INDEX_CRON } from "./config.ts";
+import { NEON_BACKFILL_CRON, TAO_USD_INDEX_CRON } from "./config.ts";
 import {
   buildConcentration,
   buildChainConcentration,
@@ -373,6 +373,7 @@ import { mirrorNeuronSnapshotToNeon } from "../src/neurons-neon-write.ts";
 import { mirrorNominatorPositionsToNeon } from "../src/nominator-positions-neon-write.ts";
 import { mirrorLedgerToNeon } from "../src/ledger-neon-write.ts";
 import { neonReadEnabled } from "../src/neon-write.ts";
+import { runNeonBackfill } from "../src/neon-backfill.ts";
 import {
   writeAccountIdentityToD1,
   writeSubnetHyperparamsToD1,
@@ -7307,8 +7308,14 @@ export default {
   async scheduled(
     controller: ScheduledController,
     env: Env,
-    _ctx: ExecutionContext,
+    ctx: ExecutionContext,
   ) {
+    if (controller?.cron === NEON_BACKFILL_CRON) {
+      // `ctx` is threaded through rather than ignored: createPgSql needs a
+      // waitUntil to hold the Hyperdrive connection open past the handler's
+      // return, and without it the reconciler declines instead of copying.
+      return runNeonBackfill(env as unknown as Record<string, unknown>, ctx);
+    }
     if (controller?.cron !== TAO_USD_INDEX_CRON) {
       return { ok: false, skipped: true, reason: "unknown cron" };
     }
