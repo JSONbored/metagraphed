@@ -3993,6 +3993,15 @@ export interface SearchResolveResponse {
   unambiguous: boolean;
 }
 
+/** The ss58 an EVM (H160) address maps to on-chain, from
+ * `AddressMapping.addressMapping`. `ss58` is null when the address has never
+ * been mapped -- a real answer, not a missing one. */
+export interface EvmAddressMappingResponse {
+  h160: string;
+  ss58: string | null;
+  queried_at: string | null;
+}
+
 export interface SemanticSearchResponse {
   query: string;
   count: number;

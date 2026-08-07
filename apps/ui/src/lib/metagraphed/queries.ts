@@ -184,6 +184,7 @@ import type {
   RpcEndpointsSummary,
   RpcUsage,
   SchemaInfo,
+  EvmAddressMappingResponse,
   SearchResolveResponse,
   SemanticSearchResponse,
   Subnet,
@@ -9035,6 +9036,30 @@ export const searchResolveQuery = (q: string) =>
         signal,
       }),
     enabled: q.trim().length > 0,
+    staleTime: Infinity,
+  });
+
+/**
+ * The ss58 an EVM address maps to (metagraphed-infra#373).
+ *
+ * WHY THE UI DOES THE LOOKUP. `/api/v1/search/resolve` recognises an H160 from
+ * its shape alone and points here, deliberately without resolving it: the
+ * resolver is lookup-free so that every OTHER identifier shape stays an instant
+ * answer. Turning the mapping into a destination is a second request, and this
+ * is where it belongs.
+ *
+ * `staleTime: Infinity` because an EVM->ss58 mapping is set once on-chain and
+ * does not change.
+ */
+export const evmAddressMappingQuery = (h160: string) =>
+  queryOptions({
+    queryKey: k("evm-address", h160),
+    queryFn: ({ signal }) =>
+      apiFetch<EvmAddressMappingResponse>(
+        `/api/v1/evm/address/${encodeURIComponent(h160.trim())}`,
+        { signal },
+      ),
+    enabled: h160.trim().length > 0,
     staleTime: Infinity,
   });
 

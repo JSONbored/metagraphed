@@ -1,6 +1,6 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { Search, Wallet } from "lucide-react";
 import { AppShell } from "@/components/metagraphed/app-shell";
 import { ApiSourceFooter } from "@/components/metagraphed/api-source-footer";
@@ -15,20 +15,35 @@ import { WalletConnectButton } from "@/components/metagraphed/wallet-connect";
 import { useWallet } from "@/hooks/use-wallet";
 import { AddressDisplay } from "@/components/metagraphed/address-display";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
-import { isValidSs58 } from "@/lib/metagraphed/accounts";
+import { isValidH160, isValidSs58, normalizeH160 } from "@/lib/metagraphed/accounts";
 import { formatNumber } from "@/lib/metagraphed/format";
-import { accountsListQuery, chainSignersQuery } from "@/lib/metagraphed/queries";
+import {
+  accountsListQuery,
+  chainSignersQuery,
+  evmAddressMappingQuery,
+} from "@/lib/metagraphed/queries";
 
 export function AccountsPage() {
   const navigate = useNavigate();
   const [value, setValue] = useState("");
   const trimmed = value.trim();
-  const valid = isValidSs58(trimmed);
+  // An H160 is a valid thing to paste here too, and rejecting it as "not a
+  // valid ss58" would be wrong twice over -- the resolver already told the user
+  // this address has a destination.
+  const isH160 = isValidH160(trimmed);
+  const valid = isValidSs58(trimmed) || isH160;
   const touched = trimmed.length > 0;
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!valid) return;
+    if (isH160) {
+      // Through the same ?h160= path a resolver link takes, so there is ONE
+      // implementation of "an EVM address becomes an account" rather than two
+      // that can disagree.
+      navigate({ to: "/accounts", search: { h160: normalizeH160(trimmed) } });
+      return;
+    }
     navigate({ to: "/accounts/$ss58", params: { ss58: trimmed } });
   };
 
@@ -45,9 +60,10 @@ export function AccountsPage() {
           </ActionBar>
         }
       />
+      <EvmAddressRedirect />
       <form onSubmit={submit} className="mx-auto w-full max-w-2xl">
         <label htmlFor="ss58" className="mb-2 block mg-type-caption text-ink-muted">
-          Account address (ss58)
+          Account address (ss58 or EVM)
         </label>
         <div className="flex flex-col gap-2 sm:flex-row">
           <div className="relative flex-1">
@@ -75,8 +91,8 @@ export function AccountsPage() {
         </div>
         <p className="mt-2 mg-type-data text-ink-muted">
           {touched && !valid
-            ? "That doesn't look like a valid ss58 address."
-            : "Paste a hotkey or coldkey ss58 address to view its activity."}
+            ? "That doesn't look like a valid ss58 or EVM address."
+            : "Paste a hotkey or coldkey ss58 address — or an EVM (0x) address — to view its activity."}
         </p>
       </form>
 
@@ -225,6 +241,58 @@ function AccountsLeaderboard({
           Validator directory →
         </Link>
       </div>
+    </Panel>
+  );
+}
+
+/**
+ * Turn a `?h160=` into the account it maps to (metagraphed-infra#373).
+ *
+ * `/api/v1/search/resolve` answers a pasted EVM address with
+ * `ui_path: /accounts?h160=0x…` and `exact: true`. Nothing read that parameter,
+ * so the one identifier the resolver is CERTAIN about landed on a generic index
+ * with the address dropped — the worst outcome of the six shapes it recognises,
+ * because it is the one where the user was promised a specific answer.
+ *
+ * THREE OUTCOMES, and the two that are not a redirect both say something true:
+ *
+ *   * mapped     -> replace into /accounts/{ss58}. `replace`, not push, so Back
+ *                   returns to wherever the link was clicked rather than
+ *                   bouncing through this page again.
+ *   * unmapped   -> "no account" is a REAL answer from the chain, not an error.
+ *                   `AddressMapping.addressMapping` simply has no entry, which
+ *                   is the normal state for an address that has never been used
+ *                   on this chain.
+ *   * unreadable -> say so, and leave the lookup form usable underneath.
+ */
+function EvmAddressRedirect() {
+  const navigate = useNavigate();
+  const { h160 } = useSearch({ from: "/accounts/" });
+  const address = h160 && isValidH160(h160) ? normalizeH160(h160) : "";
+  const mapping = useQuery({ ...evmAddressMappingQuery(address), retry: 0 });
+  const ss58 = mapping.data?.data.ss58 ?? null;
+
+  useEffect(() => {
+    if (!ss58) return;
+    navigate({ to: "/accounts/$ss58", params: { ss58 }, replace: true });
+  }, [ss58, navigate]);
+
+  if (!h160) return null;
+  return (
+    <Panel className="mx-auto mb-6 w-full max-w-2xl">
+      <p className="mg-type-caption text-ink-muted">EVM address</p>
+      <p className="mt-1 break-all font-mono text-sm text-ink-strong">{h160}</p>
+      <p className="mt-2 mg-type-data text-ink-muted">
+        {!address
+          ? "That is not a well-formed EVM address (expected 0x followed by 40 hex characters)."
+          : mapping.isPending
+            ? "Looking up the account this address maps to…"
+            : mapping.isError
+              ? "Could not read the EVM address mapping just now."
+              : ss58
+                ? "Found it — taking you there."
+                : "This EVM address is not mapped to a Bittensor account on-chain."}
+      </p>
     </Panel>
   );
 }

@@ -18,3 +18,22 @@ export function ss58PathSegment(ref: string): string {
   }
   return encodeURIComponent(trimmed);
 }
+
+/** An Ethereum-style address: 0x + 20 bytes of hex.
+ *
+ * Deliberately requires the `0x`, matching `/api/v1/search/resolve` -- 40 bare
+ * hex characters are far more likely to be something pasted by accident than an
+ * EVM address, and the two recognisers disagreeing about that is how a paste
+ * resolves one way in the search box and another on the page it lands on. */
+const H160 = /^0x[0-9a-fA-F]{40}$/;
+
+/** True when a ref is a well-formed EVM (H160) address. */
+export function isValidH160(ref: string): boolean {
+  return H160.test(ref.trim());
+}
+
+/** Lowercased, so a checksummed paste and an all-lower one are one cache key
+ * and one URL rather than two. */
+export function normalizeH160(ref: string): string {
+  return ref.trim().toLowerCase();
+}
