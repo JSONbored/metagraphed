@@ -7912,6 +7912,7 @@ export interface components {
         Gaps: {
             gap_notes: string[];
             missing_kinds: components["schemas"]["SurfaceKind"][];
+            moving_target_surfaces?: string[];
             supported_kinds: components["schemas"]["SurfaceKind"][];
         };
         GapsArtifact: {
@@ -16956,6 +16957,9 @@ export interface operations {
                      *           ],
                      *           "missing_kinds": [
                      *             "archive"
+                     *           ],
+                     *           "moving_target_surfaces": [
+                     *             "example"
                      *           ],
                      *           "supported_kinds": [
                      *             "archive"
@@ -37114,6 +37118,9 @@ export interface operations {
                      *           "missing_kinds": [
                      *             "archive"
                      *           ],
+                     *           "moving_target_surfaces": [
+                     *             "example"
+                     *           ],
                      *           "supported_kinds": [
                      *             "archive"
                      *           ]
@@ -41289,6 +41296,9 @@ export interface operations {
                      *           "missing_kinds": [
                      *             "archive"
                      *           ],
+                     *           "moving_target_surfaces": [
+                     *             "example"
+                     *           ],
                      *           "supported_kinds": [
                      *             "archive"
                      *           ]
@@ -42024,6 +42034,9 @@ export interface operations {
                      *           ],
                      *           "missing_kinds": [
                      *             "archive"
+                     *           ],
+                     *           "moving_target_surfaces": [
+                     *             "example"
                      *           ],
                      *           "supported_kinds": [
                      *             "archive"

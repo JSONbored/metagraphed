@@ -45,6 +45,7 @@ import {
   nativeContactHandle,
   nativeContactUrl,
   nativeDisplayName,
+  buildSubnetGaps,
   nativeNameQuality,
   netuidForEvidenceClaim,
   normalizePublicHttpUrl,
@@ -2938,7 +2939,7 @@ function mergeSubnet(
       cleanDescription(overlay?.description) ||
       null,
     docs_url: overlay?.docs_url || null,
-    gaps: buildGaps(overlay?.surfaces || [], overlay),
+    gaps: buildSubnetGaps(overlay?.surfaces || [], overlay),
     mechanism_count: nativeSubnet.mechanism_count,
     name: displayName,
     native_name: nativeName,
@@ -3034,38 +3035,6 @@ function mergeSubnet(
     // display-only — never feeds completeness (the #343 flywheel gate).
     // metagraphed otherwise keeps only the contact_present boolean.
     contact: subnetContact(overlay?.contact),
-  };
-}
-
-function buildGaps(surfaces: Row[], overlay: Row | null | undefined): Row {
-  const kinds = new Set(surfaces.map((surface) => surface.kind));
-  if (overlay?.docs_url) {
-    kinds.add("docs");
-  }
-  if (overlay?.source_repo) {
-    kinds.add("source-repo");
-  }
-  if (overlay?.website_url) {
-    kinds.add("website");
-  }
-  if (overlay?.dashboard_url) {
-    kinds.add("dashboard");
-  }
-  const expectedKinds = [
-    "docs",
-    "source-repo",
-    "website",
-    "dashboard",
-    "openapi",
-    "subnet-api",
-    "sse",
-    "data-artifact",
-  ];
-  const missingKinds = expectedKinds.filter((kind) => !kinds.has(kind));
-  return {
-    missing_kinds: missingKinds,
-    supported_kinds: [...kinds].sort(),
-    gap_notes: overlay?.curation?.gap_notes || [],
   };
 }
 

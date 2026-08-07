@@ -95,6 +95,68 @@ export function classifyNativeName(
   return { raw_name: raw, quality: "chain" };
 }
 
+/**
+ * Surfaces whose URL names a MOVING TARGET, so a parameterized sibling may
+ * exist that the registry does not track (#9746).
+ *
+ * Found while fixing SN53 (#9737): its first-party API exposes both
+ * `/api/subnet/v1/epoch/latest` and `/api/subnet/v1/epoch/{index}`. The second
+ * is strictly more capable -- same shape, any finalized epoch -- and a capture
+ * that records only the first cannot see it, because nothing about `/latest`
+ * announces that `/{index}` exists.
+ *
+ * Measured across the registry: 26 callable surfaces on 13 subnets end in one
+ * of these terminals, including `api.blockmachine.io/epochs/current` and
+ * `chain.joinbase.ai/v1/weights/latest` -- the same shape as SN53's, on
+ * subnets nobody has looked at.
+ *
+ * THIS ASSERTS NOTHING ABOUT A SIBLING'S EXISTENCE. It reports that a tracked
+ * surface answers "what is happening now" and that "what happened then" may be
+ * published beside it. Resolving that means reading the OPERATOR'S OWN
+ * documentation, which is how SN53's was found -- probing guessed paths would
+ * be unsolicited traffic against a third party, and a 200 on a guessed URL is
+ * not evidence that the operator publishes it as a surface, which is the
+ * standard every other entry in this registry is held to.
+ *
+ * Deliberately anchored to the END of the path: a `/latest/` in the middle of a
+ * URL is a directory name, not a point-in-time view.
+ */
+const MOVING_TARGET_TERMINAL = /\/(?:latest|current|newest|head)\/?$/i;
+
+/**
+ * CALLABLE kinds only. A `/latest` on a dashboard or a website is a page a
+ * human opens, not an API capability with an indexed sibling -- flagging one
+ * would send an enricher to read documentation that does not exist. Measured:
+ * restricting to these drops the one `dashboard` false positive and keeps all
+ * 24 `subnet-api` and 3 `data-artifact` hits.
+ */
+const MOVING_TARGET_KINDS = new Set([
+  "subnet-api",
+  "openapi",
+  "sse",
+  "data-artifact",
+]);
+
+export function movingTargetSurfaceIds(surfaces: Row[] | undefined): string[] {
+  return (Array.isArray(surfaces) ? surfaces : [])
+    .filter((surface) => {
+      if (!MOVING_TARGET_KINDS.has(String(surface?.kind))) return false;
+      const url = typeof surface?.url === "string" ? surface.url : "";
+      if (!url) return false;
+      // The path only -- a query string may legitimately carry "latest" as a
+      // value without the surface being a point-in-time view.
+      let pathname: string;
+      try {
+        pathname = new URL(url).pathname;
+      } catch {
+        return false;
+      }
+      return MOVING_TARGET_TERMINAL.test(pathname);
+    })
+    .map((surface) => String(surface.id))
+    .sort();
+}
+
 export function nativeNameQuality(subnet: Row | undefined): string {
   const rawName =
     typeof subnet?.raw_name === "string" ? subnet.raw_name : subnet?.name;

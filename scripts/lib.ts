@@ -2792,6 +2792,47 @@ export function extractAuth(spec: Row): Row {
   };
 }
 
+/**
+ * The per-subnet gaps block: which public interface kinds are missing, which
+ * are supported, and which tracked surfaces name a moving target.
+ *
+ * ONE implementation, because there were two. scripts/build-artifacts.ts and
+ * scripts/validate.ts each carried a byte-for-byte copy, and the
+ * reproducibility check compares one against the other -- so adding a field to
+ * the build alone turned every subnet into "per-subnet detail artifact is not
+ * reproducible from registry inputs". Two copies of a derivation that exists to
+ * be compared against itself is a bug generator, not a safety net.
+ */
+export function buildSubnetGaps(
+  surfaces: Row[],
+  overlay: (Row & { curation?: Row }) | null | undefined,
+): Row {
+  const kinds = new Set(surfaces.map((surface) => surface.kind));
+  if (overlay?.docs_url) kinds.add("docs");
+  if (overlay?.source_repo) kinds.add("source-repo");
+  if (overlay?.website_url) kinds.add("website");
+  if (overlay?.dashboard_url) kinds.add("dashboard");
+  const expectedKinds = [
+    "docs",
+    "source-repo",
+    "website",
+    "dashboard",
+    "openapi",
+    "subnet-api",
+    "sse",
+    "data-artifact",
+  ];
+  return {
+    missing_kinds: expectedKinds.filter((kind) => !kinds.has(kind)),
+    supported_kinds: [...kinds].sort(),
+    // #9746: surfaces whose URL names a moving target, so the operator may
+    // publish a parameterized sibling beside them that this registry does not
+    // track. A lead to check against their own docs, never a claim one exists.
+    moving_target_surfaces: movingTargetSurfaceIds(surfaces),
+    gap_notes: (overlay?.curation as Row | undefined)?.gap_notes || [],
+  };
+}
+
 // Declared lifecycle, derived from canonical on-chain identity names (teams set
 // subnet_name exactly to "deprecated"/"Parked"/"Pending" when a subnet is no
 // longer a live product), distinct from `status` (chain-registration state,
@@ -2889,12 +2930,15 @@ export function staleOperationalKinds({
 // scripts/lib/formatting.ts (#510 maintainability decomposition). Re-exported
 // here verbatim so every existing importer of scripts/lib.ts keeps its import
 // path unchanged — pure code-motion with byte-identical artifact output.
+import { movingTargetSurfaceIds } from "./lib/formatting.ts";
+
 export {
   slugify,
   formatLlmMarkdownText,
   classifyNativeName,
   nativeNameQuality,
   nativeDisplayName,
+  movingTargetSurfaceIds,
   sanitizeChainText,
   stripUrls,
   cleanDescription,
