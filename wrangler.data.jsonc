@@ -138,19 +138,22 @@
     // lane on its own. That is why this does not violate the epic's
     // one-lane-at-a-time rule so much as satisfy its reason.
     //
-    // nominator-positions IS ROLLED BACK, 12:5xZ, and the reason is a real
-    // measurement rather than caution. Its largest coldkey holds 722 positions;
-    // at ~150 bytes a row that is ~108 KB, and SYNC_BATCH_MAX_BYTES is 96 KB.
-    // packSyncBatchMessages CORRECTLY refuses to split a coldkey -- doing so
-    // would delete rows the message never carried -- so it throws, the route
-    // 502s, and the producer logs `post nominator_positions: sync POST failed:
-    // curl: (22) ... error: 502`. Observed at 12:47Z.
+    // nominator-positions REJOINS after #9684. It was rolled back on 2026-08-06
+    // because its largest coldkey holds 722 positions -- 141 KB at a MEASURED
+    // 200 bytes a row -- and packSyncBatchMessages correctly refused to split a
+    // coldkey, so the route 502'd on the first tick.
     //
-    // The packer is right and the budget is wrong: 96 KB is the budget for
-    // COMBINING groups, but a single indivisible group only has to fit the
-    // 128 KB transport. Fixed separately; this lane rejoins after that.
+    // Two things were wrong and both are fixed. The byte budget was doing two
+    // jobs: 96 KB governs COMBINING groups, while a single indivisible group
+    // only has to fit the 128 KB transport. And even alone that group did not
+    // fit -- so its coldkey is now HOISTED off the rows (it is identical on
+    // every row by construction), which removes ~62 bytes a row and brings the
+    // message to ~97 KB. syncBatchRows re-injects before the writer sees it.
     //
-    // The original note, still true, on why it is the one to watch: it PRUNES
+    // THE RESIDUAL LIMIT IS REAL: hoisting buys ~31%, not immunity. A coldkey
+    // past roughly 950 positions overflows again, with the same loud 502.
+    //
+    // Still the one to watch, because it PRUNES
     // per coldkey, so a
     // message missing rows for a coldkey it names deletes rows it never
     // carried, and no retry undoes a delete. Three things have to hold at once:
@@ -170,7 +173,7 @@
     // INCOMPLETE pass is the signal -- received_rows short of expected_rows with
     // a null completed_at -- and completeness is a fact the queue does not
     // itself provide.
-    "SYNC_QUEUE_LANES": "account-balances,hotkey-alpha,validator-nominator-counts",
+    "SYNC_QUEUE_LANES": "account-balances,hotkey-alpha,validator-nominator-counts,nominator-positions",
     // #9430's $exception storm guard reads this var per-Worker
     // (src/usage-telemetry.ts), and `vars` are per-config -- declaring it
     // only in wrangler.jsonc left THIS Worker's captures entirely unguarded,
