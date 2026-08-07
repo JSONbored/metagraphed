@@ -113,10 +113,13 @@
     // Neon that refuses writes costs a mirror and a `neon:` lane verdict -- and
     // nothing a caller can see.
     //
-    // NEON_READ_LANES STAYS EMPTY until those three verdicts have been green
-    // across several 15-minute producer ticks AND Neon's own MAX(captured_at)
-    // has been compared against D1's. Reading before that is exactly #9704, and
-    // "the mirror is deployed" is not evidence that it wrote anything.
+    // NEON_READ_LANES stayed EMPTY until those verdicts had been green across
+    // many 15-minute producer ticks AND the two stores had been reconciled row
+    // for row. Reading before that is exactly #9704, and "the mirror is
+    // deployed" is not evidence that it wrote anything. One table has since
+    // cleared that bar -- see NEON_READ_LANES below. The other two have not:
+    // `neurons` has no route asking for it yet, and `neuron_daily` is still
+    // being backfilled.
     //
     // Schema note: `neuron_daily` was created in Neon by hand on 2026-08-07
     // before this flip, mirroring D1's DDL with Postgres types (SMALLINT for
@@ -125,7 +128,24 @@
     // names. An ON CONFLICT with no unique index behind it is a runtime error,
     // not a slower query.
     "NEON_DUAL_WRITE_LANES": "neurons,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts",
-    "NEON_READ_LANES": "",
+    // THE CUTOVER (metagraphed-infra#336). `GET /api/v1/accounts/{ss58}/
+    // subnets/{netuid}/history` now reads Neon.
+    //
+    // This is the route #9704 broke: its read moved to Neon while nothing
+    // wrote there, and it served a 2026-08-05 snapshot for two days. What is
+    // different now, in the order the config comment above demanded:
+    //
+    //   1. A WRITER exists. The mirror has written this table on every
+    //      producer tick since #9714, lane `neon:account_position_daily`.
+    //   2. The lane has been GREEN across many ticks, not one.
+    //   3. The two stores were RECONCILED, not assumed. #9752's reconciler
+    //      compares per-date row counts on both sides every three minutes and
+    //      reports `neon:backfill:account_position_daily ok :: in sync` --
+    //      which it only says after re-counting, never after copying.
+    //
+    // Rollback is deleting the entry: the gate falls back to createD1Sql on
+    // the same query text, so the store moves by choosing a runner.
+    "NEON_READ_LANES": "account_position_daily",
     // The two ACCUMULATING tables, and only those (src/neon-backfill.ts).
     //
     // The mirror above writes what each request carries, which finishes the job
