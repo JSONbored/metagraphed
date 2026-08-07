@@ -330,6 +330,23 @@ export const TAO_USD_INDEX_CRON = "* * * * *";
 export const NEON_BACKFILL_CRON = "*/3 * * * *";
 
 /**
+ * The mirror-lag watchdog tick (metagraphed#9770).
+ *
+ * HOURLY, and deliberately far slower than the mirrors it watches. It reads
+ * `MAX(captured_at)` per mirrored table, which is a scan of each -- 364,935
+ * rows for `account_balances` alone -- so a 3-minute cadence would spend
+ * millions of D1 row reads an hour to re-learn a fact that changes at most
+ * every 15 minutes and, for the ledger lanes, every 12 to 48 HOURS.
+ *
+ * The threshold it enforces (MIRROR_LAG_THRESHOLD_MS) is an hour, so checking
+ * hourly cannot miss a fault it would otherwise report -- it can only report it
+ * one tick later.
+ *
+ * Minute 26 is free of every other lane on this Worker.
+ */
+export const NEON_MIRROR_LAG_CRON = "26 * * * *";
+
+/**
  * The webhook fan-out tick (metagraphed-infra#354).
  *
  * TWICE HOURLY on two free minutes. The cadence is a cost decision rather than a
