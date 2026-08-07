@@ -16,6 +16,7 @@ import {
   parityGaps,
   persistentGaps,
   runNeonParityWatchdog,
+  EXPECTED_DIVERGENCE,
 } from "../src/neon-parity-watchdog.ts";
 
 const ctx = { waitUntil() {} };
@@ -169,12 +170,52 @@ describe("persistentGaps", () => {
   test("negative deltas round-trip through the detail line", () => {
     // `-29453` has to parse back with its sign, or the table with the most
     // rows in Neon would look new every hour and never be called persistent.
+    // Deliberately NOT hotkey_alpha: that one is an expected divergence and
+    // would return [] for a different reason, hiding what this asserts.
     assert.deepEqual(
-      persistentGaps([gap("hotkey_alpha", -29453)], "hotkey_alpha -29453").map(
+      persistentGaps([gap("some_table", -29453)], "some_table -29453").map(
         (g) => g.delta,
       ),
       [-29453],
     );
+  });
+
+  test("an EXPECTED divergence never becomes persistent, however stable", () => {
+    // hotkey_alpha diverges by design: D1 filters to referenced pools (#9558),
+    // the mirror does not (#9832). A stable ~29,000-row gap is the correct
+    // state today, and alarming on it hourly would teach everyone to ignore
+    // this lane before it had caught anything real.
+    assert.deepEqual(
+      persistentGaps([gap("hotkey_alpha", -29453)], "hotkey_alpha -29453"),
+      [],
+    );
+    // ...but an ordinary table with the same stable gap still alarms.
+    assert.equal(
+      persistentGaps(
+        [gap("nominator_positions", 13402)],
+        "nominator_positions +13402",
+      ).length,
+      1,
+    );
+  });
+
+  test("every expected divergence names a table and a reason", () => {
+    // An exemption without a reason is indistinguishable from a bug someone
+    // muted, so the reason is the entry's whole justification for existing.
+    for (const [table, why] of Object.entries(EXPECTED_DIVERGENCE)) {
+      assert.ok(
+        PARITY_TABLES.includes(table as (typeof PARITY_TABLES)[number]),
+        `${table} is exempted but not watched`,
+      );
+      assert.match(why, /#\d+/, `${table}'s exemption cites no issue`);
+    }
+  });
+
+  test("an expected divergence is still REPORTED, not silenced", () => {
+    // Naming it keeps the day it changes size visible. Dropping it from the
+    // detail would hide a NEW reason behind a known one.
+    const detail = describeParity([gap("hotkey_alpha", -29453)], 10);
+    assert.match(detail, /hotkey_alpha -29453/);
   });
 
   test("no previous verdict means nothing is persistent yet", () => {

@@ -80,6 +80,30 @@ export const PARITY_TABLES = [
  * pass has landed so far. This is deliberately small -- the point is to catch
  * 14, not only 29,000.
  */
+/**
+ * Tables the two stores are SUPPOSED to disagree about, with the reason.
+ *
+ * `hotkey_alpha` is the case that forced this to exist. D1 stores only pools a
+ * `nominator_positions` row references -- `REFERENCED_BY_A_POSITION` in
+ * src/hotkey-alpha-d1-write.ts, deliberate since #9558, because the other 43x
+ * of `TotalHotkeyAlpha` is "written every pass, read by nothing" and saturated
+ * D1. The Neon mirror is handed the RAW rows and applies no filter, so Neon
+ * holds ~29,000 rows D1 refuses on purpose.
+ *
+ * That is a real defect (#9832) and the fix is to give the mirror the same
+ * filter -- but until then the divergence is EXPECTED, and a watchdog that
+ * alarms on it every hour would be teaching everyone to ignore this lane
+ * before it has caught anything.
+ *
+ * NAMED, NOT SILENCED. An expected divergence still appears in the detail
+ * line; it just does not make the verdict stale. Dropping it from the report
+ * entirely would hide the day it changes size for a NEW reason.
+ */
+export const EXPECTED_DIVERGENCE: Readonly<Record<string, string>> = {
+  hotkey_alpha:
+    "D1 filters to pools a nominator_position references (#9558); the mirror does not (#9832)",
+};
+
 export const PARITY_MIN_ROWS = 5;
 
 export interface ParityDb {
@@ -148,7 +172,9 @@ export function persistentGaps(
   for (const m of previousDetail.matchAll(/(\w+) ([+-]\d+)/g)) {
     seen.set(m[1]!, Number(m[2]));
   }
-  return current.filter((g) => seen.get(g.table) === g.delta);
+  return current.filter(
+    (g) => seen.get(g.table) === g.delta && !EXPECTED_DIVERGENCE[g.table],
+  );
 }
 
 /** `hotkey_alpha -29422` — table then signed delta, which persistentGaps reads back. */
