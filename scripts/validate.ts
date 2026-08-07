@@ -34,6 +34,7 @@ import {
   findUnmaterializedMaintainerReviews,
   loadSurfaceProbeEvidence,
 } from "./lib.ts";
+import { deadLinkUrls, loadLinkStatusRecords } from "./link-status.ts";
 import {
   R2_STAGING_RELATIVE_ROOT,
   artifactStorageTierForRelativePath,
@@ -1096,8 +1097,17 @@ async function validateGeneratedArtifacts(
       nativeSubnet,
     ]),
   );
+  // Same store, same loader, same fourth argument as the build (#9914) — this
+  // check compares its own output against the build's, so a different dead-link
+  // set here would fail artifact parity rather than catch anything.
+  const deadLinks = deadLinkUrls(await loadLinkStatusRecords());
   const surfaces = withSurfaceFreshness(
-    flattenSurfaces(activeOverlays, surfaceProbeEvidence, nativeByNetuid),
+    flattenSurfaces(
+      activeOverlays,
+      surfaceProbeEvidence,
+      nativeByNetuid,
+      deadLinks,
+    ),
     Date.parse(nativeSnapshot.captured_at),
   );
   // #1002: mirror the build's candidate ↔ curated-surface dedup. A candidate
@@ -1362,6 +1372,69 @@ async function validateGeneratedArtifacts(
   assert(
     githubClaimDrift.length === 0,
     `an unreachable GitHub repo must not publish activity metrics (${githubClaimDrift.length}):\n  ${githubClaimDrift.slice(0, 12).join("\n  ")}`,
+  );
+
+  // #9917: every logo URL we SERVE must resolve to a file we ship.
+  //
+  // Two populations, one invariant. 75 chain-identity logos are re-hosted under
+  // /logos/cache/<sha>.png and indexed by registry/generated/logo-cache.json;
+  // ~101 curated logos live at /logos/<name>.png and are cited directly by
+  // provider and subnet records. Both are OUR OWN static assets, which is
+  // exactly why the daily link lane does not fetch them
+  // (src/link-status-core.ts): a filesystem check is free, runs on every build
+  // rather than once a night, and blames the commit that dropped the file
+  // instead of a 3am 404. This gate is what makes that trade sound -- without
+  // it the self-hosted subset would simply go unchecked.
+  //
+  // Skipped entirely when the tree ships no logo directory. tests/helpers/
+  // repo-sandbox.ts copies only the DATA directories (registry/, public/) and
+  // deliberately not apps/, so a data-only tree asserts nothing about UI
+  // assets; reading "apps/ui is absent" as "every logo was deleted" would fail
+  // every sandboxed run for a reason that has nothing to do with the registry.
+  // CI's own `npm run validate` runs against the full checkout, where the
+  // directory exists and the gate is live.
+  const logoPublicRoot = path.join(repoRoot, "apps/ui/public");
+  const missingLogos: string[] = [];
+  const logoCache = existsSync(path.join(logoPublicRoot, "logos"))
+    ? ((await readJson(
+        path.join(repoRoot, "registry/generated/logo-cache.json"),
+      ).catch(() => null)) as Row | null)
+    : null;
+  for (const entry of (logoCache?.entries as Row[]) || []) {
+    const cachedPath = String(entry.cached_path || "");
+    if (cachedPath && !existsSync(path.join(logoPublicRoot, cachedPath))) {
+      missingLogos.push(
+        `${cachedPath} (logo-cache.json, for ${entry.source_url})`,
+      );
+    }
+  }
+  const citedLogos = new Map<string, string[]>();
+  const citeLogo = (value: unknown, by: string) => {
+    if (typeof value !== "string") return;
+    const match = /^https:\/\/metagraph\.sh(\/logos\/[^?#]+)/.exec(value);
+    if (!match) return;
+    const list = citedLogos.get(match[1]) || [];
+    list.push(by);
+    citedLogos.set(match[1], list);
+  };
+  if (existsSync(path.join(logoPublicRoot, "logos"))) {
+    for (const provider of (providersArtifact.providers as Row[]) || []) {
+      citeLogo(provider.logo_url, `provider ${provider.slug}`);
+    }
+    for (const subnet of (subnetsArtifact.subnets as Row[]) || []) {
+      citeLogo(subnet.logo_url, `subnet ${subnet.slug}`);
+    }
+  }
+  for (const [logoPath, citedBy] of citedLogos) {
+    if (!existsSync(path.join(logoPublicRoot, decodeURIComponent(logoPath)))) {
+      missingLogos.push(
+        `${logoPath} (cited by ${citedBy.slice(0, 3).join(", ")})`,
+      );
+    }
+  }
+  assert(
+    missingLogos.length === 0,
+    `served logo URLs must resolve to a shipped file (${missingLogos.length}):\n  ${missingLogos.slice(0, 12).join("\n  ")}`,
   );
 
   assert(

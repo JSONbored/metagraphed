@@ -106,6 +106,36 @@ export const MIN_VERIFY_UPTIME = 0.99;
 export const DEMOTING_CLASSIFICATIONS = new Set(["dead", "unsafe"]);
 
 /**
+ * Has this surface lost the EVIDENCE that it is real?
+ *
+ * A surface's `source_urls` are what independently prove the subnet publishes
+ * it — the gate auto-CLOSES a contributor PR whose source_url is dead, so the
+ * same fact after merge cannot mean nothing. When every one of them has been
+ * confirmed dead by the link lane (#9914), the claim is unsupported and the
+ * surface loses its verification exactly as a dead probe would.
+ *
+ * EVERY, not ANY, and deliberately so: source_urls are alternative proofs of
+ * one claim, not a checklist. A surface citing a live README and a dead blog
+ * post is still proven. Requiring all of them to die before demoting also means
+ * a single moved README cannot mass-demote a subnet that documented itself
+ * twice.
+ *
+ * A surface with NO source_urls returns false: it never had this evidence to
+ * lose, and "absence of evidence is not death" applies here too.
+ */
+export function surfaceEvidenceIsDead(
+  sourceUrls: unknown,
+  deadLinkUrls: ReadonlySet<string>,
+): boolean {
+  if (!Array.isArray(sourceUrls) || sourceUrls.length === 0) return false;
+  const urls = sourceUrls.filter(
+    (url): url is string => typeof url === "string" && url.length > 0,
+  );
+  if (urls.length === 0) return false;
+  return urls.every((url) => deadLinkUrls.has(url));
+}
+
+/**
  * Has the prober CONFIRMED this surface dead (or unsafe)?
  *
  * Separate from `verifyFromProbeEvidence` returning false, because "not

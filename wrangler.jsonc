@@ -891,6 +891,13 @@
       // 06:20 UTC cadence it ran on) -- see GITHUB_SIGNALS_SYNC_CRON in
       // workers/config.ts and src/github-signals-sync.ts's header.
       "20 6 * * *",
+      // 35 7 = daily link-rot sweep over the registry's REFERENCE urls
+      // (surface source_urls, provider urls, and the surface kinds the health
+      // prober deliberately skips). Placed an hour after github-signals
+      // because both draw on the same GitHub token budget -- see
+      // LINK_STATUS_SYNC_CRON in workers/config.ts and
+      // src/link-status-sync.ts's header.
+      "35 7 * * *",
       // */5 = raw chain capture (extrinsic/event bytes -> R2). Out-runs the
       // chain ~6x so an outage backlog drains; see RAW_CAPTURE_CRON in
       // workers/config.ts and src/raw-chain-capture.ts's no-gap guarantee.
