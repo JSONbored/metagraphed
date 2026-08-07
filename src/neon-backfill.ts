@@ -87,10 +87,28 @@ type Row = Record<string, unknown>;
  * slice to hold while the Neon statements for it are built. */
 export const D1_PAGE_ROWS = 2_000;
 
-/** Hard ceiling on dates copied per tick, whatever the clock says. A cap the
- * budget cannot override keeps one tick's cost predictable when a date turns
- * out to be far smaller than the ~32,000 rows these tables average. */
-export const MAX_DATES_PER_TICK = 4;
+/** Hard ceiling on dates copied per tick, whatever the clock or the row budget
+ * says. This is a runaway guard, not the working limit -- TICK_ROW_BUDGET is.
+ *
+ * It used to be 4, chosen for `neuron_daily` where a date is ~32,000 rows, and
+ * the docstring said it was there for the case where "a date turns out to be
+ * far smaller". It did the opposite: capping on DATE COUNT makes a table with
+ * small dates crawl. `subnet_snapshots` is one row per subnet per day, so four
+ * dates is 516 rows -- against a 20-second budget -- and its 406-date backlog
+ * would have taken five hours at three minutes a tick. */
+export const MAX_DATES_PER_TICK = 64;
+
+/** The working per-tick limit, in ROWS.
+ *
+ * Rows are what a tick actually costs -- D1 reads, Neon statements, memory
+ * held while the page is in flight -- and dates are only a proxy that happens
+ * to hold for one table. Budgeting in rows makes a tick's cost the same across
+ * plans whose dates differ by two orders of magnitude.
+ *
+ * Checked BETWEEN dates, like the clock budget, because a date is the unit of
+ * work: stopping inside one would leave a deficit the next tick recomputes
+ * correctly but restarts. So a tick can overshoot by at most one date. */
+export const TICK_ROW_BUDGET = 40_000;
 
 /** Wall-clock budget, checked BETWEEN dates. Cron ticks here are 3 minutes
  * apart, so finishing well inside one leaves the next tick a clean start
@@ -823,10 +841,20 @@ export async function reconcileTableToNeon(
   // 231-row gap writes 30,278 rows, and subtracting those would report a
   // negative backlog.
   let remaining = missing;
+  let rowsThisTick = 0;
   for (const deficit of deficits.slice(0, MAX_DATES_PER_TICK)) {
-    if (copied.length > 0 && elapsed() >= TICK_BUDGET_MS) break;
+    // Both budgets guard the SECOND date onward, never the first: a tick that
+    // copied nothing would make no progress at all, and the backlog would sit
+    // there while the lane reported it forever.
+    if (
+      copied.length > 0 &&
+      (elapsed() >= TICK_BUDGET_MS || rowsThisTick >= TICK_ROW_BUDGET)
+    ) {
+      break;
+    }
     const result = await copyDateToNeon(db, sql, plan, deficit.date);
     copied.push(result);
+    rowsThisTick += result.rows;
     if (!result.ok) {
       return {
         table,
