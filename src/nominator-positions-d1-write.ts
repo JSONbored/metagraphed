@@ -26,6 +26,10 @@ import {
   type D1PreparedStatement,
 } from "./neurons-d1-write.ts";
 import { NOMINATOR_POSITION_INSERT_COLUMNS } from "./account-nominator-positions.ts";
+import {
+  passTallyStatement,
+  type PassTallyInput,
+} from "./pass-completeness.ts";
 
 type Row = Record<string, unknown>;
 
@@ -49,6 +53,17 @@ export interface NominatorPositionsWrite {
 export async function writeNominatorPositionsToD1(
   db: D1Like,
   { rows, coldkeyMaxCapturedAt }: NominatorPositionsWrite,
+  /**
+   * The producer's declared pass, when it declared one
+   * (metagraphed-infra#346).
+   *
+   * IN THE SAME BATCH as the rows, deliberately, so the tally and the data it
+   * describes commit together. A tally written separately could survive a
+   * failed row write and report a pass complete that never landed -- which is
+   * the exact lie this mechanism exists to prevent, arrived at from the other
+   * direction.
+   */
+  pass?: PassTallyInput | null,
 ): Promise<{ statements: number }> {
   const statements: D1PreparedStatement[] = chunkStatements(
     db,
@@ -68,6 +83,8 @@ export async function writeNominatorPositionsToD1(
     );
   }
 
+  if (pass)
+    statements.push(passTallyStatement(db, "nominator-positions", pass));
   if (statements.length) await batchInSlices(db, statements);
   return { statements: statements.length };
 }

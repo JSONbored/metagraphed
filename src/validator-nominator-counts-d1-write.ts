@@ -28,6 +28,10 @@ import {
   type D1PreparedStatement,
 } from "./neurons-d1-write.ts";
 import { VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS } from "./validator-nominator-summary.ts";
+import {
+  passTallyStatement,
+  type PassTallyInput,
+} from "./pass-completeness.ts";
 
 type Row = Record<string, unknown>;
 
@@ -42,6 +46,9 @@ type Row = Record<string, unknown>;
 export async function writeValidatorNominatorCountsToD1(
   db: D1Like,
   rows: Row[],
+  /** The producer's declared pass, batched with the rows so the tally and the
+   * data it describes commit together (metagraphed-infra#346). */
+  pass?: PassTallyInput | null,
 ): Promise<{ statements: number }> {
   const statements: D1PreparedStatement[] = chunkStatements(
     db,
@@ -50,6 +57,8 @@ export async function writeValidatorNominatorCountsToD1(
     ["hotkey"],
     rows,
   );
+  if (pass)
+    statements.push(passTallyStatement(db, "validator-nominator-counts", pass));
   if (statements.length) await batchInSlices(db, statements);
   return { statements: statements.length };
 }

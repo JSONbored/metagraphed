@@ -19,16 +19,25 @@ import type { Row } from "./row-type.ts";
 
 const { default: worker } = await import("../workers/data-api.ts");
 
-const SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0011_nominator_positions.sql"),
-  "utf8",
-);
+const SCHEMA =
+  fs.readFileSync(
+    path.join(process.cwd(), "migrations/d1/0011_nominator_positions.sql"),
+    "utf8",
+  ) +
+  fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "migrations/d1/0029_nominator_positions_passes.sql",
+    ),
+    "utf8",
+  );
 
 const PATH = "/api/v1/internal/nominator-positions-sync";
 const SECRET = "test-nominator-positions-sync-secret";
 const COLDKEY_A = "5Df7xwEPkZm4itD3PfSzHsV9extvnQpTFBiNCSgBCJtxEP9e";
 const COLDKEY_B = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 const HOTKEY = "5FyVinYphF6JS5FZHzhMQffxtgbz1WxwUEBAxTRo9nABwb5g";
+const HOTKEY_B = "5CXRfP2ekFhYQ6BCwEy5V8YyxgLmUmTNzHZTKAfTHKhKPBqE";
 
 let db: InstanceType<typeof DatabaseSync>;
 
@@ -105,6 +114,11 @@ const rows = () =>
     .prepare("SELECT * FROM nominator_positions ORDER BY coldkey, netuid")
     .all() as Row[];
 
+const passes = () =>
+  db
+    .prepare("SELECT * FROM nominator_positions_passes ORDER BY captured_at")
+    .all() as Row[];
+
 beforeEach(() => {
   db = new DatabaseSync(":memory:");
   db.exec(SCHEMA);
@@ -126,6 +140,7 @@ describe("POST /api/v1/internal/nominator-positions-sync", () => {
       coldkeys_pruned: 2,
       stores: ["d1"],
       d1_statements: 3,
+      pass_total: null,
     });
     assert.equal(rows().length, 3);
     assert.equal(rows()[0]!.share_fraction, 0.5);
@@ -303,6 +318,103 @@ describe("POST /api/v1/internal/nominator-positions-sync", () => {
   });
 });
 
+describe("pass completeness (metagraphed-infra#346)", () => {
+  test("a declared pass is tallied, and completes when the rows all land", async () => {
+    // THE GAP THIS CLOSES. This ledger feeds /accounts/{ss58}/positions,
+    // /subnets/{netuid}/holders, /chain/holders and delegated_tao on the
+    // top-holders leaderboard. Those already decline while hotkey_alpha has no
+    // complete pass, because a partial POOL ledger underprices a holder -- but
+    // a partial POSITION ledger silently DROPS them, and nothing measured it.
+    const first = await post({ pass_total: 2, rows: [positionRow()] });
+    assert.equal(first.status, 200);
+    assert.equal(((await first.json()) as Row).pass_total, 2);
+    let pass = passes()[0]!;
+    assert.equal(pass.expected_rows, 2);
+    assert.equal(pass.received_rows, 1);
+    assert.equal(pass.completed_at, null, "one of two is not a complete pass");
+
+    const second = await post({
+      pass_total: 2,
+      rows: [positionRow({ hotkey: HOTKEY_B })],
+    });
+    assert.equal(second.status, 200);
+    pass = passes()[0]!;
+    assert.equal(pass.received_rows, 2);
+    assert.ok(pass.completed_at, "the request that closed the gap stamps it");
+  });
+
+  test("a replay cannot un-complete a finished pass", async () => {
+    // At-least-once: the producer re-sends a chunk on failure, so received_rows
+    // can exceed expected_rows. An equality check would call that finished pass
+    // unfinished; the stamp is set once and never cleared.
+    await post({ pass_total: 1, rows: [positionRow()] });
+    const stampedAt = passes()[0]!.completed_at;
+    assert.ok(stampedAt);
+    await post({ pass_total: 1, rows: [positionRow()] });
+    const after = passes()[0]!;
+    assert.equal(after.received_rows, 2, "over-delivered, which is legal");
+    assert.equal(after.completed_at, stampedAt, "and the stamp did not move");
+  });
+
+  test("the queue path carries the declaration too", async () => {
+    // The path this lane actually takes. A queue knows a message was
+    // DELIVERED; it does not know whether the producer's whole scan arrived,
+    // and only the second fact catches a load that stopped halfway.
+    const sent: Row[] = [];
+    const res = await post(
+      { pass_total: 7, rows: [positionRow()] },
+      SECRET,
+      env({
+        SYNC_BATCHES: { send: async (m: Row) => void sent.push(m) },
+        SYNC_QUEUE_LANES: "nominator-positions",
+      }),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(((await res.json()) as Row).pass_total, 7);
+    assert.equal(sent[0]!.pass_total, 7);
+    assert.equal(rows().length, 0, "enqueued, not written -- never both");
+    assert.equal(
+      passes().length,
+      0,
+      "and the tally is the consumer's to write",
+    );
+  });
+
+  test("omitting pass_total writes no tally at all", async () => {
+    // A producer may post without declaring, and inventing a total would mark
+    // an unproven load complete -- the precise lie the tally exists to prevent.
+    const res = await post({ rows: [positionRow()] });
+    assert.equal(res.status, 200);
+    assert.equal(((await res.json()) as Row).pass_total, null);
+    assert.equal(passes().length, 0);
+  });
+
+  test("rejects a declaration the request contradicts", async () => {
+    // Two stamps in one request would credit rows to whichever one the code
+    // happened to pick, and a reader would trust a total never delivered under
+    // that key.
+    const twoStamps = await post({
+      pass_total: 5,
+      rows: [positionRow(), positionRow({ captured_at: 1_780_000_000_001 })],
+    });
+    assert.equal(twoStamps.status, 400);
+    // And a total under this request's own row count is incoherent.
+    const tooSmall = await post({
+      pass_total: 1,
+      rows: [positionRow(), positionRow({ hotkey: HOTKEY_B })],
+    });
+    assert.equal(tooSmall.status, 400);
+    assert.equal(passes().length, 0, "neither wrote a tally");
+  });
+
+  test("rejects an absurd, negative or fractional pass_total", async () => {
+    for (const bad of [0, -1, 1.5, "many"]) {
+      const res = await post({ pass_total: bad, rows: [positionRow()] });
+      assert.equal(res.status, 400, String(bad));
+    }
+  });
+});
+
 describe("routed to the sync queue (metagraphed-infra#355)", () => {
   function queueEnv(send: (m: unknown) => Promise<void>) {
     return env({
@@ -328,6 +440,8 @@ describe("routed to the sync queue (metagraphed-infra#355)", () => {
       ok: true,
       nominator_positions_written: 2,
       stores: ["queue"],
+
+      pass_total: null,
     });
     assert.equal(sent.length, 1);
     assert.equal(rows().length, 0, "D1 must not also have been written");

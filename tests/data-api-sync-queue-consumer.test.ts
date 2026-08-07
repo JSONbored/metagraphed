@@ -31,6 +31,20 @@ const SCHEMA =
   fs.readFileSync(
     path.join(process.cwd(), "migrations/d1/0010_chain_detail.sql"),
     "utf8",
+  ) +
+  fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "migrations/d1/0012_validator_nominator_counts.sql",
+    ),
+    "utf8",
+  ) +
+  fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "migrations/d1/0029_nominator_positions_passes.sql",
+    ),
+    "utf8",
   );
 
 const COLDKEY = "5CXRfP2ekFhYQ6BCwEy5V8YyxgLmUmTNzHZTKAfTHKhKPBqE";
@@ -272,6 +286,28 @@ describe("the sync queue consumer", () => {
     const m = message(new Uint8Array([0x1f, 0x8b, 0x00, 0x01]).buffer);
     await consume([m]);
     assert.deepEqual(m.calls, ["ack"]);
+  });
+
+  test("credits a declared pass on the nominator lanes too (metagraphed#9783)", async () => {
+    // Both lanes are routed and neither had a tally until #9783. The queue path
+    // is the one they actually take, so the declaration has to survive it --
+    // a queue knows a message arrived, not whether the whole scan did.
+    const m = message({
+      lane: "validator-nominator-counts",
+      captured_at: 1_780_000_000_000,
+      pass_total: 2,
+      rows: [
+        { hotkey: HOTKEY, nominator_count: 3, captured_at: 1_780_000_000_000 },
+      ],
+    });
+    await consume([m]);
+    assert.deepEqual(m.calls, ["ack"]);
+    const pass = db
+      .prepare("SELECT * FROM validator_nominator_counts_passes")
+      .all()[0] as Record<string, unknown>;
+    assert.equal(pass.expected_rows, 2);
+    assert.equal(pass.received_rows, 1);
+    assert.equal(pass.completed_at, null, "one of two is not a complete pass");
   });
 
   test("a dead-letter batch is acked and NOT written (metagraphed-infra#363)", async () => {

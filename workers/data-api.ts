@@ -433,6 +433,7 @@ import {
   handleDeadLetterBatch,
   isDeadLetterQueue,
 } from "../src/dead-letter.ts";
+import type { PassTallyInput } from "../src/pass-completeness.ts";
 import {
   compressSyncBatchMessage,
   decompressSyncBatchMessage,
@@ -1803,14 +1804,32 @@ async function handleValidatorNominatorCountsSync(
 
   const rows = incoming.map(coerceNominatorCountSyncRow);
 
+  // THE PASS DECLARATION (metagraphed-infra#346). This lane had none, which is
+  // why a short load here was indistinguishable from a validator genuinely
+  // losing delegators: a count cannot prove completeness, and only the producer
+  // knows how big its scan was. Optional, because a producer that has not been
+  // updated must keep working -- and inventing a total would mark an unproven
+  // load complete, which is the lie the tally exists to prevent.
+  const countsDeclared = declaredPassTotal(
+    parsed,
+    VALIDATOR_NOMINATOR_COUNTS_SYNC_MAX_ROWS * 100,
+  );
+  if (countsDeclared.error) {
+    return writeJson({ error: countsDeclared.error }, 400);
+  }
+  const countsTally = passTallyFromRows(rows, countsDeclared.total, Date.now());
+  if (countsTally.error) {
+    return writeJson({ error: countsTally.error }, 400);
+  }
+  const pass = countsTally.pass ?? null;
+
   // Enqueue or write, never both -- see handleHotkeyAlphaSync's own note.
-  // This lane carries no pass declaration, so the queue message carries none
-  // either: inventing one would mark an unproven load complete.
   if (syncLaneUsesQueue(env, "validator-nominator-counts")) {
     try {
       await enqueueSyncBatch(env.SYNC_BATCHES!, {
         lane: "validator-nominator-counts",
-        capturedAt: rows[0]!.captured_at as number,
+        capturedAt: pass?.capturedAt ?? (rows[0]!.captured_at as number),
+        ...(pass ? { passTotal: pass.expectedRows } : {}),
         rows,
       });
     } catch (err) {
@@ -1822,6 +1841,7 @@ async function handleValidatorNominatorCountsSync(
       ok: true,
       nominator_counts_written: rows.length,
       stores: ["queue"],
+      pass_total: pass?.expectedRows ?? null,
     });
   }
 
@@ -1840,6 +1860,7 @@ async function handleValidatorNominatorCountsSync(
         typeof writeValidatorNominatorCountsToD1
       >[0],
       rows,
+      pass,
     ));
   } catch (err) {
     console.error(
@@ -1865,6 +1886,9 @@ async function handleValidatorNominatorCountsSync(
     nominator_counts_written: rows.length,
     stores: ["d1"],
     d1_statements: d1Statements,
+    // Echoed so a producer can see its declaration was understood rather than
+    // silently dropped -- the failure mode a purely optional field invites.
+    pass_total: pass?.expectedRows ?? null,
   });
 }
 
@@ -2000,6 +2024,31 @@ async function handleNominatorPositionsSync(
   const rows = incoming.map(coerceNominatorPositionSyncRow);
   const cutoffs = coldkeyMaxCapturedAt(rows);
 
+  // THE PASS DECLARATION (metagraphed-infra#346), and this is the lane where
+  // its absence mattered most. `nominator_positions` feeds
+  // /accounts/{ss58}/positions, /subnets/{netuid}/holders, /chain/holders, the
+  // positions basis of /validators/{hotkey}/nominators, and `delegated_tao` on
+  // the top-holders leaderboard. Those already DECLINE while `hotkey_alpha`
+  // has no complete pass, because a partial POOL ledger underprices a holder.
+  // A partial POSITION ledger silently DROPS them, which is the same failure
+  // in a worse direction, and nothing measured it.
+  const positionsDeclared = declaredPassTotal(
+    parsed,
+    NOMINATOR_POSITIONS_SYNC_MAX_ROWS * 100,
+  );
+  if (positionsDeclared.error) {
+    return writeJson({ error: positionsDeclared.error }, 400);
+  }
+  const positionsTally = passTallyFromRows(
+    rows,
+    positionsDeclared.total,
+    Date.now(),
+  );
+  if (positionsTally.error) {
+    return writeJson({ error: positionsTally.error }, 400);
+  }
+  const pass = positionsTally.pass ?? null;
+
   // Enqueue or write, never both -- see handleHotkeyAlphaSync's own note.
   //
   // `key_complete` is not ceremony. The write below PRUNES: it deletes rows
@@ -2021,7 +2070,8 @@ async function handleNominatorPositionsSync(
       // how a claim outlives the property it describes.
       await enqueueSyncBatch(env.SYNC_BATCHES!, {
         lane: "nominator-positions",
-        capturedAt: rows[0]!.captured_at as number,
+        capturedAt: pass?.capturedAt ?? (rows[0]!.captured_at as number),
+        ...(pass ? { passTotal: pass.expectedRows } : {}),
         rows,
       });
     } catch (err) {
@@ -2033,6 +2083,7 @@ async function handleNominatorPositionsSync(
       ok: true,
       nominator_positions_written: rows.length,
       stores: ["queue"],
+      pass_total: pass?.expectedRows ?? null,
     });
   }
 
@@ -2051,6 +2102,7 @@ async function handleNominatorPositionsSync(
         typeof writeNominatorPositionsToD1
       >[0],
       { rows, coldkeyMaxCapturedAt: cutoffs },
+      pass,
     ));
   } catch (err) {
     console.error("data-api nominator-positions-sync D1 write failed:", err);
@@ -2073,6 +2125,9 @@ async function handleNominatorPositionsSync(
     coldkeys_pruned: cutoffs.size,
     stores: ["d1"],
     d1_statements: d1Statements,
+    // Echoed so a producer can see its declaration was understood rather than
+    // silently dropped -- the failure mode a purely optional field invites.
+    pass_total: pass?.expectedRows ?? null,
   });
 }
 
@@ -2141,6 +2196,74 @@ function coerceAccountBalanceSyncRow(row: Row) {
   const out: Row = {};
   for (const col of ACCOUNT_BALANCE_INSERT_COLUMNS) out[col] = row[col];
   return out;
+}
+
+/**
+ * Parse and validate a producer's declared pass size (metagraphed-infra#346).
+ *
+ * ONE IMPLEMENTATION for the lanes that gained a tally, rather than the
+ * account-balances route's inline copy repeated twice more. `undefined` means
+ * "not declared", which is legal — a producer may post without declaring, and
+ * INVENTING a total would mark an unproven load complete, which is the precise
+ * lie the tally exists to prevent.
+ *
+ * Returns an error string rather than a Response so the caller keeps its own
+ * status codes and message shape.
+ */
+function declaredPassTotal(
+  parsed: unknown,
+  maxTotal: number,
+): { total?: number; error?: string } {
+  const total = Array.isArray(parsed)
+    ? undefined
+    : (parsed as { pass_total?: unknown } | null)?.pass_total;
+  if (total === undefined) return {};
+  if (
+    !Number.isInteger(total) ||
+    (total as number) <= 0 ||
+    (total as number) > maxTotal
+  ) {
+    return {
+      error: `pass_total must be a positive integer no greater than ${maxTotal}`,
+    };
+  }
+  return { total: total as number };
+}
+
+/**
+ * Turn a declaration plus this request's rows into a tally, or refuse.
+ *
+ * REQUIRES EXACTLY ONE captured_at, which is what makes the tally meaningful:
+ * two stamps in one request would credit rows to whichever one this code
+ * happened to pick, and a reader would trust a total that was never delivered
+ * under that key. Same rule handleAccountBalancesSync applies to its own lane.
+ */
+function passTallyFromRows(
+  rows: Row[],
+  declaredTotal: number | undefined,
+  nowMs: number,
+): { pass?: PassTallyInput; error?: string } {
+  if (declaredTotal === undefined) return {};
+  const stamps = new Set<number>(rows.map((row) => row.captured_at as number));
+  if (stamps.size !== 1) {
+    return {
+      error:
+        "a request declaring pass_total must carry exactly one captured_at",
+    };
+  }
+  if (declaredTotal < rows.length) {
+    return {
+      error: "pass_total cannot be smaller than this request's row count",
+    };
+  }
+  return {
+    pass: {
+      capturedAt: [...stamps][0]!,
+      expectedRows: declaredTotal,
+      receivedRows: rows.length,
+      nowMs,
+    },
+  };
 }
 
 async function handleAccountBalancesSync(
@@ -7509,13 +7632,18 @@ export default {
           // only because the message asserted `key_complete` -- the
           // validator rejects it otherwise, so this writer never sees a chunk
           // that could prune rows it did not carry.
-          "nominator-positions": async (rows) => {
+          "nominator-positions": async (rows, pass) => {
             const cutoffs = coldkeyMaxCapturedAt(rows);
             const result = await writeNominatorPositionsToD1(
               env.METAGRAPH_HEALTH_DB as unknown as Parameters<
                 typeof writeNominatorPositionsToD1
               >[0],
               { rows, coldkeyMaxCapturedAt: cutoffs },
+              // The declared pass rides the transport (metagraphed-infra#346).
+              // A queue knows a message was DELIVERED; it does not know whether
+              // the producer's whole scan arrived, and only the second fact
+              // catches a load that stopped halfway.
+              pass,
             );
             // THE LANE'S OTHER WRITER. Mirrored here as well as on the HTTP
             // path: a mirror that covers one of two writers is a lie the
@@ -7555,12 +7683,13 @@ export default {
               >[0],
               neuronSnapshotWrite(rows, Date.now()),
             ),
-          "validator-nominator-counts": async (rows) => {
+          "validator-nominator-counts": async (rows, pass) => {
             const result = await writeValidatorNominatorCountsToD1(
               env.METAGRAPH_HEALTH_DB as unknown as Parameters<
                 typeof writeValidatorNominatorCountsToD1
               >[0],
               rows,
+              pass,
             );
             // THE LANE'S OTHER WRITER, mirrored here as well as on the
             // HTTP path.
