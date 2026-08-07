@@ -689,23 +689,56 @@ async function handleNeuronsSync(
   );
   const netuids = [...netuidMaxCapturedAt.keys()];
 
+  // THE PASS DECLARATION (#9812), and this lane's case is different from its
+  // four siblings'. Theirs is "a short load looks like a small one" over a flat
+  // keyspace. Here the producer packs the snapshot into ~7+ requests grouped by
+  // netuid and its posting loop CONTINUES past a failed chunk before bailing at
+  // the end -- so the netuids that landed are already written with captured_at
+  // advanced, while the rest keep an older stamp. The lane reports failure; the
+  // table does not.
+  //
+  // Recorded in metagraph.rs's own comment: "pass stopped there. The 108
+  // subnets behind it kept a stamp that was by then 30 hours old."
+  //
+  // MAX(captured_at) cannot see it, because it reflects only the netuids that
+  // DID land -- 21 of 129 subnets leaves a perfectly fresh-looking stamp.
+  //
+  // Optional, like every other lane's: a producer that has not been updated
+  // must keep working, and inventing a total would mark an unproven load
+  // complete -- the one lie this mechanism exists to prevent.
+  const neuronsDeclared = declaredPassTotal(
+    parsed,
+    NEURONS_SYNC_MAX_ROWS * 100,
+  );
+  if (neuronsDeclared.error) {
+    return writeJson({ error: neuronsDeclared.error }, 400);
+  }
+  const neuronsTally = passTallyFromRows(
+    rows,
+    neuronsDeclared.total,
+    Date.now(),
+  );
+  if (neuronsTally.error) {
+    return writeJson({ error: neuronsTally.error }, 400);
+  }
+  const pass = neuronsTally.pass ?? null;
+
   // Enqueue or write, never both -- see handleHotkeyAlphaSync's own note.
   //
   // THE PRUNE IS WHY THIS LANE WAITED (metagraphed-infra#357). Its write
   // DELETES rows for a netuid older than the newest captured_at it saw for that
   // netuid, so a message missing some of a netuid's rows would delete rows it
   // never carried. The packer groups by netuid and asserts `key_complete`
-  // because it made that true -- and it CAN, because this producer never
-  // chunks: metagraph.rs bails rather than truncate a partial snapshot, so the
-  // whole pass arrives in one POST or none of it does.
-  //
-  // No pass declaration: this lane has never had one, and inventing one would
-  // mark an unproven load complete.
+  // because it made that true -- and it still can, because pack_netuid_chunks
+  // never SPLITS a netuid across two chunks. (It does chunk, ~7+ requests per
+  // pass; the claim here used to be that it never chunked at all, which was the
+  // right conclusion from a premise that has not been true for some time.)
   if (syncLaneUsesQueue(env, "neurons")) {
     try {
       await enqueueSyncBatch(env.SYNC_BATCHES!, {
         lane: "neurons",
-        capturedAt: rows[0]!.captured_at as number,
+        capturedAt: pass?.capturedAt ?? (rows[0]!.captured_at as number),
+        ...(pass ? { passTotal: pass.expectedRows } : {}),
         rows,
       });
     } catch (err) {
@@ -744,7 +777,7 @@ async function handleNeuronsSync(
       env.METAGRAPH_HEALTH_DB as unknown as Parameters<
         typeof writeNeuronSnapshotToD1
       >[0],
-      { rows, dailyRows, positionRows, netuidMaxCapturedAt },
+      { rows, dailyRows, positionRows, netuidMaxCapturedAt, pass },
     ));
   } catch (err) {
     console.error("data-api neurons-sync D1 write failed:", err);
@@ -7830,12 +7863,12 @@ export default {
           // only because the message asserted `key_complete` -- the validator
           // rejects a neurons message without it, so this writer never sees a
           // chunk whose prune map would delete rows it did not carry.
-          neurons: (rows) =>
+          neurons: (rows, pass) =>
             writeNeuronSnapshotToD1(
               env.METAGRAPH_HEALTH_DB as unknown as Parameters<
                 typeof writeNeuronSnapshotToD1
               >[0],
-              neuronSnapshotWrite(rows, Date.now()),
+              { ...neuronSnapshotWrite(rows, Date.now()), pass },
             ),
           "validator-nominator-counts": async (rows, pass) => {
             const result = await writeValidatorNominatorCountsToD1(

@@ -54,6 +54,7 @@ const NONE: PassCompleteness = {
  * here gets a decline, not a query.
  */
 export const PASS_TABLES: Readonly<Record<string, string>> = {
+  neurons: "neurons_passes",
   "nominator-positions": "nominator_positions_passes",
   "validator-nominator-counts": "validator_nominator_counts_passes",
 };
