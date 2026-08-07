@@ -421,6 +421,23 @@ describe("subnetLifecycle", () => {
     assert.equal(subnetLifecycle(withName(" deprecated ")), "deprecated");
     assert.equal(subnetLifecycle(withName("Deprecated Network")), "active");
   });
+  test("tolerates decorative TRAILING punctuation (#9748)", () => {
+    // The chain carries "pending..." on netuid 94. Exact equality missed the
+    // ellipsis and reported a subnet its own owner had marked pending as live
+    // -- for as long as the capture was stale, nobody could even see it.
+    assert.equal(subnetLifecycle(withName("pending...")), "pending");
+    assert.equal(subnetLifecycle(withName("deprecated.")), "deprecated");
+    assert.equal(subnetLifecycle(withName("Parked!")), "parked");
+    assert.equal(subnetLifecycle(withName("Pending -")), "pending");
+  });
+  test("still refuses a prefix or an interior word", () => {
+    // Only TRAILING punctuation is stripped -- never a prefix, never an
+    // interior word -- so a real product keeps its name. This is the same
+    // narrowness the free-form-description test below argues for.
+    assert.equal(subnetLifecycle(withName("Pending Rewards")), "active");
+    assert.equal(subnetLifecycle(withName("Parkedale")), "active");
+    assert.equal(subnetLifecycle(withName("...pending")), "active");
+  });
   test("ignores free-form descriptions to avoid false positive lifecycle markers", () => {
     assert.equal(
       subnetLifecycle(withName("Foo", "not deprecated, actively maintained")),

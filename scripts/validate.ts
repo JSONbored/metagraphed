@@ -1817,6 +1817,44 @@ for (const subnet of subnets) {
   }
 }
 
+// The SIBLING case, and the one that had no check at all (#9748): a curated
+// name that simply disagrees with its OWN netuid's on-chain identity.
+//
+// The guardrail above only fires when the curated name matches some OTHER
+// netuid, so a straightforward rebrand slipped through it entirely. SN53 sat as
+// "EfficientFrontier" while the chain had said "engy" since 2026-07-11 (block
+// 8596770) and nothing in the build mentioned it; the same is true of every
+// subnet whose operator renames without colliding with a neighbour.
+//
+// WARNS rather than fails, for the reason the sibling states: on-chain identity
+// is operator-controlled, so a rename must not be able to wedge registry
+// publishes. What it must not do is stay silent.
+//
+// Placeholder chain names are skipped via the capture's own
+// `native_name_quality` — "unknown", "pending...", "Subnet 42" and an empty
+// record all classify as placeholder/empty, and warning that a curated name
+// disagrees with "unknown" would be noise that buries the real ones.
+const chainIdentityByNetuid = new Map<number, Row>();
+for (const native of nativeSnapshot.subnets || []) {
+  chainIdentityByNetuid.set(native.netuid as number, native as Row);
+}
+const identityDrift: string[] = [];
+for (const subnet of subnets) {
+  const native = chainIdentityByNetuid.get(subnet.netuid as number);
+  const chainName = (native?.chain_identity as Row | undefined)?.subnet_name;
+  if (!chainName) continue;
+  if (native?.native_name_quality !== "chain") continue;
+  if (normIdentityName(subnet.name) === normIdentityName(chainName)) continue;
+  identityDrift.push(
+    `${subnet.slug} (netuid ${subnet.netuid}): curated "${subnet.name}" vs on-chain "${chainName}"`,
+  );
+}
+if (identityDrift.length > 0) {
+  console.warn(
+    `${identityDrift.length} subnet(s) whose curated name disagrees with their OWN on-chain identity — the chain is the operator's own declaration and outranks a curated label that has not caught up (#9748):\n  ${identityDrift.join("\n  ")}`,
+  );
+}
+
 await validateGeneratedArtifacts(nativeSnapshot, subnets, candidates);
 
 if (errors.length > 0) {

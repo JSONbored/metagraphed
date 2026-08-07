@@ -185,15 +185,21 @@ export function nativeDisplayName(
 // search tokens ("https"/"com"/"gg") and read poorly.
 export function stripUrls(value: unknown): string {
   if (typeof value !== "string") return "";
-  return value
-    .replace(/https?:\/\/\S+/gi, " ")
-    .replace(/\b[\w.-]+@[\w.-]+\.[a-z]{2,}\b/gi, " ")
-    .replace(
-      /\b[\w-]+\.(?:com|io|org|net|gg|ai|xyz|dev|app|finance|sh|co)\b\S*/gi,
-      " ",
-    )
-    .replace(/\s+/g, " ")
-    .trim();
+  return (
+    value
+      // `https?:?//` -- the colon is OPTIONAL because operators typo it. The
+      // chain carries "https//mantis123.com/dashboard/" on netuid 123, which the
+      // strict pattern skipped, leaving "https" to shred into a search token that
+      // matches every subnet publishing a link.
+      .replace(/https?:?\/\/\S+/gi, " ")
+      .replace(/\b[\w.-]+@[\w.-]+\.[a-z]{2,}\b/gi, " ")
+      .replace(
+        /\b[\w-]+\.(?:com|io|org|net|gg|ai|xyz|dev|app|finance|sh|co)\b\S*/gi,
+        " ",
+      )
+      .replace(/\s+/g, " ")
+      .trim()
+  );
 }
 
 // Normalize a free-text description (chain SubnetIdentitiesV3 / overlay):
