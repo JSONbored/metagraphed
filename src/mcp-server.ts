@@ -4935,31 +4935,38 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         mcpLiveHealth(ctx),
         loadSubnetReliability(),
       ]);
+      // #9998: filter/sort/page the surfaces the same way the route does.
+      //
+      // BOTH branches go through the query, including the cold one. Validating
+      // only when rows exist would make an out-of-enum filter an ERROR on a
+      // warm tier and a silent empty answer on a cold one -- the argument
+      // check would depend on data availability, which is exactly the
+      // "silently matches nothing" failure mcp-schema-enforcement (#8942)
+      // exists to catch. It caught this.
+      //
+      // `summary` is deliberately left spanning EVERY surface, not the page --
+      // a caller narrowing to one kind still needs the subnet's real counts,
+      // the same contract subnet_count carries on the trends route.
       const overlaid = overlaySubnetHealth(null, live, netuid);
-      if (overlaid) {
-        // #9998: filter/sort/page the surfaces the same way the route does.
-        // `summary` is deliberately left spanning EVERY surface, not the page --
-        // a caller narrowing to one kind still needs the subnet's real counts,
-        // the same contract subnet_count carries on the trends route.
-        return {
-          ...applySubnetListQuery(
-            overlaid as Row,
-            args as Row,
-            "health-surfaces",
-            "surfaces",
-          ),
-          reliability,
-        };
-      }
+      const base: Row = overlaid
+        ? (overlaid as Row)
+        : {
+            schema_version: 1,
+            netuid,
+            // All six required counts, not two (#9797) -- see the builder.
+            summary: emptySubnetHealthSummary(),
+            operational_observed_at: null,
+            health_source: "unavailable",
+            surfaces: [],
+          };
       return {
-        schema_version: 1,
-        netuid,
-        // All six required counts, not two (#9797) -- see the builder.
-        summary: emptySubnetHealthSummary(),
-        operational_observed_at: null,
-        health_source: "unavailable",
+        ...applySubnetListQuery(
+          base,
+          args as Row,
+          "health-surfaces",
+          "surfaces",
+        ),
         reliability,
-        surfaces: [],
       };
     },
   },
