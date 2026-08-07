@@ -368,6 +368,16 @@ export interface BackfillTableOutcome {
   deficits: number;
   /** Rows still missing across all deficient dates, before any were copied. */
   missing: number;
+  /**
+   * Rows still missing over the dates this tick did NOT reach.
+   *
+   * NOT `missing - rowsCopied`, which is the wrong subtraction and goes
+   * negative in the ordinary case. The unit of work is a whole DATE, so
+   * copying a date 231 rows short writes all 30,278 of its rows -- the upsert
+   * makes the other 30,047 no-ops. Reporting "-30,047 rows still behind" is
+   * how that first showed up in production.
+   */
+  remaining: number;
   copied: DateCopyResult[];
   ok: boolean;
   reason?: string;
@@ -405,6 +415,7 @@ export async function reconcileTableToNeon(
     table,
     deficits: 0,
     missing: 0,
+    remaining: 0,
     copied: [] as DateCopyResult[],
   };
   if (!db?.prepare || !sql?.unsafe) {
@@ -430,6 +441,12 @@ export async function reconcileTableToNeon(
 
   const elapsed = deps.elapsed ?? (() => 0);
   const copied: DateCopyResult[] = [];
+  // Rows still owed, counted over the dates this tick did NOT reach. Each
+  // date's own deficit comes off as that date completes, so the figure never
+  // depends on how many rows were WRITTEN -- copying a whole date to close a
+  // 231-row gap writes 30,278 rows, and subtracting those would report a
+  // negative backlog.
+  let remaining = missing;
   for (const deficit of deficits.slice(0, MAX_DATES_PER_TICK)) {
     if (copied.length > 0 && elapsed() >= TICK_BUDGET_MS) break;
     const result = await copyDateToNeon(db, sql, plan, deficit.date);
@@ -439,13 +456,22 @@ export async function reconcileTableToNeon(
         table,
         deficits: deficits.length,
         missing,
+        remaining,
         copied,
         ok: false,
         reason: result.reason,
       };
     }
+    remaining -= deficit.d1 - deficit.neon;
   }
-  return { table, deficits: deficits.length, missing, copied, ok: true };
+  return {
+    table,
+    deficits: deficits.length,
+    missing,
+    remaining,
+    copied,
+    ok: true,
+  };
 }
 
 /** One line per table, for the lane verdict's detail column. */
@@ -457,10 +483,13 @@ export function describeOutcome(outcome: BackfillTableOutcome): string {
   }
   if (outcome.deficits === 0) return "in sync";
   const rows = outcome.copied.reduce((sum, c) => sum + c.rows, 0);
-  const remaining = outcome.deficits - outcome.copied.length;
+  const dates = outcome.deficits - outcome.copied.length;
+  // `remaining` counts the dates NOT reached, not `missing - rows`. Rows
+  // written and rows owed are different quantities: a date 231 rows short is
+  // closed by writing all 30,278 of its rows.
   return (
     `${rows} row(s) over ${outcome.copied.length} date(s); ` +
-    `${remaining} date(s) / ~${outcome.missing - rows} row(s) still behind`
+    `${dates} date(s) / ${outcome.remaining} row(s) still behind`
   );
 }
 
@@ -511,6 +540,7 @@ export async function runNeonBackfill(
         table: plan.table,
         deficits: 0,
         missing: 0,
+        remaining: 0,
         copied: [],
         ok: true,
         skipped: true,
@@ -526,6 +556,7 @@ export async function runNeonBackfill(
         table: plan.table,
         deficits: 0,
         missing: 0,
+        remaining: 0,
         copied: [],
         ok: false,
         reason: reason(error),
