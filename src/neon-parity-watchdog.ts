@@ -82,6 +82,8 @@ export const PARITY_TABLES = [
   // rows, because it is written ~2,000 times an hour and pruned on a cron
   // independent of D1's.
   "surface_checks",
+  "surface_status",
+  "surface_uptime_daily",
 ] as const;
 
 /**
