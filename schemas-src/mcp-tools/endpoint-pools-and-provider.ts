@@ -20,6 +20,7 @@ import {
   netuidSchema,
   numericCursorSchema,
   orderSchema,
+  projectableRows,
   providerSlugSchema,
   sortSchema,
 } from "./shared.ts";
@@ -93,6 +94,7 @@ export type ListEndpointPoolsInput = z.infer<
 export const ListEndpointPoolsOutputSchema = EndpointPoolsArtifactSchema.pick({
   pools: true,
 }).extend({
+  pools: projectableRows(EndpointPoolsArtifactSchema.shape.pools),
   ...McpListArtifactStamp,
   ...McpListPageFields,
 });
@@ -148,6 +150,7 @@ export const ListEndpointIncidentsOutputSchema =
     summary: true,
     incidents: true,
   }).extend({
+    incidents: projectableRows(EndpointIncidentsArtifactSchema.shape.incidents),
     ...McpListArtifactStamp,
     ...McpListPageFields,
   });
@@ -246,6 +249,7 @@ export const ListProviderEndpointsOutputSchema =
   ProviderEndpointsArtifactSchema.pick({
     endpoints: true,
   }).extend({
+    endpoints: projectableRows(ProviderEndpointsArtifactSchema.shape.endpoints),
     ...McpListArtifactStamp,
     // The handler echoes the requested slug rather than the route
     // artifact's `provider` block: the tool is asked for one provider by

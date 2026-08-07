@@ -23,6 +23,7 @@ import {
   netuidSchema,
   numericCursorSchema,
   orderSchema,
+  projectableRows,
   providerSlugSchema,
   sortSchema,
 } from "./shared.ts";
@@ -71,7 +72,9 @@ export const ListProvidersInputSchema = z
   .strict();
 export type ListProvidersInput = z.infer<typeof ListProvidersInputSchema>;
 
-export const ListProvidersOutputSchema = ProvidersArtifactSchema;
+export const ListProvidersOutputSchema = ProvidersArtifactSchema.extend({
+  providers: projectableRows(ProvidersArtifactSchema.shape.providers),
+});
 export type ListProvidersOutput = z.infer<typeof ListProvidersOutputSchema>;
 
 const SURFACE_KINDS = SURFACE_KIND_VALUES;
@@ -104,7 +107,9 @@ export const ListSurfacesInputSchema = z
   .strict();
 export type ListSurfacesInput = z.infer<typeof ListSurfacesInputSchema>;
 
-export const ListSurfacesOutputSchema = SurfacesArtifactSchema;
+export const ListSurfacesOutputSchema = SurfacesArtifactSchema.extend({
+  surfaces: projectableRows(SurfacesArtifactSchema.shape.surfaces),
+});
 export type ListSurfacesOutput = z.infer<typeof ListSurfacesOutputSchema>;
 
 const CANDIDATE_STATES = CANDIDATE_STATE_VALUES;
@@ -150,5 +155,7 @@ export const ListCandidatesInputSchema = z
   .strict();
 export type ListCandidatesInput = z.infer<typeof ListCandidatesInputSchema>;
 
-export const ListCandidatesOutputSchema = CandidatesArtifactSchema;
+export const ListCandidatesOutputSchema = CandidatesArtifactSchema.extend({
+  candidates: projectableRows(CandidatesArtifactSchema.shape.candidates),
+});
 export type ListCandidatesOutput = z.infer<typeof ListCandidatesOutputSchema>;

@@ -510,3 +510,27 @@ export const McpListArtifactStamp = {
 export const McpSubnetListArtifactStamp = {
   generated_at: z.string().nullable(),
 };
+
+/**
+ * The row shape a tool publishes when it also advertises a `fields`
+ * projection (#9880).
+ *
+ * A tool with a `fields` parameter lets the CALLER decide which columns come
+ * back, so its published row cannot require any of them -- do that and the
+ * tool fails its own contract the moment someone uses the parameter it
+ * advertises. That is not hypothetical: 25 of the 32 tools that take `fields`
+ * were doing exactly this, because deriving their rows from the route schemas
+ * (#9796) replaced an open object, which a projected row trivially satisfied,
+ * with a strict one that it cannot.
+ *
+ * Takes the ARRAY off the route schema and returns the same array with every
+ * row field optional, so the derivation is still a derivation: the field NAMES
+ * and their types still come from the route, and a rename there is still a
+ * compile error here. Only the requiredness changes, and it changes because
+ * the caller controls it.
+ */
+export function projectableRows<Row extends z.ZodObject<z.ZodRawShape>>(
+  rows: z.ZodArray<Row>,
+) {
+  return z.array(rows.element.partial());
+}

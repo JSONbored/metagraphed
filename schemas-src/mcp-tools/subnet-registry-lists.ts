@@ -27,6 +27,7 @@ import {
   netuidSchema,
   numericCursorSchema,
   orderSchema,
+  projectableRows,
   providerSlugSchema,
   querySchema,
   sortSchema,
@@ -107,6 +108,9 @@ export const ListSubnetCandidatesOutputSchema =
     netuid: true,
     candidates: true,
   }).extend({
+    candidates: projectableRows(
+      SubnetCandidatesArtifactSchema.shape.candidates,
+    ),
     ...McpSubnetListArtifactStamp,
     ...McpListPageFields,
   });
@@ -156,6 +160,7 @@ export const ListSubnetEvidenceOutputSchema = SubnetEvidenceArtifactSchema.pick(
     claims: true,
   },
 ).extend({
+  claims: projectableRows(SubnetEvidenceArtifactSchema.shape.claims),
   ...McpSubnetListArtifactStamp,
   ...McpListPageFields,
 });

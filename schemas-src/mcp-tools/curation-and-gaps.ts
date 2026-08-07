@@ -19,6 +19,7 @@ import {
   netuidSchema,
   numericCursorSchema,
   orderSchema,
+  projectableRows,
   sortSchema,
 } from "./shared.ts";
 import { CurationArtifactSchema } from "../routes/curation-gaps.ts";
@@ -57,6 +58,7 @@ export type ListCurationInput = z.infer<typeof ListCurationInputSchema>;
 export const ListCurationOutputSchema = CurationArtifactSchema.pick({
   curation: true,
 }).extend({
+  curation: projectableRows(CurationArtifactSchema.shape.curation),
   ...McpListArtifactStamp,
   ...McpListPageFields,
 });
@@ -93,6 +95,7 @@ export type ListGapsInput = z.infer<typeof ListGapsInputSchema>;
 export const ListGapsOutputSchema = GapsArtifactSchema.pick({
   gaps: true,
 }).extend({
+  gaps: projectableRows(GapsArtifactSchema.shape.gaps),
   ...McpListArtifactStamp,
   ...McpListPageFields,
 });

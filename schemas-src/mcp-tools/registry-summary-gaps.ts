@@ -17,6 +17,7 @@ import {
   netuidSchema,
   numericCursorSchema,
   orderSchema,
+  projectableRows,
   sortSchema,
 } from "./shared.ts";
 import { SubnetGapsArtifactSchema } from "../routes/review-gaps-profile.ts";
@@ -191,6 +192,7 @@ export const ListSubnetGapsOutputSchema = SubnetGapsArtifactSchema.pick({
   netuid: true,
   priorities: true,
 }).extend({
+  priorities: projectableRows(SubnetGapsArtifactSchema.shape.priorities),
   ...McpSubnetListArtifactStamp,
   ...McpListPageFields,
 });

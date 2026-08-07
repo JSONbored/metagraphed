@@ -22,6 +22,7 @@ import {
   netuidSchema,
   numericCursorSchema,
   orderSchema,
+  projectableRows,
   providerSlugSchema,
   sortSchema,
 } from "./shared.ts";
@@ -119,7 +120,9 @@ export const ListEndpointsInputSchema = z
   .strict();
 export type ListEndpointsInput = z.infer<typeof ListEndpointsInputSchema>;
 
-export const ListEndpointsOutputSchema = EndpointsArtifactSchema;
+export const ListEndpointsOutputSchema = EndpointsArtifactSchema.extend({
+  endpoints: projectableRows(EndpointsArtifactSchema.shape.endpoints),
+});
 export type ListEndpointsOutput = z.infer<typeof ListEndpointsOutputSchema>;
 
 export const GetSubnetEndpointsInputSchema = z

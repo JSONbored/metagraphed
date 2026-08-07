@@ -17,6 +17,7 @@ import {
   netuidSchema,
   numericCursorSchema,
   orderSchema,
+  projectableRows,
   querySchema,
   sortSchema,
 } from "./shared.ts";
@@ -136,6 +137,7 @@ export const ListEnrichmentQueueOutputSchema =
   ReviewEnrichmentQueueArtifactSchema.pick({
     queue: true,
   }).extend({
+    queue: projectableRows(ReviewEnrichmentQueueArtifactSchema.shape.queue),
     ...McpListArtifactStamp,
     ...McpListPageFields,
   });
@@ -206,6 +208,9 @@ export const ListAdapterCandidatesOutputSchema =
   ReviewAdapterCandidatesArtifactSchema.pick({
     candidates: true,
   }).extend({
+    candidates: projectableRows(
+      ReviewAdapterCandidatesArtifactSchema.shape.candidates,
+    ),
     ...McpListArtifactStamp,
     ...McpListPageFields,
   });

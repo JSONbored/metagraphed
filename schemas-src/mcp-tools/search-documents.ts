@@ -21,6 +21,7 @@ import {
   netuidSchema,
   numericCursorSchema,
   orderSchema,
+  projectableRows,
   querySchema,
   sortSchema,
 } from "./shared.ts";
@@ -50,6 +51,7 @@ export type ListSearchIndexInput = z.infer<typeof ListSearchIndexInputSchema>;
 export const ListSearchIndexOutputSchema = SearchIndexArtifactSchema.pick({
   documents: true,
 }).extend({
+  documents: projectableRows(SearchIndexArtifactSchema.shape.documents),
   ...McpListArtifactStamp,
   ...McpListPageFields,
 });
