@@ -1,22 +1,22 @@
-// MCP tool `get_subnet_movers` (types-epic E batch 2, #8065). Mirrors GET
-// /api/v1/subnets/movers, which is not one of schemas-src/routes/'s covered
-// pilot routes -- no existing Zod schema to reuse. Modeled fresh, shallow,
-// from the hand-written literal it replaces. Window/sort enums hardcoded
-// from src/movers.ts's MOVERS_WINDOWS/MOVERS_SORTS at the time of writing
-// (mirrors the pilot batch's ECONOMICS_SORT_FIELDS precedent -- not
-// cross-imported, to avoid a runtime dependency for what is purely a wire-
-// schema enum).
+// MCP tool `get_subnet_movers`.
+// Mirrors GET /api/v1/subnets/movers.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import {
   MOVERS_LIMIT_DEFAULT,
   MOVERS_LIMIT_MAX,
 } from "../../src/route-limits.ts";
-import {
-  limitSchema,
-  netuidSchema,
-  sortSchema,
-  windowSchema,
-} from "./shared.ts";
+import { limitSchema, sortSchema, windowSchema } from "./shared.ts";
+import { SubnetMoversArtifactSchema } from "../routes/subnet-movers.ts";
 
 const MOVERS_WINDOW_KEYS = ["7d", "30d", "90d"] as const;
 const MOVERS_SORTS = ["stake", "emission", "validators", "neurons"] as const;
@@ -32,35 +32,5 @@ export type GetSubnetMoversInput = z.infer<typeof GetSubnetMoversInputSchema>;
 
 // objectItems(...) properties, none required at the item level (see
 // search-subnets.ts's same note from the pilot batch).
-const GetSubnetMoverItemSchema = z
-  .object({
-    netuid: netuidSchema().optional(),
-    stake_start_alpha: z.unknown().optional(),
-    stake_end_alpha: z.unknown().optional(),
-    stake_delta_alpha: z.unknown().optional(),
-    stake_pct_change: z.number().nullable().optional(),
-    emission_start_alpha: z.unknown().optional(),
-    emission_end_alpha: z.unknown().optional(),
-    emission_delta_alpha: z.unknown().optional(),
-    emission_pct_change: z.number().nullable().optional(),
-    validators_start: z.int().optional(),
-    validators_end: z.int().optional(),
-    validators_delta: z.int().optional(),
-    neurons_start: z.int().optional(),
-    neurons_end: z.int().optional(),
-    neurons_delta: z.int().optional(),
-  })
-  .passthrough();
-
-export const GetSubnetMoversOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    window: z.string().nullable(),
-    start_date: z.string().nullable().optional(),
-    end_date: z.string().nullable().optional(),
-    sort: z.string().nullable(),
-    subnet_count: z.int(),
-    movers: z.array(GetSubnetMoverItemSchema),
-  })
-  .passthrough();
+export const GetSubnetMoversOutputSchema = SubnetMoversArtifactSchema;
 export type GetSubnetMoversOutput = z.infer<typeof GetSubnetMoversOutputSchema>;

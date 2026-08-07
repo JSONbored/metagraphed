@@ -1,17 +1,27 @@
-// MCP tools `get_neuron`, `get_neuron_history` (types-epic E batch 4,
-// #8068). Each mirrors a GET /api/v1/subnets/{netuid}/neurons* route that is
-// not one of schemas-src/routes/'s covered pilot routes -- no existing Zod
-// schema to reuse. Modeled fresh, matching each hand-written literal
-// field-for-field.
+// MCP tool `get_neuron_history`.
+// Mirrors GET /api/v1/subnets/{netuid}/neurons/{uid}/history.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// What the copies were publishing:
+//   get_neuron_history: 1 bare `{"type":"object"}` site.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import {
   NeuronFieldsInputSchema,
-  OpenObjectArraySchema,
   OpenObjectSchema,
   netuidSchema,
   uidSchema,
   windowSchema,
 } from "./shared.ts";
+import { NeuronHistoryArtifactSchema } from "../routes/subnet-metagraph.ts";
 
 export const GetNeuronInputSchema = z
   .object({
@@ -45,16 +55,7 @@ export const GetNeuronHistoryInputSchema = z
   .strict();
 export type GetNeuronHistoryInput = z.infer<typeof GetNeuronHistoryInputSchema>;
 
-export const GetNeuronHistoryOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    netuid: netuidSchema(),
-    uid: z.int(),
-    window: z.string().nullable().optional(),
-    point_count: z.int(),
-    points: OpenObjectArraySchema,
-  })
-  .passthrough();
+export const GetNeuronHistoryOutputSchema = NeuronHistoryArtifactSchema;
 export type GetNeuronHistoryOutput = z.infer<
   typeof GetNeuronHistoryOutputSchema
 >;

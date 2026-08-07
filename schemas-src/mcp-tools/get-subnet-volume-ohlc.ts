@@ -1,15 +1,20 @@
-// MCP tools `get_subnet_volume`, `get_subnet_ohlc` (types-epic E batch 4,
-// #8067). get_subnet_volume mirrors GET /api/v1/subnets/{netuid}/volume,
-// covered by schemas-src/routes/subnet-alpha-volume.ts (#8055) -- NOT
-// reused: that REST schema is `.strict()` with all 15 fields required; this
-// tool's own hand-written original requires only netuid+window, leaving
-// every numeric field optional. Reusing would substantially tighten this
-// tool's existing contract. get_subnet_ohlc mirrors GET /api/v1/subnets/
-// {netuid}/ohlc, which is not one of schemas-src/routes/'s covered pilot
-// routes -- no existing Zod schema to reuse either. Both modeled fresh,
-// shallow, from the hand-written literals they replace.
+// MCP tools `get_subnet_volume`, `get_subnet_ohlc`.
+// Mirror GET /api/v1/subnets/{netuid}/volume, GET
+// /api/v1/subnets/{netuid}/ohlc.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import { netuidSchema } from "./shared.ts";
+import { SubnetAlphaVolumeArtifactSchema } from "../routes/subnet-alpha-volume.ts";
+import { SubnetOhlcArtifactSchema } from "../routes/subnet-ohlc.ts";
 
 export const GetSubnetVolumeInputSchema = z
   .object({
@@ -18,25 +23,7 @@ export const GetSubnetVolumeInputSchema = z
   .strict();
 export type GetSubnetVolumeInput = z.infer<typeof GetSubnetVolumeInputSchema>;
 
-export const GetSubnetVolumeOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    netuid: netuidSchema(),
-    window: z.string(),
-    buy_volume_alpha: z.unknown().optional(),
-    sell_volume_alpha: z.unknown().optional(),
-    total_volume_alpha: z.unknown().optional(),
-    buy_volume_tao: z.unknown().optional(),
-    sell_volume_tao: z.unknown().optional(),
-    total_volume_tao: z.unknown().optional(),
-    buy_count: z.int().optional(),
-    sell_count: z.int().optional(),
-    net_volume_alpha: z.unknown().optional(),
-    sentiment_ratio: z.number().nullable().optional(),
-    sentiment: z.string().nullable().optional(),
-    vol_mcap_ratio: z.number().nullable().optional(),
-  })
-  .passthrough();
+export const GetSubnetVolumeOutputSchema = SubnetAlphaVolumeArtifactSchema;
 export type GetSubnetVolumeOutput = z.infer<typeof GetSubnetVolumeOutputSchema>;
 
 const OHLC_INTERVALS = ["1h", "1d"] as const;
@@ -63,27 +50,5 @@ export type GetSubnetOhlcInput = z.infer<typeof GetSubnetOhlcInputSchema>;
 
 // objectItems(...) properties, none required at the item level (see
 // search-subnets.ts's same note from the pilot batch).
-const OhlcCandleSchema = z
-  .object({
-    bucket_start: z.int().optional(),
-    bucket_start_iso: z.string().optional(),
-    open: z.unknown().optional(),
-    high: z.unknown().optional(),
-    low: z.unknown().optional(),
-    close: z.unknown().optional(),
-    volume_alpha: z.unknown().optional(),
-    volume_tao: z.unknown().optional(),
-    event_count: z.int().optional(),
-  })
-  .passthrough();
-
-export const GetSubnetOhlcOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    netuid: netuidSchema(),
-    interval: z.string(),
-    candles: z.array(OhlcCandleSchema),
-    root_excluded: z.boolean(),
-  })
-  .passthrough();
+export const GetSubnetOhlcOutputSchema = SubnetOhlcArtifactSchema;
 export type GetSubnetOhlcOutput = z.infer<typeof GetSubnetOhlcOutputSchema>;

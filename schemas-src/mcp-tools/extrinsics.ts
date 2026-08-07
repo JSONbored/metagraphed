@@ -1,7 +1,15 @@
-// MCP tools `list_extrinsics`, `get_extrinsic` (types-epic E batch 8,
-// #8071). Each mirrors a GET /api/v1/extrinsics* route that is not one of
-// schemas-src/routes/'s covered pilot routes -- no existing Zod schema to
-// reuse. Modeled fresh, matching each hand-written literal field-for-field.
+// MCP tool `list_extrinsics`.
+// Mirrors GET /api/v1/extrinsics.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import {
   blockBoundSchema,
@@ -16,11 +24,8 @@ import {
  * read it rather than restating it — they previously declared no maximum at all.
  */
 export const EXTRINSICS_LIMIT_MAX = 100;
-import {
-  AccountEventItemSchema,
-  ExtrinsicItemSchema,
-  OpenObjectSchema,
-} from "./shared.ts";
+import { AccountEventItemSchema, OpenObjectSchema } from "./shared.ts";
+import { ExtrinsicsFeedArtifactSchema } from "../routes/extrinsics.ts";
 
 const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
 
@@ -92,16 +97,7 @@ export const ListExtrinsicsInputSchema = z
   .strict();
 export type ListExtrinsicsInput = z.infer<typeof ListExtrinsicsInputSchema>;
 
-export const ListExtrinsicsOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    extrinsic_count: z.int(),
-    limit: z.int().nullable().optional(),
-    offset: z.int().nullable().optional(),
-    next_cursor: z.string().nullable().optional(),
-    extrinsics: z.array(ExtrinsicItemSchema),
-  })
-  .passthrough();
+export const ListExtrinsicsOutputSchema = ExtrinsicsFeedArtifactSchema;
 export type ListExtrinsicsOutput = z.infer<typeof ListExtrinsicsOutputSchema>;
 
 export const GetExtrinsicInputSchema = z

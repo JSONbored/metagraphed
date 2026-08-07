@@ -8,7 +8,8 @@
 //
 // NOT a narrowing of SubnetDetailArtifactSchema, which is why this file cannot
 // simply derive from it the way its siblings in #9796 do: the two share only 4
-// of 15 keys. This is a different PROJECTION -- it flattens the route artifact's
+// of 15 keys. This is a different PROJECTION -- it flattens the route
+// artifact's
 // nested `subnet` object up to the top level and adds a composed health card.
 //
 // The six nested fields used to be bare `{type:"object"}` / `{type:"array"}`,

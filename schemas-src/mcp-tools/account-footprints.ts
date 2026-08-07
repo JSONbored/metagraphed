@@ -1,19 +1,36 @@
-// MCP tools `get_account_stake_moves`, `get_account_axon_removals`,
-// `get_account_prometheus`, `get_account_registrations`,
-// `get_account_weight_setters`, `get_account_serving`,
-// `get_account_deregistrations` (types-epic E batch 7, #8070). Each mirrors
-// a GET /api/v1/accounts/{ss58}/* footprint route that is not one of
-// schemas-src/routes/'s covered pilot routes -- no existing Zod schema to
-// reuse. All seven share one shape (address/window/total_X/subnet_count/
-// concentration/dominant_netuid/subnets), but with genuinely different
-// per-tool field names (movements vs removals vs announcements, etc.), so
-// each is modeled explicitly rather than through a shared factory. Unlike
-// the objectItems()-built item shapes elsewhere in this epic, these
-// `subnets` items are hand-written as STRICT objects (additionalProperties:
-// false) with every field in their own `required` array -- modeled here
-// with the SAME strictness, not the usual item-level looseness.
+// MCP tools `get_account_axon_removals`, `get_account_prometheus`,
+// `get_account_weight_setters`, `get_account_deregistrations`,
+// `get_account_stake_moves`, `get_account_registrations`,
+// `get_account_serving`.
+// Mirror GET /api/v1/accounts/{ss58}/axon-removals, GET
+// /api/v1/accounts/{ss58}/prometheus, GET
+// /api/v1/accounts/{ss58}/weight-setters, GET
+// /api/v1/accounts/{ss58}/deregistrations, GET
+// /api/v1/accounts/{ss58}/stake-moves, GET
+// /api/v1/accounts/{ss58}/registrations, GET /api/v1/accounts/{ss58}/serving.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
-import { netuidSchema, ss58Schema, windowSchema } from "./shared.ts";
+import { ss58Schema, windowSchema } from "./shared.ts";
+import {
+  AccountAxonRemovalsArtifactSchema,
+  AccountDeregistrationsArtifactSchema,
+  AccountRegistrationsArtifactSchema,
+  AccountWeightSettersArtifactSchema,
+} from "../routes/account-activity-registrations.ts";
+import {
+  AccountPrometheusArtifactSchema,
+  AccountServingArtifactSchema,
+  AccountStakeMovesArtifactSchema,
+} from "../routes/account-activity.ts";
 
 // Symbolic in each hand-written original (src/account-*.ts's own
 // *_WINDOWS/DEFAULT_*_WINDOW constants), cross-checked against the actual
@@ -32,28 +49,7 @@ export type GetAccountStakeMovesInput = z.infer<
   typeof GetAccountStakeMovesInputSchema
 >;
 
-const StakeMovesSubnetSchema = z
-  .object({
-    netuid: netuidSchema(),
-    movements: z.int(),
-    first_moved_at: z.string().nullable(),
-    last_moved_at: z.string().nullable(),
-    price_tao_at_last_move: z.number().nullable(),
-  })
-  .strict();
-
-export const GetAccountStakeMovesOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    address: z.string(),
-    window: z.string().nullable(),
-    total_movements: z.int(),
-    subnet_count: z.int(),
-    concentration: z.number().nullable().optional(),
-    dominant_netuid: z.int().nullable().optional(),
-    subnets: z.array(StakeMovesSubnetSchema),
-  })
-  .passthrough();
+export const GetAccountStakeMovesOutputSchema = AccountStakeMovesArtifactSchema;
 export type GetAccountStakeMovesOutput = z.infer<
   typeof GetAccountStakeMovesOutputSchema
 >;
@@ -68,27 +64,8 @@ export type GetAccountAxonRemovalsInput = z.infer<
   typeof GetAccountAxonRemovalsInputSchema
 >;
 
-const AxonRemovalsSubnetSchema = z
-  .object({
-    netuid: netuidSchema(),
-    removals: z.int(),
-    first_removed_at: z.string().nullable(),
-    last_removed_at: z.string().nullable(),
-  })
-  .strict();
-
-export const GetAccountAxonRemovalsOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    address: z.string(),
-    window: z.string().nullable(),
-    total_removals: z.int(),
-    subnet_count: z.int(),
-    concentration: z.number().nullable().optional(),
-    dominant_netuid: z.int().nullable().optional(),
-    subnets: z.array(AxonRemovalsSubnetSchema),
-  })
-  .passthrough();
+export const GetAccountAxonRemovalsOutputSchema =
+  AccountAxonRemovalsArtifactSchema;
 export type GetAccountAxonRemovalsOutput = z.infer<
   typeof GetAccountAxonRemovalsOutputSchema
 >;
@@ -103,27 +80,7 @@ export type GetAccountPrometheusInput = z.infer<
   typeof GetAccountPrometheusInputSchema
 >;
 
-const PrometheusSubnetSchema = z
-  .object({
-    netuid: netuidSchema(),
-    announcements: z.int(),
-    first_announced_at: z.string().nullable(),
-    last_announced_at: z.string().nullable(),
-  })
-  .strict();
-
-export const GetAccountPrometheusOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    address: z.string(),
-    window: z.string().nullable(),
-    total_announcements: z.int(),
-    subnet_count: z.int(),
-    concentration: z.number().nullable().optional(),
-    dominant_netuid: z.int().nullable().optional(),
-    subnets: z.array(PrometheusSubnetSchema),
-  })
-  .passthrough();
+export const GetAccountPrometheusOutputSchema = AccountPrometheusArtifactSchema;
 export type GetAccountPrometheusOutput = z.infer<
   typeof GetAccountPrometheusOutputSchema
 >;
@@ -138,27 +95,8 @@ export type GetAccountRegistrationsInput = z.infer<
   typeof GetAccountRegistrationsInputSchema
 >;
 
-const RegistrationsSubnetSchema = z
-  .object({
-    netuid: netuidSchema(),
-    registrations: z.int(),
-    first_registered_at: z.string().nullable(),
-    last_registered_at: z.string().nullable(),
-  })
-  .strict();
-
-export const GetAccountRegistrationsOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    address: z.string(),
-    window: z.string().nullable(),
-    total_registrations: z.int(),
-    subnet_count: z.int(),
-    concentration: z.number().nullable().optional(),
-    dominant_netuid: z.int().nullable().optional(),
-    subnets: z.array(RegistrationsSubnetSchema),
-  })
-  .passthrough();
+export const GetAccountRegistrationsOutputSchema =
+  AccountRegistrationsArtifactSchema;
 export type GetAccountRegistrationsOutput = z.infer<
   typeof GetAccountRegistrationsOutputSchema
 >;
@@ -173,27 +111,8 @@ export type GetAccountWeightSettersInput = z.infer<
   typeof GetAccountWeightSettersInputSchema
 >;
 
-const WeightSettersSubnetSchema = z
-  .object({
-    netuid: netuidSchema(),
-    weight_sets: z.int(),
-    first_set_at: z.string().nullable(),
-    last_set_at: z.string().nullable(),
-  })
-  .strict();
-
-export const GetAccountWeightSettersOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    address: z.string(),
-    window: z.string().nullable(),
-    total_weight_sets: z.int(),
-    subnet_count: z.int(),
-    concentration: z.number().nullable().optional(),
-    dominant_netuid: z.int().nullable().optional(),
-    subnets: z.array(WeightSettersSubnetSchema),
-  })
-  .passthrough();
+export const GetAccountWeightSettersOutputSchema =
+  AccountWeightSettersArtifactSchema;
 export type GetAccountWeightSettersOutput = z.infer<
   typeof GetAccountWeightSettersOutputSchema
 >;
@@ -208,27 +127,7 @@ export type GetAccountServingInput = z.infer<
   typeof GetAccountServingInputSchema
 >;
 
-const ServingSubnetSchema = z
-  .object({
-    netuid: netuidSchema(),
-    announcements: z.int(),
-    first_served_at: z.string().nullable(),
-    last_served_at: z.string().nullable(),
-  })
-  .strict();
-
-export const GetAccountServingOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    address: z.string(),
-    window: z.string().nullable(),
-    total_announcements: z.int(),
-    subnet_count: z.int(),
-    concentration: z.number().nullable().optional(),
-    dominant_netuid: z.int().nullable().optional(),
-    subnets: z.array(ServingSubnetSchema),
-  })
-  .passthrough();
+export const GetAccountServingOutputSchema = AccountServingArtifactSchema;
 export type GetAccountServingOutput = z.infer<
   typeof GetAccountServingOutputSchema
 >;
@@ -243,27 +142,8 @@ export type GetAccountDeregistrationsInput = z.infer<
   typeof GetAccountDeregistrationsInputSchema
 >;
 
-const DeregistrationsSubnetSchema = z
-  .object({
-    netuid: netuidSchema(),
-    deregistrations: z.int(),
-    first_deregistered_at: z.string().nullable(),
-    last_deregistered_at: z.string().nullable(),
-  })
-  .strict();
-
-export const GetAccountDeregistrationsOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    address: z.string(),
-    window: z.string().nullable(),
-    total_deregistrations: z.int(),
-    subnet_count: z.int(),
-    concentration: z.number().nullable().optional(),
-    dominant_netuid: z.int().nullable().optional(),
-    subnets: z.array(DeregistrationsSubnetSchema),
-  })
-  .passthrough();
+export const GetAccountDeregistrationsOutputSchema =
+  AccountDeregistrationsArtifactSchema;
 export type GetAccountDeregistrationsOutput = z.infer<
   typeof GetAccountDeregistrationsOutputSchema
 >;

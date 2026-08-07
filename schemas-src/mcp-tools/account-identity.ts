@@ -1,8 +1,16 @@
-// MCP tools `get_account_identity`, `get_account_identity_history`
-// (types-epic E batch 6, #8069). Each mirrors a GET /api/v1/accounts/{ss58}/
-// identity* route that is not one of schemas-src/routes/'s covered pilot
-// routes -- no existing Zod schema to reuse. Modeled fresh, matching each
-// hand-written literal field-for-field.
+// MCP tools `get_account_identity`, `get_account_identity_history`.
+// Mirror GET /api/v1/accounts/{ss58}/identity, GET
+// /api/v1/accounts/{ss58}/identity-history.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import {
   keysetCursorSchema,
@@ -10,6 +18,10 @@ import {
   offsetSchema,
   ss58Schema,
 } from "./shared.ts";
+import {
+  AccountIdentityArtifactSchema,
+  AccountIdentityHistoryArtifactSchema,
+} from "../routes/account-identity.ts";
 
 export const GetAccountIdentityInputSchema = z
   .object({
@@ -20,21 +32,7 @@ export type GetAccountIdentityInput = z.infer<
   typeof GetAccountIdentityInputSchema
 >;
 
-export const GetAccountIdentityOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    account: z.string(),
-    has_identity: z.boolean(),
-    name: z.string().nullable().optional(),
-    url: z.string().nullable().optional(),
-    github: z.string().nullable().optional(),
-    image: z.string().nullable().optional(),
-    discord: z.string().nullable().optional(),
-    description: z.string().nullable().optional(),
-    additional: z.string().nullable().optional(),
-    captured_at: z.string().nullable().optional(),
-  })
-  .passthrough();
+export const GetAccountIdentityOutputSchema = AccountIdentityArtifactSchema;
 export type GetAccountIdentityOutput = z.infer<
   typeof GetAccountIdentityOutputSchema
 >;
@@ -60,31 +58,8 @@ export type GetAccountIdentityHistoryInput = z.infer<
 // ?? null`, so the key itself is always present even though the hand-
 // written original never required it. Modeled here as nullable (still
 // required), matching real behavior.
-const AccountIdentityHistoryEntrySchema = z
-  .object({
-    observed_at: z.string().nullable().optional(),
-    name: z.string().nullable().optional(),
-    url: z.string().nullable().optional(),
-    github: z.string().nullable().optional(),
-    image: z.string().nullable().optional(),
-    discord: z.string().nullable().optional(),
-    description: z.string().nullable().optional(),
-    additional: z.string().nullable().optional(),
-    identity_hash: z.string().nullable(),
-  })
-  .passthrough();
-
-export const GetAccountIdentityHistoryOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    account: z.string(),
-    entry_count: z.int(),
-    limit: z.int().nullable().optional(),
-    offset: z.int().nullable().optional(),
-    next_cursor: z.string().nullable().optional(),
-    entries: z.array(AccountIdentityHistoryEntrySchema),
-  })
-  .passthrough();
+export const GetAccountIdentityHistoryOutputSchema =
+  AccountIdentityHistoryArtifactSchema;
 export type GetAccountIdentityHistoryOutput = z.infer<
   typeof GetAccountIdentityHistoryOutputSchema
 >;

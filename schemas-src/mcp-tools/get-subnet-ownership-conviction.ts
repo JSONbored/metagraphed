@@ -1,12 +1,20 @@
-// MCP tools `get_subnet_ownership_history`, `get_subnet_conviction`
-// (types-epic E batch 4, #8067). Mirror GET /api/v1/subnets/{netuid}/
-// ownership-history and GET /api/v1/subnets/{netuid}/conviction, neither of
-// which is one of schemas-src/routes/'s covered pilot routes -- no existing
-// Zod schema to reuse. Modeled fresh, shallow, from the hand-written
-// literals they replace.
+// MCP tools `get_subnet_conviction`, `get_subnet_ownership_history`.
+// Mirror GET /api/v1/subnets/{netuid}/conviction, GET
+// /api/v1/subnets/{netuid}/ownership-history.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import { netuidSchema } from "./shared.ts";
-import { FieldSourcesSchema } from "../shared.ts";
+import { SubnetConvictionArtifactSchema } from "../routes/subnet-conviction.ts";
+import { SubnetOwnershipHistoryArtifactSchema } from "../routes/subnet-ownership-history.ts";
 
 export const GetSubnetOwnershipHistoryInputSchema = z
   .object({
@@ -17,24 +25,8 @@ export type GetSubnetOwnershipHistoryInput = z.infer<
   typeof GetSubnetOwnershipHistoryInputSchema
 >;
 
-const OwnershipChangeSchema = z
-  .object({
-    netuid: netuidSchema().nullable().optional(),
-    old_coldkey: z.string().nullable().optional(),
-    new_coldkey: z.string().nullable().optional(),
-    block_number: z.int().nullable().optional(),
-    observed_at: z.string().nullable().optional(),
-  })
-  .passthrough();
-
-export const GetSubnetOwnershipHistoryOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    netuid: netuidSchema(),
-    count: z.int(),
-    ownership_changes: z.array(OwnershipChangeSchema),
-  })
-  .passthrough();
+export const GetSubnetOwnershipHistoryOutputSchema =
+  SubnetOwnershipHistoryArtifactSchema;
 export type GetSubnetOwnershipHistoryOutput = z.infer<
   typeof GetSubnetOwnershipHistoryOutputSchema
 >;
@@ -48,29 +40,7 @@ export type GetSubnetConvictionInput = z.infer<
   typeof GetSubnetConvictionInputSchema
 >;
 
-const ConvictionLeaderboardEntrySchema = z
-  .object({
-    hotkey: z.string().optional(),
-    is_owner: z.boolean().optional(),
-    locked_mass: z.number().optional(),
-    conviction: z.number().optional(),
-  })
-  .passthrough();
-
-export const GetSubnetConvictionOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    netuid: netuidSchema(),
-    queried_at_block: z.int().nullable().optional(),
-    unlock_rate: z.int().nullable().optional(),
-    maturity_rate: z.int().nullable().optional(),
-    king: z.string().nullable().optional(),
-    count: z.int(),
-    leaderboard: z.array(ConvictionLeaderboardEntrySchema),
-    // #9108 provenance, mirroring the REST artifact field for field.
-    field_sources: FieldSourcesSchema,
-  })
-  .passthrough();
+export const GetSubnetConvictionOutputSchema = SubnetConvictionArtifactSchema;
 export type GetSubnetConvictionOutput = z.infer<
   typeof GetSubnetConvictionOutputSchema
 >;

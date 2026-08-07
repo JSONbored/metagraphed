@@ -1,12 +1,15 @@
-// MCP tool `get_account_extrinsics` (types-epic E batch 7, #8070). Mirrors
-// GET /api/v1/accounts/{ss58}/extrinsics, which is not one of
-// schemas-src/routes/'s covered pilot routes -- no existing Zod schema to
-// reuse. The extrinsics item shape mirrors src/mcp-server.ts's shared
-// EXTRINSIC_ITEM object literal (also used by list_extrinsics/get_extrinsic/
-// get_block_extrinsics, none of which are in this batch) -- modeled fresh
-// here rather than importing a shared schema, since those other tools stay
-// hand-written JSON Schema for now and EXTRINSIC_ITEM itself has no Zod
-// equivalent yet.
+// MCP tool `get_account_extrinsics`.
+// Mirrors GET /api/v1/accounts/{ss58}/extrinsics.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import {
   blockBoundSchema,
@@ -15,6 +18,7 @@ import {
   offsetSchema,
   ss58Schema,
 } from "./shared.ts";
+import { AccountExtrinsicsArtifactSchema } from "../routes/account-extrinsics.ts";
 
 export const GetAccountExtrinsicsInputSchema = z
   .object({
@@ -32,37 +36,7 @@ export type GetAccountExtrinsicsInput = z.infer<
 
 // objectItems(...) properties, none required at the item level (see
 // search-subnets.ts's same note from the pilot batch).
-const ExtrinsicItemSchema = z
-  .object({
-    block_number: z.int().nullable().optional(),
-    extrinsic_index: z.int().nullable().optional(),
-    extrinsic_hash: z.string().nullable().optional(),
-    signer: z.string().nullable().optional(),
-    call_module: z.string().nullable().optional(),
-    call_function: z.string().nullable().optional(),
-    call_args: z.unknown().optional(),
-    success: z.boolean().nullable().optional(),
-    fee_tao: z.unknown().optional(),
-    tip_tao: z.unknown().optional(),
-    observed_at: z.string().nullable().optional(),
-    // #8525: deterministic human-readable action sentence for this
-    // extrinsic's call, or null when no template matches
-    // call_module.call_function -- never a guessed/partial sentence.
-    summary: z.string().nullable().optional(),
-  })
-  .passthrough();
-
-export const GetAccountExtrinsicsOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    ss58: z.string(),
-    extrinsic_count: z.int(),
-    limit: z.int().nullable().optional(),
-    offset: z.int().nullable().optional(),
-    next_cursor: z.string().nullable().optional(),
-    extrinsics: z.array(ExtrinsicItemSchema),
-  })
-  .passthrough();
+export const GetAccountExtrinsicsOutputSchema = AccountExtrinsicsArtifactSchema;
 export type GetAccountExtrinsicsOutput = z.infer<
   typeof GetAccountExtrinsicsOutputSchema
 >;

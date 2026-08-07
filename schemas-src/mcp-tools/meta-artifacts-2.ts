@@ -1,25 +1,25 @@
-// MCP tools `get_changelog`, `get_build`, `get_coverage`,
-// `get_coverage_depth` (types-epic E batch 12, #8075). `get_changelog`,
-// `get_build`, and `get_coverage` each live in their own dedicated file
-// (src/changelog-mcp.ts, src/build-mcp.ts, src/registry-coverage.ts --
-// their `GET_X_MCP_TOOL`/`GET_X_OUTPUT_SCHEMA` spread into mcp-server.ts's
-// MCP_TOOLS array); `get_coverage_depth` is defined inline in
-// src/mcp-server.ts. All four are no-input, baked-artifact passthrough
-// tools.
+// MCP tools `get_build`, `get_coverage`.
+// Mirror GET /api/v1/build, GET /api/v1/coverage.
 //
-// This header used to say none of them "mirror an existing schemas-src/routes/
-// REST schema -- modeled fresh". For `get_coverage_depth` that was wrong:
-// CoverageDepthArtifactSchema in schemas-src/routes/coverage.ts models the same
-// artifact, and the fresh model disagreed with it on the type of
-// `coverage_depth_version` (#9794). It now reuses the route schema outright,
-// which also replaces its two bare open arrays with the row and queue-entry
-// shapes the route already declares. The remaining three are still local
-// models; #9796 covers deriving them.
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// What the copies were publishing:
+//   get_build: 3 bare `{"type":"object"}` sites.
+//   get_coverage: 2 bare `{"type":"object"}` sites.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import { ChangelogArtifactSchema } from "../routes/meta-contracts.ts";
 import { CoverageDepthArtifactSchema } from "../routes/coverage.ts";
 import { SelfHealthArtifactSchema } from "../routes/self-health.ts";
-import { OpenObjectSchema } from "./shared.ts";
+import { CoverageArtifactSchema } from "../routes/coverage.ts";
+import { BuildSummaryArtifactSchema } from "../routes/meta-contracts.ts";
 
 export const GetChangelogInputSchema = z.object({}).strict();
 export type GetChangelogInput = z.infer<typeof GetChangelogInputSchema>;
@@ -32,23 +32,7 @@ export type GetChangelogOutput = z.infer<typeof GetChangelogOutputSchema>;
 export const GetBuildInputSchema = z.object({}).strict();
 export type GetBuildInput = z.infer<typeof GetBuildInputSchema>;
 
-export const GetBuildOutputSchema = z
-  .object({
-    schema_version: z.int(),
-    contract_version: z.string().nullable().optional(),
-    generated_at: z.string().nullable().optional(),
-    published_at: z.string().nullable().optional(),
-    adapter_count: z.int().nullable().optional(),
-    artifact_count: z.int(),
-    artifact_size_bytes: z.int().nullable().optional(),
-    subnet_count: z.int().nullable().optional(),
-    surface_count: z.int().nullable().optional(),
-    provider_count: z.int().nullable().optional(),
-    artifacts: z.array(OpenObjectSchema).nullable().optional(),
-    coverage: OpenObjectSchema.nullable().optional(),
-    artifact_budget_summary: OpenObjectSchema.nullable().optional(),
-  })
-  .passthrough();
+export const GetBuildOutputSchema = BuildSummaryArtifactSchema;
 export type GetBuildOutput = z.infer<typeof GetBuildOutputSchema>;
 
 // #8422: get_self_health -- GET /api/v1/self-health parity, baked
@@ -73,20 +57,7 @@ export type GetSelfHealthOutput = z.infer<typeof GetSelfHealthOutputSchema>;
 export const GetCoverageInputSchema = z.object({}).strict();
 export type GetCoverageInput = z.infer<typeof GetCoverageInputSchema>;
 
-export const GetCoverageOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    surface_count: z.int(),
-    official_surface_count: z.int().optional(),
-    first_party_subnet_count: z.int().optional(),
-    chain_subnet_count: z.int().optional(),
-    candidate_count: z.int().optional(),
-    probed_count: z.int().optional(),
-    domain_coverage: OpenObjectSchema.optional(),
-    completeness: OpenObjectSchema,
-    subnets_without_official_surface: z.int().optional(),
-  })
-  .passthrough();
+export const GetCoverageOutputSchema = CoverageArtifactSchema;
 export type GetCoverageOutput = z.infer<typeof GetCoverageOutputSchema>;
 
 export const GetCoverageDepthInputSchema = z.object({}).strict();

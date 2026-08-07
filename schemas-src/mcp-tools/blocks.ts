@@ -1,18 +1,27 @@
-// MCP tools `list_blocks`, `get_block`, `list_block_extrinsics`,
-// `get_block_events` (types-epic E batch 8, #8071). Each mirrors a
-// GET /api/v1/blocks* route that is not one of schemas-src/routes/'s covered
-// pilot routes -- no existing Zod schema to reuse. Modeled fresh, matching
-// each hand-written literal field-for-field.
+// MCP tools `list_block_extrinsics`, `list_blocks`, `get_block_events`.
+// Mirror GET /api/v1/blocks/{ref}/extrinsics, GET /api/v1/blocks, GET
+// /api/v1/blocks/{ref}/events.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import {
-  AccountEventItemSchema,
-  ExtrinsicItemSchema,
   OpenObjectSchema,
   blockBoundSchema,
   keysetCursorSchema,
   limitSchema,
   offsetSchema,
 } from "./shared.ts";
+import { BlockEventsArtifactSchema } from "../routes/block-events.ts";
+import { BlockExtrinsicsArtifactSchema } from "../routes/block-extrinsics.ts";
+import { BlocksFeedArtifactSchema } from "../routes/blocks.ts";
 
 const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
 
@@ -74,29 +83,7 @@ export type ListBlocksInput = z.infer<typeof ListBlocksInputSchema>;
 
 // objectItems(...) properties, none required at the item level (see
 // search-subnets.ts's same note from the pilot batch).
-const BlockItemSchema = z
-  .object({
-    block_number: z.int().nullable().optional(),
-    block_hash: z.string().nullable().optional(),
-    parent_hash: z.string().nullable().optional(),
-    author: z.string().nullable().optional(),
-    extrinsic_count: z.int().nullable().optional(),
-    event_count: z.int().nullable().optional(),
-    spec_version: z.int().nullable().optional(),
-    observed_at: z.string().nullable().optional(),
-  })
-  .passthrough();
-
-export const ListBlocksOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    block_count: z.int(),
-    limit: z.int().nullable().optional(),
-    offset: z.int().nullable().optional(),
-    next_cursor: z.string().nullable().optional(),
-    blocks: z.array(BlockItemSchema),
-  })
-  .passthrough();
+export const ListBlocksOutputSchema = BlocksFeedArtifactSchema;
 export type ListBlocksOutput = z.infer<typeof ListBlocksOutputSchema>;
 
 export const GetBlockInputSchema = z
@@ -148,17 +135,7 @@ export type ListBlockExtrinsicsInput = z.infer<
   typeof ListBlockExtrinsicsInputSchema
 >;
 
-export const ListBlockExtrinsicsOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    ref: z.unknown(),
-    block_number: z.int().nullable().optional(),
-    extrinsic_count: z.int(),
-    limit: z.int().nullable().optional(),
-    offset: z.int().nullable().optional(),
-    extrinsics: z.array(ExtrinsicItemSchema),
-  })
-  .passthrough();
+export const ListBlockExtrinsicsOutputSchema = BlockExtrinsicsArtifactSchema;
 export type ListBlockExtrinsicsOutput = z.infer<
   typeof ListBlockExtrinsicsOutputSchema
 >;
@@ -182,15 +159,5 @@ export const GetBlockEventsInputSchema = z
   .strict();
 export type GetBlockEventsInput = z.infer<typeof GetBlockEventsInputSchema>;
 
-export const GetBlockEventsOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    ref: z.unknown(),
-    block_number: z.int().nullable().optional(),
-    event_count: z.int(),
-    limit: z.int().nullable().optional(),
-    offset: z.int().nullable().optional(),
-    events: z.array(AccountEventItemSchema),
-  })
-  .passthrough();
+export const GetBlockEventsOutputSchema = BlockEventsArtifactSchema;
 export type GetBlockEventsOutput = z.infer<typeof GetBlockEventsOutputSchema>;

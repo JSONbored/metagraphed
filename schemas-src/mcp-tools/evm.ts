@@ -1,16 +1,18 @@
-// MCP tools `decode_evm_call`, `get_evm_address_mapping` (types-epic E
-// batch 7, #8070). decode_evm_call is pure/local (src/evm-precompiles.ts,
-// no REST mirror); get_evm_address_mapping mirrors GET /api/v1/evm/address/
-// {h160}. Neither is one of schemas-src/routes/'s covered pilot routes --
-// no existing Zod schema to reuse. Both hand-written originals declare
-// their outputSchema INLINE on the tool definition (not via the shared
-// TOOL_OUTPUT_SCHEMAS map every other tool in this epic uses) and are
-// additionalProperties:false (strict) at the top level, unlike the
-// additionalProperties:true posture everywhere else in this epic -- modeled
-// here with the SAME strictness, not loosened to match the majority
-// convention.
+// MCP tool `get_evm_address_mapping`.
+// Mirrors GET /api/v1/evm/address/{h160}.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
-import { FieldSourcesSchema, McpNetworkSchema } from "../shared.ts";
+import { McpNetworkSchema } from "../shared.ts";
+import { EvmAddressMappingArtifactSchema } from "../routes/network-singletons.ts";
 
 const H160Schema = z.string().regex(/^0x[0-9a-fA-F]{40}$/);
 
@@ -60,16 +62,7 @@ export type GetEvmAddressMappingInput = z.infer<
   typeof GetEvmAddressMappingInputSchema
 >;
 
-export const GetEvmAddressMappingOutputSchema = z
-  .object({
-    schema_version: z.int(),
-    h160: z.string(),
-    ss58: z.string().nullable(),
-    queried_at: z.string().nullable(),
-    // #9108 provenance, mirroring the REST artifact field for field.
-    field_sources: FieldSourcesSchema,
-  })
-  .strict();
+export const GetEvmAddressMappingOutputSchema = EvmAddressMappingArtifactSchema;
 export type GetEvmAddressMappingOutput = z.infer<
   typeof GetEvmAddressMappingOutputSchema
 >;

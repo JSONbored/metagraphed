@@ -1,11 +1,23 @@
-// MCP tools `get_subnet_lease`, `get_subnet_lease_history` (types-epic E
-// batch 4, #8067). Mirror GET /api/v1/subnets/{netuid}/lease(/history),
-// neither of which is one of schemas-src/routes/'s covered pilot routes --
-// no existing Zod schema to reuse. Modeled fresh, shallow, from the
-// hand-written literals they replace.
+// MCP tools `get_subnet_lease`, `get_subnet_lease_history`.
+// Mirror GET /api/v1/subnets/{netuid}/lease, GET
+// /api/v1/subnets/{netuid}/lease/history.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import { netuidSchema } from "./shared.ts";
-import { FieldSourcesSchema, McpNetworkSchema } from "../shared.ts";
+import { McpNetworkSchema } from "../shared.ts";
+import {
+  SubnetLeaseArtifactSchema,
+  SubnetLeaseHistoryArtifactSchema,
+} from "../routes/subnet-lease.ts";
 
 export const GetSubnetLeaseInputSchema = z
   .object({
@@ -19,31 +31,7 @@ export const GetSubnetLeaseInputSchema = z
   .strict();
 export type GetSubnetLeaseInput = z.infer<typeof GetSubnetLeaseInputSchema>;
 
-const LeaseDetailSchema = z
-  .object({
-    lease_id: z.int().optional(),
-    beneficiary: z.string().optional(),
-    coldkey: z.string().optional(),
-    hotkey: z.string().optional(),
-    emissions_share_percent: z.int().optional(),
-    end_block: z.int().nullable().optional(),
-    netuid: netuidSchema().optional(),
-    cost_tao: z.number().optional(),
-    accumulated_dividends_alpha: z.number().nullable().optional(),
-  })
-  .passthrough();
-
-export const GetSubnetLeaseOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    netuid: netuidSchema(),
-    leased: z.boolean().nullable(),
-    lease: LeaseDetailSchema.nullable().optional(),
-    queried_at: z.string().nullable().optional(),
-    // #9108 provenance, mirroring the REST artifact field for field.
-    field_sources: FieldSourcesSchema,
-  })
-  .passthrough();
+export const GetSubnetLeaseOutputSchema = SubnetLeaseArtifactSchema;
 export type GetSubnetLeaseOutput = z.infer<typeof GetSubnetLeaseOutputSchema>;
 
 export const GetSubnetLeaseHistoryInputSchema = z
@@ -55,23 +43,8 @@ export type GetSubnetLeaseHistoryInput = z.infer<
   typeof GetSubnetLeaseHistoryInputSchema
 >;
 
-const LeaseEventSchema = z
-  .object({
-    event_kind: z.string().optional(),
-    beneficiary: z.string().nullable().optional(),
-    block_number: z.int().nullable().optional(),
-    observed_at: z.string().nullable().optional(),
-  })
-  .passthrough();
-
-export const GetSubnetLeaseHistoryOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    netuid: netuidSchema(),
-    count: z.int(),
-    lease_events: z.array(LeaseEventSchema),
-  })
-  .passthrough();
+export const GetSubnetLeaseHistoryOutputSchema =
+  SubnetLeaseHistoryArtifactSchema;
 export type GetSubnetLeaseHistoryOutput = z.infer<
   typeof GetSubnetLeaseHistoryOutputSchema
 >;

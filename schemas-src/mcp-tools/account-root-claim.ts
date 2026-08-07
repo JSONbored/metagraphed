@@ -1,11 +1,19 @@
-// MCP tool `get_account_root_claim` (types-epic E batch 6, #8069). Mirrors
-// GET /api/v1/accounts/{ss58}/root-claim, which is not one of
-// schemas-src/routes/'s covered pilot routes -- no existing Zod schema to
-// reuse. Modeled fresh, matching the hand-written literal it replaces
-// field-for-field.
+// MCP tool `get_account_root_claim`.
+// Mirrors GET /api/v1/accounts/{ss58}/root-claim.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
-import { netuidSchema, ss58Schema } from "./shared.ts";
-import { FieldSourcesSchema, McpNetworkSchema } from "../shared.ts";
+import { ss58Schema } from "./shared.ts";
+import { McpNetworkSchema } from "../shared.ts";
+import { AccountRootClaimArtifactSchema } from "../routes/account-root-claim.ts";
 
 export const GetAccountRootClaimInputSchema = z
   .object({
@@ -21,40 +29,7 @@ export type GetAccountRootClaimInput = z.infer<
   typeof GetAccountRootClaimInputSchema
 >;
 
-const RootClaimTypeSchema = z
-  .object({
-    kind: z.string(),
-    subnets: z.array(z.int()).optional(),
-  })
-  .strict();
-
-const RootClaimEntrySchema = z
-  .object({
-    netuid: netuidSchema(),
-    claimable_rate: z.number(),
-    claimed: z.string(),
-    threshold: z.number(),
-  })
-  .strict();
-
-const RootClaimHotkeySchema = z
-  .object({
-    hotkey: z.string(),
-    entries: z.array(RootClaimEntrySchema),
-  })
-  .strict();
-
-export const GetAccountRootClaimOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    ss58: z.string(),
-    claim_type: RootClaimTypeSchema.nullable().optional(),
-    hotkeys: z.array(RootClaimHotkeySchema).nullable().optional(),
-    queried_at: z.string().nullable(),
-    // #9108 provenance, mirroring the REST artifact field for field.
-    field_sources: FieldSourcesSchema,
-  })
-  .passthrough();
+export const GetAccountRootClaimOutputSchema = AccountRootClaimArtifactSchema;
 export type GetAccountRootClaimOutput = z.infer<
   typeof GetAccountRootClaimOutputSchema
 >;

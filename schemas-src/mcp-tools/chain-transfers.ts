@@ -1,28 +1,27 @@
-// MCP tools `get_chain_transfers`, `get_chain_transfer_pairs` (types-epic E
-// batch 9, #8072). Each mirrors a GET /api/v1/chain/transfer{s,-pairs} route
-// that is not one of schemas-src/routes/'s covered pilot routes -- no
-// existing Zod schema to reuse. Both hand-written originals are
-// additionalProperties:false (strict) at the top level, unlike the
-// additionalProperties:true posture most tools in this epic use -- modeled
-// here with the same strictness. Their `window` fields are a REQUIRED but
-// NULLABLE enum (`type:["string","null"], enum:[...windows, null]`) --
-// `z.enum(...).nullable()`, not `.optional()`.
+// MCP tools `get_chain_transfers`, `get_chain_transfer_pairs`.
+// Mirror GET /api/v1/chain/transfers, GET /api/v1/chain/transfer-pairs.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import { limitSchema, sortSchema, windowSchema } from "./shared.ts";
+import {
+  ChainTransferPairsArtifactSchema,
+  ChainTransfersArtifactSchema,
+} from "../routes/chain-transfers.ts";
 
 const WINDOWS_2 = ["7d", "30d"] as const;
 
 // Mirrors mcp-server.ts's shared CHAIN_TRANSFER_PARTY_ITEM object literal
 // (this batch's last consumer -- get_chain_transfer_pairs.pairs items have
 // their own distinct shape, not this one).
-const ChainTransferPartySchema = z
-  .object({
-    address: z.string(),
-    volume_tao: z.number(),
-    transfer_count: z.int().min(0),
-  })
-  .strict();
-
 export const GetChainTransfersInputSchema = z
   .object({
     window: windowSchema(WINDOWS_2).optional(),
@@ -33,20 +32,7 @@ export type GetChainTransfersInput = z.infer<
   typeof GetChainTransfersInputSchema
 >;
 
-export const GetChainTransfersOutputSchema = z
-  .object({
-    schema_version: z.int(),
-    window: z.enum(WINDOWS_2).nullable(),
-    observed_at: z.string().nullable(),
-    total_volume_tao: z.number(),
-    transfer_count: z.int().min(0),
-    unique_senders: z.int().min(0),
-    unique_receivers: z.int().min(0),
-    top_sender_share: z.number().nullable(),
-    top_senders: z.array(ChainTransferPartySchema),
-    top_receivers: z.array(ChainTransferPartySchema),
-  })
-  .strict();
+export const GetChainTransfersOutputSchema = ChainTransfersArtifactSchema;
 export type GetChainTransfersOutput = z.infer<
   typeof GetChainTransfersOutputSchema
 >;
@@ -62,31 +48,8 @@ export type GetChainTransferPairsInput = z.infer<
   typeof GetChainTransferPairsInputSchema
 >;
 
-const ChainTransferPairSchema = z
-  .object({
-    from: z.string(),
-    to: z.string(),
-    volume_tao: z.number(),
-    transfer_count: z.int().min(0),
-    last_block: z.int().nullable(),
-    last_observed_at: z.string().nullable(),
-  })
-  .strict();
-
-export const GetChainTransferPairsOutputSchema = z
-  .object({
-    schema_version: z.int(),
-    window: z.enum(WINDOWS_2).nullable(),
-    sort: z.enum(["volume", "count"]),
-    observed_at: z.string().nullable(),
-    total_volume_tao: z.number(),
-    transfer_count: z.int().min(0),
-    unique_pairs: z.int().min(0),
-    pair_count: z.int().min(0),
-    top_pair_share: z.number().nullable(),
-    pairs: z.array(ChainTransferPairSchema),
-  })
-  .strict();
+export const GetChainTransferPairsOutputSchema =
+  ChainTransferPairsArtifactSchema;
 export type GetChainTransferPairsOutput = z.infer<
   typeof GetChainTransferPairsOutputSchema
 >;

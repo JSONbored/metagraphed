@@ -1,14 +1,22 @@
-// MCP tool `get_chain_identity_history` (types-epic E batch 9, #8072).
-// Mirrors GET /api/v1/chain/identity-history, which is not one of
-// schemas-src/routes/'s covered pilot routes -- no existing Zod schema to
-// reuse. Modeled fresh, matching the hand-written literal it replaces
-// field-for-field.
+// MCP tool `get_chain_identity_history`.
+// Mirrors GET /api/v1/chain/identity-history.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import {
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
 } from "../../src/route-limits.ts";
-import { limitSchema, netuidSchema } from "./shared.ts";
+import { limitSchema } from "./shared.ts";
+import { ChainIdentityHistoryArtifactSchema } from "../routes/chain-identity-history.ts";
 
 export const GetChainIdentityHistoryInputSchema = z
   .object({
@@ -24,30 +32,8 @@ export type GetChainIdentityHistoryInput = z.infer<
 
 // objectItems(...) properties, none required at the item level (see
 // search-subnets.ts's same note from the pilot batch).
-const ChainIdentityChangeSchema = z
-  .object({
-    netuid: netuidSchema().nullable().optional(),
-    block_number: z.int().nullable().optional(),
-    observed_at: z.string().nullable().optional(),
-    subnet_name: z.string().nullable().optional(),
-    symbol: z.string().nullable().optional(),
-    description: z.string().nullable().optional(),
-    github_repo: z.string().nullable().optional(),
-    subnet_url: z.string().nullable().optional(),
-    discord: z.string().nullable().optional(),
-    logo_url: z.string().nullable().optional(),
-    identity_hash: z.string().nullable().optional(),
-  })
-  .passthrough();
-
-export const GetChainIdentityHistoryOutputSchema = z
-  .object({
-    schema_version: z.int(),
-    count: z.int(),
-    subnet_count: z.int(),
-    changes: z.array(ChainIdentityChangeSchema),
-  })
-  .passthrough();
+export const GetChainIdentityHistoryOutputSchema =
+  ChainIdentityHistoryArtifactSchema;
 export type GetChainIdentityHistoryOutput = z.infer<
   typeof GetChainIdentityHistoryOutputSchema
 >;

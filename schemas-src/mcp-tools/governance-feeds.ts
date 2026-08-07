@@ -1,12 +1,16 @@
-// MCP tools `get_sudo`, `get_sudo_key`, `get_governance_config_changes`
-// (types-epic E batch 8, #8071). Each mirrors a GET /api/v1/{sudo,governance}*
-// route that is not one of schemas-src/routes/'s covered pilot routes -- no
-// existing Zod schema to reuse. Modeled fresh, matching each hand-written
-// literal field-for-field. get_sudo/get_governance_config_changes's input
-// omits `required` entirely in the hand-written original (every field
-// optional) rather than declaring `required: []` -- both are semantically
-// identical JSON Schema and the diff-audit script already treats them as
-// equal (see list_accounts/get_top_holders in #8070).
+// MCP tools `get_sudo`, `get_sudo_key`, `get_governance_config_changes`.
+// Mirror GET /api/v1/sudo, GET /api/v1/sudo/key, GET
+// /api/v1/governance/config-changes.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import {
   blockBoundSchema,
@@ -15,8 +19,9 @@ import {
   offsetSchema,
 } from "./shared.ts";
 import { EXTRINSICS_LIMIT_MAX } from "./extrinsics.ts";
-import { ExtrinsicItemSchema } from "./shared.ts";
-import { FieldSourcesSchema, McpNetworkSchema } from "../shared.ts";
+import { McpNetworkSchema } from "../shared.ts";
+import { ExtrinsicsFeedArtifactSchema } from "../routes/extrinsics.ts";
+import { SudoKeyArtifactSchema } from "../routes/network-singletons.ts";
 
 export const GetSudoInputSchema = z
   .object({
@@ -68,16 +73,7 @@ export const GetSudoInputSchema = z
   .strict();
 export type GetSudoInput = z.infer<typeof GetSudoInputSchema>;
 
-export const GetSudoOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    extrinsic_count: z.int(),
-    limit: z.int().nullable().optional(),
-    offset: z.int().nullable().optional(),
-    next_cursor: z.string().nullable().optional(),
-    extrinsics: z.array(ExtrinsicItemSchema),
-  })
-  .passthrough();
+export const GetSudoOutputSchema = ExtrinsicsFeedArtifactSchema;
 export type GetSudoOutput = z.infer<typeof GetSudoOutputSchema>;
 
 export const GetSudoKeyInputSchema = z
@@ -90,15 +86,7 @@ export const GetSudoKeyInputSchema = z
   .strict();
 export type GetSudoKeyInput = z.infer<typeof GetSudoKeyInputSchema>;
 
-export const GetSudoKeyOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    hotkey: z.string().nullable(),
-    queried_at: z.string().nullable(),
-    // #9078 provenance, mirroring SudoKeyArtifactSchema field for field.
-    field_sources: FieldSourcesSchema,
-  })
-  .passthrough();
+export const GetSudoKeyOutputSchema = SudoKeyArtifactSchema;
 export type GetSudoKeyOutput = z.infer<typeof GetSudoKeyOutputSchema>;
 
 export const GetGovernanceConfigChangesInputSchema = z
@@ -153,16 +141,8 @@ export type GetGovernanceConfigChangesInput = z.infer<
   typeof GetGovernanceConfigChangesInputSchema
 >;
 
-export const GetGovernanceConfigChangesOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    extrinsic_count: z.int(),
-    limit: z.int().nullable().optional(),
-    offset: z.int().nullable().optional(),
-    next_cursor: z.string().nullable().optional(),
-    extrinsics: z.array(ExtrinsicItemSchema),
-  })
-  .passthrough();
+export const GetGovernanceConfigChangesOutputSchema =
+  ExtrinsicsFeedArtifactSchema;
 export type GetGovernanceConfigChangesOutput = z.infer<
   typeof GetGovernanceConfigChangesOutputSchema
 >;

@@ -1,9 +1,11 @@
 // MCP tool `get_health_history` (types-epic E batch 2, #8065). Mirrors GET
 // /api/v1/health/history/{date}, which is not one of schemas-src/routes/'s
 // covered pilot routes -- no existing Zod schema to reuse. Modeled fresh,
-// shallow, from the hand-written literal it replaces (src/health-history-mcp.ts).
+// shallow, from the hand-written literal it replaces
+// (src/health-history-mcp.ts).
 // Enum values hardcoded from src/contracts.ts's QUERY_ENUMS.{surfaceKind,
-// healthStatus,healthClassification} and API_QUERY_COLLECTIONS["health-surfaces"]
+// healthStatus,healthClassification} and
+// API_QUERY_COLLECTIONS["health-surfaces"]
 // .sort_fields at the time of writing (mirrors the pilot batch's
 // ECONOMICS_SORT_FIELDS precedent -- not cross-imported).
 import { z } from "zod";

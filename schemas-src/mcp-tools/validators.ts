@@ -1,9 +1,21 @@
-// MCP tools `list_subnet_validators`, `list_global_validators`,
-// `get_validator_detail`, `compare_validators`, `get_validator_nominators`,
-// `get_validator_history` (types-epic E batch 4, #8068). Each mirrors a
-// GET /api/v1/validators* route that is not one of schemas-src/routes/'s
-// covered pilot routes -- no existing Zod schema to reuse. Modeled fresh,
-// matching each hand-written literal field-for-field.
+// MCP tools `get_validator_detail`, `list_global_validators`,
+// `get_validator_history`, `get_validator_nominators`.
+// Mirror GET /api/v1/validators/{hotkey}, GET /api/v1/validators, GET
+// /api/v1/validators/{hotkey}/history, GET
+// /api/v1/validators/{hotkey}/nominators.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// What the copies were publishing:
+//   get_validator_detail: 1 bare `{"type":"object"}` site.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
 import {
   NeuronFieldsInputSchema,
@@ -19,6 +31,10 @@ import {
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
   GLOBAL_VALIDATOR_LIMIT_MAX,
 } from "../../src/route-limits.ts";
+import { GlobalValidatorsArtifactSchema } from "../routes/global-validators.ts";
+import { ValidatorDetailArtifactSchema } from "../routes/validator-detail.ts";
+import { ValidatorHistoryArtifactSchema } from "../routes/validator-history.ts";
+import { ValidatorNominatorsArtifactSchema } from "../routes/validator-nominators.ts";
 
 // Mirrors workers/config.ts's SS58_ADDRESS_PATTERN (inlined rather than
 // cross-imported from workers/, matching this directory's existing
@@ -110,45 +126,7 @@ export type ListGlobalValidatorsInput = z.infer<
 
 // objectItems(...) properties, none required at the item level (see
 // search-subnets.ts's same note from the pilot batch).
-const GlobalValidatorSubnetItemSchema = z
-  .object({
-    netuid: netuidSchema().nullable().optional(),
-    uid: z.int().nullable().optional(),
-    stake_tao: z.unknown().optional(),
-    emission_tao: z.unknown().optional(),
-    validator_trust: z.number().nullable().optional(),
-  })
-  .passthrough();
-
-const GlobalValidatorItemSchema = z
-  .object({
-    hotkey: z.string().nullable().optional(),
-    coldkey: z.string().nullable().optional(),
-    coldkey_count: z.int().optional(),
-    subnet_count: z.int().optional(),
-    uid_count: z.int().optional(),
-    total_stake_tao: z.unknown().optional(),
-    total_emission_tao: z.unknown().optional(),
-    avg_validator_trust: z.number().nullable().optional(),
-    max_validator_trust: z.number().nullable().optional(),
-    latest_captured_at: z.string().nullable().optional(),
-    latest_block_number: z.int().nullable().optional(),
-    stake_dominance: z.number().nullable().optional(),
-    subnets: z.array(GlobalValidatorSubnetItemSchema).optional(),
-  })
-  .passthrough();
-
-export const ListGlobalValidatorsOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    sort: z.enum(GLOBAL_VALIDATOR_SORTS),
-    limit: z.int(),
-    captured_at: z.string().nullable().optional(),
-    block_number: z.int().nullable().optional(),
-    validator_count: z.int(),
-    validators: z.array(GlobalValidatorItemSchema),
-  })
-  .passthrough();
+export const ListGlobalValidatorsOutputSchema = GlobalValidatorsArtifactSchema;
 export type ListGlobalValidatorsOutput = z.infer<
   typeof ListGlobalValidatorsOutputSchema
 >;
@@ -162,23 +140,7 @@ export type GetValidatorDetailInput = z.infer<
   typeof GetValidatorDetailInputSchema
 >;
 
-export const GetValidatorDetailOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    hotkey: z.string(),
-    coldkey: z.string().nullable().optional(),
-    coldkey_count: z.int().optional(),
-    subnet_count: z.int(),
-    take: z.number().nullable().optional(),
-    total_stake_tao: z.unknown().optional(),
-    total_emission_tao: z.unknown().optional(),
-    avg_validator_trust: z.number().nullable().optional(),
-    max_validator_trust: z.number().nullable().optional(),
-    captured_at: z.string().nullable().optional(),
-    block_number: z.int().nullable().optional(),
-    subnets: OpenObjectArraySchema,
-  })
-  .passthrough();
+export const GetValidatorDetailOutputSchema = ValidatorDetailArtifactSchema;
 export type GetValidatorDetailOutput = z.infer<
   typeof GetValidatorDetailOutputSchema
 >;
@@ -243,30 +205,8 @@ export type GetValidatorNominatorsInput = z.infer<
 >;
 
 // objectItems(...) properties, none required at the item level.
-const NominatorItemSchema = z
-  .object({
-    coldkey: z.string().optional(),
-    staked_tao: z.unknown().optional(),
-    unstaked_tao: z.unknown().optional(),
-    net_staked_tao: z.unknown().optional(),
-    gross_staked_tao: z.unknown().optional(),
-    event_count: z.int().optional(),
-    last_observed_at: z.string().nullable().optional(),
-  })
-  .passthrough();
-
-export const GetValidatorNominatorsOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    hotkey: z.string(),
-    window: z.string().nullable().optional(),
-    sort: z.enum(NOMINATOR_SORTS).optional(),
-    limit: z.int().optional(),
-    offset: z.int().optional(),
-    nominator_count: z.int(),
-    nominators: z.array(NominatorItemSchema),
-  })
-  .passthrough();
+export const GetValidatorNominatorsOutputSchema =
+  ValidatorNominatorsArtifactSchema;
 export type GetValidatorNominatorsOutput = z.infer<
   typeof GetValidatorNominatorsOutputSchema
 >;
@@ -285,39 +225,7 @@ export type GetValidatorHistoryInput = z.infer<
 >;
 
 // objectItems(...) properties, none required at the item level.
-const ValidatorHistoryPointSchema = z
-  .object({
-    snapshot_date: z.string().nullable().optional(),
-    subnet_count: z.int().nullable().optional(),
-    // Present only when the request scoped a netuid. Absent (not null) on the
-    // unscoped series, because vTrust/consensus/dividends/take are per-subnet
-    // facts and a cross-subnet average of them is a number the chain never
-    // computes -- see subnetScopedFields in src/validator-history.ts.
-    netuid: netuidSchema().nullable().optional(),
-    uid: z.int().nullable().optional(),
-    stake_alpha: z.number().nullable().optional(),
-    emission_alpha: z.number().nullable().optional(),
-    validator_trust: z.number().nullable().optional(),
-    consensus: z.number().nullable().optional(),
-    dividends: z.number().nullable().optional(),
-    take: z.number().nullable().optional(),
-    validator_permit: z.boolean().nullable().optional(),
-    rewards_per_1000_alpha: z.number().nullable().optional(),
-    total_stake_tao: z.unknown().optional(),
-    total_emission_tao: z.unknown().optional(),
-    rewards_per_1000_tao: z.number().nullable().optional(),
-  })
-  .passthrough();
-
-export const GetValidatorHistoryOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    hotkey: z.string(),
-    window: z.string().nullable().optional(),
-    point_count: z.int(),
-    points: z.array(ValidatorHistoryPointSchema),
-  })
-  .passthrough();
+export const GetValidatorHistoryOutputSchema = ValidatorHistoryArtifactSchema;
 export type GetValidatorHistoryOutput = z.infer<
   typeof GetValidatorHistoryOutputSchema
 >;

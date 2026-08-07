@@ -1,14 +1,21 @@
-// MCP tool `get_subnet_uptime` (types-epic E batch 2, #8065). Mirrors GET
-// /api/v1/subnets/{netuid}/uptime, which is not one of schemas-src/routes/'s
-// covered pilot routes -- no existing Zod schema to reuse. Modeled fresh,
-// shallow, from the hand-written literal it replaces.
+// MCP tool `get_subnet_uptime`.
+// Mirrors GET /api/v1/subnets/{netuid}/uptime.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// What the copies were publishing:
+//   get_subnet_uptime: 2 bare `{"type":"object"}` sites.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
-import {
-  OpenObjectArraySchema,
-  OpenObjectSchema,
-  netuidSchema,
-  windowSchema,
-} from "./shared.ts";
+import { netuidSchema, windowSchema } from "./shared.ts";
+import { UptimeArtifactSchema } from "../routes/health-surfaces.ts";
 
 const UPTIME_WINDOWS = ["90d", "1y"] as const;
 
@@ -28,14 +35,5 @@ export const GetSubnetUptimeInputSchema = z
   .strict();
 export type GetSubnetUptimeInput = z.infer<typeof GetSubnetUptimeInputSchema>;
 
-export const GetSubnetUptimeOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    netuid: netuidSchema(),
-    window: z.string().nullable(),
-    observed_at: z.string().nullable().optional(),
-    surfaces: OpenObjectArraySchema,
-    reliability: OpenObjectSchema.nullable().optional(),
-  })
-  .passthrough();
+export const GetSubnetUptimeOutputSchema = UptimeArtifactSchema;
 export type GetSubnetUptimeOutput = z.infer<typeof GetSubnetUptimeOutputSchema>;

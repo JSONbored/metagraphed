@@ -1,13 +1,23 @@
-// MCP tools `get_account_children`, `get_account_parents` (types-epic E
-// batch 6, #8069). Each mirrors a GET /api/v1/accounts/{ss58}/{children,
-// parents} route that is not one of schemas-src/routes/'s covered pilot
-// routes -- no existing Zod schema to reuse. Modeled fresh, matching each
-// hand-written literal field-for-field, including its own item-level
-// looseness (neither the hand-written subnets items nor their nested
-// entries items declare a `required` array).
+// MCP tools `get_account_parents`, `get_account_children`.
+// Mirror GET /api/v1/accounts/{ss58}/parents, GET
+// /api/v1/accounts/{ss58}/children.
+//
+// DERIVED FROM THE ROUTE, NOT COPIED (#9796). Each output schema below IS the
+// route's own ArtifactSchema, so a route field rename is a compile error here
+// instead of silent production drift -- which is what the hand-written copies
+// this replaces had already accumulated.
+//
+// Verified against production before the switch, because deriving is a
+// TIGHTENING -- the route schema is stricter than the copy was. Every tool in
+// this file was called live and its response validated against the schema it
+// now publishes.
 import { z } from "zod";
-import { netuidSchema, ss58Schema } from "./shared.ts";
-import { FieldSourcesSchema, McpNetworkSchema } from "../shared.ts";
+import { ss58Schema } from "./shared.ts";
+import { McpNetworkSchema } from "../shared.ts";
+import {
+  AccountChildrenArtifactSchema,
+  AccountParentsArtifactSchema,
+} from "../routes/account-child-delegation.ts";
 
 export const GetAccountChildrenInputSchema = z
   .object({
@@ -23,31 +33,7 @@ export type GetAccountChildrenInput = z.infer<
   typeof GetAccountChildrenInputSchema
 >;
 
-const ChildEntrySchema = z
-  .object({
-    child: z.string().nullable().optional(),
-    proportion: z.string().optional(),
-    proportion_fraction: z.number().optional(),
-  })
-  .strict();
-
-const ChildSubnetSchema = z
-  .object({
-    netuid: netuidSchema().optional(),
-    entries: z.array(ChildEntrySchema).optional(),
-  })
-  .strict();
-
-export const GetAccountChildrenOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    account: z.string(),
-    subnets: z.array(ChildSubnetSchema).nullable().optional(),
-    queried_at: z.string().nullable().optional(),
-    // #9108 provenance, mirroring the REST artifact field for field.
-    field_sources: FieldSourcesSchema,
-  })
-  .passthrough();
+export const GetAccountChildrenOutputSchema = AccountChildrenArtifactSchema;
 export type GetAccountChildrenOutput = z.infer<
   typeof GetAccountChildrenOutputSchema
 >;
@@ -66,31 +52,7 @@ export type GetAccountParentsInput = z.infer<
   typeof GetAccountParentsInputSchema
 >;
 
-const ParentEntrySchema = z
-  .object({
-    parent: z.string().nullable().optional(),
-    proportion: z.string().optional(),
-    proportion_fraction: z.number().optional(),
-  })
-  .strict();
-
-const ParentSubnetSchema = z
-  .object({
-    netuid: netuidSchema().optional(),
-    entries: z.array(ParentEntrySchema).optional(),
-  })
-  .strict();
-
-export const GetAccountParentsOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    account: z.string(),
-    subnets: z.array(ParentSubnetSchema).nullable().optional(),
-    queried_at: z.string().nullable().optional(),
-    // #9108 provenance, mirroring the REST artifact field for field.
-    field_sources: FieldSourcesSchema,
-  })
-  .passthrough();
+export const GetAccountParentsOutputSchema = AccountParentsArtifactSchema;
 export type GetAccountParentsOutput = z.infer<
   typeof GetAccountParentsOutputSchema
 >;
