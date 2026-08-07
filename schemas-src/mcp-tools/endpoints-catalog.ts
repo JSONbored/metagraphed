@@ -113,10 +113,22 @@ export const ListEndpointsOutputSchema = EndpointsArtifactSchema.extend({
 });
 export type ListEndpointsOutput = z.infer<typeof ListEndpointsOutputSchema>;
 
-export const GetSubnetEndpointsInputSchema = z
-  .object({
-    netuid: netuidSchema(),
-  })
+/**
+ * DERIVED FROM THE NETWORK-WIDE SIBLING, NOT DECLARED FRESH (#9998).
+ *
+ * This took `netuid` alone, so an agent could not filter a subnet's endpoints
+ * by anything -- not by kind, not by status, not even page them -- while any
+ * REST caller could. That is also why the tool was 192 KB: it could not pass a
+ * `limit`.
+ *
+ * The per-subnet view is the network-wide one with `netuid` moved from an
+ * optional FILTER to the required SUBJECT, so it is expressed that way rather
+ * than restating eleven filters that would then be free to drift.
+ */
+export const GetSubnetEndpointsInputSchema = ListEndpointsInputSchema.omit({
+  netuid: true,
+})
+  .extend({ netuid: netuidSchema() })
   .strict();
 export type GetSubnetEndpointsInput = z.infer<
   typeof GetSubnetEndpointsInputSchema

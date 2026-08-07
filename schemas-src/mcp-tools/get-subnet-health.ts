@@ -4,12 +4,21 @@
 // reuse. Modeled fresh, shallow, from the hand-written literal it replaces.
 import { z } from "zod";
 import { netuidSchema } from "./shared.ts";
+import { ListSubnetHealthInputSchema } from "./subnet-scoped-lists.ts";
 import { HealthSubnetSummarySchema } from "../routes/health.ts";
 
-export const GetSubnetHealthInputSchema = z
-  .object({
-    netuid: netuidSchema(),
-  })
+/**
+ * DERIVED FROM THE NETWORK-WIDE SIBLING (#9998).
+ *
+ * `netuid` alone meant an agent could not narrow a subnet's health rows by
+ * kind, provider, status or classification, nor page them, while a REST caller
+ * could. The per-subnet view is list_subnet_health with `netuid` moved from an
+ * optional FILTER to the required SUBJECT.
+ */
+export const GetSubnetHealthInputSchema = ListSubnetHealthInputSchema.omit({
+  netuid: true,
+})
+  .extend({ netuid: netuidSchema() })
   .strict();
 export type GetSubnetHealthInput = z.infer<typeof GetSubnetHealthInputSchema>;
 
