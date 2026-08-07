@@ -8,7 +8,6 @@ import {
   OPERATIONAL_SURFACES_PATH,
   pipelineProvenance,
   pruneHealthHistory,
-  rollupDailyUptime,
   runHealthProber,
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
@@ -1968,30 +1967,16 @@ describe("pruneHealthHistory", () => {
   });
 });
 
-// D1 write retired 2026-07-16 (item 3 of the D1->Postgres cleanup):
-// rollupDailyUptime no longer touches D1 at all -- syncHealthUptimeRollupToPostgres
-// (exercised directly below and via this function) is the sole writer, and
-// `rolled` now reflects whether THAT sync succeeded. The SQL-shape assertions
-// that used to live here (ranked CTE, ON CONFLICT targets, the #1799
-// uptime_ratio clamp) moved to Postgres's own handleHealthUptimeRollupSync,
-// which computes the equivalent rollup server-side (see that handler's own
-// tests in tests/data-api.test.ts).
+// D1 IS THE SOLE WRITER AGAIN. The Postgres mirror this used to fan out to was
+// retired with the box (#9193) and its endpoint answered 503 for months before
+// the call was finally removed; `rolled` now reflects whether
+// rollupUptimeDailyToD1 succeeded, which is what it had effectively meant all
+// along.
 describe("rollupDailyUptime (durable daily history)", () => {
-  function postgresEnv(fetchImpl: AnyFn) {
-    return mockEnv({
-      DATA_API: { fetch: fetchImpl as unknown as typeof fetch },
-      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
-    });
-  }
-
-  // The "rollup must run before the raw D1 prune" ordering guarantee this
-  // used to test no longer applies: D1's own surface_checks DELETE is
-  // retired (2026-07-16, D1 fully eliminated from pruneHealthHistory) --
-  // Postgres owns its own surface_checks retention server-side now, not
-  // sequenced by this cron at all. The still-live invariant (a failed
-  // uptime rollup must skip the prune fan-out entirely) is covered by the
-  // next test.
-  test("hourly cron skips prune when the Postgres rollup sync fails", async () => {
+  // The still-live invariant: a failed uptime rollup must skip the prune
+  // fan-out entirely, because raw rows must never be deleted before they have
+  // been aggregated.
+  test("hourly cron skips prune when the D1 rollup fails", async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const order: any[] = [];
     const orderDb = {
@@ -2018,7 +2003,7 @@ describe("rollupDailyUptime (durable daily history)", () => {
     assert.equal(result.pruned, false);
     assert.ok(
       !order.some((o) => o.includes("DELETE FROM surface_checks")),
-      "raw surface_checks must not be pruned when rollup fails",
+      "raw surface_checks must not be pruned when the rollup fails",
     );
   });
 });

@@ -119,7 +119,7 @@ import {
   DEFAULT_ACCOUNTS_LIST_SORT,
   ACCOUNTS_LIST_LIMIT_DEFAULT,
 } from "../src/accounts-list.ts";
-import { resolveClientIp, ROLLUP_TOKEN_HEADER } from "./config.ts";
+import { resolveClientIp } from "./config.ts";
 import {
   SUBNET_HYPERPARAMS_INSERT_COLUMNS,
   formatSubnetHyperparams,
@@ -1428,26 +1428,6 @@ async function handleSubnetHyperparamsSync(request: Request, env: Env) {
     d1_statements: d1Statements,
   });
 }
-
-// --- POST /api/v1/internal/subnet-locks-sync (#6638, conviction/ownership-
-//
-// RETIRED (#9193): the Postgres tables this wrote were destroyed with the
-// box, so the handler now stops at its auth gate and answers exactly what it
-// already answered in production. What follows describes what it DID.
-// contest tracker epic #4302) ------------------------------------------
-//
-// The write path into subnet_locks -- latest-only snapshot of the chain's
-// HotkeyLock/DecayingHotkeyLock/OwnerLock/DecayingOwnerLock storage maps
-// (see docs/conviction-lock-mechanism.md). No history table here, unlike
-// subnet_hyperparams above: this feeds a live leaderboard, not an audit
-// trail -- the read side rolls each row forward from its own last_update
-// using the CURRENT UnlockRate/MaturityRate at query time, so only the
-// latest snapshot per (netuid, hotkey, is_owner, is_perpetual) matters.
-// fetch-subnet-locks.py always covers the WHOLE network in one run (its
-// query_map calls carry no netuid filter), so -- like
-// handleSubnetHyperparamsSync's own reasoning -- the prune below is a
-// plain "not in this batch" sweep, never scoped to a subset of netuids.
-const SUBNET_LOCKS_SYNC_TOKEN_HEADER = "x-subnet-locks-sync-token";
 
 // --- POST /api/v1/internal/account-identity-sync (#4832 gap-closure) ------
 //
@@ -2778,69 +2758,6 @@ async function handlePollerLaneHealthSync(request: Request, env: Env) {
   }
   return writeJson({ ok: true, lane_health_written: written, stores: ["d1"] });
 }
-
-// --- POST /api/v1/internal/subnet-identity-sync (#4832 gap-closure) -------
-//
-// RETIRED (#9193): the Postgres tables this wrote were destroyed with the
-// box, so the handler now stops at its auth gate and answers exactly what it
-// already answered in production. What follows describes what it DID.
-//
-// The write path into subnet_identity_history -- architecturally different
-// from the three internal sync routes above: this one is triggered from
-// WITHIN the main Worker's own hourly cron (writeSubnetSnapshot,
-// src/health-prober.ts), not an external GitHub Actions workflow, so it's
-// called via a direct env.DATA_API.fetch() service-binding call rather than
-// crossing the public internet through workers/api.ts's proxy layer (see
-// that function's own comment). No latest-only sibling table exists here
-// (mirrors D1's own shape -- the current identity lives in the profiles.json
-// artifact itself): only diff-and-append against the last recorded hash per
-// netuid, reusing identitySnapshotFromProfile/identityHash UNCHANGED from
-// src/subnet-identity-history.ts so the hash stays domain-identical to the
-// D1 path. No dedicated per-field row validator (unlike the other three
-// sync routes): profiles.json is the SAME trust boundary D1's own
-// recordSubnetIdentityChanges reads from directly with no staging-style
-// validation either -- identitySnapshotFromProfile's own null-guard already
-// skips a malformed individual profile without erroring the batch.
-const SUBNET_IDENTITY_SYNC_TOKEN_HEADER = "x-subnet-identity-sync-token";
-
-// --- POST /api/v1/internal/health-checks-sync (#4832 gap-closure) --------
-//
-// RETIRED (#9193): the Postgres tables this wrote were destroyed with the
-// box, so the handler now stops at its auth gate and answers exactly what it
-// already answered in production. What follows describes what it DID.
-//
-// Best-effort Postgres mirror of the D1+KV probe write in
-// src/health-prober.ts's runHealthProber -- same "own hourly/15-min cron,
-// direct env.DATA_API.fetch() service-binding call" shape as
-// subnet-identity-sync above, not an external GitHub Actions workflow. D1+KV
-// stay the sole authoritative write target (live serving reads them
-// unchanged); this route only mirrors the SAME probed batch into
-// surface_checks/surface_status so the Postgres tier can eventually take
-// over the read side. surface_status uses ON CONFLICT (surface_id) only
-// (not D1's dual surface_key/surface_id conflict targets -- Postgres allows
-// one conflict target per INSERT), so the handler compensates for the
-// surface_key unique index (idx_surface_status_key_unique) itself: it dedupes
-// the batch and evicts stale key-holders before the upsert (METAGRAPHED-B).
-// The original "a rename can briefly fail this route, acceptable degrade"
-// stance was wrong in practice -- one stale key-holder row aborted the WHOLE
-// single-transaction mirror write on every 15-min probe run, permanently.
-const HEALTH_CHECKS_SYNC_TOKEN_HEADER = "x-health-checks-sync-token";
-
-// --- POST /api/v1/internal/rpc-usage-sync (#4832 gap-closure) ------------
-//
-// RETIRED (#9193): the Postgres tables this wrote were destroyed with the
-// box, so the handler now stops at its auth gate and answers exactly what it
-// already answered in production. What follows describes what it DID.
-//
-// Best-effort Postgres mirror of recordRpcUsage's D1 insert
-// (workers/request-handlers/rpc-proxy.ts's syncRpcUsageEventToPostgres) --
-// Pattern C, unlike every sync route above: one fire-and-forget POST per
-// live proxied RPC request under the caller's own ctx.waitUntil, not a
-// cron/workflow batch. Justified only after confirming live production
-// volume is trivial (69 rows / ~25 days, wrangler d1 execute 2026-07-11) --
-// batching would be premature for traffic this low. One event per request,
-// not an array, matching the caller's one-row-per-call shape.
-const RPC_USAGE_SYNC_TOKEN_HEADER = "x-rpc-usage-sync-token";
 
 function json(data: unknown, status: number = 200) {
   return new Response(JSON.stringify(data), {

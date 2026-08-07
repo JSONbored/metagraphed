@@ -614,20 +614,6 @@ test("a read route with no D1 lane answers the gone-tier 503", async () => {
 // reused unchanged from its D1 sibling module (pure, store-agnostic) -- only the
 // query + response-shape wiring is new here.
 
-// #4832 gap-closure: POST /api/v1/internal/rollup-account-events-daily -- the
-// account_events_daily write path account_events itself lacked (indexer-rs
-// writes account_events continuously, but nothing rolled it into the daily
-// summary table in Postgres), plus its read path,
-// GET /api/v1/accounts/:ss58/history.
-function postRollup({ secret }: { secret?: string } = {}) {
-  const headers: Record<string, string> = {};
-  if (secret !== undefined) headers["x-rollup-sync-token"] = secret;
-  return req("/api/v1/internal/rollup-account-events-daily", {
-    method: "POST",
-    headers,
-  });
-}
-
 // #4832 gap-closure: POST /api/v1/internal/subnet-hyperparams-sync -- the
 // write path into subnet_hyperparams/subnet_hyperparams_history (see
 // workers/data-api.ts's handleSubnetHyperparamsSync), plus its read paths,
@@ -1176,23 +1162,6 @@ test("nominator-positions-sync writes to D1 -- the lane is live again (#9273)", 
   });
 });
 
-// #6638: POST /api/v1/internal/subnet-locks-sync -- the write path into
-// subnet_locks (see workers/data-api.ts's handleSubnetLocksSync). Its whole
-// body-validation-and-upsert half went with the Postgres tier in #9193, so
-// what is left to pin is the pair of auth gates that still run and the
-// answer every authenticated call now gets.
-function postSubnetLocks(body: unknown, { secret }: { secret?: string } = {}) {
-  const headers: Record<string, string> = {
-    "content-type": "application/json",
-  };
-  if (secret !== undefined) headers["x-subnet-locks-sync-token"] = secret;
-  return req("/api/v1/internal/subnet-locks-sync", {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body ?? []),
-  });
-}
-
 // #6742: POST /api/v1/internal/account-balances-sync -- the write path into
 // account_balances (see workers/data-api.ts's handleAccountBalancesSync).
 // Same latest-only-upsert shape as nominator-positions-sync above, a
@@ -1286,103 +1255,6 @@ test("account-balances-sync accepts the lane onto the queue (#9478)", async () =
   expect(enqueued).toHaveLength(1);
 });
 
-const SUBNET_IDENTITY_NETUID = 8;
-
-function subnetIdentityProfile(overrides = {}) {
-  return {
-    netuid: SUBNET_IDENTITY_NETUID,
-    symbol: "MIAO",
-    native_identity: {
-      subnet_name: "Miao Subnet",
-      description: "An example subnet operator.",
-      github_url: "https://github.com/miao-team/miao-repo",
-      website_url: "https://miao.example/",
-      discord: "examplehandle",
-      logo_url: "https://miao.example/logo.png",
-    },
-    ...overrides,
-  };
-}
-
-function postSubnetIdentity(
-  body: unknown,
-  { secret, raw }: { secret?: string; raw?: string } = {},
-) {
-  const headers: Record<string, string> = {
-    "content-type": "application/json",
-  };
-  if (secret !== undefined) headers["x-subnet-identity-sync-token"] = secret;
-  return req("/api/v1/internal/subnet-identity-sync", {
-    method: "POST",
-    headers,
-    body: raw !== undefined ? raw : JSON.stringify(body ?? []),
-  });
-}
-
-// #4832 gap-closure: health-checks-sync -- best-effort Postgres mirror of
-// src/health-prober.ts's D1+KV write, called from the main Worker's own
-// 15-minute cron (syncHealthChecksToPostgres), not an external workflow.
-function probedRow(overrides = {}) {
-  return {
-    surface_id: "sn-1-example-api",
-    surface_key: "srf-abc123",
-    netuid: 1,
-    kind: "subnet-api",
-    provider: "example",
-    url: "https://example.com/api",
-    status: "ok",
-    classification: "healthy",
-    latency_ms: 120,
-    status_code: 200,
-    checked_at_ms: 1780000000000,
-    last_ok_ms: 1780000000000,
-    consecutive_failures: 0,
-    ...overrides,
-  };
-}
-
-function postHealthChecks(
-  body: unknown,
-  { secret, raw }: { secret?: string; raw?: string } = {},
-) {
-  const headers: Record<string, string> = {
-    "content-type": "application/json",
-  };
-  if (secret !== undefined) headers["x-health-checks-sync-token"] = secret;
-  return req("/api/v1/internal/health-checks-sync", {
-    method: "POST",
-    headers,
-    body: raw !== undefined ? raw : JSON.stringify(body ?? { probed: [] }),
-  });
-}
-
-// #4832 gap-closure: health-uptime-rollup-sync -- best-effort Postgres
-// mirror of rollupDailyUptime, reusing HEALTH_CHECKS_SYNC_SECRET (same
-// conceptual sync boundary, not a separate secret). Unlike health-checks-
-// sync, the body carries only UTC day boundaries; Postgres computes its own
-// rollup from its own surface_checks via PERCENTILE_CONT.
-function dayBounds(date: string, start: number, end: number) {
-  return { date, start, end };
-}
-
-function postHealthUptimeRollup(
-  body: unknown,
-  { secret, raw }: { secret?: string; raw?: string } = {},
-) {
-  const headers: Record<string, string> = {
-    "content-type": "application/json",
-  };
-  if (secret !== undefined) headers["x-health-checks-sync-token"] = secret;
-  return req("/api/v1/internal/health-uptime-rollup-sync", {
-    method: "POST",
-    headers,
-    body:
-      raw !== undefined
-        ? raw
-        : JSON.stringify(body ?? { days: [], updated_at: 1 }),
-  });
-}
-
 // #4832 Tier 2: the 12 chain-wide account_events analytics routes
 // (mirroring src/chain-*.mjs's D1 loaders). These reuse the ALREADY-flipped
 // METAGRAPH_ACCOUNT_EVENTS_SOURCE flag (no new table/secret), so entities.ts
@@ -1409,51 +1281,3 @@ function postHealthUptimeRollup(
 // handleBulkHealthTrends' own header comment in
 // workers/request-handlers/analytics.ts), so these tests only prove the
 // SQL/routing wiring, matching every other route's test style regardless.
-
-function rpcUsageEvent(overrides = {}) {
-  return {
-    observed_at: 1_718_323_200_000,
-    network: "finney",
-    endpoint_id: "fx",
-    provider: "onfinality",
-    ok: true,
-    status: 200,
-    attempts: 1,
-    latency_ms: 140,
-    cache: "miss",
-    ...overrides,
-  };
-}
-
-function postRpcUsageEvent(
-  body: unknown,
-  { secret, raw }: { secret?: string; raw?: string } = {},
-) {
-  const headers: Record<string, string> = {
-    "content-type": "application/json",
-  };
-  if (secret !== undefined) headers["x-rpc-usage-sync-token"] = secret;
-  return req("/api/v1/internal/rpc-usage-sync", {
-    method: "POST",
-    headers,
-    body: raw !== undefined ? raw : JSON.stringify(body ?? rpcUsageEvent()),
-  });
-}
-
-function postRpcUsagePrune(
-  body?: unknown,
-  { secret, raw }: { secret?: string; raw?: string } = {},
-) {
-  const headers: Record<string, string> = {
-    "content-type": "application/json",
-  };
-  if (secret !== undefined) headers["x-rpc-usage-sync-token"] = secret;
-  return req("/api/v1/internal/rpc-usage-prune", {
-    method: "POST",
-    headers,
-    body:
-      raw !== undefined
-        ? raw
-        : JSON.stringify(body ?? { cutoff: 1_718_000_000_000 }),
-  });
-}
