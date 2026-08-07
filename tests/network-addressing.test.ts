@@ -28,6 +28,10 @@ import {
   networkVariantPath,
 } from "../src/contracts.ts";
 import { isMainnetOnlyApiPath } from "../workers/api.ts";
+import { NETWORK_PUBLISHED_ARTIFACT_PATHS } from "../src/network-artifacts.ts";
+import { LIVE_CHAIN_ROUTE_PATHS } from "../src/live-chain-routes.ts";
+import { CHAIN_HISTORY_ROUTE_PATHS } from "../src/chain-history-routes.ts";
+import { PROJECTION_ROUTE_PATHS } from "../src/projection-routes.ts";
 import { loadOpenApiComponentSchemas } from "../scripts/openapi-components.ts";
 
 /**
@@ -210,6 +214,60 @@ describe("mainnet-only annotation (#8698)", () => {
       [],
       `MAINNET_ONLY_ROUTE_PATHS is out of sync with isMainnetOnlyApiPath:\n${mismatches.join("\n")}`,
     );
+  });
+
+  test("no route is both undeclared and unserved off mainnet", () => {
+    // #9754. The test that keeps `artifact_not_found` meaning something.
+    //
+    // A route reaches a non-default network in one of two states: DECLARED
+    // mainnet-only, which answers 404 `not_found` naming mainnet, or SERVED,
+    // which answers 200. A route in neither state falls through to an artifact
+    // read, and the absent testnet artifact answers `artifact_not_found` -- an
+    // incident code, for what is actually a contract decision.
+    //
+    // 65 routes were in that third state when this was written. With the set
+    // empty, `artifact_not_found` on testnet is a real missing artifact again.
+    // A new route that forgets to declare itself lands here, not in a sweep.
+    const published = new Set<string>(NETWORK_PUBLISHED_ARTIFACT_PATHS);
+    const servedWithoutArtifact = new Set<string>([
+      ...LIVE_CHAIN_ROUTE_PATHS,
+      ...CHAIN_HISTORY_ROUTE_PATHS,
+      ...PROJECTION_ROUTE_PATHS,
+    ]);
+    const neither = API_ROUTES.filter(
+      (route) =>
+        !isMainnetOnlyApiPath(concretePath(route.path)) &&
+        !published.has(route.artifact_path ?? "") &&
+        !servedWithoutArtifact.has(route.path),
+    ).map((route) => route.path);
+    assert.deepEqual(
+      neither,
+      [],
+      "these routes are neither declared mainnet-only nor served off mainnet, " +
+        "so they answer `artifact_not_found` on testnet for a reason that is " +
+        "a contract decision. Declare them in isRegistryOnlyApiPath, or make " +
+        "them served:\n" +
+        neither.join("\n"),
+    );
+  });
+
+  test("declaring a route mainnet-only never takes away one that serves", () => {
+    // The other direction of the same rule, and the one that would be a
+    // REGRESSION rather than a mislabel: a route that publishes a testnet
+    // artifact or reads that network's own chain must never be declared.
+    const published = new Set<string>(NETWORK_PUBLISHED_ARTIFACT_PATHS);
+    const servedWithoutArtifact = new Set<string>([
+      ...LIVE_CHAIN_ROUTE_PATHS,
+      ...CHAIN_HISTORY_ROUTE_PATHS,
+      ...PROJECTION_ROUTE_PATHS,
+    ]);
+    const taken = API_ROUTES.filter(
+      (route) =>
+        isMainnetOnlyApiPath(concretePath(route.path)) &&
+        (published.has(route.artifact_path ?? "") ||
+          servedWithoutArtifact.has(route.path)),
+    ).map((route) => route.path);
+    assert.deepEqual(taken, [], `declared but served:\n${taken.join("\n")}`);
   });
 
   test("the annotated list contains only real route templates", () => {

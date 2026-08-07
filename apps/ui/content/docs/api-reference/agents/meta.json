@@ -2,8 +2,6 @@
   "title": "Agents",
   "pages": [
     "agent-catalog",
-    "agent-catalog-by-network",
-    "agent-catalog-subnet",
-    "agent-catalog-subnet-by-network"
+    "agent-catalog-subnet"
   ]
 }

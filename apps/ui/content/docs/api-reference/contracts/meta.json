@@ -2,10 +2,7 @@
   "title": "Contracts",
   "pages": [
     "api-index",
-    "api-index-by-network",
     "contracts",
-    "contracts-by-network",
-    "openapi",
-    "openapi-by-network"
+    "openapi"
   ]
 }

@@ -5979,8 +5979,139 @@ export async function handleRequest(
 // every network with chain state. The remaining entries are mainnet-only
 // because of the DATA behind them (D1 tiers, curated registry, AI indexes),
 // which is a real constraint rather than a hardcoded constant.
+/**
+ * Routes whose data is the CURATED REGISTRY or metagraphed's own build, both of
+ * which exist for mainnet and have no testnet counterpart (#9754).
+ *
+ * These already 404 on every non-default network. What changes here is WHY.
+ * Before this they fell through to an artifact read and the absent testnet
+ * artifact produced `artifact_not_found` -- an incident code, meaning "something
+ * that should exist is missing". The right answer is the same 404 the rest of
+ * this predicate produces: `not_found`, naming mainnet, because nothing is
+ * missing. There is no testnet curation and there never was.
+ *
+ * Measured 2026-08-07 before declaring any of them: all 65 templates return 404
+ * on `/api/v1/testnet/...`, including the parameterised ones probed with real
+ * ids rather than placeholders. Declaring a route that served would break it,
+ * so the list is proven rather than reasoned.
+ *
+ * THE POINT IS THE SIGNAL. With 65 routes returning `artifact_not_found` by
+ * design, that code meant nothing on testnet and a real missing artifact was
+ * indistinguishable from a contract decision. Emptied of these, it means what
+ * it says again -- and tests/network-addressing.test.ts fails any future route
+ * that is neither declared here nor actually served, so it stays empty.
+ */
+const REGISTRY_ONLY_API_PATHS = new Set([
+  // The API index and the contract documents. They describe the mainnet
+  // registry's shape and its build, not a chain. `/api/v1/networks` is
+  // deliberately NOT here -- it is the one route that must answer on every
+  // network, because it is how a caller learns what the rest of this set does.
+  "/api/v1",
+  "/api/v1/openapi.json",
+  "/api/v1/build",
+  "/api/v1/changelog",
+  "/api/v1/contracts",
+  "/api/v1/schemas",
+  "/api/v1/freshness",
+  "/api/v1/lineage",
+  "/api/v1/coverage-depth",
+  "/api/v1/registry/summary",
+  // The curated registry itself: surfaces, the profiles written over them, and
+  // the operational records probed from them. Every one is built from curation
+  // work done against mainnet subnets.
+  "/api/v1/surfaces",
+  "/api/v1/profiles",
+  "/api/v1/endpoints",
+  "/api/v1/endpoint-pools",
+  "/api/v1/endpoint-incidents",
+  "/api/v1/providers",
+  "/api/v1/evidence",
+  "/api/v1/gaps",
+  "/api/v1/curation",
+  "/api/v1/candidates",
+  "/api/v1/fixtures",
+  "/api/v1/source-snapshots",
+  "/api/v1/source-health",
+  "/api/v1/rpc/endpoints",
+  "/api/v1/rpc/pools",
+  // The review queues over that curation.
+  "/api/v1/review/adapter-candidates",
+  "/api/v1/review/enrichment-evidence",
+  "/api/v1/review/enrichment-queue",
+  "/api/v1/review/enrichment-targets",
+  "/api/v1/review/gaps",
+  "/api/v1/review/profile-completeness",
+  // The indexes and agent-facing views built over the registry. Same reason as
+  // /api/v1/ask and /api/v1/search/semantic, which were already declared.
+  "/api/v1/search",
+  "/api/v1/search-index",
+  "/api/v1/agent-catalog",
+  "/api/v1/agent-resources",
+  // D1 hot-tier reads with no network column, so a testnet-addressed request
+  // would be served MAINNET rows. Same posture as /api/v1/chain/holders.
+  "/api/v1/accounts/top-holders",
+  "/api/v1/chain/emission-pipeline",
+]);
+
+/** Per-subnet leaves with the same two reasons, matched under any netuid. */
+const REGISTRY_ONLY_SUBNET_LEAVES = new Set([
+  // Curated-registry leaves.
+  "surfaces",
+  "profile",
+  "endpoints",
+  "evidence",
+  "gaps",
+  "candidates",
+  "overview",
+  // D1/analytics leaves whose cross-subnet twins are already declared above:
+  // /api/v1/chain/weights, /chain/weights/setters, /chain/serving,
+  // /chain/prometheus and /chain/axon-removals all sit in this predicate
+  // already, and these read the same network-less tables one netuid at a time.
+  "weights",
+  "weights/setters",
+  "serving",
+  "prometheus",
+  "axon-removals",
+  "registrations",
+  "deregistrations",
+  "conviction",
+  "event-summary",
+  "ownership-history",
+  "hyperparameters/history",
+  "lease/history",
+  "stake-moves",
+  "stake-transfers",
+]);
+
+/** Prefixes covering the registry's parameterised singletons. */
+const REGISTRY_ONLY_PATH_PREFIXES = [
+  "/api/v1/providers/",
+  "/api/v1/adapters/",
+  "/api/v1/fixtures/",
+  "/api/v1/agent-catalog/",
+  // The per-day uptime record, aggregated from probes of registry surfaces.
+  "/api/v1/health/history/",
+];
+
+function isRegistryOnlyApiPath(pathname: string): boolean {
+  if (REGISTRY_ONLY_API_PATHS.has(pathname)) return true;
+  if (REGISTRY_ONLY_PATH_PREFIXES.some((p) => pathname.startsWith(p))) {
+    return true;
+  }
+  // `/api/v1/surfaces/{id}/verify` reaches here rather than sitting in the
+  // prefix list, because it was previously and explicitly declared NOT
+  // mainnet-only on the grounds that it "probes a URL off the surface record,
+  // which testnet has too". Measured, it does not: with a real surface id
+  // (`bittensor-networks-docs`) it 404s on testnet, because there is no testnet
+  // surface record to read the URL from.
+  if (/^\/api\/v1\/surfaces\/[^/]+\/verify$/.test(pathname)) return true;
+  const subnet = /^\/api\/v1\/subnets\/\d+\/(.+)$/.exec(pathname);
+  return subnet !== null && REGISTRY_ONLY_SUBNET_LEAVES.has(subnet[1]);
+}
+
 export function isMainnetOnlyApiPath(pathname: string) {
   return (
+    isRegistryOnlyApiPath(pathname) ||
     pathname === "/api/v1/events" ||
     pathname === "/api/v1/ask" ||
     pathname === "/api/v1/graphql" ||

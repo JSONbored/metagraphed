@@ -58,15 +58,30 @@ function queryParameters(): { path: string; parameter: Parameter }[] {
   return found;
 }
 
+/** Paths in the same published spec, for the floors below. */
+function specPathCount(): number {
+  const spec = JSON.parse(
+    readFileSync("public/metagraph/openapi.json", "utf8"),
+  ) as { paths: Record<string, unknown> };
+  return Object.keys(spec.paths).length;
+}
+
 const PARAMETERS = queryParameters();
+const SPEC_PATHS = specPathCount();
 
 describe("shared query parameters are described in the published spec (#9131)", () => {
   test("the scan finds the spec's query parameters", () => {
     // A traversal that silently found nothing would make every assertion below
     // vacuously true -- the way a spec-scanning check stops checking.
+    // RELATIVE to the spec's own size, not a pinned inventory. The guard is
+    // against a traversal that returns nothing; an absolute floor also fails
+    // whenever the spec legitimately shrinks, which says nothing about whether
+    // the scan works. #9754 removed 65 network variants and took this from 954
+    // to 889 -- a correct change, reported as a broken scan.
     assert.ok(
-      PARAMETERS.length > 900,
-      `expected the full query-parameter set, found ${PARAMETERS.length}`,
+      PARAMETERS.length > SPEC_PATHS,
+      `expected the full query-parameter set, found ${PARAMETERS.length} ` +
+        `across ${SPEC_PATHS} paths`,
     );
   });
 
@@ -93,9 +108,12 @@ describe("shared query parameters are described in the published spec (#9131)", 
     const cursors = PARAMETERS.filter(
       ({ parameter }) => parameter.name === "cursor",
     );
+    // Same reasoning as the floor above: enough cursors that the per-cursor
+    // loop below is not vacuous, expressed against the spec's own size.
     assert.ok(
-      cursors.length > 50,
-      `expected the cursor parameters, found ${cursors.length}`,
+      cursors.length > SPEC_PATHS / 10,
+      `expected the cursor parameters, found ${cursors.length} ` +
+        `across ${SPEC_PATHS} paths`,
     );
     for (const { path, parameter } of cursors) {
       assert.match(

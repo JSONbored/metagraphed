@@ -2,8 +2,6 @@
   "title": "Profiles",
   "pages": [
     "profiles",
-    "profiles-by-network",
-    "subnet-profile",
-    "subnet-profile-by-network"
+    "subnet-profile"
   ]
 }

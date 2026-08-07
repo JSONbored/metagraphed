@@ -40,7 +40,6 @@
     "sudo-key",
     "sudo-key-by-network",
     "tao-usd",
-    "top-holders",
-    "top-holders-by-network"
+    "top-holders"
   ]
 }
