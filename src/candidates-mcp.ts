@@ -2,12 +2,9 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/candidates.json artifact (mirrors gaps-mcp.ts for GET /api/v1/gaps).
 
-import {
-  CANDIDATES_LIMIT_DEFAULT,
-  CANDIDATES_LIMIT_MAX,
-} from "./route-limits.ts";
+import { CANDIDATES_LIMIT_MAX } from "./route-limits.ts";
 import { z } from "zod";
-import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
 import {
@@ -112,15 +109,13 @@ export function candidatesQueryUrl(
       );
     }
     url.searchParams.set("limit", String(limit));
-  } else {
-    // DEFAULTED, because absent used to mean unbounded (#9700). This tool
-    // takes no required arguments, so `list_candidates {}` is the obvious
-    // first call -- and it returned 7,537,056 bytes, ~1.9M tokens, roughly ten
-    // context windows. Not a big answer: no usable answer. The envelope still
-    // carries `total` and `next_cursor`, so the whole catalog is reachable by
-    // paging rather than by accident.
-    url.searchParams.set("limit", String(CANDIDATES_LIMIT_DEFAULT));
   }
+  // No `else` any more. This tool's own default (#9701, when `list_candidates
+  // {}` returned 7,537,056 bytes) is now applyMcpQueryFilters' default for
+  // EVERY loader that shares the seam (#9730) -- it was never specific to
+  // candidates, it was specific to the tool that got measured first. Two
+  // mechanisms setting the same limit on the same call is one more than can be
+  // kept honest.
   if (args?.cursor !== undefined) {
     const cursor = args.cursor;
     if (typeof cursor !== "number" || !Number.isInteger(cursor) || cursor < 0) {
@@ -184,7 +179,7 @@ export async function loadCandidatesList(
       "Candidates catalog snapshot unavailable.",
     );
   }
-  const transformed = applyQueryFilters(
+  const transformed = applyMcpQueryFilters(
     blob as Record<string, unknown>,
     queryUrl,
     "candidates",

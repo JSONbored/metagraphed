@@ -218,7 +218,7 @@ import {
 import { buildTierPolicies } from "./api-tiers.ts";
 import { recordApiKeyUsage } from "../workers/api.ts";
 import { DAY_PATTERN } from "../workers/request-params.ts";
-import { applyQueryFilters } from "../workers/list-query.ts";
+import { applyMcpQueryFilters } from "./mcp-list-query.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import {
   currentPostgresTierFallbackGeneration,
@@ -3828,7 +3828,7 @@ function cursorWindow(
   if (cursor > 0) {
     url.searchParams.set("cursor", String(cursor));
   }
-  const { data, meta } = applyQueryFilters(
+  const { data, meta } = applyMcpQueryFilters(
     { [dataKey]: rows },
     url,
     collection,
@@ -11471,7 +11471,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       if (fields) queryUrl.searchParams.set("fields", fields);
       if (limit !== null) queryUrl.searchParams.set("limit", String(limit));
       if (cursor > 0) queryUrl.searchParams.set("cursor", String(cursor));
-      const transformed = applyQueryFilters(
+      const transformed = applyMcpQueryFilters(
         data,
         queryUrl,
         "endpoints",

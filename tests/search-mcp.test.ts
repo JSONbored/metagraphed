@@ -19,6 +19,7 @@ type LoadDeps = Parameters<typeof loadSearchList>[2];
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.ts";
 import { handleRequest } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import { MCP_LIST_LIMIT_DEFAULT } from "../src/route-limits.ts";
 
 const SAMPLE_BLOB = {
   generated_at: "2026-07-01T00:00:00.000Z",
@@ -430,16 +431,22 @@ describe("search-mcp", () => {
       },
     });
 
+    // EVERY set carries an explicit `limit`. Without one the two surfaces are
+    // not being asked equivalent questions: since #9730 the MCP loader supplies
+    // a page default and REST stays unbounded, so their reported `limit`
+    // differs BY DESIGN even when the rows are identical. That asymmetry is the
+    // subject of its own test below, where it reads as the deliberate choice it
+    // is rather than as a parity failure.
     const paramSets = [
-      { q: "seven" },
-      { q: "datura" },
+      { q: "seven", limit: 10 },
+      { q: "datura", limit: 10 },
       { sort: "title", order: "desc", limit: 1 },
       { sort: "netuid", order: "asc", limit: 2, cursor: 1 },
       { fields: "id,title", limit: 2 },
-      { type: "subnet" },
-      { type: "surface", netuid: 7 },
-      { netuid: 7 },
-      {},
+      { type: "subnet", limit: 10 },
+      { type: "surface", netuid: 7, limit: 10 },
+      { netuid: 7, limit: 10 },
+      { limit: 5 },
     ];
 
     for (const params of paramSets) {
@@ -475,5 +482,33 @@ describe("search-mcp", () => {
       assert.equal(mcp.sort, page.sort);
       assert.equal(mcp.order, page.order);
     }
+
+    // And where they deliberately DIVERGE (#9730): with no `limit` at all, the
+    // MCP loader pages and REST does not. Asserted on both sides here rather
+    // than left implicit, because a later change that silently aligned them
+    // would defeat one of the two -- a browser can stream the full catalog and
+    // a context window cannot.
+    const unbounded = await loadSearchList(
+      { env: {}, readArtifact } as unknown as LoadCtx,
+      {},
+    );
+    const restRes = await handleRequest(
+      new Request("https://api.metagraph.sh/api/v1/search"),
+      restEnv as unknown as Env,
+      {},
+    );
+    const restBody = await restRes.json();
+    assert.equal(
+      unbounded.limit,
+      MCP_LIST_LIMIT_DEFAULT,
+      "MCP must page by default",
+    );
+    assert.equal(
+      restBody.meta.pagination.limit,
+      restBody.meta.pagination.total,
+      "REST must stay unbounded by default",
+    );
+    // Same total either way -- the collection is paged, never hidden.
+    assert.equal(unbounded.total, restBody.meta.pagination.total);
   });
 });

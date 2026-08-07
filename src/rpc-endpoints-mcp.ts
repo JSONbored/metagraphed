@@ -9,7 +9,7 @@
 // rpc-pools-mcp.ts (live overlay before filter).
 
 import { z } from "zod";
-import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
 import { KV_HEALTH_RPC_POOL } from "./health-prober.ts";
@@ -284,7 +284,7 @@ export async function loadRpcEndpointsList(
     if (merged) overlaid = merged as Record<string, unknown>;
   }
 
-  const transformed = applyQueryFilters(overlaid, queryUrl, "endpoints", []);
+  const transformed = applyMcpQueryFilters(overlaid, queryUrl, "endpoints", []);
   if (transformed.error) {
     throw rpcEndpointsMcpError("invalid_params", transformed.error.message);
   }
