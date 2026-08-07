@@ -1,0 +1,88 @@
+# Apply migrations/neon/*.sql to the production Neon branch on merge (#9814).
+#
+# The companion to neon-pr-branch.yml, which gives a schema PR its own database
+# branch to be reviewed against but never applies anything to production. Until
+# this existed, the only way a Neon table came into being was by hand -- and a
+# hand-applied schema is one nobody can verify: `neuron_daily`'s only written
+# record was a config comment that had drifted to claim SMALLINT for columns
+# information_schema reports as BOOLEAN.
+#
+# NOT A DATA LANE. The rule this repo holds -- no GitHub Actions for data --
+# is about producers that write rows on a schedule and race the Worker lanes
+# that already own those tables. This applies DDL once per merge, writes no
+# rows, and has no timer. Putting it in a Worker cron instead would move DDL
+# into a hot path and delay it to an arbitrary tick.
+#
+# SAFE TO RE-RUN. scripts/neon-migrate.ts tracks applied filenames in
+# `schema_migrations` and applies each file exactly once, inside a transaction
+# with its own bookkeeping row, halting on the first failure.
+name: Neon migrate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "migrations/neon/**"
+      - "scripts/neon-migrate.ts"
+      - ".github/workflows/neon-migrate.yml"
+  # Manual runs exist for the case where a migration landed while this workflow
+  # was itself broken -- without it the only recovery is an empty commit.
+  workflow_dispatch:
+
+# One at a time. Two runs applying the same pending file would both see it as
+# unapplied; the PRIMARY KEY on schema_migrations makes the loser fail rather
+# than double-apply, but failing a deploy over a race is still worse than
+# queueing behind it.
+concurrency:
+  group: neon-migrate
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  migrate:
+    name: Apply pending migrations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Resolves the production branch's connection string from the Neon API
+      # rather than storing it as a second secret that can drift from the
+      # project. `-sf` so a transport error fails the step instead of yielding
+      # an empty URI that would read as "DATABASE_URL unset".
+      #
+      # The URI carries a password. It goes straight into GITHUB_ENV and is
+      # masked; never echo it, and never add a step that dumps the environment.
+      - name: Resolve connection string
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          branch="$(curl -sf -H "Authorization: Bearer $NEON_API_KEY" \
+            "https://console.neon.tech/api/v2/projects/$PROJECT_ID/branches" \
+            | jq -r '.branches[] | select(.default == true) | .id')"
+          if [ -z "$branch" ]; then
+            echo "no default branch on project $PROJECT_ID"; exit 1
+          fi
+          uri="$(curl -sf -H "Authorization: Bearer $NEON_API_KEY" \
+            "https://console.neon.tech/api/v2/projects/$PROJECT_ID/connection_uri?database_name=neondb&role_name=neondb_owner&branch_id=$branch" \
+            | jq -r '.uri')"
+          if [ -z "$uri" ] || [ "$uri" = "null" ]; then
+            echo "could not resolve a connection URI"; exit 1
+          fi
+          echo "::add-mask::$uri"
+          echo "DATABASE_URL=$uri" >> "$GITHUB_ENV"
+
+      - name: Apply
+        run: npx tsx scripts/neon-migrate.ts
