@@ -10,7 +10,7 @@
     "subtensor-wss"
   ],
   "schema_version": 1,
-  "surface_count": 615,
+  "surface_count": 619,
   "surfaces": [
     {
       "auth_required": false,
@@ -5810,6 +5810,82 @@
     },
     {
       "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 53,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "hanlinai",
+      "public_safe": true,
+      "schema_source": null,
+      "subnet_name": "engy",
+      "subnet_slug": "engy",
+      "surface_id": "sn-53-engy-epoch-index",
+      "surface_key": "srf-3853ddfd4a590e76",
+      "url": "https://provider.engy.ai/api/subnet/v1/epoch/1"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 53,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "hanlinai",
+      "public_safe": true,
+      "schema_source": null,
+      "subnet_name": "engy",
+      "subnet_slug": "engy",
+      "surface_id": "sn-53-engy-epoch-latest",
+      "surface_key": "srf-3fcac91046896130",
+      "url": "https://provider.engy.ai/api/subnet/v1/epoch/latest"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 53,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "hanlinai",
+      "public_safe": true,
+      "schema_source": null,
+      "subnet_name": "engy",
+      "subnet_slug": "engy",
+      "surface_id": "sn-53-engy-miners",
+      "surface_key": "srf-7ed5b7f33e5b87c5",
+      "url": "https://provider.engy.ai/api/subnet/v1/miners"
+    },
+    {
+      "auth_required": false,
+      "authority": "official",
+      "kind": "subnet-api",
+      "netuid": 53,
+      "probe": {
+        "expect": "json",
+        "method": "GET",
+        "timeout_ms": 10000
+      },
+      "provider": "hanlinai",
+      "public_safe": true,
+      "schema_source": null,
+      "subnet_name": "engy",
+      "subnet_slug": "engy",
+      "surface_id": "sn-53-engy-models",
+      "surface_key": "srf-3798bdfb5bdb5952",
+      "url": "https://provider.engy.ai/api/subnet/v1/models"
+    },
+    {
+      "auth_required": false,
       "authority": "community",
       "kind": "subnet-api",
       "netuid": 53,
@@ -5821,8 +5897,8 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "schema_source": null,
-      "subnet_name": "EfficientFrontier",
-      "subnet_slug": "efficientfrontier",
+      "subnet_name": "engy",
+      "subnet_slug": "engy",
       "surface_id": "sn-53-taomarketcap-subnet-api",
       "surface_key": "srf-44ad536c2821814c",
       "url": "https://api.taomarketcap.com/public/v1/subnets/53/"
