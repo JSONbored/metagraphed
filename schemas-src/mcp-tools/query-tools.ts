@@ -7,14 +7,21 @@
 // schemas-src/routes/ REST schema -- modeled fresh, matching each
 // hand-written literal field-for-field.
 //
-// query_graphql's hand-written `data` field declares `nullable: true`, an
-// OpenAPI-3.0-ism with NO effect under JSON Schema draft 2020-12 (which has
-// no `nullable` keyword) -- so under the target's own spec, `data` was
-// already (inertly) a plain non-nullable object. Preserved literally as
-// non-nullable here rather than "fixed" into a real `.nullable()`, since
-// doing so would make the new schema accept something the old one's actual
-// declared (2020-12) semantics didn't -- the opposite direction from this
-// epic's wire-compatibility mandate.
+// query_graphql's `data` IS nullable (#9911), and the reasoning that once said
+// otherwise has been overtaken by evidence.
+//
+// The hand-written original declared `nullable: true`, an OpenAPI-3.0-ism with
+// no effect under JSON Schema draft 2020-12. The port preserved it literally as
+// non-nullable rather than "fixing" it, on the grounds that widening a schema
+// during a migration accepts something the old one did not -- the right instinct
+// while the question was only what the old document meant.
+//
+// It is no longer only that question. The production conformance sweep (#9879)
+// called this tool and got `data: null` back, which is not our choice: the
+// GraphQL spec REQUIRES `data` to be null when a request fails before execution
+// begins. So the non-nullable declaration forbade a value the protocol obliges
+// us to emit, and every failed query violated the contract we publish. Matching
+// the protocol is a correction, not a loosening.
 //
 // run_saved_query's output declares `additionalProperties: false` (.strict()
 // below), unlike nearly every other output schema in this epic (which are
@@ -35,10 +42,15 @@ export const QueryGraphqlInputSchema = z
       .describe(
         "The GraphQL document to execute against metagraphed's schema -- a full `query { ... }` operation, not search text. Pair named variables with the sibling `variables` object; use get_api_schema to discover the available fields.",
       )
+      // SELF-CONTAINED, deliberately (#9911). The previous example declared
+      // `$netuid: Int!` while the matching value lived on the SEPARATE,
+      // optional `variables` parameter -- so an agent copying the `query`
+      // example alone got a variable-coercion error rather than a subnet. Same
+      // class as the `chutes` slug example (#9860): an example is the first
+      // thing an agent copies, and one that does not work teaches the wrong
+      // thing AND wastes the call. Verified live 2026-08-07.
       .meta({
-        examples: [
-          "query SubnetById($netuid: Int!) { subnet(netuid: $netuid) { netuid name } }",
-        ],
+        examples: ["query { subnet(netuid: 64) { netuid name } }"],
       }),
     variables: OpenObjectSchema.optional()
       .describe("GraphQL variables for the query, as an object.")
@@ -49,7 +61,8 @@ export type QueryGraphqlInput = z.infer<typeof QueryGraphqlInputSchema>;
 
 export const QueryGraphqlOutputSchema = z
   .object({
-    data: OpenObjectSchema.optional(),
+    // Null on a request error, per the GraphQL spec -- see the header.
+    data: OpenObjectSchema.nullable().optional(),
     errors: z.array(OpenObjectSchema).optional(),
   })
   .passthrough();

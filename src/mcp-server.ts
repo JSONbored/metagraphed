@@ -15281,6 +15281,76 @@ export function markChainCallsScopeDeclined<T>(
   } as T;
 }
 
+/**
+ * Complete a generically-stamped `degraded` block against the schema the tool
+ * actually publishes (#9910).
+ *
+ * THE DEFECT THIS CLOSES. `markMcpTierDegraded` stamps one shape --
+ * `{reason}` -- on whichever tool happened to degrade. But `degraded` is a
+ * per-tool object, and `get_account_positions` declares three REQUIRED
+ * properties on it, so the generic stamp produced a response that failed the
+ * tool's own published outputSchema. Confirmed in production 2026-08-07:
+ * `degraded = {"reason":"tier_unavailable"}` against a schema requiring
+ * `snapshot_captured_at` and `latest_stake_event_at` as well.
+ *
+ * It could not be fixed in the handler, which is where the first attempt
+ * (#9817's shapeForwardedPositions) put it: this stamp lands at DISPATCH,
+ * after every handler has returned, so the handler's correctly-shaped answer
+ * is not what the caller receives when the tier degrades mid-call.
+ *
+ * DERIVED, NOT LISTED. The missing keys are read off the tool's own
+ * outputSchema rather than from a table of tools with rich `degraded` blocks:
+ * one tool declares one today, and a table would be wrong the first time a
+ * second one did. Only properties the schema declares REQUIRED and NULLABLE
+ * are filled, and only with `null` -- "we could not read the tier, so we do
+ * not know" is exactly what a nullable required field is for, and it is the
+ * one value this chokepoint can honestly supply.
+ */
+export function completeDegradedBlock(
+  data: unknown,
+  outputSchema: JsonSchemaLike | undefined,
+): unknown {
+  const row = data as Row | null;
+  const degraded = row?.degraded as Row | undefined;
+  if (!degraded || typeof degraded !== "object" || Array.isArray(degraded)) {
+    return data;
+  }
+  const declared = (outputSchema?.properties as Row | undefined)?.degraded as
+    Row | undefined;
+  // A nullable object is published as anyOf[{object}, {null}], so the required
+  // list can sit on a branch rather than at the top.
+  const branches = [
+    declared,
+    ...((declared?.anyOf as Row[] | undefined) ?? []),
+    ...((declared?.oneOf as Row[] | undefined) ?? []),
+  ].filter((branch): branch is Row => Boolean(branch));
+  const filled: Row = { ...degraded };
+  let changed = false;
+  for (const branch of branches) {
+    const required = branch.required;
+    const properties = branch.properties as Row | undefined;
+    if (!Array.isArray(required) || !properties) continue;
+    for (const key of required as string[]) {
+      if (Object.hasOwn(filled, key)) continue;
+      // Only a NULLABLE required property can be honestly filled. One that is
+      // required and non-nullable has no value this chokepoint could invent,
+      // so it is left absent and the conformance check reports it -- an
+      // invented value would be worse than a visible violation.
+      const property = properties[key] as Row | undefined;
+      const nullable =
+        property?.type === "null" ||
+        (Array.isArray(property?.type) && property.type.includes("null")) ||
+        ((property?.anyOf as Row[] | undefined) ?? []).some(
+          (entry) => entry?.type === "null",
+        );
+      if (!nullable) continue;
+      filled[key] = null;
+      changed = true;
+    }
+  }
+  return changed ? ({ ...row, degraded: filled } as unknown) : data;
+}
+
 export function markMcpTierDegraded(
   data: unknown,
   generationBefore: number,
@@ -15385,7 +15455,14 @@ async function dispatchTool(
         });
       }
     }
-    const payload = markMcpTierDegraded(data, tierGenerationBefore);
+    // Completed against THIS tool's schema, because the marker above stamps
+    // one generic shape onto whichever tool degraded and `degraded` is a
+    // per-tool object (#9910). Applied to every result, not just a stamped
+    // one: a handler that built its own partial block is the same violation.
+    const payload = completeDegradedBlock(
+      markMcpTierDegraded(data, tierGenerationBefore),
+      tool.outputSchema ?? (TOOL_OUTPUT_SCHEMAS as Row)[tool.name],
+    );
     return {
       content: [{ type: "text", text: JSON.stringify(payload) }],
       structuredContent: payload as Row,
