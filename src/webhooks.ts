@@ -12,8 +12,10 @@ import { ipv6EmbeddedIpv4 } from "./ip-safety.ts";
 type Row = Record<string, unknown>;
 
 export const WEBHOOK_KV_PREFIX = "webhooks:sub:";
-// Per-(subscription, event) delivery state for at-least-once redelivery: a failed
-// transient delivery is parked here, retried on later runs, then dead-lettered.
+// Per-(subscription, event) delivery OUTCOME, for the public status surface.
+// It used to be delivery STATE -- a failed delivery was parked here and a later
+// run swept it -- but the queue schedules retries now (metagraphed-infra#354),
+// so nothing reads these to decide what to do. They are reporting only.
 export const WEBHOOK_DELIVERY_PREFIX = "webhooks:delivery:";
 export const WEBHOOK_SIGNATURE_HEADER = "x-metagraph-signature";
 export const WEBHOOK_TIMESTAMP_HEADER = "x-metagraph-timestamp";
@@ -50,7 +52,7 @@ export function subscriptionStorageKey(id: unknown): string {
   return `${WEBHOOK_KV_PREFIX}${id}`;
 }
 
-// All of a subscription's parked deliveries share this prefix, so its delivery
+// All of a subscription's delivery records share this prefix, so its delivery
 // health lists in one scan.
 export function deliveryStoragePrefix(subscriptionId: unknown): string {
   return `${WEBHOOK_DELIVERY_PREFIX}${subscriptionId}:`;
@@ -227,8 +229,9 @@ export async function resolveWebhookHostnamesWithDoh(
 //   "resolve-error" — the DNS resolver threw (e.g. a transient EAI_AGAIN / SERVFAIL
 //                     blip): a RETRYABLE condition, NOT a terminal reject
 // Splitting the transient resolver failure out from a genuine "unsafe" verdict is
-// what lets deliverChangeEvent park + retry it instead of silently dropping an
-// owed at-least-once delivery when DNS momentarily fails during a sweep.
+// what lets a DNS blip come back as `retryable: true` -- so the queue reschedules
+// it -- instead of a terminal "skipped" that dead-letters an owed delivery to a
+// healthy endpoint.
 function isUnsafeWebhookDnsError(error: unknown): boolean {
   const err = error as { code?: unknown; message?: unknown } | null | undefined;
   return (
@@ -505,8 +508,9 @@ export async function webhookEventId(bodyText: unknown): Promise<string> {
 }
 
 // Idempotency key scoped to one subscriber and one event, derived from the
-// subscription id and the exact event body. Every retry within a run and every
-// redelivery on a later run carries the same key, so subscribers can dedupe.
+// subscription id and the exact event body. Every attempt carries the same key --
+// the inner HTTP retries and all eight queue attempts alike -- so subscribers can
+// dedupe.
 export async function webhookIdempotencyKey(
   subscriptionId: unknown,
   bodyText: unknown,
@@ -630,12 +634,12 @@ export async function deliverChangeEvent({
   };
   const identity = { event_id: eventId, idempotency_key: idempotencyKey };
 
-  // Resolve + classify the URL AFTER identity is computed, so a transient resolver
-  // failure can be parked (it needs an event_id) and retried instead of dropped.
-  // A statically-unsafe URL, or one that resolves to a private address, is a
-  // terminal "skipped"; a resolver THROW (a DNS blip) is a retryable "failed" —
-  // returning "skipped" there would delete the parked record on the redelivery
-  // sweep and silently lose an owed at-least-once delivery to a healthy endpoint.
+  // Resolve + classify the URL AFTER identity is computed, so the result carries
+  // an event_id whichever way it goes. A statically-unsafe URL, or one that
+  // resolves to a private address, is a terminal "skipped"; a resolver THROW (a
+  // DNS blip) is a retryable "failed" — returning "skipped" there would
+  // dead-letter an owed at-least-once delivery to a healthy endpoint on the
+  // strength of one bad lookup.
   const urlStatus = await resolvedWebhookUrlStatus(
     subscription.url,
     resolveHostnames,
@@ -724,9 +728,11 @@ export async function deliverChangeEvent({
 }
 
 // Bounded-concurrency map: drains `items` through at most `concurrency` in-flight
-// `fn` calls. Shared by the fresh fan-out and the redelivery sweep -- exported
-// (#4984 Part 3 adversarial-review fix) so workers/alerter-hub.ts's own
-// delivery fan-out can reuse it rather than duplicating this logic.
+// `fn` calls. Its two webhook callers -- the fresh fan-out and the redelivery
+// sweep -- are both gone (metagraphed-infra#354), and it survives for
+// workers/alerter-hub.ts, which was given it in #4984 rather than duplicating it.
+// It lives here rather than moving because that is a file move for one caller,
+// and the next fan-out that needs a bound will look here first.
 export async function mapBounded<T, R>(
   items: T[] | null | undefined,
   concurrency: number,
@@ -736,8 +742,8 @@ export async function mapBounded<T, R>(
   // Place each result at its INPUT index, not in completion order — workers
   // resolve concurrently (and the per-item work does real async I/O: crypto
   // signing + fetch), so a push-on-complete would return results in a
-  // nondeterministic order. Order-preserving output is what every caller relies
-  // on (the redelivery sweep's per-subscription budget + redelivered sequence).
+  // nondeterministic order. The alerter's fan-out zips these back against its
+  // input list, so the order is load-bearing there.
   const results: R[] = new Array(list.length);
   let cursor = 0;
   const worker = async () => {
@@ -753,44 +759,6 @@ export async function mapBounded<T, R>(
   );
   await Promise.all(workers);
   return results;
-}
-
-// Bounded fan-out over many subscriptions. Concurrency-capped; never rejects —
-// each subscription resolves to a result record (delivered/failed/filtered/
-// skipped) so one bad endpoint can't sink the batch.
-export async function dispatchChangeEvent({
-  subscriptions,
-  event,
-  bodyText,
-  fetchFn,
-  now,
-  timeoutMs,
-  maxAttempts,
-  resolveHostnames,
-  concurrency = 8,
-}: {
-  subscriptions: Row[] | null | undefined;
-  event: Row;
-  bodyText?: string;
-  fetchFn: typeof fetch;
-  now?: () => string;
-  timeoutMs?: number;
-  maxAttempts?: number;
-  resolveHostnames?: (host: string) => Promise<string[]>;
-  concurrency?: number;
-}): Promise<Row[]> {
-  return mapBounded(subscriptions, concurrency, (subscription) =>
-    deliverChangeEvent({
-      subscription,
-      event,
-      bodyText,
-      fetchFn,
-      now,
-      timeoutMs,
-      maxAttempts,
-      resolveHostnames,
-    }),
-  );
 }
 
 // The scheduler that used to live here -- `nextDeliveryRecord`, folding a

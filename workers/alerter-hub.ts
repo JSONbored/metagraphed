@@ -90,8 +90,10 @@ const ALERT_TRIGGER_REFRESH_TIMEOUT_MS = 4000;
 // the SAME trigger, not how many different triggers fire on one event) --
 // an unbounded Promise.all could open one outbound fetch per match,
 // exhausting this Durable Object invocation's concurrent-subrequest budget
-// under a large, broad-condition trigger set. Matches src/webhooks.ts's
-// own dispatchChangeEvent concurrency default.
+// under a large, broad-condition trigger set. The number came from
+// src/webhooks.ts's own fan-out default, which has since been deleted along
+// with that fan-out (metagraphed-infra#354) -- so this is now the only place it
+// is stated, rather than a copy of a live constant.
 const ALERT_DELIVERY_CONCURRENCY = 8;
 
 // AlerterHub.evaluate() is awaited by ChainFirehoseHub.broadcast() (see that
