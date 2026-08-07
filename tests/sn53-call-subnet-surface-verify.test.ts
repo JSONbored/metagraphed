@@ -1,15 +1,22 @@
-// SN53 (EfficientFrontier) end-to-end verification for the call_subnet_surface
-// MCP tool (metagraphed#7066, MCP execute Phase 1 follow-up #7014/#7215). Unlike
+// SN53 (engy) end-to-end verification for the call_subnet_surface MCP tool
+// (metagraphed#7066, MCP execute Phase 1 follow-up #7014/#7215). Unlike
 // tests/call-subnet-surface-mcp.test.ts -- which proves the tool wiring with
 // synthetic surfaces -- this file pins SN53's *real* no-auth GET JSON registry
-// surface (registry/subnets/efficientfrontier.json) to the tool's contract.
+// surface to the tool's contract.
+//
+// RESOLVED BY NETUID, NOT BY FILENAME (#9742). This read used to name
+// registry/subnets/efficientfrontier.json directly, so renaming that file to
+// engy.json when the subnet rebranded (#9737) did not fail an assertion -- it
+// failed the whole SUITE at import, with ENOENT, before a single test ran. A
+// subnet's slug is exactly the kind of thing that changes; its netuid is not.
 //
 // Live-verified 2026-07-21:
 //   sn-53-taomarketcap-subnet-api  GET https://api.taomarketcap.com/public/v1/subnets/53/
 //     -> TaoMarketCap subnet snapshot JSON (netuid 53)
 // Issue #7066 lists this single surface only.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "vitest";
 import { callSubnetSurface } from "../src/call-subnet-surface.ts";
@@ -19,14 +26,17 @@ import { handleMcpRequest } from "../src/mcp-server.ts";
 const SURFACE_ID = "sn-53-taomarketcap-subnet-api";
 const NETUID = 53;
 
-const registry = JSON.parse(
-  readFileSync(
-    fileURLToPath(
-      new URL("../registry/subnets/efficientfrontier.json", import.meta.url),
-    ),
-    "utf8",
-  ),
+const SUBNETS_DIR = fileURLToPath(
+  new URL("../registry/subnets/", import.meta.url),
 );
+const registry = (() => {
+  for (const file of readdirSync(SUBNETS_DIR)) {
+    if (!file.endsWith(".json")) continue;
+    const parsed = JSON.parse(readFileSync(join(SUBNETS_DIR, file), "utf8"));
+    if (parsed?.netuid === NETUID) return parsed;
+  }
+  throw new Error(`no registry/subnets file declares netuid ${NETUID}`);
+})();
 const SURFACE = registry.surfaces.find(
   (surface: Row) => surface.id === SURFACE_ID,
 );
@@ -45,7 +55,7 @@ function jsonResponse(body: unknown) {
   });
 }
 
-describe("SN53 EfficientFrontier call_subnet_surface verification (#7066)", () => {
+describe("SN53 engy call_subnet_surface verification (#7066)", () => {
   test("the registry surface exists and is configured to be callable", () => {
     assert.ok(SURFACE, `registry surface ${SURFACE_ID} is present`);
     assert.equal(SURFACE.kind, "subnet-api");
