@@ -425,6 +425,14 @@ export async function loadOperationalSurfaces(env: Env): Promise<Row[]> {
   return [];
 }
 
+/** `{ name }` when any surface in the group carries one, `{}` otherwise. */
+function nameOf(rows: Row[]): Row {
+  const named = rows.find(
+    (row) => typeof row.subnet_name === "string" && row.subnet_name,
+  );
+  return named ? { name: named.subnet_name as string } : {};
+}
+
 function summarizeGroup(rows: Row[]): Row {
   const counts = emptyStatusCounts();
   let lastChecked = 0;
@@ -574,6 +582,13 @@ export async function runHealthProber(
       // #1005: stable key re-keyed onto D1 history; null for pre-#1005 artifacts.
       surface_key: surface.surface_key ?? null,
       netuid: surface.netuid,
+      // #9715: carried through so the per-netuid rollup below can name the
+      // subnet. It was already on the ProbeSurface input (see subnet_name
+      // above) and dropped here, which left /api/v1/health advertising
+      // `sort=name` over rows that had no name -- sortRows does a flat
+      // row[key] lookup, so every row sank and the list came back untouched
+      // while meta.pagination.sort echoed the field back.
+      subnet_name: surface.subnet_name ?? null,
       kind: surface.kind,
       provider: surface.provider || null,
       url: surface.url,
@@ -700,7 +715,19 @@ async function persistToKv(
     byNetuid.set(row.netuid, group);
   }
   const subnets = [...byNetuid.entries()]
-    .map(([netuid, rows]) => ({ netuid, ...summarizeGroup(rows) }))
+    .map(([netuid, rows]) => ({
+      netuid,
+      // Every surface in a group belongs to the same subnet, so any row that
+      // carries the name answers for the group; the find rather than [0] is
+      // because a surface may have been registered without one.
+      //
+      // OMITTED rather than null when nothing carries it: the contract has
+      // always declared `name: z.string().optional()` on this row, so the
+      // shape it promises is "a string or absent", and a null would fail the
+      // .strict() schema that has been describing this payload all along.
+      ...nameOf(rows),
+      ...summarizeGroup(rows),
+    }))
     .sort((a, b) => (a.netuid as number) - (b.netuid as number));
 
   const current: Row = {

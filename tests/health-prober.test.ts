@@ -1749,6 +1749,63 @@ describe("persistToKv via runHealthProber", () => {
     assert.equal(posted.length, 1);
   });
 
+  test("names each subnet in the rollup, so sort=name is not inert (#9715)", async () => {
+    // /api/v1/health advertises `sort=name` and workers/list-query.ts resolves
+    // a sort with a flat row[key] lookup, sinking rows whose value is absent.
+    // With no `name` on these rows EVERY row sank, the list came back in its
+    // original order, and meta.pagination.sort echoed "name" back -- a ranking
+    // that announced itself and never happened. The prober had the name all
+    // along: it arrives on the ProbeSurface input and was dropped one step
+    // later, before the per-netuid grouping.
+    const kv = makeKv();
+    await runHealthProber(
+      mockEnv(),
+      FAKE_CTX,
+      proberOverrides({
+        now: () => 5000,
+        db: makeDb(),
+        kv,
+        loadSurfaces: async () => SURFACES,
+        probeSurface: probeImpl,
+        probeOptions: {},
+      }),
+    );
+    const current = kv.json(KV_HEALTH_CURRENT);
+    const byNetuid = new Map<number, Row>(
+      current.subnets.map((s: Row) => [s.netuid as number, s]),
+    );
+    assert.equal(byNetuid.get(0)?.name, "root");
+    assert.equal(byNetuid.get(7)?.name, "Acme");
+    // Every rollup row carries one, which is the property the sort needs.
+    for (const subnet of current.subnets as Row[]) {
+      assert.equal(typeof subnet.name, "string", `netuid ${subnet.netuid}`);
+    }
+  });
+
+  test("omits `name` rather than nulling it when no surface carries one", async () => {
+    // The contract has always declared `name: z.string().optional()` on this
+    // row, so the shape it promises is "a string or absent". A null would fail
+    // the .strict() schema that has been describing this payload all along.
+    const kv = makeKv();
+    await runHealthProber(
+      mockEnv(),
+      FAKE_CTX,
+      proberOverrides({
+        now: () => 5000,
+        db: makeDb(),
+        kv,
+        loadSurfaces: async () =>
+          SURFACES.map(({ subnet_name: _dropped, ...rest }) => rest),
+        probeSurface: probeImpl,
+        probeOptions: {},
+      }),
+    );
+    const current = kv.json(KV_HEALTH_CURRENT);
+    for (const subnet of current.subnets as Row[]) {
+      assert.equal("name" in subnet, false, `netuid ${subnet.netuid}`);
+    }
+  });
+
   test("builds the rpc-pool snapshot from RPC-kind rows incl. eligible_count", async () => {
     // Two RPC-kind surfaces: one ok (eligible), one failed (ineligible), plus a
     // non-RPC api surface that must be excluded from the pool.

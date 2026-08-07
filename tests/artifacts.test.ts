@@ -2448,14 +2448,34 @@ test("Worker API serves public artifact envelopes", async () => {
 //
 // Driven off the contract, not a hand-kept list, so a collection added later is
 // covered on the day it is added rather than the day someone remembers to.
-const SORT_FIELDS_WITHOUT_A_BUILT_ROW: Record<string, string[]> = {
-  // Written by the health prober into KV, not by this build. See #9715.
-  "/api/v1/health": ["name"],
-};
+/**
+ * Routes whose collection this build produces no artifact for, so the
+ * assertion below cannot reach them.
+ *
+ * DECLARED, because the version that shipped in #9716 carried a per-field
+ * exemption for /api/v1/health that was DEAD CODE: the loop skips a route
+ * whose artifact is absent long before it consults any exemption, and
+ * /metagraph/health/summary.json is written by the prober cron, never by the
+ * build. So the gate was quietly silent about that whole route while appearing
+ * to make a considered exception for one of its fields.
+ *
+ * Naming the skipped routes and asserting the set is EXACTLY this makes the
+ * silence visible: a route that starts being built gets checked from that
+ * moment, and one whose artifact stops being produced fails here instead of
+ * dropping out of coverage without a word. Both entries were verified against
+ * live responses before being listed -- /api/v1/incidents carries all four of
+ * its sort fields, and /api/v1/health's `name` is fixed at the producer
+ * (#9715) rather than exempted here.
+ */
+const ROUTES_THIS_BUILD_HAS_NO_ARTIFACT_FOR = [
+  "/api/v1/health",
+  "/api/v1/incidents",
+];
 
 test("every advertised sort field exists on the rows that route serves", () => {
   const collections = API_QUERY_COLLECTIONS as Record<string, Row>;
   let checked = 0;
+  const skipped: string[] = [];
 
   for (const apiRoute of API_ROUTES as Row[]) {
     const collectionName = apiRoute.query_collection as string | null;
@@ -2470,7 +2490,10 @@ test("every advertised sort field exists on the rows that route serves", () => {
     const collection = collections[collectionName];
     const sortFields = (collection?.sort_fields as string[]) || [];
     if (sortFields.length === 0) continue;
-    if (!existsSync(artifactFilePath(relative))) continue;
+    if (!existsSync(artifactFilePath(relative))) {
+      skipped.push(apiRoute.path as string);
+      continue;
+    }
 
     const rows = readArtifact(relative)[collection.data_key as string];
     if (!Array.isArray(rows) || rows.length === 0) continue;
@@ -2482,11 +2505,7 @@ test("every advertised sort field exists on the rows that route serves", () => {
       }
     }
 
-    const exempt = new Set(
-      SORT_FIELDS_WITHOUT_A_BUILT_ROW[apiRoute.path as string] || [],
-    );
     for (const field of sortFields) {
-      if (exempt.has(field)) continue;
       checked += 1;
       assert.ok(
         present.has(field),
@@ -2502,6 +2521,16 @@ test("every advertised sort field exists on the rows that route serves", () => {
   assert.ok(
     checked > 50,
     `expected to check well over 50 advertised sort fields, checked ${checked}`,
+  );
+
+  // And the silence is declared. A route that gains a built artifact should be
+  // checked from that moment; one that loses it should fail here rather than
+  // slipping out of coverage unremarked.
+  assert.deepEqual(
+    [...new Set(skipped)].sort(),
+    [...ROUTES_THIS_BUILD_HAS_NO_ARTIFACT_FOR].sort(),
+    "the set of routes this gate cannot reach has changed — verify the new " +
+      "one's sorts against a live response, then update the list",
   );
 });
 
