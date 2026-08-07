@@ -203,6 +203,51 @@ export async function writeRowsToNeon(
 }
 
 /**
+ * Delete each key's rows older than that key's own cutoff.
+ *
+ * PER KEY, never batch-wide, and that is the whole contract. A full scan posts
+ * in several requests, so a "delete everything older than this batch" sweep
+ * would let one request delete rows another just wrote. The cutoff is therefore
+ * each key's OWN max captured_at, exactly as the D1 writer computes it.
+ *
+ * Runs AFTER the upsert and reports its own outcome: the worst a failure here
+ * can do is leave a stale row until the next tick, never delete one whose
+ * replacement was not written first.
+ */
+export async function pruneKeysInNeon(
+  sql: PgUnsafe | null | undefined,
+  table: string,
+  keyColumn: string,
+  cutoffs: ReadonlyMap<string, number>,
+): Promise<NeonWriteResult> {
+  if (!sql?.unsafe)
+    return { ok: false, rows: 0, statements: 0, reason: "unbound" };
+  if (cutoffs.size === 0) return { ok: true, rows: 0, statements: 0 };
+  // One statement for the whole map rather than one per key: a 24,000-coldkey
+  // pass would otherwise be 24,000 round trips through Hyperdrive. The pairs
+  // travel as two parallel arrays and are joined with UNNEST, which keeps the
+  // parameter count at two regardless of size.
+  const keys = [...cutoffs.keys()];
+  const values = keys.map((key) => cutoffs.get(key) as number);
+  try {
+    await sql.unsafe(
+      `DELETE FROM ${table} USING UNNEST($1::text[], $2::bigint[]) ` +
+        `AS cutoff(k, at) WHERE ${table}.${keyColumn} = cutoff.k ` +
+        `AND ${table}.captured_at < cutoff.at`,
+      [keys, values],
+    );
+  } catch (error) {
+    return {
+      ok: false,
+      rows: 0,
+      statements: 0,
+      reason: error instanceof Error ? error.message : String(error),
+    };
+  }
+  return { ok: true, rows: cutoffs.size, statements: 1 };
+}
+
+/**
  * Record one Neon write's outcome as a lane verdict.
  *
  * THIS IS THE INVARIANT THE PILOT WAS MISSING. A store with no lane is
