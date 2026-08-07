@@ -7,11 +7,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import {
+  D1_MAX_COMPOUND_TERMS,
   NEON_PARITY_CRON,
   NEON_PARITY_LANE,
   PARITY_MIN_ROWS,
   PARITY_TABLES,
   describeParity,
+  parityCountBatches,
   parityCountSql,
   parityGaps,
   persistentGaps,
@@ -36,6 +38,19 @@ function fakeDb(rows: unknown[] | null, throwIt = false) {
             if (/lane_health/i.test(sql)) return { results: fakeDb.laneRows };
             if (throwIt && sql.startsWith("SELECT '"))
               throw new Error("D1_ERROR");
+            // THE FAKE ENFORCES D1'S REAL CEILING. Without this the double
+            // accepts any width, the suite agrees with whatever the code
+            // happens to build, and #9850 ships a lane that reports
+            // `unknown: counts unreadable` every hour for its whole life --
+            // which is exactly what happened. A test that only asserts the
+            // code's own assumption cannot see the store disagreeing with it.
+            if (sql.startsWith("SELECT '")) {
+              const terms = sql.split(/\bUNION ALL\b/).length;
+              if (terms > D1_MAX_COMPOUND_TERMS)
+                throw new Error(
+                  "D1_ERROR: too many terms in compound SELECT: SQLITE_ERROR",
+                );
+            }
             return rows === null ? null : { results: rows };
           },
           bind(...values: unknown[]) {
@@ -83,6 +98,49 @@ describe("parityCountSql", () => {
     // The point of `'x' AS t` over a per-table round trip: identical text on
     // both sides means a difference cannot come from asking different things.
     assert.ok(!/\?|\$\d/.test(parityCountSql([...PARITY_TABLES])));
+  });
+});
+
+describe("parityCountBatches", () => {
+  test("no batch is wider than D1 will parse", () => {
+    // The ceiling is 5, measured against production. Anything above it does
+    // not degrade -- it throws, and the sweep reads NOTHING.
+    for (const sql of parityCountBatches([...PARITY_TABLES])) {
+      assert.ok(
+        sql.split(/\bUNION ALL\b/).length <= D1_MAX_COMPOUND_TERMS,
+        `batch too wide: ${sql}`,
+      );
+    }
+  });
+
+  test("every table is counted exactly once", () => {
+    const named = parityCountBatches([...PARITY_TABLES])
+      .flatMap((sql) => [...sql.matchAll(/SELECT '(\w+)' AS t/g)])
+      .map((m) => m[1]);
+    assert.deepEqual(named.sort(), [...PARITY_TABLES].sort());
+  });
+
+  test("the live table list ACTUALLY needs splitting", () => {
+    // A negative assertion passes on nothing. If PARITY_TABLES ever shrank to
+    // five, the two tests above would hold on a single batch and stop proving
+    // that batching works at all -- so pin that the real config exercises it.
+    assert.ok(
+      PARITY_TABLES.length > D1_MAX_COMPOUND_TERMS,
+      "PARITY_TABLES no longer exceeds one batch; this suite stopped testing the split",
+    );
+    assert.ok(parityCountBatches([...PARITY_TABLES]).length > 1);
+  });
+
+  test("a table list that fits stays one statement", () => {
+    assert.equal(parityCountBatches(["a", "b"]).length, 1);
+  });
+
+  test("the width is overridable, and the remainder is not dropped", () => {
+    // 5 tables at 2 per batch is 3 batches, the last holding ONE -- the case
+    // an off-by-one in the loop bound loses silently.
+    const batches = parityCountBatches(["a", "b", "c", "d", "e"], 2);
+    assert.equal(batches.length, 3);
+    assert.equal(batches[2], parityCountSql(["e"]));
   });
 });
 

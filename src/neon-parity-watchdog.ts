@@ -118,7 +118,48 @@ export interface TableParity {
   delta: number;
 }
 
-/** One `SELECT count` per table, unioned so the sweep is a single statement. */
+/**
+ * D1's compound-SELECT ceiling, MEASURED against production 2026-08-07.
+ *
+ * Upstream SQLite defaults `SQLITE_MAX_COMPOUND_SELECT` to 500. D1 builds it
+ * at FIVE. Probed directly against the production database: 3 and 5 terms
+ * answer, 6 and up fail with
+ *
+ *     D1_ERROR: too many terms in compound SELECT: SQLITE_ERROR
+ *
+ * This is not a tuning knob, it is the reason this lane never worked. It
+ * shipped in #9850 sweeping ten tables in one UNION ALL -- five past the
+ * limit -- so the D1 half of the comparison threw before it read a single row
+ * and the watchdog recorded `unknown: counts unreadable` every hour from the
+ * moment it deployed. A watchdog that cannot read its subject reports the
+ * truth about itself and nothing about what it watches, which is why this was
+ * only caught by looking at the lane rather than trusting that it was green.
+ *
+ * Batching here rather than at the call site because the ceiling grows more
+ * dangerous as PARITY_TABLES grows: every table added to the migration adds a
+ * term, and the failure is total (no counts at all) rather than partial.
+ */
+export const D1_MAX_COMPOUND_TERMS = 5;
+
+/**
+ * The sweep, split into statements no wider than D1 will parse.
+ *
+ * Postgres has no comparable limit, but both stores run the SAME batches so
+ * the two halves stay symmetric and one row-shape reader serves both.
+ */
+export function parityCountBatches(
+  tables: readonly string[],
+  perBatch: number = D1_MAX_COMPOUND_TERMS,
+): string[] {
+  const batches: string[] = [];
+  for (let i = 0; i < tables.length; i += perBatch) {
+    batches.push(parityCountSql(tables.slice(i, i + perBatch)));
+  }
+  return batches;
+}
+
+/** One `SELECT count` per table, unioned. Never call with more than
+ * D1_MAX_COMPOUND_TERMS tables -- use parityCountBatches. */
 export function parityCountSql(tables: readonly string[]): string {
   return tables
     .map((t) => `SELECT '${t}' AS t, COUNT(*) AS n FROM ${t}`)
@@ -216,17 +257,17 @@ export async function runNeonParityWatchdog(
   const now = deps.now ?? Date.now;
   if (!db?.prepare || !sql?.unsafe) return { attempted: false };
 
-  const statement = parityCountSql(PARITY_TABLES);
+  const batches = parityCountBatches(PARITY_TABLES);
   let d1Counts: Map<string, number>;
   let neonCounts: Map<string, number>;
   try {
     const [a, b] = await Promise.all([
-      db.prepare(statement).all(),
-      sql.unsafe(statement) as Promise<unknown>,
+      Promise.all(batches.map((s) => db.prepare(s).all())),
+      Promise.all(batches.map((s) => sql.unsafe(s) as Promise<unknown>)),
     ]);
-    if (!a) throw new Error("d1 returned nothing");
-    d1Counts = countsFrom(a.results ?? []);
-    neonCounts = countsFrom(Array.isArray(b) ? b : []);
+    if (a.some((r) => !r)) throw new Error("d1 returned nothing");
+    d1Counts = countsFrom(a.flatMap((r) => r?.results ?? []));
+    neonCounts = countsFrom(b.flatMap((r) => (Array.isArray(r) ? r : [])));
   } catch (error) {
     // `unknown`, not `stale`: a store that would not answer is not evidence of
     // a gap, and calling it one would put every table in the detail line.
