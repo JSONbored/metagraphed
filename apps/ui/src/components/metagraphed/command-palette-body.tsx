@@ -43,7 +43,7 @@ import {
 } from "lucide-react";
 import { askQuestion, searchQuery, semanticSearchQuery } from "@/lib/metagraphed/queries";
 import { classNames } from "@/lib/metagraphed/format";
-import { isValidSs58 } from "@/lib/metagraphed/accounts";
+import { isChecksumValidSs58, isValidH160, normalizeH160 } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { isCompositeExtrinsicRef } from "@/lib/metagraphed/extrinsics";
@@ -269,7 +269,15 @@ const KIND_META: Record<string, { label: string; icon: typeof Layers; cls: strin
 // smaller AI-ranked complement, not a replacement.
 const SEMANTIC_LIMIT = 8;
 
-type Target = { to: string; params?: Record<string, string> } | { external: string };
+type Target =
+  | {
+      to: string;
+      params?: Record<string, string>;
+      /** Query string for a destination that is a search param rather than a
+       * path segment -- `?h160=` and `?uid=` (metagraphed-infra#373/#376). */
+      search?: Record<string, string | number>;
+    }
+  | { external: string };
 
 function targetToHref(target: Target): string {
   if ("external" in target) return target.external;
@@ -277,6 +285,16 @@ function targetToHref(target: Target): string {
   if (target.params) {
     for (const [k, v] of Object.entries(target.params))
       path = path.replace(`$${k}`, encodeURIComponent(v));
+  }
+  // Appended here, not only at navigate(): this href is also what "copy link"
+  // writes to the clipboard and what the open-in-new-tab path uses, so a search
+  // param left out here produces a link that silently loses the identifier --
+  // which is the bug metagraphed-infra#373 was.
+  if (target.search) {
+    const query = new URLSearchParams(
+      Object.entries(target.search).map(([k, v]) => [k, String(v)]),
+    ).toString();
+    if (query) path += `?${query}`;
   }
   return path;
 }
@@ -480,7 +498,9 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
       icon: typeof User;
       searchValue?: string;
     }> = [];
-    if (isValidSs58(q)) {
+    // CHECKSUM, not shape (metagraphed-infra#376) -- see nav-omnibox for the
+    // full argument. The two boxes had the same gap and now share the recogniser.
+    if (isChecksumValidSs58(q)) {
       targets.push({
         label: `Account ${resolveAddress(q, { keep: 8 }).display}`,
         hint: q,
@@ -488,6 +508,30 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
         searchValue: q,
         kind: "account",
         icon: User,
+      });
+    }
+    if (isValidH160(q)) {
+      targets.push({
+        label: `EVM ${q.slice(0, 10)}\u2026${q.slice(-6)}`,
+        hint: "find the account this EVM address maps to",
+        target: { to: "/accounts", search: { h160: normalizeH160(q) } },
+        searchValue: q,
+        kind: "account",
+        icon: User,
+      });
+    }
+    const neuronRef = /^(\d{1,4}):(\d{1,5})$/.exec(q);
+    if (neuronRef && Number(neuronRef[1]) <= 1024) {
+      targets.push({
+        label: `Subnet ${neuronRef[1]} \u00b7 uid ${neuronRef[2]}`,
+        hint: "jump to a neuron by netuid:uid",
+        target: {
+          to: "/subnets/$netuid",
+          params: { netuid: neuronRef[1]! },
+          search: { uid: Number(neuronRef[2]) },
+        },
+        kind: "subnet",
+        icon: Hash,
       });
     }
     if (/^(?:0|[1-9][0-9]{0,9})$/.test(q)) {
@@ -588,7 +632,11 @@ export function CommandPaletteBody({ open, onOpenChange }: CommandPaletteProps) 
       }
       trackAction("open:same-tab");
       onOpenChange(false);
-      router.navigate({ to: target.to, params: target.params as never });
+      router.navigate({
+        to: target.to,
+        params: target.params as never,
+        search: (target.search ?? {}) as never,
+      });
     },
     [router, onOpenChange, debounced],
   );

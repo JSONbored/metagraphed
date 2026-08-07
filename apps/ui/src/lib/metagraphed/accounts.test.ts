@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { isValidH160, isValidSs58, normalizeH160, ss58PathSegment } from "./accounts";
+import {
+  isChecksumValidSs58,
+  isValidH160,
+  isValidSs58,
+  normalizeH160,
+  ss58PathSegment,
+} from "./accounts";
 
 const VALID_SS58 = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
@@ -70,5 +76,40 @@ describe("isValidH160 / normalizeH160 (metagraphed-infra#373)", () => {
 
   it("lowercases, so a checksummed paste is one cache key and one URL", () => {
     expect(normalizeH160(`  0x1234567890ABCDEF1234567890abcdef12345678 `)).toBe(ADDRESS);
+  });
+});
+
+describe("isChecksumValidSs58 (metagraphed-infra#376)", () => {
+  // Alice, the address /api/v1/search/resolve's own tests use.
+  const ALICE = "5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM";
+
+  it("accepts a real address", () => {
+    expect(isChecksumValidSs58(ALICE)).toBe(true);
+    expect(isChecksumValidSs58(`  ${ALICE}  `)).toBe(true);
+    expect(isChecksumValidSs58(VALID_SS58)).toBe(true);
+  });
+
+  it("REJECTS a one-character typo the shape check accepts", () => {
+    // The whole reason this exists. A mutated last character is still 48 base58
+    // characters, so isValidSs58 offers it -- and the user lands on an account
+    // page rendering "no activity", which reads as a fact about the address
+    // rather than as "you mistyped it".
+    const typo = `${ALICE.slice(0, -1)}X`;
+    expect(typo).toHaveLength(ALICE.length);
+    expect(isValidSs58(typo)).toBe(true);
+    expect(isChecksumValidSs58(typo)).toBe(false);
+  });
+
+  it("rejects prose, an EVM address, and non-strings", () => {
+    for (const bad of ["", "  ", "inference", "0x".padEnd(42, "a"), null, 7, {}]) {
+      expect(isChecksumValidSs58(bad)).toBe(false);
+    }
+  });
+
+  it("leaves the lenient check alone for its other callers", () => {
+    // isValidSs58 stays a shape check on purpose: its other 39 call sites
+    // format an address that already came from the chain, or build an extrinsic
+    // from one the wallet supplied. Neither can be a typo.
+    expect(isValidSs58(`${ALICE.slice(0, -1)}X`)).toBe(true);
   });
 });
