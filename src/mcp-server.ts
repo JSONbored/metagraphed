@@ -1338,7 +1338,10 @@ import {
   DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW,
 } from "./subnet-deregistrations.ts";
 import { buildAccountPortfolio } from "./account-portfolio.ts";
-import { unavailableAccountPositions } from "./account-nominator-positions.ts";
+import {
+  shapeForwardedPositions,
+  unavailableAccountPositions,
+} from "./account-nominator-positions.ts";
 import {
   buildNeuronHistory,
   buildSubnetHistory,
@@ -9153,15 +9156,19 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ctx: McpCtx,
     ) {
       const ss58 = requireSs58(args);
-      return (
+      // Shaped on the way out because the first arm forwards an upstream
+      // payload verbatim (#9804). Every locally-built decline already carries
+      // the full `degraded` block, so this is a no-op for them -- it exists for
+      // the one arm this file does not build.
+      return shapeForwardedPositions(
         (await tryPostgresTier(
           ctx.env,
           mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/positions`),
           "METAGRAPH_NEURONS_SOURCE",
         )) ??
-        (await loadAccountPositionsD1(ctx.env, ss58)) ??
-        (await loadAccountPositionsColdTier(ctx.env, ss58)) ??
-        unavailableAccountPositions(ss58)
+          (await loadAccountPositionsD1(ctx.env, ss58)) ??
+          (await loadAccountPositionsColdTier(ctx.env, ss58)) ??
+          unavailableAccountPositions(ss58),
       );
     },
   },
@@ -9237,12 +9244,16 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             ctx.env,
             mcpNeuronsTierRequest(`/api/v1/accounts/${ss58}/positions`),
             "METAGRAPH_NEURONS_SOURCE",
-          ).then(
-            async (data) =>
+          ).then(async (data) =>
+            // Same shaping as the single-facet tool above, for the same reason:
+            // this arm can forward a payload this file never built (#9804), and
+            // the compound card must not disagree with the tool it mirrors.
+            shapeForwardedPositions(
               data ??
-              (await loadAccountPositionsD1(ctx.env, ss58)) ??
-              (await loadAccountPositionsColdTier(ctx.env, ss58)) ??
-              unavailableAccountPositions(ss58),
+                (await loadAccountPositionsD1(ctx.env, ss58)) ??
+                (await loadAccountPositionsColdTier(ctx.env, ss58)) ??
+                unavailableAccountPositions(ss58),
+            ),
           ),
           tryPostgresTier(
             ctx.env,
