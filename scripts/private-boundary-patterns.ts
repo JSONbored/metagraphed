@@ -26,6 +26,18 @@ export const contentPatterns: { name: string; regex: RegExp }[] = [
       /\b(?:private prompt|private rubric|private score|private threshold|corpus weight|accepted rejected example|accepted\/rejected example)\b/i,
   },
   {
+    // WHAT THIS PROTECTS, stated because a later reader will otherwise read it
+    // as "no AI plumbing may be named in public" and either widen it wrongly or
+    // work around it. It guards the PRIVATE SUBMISSION GATE's provider routing:
+    // which gateway and which model the private reviewer runs through.
+    //
+    // It does NOT cover this repo's own public AI layer, whose model ids are
+    // already published in src/ai-search.ts and wrangler.jsonc on purpose
+    // (`@cf/qwen/qwen3-embedding-0.6b`, `@cf/meta/llama-4-scout-17b-16e-instruct`)
+    // and whose binding is `AI`. metagraphed-infra#362 added
+    // `METAGRAPH_AI_GATEWAY` for that public path; the namespace prefix means
+    // the word-boundary here does not match it, and the test file asserts BOTH
+    // directions so that stays a decision rather than a coincidence.
     name: "provider-specific private model route",
     regex: /\b(?:AI_GATEWAY|WORKERS_AI|@cf\/openai\/|gpt-oss-)\b/i,
   },

@@ -115,6 +115,25 @@ describe("contentPatterns — provider-specific private model route", () => {
       assert.equal(regex.test(`route: ${token}`), false, token);
     }
   });
+
+  test("this repo's OWN public AI gateway var is deliberately not a violation", () => {
+    // BOTH DIRECTIONS, so the carve-out is a decision rather than a coincidence
+    // of where a \b happens to fall. The pattern guards the PRIVATE submission
+    // gate's provider routing. metagraphed-infra#362 routes the PUBLIC semantic
+    // search path through a gateway, and that path's model ids are already
+    // published on purpose -- so `METAGRAPH_AI_GATEWAY` must pass...
+    assert.equal(
+      regex.test('"METAGRAPH_AI_GATEWAY": "default"'),
+      false,
+      "the public AI layer's own gateway var",
+    );
+    // ...while a bare AI_GATEWAY must still fail, or the pattern has been
+    // widened into uselessness by the change that made room for the var above.
+    assert.ok(
+      regex.test('"AI_GATEWAY": "private-reviewer"'),
+      "a bare AI_GATEWAY is still a leak",
+    );
+  });
 });
 
 describe("pathPatterns — private submission-gate implementation path", () => {

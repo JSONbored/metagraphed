@@ -68,6 +68,32 @@
     // AI/VECTORIZE bindings are present, the routes serve live; otherwise they
     // return 503 ai_unavailable. Flip to "false" to instantly disable.
     "METAGRAPH_ENABLE_AI": "true",
+    // AI Gateway in front of the Workers AI embedding calls
+    // (metagraphed-infra#362 step 3). ON.
+    //
+    // "default" IS A REAL ID, not a placeholder: Cloudflare creates the
+    // account's default gateway on the first authenticated request that names
+    // it. That is what makes this shippable as one var rather than a var plus a
+    // dashboard step plus an API token with AI Gateway Edit -- which the
+    // wrangler OAuth scopes do not carry, so a provisioned-first approach would
+    // have meant leaving this off until somebody clicked something.
+    //
+    // WHAT IT BUYS. /api/v1/search/semantic embeds EVERY request, so two users
+    // searching the same phrase paid for two identical model calls and a hot
+    // query paid on every hit. The gateway caches the embedding for an hour and
+    // adds per-model request/latency/cost analytics, which is the only
+    // gateway-side view of AI spend this account has had.
+    //
+    // RANKING IS UNTOUCHED, and the distinction is worth being precise about:
+    // what is cached is the VECTOR a query turns into -- deterministic for a
+    // fixed model -- not the search result. The Vectorize index is still queried
+    // fresh on every request, which is exactly why the response keeps
+    // `cache-control: no-store` and why that header is not a contradiction.
+    //
+    // EMPTY TURNS IT OFF. src/ai-search.ts's aiGatewayOptions returns null on a
+    // blank value and both `AI.run` calls go direct, so the rollback is one
+    // word, like SYNC_QUEUE_LANES.
+    "METAGRAPH_AI_GATEWAY": "default",
     // Raw chain capture (#9111): ON. Opt-in by construction so a deploy can
     // never start capturing before migrations/d1/0006_raw_capture.sql exists
     // -- that table holds the watermark the whole no-gap guarantee rests on.
