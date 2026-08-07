@@ -26,6 +26,7 @@
 // Bucket (c): captured_at fields drop format:date-time in favor of plain
 // z.string().nullable(), matching this epic's established convention.
 import { z } from "zod";
+import { POSITIONS_DEGRADED_REASONS } from "../../src/account-nominator-positions.ts";
 import { successEnvelopeSchema } from "../envelope.ts";
 
 const NominatorPositionSchema = z
@@ -48,10 +49,15 @@ const NominatorPositionSchema = z
 // permanently-null field trains callers not to look.
 const AccountPositionsDegradedSchema = z
   .object({
+    // Built from the loader's own tuple, not re-typed here (#9804). This enum
+    // used to list two of the three reasons the code can emit, so production
+    // served `positions_unpriceable` against a contract that called it
+    // impossible -- a strict client rejected a valid response, and a client
+    // switching on the enum fell through silently.
     reason: z
-      .enum(["tier_unavailable", "snapshot_predates_stake_activity"])
+      .enum(POSITIONS_DEGRADED_REASONS)
       .describe(
-        "`tier_unavailable`: every tier declined, so this zero is a read failure. `snapshot_predates_stake_activity`: the position ledger answered zero, but this account has an on-chain StakeAdded/StakeRemoved NEWER than the ledger's own snapshot -- it was demonstrably staking after the ledger was captured, so `positions: 0` is a claim the ledger is not entitled to make.",
+        "`tier_unavailable`: every tier declined, so this zero is a read failure. `snapshot_predates_stake_activity`: the position ledger answered zero, but this account has an on-chain StakeAdded/StakeRemoved NEWER than the ledger's own snapshot -- it was demonstrably staking after the ledger was captured, so `positions: 0` is a claim the ledger is not entitled to make. `positions_unpriceable`: the ledger HAS rows for this account, but one or more could not be priced against the live neurons table -- they are excluded from `positions` and from `total_stake_alpha` rather than reported with a fabricated zero, so the total understates the real holding.",
       ),
     snapshot_captured_at: z
       .string()

@@ -5104,10 +5104,10 @@ export interface components {
                 /** @description The newest StakeAdded/StakeRemoved this account has on chain, when that is what contradicts the zero. */
                 latest_stake_event_at: string | null;
                 /**
-                 * @description `tier_unavailable`: every tier declined, so this zero is a read failure. `snapshot_predates_stake_activity`: the position ledger answered zero, but this account has an on-chain StakeAdded/StakeRemoved NEWER than the ledger's own snapshot -- it was demonstrably staking after the ledger was captured, so `positions: 0` is a claim the ledger is not entitled to make.
+                 * @description `tier_unavailable`: every tier declined, so this zero is a read failure. `snapshot_predates_stake_activity`: the position ledger answered zero, but this account has an on-chain StakeAdded/StakeRemoved NEWER than the ledger's own snapshot -- it was demonstrably staking after the ledger was captured, so `positions: 0` is a claim the ledger is not entitled to make. `positions_unpriceable`: the ledger HAS rows for this account, but one or more could not be priced against the live neurons table -- they are excluded from `positions` and from `total_stake_alpha` rather than reported with a fabricated zero, so the total understates the real holding.
                  * @enum {string}
                  */
-                reason: "tier_unavailable" | "snapshot_predates_stake_activity";
+                reason: "tier_unavailable" | "snapshot_predates_stake_activity" | "positions_unpriceable";
                 /** @description The LEDGER's own capture stamp, not this account's -- present even when the account has no rows in it, which is the case this field exists for. */
                 snapshot_captured_at: string | null;
             };

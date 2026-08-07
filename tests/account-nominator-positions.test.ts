@@ -3,11 +3,14 @@ import assert from "node:assert/strict";
 
 import {
   NOMINATOR_POSITION_INSERT_COLUMNS,
+  POSITIONS_DEGRADED_REASONS,
   POSITIONS_DEGRADED_SNAPSHOT_PREDATES_ACTIVITY,
+  POSITIONS_DEGRADED_TIER_UNAVAILABLE,
   POSITIONS_DEGRADED_UNPRICEABLE,
   annotatePositionsSnapshot,
   buildAccountPositions,
   distinctHotkeys,
+  shapeForwardedPositions,
   stakeByHotkeyNetuid,
 } from "../src/account-nominator-positions.ts";
 import { handleRequest } from "../workers/api.ts";
@@ -542,5 +545,68 @@ describe("NOMINATOR_POSITION_INSERT_COLUMNS", () => {
       "share_fraction",
       "captured_at",
     ]);
+  });
+});
+
+// #9804. The published contract and the code disagreed twice, in opposite
+// directions, on the one field whose entire job is telling a caller not to
+// trust the number beside it.
+describe("degraded is exactly what the contract declares (#9804)", () => {
+  test("every reason the code can emit is a member of the published enum", () => {
+    // The enum used to be re-typed by hand in the route schema and listed two
+    // of the three constants, so production served `positions_unpriceable`
+    // against a contract calling it impossible: a strict client rejected a
+    // valid response, and a client switching on the enum fell through silently.
+    // Building the enum from this tuple is the fix; this test is what stops a
+    // fourth constant being added without joining it.
+    for (const reason of [
+      POSITIONS_DEGRADED_TIER_UNAVAILABLE,
+      POSITIONS_DEGRADED_SNAPSHOT_PREDATES_ACTIVITY,
+      POSITIONS_DEGRADED_UNPRICEABLE,
+    ]) {
+      assert.ok(
+        (POSITIONS_DEGRADED_REASONS as readonly string[]).includes(reason),
+        `${reason} is emitted by this module but absent from POSITIONS_DEGRADED_REASONS, so the published enum does not declare it`,
+      );
+    }
+  });
+
+  test("a forwarded tier's bare degraded block is given the declared shape", () => {
+    // The Postgres arm forwards an upstream payload verbatim, and production
+    // serves `{"reason":"tier_unavailable"}` from it -- while the schema
+    // declares snapshot_captured_at and latest_stake_event_at required
+    // (nullable, but required). Null is the honest value for a stamp the
+    // upstream did not send; a missing key is not.
+    const shaped = shapeForwardedPositions({
+      ss58: SS58,
+      position_count: 0,
+      degraded: { reason: POSITIONS_DEGRADED_TIER_UNAVAILABLE },
+    }) as unknown as Record<string, Record<string, unknown>>;
+    assert.deepEqual(shaped.degraded, {
+      snapshot_captured_at: null,
+      latest_stake_event_at: null,
+      reason: POSITIONS_DEGRADED_TIER_UNAVAILABLE,
+    });
+  });
+
+  test("it fills gaps without overwriting what the upstream did send", () => {
+    const shaped = shapeForwardedPositions({
+      degraded: {
+        reason: POSITIONS_DEGRADED_SNAPSHOT_PREDATES_ACTIVITY,
+        snapshot_captured_at: "2026-08-01T00:00:00.000Z",
+      },
+    }) as Record<string, Record<string, unknown>>;
+    assert.equal(
+      shaped.degraded.snapshot_captured_at,
+      "2026-08-01T00:00:00.000Z",
+    );
+    assert.equal(shaped.degraded.latest_stake_event_at, null);
+  });
+
+  test("a payload with no degraded block is returned untouched", () => {
+    // A measured answer must not grow a `degraded` key it never had -- that
+    // would be the mirror-image defect, a healthy read wearing a decline.
+    const measured = { ss58: SS58, position_count: 3 };
+    assert.equal(shapeForwardedPositions(measured), measured);
   });
 });

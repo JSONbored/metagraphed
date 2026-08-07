@@ -132,6 +132,27 @@ export const POSITIONS_DEGRADED_SNAPSHOT_PREDATES_ACTIVITY =
  */
 export const POSITIONS_DEGRADED_UNPRICEABLE = "positions_unpriceable";
 
+/**
+ * Every reason this surface can publish, as the tuple the schema enum is built
+ * from.
+ *
+ * The enum used to be re-typed by hand in schemas-src/routes/account-positions.ts
+ * and listed two of these three, so production served `positions_unpriceable`
+ * against a contract that said it was impossible (#9804). A client validating
+ * strictly rejected a valid response; a client switching on the enum fell
+ * through silently -- on the one field whose entire job is telling a caller not
+ * to trust the number beside it.
+ *
+ * Declared here, next to the constants, so a reason cannot exist in code
+ * without appearing in the published contract. Adding one below and forgetting
+ * the schema is no longer possible; there is only one list.
+ */
+export const POSITIONS_DEGRADED_REASONS = [
+  POSITIONS_DEGRADED_TIER_UNAVAILABLE,
+  POSITIONS_DEGRADED_SNAPSHOT_PREDATES_ACTIVITY,
+  POSITIONS_DEGRADED_UNPRICEABLE,
+] as const;
+
 export interface AccountPositionsDegraded {
   reason: string;
   /** The LEDGER's own capture stamp, not this account's -- present even when
@@ -266,6 +287,39 @@ export function distinctHotkeys(
  * defect this route shares with #9260/#9263, and it is worse here because the
  * payload carries a confident TOTAL rather than merely an empty list.
  */
+/**
+ * Give a forwarded tier's payload the `degraded` shape this route's contract
+ * declares.
+ *
+ * The Postgres arm forwards an upstream response verbatim instead of building
+ * it here, so it is the one path that can publish a `degraded` block this file
+ * never shaped -- and production does exactly that, serving a bare
+ * `{"reason":"tier_unavailable"}` while the schema declares
+ * `snapshot_captured_at` and `latest_stake_event_at` required (nullable, but
+ * required). Every locally-built decline already carries all three.
+ *
+ * Null is the honest value for a stamp an upstream did not send: "we don't know
+ * when" is a statement the schema can carry, and a missing key is not. Anything
+ * the upstream DID send is preserved -- this fills gaps, it does not overwrite.
+ *
+ * Same reasoning as the rpc-usage composer refusing to trust a forwarded tier's
+ * `observed_at` (#9794): a tier whose representation is taken on faith is how a
+ * field ends up meaning different things on different paths.
+ */
+export function shapeForwardedPositions<T>(payload: T): T {
+  const row = payload as Record<string, unknown> | null;
+  const degraded = row?.degraded as Record<string, unknown> | undefined;
+  if (!degraded || typeof degraded !== "object") return payload;
+  return {
+    ...row,
+    degraded: {
+      snapshot_captured_at: null,
+      latest_stake_event_at: null,
+      ...degraded,
+    },
+  } as T;
+}
+
 export function unavailableAccountPositions(
   ss58: string,
 ): AccountPositionsResult {
