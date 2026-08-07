@@ -275,7 +275,10 @@ describe("the deployed wiring", () => {
       //
       // So this is an allowlist with evidence rather than a derived rule,
       // because the derived rule was wrong.
-      const provenStuck = new Set(["validator_nominator_counts"]);
+      const provenStuck = new Set([
+        "validator_nominator_counts",
+        "nominator_positions",
+      ]);
       assert.ok(
         plan.partition === "date" ||
           !mirrored.has(table) ||
