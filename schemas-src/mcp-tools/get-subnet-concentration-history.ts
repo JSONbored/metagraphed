@@ -6,13 +6,12 @@
 import { z } from "zod";
 import { SubnetConcentrationHistoryArtifactSchema } from "../routes/subnet-concentration.ts";
 import { netuidSchema, windowSchema } from "./shared.ts";
-
-const CONCENTRATION_HISTORY_WINDOWS = ["7d", "30d", "90d"] as const;
+import { SUBNET_CONCENTRATION_WINDOW_VALUES } from "../routes/subnet-concentration.ts";
 
 export const GetSubnetConcentrationHistoryInputSchema = z
   .object({
     netuid: netuidSchema(),
-    window: windowSchema(CONCENTRATION_HISTORY_WINDOWS).optional(),
+    window: windowSchema(SUBNET_CONCENTRATION_WINDOW_VALUES).optional(),
   })
   .strict();
 export type GetSubnetConcentrationHistoryInput = z.infer<

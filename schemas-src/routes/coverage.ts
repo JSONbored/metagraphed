@@ -99,7 +99,7 @@ export const CoverageResponseSchema = successEnvelopeSchema(
 // #8074) -- symbolic in the hand-written original (mcp-server.ts's own
 // COVERAGE_DEPTH_TIERS/COVERAGE_DEPTH_SEVERITIES constants), cross-checked
 // against the actual runtime source at the time of writing.
-const COVERAGE_DEPTH_TIERS = [
+export const COVERAGE_DEPTH_TIERS = [
   "agent-ready",
   "machine-usable",
   "candidate-review",
@@ -107,12 +107,12 @@ const COVERAGE_DEPTH_TIERS = [
   "hard-blocked",
   "missing-interface",
 ] as const;
-const COVERAGE_DEPTH_SEVERITIES = [
+export const COVERAGE_DEPTH_SEVERITIES = [
   "hard",
   "missing-data",
   "needs-review",
 ] as const;
-const AGENT_READINESS_STATUSES = [
+export const AGENT_READINESS_STATUSES = [
   "callable",
   "base-layer",
   "candidate",

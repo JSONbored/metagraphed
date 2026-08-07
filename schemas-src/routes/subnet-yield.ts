@@ -6,6 +6,9 @@
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 
+/** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
+export const SUBNET_YIELD_WINDOW_VALUES = ["7d", "30d", "90d"] as const;
+
 const SubnetYieldNeuronSchema = z
   .object({
     uid: z.int().min(0),
@@ -89,7 +92,7 @@ export const SubnetYieldHistoryResponseSchema = successEnvelopeSchema(
 );
 export const SubnetYieldHistoryQuerySchema = z
   .object({
-    window: z.enum(["7d", "30d", "90d"]).optional(),
+    window: z.enum(SUBNET_YIELD_WINDOW_VALUES).optional(),
   })
   .strict();
 export type SubnetYieldHistoryQuery = z.infer<

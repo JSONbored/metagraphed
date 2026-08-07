@@ -25,36 +25,13 @@ import {
   HealthHistorySummarySchema,
   HealthHistorySurfaceSchema,
 } from "../routes/health-surfaces.ts";
+import {
+  HEALTH_CLASSIFICATION_VALUES,
+  HEALTH_SURFACE_SORT_VALUES,
+} from "./shared.ts";
 
 const SURFACE_KIND = SURFACE_KIND_VALUES;
 const HEALTH_STATUS = HEALTH_STATUS_VALUES;
-const HEALTH_CLASSIFICATION = [
-  "auth-required",
-  "content-mismatch",
-  "dead",
-  "live",
-  "rate-limited",
-  "redirected",
-  "timeout",
-  "transient",
-  "unsupported",
-  "unsafe",
-  "wrong-chain",
-] as const;
-const HEALTH_SURFACE_SORT_FIELDS = [
-  "classification",
-  "kind",
-  "last_checked",
-  "last_ok",
-  "latency_ms",
-  "netuid",
-  "provider",
-  "status",
-  "status_code",
-  "surface_id",
-  "verified_at",
-] as const;
-
 export const GetHealthHistoryInputSchema = z
   .object({
     // `format` as an ANNOTATION, keeping the existing pattern as the enforced
@@ -77,13 +54,13 @@ export const GetHealthHistoryInputSchema = z
       .describe("Restrict to rows with this health status.")
       .meta({ examples: [HEALTH_STATUS[0]] }),
     classification: z
-      .enum(HEALTH_CLASSIFICATION)
+      .enum(HEALTH_CLASSIFICATION_VALUES)
       .optional()
       .describe(
         "Why a probe ended as it did — the reason behind the status, not the status itself.",
       )
-      .meta({ examples: [HEALTH_CLASSIFICATION[0]] }),
-    sort: sortSchema(HEALTH_SURFACE_SORT_FIELDS).optional(),
+      .meta({ examples: [HEALTH_CLASSIFICATION_VALUES[0]] }),
+    sort: sortSchema(HEALTH_SURFACE_SORT_VALUES).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),
     limit: limitSchema(1000).optional(),

@@ -26,7 +26,7 @@
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 
-const TOP_HOLDERS_SORT_VALUES = [
+export const TOP_HOLDERS_SORT_VALUES = [
   "total_tao",
   "free_tao",
   "delegated_tao",

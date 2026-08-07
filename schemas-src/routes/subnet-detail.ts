@@ -26,6 +26,10 @@ import {
   SubnetStatusSchema,
   SubnetTypeSchema,
 } from "../shared.ts";
+import {
+  CONFIDENCE_LEVEL_VALUES,
+  NATIVE_NAME_QUALITY_VALUES,
+} from "../shared.ts";
 
 const HttpUrlSchema = z.string().regex(/^[Hh][Tt][Tt][Pp][Ss]?:\/\//);
 const HttpOrWssUrlSchema = z
@@ -192,7 +196,7 @@ export const CandidateSurfaceSchema = z
   .object({
     auth: AuthSchema,
     auth_required: z.boolean(),
-    confidence: z.enum(["low", "medium", "high"]).optional(),
+    confidence: z.enum(CONFIDENCE_LEVEL_VALUES).optional(),
     confirmed_by: z.array(z.string()).optional(),
     id: z.string(),
     kind: SurfaceKindSchema,
@@ -441,7 +445,7 @@ export const SubnetDetailSchema = z
     mechanism_count: z.int().min(0).optional(),
     name: z.string(),
     native_name: z.string().nullable().optional(),
-    native_name_quality: z.enum(["chain", "placeholder", "empty"]).optional(),
+    native_name_quality: z.enum(NATIVE_NAME_QUALITY_VALUES).optional(),
     native_slug: z.string().nullable().optional(),
     netuid: z.int().min(0),
     notes: z.string().nullable().optional(),
@@ -529,7 +533,7 @@ export const SurfaceSchema = z
     rate_limit_notes: z.string().optional(),
     review: z
       .object({
-        confidence: z.enum(["low", "medium", "high"]).optional(),
+        confidence: z.enum(CONFIDENCE_LEVEL_VALUES).optional(),
         review_notes: z.string().optional(),
         state: z.enum([
           "community-submitted",

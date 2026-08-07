@@ -26,6 +26,12 @@ import {
   AgentReadinessBlockerSchema,
   CoverageDepthDimensionsSchema,
 } from "../routes/coverage.ts";
+import {
+  AGENT_READINESS_STATUSES,
+  COVERAGE_DEPTH_SEVERITIES,
+  COVERAGE_DEPTH_TIERS,
+} from "../routes/coverage.ts";
+import { PRIORITY_SORT_FIELDS } from "../routes/review-gaps-profile.ts";
 
 export const RegistrySummaryInputSchema = z.object({}).strict();
 export type RegistrySummaryInput = z.infer<typeof RegistrySummaryInputSchema>;
@@ -40,27 +46,6 @@ export type RegistrySummaryOutput = z.infer<typeof RegistrySummaryOutputSchema>;
 // QUERY_ENUMS.agentReadinessStatus and mcp-server.ts's own
 // COVERAGE_DEPTH_TIERS/COVERAGE_DEPTH_SEVERITIES constants), cross-checked
 // against the actual runtime source at the time of writing.
-const COVERAGE_DEPTH_TIERS = [
-  "agent-ready",
-  "machine-usable",
-  "candidate-review",
-  "needs-evidence",
-  "hard-blocked",
-  "missing-interface",
-] as const;
-const COVERAGE_DEPTH_SEVERITIES = [
-  "hard",
-  "missing-data",
-  "needs-review",
-] as const;
-const AGENT_READINESS_STATUSES = [
-  "callable",
-  "base-layer",
-  "candidate",
-  "needs-evidence",
-  "blocked",
-] as const;
-
 export const ListEnrichmentTargetsInputSchema = z
   .object({
     limit: limitSchema(50).optional(),
@@ -199,17 +184,6 @@ const SURFACE_KINDS = SURFACE_KIND_VALUES;
 // The REST route pages this artifact through the review-gap-priorities
 // collection (rows live under `priorities`), not the network-wide `gaps`
 // collection -- same sort fields as list_review_gaps (batch 10, #8074).
-const GAP_PRIORITY_SORT_FIELDS = [
-  "candidate_count",
-  "curation_level",
-  "missing_kinds",
-  "name",
-  "netuid",
-  "priority_score",
-  "surface_count",
-  "verified_candidate_count",
-] as const;
-
 export const ListSubnetGapsInputSchema = z
   .object({
     netuid: netuidSchema(),
@@ -226,7 +200,7 @@ export const ListSubnetGapsInputSchema = z
       .optional()
       .describe("Where the item sits in maintainer review.")
       .meta({ examples: ["pending"] }),
-    sort: sortSchema(GAP_PRIORITY_SORT_FIELDS).optional(),
+    sort: sortSchema(PRIORITY_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),
     limit: limitSchema(100).optional(),

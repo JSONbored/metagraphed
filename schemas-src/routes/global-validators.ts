@@ -14,6 +14,17 @@
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 
+/** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
+export const GLOBAL_VALIDATORS_VALIDATOR_SORTS_VALUES = [
+  "avg_validator_trust",
+  "max_validator_trust",
+  "stake_dominance",
+  "subnet_count",
+  "total_emission",
+  "total_stake",
+  "uid_count",
+] as const;
+
 export const ColdkeyIdentitySchema = z
   .object({
     has_identity: z.boolean(),
@@ -91,15 +102,7 @@ export const GlobalValidatorEntrySchema = z
 export const GlobalValidatorsArtifactSchema = z
   .object({
     schema_version: z.int(),
-    sort: z.enum([
-      "avg_validator_trust",
-      "max_validator_trust",
-      "stake_dominance",
-      "subnet_count",
-      "total_emission",
-      "total_stake",
-      "uid_count",
-    ]),
+    sort: z.enum(GLOBAL_VALIDATORS_VALIDATOR_SORTS_VALUES),
     // #8251: 2000 cap (was 100) so the directory page can fetch the full
     // validator set in one request -- mirrors GLOBAL_VALIDATOR_LIMIT_MAX in
     // src/metagraph-neurons.ts.

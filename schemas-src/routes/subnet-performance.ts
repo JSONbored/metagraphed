@@ -14,6 +14,9 @@ import {
   ScoreDistributionSchema,
 } from "../shared.ts";
 
+/** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
+export const SUBNET_PERFORMANCE_WINDOW_VALUES = ["7d", "30d", "90d"] as const;
+
 export const SubnetPerformanceArtifactSchema = z
   .object({
     schema_version: z.int(),
@@ -78,7 +81,7 @@ export const SubnetPerformanceHistoryResponseSchema = successEnvelopeSchema(
 );
 export const SubnetPerformanceHistoryQuerySchema = z
   .object({
-    window: z.enum(["7d", "30d", "90d"]).optional(),
+    window: z.enum(SUBNET_PERFORMANCE_WINDOW_VALUES).optional(),
     format: z.enum(["json", "csv"]).optional(),
   })
   .strict();

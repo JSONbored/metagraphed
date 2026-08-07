@@ -25,16 +25,10 @@ import {
 } from "./shared.ts";
 import { CURATION_LEVEL_VALUES } from "../shared.ts";
 import { SubnetProfileSchema } from "../routes/subnet-profile.ts";
+import { PROFILE_LEVEL_VALUES } from "../shared.ts";
 
 const SUBNET_TYPE = ["root", "application"] as const;
 const CURATION_LEVEL = CURATION_LEVEL_VALUES;
-const PROFILE_LEVEL = [
-  "directory-only",
-  "identity-partial",
-  "identity-complete",
-  "operational",
-  "adapter-backed",
-] as const;
 const PROFILES_SORT_FIELDS = [
   "candidate_count",
   "completeness_score",
@@ -74,12 +68,12 @@ export const ListProfilesInputSchema = z
       .describe("How confident the machine assessment is.")
       .meta({ examples: ["low"] }),
     profile_level: z
-      .enum(PROFILE_LEVEL)
+      .enum(PROFILE_LEVEL_VALUES)
       .optional()
       .describe(
         "How complete the subnet's profile is, from directory-only upward.",
       )
-      .meta({ examples: [PROFILE_LEVEL[0]] }),
+      .meta({ examples: [PROFILE_LEVEL_VALUES[0]] }),
     q: querySchema().optional(),
     sort: sortSchema(PROFILES_SORT_FIELDS).optional(),
     order: orderSchema().optional(),

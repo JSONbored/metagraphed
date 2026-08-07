@@ -24,6 +24,13 @@ import { HealthStatusSchema } from "../shared.ts";
 import { AuthoritySchema } from "./subnet-detail.ts";
 import { ProviderKindSchema } from "./providers-rpc.ts";
 
+/** This route's own vocabulary, owned here so its MCP tools import rather than restate it (#9799). */
+export const SEARCH_DOCUMENT_TYPE_VALUES = [
+  "subnet",
+  "surface",
+  "provider",
+] as const;
+
 const CountMapSchema = z.record(z.string(), z.int().min(0));
 
 const FreshnessSourceSchema = z
@@ -156,7 +163,7 @@ export type SourceSnapshotsArtifact = z.infer<
 const SearchDocumentSchema = z
   .object({
     id: z.string(),
-    type: z.enum(["subnet", "surface", "provider"]),
+    type: z.enum(SEARCH_DOCUMENT_TYPE_VALUES),
     netuid: z.int().min(0).optional(),
     slug: z.string().optional(),
     title: z.string(),

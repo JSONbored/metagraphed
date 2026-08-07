@@ -38,6 +38,8 @@ import {
   CANDIDATE_STATE_VALUES,
   SURFACE_KIND_VALUES,
 } from "../routes/subnet-detail.ts";
+import { CONFIDENCE_LEVEL_VALUES } from "../shared.ts";
+import { CANDIDATE_SORT_VALUES, SURFACE_SORT_VALUES } from "./shared.ts";
 
 // Symbolic in each hand-written original (src/contracts.ts's QUERY_ENUMS /
 // API_QUERY_COLLECTIONS.*.sort_fields), cross-checked against the actual
@@ -78,14 +80,6 @@ export const ListProvidersOutputSchema = ProvidersArtifactSchema.extend({
 export type ListProvidersOutput = z.infer<typeof ListProvidersOutputSchema>;
 
 const SURFACE_KINDS = SURFACE_KIND_VALUES;
-const SURFACE_SORT_FIELDS = [
-  "id",
-  "kind",
-  "name",
-  "netuid",
-  "provider",
-] as const;
-
 export const ListSurfacesInputSchema = z
   .object({
     netuid: netuidSchema().optional(),
@@ -98,7 +92,7 @@ export const ListSurfacesInputSchema = z
         "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
       )
       .meta({ examples: ["sn-64-chutes-subnet-api"] }),
-    sort: sortSchema(SURFACE_SORT_FIELDS).optional(),
+    sort: sortSchema(SURFACE_SORT_VALUES).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),
     limit: limitSchema(100).optional(),
@@ -113,17 +107,6 @@ export const ListSurfacesOutputSchema = SurfacesArtifactSchema.extend({
 export type ListSurfacesOutput = z.infer<typeof ListSurfacesOutputSchema>;
 
 const CANDIDATE_STATES = CANDIDATE_STATE_VALUES;
-const CONFIDENCE_LEVELS = ["low", "medium", "high"] as const;
-const CANDIDATES_SORT_FIELDS = [
-  "confidence",
-  "id",
-  "kind",
-  "name",
-  "netuid",
-  "provider",
-  "state",
-] as const;
-
 export const ListCandidatesInputSchema = z
   .object({
     netuid: netuidSchema().optional(),
@@ -142,11 +125,11 @@ export const ListCandidatesInputSchema = z
       )
       .meta({ examples: ["sn-64-chutes-subnet-api"] }),
     confidence: z
-      .enum(CONFIDENCE_LEVELS)
+      .enum(CONFIDENCE_LEVEL_VALUES)
       .optional()
       .describe("How confident the machine assessment is.")
-      .meta({ examples: [CONFIDENCE_LEVELS[0]] }),
-    sort: sortSchema(CANDIDATES_SORT_FIELDS).optional(),
+      .meta({ examples: [CONFIDENCE_LEVEL_VALUES[0]] }),
+    sort: sortSchema(CANDIDATE_SORT_VALUES).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),
     limit: limitSchema(1000).optional(),

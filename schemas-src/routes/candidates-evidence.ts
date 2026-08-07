@@ -24,6 +24,7 @@
 import { z } from "zod";
 import { ArtifactBaseSchema } from "../envelope.ts";
 import { CandidateSurfaceSchema, SourceTierSchema } from "./subnet-detail.ts";
+import { CONFIDENCE_LEVEL_VALUES } from "../shared.ts";
 
 // ---- GET /api/v1/candidates -> CandidatesArtifact ----
 
@@ -61,7 +62,7 @@ export const EvidenceClaimSchema = z
     source_url: z.string(),
     source_type: z.string(),
     source_tier: SourceTierSchema,
-    confidence: z.enum(["low", "medium", "high"]),
+    confidence: z.enum(CONFIDENCE_LEVEL_VALUES),
     support_summary: z.string(),
     limits: z.string(),
     verified_at: z.string().nullable().optional(),

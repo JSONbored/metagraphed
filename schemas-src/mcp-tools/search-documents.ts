@@ -26,18 +26,18 @@ import {
 } from "./shared.ts";
 import { SearchIndexArtifactSchema } from "../routes/evidence-search.ts";
 import { SearchArtifactSchema } from "../routes/evidence-search.ts";
+import { SEARCH_DOCUMENT_TYPE_VALUES } from "../routes/evidence-search.ts";
 
-const DOCUMENT_TYPES = ["subnet", "surface", "provider"] as const;
 const DOCUMENT_SORT_FIELDS = ["netuid", "slug", "title", "type"] as const;
 
 export const ListSearchIndexInputSchema = z
   .object({
     q: querySchema().optional(),
     type: z
-      .enum(DOCUMENT_TYPES)
+      .enum(SEARCH_DOCUMENT_TYPE_VALUES)
       .optional()
       .describe("Which entity kind to search over.")
-      .meta({ examples: [DOCUMENT_TYPES[0]] }),
+      .meta({ examples: [SEARCH_DOCUMENT_TYPE_VALUES[0]] }),
     netuid: netuidSchema().optional(),
     sort: sortSchema(DOCUMENT_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
@@ -61,10 +61,10 @@ export const ListSearchInputSchema = z
   .object({
     q: querySchema().optional(),
     type: z
-      .enum(DOCUMENT_TYPES)
+      .enum(SEARCH_DOCUMENT_TYPE_VALUES)
       .optional()
       .describe("Which entity kind to search over.")
-      .meta({ examples: [DOCUMENT_TYPES[0]] }),
+      .meta({ examples: [SEARCH_DOCUMENT_TYPE_VALUES[0]] }),
     netuid: netuidSchema().optional(),
     sort: sortSchema(DOCUMENT_SORT_FIELDS).optional(),
     order: orderSchema().optional(),

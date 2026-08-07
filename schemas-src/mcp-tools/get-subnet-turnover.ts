@@ -2,19 +2,18 @@
 // /api/v1/subnets/{netuid}/turnover, which is not one of schemas-src/routes/'s
 // covered pilot routes -- no existing Zod schema to reuse. Modeled fresh,
 // shallow, from the hand-written literal it replaces. Window enum
-// hardcoded from src/neuron-history.ts's HISTORY_WINDOWS at the time of
+// hardcoded from src/neuron-history.ts's SUBNET_TURNOVER_WINDOW_VALUES at the time of
 // writing (mirrors the pilot batch's ECONOMICS_SORT_FIELDS precedent -- not
 // cross-imported).
 import { z } from "zod";
 import { SubnetTurnoverArtifactSchema } from "../routes/subnet-turnover.ts";
 import { netuidSchema, windowSchema } from "./shared.ts";
-
-const HISTORY_WINDOWS = ["7d", "30d", "90d", "1y", "all"] as const;
+import { SUBNET_TURNOVER_WINDOW_VALUES } from "../routes/subnet-turnover.ts";
 
 export const GetSubnetTurnoverInputSchema = z
   .object({
     netuid: netuidSchema(),
-    window: windowSchema(HISTORY_WINDOWS).optional(),
+    window: windowSchema(SUBNET_TURNOVER_WINDOW_VALUES).optional(),
     changes: z
       .boolean()
       .optional()

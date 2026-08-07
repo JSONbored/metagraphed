@@ -18,6 +18,7 @@ import {
   SubnetStatusSchema,
   SubnetTypeSchema,
 } from "../shared.ts";
+import { NATIVE_NAME_QUALITY_VALUES } from "../shared.ts";
 
 const HttpUrlSchema = z.string().regex(/^[Hh][Tt][Tt][Pp][Ss]?:\/\//);
 
@@ -85,7 +86,7 @@ export const SubnetIndexEntrySchema = z
     mechanism_count: z.int().min(0).optional(),
     name: z.string(),
     native_name: z.string().nullable().optional(),
-    native_name_quality: z.enum(["chain", "placeholder", "empty"]).optional(),
+    native_name_quality: z.enum(NATIVE_NAME_QUALITY_VALUES).optional(),
     native_slug: z.string().nullable().optional(),
     netuid: z.int().min(0),
     official_surface_count: z.int().min(0).optional(),

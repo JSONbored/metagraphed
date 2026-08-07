@@ -36,6 +36,11 @@ import { ValidatorHistoryArtifactSchema } from "../routes/validator-history.ts";
 import { ValidatorNominatorsArtifactSchema } from "../routes/validator-nominators.ts";
 import { NeuronSchema } from "../routes/subnet-metagraph.ts";
 import { CompareValidatorEntrySchema } from "../routes/compare-validators.ts";
+import { GLOBAL_VALIDATORS_VALIDATOR_SORTS_VALUES } from "../routes/global-validators.ts";
+import {
+  VALIDATOR_NOMINATORS_NOMINATOR_SORTS_VALUES,
+  VALIDATOR_NOMINATORS_WINDOW_VALUES,
+} from "../routes/validator-nominators.ts";
 
 // Mirrors workers/config.ts's SS58_ADDRESS_PATTERN (inlined rather than
 // cross-imported from workers/, matching this directory's existing
@@ -101,21 +106,11 @@ export type ListSubnetValidatorsOutput = z.infer<
 >;
 
 // Symbolic in the hand-written original (src/metagraph-neurons.ts's
-// GLOBAL_VALIDATOR_SORTS/DEFAULT_GLOBAL_VALIDATOR_SORT/*_LIMIT_*), cross-
+// GLOBAL_VALIDATORS_VALIDATOR_SORTS_VALUES/DEFAULT_GLOBAL_VALIDATOR_SORT/*_LIMIT_*), cross-
 // checked against the actual runtime source at the time of writing.
-const GLOBAL_VALIDATOR_SORTS = [
-  "avg_validator_trust",
-  "max_validator_trust",
-  "stake_dominance",
-  "subnet_count",
-  "total_emission",
-  "total_stake",
-  "uid_count",
-] as const;
-
 export const ListGlobalValidatorsInputSchema = z
   .object({
-    sort: sortSchema(GLOBAL_VALIDATOR_SORTS).optional(),
+    sort: sortSchema(GLOBAL_VALIDATORS_VALIDATOR_SORTS_VALUES).optional(),
     // Was a hardcoded 100 while this tool's own description — interpolated from
     // GLOBAL_VALIDATOR_LIMIT_MAX — said "max 2000", and the handler clamped to 2000.
     // The tool advertised 2000 in prose, 100 in schema, and served 2000. Now the
@@ -192,20 +187,13 @@ export type CompareValidatorsOutput = z.infer<
 >;
 
 // Symbolic in the hand-written original (src/validator-nominators.ts's
-// NOMINATOR_WINDOWS/NOMINATOR_SORTS/*_LIMIT_*), cross-checked against the
+// VALIDATOR_NOMINATORS_WINDOW_VALUES/VALIDATOR_NOMINATORS_NOMINATOR_SORTS_VALUES/*_LIMIT_*), cross-checked against the
 // actual runtime source at the time of writing.
-const NOMINATOR_WINDOWS = ["7d", "30d", "90d"] as const;
-const NOMINATOR_SORTS = [
-  "net_staked",
-  "gross_staked",
-  "last_activity",
-] as const;
-
 export const GetValidatorNominatorsInputSchema = z
   .object({
     hotkey: accountKeySchema("hotkey"),
-    window: windowSchema(NOMINATOR_WINDOWS).optional(),
-    sort: sortSchema(NOMINATOR_SORTS).optional(),
+    window: windowSchema(VALIDATOR_NOMINATORS_WINDOW_VALUES).optional(),
+    sort: sortSchema(VALIDATOR_NOMINATORS_NOMINATOR_SORTS_VALUES).optional(),
     limit: limitSchema(100).optional(),
     offset: offsetSchema().optional(),
     coldkey: accountKeySchema("coldkey").optional(),

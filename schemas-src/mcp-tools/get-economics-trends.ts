@@ -21,12 +21,11 @@
 import { z } from "zod";
 import { EconomicsTrendsArtifactSchema } from "../routes/economics-trends.ts";
 import { windowSchema } from "./shared.ts";
-
-const HISTORY_WINDOWS = ["7d", "30d", "90d", "1y", "all"] as const;
+import { ECONOMICS_TRENDS_WINDOW_VALUES } from "../routes/economics-trends.ts";
 
 export const GetEconomicsTrendsInputSchema = z
   .object({
-    window: windowSchema(HISTORY_WINDOWS).optional(),
+    window: windowSchema(ECONOMICS_TRENDS_WINDOW_VALUES).optional(),
   })
   .strict();
 export type GetEconomicsTrendsInput = z.infer<

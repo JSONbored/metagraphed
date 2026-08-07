@@ -31,18 +31,18 @@ import {
   AccountServingArtifactSchema,
   AccountStakeMovesArtifactSchema,
 } from "../routes/account-activity.ts";
+import { WINDOW_ENUM_90D } from "../routes/account-activity-registrations.ts";
 
 // Symbolic in each hand-written original (src/account-*.ts's own
 // *_WINDOWS/DEFAULT_*_WINDOW constants), cross-checked against the actual
 // runtime source at the time of writing. Six of the seven tools share the
 // same 3-way set; get_account_weight_setters uses a 2-way set.
-const FOOTPRINT_WINDOWS_3 = ["7d", "30d", "90d"] as const;
 const WEIGHT_SETTERS_WINDOWS_2 = ["7d", "30d"] as const;
 
 export const GetAccountStakeMovesInputSchema = z
   .object({
     ss58: ss58Schema(),
-    window: windowSchema(FOOTPRINT_WINDOWS_3).optional(),
+    window: windowSchema(WINDOW_ENUM_90D).optional(),
   })
   .strict();
 export type GetAccountStakeMovesInput = z.infer<
@@ -57,7 +57,7 @@ export type GetAccountStakeMovesOutput = z.infer<
 export const GetAccountAxonRemovalsInputSchema = z
   .object({
     ss58: ss58Schema(),
-    window: windowSchema(FOOTPRINT_WINDOWS_3).optional(),
+    window: windowSchema(WINDOW_ENUM_90D).optional(),
   })
   .strict();
 export type GetAccountAxonRemovalsInput = z.infer<
@@ -73,7 +73,7 @@ export type GetAccountAxonRemovalsOutput = z.infer<
 export const GetAccountPrometheusInputSchema = z
   .object({
     ss58: ss58Schema(),
-    window: windowSchema(FOOTPRINT_WINDOWS_3).optional(),
+    window: windowSchema(WINDOW_ENUM_90D).optional(),
   })
   .strict();
 export type GetAccountPrometheusInput = z.infer<
@@ -88,7 +88,7 @@ export type GetAccountPrometheusOutput = z.infer<
 export const GetAccountRegistrationsInputSchema = z
   .object({
     ss58: ss58Schema(),
-    window: windowSchema(FOOTPRINT_WINDOWS_3).optional(),
+    window: windowSchema(WINDOW_ENUM_90D).optional(),
   })
   .strict();
 export type GetAccountRegistrationsInput = z.infer<
@@ -120,7 +120,7 @@ export type GetAccountWeightSettersOutput = z.infer<
 export const GetAccountServingInputSchema = z
   .object({
     ss58: ss58Schema(),
-    window: windowSchema(FOOTPRINT_WINDOWS_3).optional(),
+    window: windowSchema(WINDOW_ENUM_90D).optional(),
   })
   .strict();
 export type GetAccountServingInput = z.infer<
@@ -135,7 +135,7 @@ export type GetAccountServingOutput = z.infer<
 export const GetAccountDeregistrationsInputSchema = z
   .object({
     ss58: ss58Schema(),
-    window: windowSchema(FOOTPRINT_WINDOWS_3).optional(),
+    window: windowSchema(WINDOW_ENUM_90D).optional(),
   })
   .strict();
 export type GetAccountDeregistrationsInput = z.infer<

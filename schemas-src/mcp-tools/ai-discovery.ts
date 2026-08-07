@@ -6,26 +6,21 @@
 import { z } from "zod";
 import { limitSchema, netuidSchema } from "./shared.ts";
 import { AgentCatalogSubnetEntrySchema } from "../routes/agent-catalog.ts";
+import { ECONOMIC_LEADERBOARD_BOARDS } from "../routes/registry-summary-leaderboards.ts";
+import { SEARCH_DOCUMENT_TYPE_VALUES } from "../routes/evidence-search.ts";
 
 // Symbolic in the hand-written original (src/health-serving.ts's
 // ECONOMIC_BOARD_SPECS[].key), cross-checked against the actual runtime
 // source at the time of writing.
-const ECONOMIC_LEADERBOARD_BOARDS = [
-  "open-slots",
-  "cheapest-registration",
-  "highest-emission",
-  "validator-headroom",
-  "biggest-alpha-gain-1d",
-  "biggest-alpha-gain-7d",
-] as const;
-
-// Symbolic in the hand-written original (src/ai-search.ts's SEMANTIC_TYPES),
+// Symbolic in the hand-written original (src/ai-search.ts's SEARCH_DOCUMENT_TYPE_VALUES),
 // cross-checked against the actual runtime source at the time of writing.
 // Shared by semantic_search and ask's `type` input field below (mirrors
 // mcp-server.ts's own semanticTypeSchema() helper, used by both).
-const SEMANTIC_TYPES = ["subnet", "surface", "provider"] as const;
 const SemanticTypeSchema = z
-  .union([z.enum(SEMANTIC_TYPES), z.array(z.enum(SEMANTIC_TYPES))])
+  .union([
+    z.enum(SEARCH_DOCUMENT_TYPE_VALUES),
+    z.array(z.enum(SEARCH_DOCUMENT_TYPE_VALUES)),
+  ])
   .optional();
 
 export const FindSubnetOpportunitiesInputSchema = z

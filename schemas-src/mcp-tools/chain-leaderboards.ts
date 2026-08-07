@@ -31,14 +31,14 @@ import {
 import { ChainStakeFlowArtifactSchema } from "../routes/chain-stake-flow.ts";
 import { ChainTurnoverArtifactSchema } from "../routes/chain-turnover.ts";
 import { ChainWeightSettersArtifactSchema } from "../routes/chain-weight-setters.ts";
+import { CHAIN_TURNOVER_WINDOW_VALUES } from "../routes/chain-turnover.ts";
 
 const WINDOWS_2 = ["7d", "30d"] as const;
-const WINDOWS_3 = ["7d", "30d", "90d"] as const;
 const LIMIT_MAX_100 = 100;
 
 export const GetChainTurnoverInputSchema = z
   .object({
-    window: windowSchema(WINDOWS_3).optional(),
+    window: windowSchema(CHAIN_TURNOVER_WINDOW_VALUES).optional(),
     limit: limitSchema(LIMIT_MAX_100).optional(),
   })
   .strict();

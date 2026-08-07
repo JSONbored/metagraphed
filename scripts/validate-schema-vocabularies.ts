@@ -32,49 +32,23 @@ const SCHEMA_DIRS = [
  * owner has not been extracted yet -- delete the entry when it is, never add
  * one to silence a NEW copy. Keyed by the sorted value set, so a copy that
  * merely reorders the list is the same entry. */
-const NOT_YET_OWNED: string[] = [
+const COINCIDENT_BY_DOMAIN: string[] = [
+  // WINDOW SETS. Each route chooses the windows it serves, and schemas-src
+  // declares six DIFFERENT sets -- 30d|7d, 30d|7d|90d, 1y|30d|7d|90d|all,
+  // 24h|30d|7d|90d, 1h|24h|30d|7d, 1d|1h. Six sets is the proof each route
+  // chose: coupling them would let one domain's change silently alter every
+  // other. Each route now owns its own tuple and its MCP tool imports THAT --
+  // what is left below is two routes happening to offer the same three.
   "1y|30d|7d|90d|all",
   "30d|7d|90d",
+  // Per-domain lifecycle/verdict sets that coincide in value only.
   "active|deprecated|parked|pending",
-  "adapter-backed|directory-only|identity-complete|identity-partial|operational",
-  "adapter_score|candidate_count|completeness_score|curation_level|endpoint_count|evidence_action|identity_level|identity_surface_count|lane|name|netuid|operational_interface_count|priority_score|profile_level|review_state|stale_candidate_count|surface_count|verified_candidate_count",
-  "agent-ready|candidate-review|hard-blocked|machine-usable|missing-interface|needs-evidence",
   "all|in|out",
-  "archive|subtensor-rpc|subtensor-wss",
-  "auth-required|content-mismatch|dead|live|rate-limited|redirected|timeout|transient|unsafe|unsupported|wrong-chain",
-  "auto_review_candidate|evidence_action|identity_level|kind|lane|manual_review_required|name|netuid|priority_score|profile_level|submission_route|target_action|target_type",
-  "avg_validator_trust|max_validator_trust|stake_dominance|subnet_count|total_emission|total_stake|uid_count",
   "base-layer|blocked|callable|candidate|needs-evidence",
   "bearish|bullish|neutral",
-  "biggest-alpha-gain-1d|biggest-alpha-gain-7d|cheapest-registration|highest-emission|open-slots|validator-headroom",
-  "candidate_api_count|candidate_api_kinds|curation_level|name|netuid|operational_kinds|operational_surface_count|priority_score|recommended_adapter_kind",
-  "candidate_count|completeness_score|identity_level|identity_promotion_kind_count|identity_surface_count|live_identity_candidate_kind_count|missing_critical_count|name|native_identity_signal_count|native_name_quality|netuid|priority_score|profile_level|stale_identity_candidate_kind_count",
-  "candidate_count|curation_level|missing_kinds|name|netuid|priority_score|surface_count|verified_candidate_count",
-  "chain|empty|placeholder",
-  "claim|source_url|subject|verified_at",
-  "classification|kind|last_checked|last_ok|latency_ms|netuid|provider|status|status_code|surface_id|verified_at",
-  "complete|directory|none|partial",
-  "confidence|id|kind|name|netuid|provider|state",
-  "coverage_level|curation_level|gap_count|name|netuid",
-  "coverage_level|curation_level|name|netuid",
-  "critical|info|warning",
-  "custom-adapter|data-artifact-adapter|generic-openapi-or-custom|stream-adapter",
-  "delegated_tao|free_tao|net_flow_30d|net_flow_7d|net_flow_90d|total_tao",
   "dual|git|r2",
-  "eligible_count|endpoint_count|id|kind",
-  "emission|entity_emission|entity_stake|stake|validator_stake",
-  "emission|neurons|stake|validators",
-  "evidence_action|lane|name|netuid|priority_score",
-  "gini|holders|nakamoto_coefficient|netuid|top_1pct_share|total",
-  "gross_staked|last_activity|net_staked",
   "hard-blocked|missing-data|needs-review|none",
-  "hard|missing-data|needs-review",
-  "high|low|medium",
-  "id|kind|name|netuid|provider",
-  "kind|last_checked|latency_ms|layer|netuid|pool_eligible|provider|publication_state|score|status",
-  "last_active|stake_dominance|subnet_count|total_emission|total_stake|uid_count|validator_count",
   "missing-probe|not-monitored|probe-derived",
-  "provider|subnet|surface",
 ];
 
 const errors: string[] = [];
@@ -115,7 +89,7 @@ for (const site of sites) {
   byVocabulary.get(key)!.add(site.file);
 }
 
-const allowed = new Set(NOT_YET_OWNED);
+const allowed = new Set(COINCIDENT_BY_DOMAIN);
 const duplicated = [...byVocabulary.entries()].filter(
   ([, files]) => files.size > 1,
 );
@@ -146,7 +120,7 @@ const stale = [...allowed]
   .sort();
 if (stale.length > 0) {
   errors.push(
-    `${stale.length} allowlist entr(y/ies) no longer name a duplicated vocabulary — delete them:\n` +
+    `${stale.length} allowlist entr(y/ies) no longer name a duplicated vocabulary — delete them (the coincidence resolved itself):\n` +
       stale.map((key) => `    [${key.split("|").join(", ")}]`).join("\n"),
   );
 }
@@ -161,5 +135,5 @@ if (errors.length > 0) {
 
 console.log(
   `Schema-vocabulary validation passed: ${byVocabulary.size} distinct vocabularies, ` +
-    `${duplicated.length} still restated in more than one file (all declared debt against #9799).`,
+    `${duplicated.length} still restated in more than one file (all per-domain coincidences, not debt — see COINCIDENT_BY_DOMAIN).`,
 );

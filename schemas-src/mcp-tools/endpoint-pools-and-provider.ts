@@ -33,14 +33,8 @@ import {
   SURFACE_KIND_VALUES,
 } from "../routes/subnet-detail.ts";
 import { HEALTH_STATUS_VALUES } from "../shared.ts";
-
-const POOL_KINDS = ["subtensor-rpc", "subtensor-wss", "archive"] as const;
-const POOL_SORT_FIELDS = [
-  "eligible_count",
-  "endpoint_count",
-  "id",
-  "kind",
-] as const;
+import { ENDPOINT_INCIDENT_SEVERITY_VALUES } from "../routes/endpoints-pools.ts";
+import { ENDPOINT_POOL_SORT_VALUES, ENDPOINT_SORT_VALUES } from "./shared.ts";
 
 export const ListEndpointPoolsInputSchema = z
   .object({
@@ -51,7 +45,7 @@ export const ListEndpointPoolsInputSchema = z
         "The record's stable identifier, as returned by the corresponding list tool. Exact match; an unknown id yields an empty result rather than an error.",
       )
       .meta({ examples: ["sn-64-chutes-subnet-api"] }),
-    kind: kindSchema(POOL_KINDS).optional(),
+    kind: kindSchema(ENDPOINT_LAYER_VALUES).optional(),
     min_eligible_count: z
       .number()
       .optional()
@@ -80,7 +74,7 @@ export const ListEndpointPoolsInputSchema = z
         "Inclusive upper bound on endpoint count; rows above it are excluded.",
       )
       .meta({ examples: [10] }),
-    sort: sortSchema(POOL_SORT_FIELDS).optional(),
+    sort: sortSchema(ENDPOINT_POOL_SORT_VALUES).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),
     limit: limitSchema(100).optional(),
@@ -104,7 +98,6 @@ export type ListEndpointPoolsOutput = z.infer<
 
 const SURFACE_KINDS = SURFACE_KIND_VALUES;
 const HEALTH_STATUSES = HEALTH_STATUS_VALUES;
-const INCIDENT_SEVERITIES = ["critical", "warning", "info"] as const;
 const INCIDENT_STATES = ["active", "resolved"] as const;
 const INCIDENT_SORT_FIELDS = [
   "detected_at",
@@ -125,10 +118,10 @@ export const ListEndpointIncidentsInputSchema = z
     provider: providerSlugSchema().optional(),
     status: kindSchema(HEALTH_STATUSES).optional(),
     severity: z
-      .enum(INCIDENT_SEVERITIES)
+      .enum(ENDPOINT_INCIDENT_SEVERITY_VALUES)
       .optional()
       .describe("How serious the incident is.")
-      .meta({ examples: [INCIDENT_SEVERITIES[0]] }),
+      .meta({ examples: [ENDPOINT_INCIDENT_SEVERITY_VALUES[0]] }),
     state: z
       .enum(INCIDENT_STATES)
       .optional()
@@ -160,19 +153,6 @@ export type ListEndpointIncidentsOutput = z.infer<
 
 const ENDPOINT_LAYERS = ENDPOINT_LAYER_VALUES;
 const ENDPOINT_PUBLICATION_STATES = ENDPOINT_PUBLICATION_STATE_VALUES;
-const ENDPOINT_SORT_FIELDS = [
-  "kind",
-  "last_checked",
-  "latency_ms",
-  "layer",
-  "netuid",
-  "pool_eligible",
-  "provider",
-  "publication_state",
-  "score",
-  "status",
-] as const;
-
 export const ListProviderEndpointsInputSchema = z
   .object({
     slug: z
@@ -234,7 +214,7 @@ export const ListProviderEndpointsInputSchema = z
         "Inclusive upper bound on endpoint score; rows above it are excluded.",
       )
       .meta({ examples: [100] }),
-    sort: sortSchema(ENDPOINT_SORT_FIELDS).optional(),
+    sort: sortSchema(ENDPOINT_SORT_VALUES).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),
     limit: limitSchema(100).optional(),

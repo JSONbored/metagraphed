@@ -16,13 +16,12 @@
 import { z } from "zod";
 import { netuidSchema, windowSchema } from "./shared.ts";
 import { SubnetYieldHistoryArtifactSchema } from "../routes/subnet-yield.ts";
-
-const YIELD_HISTORY_WINDOWS = ["7d", "30d", "90d"] as const;
+import { SUBNET_YIELD_WINDOW_VALUES } from "../routes/subnet-yield.ts";
 
 export const GetSubnetYieldHistoryInputSchema = z
   .object({
     netuid: netuidSchema(),
-    window: windowSchema(YIELD_HISTORY_WINDOWS).optional(),
+    window: windowSchema(SUBNET_YIELD_WINDOW_VALUES).optional(),
   })
   .strict();
 export type GetSubnetYieldHistoryInput = z.infer<

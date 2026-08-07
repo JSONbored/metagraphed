@@ -13,6 +13,9 @@
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 
+/** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
+export const SUBNET_CONCENTRATION_WINDOW_VALUES = ["7d", "30d", "90d"] as const;
+
 const ConcentrationLensSchema = z
   .object({
     holders: z.int().min(0).optional(),
@@ -86,7 +89,7 @@ export const SubnetConcentrationHistoryResponseSchema = successEnvelopeSchema(
 );
 export const SubnetConcentrationHistoryQuerySchema = z
   .object({
-    window: z.enum(["7d", "30d", "90d"]).optional(),
+    window: z.enum(SUBNET_CONCENTRATION_WINDOW_VALUES).optional(),
   })
   .strict();
 export type SubnetConcentrationHistoryQuery = z.infer<

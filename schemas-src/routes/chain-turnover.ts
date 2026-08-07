@@ -5,6 +5,9 @@
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 
+/** This route's own vocabulary, owned here so its MCP tool imports rather than restates it (#9799). */
+export const CHAIN_TURNOVER_WINDOW_VALUES = ["7d", "30d", "90d"] as const;
+
 const StabilityDistributionSchema = z
   .object({
     count: z.int().min(0),
@@ -21,7 +24,7 @@ const StabilityDistributionSchema = z
 export const ChainTurnoverArtifactSchema = z
   .object({
     schema_version: z.int(),
-    window: z.enum(["7d", "30d", "90d"]).nullable(),
+    window: z.enum(CHAIN_TURNOVER_WINDOW_VALUES).nullable(),
     start_date: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)

@@ -23,17 +23,10 @@ import {
   SURFACE_KIND_VALUES,
   SurfaceKindSchema,
 } from "./subnet-detail.ts";
+import { IDENTITY_LEVEL_VALUES, PROFILE_LEVEL_VALUES } from "../shared.ts";
 
 const SURFACE_KINDS = SURFACE_KIND_VALUES;
 const CURATION_LEVELS = CURATION_LEVEL_VALUES;
-const PROFILE_LEVELS = [
-  "directory-only",
-  "identity-partial",
-  "identity-complete",
-  "operational",
-  "adapter-backed",
-] as const;
-const IDENTITY_LEVELS = ["none", "directory", "partial", "complete"] as const;
 const BOOLEAN_STRINGS = ["true", "false"] as const;
 
 /** The vocabulary, exported as a tuple so every other schema that needs
@@ -130,7 +123,7 @@ export const ReviewEnrichmentTargetQueueContextSchema = z
     endpoint_count: z.int().min(0),
     identity_surface_count: z.int().min(0).max(3),
     operational_interface_count: z.int().min(0),
-    profile_level: z.enum(PROFILE_LEVELS),
+    profile_level: z.enum(PROFILE_LEVEL_VALUES),
     review_state: ReviewStateSchema,
     source_url_count: z.int().min(0),
     stale_candidate_count: z.int().min(0),
@@ -139,7 +132,7 @@ export const ReviewEnrichmentTargetQueueContextSchema = z
   })
   .strict();
 
-const QUEUE_SORT_FIELDS = [
+export const QUEUE_SORT_FIELDS = [
   "adapter_score",
   "candidate_count",
   "completeness_score",
@@ -166,9 +159,9 @@ export const EnrichmentQueueQuerySchema = z
     netuid: z.int().min(0).optional(),
     lane: ReviewEnrichmentLaneSchema.optional(),
     evidence_action: ReviewEvidenceActionSchema.optional(),
-    identity_level: z.enum(IDENTITY_LEVELS).optional(),
+    identity_level: z.enum(IDENTITY_LEVEL_VALUES).optional(),
     curation_level: z.enum(CURATION_LEVELS).optional(),
-    profile_level: z.enum(PROFILE_LEVELS).optional(),
+    profile_level: z.enum(PROFILE_LEVEL_VALUES).optional(),
     direct_submission_kinds: z.enum(SURFACE_KINDS).optional(),
     missing_kinds: z.enum(SURFACE_KINDS).optional(),
     manual_review_required: z.enum(BOOLEAN_STRINGS).optional(),
@@ -194,7 +187,7 @@ export const ReviewEnrichmentQueueEntrySchema = z
     direct_submission_kinds: z.array(SurfaceKindSchema),
     endpoint_count: z.int().min(0),
     evidence_action: ReviewEvidenceActionSchema,
-    identity_level: z.enum(IDENTITY_LEVELS),
+    identity_level: z.enum(IDENTITY_LEVEL_VALUES),
     identity_surface_count: z.int().min(0).max(3),
     lane: ReviewEnrichmentLaneSchema,
     manual_review_required: z.boolean(),
@@ -204,7 +197,7 @@ export const ReviewEnrichmentQueueEntrySchema = z
     netuid: z.int().min(0),
     operational_interface_count: z.int().min(0),
     priority_score: z.int().min(0),
-    profile_level: z.enum(PROFILE_LEVELS),
+    profile_level: z.enum(PROFILE_LEVEL_VALUES),
     reason_codes: z.array(z.string()),
     recommended_action: z.string(),
     review_state: ReviewStateSchema,
@@ -247,7 +240,7 @@ export const ReviewEnrichmentQueueResponseSchema = successEnvelopeSchema(
   ReviewEnrichmentQueueArtifactSchema,
 );
 
-const EVIDENCE_SORT_FIELDS = [
+export const EVIDENCE_SORT_FIELDS = [
   "evidence_action",
   "lane",
   "name",
@@ -314,7 +307,7 @@ export const ReviewEnrichmentEvidenceResponseSchema = successEnvelopeSchema(
   ReviewEnrichmentEvidenceArtifactSchema,
 );
 
-const TARGET_SORT_FIELDS = [
+export const TARGET_SORT_FIELDS = [
   "auto_review_candidate",
   "evidence_action",
   "identity_level",
@@ -339,8 +332,8 @@ export const EnrichmentTargetsQuerySchema = z
     kind: z.enum(SURFACE_KINDS).optional(),
     lane: ReviewEnrichmentLaneSchema.optional(),
     evidence_action: ReviewEvidenceActionSchema.optional(),
-    identity_level: z.enum(IDENTITY_LEVELS).optional(),
-    profile_level: z.enum(PROFILE_LEVELS).optional(),
+    identity_level: z.enum(IDENTITY_LEVEL_VALUES).optional(),
+    profile_level: z.enum(PROFILE_LEVEL_VALUES).optional(),
     submission_route: ReviewEnrichmentSubmissionRouteSchema.optional(),
     auto_review_candidate: z.enum(BOOLEAN_STRINGS).optional(),
     manual_review_required: z.enum(BOOLEAN_STRINGS).optional(),
@@ -364,7 +357,7 @@ export const ReviewEnrichmentTargetSchema = z
     candidate_evidence: ReviewCandidateEvidenceSchema.nullable(),
     contribution_prompt: z.string(),
     evidence_action: ReviewEvidenceActionSchema,
-    identity_level: z.enum(IDENTITY_LEVELS),
+    identity_level: z.enum(IDENTITY_LEVEL_VALUES),
     kind: SurfaceKindSchema.nullable(),
     lane: ReviewEnrichmentLaneSchema,
     manual_review_required: z.boolean(),
@@ -372,7 +365,7 @@ export const ReviewEnrichmentTargetSchema = z
     name: z.string(),
     netuid: z.int().min(0),
     priority_score: z.int().min(0),
-    profile_level: z.enum(PROFILE_LEVELS),
+    profile_level: z.enum(PROFILE_LEVEL_VALUES),
     queue_context: ReviewEnrichmentTargetQueueContextSchema,
     reason_codes: z.array(z.string()),
     recommended_action: z.string(),
@@ -427,13 +420,13 @@ export const ReviewEnrichmentTargetsResponseSchema = successEnvelopeSchema(
   ReviewEnrichmentTargetsArtifactSchema,
 );
 
-const RECOMMENDED_ADAPTER_KINDS = [
+export const RECOMMENDED_ADAPTER_KINDS = [
   "custom-adapter",
   "data-artifact-adapter",
   "generic-openapi-or-custom",
   "stream-adapter",
 ] as const;
-const ADAPTER_CANDIDATES_SORT_FIELDS = [
+export const ADAPTER_CANDIDATES_SORT_FIELDS = [
   "candidate_api_count",
   "candidate_api_kinds",
   "curation_level",

@@ -53,6 +53,13 @@ import {
   RpcPoolSchema,
 } from "./providers-rpc.ts";
 
+/** This route's own vocabulary, owned here so its MCP tools import rather than restate it (#9799). */
+export const ENDPOINT_INCIDENT_SEVERITY_VALUES = [
+  "critical",
+  "warning",
+  "info",
+] as const;
+
 // ---- GET /api/v1/surfaces -> SurfacesArtifact ----
 
 export const SurfacesArtifactSchema = ArtifactBaseSchema.extend({
@@ -134,7 +141,7 @@ export const EndpointIncidentSchema = z
     // declared-but-currently-unproducible enum value, kept for contract
     // stability (matches QUERY_ENUMS.endpointIncidentSeverity, the same list
     // validate-schema-enums.ts checks this field against).
-    severity: z.enum(["critical", "warning", "info"]),
+    severity: z.enum(ENDPOINT_INCIDENT_SEVERITY_VALUES),
     // Always "active" in real output -- "resolved" is declared-but-
     // currently-unproducible (the builder hardcodes state: "active"), kept
     // for the same contract-stability/enum-drift-check reason as severity.
