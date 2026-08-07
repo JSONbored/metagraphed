@@ -1,6 +1,7 @@
 import path from "node:path";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { pathToFileURL } from "node:url";
+import { parse } from "yaml";
 import {
   buildTimestamp,
   hashJson,
@@ -651,23 +652,21 @@ export async function fetchJson(url: string, redirectCount = 0): Promise<Row> {
       };
     }
     const text = limitedBody.text;
-    let body = null;
-    try {
-      body = text ? JSON.parse(text) : null;
-    } catch {
-      body = null;
-    }
-    if (!isJsonContentType(contentType) && body === null) {
+    const parsed = parseOpenApiDocument(text, contentType, url);
+    if (!isJsonContentType(contentType) && parsed === null) {
       return {
         ok: false,
         status: "content-mismatch",
-        error: "response was not JSON",
+        // Not "was not JSON" any more: YAML is captured too, so the honest
+        // statement is that nothing parsed as an OpenAPI document at all.
+        error: "response did not parse as JSON or YAML",
         status_code: response.status,
         content_type: contentType || null,
         latency_ms: Math.round(performance.now() - started),
         captured_at: new Date().toISOString(),
       };
     }
+    const body = parsed;
     return {
       ok: true,
       status: "captured",
@@ -688,6 +687,73 @@ export async function fetchJson(url: string, redirectCount = 0): Promise<Row> {
     };
   } finally {
     clearTimeout(timer);
+  }
+}
+
+/**
+ * An OpenAPI document from a response body: JSON first, then YAML (#9893).
+ *
+ * THE SPEC PERMITS BOTH, and YAML is arguably the more common way to publish
+ * one. We only ever tried `JSON.parse`, so a subnet doing everything right --
+ * correct registry kind, correct URL, HTTP 200, correct content-type, a valid
+ * document -- was recorded as `content-mismatch` / "response was not JSON", and
+ * /api/v1/schemas published `status: "not-found"` about it. Measured on the
+ * live registry: SN10's https://taofi-doc.web.app/openapi.yaml serves 44 KB of
+ * valid OpenAPI 3.0.4 as `text/yaml`, and we told the world it had no
+ * machine-readable API.
+ *
+ * JSON IS TRIED FIRST and unconditionally, because every JSON document is also
+ * valid YAML 1.2 -- parsing JSON with the YAML parser would work but would be
+ * slower and would accept YAML-only syntax on a `.json` surface. YAML is the
+ * fallback, so nothing about the existing JSON path changes.
+ *
+ * Returns null when neither parses, which the caller reports as
+ * content-mismatch exactly as before.
+ */
+export function parseOpenApiDocument(
+  text: string | null | undefined,
+  contentType: unknown,
+  url: unknown,
+): Row | null {
+  if (!text) return null;
+  try {
+    return JSON.parse(text) as Row;
+  } catch {
+    // Fall through to YAML.
+  }
+  if (!looksLikeYaml(contentType, url)) return null;
+  try {
+    // maxAliasCount caps anchor/alias expansion -- a YAML document from a
+    // third-party host is untrusted input, and unbounded aliases are the
+    // billion-laughs shape. The parser resolves no custom tags to JS objects,
+    // so there is no code path from a tag to execution.
+    const parsed = parse(text, { maxAliasCount: 100 });
+    // A scalar or a list is not an OpenAPI document; only an object can be one,
+    // and returning a string here would sail through as a "captured" schema.
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Row)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether a response is plausibly YAML, by declared content-type or URL suffix.
+ *
+ * Gated rather than always-try because YAML's parser accepts a great deal of
+ * plain text -- a bare HTML error page can parse as a YAML scalar, and calling
+ * that a captured schema would be worse than the bug being fixed. The type
+ * check comes first; the suffix covers a server that serves YAML as
+ * `text/plain` or `application/octet-stream`.
+ */
+function looksLikeYaml(contentType: unknown, url: unknown): boolean {
+  const type = String(contentType || "").toLowerCase();
+  if (type.includes("yaml") || type.includes("yml")) return true;
+  try {
+    return /\.ya?ml($|\?)/i.test(new URL(String(url)).pathname);
+  } catch {
+    return /\.ya?ml($|\?)/i.test(String(url || ""));
   }
 }
 
