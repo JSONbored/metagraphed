@@ -1,263 +1,31 @@
-# Deployment — the `metagraphed-core` self-hosted topology (ADR 0014)
+# `deploy/`
 
-> **RETIRED 2026-08-04 — this describes infrastructure that no longer exists.**
->
-> Every paid server was decommissioned and the estate is **Cloudflare-only**: Workers,
-> D1, R2 (lakehouse + artifacts), KV and Durable Objects. There is no Postgres, no
-> archive node, no indexer box, and no firehose relay. `deploy/postgres/schema.sql` and
-> the Postgres migration runner were deleted in metagraphed#9426; the box-side Ansible
-> roles remain in `metagraphed-infra` but nothing runs them.
->
-> Kept as the record of what the self-hosted topology WAS. A single validator box is
-> expected once the Ventura Labs contract lands, likely carrying a fullnode RPC, and some
-> of this shape may be wanted again — so read it as history, not as instructions.
+The Docker build inputs for the box-side data-refresh jobs, and nothing else.
 
-The architecture and rationale live in
-[`docs/adr/0014-chain-data-infrastructure-and-postgres-cutover.md`](../docs/adr/0014-chain-data-infrastructure-and-postgres-cutover.md)
-— it supersedes ADR 0013's Railway/D1 topology in full. The realtime firehose
-on top of this core has its own ADR
-([0015](../docs/adr/0015-realtime-firehose-architecture.md)); `indexer-rs`'s
-move from a private repo into `apps/indexer-rs/` has its own too
-([0016](../docs/adr/0016-indexer-rs-consolidation.md)). This is the
-**operator runbook**: what runs where, the exact provisioning commands, and
-the gated cutover steps.
+| File                           | Built by                                            |
+| ------------------------------ | --------------------------------------------------- |
+| `data-refresh-node.Dockerfile` | `metagraphed-infra`'s `data-refresh-node` role      |
+| `economics-refresh.Dockerfile` | `metagraphed-infra`'s `data-refresh-economics` role |
+| `metagraph-fetch.Dockerfile`   | `metagraphed-infra`'s `data-refresh-cron` role      |
+| `docker-compose.yml`           | the self-hosted topology, retired 2026-08-04        |
 
-```
-Chain → full archive subtensor-node (syncing) ─┐
-Chain → pruned fullnode subtensor-node ────────┴→ indexer-rs (live-follow) → Postgres/Timescale
-                                                          │                        │
-                                          (AFTER INSERT trigger, ADR 0015)   Hyperdrive, pooled+cached
-                                                          ▼                        ▼
-                                          chain-firehose-relay        CF Worker (REST/GraphQL/MCP)
-                                                          │
-                                                          ▼
-                              CF Durable Object firehose (SSE/WS/GraphQL-subs) + alerter (#4984)
-Railway: retired (wss-lb, the last service, is now the metagraphed-wss-lb Worker)
-R2 = artifacts · Parquet/CSV exports · Postgres backups (zero-egress)
-```
+**These three files are canonical here, and are byte-copied into
+`metagraphed-infra` under `roles/*/files/`** together with their entrypoints in
+`scripts/`. That repo's `check-vendored-sync.py` compares every pair against
+this repo's `main` and fails on any difference, so a fix belongs **here first**
+and is re-vendored afterwards — never the other way round.
 
-## Topology
+## The operator runbook moved
 
-Three dedicated bare-metal boxes (Latitude.sh, real hostnames/IPs live only in
-the private `metagraphed-infra` Ansible inventory — never in this repo), plus
-Cloudflare edge. Verified directly against the running infrastructure, not
-inherited from prior docs:
+The bare-metal runbook that used to be this file — box roles, provisioning
+commands, Ansible role names, recovery procedures — is now
+`docs/self-hosted-deployment-runbook.md` in `JSONbored/metagraphed-infra`,
+alongside the configuration it describes.
 
-| Tier                 | Where                                               | Pieces                                                                                                                                                                                                                                                                                                         |
-| -------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Edge (rented)        | **Cloudflare**                                      | Worker serving, **Hyperdrive** → Postgres, **Durable Object** firehose + alerter (#4984), R2, KV, Vectorize, Workers AI, rate-limiters, RPC proxy. The health-prober and rollups also still run here (CF crons) — moving them to the indexer box is tracked separately (#2113), not done.                      |
-| Indexer box (owned)  | dedicated bare-metal                                | `indexer-rs` (live-follow), `chain-firehose-relay` (the ADR 0015 box-side relay), TimescaleDB (chain data), a separate Postgres (registry data). `indexer-rs-backfill` (sharded historical backfill) and `indexer-rs-tail` (the auto-following gap-closer) are **running** against the archive node's own RPC. |
-| Archive box (owned)  | dedicated bare-metal, separate from the indexer box | `subtensor` full archive node (`--pruning=archive --sync=full`). **Still syncing** — not yet at chain tip.                                                                                                                                                                                                     |
-| Fullnode box (owned) | dedicated bare-metal, third box                     | `subtensor` **pruned**, warp-synced node. This, not the archive node, is `indexer-rs`'s current live-follow RPC source (`EVENTS_RPC_URL`) — it reached chain tip fast and isn't competing with the archive node's own sync for I/O.                                                                            |
-| Railway              | **none — retired**                                  | `wss-lb`, the last service, moved to the `metagraphed-wss-lb` Worker; everything before it (`postgres`/`redis`/`indexer-rs`, the `metagraphed-streamer` project) had already moved to the boxes above or been retired. `exporter`/`reconciler` (#2115, dataset exports + drift detection) don't exist yet.     |
+The estate it described was decommissioned on 2026-08-04 and is Cloudflare-only:
+Workers, D1, R2, KV, Queues and Durable Objects. The architecture and rationale
+remain public in
+[ADR 0014](../docs/adr/0014-chain-data-infrastructure-and-postgres-cutover.md);
+only the operator procedure moved.
 
-There is no Hetzner escape hatch — ADR 0013's "Railway core, Hetzner escape
-hatch" framing described a plan overtaken by events; the team went straight to
-bare metal instead.
-
-## Railway: retired
-
-The `metagraphed-core` Railway project once held `postgres`/`redis`/`indexer`
-(ADR 0013's topology); all of that moved to the dedicated boxes above, leaving
-`wss-lb` as the last service. That one is now the `metagraphed-wss-lb` Worker
-(`workers/wss-lb.ts`, `wrangler.wss-lb.jsonc`), so **the Railway dependency is
-gone entirely** — there is no longer a Railway account in the serving path.
-
-`wss.metagraph.sh` is served through a Worker zone **route** rather than a
-custom domain; `wrangler.wss-lb.jsonc`'s own comment explains why that is what
-let the move happen without a DNS propagation window.
-
-`deploy/wss-lb/` — the retired Node service, its Dockerfile and its `railway.json`
-— was **deleted** in #9353. It had been kept "runnable and readable" as the source
-`select.ts` was extracted from, and that turned out to cost more than it was worth:
-the live Worker imported `MAX_RPC_BODY_BYTES` from the dead service's policy file
-while enforcing none of the rest of it, and a CI test guarded that the dead copy
-stayed in sync with `workers/config.ts` — so the only thing anyone verified about
-the policy was that two unused copies matched. Selection now lives beside the Worker
-at `workers/wss-lb-select.ts`, tested in `tests/wss-lb-select.test.ts`.
-
-## Bare-metal bring-up
-
-**Production runs across three separate boxes, provisioned via the private
-`JSONbored/metagraphed-infra` Ansible repo** (`roles/subtensor-archive`,
-`roles/subtensor-fullnode`, `roles/indexer-rust`, `roles/postgres-timescale`,
-`roles/chain-firehose-relay`) — that repo's inventory holds the
-real hostnames/IPs and is the actual source of truth for what's deployed
-where. `deploy/docker-compose.yml` below is a **single-box reference/dev
-setup** (Postgres + a subtensor node co-located, so every hop is
-localhost) — useful for local development or a from-scratch bring-up, but it
-is not how production is actually composed across the three boxes:
-
-```bash
-cp deploy/.env.example deploy/.env     # set POSTGRES_PASSWORD
-docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
-```
-
-That starts:
-
-- **`postgres`** (TimescaleDB) — applies `deploy/postgres/schema.sql` then the
-  optional `deploy/postgres/schema-timescaledb.sql` on first boot; never binds
-  a public port (Cloudflare reaches it via Hyperdrive over a tunnel).
-- **`subtensor`** — a **full archive** finney node (`--pruning=archive --sync=full`:
-  complete state from genesis). Needs **~8 TB+ NVMe**; the from-genesis full
-  sync takes days — production's own archive box is still mid-sync (see the
-  Topology table above). (Dev: `SUBTENSOR_PRUNING=2000 SUBTENSOR_SYNC=warp`
-  for a small pruned node instead.)
-- **`indexer`** — not defined in `docker-compose.yml`. Production's
-  `indexer-rs` (live-follow + sharded historical backfill, `apps/indexer-rs/`
-  in this repo since the ADR 0016 consolidation) is deployed to its own box
-  via the Ansible role above, built from a manually-transferred Docker image
-  rather than this compose file — repointing that build source to
-  `apps/indexer-rs/` is tracked separately (#5150), not yet done.
-
-**Managed Railway Postgres is no longer used** — it was the interim home for
-`postgres`/`redis`/`indexer-rs` before the dedicated boxes existed; both the
-data and the live Hyperdrive binding have since moved to the indexer box's own
-Postgres. `wss-lb` needs no provisioning of its own any more — it is a Worker
-(`workers/wss-lb.ts`, `wrangler.wss-lb.jsonc`) on a zone route.
-
-## Cloudflare side
-
-**Serving cutover is complete** — `blocks`/`extrinsics`/`account_events`/
-`neurons`/`neuron_daily` all serve from Postgres via Hyperdrive; D1's
-write/prune/ingest code for these five tiers, and the D1 tables themselves,
-are fully retired (#4772, PR #4908, 2026-07-11). There is no D1 fallback left
-to roll back to for them. What follows is how the cutover was done, kept for
-reference if the same tier-by-tier pattern is ever needed again (e.g. for a
-future tier):
-
-- **Gate first.** Before cutting a tier, compare Postgres vs D1 row counts over
-  a recent window — only cut once Postgres ≥ D1 across the window. A shortfall
-  here becomes a serving regression; investigate before proceeding.
-- **Private DB path.** Postgres must never be public — front it with a Cloudflare
-  Tunnel + Workers VPC service, then create the Hyperdrive config from the
-  **Cloudflare dashboard** so the database password is entered into Cloudflare's
-  credential form, never passed as a shell-expanded argument (shell history,
-  process listings, CI logs all record argv). Add the `[[hyperdrive]]` binding to
-  `wrangler.jsonc` and read via `env.HYPERDRIVE.connectionString`.
-- **Cut tier by tier**, D1 as fallback during the migration window (`if
-FLAG[tier] == "postgres": try Postgres; on error → D1`), watching latency +
-  correctness before the next tier, then delete the fallback branch and the D1
-  write path once every tier is stable.
-
-The Durable Object firehose hub is a binding in the Worker. Per ADR 0015, the
-indexer does **not** push to it directly — a Postgres outbox table (populated
-by an `AFTER INSERT` trigger) decouples the indexer's own critical live-follow
-path from Cloudflare reachability; a separate box-side relay process polls the
-outbox and forwards to the Durable Object for SSE/WS/GraphQL-subscription
-fan-out.
-
-## Gated steps — DO NOT run unsupervised
-
-Each needs a human who can verify/roll back (ADR 0014 _Sequencing_):
-
-1. 🔲 **`subtensor-node`** — **full archive** (~3.5 TB+, ~8 TB+ NVMe volume):
-   complete state from genesis, so it serves first-party archive RPC +
-   self-sufficient backfill. **Still syncing as of this writing** (tracked in
-   #2111 — network path to the indexer node, Worker RPC-proxy wiring, and the
-   Ansible role are all still open sub-steps too). Seed from a snapshot to
-   skip the multi-day from-genesis sync.
-2. ✅ **Live serving cutover** — `blocks` / `extrinsics` / `account_events` /
-   `neurons` / `neuron_daily` are all flipped to Postgres via Hyperdrive,
-   D1's write/prune/ingest code for them retired (#4772, PR #4908,
-   2026-07-11 — see item 4 below).
-3. 🏃 **Full historical re-backfill** (genesis-to-tip, archive-gated) —
-   **running** since 2026-07-31, against the archive node's own RPC over
-   HTTP. The earlier "paused for archive I/O headroom" posture is retired:
-   the archive node holds its normal ~0.41 blk/s spec-423 sync rate with the
-   backfill running, so the two are not in practice competing (see
-   metagraphed-infra#183 for why that rate is what it is).
-
-   Two containers, deliberately split:
-   - `indexer-rs-backfill` — the bulk sweep, genesis → `indexer_backfill_to`.
-   - `indexer-rs-tail` — `BACKFILL_TO=auto`, closing the window between that
-     cap and where live-follow's continuous coverage begins (8,599,188). It
-     re-derives the archive node's head each pass, so it advances on its own
-     as the node syncs into that range rather than stopping at a fixed cap.
-
-   Throughput went 0.67 → 115+ blk/s once six stacked defects were fixed
-   (#8791): a WebSocket transport that silently wedged, a pooled HTTP client
-   that lost requests, a runtime-wasm call per block, per-shard duplicate
-   discovery, upgrade blocks decoded with the wrong runtime, and — the
-   dominant one — a per-row firehose trigger costing 63s per 500 rows.
-
-   Don't confuse this with item 2 above — live serving is cut over and
-   stable; this is the deep historical window.
-
-4. ✅ **Decommissioned** (#4772, 2026-07-11): the chain-data `*/3` R2-staging
-   drain (`loadStagedNeurons`/`Events`/`Blocks`/`Extrinsics`), the realtime
-   ingest endpoints, the D1-side daily rollup/archive/prune crons, the manual
-   `backfill-events.yml`/`scripts/{stream,fetch,backfill}-events.py` streamer
-   cluster, and D1's `blocks`/`extrinsics`/`account_events`/`neurons`/
-   `neuron_daily` tables + prune logic are all retired — Postgres (indexer-rs
-   live-follow + sharded historical backfill) is the sole source for chain
-   data now. `account_position_daily` (no Postgres serving route yet) and the
-   health/registry-monitoring tables (`surface_checks` and friends,
-   `subnet_snapshots`, `account_events_daily`) are explicitly NOT part of
-   this — D1 stays their permanent, unrelated home. (The GitHub `*/5` poller
-   and the `metagraphed-streamer` Railway project were already decommissioned
-   2026-07-04, ahead of and independent from this gated cutover — see the
-   note above.)
-
-### `blocks` tier verification queries (#4687)
-
-Before ever re-flipping `METAGRAPH_BLOCKS_SOURCE` to `"postgres"`, re-run these
-against the indexer box's Postgres to confirm the historical gaps found in
-#4687 are actually closed — a single spot-checked block (as #4668's original
-flip relied on) does not prove this:
-
-```sh
-ssh <indexer-ssh-target>
-sudo docker exec -i <postgres-container> psql -U <postgres-user> -d <postgres-database>
-```
-
-```sql
--- 1. Zero empty-string authors (the spec_version 419/421/422 backfill-decode
---    gap; src/blocks.ts's formatBlock() already mitigates this at the
---    serving layer regardless, but the underlying rows should be repaired).
-SELECT count(*) FROM blocks WHERE author = '';
-
--- 2. Zero missing block_numbers across the known coverage hole.
-SELECT gs.block_number
-FROM generate_series(8471001, 8479999) AS gs(block_number)
-LEFT JOIN blocks b ON b.block_number = gs.block_number
-WHERE b.block_number IS NULL;
-
--- 3. Same check across the full D1-retained window, as a general regression
---    guard (adjust the lower bound to D1's current min if it has moved).
-SELECT gs.block_number
-FROM generate_series(8474393, (SELECT max(block_number) FROM blocks)) AS gs(block_number)
-LEFT JOIN blocks b ON b.block_number = gs.block_number
-WHERE b.block_number IS NULL;
-```
-
-All three must return zero rows before considering the `blocks` tier's
-historical coverage trustworthy again. Do **not** flag D1's own gap at block
-`8513820` as a Postgres regression — D1 is missing that block, not Postgres;
-it's expected and orthogonal (D1 is being decommissioned, not backfilled).
-
-## Backup job (Postgres → R2)
-
-The scheduled durability job (`pg_dump | gzip | aws s3 cp` to R2, zero egress) is
-managed as private infrastructure tooling, not in this public repo. Restoring a
-dump is minutes; re-backfilling history is weeks.
-
-**Verify it actually restores, not just that it uploads** — a backup that's
-never been restore-tested is only half-verified. Spin up a scratch Postgres
-(same image/version as the source), restore the dump into it, and compare
-row counts per table against the live source before trusting the job.
-
-## Backups + PITR (mandatory)
-
-Postgres holds derived state. It is **re-derivable** (re-index from the chain via
-the archive node), but a full re-index is slow — so back it up; you just don't
-need a near-zero RPO.
-
-- **Full continuous PITR is optional / overkill here.** PITR buys a seconds-level
-  RPO via continuous WAL — worth it for un-recreatable OLTP data, but our worst
-  case is "re-index the last day from chain," which a daily snapshot already
-  bounds. It also adds WAL-storage cost. Skip it unless the re-index window
-  becomes painful; the `pg_dump` → R2 job above is enough.
-- The DB volume + backups are the storage-cost driver; when they outgrow the
-  box's disk (TimescaleDB compression ~10–20×), that is the trigger to plan
-  additional storage — see ADR 0014.
+See [ADR 0028](../docs/adr/0028-public-private-repo-boundary.md) for the rule.

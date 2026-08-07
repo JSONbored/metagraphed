@@ -1,6 +1,12 @@
 # ADR 0016 — indexer-rs consolidation: private repo into the public monorepo
 
-- **Status:** Accepted
+- **Status:** **Superseded by [0028](0028-public-private-repo-boundary.md)** —
+  the move was reversed. `indexer-rs` was extracted back out to
+  `metagraphed-infra/services/indexer-rs/` in #9170, which is now the only place
+  the poller and decode Containers are built and deployed from, and
+  `apps/indexer-rs/` no longer exists. The reasoning below — that the indexer
+  "isn't itself a secret" — is not the project's position: 0028 states the rule
+  that replaced it. Kept unedited as the record of what was decided in 2026-07.
 - **Date:** 2026-07-13
 - **Relates to:** #4947 (the consolidation issue), PR #5079 (the move itself),
   ADR 0014 (chain-data infrastructure — describes the indexer box this
