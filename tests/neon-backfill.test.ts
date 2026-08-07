@@ -549,6 +549,7 @@ describe("reconcileTableToNeon", () => {
       table: "neuron_daily",
       deficits: 0,
       missing: 0,
+      remaining: 0,
       copied: [],
       ok: false,
       reason: "unbound",
@@ -591,6 +592,7 @@ describe("reconcileTableToNeon", () => {
       table: "neuron_daily",
       deficits: 0,
       missing: 0,
+      remaining: 0,
       copied: [],
       ok: true,
     });
@@ -675,10 +677,43 @@ describe("reconcileTableToNeon", () => {
 });
 
 describe("describeOutcome", () => {
+  test("NEVER reports a negative backlog", () => {
+    // Caught in production on the first tick: `account_position_daily` was 231
+    // rows short, the unit of work is a whole DATE, so closing it wrote all
+    // 30,278 of that date's rows and `missing - written` read
+    // "~-30047 row(s) still behind".
+    //
+    // Rows written and rows owed are different quantities. `remaining` counts
+    // the deficit of the dates NOT reached, so it is bounded by `missing` and
+    // cannot go below zero however many rows a date turns out to hold.
+    const text = describeOutcome({
+      table: "account_position_daily",
+      deficits: 2,
+      missing: 231,
+      remaining: 0,
+      copied: [
+        {
+          ok: true,
+          rows: 30_278,
+          statements: 11,
+          pages: 16,
+          date: "2026-08-07",
+        },
+      ],
+      ok: true,
+    });
+    assert.doesNotMatch(text, /-\d/, `negative figure in: ${text}`);
+    assert.equal(
+      text,
+      "30278 row(s) over 1 date(s); 1 date(s) / 0 row(s) still behind",
+    );
+  });
+
   const base = {
     table: "neuron_daily",
     deficits: 0,
     missing: 0,
+    remaining: 0,
     copied: [],
     ok: true,
   };
@@ -694,11 +729,18 @@ describe("describeOutcome", () => {
         ...base,
         deficits: 26,
         missing: 816_803,
+        remaining: 786_694,
         copied: [
-          { ok: true, rows: 100, statements: 1, pages: 1, date: "2026-08-07" },
+          {
+            ok: true,
+            rows: 30_109,
+            statements: 13,
+            pages: 16,
+            date: "2026-08-07",
+          },
         ],
       }),
-      "100 row(s) over 1 date(s); 25 date(s) / ~816703 row(s) still behind",
+      "30109 row(s) over 1 date(s); 25 date(s) / 786694 row(s) still behind",
     );
     assert.equal(
       describeOutcome({
