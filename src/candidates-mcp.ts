@@ -2,6 +2,10 @@
 // Applies the same list-query transforms as the REST route over the baked
 // /metagraph/candidates.json artifact (mirrors gaps-mcp.ts for GET /api/v1/gaps).
 
+import {
+  CANDIDATES_LIMIT_DEFAULT,
+  CANDIDATES_LIMIT_MAX,
+} from "./route-limits.ts";
 import { z } from "zod";
 import { applyQueryFilters, type Row } from "../workers/list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
@@ -100,14 +104,22 @@ export function candidatesQueryUrl(
       typeof limit !== "number" ||
       !Number.isInteger(limit) ||
       limit < 1 ||
-      limit > 1000
+      limit > CANDIDATES_LIMIT_MAX
     ) {
       throw candidatesMcpError(
         "invalid_params",
-        "limit must be an integer between 1 and 1000.",
+        `limit must be an integer between 1 and ${CANDIDATES_LIMIT_MAX}.`,
       );
     }
     url.searchParams.set("limit", String(limit));
+  } else {
+    // DEFAULTED, because absent used to mean unbounded (#9700). This tool
+    // takes no required arguments, so `list_candidates {}` is the obvious
+    // first call -- and it returned 7,537,056 bytes, ~1.9M tokens, roughly ten
+    // context windows. Not a big answer: no usable answer. The envelope still
+    // carries `total` and `next_cursor`, so the whole catalog is reachable by
+    // paging rather than by accident.
+    url.searchParams.set("limit", String(CANDIDATES_LIMIT_DEFAULT));
   }
   if (args?.cursor !== undefined) {
     const cursor = args.cursor;
