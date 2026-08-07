@@ -12,11 +12,8 @@
 // the old name, and every response since has failed its own published contract.
 import { z } from "zod";
 import { AccountPortfolioArtifactSchema } from "../routes/account-portfolio.ts";
-import {
-  OpenObjectArraySchema,
-  OpenObjectSchema,
-  ss58Schema,
-} from "./shared.ts";
+import { AccountPositionsArtifactSchema } from "../routes/account-positions.ts";
+import { OpenObjectSchema, ss58Schema } from "./shared.ts";
 
 export const GetAccountPortfolioInputSchema = z
   .object({
@@ -53,41 +50,26 @@ export type GetAccountPositionsInput = z.infer<
   typeof GetAccountPositionsInputSchema
 >;
 
-// NOT YET DERIVED, deliberately. AccountPositionsArtifactSchema is the right
-// source and this should become `= AccountPositionsArtifactSchema` -- but the
-// live tool does not satisfy it today, so switching now would publish a
-// contract production violates, trading one drift for another.
+// DERIVED AT LAST (#9796). This was held back in #9794 as the one schema that
+// could not switch: deriving it then would have published a contract production
+// violated, because the route's `degraded.reason` enum declared two values
+// while the live tool served a third, and the route required
+// `degraded.snapshot_captured_at`/`latest_stake_event_at` that the forwarded
+// tier omitted. #9804 fixed both at the source -- the enum is now built from
+// the loader's own reason tuple, and a forwarded payload is shaped on the way
+// out -- so the block is gone.
 //
-// Two things block it, both filed:
-//   - the route's `degraded.reason` enum declares two values and production
-//     serves a third, `positions_unpriceable` (#9804);
-//   - the route requires `degraded.snapshot_captured_at` and
-//     `latest_stake_event_at`, and the handler emits neither (#9803).
+// Re-verified against production after that landed: the live response satisfies
+// this schema on both degraded paths, which is what made it safe to switch.
 //
-// Checked against production rather than assumed: deriving today rejects real
-// responses on exactly those fields. The rename below is still fixed here,
-// because that one is a plain defect with nothing blocking it.
-export const GetAccountPositionsOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    ss58: z.string(),
-    captured_at: z.string().nullable().optional(),
-    position_count: z.int(),
-    // RENAMED IN #8803, and this copy never followed (#9794). The field is
-    // total_stake_alpha -- schemas-src/routes/account-positions.ts says so and
-    // explains why it is alpha rather than TAO -- so this schema REQUIRED a
-    // key the response has never carried since that rename. Every
-    // get_account_positions response has been failing its own published
-    // contract, and an agent reading the schema was told to look for a field
-    // that is not there.
-    total_stake_alpha: z.number(),
-    positions: OpenObjectArraySchema,
-    // #9273: present only when the payload's zero is not a measurement. Left
-    // open here rather than typed, because the shape it should reference is the
-    // one #9803/#9804 are still correcting.
-    degraded: OpenObjectSchema.optional(),
-  })
-  .passthrough();
+// Deriving also finishes the #8803 rename properly. The copy REQUIRED
+// `total_stake_tao`, a key the response has not carried since that rename, so
+// every get_account_positions response failed its own published contract and an
+// agent reading the schema was told to look for a field that is not there. And
+// `positions` stops being a bare open array: the route types every position and
+// says why the stake figure is alpha rather than TAO, which is exactly the trap
+// a caller needs warned about.
+export const GetAccountPositionsOutputSchema = AccountPositionsArtifactSchema;
 export type GetAccountPositionsOutput = z.infer<
   typeof GetAccountPositionsOutputSchema
 >;

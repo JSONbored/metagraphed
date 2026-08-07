@@ -3470,10 +3470,25 @@ describe("MCP tools (injected deps)", () => {
     const schema = listToolDefinitions().find(
       (t) => t.name === "get_changelog",
     )?.outputSchema;
+    // schema_version/generated_at are part of every real artifact and were
+    // simply missing from this synthetic fixture. It passed while the tool
+    // published a hand-written schema that did not require them; deriving from
+    // ChangelogArtifactSchema (#9796) does, so the fixture now carries what the
+    // artifact always carried.
     const deps = makeDeps({
       "/metagraph/changelog.json": {
+        schema_version: 1,
+        generated_at: "2026-08-07T00:00:00.000Z",
         source: "generated-artifact-diff",
-        summary: { artifact_added_count: 0 },
+        summary: {
+          artifact_added_count: 0,
+          artifact_modified_count: 0,
+          artifact_removed_count: 0,
+          coverage_delta: null,
+          netuid_added_count: 0,
+          netuid_removed_count: 0,
+          netuid_renamed_count: 0,
+        },
         artifacts: { added: [], modified: [], removed: [] },
         subnets: { added: [], removed: [], renamed: [] },
       },
@@ -10763,11 +10778,118 @@ describe("MCP economics + metagraph data tools", () => {
       listToolDefinitions().find((t: Row) => t.name === "get_subnet_profile")!
         .outputSchema,
     );
+    // A COMPLETE profile artifact, not a four-key stub. The stub validated only
+    // because the hand-written schema this tool used to publish required almost
+    // nothing; deriving from SubnetProfileArtifactSchema (#9796) requires the
+    // real shape -- 35 fields on `profile`, 44 on `subnet` -- which is the whole
+    // point, because that shape is what an agent is now told to expect.
+    //
+    // Generated from the schema rather than hand-guessed, so it cannot quietly
+    // drift from what the contract requires: minimal valid value per required
+    // field, with the netuid/slug/completeness_score set to what this test reads.
     const detail = {
-      subnet: { netuid: 7, slug: "allways" },
-      profile: { completeness_score: 82 },
+      generated_at: "2026-08-07T00:00:00.000Z",
+      schema_version: 1,
+      profile: {
+        netuid: 7,
+        slug: "allways",
+        name: "name",
+        native_identity: null,
+        subnet_type: "root",
+        status: "active",
+        project_name: "project_name",
+        team: null,
+        categories: [],
+        derived_categories: [],
+        primary_links: {
+          website_url: null,
+          docs_url: null,
+          source_repo: null,
+          dashboard_url: null,
+        },
+        primary_app_surface: null,
+        supported_interface_kinds: [],
+        operational_interface_kinds: [],
+        surface_count: 0,
+        endpoint_count: 0,
+        monitored_endpoint_count: 0,
+        candidate_count: 0,
+        identity_evidence: {
+          candidate_identity_count: 0,
+          curated_identity_count: 0,
+          curated_identity_kinds: [],
+          live_candidate_identity_kinds: [],
+          native_contact_present: false,
+          native_description_present: false,
+          native_identity_count: 0,
+          native_identity_kinds: [],
+          needs_promotion_kinds: [],
+          stale_candidate_identity_kinds: [],
+          unverified_candidate_identity_kinds: [],
+        },
+        completeness: {
+          score: 0,
+          profile_level: "directory-only",
+          identity_level: "none",
+          identity_surface_count: 0,
+          confidence: "low",
+          missing_identity: [],
+          missing_required: [],
+          missing_operational: [],
+          missing_critical_count: 0,
+          gap_reasons: [],
+        },
+        provenance: {
+          identity_source: "identity_source",
+          interface_source_count: 0,
+          review_state: "unreviewed",
+          curation_level: "native",
+          reviewed_at: null,
+          source_urls: [],
+        },
+        curation_level: "native",
+        review_state: "unreviewed",
+        confidence: "low",
+        profile_level: "directory-only",
+        identity_level: "none",
+        identity_surface_count: 0,
+        completeness_score: 82,
+        missing_identity: [],
+        missing_required: [],
+        missing_operational: [],
+        missing_critical_count: 0,
+        gap_reasons: [],
+        suggested_submission_kinds: [],
+      },
+      subnet: {
+        coverage_level: "native-only",
+        curation: {
+          level: "native",
+          review_state: "unreviewed",
+        },
+        curation_level: "native",
+        gaps: {
+          gap_notes: [],
+          missing_kinds: [],
+          supported_kinds: [],
+        },
+        links: [],
+        name: "name",
+        netuid: 7,
+        provenance: {},
+        slug: "allways",
+        status: "active",
+        subnet_type: "root",
+        surface_count: 0,
+      },
       surfaces: [],
       endpoints: [],
+      candidate_surfaces: [],
+      gaps: {
+        gap_notes: [],
+        missing_kinds: [],
+        supported_kinds: [],
+      },
     };
     const res = await callTool(
       "get_subnet_profile",

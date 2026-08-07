@@ -13,9 +13,9 @@
 // subnetType,curationLevel,profileLevel} and the "profiles" query
 // collection's sort_fields at the time of writing.
 import { z } from "zod";
+import { SubnetProfileArtifactSchema } from "../routes/subnet-profiles.ts";
 import {
   OpenObjectArraySchema,
-  OpenObjectSchema,
   fieldsStringSchema,
   limitSchema,
   netuidSchema,
@@ -118,18 +118,15 @@ export const ListProfilesOutputSchema = z
   .passthrough();
 export type ListProfilesOutput = z.infer<typeof ListProfilesOutputSchema>;
 
-export const GetSubnetProfileOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    contract_version: z.string().nullable().optional(),
-    generated_at: z.string().nullable().optional(),
-    subnet: OpenObjectSchema.nullable().optional(),
-    profile: OpenObjectSchema.nullable().optional(),
-    surfaces: OpenObjectArraySchema.optional(),
-    endpoints: OpenObjectArraySchema.optional(),
-    gaps: OpenObjectSchema.nullable().optional(),
-  })
-  .passthrough();
+// DERIVED, NOT COPIED (#9796). The copy published subnet, profile,
+// surfaces[], endpoints[] and candidate_surfaces[] as bare open shapes, so a
+// profile lookup -- the tool whose entire job is describing a subnet -- told
+// an agent nothing about the profile. SubnetProfileArtifactSchema models all
+// of it: 35 fields on `profile` alone, 44 on `subnet`.
+//
+// Verified against production before the switch, because deriving is a
+// tightening.
+export const GetSubnetProfileOutputSchema = SubnetProfileArtifactSchema;
 export type GetSubnetProfileOutput = z.infer<
   typeof GetSubnetProfileOutputSchema
 >;
