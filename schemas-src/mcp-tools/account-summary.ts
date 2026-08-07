@@ -13,7 +13,6 @@
 // now publishes.
 import { z } from "zod";
 import {
-  OpenObjectSchema,
   blockBoundSchema,
   keysetCursorSchema,
   kindStringSchema,
@@ -24,6 +23,7 @@ import {
 } from "./shared.ts";
 import { AccountEntitiesArtifactSchema } from "../routes/account-entities.ts";
 import { AccountEventsArtifactSchema } from "../routes/account-events-feed.ts";
+import { AccountActivitySchema } from "../routes/account-summary.ts";
 
 // objectItems(...) properties, none required at the item level (see
 // search-subnets.ts's same note from the pilot batch).
@@ -89,7 +89,11 @@ export const GetAccountOutputSchema = z
     ),
     registrations: z.array(AccountRegistrationItemSchema),
     recent_events: z.array(AccountEventItemSchema),
-    activity: OpenObjectSchema.optional(),
+    // Typed from the route's own AccountActivitySchema (#9797) -- the
+    // per-kind event breakdown and first/last block/timestamp seen. This tool
+    // advertises no `fields`, so it is not partial. Verified against
+    // production 2026-08-07.
+    activity: AccountActivitySchema.optional(),
     labels: z.array(AccountLabelItemSchema).optional(),
   })
   .passthrough();

@@ -19,7 +19,6 @@
 import { z } from "zod";
 import {
   NeuronFieldsInputSchema,
-  OpenObjectArraySchema,
   accountKeySchema,
   limitSchema,
   netuidSchema,
@@ -36,6 +35,7 @@ import { ValidatorDetailArtifactSchema } from "../routes/validator-detail.ts";
 import { ValidatorHistoryArtifactSchema } from "../routes/validator-history.ts";
 import { ValidatorNominatorsArtifactSchema } from "../routes/validator-nominators.ts";
 import { NeuronSchema } from "../routes/subnet-metagraph.ts";
+import { CompareValidatorEntrySchema } from "../routes/compare-validators.ts";
 
 // Mirrors workers/config.ts's SS58_ADDRESS_PATTERN (inlined rather than
 // cross-imported from workers/, matching this directory's existing
@@ -179,7 +179,12 @@ export const CompareValidatorsOutputSchema = z
     schema_version: z.int().optional(),
     netuid: netuidSchema().nullable().optional(),
     validator_count: z.int(),
-    validators: OpenObjectArraySchema,
+    // Typed from the route's own CompareValidatorEntrySchema (#9797). This
+    // is the SECOND `validators` site in this file -- list_subnet_validators'
+    // is a neuron row, compare_validators' is the side-by-side comparison
+    // entry, and they are deliberately different shapes. Verified against
+    // production 2026-08-07.
+    validators: z.array(CompareValidatorEntrySchema),
   })
   .passthrough();
 export type CompareValidatorsOutput = z.infer<

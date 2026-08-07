@@ -11,7 +11,10 @@
 // literal it replaces. Domain enum hardcoded from src/domain-tags.ts's
 // DOMAIN_TAGS at the time of writing.
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import {
+  ConcentrationScorecardSchema,
+  DomainSummaryArtifactSchema,
+} from "../routes/domains.ts";
 
 const DOMAIN_TAGS = [
   "agents",
@@ -49,9 +52,15 @@ export const GetDomainSummaryOutputSchema = z
     netuids: z.array(z.int()).optional(),
     total_stake_tao: z.number().nullable().optional(),
     total_emission_share: z.number().nullable().optional(),
-    emission_concentration: OpenObjectSchema.nullable().optional(),
+    // Typed from the route's own ConcentrationScorecardSchema (#9797).
+    emission_concentration: ConcentrationScorecardSchema.nullable().optional(),
     domain_count: z.int().optional(),
-    domains: z.array(OpenObjectSchema).optional(),
+    // The LIST form's key: calling without `domain` returns every domain's
+    // summary, so each entry is a whole DomainSummaryArtifact. Optional
+    // because a call WITH `domain` returns that one summary inline instead,
+    // with no `domains` at all. Verified against production 2026-08-07 in
+    // both forms.
+    domains: z.array(DomainSummaryArtifactSchema).optional(),
   })
   .passthrough();
 export type GetDomainSummaryOutput = z.infer<

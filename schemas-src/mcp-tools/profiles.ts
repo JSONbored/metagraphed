@@ -15,7 +15,6 @@
 import { z } from "zod";
 import { SubnetProfileArtifactSchema } from "../routes/subnet-profiles.ts";
 import {
-  OpenObjectArraySchema,
   fieldsStringSchema,
   limitSchema,
   netuidSchema,
@@ -25,6 +24,7 @@ import {
   sortSchema,
 } from "./shared.ts";
 import { CURATION_LEVEL_VALUES } from "../shared.ts";
+import { SubnetProfileSchema } from "../routes/subnet-profile.ts";
 
 const SUBNET_TYPE = ["root", "application"] as const;
 const CURATION_LEVEL = CURATION_LEVEL_VALUES;
@@ -100,7 +100,10 @@ export type GetSubnetProfileInput = z.infer<typeof GetSubnetProfileInputSchema>;
 export const ListProfilesOutputSchema = z
   .object({
     captured_at: z.string().nullable().optional(),
-    profiles: OpenObjectArraySchema,
+    // Typed from the route's own SubnetProfileSchema (#9797), PARTIAL
+    // because this tool advertises `fields` (#9884). Verified against
+    // production 2026-08-07.
+    profiles: z.array(SubnetProfileSchema.partial()),
     total: z.int().optional(),
     returned: z.int().optional(),
     limit: z.int().optional(),

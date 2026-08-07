@@ -93,19 +93,13 @@ const ROUTE_OPEN_SITES: Record<string, string> = {
  * this gate -- the list may only shrink, and it is the honest count of what
  * #9797 has left to do. */
 const MCP_NOT_YET_TYPED: string[] = [
-  "compare_validators.validators[]",
   "find_subnet_for_task.results[]",
-  "get_account.activity",
-  "get_account_counterparties.relationship",
-  "get_domain_summary.domains[]",
-  "get_domain_summary.emission_concentration",
   "get_subnet_gaps.enrichment_queue[]",
   "get_subnet_gaps.priorities[]",
   "how_do_i_call.services[]",
   "list_enrichment_targets.filters",
   "list_enrichment_targets.targets[].dimensions",
   "list_enrichment_targets.targets[].top_gaps[]",
-  "list_profiles.profiles[]",
   "list_search.documents[]",
   "list_subnet_health.surfaces[]",
   "list_surface_credentials.credentials[]",

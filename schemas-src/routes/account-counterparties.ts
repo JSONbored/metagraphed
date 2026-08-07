@@ -55,7 +55,7 @@ const CounterpartyTransferSchema = z
   })
   .strict();
 
-const CounterpartyRelationshipSchema = z
+export const CounterpartyRelationshipSchema = z
   .object({
     schema_version: z.int(),
     ss58: z.string(),
