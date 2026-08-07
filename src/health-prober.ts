@@ -967,7 +967,7 @@ export async function pruneHealthHistory(
 
 // #5497: mirrors pruneHealthHistory's D1 rpc_proxy_events delete into the
 // Postgres copy (#4832's read-resilience gap-closure), via the DATA_API
-// service binding -- same shape as syncSubnetSnapshotToPostgres below.
+// service binding -- same shape as writeSubnetSnapshotRows below.
 // Best-effort: never throws, and a failure here must never block the D1
 // prune above (the primary contract).
 export async function syncRpcProxyEventsPruneToPostgres(
@@ -1039,14 +1039,25 @@ export function pipelineProvenance(
   return { pipeline_block: block, pipeline_block_hash: hash };
 }
 
-// #4832 gap-closure: mirror writeSubnetSnapshot's D1 upsert into Postgres via
-// the DATA_API service binding, called directly from writeSubnetSnapshot
-// below -- same "in-Worker hourly cron, direct env.DATA_API.fetch() service-
-// binding call, not an external GitHub Actions workflow" shape as
-// syncSubnetIdentityToPostgres (src/subnet-identity-history.ts), which this
-// same function already calls. Best-effort: never throws, and a failure here
-// must never block the D1 write above (the primary contract).
-export async function syncSubnetSnapshotToPostgres(
+// Build one hourly batch of subnet_snapshots rows and write them to D1.
+//
+// IT USED TO DO TWO WRITES, AND THE SECOND ONE COULD ONLY FAIL. The Postgres
+// mirror this was named for (#4832) POSTed to
+// /api/v1/internal/subnet-snapshot-sync, which #9193 retired to its auth gate
+// when the box was destroyed. The D1 write above it kept succeeding -- the
+// table is healthy, 50,891 rows through 2026-08-07, and /api/v1/economics/trends
+// serves the current day off it -- and then this function reported
+// `{ synced: false, reason: "status_503" }` anyway, so writeSubnetSnapshot took
+// its decline branch and recorded `subnet-snapshot: stale` on every hourly tick.
+//
+// 49 stale verdicts in the five days before this was fixed, and ZERO `ok`
+// ones, about a lane whose data was never late. That is worse than a silent
+// failure: it is a permanently-lit alarm on a working lane, which is how the
+// #9301 rule says an alarm stops being read.
+//
+// The name went with the mirror. This is the one place the snapshot rows exist
+// fully built, so it is the snapshot write boundary -- for one store now.
+export async function writeSubnetSnapshotRows(
   env: Env,
   {
     profiles,
@@ -1066,7 +1077,12 @@ export async function syncSubnetSnapshotToPostgres(
     capturedAt?: number;
   } = {},
 ): Promise<Row> {
-  if (!env?.DATA_API || !env?.SUBNET_SNAPSHOT_SYNC_SECRET) {
+  // The binding this actually needs, now that the Postgres POST is gone. The
+  // old guard read DATA_API and SUBNET_SNAPSHOT_SYNC_SECRET -- neither of which
+  // this function touches any more -- so on a deployment with the D1 binding
+  // and no sync secret it would have declined with the write sitting right
+  // there, ready to run.
+  if (!env?.METAGRAPH_HEALTH_DB) {
     return { synced: false, reason: "unavailable" };
   }
   if (!Array.isArray(profiles) || profiles.length === 0) {
@@ -1121,36 +1137,19 @@ export async function syncSubnetSnapshotToPostgres(
       };
     });
   if (!rows.length) return { synced: false, reason: "no_rows" };
-  // Dual-write (box decommission): the same rows land in D1 first, best-effort
-  // and independent of the Postgres POST below -- this function is the one
-  // place the snapshot rows exist fully built, so despite the "ToPostgres"
-  // name it is now the snapshot sync boundary for both stores.
-  await upsertSubnetSnapshotsToD1(
+  return upsertSubnetSnapshotsToD1(
     env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
     rows as unknown as Record<string, unknown>[],
     env,
+  ).then((result) =>
+    // The D1 write's own verdict is now the lane's verdict, rather than being
+    // discarded in favour of a second store's. upsertSubnetSnapshotsToD1 never
+    // throws and reports its own reason, so a genuine write failure still
+    // declines -- what is gone is a decline that could not mean anything.
+    result.ok
+      ? { synced: true, rows: rows.length }
+      : { synced: false, reason: String(result.reason ?? "d1_write_failed") },
   );
-  try {
-    const upstream = await env.DATA_API.fetch(
-      new Request(
-        "https://api.metagraph.sh/api/v1/internal/subnet-snapshot-sync",
-        {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-subnet-snapshot-sync-token": env.SUBNET_SNAPSHOT_SYNC_SECRET,
-          },
-          body: JSON.stringify(rows),
-        },
-      ),
-    );
-    if (!upstream.ok) {
-      return { synced: false, reason: `status_${upstream.status}` };
-    }
-    return { synced: true, rows: rows.length };
-  } catch {
-    return { synced: false, reason: "fetch_failed" };
-  }
 }
 
 interface WriteSubnetSnapshotOverrides {
@@ -1165,11 +1164,9 @@ interface WriteSubnetSnapshotOverrides {
 
 // Daily growth snapshot (AI-4). Captures each subnet's structural maturity into
 // subnet_snapshots, keyed on (netuid, UTC date). Fired from the hourly cron.
-// `overrides.readArtifact` is injected from the Worker. No D1 binding needed
-// anywhere in this function anymore -- subnet_snapshots is Postgres-only (see
-// syncSubnetSnapshotToPostgres below) and recordSubnetIdentityChanges reads
-// its own latest-hash baseline from Postgres too now (see that function's own
-// header comment in src/subnet-identity-history.ts).
+// `overrides.readArtifact` is injected from the Worker; the D1 binding this
+// needs is reached through writeSubnetSnapshotRows below, which is the one
+// place the snapshot rows exist fully built and therefore the write boundary.
 /** This writer's lane name in `lane_health`, and on the self-health card. */
 const SUBNET_SNAPSHOT_LANE = "subnet-snapshot";
 
@@ -1276,8 +1273,8 @@ export async function writeSubnetSnapshot(
 
   const date = new Date(capturedAt).toISOString().slice(0, 10);
   // D1 write retired (2026-07-16, item 2 of the D1->Postgres cleanup):
-  // syncSubnetSnapshotToPostgres (called unconditionally, best-effort, right
-  // above) is now the sole writer -- METAGRAPH_SUBNET_SNAPSHOTS_SOURCE flipped
+  // writeSubnetSnapshotRows (called unconditionally, right above) is the sole
+  // writer -- METAGRAPH_SUBNET_SNAPSHOTS_SOURCE flipped
   // to "postgres" in wrangler.jsonc confirms Postgres already holds the full
   // history (see that flag's own header comment for the verification
   // writeup). Postgres's own handleSubnetSnapshotSync
@@ -1286,7 +1283,7 @@ export async function writeSubnetSnapshot(
   // the structural columns + captured_at stay owned by the first same-day
   // fire, and NULL economics columns backfill on a later fire without a
   // later NULL ever wiping an earlier fire's good value.
-  const syncResult = await syncSubnetSnapshotToPostgres(env, {
+  const syncResult = await writeSubnetSnapshotRows(env, {
     profiles,
     economicsByNetuid,
     // #8744: top-level on the artifact, not per subnet -- one

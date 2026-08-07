@@ -2661,47 +2661,6 @@ async function handleHealthUptimeRollupSync(request: Request, env: Env) {
   return writeJson({ error: "hyperdrive binding unavailable" }, 503);
 }
 
-// --- POST /api/v1/internal/subnet-snapshot-sync (#4832 gap-closure) ------
-//
-// RETIRED (#9193): the Postgres tables this wrote were destroyed with the
-// box, so the handler now stops at its auth gate and answers exactly what it
-// already answered in production. What follows describes what it DID.
-//
-// Best-effort Postgres mirror of writeSubnetSnapshot's D1 upsert
-// (src/health-prober.ts) -- same "own hourly cron, direct
-// env.DATA_API.fetch() service-binding call" shape as subnet-identity-sync
-// above, not an external GitHub Actions workflow. Rows arrive precomputed
-// (one per active subnet, already joined against economics.json), mirroring
-// health-checks-sync's shape rather than subnet-identity-sync's own
-// diff-and-append shape. ON CONFLICT (netuid, snapshot_date) DO UPDATE
-// mirrors D1's COALESCE-on-economics-columns semantics exactly: structural
-// columns + captured_at are owned by the day's first fire, economics
-// columns can backfill across the day's later fires but a later NULL can
-// never wipe an earlier fire's good value.
-const SUBNET_SNAPSHOT_SYNC_TOKEN_HEADER = "x-subnet-snapshot-sync-token";
-
-async function handleSubnetSnapshotSync(request: Request, env: Env) {
-  if (!env.SUBNET_SNAPSHOT_SYNC_SECRET) {
-    return writeJson(
-      { error: "subnet-snapshot sync is not provisioned on this deployment" },
-      503,
-    );
-  }
-  const provided = request.headers.get(SUBNET_SNAPSHOT_SYNC_TOKEN_HEADER) || "";
-  if (
-    !provided ||
-    !timingSafeEqual(provided, env.SUBNET_SNAPSHOT_SYNC_SECRET)
-  ) {
-    return writeJson(
-      { error: `provide a valid ${SUBNET_SNAPSHOT_SYNC_TOKEN_HEADER} header` },
-      401,
-    );
-  }
-  // #9193: same deletion as handleRollupAccountEventsDaily above -- unreachable
-  // since HYPERDRIVE went away, answered here, status and body unchanged.
-  return writeJson({ error: "hyperdrive binding unavailable" }, 503);
-}
-
 // --- POST /api/v1/internal/rpc-usage-sync (#4832 gap-closure) ------------
 //
 // RETIRED (#9193): the Postgres tables this wrote were destroyed with the
@@ -6766,12 +6725,6 @@ async function dispatchDataApiRequest(
       url.pathname === "/api/v1/internal/health-uptime-rollup-sync"
     ) {
       return handleHealthUptimeRollupSync(request, env);
-    }
-    if (
-      request.method === "POST" &&
-      url.pathname === "/api/v1/internal/subnet-snapshot-sync"
-    ) {
-      return handleSubnetSnapshotSync(request, env);
     }
     if (
       request.method === "POST" &&

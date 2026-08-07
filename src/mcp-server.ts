@@ -268,7 +268,6 @@ import {
   loadBlockExtrinsicsHotTier,
   type ChainDetailAnswer,
 } from "./chain-detail-hot-tier.ts";
-import { loadTopHoldersFromArtifact } from "./top-holders-artifact.ts";
 import { loadTopHoldersFlowTier } from "./top-holders-flow-tier.ts";
 import { loadChainTransfersFromArtifact } from "./chain-transfers-artifact.ts";
 import { loadChainStakeFlowFromArtifact } from "./chain-stake-flow-artifact.ts";
@@ -10510,11 +10509,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           }),
           "METAGRAPH_TOP_HOLDERS_SOURCE",
         )) ??
-        // Same tier order handleTopHoldersList uses: the live flow lane for
-        // the three net_flow_* sorts it can rank (#9469), the frozen
-        // 2026-08-02 materialization for the holdings sorts it cannot.
+        // Same tier order handleTopHoldersList uses: the live flow lane, which
+        // ranks all six sorts since its holdings leg started proving (#9469).
         (await loadTopHoldersFlowTier(ctx.env, { sort, limit })) ??
-        (await loadTopHoldersFromArtifact(ctx.env, { sort, limit })) ??
         buildTopHoldersList([], { sort, limit })
       );
     },
