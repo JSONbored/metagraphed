@@ -383,6 +383,10 @@ import { mirrorLedgerToNeon } from "../src/ledger-neon-write.ts";
 import { neonReadEnabled } from "../src/neon-write.ts";
 import { runNeonBackfill } from "../src/neon-backfill.ts";
 import { runNeonMirrorWatchdog } from "../src/neon-mirror-watchdog.ts";
+import {
+  NEON_PARITY_CRON,
+  runNeonParityWatchdog,
+} from "../src/neon-parity-watchdog.ts";
 import { runTableFreshnessWatchdog } from "../src/table-freshness-watchdog.ts";
 import {
   writeAccountIdentityToD1,
@@ -7730,6 +7734,15 @@ export default {
       // No ctx: this reads D1 only. It never touches Neon -- the whole point is
       // to judge the mirrors from evidence they already left behind.
       return runNeonMirrorWatchdog(env as unknown as Record<string, unknown>);
+    }
+    if (controller?.cron === NEON_PARITY_CRON) {
+      // `ctx` because this one DOES touch Neon: it is the only check that
+      // compares the two stores for tables the reconciler does not own, which
+      // is where all three of 2026-08-07's parity gaps were hiding (#9846).
+      return runNeonParityWatchdog(
+        env as unknown as Record<string, unknown>,
+        ctx,
+      );
     }
     if (controller?.cron === NEON_BACKFILL_CRON) {
       // `ctx` is threaded through rather than ignored: createPgSql needs a
