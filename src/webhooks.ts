@@ -802,8 +802,60 @@ export async function dispatchChangeEvent({
 // needs to see delivery outcomes, so the consumer writes a record and this
 // summarises it. Reporting, not control.
 
-// Roll a subscription's parked records into a compact health view for the public
-// GET. Pure — the caller injects the records it listed from the store.
+/**
+ * One delivery outcome, in the shape the summary below reads.
+ *
+ * THE WRITER AND THE READER LIVE TOGETHER NOW, and that is the point. #354's
+ * consumer wrote `{status, attempts, last_status, updated_at}` while this file
+ * kept reading `{state, round, reason, status_code, last_attempt_at}` — the old
+ * parked-record vocabulary. Not one field overlapped, so `dead_letter` was
+ * permanently 0, every record counted as pending (a fully delivered
+ * subscription reported `retrying`), and every `last_failure` field came back
+ * undefined. The tests missed it because they hand-seeded records instead of
+ * writing what the consumer writes.
+ *
+ * `state` is the DISPOSITION, not the HTTP outcome: `delivered` is terminal
+ * success, `pending` is scheduled for another attempt, `dead` is terminal
+ * failure. The summary counts on exactly those three.
+ */
+export function deliveryRecordFor({
+  subscriptionId,
+  eventId,
+  result,
+  disposition,
+  attempts,
+  nowIso,
+  nextAttemptAt = null,
+}: {
+  subscriptionId: string;
+  eventId: string;
+  result: Row | null | undefined;
+  disposition: "delivered" | "retry" | "dead";
+  attempts: number;
+  nowIso: string;
+  /** When the queue will try again, for a retried delivery. Null otherwise --
+   * a terminal record has no next attempt, and inventing one would read as a
+   * delivery still to come. */
+  nextAttemptAt?: string | null;
+}): Row {
+  return {
+    subscription_id: subscriptionId,
+    event_id: eventId,
+    state: disposition === "retry" ? "pending" : disposition,
+    // The queue's attempt counter, which is what replaced the hand-kept round.
+    round: attempts,
+    // Absent on a success, and deliberately not defaulted to "ok": `reason` is
+    // read as a failure cause, and a delivered record having one would be a lie
+    // that reads like a diagnosis.
+    reason: (result?.reason as string) ?? null,
+    status_code: (result?.status_code as number) ?? null,
+    last_attempt_at: nowIso,
+    next_attempt_at: disposition === "retry" ? nextAttemptAt : null,
+  };
+}
+
+// Roll a subscription's delivery records into a compact health view for the
+// public GET. Pure — the caller injects the records it listed from the store.
 export function summarizeDeliveryRecords(
   records: Row[] | null | undefined,
 ): Row {
@@ -815,10 +867,16 @@ export function summarizeDeliveryRecords(
   let latest: Row | null = null; // the failure with the most recent attempt (ISO sorts lexically)
   for (const record of list) {
     if (record.state === "dead") deadLetter += 1;
-    else pending += 1;
+    // A DELIVERED RECORD IS NEITHER. It used to fall into `pending` through the
+    // else, so a subscription whose every event landed reported `retrying` with
+    // a pending count equal to its recent history.
+    else if (record.state !== "delivered") pending += 1;
+    // `last_failure`, so a success does not become the reported failure just by
+    // being the most recent thing that happened.
     if (
-      !latest ||
-      (record.last_attempt_at as string) > (latest.last_attempt_at as string)
+      record.state !== "delivered" &&
+      (!latest ||
+        (record.last_attempt_at as string) > (latest.last_attempt_at as string))
     ) {
       latest = record;
     }
