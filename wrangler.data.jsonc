@@ -163,7 +163,22 @@
     // mirrors have never fired (12h/30h/48h producers), which #9772's watchdog
     // reports as never-mirrored-not-alarmed. Naming one would move a read onto
     // a store with no proven writer -- #9704 exactly.
-    "NEON_READ_LANES": "account_position_daily,neurons,neuron_daily",
+    // neuron_daily PULLED 2026-08-07 after #9784: two routes returned ZERO
+    // rows from Neon. The runners are interface-compatible; the SQL DIALECT is
+    // not. /api/v1/subnets/movers and /api/v1/subnets/{netuid}/history both
+    // anchor their window with SQLite's `date(MAX(snapshot_date), '-30 days')`,
+    // which Postgres has no equivalent for -- so the subquery yields nothing
+    // and the >= matches nothing. Measured against a pre-cutover baseline:
+    // movers 5 rows -> 0, subnet history 28 -> 0.
+    //
+    // `neurons` and `account_position_daily` stay: every route on them returned
+    // the same row counts, and the only differences were values that move with
+    // the 15-minute producer.
+    //
+    // Re-adding neuron_daily needs those two queries ported to portable SQL
+    // (an explicit date literal computed in TS, not in the database) -- see
+    // #9789.
+    "NEON_READ_LANES": "account_position_daily,neurons",
     // The two ACCUMULATING tables, and only those (src/neon-backfill.ts).
     //
     // The mirror above writes what each request carries, which finishes the job
