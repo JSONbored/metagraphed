@@ -1035,25 +1035,53 @@ describe("withEdgeCache", () => {
 // ---- D) handleBulkHealthTrends ----------------------------------------------
 
 describe("handleBulkHealthTrends", () => {
-  test("rejects any query param with 400", async () => {
-    for (const qs of ["?window=7d", "?foo=1", "?limit=10&cursor=abc"]) {
+  // #9989 gave this route three narrowing parameters. It took NONE before --
+  // both tests below used `window=7d` as their example of a REJECTED param,
+  // which is now a supported one, so the fixtures move to a param that can
+  // never be supported rather than to another real name that might later be.
+  test("rejects an unsupported query param with 400", async () => {
+    for (const qs of ["?foo=1", "?cursor=abc", "?sort=name"]) {
       const res = await handleBulkHealthTrends(
         req(`/api/v1/health/trends${qs}`),
         emptyEnv(),
         url(`/api/v1/health/trends${qs}`),
       );
       const body = await errorJson(res);
-      assert.equal(body.error.code, "invalid_query");
+      assert.equal(body.error.code, "invalid_query", qs);
     }
   });
 
   test("reports the offending parameter name in error details", async () => {
     const res = await handleBulkHealthTrends(
-      req("/api/v1/health/trends?window=7d"),
+      req("/api/v1/health/trends?foo=1"),
       emptyEnv(),
-      url("/api/v1/health/trends?window=7d"),
+      url("/api/v1/health/trends?foo=1"),
     );
     const body = await errorJson(res);
+    assert.equal(body.meta.parameter, "foo");
+  });
+
+  test("accepts the three parameters it now publishes", async () => {
+    // The other side of the same behaviour, pinned here so the next person
+    // does not rediscover it by breaking the rejection test above.
+    for (const qs of ["?window=7d", "?window=30d", "?limit=5", "?offset=2"]) {
+      const res = await handleBulkHealthTrends(
+        req(`/api/v1/health/trends${qs}`),
+        emptyEnv(),
+        url(`/api/v1/health/trends${qs}`),
+      );
+      assert.equal(res.status, 200, qs);
+    }
+  });
+
+  test("rejects a window the route does not derive", async () => {
+    const res = await handleBulkHealthTrends(
+      req("/api/v1/health/trends?window=90d"),
+      emptyEnv(),
+      url("/api/v1/health/trends?window=90d"),
+    );
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "window");
   });
 
