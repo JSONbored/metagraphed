@@ -15,12 +15,37 @@ import { mockEnv, type Row } from "./row-type.ts";
 
 type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
 
+// Shaped from a real GET /api/v1/changelog response (2026-08-07), with the
+// three diff lists left empty so the fixture stays readable.
+//
+// #9823 derived get_changelog's outputSchema from ChangelogArtifactSchema
+// rather than restating it. The fixture that stood here predated that and was
+// a partial: it omitted the artifact wrapper (`schema_version`,
+// `generated_at`) and four `summary` keys that production has always served.
+// It satisfied the open object the copy used to publish, and nothing else, so
+// it stopped validating the moment the schema became the real one. A partial
+// fixture cannot exercise a full schema.
 const SAMPLE_CHANGELOG = {
+  schema_version: 1,
+  contract_version: "2026-07-03.2",
+  generated_at: "2026-08-07T10:09:17.651Z",
   source: "generated-artifact-diff",
   summary: {
     artifact_added_count: 1,
     artifact_modified_count: 2,
     artifact_removed_count: 0,
+    coverage_delta: {
+      candidate_count: { before: 2171, after: 2174, delta: 3 },
+      curated_overlay_count: { before: 129, after: 129, delta: 0 },
+      native_only_count: { before: 0, after: 0, delta: 0 },
+      // Null is the real, served value when a side of the diff has no count
+      // to compare -- not a placeholder.
+      provider_count: null,
+      surface_count: { before: 3493, after: 3493, delta: 0 },
+    },
+    netuid_added_count: 0,
+    netuid_removed_count: 0,
+    netuid_renamed_count: 31,
   },
   artifacts: { added: [], modified: [], removed: [] },
   subnets: { added: [], removed: [], renamed: [] },

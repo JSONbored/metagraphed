@@ -123,6 +123,14 @@ export const TABLE_FRESHNESS: Readonly<Record<string, FreshnessExpectation>> = {
     maxAgeMs: 2 * HOUR,
     reason: "metagraph sync every 15 min",
   },
+  // Added by 0030 after this map was written -- the same coverage test that
+  // caught 0029's two tables caught this one, which is what it is for.
+  neurons_passes: {
+    column: "captured_at",
+    kind: "ms",
+    maxAgeMs: 2 * HOUR,
+    reason: "written with neurons",
+  },
   neuron_daily: {
     column: "captured_at",
     kind: "ms",

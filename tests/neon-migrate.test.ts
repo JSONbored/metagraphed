@@ -23,10 +23,7 @@ describe("pendingMigrations", () => {
 
   test("skips what is already applied", () => {
     assert.deepEqual(
-      pendingMigrations(
-        ["0001_a.sql", "0002_b.sql"],
-        new Set(["0001_a.sql"]),
-      ),
+      pendingMigrations(["0001_a.sql", "0002_b.sql"], new Set(["0001_a.sql"])),
       ["0002_b.sql"],
     );
   });
