@@ -170,6 +170,36 @@ export interface BackfillPlan {
    * columns are BOOLEAN and its writes succeed. Rows read BACK out of D1 are
    * integers, so this path -- and only this path -- has to convert them. */
   booleans: readonly string[];
+  /**
+   * The column that says WHEN a row was last written. Defaults to
+   * `captured_at`, which is what every plan in the neurons family carries.
+   *
+   * It is a plan field rather than a constant because it stops being universal
+   * the moment the migration leaves that family: the probe-derived tables name
+   * it `checked_at` (surface_checks) or `updated_at` (the rollups), and the
+   * append-only histories have no such column at all.
+   *
+   * Two things depend on getting it right, and both fail SILENTLY on the wrong
+   * name -- which is why this is declared per plan rather than guessed:
+   *
+   *   backfillGuard   an out-of-order page must be a no-op, not a regression
+   *   TableSignature  a `whole` plan compares (COUNT, MAX(freshness)); with no
+   *                   freshness column the count alone is the signal
+   */
+  freshness?: string | null;
+}
+
+/**
+ * The freshness column for a plan, or null when the table has none.
+ *
+ * `undefined` means "not stated, use the family default". Explicit `null`
+ * means "this table genuinely has no such column" -- an append-only log whose
+ * rows are never rewritten. The two are different and the distinction is load
+ * bearing: defaulting a log to `captured_at` would put a nonexistent column in
+ * the guard, and every backfill write for it would throw.
+ */
+export function freshnessColumn(plan: BackfillPlan): string | null {
+  return plan.freshness === undefined ? "captured_at" : plan.freshness;
 }
 
 /** subnet_snapshots, read off pragma_table_info 2026-08-07. */
@@ -384,10 +414,19 @@ export const NEON_BACKFILL_PLANS: Readonly<Record<string, BackfillPlan>> = {
  * Without it this path can REGRESS live data. Today's rows are rewritten by
  * the producer all day, so a page read from D1 at 12:00 and written to Neon at
  * 12:01 would overwrite whatever the mirror wrote at 12:00:30. With it, an
- * older `captured_at` is a no-op and the newer row stands.
+ * older freshness stamp is a no-op and the newer row stands.
+ *
+ * A table with NO freshness column gets no guard, and that is safe for the
+ * reason it has none: its rows are never rewritten, so there is no newer
+ * version for a stale page to clobber. Returning a guard over a column that
+ * does not exist would instead fail every write for that table.
  */
-export function backfillGuard(table: string): string {
-  return `${table}.captured_at < EXCLUDED.captured_at`;
+export function backfillGuard(
+  table: string,
+  freshness: string | null = "captured_at",
+): string | undefined {
+  if (!freshness) return undefined;
+  return `${table}.${freshness} < EXCLUDED.${freshness}`;
 }
 
 /**
@@ -568,7 +607,7 @@ export async function copyDateToNeon(
       plan.columns,
       page.map((row) => shapeRowForNeon(row, plan.booleans)),
       plan.conflict,
-      backfillGuard(plan.table),
+      backfillGuard(plan.table, freshnessColumn(plan)),
     );
     rows += result.rows;
     statements += result.statements;
@@ -652,11 +691,17 @@ export const WHOLE_TABLE_UNIT = "*";
  * per-date count difference is a complete signal. A dimension table is
  * UPDATED IN PLACE -- `account_identity` rewrites a row when an identity
  * changes, `subnet_hyperparams` when a subnet retunes -- so the two stores can
- * hold the same number of rows and different data indefinitely. `captured_at`
- * moves on every write, so the pair catches drift the count cannot see.
+ * hold the same number of rows and different data indefinitely. The freshness
+ * column moves on every write, so the pair catches drift the count cannot see.
+ *
+ * For a table with NO freshness column the pair degrades to the count, and
+ * that is not a weakening: such a table is append-only -- its rows are never
+ * rewritten -- so there is no in-place drift for a timestamp to reveal.
  */
 export interface TableSignature {
   rows: number;
+  /** Null when the stores agree there is nothing to compare: an empty table,
+   * or a plan whose table has no freshness column at all. */
   maxCapturedAt: number | null;
 }
 
@@ -686,17 +731,24 @@ function signatureOf(raw: unknown): TableSignature | null {
   };
 }
 
+/**
+ * The signature query. `MAX(freshness)` only when the table HAS one --
+ * selecting a nonexistent column would throw and be swallowed as "the store
+ * did not answer", turning a schema mistake into an indefinite `unknown`.
+ */
+export function signatureSql(table: string, freshness: string | null): string {
+  const max = freshness ? `, MAX(${freshness}) AS max_captured` : "";
+  return `SELECT COUNT(*) AS n${max} FROM ${table}`;
+}
+
 /** D1's signature. Null on failure, never a zeroed one -- see d1DateCounts. */
 export async function d1TableSignature(
   db: BackfillDb | null | undefined,
   table: string,
+  freshness: string | null = "captured_at",
 ): Promise<TableSignature | null> {
   try {
-    const result = await db
-      ?.prepare(
-        `SELECT COUNT(*) AS n, MAX(captured_at) AS max_captured FROM ${table}`,
-      )
-      .all();
+    const result = await db?.prepare(signatureSql(table, freshness)).all();
     if (!result) return null;
     return signatureOf((result.results ?? [])[0]);
   } catch {
@@ -708,11 +760,12 @@ export async function d1TableSignature(
 export async function neonTableSignature(
   sql: PgUnsafe | null | undefined,
   table: string,
+  freshness: string | null = "captured_at",
 ): Promise<TableSignature | null> {
   if (!sql?.unsafe) return null;
   try {
     const rows = (await sql.unsafe(
-      `SELECT COUNT(*) AS n, MAX(captured_at) AS max_captured FROM ${table}`,
+      signatureSql(table, freshness),
     )) as unknown[];
     if (!Array.isArray(rows)) return null;
     return signatureOf(rows[0]);
@@ -782,7 +835,7 @@ export async function copyWholeTableToNeon(
       plan.columns,
       page.map((row) => shapeRowForNeon(row, plan.booleans)),
       plan.conflict,
-      backfillGuard(plan.table),
+      backfillGuard(plan.table, freshnessColumn(plan)),
     );
     rows += result.rows;
     statements += result.statements;
@@ -820,9 +873,10 @@ async function reconcileWholeTable(
 ): Promise<BackfillTableOutcome> {
   const table = plan.table;
   const base = { table, deficits: 0, missing: 0, remaining: 0, copied: [] };
+  const freshness = freshnessColumn(plan);
   const [d1Sig, neonSig] = await Promise.all([
-    d1TableSignature(db, table),
-    neonTableSignature(sql, table),
+    d1TableSignature(db, table, freshness),
+    neonTableSignature(sql, table, freshness),
   ]);
   if (!d1Sig || !neonSig) {
     return {
