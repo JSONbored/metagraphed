@@ -340,12 +340,35 @@
   // Never add `localConnectionString` here: Neon's own guide suggests it and it
   // would commit a live password to a public repository. Use `.dev.vars`, which
   // IS gitignored, for local work.
-  "hyperdrive": [
-    {
-      "binding": "HYPERDRIVE",
-      "id": "8a09dc673733497f987434f59689287e",
-    },
-  ],
+  // UNBOUND 2026-08-07. The Neon pilot (metagraphed-infra#336) moved a READ
+  // without ever building a WRITE, and the two facts were never checked
+  // together.
+  //
+  // GET /api/v1/accounts/{ss58}/subnets/{netuid}/history reads Neon whenever
+  // this binding exists (see positionHistoryServedFromNeon in
+  // workers/data-api.ts). Neon's account_position_daily got ONE load on
+  // 2026-08-05 at 19:35 and nothing has written to it since, while the D1
+  // dual-write kept running. So the route served a snapshot that was two days
+  // old and getting older, and would have gone on doing that indefinitely.
+  //
+  // Measured before unbinding, two accounts picked from the table itself:
+  //
+  //   5C4hrjU8...t87s netuid 102   served 10 points to 2026-08-05
+  //                                D1 has 11 rows  to 2026-08-07
+  //   5C4ipx9Y...sw9bD netuid  80   served 26 points to 2026-08-05
+  //                                D1 has 27 rows  to 2026-08-07
+  //
+  // The code was written for exactly this rollback -- "unbinding HYPERDRIVE
+  // restores the previous behaviour exactly" -- so this is the intended
+  // control, not a workaround. Rebind it when a writer exists and its
+  // freshness has a watchdog, which is what let this run unnoticed: no lane in
+  // lane_health covers this route's store.
+  //
+  // The Hyperdrive config (metagraphed-neon,
+  // 8a09dc673733497f987434f59689287e) and the Neon project are both left in
+  // place. Nothing is lost by unbinding; the read simply goes back to the
+  // store that is current.
+  "hyperdrive": [],
   // Wallet-login challenge nonces (ADR 0021, #6835, src/wallet-auth.ts) --
   // the SAME namespace id as the main Worker's own METAGRAPH_CONTROL binding
   // (wrangler.jsonc), bound under the same name here so both Workers read/
