@@ -243,6 +243,15 @@ const SUBNET_HYPERPARAMS_COLUMNS = [
   "captured_at",
 ] as const;
 
+/** nominator_positions. */
+const NOMINATOR_POSITIONS_COLUMNS = [
+  "coldkey",
+  "hotkey",
+  "netuid",
+  "share_fraction",
+  "captured_at",
+] as const;
+
 /** validator_nominator_counts. */
 const VALIDATOR_NOMINATOR_COUNTS_COLUMNS = [
   "hotkey",
@@ -333,6 +342,24 @@ export const NEON_BACKFILL_PLANS: Readonly<Record<string, BackfillPlan>> = {
   // nominators keeps its D1 row forever (upsert-only, no prune) and never
   // reaches Neon. /validators reads this table, so 14 wrong rows is 14 wrong
   // nominator counts on a leaderboard.
+  // Same shape as validator_nominator_counts below, and the same evidence.
+  // Measured 2026-08-07: D1 123,522 rows, Neon 110,120 -- Neon short 13,402.
+  //
+  // Checked the write path before believing the numbers this time (#9832 was
+  // a lesson): the consumer hands BOTH writers the identical
+  // `{ rows, coldkeyMaxCapturedAt }`, so they share a prune contract, and
+  // chunkStatements applies no filter for this table. There is no asymmetry to
+  // explain the gap, which leaves the ordinary one -- rows written to D1
+  // before the mirror lane existed, for coldkeys the producer no longer emits.
+  // The mirror carries ~485 rows a pass; it will never reach them.
+  nominator_positions: {
+    table: "nominator_positions",
+    columns: NOMINATOR_POSITIONS_COLUMNS,
+    conflict: ["coldkey", "hotkey", "netuid"],
+    keyset: ["coldkey", "hotkey", "netuid"],
+    partition: "whole",
+    booleans: [],
+  },
   validator_nominator_counts: {
     table: "validator_nominator_counts",
     columns: VALIDATOR_NOMINATOR_COUNTS_COLUMNS,
