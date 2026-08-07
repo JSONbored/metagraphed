@@ -44,7 +44,19 @@ export interface SyncBatchMessage {
    * it is optional on the sync routes: a producer may post without declaring,
    * and inventing a total would mark an unproven load complete. */
   pass_total?: number;
-  rows: Record<string, unknown>[];
+  /**
+   * The chunk's rows, for a lane that carries one array.
+   *
+   * OPTIONAL, because a multi-family message carries `families` INSTEAD and
+   * `packMultiFamilyMessage` deletes this key outright. It was declared
+   * required when every lane had rows, and stayed required after `families`
+   * arrived -- so `message.rows.length` typechecked on a message that has no
+   * `rows` at all, which is exactly the read that crashed the consumer's batch
+   * log. The two shapes are mutually exclusive (`validSyncBatchMessage`
+   * enforces it), so the honest type is "one or the other" and every read goes
+   * through `syncBatchRows` / `syncBatchRowCount`.
+   */
+  rows?: Record<string, unknown>[];
   /**
    * Several row families that must land in ONE write (metagraphed-infra#359).
    *
@@ -100,6 +112,18 @@ export interface SyncBatchMessage {
   key_column?: string;
   key_value?: string;
 }
+
+/**
+ * A message that definitely carries rows, which is what the packer emits.
+ *
+ * `rows` is optional on the wire type because the multi-family shape omits it,
+ * but `packSyncBatchMessages` builds every message from a row array and can
+ * never produce one without. Narrowing here keeps that guarantee in the type
+ * system rather than in the reader's memory.
+ */
+export type SyncBatchRowsMessage = SyncBatchMessage & {
+  rows: Record<string, unknown>[];
+};
 
 /**
  * Lanes the consumer will accept.
@@ -281,7 +305,7 @@ export function packSyncBatchMessages(input: {
    * every message assert something false -- so the mismatch is possible and the
    * guard is not decorative. */
   pruningKeys?: Readonly<Record<string, string>>;
-}): SyncBatchMessage[] {
+}): SyncBatchRowsMessage[] {
   const {
     lane,
     capturedAt,
@@ -319,7 +343,7 @@ export function packSyncBatchMessages(input: {
     for (const row of rows) groups.push([row]);
   }
 
-  const messages: SyncBatchMessage[] = [];
+  const messages: SyncBatchRowsMessage[] = [];
   let current: Record<string, unknown>[] = [];
   let currentBytes = 0;
 
@@ -338,7 +362,7 @@ export function packSyncBatchMessages(input: {
           return rest;
         })
       : current;
-    const message: SyncBatchMessage = {
+    const message: SyncBatchRowsMessage = {
       lane,
       captured_at: capturedAt,
       ...(passTotal !== undefined ? { pass_total: passTotal } : {}),
@@ -706,10 +730,14 @@ export function passTallyFor(
 export function syncBatchRows(
   message: SyncBatchMessage,
 ): Record<string, unknown>[] {
-  if (!message.key_column) return message.rows;
+  // A multi-family message has no `rows`, and never reaches here -- writeSyncBatch
+  // hands it to the family writer and returns. Empty rather than a throw so the
+  // fallback is the harmless one: a writer given nothing writes nothing.
+  const rows = message.rows ?? [];
+  if (!message.key_column) return rows;
   const column = message.key_column;
   const value = message.key_value;
-  return message.rows.map((row) => ({ ...row, [column]: value }));
+  return rows.map((row) => ({ ...row, [column]: value }));
 }
 
 /** How many rows a message actually carries, whichever shape it uses. */

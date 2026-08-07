@@ -27,6 +27,10 @@ const SCHEMA =
   fs.readFileSync(
     path.join(process.cwd(), "migrations/d1/0020_account_balances_passes.sql"),
     "utf8",
+  ) +
+  fs.readFileSync(
+    path.join(process.cwd(), "migrations/d1/0010_chain_detail.sql"),
+    "utf8",
   );
 
 const COLDKEY = "5CXRfP2ekFhYQ6BCwEy5V8YyxgLmUmTNzHZTKAfTHKhKPBqE";
@@ -211,5 +215,71 @@ describe("the sync queue consumer", () => {
   test("an empty batch is not an error", async () => {
     await consume([]);
     assert.equal(rows().length, 0);
+  });
+
+  test("writes a multi-family message, and does not fail its batch-mates", async () => {
+    // THE REGRESSION (metagraphed-infra#359). The handler's opening log line
+    // summed `m.rows.length` over every valid message. A chain-detail message
+    // carries `families` and no `rows` at all, so that read threw a TypeError
+    // ABOVE the per-message try/catch -- taking the whole batch, every lane
+    // co-batched with it, five retries, into the dead-letter queue. Nothing
+    // caught it because `rows` was declared required on a shape that omits it.
+    //
+    // So this drives the families message through the REAL handler alongside a
+    // single-family neighbour, and asserts the neighbour survives.
+    const neighbour = positionMessage();
+    const chainDetail = message({
+      lane: "chain-detail",
+      captured_at: 1_780_000_000_000,
+      families: {
+        blockRows: [
+          {
+            block_number: 6_100_000,
+            block_hash: `0x${"ab".repeat(32)}`,
+            spec_version: 441,
+            extrinsic_count: 1,
+            chain_event_count: 0,
+            account_event_count: 0,
+            observed_at: 1_780_000_000_000,
+            synced_at: 1_780_000_000_000,
+          },
+        ],
+        extrinsicRows: [
+          {
+            block_number: 6_100_000,
+            extrinsic_index: 0,
+            extrinsic_hash: `0x${"cd".repeat(32)}`,
+            signer: COLDKEY,
+            call_module: "SubtensorModule",
+            call_function: "set_weights",
+            success: 1,
+            fee_tao: 0,
+            observed_at: 1_780_000_000_000,
+            synced_at: 1_780_000_000_000,
+          },
+        ],
+      },
+    });
+
+    await consume([chainDetail, neighbour]);
+
+    assert.deepEqual(chainDetail.calls, ["ack"]);
+    assert.deepEqual(neighbour.calls, ["ack"], "the batch-mate still landed");
+    assert.equal(rows().length, 1, "and its rows were written");
+    const blocks = db
+      .prepare("SELECT block_number FROM chain_detail_blocks")
+      .all() as Record<string, unknown>[];
+    assert.deepEqual(
+      blocks.map((row) => row.block_number),
+      [6_100_000],
+    );
+    const extrinsics = db
+      .prepare("SELECT COUNT(*) AS n FROM chain_detail_extrinsics")
+      .all() as Record<string, unknown>[];
+    assert.equal(
+      extrinsics[0]!.n,
+      1,
+      "both families landed, which is why they travel together",
+    );
   });
 });
