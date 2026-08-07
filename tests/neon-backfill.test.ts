@@ -15,22 +15,28 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import {
-  backfillGuard,
-  copyDateToNeon,
-  d1DateCounts,
-  dateDeficits,
-  describeOutcome,
   D1_PAGE_ROWS,
   IDLE_RECHECK_MS,
-  keysetPredicate,
   MAX_DATES_PER_TICK,
   NEON_BACKFILL_PLANS,
+  TICK_BUDGET_MS,
+  WHOLE_TABLE_UNIT,
+  backfillGuard,
+  copyDateToNeon,
+  copyWholeTableToNeon,
+  d1DateCounts,
+  d1TableSignature,
+  dateDeficits,
+  describeOutcome,
+  keysetPredicate,
   neonDateCounts,
+  neonTableSignature,
   readDatePage,
+  readWholePage,
   reconcileTableToNeon,
   runNeonBackfill,
   shapeRowForNeon,
-  TICK_BUDGET_MS,
+  signaturesAgree,
 } from "../src/neon-backfill.ts";
 import { neonBackfillLanes } from "../src/neon-write.ts";
 
@@ -143,13 +149,49 @@ describe("NEON_BACKFILL_PLANS", () => {
           `${name}: ${column} is not in its own column list`,
         );
       }
-      // The keyset is the primary key MINUS snapshot_date, in key order. If it
-      // ever drifted from that, a page would resume from the wrong place and
-      // skip rows silently -- the deficit would shrink and never reach zero.
+      // The keyset is what a page resumes from. If it ever drifted from the
+      // primary key, a page would resume from the wrong place and skip rows
+      // silently -- the deficit would shrink and never reach zero.
+      //
+      // The two partitions relate it to the key differently, which is the
+      // point of declaring the partition: a dated plan already has the date
+      // pinned by its WHERE clause, so its keyset is the key MINUS
+      // snapshot_date; a whole-table plan has nothing pinned, so its keyset is
+      // the entire key.
       assert.deepEqual(
-        [...plan.keyset, "snapshot_date"].sort(),
+        plan.partition === "date"
+          ? [...plan.keyset, "snapshot_date"].sort()
+          : [...plan.keyset].sort(),
         [...plan.conflict].sort(),
-        `${name}: keyset + snapshot_date must equal the primary key`,
+        `${name}: keyset must be the primary key (minus snapshot_date when dated)`,
+      );
+    }
+  });
+
+  test("a dated plan has snapshot_date and a whole-table plan does not", () => {
+    // The partition is not a label -- it selects the SQL. A dated plan whose
+    // table has no snapshot_date would query a column that does not exist, and
+    // a whole-table plan that has one would copy the entire table every tick
+    // instead of the dates that changed.
+    for (const [name, plan] of Object.entries(NEON_BACKFILL_PLANS)) {
+      assert.equal(
+        plan.columns.includes("snapshot_date"),
+        plan.partition === "date",
+        `${name} is partitioned "${plan.partition}" but ${
+          plan.columns.includes("snapshot_date") ? "has" : "lacks"
+        } a snapshot_date column`,
+      );
+    }
+  });
+
+  test("every plan can compare signatures, which needs captured_at", () => {
+    // Both the whole-table sync check and backfillGuard read captured_at, so a
+    // plan without it would compare on row count alone and never notice an
+    // updated-in-place row.
+    for (const [name, plan] of Object.entries(NEON_BACKFILL_PLANS)) {
+      assert.ok(
+        plan.columns.includes("captured_at"),
+        `${name} has no captured_at`,
       );
     }
   });
@@ -423,6 +465,212 @@ describe("readDatePage", () => {
       await readDatePage(d1.db, PLAN, "2026-08-07", null, 1),
       [],
     );
+  });
+});
+
+describe("the whole-table partition", () => {
+  const WHOLE = NEON_BACKFILL_PLANS.account_identity;
+  const sig = (n: number, max: number | null) => [{ n, max_captured: max }];
+
+  test("reads a signature from each store", async () => {
+    const d1 = fakeDb([sig(497, 1786098804131)]);
+    assert.deepEqual(await d1TableSignature(d1.db, "account_identity"), {
+      rows: 497,
+      maxCapturedAt: 1786098804131,
+    });
+    const pg = fakeSql(sig(497, 1786098804131));
+    assert.deepEqual(await neonTableSignature(pg.sql, "account_identity"), {
+      rows: 497,
+      maxCapturedAt: 1786098804131,
+    });
+  });
+
+  test("a store that will not answer reads as null, never as zero rows", async () => {
+    // Same rule as d1DateCounts: an empty signature would make the other
+    // store's entire contents look like a deficit.
+    assert.equal(await d1TableSignature(null, "account_identity"), null);
+    assert.equal(
+      await d1TableSignature(fakeDb([], "SELECT COUNT").db, "account_identity"),
+      null,
+    );
+    assert.equal(await neonTableSignature(null, "account_identity"), null);
+    assert.equal(
+      await neonTableSignature(fakeSql([], "SELECT").sql, "account_identity"),
+      null,
+    );
+  });
+
+  test("an empty table is a real signature, not a failure", async () => {
+    assert.deepEqual(
+      await d1TableSignature(fakeDb([sig(0, null)]).db, "account_identity"),
+      { rows: 0, maxCapturedAt: null },
+    );
+  });
+
+  test("signatures agree only when BOTH count and newest write match", () => {
+    const a = { rows: 497, maxCapturedAt: 100 };
+    assert.equal(signaturesAgree(a, { rows: 497, maxCapturedAt: 100 }), true);
+    assert.equal(signaturesAgree(a, { rows: 496, maxCapturedAt: 100 }), false);
+    // THE CASE A COUNT ALONE MISSES: same row count, one side rewritten. This
+    // is the normal shape of drift for a dimension table -- an identity
+    // changes, the row is UPDATED, and the count never moves.
+    assert.equal(signaturesAgree(a, { rows: 497, maxCapturedAt: 99 }), false);
+  });
+
+  test("a whole-table page has no date predicate", async () => {
+    const d1 = fakeDb([[]]);
+    await readWholePage(d1.db, WHOLE, null, 500);
+    assert.doesNotMatch(d1.calls[0].sql, /snapshot_date/);
+    assert.match(
+      d1.calls[0].sql,
+      /FROM account_identity ORDER BY account LIMIT \?/,
+    );
+    assert.deepEqual(d1.calls[0].values, [500]);
+  });
+
+  test("a resumed whole-table page seeks past the cursor", async () => {
+    const d1 = fakeDb([[]]);
+    await readWholePage(d1.db, WHOLE, ["5Abc"], 500);
+    assert.match(
+      d1.calls[0].sql,
+      /WHERE \(\(account > \?\)\) ORDER BY account/,
+    );
+    assert.deepEqual(d1.calls[0].values, ["5Abc", 500]);
+  });
+
+  test("in sync copies nothing", async () => {
+    const d1 = fakeDb([sig(2, 100)]);
+    const pg = fakeSql(sig(2, 100));
+    const out = await reconcileTableToNeon(d1.db, pg.sql, WHOLE);
+    assert.equal(out.ok, true);
+    assert.equal(out.deficits, 0);
+    assert.deepEqual(out.copied, []);
+    assert.equal(
+      d1.calls.some((c) => c.sql.startsWith("SELECT account,")),
+      false,
+      "read rows despite the signatures agreeing",
+    );
+  });
+
+  test("drift with an EQUAL row count still copies", async () => {
+    // The whole reason the signature is a pair.
+    const d1 = fakeDb([sig(2, 200), [{ account: "a" }, { account: "b" }], []]);
+    const pg = fakeSql(sig(2, 100));
+    const out = await reconcileTableToNeon(d1.db, pg.sql, WHOLE);
+    assert.equal(out.ok, true);
+    assert.equal(out.deficits, 1);
+    assert.equal(out.missing, 0, "no rows are MISSING; they are stale");
+    assert.equal(out.remaining, 0);
+    assert.equal(out.copied[0]?.date, WHOLE_TABLE_UNIT);
+    assert.equal(out.copied[0]?.rows, 2);
+  });
+
+  test("a failed signature read refuses to copy", async () => {
+    const d1 = fakeDb([sig(2, 200)]);
+    const pg = fakeSql([], "SELECT");
+    const out = await reconcileTableToNeon(d1.db, pg.sql, WHOLE);
+    assert.equal(out.ok, false);
+    assert.match(String(out.reason), /signature failed: neon/);
+    assert.deepEqual(out.copied, []);
+  });
+
+  test("a failed write reports the backlog as still owed", async () => {
+    const d1 = fakeDb([sig(3, 200), [{ account: "a" }]]);
+    const pg = fakeSql(sig(1, 100), "INSERT");
+    const out = await reconcileTableToNeon(d1.db, pg.sql, WHOLE);
+    assert.equal(out.ok, false);
+    assert.equal(out.missing, 2);
+    assert.equal(out.remaining, 2, "a failed copy must not clear the backlog");
+  });
+
+  test("a failed READ is reported, not counted as an empty table", async () => {
+    const d1 = fakeDb([sig(3, 200)], "SELECT account,");
+    const pg = fakeSql(sig(1, 100));
+    const out = await reconcileTableToNeon(d1.db, pg.sql, WHOLE);
+    assert.equal(out.ok, false);
+    assert.match(String(out.reason), /D1_ERROR/);
+  });
+
+  test("a signature query answering NO ROW reads as null, not as empty", () => {
+    // COUNT(*) always returns exactly one row, even over an empty table. So a
+    // response with no row is not "no data" -- it is a response that is not
+    // the shape a count produces, and reading it as {rows: 0} would report the
+    // other store's entire contents as a deficit.
+    return Promise.all([
+      d1TableSignature(fakeDb([[]]).db, "account_identity").then((v) =>
+        assert.equal(v, null),
+      ),
+      neonTableSignature(fakeSql([]).sql, "account_identity").then((v) =>
+        assert.equal(v, null),
+      ),
+    ]);
+  });
+
+  test("an unreadable count reads as zero rows, not as NaN", async () => {
+    // A signature carrying NaN would compare unequal to itself forever, so the
+    // lane would copy the whole table every tick and never converge.
+    const sig = await d1TableSignature(
+      fakeDb([[{ n: "not-a-number", max_captured: 5 }]]).db,
+      "account_identity",
+    );
+    assert.deepEqual(sig, { rows: 0, maxCapturedAt: 5 });
+  });
+
+  test("a D1 response with no `results` key reads as null, not as empty", async () => {
+    assert.equal(
+      await d1TableSignature(fakeDb([null as unknown as unknown[]]).db, "t"),
+      null,
+    );
+  });
+
+  test("a non-array answer from Neon reads as null", async () => {
+    const sql = {
+      async unsafe() {
+        return { rows: 1 } as unknown as unknown[];
+      },
+    };
+    assert.equal(await neonTableSignature(sql, "account_identity"), null);
+  });
+
+  test("a whole-table page with no `results` key reads as the end", async () => {
+    const d1 = fakeDb([null as unknown as unknown[]]);
+    assert.deepEqual(await readWholePage(d1.db, WHOLE, null, 1), []);
+  });
+
+  test("an already-empty table copies nothing and still succeeds", async () => {
+    const d1 = fakeDb([[]]);
+    const out = await copyWholeTableToNeon(d1.db, fakeSql([]).sql, WHOLE, 2);
+    assert.deepEqual(out, {
+      ok: true,
+      rows: 0,
+      statements: 0,
+      pages: 0,
+      date: WHOLE_TABLE_UNIT,
+    });
+  });
+
+  test("names D1 as the failing side when D1 is the one that failed", async () => {
+    // The reason string is the only thing a human reads off the lane verdict,
+    // so it has to name the store that actually failed.
+    const d1 = fakeDb([], "SELECT COUNT");
+    const out = await reconcileTableToNeon(
+      d1.db,
+      fakeSql(sig(1, 1)).sql,
+      WHOLE,
+    );
+    assert.equal(out.ok, false);
+    assert.match(String(out.reason), /signature failed: d1/);
+  });
+
+  test("pages until D1 returns a short page", async () => {
+    const rows = (n: number, from: number) =>
+      Array.from({ length: n }, (_, i) => ({ account: `a${from + i}` }));
+    const d1 = fakeDb([rows(2, 0), rows(1, 2)]);
+    const pg = fakeSql(sig(0, null));
+    const out = await copyWholeTableToNeon(d1.db, pg.sql, WHOLE, 2);
+    assert.equal(out.ok, true);
+    assert.equal(out.pages, 2);
+    assert.equal(out.rows, 3);
   });
 });
 
