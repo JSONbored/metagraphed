@@ -177,9 +177,29 @@ describe("githubSignalsForSubnet", () => {
     assert.deepEqual(result, emptyShape);
   });
 
-  test("returns the empty shape when the repo resolves but has no captured signals yet", () => {
+  test("a resolved repo missing from a populated capture is UNREACHABLE (#9912)", () => {
+    // This used to assert the empty shape -- i.e. github_unreachable:false --
+    // and that expectation was the bug. resolveTrackedRepos builds the capture
+    // list from exactly these resolved source_repos, so a repo absent from a
+    // capture that DID run is one fetchRepoSignals dropped, not one nobody
+    // asked about. Live: netuid 92's tensorclaw/tensorclaw 404s and we served
+    // `github_unreachable: false` with every metric null.
     const result = githubSignalsForSubnet(
       signalsByRepo,
+      { source_repo: "https://github.com/some/uncaptured-repo" },
+      {},
+    );
+    assert.deepEqual(result, { ...emptyShape, github_unreachable: true });
+    // The metrics stay null -- absence is a verdict, never invented data.
+    assert.equal(result.github_stars, null);
+    assert.equal(result.github_last_push_at, null);
+  });
+
+  test("but a cold start with NO capture at all is not a verdict", () => {
+    // The other overclaim: an empty map means no artifact yet, and calling all
+    // 129 subnets unreachable off the back of that is just as wrong.
+    const result = githubSignalsForSubnet(
+      new Map(),
       { source_repo: "https://github.com/some/uncaptured-repo" },
       {},
     );
@@ -386,6 +406,58 @@ describe("fetchRepoSignals", () => {
     assert.equal(result?.unreachable, false);
     assert.equal(result?.stars, 500);
     assert.equal(result?.last_push_at, "2026-07-20T00:00:00Z");
+  });
+
+  test("a 404 drops the repo instead of retaining its last-good numbers (#9912)", async () => {
+    // The retain-last-good path is right for a BLIP -- the repo is still there
+    // and 99 stars is still true. It is wrong for a deleted repo: live, we
+    // served 43 stars and a push "3 days ago" for AffineFoundation/affine-cortex,
+    // which returns 404 from api.github.com. Djinn-Inc/djinn was the same.
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockImplementation(() => jsonResponse(404, { message: "Not Found" })),
+    );
+    const result = await fetchRepoSignals(
+      { owner: "opentensor", repo: "subtensor" },
+      previousEntry,
+      { capturedAt: new Date().toISOString() },
+    );
+    // Dropped, so githubSignalFields reports unreachable with null metrics --
+    // rather than republishing numbers about something that no longer exists.
+    assert.equal(result, null);
+  });
+
+  test("410 Gone is treated the same as 404", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(() => jsonResponse(410, { message: "Gone" })),
+    );
+    const result = await fetchRepoSignals(
+      { owner: "opentensor", repo: "subtensor" },
+      previousEntry,
+      { capturedAt: new Date().toISOString() },
+    );
+    assert.equal(result, null);
+  });
+
+  test("a rate limit still retains last-good, because the repo is still there", async () => {
+    // The other half of the same decision: 403/429/5xx are blips, and throwing
+    // away a live repo's real numbers over one would be its own defect.
+    for (const status of [403, 429, 500, 502]) {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockImplementation(() => jsonResponse(status, {})),
+      );
+      const result = await fetchRepoSignals(
+        { owner: "opentensor", repo: "subtensor" },
+        previousEntry,
+        { capturedAt: new Date().toISOString() },
+      );
+      assert.equal(result?.unreachable, true, `status ${status}`);
+      assert.equal(result?.stars, 99, `status ${status} kept its stars`);
+    }
   });
 
   test("stamps the caller-supplied capturedAt on a successful capture", async () => {

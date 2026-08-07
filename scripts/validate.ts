@@ -1315,6 +1315,36 @@ async function validateGeneratedArtifacts(
       candidate.subnet_name,
     );
   }
+  // #9912: an unreachable repo may not also publish activity metrics.
+  //
+  // Same class as the display-name gate above -- a served claim the source
+  // contradicts -- and the same reasoning for gating the OUTCOME rather than
+  // the call sites. We published `github_stars: 43` and a push "3 days ago" for
+  // AffineFoundation/affine-cortex while it returned 404 from api.github.com,
+  // and `github_unreachable: false` with every metric null for
+  // tensorclaw/tensorclaw, which also 404s. Both are "the numbers and the
+  // verdict disagree", so assert they cannot.
+  const githubClaimDrift: string[] = [];
+  for (const subnet of subnets) {
+    if (!subnet.github_unreachable) continue;
+    const claimed = [
+      "github_stars",
+      "github_last_push_at",
+      "github_commits_weekly",
+      "github_languages",
+      "github_releases",
+    ].filter((field) => (subnet as Row)[field] != null);
+    if (claimed.length > 0) {
+      githubClaimDrift.push(
+        `${subnet.slug} (netuid ${subnet.netuid}): github_unreachable but still serves ${claimed.join(", ")}`,
+      );
+    }
+  }
+  assert(
+    githubClaimDrift.length === 0,
+    `an unreachable GitHub repo must not publish activity metrics (${githubClaimDrift.length}):\n  ${githubClaimDrift.slice(0, 12).join("\n  ")}`,
+  );
+
   assert(
     displayNameDrift.length === 0,
     `served display names must come from subnetDisplayName (${displayNameDrift.length}):\n  ${displayNameDrift.slice(0, 12).join("\n  ")}`,
