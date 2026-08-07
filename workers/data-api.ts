@@ -1187,31 +1187,6 @@ async function handleNeuronDailyBackfill(
 // run (past days are already finalized), upsert idempotently. No request
 // body -- this is a trigger-only POST, not a data-carrying sync.
 
-async function handleRollupAccountEventsDaily(request: Request, env: Env) {
-  if (!env.ROLLUP_SYNC_SECRET) {
-    return writeJson(
-      {
-        error:
-          "account-events-daily rollup is not provisioned on this deployment",
-      },
-      503,
-    );
-  }
-  const provided = request.headers.get(ROLLUP_TOKEN_HEADER) || "";
-  if (!provided || !timingSafeEqual(provided, env.ROLLUP_SYNC_SECRET)) {
-    return writeJson(
-      { error: `provide a valid ${ROLLUP_TOKEN_HEADER} header` },
-      401,
-    );
-  }
-  // #9193: the Postgres tier this route wrote into was destroyed with the box,
-  // and HYPERDRIVE has been unbound since #9186 -- everything past this gate has
-  // been unreachable ever since (account_events, the source it
-  // rolled up, only ever lived on the box). Status and body are deliberately
-  // unchanged: the caller already reads this as "the mirror is gone".
-  return writeJson({ error: "hyperdrive binding unavailable" }, 503);
-}
-
 // --- POST /api/v1/internal/subnet-hyperparams-sync (#4832 gap-closure) -----
 //
 // The write path into subnet_hyperparams + subnet_hyperparams_history,
@@ -1473,25 +1448,6 @@ async function handleSubnetHyperparamsSync(request: Request, env: Env) {
 // handleSubnetHyperparamsSync's own reasoning -- the prune below is a
 // plain "not in this batch" sweep, never scoped to a subset of netuids.
 const SUBNET_LOCKS_SYNC_TOKEN_HEADER = "x-subnet-locks-sync-token";
-
-async function handleSubnetLocksSync(request: Request, env: Env) {
-  if (!env.SUBNET_LOCKS_SYNC_SECRET) {
-    return writeJson(
-      { error: "subnet-locks sync is not provisioned on this deployment" },
-      503,
-    );
-  }
-  const provided = request.headers.get(SUBNET_LOCKS_SYNC_TOKEN_HEADER) || "";
-  if (!provided || !timingSafeEqual(provided, env.SUBNET_LOCKS_SYNC_SECRET)) {
-    return writeJson(
-      { error: `provide a valid ${SUBNET_LOCKS_SYNC_TOKEN_HEADER} header` },
-      401,
-    );
-  }
-  // #9193: same deletion as handleRollupAccountEventsDaily above -- unreachable
-  // since HYPERDRIVE went away, answered here, status and body unchanged.
-  return writeJson({ error: "hyperdrive binding unavailable" }, 503);
-}
 
 // --- POST /api/v1/internal/account-identity-sync (#4832 gap-closure) ------
 //
@@ -2847,28 +2803,6 @@ async function handlePollerLaneHealthSync(request: Request, env: Env) {
 // skips a malformed individual profile without erroring the batch.
 const SUBNET_IDENTITY_SYNC_TOKEN_HEADER = "x-subnet-identity-sync-token";
 
-async function handleSubnetIdentitySync(request: Request, env: Env) {
-  if (!env.SUBNET_IDENTITY_SYNC_SECRET) {
-    return writeJson(
-      { error: "subnet-identity sync is not provisioned on this deployment" },
-      503,
-    );
-  }
-  const provided = request.headers.get(SUBNET_IDENTITY_SYNC_TOKEN_HEADER) || "";
-  if (
-    !provided ||
-    !timingSafeEqual(provided, env.SUBNET_IDENTITY_SYNC_SECRET)
-  ) {
-    return writeJson(
-      { error: `provide a valid ${SUBNET_IDENTITY_SYNC_TOKEN_HEADER} header` },
-      401,
-    );
-  }
-  // #9193: same deletion as handleRollupAccountEventsDaily above -- unreachable
-  // since HYPERDRIVE went away, answered here, status and body unchanged.
-  return writeJson({ error: "hyperdrive binding unavailable" }, 503);
-}
-
 // --- POST /api/v1/internal/health-checks-sync (#4832 gap-closure) --------
 //
 // RETIRED (#9193): the Postgres tables this wrote were destroyed with the
@@ -2892,59 +2826,6 @@ async function handleSubnetIdentitySync(request: Request, env: Env) {
 // single-transaction mirror write on every 15-min probe run, permanently.
 const HEALTH_CHECKS_SYNC_TOKEN_HEADER = "x-health-checks-sync-token";
 
-async function handleHealthChecksSync(request: Request, env: Env) {
-  if (!env.HEALTH_CHECKS_SYNC_SECRET) {
-    return writeJson(
-      { error: "health-checks sync is not provisioned on this deployment" },
-      503,
-    );
-  }
-  const provided = request.headers.get(HEALTH_CHECKS_SYNC_TOKEN_HEADER) || "";
-  if (!provided || !timingSafeEqual(provided, env.HEALTH_CHECKS_SYNC_SECRET)) {
-    return writeJson(
-      { error: `provide a valid ${HEALTH_CHECKS_SYNC_TOKEN_HEADER} header` },
-      401,
-    );
-  }
-  // #9193: same deletion as handleRollupAccountEventsDaily above -- unreachable
-  // since HYPERDRIVE went away, answered here, status and body unchanged.
-  return writeJson({ error: "hyperdrive binding unavailable" }, 503);
-}
-
-// --- POST /api/v1/internal/health-uptime-rollup-sync (#4832 gap-closure) --
-//
-// RETIRED (#9193): the Postgres tables this wrote were destroyed with the
-// box, so the handler now stops at its auth gate and answers exactly what it
-// already answered in production. What follows describes what it DID.
-//
-// Best-effort Postgres mirror of src/health-prober.ts's rollupDailyUptime,
-// same shape/isolation as health-checks-sync above (reuses
-// HEALTH_CHECKS_SYNC_SECRET -- see that route's own header comment). Unlike
-// health-checks-sync, the request body carries only UTC day *boundaries*,
-// not precomputed rows -- this route computes the rollup itself from
-// surface_checks (already mirrored here by health-checks-sync), using
-// PERCENTILE_CONT for the p50/p95/p99 tail latency instead of replaying
-// D1/SQLite's rank-based CTE (src/health-sql.ts's rankedChecksCte/
-// latencyStatColumns) column-for-column.
-async function handleHealthUptimeRollupSync(request: Request, env: Env) {
-  if (!env.HEALTH_CHECKS_SYNC_SECRET) {
-    return writeJson(
-      { error: "health-checks sync is not provisioned on this deployment" },
-      503,
-    );
-  }
-  const provided = request.headers.get(HEALTH_CHECKS_SYNC_TOKEN_HEADER) || "";
-  if (!provided || !timingSafeEqual(provided, env.HEALTH_CHECKS_SYNC_SECRET)) {
-    return writeJson(
-      { error: `provide a valid ${HEALTH_CHECKS_SYNC_TOKEN_HEADER} header` },
-      401,
-    );
-  }
-  // #9193: same deletion as handleRollupAccountEventsDaily above -- unreachable
-  // since HYPERDRIVE went away, answered here, status and body unchanged.
-  return writeJson({ error: "hyperdrive binding unavailable" }, 503);
-}
-
 // --- POST /api/v1/internal/rpc-usage-sync (#4832 gap-closure) ------------
 //
 // RETIRED (#9193): the Postgres tables this wrote were destroyed with the
@@ -2960,57 +2841,6 @@ async function handleHealthUptimeRollupSync(request: Request, env: Env) {
 // batching would be premature for traffic this low. One event per request,
 // not an array, matching the caller's one-row-per-call shape.
 const RPC_USAGE_SYNC_TOKEN_HEADER = "x-rpc-usage-sync-token";
-
-async function handleRpcUsageEventSync(request: Request, env: Env) {
-  if (!env.RPC_USAGE_SYNC_SECRET) {
-    return writeJson(
-      { error: "rpc-usage sync is not provisioned on this deployment" },
-      503,
-    );
-  }
-  const provided = request.headers.get(RPC_USAGE_SYNC_TOKEN_HEADER) || "";
-  if (!provided || !timingSafeEqual(provided, env.RPC_USAGE_SYNC_SECRET)) {
-    return writeJson(
-      { error: `provide a valid ${RPC_USAGE_SYNC_TOKEN_HEADER} header` },
-      401,
-    );
-  }
-  // #9193: same deletion as handleRollupAccountEventsDaily above -- unreachable
-  // since HYPERDRIVE went away, answered here, status and body unchanged.
-  return writeJson({ error: "hyperdrive binding unavailable" }, 503);
-}
-
-// --- POST /api/v1/internal/rpc-usage-prune (#5497 gap-closure) -----------
-//
-// RETIRED (#9193): the Postgres tables this wrote were destroyed with the
-// box, so the handler now stops at its auth gate and answers exactly what it
-// already answered in production. What follows describes what it DID.
-//
-// The Postgres mirror of rpc_proxy_events written by handleRpcUsageEventSync
-// above has no retention of its own (D1's copy is pruned to a 30-day hot
-// window on the hourly maintenance cron; Postgres just grew unbounded).
-// Called from src/health-prober.ts's pruneHealthHistory
-// (syncRpcProxyEventsPruneToPostgres), on the same cron, right after the D1
-// prune -- reuses the rpc-usage-sync token/secret (same trust boundary: both
-// routes write to the same table, no reason for a second secret).
-async function handleRpcUsageEventPrune(request: Request, env: Env) {
-  if (!env.RPC_USAGE_SYNC_SECRET) {
-    return writeJson(
-      { error: "rpc-usage sync is not provisioned on this deployment" },
-      503,
-    );
-  }
-  const provided = request.headers.get(RPC_USAGE_SYNC_TOKEN_HEADER) || "";
-  if (!provided || !timingSafeEqual(provided, env.RPC_USAGE_SYNC_SECRET)) {
-    return writeJson(
-      { error: `provide a valid ${RPC_USAGE_SYNC_TOKEN_HEADER} header` },
-      401,
-    );
-  }
-  // #9193: same deletion as handleRollupAccountEventsDaily above -- unreachable
-  // since HYPERDRIVE went away, answered here, status and body unchanged.
-  return writeJson({ error: "hyperdrive binding unavailable" }, 503);
-}
 
 function json(data: unknown, status: number = 200) {
   return new Response(JSON.stringify(data), {
@@ -3743,44 +3573,6 @@ async function handleAlertTriggersDeliveryLogWrite(request: Request, env: Env) {
     }
     return writeJson({ inserted: records.length });
   });
-}
-
-// Internal-only: the #6747 evaluator's METRIC cache-refresh scan -- the raw
-// rows AlerterHub.refreshTriggers() feeds into src/dereg-risk.ts's
-// buildDeregRiskSnapshot to build the in-memory Maps triggerMatchesEvent's
-// condition check reads from. Gated the SAME way as the active-list/
-// writeback routes above (same ALERT_TRIGGERS_INTERNAL_TOKEN secret, a
-// different capability from the create/owner tokens).
-//
-// The scan itself read the box's Postgres and is gone with it (#9193); the
-// route stays where it is, answering the caller exactly as it does today,
-// until the evaluator side stops asking.
-async function handleDeregRiskSnapshot(request: Request, env: Env) {
-  const configured = env.ALERT_TRIGGERS_INTERNAL_TOKEN;
-  if (!configured) {
-    return writeJson(
-      {
-        error:
-          "the alert-triggers dereg-risk snapshot is not provisioned on this deployment",
-      },
-      503,
-    );
-  }
-  const provided =
-    request.headers.get(ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER) || "";
-  if (!provided || !timingSafeEqual(provided, configured)) {
-    return writeJson(
-      {
-        error: `provide a valid ${ALERT_TRIGGERS_INTERNAL_TOKEN_HEADER} header`,
-      },
-      401,
-    );
-  }
-  // #9193: every table this snapshot scanned (blocks / subnet_hyperparams /
-  // subnet_snapshots, plus the neurons read that had already moved to D1) was
-  // reached through withDeregRiskSql, whose HYPERDRIVE gate has answered every
-  // call since the binding went away. Status and body unchanged.
-  return writeJson({ error: "hyperdrive binding unavailable" }, 503);
 }
 
 async function handleAlertTriggersRoute(request: Request, env: Env, url: URL) {
@@ -7244,21 +7036,9 @@ async function dispatchDataApiRequest(
     }
     if (
       request.method === "POST" &&
-      url.pathname === "/api/v1/internal/rollup-account-events-daily"
-    ) {
-      return handleRollupAccountEventsDaily(request, env);
-    }
-    if (
-      request.method === "POST" &&
       url.pathname === "/api/v1/internal/subnet-hyperparams-sync"
     ) {
       return handleSubnetHyperparamsSync(request, env);
-    }
-    if (
-      request.method === "POST" &&
-      url.pathname === "/api/v1/internal/subnet-locks-sync"
-    ) {
-      return handleSubnetLocksSync(request, env);
     }
     if (
       request.method === "POST" &&
@@ -7295,36 +7075,6 @@ async function dispatchDataApiRequest(
       url.pathname === "/api/v1/internal/poller-lane-health-sync"
     ) {
       return handlePollerLaneHealthSync(request, env);
-    }
-    if (
-      request.method === "POST" &&
-      url.pathname === "/api/v1/internal/subnet-identity-sync"
-    ) {
-      return handleSubnetIdentitySync(request, env);
-    }
-    if (
-      request.method === "POST" &&
-      url.pathname === "/api/v1/internal/health-checks-sync"
-    ) {
-      return handleHealthChecksSync(request, env);
-    }
-    if (
-      request.method === "POST" &&
-      url.pathname === "/api/v1/internal/health-uptime-rollup-sync"
-    ) {
-      return handleHealthUptimeRollupSync(request, env);
-    }
-    if (
-      request.method === "POST" &&
-      url.pathname === "/api/v1/internal/rpc-usage-sync"
-    ) {
-      return handleRpcUsageEventSync(request, env);
-    }
-    if (
-      request.method === "POST" &&
-      url.pathname === "/api/v1/internal/rpc-usage-prune"
-    ) {
-      return handleRpcUsageEventPrune(request, env);
     }
     // Internal-only key verification for the isolated fullnode RPC gate's
     // KV-cache-fronted validator (src/api-key-validation.ts). See
@@ -7480,14 +7230,6 @@ async function dispatchDataApiRequest(
       url.pathname === "/api/v1/internal/alert-triggers/deliveries"
     ) {
       return handleAlertTriggersDeliveryLogWrite(request, env);
-    }
-    // #6747: the predicate-condition evaluator's own metric-snapshot refresh
-    // -- see handleDeregRiskSnapshot's own header comment.
-    if (
-      request.method === "GET" &&
-      url.pathname === "/api/v1/internal/alert-triggers-dereg-risk-snapshot"
-    ) {
-      return handleDeregRiskSnapshot(request, env);
     }
     if (request.method !== "GET")
       return json({ error: "method not allowed" }, 405);

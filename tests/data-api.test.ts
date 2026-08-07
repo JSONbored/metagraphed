@@ -628,37 +628,6 @@ function postRollup({ secret }: { secret?: string } = {}) {
   });
 }
 
-test("rollup-account-events-daily rejects a missing or wrong token (401)", async () => {
-  const wrong = await postRollup({ secret: "wrong" });
-  expect(wrong.status).toBe(401);
-  const missing = await postRollup();
-  expect(missing.status).toBe(401);
-});
-
-test("rollup-account-events-daily is disabled (503) when ROLLUP_SYNC_SECRET is not configured", async () => {
-  const res = await worker.fetch(
-    new Request("https://d/api/v1/internal/rollup-account-events-daily", {
-      method: "POST",
-      headers: { "x-rollup-sync-token": ROLLUP_SYNC_SECRET },
-    }),
-    {} as unknown as Env,
-    ctx,
-  );
-  expect(res.status).toBe(503);
-});
-
-test("rollup-account-events-daily answers 503 -- the Postgres tier it wrote to is gone (#9193)", async () => {
-  const res = await worker.fetch(
-    new Request("https://d/api/v1/internal/rollup-account-events-daily", {
-      method: "POST",
-      headers: { "x-rollup-sync-token": ROLLUP_SYNC_SECRET },
-    }),
-    { ROLLUP_SYNC_SECRET } as unknown as Env,
-    ctx,
-  );
-  expect(res.status).toBe(503);
-});
-
 // #4832 gap-closure: POST /api/v1/internal/subnet-hyperparams-sync -- the
 // write path into subnet_hyperparams/subnet_hyperparams_history (see
 // workers/data-api.ts's handleSubnetHyperparamsSync), plus its read paths,
@@ -1224,35 +1193,6 @@ function postSubnetLocks(body: unknown, { secret }: { secret?: string } = {}) {
   });
 }
 
-test("subnet-locks-sync rejects a missing or wrong token (401)", async () => {
-  const wrong = await postSubnetLocks([], { secret: "nope" });
-  expect(wrong.status).toBe(401);
-  const missing = await postSubnetLocks([]);
-  expect(missing.status).toBe(401);
-});
-
-test("subnet-locks-sync is disabled (503) when SUBNET_LOCKS_SYNC_SECRET is not configured", async () => {
-  const res = await worker.fetch(
-    new Request("https://d/api/v1/internal/subnet-locks-sync", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-subnet-locks-sync-token": SUBNET_LOCKS_SYNC_SECRET,
-      },
-      body: "[]",
-    }),
-    { ...env, SUBNET_LOCKS_SYNC_SECRET: undefined } as unknown as Env,
-    ctx,
-  );
-  expect(res.status).toBe(503);
-});
-
-test("subnet-locks-sync answers 503 -- the Postgres tier it wrote to is gone (#9193)", async () => {
-  const res = await postSubnetLocks([], { secret: SUBNET_LOCKS_SYNC_SECRET });
-  expect(res.status).toBe(503);
-  expect(await res.json()).toEqual({ error: "hyperdrive binding unavailable" });
-});
-
 // #6742: POST /api/v1/internal/account-balances-sync -- the write path into
 // account_balances (see workers/data-api.ts's handleAccountBalancesSync).
 // Same latest-only-upsert shape as nominator-positions-sync above, a
@@ -1379,47 +1319,6 @@ function postSubnetIdentity(
   });
 }
 
-test("subnet-identity-sync rejects a missing or wrong token (401)", async () => {
-  const wrong = await postSubnetIdentity([subnetIdentityProfile()], {
-    secret: "wrong",
-  });
-  expect(wrong.status).toBe(401);
-  const missing = await postSubnetIdentity([subnetIdentityProfile()]);
-  expect(missing.status).toBe(401);
-});
-
-test("subnet-identity-sync is disabled (503) when SUBNET_IDENTITY_SYNC_SECRET is not configured", async () => {
-  const res = await worker.fetch(
-    new Request("https://d/api/v1/internal/subnet-identity-sync", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-subnet-identity-sync-token": SUBNET_IDENTITY_SYNC_SECRET,
-      },
-      body: JSON.stringify([subnetIdentityProfile()]),
-    }),
-    {} as unknown as Env,
-    ctx,
-  );
-  expect(res.status).toBe(503);
-});
-
-test("subnet-identity-sync answers 503 -- the Postgres tier it wrote to is gone (#9193)", async () => {
-  const res = await worker.fetch(
-    new Request("https://d/api/v1/internal/subnet-identity-sync", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-subnet-identity-sync-token": SUBNET_IDENTITY_SYNC_SECRET,
-      },
-      body: JSON.stringify([subnetIdentityProfile()]),
-    }),
-    { SUBNET_IDENTITY_SYNC_SECRET } as unknown as Env,
-    ctx,
-  );
-  expect(res.status).toBe(503);
-});
-
 // #4832 gap-closure: health-checks-sync -- best-effort Postgres mirror of
 // src/health-prober.ts's D1+KV write, called from the main Worker's own
 // 15-minute cron (syncHealthChecksToPostgres), not an external workflow.
@@ -1457,48 +1356,6 @@ function postHealthChecks(
   });
 }
 
-test("health-checks-sync rejects a missing or wrong token (401)", async () => {
-  const wrong = await postHealthChecks(
-    { probed: [probedRow()] },
-    { secret: "wrong" },
-  );
-  expect(wrong.status).toBe(401);
-  const missing = await postHealthChecks({ probed: [probedRow()] });
-  expect(missing.status).toBe(401);
-});
-
-test("health-checks-sync is disabled (503) when HEALTH_CHECKS_SYNC_SECRET is not configured", async () => {
-  const res = await worker.fetch(
-    new Request("https://d/api/v1/internal/health-checks-sync", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-health-checks-sync-token": HEALTH_CHECKS_SYNC_SECRET,
-      },
-      body: JSON.stringify({ probed: [probedRow()] }),
-    }),
-    {} as unknown as Env,
-    ctx,
-  );
-  expect(res.status).toBe(503);
-});
-
-test("health-checks-sync answers 503 -- the Postgres tier it wrote to is gone (#9193)", async () => {
-  const res = await worker.fetch(
-    new Request("https://d/api/v1/internal/health-checks-sync", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-health-checks-sync-token": HEALTH_CHECKS_SYNC_SECRET,
-      },
-      body: JSON.stringify({ probed: [probedRow()] }),
-    }),
-    { HEALTH_CHECKS_SYNC_SECRET } as unknown as Env,
-    ctx,
-  );
-  expect(res.status).toBe(503);
-});
-
 // #4832 gap-closure: health-uptime-rollup-sync -- best-effort Postgres
 // mirror of rollupDailyUptime, reusing HEALTH_CHECKS_SYNC_SECRET (same
 // conceptual sync boundary, not a separate secret). Unlike health-checks-
@@ -1525,57 +1382,6 @@ function postHealthUptimeRollup(
         : JSON.stringify(body ?? { days: [], updated_at: 1 }),
   });
 }
-
-test("health-uptime-rollup-sync rejects a missing or wrong token (401)", async () => {
-  const wrong = await postHealthUptimeRollup(
-    { days: [dayBounds("2026-07-11", 1, 2)], updated_at: 1 },
-    { secret: "wrong" },
-  );
-  expect(wrong.status).toBe(401);
-  const missing = await postHealthUptimeRollup({
-    days: [dayBounds("2026-07-11", 1, 2)],
-    updated_at: 1,
-  });
-  expect(missing.status).toBe(401);
-});
-
-test("health-uptime-rollup-sync is disabled (503) when HEALTH_CHECKS_SYNC_SECRET is not configured", async () => {
-  const res = await worker.fetch(
-    new Request("https://d/api/v1/internal/health-uptime-rollup-sync", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-health-checks-sync-token": HEALTH_CHECKS_SYNC_SECRET,
-      },
-      body: JSON.stringify({
-        days: [dayBounds("2026-07-11", 1, 2)],
-        updated_at: 1,
-      }),
-    }),
-    {} as unknown as Env,
-    ctx,
-  );
-  expect(res.status).toBe(503);
-});
-
-test("health-uptime-rollup-sync answers 503 -- the Postgres tier it wrote to is gone (#9193)", async () => {
-  const res = await worker.fetch(
-    new Request("https://d/api/v1/internal/health-uptime-rollup-sync", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-health-checks-sync-token": HEALTH_CHECKS_SYNC_SECRET,
-      },
-      body: JSON.stringify({
-        days: [dayBounds("2026-07-11", 1, 2)],
-        updated_at: 1,
-      }),
-    }),
-    { HEALTH_CHECKS_SYNC_SECRET } as unknown as Env,
-    ctx,
-  );
-  expect(res.status).toBe(503);
-});
 
 // #4832 Tier 2: the 12 chain-wide account_events analytics routes
 // (mirroring src/chain-*.mjs's D1 loaders). These reuse the ALREADY-flipped
@@ -1634,45 +1440,6 @@ function postRpcUsageEvent(
   });
 }
 
-test("rpc-usage-sync rejects a missing or wrong token (401)", async () => {
-  const wrong = await postRpcUsageEvent(rpcUsageEvent(), { secret: "wrong" });
-  expect(wrong.status).toBe(401);
-  const missing = await postRpcUsageEvent(rpcUsageEvent());
-  expect(missing.status).toBe(401);
-});
-
-test("rpc-usage-sync is disabled (503) when RPC_USAGE_SYNC_SECRET is not configured", async () => {
-  const res = await worker.fetch(
-    new Request("https://d/api/v1/internal/rpc-usage-sync", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-rpc-usage-sync-token": RPC_USAGE_SYNC_SECRET,
-      },
-      body: JSON.stringify(rpcUsageEvent()),
-    }),
-    {} as unknown as Env,
-    ctx,
-  );
-  expect(res.status).toBe(503);
-});
-
-test("rpc-usage-sync answers 503 -- the Postgres tier it wrote to is gone (#9193)", async () => {
-  const res = await worker.fetch(
-    new Request("https://d/api/v1/internal/rpc-usage-sync", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-rpc-usage-sync-token": RPC_USAGE_SYNC_SECRET,
-      },
-      body: JSON.stringify(rpcUsageEvent()),
-    }),
-    { RPC_USAGE_SYNC_SECRET } as unknown as Env,
-    ctx,
-  );
-  expect(res.status).toBe(503);
-});
-
 function postRpcUsagePrune(
   body?: unknown,
   { secret, raw }: { secret?: string; raw?: string } = {},
@@ -1690,42 +1457,3 @@ function postRpcUsagePrune(
         : JSON.stringify(body ?? { cutoff: 1_718_000_000_000 }),
   });
 }
-
-test("rpc-usage-prune rejects a missing or wrong token (401)", async () => {
-  const wrong = await postRpcUsagePrune(undefined, { secret: "wrong" });
-  expect(wrong.status).toBe(401);
-  const missing = await postRpcUsagePrune();
-  expect(missing.status).toBe(401);
-});
-
-test("rpc-usage-prune is disabled (503) when RPC_USAGE_SYNC_SECRET is not configured", async () => {
-  const res = await worker.fetch(
-    new Request("https://d/api/v1/internal/rpc-usage-prune", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-rpc-usage-sync-token": RPC_USAGE_SYNC_SECRET,
-      },
-      body: JSON.stringify({ cutoff: 1_718_000_000_000 }),
-    }),
-    {} as unknown as Env,
-    ctx,
-  );
-  expect(res.status).toBe(503);
-});
-
-test("rpc-usage-prune answers 503 -- the Postgres tier it wrote to is gone (#9193)", async () => {
-  const res = await worker.fetch(
-    new Request("https://d/api/v1/internal/rpc-usage-prune", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-rpc-usage-sync-token": RPC_USAGE_SYNC_SECRET,
-      },
-      body: JSON.stringify({ cutoff: 1_718_000_000_000 }),
-    }),
-    { RPC_USAGE_SYNC_SECRET } as unknown as Env,
-    ctx,
-  );
-  expect(res.status).toBe(503);
-});

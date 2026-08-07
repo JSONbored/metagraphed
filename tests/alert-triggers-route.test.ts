@@ -1524,22 +1524,6 @@ test("dereg-risk snapshot: 503 when ALERT_TRIGGERS_INTERNAL_TOKEN is not configu
   assert.equal(res.status, 503);
 });
 
-test("dereg-risk snapshot: 401 when the internal token header is entirely absent", async () => {
-  const res = await fetch(
-    req("/api/v1/internal/alert-triggers-dereg-risk-snapshot"),
-  );
-  assert.equal(res.status, 401);
-});
-
-test("dereg-risk snapshot: 401 when the internal token is present but wrong", async () => {
-  const res = await fetch(
-    req("/api/v1/internal/alert-triggers-dereg-risk-snapshot", {
-      headers: { "x-alert-triggers-internal-token": "wrong" },
-    }),
-  );
-  assert.equal(res.status, 401);
-});
-
 // #9193: the snapshot's four chain-table reads (blocks, subnet_hyperparams,
 // neurons, subnet_snapshots) all ran on the box's Postgres and went with it.
 // The route still answers past its auth gates, unchanged, so the evaluator

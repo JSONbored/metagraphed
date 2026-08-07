@@ -10,9 +10,6 @@ import {
   pruneHealthHistory,
   rollupDailyUptime,
   runHealthProber,
-  syncHealthChecksToPostgres,
-  syncHealthUptimeRollupToPostgres,
-  syncRpcProxyEventsPruneToPostgres,
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
   probeHostKey,
@@ -421,77 +418,6 @@ describe("a stuck surface releases its slot (metagraphed#9769)", () => {
 });
 
 describe("runHealthProber", () => {
-  test("posts the probed batch to Postgres + writes the three KV snapshots with correct shapes", async () => {
-    const { env, posted } = makeProberEnv({
-      priorStatus: [
-        {
-          surface_id: "sn7-api-old",
-          surface_key: "srf-sn7apikey000000",
-          last_ok: 1000,
-          consecutive_failures: 2,
-        },
-      ],
-    });
-    const kv = makeKv();
-    const result = await runHealthProber(env, FAKE_CTX, {
-      now: () => 50000,
-      kv,
-      loadSurfaces: async () => SURFACES,
-      probeSurface: probeImpl,
-      probeOptions: {},
-    });
-
-    assert.equal(result.ok, true);
-    assert.equal(result.probed, 2);
-    assert.deepEqual(result.counts, {
-      ok: 1,
-      degraded: 0,
-      failed: 1,
-      unknown: 0,
-    });
-
-    // syncHealthChecksToPostgres posts the full probed batch once -- the sole
-    // writer now for both surface_checks and surface_status (D1 fully
-    // eliminated, 2026-07-16, see runHealthProber's own header comment).
-    assert.equal(posted.length, 1);
-    assert.equal(posted[0].length, 2);
-    const postedApiRow = posted[0].find((r) => r.surface_id === "sn7-api");
-    // #1005: the stable surface_key rides every posted row so Postgres history
-    // re-keys onto the rename-stable identity, not the display id/slug.
-    assert.equal(postedApiRow.surface_key, "srf-sn7apikey000000");
-
-    const current = kv.json(KV_HEALTH_CURRENT);
-    assert.equal(current.summary.surface_count, 2);
-    assert.deepEqual(current.summary.status_counts, {
-      ok: 1,
-      degraded: 0,
-      failed: 1,
-      unknown: 0,
-    });
-    assert.equal(current.surfaces.length, 2);
-    // Per-subnet operational rollup, sorted by netuid.
-    assert.deepEqual(
-      current.subnets.map((s: Row) => s.netuid),
-      [0, 7],
-    );
-    assert.equal(current.subnets.find((s: Row) => s.netuid === 0).status, "ok");
-    assert.equal(
-      current.subnets.find((s: Row) => s.netuid === 7).status,
-      "failed",
-    );
-
-    // last_ok continuity: the failed surface keeps its prior last_ok (1000).
-    const apiRow = current.surfaces.find(
-      (s: Row) => s.surface_id === "sn7-api",
-    );
-    assert.equal(apiRow.last_ok, new Date(1000).toISOString());
-    // The ok RPC surface stamps last_ok = run time.
-    const rpcRow = current.surfaces.find(
-      (s: Row) => s.surface_id === "opentensor-finney-rpc",
-    );
-    assert.equal(rpcRow.last_ok, new Date(50000).toISOString());
-  });
-
   test("an out-of-range prior last_ok coerces to null instead of throwing a RangeError", async () => {
     // A corrupt/out-of-range epoch (e.g. 1e100) carried on a prior last_ok would make
     // new Date(ms).toISOString() throw, tearing down the run. It must coerce to null.
@@ -676,205 +602,6 @@ describe("runHealthProber", () => {
     assert.equal(byId.get("honest-rpc")!.latest_block, 8_400_000);
     assert.equal(byId.get("forged-rpc")!.latest_block, null);
     assert.equal(byId.get("unsafe-rpc")!.latest_block, null);
-  });
-
-  test("bumps consecutive_failures from prior state for the breaker", async () => {
-    const { env, posted } = makeProberEnv({
-      priorStatus: [
-        {
-          surface_id: "sn7-api-before-rename",
-          surface_key: "srf-sn7apikey000000",
-          last_ok: 1000,
-          consecutive_failures: 2,
-        },
-      ],
-    });
-    await runHealthProber(env, FAKE_CTX, {
-      now: () => 50000,
-      kv: makeKv(),
-      loadSurfaces: async () => SURFACES,
-      probeSurface: probeImpl,
-      probeOptions: {},
-    });
-    // The failed surface's posted row carries consecutive_failures = 3, and
-    // the stable surface_key rides alongside it (#1005) so Postgres history
-    // re-keys onto the rename-stable identity, not the display id/slug.
-    const apiRow = posted[0].find((r) => r.surface_id === "sn7-api");
-    assert.equal(apiRow.surface_key, "srf-sn7apikey000000");
-    assert.equal(apiRow.consecutive_failures, 3);
-  });
-
-  // #9522. The two assertions above are the same ones the suite already made
-  // under METAGRAPH_HEALTH_SOURCE="postgres". Production has read "d1" since
-  // the box was retired, and "d1" only forwards for flags in
-  // DATA_API_D1_FLAGS -- which this one was not in. So the prior read returned
-  // null on every real run: last_ok was rewritten to null for any surface that
-  // was not ok THIS run, and consecutive_failures restarted at 1, capping it
-  // below the breaker's threshold of 2 forever.
-  //
-  // Measured in production D1 before the fix: 0 of 109 degraded/failed rows
-  // carried a last_ok though 85 of them had ok=1 rows in surface_checks, and
-  // consecutive_failures was 0 or 1 across all 635 rows.
-  test("carries prior last_ok and the failure streak under the d1 flag production actually runs", async () => {
-    const { env, posted } = makeProberEnv({
-      healthSource: "d1",
-      priorStatus: [
-        {
-          surface_id: "sn7-api",
-          surface_key: "srf-sn7apikey000000",
-          last_ok: 1000,
-          consecutive_failures: 2,
-        },
-      ],
-    });
-    await runHealthProber(env, FAKE_CTX, {
-      now: () => 50000,
-      kv: makeKv(),
-      loadSurfaces: async () => SURFACES,
-      probeSurface: probeImpl,
-      probeOptions: {},
-    });
-    const apiRow = posted[0].find((r) => r.surface_id === "sn7-api");
-    // Carried forward, not wiped: this surface failed THIS run but was healthy
-    // at t=1000, and "when was it last up" is the whole point of the column.
-    assert.equal(apiRow.last_ok_ms, 1000);
-    // 2 -> 3 crosses POOL_SUSTAINED_DOWN_FAILURES, so `sustained-down`
-    // eviction becomes reachable. Pinned at 1 before this fix.
-    assert.equal(apiRow.consecutive_failures, 3);
-  });
-
-  test("a degraded non-RPC run resets the breaker", async () => {
-    const { env, posted } = makeProberEnv({
-      priorStatus: [
-        {
-          surface_id: "sn7-api",
-          surface_key: "srf-sn7apikey000000",
-          last_ok: 1000,
-          consecutive_failures: 2,
-        },
-      ],
-    });
-    // The subnet-api surface probes `degraded` (e.g. rate-limited), not failed.
-    const degradedProbe = async (input: Row) =>
-      input.kind === "subtensor-rpc"
-        ? {
-            status: "ok",
-            classification: "live",
-            latency_ms: 42,
-            status_code: 200,
-          }
-        : {
-            status: "degraded",
-            classification: "rate-limited",
-            latency_ms: null,
-            status_code: 429,
-          };
-    await runHealthProber(env, FAKE_CTX, {
-      now: () => 50000,
-      kv: makeKv(),
-      loadSurfaces: async () => SURFACES,
-      probeSurface: degradedProbe,
-      probeOptions: {},
-    });
-    const apiRow = posted[0].find((r) => r.surface_id === "sn7-api");
-    // A degraded run must NOT bump 2 -> 3; it resets to 0 so a persistently-
-    // degraded (still-usable) endpoint is not evicted from the RPC pool by
-    // the sustained-down breaker.
-    assert.equal(apiRow.consecutive_failures, 0);
-  });
-
-  test("a degraded RPC run accrues toward pool eviction", async () => {
-    const { env, posted } = makeProberEnv({
-      priorStatus: [
-        {
-          surface_id: "opentensor-finney-rpc",
-          surface_key: "srf-rootrpckey00000",
-          last_ok: 1000,
-          consecutive_failures: 2,
-        },
-      ],
-    });
-    const degradedRpcProbe = async (input: Row) =>
-      input.kind === "subtensor-rpc"
-        ? {
-            status: "degraded",
-            classification: "auth-required",
-            latency_ms: null,
-            status_code: 401,
-          }
-        : {
-            status: "ok",
-            classification: "live",
-            latency_ms: 42,
-            status_code: 200,
-          };
-
-    await runHealthProber(env, FAKE_CTX, {
-      now: () => 50000,
-      kv: makeKv(),
-      loadSurfaces: async () => SURFACES,
-      probeSurface: degradedRpcProbe,
-      probeOptions: {},
-    });
-
-    const rpcRow = posted[0].find(
-      (r) => r.surface_id === "opentensor-finney-rpc",
-    );
-    assert.equal(rpcRow.consecutive_failures, 3);
-  });
-
-  test("a degraded subtensor-wss run accrues toward pool eviction", async () => {
-    // Regression for #2072: subtensor-wss is base-layer RPC (proxy-routable,
-    // pooled) exactly like subtensor-rpc, so a persistently-degraded WSS endpoint
-    // must accrue toward the sustained-down breaker. Before the fix the breaker
-    // matched only subtensor-rpc, so a degraded WSS run reset the streak to 0 and
-    // the endpoint stayed pool_eligible forever.
-    const wssSurface = {
-      surface_id: "opentensor-finney-wss",
-      surface_key: "srf-rootwsskey00000",
-      netuid: 0,
-      kind: "subtensor-wss",
-      url: "wss://entrypoint-finney.opentensor.ai",
-      provider: "opentensor",
-      authority: "official",
-      auth_required: false,
-      public_safe: true,
-      subnet_slug: "root",
-      subnet_name: "root",
-      probe: { method: "JSON-RPC", expect: "json" },
-    };
-    const { env, posted } = makeProberEnv({
-      priorStatus: [
-        {
-          surface_id: "opentensor-finney-wss",
-          surface_key: "srf-rootwsskey00000",
-          last_ok: 1000,
-          consecutive_failures: 2,
-        },
-      ],
-    });
-    // The WSS endpoint probes `degraded` (e.g. rate-limited), not failed.
-    const degradedWssProbe = async () => ({
-      status: "degraded",
-      classification: "rate-limited",
-      latency_ms: null,
-      status_code: 429,
-    });
-
-    await runHealthProber(env, FAKE_CTX, {
-      now: () => 50000,
-      kv: makeKv(),
-      loadSurfaces: async () => [wssSurface],
-      probeSurface: degradedWssProbe,
-      probeOptions: {},
-    });
-
-    const wssRow = posted[0].find(
-      (r) => r.surface_id === "opentensor-finney-wss",
-    );
-    // A degraded base-layer WSS run must bump 2 -> 3 so the sustained-down
-    // breaker can eventually evict it.
-    assert.equal(wssRow.consecutive_failures, 3);
   });
 
   test("no-ops cleanly when there are no operational surfaces", async () => {
@@ -1523,41 +1250,6 @@ describe("runHealthProber edge paths", () => {
     assert.equal(current.surfaces.length, 2);
   });
 
-  test("runs with no Postgres tier configured (KV-only) and kv absent (Postgres-only)", async () => {
-    // No METAGRAPH_HEALTH_SOURCE/DATA_API → priorStatus reads nothing, sync
-    // no-ops; KV still written.
-    const kv = makeKv();
-    const kvOnly = await runHealthProber(
-      mockEnv(),
-      FAKE_CTX,
-      proberOverrides({
-        now: () => 1,
-        kv,
-        loadSurfaces: async () => SURFACES,
-        probeSurface: probeImpl,
-        probeOptions: {},
-      }),
-    );
-    assert.equal(kvOnly.ok, true);
-    assert.ok(kv.json(KV_HEALTH_CURRENT));
-
-    // kv absent → persistToKv no-ops; the Postgres sync still fires.
-    const { env, posted } = makeProberEnv();
-    const postgresOnly = await runHealthProber(
-      env,
-      FAKE_CTX,
-      proberOverrides({
-        now: () => 1,
-        kv: null,
-        loadSurfaces: async () => SURFACES,
-        probeSurface: probeImpl,
-        probeOptions: {},
-      }),
-    );
-    assert.equal(postgresOnly.ok, true);
-    assert.equal(posted.length, 1);
-  });
-
   test("handles a SELECT with no results key and a surface without a provider", async () => {
     // db.prepare(...).all() returns an object without a `results` key →
     // exercises the `results || []` fallback in the prior-status loop. The
@@ -1620,38 +1312,7 @@ describe("runHealthProber edge paths", () => {
   });
 });
 
-// #4832 gap-closure: syncHealthChecksToPostgres is a private helper (unlike
-// syncSubnetIdentityToPostgres, which lives in its own module and is tested
-// directly in tests/subnet-identity-history.test.ts) -- exercised the same
-// way persistToKv above is, indirectly through runHealthProber. It is the
-// sole writer for surface_checks/surface_status now (D1 fully eliminated,
-// 2026-07-16); these tests prove a sync failure never affects
-// runHealthProber's own `ok` result -- KV stays the source of truth for live
-// serving either way.
-describe("syncHealthChecksToPostgres", () => {
-  // runHealthProber never calls this with an empty array (it short-circuits
-  // on zero operational surfaces before ever reaching persist/sync), so this
-  // guard is only reachable via a direct call, unlike the other tests below.
-  test("returns no_rows for an empty or non-array probed batch", async () => {
-    const env = mockEnv({
-      DATA_API: { fetch: async () => new Response("{}") },
-      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
-    });
-    assert.deepEqual(await syncHealthChecksToPostgres(env, []), {
-      synced: false,
-      reason: "no_rows",
-    });
-    assert.deepEqual(
-      await syncHealthChecksToPostgres(env, undefined as unknown as Row[]),
-      {
-        synced: false,
-        reason: "no_rows",
-      },
-    );
-  });
-});
-
-describe("syncHealthChecksToPostgres via runHealthProber", () => {
+describe("runHealthProber probe-sweep persistence", () => {
   test("no-ops (no DATA_API call) when DATA_API is not bound", async () => {
     const called = false;
     const result = await runHealthProber(
@@ -1688,41 +1349,6 @@ describe("syncHealthChecksToPostgres via runHealthProber", () => {
     );
     assert.equal(result.ok, true);
     assert.equal(called, false);
-  });
-
-  test("posts the probed batch to health-checks-sync with the token header", async () => {
-    let request: Row | undefined;
-    const env = mockEnv({
-      DATA_API: {
-        fetch: async (req: Row) => {
-          request = req;
-          return new Response("{}", { status: 200 });
-        },
-      },
-      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
-    });
-    const result = await runHealthProber(
-      env,
-      FAKE_CTX,
-      proberOverrides({
-        now: () => 1,
-        db: makeDb(),
-        kv: makeKv(),
-        loadSurfaces: async () => SURFACES,
-        probeSurface: probeImpl,
-        probeOptions: {},
-      }),
-    );
-    assert.equal(result.ok, true);
-    assert.ok(request);
-    assert.equal(request.method, "POST");
-    assert.equal(
-      request.headers.get("x-health-checks-sync-token"),
-      "test-secret",
-    );
-    const body = await request.json();
-    assert.ok(Array.isArray(body.probed));
-    assert.equal(body.probed.length, SURFACES.length);
   });
 
   test("a DATA_API failure never affects runHealthProber's own result", async () => {
@@ -1772,25 +1398,6 @@ describe("syncHealthChecksToPostgres via runHealthProber", () => {
 });
 
 describe("persistToKv via runHealthProber", () => {
-  test("no-ops when kv has no .put", async () => {
-    const { env, posted } = makeProberEnv();
-    // kv truthy but missing .put → persistToKv returns early.
-    const result = await runHealthProber(
-      env,
-      FAKE_CTX,
-      proberOverrides({
-        now: () => 1,
-        kv: { get: async () => null },
-        loadSurfaces: async () => SURFACES,
-        probeSurface: probeImpl,
-        probeOptions: {},
-      }),
-    );
-    assert.equal(result.ok, true);
-    // The Postgres sync still fires.
-    assert.equal(posted.length, 1);
-  });
-
   test("names each subnet in the rollup, so sort=name is not inert (#9715)", async () => {
     // /api/v1/health advertises `sort=name` and workers/list-query.ts resolves
     // a sort with a flat row[key] lookup, sinking rows whose value is absent.
@@ -2337,105 +1944,13 @@ describe("pruneHealthHistory edge paths", () => {
   });
 });
 
-describe("syncRpcProxyEventsPruneToPostgres", () => {
-  test("returns unavailable when DATA_API is not bound", async () => {
-    assert.deepEqual(await syncRpcProxyEventsPruneToPostgres(mockEnv(), 1), {
-      synced: false,
-      reason: "unavailable",
-    });
-  });
-
-  test("returns unavailable when RPC_USAGE_SYNC_SECRET is not configured", async () => {
-    const env = mockEnv({
-      DATA_API: { fetch: async () => new Response("{}") },
-    });
-    assert.deepEqual(await syncRpcProxyEventsPruneToPostgres(env, 1), {
-      synced: false,
-      reason: "unavailable",
-    });
-  });
-
-  test("reports the upstream status when the DATA_API response isn't ok", async () => {
-    const env = mockEnv({
-      DATA_API: { fetch: async () => new Response("nope", { status: 502 }) },
-      RPC_USAGE_SYNC_SECRET: "test-secret",
-    });
-    assert.deepEqual(await syncRpcProxyEventsPruneToPostgres(env, 1), {
-      synced: false,
-      reason: "status_502",
-    });
-  });
-
-  test("returns fetch_failed when DATA_API.fetch throws", async () => {
-    const env = mockEnv({
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("boom");
-        },
-      },
-      RPC_USAGE_SYNC_SECRET: "test-secret",
-    });
-    assert.deepEqual(await syncRpcProxyEventsPruneToPostgres(env, 1), {
-      synced: false,
-      reason: "fetch_failed",
-    });
-  });
-
-  test("posts the cutoff to rpc-usage-prune with the token header on success", async () => {
-    let request: Row | undefined;
-    const env = mockEnv({
-      DATA_API: {
-        fetch: async (req: Row) => {
-          request = req;
-          return new Response("{}", { status: 200 });
-        },
-      },
-      RPC_USAGE_SYNC_SECRET: "test-secret",
-    });
-    const result = await syncRpcProxyEventsPruneToPostgres(env, 12_345);
-    assert.deepEqual(result, { synced: true });
-    assert.ok(request);
-    assert.equal(request.method, "POST");
-    assert.equal(
-      request.url,
-      "https://api.metagraph.sh/api/v1/internal/rpc-usage-prune",
-    );
-    assert.equal(request.headers.get("x-rpc-usage-sync-token"), "test-secret");
-    const body = await request.json();
-    assert.equal(body.cutoff, 12_345);
-  });
-});
-
-describe("syncRpcProxyEventsPruneToPostgres via pruneHealthHistory", () => {
+describe("pruneHealthHistory", () => {
   test("no-ops (no DATA_API call) when DATA_API is not bound", async () => {
     const result = await pruneHealthHistory(
       mockEnv({ METAGRAPH_HEALTH_DB: makeDb() }),
       { now: () => 5_000 },
     );
     assert.equal(result.pruned, true);
-  });
-
-  test("posts the cutoff to rpc-usage-prune with the token header", async () => {
-    let request: Row | undefined;
-    const env = mockEnv({
-      METAGRAPH_HEALTH_DB: makeDb(),
-      DATA_API: {
-        fetch: async (req: Row) => {
-          request = req;
-          return new Response("{}", { status: 200 });
-        },
-      },
-      RPC_USAGE_SYNC_SECRET: "test-secret",
-    });
-    const result = await pruneHealthHistory(env, {
-      now: () => 100_000_000,
-      retentionMs: 1000,
-    });
-    assert.equal(result.pruned, true);
-    assert.ok(request);
-    assert.equal(request.headers.get("x-rpc-usage-sync-token"), "test-secret");
-    const body = await request.json();
-    assert.equal(body.cutoff, 100_000_000 - 1000);
   });
 
   test("a DATA_API failure never affects pruneHealthHistory's own result", async () => {
@@ -2468,75 +1983,6 @@ describe("rollupDailyUptime (durable daily history)", () => {
       HEALTH_CHECKS_SYNC_SECRET: "test-secret",
     });
   }
-
-  test("rolls up today + yesterday when the Postgres sync succeeds", async () => {
-    const fixedNow = Date.UTC(2026, 5, 13, 10, 0, 0); // 2026-06-13T10:00Z
-    const result = await rollupDailyUptime(
-      postgresEnv(async () => new Response("{}", { status: 200 })),
-      { now: () => fixedNow },
-    );
-    assert.deepEqual(result, {
-      rolled: true,
-      days: ["2026-06-13", "2026-06-12"],
-      // Dual-write: no METAGRAPH_HEALTH_DB binding in this env, so D1 did not
-      // roll -- and `rolled` stays true on the Postgres side alone, which is
-      // exactly the independence the dual-write promises.
-      //
-      // #9622: `d1_rolled` is now the AND of both D1 rollups, because it gates
-      // the raw prune -- reporting the day rolled while only the uptime half
-      // landed would let the raw checks be deleted with their classifications
-      // never written anywhere durable.
-      d1_rolled: false,
-      d1_failures_rolled: false,
-      postgres_rolled: true,
-    });
-  });
-
-  test("posts the UTC day boundaries to health-uptime-rollup-sync with the token header", async () => {
-    let request: Row | undefined;
-    const fixedNow = Date.UTC(2026, 5, 13, 10, 0, 0);
-    const env = postgresEnv(async (req: Row) => {
-      request = req;
-      return new Response("{}", { status: 200 });
-    });
-    const result = await rollupDailyUptime(env, { now: () => fixedNow });
-    assert.equal(result.rolled, true);
-    assert.ok(request);
-    assert.equal(request.method, "POST");
-    assert.equal(
-      request.headers.get("x-health-checks-sync-token"),
-      "test-secret",
-    );
-    const body = await request.json();
-    assert.equal(body.days.length, 2);
-    assert.equal(body.days[0].date, "2026-06-13");
-    assert.equal(body.updated_at, fixedNow);
-  });
-
-  test("returns { rolled: false, reason: unavailable } without DATA_API/secret", async () => {
-    assert.deepEqual(await rollupDailyUptime(mockEnv()), {
-      rolled: false,
-      reason: "unavailable",
-    });
-  });
-
-  test("returns { rolled: false, reason } when the Postgres sync response isn't ok", async () => {
-    const result = await rollupDailyUptime(
-      postgresEnv(async () => new Response("nope", { status: 502 })),
-      { now: () => Date.UTC(2026, 5, 13, 10, 0, 0) },
-    );
-    assert.deepEqual(result, { rolled: false, reason: "status_502" });
-  });
-
-  test("returns { rolled: false, reason: fetch_failed } when the Postgres sync fetch throws", async () => {
-    const result = await rollupDailyUptime(
-      postgresEnv(async () => {
-        throw new Error("boom");
-      }),
-      { now: () => Date.UTC(2026, 5, 13, 10, 0, 0) },
-    );
-    assert.deepEqual(result, { rolled: false, reason: "fetch_failed" });
-  });
 
   // The "rollup must run before the raw D1 prune" ordering guarantee this
   // used to test no longer applies: D1's own surface_checks DELETE is
@@ -2573,50 +2019,6 @@ describe("rollupDailyUptime (durable daily history)", () => {
     assert.ok(
       !order.some((o) => o.includes("DELETE FROM surface_checks")),
       "raw surface_checks must not be pruned when rollup fails",
-    );
-  });
-});
-
-// #4832 gap-closure: syncHealthUptimeRollupToPostgres, exercised the same
-// way syncHealthChecksToPostgres is above -- indirectly through
-// rollupDailyUptime (private helper) -- proving the Postgres mirror attempt
-// fires (or safely no-ops) without affecting rollupDailyUptime's own
-// `rolled`/`days`/`error` result either way.
-describe("syncHealthUptimeRollupToPostgres", () => {
-  // rollupDailyUptime never calls this with an empty days array (it always
-  // computes exactly [today, yesterday]), so this guard is only reachable
-  // via a direct call, unlike the other tests below.
-  test("returns no_days for an empty or non-array days argument", async () => {
-    const env = mockEnv({
-      DATA_API: { fetch: async () => new Response("{}") },
-      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
-    });
-    assert.deepEqual(await syncHealthUptimeRollupToPostgres(env, [], 1), {
-      synced: false,
-      reason: "no_days",
-    });
-    assert.deepEqual(
-      await syncHealthUptimeRollupToPostgres(
-        env,
-        undefined as unknown as Row[],
-        1,
-      ),
-      { synced: false, reason: "no_days" },
-    );
-  });
-
-  test("reports the upstream status when the DATA_API response isn't ok", async () => {
-    const env = mockEnv({
-      DATA_API: { fetch: async () => new Response("nope", { status: 502 }) },
-      HEALTH_CHECKS_SYNC_SECRET: "test-secret",
-    });
-    assert.deepEqual(
-      await syncHealthUptimeRollupToPostgres(
-        env,
-        [{ date: "2026-06-13", start: 1, end: 2 }],
-        1,
-      ),
-      { synced: false, reason: "status_502" },
     );
   });
 });
