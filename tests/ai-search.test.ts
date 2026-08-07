@@ -16,6 +16,8 @@ import {
   semanticSearch,
   askQuestion,
   SEMANTIC_MAX_QUERY_LENGTH,
+  aiGatewayOptions,
+  AI_GATEWAY_CACHE_TTL_SECONDS,
 } from "../src/ai-search.ts";
 import { handleRequest, handleScheduled } from "../workers/api.ts";
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
@@ -54,8 +56,8 @@ function stubAi() {
   const calls: Row[] = [];
   return {
     calls,
-    run(model: string, input: Row) {
-      calls.push({ model, input });
+    run(model: string, input: Row, options?: Row) {
+      calls.push({ model, input, options });
       if (model === EMBED_MODEL) {
         const n = Array.isArray(input.text) ? input.text.length : 1;
         return Promise.resolve({
@@ -76,8 +78,8 @@ function embedAiWith(dataFor: AnyFn) {
   const calls: Row[] = [];
   return {
     calls,
-    run(model: string, input: Row) {
-      calls.push({ model, input });
+    run(model: string, input: Row, options?: Row) {
+      calls.push({ model, input, options });
       if (model === EMBED_MODEL) {
         return Promise.resolve({ data: dataFor(input.text) });
       }
@@ -1742,5 +1744,139 @@ describe("embedding-sync cron", () => {
     )) as Row;
     assert.equal(result.ok, true);
     assert.ok(result.total >= 0);
+  });
+});
+
+describe("AI Gateway on the embedding path (metagraphed-infra#362)", () => {
+  test("no var, no gateway argument -- the direct call is unchanged", () => {
+    // A deployment that has not opted in must behave exactly as before, and a
+    // blank string must read as absent rather than as a gateway named "".
+    for (const env of [
+      {},
+      { METAGRAPH_AI_GATEWAY: "" },
+      { METAGRAPH_AI_GATEWAY: "   " },
+    ]) {
+      assert.equal(aiGatewayOptions(env), null, JSON.stringify(env));
+    }
+  });
+
+  test("a named gateway carries the cache TTL, because caching is the point", () => {
+    assert.deepEqual(aiGatewayOptions({ METAGRAPH_AI_GATEWAY: "default" }), {
+      gateway: { id: "default", cacheTtl: AI_GATEWAY_CACHE_TTL_SECONDS },
+    });
+    // Trimmed, so a stray space in a dashboard-set var is not a different
+    // gateway id that silently fails every AI call.
+    assert.deepEqual(aiGatewayOptions({ METAGRAPH_AI_GATEWAY: " default " }), {
+      gateway: { id: "default", cacheTtl: AI_GATEWAY_CACHE_TTL_SECONDS },
+    });
+  });
+
+  test("the query-time embed actually passes it to AI.run", async () => {
+    // The whole value of #362 step 3 is on THIS call: /api/v1/search/semantic
+    // embeds every request, so two users searching the same phrase used to pay
+    // for two identical model calls.
+    const ai = stubAi();
+    await semanticSearch(
+      mockEnv({
+        AI: ai,
+        VECTORIZE: stubVectorize(),
+        METAGRAPH_ENABLE_AI: "true",
+        METAGRAPH_AI_GATEWAY: "default",
+      }),
+      "speech to text",
+    );
+    const embed = ai.calls.find((c) => c.model === EMBED_MODEL);
+    assert.deepEqual((embed?.options as Row)?.gateway, {
+      id: "default",
+      cacheTtl: AI_GATEWAY_CACHE_TTL_SECONDS,
+    });
+  });
+
+  test("the daily embedding sync is gatewayed too", async () => {
+    // Its cache hit rate is near zero -- the sync re-embeds only documents
+    // whose content hash CHANGED -- so this is here for the per-model cost
+    // analytics, which is the half of #362's ask that applies to a cron.
+    const ai = stubAi();
+    const searchDocs = {
+      ok: true,
+      data: {
+        documents: [
+          {
+            id: "subnet:1",
+            type: "subnet",
+            netuid: 1,
+            title: "One",
+            tokens: ["a"],
+          },
+        ],
+      },
+    };
+    await runEmbeddingSync(
+      mockEnv({
+        AI: ai,
+        VECTORIZE: stubVectorize(),
+        METAGRAPH_AI_GATEWAY: "default",
+      }),
+      {
+        readArtifact: (() =>
+          Promise.resolve(searchDocs)) as unknown as ReadArtifact,
+      },
+    );
+    const embed = ai.calls.find((c) => c.model === EMBED_MODEL);
+    assert.deepEqual((embed?.options as Row)?.gateway, {
+      id: "default",
+      cacheTtl: AI_GATEWAY_CACHE_TTL_SECONDS,
+    });
+  });
+
+  test("a failed sync embed is reported before it propagates", async () => {
+    // The error path of the batch embed, which had no coverage of its own: it
+    // records the failure as an $ai_embedding event and then rethrows, so the
+    // run fails visibly rather than reporting a successful sync that embedded
+    // nothing. Reshaping this call for the gateway argument is what surfaced
+    // that it was never exercised.
+    const searchDocs = {
+      ok: true,
+      data: {
+        documents: [
+          {
+            id: "subnet:1",
+            type: "subnet",
+            netuid: 1,
+            title: "One",
+            tokens: ["a"],
+          },
+        ],
+      },
+    };
+    await assert.rejects(
+      runEmbeddingSync(
+        mockEnv({
+          AI: { run: () => Promise.reject(new Error("model unavailable")) },
+          VECTORIZE: stubVectorize(),
+        }),
+        {
+          readArtifact: (() =>
+            Promise.resolve(searchDocs)) as unknown as ReadArtifact,
+        },
+      ),
+      /model unavailable/,
+    );
+  });
+
+  test("and passes NOTHING when no gateway is configured", async () => {
+    // Not `{ gateway: undefined }` -- an options object the runtime has to
+    // interpret is a different call from no options at all.
+    const ai = stubAi();
+    await semanticSearch(
+      mockEnv({
+        AI: ai,
+        VECTORIZE: stubVectorize(),
+        METAGRAPH_ENABLE_AI: "true",
+      }),
+      "speech to text",
+    );
+    const embed = ai.calls.find((c) => c.model === EMBED_MODEL);
+    assert.equal(embed?.options, undefined);
   });
 });

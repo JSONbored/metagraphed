@@ -115,6 +115,13 @@ interface Env {
   POLLER_LANE_HEALTH_SYNC_SECRET?: string;
   /** The sync-batches producer binding (metagraphed-infra#346). Absent means
    * every lane writes D1 inline, exactly as before. */
+  /** The AI Gateway the Workers AI embedding calls route through
+   * (metagraphed-infra#362). Declared here as well as in wrangler.jsonc's
+   * `vars`, the same way SYNC_QUEUE_LANES is: regenerating the whole
+   * worker-configuration.d.ts to pick it up drags in an unrelated
+   * literal-typing change from a newer wrangler, which breaks four existing
+   * tier-flag comparisons. */
+  METAGRAPH_AI_GATEWAY?: string;
   SYNC_BATCHES?: Queue<unknown>;
   /** Comma-separated lanes routed through the queue. One place decides, and it
    * is deploy-time so a cutover and its rollback are both a setting rather than

@@ -33,6 +33,49 @@ export const ASK_MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct";
 // https://developers.cloudflare.com/workers-ai/models/llama-4-scout-17b-16e-instruct/
 // (checked 2026-07-24) -- update alongside ASK_MODEL if the model ever changes.
 const ASK_PROVIDER = "cloudflare_workers_ai";
+
+/**
+ * How long a gatewayed embedding stays cached, in seconds.
+ *
+ * ONE HOUR, and it is a cache of the MODEL CALL, not of the search result. The
+ * same query string always produces the same vector from a fixed model, so this
+ * cannot go stale in the way a response cache can: what changes between two
+ * searches for "speech to text" is the Vectorize index, and that is queried
+ * fresh every time regardless. Ranking is untouched.
+ */
+export const AI_GATEWAY_CACHE_TTL_SECONDS = 60 * 60;
+
+/**
+ * The Workers AI gateway options, when one is configured.
+ *
+ * OFF UNLESS NAMED. A blank var means no gateway argument at all, so a
+ * deployment that has not opted in behaves exactly as before -- and the
+ * rollback is deleting one word, the same shape SYNC_QUEUE_LANES uses.
+ *
+ * The shipped value is `default`, which Cloudflare CREATES on the first
+ * authenticated request naming it. That is why this could be turned on in the
+ * same change that added it, rather than waiting on a gateway somebody has to
+ * provision by hand first.
+ *
+ * WHAT IT BUYS, precisely: `/api/v1/search/semantic` embeds EVERY request, so
+ * two users searching the same phrase pay for two model calls and a hot query
+ * pays on every hit (metagraphed-infra#362). A gateway caches the embedding and
+ * adds per-model analytics and cost visibility, without touching ranking.
+ *
+ * NOT the same thing as the response's `cache-control: no-store`. That header
+ * is about the SEARCH RESULT, which depends on the live index; this caches the
+ * vector the query is turned into. They are independent, and only the second is
+ * safe to cache.
+ */
+export function aiGatewayOptions(
+  env: { METAGRAPH_AI_GATEWAY?: string },
+  cacheTtlSeconds: number = AI_GATEWAY_CACHE_TTL_SECONDS,
+): { gateway: { id: string; cacheTtl: number } } | null {
+  const id = env.METAGRAPH_AI_GATEWAY?.trim();
+  if (!id) return null;
+  return { gateway: { id, cacheTtl: cacheTtlSeconds } };
+}
+
 const ASK_TRACE_NAME = "ask";
 // #8965: distinct trace names so the three AI entry points are separable in
 // PostHog. semantic_search embeds but never completes; embedding_sync is the
@@ -343,11 +386,18 @@ export async function runEmbeddingSync(
   // bills per call, so `inputCount` (the batch size) is what makes the daily
   // cron's cost comparable to a single query-time embedding.
   const syncTraceId = crypto.randomUUID();
+  const gateway = aiGatewayOptions(env);
   for (const batch of chunk(pending, EMBED_BATCH_SIZE)) {
     const batchStartedAt = Date.now();
-    const response = await env.AI.run(EMBED_MODEL, {
-      text: batch.map((entry) => embeddingText(entry.doc)),
-    }).catch(async (error: unknown) => {
+    const response = await env.AI.run(
+      EMBED_MODEL,
+      { text: batch.map((entry) => embeddingText(entry.doc)) },
+      // Gatewayed too, though this lane's hit rate is near zero -- a daily sync
+      // re-embeds only documents whose content hash CHANGED. It is here for the
+      // per-model cost analytics, which is the half of metagraphed-infra#362's
+      // ask that applies to a cron rather than to a repeated query.
+      ...(gateway ? [gateway] : []),
+    ).catch(async (error: unknown) => {
       await recordAiEmbeddingEvent(env, {
         provider: ASK_PROVIDER,
         model: EMBED_MODEL,
@@ -444,12 +494,17 @@ async function embedQuery(
       { distinctId: telemetry.distinctId },
     );
 
-  const response = await env.AI.run(EMBED_MODEL, { text: [text] }).catch(
-    async (error: unknown) => {
-      await record(true, error);
-      throw error;
-    },
-  );
+  // THE ONE THAT REPEATS. Two users searching the same phrase used to pay for
+  // two identical model calls, and a hot query paid on every hit.
+  const gateway = aiGatewayOptions(env);
+  const response = await env.AI.run(
+    EMBED_MODEL,
+    { text: [text] },
+    ...(gateway ? [gateway] : []),
+  ).catch(async (error: unknown) => {
+    await record(true, error);
+    throw error;
+  });
   const vector = response?.data?.[0];
   if (!Array.isArray(vector)) {
     const error = new Error("embedding model returned no vector");
