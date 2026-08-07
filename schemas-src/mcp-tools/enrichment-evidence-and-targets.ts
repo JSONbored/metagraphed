@@ -18,6 +18,7 @@ import {
   netuidSchema,
   numericCursorSchema,
   orderSchema,
+  projectableRows,
   querySchema,
   sortSchema,
 } from "./shared.ts";
@@ -88,6 +89,9 @@ export const ListEnrichmentEvidenceOutputSchema =
   ReviewEnrichmentEvidenceArtifactSchema.pick({
     entries: true,
   }).extend({
+    entries: projectableRows(
+      ReviewEnrichmentEvidenceArtifactSchema.shape.entries,
+    ),
     ...McpListArtifactStamp,
     ...McpListPageFields,
   });
@@ -136,6 +140,9 @@ export const ListReviewGapsOutputSchema =
   ReviewGapPrioritiesArtifactSchema.pick({
     priorities: true,
   }).extend({
+    priorities: projectableRows(
+      ReviewGapPrioritiesArtifactSchema.shape.priorities,
+    ),
     ...McpListArtifactStamp,
     ...McpListPageFields,
   });
@@ -250,6 +257,9 @@ export const ListReviewEnrichmentTargetsOutputSchema =
   ReviewEnrichmentTargetsArtifactSchema.pick({
     targets: true,
   }).extend({
+    targets: projectableRows(
+      ReviewEnrichmentTargetsArtifactSchema.shape.targets,
+    ),
     ...McpListArtifactStamp,
     ...McpListPageFields,
   });

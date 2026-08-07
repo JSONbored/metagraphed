@@ -12,10 +12,11 @@
 // now publishes.
 import { z } from "zod";
 import {
-  netuidSchema,
   fieldsSchema,
   limitSchema,
+  netuidSchema,
   orderSchema,
+  projectableRows,
   sortSchema,
 } from "./shared.ts";
 import { EMISSION_PIPELINE_SORT_FIELDS } from "../../src/emission-pipeline-surface.ts";
@@ -49,7 +50,10 @@ export type GetEmissionPipelineInput = z.infer<
   typeof GetEmissionPipelineInputSchema
 >;
 
-export const GetEmissionPipelineOutputSchema = EmissionPipelineArtifactSchema;
+export const GetEmissionPipelineOutputSchema =
+  EmissionPipelineArtifactSchema.extend({
+    subnets: projectableRows(EmissionPipelineArtifactSchema.shape.subnets),
+  });
 export type GetEmissionPipelineOutput = z.infer<
   typeof GetEmissionPipelineOutputSchema
 >;

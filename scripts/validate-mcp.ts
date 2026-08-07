@@ -2010,6 +2010,88 @@ for (const def of listToolDefinitions()) {
   await callOk(def.name, args);
 }
 
+// --- A `fields` projection must satisfy the tool's own schema (#9880) ------
+//
+// A tool that advertises `fields` lets the CALLER decide which columns come
+// back. Its published row therefore cannot REQUIRE any of them -- do that and
+// the tool fails its own contract the moment someone uses the parameter it
+// advertises.
+//
+// 25 of the 32 tools taking `fields` were doing exactly that, and the sweep
+// above could not see it: it calls each tool with the arguments its schema
+// gives EXAMPLES for, and `fields` has none (there is no single sensible
+// example -- the valid names differ per tool). So the projected path, the one
+// an agent uses precisely because the full row is too big, was never checked.
+//
+// This calls each one AGAIN with a projection, picking a field name off the
+// unprojected response so the argument is always valid for that tool.
+let projectionChecked = 0;
+const projectionUnexercised: string[] = [];
+for (const def of listToolDefinitions()) {
+  const properties = ((def.inputSchema as Row | undefined)?.properties ??
+    {}) as Row;
+  if (!properties.fields) continue;
+  if (RESPONSE_UNVALIDATED_REASONS.has(def.name)) continue;
+  const args: Row = {};
+  for (const key of ((def.inputSchema as Row)?.required ?? []) as string[]) {
+    const example = declaredExample(properties[key] as Row);
+    if (example.found) args[key] = example.value;
+  }
+  const plain = await call(def.name, args);
+  if (plain.isError) {
+    projectionUnexercised.push(def.name);
+    continue;
+  }
+  // The collection this tool returns, and one real field name off it. Derived
+  // rather than hardcoded: the valid `fields` values are per-tool, and a
+  // hardcoded list would be one more hand-maintained copy.
+  const rows = Object.values(plain).find(
+    (value) =>
+      Array.isArray(value) &&
+      value.length > 0 &&
+      typeof value[0] === "object" &&
+      value[0] !== null,
+  ) as Row[] | undefined;
+  const row = rows?.[0] ?? (plain.neuron as Row | undefined);
+  const field =
+    row && typeof row === "object" ? Object.keys(row)[0] : undefined;
+  if (!field) {
+    // The harness has no rows for this tool, so there is nothing to project.
+    // Counted rather than skipped silently: an unexercised check that reports
+    // success is the blindness #9795 was about.
+    projectionUnexercised.push(def.name);
+    continue;
+  }
+  const projected = await call(def.name, { ...args, fields: field });
+  if (projected.isError) {
+    projectionUnexercised.push(def.name);
+    continue;
+  }
+  const payload = projected.structuredContent;
+  if (!payload) {
+    projectionUnexercised.push(def.name);
+    continue;
+  }
+  projectionChecked++;
+  const validate = new Ajv2020({ strict: false }).compile(
+    def.outputSchema as Row,
+  );
+  assert.ok(
+    validate(payload),
+    `${def.name}: a response projected with the tool's OWN \`fields\` parameter ` +
+      `(fields: "${field}") must still satisfy its published outputSchema -- ` +
+      `${JSON.stringify(validate.errors?.slice(0, 4))}. A row schema that requires ` +
+      `a field the caller can project away is a contract the tool breaks by design.`,
+  );
+}
+console.log(
+  `MCP projection coverage: ${projectionChecked} of ${projectionChecked + projectionUnexercised.length} ` +
+    `\`fields\`-capable tools had their PROJECTED response validated` +
+    (projectionUnexercised.length > 0
+      ? ` (${projectionUnexercised.length} serve no rows in the hermetic harness, so their projected shape rests on the production sweep: ${projectionUnexercised.join(", ")})`
+      : ""),
+);
+
 // --- Response-shape coverage assertions (#9795) ----------------------------
 //
 // See the ledgers' definition above for why these exist. Both allowlists are

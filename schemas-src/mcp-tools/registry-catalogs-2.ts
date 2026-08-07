@@ -26,6 +26,7 @@ import {
   netuidSchema,
   numericCursorSchema,
   orderSchema,
+  projectableRows,
   providerSlugSchema,
   querySchema,
   sortSchema,
@@ -61,7 +62,9 @@ export const ListEvidenceInputSchema = z
   .strict();
 export type ListEvidenceInput = z.infer<typeof ListEvidenceInputSchema>;
 
-export const ListEvidenceOutputSchema = EvidenceLedgerArtifactSchema;
+export const ListEvidenceOutputSchema = EvidenceLedgerArtifactSchema.extend({
+  claims: projectableRows(EvidenceLedgerArtifactSchema.shape.claims),
+});
 export type ListEvidenceOutput = z.infer<typeof ListEvidenceOutputSchema>;
 
 const SURFACE_KINDS = SURFACE_KIND_VALUES;
@@ -165,7 +168,9 @@ export const ListRpcEndpointsInputSchema = z
   .strict();
 export type ListRpcEndpointsInput = z.infer<typeof ListRpcEndpointsInputSchema>;
 
-export const ListRpcEndpointsOutputSchema = RpcEndpointsArtifactSchema;
+export const ListRpcEndpointsOutputSchema = RpcEndpointsArtifactSchema.extend({
+  endpoints: projectableRows(RpcEndpointsArtifactSchema.shape.endpoints),
+});
 export type ListRpcEndpointsOutput = z.infer<
   typeof ListRpcEndpointsOutputSchema
 >;
@@ -231,6 +236,7 @@ export const ListRpcPoolsOutputSchema = RpcPoolsArtifactSchema.pick({
   source: true,
   pools: true,
 }).extend({
+  pools: projectableRows(RpcPoolsArtifactSchema.shape.pools),
   ...McpListArtifactStamp,
   // Added by the live overlay, so it is not on the route artifact.
   operational_observed_at: z.string().nullable(),
@@ -254,7 +260,10 @@ export type ListSourceSnapshotsInput = z.infer<
   typeof ListSourceSnapshotsInputSchema
 >;
 
-export const ListSourceSnapshotsOutputSchema = SourceSnapshotsArtifactSchema;
+export const ListSourceSnapshotsOutputSchema =
+  SourceSnapshotsArtifactSchema.extend({
+    sources: projectableRows(SourceSnapshotsArtifactSchema.shape.sources),
+  });
 export type ListSourceSnapshotsOutput = z.infer<
   typeof ListSourceSnapshotsOutputSchema
 >;
@@ -337,6 +346,9 @@ export const ListProfileCompletenessOutputSchema =
     summary: true,
     profiles: true,
   }).extend({
+    profiles: projectableRows(
+      ReviewProfileCompletenessArtifactSchema.shape.profiles,
+    ),
     ...McpListArtifactStamp,
     ...McpListPageFields,
   });

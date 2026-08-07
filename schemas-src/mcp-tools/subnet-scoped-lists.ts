@@ -26,6 +26,7 @@ import {
   netuidSchema,
   numericCursorSchema,
   orderSchema,
+  projectableRows,
   providerSlugSchema,
   sortSchema,
 } from "./shared.ts";
@@ -127,6 +128,7 @@ export const ListSubnetEndpointsOutputSchema =
     netuid: true,
     endpoints: true,
   }).extend({
+    endpoints: projectableRows(SubnetEndpointsArtifactSchema.shape.endpoints),
     ...McpSubnetListArtifactStamp,
     ...McpListPageFields,
   });
