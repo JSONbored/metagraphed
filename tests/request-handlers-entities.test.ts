@@ -46,6 +46,7 @@ import {
   handleSubnetConcentration,
   handleSubnetPerformance,
   handleChainConcentration,
+  handleChainConcentrationSubnets,
   handleChainPerformance,
   handleChainYield,
   handleSelfHealth,
@@ -6320,6 +6321,79 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
     );
     assert.equal(body.data.marker, "pg");
     assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleChainConcentrationSubnets: forwards to the tier and envelopes it", async () => {
+    const { env, captures } = dbWith({ neurons: [neuronRow()] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = {
+      fetch: async () => Response.json({ schema_version: 1, marker: "pg" }),
+    };
+    const body = await json(
+      await handleChainConcentrationSubnets(
+        req("/api/v1/chain/concentration/subnets"),
+        env as unknown as Env,
+        url("/api/v1/chain/concentration/subnets"),
+      ),
+    );
+    assert.equal(body.data.marker, "pg");
+    assert.deepEqual(captures.sql, []);
+  });
+
+  test("handleChainConcentrationSubnets: rejects a bad parameter WITHOUT reading the tier", async () => {
+    // The read is ~30,000 rows. A caller who typed `lens=vibes` must not pay
+    // for it, so the rejection has to land before the proxy -- asserted by the
+    // tier never being called, not just by the status code.
+    for (const [qs, parameter] of [
+      ["?lens=vibes", "lens"],
+      ["?sort=whatever", "sort"],
+      ["?order=sideways", "order"],
+      ["?limit=0", "limit"],
+      ["?limit=99999", "limit"],
+      ["?nope=1", "nope"],
+    ] as const) {
+      const { env } = dbWith({ neurons: [neuronRow()] });
+      let tierCalls = 0;
+      env.METAGRAPH_NEURONS_SOURCE = "postgres";
+      env.DATA_API = {
+        fetch: async () => {
+          tierCalls += 1;
+          return Response.json({ schema_version: 1 });
+        },
+      };
+      const response = await handleChainConcentrationSubnets(
+        req(`/api/v1/chain/concentration/subnets${qs}`),
+        env as unknown as Env,
+        url(`/api/v1/chain/concentration/subnets${qs}`),
+      );
+      assert.equal(response.status, 400, `${qs} should have been rejected`);
+      assert.equal(tierCalls, 0, `${qs} reached the tier before validating`);
+      const body = (await response.json()) as Row;
+      assert.equal((body.error as Row).code, "invalid_query");
+      assert.equal((body.meta as Row).parameter, parameter);
+    }
+  });
+
+  test("handleChainConcentrationSubnets: a cold tier echoes the CALLER's query back", async () => {
+    // An empty ranking that reports lens=stake to someone who asked for
+    // lens=stake is a different statement from one that reports the default.
+    const { env } = dbWith({ neurons: [] });
+    env.METAGRAPH_NEURONS_SOURCE = "postgres";
+    env.DATA_API = { fetch: async () => new Response(null, { status: 503 }) };
+    const query = "?lens=stake&sort=gini&order=desc&limit=5";
+    const body = await json(
+      await handleChainConcentrationSubnets(
+        req(`/api/v1/chain/concentration/subnets${query}`),
+        env as unknown as Env,
+        url(`/api/v1/chain/concentration/subnets${query}`),
+      ),
+    );
+    assert.equal(body.data.lens, "stake");
+    assert.equal(body.data.sort, "gini");
+    assert.equal(body.data.order, "desc");
+    assert.equal(body.data.limit, 5);
+    assert.equal(body.data.subnet_count, 0);
+    assert.deepEqual(body.data.subnets, []);
   });
 
   test("handleChainPerformance: flag=postgres uses Postgres data, D1 never queried", async () => {

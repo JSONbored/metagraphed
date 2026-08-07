@@ -29,7 +29,23 @@ import {
   SURFACE_HISTORY_LIMIT_MAX,
   EMISSION_CHANGES_LIMIT_DEFAULT,
   EMISSION_CHANGES_LIMIT_MAX,
+  CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
+  CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
 } from "./route-limits.ts";
+import {
+  CONCENTRATION_LENSES,
+  CONCENTRATION_RANKING_SORTS,
+  DEFAULT_CONCENTRATION_LENS,
+  DEFAULT_CONCENTRATION_RANKING_SORT,
+} from "./concentration.ts";
+
+// Shared by the artifact entry and the route entry so the two cannot drift --
+// the same single-source pattern the sibling chain-holders description uses.
+const CHAIN_CONCENTRATION_SUBNETS_DESCRIPTION =
+  `Every subnet ranked by how widely one lens of its distribution is SPREAD (#9717) — the screening question a prospective miner actually asks, and the one that used to cost 129 requests. Per subnet: holders, the measured total, gini, hhi, hhi_normalized, nakamoto_coefficient, top1/top5/top10/top20 shares, entropy, plus neuron_count/entity_count/uids_per_entity. THE SAME COMPUTATION /subnets/{netuid}/concentration SERVES: this groups the neurons read by netuid and runs buildConcentration on each group, so a subnet's row here and its own detail route agree BY CONSTRUCTION rather than by two implementations staying in step — a SQL reimplementation of gini/nakamoto would agree until it quietly did not. DISTINCT FROM /chain/concentration, which performs this same read and then collapses every subnet into ONE network aggregate, discarding the per-subnet structure. DISTINCT FROM /chain/holders, which ranks alpha OWNERSHIP off the position ledger: who owns the token is a different question from who receives the emissions, and for "should I work here" it is the wrong one. ?lens= is ` +
+  `${CONCENTRATION_LENSES.join(", ")} (default ${DEFAULT_CONCENTRATION_LENS}, the reward question) — ONE lens per response, because five scorecards across ~129 subnets is a payload nobody asked for and a flat row is what a sort can act on. ?sort= is ` +
+  `${CONCENTRATION_RANKING_SORTS.join(", ")} (default ${DEFAULT_CONCENTRATION_RANKING_SORT}). EACH SORT KEY HAS ITS OWN "WIDEST FIRST" DIRECTION and that is the default, because getting it wrong inverts the answer: a HIGH nakamoto coefficient means widely shared while a HIGH gini means the opposite. ?order= overrides. A subnet whose lens has no positive distribution sorts LAST in EITHER direction and is flagged unmeasured — riding its nulls up an ascending gini ranking would read as the most perfectly equal subnet on the network when in fact nothing was measured. limit caps the returned subnets (default ` +
+  `${CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT}, max ${CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX}) and the max sits above the subnet count on purpose, so ranking the whole network is one request. The network rollup carries dimension-free facts only — MEDIAN gini/nakamoto/top-1 share and how many subnets have a single holder taking the lens — because each subnet's alpha is a different token and a cross-subnet sum of it means nothing. Mainnet-only: the neurons tier carries no network dimension.`;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -1998,6 +2014,13 @@ export const PUBLIC_ARTIFACTS = [
     "/metagraph/chain/concentration.json",
     "Network-wide stake and emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) aggregated across all subnets' neurons over three lenses (per-UID, per-entity with coldkeys collapsed across subnets into the network control distribution, and validator-only consensus power), computed live from the neurons D1 tier at /api/v1/chain/concentration (no static file).",
     "ChainConcentrationArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
+    "chain-concentration-subnets",
+    "/metagraph/chain/concentration/subnets.json",
+    CHAIN_CONCENTRATION_SUBNETS_DESCRIPTION,
+    "ChainConcentrationSubnetsArtifact",
     COMPUTED_LIVE,
   ),
   artifact(
@@ -4765,6 +4788,29 @@ export const API_ROUTES = [
     [],
   ),
   route(
+    "chain-concentration-subnets",
+    "GET",
+    "/api/v1/chain/concentration/subnets",
+    "/metagraph/chain/concentration/subnets.json",
+    `Fetch every subnet ranked by distribution spread. ${CHAIN_CONCENTRATION_SUBNETS_DESCRIPTION}`,
+    "short",
+    ["chain", "analytics", "subnets"],
+    [
+      { name: "lens", schema: enumSchema(CONCENTRATION_LENSES) },
+      { name: "sort", schema: enumSchema(CONCENTRATION_RANKING_SORTS) },
+      { name: "order", schema: enumSchema(["asc", "desc"]) },
+      {
+        name: "limit",
+        schema: {
+          type: "integer",
+          minimum: 1,
+          maximum: CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
+        },
+      },
+    ],
+    [],
+  ),
+  route(
     "chain-performance",
     "GET",
     "/api/v1/chain/performance",
@@ -5430,6 +5476,12 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   "/api/v1/subnets/{netuid}/holders",
   // #9607: the cross-subnet twin, reading the same two mainnet-only tables.
   "/api/v1/chain/holders",
+  // #9717: `neurons` has no network column (verified against the live table:
+  // netuid, uid, hotkey, coldkey, ... and nothing naming a chain), so a
+  // testnet-addressed request would be served MAINNET distributions. Declared
+  // rather than left to 404 incidentally because no testnet artifact exists --
+  // an explicit decline says WHY, and the reason is a property of the data.
+  "/api/v1/chain/concentration/subnets",
   // #9609: wrapped TAO on Ethereum has no testnet counterpart, and the table
   // carries no network column.
   "/api/v1/network/tao-usd",

@@ -935,6 +935,47 @@ test("GET /api/v1/chain/concentration and /chain/performance scan every subnet",
   assert.equal(((await perf.json()) as Row).subnet_count, 2);
 });
 
+test("GET /api/v1/chain/concentration/subnets ranks per netuid off the same scan", async () => {
+  // Two subnets with opposite reward shapes: netuid 7 spreads emission over
+  // three holders, netuid 8 hands it all to one.
+  insertNeuron({ netuid: 7, uid: 0, coldkey: "a", emission_tao: 1 });
+  insertNeuron({ netuid: 7, uid: 1, coldkey: "b", emission_tao: 1 });
+  insertNeuron({ netuid: 7, uid: 2, coldkey: "c", emission_tao: 1 });
+  insertNeuron({ netuid: 8, uid: 0, coldkey: "whale", emission_tao: 99 });
+
+  const res = await call(req("/api/v1/chain/concentration/subnets"));
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as Row;
+  assert.equal(body.subnet_count, 2);
+  assert.equal(body.lens, "emission");
+  assert.equal(body.sort, "nakamoto_coefficient");
+  assert.equal(body.order, "desc");
+  // The spread subnet leads: two of its three holders are needed to pass 50%,
+  // against the monopoly's one.
+  const ranked = body.subnets as Row[];
+  assert.equal(ranked[0].netuid, 7);
+  assert.equal(ranked[0].nakamoto_coefficient, 2);
+  assert.equal(ranked[1].netuid, 8);
+  assert.equal(ranked[1].nakamoto_coefficient, 1);
+  assert.equal((body.network as Row).single_holder_subnet_count, 1);
+});
+
+test("GET /api/v1/chain/concentration/subnets rejects a bad parameter before the scan", async () => {
+  insertNeuron({ netuid: 7, uid: 0 });
+  for (const [qs, parameter] of [
+    ["lens=vibes", "lens"],
+    ["sort=whatever", "sort"],
+    ["order=sideways", "order"],
+    ["limit=0", "limit"],
+    ["limit=99999", "limit"],
+  ] as const) {
+    const res = await call(req(`/api/v1/chain/concentration/subnets?${qs}`));
+    assert.equal(res.status, 400, `${qs} should have been rejected`);
+    const body = (await res.json()) as Row;
+    assert.equal((body.error as Row).parameter, parameter);
+  }
+});
+
 test("GET /api/v1/subnets/:netuid/idle-stake and /chain/idle-stake fold dividends against stake", async () => {
   insertNeuron({ uid: 0, stake_tao: 100, dividends: 0 });
   insertNeuron({ uid: 1, stake_tao: 50, dividends: 0.5 });

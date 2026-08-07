@@ -396,6 +396,352 @@ export async function loadChainConcentration(
   return buildChainConcentration(rows);
 }
 
+// ---- Cross-subnet concentration ranking (#9717) ----------------------------
+// "Which subnets spread their rewards widely?" -- the question a miner screening
+// the network actually asks, and the one nothing answered in a single call.
+//
+// The two halves already existed and were never joined: buildConcentration
+// computes the scorecard for ONE subnet, and buildChainConcentration reads EVERY
+// subnet's neurons and then collapses them into a single network aggregate,
+// discarding the per-subnet structure sitting in the rows. This groups that same
+// read by netuid and runs buildConcentration on each group -- the SAME function
+// /api/v1/subnets/{netuid}/concentration serves, so a subnet's row here and its
+// own detail route agree BY CONSTRUCTION rather than by two implementations
+// staying in step. Ranking off a SQL reimplementation of gini/nakamoto would
+// agree until it quietly did not.
+//
+// One lens per response, flattened. Five scorecards x ~129 subnets is a payload
+// nobody asked for; the caller wants one ordering of one measure, and a flat row
+// is what a sort and a `fields` projection can act on.
+
+/** The distributions a caller can rank subnets by. */
+export const CONCENTRATION_LENSES = [
+  "emission",
+  "stake",
+  "entity_emission",
+  "entity_stake",
+  "validator_stake",
+] as const;
+export type ConcentrationLens = (typeof CONCENTRATION_LENSES)[number];
+export const DEFAULT_CONCENTRATION_LENS: ConcentrationLens = "emission";
+
+/**
+ * Sort keys, all reading off the flattened scorecard.
+ *
+ * `nakamoto_coefficient` is the default because it answers the screening
+ * question most directly -- how many entities it takes to control the majority
+ * of the distribution -- and it is an integer count rather than a ratio, so
+ * "9 vs 1" is legible where "gini 0.658 vs 0.968" is not.
+ */
+export const CONCENTRATION_RANKING_SORTS = [
+  "nakamoto_coefficient",
+  "gini",
+  "holders",
+  "top_1pct_share",
+  "total",
+  "netuid",
+] as const;
+export type ConcentrationRankingSort =
+  (typeof CONCENTRATION_RANKING_SORTS)[number];
+export const DEFAULT_CONCENTRATION_RANKING_SORT: ConcentrationRankingSort =
+  "nakamoto_coefficient";
+
+/**
+ * Which direction reads as "most widely spread first" for each key.
+ *
+ * Stated per key rather than left to the caller's `order`, because the useful
+ * default differs by measure and getting it wrong inverts the answer: a high
+ * nakamoto coefficient means widely shared, while a high gini means the
+ * opposite. `order` still overrides.
+ */
+const WIDEST_FIRST: Record<ConcentrationRankingSort, "asc" | "desc"> = {
+  nakamoto_coefficient: "desc",
+  gini: "asc",
+  holders: "desc",
+  top_1pct_share: "asc",
+  total: "desc",
+  netuid: "asc",
+};
+
+export interface ConcentrationRankingQuery {
+  lens: ConcentrationLens;
+  sort: ConcentrationRankingSort;
+  order: "asc" | "desc" | null;
+  limit: number;
+}
+
+/**
+ * Parse `?lens/sort/order/limit` for the ranking route.
+ *
+ * ONE parser, because two callers need the answer and they must not disagree:
+ * the api.ts handler parses to turn a bad value into a 400 before any read
+ * happens, and the data-api handler parses to apply it. Two implementations of
+ * "what does limit=0 mean" is exactly the drift this route cannot afford.
+ *
+ * `order` stays null when unset rather than defaulting here — the builder picks
+ * the widest-first direction per sort key, and a default chosen at parse time
+ * would flatten that into one direction for every key.
+ */
+export function parseConcentrationRankingQuery(
+  params: URLSearchParams,
+  { limitDefault, limitMax }: { limitDefault: number; limitMax: number },
+):
+  | ConcentrationRankingQuery
+  | { error: { parameter: string; message: string } } {
+  const lens = params.get("lens") || DEFAULT_CONCENTRATION_LENS;
+  if (!CONCENTRATION_LENSES.includes(lens as ConcentrationLens)) {
+    return {
+      error: {
+        parameter: "lens",
+        message: `"${lens}" is not a supported lens. Supported: ${CONCENTRATION_LENSES.join(", ")}.`,
+      },
+    };
+  }
+  const sort = params.get("sort") || DEFAULT_CONCENTRATION_RANKING_SORT;
+  if (!CONCENTRATION_RANKING_SORTS.includes(sort as ConcentrationRankingSort)) {
+    return {
+      error: {
+        parameter: "sort",
+        message: `"${sort}" is not a supported sort. Supported: ${CONCENTRATION_RANKING_SORTS.join(", ")}.`,
+      },
+    };
+  }
+  const rawOrder = params.get("order");
+  if (rawOrder != null && rawOrder !== "asc" && rawOrder !== "desc") {
+    return {
+      error: {
+        parameter: "order",
+        message: `"${rawOrder}" is not a supported order. Supported: asc, desc.`,
+      },
+    };
+  }
+  const rawLimit = params.get("limit");
+  let limit = limitDefault;
+  if (rawLimit != null) {
+    // Rejected rather than clamped: a caller who asked for 5000 and silently
+    // received 512 has a truncated ranking they believe is complete.
+    const parsed = Number(rawLimit);
+    if (
+      !/^\d+$/.test(rawLimit.trim()) ||
+      !Number.isInteger(parsed) ||
+      parsed < 1 ||
+      parsed > limitMax
+    ) {
+      return {
+        error: {
+          parameter: "limit",
+          message: `limit must be an integer between 1 and ${limitMax}.`,
+        },
+      };
+    }
+    limit = parsed;
+  }
+  return {
+    lens: lens as ConcentrationLens,
+    sort: sort as ConcentrationRankingSort,
+    order: rawOrder,
+    limit,
+  };
+}
+
+export interface SubnetConcentrationRow extends TopShares {
+  netuid: number;
+  neuron_count: number;
+  entity_count: number;
+  uids_per_entity: number | null;
+  holders: number | null;
+  total: number | null;
+  gini: number | null;
+  hhi: number | null;
+  hhi_normalized: number | null;
+  nakamoto_coefficient: number | null;
+  entropy: number | null;
+  entropy_normalized: number | null;
+  /**
+   * True when the chosen lens had no positive distribution on this subnet, so
+   * every metric above is null. Published rather than left to be inferred from
+   * the nulls: "nobody earned anything measurable here" and "we did not measure"
+   * are different facts, and a caller ranking subnets must be able to tell them
+   * apart without guessing.
+   */
+  unmeasured: boolean;
+}
+
+export interface SubnetConcentrationRankingResult {
+  schema_version: 1;
+  lens: ConcentrationLens;
+  sort: ConcentrationRankingSort;
+  order: "asc" | "desc";
+  subnet_count: number;
+  measured_subnet_count: number;
+  returned: number;
+  limit: number;
+  neuron_count: number;
+  captured_at: string | null;
+  /**
+   * Dimension-free network facts only. A median of a ratio is comparable across
+   * subnets; a SUM of per-subnet alpha is not, because each subnet's alpha is a
+   * different token -- the same rule /chain/holders states for total_alpha.
+   */
+  network: {
+    median_gini: number | null;
+    median_nakamoto_coefficient: number | null;
+    median_top_1pct_share: number | null;
+    single_holder_subnet_count: number;
+  };
+  subnets: SubnetConcentrationRow[];
+}
+
+/** Median of a numeric sample, or null when the sample is empty. */
+function median(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  return sorted.length % 2 === 1
+    ? sorted[mid]
+    : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/** Flatten one subnet's chosen lens into a rankable row. */
+function rankingRow(
+  result: ConcentrationResult,
+  lens: ConcentrationLens,
+): SubnetConcentrationRow {
+  const card = result[lens];
+  const shell = {
+    netuid: result.netuid,
+    neuron_count: result.neuron_count,
+    entity_count: result.entity_count,
+    uids_per_entity: result.uids_per_entity,
+  };
+  if (!card) {
+    return {
+      ...shell,
+      holders: null,
+      total: null,
+      gini: null,
+      hhi: null,
+      hhi_normalized: null,
+      nakamoto_coefficient: null,
+      top_1pct_share: null,
+      top_5pct_share: null,
+      top_10pct_share: null,
+      top_20pct_share: null,
+      entropy: null,
+      entropy_normalized: null,
+      unmeasured: true,
+    };
+  }
+  const { holders, total, gini: g, hhi: h, ...rest } = card;
+  return {
+    ...shell,
+    holders,
+    total,
+    gini: g,
+    hhi: h,
+    ...rest,
+    unmeasured: false,
+  };
+}
+
+export function buildSubnetConcentrationRanking(
+  rows: Array<Record<string, unknown>> | null | undefined,
+  {
+    lens = DEFAULT_CONCENTRATION_LENS,
+    sort = DEFAULT_CONCENTRATION_RANKING_SORT,
+    order,
+    limit,
+  }: {
+    lens?: ConcentrationLens;
+    sort?: ConcentrationRankingSort;
+    order?: "asc" | "desc" | null;
+    limit: number;
+  },
+): SubnetConcentrationRankingResult {
+  const list = Array.isArray(rows) ? rows : [];
+
+  let capturedAt: CaptureStamp | null = null;
+  const byNetuid = new Map<number, Array<Record<string, unknown>>>();
+  for (const row of list) {
+    const captured = captureStamp(row?.captured_at);
+    if (captured && (capturedAt == null || captured.ms > capturedAt.ms)) {
+      capturedAt = captured;
+    }
+    const raw = row?.netuid;
+    if (raw == null) continue;
+    // Blank D1 cells coerce via Number("") -> 0; a non-numeric cell must not
+    // land in subnet 0's group. Same guard buildChainConcentration applies.
+    if (typeof raw === "string" && raw.trim() === "") continue;
+    const netuid = Number(raw);
+    if (!Number.isInteger(netuid) || netuid < 0) continue;
+    const group = byNetuid.get(netuid);
+    if (group) group.push(row);
+    else byNetuid.set(netuid, [row]);
+  }
+
+  const subnets = [...byNetuid.entries()].map(([netuid, group]) =>
+    rankingRow(buildConcentration(group, netuid), lens),
+  );
+
+  const direction = order ?? WIDEST_FIRST[sort];
+  const factor = direction === "desc" ? -1 : 1;
+  subnets.sort((a, b) => {
+    // A subnet whose lens has no positive distribution sorts LAST in EITHER
+    // direction. Letting it ride its nulls would put it at the top of an
+    // ascending gini ranking, reading as the most perfectly equal subnet on the
+    // network when in fact nothing was measured -- the same rule /chain/holders
+    // states for an uncomputable share.
+    if (a.unmeasured !== b.unmeasured) return a.unmeasured ? 1 : -1;
+    const left = a[sort];
+    const right = b[sort];
+    if (left != null && right != null && left !== right) {
+      return ((left as number) - (right as number)) * factor;
+    }
+    return a.netuid - b.netuid;
+  });
+
+  const measured = subnets.filter((row) => !row.unmeasured);
+  const page = subnets.slice(0, limit);
+  return {
+    schema_version: 1,
+    lens,
+    sort,
+    order: direction,
+    subnet_count: subnets.length,
+    measured_subnet_count: measured.length,
+    returned: page.length,
+    limit,
+    neuron_count: list.length,
+    captured_at: capturedAt?.value ?? null,
+    network: {
+      median_gini: round(
+        median(
+          measured
+            .map((row) => row.gini)
+            .filter((value): value is number => value != null),
+        ),
+      ),
+      median_nakamoto_coefficient: median(
+        measured
+          .map((row) => row.nakamoto_coefficient)
+          .filter((value): value is number => value != null),
+      ),
+      median_top_1pct_share: round(
+        median(
+          measured
+            .map((row) => row.top_1pct_share)
+            .filter((value): value is number => value != null),
+        ),
+      ),
+      // One entity taking the whole lens: the strongest single signal that a
+      // subnet is not worth a newcomer's registration fee.
+      single_holder_subnet_count: measured.filter((row) => row.holders === 1)
+        .length,
+    },
+    subnets: page,
+  };
+}
+
 // ---- Concentration HISTORY (decentralization over time) --------------------
 // Per-day concentration from the dated neuron_daily rollup, so a subnet's
 // centralization trend (is power consolidating?) is chartable. Windows are

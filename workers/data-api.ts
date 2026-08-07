@@ -50,10 +50,16 @@ import {
   buildConcentration,
   buildChainConcentration,
   buildConcentrationHistory,
+  buildSubnetConcentrationRanking,
+  parseConcentrationRankingQuery,
   CONCENTRATION_HISTORY_ROW_CAP,
   CONCENTRATION_HISTORY_WINDOWS,
   DEFAULT_CONCENTRATION_HISTORY_WINDOW,
 } from "../src/concentration.ts";
+import {
+  CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
+  CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
+} from "../src/route-limits.ts";
 import {
   buildSubnetPerformance,
   buildSubnetPerformanceHistory,
@@ -6061,6 +6067,30 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
         SELECT stake_tao, emission_tao, coldkey, validator_permit, netuid, captured_at
         FROM neurons`;
       return json(buildChainConcentration(rows));
+    };
+  }
+
+  // GET /api/v1/chain/concentration/subnets (#9717): the SAME read as
+  // /chain/concentration above -- every subnet's neurons, no filter -- kept
+  // grouped by netuid instead of collapsed into one network aggregate. Adding
+  // no new read class is the point: the rows were always there.
+  if (url.pathname === "/api/v1/chain/concentration/subnets") {
+    return async (sql) => {
+      // Parsed BEFORE the read, with the SAME function api.ts validates with,
+      // so the two cannot disagree about what `limit=0` means and a rejected
+      // request never costs a ~30,000-row scan. api.ts rejects ahead of the
+      // proxy, so this is defence in depth -- but a real 400 rather than an
+      // unreachable annotation, so it is testable and a direct data-api call
+      // is not a way around validation.
+      const query = parseConcentrationRankingQuery(url.searchParams, {
+        limitDefault: CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
+        limitMax: CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
+      });
+      if ("error" in query) return json({ error: query.error }, 400);
+      const rows = await sql`
+        SELECT stake_tao, emission_tao, coldkey, validator_permit, netuid, captured_at
+        FROM neurons`;
+      return json(buildSubnetConcentrationRanking(rows, query));
     };
   }
 

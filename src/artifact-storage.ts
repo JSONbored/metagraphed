@@ -358,6 +358,9 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // Network-wide concentration aggregated across every subnet's neurons, computed
   // live from the neurons D1 tier at /api/v1/chain/concentration — never a file.
   /^chain\/concentration\.json$/,
+  // Every subnet RANKED by one lens of its distribution (#9717), computed live
+  // from the same neurons D1 read the aggregate above performs — never a file.
+  /^chain\/concentration\/subnets\.json$/,
   // Network-wide reward distribution & score spread, computed live from the
   // neurons D1 tier at /api/v1/chain/performance — never a file.
   /^chain\/performance\.json$/,

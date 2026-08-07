@@ -136,6 +136,7 @@ import {
   handleSubnetPerformanceHistory,
   handleSubnetYieldHistory,
   handleChainConcentration,
+  handleChainConcentrationSubnets,
   handleChainPerformance,
   handleChainIdentityHistory,
   canonicalChainIdentityHistoryCachePath,
@@ -5811,6 +5812,20 @@ export async function handleRequest(
         handleChainConcentration(request, env, resolved.url),
       );
     }
+    // GET /api/v1/chain/concentration/subnets (#9717): the same neurons read as
+    // the aggregate above, kept grouped by netuid so every subnet is ranked by
+    // how widely one lens of its distribution is spread. Query-varying, so the
+    // edge-cache key carries the parameters — a lens=stake response must not be
+    // served to a caller who asked for lens=emission.
+    if (resolved.url.pathname === "/api/v1/chain/concentration/subnets") {
+      return withEdgeCache(
+        request,
+        ctx,
+        env,
+        `chain-concentration-subnets:${resolved.url.searchParams.get("lens") || ""}:${resolved.url.searchParams.get("sort") || ""}:${resolved.url.searchParams.get("order") || ""}:${resolved.url.searchParams.get("limit") || ""}`,
+        () => handleChainConcentrationSubnets(request, env, resolved.url),
+      );
+    }
     // GET /api/v1/chain/performance: network-wide reward-distribution & score-spread
     // aggregate — edge-cache busts on the shared health-cron stamp like every
     // sibling Postgres-tier route (like chain/concentration, but the reward-flow lens).
@@ -5962,6 +5977,7 @@ export function isMainnetOnlyApiPath(pathname: string) {
     pathname === "/api/v1/chain/prometheus" ||
     pathname === "/api/v1/chain/axon-removals" ||
     pathname === "/api/v1/chain/concentration" ||
+    pathname === "/api/v1/chain/concentration/subnets" ||
     pathname === "/api/v1/chain/performance" ||
     pathname === "/api/v1/chain/idle-stake" ||
     pathname === "/api/v1/chain/identity-history" ||

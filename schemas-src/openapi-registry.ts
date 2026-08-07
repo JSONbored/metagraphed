@@ -319,6 +319,7 @@ import {
 } from "./routes/chain-network-rollups.ts";
 import { ChainAlphaVolumeArtifactSchema } from "./routes/chain-alpha-volume.ts";
 import { ChainConcentrationArtifactSchema } from "./routes/chain-concentration.ts";
+import { ChainConcentrationSubnetsArtifactSchema } from "./routes/chain-concentration-subnets.ts";
 import {
   ChainEventsFeedArtifactSchema,
   ChainEventsStatsArtifactSchema,
@@ -630,6 +631,10 @@ register(ChainStakeTransfersArtifactSchema, "ChainStakeTransfersArtifact");
 register(ChainWeightsArtifactSchema, "ChainWeightsArtifact");
 register(ChainAlphaVolumeArtifactSchema, "ChainAlphaVolumeArtifact");
 register(ChainConcentrationArtifactSchema, "ChainConcentrationArtifact");
+register(
+  ChainConcentrationSubnetsArtifactSchema,
+  "ChainConcentrationSubnetsArtifact",
+);
 register(ChainEventsFeedArtifactSchema, "ChainEventsFeedArtifact");
 register(ChainEventsStatsArtifactSchema, "ChainEventsStatsArtifact");
 register(ChainIdentityHistoryArtifactSchema, "ChainIdentityHistoryArtifact");
@@ -1002,6 +1007,7 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "ChainWeightsArtifact",
   "ChainAlphaVolumeArtifact",
   "ChainConcentrationArtifact",
+  "ChainConcentrationSubnetsArtifact",
   "ChainEventsFeedArtifact",
   "ChainEventsStatsArtifact",
   "ChainIdentityHistoryArtifact",

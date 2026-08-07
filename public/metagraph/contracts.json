@@ -1973,6 +1973,17 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "Every subnet ranked by how widely one lens of its distribution is SPREAD (#9717) — the screening question a prospective miner actually asks, and the one that used to cost 129 requests. Per subnet: holders, the measured total, gini, hhi, hhi_normalized, nakamoto_coefficient, top1/top5/top10/top20 shares, entropy, plus neuron_count/entity_count/uids_per_entity. THE SAME COMPUTATION /subnets/{netuid}/concentration SERVES: this groups the neurons read by netuid and runs buildConcentration on each group, so a subnet's row here and its own detail route agree BY CONSTRUCTION rather than by two implementations staying in step — a SQL reimplementation of gini/nakamoto would agree until it quietly did not. DISTINCT FROM /chain/concentration, which performs this same read and then collapses every subnet into ONE network aggregate, discarding the per-subnet structure. DISTINCT FROM /chain/holders, which ranks alpha OWNERSHIP off the position ledger: who owns the token is a different question from who receives the emissions, and for \"should I work here\" it is the wrong one. ?lens= is emission, stake, entity_emission, entity_stake, validator_stake (default emission, the reward question) — ONE lens per response, because five scorecards across ~129 subnets is a payload nobody asked for and a flat row is what a sort can act on. ?sort= is nakamoto_coefficient, gini, holders, top_1pct_share, total, netuid (default nakamoto_coefficient). EACH SORT KEY HAS ITS OWN \"WIDEST FIRST\" DIRECTION and that is the default, because getting it wrong inverts the answer: a HIGH nakamoto coefficient means widely shared while a HIGH gini means the opposite. ?order= overrides. A subnet whose lens has no positive distribution sorts LAST in EITHER direction and is flagged unmeasured — riding its nulls up an ascending gini ranking would read as the most perfectly equal subnet on the network when in fact nothing was measured. limit caps the returned subnets (default 20, max 512) and the max sits above the subnet count on purpose, so ranking the whole network is one request. The network rollup carries dimension-free facts only — MEDIAN gini/nakamoto/top-1 share and how many subnets have a single holder taking the lens — because each subnet's alpha is a different token and a cross-subnet sum of it means nothing. Mainnet-only: the neurons tier carries no network dimension.",
+      "id": "chain-concentration-subnets",
+      "path": "/metagraph/chain/concentration/subnets.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ChainConcentrationSubnetsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "Network-wide reward-distribution & score-spread metrics aggregated across all subnets' neurons: reward concentration (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for incentive across all neurons and dividends across validators, plus the p10–p90 spread of the 0–1 trust, consensus, and validator_trust scores, and the subnet_count the snapshot spans — the network-wide reward-flow companion to chain-concentration, computed live from the neurons D1 tier at /api/v1/chain/performance (no static file).",
       "id": "chain-performance",
       "path": "/metagraph/chain/performance.json",
@@ -2710,7 +2721,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 93,
+    "mainnet_only_route_count": 94,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
