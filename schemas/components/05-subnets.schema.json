@@ -1,9 +1,0 @@
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://metagraph.sh/schemas/components/05-subnets.schema.json",
-  "title": "Metagraphed OpenAPI components 05-subnets",
-  "type": "object",
-  "components": {
-    "schemas": {}
-  }
-}

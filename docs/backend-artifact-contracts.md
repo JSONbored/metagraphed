@@ -9,15 +9,15 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `registry/candidates/**/*.json` is discovery-only. Candidates are not verified registry surfaces until promotion.
 - `registry/adapters/latest/*.json` stores safe adapter snapshots for subnet-specific public metrics.
 - `registry/reviews/maintainer-reviewed.json` stores public-safe maintainer review decisions.
-- `schemas/components/*.schema.json` is canonical for public API/artifact component schemas.
-- `schemas/api-components.schema.json` is a generated bundle and should not be edited by hand.
+- `schemas-src/**/*.ts` is canonical for public API/artifact component schemas — Zod, registered in `schemas-src/openapi-registry.ts`. It is the ONLY source; `validate:single-schema-source` fails the build if a second one appears (#9830).
+- `schemas/*.json` holds the INPUT schemas that validate hand-written registry files (subnet manifests, providers, candidates, saved queries). Those are not published components and stay JSON.
 - `/metagraph/openapi.json`, `/metagraph/types.d.ts`, `packages/contract/index.d.ts`, and `generated/metagraphed-client.ts` are generated from the canonical schema and route metadata.
 - `public/metagraph/*` files are compact generated projections and should not be edited by hand. R2-only artifacts must not be committed there.
 - `dist/metagraph-r2/metagraph/*` is the ignored staging tree for volatile/detail generated projections that are uploaded to R2.
 - Artifact contracts carry `storage_tier`: `dual` for compact Git-plus-R2 artifacts, `r2` for volatile/detail artifacts, and `git` for local-only generated support artifacts.
 - Health, RPC, adapter, and schema-drift artifacts are operational observations, not protocol authority.
 - No secrets, wallet data, PATs, private dashboards, or validator-sensitive flows belong in any public artifact.
-- Zod is not backend contract authority in v1. Zod helpers can be generated later for frontend consumers, but JSON Schema plus AJV remains canonical.
+- Zod is the AUTHORING source for the backend contract (#9830). JSON Schema remains what is PUBLISHED and what AJV validates against — `openapi.json` is generated from the Zod schemas, never written by hand. This reverses the v1 position that "Zod is not backend contract authority": it was true while components were hand-written JSON, and the two sources drifted for exactly as long as both existed.
 
 ## Core Artifacts
 
@@ -409,7 +409,6 @@ Metagraphed v1 is backend-first. The public contract is static JSON under `https
 - `npm run curate:baseline`: derive generated overlays from verified candidates, commit only compact checksum metadata, and stage expanded generated overlays outside Git for R2.
 - `npm run review:promote`: apply public-safe maintainer review decisions to overlays.
 - `npm run schemas:snapshot`: fetch machine-readable OpenAPI/Swagger JSON snapshots and update schema drift.
-- `npm run schemas:bundle`: bundle canonical modular JSON Schema components into `schemas/api-components.schema.json`.
 - `npm run adapters:snapshot`: capture safe Allways/Gittensor public adapter summaries.
 - `METAGRAPH_WRITE_PROBE_RESULTS=1 npm run probes:smoke`: run live read-only probes and persist the RPC/endpoint artifacts, per-subnet badge data, and the daily `health/history` snapshot. Current-state health now persists to the local fallback cache only (`.cache/metagraphed/health/latest.json`, which `build-artifacts.ts` reads) — it no longer writes the retired static `health/latest.json`, `health/summary.json`, or `health/subnets/*.json` paths the live API serves from KV/D1 and unconditionally 410s.
 - `npm run r2:manifest`: regenerate the Cloudflare R2 manifest from current public artifacts.

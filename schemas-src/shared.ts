@@ -63,7 +63,11 @@ export const HealthStatusSchema = z.enum([
 ]);
 export type HealthStatus = z.infer<typeof HealthStatusSchema>;
 
-export const PartnershipTierSchema = z.enum(["pilot"]);
+export const PartnershipTierSchema = z
+  .enum(["pilot"])
+  .describe(
+    "Display/placement tier for a subnet — e.g. a featured-pilot homepage slot. Distinct from Authority and CurationLevel, which are trust signals only and never drive placement.",
+  );
 export type PartnershipTier = z.infer<typeof PartnershipTierSchema>;
 
 export const PartnershipMetadataSchema = z

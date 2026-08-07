@@ -234,12 +234,15 @@ its structure, naming, and comment density. Build for the class, not the one cas
 ### Phase B1 — Implement (match the house style)
 
 - The Worker entry/router is `workers/api.ts`; serving/overlay/health logic lives in `src/*.ts`;
-  the contract lives in `schemas/` (+ `schemas/components/`) and `src/contracts.ts`.
+  the contract lives in **`schemas-src/` (Zod, the single source)** and `src/contracts.ts`.
+  `schemas/*.json` is a different thing — the INPUT schemas that validate hand-written registry
+  files. A published component declared anywhere but `schemas-src/` fails `validate:single-schema-source`.
 - **All new code/script/test files must be `.ts`** — never `.mjs`/`.js`. The TypeScript migration
   (metagraphed#7510) is complete, and the `validate:no-hand-written-mjs` CI gate fails any PR that
   adds a `.mjs`/`.js` file under `src/`, `workers/`, `scripts/`, or `tests/`
   (metagraphed#7521).
-- **Schema-first rule:** never hand-edit the generated contract. Edit `schemas/` →
+- **Schema-first rule:** never hand-edit the generated contract. Edit the Zod schema under
+  `schemas-src/` (and register it in `schemas-src/openapi-registry.ts` if it is new) →
   `npm run build` → commit `openapi.json` + generated types/clients in the same PR.
 - A new `/api/v1` route or artifact trips hidden contract gates — see the new-route checklist in
   `reference.md` before adding one.
@@ -263,7 +266,7 @@ fresh checkout or a filtered single-file run. For just the fixture tree, without
 
 | You changed…                                 | Run             | Commit                                                                                            |
 | -------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------- |
-| `schemas/` or `schemas/components/`          | `npm run build` | `openapi.json`, generated types, `contracts.json`, api-index                                      |
+| `schemas-src/` (any published schema)        | `npm run build` | `openapi.json`, generated types, `contracts.json`, api-index                                      |
 | A new/edited `/api/v1` route or artifact     | `npm run build` | the derived `public/metagraph/*` it produces                                                      |
 | A canonical `registry/providers/<slug>.json` | `npm run build` | regenerated artifacts (commit only the provider file + its artifacts)                             |
 | MCP tools in `src/mcp-server.ts`             | —               | **nothing** — the server card is worker-computed, not a committed artifact                        |

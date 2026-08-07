@@ -17660,12 +17660,7 @@
                   "type": "string"
                 },
                 "cache": {
-                  "enum": [
-                    "short",
-                    "standard",
-                    "static"
-                  ],
-                  "type": "string"
+                  "$ref": "#/components/schemas/CacheProfile"
                 },
                 "description": {
                   "type": "string"
@@ -17777,7 +17772,7 @@
         "type": "object"
       },
       "ArtifactBase": {
-        "additionalProperties": true,
+        "additionalProperties": {},
         "properties": {
           "contract_version": {
             "type": "string"
@@ -17786,7 +17781,7 @@
             "type": "string"
           },
           "notes": {
-            "oneOf": [
+            "anyOf": [
               {
                 "type": "string"
               },
@@ -17799,12 +17794,13 @@
             ]
           },
           "schema_version": {
-            "const": 1
+            "const": 1,
+            "type": "number"
           }
         },
         "required": [
-          "schema_version",
-          "generated_at"
+          "generated_at",
+          "schema_version"
         ],
         "type": "object"
       },
@@ -19269,7 +19265,8 @@
           "short",
           "standard",
           "static"
-        ]
+        ],
+        "type": "string"
       },
       "CandidatesArtifact": {
         "additionalProperties": {},
@@ -19319,7 +19316,8 @@
           "verified",
           "stale",
           "rejected"
-        ]
+        ],
+        "type": "string"
       },
       "CandidateSurface": {
         "additionalProperties": false,
@@ -19500,15 +19498,7 @@
             "type": "array"
           },
           "state": {
-            "enum": [
-              "schema-invalid",
-              "schema-valid",
-              "maintainer-review",
-              "verified",
-              "stale",
-              "rejected"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/CandidateState"
           },
           "subnet_name": {
             "anyOf": [
@@ -29259,7 +29249,8 @@
           "pool-eligible",
           "disabled",
           "rejected"
-        ]
+        ],
+        "type": "string"
       },
       "EndpointResource": {
         "additionalProperties": false,
@@ -29447,15 +29438,7 @@
             "type": "boolean"
           },
           "publication_state": {
-            "enum": [
-              "candidate",
-              "verified",
-              "monitored",
-              "pool-eligible",
-              "disabled",
-              "rejected"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/EndpointPublicationState"
           },
           "rate_limit_notes": {
             "anyOf": [
@@ -29750,10 +29733,12 @@
             "$ref": "#/components/schemas/ResponseMeta"
           },
           "ok": {
-            "const": false
+            "const": false,
+            "type": "boolean"
           },
           "schema_version": {
-            "const": 1
+            "const": 1,
+            "type": "number"
           }
         },
         "required": [
@@ -31405,11 +31390,7 @@
         "type": "object"
       },
       "GenericArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
-          }
-        ]
+        "$ref": "#/components/schemas/ArtifactBase"
       },
       "GlobalIncidentsArtifact": {
         "additionalProperties": {},
@@ -31987,45 +31968,82 @@
         "type": "object"
       },
       "HealthBadgeArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "color": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "color": {
+          "contract_version": {
+            "type": "string"
+          },
+          "failed_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "label": {
+            "description": "Badge left-hand text, always `SN<netuid>`.",
+            "type": "string"
+          },
+          "message": {
+            "description": "Badge right-hand text. Currently the same value as `status`, kept separate because the badge's wording is a display concern and the verdict is not.",
+            "type": "string"
+          },
+          "netuid": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "notes": {
+            "anyOf": [
+              {
                 "type": "string"
               },
-              "label": {
-                "type": "string"
-              },
-              "message": {
-                "type": "string"
-              },
-              "netuid": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "status": {
-                "$ref": "#/components/schemas/HealthStatus"
-              },
-              "surface_count": {
-                "minimum": 0,
-                "type": "integer"
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
               }
-            },
-            "required": [
-              "netuid",
-              "label",
-              "message",
-              "status",
-              "color",
-              "surface_count"
-            ],
-            "type": "object"
+            ]
+          },
+          "ok_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "status": {
+            "$ref": "#/components/schemas/HealthStatus"
+          },
+          "surface_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "unknown_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "netuid",
+          "label",
+          "message",
+          "status",
+          "color",
+          "surface_count"
+        ],
+        "type": "object"
       },
       "HealthHistoryArtifact": {
         "additionalProperties": {},
@@ -32366,53 +32384,104 @@
         "type": "object"
       },
       "HealthLatestArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "observed_at": {
-                "format": "date-time",
-                "type": [
-                  "string",
-                  "null"
-                ]
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
               },
-              "summary": {
-                "additionalProperties": true,
-                "description": "Network-wide health rollup for this observation (#9800). Was a bare open object, so the headline health figures were undeclared. `status_counts` is keyed by health verdict, so a new verdict adds a key rather than changing the contract -- a typed record, not opacity.",
-                "properties": {
-                  "status_counts": {
-                    "additionalProperties": {
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    "type": "object"
-                  },
-                  "surface_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  }
-                },
-                "type": "object"
-              },
-              "surfaces": {
+              {
                 "items": {
-                  "$ref": "#/components/schemas/HealthSurface"
+                  "type": "string"
                 },
                 "type": "array"
               }
+            ]
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the probe run that produced this rollup finished -- `probe_finished_at || observed_at || null`, not the build's `generated_at`."
+          },
+          "probe_finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "probe_started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "source": {
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": {},
+            "description": "Network-wide health rollup for this observation. `status_counts` and `classification_counts` are keyed by verdict, so a new verdict adds a key rather than changing the contract -- typed records, not opacity.",
+            "properties": {
+              "classification_counts": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "status_counts": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "surface_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              }
             },
             "required": [
-              "observed_at",
-              "summary",
-              "surfaces"
+              "surface_count",
+              "status_counts",
+              "classification_counts"
             ],
             "type": "object"
+          },
+          "surfaces": {
+            "items": {
+              "$ref": "#/components/schemas/HealthSurface"
+            },
+            "type": "array"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "observed_at",
+          "summary",
+          "surfaces"
+        ],
+        "type": "object"
       },
       "HealthPercentilesArtifact": {
         "additionalProperties": {},
@@ -34644,101 +34713,192 @@
         "type": "object"
       },
       "OperationalSurfacesArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "kinds": {
+          "generated_at": {
+            "type": "string"
+          },
+          "kinds": {
+            "description": "The operational surface kinds this list is filtered to (OPERATIONAL_SURFACE_KINDS), sorted.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
                 "items": {
                   "type": "string"
                 },
                 "type": "array"
-              },
-              "surface_count": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "surfaces": {
-                "items": {
-                  "additionalProperties": true,
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "surface_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "surfaces": {
+            "items": {
+              "additionalProperties": {},
+              "properties": {
+                "auth_required": {
+                  "type": "boolean"
+                },
+                "authority": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "netuid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "probe": {
+                  "additionalProperties": {},
                   "properties": {
-                    "auth_required": {
-                      "type": "boolean"
-                    },
-                    "authority": {
+                    "expect": {
                       "type": "string"
                     },
-                    "kind": {
+                    "method": {
                       "type": "string"
                     },
-                    "netuid": {
-                      "minimum": 0,
-                      "type": "integer"
-                    },
-                    "probe": {
-                      "additionalProperties": true,
-                      "properties": {
-                        "expect": {
-                          "type": "string"
+                    "timeout_ms": {
+                      "anyOf": [
+                        {
+                          "maximum": 9007199254740991,
+                          "minimum": -9007199254740991,
+                          "type": "integer"
                         },
-                        "method": {
-                          "type": "string"
-                        },
-                        "timeout_ms": {
-                          "type": [
-                            "integer",
-                            "null"
-                          ]
+                        {
+                          "type": "null"
                         }
-                      },
-                      "required": [
-                        "method",
-                        "expect"
                       ],
-                      "type": "object"
-                    },
-                    "provider": {
-                      "type": "string"
-                    },
-                    "public_safe": {
-                      "type": "boolean"
-                    },
-                    "subnet_name": {
-                      "type": "string"
-                    },
-                    "subnet_slug": {
-                      "type": "string"
-                    },
-                    "surface_id": {
-                      "type": "string"
-                    },
-                    "url": {
-                      "type": "string"
+                      "description": "null when the surface declares no timeout, so the prober applies its own default -- not zero (12 of 619 rows today)."
                     }
                   },
                   "required": [
-                    "surface_id",
-                    "netuid",
-                    "kind",
-                    "url",
-                    "probe"
+                    "method",
+                    "expect",
+                    "timeout_ms"
                   ],
                   "type": "object"
                 },
-                "type": "array"
-              }
+                "provider": {
+                  "type": "string"
+                },
+                "public_safe": {
+                  "type": "boolean"
+                },
+                "schema_source": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": {},
+                      "properties": {
+                        "artifact": {
+                          "description": "Artifact path of the captured schema, under /metagraph/.",
+                          "type": "string"
+                        },
+                        "hash": {
+                          "type": "string"
+                        },
+                        "match": {
+                          "description": "How the schema was attributed to this surface: `schema-url` is the surface's own declared schema, `same-origin-openapi` is a same-netuid same-origin OpenAPI projection.",
+                          "enum": [
+                            "same-origin-openapi",
+                            "schema-url"
+                          ],
+                          "type": "string"
+                        },
+                        "observed_at": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "surface_id": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "artifact",
+                        "hash",
+                        "match",
+                        "observed_at",
+                        "status",
+                        "surface_id",
+                        "url"
+                      ],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "The captured schema this surface owns, or null when none was captured (direct surface-id match, exact schema_url match, or same-netuid same-origin OpenAPI projection for a subnet-api surface)."
+                },
+                "subnet_name": {
+                  "type": "string"
+                },
+                "subnet_slug": {
+                  "type": "string"
+                },
+                "surface_id": {
+                  "type": "string"
+                },
+                "surface_key": {
+                  "description": "The stable identity (`srf-<hash of netuid|kind|url>`) the prober re-keys health history onto, so a display-name or slug rename no longer orphans a surface's probe history (#1005). The hand-authored `surface_id` stays for back-compat and display.",
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "surface_id",
+                "surface_key",
+                "netuid",
+                "subnet_slug",
+                "subnet_name",
+                "kind",
+                "provider",
+                "authority",
+                "url",
+                "auth_required",
+                "public_safe",
+                "probe",
+                "schema_source"
+              ],
+              "type": "object"
             },
-            "required": [
-              "surface_count",
-              "kinds",
-              "surfaces"
-            ],
-            "type": "object"
+            "type": "array"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "surface_count",
+          "kinds",
+          "surfaces"
+        ],
+        "type": "object"
       },
       "PaginationMeta": {
         "additionalProperties": false,
@@ -34747,48 +34907,62 @@
             "type": "string"
           },
           "cursor": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "limit": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "next_cursor": {
-            "minimum": 0,
-            "type": [
-              "integer",
-              "null"
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "order": {
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           },
           "returned": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "sort": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "total": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           }
         },
         "required": [
           "collection",
-          "total",
-          "returned",
-          "limit",
           "cursor",
-          "next_cursor"
+          "limit",
+          "next_cursor",
+          "returned",
+          "total"
         ],
         "type": "object"
       },
@@ -34801,10 +34975,7 @@
             "type": "string"
           },
           "tier": {
-            "enum": [
-              "pilot"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/PartnershipTier"
           },
           "validator_hotkey": {
             "type": "string"
@@ -34820,7 +34991,8 @@
         "description": "Display/placement tier for a subnet — e.g. a featured-pilot homepage slot. Distinct from Authority and CurationLevel, which are trust signals only and never drive placement.",
         "enum": [
           "pilot"
-        ]
+        ],
+        "type": "string"
       },
       "PipelineHistoryArtifact": {
         "additionalProperties": {},
@@ -35153,14 +35325,7 @@
             "type": "string"
           },
           "kind": {
-            "enum": [
-              "subnet-team",
-              "infrastructure-provider",
-              "data-provider",
-              "docs-provider",
-              "registry"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/ProviderKind"
           },
           "logo_url": {
             "pattern": "^[Hh][Tt][Tt][Pp][Ss]?:\\/\\/",
@@ -35349,7 +35514,8 @@
           "data-provider",
           "docs-provider",
           "registry"
-        ]
+        ],
+        "type": "string"
       },
       "ProvidersArtifact": {
         "additionalProperties": {},
@@ -35392,52 +35558,140 @@
         "type": "object"
       },
       "R2ManifestArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "artifact_count": {
+            "description": "Entries in THIS manifest's `artifacts`. On a compact manifest that is the git/dual subset, not the whole archive -- read `full_artifact_count` for that.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
           },
-          {
-            "additionalProperties": true,
+          "artifact_size_bytes": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/R2ManifestEntry"
+            },
+            "type": "array"
+          },
+          "bucket_binding": {
+            "type": "string"
+          },
+          "bucket_name": {
+            "type": "string"
+          },
+          "contract_version": {
+            "type": "string"
+          },
+          "full_artifact_count": {
+            "description": "Entries in the full manifest this compact one was cut from.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "full_artifact_size_bytes": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "full_manifest_key": {
+            "type": "string"
+          },
+          "full_manifest_run_key": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "history_policy": {
+            "additionalProperties": {},
             "properties": {
-              "artifact_count": {
-                "minimum": 0,
-                "type": "integer"
+              "canonical_latest_in_repo": {
+                "type": "boolean"
               },
-              "artifact_size_bytes": {
-                "minimum": 0,
-                "type": "integer"
+              "content_addressed_history": {
+                "type": "boolean"
               },
-              "artifacts": {
-                "items": {
-                  "$ref": "#/components/schemas/R2ManifestEntry"
-                },
-                "type": "array"
+              "large_history_in_r2": {
+                "type": "boolean"
               },
-              "bucket_binding": {
+              "manifest_run_prefix": {
                 "type": "string"
               },
-              "bucket_name": {
-                "type": "string"
-              },
-              "latest_prefix": {
-                "type": "string"
-              },
-              "run_prefix": {
+              "source_of_truth": {
                 "type": "string"
               }
             },
             "required": [
-              "artifact_count",
-              "artifact_size_bytes",
-              "artifacts",
-              "bucket_binding",
-              "bucket_name",
-              "latest_prefix",
-              "run_prefix"
+              "canonical_latest_in_repo",
+              "large_history_in_r2",
+              "source_of_truth",
+              "content_addressed_history",
+              "manifest_run_prefix"
             ],
             "type": "object"
+          },
+          "latest_prefix": {
+            "type": "string"
+          },
+          "manifest_kind": {
+            "description": "`compact` means the r2-tier entries were filtered out of `artifacts`; `full` means every entry is present. Absent on the build-time copy, which is always full.",
+            "enum": [
+              "compact",
+              "full"
+            ],
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "required_artifact_paths": {
+            "description": "Artifact paths the publish step must find in the archive even though the compact manifest omits them.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "run_prefix": {
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "storage_tier_counts": {
+            "$ref": "#/components/schemas/CountMap",
+            "description": "Full-manifest entry counts keyed by storage tier -- a typed record, so a new tier adds a key rather than changing the contract."
+          },
+          "storage_tier_size_bytes": {
+            "$ref": "#/components/schemas/CountMap"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "artifact_count",
+          "artifact_size_bytes",
+          "artifacts",
+          "bucket_binding",
+          "bucket_name",
+          "latest_prefix",
+          "run_prefix"
+        ],
+        "type": "object"
       },
       "R2ManifestEntry": {
         "additionalProperties": false,
@@ -35446,13 +35700,15 @@
             "type": "string"
           },
           "key": {
+            "description": "Content-addressed archive key (`by-hash/<sha256>`), not run-prefixed (#8208) -- the same bytes published twice are stored once.",
             "type": "string"
           },
           "latest_key": {
             "type": "string"
           },
           "path": {
-            "pattern": "^/metagraph/",
+            "description": "Public artifact path this entry publishes.",
+            "pattern": "^\\/metagraph\\/",
             "type": "string"
           },
           "sha256": {
@@ -35460,6 +35716,7 @@
             "type": "string"
           },
           "size_bytes": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -35468,7 +35725,8 @@
               "dual",
               "git",
               "r2"
-            ]
+            ],
+            "type": "string"
           }
         },
         "required": [
@@ -35907,7 +36165,7 @@
         "type": "object"
       },
       "ResponseMeta": {
-        "additionalProperties": true,
+        "additionalProperties": {},
         "properties": {
           "artifact_path": {
             "type": "string"
@@ -35919,22 +36177,30 @@
             "type": "string"
           },
           "generated_at": {
-            "description": "Deterministic build content marker (epoch by default); not a wall clock. Use published_at for human-facing freshness.",
-            "type": [
-              "string",
-              "null"
-            ]
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deterministic build content marker (epoch by default); not a wall clock. Use published_at for human-facing freshness."
           },
           "pagination": {
             "$ref": "#/components/schemas/PaginationMeta"
           },
           "published_at": {
-            "description": "Real publish time from the KV latest pointer, distinct from generated_at. Null before the first publish or when the control KV is unbound.",
-            "format": "date-time",
-            "type": [
-              "string",
-              "null"
-            ]
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Real publish time from the KV latest pointer, distinct from generated_at. Null before the first publish or when the control KV is unbound."
           },
           "source": {
             "type": "string"
@@ -36153,73 +36419,96 @@
         "type": "object"
       },
       "ReviewCurationArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "adapter_candidates": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewAdapterCandidate"
+            },
+            "type": "array"
           },
-          {
-            "additionalProperties": true,
+          "contract_version": {
+            "type": "string"
+          },
+          "gap_priorities": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewGapPriority"
+            },
+            "type": "array"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "review_decisions": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewDecision"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "summary": {
+            "additionalProperties": false,
             "properties": {
-              "adapter_candidates": {
-                "items": {
-                  "$ref": "#/components/schemas/ReviewAdapterCandidate"
-                },
-                "type": "array"
+              "adapter_candidate_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               },
-              "gap_priorities": {
-                "items": {
-                  "$ref": "#/components/schemas/ReviewGapPriority"
-                },
-                "type": "array"
+              "gap_kind_counts": {
+                "$ref": "#/components/schemas/CountMap"
               },
-              "review_decisions": {
-                "items": {
-                  "$ref": "#/components/schemas/ReviewDecision"
-                },
-                "type": "array"
+              "maintainer_decision_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               },
-              "summary": {
-                "additionalProperties": false,
-                "properties": {
-                  "adapter_candidate_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "gap_kind_counts": {
-                    "$ref": "#/components/schemas/CountMap"
-                  },
-                  "maintainer_decision_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "needs_maintainer_review_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "subnet_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "adapter_candidate_count",
-                  "gap_kind_counts",
-                  "maintainer_decision_count",
-                  "needs_maintainer_review_count",
-                  "subnet_count"
-                ],
-                "type": "object"
+              "needs_maintainer_review_count": {
+                "description": "Subnets whose `curation.review_state` is anything other than `maintainer-reviewed` -- the backlog, not a failure count.",
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "subnet_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               }
             },
             "required": [
-              "adapter_candidates",
-              "gap_priorities",
-              "review_decisions",
-              "summary"
+              "adapter_candidate_count",
+              "gap_kind_counts",
+              "maintainer_decision_count",
+              "needs_maintainer_review_count",
+              "subnet_count"
             ],
             "type": "object"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "adapter_candidates",
+          "gap_priorities",
+          "review_decisions",
+          "summary"
+        ],
+        "type": "object"
       },
       "ReviewDecision": {
         "additionalProperties": false,
@@ -36229,7 +36518,8 @@
               "low",
               "medium",
               "high"
-            ]
+            ],
+            "type": "string"
           },
           "decision": {
             "enum": [
@@ -36237,9 +36527,11 @@
               "needs-review",
               "rejected",
               "stale"
-            ]
+            ],
+            "type": "string"
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
@@ -36272,26 +36564,44 @@
         "type": "object"
       },
       "ReviewDecisionsArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "decisions": {
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewDecision"
+            },
+            "type": "array"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
                 "items": {
-                  "$ref": "#/components/schemas/ReviewDecision"
+                  "type": "string"
                 },
                 "type": "array"
               }
-            },
-            "required": [
-              "decisions"
-            ],
-            "type": "object"
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "decisions"
+        ],
+        "type": "object"
       },
       "ReviewEnrichmentEvidenceArtifact": {
         "additionalProperties": {},
@@ -39097,93 +39407,175 @@
         "type": "object"
       },
       "SchemaDriftArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "contract_version": {
+            "type": "string"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "openapi_surface_count": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "schema_backed_surface_count": {
-                "minimum": 0,
-                "type": "integer"
-              },
-              "source": {
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
                 "type": "string"
               },
-              "status": {
-                "enum": [
-                  "captured",
-                  "error",
-                  "not-found",
-                  "not-snapshotted",
-                  "unsafe"
-                ]
-              },
-              "surfaces": {
+              {
                 "items": {
-                  "$ref": "#/components/schemas/SchemaDriftSurface"
+                  "type": "string"
                 },
                 "type": "array"
               }
+            ]
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the snapshot run observed these surfaces -- NOT the build's `generated_at`. A rebuild republishes an old capture unchanged, so this is the only field that says how old the drift verdict is. Absent on the build-time placeholder, which observed nothing."
+          },
+          "openapi_surface_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_backed_surface_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "source": {
+            "description": "`openapi-snapshot` for a real capture run, `artifact-build` for the placeholder a build writes when no snapshot has run.",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "captured",
+              "error",
+              "not-found",
+              "not-snapshotted",
+              "unsafe"
+            ],
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": {},
+            "description": "Rollups from the snapshot run. Absent on the build-time placeholder.",
+            "properties": {
+              "by_drift_status": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "by_status": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "schema_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "surface_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              }
             },
             "required": [
-              "openapi_surface_count",
-              "schema_backed_surface_count",
-              "source",
-              "status",
-              "surfaces"
+              "surface_count",
+              "schema_count",
+              "by_status",
+              "by_drift_status"
             ],
             "type": "object"
+          },
+          "surfaces": {
+            "items": {
+              "$ref": "#/components/schemas/SchemaDriftSurface"
+            },
+            "type": "array"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "openapi_surface_count",
+          "schema_backed_surface_count",
+          "source",
+          "status",
+          "surfaces"
+        ],
+        "type": "object"
       },
       "SchemaDriftSurface": {
         "additionalProperties": false,
         "properties": {
           "drift_status": {
+            "description": "How this capture compares with the previous one. Absent only where a producer omits it.",
             "enum": [
               "changed",
               "missing-after-previous-capture",
               "new",
               "not-captured",
               "unchanged"
-            ]
+            ],
+            "type": "string"
           },
           "error": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "hash": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "netuid": {
+            "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
           },
           "previous_hash": {
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "schema_url": {
-            "format": "uri",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "format": "uri",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "status": {
+            "description": "What the capture attempt found. `ui-only-or-undiscovered` means the surface declares no schema_url at all, which is a gap rather than a failure.",
             "enum": [
               "captured",
               "error",
@@ -39192,7 +39584,8 @@
               "too-large",
               "ui-only-or-undiscovered",
               "unsafe"
-            ]
+            ],
+            "type": "string"
           },
           "subnet_slug": {
             "type": "string"
@@ -40372,14 +40765,7 @@
                   "type": "string"
                 },
                 "kind": {
-                  "enum": [
-                    "subnet-team",
-                    "infrastructure-provider",
-                    "data-provider",
-                    "docs-provider",
-                    "registry"
-                  ],
-                  "type": "string"
+                  "$ref": "#/components/schemas/ProviderKind"
                 },
                 "name": {
                   "type": "string"
@@ -42604,19 +42990,10 @@
             ]
           },
           "status": {
-            "enum": [
-              "active",
-              "inactive",
-              "unknown"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/SubnetStatus"
           },
           "subnet_type": {
-            "enum": [
-              "root",
-              "application"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/SubnetType"
           },
           "surface_count": {
             "maximum": 9007199254740991,
@@ -45626,19 +46003,10 @@
             ]
           },
           "status": {
-            "enum": [
-              "active",
-              "inactive",
-              "unknown"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/SubnetStatus"
           },
           "subnet_type": {
-            "enum": [
-              "root",
-              "application"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/SubnetType"
           },
           "surface_count": {
             "maximum": 9007199254740991,
@@ -47804,19 +48172,10 @@
             "type": "string"
           },
           "status": {
-            "enum": [
-              "active",
-              "inactive",
-              "unknown"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/SubnetStatus"
           },
           "subnet_type": {
-            "enum": [
-              "root",
-              "application"
-            ],
-            "type": "string"
+            "$ref": "#/components/schemas/SubnetType"
           },
           "suggested_submission_kinds": {
             "items": {
@@ -48829,7 +49188,8 @@
           "active",
           "inactive",
           "unknown"
-        ]
+        ],
+        "type": "string"
       },
       "SubnetSurfaceHistoryArtifact": {
         "additionalProperties": {},
@@ -49378,7 +49738,8 @@
         "enum": [
           "root",
           "application"
-        ]
+        ],
+        "type": "string"
       },
       "SubnetValidatorEconomicsArtifact": {
         "additionalProperties": false,
@@ -49997,7 +50358,92 @@
         "type": "object"
       },
       "SubnetVerificationArtifact": {
-        "$ref": "#/components/schemas/VerificationArtifact"
+        "additionalProperties": {},
+        "properties": {
+          "candidate_count": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "contract_version": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "netuid": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/VerificationResult"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": {},
+            "properties": {
+              "by_classification": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "by_kind": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "by_provider": {
+                "$ref": "#/components/schemas/CountMap"
+              }
+            },
+            "required": [
+              "by_classification",
+              "by_kind",
+              "by_provider"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "candidate_count",
+          "netuid",
+          "slug",
+          "name",
+          "summary",
+          "results"
+        ],
+        "type": "object"
       },
       "SubnetWeightsArtifact": {
         "additionalProperties": false,
@@ -50622,17 +51068,20 @@
         "additionalProperties": false,
         "properties": {
           "data": {
-            "additionalProperties": true,
+            "additionalProperties": {},
+            "properties": {},
             "type": "object"
           },
           "meta": {
             "$ref": "#/components/schemas/ResponseMeta"
           },
           "ok": {
-            "const": true
+            "const": true,
+            "type": "boolean"
           },
           "schema_version": {
-            "const": 1
+            "const": 1,
+            "type": "number"
           }
         },
         "required": [
@@ -51121,100 +51570,145 @@
         "type": "object"
       },
       "SurfaceAliasesArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
-          },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "aliases": {
-                "items": {
-                  "additionalProperties": false,
-                  "properties": {
-                    "current_id": {
+        "additionalProperties": {},
+        "properties": {
+          "aliases": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "current_id": {
+                  "description": "The surface id that replaced `deprecated_id`.",
+                  "type": "string"
+                },
+                "deprecated_id": {
+                  "description": "The surface id that used to be served and no longer is. This is the lookup key: resolveSurfaceAlias() matches an incoming surface id against it.",
+                  "type": "string"
+                },
+                "kind": {
+                  "anyOf": [
+                    {
                       "type": "string"
                     },
-                    "deprecated_id": {
-                      "type": "string"
-                    },
-                    "kind": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
-                    },
-                    "netuid": {
-                      "minimum": 0,
-                      "type": [
-                        "integer",
-                        "null"
-                      ]
-                    },
-                    "surface_key": {
-                      "type": "string"
-                    },
-                    "url": {
-                      "type": [
-                        "string",
-                        "null"
-                      ]
+                    {
+                      "type": "null"
                     }
-                  },
-                  "required": [
-                    "deprecated_id",
-                    "surface_key",
-                    "current_id"
-                  ],
-                  "type": "object"
+                  ]
+                },
+                "netuid": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "surface_key": {
+                  "description": "The stable identity (`srf-<hash of netuid|kind|url>`) both ids share -- what makes this a rename rather than two unrelated surfaces (#1005).",
+                  "type": "string"
+                },
+                "url": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "deprecated_id",
+                "surface_key",
+                "current_id",
+                "netuid",
+                "kind",
+                "url"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "contract_version": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
                 },
                 "type": "array"
+              }
+            ]
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "source": {
+            "const": "generated-surface-rename-aliases",
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": false,
+            "properties": {
+              "alias_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               },
-              "source": {
-                "const": "generated-surface-rename-aliases"
+              "carried_alias_count": {
+                "description": "Aliases inherited from the previous artifact -- a rename recorded by an earlier build whose surface still exists.",
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               },
-              "summary": {
-                "additionalProperties": false,
-                "properties": {
-                  "alias_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "carried_alias_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "current_surface_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "new_alias_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  },
-                  "previous_surface_count": {
-                    "minimum": 0,
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "alias_count",
-                  "carried_alias_count",
-                  "new_alias_count",
-                  "previous_surface_count",
-                  "current_surface_count"
-                ],
-                "type": "object"
+              "current_surface_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "new_alias_count": {
+                "description": "Aliases this build discovered for the first time.",
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              "previous_surface_count": {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               }
             },
             "required": [
-              "source",
-              "summary",
-              "aliases"
+              "alias_count",
+              "carried_alias_count",
+              "new_alias_count",
+              "previous_surface_count",
+              "current_surface_count"
             ],
             "type": "object"
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "source",
+          "summary",
+          "aliases"
+        ],
+        "type": "object"
       },
       "SurfaceHistoryChange": {
         "additionalProperties": false,
@@ -53510,42 +54004,109 @@
         "type": "object"
       },
       "VerificationArtifact": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ArtifactBase"
+        "additionalProperties": {},
+        "properties": {
+          "candidate_count": {
+            "description": "Length of `results` AFTER buildFullVerificationArtifact() drops rows missing candidate_id/classification/status/url/verified_at -- not the number of candidates the run started with.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
           },
-          {
-            "additionalProperties": true,
-            "properties": {
-              "candidate_count": {
-                "minimum": 0,
-                "type": "integer"
+          "contract_version": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
               },
-              "observed_at": {
-                "format": "date-time",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "results": {
+              {
                 "items": {
-                  "$ref": "#/components/schemas/VerificationResult"
+                  "type": "string"
                 },
                 "type": "array"
+              }
+            ]
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
               },
-              "summary": {
-                "additionalProperties": true,
-                "type": "object"
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/VerificationResult"
+            },
+            "type": "array"
+          },
+          "schema_version": {
+            "const": 1,
+            "type": "number"
+          },
+          "summary": {
+            "additionalProperties": {},
+            "properties": {
+              "by_classification": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "by_kind": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "by_provider": {
+                "$ref": "#/components/schemas/CountMap"
+              },
+              "promotable_count": {
+                "description": "Results that cleared the promotion bar -- a candidate this run would move into the registry. Whole-run only: the per-subnet artifact has no equivalent.",
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
               }
             },
             "required": [
-              "candidate_count",
-              "results"
+              "by_classification",
+              "by_kind",
+              "by_provider",
+              "promotable_count"
             ],
             "type": "object"
+          },
+          "verification_finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verification_started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
-        ]
+        },
+        "required": [
+          "generated_at",
+          "schema_version",
+          "candidate_count",
+          "results"
+        ],
+        "type": "object"
       },
       "VerificationResult": {
         "additionalProperties": false,

@@ -1,9 +1,0 @@
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://metagraph.sh/schemas/components/08-evidence-search-sources.schema.json",
-  "title": "Metagraphed OpenAPI components 08-evidence-search-sources",
-  "type": "object",
-  "components": {
-    "schemas": {}
-  }
-}

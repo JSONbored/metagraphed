@@ -238,19 +238,19 @@ The gate's private scoring rubric/thresholds must **never** appear in this repo 
 
 ## 4. npm scripts you'll actually use
 
-| Need                                      | Command                                                                                                                                                                                                                                                     |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Find the data gaps                        | `npm run curation:brief` (`-- --limit 20`, `-- --json`)                                                                                                                                                                                                     |
-| List / register providers                 | `npm run providers:list` (debut a new provider via `surface:add --provider-name`)                                                                                                                                                                           |
-| Add a community surface to a subnet file  | `npm run surface:add -- --netuid … --kind … --url … --source-url … --provider … --submitted-by … --write` — debut provider: add `--provider-name "…" --provider-url …` (the `website_url`, **must be a public URL**) and it scaffolds the provider stub too |
-| Scaffold a brand-new subnet file _(new)_  | `npm run subnet:new -- --netuid <n>`                                                                                                                                                                                                                        |
-| Validate a surface contribution _(new)_   | `npm run validate:surface -- registry/subnets/<slug>.json`                                                                                                                                                                                                  |
-| Public-safety scan                        | `npm run scan:public-safety`                                                                                                                                                                                                                                |
-| Code/schema: regenerate the contract      | `npm run build`                                                                                                                                                                                                                                             |
-| Code/schema: typecheck _(new)_            | `npm run typecheck` (`tsc --noEmit`; `src/`+`workers/`+`scripts/`+`tests/` are **all `.ts`** — the migration epic metagraphed#7510 is complete, and `validate:no-hand-written-mjs` fails CI if a new `.mjs`/`.js` appears under a covered directory)        |
-| Code/schema: validators                   | `npm run validate` · `validate:schemas` · `validate:api` · `validate:openapi` · `validate:types` · `validate:contract-drift` · `validate:mcp` · `validate:ai` · `validate:docs` · `validate:contract-doc-sync` · `validate:intake` · `validate:workflows`   |
-| Tests / coverage                          | `npm test` · `npm run test:coverage`                                                                                                                                                                                                                        |
-| Full local pipeline (after a clean build) | `npm run pipeline:check`                                                                                                                                                                                                                                    |
+| Need                                      | Command                                                                                                                                                                                                                                                                                     |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Find the data gaps                        | `npm run curation:brief` (`-- --limit 20`, `-- --json`)                                                                                                                                                                                                                                     |
+| List / register providers                 | `npm run providers:list` (debut a new provider via `surface:add --provider-name`)                                                                                                                                                                                                           |
+| Add a community surface to a subnet file  | `npm run surface:add -- --netuid … --kind … --url … --source-url … --provider … --submitted-by … --write` — debut provider: add `--provider-name "…" --provider-url …` (the `website_url`, **must be a public URL**) and it scaffolds the provider stub too                                 |
+| Scaffold a brand-new subnet file _(new)_  | `npm run subnet:new -- --netuid <n>`                                                                                                                                                                                                                                                        |
+| Validate a surface contribution _(new)_   | `npm run validate:surface -- registry/subnets/<slug>.json`                                                                                                                                                                                                                                  |
+| Public-safety scan                        | `npm run scan:public-safety`                                                                                                                                                                                                                                                                |
+| Code/schema: regenerate the contract      | `npm run build`                                                                                                                                                                                                                                                                             |
+| Code/schema: typecheck _(new)_            | `npm run typecheck` (`tsc --noEmit`; `src/`+`workers/`+`scripts/`+`tests/` are **all `.ts`** — the migration epic metagraphed#7510 is complete, and `validate:no-hand-written-mjs` fails CI if a new `.mjs`/`.js` appears under a covered directory)                                        |
+| Code/schema: validators                   | `npm run validate` · `validate:schemas` · `validate:api` · `validate:openapi` · `validate:types` · `validate:contract-drift` · `validate:single-schema-source` · `validate:mcp` · `validate:ai` · `validate:docs` · `validate:contract-doc-sync` · `validate:intake` · `validate:workflows` |
+| Tests / coverage                          | `npm test` · `npm run test:coverage`                                                                                                                                                                                                                                                        |
+| Full local pipeline (after a clean build) | `npm run pipeline:check`                                                                                                                                                                                                                                                                    |
 
 > `surface:add`, `subnet:new`, and `validate:surface` are the single-file-model commands. They fully
 > replaced the retired `candidate:new` / `validate:candidate` intake lane — and `surface:add`
@@ -322,48 +322,37 @@ fails the PR on its own). No local paths, env dumps, or private notes.
 
 ## 8. Code/schema gotchas (Path B)
 
-- **Schema-first:** edit `schemas/`/`schemas/components/` → `npm run build` → commit `openapi.json` +
+- **Schema-first:** edit the Zod schema under `schemas-src/` → `npm run build` → commit `openapi.json` +
   types/clients. `validate:contract-drift` + `validate:schema-enums` + `validate:committed-seed` guard it.
-- **Zod-owned components (types-epic B, #7860) live in `schemas-src/openapi-registry.ts`, NOT
-  `schemas/components/`.** For the routes/sub-shapes it covers (currently: the 5 pilot routes from
-  types-epic A plus their necessary sub-components — `SubnetsArtifact`, `SubnetIndexEntry`,
-  `SubnetDetailArtifact`, `Surface`, `CandidateSurface`, `EndpointResource`, `Gaps`,
-  `CurationMetadata`, `PartnershipMetadata`, `EconomicsArtifact`, `HealthSummaryArtifact`,
-  `HealthSubnetSummary`, `SubnetStakeQuoteArtifact`, plus the 13 enum/sub-shape leaves those reference —
-  `SurfaceKind`, `SourceTier`, `Classification`, `Authority`, `EndpointLayer`, `ProbeConfig`,
-  `EndpointMonitoringPolicy`, `EndpointScoreReason`, `VerificationResult`, `ReviewState`,
-  `BittensorNetwork`, `HealthStatus`, `CurationLevel`), the hand-edited `schemas/components/*.schema.json`
-  key is DELETED — the component is instead emitted from its Zod schema via
-  `scripts/generate-openapi-zod-components.ts` (`z.toJSONSchema()` against the registry) and merged
-  into `components.schemas` inside `scripts/openapi-components.ts::loadOpenApiComponentSchemas()`, so
-  `npm run build`/`validate:contract-drift` pick it up automatically — no new CI gate, no `build.ts`
-  reordering. To add a new component to this set: export its Zod schema from the relevant
-  `schemas-src/routes/*.ts` file, `register()` it in `openapi-registry.ts` under the SAME name the
-  hand-edited component used (load-bearing — other components/the client SDK still `$ref` it by name),
-  delete the matching `schemas/components/*.schema.json` key, then run `npm run diff:openapi-zod` (an
-  equivalence-diff audit against the hand-edited predecessor, normalizing known cosmetic differences —
-  see its own file header) until it reports PASS, fixing any real (non-cosmetic) diff it surfaces in
-  the Zod schema itself, not by loosening the audit's normalizer.
+- **`schemas-src/` is the ONLY source of published components (#9830).** There is no hand-written
+  JSON Schema layer any more — `schemas/components/`, `schemas/api-components.schema.json` and
+  `scripts/bundle-schemas.ts` are deleted. `schemas/*.json` still exists and is a different thing:
+  the INPUT schemas that validate hand-written registry files (`subnet-manifest`, `provider`,
+  `candidate-surface`, `saved-query`, `entity`, `provider-submission`, `public-artifacts`). Those are
+  never published as OpenAPI components.
+  - Layout: `schemas-src/routes/*.ts` (one file per REST route family, each exporting an
+    `<X>ArtifactSchema`), `schemas-src/artifacts/*.ts` (build-published artifacts with a
+    `contracts.json` entry but no route — surface-aliases, operational-surfaces, schema-drift,
+    r2-manifest, review intake, verification, the two health artifacts),
+    `schemas-src/mcp-tools/*.ts` (MCP tool input/output), and the shared leaves in `envelope.ts` /
+    `shared.ts`.
+  - **A component is published only if it is `register()`ed** in `schemas-src/openapi-registry.ts`.
+    `scripts/generate-openapi-zod-components.ts` runs `z.toJSONSchema()` against that registry and
+    `scripts/openapi-components.ts` puts the result straight into `components.schemas`.
+  - **`validate:single-schema-source` is the permanent lock.** It fails if `schemas/components/`,
+    `schemas/api-components.schema.json` or `scripts/bundle-schemas.ts` reappears, if ANY JSON under
+    `schemas/` declares a `components.schemas` map, or if the set of names the registry declares and
+    the set the published document carries are not equal. That last check is the load-bearing one: it
+    catches a second source of any shape, not just the one that existed before.
   - **Register every named leaf, not just the artifact root** (PR #8054 review caught this the hard
     way): `z.toJSONSchema(..., { reused: "inline" })` only keeps a schema as its own
-    `components.schemas.X` entry when X is separately registered. Before deleting a hand-edited
-    component's JSON, grep the OLD `schemas/components/*.schema.json` for every
-    `$ref: "#/components/schemas/<Name>"` the shape you're converting points to — if `<Name>` was
-    previously its own standalone component (not an inline anonymous shape), export its Zod const if
-    private and `register()` it too, and add it to `OPENAPI_ZOD_COMPONENT_NAMES`. Otherwise it gets
-    silently inlined and vanishes from `packages/contract/index.d.ts` — a real public-contract
-    regression the diff audit won't catch on its own (`resolveShallowRef()` treats any unregistered
-    `$ref` as safe-to-inline-and-compare-flattened, which is exactly the blind spot). After
-    regenerating, diff `packages/contract/index.d.ts` against `origin/main` and confirm the only names
-    lost are ones deliberately dropped (documented in the registry's header, e.g. `SubnetEconomics`).
-  - **`validate-schema-enums.ts` reads `public/metagraph/openapi.json` (the merged document), not
-    `schemas/api-components.schema.json`** (the hand-edited-only bundle `bundle-schemas.ts` builds) —
-    this was also a real CI failure caught post-merge-attempt on #8054: any enum component that moves
-    from hand-edited to Zod-generated disappears from the bundle by design (Zod merging happens one
-    layer later), so a validator still reading the bundle reports every enum value as
-    `missing_from_schema`, a false positive. If you add another script that needs component _content_
-    (not just the bundle's own reproducibility, which `validate-contract-drift.ts` legitimately checks
-    against the bundle itself), read it from `public/metagraph/openapi.json`.
+    `components.schemas.X` entry when X is separately registered. An unregistered leaf is silently
+    inlined and its name vanishes from `packages/contract/index.d.ts` — a real public-contract
+    regression. After regenerating, diff `packages/contract/index.d.ts` against `origin/main` and
+    confirm no component name was lost. `validate:single-schema-source`'s set-equality check now
+    catches the inverse (a registered name that never reaches the document).
+  - **`validate-schema-enums.ts` reads `public/metagraph/openapi.json`**, the published document —
+    the right place for anything that needs component _content_.
 - **Client SDK version: do NOT bump in your PR.** `packages/client/package.json` is versioned by the
   post-merge `sync-client-version` workflow, which auto-opens a `chore/sync-client-version` PR whenever
   a contract file lands on main. `validate:client-sdk-sync` emits a notice (not a failure) either way:

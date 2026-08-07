@@ -5673,8 +5673,7 @@ export interface components {
             };
             routes: {
                 artifact_path: string;
-                /** @enum {string} */
-                cache: "short" | "standard" | "static";
+                cache: components["schemas"]["CacheProfile"];
                 description: string;
                 id: string;
                 mainnet_only?: boolean;
@@ -5939,7 +5938,7 @@ export interface components {
                 };
             };
         };
-        /** @enum {unknown} */
+        /** @enum {string} */
         CacheProfile: "short" | "standard" | "static";
         CandidatesArtifact: {
             candidates: components["schemas"]["CandidateSurface"][];
@@ -5951,7 +5950,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @enum {unknown} */
+        /** @enum {string} */
         CandidateState: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
         CandidateSurface: {
             auth?: {
@@ -5996,8 +5995,7 @@ export interface components {
             /** Format: uri */
             source_url: string;
             source_urls?: string[];
-            /** @enum {string} */
-            state: "schema-invalid" | "schema-valid" | "maintainer-review" | "verified" | "stale" | "rejected";
+            state: components["schemas"]["CandidateState"];
             subnet_name?: string | null;
             superseded_by?: string | null;
             /** Format: uri */
@@ -7583,7 +7581,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @enum {unknown} */
+        /** @enum {string} */
         EndpointPublicationState: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
         EndpointResource: {
             archive_support?: boolean | null;
@@ -7619,8 +7617,7 @@ export interface components {
             pool_eligible: boolean;
             provider: string;
             public_safe: boolean;
-            /** @enum {string} */
-            publication_state: "candidate" | "verified" | "monitored" | "pool-eligible" | "disabled" | "rejected";
+            publication_state: components["schemas"]["EndpointPublicationState"];
             rate_limit_notes?: string | null;
             reliability_grade?: string | null;
             reliability_score?: number | null;
@@ -8054,16 +8051,26 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        HealthBadgeArtifact: components["schemas"]["ArtifactBase"] & ({
+        HealthBadgeArtifact: {
             color: string;
+            contract_version?: string;
+            failed_count?: number;
+            generated_at: string;
+            /** @description Badge left-hand text, always `SN<netuid>`. */
             label: string;
+            /** @description Badge right-hand text. Currently the same value as `status`, kept separate because the badge's wording is a display concern and the verdict is not. */
             message: string;
             netuid: number;
+            notes?: string | string[];
+            ok_count?: number;
+            /** @constant */
+            schema_version: 1;
             status: components["schemas"]["HealthStatus"];
             surface_count: number;
+            unknown_count?: number;
         } & {
             [key: string]: unknown;
-        });
+        };
         HealthHistoryArtifact: {
             contract_version?: string;
             date: string;
@@ -8127,22 +8134,29 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        HealthLatestArtifact: components["schemas"]["ArtifactBase"] & ({
-            /** Format: date-time */
+        HealthLatestArtifact: {
+            contract_version?: string;
+            generated_at: string;
+            notes?: string | string[];
+            /** @description When the probe run that produced this rollup finished -- `probe_finished_at || observed_at || null`, not the build's `generated_at`. */
             observed_at: string | null;
-            /** @description Network-wide health rollup for this observation (#9800). Was a bare open object, so the headline health figures were undeclared. `status_counts` is keyed by health verdict, so a new verdict adds a key rather than changing the contract -- a typed record, not opacity. */
+            probe_finished_at?: string | null;
+            probe_started_at?: string | null;
+            /** @constant */
+            schema_version: 1;
+            source?: string;
+            /** @description Network-wide health rollup for this observation. `status_counts` and `classification_counts` are keyed by verdict, so a new verdict adds a key rather than changing the contract -- typed records, not opacity. */
             summary: {
-                status_counts?: {
-                    [key: string]: number;
-                };
-                surface_count?: number;
+                classification_counts: components["schemas"]["CountMap"];
+                status_counts: components["schemas"]["CountMap"];
+                surface_count: number;
             } & {
                 [key: string]: unknown;
             };
             surfaces: components["schemas"]["HealthSurface"][];
         } & {
             [key: string]: unknown;
-        });
+        };
         HealthPercentilesArtifact: {
             netuid: number;
             observed_at?: string | null;
@@ -8541,39 +8555,65 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        OperationalSurfacesArtifact: components["schemas"]["ArtifactBase"] & ({
+        OperationalSurfacesArtifact: {
+            contract_version?: string;
+            generated_at: string;
+            /** @description The operational surface kinds this list is filtered to (OPERATIONAL_SURFACE_KINDS), sorted. */
             kinds: string[];
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
             surface_count: number;
             surfaces: ({
-                auth_required?: boolean;
-                authority?: string;
+                auth_required: boolean;
+                authority: string;
                 kind: string;
                 netuid: number;
                 probe: {
                     expect: string;
                     method: string;
-                    timeout_ms?: number | null;
+                    /** @description null when the surface declares no timeout, so the prober applies its own default -- not zero (12 of 619 rows today). */
+                    timeout_ms: number | null;
                 } & {
                     [key: string]: unknown;
                 };
-                provider?: string;
-                public_safe?: boolean;
-                subnet_name?: string;
-                subnet_slug?: string;
+                provider: string;
+                public_safe: boolean;
+                /** @description The captured schema this surface owns, or null when none was captured (direct surface-id match, exact schema_url match, or same-netuid same-origin OpenAPI projection for a subnet-api surface). */
+                schema_source: ({
+                    /** @description Artifact path of the captured schema, under /metagraph/. */
+                    artifact: string;
+                    hash: string;
+                    /**
+                     * @description How the schema was attributed to this surface: `schema-url` is the surface's own declared schema, `same-origin-openapi` is a same-netuid same-origin OpenAPI projection.
+                     * @enum {string}
+                     */
+                    match: "same-origin-openapi" | "schema-url";
+                    observed_at: string;
+                    status: string;
+                    surface_id: string;
+                    url: string;
+                } & {
+                    [key: string]: unknown;
+                }) | null;
+                subnet_name: string;
+                subnet_slug: string;
                 surface_id: string;
+                /** @description The stable identity (`srf-<hash of netuid|kind|url>`) the prober re-keys health history onto, so a display-name or slug rename no longer orphans a surface's probe history (#1005). The hand-authored `surface_id` stays for back-compat and display. */
+                surface_key: string;
                 url: string;
             } & {
                 [key: string]: unknown;
             })[];
         } & {
             [key: string]: unknown;
-        });
+        };
         PaginationMeta: {
             collection: string;
             cursor: number;
             limit: number;
             next_cursor: number | null;
-            /** @enum {unknown} */
+            /** @enum {string} */
             order?: "asc" | "desc";
             returned: number;
             sort?: string | null;
@@ -8582,13 +8622,12 @@ export interface components {
         PartnershipMetadata: {
             /** Format: date */
             since: string;
-            /** @enum {string} */
-            tier: "pilot";
+            tier: components["schemas"]["PartnershipTier"];
             validator_hotkey?: string;
         };
         /**
          * @description Display/placement tier for a subnet — e.g. a featured-pilot homepage slot. Distinct from Authority and CurationLevel, which are trust signals only and never drive placement.
-         * @enum {unknown}
+         * @enum {string}
          */
         PartnershipTier: "pilot";
         PipelineHistoryArtifact: {
@@ -8641,8 +8680,7 @@ export interface components {
             endpoint_count?: number;
             github_url?: string;
             id: string;
-            /** @enum {string} */
-            kind: "subnet-team" | "infrastructure-provider" | "data-provider" | "docs-provider" | "registry";
+            kind: components["schemas"]["ProviderKind"];
             logo_url?: string;
             name: string;
             netuids?: number[];
@@ -8691,7 +8729,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @enum {unknown} */
+        /** @enum {string} */
         ProviderKind: "subnet-team" | "infrastructure-provider" | "data-provider" | "docs-provider" | "registry";
         ProvidersArtifact: {
             contract_version?: string;
@@ -8703,25 +8741,57 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        R2ManifestArtifact: components["schemas"]["ArtifactBase"] & ({
+        R2ManifestArtifact: {
+            /** @description Entries in THIS manifest's `artifacts`. On a compact manifest that is the git/dual subset, not the whole archive -- read `full_artifact_count` for that. */
             artifact_count: number;
             artifact_size_bytes: number;
             artifacts: components["schemas"]["R2ManifestEntry"][];
             bucket_binding: string;
             bucket_name: string;
+            contract_version?: string;
+            /** @description Entries in the full manifest this compact one was cut from. */
+            full_artifact_count?: number;
+            full_artifact_size_bytes?: number;
+            full_manifest_key?: string;
+            full_manifest_run_key?: string;
+            generated_at: string;
+            history_policy?: {
+                canonical_latest_in_repo: boolean;
+                content_addressed_history: boolean;
+                large_history_in_r2: boolean;
+                manifest_run_prefix: string;
+                source_of_truth: string;
+            } & {
+                [key: string]: unknown;
+            };
             latest_prefix: string;
+            /**
+             * @description `compact` means the r2-tier entries were filtered out of `artifacts`; `full` means every entry is present. Absent on the build-time copy, which is always full.
+             * @enum {string}
+             */
+            manifest_kind?: "compact" | "full";
+            notes?: string | string[];
+            /** @description Artifact paths the publish step must find in the archive even though the compact manifest omits them. */
+            required_artifact_paths?: string[];
             run_prefix: string;
+            /** @constant */
+            schema_version: 1;
+            /** @description Full-manifest entry counts keyed by storage tier -- a typed record, so a new tier adds a key rather than changing the contract. */
+            storage_tier_counts?: components["schemas"]["CountMap"];
+            storage_tier_size_bytes?: components["schemas"]["CountMap"];
         } & {
             [key: string]: unknown;
-        });
+        };
         R2ManifestEntry: {
             content_type: string;
+            /** @description Content-addressed archive key (`by-hash/<sha256>`), not run-prefixed (#8208) -- the same bytes published twice are stored once. */
             key: string;
             latest_key: string;
+            /** @description Public artifact path this entry publishes. */
             path: string;
             sha256: string;
             size_bytes: number;
-            /** @enum {unknown} */
+            /** @enum {string} */
             storage_tier: "dual" | "git" | "r2";
         };
         RandomnessArtifact: {
@@ -8838,10 +8908,7 @@ export interface components {
             /** @description Deterministic build content marker (epoch by default); not a wall clock. Use published_at for human-facing freshness. */
             generated_at?: string | null;
             pagination?: components["schemas"]["PaginationMeta"];
-            /**
-             * Format: date-time
-             * @description Real publish time from the KV latest pointer, distinct from generated_at. Null before the first publish or when the control KV is unbound.
-             */
+            /** @description Real publish time from the KV latest pointer, distinct from generated_at. Null before the first publish or when the control KV is unbound. */
             published_at?: string | null;
             source?: string;
             /** @description Present ONLY when the served artifact was built under an older contract than the live one (serve-time drift, #1001) — the body may predate a schema change. Mirrored on the x-metagraph-stale-contract response header for monitoring. */
@@ -8892,24 +8959,30 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        ReviewCurationArtifact: components["schemas"]["ArtifactBase"] & ({
+        ReviewCurationArtifact: {
             adapter_candidates: components["schemas"]["ReviewAdapterCandidate"][];
+            contract_version?: string;
             gap_priorities: components["schemas"]["ReviewGapPriority"][];
+            generated_at: string;
+            notes?: string | string[];
             review_decisions: components["schemas"]["ReviewDecision"][];
+            /** @constant */
+            schema_version: 1;
             summary: {
                 adapter_candidate_count: number;
                 gap_kind_counts: components["schemas"]["CountMap"];
                 maintainer_decision_count: number;
+                /** @description Subnets whose `curation.review_state` is anything other than `maintainer-reviewed` -- the backlog, not a failure count. */
                 needs_maintainer_review_count: number;
                 subnet_count: number;
             };
         } & {
             [key: string]: unknown;
-        });
+        };
         ReviewDecision: {
-            /** @enum {unknown} */
+            /** @enum {string} */
             confidence: "low" | "medium" | "high";
-            /** @enum {unknown} */
+            /** @enum {string} */
             decision: "maintainer-reviewed" | "needs-review" | "rejected" | "stale";
             netuid: number;
             notes: string;
@@ -8917,11 +8990,16 @@ export interface components {
             slug: string;
             source_urls: string[];
         };
-        ReviewDecisionsArtifact: components["schemas"]["ArtifactBase"] & ({
+        ReviewDecisionsArtifact: {
+            contract_version?: string;
             decisions: components["schemas"]["ReviewDecision"][];
+            generated_at: string;
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
         } & {
             [key: string]: unknown;
-        });
+        };
         ReviewEnrichmentEvidenceArtifact: {
             contract_version?: string;
             entries: {
@@ -9458,26 +9536,48 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        SchemaDriftArtifact: components["schemas"]["ArtifactBase"] & ({
+        SchemaDriftArtifact: {
+            contract_version?: string;
+            generated_at: string;
+            notes?: string | string[];
+            /** @description When the snapshot run observed these surfaces -- NOT the build's `generated_at`. A rebuild republishes an old capture unchanged, so this is the only field that says how old the drift verdict is. Absent on the build-time placeholder, which observed nothing. */
+            observed_at?: string | null;
             openapi_surface_count: number;
             schema_backed_surface_count: number;
+            /** @constant */
+            schema_version: 1;
+            /** @description `openapi-snapshot` for a real capture run, `artifact-build` for the placeholder a build writes when no snapshot has run. */
             source: string;
-            /** @enum {unknown} */
+            /** @enum {string} */
             status: "captured" | "error" | "not-found" | "not-snapshotted" | "unsafe";
+            /** @description Rollups from the snapshot run. Absent on the build-time placeholder. */
+            summary?: {
+                by_drift_status: components["schemas"]["CountMap"];
+                by_status: components["schemas"]["CountMap"];
+                schema_count: number;
+                surface_count: number;
+            } & {
+                [key: string]: unknown;
+            };
             surfaces: components["schemas"]["SchemaDriftSurface"][];
         } & {
             [key: string]: unknown;
-        });
+        };
         SchemaDriftSurface: {
-            /** @enum {unknown} */
+            /**
+             * @description How this capture compares with the previous one. Absent only where a producer omits it.
+             * @enum {string}
+             */
             drift_status?: "changed" | "missing-after-previous-capture" | "new" | "not-captured" | "unchanged";
             error?: string | null;
             hash?: string | null;
             netuid: number;
             previous_hash?: string | null;
-            /** Format: uri */
             schema_url: string | null;
-            /** @enum {unknown} */
+            /**
+             * @description What the capture attempt found. `ui-only-or-undiscovered` means the surface declares no schema_url at all, which is a gap rather than a failure.
+             * @enum {string}
+             */
             status: "captured" | "error" | "not-found" | "pending-snapshot" | "too-large" | "ui-only-or-undiscovered" | "unsafe";
             subnet_slug: string;
             surface_id: string;
@@ -9701,8 +9801,7 @@ export interface components {
                 };
                 endpoint_count: number;
                 id: string;
-                /** @enum {string} */
-                kind: "subnet-team" | "infrastructure-provider" | "data-provider" | "docs-provider" | "registry";
+                kind: components["schemas"]["ProviderKind"];
                 name: string;
                 rpc_endpoint_count: number;
                 status: components["schemas"]["HealthStatus"];
@@ -10079,10 +10178,8 @@ export interface components {
                 youtube?: string;
             } | null;
             source_repo?: string | null;
-            /** @enum {string} */
-            status: "active" | "inactive" | "unknown";
-            /** @enum {string} */
-            subnet_type: "root" | "application";
+            status: components["schemas"]["SubnetStatus"];
+            subnet_type: components["schemas"]["SubnetType"];
             surface_count: number;
             symbol?: string | null;
             tempo?: number;
@@ -10520,10 +10617,8 @@ export interface components {
                 youtube?: string;
             } | null;
             source_repo?: string | null;
-            /** @enum {string} */
-            status: "active" | "inactive" | "unknown";
-            /** @enum {string} */
-            subnet_type: "root" | "application";
+            status: components["schemas"]["SubnetStatus"];
+            subnet_type: components["schemas"]["SubnetType"];
             surface_count: number;
             symbol?: string | null;
             tempo?: number;
@@ -10893,10 +10988,8 @@ export interface components {
             readiness?: components["schemas"]["IntegrationReadiness"];
             review_state: components["schemas"]["ReviewState"];
             slug: string;
-            /** @enum {string} */
-            status: "active" | "inactive" | "unknown";
-            /** @enum {string} */
-            subnet_type: "root" | "application";
+            status: components["schemas"]["SubnetStatus"];
+            subnet_type: components["schemas"]["SubnetType"];
             suggested_submission_kinds: components["schemas"]["SurfaceKind"][];
             supported_interface_kinds: components["schemas"]["SurfaceKind"][];
             surface_count: number;
@@ -11071,7 +11164,7 @@ export interface components {
             transfers_per_sender: number | null;
             window: ("7d" | "30d") | null;
         };
-        /** @enum {unknown} */
+        /** @enum {string} */
         SubnetStatus: "active" | "inactive" | "unknown";
         SubnetSurfaceHistoryArtifact: {
             change_count: number;
@@ -11164,7 +11257,7 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        /** @enum {unknown} */
+        /** @enum {string} */
         SubnetType: "root" | "application";
         SubnetValidatorEconomicsArtifact: {
             cap_binding: boolean | null;
@@ -11253,7 +11346,27 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
-        SubnetVerificationArtifact: components["schemas"]["VerificationArtifact"];
+        SubnetVerificationArtifact: {
+            candidate_count: number;
+            contract_version?: string;
+            generated_at: string;
+            name: string | null;
+            netuid: number;
+            notes?: string | string[];
+            results: components["schemas"]["VerificationResult"][];
+            /** @constant */
+            schema_version: 1;
+            slug: string;
+            summary: {
+                by_classification: components["schemas"]["CountMap"];
+                by_kind: components["schemas"]["CountMap"];
+                by_provider: components["schemas"]["CountMap"];
+            } & {
+                [key: string]: unknown;
+            };
+        } & {
+            [key: string]: unknown;
+        };
         SubnetWeightsArtifact: {
             distinct_setters: number;
             netuid: number;
@@ -11453,27 +11566,37 @@ export interface components {
                 verified_at?: string;
             };
         };
-        SurfaceAliasesArtifact: components["schemas"]["ArtifactBase"] & ({
+        SurfaceAliasesArtifact: {
             aliases: {
+                /** @description The surface id that replaced `deprecated_id`. */
                 current_id: string;
+                /** @description The surface id that used to be served and no longer is. This is the lookup key: resolveSurfaceAlias() matches an incoming surface id against it. */
                 deprecated_id: string;
-                kind?: string | null;
-                netuid?: number | null;
+                kind: string | null;
+                netuid: number | null;
+                /** @description The stable identity (`srf-<hash of netuid|kind|url>`) both ids share -- what makes this a rename rather than two unrelated surfaces (#1005). */
                 surface_key: string;
-                url?: string | null;
+                url: string | null;
             }[];
+            contract_version?: string;
+            generated_at: string;
+            notes?: string | string[];
+            /** @constant */
+            schema_version: 1;
             /** @constant */
             source: "generated-surface-rename-aliases";
             summary: {
                 alias_count: number;
+                /** @description Aliases inherited from the previous artifact -- a rename recorded by an earlier build whose surface still exists. */
                 carried_alias_count: number;
                 current_surface_count: number;
+                /** @description Aliases this build discovered for the first time. */
                 new_alias_count: number;
                 previous_surface_count: number;
             };
         } & {
             [key: string]: unknown;
-        });
+        };
         SurfaceHistoryChange: {
             action: ("insert" | "update" | "delete") | null;
             kind: string | null;
@@ -11814,17 +11937,30 @@ export interface components {
             min: number | null;
             sample_size: number;
         };
-        VerificationArtifact: components["schemas"]["ArtifactBase"] & ({
+        VerificationArtifact: {
+            /** @description Length of `results` AFTER buildFullVerificationArtifact() drops rows missing candidate_id/classification/status/url/verified_at -- not the number of candidates the run started with. */
             candidate_count: number;
-            /** Format: date-time */
+            contract_version?: string;
+            generated_at: string;
+            notes?: string | string[];
             observed_at?: string | null;
             results: components["schemas"]["VerificationResult"][];
+            /** @constant */
+            schema_version: 1;
             summary?: {
+                by_classification: components["schemas"]["CountMap"];
+                by_kind: components["schemas"]["CountMap"];
+                by_provider: components["schemas"]["CountMap"];
+                /** @description Results that cleared the promotion bar -- a candidate this run would move into the registry. Whole-run only: the per-subnet artifact has no equivalent. */
+                promotable_count: number;
+            } & {
                 [key: string]: unknown;
             };
+            verification_finished_at?: string | null;
+            verification_started_at?: string | null;
         } & {
             [key: string]: unknown;
-        });
+        };
         VerificationResult: {
             archived?: boolean;
             candidate_id: string;

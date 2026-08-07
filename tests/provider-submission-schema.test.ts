@@ -20,7 +20,6 @@ const ajv = new Ajv2020({
 const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 addFormats(ajv);
 for (const rel of [
-  "schemas/components/01-enums.schema.json",
   "schemas/provider.schema.json",
   "schemas/provider-submission.schema.json",
 ]) {

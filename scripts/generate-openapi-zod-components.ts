@@ -1,7 +1,10 @@
-// Emits the Zod-owned OpenAPI component schemas (types-epic B, #7860) from
-// schemas-src/openapi-registry.ts. Pure function, no filesystem I/O -- the
-// caller (scripts/openapi-components.ts) merges the result over the
-// hand-edited bundle.
+// Emits the published OpenAPI component schemas from
+// schemas-src/openapi-registry.ts. Pure function, no filesystem I/O.
+//
+// Since #9830 this is the ONLY source: the hand-written
+// schemas/components/*.schema.json layer this used to be merged over is
+// deleted, so what this returns is the whole of components.schemas (plus the
+// build marker scripts/openapi-components.ts adds).
 import { z } from "zod";
 import { openApiComponentRegistry } from "../schemas-src/openapi-registry.ts";
 
@@ -29,9 +32,7 @@ export function generateOpenApiZodComponents(): Record<string, Row> {
   for (const [name, schema] of Object.entries(generated.schemas)) {
     // $schema/$id are per-document JSON Schema metadata Zod stamps on every
     // root it emits; a components.schemas entry is embedded inside a larger
-    // document (the OpenAPI file) and never carries either -- none of the
-    // hand-edited components do, and validate-contract-drift byte-compares
-    // against that shape.
+    // document (the OpenAPI file) and never carries either.
     const {
       $schema: _schema,
       $id: _id,
