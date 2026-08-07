@@ -229,6 +229,7 @@
               "reason": "example"
             },
             "derivation": {
+              "is_lower_bound": false,
               "lookback_days": 1,
               "method": "GET",
               "unattributed_registrations": 1,
@@ -2692,6 +2693,7 @@
               "reason": "example"
             },
             "derivation": {
+              "is_lower_bound": false,
               "lookback_days": 1,
               "method": "GET",
               "unattributed_registrations": 1,
@@ -8552,6 +8554,7 @@
             "deregistrations": 1,
             "deregistrations_per_hotkey": 0.5,
             "derivation": {
+              "is_lower_bound": false,
               "lookback_days": 1,
               "method": "GET",
               "unattributed_registrations": 1,
@@ -12895,6 +12898,13 @@
           "derivation": {
             "additionalProperties": false,
             "properties": {
+              "is_lower_bound": {
+                "description": "True when the count is a floor rather than a measurement: some registrations in the window displaced a holder the derivation's lookback cannot name, so the real figure is higher by at least `unattributed_registrations`. Treat the value as 'at least this many', never as a total.",
+                "examples": [
+                  true
+                ],
+                "type": "boolean"
+              },
               "lookback_days": {
                 "maximum": 9007199254740991,
                 "minimum": 0,
@@ -12918,7 +12928,8 @@
               "method",
               "lookback_days",
               "window_registrations",
-              "unattributed_registrations"
+              "unattributed_registrations",
+              "is_lower_bound"
             ],
             "type": "object"
           },
@@ -20473,6 +20484,13 @@
           "derivation": {
             "additionalProperties": false,
             "properties": {
+              "is_lower_bound": {
+                "description": "True when the count is a floor rather than a measurement: some registrations in the window displaced a holder the derivation's lookback cannot name, so the real figure is higher by at least `unattributed_registrations`. Treat the value as 'at least this many', never as a total.",
+                "examples": [
+                  true
+                ],
+                "type": "boolean"
+              },
               "lookback_days": {
                 "maximum": 9007199254740991,
                 "minimum": 0,
@@ -20496,7 +20514,8 @@
               "method",
               "lookback_days",
               "window_registrations",
-              "unattributed_registrations"
+              "unattributed_registrations",
+              "is_lower_bound"
             ],
             "type": "object"
           },
@@ -40864,6 +40883,13 @@
           "derivation": {
             "additionalProperties": false,
             "properties": {
+              "is_lower_bound": {
+                "description": "True when the count is a floor rather than a measurement: some registrations in the window displaced a holder the derivation's lookback cannot name, so the real figure is higher by at least `unattributed_registrations`. Treat the value as 'at least this many', never as a total.",
+                "examples": [
+                  true
+                ],
+                "type": "boolean"
+              },
               "lookback_days": {
                 "maximum": 9007199254740991,
                 "minimum": 0,
@@ -40887,7 +40913,8 @@
               "method",
               "lookback_days",
               "window_registrations",
-              "unattributed_registrations"
+              "unattributed_registrations",
+              "is_lower_bound"
             ],
             "type": "object"
           },

@@ -34,5 +34,24 @@ export const DeregistrationDerivationSchema = z
     lookback_days: z.int().min(0),
     window_registrations: z.int().min(0),
     unattributed_registrations: z.int().min(0),
+    // #9708: the same fact, machine-readable. The prose above and
+    // `unattributed_registrations` have said "lower bound" since #9307, but
+    // only to a human reading docs -- the payload published a bare count, and
+    // a bare count reads as a measurement. Measured on mainnet 2026-08-07
+    // against subnets with no free UIDs, where every registration must
+    // displace someone: SN64 published 0 deregistrations against 24
+    // registrations, SN51 0 against 26, SN120 219 against 470, SN53 287
+    // against 540. A reader took the zeros to mean "no churn" -- the opposite
+    // of the truth -- and nothing in the response contradicted them.
+    is_lower_bound: z
+      .boolean()
+      .describe(
+        "True when the count is a floor rather than a measurement: some " +
+          "registrations in the window displaced a holder the derivation's " +
+          "lookback cannot name, so the real figure is higher by at least " +
+          "`unattributed_registrations`. Treat the value as 'at least this " +
+          "many', never as a total.",
+      )
+      .meta({ examples: [true] }),
   })
   .strict();

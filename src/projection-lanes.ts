@@ -1168,6 +1168,12 @@ async function computeChainDeregistrations(
       lookback_days: lookbackDays,
       window_registrations: derived.registrations,
       unattributed_registrations: derived.unattributed,
+      // #9708: say in the PAYLOAD what the docs already said in prose. Any
+      // unattributed registration displaced a holder the lookback cannot name,
+      // so every published count is a floor by at least that many events --
+      // and a bare number reads as a measurement however carefully the
+      // documentation hedges it.
+      is_lower_bound: derived.unattributed > 0,
     };
     const subnetRows = deregistrationsByNetuid(derived.events);
     windows[label] = {
