@@ -12,7 +12,8 @@ import {
   loadCandidatesList,
 } from "../src/candidates-mcp.ts";
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.ts";
-import { CANDIDATES_LIMIT_DEFAULT } from "../src/route-limits.ts";
+import { MCP_LIST_LIMIT_DEFAULT } from "../src/route-limits.ts";
+import { applyMcpQueryFilters } from "../src/mcp-list-query.ts";
 import type { Row } from "./row-type.ts";
 
 type CandidatesCtx = Parameters<typeof loadCandidatesList>[0];
@@ -152,13 +153,31 @@ describe("candidates-mcp (#7889)", () => {
   // roughly 1.9M tokens, about ten 200K context windows. Not a large answer;
   // no usable answer. `limit: 10` returned 37,850 bytes, so the volume was
   // never the data's fault.
+  // #9730 moved the default from this URL to the shared seam every MCP loader
+  // pages through, so the assertion moved with it -- from "the query string
+  // says 20" to "the caller receives 20", which is the fact that actually
+  // mattered and the one a future refactor cannot quietly satisfy by accident.
   test("an absent limit is defaulted, not left unbounded", () => {
-    const url = candidatesQueryUrl({});
+    const rows = Array.from({ length: 100 }, (_, index) => ({
+      id: `cand-${index}`,
+      netuid: index,
+      kind: "subnet-api",
+    }));
+    const { data, meta } = applyMcpQueryFilters(
+      { candidates: rows },
+      candidatesQueryUrl({}),
+      "candidates",
+      [],
+    ) as { data: Row; meta: Row };
     assert.equal(
-      url.searchParams.get("limit"),
-      String(CANDIDATES_LIMIT_DEFAULT),
+      (data.candidates as Row[]).length,
+      MCP_LIST_LIMIT_DEFAULT,
       "no limit must mean the default, never the whole catalog",
     );
+    // The rest stays reachable -- by paging, rather than by accident.
+    const pagination = meta.pagination as Row;
+    assert.equal(pagination.total, 100);
+    assert.equal(pagination.next_cursor, MCP_LIST_LIMIT_DEFAULT);
   });
 
   test("an explicit limit still wins over the default", () => {

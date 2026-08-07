@@ -4,7 +4,7 @@
 // /metagraph/providers/{slug}/endpoints.json artifact.
 
 import { z } from "zod";
-import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
 import {
@@ -234,7 +234,7 @@ export async function loadProviderEndpointsList(
       `No endpoint catalog exists for provider '${slug}'.`,
     );
   }
-  const transformed = applyQueryFilters(
+  const transformed = applyMcpQueryFilters(
     blob as Record<string, unknown>,
     queryUrl,
     "endpoints",

@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 import { DAY_PATTERN } from "../workers/request-params.ts";
-import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
 import {
   GetHealthHistoryInputSchema,
@@ -156,7 +156,7 @@ export async function loadHealthHistory(
       `No health-history snapshot for ${date}.`,
     );
   }
-  const transformed = applyQueryFilters(
+  const transformed = applyMcpQueryFilters(
     blob as Record<string, unknown>,
     queryUrl,
     "health-surfaces",

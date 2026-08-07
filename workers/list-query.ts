@@ -55,7 +55,10 @@ export function applyQueryFilters(
   url: URL,
   queryCollection: string,
   queryFilterNames: string[] = [],
-  { csvResponse = false }: { csvResponse?: boolean } = {},
+  {
+    csvResponse = false,
+    defaultLimit,
+  }: { csvResponse?: boolean; defaultLimit?: number } = {},
 ): ApplyQueryFiltersResult {
   const params = url.searchParams;
   const config = (
@@ -71,7 +74,7 @@ export function applyQueryFilters(
     data,
     params,
     listQueryConfig(config, queryFilterNames),
-    { csvResponse },
+    { csvResponse, defaultLimit },
   );
 }
 
@@ -341,7 +344,7 @@ function applyListTransform(
   data: Record<string, unknown>,
   params: URLSearchParams,
   config: QueryCollectionConfig,
-  options: { csvResponse?: boolean } = {},
+  options: { csvResponse?: boolean; defaultLimit?: number } = {},
 ): ApplyQueryFiltersResult {
   const queryError = validateListQuery(params, config, options);
   if (queryError) {
@@ -366,7 +369,7 @@ function applyListTransform(
     config.range_filters,
   );
   const sorted = sortRows(filtered, params);
-  const paginated = paginateRows(sorted, params);
+  const paginated = paginateRows(sorted, params, options.defaultLimit);
   return {
     data: {
       ...data,
@@ -467,12 +470,30 @@ interface PaginatedRows {
   sort: string | null;
 }
 
-function paginateRows(rows: Row[], params: URLSearchParams): PaginatedRows {
+function paginateRows(
+  rows: Row[],
+  params: URLSearchParams,
+  // #9730. Without this, omitting BOTH `limit` and `cursor` returns every row,
+  // and DEFAULT_LIMIT below is unreachable because it only applies once the
+  // caller has already opted into paging. That is correct for REST -- a browser
+  // can stream 9 MB -- and catastrophic for MCP, where the same seam served
+  // list_endpoints as 9,059,868 bytes to a tool call that took no arguments.
+  //
+  // Passed explicitly by the caller rather than inferred (from the mcp.internal
+  // hostname, say), because which surface is asking is the caller's fact to
+  // state, and a hostname test would silently mis-serve any future caller that
+  // used a different one.
+  defaultLimit?: number,
+): PaginatedRows {
   const requestedLimit = integerParam(params.get("limit"));
   const requestedCursor = integerParam(params.get("cursor"));
-  const shouldPage = requestedLimit !== null || requestedCursor !== null;
+  const shouldPage =
+    requestedLimit !== null || requestedCursor !== null || defaultLimit != null;
   const limit = shouldPage
-    ? Math.min(Math.max(requestedLimit ?? DEFAULT_LIMIT, MIN_LIMIT), MAX_LIMIT)
+    ? Math.min(
+        Math.max(requestedLimit ?? defaultLimit ?? DEFAULT_LIMIT, MIN_LIMIT),
+        MAX_LIMIT,
+      )
     : rows.length;
   const cursor = Math.min(Math.max(requestedCursor ?? 0, 0), rows.length);
   const next = cursor + limit;

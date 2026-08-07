@@ -3,7 +3,7 @@
 // /metagraph/review/gap-priorities.json artifact.
 
 import { z } from "zod";
-import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
 import {
@@ -161,7 +161,7 @@ export async function loadReviewGapsList(
       "Review gap priorities snapshot unavailable.",
     );
   }
-  const transformed = applyQueryFilters(
+  const transformed = applyMcpQueryFilters(
     blob as Record<string, unknown>,
     queryUrl,
     "review-gap-priorities",

@@ -184,19 +184,46 @@ export const DEFAULT_PIPELINE_HISTORY_WINDOW = "30d";
 /**
  * `list_candidates` (MCP) -- the network-wide candidate-surface catalog.
  *
- * A DEFAULT, not just a ceiling, and the MCP tool is the reason. With no
- * `limit` the loader forwarded none, so the route served every row: measured
- * 2026-08-07 at **7,537,056 bytes for 2,037 candidates** -- roughly 1.9M
- * tokens, about ten times a 200K context window. An agent calling
- * list_candidates while exploring (the obvious first move, since it takes no
- * required arguments) did not get a large answer, it got no usable answer at
- * all. `limit: 10` returns 37,850 bytes, so the data was never the problem.
+ * The DEFAULT that used to live here is now MCP_LIST_LIMIT_DEFAULT below: the
+ * hole #9701 fixed here was never specific to candidates, only measured here
+ * first (7,537,056 bytes for 2,037 candidates -- roughly 1.9M tokens, about ten
+ * 200K context windows, from a tool taking no required arguments). #9730 found
+ * sixteen more sharing the same seam, the largest at 9 MB, and moved the
+ * default to the seam. Only the CEILING is candidate-specific.
  *
- * Deliberately narrower than the REST route, which still serves unbounded:
- * a browser can stream 7.5 MB and a context window cannot, so the surface with
- * the hard constraint is the one that carries the default. `total` and
+ * Deliberately narrower than the REST route, which still serves unbounded: a
+ * browser can stream 7.5 MB and a context window cannot, so the surface with
+ * the hard constraint carries the default. `total` and `next_cursor` ride in
+ * the envelope either way, so the full set stays reachable by paging -- it is
+ * no longer reachable by accident.
+ */
+export const CANDIDATES_LIMIT_MAX = 1000;
+
+/**
+ * Every MCP list tool that pages through `applyQueryFilters` (#9730).
+ *
+ * A DEFAULT, not a ceiling, and the MCP surface is the reason. `paginateRows`
+ * in workers/list-query.ts only pages when the caller passed `limit` or
+ * `cursor`; with neither it returns EVERY row, and `DEFAULT_LIMIT` is
+ * unreachable until the caller has already opted in. So the 32 loaders under
+ * src/*-mcp.ts forwarded no limit and served the whole collection.
+ *
+ * Measured against production 2026-08-07, calling each zero-required-argument
+ * tool with `{}`: list_endpoints **9,059,868 bytes** (3,492 rows), list_surfaces
+ * 7,820,280, list_evidence 3,623,240, list_search 2,881,186, list_search_index
+ * 2,208,844, list_profiles 1,287,854 -- seventeen tools over 100 KB. The largest
+ * is roughly 2.3M tokens, more than ten times a 200K context window, from a tool
+ * that takes no required arguments and is therefore a plausible FIRST call.
+ *
+ * Deliberately narrower than the REST routes, which keep serving unbounded: a
+ * browser can stream 9 MB and a context window cannot, so the surface with the
+ * hard constraint carries the default. That is the same asymmetry
+ * #9701 is argued on -- generalised from the one tool that got measured to
+ * every tool that shares the seam. `total` and
  * `next_cursor` ride in the envelope either way, so the full set stays
  * reachable by paging -- it is no longer reachable by accident.
+ *
+ * 20 matches the value #9701 chose for the same reason: enough rows to see the
+ * shape of a collection, small enough that a wrong guess costs nothing.
  */
-export const CANDIDATES_LIMIT_DEFAULT = 20;
-export const CANDIDATES_LIMIT_MAX = 1000;
+export const MCP_LIST_LIMIT_DEFAULT = 20;

@@ -8,7 +8,7 @@
 // live-overlay step of its own.
 
 import { z } from "zod";
-import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.ts";
 import { KV_HEALTH_RPC_POOL } from "./health-prober.ts";
@@ -216,7 +216,7 @@ export async function loadRpcPoolsList(
     };
   }
 
-  const transformed = applyQueryFilters(overlaid, queryUrl, "rpc-pools", []);
+  const transformed = applyMcpQueryFilters(overlaid, queryUrl, "rpc-pools", []);
   if (transformed.error) {
     throw rpcPoolsMcpError("invalid_params", transformed.error.message);
   }

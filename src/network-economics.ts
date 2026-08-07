@@ -3,7 +3,7 @@
 // handlers keep tier precedence and envelope wiring.
 
 import { z } from "zod";
-import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.ts";
 import {
@@ -171,7 +171,7 @@ export async function loadNetworkEconomics(
   // Spot on every row (#9408 completion), derived BEFORE the query filters so a
   // `fields` projection treats it like any other column — selectable, and
   // dropped from a narrowed row rather than force-appended to it.
-  const transformed = applyQueryFilters(
+  const transformed = applyMcpQueryFilters(
     withSpotPricedEconomics(blob as Row) as Record<string, unknown>,
     queryUrl,
     "economics",
