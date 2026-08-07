@@ -142,6 +142,23 @@ function normalizedHostname(value: unknown): string {
     .replace(/\.$/, "");
 }
 
+/**
+ * The resource a probe contends for — the remote host, not the surface (#9904).
+ *
+ * Shares `normalizedHostname` with the SSRF guard above so one url can never be
+ * two hosts: a trailing-dot FQDN or a bracketed IPv6 literal has to land in the
+ * same scheduling group as its bare form, or the grouping silently stops
+ * serializing them. An unparseable url is its own key rather than a shared
+ * empty one, so malformed entries cannot collapse into a single serial group.
+ */
+export function probeHostKey(url: unknown): string {
+  try {
+    return normalizedHostname(new URL(String(url)).hostname);
+  } catch {
+    return String(url ?? "");
+  }
+}
+
 function ipv4Octets(value: unknown): number[] | null {
   const parts = String(value || "").split(".");
   if (parts.length !== 4) return null;
@@ -537,7 +554,7 @@ export async function runHealthProber(
     priorStatus.set(row.surface_key || row.surface_id, row);
   }
 
-  const probed = await mapLimit(surfaces, concurrency, async (surface) => {
+  const probeOne = async (surface: Row) => {
     const input: ProbeSurface = {
       id: surface.surface_id,
       netuid: surface.netuid,
@@ -643,6 +660,14 @@ export async function runHealthProber(
       // field on this object is inert for that writer.
       error: base.error ?? null,
     };
+  };
+
+  // Grouped by host (#9904): a flat pool decides what runs together purely from
+  // list order, and operational-surfaces.json is sorted (netuid, surface_id) --
+  // so a subnet's surfaces sit adjacent and went out together. Every
+  // rate-limited verdict in production came from that, on two hosts.
+  const probed = await mapLimit(surfaces, concurrency, probeOne, {
+    groupKey: (surface) => probeHostKey(surface.url),
   });
 
   sanitizeRpcLatestBlocks(probed);

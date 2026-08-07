@@ -955,22 +955,72 @@ export function parseBlockNumber(
   return Number.isInteger(block) && block >= 0 ? block : null;
 }
 
+export interface MapLimitOptions<T> {
+  /**
+   * Serializes items that share a key: at most ONE item per key is ever in
+   * flight, while `limit` distinct keys still run in parallel (#9904).
+   *
+   * A flat pool decides what runs together purely from list order, which is a
+   * property of how the caller happened to sort its input. When the shared
+   * resource is a remote host, that is how a sweep DDoSes one origin: the
+   * prober's surface list is sorted `(netuid, surface_id)`, so a subnet's five
+   * surfaces sit adjacent and go out together, and the host answers 429.
+   *
+   * Grouping fixes it without a lock or a semaphore, because the pool hands a
+   * worker a whole key-group and the worker drains it in a plain loop --
+   * mutual exclusion falls out of the partition rather than being enforced.
+   *
+   * Groups are dispatched LONGEST-FIRST: a grouped run is bounded by its
+   * largest group rather than by `items.length / limit`, so starting the
+   * biggest one last would strand it after the pool had nothing else to run.
+   */
+  groupKey?: (item: T) => string;
+}
+
+/**
+ * Item indexes partitioned by `groupKey`, largest group first.
+ *
+ * Indexes rather than items so `mapLimit` can write each result back to its
+ * input slot -- grouping changes execution order, never the returned order.
+ */
+function workQueue<T>(items: T[], groupKey?: (item: T) => string): number[][] {
+  if (!groupKey) {
+    // One index per group is exactly the ungrouped pool: every worker takes the
+    // next single item. Same code path, so the grouped case cannot drift from
+    // the plain one.
+    return items.map((_, index) => [index]);
+  }
+  const groups = new Map<string, number[]>();
+  items.forEach((item, index) => {
+    const key = groupKey(item);
+    const group = groups.get(key);
+    if (group) group.push(index);
+    else groups.set(key, [index]);
+  });
+  return [...groups.values()].sort((a, b) => b.length - a.length);
+}
+
 // Bounded-concurrency map. Preserves INPUT order in the returned array (callers
 // that need a different order sort afterwards). Used by both the Node build and
 // the Worker cron prober to respect the runtime's simultaneous-connection cap.
+// Pass `groupKey` to additionally serialize items sharing a resource.
 export async function mapLimit<T, R>(
   items: T[],
   limit: number,
   mapper: (item: T, index: number) => Promise<R>,
+  options: MapLimitOptions<T> = {},
 ): Promise<R[]> {
   const results: R[] = new Array(items.length);
+  const queue = workQueue(items, options.groupKey);
   let cursor = 0;
-  const workerCount = Math.max(1, Math.min(limit, items.length));
+  const workerCount = Math.max(1, Math.min(limit, queue.length));
   const workers = Array.from({ length: workerCount }, async () => {
-    while (cursor < items.length) {
-      const index = cursor;
+    while (cursor < queue.length) {
+      const group = queue[cursor];
       cursor += 1;
-      results[index] = await mapper(items[index], index);
+      for (const index of group) {
+        results[index] = await mapper(items[index], index);
+      }
     }
   });
   await Promise.all(workers);
