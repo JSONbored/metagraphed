@@ -19,7 +19,11 @@ import {
   verifyFromProbeEvidence,
   type SurfaceProbeRecord,
 } from "../src/surface-verification.ts";
-import { sanitizeChainText, slugify } from "./lib/formatting.ts";
+import {
+  sanitizeChainText,
+  slugify,
+  subnetDisplayName,
+} from "./lib/formatting.ts";
 
 type Row = Record<string, unknown>;
 
@@ -980,9 +984,29 @@ export function resolveSurfaceCurationLevel({
   return "native";
 }
 
+/**
+ * @param nativeByNetuid Chain subnets keyed by netuid, so `subnet_name` resolves
+ *   through `subnetDisplayName` -- the SAME derivation the merged subnet, the
+ *   profile and validate.ts's reproducibility check all use (#9909).
+ *
+ *   Without it this stamped the raw overlay `name`, bypassing #9748's inversion
+ *   entirely: the chain names the subnet, and the overlay is only the fallback.
+ *   So `/api/v1/subnets` served the current name while `/api/v1/health` served
+ *   the pre-rename one -- 26 of 123 subnets disagreeing, from the SAME build,
+ *   because operational-surfaces.json inherits this field and the prober
+ *   carries it into the live store. netuid 36 read "Eirel" on one route and
+ *   "Leoma" on the other; netuid 99 read "Leoma" while 36 IS Leoma now.
+ *
+ *   Optional because the four read-only callers (capture-fixtures,
+ *   probes-smoke, snapshot-openapi, tests) have no native snapshot to pass.
+ *   Omitting it resolves to the overlay name, which is exactly what every
+ *   caller did before -- their behaviour is unchanged by construction, not by
+ *   assertion.
+ */
 export function flattenSurfaces(
   subnets: Row[],
   surfaceProbeEvidence: Record<string, SurfaceProbeRecord> = {},
+  nativeByNetuid?: Map<unknown, Row>,
 ): Row[] {
   return subnets
     .flatMap((subnet) =>
@@ -991,7 +1015,10 @@ export function flattenSurfaces(
           ...surface,
           netuid: subnet.netuid,
           subnet_slug: subnet.slug,
-          subnet_name: subnet.name,
+          subnet_name: subnetDisplayName(
+            nativeByNetuid?.get(subnet.netuid),
+            subnet.name,
+          ),
         };
         // #1005: a stable identity decoupled from the hand-authored display id.
         flattened.key = surfaceStableKey(flattened);

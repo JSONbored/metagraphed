@@ -108,3 +108,68 @@ test("artifact build accepts an OpenAPI-vendor JSON content-type for a captured 
     harness.restoreSupportArtifacts(supportArtifacts);
   }
 }, 120_000);
+
+test("a renamed subnet does not wholesale-discard the committed schema index", () => {
+  const schemaIndexPath = harness.artifactFilePath("schemas/index.json");
+  const originalSchemaIndex = readFileSync(schemaIndexPath, "utf8");
+  const supportArtifacts = harness.snapshotSupportArtifacts();
+  const schemaIndex = JSON.parse(originalSchemaIndex);
+  const capturedBefore = (schemaIndex.schemas ?? []).filter(
+    (schema: Row) => schema.status === "captured",
+  );
+  const indexTarget = capturedBefore[0];
+  assert(indexTarget, "expected a captured schema index entry to rename");
+  assert(
+    capturedBefore.length > 1,
+    "need >1 captured entry to prove wholesale",
+  );
+
+  // Same failure shape as the content-type case above (metagraphed#6411), with
+  // a cause nobody can prevent: the subnet renamed itself on chain. Since #9748
+  // the chain names the subnet, so that new name flows into surface.subnet_name
+  // -- and the reconciler compared snapshot.subnet_name to it, called the
+  // mismatch a forgery, and discarded EVERY captured schema for EVERY subnet.
+  // Measured on the real registry: 26 renamed subnets took all 227 captured
+  // schemas down with them (metagraphed#9909).
+  //
+  // A display name is not identity. surface_id, netuid, subnet_slug, the
+  // surface url, the schema url and the document hash all still have to match.
+  (indexTarget.snapshot ??= {}).subnet_name = "Renamed On Chain";
+
+  try {
+    writeFileSync(schemaIndexPath, `${JSON.stringify(schemaIndex, null, 2)}\n`);
+    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
+      cwd: harness.scriptCwd,
+      encoding: "utf8",
+      env: harness.env,
+      stdio: "pipe",
+    });
+
+    const rebuilt = JSON.parse(readFileSync(schemaIndexPath, "utf8"));
+    // The whole point: the index is REUSED, not replaced by the placeholder.
+    assert.equal(rebuilt.source, "openapi-snapshot");
+    const capturedAfter = (rebuilt.schemas ?? []).filter(
+      (schema: Row) => schema.status === "captured",
+    );
+    assert.equal(
+      capturedAfter.length,
+      capturedBefore.length,
+      "a rename must not drop any captured schema",
+    );
+    // And the renamed entry itself keeps its captured document.
+    const rebuiltTarget = rebuilt.schemas.find(
+      (schema: Row) => schema.surface_id === indexTarget.surface_id,
+    );
+    assert.equal(rebuiltTarget?.status, "captured");
+    assert.equal(rebuiltTarget?.hash, indexTarget.hash);
+  } finally {
+    writeFileSync(schemaIndexPath, originalSchemaIndex);
+    execFileSync(process.execPath, ["scripts/build-artifacts.ts"], {
+      cwd: harness.scriptCwd,
+      encoding: "utf8",
+      env: harness.env,
+      stdio: "pipe",
+    });
+    harness.restoreSupportArtifacts(supportArtifacts);
+  }
+}, 120_000);
