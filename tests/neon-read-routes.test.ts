@@ -580,19 +580,30 @@ describe("the deployed flag", () => {
     }
   });
 
-  test("does NOT name a table whose mirror has never fired", () => {
-    // Measured 2026-08-07 and reported by #9772's watchdog: these four have no
-    // `neon:` verdict at all, because their producers run on 12h/30h/48h
-    // cadences. Naming one moves a read onto an unproven store.
+  test("does NOT name a table the two stores still disagree about", () => {
+    // Was "whose mirror has never fired", listing four tables whose producers
+    // run on 12h/30h/48h cadences. Two have since been PROVEN by measurement
+    // rather than by waiting, and the reason they are off this list is the
+    // reason the list exists -- so it is now about parity, not about cadence:
+    //
+    //   validator_nominator_counts  112,250 == 112,250 after #9845's lane
+    //                               closed a deficit the mirror could not
+    //                               reach (14 rows the producer stopped
+    //                               emitting)
+    //   nominator_positions         still 13,402 short; #9853's lane is
+    //                               deployed and converging
+    //   hotkey_alpha                D1 and Neon are SUPPOSED to differ here
+    //                               until the mirror applies #9558's filter
+    //                               (#9832) -- not a lag, a design mismatch
+    //   account_balances            no reconciler lane and no route needs it
     for (const unproven of [
       "nominator_positions",
       "hotkey_alpha",
       "account_balances",
-      "validator_nominator_counts",
     ]) {
       assert.ok(
         !named.includes(unproven),
-        `${unproven}'s mirror has never fired -- see #9770/#9772`,
+        `${unproven} is not at parity with D1 -- see #9832/#9852`,
       );
     }
   });
