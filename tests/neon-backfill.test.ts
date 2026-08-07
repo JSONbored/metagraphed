@@ -249,9 +249,18 @@ describe("NEON_BACKFILL_PLANS", () => {
     for (const [name, key] of Object.entries(byNaturalKey)) {
       const plan = NEON_BACKFILL_PLANS[name];
       assert.deepEqual([...plan.conflict], key, `${name} conflict`);
+      // The id IS carried, and D1 is its authority (#9954). It is not the
+      // conflict target -- the natural key is -- but it must arrive, because
+      // the write path picks the latest revision by MAX(id) and because two
+      // revisions written in the same millisecond share observed_at and are
+      // ordered by the id alone.
       assert.ok(
-        !plan.columns.includes("id"),
-        `${name} must not carry id: Neon declares it GENERATED ALWAYS and refuses an explicit value`,
+        plan.columns.includes("id"),
+        `${name} must carry id: the write path reads MAX(id) and same-millisecond revisions order on it`,
+      );
+      assert.ok(
+        !plan.conflict.includes("id"),
+        `${name} must not CONFLICT on id -- the natural key is what identifies the row in both stores`,
       );
     }
   });
