@@ -15,7 +15,10 @@ import {
   syncRpcProxyEventsPruneToPostgres,
   workerResolvedUrlSafetyGuard,
   workerWebSocketConnector,
+  probeHostKey,
+  groupSurfacesByHost,
 } from "../src/health-prober.ts";
+import { mapLimit } from "../src/health-probe-core.ts";
 import { OPERATIONAL_SURFACES_R2_KEY } from "../src/operational-surfaces-sync.ts";
 import { handleScheduled } from "../workers/api.ts";
 import { mockEnv, type AnyFn, type Row } from "./row-type.ts";
@@ -2722,6 +2725,245 @@ describe("pipelineProvenance (#8744)", () => {
         CHAIN_STATE,
       ),
       {},
+    );
+  });
+});
+
+// --- #9904: one host per worker --------------------------------------------
+//
+// Every `rate-limited` verdict in production sat on exactly two hosts (7 on
+// api.taomarketcap.com, 5 on agent-upload.ridges.ai) and none on the other 120,
+// and all 12 answered 200 to a single sequential request. The cause was
+// scheduling, not the hosts: `mapLimit` is a flat pool over one cursor and
+// operational-surfaces.json is sorted (netuid, surface_id), so a subnet's
+// surfaces are adjacent and go out together.
+
+describe("probeHostKey", () => {
+  test("keys on the hostname, normalized", () => {
+    assert.equal(
+      probeHostKey("https://API.Example.com/v1/a"),
+      "api.example.com",
+    );
+    assert.equal(
+      probeHostKey("https://api.example.com/v1/b"),
+      "api.example.com",
+    );
+    // A trailing-dot FQDN and a bracketed IPv6 literal are the same host as
+    // their bare forms -- normalizedHostname's job, asserted here because a
+    // regression would split one host into two groups and re-open the bug.
+    assert.equal(probeHostKey("https://api.example.com./x"), "api.example.com");
+    assert.equal(
+      probeHostKey("https://[2606:4700::1111]/x"),
+      "2606:4700::1111",
+    );
+  });
+
+  test("an unparseable url groups with its identical twins, not with everything", () => {
+    assert.equal(probeHostKey("not a url"), "not a url");
+    assert.equal(probeHostKey(null), "");
+    // The failure this avoids: collapsing every unparseable entry into one
+    // bucket would make them a single serial group.
+    assert.notEqual(probeHostKey("not a url"), probeHostKey("also not a url"));
+  });
+});
+
+describe("groupSurfacesByHost", () => {
+  const surfaces = [
+    { surface_id: "a1", url: "https://a.example/1" },
+    { surface_id: "b1", url: "https://b.example/1" },
+    { surface_id: "a2", url: "https://a.example/2" },
+    { surface_id: "c1", url: "https://c.example/1" },
+    { surface_id: "a3", url: "https://a.example/3" },
+    { surface_id: "b2", url: "https://b.example/2" },
+  ];
+
+  test("groups by host, longest first, original order within a group", () => {
+    const groups = groupSurfacesByHost(surfaces);
+    assert.deepEqual(
+      groups.map((group) => group.map((s) => s.surface_id)),
+      [["a1", "a2", "a3"], ["b1", "b2"], ["c1"]],
+    );
+  });
+
+  test("every surface appears exactly once", () => {
+    const flat = groupSurfacesByHost(surfaces).flat();
+    assert.equal(flat.length, surfaces.length);
+    assert.deepEqual(
+      flat.map((s) => s.surface_id).sort(),
+      surfaces.map((s) => s.surface_id).sort(),
+    );
+  });
+
+  test("longest-first is what bounds the sweep", () => {
+    // Not cosmetic: the sweep is now bounded by its largest group, so starting
+    // the big one last would strand it after the pool had nothing else to run.
+    const sizes = groupSurfacesByHost(surfaces).map((g) => g.length);
+    assert.deepEqual(
+      sizes,
+      [...sizes].sort((a, b) => b - a),
+    );
+  });
+});
+
+describe("host-grouped scheduling holds the invariant", () => {
+  // Drives the REAL mapLimit over the REAL grouping, recording concurrency.
+  async function sweep(surfaces: Row[], concurrency: number) {
+    const inFlight = new Map<string, number>();
+    const peak = new Map<string, number>();
+    let peakTotal = 0;
+    let live = 0;
+    const order: string[] = [];
+    await mapLimit(
+      groupSurfacesByHost(surfaces),
+      concurrency,
+      async (group) => {
+        for (const surface of group) {
+          const host = probeHostKey(surface.url);
+          const now = (inFlight.get(host) ?? 0) + 1;
+          inFlight.set(host, now);
+          live += 1;
+          peak.set(host, Math.max(peak.get(host) ?? 0, now));
+          peakTotal = Math.max(peakTotal, live);
+          await Promise.resolve();
+          order.push(surface.surface_id as string);
+          inFlight.set(host, now - 1);
+          live -= 1;
+        }
+      },
+    );
+    return { peak, peakTotal, order };
+  }
+
+  // The real shape: five sn-62 surfaces on one host, adjacent, as the artifact
+  // orders them.
+  const ridges = Array.from({ length: 5 }, (_, i) => ({
+    surface_id: `sn-62-ridges-${i}`,
+    url: `https://agent-upload.ridges.ai/p${i}`,
+  }));
+  const others = Array.from({ length: 20 }, (_, i) => ({
+    surface_id: `other-${i}`,
+    url: `https://host${i}.example/x`,
+  }));
+
+  test("never two concurrent requests to one host", async () => {
+    const { peak } = await sweep([...ridges, ...others], 8);
+    for (const [host, seen] of peak) {
+      assert.equal(seen, 1, `${host} had ${seen} concurrent probes`);
+    }
+  });
+
+  test("the flat pool it replaced DID double up on that host", async () => {
+    // Positive control. Without this, "never two concurrent" could pass because
+    // the harness never actually overlaps anything.
+    let live = 0;
+    let peakRidges = 0;
+    await mapLimit([...ridges, ...others], 8, async (surface) => {
+      const isRidges = probeHostKey(surface.url) === "agent-upload.ridges.ai";
+      if (isRidges) peakRidges = Math.max(peakRidges, (live += 1));
+      await Promise.resolve();
+      if (isRidges) live -= 1;
+    });
+    assert.ok(
+      peakRidges > 1,
+      `flat pool peaked at ${peakRidges} on one host; the control proves nothing`,
+    );
+  });
+
+  test("still uses the whole pool", async () => {
+    // The fix must not serialize the sweep: with more hosts than workers every
+    // worker should be busy.
+    const { peakTotal } = await sweep(others, 8);
+    assert.equal(peakTotal, 8);
+  });
+
+  test("a single host is probed serially, not dropped", async () => {
+    const { peak, order } = await sweep(ridges, 8);
+    assert.equal(peak.get("agent-upload.ridges.ai"), 1);
+    assert.deepEqual(
+      order,
+      ridges.map((s) => s.surface_id),
+    );
+  });
+});
+
+describe("runHealthProber schedules one host at a time (#9904)", () => {
+  // The pure-function tests above prove the grouping; this proves the SWEEP
+  // uses it. Without an end-to-end assertion, reverting the call site back to
+  // `mapLimit(surfaces, ...)` would leave every test above green.
+  const sameHost = ["a", "b", "c", "d", "e"].map((n) => ({
+    surface_id: `sn-62-ridges-${n}`,
+    surface_key: `srf-ridges-${n}`,
+    netuid: 62,
+    kind: "subnet-api",
+    url: `https://agent-upload.ridges.ai/${n}`,
+    provider: "ridges",
+    authority: "official",
+    auth_required: false,
+    public_safe: true,
+    probe: { enabled: true, method: "GET", expect: "json" },
+  }));
+
+  test("five surfaces on one host never overlap", async () => {
+    const { env } = makeProberEnv({ priorStatus: [] });
+    let live = 0;
+    let peak = 0;
+    const seen: string[] = [];
+    await runHealthProber(env, FAKE_CTX, {
+      now: () => 50000,
+      kv: makeKv(),
+      loadSurfaces: async () => sameHost,
+      probeSurface: (async (input: Row) => {
+        peak = Math.max(peak, (live += 1));
+        seen.push(input.id as string);
+        // Yield so an overlapping scheduler would actually interleave here.
+        await Promise.resolve();
+        live -= 1;
+        return {
+          status: "ok",
+          classification: "live",
+          latency_ms: 10,
+          status_code: 200,
+        };
+      }) as never,
+      probeOptions: {},
+    });
+    assert.equal(peak, 1, `peaked at ${peak} concurrent probes on one host`);
+    assert.deepEqual(
+      seen,
+      sameHost.map((s) => s.surface_id),
+    );
+  });
+
+  test("rows keep their input order, so pool tie-breaks do not move", async () => {
+    // persistToKv ranks the RPC pool off these rows; flattening in group order
+    // would reshuffle equally-healthy endpoints. Two hosts interleaved on input
+    // must come back interleaved.
+    const mixed = [
+      { ...sameHost[0], surface_id: "r1", url: "https://one.example/1" },
+      { ...sameHost[1], surface_id: "s1", url: "https://two.example/1" },
+      { ...sameHost[2], surface_id: "r2", url: "https://one.example/2" },
+      { ...sameHost[3], surface_id: "s2", url: "https://two.example/2" },
+    ];
+    const { env } = makeProberEnv({ priorStatus: [] });
+    const kv = makeKv();
+    await runHealthProber(env, FAKE_CTX, {
+      now: () => 50000,
+      kv,
+      loadSurfaces: async () => mixed,
+      probeSurface: (async () => ({
+        status: "ok",
+        classification: "live",
+        latency_ms: 10,
+        status_code: 200,
+      })) as never,
+      probeOptions: {},
+    });
+    const current = JSON.parse(
+      (await kv.get(KV_HEALTH_CURRENT)) as string,
+    ) as Row;
+    assert.deepEqual(
+      (current.surfaces as Row[]).map((r) => r.surface_id),
+      ["r1", "s1", "r2", "s2"],
     );
   });
 });

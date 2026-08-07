@@ -69,6 +69,60 @@ export const OPERATIONAL_SURFACES_PATH = "/metagraph/operational-surfaces.json";
 type Row = Record<string, unknown>;
 
 const PROBE_CONCURRENCY = 8;
+
+/**
+ * A surface's scheduling host — the thing that rate-limits us (#9904).
+ *
+ * Falls back to the raw url when it will not parse, so an unparseable entry
+ * groups with its identical twins rather than joining one giant "" bucket that
+ * would then be probed serially.
+ */
+export function probeHostKey(url: unknown): string {
+  try {
+    return normalizedHostname(new URL(String(url)).hostname);
+  } catch {
+    return String(url ?? "");
+  }
+}
+
+/**
+ * Surfaces grouped by host, longest group first, original order within a group.
+ *
+ * WHY THIS EXISTS. `mapLimit` is a flat worker pool over one cursor, so which
+ * surfaces are in flight together is decided purely by list order — and
+ * operational-surfaces.json is sorted `(netuid, surface_id)`
+ * (scripts/build-artifacts.ts), which puts a subnet's surfaces ADJACENT. All
+ * five `sn-62-ridges-*` share netuid 62, so all five hit
+ * agent-upload.ridges.ai inside one concurrency-8 window. The host answered
+ * 429, `classifyProbe` mapped that to `rate-limited`, `statusForClassification`
+ * to `degraded`, and we published a subnet as degraded for answering us.
+ *
+ * Measured 2026-08-07: every `rate-limited` verdict in production — 12 of them
+ * — sat on exactly two hosts (7 on api.taomarketcap.com, 5 on
+ * agent-upload.ridges.ai) and zero on the other 120. All 12 answered 200 to a
+ * single sequential request.
+ *
+ * The pool now walks GROUPS, not surfaces, and each worker drains its group
+ * serially — so exactly one request per host is ever in flight, by
+ * construction, without a lock.
+ *
+ * LONGEST FIRST because the sweep is now bounded by its largest group, not by
+ * total/concurrency: starting the 61-surface group last would strand it after
+ * the workers had nothing else to do. Measured over the 626 monitored surfaces:
+ * 122 distinct hosts, largest group 61, so this bounds the sweep at ~61
+ * sequential slots against the flat pool's ~78 — fewer, not more. 122 hosts
+ * also comfortably exceeds the 8 workers, so none idles.
+ */
+export function groupSurfacesByHost(surfaces: readonly Row[]): Row[][] {
+  const byHost = new Map<string, Row[]>();
+  for (const surface of surfaces) {
+    const host = probeHostKey(surface.url);
+    const group = byHost.get(host);
+    if (group) group.push(surface);
+    else byHost.set(host, [surface]);
+  }
+  return [...byHost.values()].sort((a, b) => b.length - a.length);
+}
 // Warn when a sweep nears the 15-minute Cron Trigger ceiling (~8 min = generous
 // headroom). Early signal to raise concurrency or shard before runs overlap.
 const PROBE_WALLTIME_WARN_MS = 8 * 60 * 1000;
@@ -537,7 +591,7 @@ export async function runHealthProber(
     priorStatus.set(row.surface_key || row.surface_id, row);
   }
 
-  const probed = await mapLimit(surfaces, concurrency, async (surface) => {
+  const probeOne = async (surface: Row): Promise<Row> => {
     const input: ProbeSurface = {
       id: surface.surface_id,
       netuid: surface.netuid,
@@ -643,6 +697,23 @@ export async function runHealthProber(
       // field on this object is inert for that writer.
       error: base.error ?? null,
     };
+  };
+
+  // One host per worker (#9904): the pool walks host groups and each worker
+  // drains its group serially, so no two concurrent requests share a host.
+  //
+  // Results are written back into their ORIGINAL slots rather than flattened in
+  // group order. `persistToKv` ranks the RPC pool off these rows, and reordering
+  // them would quietly reshuffle tie-breaks between equally-healthy endpoints —
+  // a scheduling change must not move which endpoint the proxy picks.
+  const probed: Row[] = new Array(surfaces.length);
+  const slotOf = new Map(
+    surfaces.map((surface, index) => [surface, index] as const),
+  );
+  await mapLimit(groupSurfacesByHost(surfaces), concurrency, async (group) => {
+    for (const surface of group) {
+      probed[slotOf.get(surface) as number] = await probeOne(surface);
+    }
   });
 
   sanitizeRpcLatestBlocks(probed);
