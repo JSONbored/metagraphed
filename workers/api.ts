@@ -287,6 +287,7 @@ import { handleFullnodeRpcProxyRequest } from "./request-handlers/fullnode-rpc-p
 import {
   buildChangeEvent,
   deliverChangeEvent,
+  deliveryRecordFor,
   deliveryStorageKey,
   deliveryStoragePrefix,
   eventMatchesFilters,
@@ -1854,9 +1855,13 @@ export async function handleWebhookQueue(
     // Unparseable is ACKED, not retried -- it will not parse on the eighth
     // attempt either, and the DLQ is more useful holding deliveries that might
     // still succeed. Same rule the sync-batches consumer follows.
+    // `event_id` is checked here too, not just by validWebhookDeliveryMessage:
+    // it keys the delivery record AND half the idempotency header, so a message
+    // without one cannot be reported on even if it delivers.
     if (
       !body ||
       typeof body.subscription_id !== "string" ||
+      typeof body.event_id !== "string" ||
       typeof body.body !== "string"
     ) {
       message.ack();
@@ -1922,26 +1927,35 @@ export async function handleWebhookQueue(
     // now), but the RECORD is not: this writes the outcome, it does not drive
     // anything. Best-effort, because a KV hiccup must not turn a delivered
     // event into a retried one.
+    //
+    // BUILT BY deliveryRecordFor, which sits next to the summariser that reads
+    // it. Spelling the record out here is what let the two drift apart into
+    // disjoint vocabularies while every test still passed.
+    const retryDelaySeconds = webhookRetryDelaySeconds(message.attempts);
+    const nowIso = new Date().toISOString();
     try {
       await env.METAGRAPH_CONTROL?.put?.(
         deliveryStorageKey(body.subscription_id, body.event_id),
-        JSON.stringify({
-          subscription_id: body.subscription_id,
-          event_id: body.event_id,
-          status: disposition === "retry" ? "parked" : disposition,
-          attempts: message.attempts,
-          last_status: (result?.status as string) ?? null,
-          updated_at: new Date().toISOString(),
-        }),
+        JSON.stringify(
+          deliveryRecordFor({
+            subscriptionId: body.subscription_id,
+            eventId: body.event_id,
+            result,
+            disposition,
+            attempts: message.attempts,
+            nowIso,
+            nextAttemptAt: new Date(
+              Date.parse(nowIso) + retryDelaySeconds * 1000,
+            ).toISOString(),
+          }),
+        ),
         { expirationTtl: WEBHOOK_DELIVERY_TTL_SECONDS },
       );
     } catch {
       /* status reporting must never change a delivery's disposition */
     }
     if (disposition === "retry") {
-      message.retry({
-        delaySeconds: webhookRetryDelaySeconds(message.attempts),
-      });
+      message.retry({ delaySeconds: retryDelaySeconds });
     } else {
       // Delivered, or terminal. A terminal failure acks so the platform routes
       // it to the dead-letter queue on the final attempt rather than spinning

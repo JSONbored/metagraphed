@@ -1171,6 +1171,188 @@ describe("webhook queue consumer: the terminal and transient edges", () => {
   });
 });
 
+describe("what the consumer writes is what the status surface reads", () => {
+  // THE GAP THIS CLOSES. Every other test in this file hand-seeds delivery
+  // records, so the consumer's ACTUAL output was never read back by the reader
+  // that serves it -- and the two had drifted into disjoint vocabularies. The
+  // consumer wrote {status, attempts, last_status, updated_at}; the summariser
+  // read {state, round, reason, status_code, last_attempt_at}. Nothing
+  // overlapped, so `dead_letter` was permanently 0, a fully delivered
+  // subscription reported "retrying", and every last_failure field was
+  // undefined -- all while these tests were green.
+  //
+  // So this drives the real consumer and then the real GET. No seeding.
+  async function deliverThen(
+    kv: ReturnType<typeof makeKv>,
+    subscriptionId: string,
+    result: Row,
+    attempts = 1,
+  ) {
+    const { handleWebhookQueue } = await import("../workers/api.ts");
+    await handleWebhookQueue(
+      {
+        messages: [
+          {
+            body: {
+              subscription_id: subscriptionId,
+              event_id: "evt_1",
+              body: JSON.stringify({ type: "metagraph.publish" }),
+            },
+            attempts,
+            ack: () => {},
+            retry: () => {},
+          },
+        ],
+      } as never,
+      envWith(kv) as unknown as Env,
+      { waitUntil: (p: Promise<unknown>) => void p } as never,
+      (async () => result) as never,
+    );
+  }
+
+  const deliveryOf = async (kv: ReturnType<typeof makeKv>, id: string) =>
+    (
+      await (
+        await handleRequest(
+          req(`/api/v1/webhooks/subscriptions/${id}`),
+          envWith(kv) as unknown as Env,
+          {},
+        )
+      ).json()
+    ).data.delivery;
+
+  test("a delivered event reports ok, not retrying", async () => {
+    // The loudest symptom: a subscription whose every event landed reported
+    // `retrying`, with a pending count equal to its recent history, because a
+    // delivered record fell through to `pending` in the summariser's else.
+    const kv = makeKv();
+    const sub = await seedSubscription(kv, "https://hooks.example.com/a");
+    await deliverThen(kv, sub.id, { status: "delivered", status_code: 200 });
+
+    assert.deepEqual(await deliveryOf(kv, sub.id), {
+      status: "ok",
+      pending: 0,
+      dead_letter: 0,
+      last_failure: null,
+    });
+  });
+
+  test("a terminal failure reports dead_letter, with the reason it failed for", async () => {
+    // `dead_letter` could never be non-zero: the summariser tested
+    // `record.state === "dead"` against a record that carried no `state`.
+    const kv = makeKv();
+    const sub = await seedSubscription(kv, "https://hooks.example.com/a");
+    await deliverThen(kv, sub.id, {
+      status: "failed",
+      reason: "http-400",
+      status_code: 400,
+      retryable: false,
+    });
+
+    const delivery = await deliveryOf(kv, sub.id);
+    assert.equal(delivery.status, "dead_letter");
+    assert.equal(delivery.dead_letter, 1);
+    assert.equal(delivery.pending, 0);
+    assert.equal(delivery.last_failure.event_id, "evt_1");
+    assert.equal(delivery.last_failure.reason, "http-400");
+    assert.equal(delivery.last_failure.status_code, 400);
+    assert.equal(delivery.last_failure.state, "dead");
+    assert.equal(
+      delivery.last_failure.next_attempt_at,
+      null,
+      "a terminal record has no next attempt",
+    );
+  });
+
+  test("a retryable failure reports retrying, and when it will be retried", async () => {
+    const kv = makeKv();
+    const sub = await seedSubscription(kv, "https://hooks.example.com/a");
+    await deliverThen(
+      kv,
+      sub.id,
+      { status: "failed", reason: "timeout", retryable: true },
+      2,
+    );
+
+    const delivery = await deliveryOf(kv, sub.id);
+    assert.equal(delivery.status, "retrying");
+    assert.equal(delivery.pending, 1);
+    assert.equal(delivery.dead_letter, 0);
+    assert.equal(delivery.last_failure.reason, "timeout");
+    assert.equal(delivery.last_failure.attempts, 2, "the queue's own counter");
+    // 5 min doubling per attempt: the second attempt waits 10 minutes.
+    assert.equal(
+      Date.parse(delivery.last_failure.next_attempt_at) -
+        Date.parse(delivery.last_failure.last_attempt_at),
+      10 * 60 * 1000,
+    );
+  });
+
+  test("a delivered event does not become the reported last_failure", async () => {
+    // It is named last_FAILURE. Picking the most recent record of any kind made
+    // a success overwrite the failure a subscriber is trying to debug.
+    const kv = makeKv();
+    const sub = await seedSubscription(kv, "https://hooks.example.com/a");
+    await deliverThen(kv, sub.id, {
+      status: "failed",
+      reason: "http-500",
+      status_code: 500,
+      retryable: false,
+    });
+    // A later event, delivered. Written under its own key, so both records live.
+    kv.store.set(
+      `webhooks:delivery:${sub.id}:evt_2`,
+      JSON.stringify({
+        subscription_id: sub.id,
+        event_id: "evt_2",
+        state: "delivered",
+        round: 1,
+        reason: null,
+        status_code: 200,
+        last_attempt_at: "2099-01-01T00:00:00.000Z",
+        next_attempt_at: null,
+      }),
+    );
+
+    const delivery = await deliveryOf(kv, sub.id);
+    assert.equal(delivery.last_failure.event_id, "evt_1");
+    assert.equal(delivery.dead_letter, 1);
+    assert.equal(delivery.pending, 0, "the delivered one is neither");
+  });
+
+  test("a message with no event_id is acked, not recorded under undefined", async () => {
+    // The record key is (subscription, event); without an event id there is
+    // nothing to key on, and the delivery could never be reported even if it
+    // succeeded.
+    const kv = makeKv();
+    const sub = await seedSubscription(kv, "https://hooks.example.com/a");
+    const acts: string[] = [];
+    const { handleWebhookQueue } = await import("../workers/api.ts");
+    await handleWebhookQueue(
+      {
+        messages: [
+          {
+            body: {
+              subscription_id: sub.id,
+              body: JSON.stringify({ type: "metagraph.publish" }),
+            },
+            attempts: 1,
+            ack: () => acts.push("ack"),
+            retry: () => acts.push("retry"),
+          },
+        ],
+      } as never,
+      envWith(kv) as unknown as Env,
+      { waitUntil: (p: Promise<unknown>) => void p } as never,
+    );
+    assert.deepEqual(acts, ["ack"]);
+    assert.equal(
+      [...kv.store.keys()].some((key) => key.includes("undefined")),
+      false,
+    );
+  });
+});
+
 describe("the webhook cron trigger (metagraphed-infra#354)", () => {
   // Delivery used to be a step inside the publish workflow, downstream of every
   // other step -- so when the live-API smoke check broke on 2026-08-02,
