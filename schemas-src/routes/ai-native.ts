@@ -23,8 +23,15 @@ export const AskCitationSchema = z
     ref: z.int().min(1),
     score: z.number(),
     title: z.string(),
-    netuid: z.int().min(0),
-    slug: z.string(),
+    // NULL for a provider document (#9903). The retrieval index holds three
+    // kinds of document -- subnets, their surfaces, and the PROVIDER teams
+    // behind them -- and a team is not a subnet, so it has neither. Declared
+    // non-nullable until now, which made half of a live `ask` response fail
+    // the contract we publish for it. The MCP copies of this shape already
+    // declared both nullable and were right; this is the canonical source
+    // catching up, not a loosening.
+    netuid: z.int().min(0).nullable(),
+    slug: z.string().nullable(),
     url: z.string(),
   })
   .strict();
@@ -61,10 +68,14 @@ export type AskQuery = z.infer<typeof AskQuerySchema>;
 export const SemanticSearchResultSchema = z
   .object({
     score: z.number(),
-    /** What was matched — a subnet, or one of its surfaces. */
+    /**
+     * What was matched — a subnet, one of its surfaces, or a PROVIDER (the
+     * team behind them). The third case is why the two fields below are
+     * nullable: a team has no netuid and no slug (#9903).
+     */
     type: z.string(),
-    netuid: z.int().min(0),
-    slug: z.string(),
+    netuid: z.int().min(0).nullable(),
+    slug: z.string().nullable(),
     title: z.string(),
     subtitle: z.string().nullable().optional(),
     url: z.string().nullable().optional(),

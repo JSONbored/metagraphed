@@ -5752,10 +5752,10 @@ export interface components {
         AskArtifact: {
             answer: string;
             citations: {
-                netuid: number;
+                netuid: number | null;
                 ref: number;
                 score: number;
-                slug: string;
+                slug: string | null;
                 title: string;
                 url: string;
             }[];
@@ -9867,10 +9867,10 @@ export interface components {
             query: string;
             results: ({
                 categories: string[];
-                netuid: number;
+                netuid: number | null;
                 score: number;
                 service_kinds: string[];
-                slug: string;
+                slug: string | null;
                 subtitle?: string | null;
                 title: string;
                 type: string;
