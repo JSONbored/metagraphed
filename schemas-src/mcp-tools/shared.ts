@@ -455,6 +455,56 @@ export const NeuronFieldsInputSchema = z
   )
   .optional();
 
+// --- sorting the Neuron row (#9872) -----------------------------------------
+//
+// Derived from NeuronSchema the same way NEURON_FIELD_NAMES above is, and for
+// the same reason: a numeric field added to the contract becomes sortable the
+// day it lands, with no second list to remember. The predicate is "what is
+// this field's type once optional/nullable are peeled off" -- `incentive` is
+// declared `z.number().nullable().optional()`, so a bare `.def.type` check
+// would see "optional" and conclude nothing is sortable.
+//
+// Every numeric field qualifies, including the ones where most rows are null
+// (`rank` is assigned only to non-zero-incentive neurons; the immunity fields
+// exist only inside the immunity window). Excluding them would be a judgment
+// call baked into a list, which is the thing this derivation exists to avoid
+// -- and the null-ordering rule below makes them behave predictably anyway.
+function neuronFieldBaseType(schema: unknown): string {
+  let cur = schema as {
+    _zod?: { def?: { type?: string; innerType?: unknown } };
+  };
+  // optional/nullable/default nest at most a few deep in practice; the bound
+  // makes a malformed schema return "" rather than spin.
+  for (let depth = 0; depth < 8; depth += 1) {
+    const type = cur?._zod?.def?.type;
+    if (type === "optional" || type === "nullable" || type === "default") {
+      cur = cur._zod!.def!.innerType as typeof cur;
+      continue;
+    }
+    return type ?? "";
+  }
+  return "";
+}
+
+/** Every numeric field of the published Neuron contract, in declaration order. */
+export const NEURON_SORT_FIELD_NAMES = Object.entries(NeuronSchema.shape)
+  .filter(([, schema]) => neuronFieldBaseType(schema) === "number")
+  .map(([name]) => name) as [string, ...string[]];
+
+/**
+ * `null` sorts LAST in both directions, deliberately.
+ *
+ * A null here means "this neuron has no value for that field" -- unranked,
+ * outside its immunity window, no Delegates entry -- not "the lowest value".
+ * Ordering ascending would otherwise put the entire unranked population ahead
+ * of rank 1, which reads as a leaderboard and is the opposite of the truth.
+ */
+export const NEURON_SORT_NULLS_LAST_NOTE =
+  "Rows whose sort field is null are returned LAST in both directions — a " +
+  "null means the neuron has no value for that field (unranked, outside " +
+  "immunity, no delegate take), never a low one. Ties break by `uid` " +
+  "ascending, so the order is stable across calls.";
+
 // ---------------------------------------------------------------------------
 // The paginated-list projection (#9796).
 //

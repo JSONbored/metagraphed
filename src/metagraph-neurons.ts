@@ -90,6 +90,119 @@ export function projectNeuronPayload<T extends Row>(
   return projected as T;
 }
 
+// --- row selection over a metagraph payload (#9872) -------------------------
+//
+// Lives here for the same reason the `fields=` projection above does: the row
+// shape is shared, so the logic that narrows it should be too rather than
+// growing a copy at each call site.
+//
+// Applied AFTER the snapshot is fetched, not pushed into the tier query. That
+// is not a shortcut -- the cost this closes is the RESPONSE, not the read. An
+// agent asking "what incentive does hotkey X have" was paying ~24k tokens to
+// receive 256 rows it then filtered itself; the fetch was never the part it
+// could see. `list_subnet_validators`'s `limit`/`min_stake_tao` already work
+// this way, with the same trade-off written down at its handler.
+
+export interface NeuronSelection {
+  hotkeys?: string[] | null;
+  active?: boolean | null;
+  minIncentive?: number | null;
+  sortBy?: string | null;
+  order?: "asc" | "desc" | null;
+  limit?: number | null;
+}
+
+/** True when a selection would do anything at all. */
+function selectsAnything(selection: NeuronSelection): boolean {
+  return (
+    (selection.hotkeys?.length ?? 0) > 0 ||
+    selection.active != null ||
+    selection.minIncentive != null ||
+    selection.limit != null
+  );
+}
+
+// A null/absent sort value orders LAST in both directions -- see
+// NEURON_SORT_NULLS_LAST_NOTE for why "unranked" must not read as "rank
+// worst". Non-numeric values (a D1 numeric string that escaped coercion)
+// take the same branch: unorderable is unorderable.
+function sortValue(row: Row, field: string): number | null {
+  const raw = row[field];
+  return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
+}
+
+function compareNeurons(a: Row, b: Row, field: string, desc: boolean): number {
+  const left = sortValue(a, field);
+  const right = sortValue(b, field);
+  if (left === null || right === null) {
+    if (left === right) return uidTiebreak(a, b);
+    return left === null ? 1 : -1;
+  }
+  if (left !== right) return desc ? right - left : left - right;
+  return uidTiebreak(a, b);
+}
+
+// Stable, and stable on the field a caller can actually see: relying on
+// Array#sort's stability would tie the published order to the snapshot's
+// arrival order, which is not a promise this tool makes.
+function uidTiebreak(a: Row, b: Row): number {
+  const left = typeof a.uid === "number" ? a.uid : Number.MAX_SAFE_INTEGER;
+  const right = typeof b.uid === "number" ? b.uid : Number.MAX_SAFE_INTEGER;
+  return left - right;
+}
+
+/**
+ * Filter, sort and cap a metagraph payload's `neurons`.
+ *
+ * Returns the payload untouched when the selection is empty, so an unfiltered
+ * call stays byte-identical -- including the absence of `total_neuron_count`,
+ * whose whole job is to mark a response that is NOT the whole snapshot.
+ */
+export function selectNeuronRows<T extends Row>(
+  data: T,
+  selection: NeuronSelection,
+): T {
+  const rows = Array.isArray(data?.neurons) ? (data.neurons as Row[]) : null;
+  if (!rows) return data;
+  const sortBy = selection.sortBy ?? null;
+  if (!selectsAnything(selection) && !sortBy) return data;
+
+  const wanted = selection.hotkeys?.length ? new Set(selection.hotkeys) : null;
+  let selected = rows.filter((row) => {
+    if (wanted && !(typeof row.hotkey === "string" && wanted.has(row.hotkey))) {
+      return false;
+    }
+    if (selection.active != null && row.active !== selection.active) {
+      return false;
+    }
+    if (selection.minIncentive != null) {
+      // A null incentive never clears a floor -- "no value" is not "below
+      // the bar", and admitting it would make min_incentive:0 a no-op that
+      // silently kept rows the caller was filtering for.
+      if (typeof row.incentive !== "number") return false;
+      if (row.incentive < selection.minIncentive) return false;
+    }
+    return true;
+  });
+
+  if (sortBy) {
+    const desc = (selection.order ?? "desc") === "desc";
+    selected = [...selected].sort((a, b) => compareNeurons(a, b, sortBy, desc));
+  }
+  if (selection.limit != null) selected = selected.slice(0, selection.limit);
+
+  const narrowed = selected.length !== rows.length;
+  return {
+    ...data,
+    neuron_count: selected.length,
+    // Only when rows were actually removed: on an unnarrowed response the
+    // field would be a duplicate of neuron_count, and its presence is the
+    // signal that neuron_count is not the subnet's size.
+    ...(narrowed ? { total_neuron_count: rows.length } : {}),
+    neurons: selected,
+  } as T;
+}
+
 // The columns the handlers SELECT for a neuron row.
 export const NEURON_COLUMNS =
   "uid, hotkey, coldkey, active, validator_permit, rank, trust, validator_trust, " +
