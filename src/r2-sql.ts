@@ -315,6 +315,35 @@ function failureClassification(
 const RATE_LIMITED_CODE = "rate_limited";
 
 /**
+ * The failure codes that are CAPACITY, not correctness (#9900).
+ *
+ * Each of these means the engine (or this module's own breaker) declined to
+ * answer right now -- an account-level rate limit, a query that ran past its
+ * ceiling, a call the breaker never sent. None of them indicates a defect in
+ * this code, and between them they were ~49.5K events/month against a 100K
+ * error-tracking free tier, measured 2026-08-03..04.
+ *
+ * They are still recorded, with identical attribution, as `usage_event`s
+ * (`expected: true`) -- see ExceptionEvent.expected. An r2-sql rate-limit
+ * storm remains just as visible; it stops being billed as an error.
+ *
+ * DELIBERATELY NOT LISTED: `http_422`. A scan-budget or malformed-query
+ * rejection means a query in THIS repo needs fixing, which is precisely what
+ * the error inbox is for -- and at ~7K/month it is affordable. Capacity and
+ * correctness are different facts, and only one of them is somebody's bug.
+ */
+const EXPECTED_FAILURE_CODES: ReadonlySet<string> = new Set([
+  "timeout",
+  "http_429",
+  RATE_LIMITED_CODE,
+]);
+
+/** Whether a classified r2-sql failure is an expected capacity condition. */
+export function isExpectedR2SqlFailure(errorCode: string): boolean {
+  return EXPECTED_FAILURE_CODES.has(errorCode);
+}
+
+/**
  * Run one read-only query and return its rows, or null on ANY failure.
  *
  * `sql` is built by the caller from validated, non-caller-controlled pieces —
@@ -439,6 +468,11 @@ export async function r2SqlQuery(
       errorCode,
       queryKind,
       queryShape: r2SqlQueryShape(sql),
+      // Capacity conditions (timeout, 429, breaker) are recorded as counted
+      // usage events instead of exceptions -- same route, same error_code,
+      // same query attribution, different product. See
+      // EXPECTED_FAILURE_CODES for why 422 is pointedly absent.
+      expected: isExpectedR2SqlFailure(errorCode),
     });
     return null;
   } finally {

@@ -73,6 +73,15 @@
     "NETWORKS": "finney,test",
     "MAX_BLOCK_LAG": "50",
     "HANDSHAKE_TIMEOUT_MS": "5000",
+    // Set HERE, ahead of the token, on purpose (#9900). `vars` are replaced
+    // wholesale per deploy, so this knob is per-config -- and an UNSET value
+    // parses to 0, which is the guard's DISABLED sentinel, not a default
+    // window. This config was the only backend one missing it, which meant
+    // the day someone ran the `wrangler secret put` above, capture would
+    // switch on with the storm guard OFF, on the Worker fronting every WSS
+    // connection. Configuring the guard first makes setting that token safe
+    // rather than a quota hazard.
+    "POSTHOG_EXCEPTION_STORM_WINDOW_MS": "300000",
   },
   // Per-IP connect control, carrying over the Railway service's CONNECT_RATE_LIMIT
   // (30 attempts / 60s). Its OTHER budget -- MAX_CONNECTIONS_PER_IP, a concurrent

@@ -8,6 +8,8 @@ import {
   USAGE_EVENT_DISTINCT_ID,
   USAGE_EVENT_NAME,
   admitExceptionCapture,
+  admitExceptionCaptureShared,
+  EXCEPTION_STORM_KV_PREFIX,
   isBenignPlatformMessage,
   MCP_PROTOCOL_ROUTE_PREFIX,
   classifyMcpErrorType,
@@ -2880,5 +2882,312 @@ describe("every recorder stamps the deployment dimensions", () => {
       recorders.length,
       `recorders covered: ${recorders.length}, exported: ${exported.join(", ")}`,
     );
+  });
+});
+
+// ─── #9900: the cross-isolate storm gate, and expected-condition routing ────
+
+/** A KV double exposing only the two methods the shared gate touches. */
+function kvDouble(
+  seed: Record<string, string> = {},
+  hooks: { onGet?: () => void; onPut?: () => void } = {},
+) {
+  const store = new Map(Object.entries(seed));
+  const puts: { key: string; value: string; ttl?: number }[] = [];
+  return {
+    puts,
+    store,
+    METAGRAPH_CONTROL: {
+      get: async (key: string) => {
+        hooks.onGet?.();
+        return store.get(key) ?? null;
+      },
+      put: async (
+        key: string,
+        value: string,
+        options?: { expirationTtl?: number },
+      ) => {
+        hooks.onPut?.();
+        puts.push({ key, value, ttl: options?.expirationTtl });
+        store.set(key, value);
+      },
+    },
+  };
+}
+
+const STORM_ON = {
+  [POSTHOG_PROJECT_TOKEN_ENV]: "phc_token",
+  [POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV]: "300000",
+};
+
+describe("admitExceptionCaptureShared (#9900)", () => {
+  test("admits when the guard is disabled (window 0), without touching KV", async () => {
+    let touched = false;
+    const kv = kvDouble({}, { onGet: () => (touched = true) });
+    const env = mockEnv({
+      ...kv,
+      [POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV]: "0",
+    });
+    assert.equal(await admitExceptionCaptureShared(env, "r:Error"), 0);
+    assert.equal(touched, false, "a disabled guard must not spend a KV read");
+  });
+
+  test("admits when no KV is bound -- degrades to local-only, never to silence", async () => {
+    assert.equal(
+      await admitExceptionCaptureShared(mockEnv(STORM_ON), "r:Error"),
+      0,
+    );
+  });
+
+  test("holds the emission when another isolate already reported this fingerprint", async () => {
+    const kv = kvDouble({ [`${EXCEPTION_STORM_KV_PREFIX}r:Error`]: "1700" });
+    const env = mockEnv({ ...STORM_ON, ...kv });
+    assert.equal(await admitExceptionCaptureShared(env, "r:Error"), null);
+    assert.equal(
+      kv.puts.length,
+      0,
+      "a suppressed occurrence must cost no write",
+    );
+  });
+
+  test("admits the first sighting and opens the window with a TTL equal to it", async () => {
+    const kv = kvDouble();
+    const env = mockEnv({ ...STORM_ON, ...kv });
+    assert.equal(
+      await admitExceptionCaptureShared(env, "r:Error", { now: () => 42 }),
+      0,
+    );
+    assert.deepEqual(kv.puts, [
+      { key: `${EXCEPTION_STORM_KV_PREFIX}r:Error`, value: "42", ttl: 300 },
+    ]);
+  });
+
+  test("a second isolate is held by the key the first one wrote", async () => {
+    const kv = kvDouble();
+    const env = mockEnv({ ...STORM_ON, ...kv });
+    assert.equal(await admitExceptionCaptureShared(env, "same:Error"), 0);
+    assert.equal(
+      await admitExceptionCaptureShared(env, "same:Error"),
+      null,
+      "this is the whole point: a fresh isolate's first sighting is still held",
+    );
+  });
+
+  test("clamps the TTL up to KV's 60s floor rather than rejecting a short window", async () => {
+    const kv = kvDouble();
+    const env = mockEnv({
+      ...STORM_ON,
+      [POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV]: "5000",
+      ...kv,
+    });
+    assert.equal(await admitExceptionCaptureShared(env, "r:Error"), 0);
+    assert.equal(kv.puts[0]?.ttl, 60);
+  });
+
+  test("rounds a fractional-second window UP, never down to a shorter window", async () => {
+    const kv = kvDouble();
+    const env = mockEnv({
+      ...STORM_ON,
+      [POSTHOG_EXCEPTION_STORM_WINDOW_MS_ENV]: "300500",
+      ...kv,
+    });
+    await admitExceptionCaptureShared(env, "r:Error");
+    assert.equal(kv.puts[0]?.ttl, 301);
+  });
+
+  test("fails OPEN when the KV read throws", async () => {
+    const kv = kvDouble(
+      {},
+      {
+        onGet: () => {
+          throw new Error("kv down");
+        },
+      },
+    );
+    const env = mockEnv({ ...STORM_ON, ...kv });
+    assert.equal(await admitExceptionCaptureShared(env, "r:Error"), 0);
+  });
+
+  test("fails OPEN when the KV write throws", async () => {
+    const kv = kvDouble(
+      {},
+      {
+        onPut: () => {
+          throw new Error("kv down");
+        },
+      },
+    );
+    const env = mockEnv({ ...STORM_ON, ...kv });
+    assert.equal(await admitExceptionCaptureShared(env, "r:Error"), 0);
+  });
+
+  test("admits when the binding exists but lacks the methods (partial stub)", async () => {
+    const env = mockEnv({ ...STORM_ON, METAGRAPH_CONTROL: {} });
+    assert.equal(await admitExceptionCaptureShared(env, "r:Error"), 0);
+  });
+});
+
+describe("recordExceptionEvent honors the shared gate (#9900)", () => {
+  test("a fingerprint held fleet-wide sends nothing", async () => {
+    let calls = 0;
+    const sent = await recordExceptionEvent(
+      mockEnv(STORM_ON),
+      { error: new Error("boom"), route: "shared-held" },
+      {
+        fetch: (async () => {
+          calls += 1;
+          return { ok: true } as Response;
+        }) as unknown as typeof fetch,
+        admitShared: async () => null,
+      },
+    );
+    assert.equal(sent, false);
+    assert.equal(calls, 0, "held means not captured, not captured-and-dropped");
+  });
+
+  test("a fingerprint the shared gate admits is captured as usual", async () => {
+    let body: Row | undefined;
+    const sent = await recordExceptionEvent(
+      mockEnv(STORM_ON),
+      { error: new Error("boom"), route: "shared-admitted" },
+      {
+        fetch: (async (_url: string, init: Row) => {
+          body = JSON.parse(init.body as string) as Row;
+          return { ok: true } as Response;
+        }) as unknown as typeof fetch,
+        admitShared: async () => 0,
+      },
+    );
+    assert.equal(sent, true);
+    assert.equal(body?.event, "$exception");
+  });
+});
+
+describe("expected conditions bill as usage events, not exceptions (#9900)", () => {
+  test("emits usage_event carrying the identical attribution, not $exception", async () => {
+    let body: Row | undefined;
+    const sent = await recordExceptionEvent(
+      mockEnv(STORM_ON),
+      {
+        error: new Error("r2 sql: HTTP 429"),
+        route: "r2-sql",
+        errorCode: "http_429",
+        queryKind: "chain.account_events",
+        queryShape: "SELECT * FROM t WHERE a = ?",
+        expected: true,
+      },
+      {
+        fetch: (async (_url: string, init: Row) => {
+          body = JSON.parse(init.body as string) as Row;
+          return { ok: true } as Response;
+        }) as unknown as typeof fetch,
+        admitShared: async () => 0,
+      },
+    );
+
+    assert.equal(sent, true);
+    assert.equal(body?.event, USAGE_EVENT_NAME);
+    assert.notEqual(body?.event, "$exception");
+    const props = body?.properties as Row;
+    assert.equal(props.expected, true);
+    assert.equal(props.ok, false);
+    assert.equal(props.route, "r2-sql");
+    assert.equal(props.error_code, "http_429");
+    assert.equal(props.query_kind, "chain.account_events");
+    assert.equal(props.query_shape, "SELECT * FROM t WHERE a = ?");
+    assert.equal(
+      props.$exception_list,
+      undefined,
+      "an expected condition must not carry exception-shaped payload",
+    );
+    assert.equal(
+      props.duration_ms,
+      0,
+      "an outcome report must not pollute latency percentiles",
+    );
+  });
+
+  test("still passes through the storm guard", async () => {
+    let calls = 0;
+    const fetchStub = (async () => {
+      calls += 1;
+      return { ok: true } as Response;
+    }) as unknown as typeof fetch;
+    const env = mockEnv(STORM_ON);
+    const event: ExceptionEvent = {
+      error: new Error("declined"),
+      route: "projection:guarded-lane",
+      expected: true,
+    };
+    assert.equal(
+      await recordExceptionEvent(env, event, {
+        fetch: fetchStub,
+        admitShared: async () => 0,
+      }),
+      true,
+    );
+    assert.equal(
+      await recordExceptionEvent(env, event, {
+        fetch: fetchStub,
+        admitShared: async () => 0,
+      }),
+      false,
+      "the local map holds the second occurrence inside the window",
+    );
+    assert.equal(calls, 1);
+  });
+
+  test("a benign platform message is still dropped before the expected branch", async () => {
+    let calls = 0;
+    const sent = await recordExceptionEvent(
+      mockEnv(STORM_ON),
+      {
+        error: new Error("Durable Object reset because its code was updated"),
+        route: "expected-benign",
+        expected: true,
+      },
+      {
+        fetch: (async () => {
+          calls += 1;
+          return { ok: true } as Response;
+        }) as unknown as typeof fetch,
+        admitShared: async () => 0,
+      },
+    );
+    assert.equal(sent, false);
+    assert.equal(calls, 0);
+  });
+});
+
+describe("usageEventProperties #9900 dimensions", () => {
+  test("omits all three when absent, so existing payloads are byte-identical", () => {
+    const props = usageEventProperties({ ok: true, durationMs: 5 });
+    assert.equal(props?.expected, undefined);
+    assert.equal(props?.query_kind, undefined);
+    assert.equal(props?.query_shape, undefined);
+  });
+
+  test("emits expected only when strictly true", () => {
+    assert.equal(
+      usageEventProperties({ ok: false, durationMs: 0, expected: false })
+        ?.expected,
+      undefined,
+    );
+    assert.equal(
+      usageEventProperties({ ok: false, durationMs: 0, expected: true })
+        ?.expected,
+      true,
+    );
+  });
+
+  test("carries query attribution through", () => {
+    const props = usageEventProperties({
+      ok: false,
+      durationMs: 0,
+      queryKind: "chain.blocks",
+      queryShape: "SELECT 1",
+    });
+    assert.equal(props?.query_kind, "chain.blocks");
+    assert.equal(props?.query_shape, "SELECT 1");
   });
 });

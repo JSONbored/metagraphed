@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { afterEach, describe, test } from "vitest";
 import {
   currentR2SqlFailureGeneration,
+  isExpectedR2SqlFailure,
   isR2SqlConfigured,
   r2SqlQuery,
   r2SqlQueryKind,
@@ -908,5 +909,71 @@ describe("r2SqlQueryShape — the precise half of the attribution", () => {
       r2SqlQueryShape("SELECT ss58, net_flow_7d FROM chain.account_events"),
       "SELECT ss58, net_flow_7d FROM chain.account_events",
     );
+  });
+});
+
+// ─── #9900: capacity failures are counted, not billed as errors ─────────────
+
+describe("isExpectedR2SqlFailure (#9900)", () => {
+  test("capacity conditions are expected", () => {
+    for (const code of ["timeout", "http_429", "rate_limited"]) {
+      assert.equal(isExpectedR2SqlFailure(code), true, code);
+    }
+  });
+
+  test("correctness failures are NOT expected -- they are somebody's bug", () => {
+    // http_422 is the load-bearing case: a scan-budget or malformed-query
+    // rejection means a query in this repo needs fixing, and the error inbox
+    // is exactly where that belongs.
+    for (const code of [
+      "http_422",
+      "http_500",
+      "engine_40006",
+      "engine",
+      "transport",
+      "",
+    ]) {
+      assert.equal(isExpectedR2SqlFailure(code), false, code);
+    }
+  });
+});
+
+describe("r2SqlQuery marks capacity failures expected (#9900)", () => {
+  test("a 429 is recorded as an expected condition, with attribution intact", async () => {
+    const { impl } = jsonFetch({}, false, 429);
+    const captured: {
+      route?: string;
+      errorCode?: string;
+      expected?: boolean;
+    }[] = [];
+    const rows = await r2SqlQuery(mockEnv(TOKEN), "SELECT 1", {
+      fetch: impl,
+      recordException: (async (_e: unknown, ev: Record<string, unknown>) => {
+        captured.push(ev);
+        return true;
+      }) as never,
+    });
+    assert.equal(rows, null);
+    assert.equal(captured[0]?.expected, true);
+    assert.equal(captured[0]?.errorCode, "http_429");
+    assert.equal(
+      captured[0]?.route,
+      "r2-sql",
+      "route is unchanged, so the condition stays queryable exactly as before",
+    );
+  });
+
+  test("a 422 stays a real exception", async () => {
+    const { impl } = jsonFetch({}, false, 422);
+    const captured: { expected?: boolean; errorCode?: string }[] = [];
+    await r2SqlQuery(mockEnv(TOKEN), "SELECT 1", {
+      fetch: impl,
+      recordException: (async (_e: unknown, ev: Record<string, unknown>) => {
+        captured.push(ev);
+        return true;
+      }) as never,
+    });
+    assert.equal(captured[0]?.expected, false);
+    assert.equal(captured[0]?.errorCode, "http_422");
   });
 });

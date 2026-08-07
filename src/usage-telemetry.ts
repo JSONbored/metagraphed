@@ -346,6 +346,24 @@ export interface UsageEvent {
   // NEVER a caller-derived value or free-form error message. Only meaningful
   // when `ok` is false; omitted (not just falsy) for a successful call.
   errorCode?: string;
+  /**
+   * #9900: marks a failure this system EXPECTS and already handles -- an R2
+   * SQL 429 or timeout, a projection lane declining to compute. Set only by
+   * `recordExceptionEvent`'s expected-condition path; it is what lets a query
+   * separate "we are being rate-limited" from "a route broke", both of which
+   * are `ok: false`.
+   */
+  expected?: boolean;
+  /**
+   * #9900: query attribution carried over from `ExceptionEvent` when an
+   * expected query-engine failure is recorded here instead of as an
+   * exception. Same meaning as the fields of the same name on
+   * `ExceptionEvent` -- without them, moving r2-sql's 429s and timeouts off
+   * the error product would have silently discarded the per-query
+   * attribution #9459 added.
+   */
+  queryKind?: string;
+  queryShape?: string;
 }
 
 /** Public capture endpoint, appended to the resolved PostHog host. */
@@ -359,6 +377,11 @@ export interface RecordUsageEventDeps {
   /** Injectable [0,1) source for the sampling gate (tests) -- keeps a
    * sampled deployment's behavior deterministic under assertion. */
   random?: () => number;
+  /** Injectable cross-isolate storm gate (#9900). Same reason
+   * `admitExceptionCapture` is exported: "was it held by the FLEET-wide
+   * gate" is otherwise indistinguishable from "was it held locally" or
+   * "was it a no-op", and the distinction is the entire point of the fix. */
+  admitShared?: typeof admitExceptionCaptureShared;
 }
 
 // #8963: best-effort client identity from the User-Agent, for the tool calls
@@ -450,6 +473,17 @@ export function usageEventProperties(
 
   const authTier = sanitizeLabel(event.authTier);
   if (authTier !== undefined) properties.auth_tier = authTier;
+
+  // #9900 dimensions. Same omitted-not-defaulted contract as everything
+  // above: an ordinary usage event's payload is byte-for-byte unchanged, so
+  // every pre-existing query keeps working.
+  if (event.expected === true) properties.expected = true;
+
+  const queryKind = sanitizeLabel(event.queryKind);
+  if (queryKind !== undefined) properties.query_kind = queryKind;
+
+  const queryShape = sanitizeLabel(event.queryShape);
+  if (queryShape !== undefined) properties.query_shape = queryShape;
 
   return properties;
 }
@@ -1144,6 +1178,31 @@ export interface ExceptionEvent {
    */
   queryKind?: string;
   queryShape?: string;
+  /**
+   * This failure is an EXPECTED operational condition, not a code defect.
+   *
+   * Set it and the occurrence is recorded as a `usage_event` (`ok: false`,
+   * carrying the identical `route` / `error_code` / `query_kind` /
+   * `query_shape` attribution) instead of an `$exception`. It stays just as
+   * queryable -- it simply stops being billed against error tracking.
+   *
+   * WHY THIS DISTINCTION EARNS ITS KEEP. Error tracking's free tier is 100K
+   * events/month, the tightest budget in this project; product analytics is
+   * 1M and currently runs at ~40% of it. Three sources measured over
+   * 2026-08-03..04 accounted for ~82K/month of the 100K, and not one of them
+   * was a bug: R2 SQL answering HTTP 429 (an ACCOUNT-level rate limit),
+   * an R2 SQL query hitting its timeout ceiling, and a projection lane
+   * declining to compute (an outcome `runProjectionLane` already returns as
+   * `reason: "compute_declined"` and handles by leaving the previous artifact
+   * in place). Capturing those as exceptions crowded real faults out of the
+   * inbox and spent the budget that exists to report them.
+   *
+   * This is NOT a mute. The condition must remain visible -- a projection
+   * lane that goes permanently dark, or an r2-sql rate-limit storm, are real
+   * operational facts and a watchdog is entitled to see them. Moving product,
+   * not dropping signal, is the whole point.
+   */
+  expected?: boolean;
 }
 
 // ─── $exception storm guard ────────────────────────────────────────────────
@@ -1248,6 +1307,86 @@ export function admitExceptionCapture(
   }
   state.suppressed += 1;
   return null;
+}
+
+/** KV key prefix for the cross-isolate half of the storm guard. */
+export const EXCEPTION_STORM_KV_PREFIX = "exception-storm:";
+
+// Workers KV's own floor for `expirationTtl`. A shorter storm window is legal
+// (and the tests use one), so the TTL is clamped up to this rather than
+// rejected -- a guard that throws on a valid config would be worse than one
+// that holds its key slightly longer than asked.
+const KV_MIN_EXPIRATION_TTL_SECONDS = 60;
+
+/**
+ * The cross-isolate half of the storm guard: has THIS fingerprint already
+ * been reported anywhere in the fleet inside the current window?
+ *
+ * Returns 0 when the caller may emit, or null when it must be held.
+ *
+ * WHY THE LOCAL MAP WAS NEVER ENOUGH (#9900). `admitExceptionCapture` above
+ * throttles on a module-scope `Map`, which in a Worker is PER-ISOLATE state.
+ * Cloudflare recycles isolates constantly, so a fault that recurs across
+ * short-lived isolates arrives as a "first sighting" nearly every time -- and
+ * a first sighting is admitted unconditionally. That is not a theory: across
+ * 6,137 `$exception` events on 2026-08-03..04, exactly ONE carried
+ * `suppressed_occurrences`. It is also why widening the window 60s -> 300s in
+ * #9453 changed nothing for the three loudest sources; the window was never
+ * the binding constraint, the isolate boundary was.
+ *
+ * PRESENCE IS THE WINDOW. The key holds no state -- it is written with an
+ * `expirationTtl` equal to the storm window, so KV expiring it IS the window
+ * closing. That removes any read-modify-write race between isolates, and
+ * means a storm costs READS (cheap, and served from KV's edge cache) while
+ * writes happen at most once per fingerprint per window.
+ *
+ * SUPPRESSION COUNTS STAY LOCAL, DELIBERATELY. Counting globally would need a
+ * KV write per suppressed occurrence -- one write per event during exactly
+ * the burst this exists to make cheap. `suppressed_occurrences` therefore
+ * keeps the meaning it already had: occurrences held by THIS isolate since
+ * its last emission. It is a floor on the real count, not the total.
+ *
+ * FAILS OPEN, ALWAYS. No KV binding (registry-sync-api, wss-lb) or a KV
+ * error degrades to the local-only behaviour that shipped before this, never
+ * to silence. Losing the first report of a genuine outage to a KV blip would
+ * trade a billing problem for an availability one.
+ */
+export async function admitExceptionCaptureShared(
+  env: Env | null | undefined,
+  fingerprint: string,
+  deps: { now?: () => number } = {},
+): Promise<number | null> {
+  const windowMs = exceptionStormWindowMs(env);
+  if (windowMs === 0) return 0;
+
+  const kv = (env as { METAGRAPH_CONTROL?: ExceptionStormKv } | null)
+    ?.METAGRAPH_CONTROL;
+  if (!kv?.get || !kv?.put) return 0;
+
+  const key = `${EXCEPTION_STORM_KV_PREFIX}${fingerprint}`;
+  try {
+    if ((await kv.get(key)) !== null) return null;
+    await kv.put(key, String(deps.now?.() ?? Date.now()), {
+      expirationTtl: Math.max(
+        KV_MIN_EXPIRATION_TTL_SECONDS,
+        Math.ceil(windowMs / 1000),
+      ),
+    });
+    return 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** The slice of the KV binding this guard uses. Structural, so a test can
+ * supply the two methods without standing up a whole KVNamespace. */
+interface ExceptionStormKv {
+  get(key: string): Promise<string | null>;
+  put(
+    key: string,
+    value: string,
+    options?: { expirationTtl?: number },
+  ): Promise<void>;
 }
 
 // The MCP pre-dispatch refusal guard (#9639). Its own map, not a shared
@@ -1427,8 +1566,43 @@ export async function recordExceptionEvent(
 
     // Throttled on the same key PostHog groups by, so a storm of one fault
     // costs one event per window while a genuinely new fault is never delayed.
+    //
+    // TWO GATES, IN THIS ORDER (#9900). The local map is a no-I/O fast path
+    // that also produces `suppressed_occurrences`; the shared gate is the one
+    // that actually bounds a fleet-wide storm, because the local map is
+    // per-isolate and a recycled isolate always looks like a first sighting.
+    // Local first so a burst inside one isolate never reaches KV at all.
     const suppressed = admitExceptionCapture(env, fingerprint);
     if (suppressed === null) return false;
+    const admitShared = deps.admitShared ?? admitExceptionCaptureShared;
+    if ((await admitShared(env, fingerprint)) === null) return false;
+
+    // An EXPECTED condition keeps every dimension it would have carried as an
+    // exception and changes only which product pays for it. Routed through
+    // recordUsageEvent rather than assembled here so it inherits the one
+    // capture path, deployment stamping and sampling gate every other usage
+    // event already goes through -- `ok: false` is never sampled
+    // (resolveUsageSampleRate), so the storm guard above is what bounds it.
+    //
+    // durationMs is 0, not the elapsed query time: these sites report an
+    // OUTCOME, not a timing, and a fabricated duration would pollute the
+    // latency percentiles every other usage event feeds.
+    if (event.expected === true) {
+      return await recordUsageEvent(
+        env,
+        {
+          ok: false,
+          durationMs: 0,
+          expected: true,
+          route,
+          mcpTool,
+          errorCode: event.errorCode,
+          queryKind: event.queryKind,
+          queryShape: event.queryShape,
+        },
+        deps,
+      );
+    }
 
     const properties: Record<string, unknown> = {
       $exception_list: [entry],
