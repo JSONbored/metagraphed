@@ -4,7 +4,7 @@
 // /metagraph/surfaces/{netuid}.json artifact.
 
 import { z } from "zod";
-import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
 import {
@@ -168,7 +168,7 @@ export async function loadSubnetSurfacesList(
       `No surface snapshot exists for netuid ${netuid}.`,
     );
   }
-  const transformed = applyQueryFilters(
+  const transformed = applyMcpQueryFilters(
     blob as Record<string, unknown>,
     queryUrl,
     "curated-surfaces",

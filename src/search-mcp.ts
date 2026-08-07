@@ -5,7 +5,7 @@
 // without its subnet-only filter, and unlike list_search_index it keeps tokens.
 
 import { z } from "zod";
-import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.ts";
 import {
@@ -149,7 +149,7 @@ export async function loadSearchList(
   if (!blob || typeof blob !== "object") {
     throw searchMcpError("not_found", "Search snapshot unavailable.");
   }
-  const transformed = applyQueryFilters(
+  const transformed = applyMcpQueryFilters(
     blob as Record<string, unknown>,
     queryUrl,
     "documents",

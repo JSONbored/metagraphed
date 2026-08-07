@@ -4,7 +4,7 @@
 // handleGlobalIncidents runs over the `surfaces` ledger -- mirrors
 // endpoint-incidents-mcp.ts's query-builder + list-application pattern.
 
-import { applyQueryFilters, type Row } from "../workers/list-query.ts";
+import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import { API_QUERY_COLLECTIONS } from "./contracts.ts";
 
 export const GLOBAL_INCIDENTS_SORT_FIELDS =
@@ -107,7 +107,7 @@ export function applyGlobalIncidentsListQuery(
   args: Record<string, unknown> | null | undefined,
 ): GlobalIncidentsListResult {
   const queryUrl = globalIncidentsQueryUrl(args);
-  const transformed = applyQueryFilters(data, queryUrl, "incidents");
+  const transformed = applyMcpQueryFilters(data, queryUrl, "incidents");
   if (transformed.error) {
     throw globalIncidentsMcpError("invalid_params", transformed.error.message);
   }
