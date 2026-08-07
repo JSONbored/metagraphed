@@ -233,6 +233,16 @@ export interface CaptureEntryOptions extends GithubFetchOptions {
 // when one exists and is still within the 30-day retention window, or drops
 // the repo from this run's output entirely when it doesn't -- never throws,
 // so one bad repo can't abort the whole run.
+/**
+ * Statuses that mean the repository is GONE, not temporarily unreachable
+ * (#9912). 404 is a deleted or renamed-away repo -- GitHub redirects a rename,
+ * so a 404 survives that -- and 410 is an explicit tombstone. Everything else a
+ * failed metadata call can return (403/429 rate limit, 5xx, a transport throw)
+ * is a blip the repo will come back from, and the retain-last-good path below
+ * is correct for those.
+ */
+const GONE_STATUSES = new Set([404, 410]);
+
 export async function fetchRepoSignals(
   { owner, repo }: GithubRepoRef,
   previousEntry: RepoSignal | undefined,
@@ -266,6 +276,22 @@ export async function fetchRepoSignals(
     // The `?? Date.now()` keeps the direct callers that pass no capturedAt
     // (none in this repo today) on the previous behaviour rather than
     // treating a missing tick as time zero.
+    // A GONE repo keeps nothing (#9912). Retaining the last-good entry is the
+    // right answer for a blip -- a rate limit, a 5xx, a dropped connection --
+    // because the repo is still there and the numbers are still true. It is the
+    // wrong answer for 404/410: the repository has been deleted or renamed
+    // away, so `stars` and `last_push_at` are claims about something that no
+    // longer exists. Measured on the live registry, we served 43 stars and a
+    // push "3 days ago" for AffineFoundation/affine-cortex, which returns 404
+    // from api.github.com; Djinn-Inc/djinn was the same shape.
+    //
+    // Dropping it here is what the module header already asks for -- a repo
+    // with nothing behind it is not published -- and githubSignalFields turns
+    // that absence into `github_unreachable: true` with null metrics, so the
+    // subnet still says "we looked and found nothing" rather than going quiet.
+    if (GONE_STATUSES.has(metaRes.status as number)) {
+      return null;
+    }
     const agedAt = options.capturedAt
       ? Date.parse(options.capturedAt)
       : Date.now();

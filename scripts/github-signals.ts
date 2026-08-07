@@ -212,7 +212,28 @@ export function githubSignalsForSubnet(
     github_commits_weekly: signals?.commits_weekly ?? null,
     // #8704: feeds the `release` item kind on the per-subnet feed.
     github_releases: signals?.releases ?? null,
-    github_unreachable: signals?.unreachable ?? false,
+    // ABSENT means unreachable, not fine (#9912). Reaching this line means
+    // `parsed` succeeded, so a GitHub repo IS configured for this subnet --
+    // and resolveTrackedRepos builds the capture list from exactly these
+    // resolved source_repos, so the capture WAS asked about it. No entry
+    // therefore means fetchRepoSignals dropped it: gone, or a failure with no
+    // last-good value left inside the retention window.
+    //
+    // `?? false` published that as a healthy repo that simply has no numbers.
+    // netuid 92's tensorclaw/tensorclaw 404s, and we served
+    // `github_unreachable: false` with every metric null -- indistinguishable
+    // from a live repo nobody has starred.
+    //
+    // The `?? null`s above are different and correct: those are VALUES the
+    // capture has no answer for. This is a VERDICT, and the honest verdict for
+    // "we asked and have nothing" is true.
+    //
+    // Unless we never asked at all: an EMPTY map is a cold start with no
+    // capture behind it (no artifact yet, or a run that produced none), and
+    // calling all 129 subnets unreachable off the back of that would be the
+    // same overclaim in the other direction.
+    github_unreachable:
+      signals?.unreachable ?? (signalsByRepo.size > 0 ? true : false),
   };
 }
 
