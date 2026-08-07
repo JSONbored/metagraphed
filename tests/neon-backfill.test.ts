@@ -24,6 +24,7 @@ import {
   WHOLE_TABLE_UNIT,
   backfillGuard,
   copyDateToNeon,
+  assertIdentifier,
   copyAppendTailToNeon,
   copyWholeTableToNeon,
   d1DateCounts,
@@ -1560,5 +1561,37 @@ describe("the append partition (#9908)", () => {
       write.values.includes(true),
       `0/1 reached Neon unconverted: ${JSON.stringify(write.values)}`,
     );
+  });
+});
+
+describe("assertIdentifier", () => {
+  test("it passes the identifiers the real plans actually use", () => {
+    for (const [name, plan] of Object.entries(NEON_BACKFILL_PLANS)) {
+      assertIdentifier(plan.table, `${name} table`);
+      for (const c of [...plan.columns, ...plan.keyset, ...plan.conflict]) {
+        assertIdentifier(c, `${name} column`);
+      }
+      const f = freshnessColumn(plan);
+      if (f) assertIdentifier(f, `${name} freshness`);
+    }
+  });
+
+  test("it throws rather than escaping", () => {
+    // Escaping would put the value into the query anyway. A plan naming
+    // something that is not a bare identifier is a mistake in the PLAN, and
+    // the loud failure belongs at the lane.
+    for (const bad of [
+      "surface_checks; DROP TABLE neurons",
+      "checked_at)--",
+      'a" OR "1"="1',
+      "",
+      "1_starts_with_a_digit",
+    ]) {
+      assert.throws(
+        () => assertIdentifier(bad, "test"),
+        /not a bare SQL identifier/,
+        `accepted: ${JSON.stringify(bad)}`,
+      );
+    }
   });
 });

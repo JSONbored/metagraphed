@@ -1080,6 +1080,31 @@ async function reconcileWholeTable(
 }
 
 /**
+ * Guard for an identifier that is about to be INTERPOLATED into SQL.
+ *
+ * Every table and column name in this module comes from NEON_BACKFILL_PLANS,
+ * which is a frozen const in this file -- none of it is reachable from a
+ * request, so there is no injection path today. This exists because "today"
+ * is doing a lot of work in that sentence: the plans are the kind of thing a
+ * later change makes configurable, and `sql.unsafe` interpolation is exactly
+ * where that becomes a vulnerability rather than a bug.
+ *
+ * Throwing rather than escaping is deliberate. A plan naming something that is
+ * not a bare identifier is a mistake in the plan, and the loud failure belongs
+ * at the lane, not quoted into a query that then does something unintended.
+ */
+const BARE_IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+export function assertIdentifier(name: string, what: string): string {
+  if (!BARE_IDENTIFIER.test(name)) {
+    throw new Error(
+      `${what} is not a bare SQL identifier: ${JSON.stringify(name)}`,
+    );
+  }
+  return name;
+}
+
+/**
  * Neon's high-water mark for an append plan, or null when it holds nothing.
  *
  * Null and 0 are different answers and the difference is the whole table: null
@@ -1100,7 +1125,8 @@ export async function neonHighWaterMark(
   if (!sql?.unsafe) return undefined;
   try {
     const rows = (await sql.unsafe(
-      `SELECT MAX(${cursor}) AS high FROM ${table}`,
+      `SELECT MAX(${assertIdentifier(cursor, "append cursor")}) AS high ` +
+        `FROM ${assertIdentifier(table, "table")}`,
     )) as unknown[];
     if (!Array.isArray(rows) || rows.length === 0) return undefined;
     const raw = (rows[0] as Row)?.high;
@@ -1136,7 +1162,7 @@ export async function readAppendPage(
   const bounds: string[] = [];
   const values: unknown[] = [];
   if (highWater != null) {
-    bounds.push(`${column} >= ?`);
+    bounds.push(`${assertIdentifier(column, "append cursor")} >= ?`);
     values.push(highWater);
   }
   if (keyset) {
@@ -1146,8 +1172,9 @@ export async function readAppendPage(
   const where = bounds.length > 0 ? ` WHERE ${bounds.join(" AND ")}` : "";
   const result = await db
     .prepare(
-      `SELECT ${plan.columns.join(", ")} FROM ${plan.table}${where} ` +
-        `ORDER BY ${plan.keyset.join(", ")} LIMIT ?`,
+      `SELECT ${plan.columns.map((c) => assertIdentifier(c, "column")).join(", ")} ` +
+        `FROM ${assertIdentifier(plan.table, "table")}${where} ` +
+        `ORDER BY ${plan.keyset.map((c) => assertIdentifier(c, "keyset column")).join(", ")} LIMIT ?`,
     )
     .bind(...values, limit)
     .all();
