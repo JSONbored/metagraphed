@@ -21,6 +21,7 @@ import {
   surfaceIdSchema,
 } from "./shared.ts";
 import { ProviderArtifactSchema } from "../routes/providers-rpc.ts";
+import { AgentCatalogServiceSchema } from "../routes/agent-catalog.ts";
 
 export const ListSubnetApisInputSchema = z
   .object({
@@ -33,7 +34,12 @@ export const ListSubnetApisOutputSchema = z
   .object({
     netuid: netuidSchema(),
     service_count: z.int(),
-    services: z.array(OpenObjectSchema),
+    // Typed from the route's own AgentCatalogServiceSchema (#9797) -- the
+    // 18-field callable-service record, including the eligibility/health/
+    // fixture/snippets blocks an agent needs to decide whether it can call
+    // this surface. This tool advertises no `fields`, so it is not partial.
+    // Verified against production 2026-08-07.
+    services: z.array(AgentCatalogServiceSchema),
     operational_observed_at: z.string().nullable().optional(),
     health_source: z.string().nullable().optional(),
   })

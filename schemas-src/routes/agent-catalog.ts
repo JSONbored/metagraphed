@@ -80,7 +80,7 @@ const AgentServiceEligibilitySchema = z
   })
   .passthrough();
 
-const AgentCatalogSubnetEntrySchema = z
+export const AgentCatalogSubnetEntrySchema = z
   .object({
     netuid: z.int().min(0),
     slug: z.string().optional(),
@@ -185,7 +185,7 @@ const SurfaceFixtureReferenceSchema = z
   })
   .strict();
 
-const AgentCatalogServiceSchema = z
+export const AgentCatalogServiceSchema = z
   .object({
     surface_id: z.string(),
     kind: z.string(),
