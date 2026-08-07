@@ -56,6 +56,16 @@
   // file -- it never reads this config either way (it writes its own trusted
   // wrangler.preview.json and uses `wrangler versions upload`).
   "workers_dev": false,
+  // Bring this config in line with the four backend ones (#9900), which have
+  // carried both of these since #9435. Without them, an exception thrown in
+  // the SSR Worker arrives in PostHog with a minified, unmapped stack and no
+  // way to say which deploy produced it -- so a regression cannot be tied to
+  // the release that introduced it. `upload_source_maps` covers the SERVER
+  // bundle; the CLIENT bundle's maps are uploaded separately by
+  // @posthog/rollup-plugin in vite.config.ts, which is why this file
+  // previously looked already-covered and was not.
+  "upload_source_maps": true,
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
   // Run the SSR Worker in the Cloudflare PoP nearest the data it talks to
   // (api.metagraph.sh), not nearest the visitor — lowers SSR fetch latency.
   "placement": { "mode": "smart" },

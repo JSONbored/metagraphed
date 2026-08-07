@@ -138,7 +138,7 @@ function laneNamed(name: string): ProjectionLane {
 }
 
 describe("runProjectionLane", () => {
-  test("a null compute writes NOTHING and records one routed exception", async () => {
+  test("a null compute writes NOTHING and records one routed EXPECTED condition", async () => {
     const { puts, bucket } = archiveBucket();
     const { events, record } = exceptionRecorder();
     const result = await runProjectionLane(
@@ -160,6 +160,20 @@ describe("runProjectionLane", () => {
     assert.equal(puts.length, 0);
     assert.equal(events.length, 1);
     assert.equal(events[0]!.route, "projection:test-lane");
+    // #9900: a declined compute is a HANDLED outcome (the `reason` above says
+    // so), not a fault. It stays reported under this exact route -- a lane
+    // going permanently dark must remain visible -- but as a counted usage
+    // event rather than an $exception against the 100K error-tracking tier.
+    assert.equal(
+      (events[0] as { expected?: boolean }).expected,
+      true,
+      "a declined compute must not be billed as an error",
+    );
+    assert.equal(
+      (events[0] as { errorCode?: string }).errorCode,
+      "compute_declined",
+      "the reason travels with the event, matching the returned result",
+    );
   });
 
   test("a non-null compute writes the body to the lane's key", async () => {

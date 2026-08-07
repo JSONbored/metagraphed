@@ -1362,6 +1362,19 @@ export async function runProjectionLane(
       await record(env, {
         error: new Error(`projection lane ${label}: compute declined`),
         route: `projection:${label}`,
+        // An EXPECTED condition, not a fault (#9900). `compute()` returning
+        // null is this lane's own documented "I have nothing better than what
+        // is already published" answer -- handled two lines below by
+        // returning reason: "compute_declined" and leaving the previous
+        // artifact in place. Reporting the same handled outcome a second time
+        // as an $exception cost ~25K events/month against a 100K free tier,
+        // per lane per network, and drowned real faults in the inbox.
+        //
+        // Still recorded, and still queryable by this exact route label -- a
+        // lane that goes permanently dark must remain visible. It is now a
+        // counted usage_event rather than an error.
+        expected: true,
+        errorCode: "compute_declined",
       });
       return {
         name: label,
