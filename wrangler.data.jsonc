@@ -205,6 +205,34 @@
     // already agree, which is why this is a third flag rather than a reuse of
     // the write list.
     "NEON_BACKFILL_LANES": "neuron_daily,account_position_daily,subnet_snapshots,subnet_hyperparams,account_identity,validator_nominator_counts,nominator_positions,account_identity_history,subnet_hyperparams_history,emission_gate_param_history,subnet_emission_enabled_history,chain_concentration_daily,surface_checks,surface_status,surface_uptime_daily,surface_failure_daily,subnet_burn_history,tao_usd_index",
+    // Tables whose ONLY home is Neon -- D1 is not behind them any more.
+    //
+    // A FOURTH flag, and the one the other three converge on. All three above
+    // describe a table that LIVES IN D1 and is being shadowed: the dual-write
+    // list says new writes also reach Neon, the backfill list says older ones
+    // do too, the read list says reads are served from the copy. Each of them
+    // presumes a D1 original still exists, so none of them can express the end
+    // state, and the end state is the goal (#9787).
+    //
+    // It also fits a class of table the other three do not. The user-state
+    // tier -- accounts, keys, quotas, alerts, push subscriptions -- is written
+    // by REQUEST HANDLERS, not lanes. There is no producer tick to mirror on
+    // and no second writer to reconcile against, and the whole tier is ~1,200
+    // rows, which one statement copies. Those tables move by copying once,
+    // repointing the runner, and never writing D1 again; a mirror for them
+    // would mean operating two stores to keep a table honest that has exactly
+    // one writer.
+    //
+    // EMPTY UNTIL A COPY IS VERIFIED, and per table. workers/data-api.ts's
+    // userStateRunner requires EVERY table in a group to be named here before
+    // it hands out a Postgres runner -- the same all-or-nothing rule
+    // neonServesRoute applies to a read route, because the helper picks one
+    // runner for the whole callback and a half-listed group would send a
+    // statement to a store where its table does not exist.
+    //
+    // Rollback is deleting a name. When this holds every table D1 has, the D1
+    // binding comes off.
+    "NEON_SOLE_STORE_TABLES": "",
     "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "d1",
     "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "d1",
     // THE QUEUE CUTOVER (metagraphed-infra#348). Comma-separated lanes whose D1

@@ -379,3 +379,38 @@ export function neonDualWriteEnabled(
 ): boolean {
   return neonDualWriteLanes(env).has(lane);
 }
+
+/**
+ * Tables whose ONLY home is Neon -- no D1 copy, no mirror, no reconciler.
+ *
+ * A FOURTH flag, and the one the other three are converging on. The existing
+ * vocabulary all describes a table that lives in D1 and is being shadowed:
+ * NEON_DUAL_WRITE_LANES says new writes also reach Neon, NEON_BACKFILL_LANES
+ * says older ones do too, NEON_READ_LANES says reads are served from the copy.
+ * Every one of them presumes a D1 original still exists.
+ *
+ * That vocabulary does not fit the tables that move by having their WRITER
+ * repointed. The user-state tier is the worked example: ten tables, ~1,200
+ * rows, every one of them written by a request handler rather than a lane, all
+ * reached through a single runner-acquiring helper. There is nothing to
+ * reconcile because there is no second producer, and mirroring them would mean
+ * running two stores for a table whose entire content one statement can copy.
+ * They move by copying once, flipping the runner, and never writing D1 again.
+ *
+ * So this flag means something the others cannot express: D1 is not behind
+ * this table any more. It starts empty, gains a table when that table's copy
+ * is verified, and when it holds every name D1 has, D1 is unbound.
+ */
+export function neonSoleStoreTables(
+  env: Record<string, unknown> | null | undefined,
+): Set<string> {
+  return parseLaneList(env?.NEON_SOLE_STORE_TABLES);
+}
+
+/** Whether Neon is the only store behind `table` on this deployment. */
+export function neonOwnsTable(
+  env: Record<string, unknown> | null | undefined,
+  table: string,
+): boolean {
+  return neonSoleStoreTables(env).has(table);
+}
