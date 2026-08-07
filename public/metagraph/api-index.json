@@ -6525,7 +6525,7 @@
     {
       "artifact_path": "/metagraph/health/trends.json",
       "cache": "short",
-      "description": "Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from D1).",
+      "description": "Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from D1). `?window=7d|30d` returns just that window and narrows the underlying scan to it rather than reading the widest one and discarding the rest; `?limit`/`?offset` page the `subnets` array within each window. All three are optional and omitting them returns every window and every subnet, which is what this route served before it had them. `subnet_count` always spans every subnet the window measured, not the page, so a paging caller keeps the denominator it is ranking against.",
       "id": "health-trends-bulk",
       "mainnet_only": true,
       "method": "GET",
@@ -6536,7 +6536,30 @@
       "public": true,
       "query_collection": null,
       "query_filter_names": [],
-      "query_parameters": []
+      "query_parameters": [
+        {
+          "name": "window",
+          "schema": {
+            "enum": [
+              "7d",
+              "30d"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "limit",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "type": "string"
+          }
+        }
+      ]
     },
     {
       "artifact_path": "/metagraph/health/trends/{netuid}.json",

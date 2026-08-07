@@ -142,6 +142,37 @@ export type BulkHealthTrendsArtifact = z.infer<
   typeof BulkHealthTrendsArtifactSchema
 >;
 
+/**
+ * The window labels this route derives, single-sourced (#9981).
+ *
+ * `workers/config.ts`'s HEALTH_TREND_WINDOWS maps each label to its day count
+ * and is the runtime's copy; this is the published vocabulary. They are checked
+ * against each other by tests/bulk-health-trends.test.ts rather than one
+ * importing the other, because schemas-src must not depend on the Worker's
+ * config module -- see this directory's leaf-module rule.
+ */
+export const HEALTH_TREND_WINDOW_VALUES = ["7d", "30d"] as const;
+
+/**
+ * GET /api/v1/health/trends query parameters (#9981).
+ *
+ * The route used to take NONE -- it served both windows for every subnet with
+ * no way to ask for less, which is how the mirroring MCP tool ended up
+ * returning ~487 KB from a call with no arguments. These narrow the RESPONSE
+ * and, for `window`, the D1 scan behind it.
+ *
+ * All three are optional and absent means "everything", so no existing caller
+ * changes behaviour.
+ */
+export const BulkHealthTrendsQuerySchema = z
+  .object({
+    window: z.enum(HEALTH_TREND_WINDOW_VALUES).optional(),
+    limit: z.coerce.number().int().min(1).max(512).optional(),
+    offset: z.coerce.number().int().min(0).optional(),
+  })
+  .strict();
+export type BulkHealthTrendsQuery = z.infer<typeof BulkHealthTrendsQuerySchema>;
+
 // ---- GET /api/v1/incidents -> GlobalIncidentsArtifact ----
 
 const GlobalIncidentEntrySchema = z

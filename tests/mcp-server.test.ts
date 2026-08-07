@@ -14133,6 +14133,49 @@ describe("MCP economics + metagraph data tools", () => {
     assert.deepEqual(out.windows["30d"].subnets, []);
   });
 
+  test("get_health_trends narrows to one window when asked (#9989)", async () => {
+    // This tool took NO arguments and returned ~487 KB -- not bad defaults,
+    // no lever at all, because the route it mirrors had no query parameters
+    // either. Both now do, and the tool's input schema is DERIVED from the
+    // route's query schema rather than declared a second time (#9986).
+    const res = await callTool("get_health_trends", { window: "7d" });
+    assert.equal(res.body.result.isError, false);
+    assert.deepEqual(Object.keys(res.body.result.structuredContent.windows), [
+      "7d",
+    ]);
+  });
+
+  test("get_health_trends pages the subnets and forgives a bad limit", async () => {
+    // The other half of the asymmetry: a limit/offset that the inputSchema
+    // would reject still reaches the handler (tools/call does not enforce it),
+    // and must degrade to a usable page rather than erroring -- the same
+    // reasoning clampLimit's own comment records.
+    for (const args of [
+      { window: "7d", limit: 2, offset: 1 },
+      { window: "7d", limit: 0, offset: -5 },
+      { window: "7d", limit: "nonsense", offset: "nonsense" },
+    ] as Row[]) {
+      const res = await callTool("get_health_trends", args);
+      assert.equal(res.body.result.isError, false, JSON.stringify(args));
+      assert.deepEqual(
+        Object.keys(res.body.result.structuredContent.windows),
+        ["7d"],
+        JSON.stringify(args),
+      );
+    }
+  });
+
+  test("get_health_trends rejects a window the route does not serve", async () => {
+    // The zod input schema is the gate: an enum the route does not offer must
+    // fail before the handler, not resolve to "every window" silently.
+    const res = await callTool("get_health_trends", { window: "90d" });
+    assert.equal(res.body.result.isError, true);
+    assert.equal(
+      res.body.result.structuredContent.error.code,
+      "invalid_params",
+    );
+  });
+
   test("get_network_health returns unknown when the live store is cold", async () => {
     const res = await callTool("get_network_health", {});
     const out = res.body.result.structuredContent;

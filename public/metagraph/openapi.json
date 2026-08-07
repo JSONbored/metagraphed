@@ -78428,7 +78428,39 @@
     "/api/v1/health/trends": {
       "get": {
         "operationId": "healthTrendsBulk",
-        "parameters": [],
+        "parameters": [
+          {
+            "description": "Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed.",
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "enum": [
+                "7d",
+                "30d"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum number of rows to return in one page. Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset.",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -78512,7 +78544,7 @@
             "description": "Unexpected backend error."
           }
         },
-        "summary": "Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from D1).",
+        "summary": "Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from D1). `?window=7d|30d` returns just that window and narrows the underlying scan to it rather than reading the widest one and discarding the rest; `?limit`/`?offset` page the `subnets` array within each window. All three are optional and omitting them returns every window and every subnet, which is what this route served before it had them. `subnet_count` always spans every subnet the window measured, not the page, so a paging caller keeps the denominator it is ranking against.",
         "tags": [
           "health",
           "analytics"

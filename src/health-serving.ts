@@ -731,10 +731,15 @@ export function formatBulkTrends({
   observedAt,
   windows,
   windowDays = {},
+  limit = null,
+  offset = 0,
 }: {
   observedAt?: unknown;
   windows?: Record<string, unknown[]>;
   windowDays?: Record<string, unknown>;
+  /** Subnets per window; null means every subnet, the historical behaviour. */
+  limit?: number | null;
+  offset?: number;
 }): Row {
   const formatWindow = (rows: Row[] | undefined, days: unknown) => {
     const bySubnet = new Map<
@@ -818,11 +823,19 @@ export function formatBulkTrends({
       }))
       .sort((a, b) => a.netuid - b.netuid);
 
+    // subnet_count spans EVERY subnet the window measured, not the page --
+    // the same contract get_chain_deregistrations publishes, and the reason a
+    // caller can page without losing the denominator it is ranking against.
+    const start = Math.max(0, offset);
+    const page =
+      limit === null
+        ? subnets.slice(start)
+        : subnets.slice(start, start + limit);
     return {
       days: Number(days) || 0,
       granularity: "1d",
       subnet_count: subnets.length,
-      subnets,
+      subnets: page,
     };
   };
 

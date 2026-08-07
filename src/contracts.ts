@@ -2788,9 +2788,14 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/health/trends",
     "/metagraph/health/trends.json",
-    "Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from D1).",
+    "Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from D1). `?window=7d|30d` returns just that window and narrows the underlying scan to it rather than reading the widest one and discarding the rest; `?limit`/`?offset` page the `subnets` array within each window. All three are optional and omitting them returns every window and every subnet, which is what this route served before it had them. `subnet_count` always spans every subnet the window measured, not the page, so a paging caller keeps the denominator it is ranking against.",
     "short",
     ["health", "analytics"],
+    [
+      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
+      { name: "limit", schema: { type: "string" } },
+      { name: "offset", schema: { type: "string" } },
+    ],
   ),
   route(
     "subnet-health-trends",

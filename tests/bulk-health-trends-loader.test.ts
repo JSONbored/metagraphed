@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { loadBulkHealthTrends } from "../src/bulk-health-trends.ts";
 import { HEALTH_TREND_WINDOWS } from "../workers/config.ts";
+import { utcWindowCutoffDay } from "../src/health-serving.ts";
 import type { Row } from "./row-type.ts";
 
 /** UTC day string `days` before now, matching the loader's own cutoff basis. */
@@ -133,5 +134,97 @@ describe("loadBulkHealthTrends", () => {
     assert.deepEqual(rows, []);
     assert.equal(data.observed_at, "2026-08-03T00:00:00.000Z");
     assert.equal(data.windows["7d"].subnet_count, 0);
+  });
+});
+
+// The three narrowing parameters (#9989). This route used to take NONE -- it
+// served every window for every subnet, which is how the tool mirroring it
+// returned ~487 KB from a call with no arguments.
+describe("loadBulkHealthTrends narrowing", () => {
+  const rowsFor = (netuids: number[]) =>
+    netuids.flatMap((netuid) => [
+      { netuid, date: dayAgo(1), total: 10, ok_count: 10, avg_latency_ms: 5 },
+      { netuid, date: dayAgo(20), total: 10, ok_count: 5, avg_latency_ms: 9 },
+    ]);
+
+  test("window selects ONE window and narrows the D1 scan to it", async () => {
+    // The scan half is the point, and it is invisible in the payload: the
+    // loader reads the widest window because it has to answer for all of them.
+    // A 7d request has no reason to read 30 days and discard 23.
+    const db = fakeDb(rowsFor([1]));
+    const { data } = (await loadBulkHealthTrends({
+      db: db as never,
+      window: "7d",
+    })) as Row;
+    assert.deepEqual(Object.keys(data.windows as Row), ["7d"]);
+    const cutoff = db.seen[0]!.params[0] as string;
+    // The loader's OWN cutoff helper, not a restatement of its arithmetic --
+    // the window is inclusive (days - 1), and a test that re-derived that
+    // would pass while disagreeing with the code it checks.
+    assert.equal(
+      cutoff,
+      utcWindowCutoffDay(Date.now(), 7),
+      "a 7d request must scan from the 7d cutoff, not the 30d one",
+    );
+    assert.notEqual(cutoff, utcWindowCutoffDay(Date.now(), 30));
+  });
+
+  test("no window reads the widest one, as it always did", async () => {
+    const db = fakeDb(rowsFor([1]));
+    const { data } = (await loadBulkHealthTrends({ db: db as never })) as Row;
+    assert.deepEqual(
+      Object.keys(data.windows as Row).sort(),
+      Object.keys(HEALTH_TREND_WINDOWS).sort(),
+    );
+    assert.equal(
+      db.seen[0]!.params[0],
+      utcWindowCutoffDay(
+        Date.now(),
+        Math.max(...Object.values(HEALTH_TREND_WINDOWS)),
+      ),
+    );
+  });
+
+  test("an unknown window falls back to every window rather than serving none", async () => {
+    // The route rejects a bad value before reaching here; this is the loader's
+    // own floor, so a caller can never get an empty `windows` from a typo.
+    const db = fakeDb(rowsFor([1]));
+    const { data } = (await loadBulkHealthTrends({
+      db: db as never,
+      window: "90d",
+    })) as Row;
+    assert.deepEqual(
+      Object.keys(data.windows as Row).sort(),
+      Object.keys(HEALTH_TREND_WINDOWS).sort(),
+    );
+  });
+
+  test("limit/offset page the subnets while subnet_count spans ALL of them", async () => {
+    // The contract that lets a caller page without losing the denominator it
+    // is ranking against -- the same one get_chain_deregistrations publishes.
+    const db = fakeDb(rowsFor([1, 2, 3, 4, 5]));
+    const { data } = (await loadBulkHealthTrends({
+      db: db as never,
+      window: "7d",
+      limit: 2,
+      offset: 1,
+    })) as Row;
+    const win = (data.windows as Row)["7d"] as Row;
+    assert.equal(win.subnet_count, 5, "count spans every subnet, not the page");
+    assert.deepEqual(
+      (win.subnets as Row[]).map((s) => s.netuid),
+      [2, 3],
+    );
+  });
+
+  test("no limit returns every subnet, as it always did", async () => {
+    const db = fakeDb(rowsFor([1, 2, 3, 4, 5]));
+    const { data } = (await loadBulkHealthTrends({
+      db: db as never,
+      window: "7d",
+    })) as Row;
+    const win = (data.windows as Row)["7d"] as Row;
+    assert.equal((win.subnets as Row[]).length, 5);
+    assert.equal(win.subnet_count, 5);
   });
 });
