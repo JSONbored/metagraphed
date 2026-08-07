@@ -126,6 +126,20 @@
     // not a slower query.
     "NEON_DUAL_WRITE_LANES": "neurons,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts",
     "NEON_READ_LANES": "",
+    // The two ACCUMULATING tables, and only those (src/neon-backfill.ts).
+    //
+    // The mirror above writes what each request carries, which finishes the job
+    // for the five LATEST-ONLY tables -- one producer cycle rewrites `neurons`,
+    // `nominator_positions` and the three flat ledgers whole, and `neurons`
+    // duly matched D1 exactly on its first pass. These two accumulate by date
+    // and are never rewritten, so the mirror covers only the days it was
+    // running for. Measured 2026-08-07: `neuron_daily` D1 846,912 / Neon
+    // 30,109; `account_position_daily` D1 834,081 / Neon 833,849.
+    //
+    // Naming a latest-only table here would copy 800,000 rows to prove they
+    // already agree, which is why this is a third flag rather than a reuse of
+    // the write list.
+    "NEON_BACKFILL_LANES": "neuron_daily,account_position_daily",
     "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "d1",
     "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "d1",
     // THE QUEUE CUTOVER (metagraphed-infra#348). Comma-separated lanes whose D1
@@ -278,8 +292,14 @@
   // No committed default either: unset, the tick is a recorded no-op rather
   // than a silent fallback to somebody's public node. See
   // workers/env-extra.d.ts for why that is a choice and not an oversight.
+  // "* * * * *" = TAO_USD_INDEX_CRON; "*/3 * * * *" = NEON_BACKFILL_CRON, the
+  // D1 -> Neon reconciler (workers/config.ts documents both cadences). The
+  // second is a SUBSET of the first by the clock and still a separate entry:
+  // Cloudflare delivers one event per matching expression with its own
+  // `controller.cron`, so the handler dispatches on the string rather than on
+  // what minute it happens to be.
   "triggers": {
-    "crons": ["* * * * *"],
+    "crons": ["* * * * *", "*/3 * * * *"],
   },
 
   // HYPERDRIVE is gone with the box (2026-08-03): the Postgres it fronted was
@@ -401,6 +421,7 @@
   // different answers:
   //
   //   NEON_DUAL_WRITE_LANES  which lanes MIRROR into Neon after their D1 write
+  //   NEON_BACKFILL_LANES    which tables are RECONCILED D1 -> Neon on a cron
   //   NEON_READ_LANES        which lanes are SERVED from Neon
   //
   // Both empty at this commit, so rebinding moves nothing. The order is fixed:
