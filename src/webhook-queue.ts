@@ -214,6 +214,82 @@ export function webhookDeliveryDisposition(
   return attempts >= maxAttempts ? "dead" : "retry";
 }
 
+/**
+ * How many subscribers the consumer delivers to at once.
+ *
+ * SIX, because that is Cloudflare's documented ceiling on connections
+ * *simultaneously waiting for response headers* per Worker invocation — and a
+ * hanging subscriber is precisely a connection waiting for headers, for the
+ * whole 8-second timeout. A seventh is queued rather than rejected, so a larger
+ * number would not error; it would just stop being the bound it claims to be.
+ */
+export const WEBHOOK_DELIVERY_CONCURRENCY = 6;
+
+/**
+ * How many HTTP attempts one QUEUE attempt is allowed.
+ *
+ * ONE. `deliverChangeEvent` defaults to three, with its own 500ms/1s backoff,
+ * and the consumer used to accept that default — so a single message could cost
+ * **8 queue attempts x 3 HTTP attempts = 24 POSTs** and hold a delivery slot for
+ * ~25 seconds. That is a second retry scheduler running inside the one
+ * metagraphed-infra#354 replaced, and it made two things untrue at once: the
+ * published promise of eight rounds, and the `attempts` the delivery record
+ * reports.
+ *
+ * THE COST IS LATENCY ON A BLIP, and it is the right trade. A momentary 5xx
+ * used to be retried 500ms later; it now waits for the queue's first backoff,
+ * five minutes. For a change feed that fires at most twice an hour, against a
+ * contract that promises at-least-once within twelve hours, five minutes is
+ * not a degradation — and in exchange one bad subscriber can no longer occupy a
+ * slot for 25 seconds while nine healthy ones wait.
+ */
+export const WEBHOOK_DELIVERY_HTTP_ATTEMPTS = 1;
+
+/**
+ * Split a batch so that one subscriber can never occupy more than one slot.
+ *
+ * THE FAIRNESS PRIMITIVE metagraphed-infra#354 asked for, and the argument for
+ * why the old one could go was only half right. `WEBHOOK_REDELIVERY_MAX_PER_SUBSCRIPTION`
+ * rationed a shared per-run sweep budget, and that budget genuinely does not
+ * exist any more. But the consumer then processed its batch **serially**, so a
+ * subscriber that hung took the other nine messages in that batch down with it
+ * — the starvation the cap existed to prevent, reintroduced by the loop rather
+ * than by the budget.
+ *
+ * So: groups run in parallel up to `WEBHOOK_DELIVERY_CONCURRENCY`, and each
+ * group runs serially. Two facts follow, and both are the point:
+ *
+ *   * **one subscriber = one slot.** Two messages for the same subscription
+ *     share a group, so a subscriber with a backlog cannot crowd out the rest
+ *     of the batch by having more of it.
+ *   * **per-subscriber order is preserved.** Deliveries to one endpoint stay in
+ *     the order they were enqueued, which parallelising the flat list would
+ *     have quietly given up.
+ *
+ * A message with no readable `subscription_id` gets its own group: it is acked
+ * without delivering anything, so grouping it with an unrelated subscriber
+ * would only make that subscriber wait.
+ */
+export function groupWebhookBatchBySubscription<T extends { body: unknown }>(
+  messages: readonly T[],
+): T[][] {
+  const groups = new Map<string, T[]>();
+  const ungrouped: T[][] = [];
+  for (const message of messages) {
+    const body = message?.body as { subscription_id?: unknown } | null;
+    const id = body?.subscription_id;
+    if (typeof id !== "string" || !id) {
+      ungrouped.push([message]);
+      continue;
+    }
+    const group = groups.get(id);
+    if (group) group.push(message);
+    else groups.set(id, [message]);
+  }
+  // Insertion order, so the batch's own ordering survives the grouping.
+  return [...groups.values(), ...ungrouped];
+}
+
 /** Where the last dispatched event id is remembered, so a cron that runs far
  * more often than a publish does not re-fan an event subscribers already got. */
 export const WEBHOOK_LAST_DISPATCHED_KEY = "webhooks:last-dispatched";
