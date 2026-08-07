@@ -6,6 +6,7 @@
 // array). None mirror an existing schemas-src/routes/ REST schema --
 // modeled fresh, matching each hand-written literal field-for-field.
 import { z } from "zod";
+import { RegistrySummaryArtifactSchema } from "../routes/registry-summary-leaderboards.ts";
 import {
   OpenObjectSchema,
   fieldsStringSchema,
@@ -20,18 +21,10 @@ import {
 export const RegistrySummaryInputSchema = z.object({}).strict();
 export type RegistrySummaryInput = z.infer<typeof RegistrySummaryInputSchema>;
 
-export const RegistrySummaryOutputSchema = z
-  .object({
-    subnet_count: z.int(),
-    counts: OpenObjectSchema,
-    coverage: OpenObjectSchema.optional(),
-    curation_level_counts: OpenObjectSchema.optional(),
-    profile_level_counts: OpenObjectSchema.optional(),
-    recent_changes: OpenObjectSchema.optional(),
-    top_subnets: z.array(OpenObjectSchema).optional(),
-    generated_at: z.string().nullable().optional(),
-  })
-  .passthrough();
+// DERIVED, NOT COPIED (#9796). The copy published counts, coverage,
+// curation_level_counts and profile_level_counts as bare open objects -- the
+// four tallies this tool exists to report.
+export const RegistrySummaryOutputSchema = RegistrySummaryArtifactSchema;
 export type RegistrySummaryOutput = z.infer<typeof RegistrySummaryOutputSchema>;
 
 // Symbolic in the hand-written original (src/contracts.ts's

@@ -6,6 +6,7 @@
 // array). Neither mirrors an existing schemas-src/routes/ REST schema --
 // modeled fresh, matching each hand-written literal field-for-field.
 import { z } from "zod";
+import { AgentResourcesArtifactSchema } from "../routes/agent-catalog.ts";
 import { OpenObjectSchema, netuidSchema } from "./shared.ts";
 
 export const GetAgentCatalogInputSchema = z
@@ -39,17 +40,9 @@ export type GetAgentResourcesInput = z.infer<
   typeof GetAgentResourcesInputSchema
 >;
 
-export const GetAgentResourcesOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    published_at: z.string().nullable().optional(),
-    content_hash: z.string().nullable().optional(),
-    summary: OpenObjectSchema.optional(),
-    copyable_agent: OpenObjectSchema.optional(),
-    mcp: OpenObjectSchema,
-    resources: z.array(OpenObjectSchema),
-  })
-  .passthrough();
+// DERIVED, NOT COPIED (#9796). The copy published summary, copyable_agent, mcp
+// and resources[] as bare open shapes.
+export const GetAgentResourcesOutputSchema = AgentResourcesArtifactSchema;
 export type GetAgentResourcesOutput = z.infer<
   typeof GetAgentResourcesOutputSchema
 >;

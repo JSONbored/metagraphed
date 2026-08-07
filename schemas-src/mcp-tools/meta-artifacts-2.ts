@@ -16,33 +16,17 @@
 // shapes the route already declares. The remaining three are still local
 // models; #9796 covers deriving them.
 import { z } from "zod";
+import { ChangelogArtifactSchema } from "../routes/meta-contracts.ts";
 import { CoverageDepthArtifactSchema } from "../routes/coverage.ts";
 import { SelfHealthArtifactSchema } from "../routes/self-health.ts";
 import { OpenObjectSchema } from "./shared.ts";
 
-// `notes: {type:["array","string","null"], items:{type:"string"}}` -- this
-// batch's shared.ts predates the NotesFieldSchema helper hoisted in batch 10
-// (#8074), still unmerged as of this batch (#8075) -- inlined here rather
-// than depending on unmerged parallel work.
-const NotesFieldSchema = z
-  .union([z.array(z.string()), z.string()])
-  .nullable()
-  .optional();
-
 export const GetChangelogInputSchema = z.object({}).strict();
 export type GetChangelogInput = z.infer<typeof GetChangelogInputSchema>;
 
-export const GetChangelogOutputSchema = z
-  .object({
-    generated_at: z.string().nullable().optional(),
-    source: z.string().nullable(),
-    notes: NotesFieldSchema,
-    summary: OpenObjectSchema,
-    artifacts: OpenObjectSchema,
-    subnets: OpenObjectSchema,
-    coverage_delta: OpenObjectSchema.nullable().optional(),
-  })
-  .passthrough();
+// DERIVED, NOT COPIED (#9796). The copy published summary, artifacts, subnets
+// and coverage_delta as bare open objects -- every field of the change summary.
+export const GetChangelogOutputSchema = ChangelogArtifactSchema;
 export type GetChangelogOutput = z.infer<typeof GetChangelogOutputSchema>;
 
 export const GetBuildInputSchema = z.object({}).strict();

@@ -3,27 +3,14 @@
 // pilot routes -- no existing Zod schema to reuse. Modeled fresh, shallow,
 // from the hand-written literal it replaces.
 import { z } from "zod";
-import { OpenObjectSchema } from "./shared.ts";
+import { BlocksSummaryArtifactSchema } from "../routes/blocks-summary.ts";
 
 export const GetBlocksSummaryInputSchema = z.object({}).strict();
 export type GetBlocksSummaryInput = z.infer<typeof GetBlocksSummaryInputSchema>;
 
-export const GetBlocksSummaryOutputSchema = z
-  .object({
-    schema_version: z.int().optional(),
-    block_count: z.int(),
-    first_block: z.int().nullable().optional(),
-    last_block: z.int().nullable().optional(),
-    first_observed_at: z.string().nullable().optional(),
-    last_observed_at: z.string().nullable().optional(),
-    block_time: OpenObjectSchema.nullable().optional(),
-    throughput: OpenObjectSchema.nullable().optional(),
-    distinct_authors: z.int().optional(),
-    author_concentration: OpenObjectSchema.nullable().optional(),
-    distinct_spec_versions: z.int().optional(),
-    latest_spec_version: z.int().nullable().optional(),
-  })
-  .passthrough();
+// DERIVED, NOT COPIED (#9796). The copy published block_time, throughput and
+// author_concentration as bare open objects.
+export const GetBlocksSummaryOutputSchema = BlocksSummaryArtifactSchema;
 export type GetBlocksSummaryOutput = z.infer<
   typeof GetBlocksSummaryOutputSchema
 >;
