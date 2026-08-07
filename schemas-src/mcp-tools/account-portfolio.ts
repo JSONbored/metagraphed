@@ -14,7 +14,10 @@
 import { z } from "zod";
 import { AccountPortfolioArtifactSchema } from "../routes/account-portfolio.ts";
 import { AccountPositionsArtifactSchema } from "../routes/account-positions.ts";
-import { OpenObjectSchema, ss58Schema } from "./shared.ts";
+import { AccountBalanceArtifactSchema } from "../routes/account-balance.ts";
+import { AccountEventsArtifactSchema } from "../routes/account-events-feed.ts";
+import { AccountSubnetsArtifactSchema } from "../routes/account-summary.ts";
+import { ss58Schema } from "./shared.ts";
 
 export const GetAccountPortfolioInputSchema = z
   .object({
@@ -93,14 +96,26 @@ export type GetAccountSnapshotInput = z.infer<
   typeof GetAccountSnapshotInputSchema
 >;
 
+// COMPOSED FROM THE FIVE ROUTES IT CALLS (#9797). Five bare
+// `{"type":"object"}` sites stood here, on the tool whose entire purpose is
+// those five views. There is no SINGLE route to derive from, but there are
+// five, and the handler calls them by path -- /balance (a live RPC read,
+// mirroring get_account_balance's handler exactly), /portfolio, /subnets,
+// /positions and /events, each falling back to that route's own builder. The
+// answer was never a fresh model; it was a composition nobody had written
+// down.
+//
+// Verified against production before the switch, slice by slice: the live
+// tool's five sections each validate against the route artifact schema they
+// now publish.
 export const GetAccountSnapshotOutputSchema = z
   .object({
     ss58: z.string(),
-    balance: OpenObjectSchema,
-    portfolio: OpenObjectSchema,
-    subnets: OpenObjectSchema,
-    positions: OpenObjectSchema,
-    recent_events: OpenObjectSchema,
+    balance: AccountBalanceArtifactSchema,
+    portfolio: AccountPortfolioArtifactSchema,
+    subnets: AccountSubnetsArtifactSchema,
+    positions: AccountPositionsArtifactSchema,
+    recent_events: AccountEventsArtifactSchema,
   })
   .passthrough();
 export type GetAccountSnapshotOutput = z.infer<

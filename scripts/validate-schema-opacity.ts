@@ -51,6 +51,16 @@ const DELIBERATELY_GENERIC =
 const CALLER_DEFINED_EXTENSION =
   "an extension block whose content each adapter defines for itself";
 
+/** Caller-supplied, echoed back. The server does not define the shape because
+ * the caller does. */
+const CALLER_SUPPLIED =
+  "supplied by the caller and echoed back; the server does not define its shape";
+
+/** Whatever the node or the query returned. A GraphQL result is shaped by the
+ * query the caller wrote; an RPC error body is shaped by the node. */
+const CALLER_SHAPED_RESULT =
+  "shaped by the caller's own query or by the upstream node, not by us";
+
 /** Standing debt, not a decision. Every one of these is an MCP tool schema
  * that has not been derived from its route yet (#9796/#9797). They are listed
  * so a NEW opaque site still fails this gate -- the list may only shrink. */
@@ -83,28 +93,18 @@ const ROUTE_OPEN_SITES: Record<string, string> = {
  * this gate -- the list may only shrink, and it is the honest count of what
  * #9797 has left to do. */
 const MCP_NOT_YET_TYPED: string[] = [
-  "call_rpc.error",
   "compare_validators.validators[]",
-  "decode_evm_call.args",
   "find_subnet_for_task.results[]",
   "get_account.activity",
   "get_account_counterparties.relationship",
-  "get_account_snapshot.balance",
-  "get_account_snapshot.portfolio",
-  "get_account_snapshot.positions",
-  "get_account_snapshot.recent_events",
-  "get_account_snapshot.subnets",
-  "get_adapter.extensions",
   "get_adapter.snapshot",
   "get_agent_catalog.subnets[]",
-  "get_api_schema.document",
   "get_block.block",
   "get_domain_summary.domains[]",
   "get_domain_summary.emission_concentration",
   "get_economics.subnets[]",
   "get_economics.summary",
   "get_extrinsic.extrinsic",
-  "get_governance_config_changes.extrinsics[].call_args",
   "get_health_history.summary",
   "get_health_history.surfaces[]",
   "get_neuron.neuron",
@@ -114,36 +114,42 @@ const MCP_NOT_YET_TYPED: string[] = [
   "get_subnet_gaps.priorities[]",
   "get_subnet_health.summary",
   "get_subnet_metagraph.neurons[]",
-  "get_subnet_snapshot.concentration",
-  "get_subnet_snapshot.hyperparameters",
-  "get_subnet_snapshot.performance",
-  "get_subnet_snapshot.recent_events",
-  "get_subnet_snapshot.top_validators",
   "get_subnet_trajectory.deltas",
   "get_subnet_trajectory.points[]",
-  "get_sudo.extrinsics[].call_args",
-  "get_webhook_subscription.filters",
   "how_do_i_call.services[]",
-  "list_block_extrinsics.extrinsics[].call_args",
-  "list_chain_events.events[].args",
   "list_enrichment_targets.filters",
   "list_enrichment_targets.targets[].dimensions",
   "list_enrichment_targets.targets[].top_gaps[]",
-  "list_extrinsics.extrinsics[].call_args",
   "list_profiles.profiles[]",
   "list_search.documents[]",
   "list_subnet_apis.services[]",
   "list_subnet_health.surfaces[]",
   "list_subnet_validators.validators[]",
   "list_surface_credentials.credentials[]",
-  "query_graphql.data",
-  "query_graphql.errors[]",
-  "run_saved_query.params",
 ];
 
-const MCP_OPEN_SITES: Record<string, string> = Object.fromEntries(
-  MCP_NOT_YET_TYPED.map((site) => [site, NOT_YET_TYPED]),
-);
+/** MCP sites that are open on purpose, same three categories as the REST list
+ * above. Kept separate from the debt below so the two never blur. */
+const MCP_REASONED_OPEN_SITES: Record<string, string> = {
+  "call_rpc.error": CALLER_SHAPED_RESULT,
+  "decode_evm_call.args": DECODED_CHAIN_PAYLOAD,
+  "get_adapter.extensions": CALLER_DEFINED_EXTENSION,
+  "get_api_schema.document": EMBEDDED_THIRD_PARTY_DOCUMENT,
+  "get_governance_config_changes.extrinsics[].call_args": DECODED_CHAIN_PAYLOAD,
+  "get_sudo.extrinsics[].call_args": DECODED_CHAIN_PAYLOAD,
+  "get_webhook_subscription.filters": CALLER_SUPPLIED,
+  "list_block_extrinsics.extrinsics[].call_args": DECODED_CHAIN_PAYLOAD,
+  "list_chain_events.events[].args": DECODED_CHAIN_PAYLOAD,
+  "list_extrinsics.extrinsics[].call_args": DECODED_CHAIN_PAYLOAD,
+  "query_graphql.data": CALLER_SHAPED_RESULT,
+  "query_graphql.errors[]": CALLER_SHAPED_RESULT,
+  "run_saved_query.params": CALLER_SUPPLIED,
+};
+
+const MCP_OPEN_SITES: Record<string, string> = {
+  ...Object.fromEntries(MCP_NOT_YET_TYPED.map((site) => [site, NOT_YET_TYPED])),
+  ...MCP_REASONED_OPEN_SITES,
+};
 
 // ---- the walk --------------------------------------------------------------
 
