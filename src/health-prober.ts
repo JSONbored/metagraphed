@@ -23,7 +23,9 @@ import {
   normalizeProbeStatus,
   okLatencyMs,
   probeSurface as coreProbeSurface,
+  probeSlotDeadlineMs,
   rollupSubnetStatus,
+  withProbeDeadline,
   type ProbeSurface,
 } from "./health-probe-core.ts";
 import { ipv6EmbeddedIpv4 } from "./ip-safety.ts";
@@ -478,6 +480,9 @@ interface RunHealthProberOverrides {
   safetyFetch?: typeof fetch;
   connect?: ReturnType<typeof workerWebSocketConnector>;
   concurrency?: number;
+  /** The per-surface slot deadline, injected so a test can prove a stuck probe
+   * releases its slot without waiting the real ceiling (metagraphed#9769). */
+  probeDeadlineMs?: (surface: ProbeSurface) => number;
 }
 
 // Run one full probe sweep and persist results. Returns a small summary object.
@@ -491,6 +496,7 @@ export async function runHealthProber(
   const loadSurfaces =
     overrides.loadSurfaces || (() => loadOperationalSurfaces(env));
   const probe = overrides.probeSurface || coreProbeSurface;
+  const slotDeadlineMs = overrides.probeDeadlineMs || probeSlotDeadlineMs;
   const probeOptions =
     overrides.probeOptions ||
     ({
@@ -546,7 +552,27 @@ export async function runHealthProber(
     };
     let base: Row;
     try {
-      base = await probe(input, probeOptions);
+      // BOUNDED BY THE SLOT, not just by the request (metagraphed#9769). Every
+      // probe aborts its own fetch, but nothing bounded how long one surface may
+      // hold one of the eight worker slots -- and a subtensor endpoint that
+      // accepts connections and then stalls costs FIVE sequential timeouts, a
+      // minute in a slot, on a 615-surface sweep driven by a 15-minute cron.
+      //
+      // A timed-out probe is `failed`, exactly like a thrown one: it did not
+      // answer. Recording it as anything softer would let a permanently stuck
+      // endpoint read as healthy-but-slow forever.
+      const deadlineMs = slotDeadlineMs(input);
+      base = await withProbeDeadline(
+        probe(input, probeOptions),
+        deadlineMs,
+        () => ({
+          status: "failed",
+          classification: "unsupported",
+          latency_ms: null,
+          status_code: null,
+          error: `probe exceeded its ${deadlineMs}ms slot deadline`,
+        }),
+      );
     } catch (error) {
       base = {
         status: "failed",
