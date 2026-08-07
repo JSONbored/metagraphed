@@ -1685,18 +1685,36 @@ describe("chain-deregistrations lane compute", () => {
       "mainnet",
     )) as Row;
     const win = (body.windows as Row)["7d"] as Row;
-    assert.deepEqual(win.rows, [
-      {
-        netuid: 5,
-        deregistrations: 1,
-        distinct_deregistered_hotkeys: 1,
-        newest_observed: NOW - 2 * DAY_MS,
-      },
-    ]);
-    assert.deepEqual(win.network, {
+    const rows = win.rows as Row[];
+    assert.deepEqual(
+      rows.map(({ tenure: _tenure, ...rest }) => rest),
+      [
+        {
+          netuid: 5,
+          deregistrations: 1,
+          distinct_deregistered_hotkeys: 1,
+          newest_observed: NOW - 2 * DAY_MS,
+        },
+      ],
+    );
+    const { tenure: networkTenure, ...network } = win.network as Row;
+    assert.deepEqual(network, {
       distinct_deregistered_hotkeys: 1,
       newest_observed: NOW - 2 * DAY_MS,
     });
+    // #9742: the slot was held for 10 blocks between the two registrations the
+    // derivation already had to pair to name A as the displaced holder. It
+    // reaches the served body rather than being dropped at the derivation.
+    assert.deepEqual(networkTenure, {
+      sample_count: 1,
+      median_blocks: 10,
+      p10_blocks: 10,
+      p90_blocks: 10,
+      min_blocks: 10,
+      max_blocks: 10,
+      censored: true,
+    });
+    assert.deepEqual((rows[0] as Row).tenure, networkTenure);
     const index = ((body.hotkey_windows as Row)["7d"] as Row).hotkeys as Row;
     assert.deepEqual(Object.keys(index), ["A"], "A lost the slot; B gained it");
   });
