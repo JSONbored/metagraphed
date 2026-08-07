@@ -2331,3 +2331,59 @@ describe("revertDeployOwnedArtifactsIfDirty", () => {
     assert.equal(readFileSync(path.join(dir, "a.json"), "utf8"), '{"v":2}\n');
   });
 });
+
+describe("flattenSurfaces subnet_name (#9909)", () => {
+  // THE DEFECT. This stamped the raw overlay `name`, bypassing #9748's
+  // inversion -- the chain names the subnet, the overlay is only the fallback.
+  // operational-surfaces.json inherits this field and the prober carries it
+  // into the live store, so /api/v1/health served pre-rename names while
+  // /api/v1/subnets served current ones: 26 of 123 subnets disagreeing, from
+  // the SAME build. Measured on the real registry, the fix takes that to 0.
+  const overlay = {
+    netuid: 36,
+    slug: "sn-36",
+    name: "Eirel", // the curated file still carries the pre-rename name
+    surfaces: [
+      {
+        id: "sn-36-api",
+        kind: "subnet-api",
+        url: "https://api.example.dev/x",
+        authority: "official",
+      },
+    ],
+  };
+  const renamedOnChain = new Map<unknown, Row>([
+    [36, { netuid: 36, name: "Leoma", raw_name: "Leoma" }],
+  ]);
+
+  test("the chain names the surface's subnet, not the overlay", () => {
+    const [row] = flattenSurfaces([overlay], {}, renamedOnChain);
+    assert.equal(row.subnet_name, "Leoma");
+  });
+
+  test("the overlay still wins when the chain name is a placeholder", () => {
+    // netuid 3/39/81 carry a literal "deprecated" on chain, 94 "pending...".
+    // classifyNativeName calls those placeholders and the curated name is the
+    // better answer -- the inversion must not throw that away.
+    const [row] = flattenSurfaces(
+      [{ ...overlay, name: "Templar" }],
+      {},
+      new Map<unknown, Row>([
+        [36, { netuid: 36, name: "deprecated", raw_name: "deprecated" }],
+      ]),
+    );
+    assert.equal(row.subnet_name, "Templar");
+  });
+
+  test("omitting the map keeps every existing caller's behaviour", () => {
+    // capture-fixtures, probes-smoke, snapshot-openapi and the tests above have
+    // no native snapshot to pass. Their result must be exactly what it was.
+    const [row] = flattenSurfaces([overlay]);
+    assert.equal(row.subnet_name, "Eirel");
+  });
+
+  test("a netuid missing from the map falls back to the overlay", () => {
+    const [row] = flattenSurfaces([overlay], {}, new Map<unknown, Row>());
+    assert.equal(row.subnet_name, "Eirel");
+  });
+});

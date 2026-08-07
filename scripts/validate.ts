@@ -1087,8 +1087,17 @@ async function validateGeneratedArtifacts(
   // captured_at) so the per-subnet detail artifact stays reproducible.
   // #8689: same probe evidence the build uses, via the same loader.
   const surfaceProbeEvidence = await loadSurfaceProbeEvidence();
+  // Same map, same source, same third argument as the build (#9909): this
+  // check compares its own output against the build's, so a different
+  // subnet_name here would fail artifact parity rather than catch anything.
+  const nativeByNetuid = new Map(
+    (nativeSnapshot.subnets as Row[]).map((nativeSubnet) => [
+      nativeSubnet.netuid,
+      nativeSubnet,
+    ]),
+  );
   const surfaces = withSurfaceFreshness(
-    flattenSurfaces(activeOverlays, surfaceProbeEvidence),
+    flattenSurfaces(activeOverlays, surfaceProbeEvidence, nativeByNetuid),
     Date.parse(nativeSnapshot.captured_at),
   );
   // #1002: mirror the build's candidate ↔ curated-surface dedup. A candidate

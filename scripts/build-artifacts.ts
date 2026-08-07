@@ -207,6 +207,12 @@ const activeOverlayNetuids = new Set(
 const activeOverlays = overlays.filter((overlay) =>
   activeOverlayNetuids.has(overlay.netuid),
 );
+// Declared here rather than further down because flattenSurfaces below needs it
+// to resolve each surface's subnet_name through subnetDisplayName (#9909); it
+// depends only on chainSubnets, which is already in scope.
+const nativeByNetuid = new Map(
+  chainSubnets.map((nativeSubnet) => [nativeSubnet.netuid, nativeSubnet]),
+);
 // #1006: stamp the per-surface `stale` flag against the committed native-snapshot
 // captured_at — a deterministic reference (never wall-clock), so the flag stays
 // reproducible across builds. `last_verified_at` is added inside flattenSurfaces.
@@ -216,7 +222,7 @@ const activeOverlays = overlays.filter((overlay) =>
 // validate.ts cannot disagree about the evidence and fail artifact parity.
 const surfaceProbeEvidence = await loadSurfaceProbeEvidence();
 const surfaces: Row[] = withSurfaceFreshness(
-  flattenSurfaces(activeOverlays, surfaceProbeEvidence),
+  flattenSurfaces(activeOverlays, surfaceProbeEvidence, nativeByNetuid),
   Date.parse(nativeSnapshot.captured_at),
 );
 // #1002: dedup candidate ↔ curated surface. A candidate that shares a curated
@@ -367,10 +373,6 @@ let capturedFixtureReport: Row | null = null;
 }
 
 await fs.rm(r2OutputRoot, { recursive: true, force: true });
-
-const nativeByNetuid = new Map(
-  chainSubnets.map((nativeSubnet) => [nativeSubnet.netuid, nativeSubnet]),
-);
 
 // Derived-description fallback (issue #346): for subnets with no chain/overlay
 // description, surface a truncated blurb from the curated notes of a provider
@@ -4518,7 +4520,21 @@ function schemaIndexEntryMatchesSurface(
     entry.snapshot.surface_id === surface.id &&
     entry.snapshot.netuid === surface.netuid &&
     entry.snapshot.subnet_slug === surface.subnet_slug &&
-    entry.snapshot.subnet_name === surface.subnet_name &&
+    // subnet_name is deliberately NOT compared (#9909). This guard asks "has
+    // this entry been tampered with or drifted from its surface", and answering
+    // yes discards the ENTIRE index wholesale -- every captured schema, for
+    // every subnet. A DISPLAY name cannot carry that weight: since #9748 the
+    // chain names the subnet, so a team renaming on-chain silently nukes the
+    // schema index on the next build. Measured: 26 subnets renamed and all 227
+    // captured schemas were dropped, `schema_source: null` across the whole
+    // agent catalog and operational-surfaces.json.
+    //
+    // Identity is what the guard needs and identity is fully covered without
+    // it -- surface_id, netuid, subnet_slug, the surface url, the schema url
+    // and the document hash all still have to match, which is exactly the set
+    // schemaSurfaceEntryMatchesSurface above compares. The snapshot still
+    // RECORDS subnet_name as provenance of what the subnet was called at
+    // capture time; it just no longer gates trust.
     entry.snapshot.surface_url === surface.url &&
     entry.snapshot.schema_url === entry.schema_url &&
     entry.snapshot.hash === entry.hash &&
