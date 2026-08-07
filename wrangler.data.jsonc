@@ -178,7 +178,22 @@
     // Re-adding neuron_daily needs those two queries ported to portable SQL
     // (an explicit date literal computed in TS, not in the database) -- see
     // #9789.
-    "NEON_READ_LANES": "account_position_daily,neurons",
+    // `neurons` PULLED 2026-08-07, immediately after neuron_daily (#9791).
+    // /api/v1/validators returned ZERO from Neon and fell back to an empty
+    // artifact -- 5 rows -> 0, measured across three deploys:
+    //   baseline (pre-cutover)  5 rows
+    //   f07234628 (pre-cutover) 5 rows
+    //   2df376f7e (post)        0 rows
+    //
+    // Same root cause class as #9791: a query that is valid SQLite and not
+    // valid Postgres fails, and this route falls back to an artifact rather
+    // than erroring -- so the failure is invisible from the response alone.
+    //
+    // account_position_daily stays. Its one route was verified against a D1
+    // baseline across four deploys and is unchanged.
+    //
+    // NOTHING goes back into this flag until #9793's dialect scan runs in CI.
+    "NEON_READ_LANES": "account_position_daily",
     // The two ACCUMULATING tables, and only those (src/neon-backfill.ts).
     //
     // The mirror above writes what each request carries, which finishes the job
