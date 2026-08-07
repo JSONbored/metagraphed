@@ -22,11 +22,11 @@
   },
   "dashboard_url": null,
   "docs_url": null,
-  "name": "for sale (burn to uid1)",
+  "name": "Masx.ai",
   "netuid": 104,
   "notes": "Reviewed overlay for SN104. The current chain identity is a sale/placeholder-style name and no official project website, source repository, API, OpenAPI schema, or docs site has been verified. Root->128 accuracy audit re-review pass (#5903): still genuinely parked (subnet_emission_enabled false, sale-placeholder identity unchanged); fixed the candle-chart URL to the canonical trailing-slash form.",
   "schema_version": 1,
-  "slug": "for-sale-uid1",
+  "slug": "masx-ai",
   "source_repo": null,
   "status": "active",
   "surfaces": [

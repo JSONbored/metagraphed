@@ -9,6 +9,7 @@ import {
   nativeDisplayName,
   subnetDisplayName,
   stripUrls,
+  movingTargetSurfaceIds,
   cleanDescription,
   deriveDescriptionFromNotes,
 } from "../scripts/lib/formatting.ts";
@@ -483,5 +484,88 @@ describe("deriveDescriptionFromNotes", () => {
       "must not emit a lone high surrogate",
     );
     assert.ok(result!.includes("😀"), "keeps the whole astral character");
+  });
+});
+
+// --- movingTargetSurfaceIds -------------------------------------------------
+
+describe("movingTargetSurfaceIds — a /latest may have a sibling (#9746)", () => {
+  const surface = (id: string, url: string, kind = "subnet-api") => ({
+    id,
+    url,
+    kind,
+  });
+
+  test("flags a callable surface whose PATH ends in a moving-target terminal", () => {
+    // The SN53 shape: /epoch/latest is tracked, /epoch/{index} is not, and
+    // nothing about the first announces the second.
+    assert.deepEqual(
+      movingTargetSurfaceIds([
+        surface("a", "https://provider.engy.ai/api/subnet/v1/epoch/latest"),
+        surface(
+          "b",
+          "https://api.blockmachine.io/epochs/current",
+          "data-artifact",
+        ),
+        surface("c", "https://api.affine.io/api/v1/rank/current"),
+      ]),
+      ["a", "b", "c"],
+    );
+    // Trailing slash, and the other two terminals.
+    assert.deepEqual(
+      movingTargetSurfaceIds([
+        surface("d", "https://x.test/v1/newest/"),
+        surface("e", "https://x.test/v1/head"),
+      ]),
+      ["d", "e"],
+    );
+  });
+
+  test("ignores a terminal that is not at the END of the path", () => {
+    // A /latest/ in the middle is a directory name, not a point-in-time view.
+    assert.deepEqual(
+      movingTargetSurfaceIds([
+        surface("mid", "https://x.test/latest/reports/2026"),
+        surface("word", "https://x.test/v1/latest-releases"),
+      ]),
+      [],
+    );
+  });
+
+  test("ignores a query string that merely says latest", () => {
+    // ?window=latest is a parameter value; the surface is not a moving target.
+    assert.deepEqual(
+      movingTargetSurfaceIds([
+        surface("q", "https://x.test/v1/epochs?window=latest"),
+      ]),
+      [],
+    );
+  });
+
+  test("ignores NON-callable kinds", () => {
+    // A /latest on a dashboard or a website is a page a human opens, not an
+    // API capability with an indexed sibling -- flagging one would send an
+    // enricher to read documentation that does not exist.
+    assert.deepEqual(
+      movingTargetSurfaceIds([
+        surface("dash", "https://x.test/app/latest", "dashboard"),
+        surface("site", "https://x.test/latest", "website"),
+        surface("repo", "https://github.com/o/r/latest", "source-repo"),
+      ]),
+      [],
+    );
+  });
+
+  test("survives junk without throwing", () => {
+    assert.deepEqual(movingTargetSurfaceIds(undefined), []);
+    assert.deepEqual(movingTargetSurfaceIds([]), []);
+    assert.deepEqual(
+      movingTargetSurfaceIds([
+        surface("nourl", ""),
+        surface("bad", "not a url at all/latest"),
+        { id: "nokind", url: "https://x.test/v1/latest" } as never,
+      ]),
+      [],
+    );
   });
 });

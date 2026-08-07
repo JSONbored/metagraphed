@@ -8773,6 +8773,9 @@
               "missing_kinds": [
                 "archive"
               ],
+              "moving_target_surfaces": [
+                "example"
+              ],
               "supported_kinds": [
                 "archive"
               ]
@@ -9858,6 +9861,9 @@
               "missing_kinds": [
                 "archive"
               ],
+              "moving_target_surfaces": [
+                "example"
+              ],
               "supported_kinds": [
                 "archive"
               ]
@@ -10306,6 +10312,9 @@
               ],
               "missing_kinds": [
                 "archive"
+              ],
+              "moving_target_surfaces": [
+                "example"
               ],
               "supported_kinds": [
                 "archive"
@@ -31098,6 +31107,12 @@
           "missing_kinds": {
             "items": {
               "$ref": "#/components/schemas/SurfaceKind"
+            },
+            "type": "array"
+          },
+          "moving_target_surfaces": {
+            "items": {
+              "type": "string"
             },
             "type": "array"
           },

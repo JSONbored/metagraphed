@@ -11964,8 +11964,8 @@
       "provider": "taomarketcap",
       "public_safe": true,
       "schema_source": null,
-      "subnet_name": "for sale (burn to uid1)",
-      "subnet_slug": "for-sale-uid1",
+      "subnet_name": "Masx.ai",
+      "subnet_slug": "masx-ai",
       "surface_id": "sn-104-taomarketcap-subnet-snapshot",
       "surface_key": "srf-784573d5ed376328",
       "url": "https://api.taomarketcap.com/public/v1/subnets/104/"

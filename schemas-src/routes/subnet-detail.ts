@@ -321,6 +321,13 @@ export const GapsSchema = z
   .object({
     gap_notes: z.array(z.string()),
     missing_kinds: z.array(SurfaceKindSchema),
+    // #9746: ids of tracked surfaces whose URL names a MOVING TARGET
+    // (a /latest or /current terminal), so the operator may publish a
+    // parameterized sibling beside them that this registry does not track.
+    // A lead to resolve against the operator's own documentation -- never a
+    // claim that such a sibling exists. Optional so a body published before
+    // this shipped still validates.
+    moving_target_surfaces: z.array(z.string()).optional(),
     supported_kinds: z.array(SurfaceKindSchema),
   })
   .strict();
