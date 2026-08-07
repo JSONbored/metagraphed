@@ -4345,18 +4345,17 @@ function coverageDepthMatches(
 // GET /api/v1/endpoints's sort_fields (contracts.ts), read from the same
 // config so the inputSchema enum and applyQueryFilters can't drift.
 const ENDPOINT_SORT_FIELDS = API_QUERY_COLLECTIONS.endpoints.sort_fields;
-// Filter names applyQueryFilters accepts for the "endpoints" collection --
-// list_endpoints's own kind/layer/netuid/provider/publication_state/status/
-// pool_eligible args, matching GET /api/v1/endpoints's full filter set.
-const ENDPOINTS_QUERY_FILTER_NAMES = [
-  "kind",
-  "layer",
-  "netuid",
-  "pool_eligible",
-  "provider",
-  "publication_state",
-  "status",
-];
+// Filter names applyQueryFilters accepts for the "endpoints" collection.
+//
+// DERIVED, for the same reason ENDPOINT_SORT_FIELDS above is (#10005). This
+// hand-listed the seven names, two lines under a constant whose own comment
+// says "read from the same config so the inputSchema enum and applyQueryFilters
+// can't drift" -- the config owns `filters` exactly as it owns `sort_fields`,
+// and this file already imports it, so there was never a boundary forcing a
+// copy here the way there is in schemas-src/.
+const ENDPOINTS_QUERY_FILTER_NAMES = Object.keys(
+  API_QUERY_COLLECTIONS.endpoints.filters,
+);
 
 // z.toJSONSchema() always injects a `$schema` key. get_coverage_depth's own
 // pre-existing test (#6983, predates the Zod-conversion epic) asserts its

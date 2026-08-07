@@ -125,6 +125,76 @@ if (stale.length > 0) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Cross-boundary mirrors (#10005).
+//
+// schemas-src/ imports from neither src/ nor workers/ -- a rule the code states
+// itself ("a literal here because schemas-src/ imports from neither"). So a
+// vocabulary owned by API_QUERY_COLLECTIONS in src/contracts.ts CANNOT be
+// imported by the schema layer, and mirroring it is the correct answer to that
+// constraint. What was missing is the other half: nothing asserted the mirror
+// still matched.
+//
+// The cost of a silent divergence is asymmetric and neither half is loud. A
+// sort value added to the collection but not the mirror means the route accepts
+// an order the tool rejects -- an agent told a valid value is invalid. A value
+// REMOVED is worse: the tool keeps advertising a sort the route now ignores, so
+// the caller gets an unsorted answer that looks sorted. Same silent-wrong-data
+// class as the list_gaps `sort` no-op.
+//
+// Declared by name rather than matched by shape: two collections can share a
+// sort_fields set by coincidence (endpoint-pools/rpc-pools/pools do), and
+// "some collection somewhere agrees with this tuple" is not the property worth
+// asserting.
+const MIRRORED_VOCABULARIES: Record<string, string> = {
+  CANDIDATE_SORT_VALUES: "candidates",
+  ENDPOINT_POOL_SORT_VALUES: "endpoint-pools",
+  ENDPOINT_SORT_VALUES: "endpoints",
+  EVIDENCE_ENTRY_SORT_VALUES: "claims",
+  HEALTH_SURFACE_SORT_VALUES: "health-surfaces",
+  SURFACE_SORT_VALUES: "curated-surfaces",
+};
+
+const [{ API_QUERY_COLLECTIONS }, mcpShared] = await Promise.all([
+  import("../src/contracts.ts"),
+  import("../schemas-src/mcp-tools/shared.ts"),
+]);
+const collections = API_QUERY_COLLECTIONS as Record<
+  string,
+  { sort_fields?: readonly string[] }
+>;
+const mirrors = mcpShared as unknown as Record<string, readonly string[]>;
+
+for (const [name, collection] of Object.entries(MIRRORED_VOCABULARIES)) {
+  const mirrored = mirrors[name];
+  if (!Array.isArray(mirrored)) {
+    errors.push(
+      `${name} is declared as a mirror of API_QUERY_COLLECTIONS["${collection}"].sort_fields ` +
+        `but schemas-src/mcp-tools/shared.ts no longer exports it — delete the entry above, ` +
+        `or restore the export.`,
+    );
+    continue;
+  }
+  const source = collections[collection]?.sort_fields;
+  if (!Array.isArray(source)) {
+    errors.push(
+      `${name} mirrors API_QUERY_COLLECTIONS["${collection}"], which no longer declares sort_fields.`,
+    );
+    continue;
+  }
+  const a = [...mirrored].sort().join(",");
+  const b = [...source].sort().join(",");
+  if (a !== b) {
+    errors.push(
+      `${name} has drifted from API_QUERY_COLLECTIONS["${collection}"].sort_fields:\n` +
+        `    schemas-src: ${a || "(empty)"}\n` +
+        `    contracts:   ${b || "(empty)"}\n` +
+        `  The collection OWNS this vocabulary. Update the mirror, never the source, ` +
+        `unless the route's sort set genuinely changed.`,
+    );
+  }
+}
+
 if (errors.length > 0) {
   console.error(
     `Schema-vocabulary validation failed with ${errors.length} issue(s):`,
@@ -135,5 +205,6 @@ if (errors.length > 0) {
 
 console.log(
   `Schema-vocabulary validation passed: ${byVocabulary.size} distinct vocabularies, ` +
-    `${duplicated.length} still restated in more than one file (all per-domain coincidences, not debt — see COINCIDENT_BY_DOMAIN).`,
+    `${duplicated.length} still restated in more than one file (all per-domain coincidences, not debt — see COINCIDENT_BY_DOMAIN); ` +
+    `${Object.keys(MIRRORED_VOCABULARIES).length} cross-boundary mirrors match the collection that owns them.`,
 );
