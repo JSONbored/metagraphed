@@ -217,6 +217,36 @@ describe("the sync queue consumer", () => {
     assert.equal(rows().length, 0);
   });
 
+  test("a dead-letter batch is acked and NOT written (metagraphed-infra#363)", async () => {
+    // sync-batches-dlq is bound to this same handler, so the branch on
+    // batch.queue is the only thing standing between recording the loss and
+    // attempting -- for the sixth time -- the write that caused it. A message
+    // reaches the DLQ having already failed five times; re-running the writer
+    // here would be that same failure with a different label.
+    const m = positionMessage();
+    await worker.queue!(
+      { queue: "sync-batches-dlq", messages: [m] } as never,
+      { METAGRAPH_HEALTH_DB: d1() } as never,
+      { waitUntil: () => {} } as never,
+    );
+    assert.deepEqual(m.calls, ["ack"]);
+    assert.equal(rows().length, 0, "recorded, not re-written");
+  });
+
+  test("a live batch is still written, so the branch cannot swallow one", async () => {
+    // The mirror of the test above, and the more dangerous direction: a branch
+    // that matched the LIVE queue name would ack every real message without
+    // writing it, silently discarding the lane.
+    const m = positionMessage();
+    await worker.queue!(
+      { queue: "sync-batches", messages: [m] } as never,
+      { METAGRAPH_HEALTH_DB: d1() } as never,
+      { waitUntil: () => {} } as never,
+    );
+    assert.deepEqual(m.calls, ["ack"]);
+    assert.equal(rows().length, 1);
+  });
+
   test("writes a multi-family message, and does not fail its batch-mates", async () => {
     // THE REGRESSION (metagraphed-infra#359). The handler's opening log line
     // summed `m.rows.length` over every valid message. A chain-detail message

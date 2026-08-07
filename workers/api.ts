@@ -47,6 +47,10 @@ import {
   type LaneVerdict,
 } from "../src/lane-health.ts";
 import {
+  handleDeadLetterBatch,
+  isDeadLetterQueue,
+} from "../src/dead-letter.ts";
+import {
   applyQueryFilters,
   canonicalListSearch,
   paginationLinkHeader,
@@ -1602,6 +1606,14 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
+    // THE DEAD-LETTER BRANCH COMES FIRST (metagraphed-infra#354/#363). The DLQ
+    // is bound to this same handler, so without it a delivery that a subscriber
+    // has already refused eight times would be POSTed at them a ninth. Acked
+    // and recorded, never re-delivered.
+    if (isDeadLetterQueue(batch.queue)) {
+      await handleDeadLetterBatch(batch, env.METAGRAPH_HEALTH_DB);
+      return;
+    }
     return handleWebhookQueue(batch, env, ctx);
   },
 };
