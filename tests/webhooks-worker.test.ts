@@ -1395,6 +1395,119 @@ describe("what the consumer writes is what the status surface reads", () => {
   });
 });
 
+describe("one subscriber cannot starve the batch (metagraphed-infra#354)", () => {
+  // THE BAR THIS CLOSES. #354 said the per-subscription fairness cap "is not a
+  // queue primitive -- one noisy subscriber must not starve the rest" and to
+  // establish how it is preserved BEFORE deleting it. It was deleted with an
+  // argument: the cap rationed a shared per-run sweep budget that no longer
+  // exists. That half was right. But the consumer then processed its batch in a
+  // serial `for` loop, so a subscriber that hung took the other nine messages
+  // with it -- the same starvation, reintroduced by the loop.
+  async function run(
+    kv: ReturnType<typeof makeKv>,
+    bodies: unknown[],
+    deliver: unknown,
+  ) {
+    const { handleWebhookQueue } = await import("../workers/api.ts");
+    const acts: string[] = [];
+    await handleWebhookQueue(
+      {
+        messages: bodies.map((body) => ({
+          body,
+          attempts: 1,
+          ack: () => acts.push("ack"),
+          retry: () => acts.push("retry"),
+        })),
+      } as never,
+      envWith(kv) as unknown as Env,
+      { waitUntil: (p: Promise<unknown>) => void p } as never,
+      deliver as never,
+    );
+    return acts;
+  }
+
+  const msg = (id: string, event = "e1") => ({
+    subscription_id: id,
+    event_id: event,
+    body: JSON.stringify({ type: "metagraph.publish" }),
+  });
+
+  test("a hanging subscriber does not hold up the others", async () => {
+    const kv = makeKv();
+    const slow = await seedSubscription(kv, "https://hooks.example.com/slow");
+    const fast = await seedSubscription(kv, "https://hooks.example.com/fast");
+    const finished: string[] = [];
+    let releaseSlow: () => void = () => {};
+    const slowHangs = new Promise<void>((resolve) => {
+      releaseSlow = resolve;
+    });
+
+    const run1 = run(
+      kv,
+      [msg(slow.id), msg(fast.id)],
+      async ({ subscription }: { subscription: Row }) => {
+        if (subscription.id === slow.id) await slowHangs;
+        finished.push(subscription.id as string);
+        return { status: "delivered", status_code: 200 };
+      },
+    );
+
+    // Let the microtask queue drain. Under the old serial loop the fast
+    // subscriber could not even START until the slow one returned.
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    assert.deepEqual(
+      finished,
+      [fast.id],
+      "the healthy subscriber delivered while the other was still hanging",
+    );
+
+    releaseSlow();
+    await run1;
+    assert.deepEqual(finished.sort(), [fast.id, slow.id].sort());
+  });
+
+  test("one subscriber's messages stay serial, and in order", async () => {
+    // The other half of the primitive. A subscriber with a backlog occupies ONE
+    // slot rather than several, and its deliveries keep the order they were
+    // enqueued in -- parallelising the flat batch would have given that up.
+    const kv = makeKv();
+    const sub = await seedSubscription(kv, "https://hooks.example.com/a");
+    let inFlight = 0;
+    let peak = 0;
+    const order: string[] = [];
+
+    await run(
+      kv,
+      [msg(sub.id, "e1"), msg(sub.id, "e2"), msg(sub.id, "e3")],
+      async ({ event }: { event: Row }) => {
+        inFlight += 1;
+        peak = Math.max(peak, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        inFlight -= 1;
+        order.push(event.seq as string);
+        return { status: "delivered", status_code: 200 };
+      },
+    );
+
+    assert.equal(peak, 1, "one subscriber, one slot");
+    assert.equal(order.length, 3);
+  });
+
+  test("delivers with ONE http attempt, not the three deliverChangeEvent defaults to", async () => {
+    // Eight queue attempts x three HTTP attempts was 24 POSTs for one message,
+    // and a slot held for ~25 seconds. It also made the published promise of
+    // eight rounds and the delivery record's `attempts` both untrue.
+    const kv = makeKv();
+    const sub = await seedSubscription(kv, "https://hooks.example.com/a");
+    let seen: number | undefined;
+    await run(kv, [msg(sub.id)], async ({ maxAttempts }: Row) => {
+      seen = maxAttempts as number;
+      return { status: "delivered", status_code: 200 };
+    });
+    assert.equal(seen, 1);
+  });
+});
+
 describe("the webhook cron trigger (metagraphed-infra#354)", () => {
   // Delivery used to be a step inside the publish workflow, downstream of every
   // other step -- so when the live-API smoke check broke on 2026-08-02,

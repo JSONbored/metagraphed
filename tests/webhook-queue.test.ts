@@ -14,6 +14,9 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
   classifyWebhookBatch,
+  groupWebhookBatchBySubscription,
+  WEBHOOK_DELIVERY_CONCURRENCY,
+  WEBHOOK_DELIVERY_HTTP_ATTEMPTS,
   planWebhookFanOut,
   shouldDispatchChangeEvent,
   validWebhookDeliveryMessage,
@@ -284,5 +287,77 @@ describe("shouldDispatchChangeEvent", () => {
 
   test("an absent event id is never dispatched", () => {
     assert.equal(shouldDispatchChangeEvent(withChanges, "", null), false);
+  });
+});
+
+describe("groupWebhookBatchBySubscription (metagraphed-infra#354 fairness)", () => {
+  const m = (subscription_id: unknown, event_id = "e") => ({
+    body: { subscription_id, event_id, body: "{}" },
+  });
+
+  test("one subscriber's messages share ONE group, so it gets one slot", () => {
+    // The whole point. The consumer runs groups in parallel and each group
+    // serially, so a subscriber with four messages in a batch occupies one
+    // delivery slot rather than four -- which is the starvation the deleted
+    // per-subscription cap existed to prevent.
+    const groups = groupWebhookBatchBySubscription([
+      m("sub_a"),
+      m("sub_b"),
+      m("sub_a"),
+      m("sub_a"),
+    ]);
+    assert.equal(groups.length, 2);
+    assert.deepEqual(
+      groups.map((g) => g.length),
+      [3, 1],
+    );
+  });
+
+  test("preserves order within a subscriber and across the batch", () => {
+    // Per-subscriber order matters because a group runs serially -- deliveries
+    // to one endpoint keep the order they were enqueued in, which parallelising
+    // the flat list would have quietly given up.
+    const groups = groupWebhookBatchBySubscription([
+      m("sub_a", "e1"),
+      m("sub_b", "e2"),
+      m("sub_a", "e3"),
+    ]);
+    assert.deepEqual(
+      groups.map((g) => g.map((x) => x.body.event_id)),
+      [["e1", "e3"], ["e2"]],
+    );
+  });
+
+  test("a message with no readable subscription id gets its own group", () => {
+    // It is acked without delivering anything, so grouping it with a real
+    // subscriber would only make that subscriber wait behind a no-op.
+    const groups = groupWebhookBatchBySubscription([
+      m(undefined),
+      m("sub_a"),
+      m(""),
+      m(7),
+      { body: null },
+    ]);
+    assert.equal(groups.length, 5);
+    assert.equal(
+      groups.every((g) => g.length === 1),
+      true,
+    );
+  });
+
+  test("an empty batch is not an error", () => {
+    assert.deepEqual(groupWebhookBatchBySubscription([]), []);
+  });
+
+  test("the concurrency bound is the platform's, not a guess", () => {
+    // Six is Cloudflare's documented ceiling on connections SIMULTANEOUSLY
+    // WAITING FOR RESPONSE HEADERS per invocation, and a hanging subscriber is
+    // exactly that for its whole timeout. A seventh is queued rather than
+    // rejected, so a larger number would not error -- it would just stop being
+    // the bound it claims to be.
+    assert.equal(WEBHOOK_DELIVERY_CONCURRENCY, 6);
+    // And one HTTP attempt per queue attempt, so the eight rounds subscribers
+    // were promised are eight POSTs and not twenty-four.
+    assert.equal(WEBHOOK_DELIVERY_HTTP_ATTEMPTS, 1);
   });
 });

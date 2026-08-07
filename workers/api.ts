@@ -300,6 +300,7 @@ import {
   WEBHOOK_KV_PREFIX,
   resolveWebhookHostnamesWithDoh,
   generateSecret,
+  mapBounded,
   generateSubscriptionId,
   isValidSubscriptionId,
   publicSubscriptionView,
@@ -316,8 +317,11 @@ import {
 } from "../src/webhooks.ts";
 import {
   classifyWebhookBatch,
+  groupWebhookBatchBySubscription,
   planWebhookFanOut,
   shouldDispatchChangeEvent,
+  WEBHOOK_DELIVERY_CONCURRENCY,
+  WEBHOOK_DELIVERY_HTTP_ATTEMPTS,
   WEBHOOK_LAST_DISPATCHED_KEY,
   webhookDeliveryDisposition,
   webhookRetryDelaySeconds,
@@ -1854,12 +1858,29 @@ export async function handleWebhookQueue(
   deliver: typeof deliverChangeEvent = deliverChangeEvent,
 ): Promise<void> {
   const { valid, invalid } = classifyWebhookBatch(batch.messages);
+  const groups = groupWebhookBatchBySubscription(batch.messages);
   console.log(
     `webhook-deliveries: ${batch.messages.length} message(s), ` +
-      `${valid.length} valid, ${invalid} unparseable`,
+      `${valid.length} valid, ${invalid} unparseable, ` +
+      `${groups.length} subscriber group(s)`,
   );
 
-  for (const message of batch.messages) {
+  // ONE SLOT PER SUBSCRIBER, up to six at a time (metagraphed-infra#354). The
+  // batch used to be processed by a serial `for` loop, so one subscriber that
+  // hung took the other nine messages down with it -- the starvation the
+  // deleted per-subscription cap existed to prevent, reintroduced by the loop
+  // rather than by the budget it rationed.
+  //
+  // Groups run in parallel, and each group runs SERIALLY: a subscriber with a
+  // backlog cannot crowd out the batch by having more of it, and deliveries to
+  // one endpoint keep the order they were enqueued in.
+  await mapBounded(groups, WEBHOOK_DELIVERY_CONCURRENCY, async (group) => {
+    for (const message of group) await deliverOne(message);
+  });
+
+  async function deliverOne(
+    message: (typeof batch.messages)[number],
+  ): Promise<void> {
     const body = message.body as {
       subscription_id?: unknown;
       event_id?: unknown;
@@ -1878,7 +1899,7 @@ export async function handleWebhookQueue(
       typeof body.body !== "string"
     ) {
       message.ack();
-      continue;
+      return;
     }
 
     const subscription = (await env.METAGRAPH_CONTROL?.get(
@@ -1889,7 +1910,7 @@ export async function handleWebhookQueue(
     // takes effect on a delivery already in flight.
     if (!subscription) {
       message.ack();
-      continue;
+      return;
     }
 
     // PARSED BEFORE THE TRY, and a failure here ACKS. A body that is not JSON
@@ -1901,7 +1922,7 @@ export async function handleWebhookQueue(
       event = JSON.parse(body.body) as Record<string, unknown>;
     } catch {
       message.ack();
-      continue;
+      return;
     }
 
     let result: Record<string, unknown>;
@@ -1912,6 +1933,13 @@ export async function handleWebhookQueue(
         bodyText: body.body,
         fetchFn: fetch,
         now: () => new Date().toISOString(),
+        // ONE HTTP ATTEMPT PER QUEUE ATTEMPT. deliverChangeEvent defaults to
+        // three with its own backoff, and accepting that default meant one
+        // message could cost 24 POSTs and hold a slot for ~25 seconds -- a
+        // second retry scheduler inside the one the queue replaced, which made
+        // both the published eight-round promise and the delivery record's
+        // `attempts` untrue.
+        maxAttempts: WEBHOOK_DELIVERY_HTTP_ATTEMPTS,
         // Delivery-time DNS re-resolution is the SSRF guard, not an
         // optimisation: a hostname that resolved public at subscribe time can
         // point at a private address by the time a 12-hour-old retry fires.
