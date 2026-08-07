@@ -19079,6 +19079,125 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     assert.equal(out.generated_at, "2026-07-01T00:00:00.000Z");
   });
 
+  describe("list_surfaces boolean filters (#10008)", () => {
+    // These three were declared by the curated-surfaces collection and NOT
+    // passable from MCP. The collection's own comment records why they were
+    // moved server-side: the UI applied them client-side over one loaded page
+    // and showed 6 of 1,184 matches -- "a filter that silently under-reports
+    // by 99% is worse than one that errors, because it looks like it worked".
+    // An agent narrowing a page it fetched was in exactly that position.
+    const deps = () =>
+      makeDeps({
+        "/metagraph/surfaces.json": {
+          generated_at: "2026-07-01T00:00:00.000Z",
+          schema_version: 1,
+          surfaces: [
+            {
+              netuid: 1,
+              kind: "openapi",
+              auth_required: true,
+              public_safe: false,
+              rate_limit_notes: "10/s",
+            },
+            {
+              netuid: 2,
+              kind: "openapi",
+              auth_required: false,
+              public_safe: true,
+            },
+            {
+              netuid: 3,
+              kind: "docs",
+              auth_required: false,
+              public_safe: true,
+              rate_limit_notes: "60/m",
+            },
+          ],
+        },
+      });
+
+    // Each assertion checks the ROWS. A filter accepted and dropped would pass
+    // a schema-only test while returning everything.
+    test("auth_required narrows to the authenticated surfaces", async () => {
+      const res = await callTool(
+        "list_surfaces",
+        { auth_required: "true" },
+        { deps: deps() },
+      );
+      assert.deepEqual(
+        (res.body.result.structuredContent.surfaces as Row[]).map(
+          (s: Row) => s.netuid,
+        ),
+        [1],
+      );
+    });
+
+    test("public_safe narrows the other way", async () => {
+      const res = await callTool(
+        "list_surfaces",
+        { public_safe: "true" },
+        { deps: deps() },
+      );
+      assert.deepEqual(
+        (res.body.result.structuredContent.surfaces as Row[]).map(
+          (s: Row) => s.netuid,
+        ),
+        [2, 3],
+      );
+    });
+
+    test("rate_limited is a PRESENCE filter over rate_limit_notes", async () => {
+      // Not a claim that an unlimited surface exists -- `false` means the
+      // record declares no notes, which is what presenceFilters expresses.
+      const res = await callTool(
+        "list_surfaces",
+        { rate_limited: "true" },
+        { deps: deps() },
+      );
+      assert.deepEqual(
+        (res.body.result.structuredContent.surfaces as Row[]).map(
+          (s: Row) => s.netuid,
+        ),
+        [1, 3],
+      );
+    });
+
+    test("they compose with the filters that already worked", async () => {
+      const res = await callTool(
+        "list_surfaces",
+        { kind: "openapi", public_safe: "true" },
+        { deps: deps() },
+      );
+      assert.deepEqual(
+        (res.body.result.structuredContent.surfaces as Row[]).map(
+          (s: Row) => s.netuid,
+        ),
+        [2],
+      );
+    });
+
+    test("a non-boolean value is refused, not ignored", async () => {
+      const res = await callTool(
+        "list_surfaces",
+        { auth_required: "yes" },
+        { deps: deps() },
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.equal(
+        res.body.result.structuredContent.error.code,
+        "invalid_params",
+      );
+    });
+
+    test("omitting them returns every row, exactly as before", async () => {
+      const res = await callTool("list_surfaces", {}, { deps: deps() });
+      assert.equal(
+        (res.body.result.structuredContent.surfaces as Row[]).length,
+        3,
+      );
+    });
+  });
+
   test("list_surfaces reports not_found when the artifact is absent", async () => {
     const res = await callTool("list_surfaces", {}, { deps: makeDeps() });
     assert.equal(res.body.result.isError, true);
