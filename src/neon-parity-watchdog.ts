@@ -78,6 +78,10 @@ export const PARITY_TABLES = [
   "emission_gate_param_history",
   "subnet_emission_enabled_history",
   "chain_concentration_daily",
+  // The rolling window (#9891). Watched with a tolerance rather than at five
+  // rows, because it is written ~2,000 times an hour and pruned on a cron
+  // independent of D1's.
+  "surface_checks",
 ] as const;
 
 /**
@@ -113,6 +117,27 @@ export const EXPECTED_DIVERGENCE: Readonly<Record<string, string>> = {
 };
 
 export const PARITY_MIN_ROWS = 5;
+
+/**
+ * Tables whose counts are EXPECTED to move by more than PARITY_MIN_ROWS, with
+ * the tolerance each needs and why.
+ *
+ * Five rows is right for a dimension table that changes when a subnet
+ * retunes. It is meaningless for a pruned window written thousands of times an
+ * hour: `surface_checks` takes ~2,000 rows an hour, and the two stores prune
+ * on separate crons, so the counts differ by whatever landed or was deleted
+ * between the two COUNT(*)s. Held to five it would report a gap on every tick
+ * forever, which is how a check stops being read (#9881).
+ *
+ * A tolerance is NOT a silence. The gap still appears in the detail line and a
+ * difference above the tolerance still makes the verdict stale -- what changes
+ * is only where "this is churn" ends and "this is structural" begins.
+ */
+export const PARITY_TOLERANCE: Readonly<Record<string, number>> = {
+  // One hour of writes at the measured rate, plus the prune skew between two
+  // independent hourly crons. Anything past this is not timing.
+  surface_checks: 5_000,
+};
 
 export interface ParityDb {
   prepare(sql: string): { all(): Promise<{ results?: unknown[] } | null> };
@@ -200,7 +225,9 @@ export function parityGaps(
     // answers and this lane should not shout about.
     if (a == null || b == null) continue;
     const delta = a - b;
-    if (Math.abs(delta) >= minRows) out.push({ table, d1: a, neon: b, delta });
+    const tolerance = Math.max(minRows, PARITY_TOLERANCE[table] ?? 0);
+    if (Math.abs(delta) >= tolerance)
+      out.push({ table, d1: a, neon: b, delta });
   }
   return out.sort((x, y) => Math.abs(y.delta) - Math.abs(x.delta));
 }

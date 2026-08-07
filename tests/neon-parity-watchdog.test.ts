@@ -12,6 +12,7 @@ import {
   NEON_PARITY_LANE,
   PARITY_MIN_ROWS,
   PARITY_TABLES,
+  PARITY_TOLERANCE,
   describeParity,
   parityCountBatches,
   parityCountSql,
@@ -141,6 +142,55 @@ describe("parityCountBatches", () => {
     const batches = parityCountBatches(["a", "b", "c", "d", "e"], 2);
     assert.equal(batches.length, 3);
     assert.equal(batches[2], parityCountSql(["e"]));
+  });
+});
+
+describe("PARITY_TOLERANCE", () => {
+  test("a churny window is judged on its own scale, not five rows", () => {
+    // surface_checks takes ~2,000 rows an hour and the two stores prune on
+    // independent crons, so the counts differ by whatever landed between the
+    // two COUNT(*)s. At five rows it would report a gap on every tick forever,
+    // which is how a check stops being read.
+    const under = parityGaps(
+      new Map([["surface_checks", 1_349_625]]),
+      new Map([["surface_checks", 1_347_000]]),
+    );
+    assert.deepEqual(under, [], "2,625 rows apart is timing, not a fault");
+  });
+
+  test("a tolerance is not a silence -- past it, it still reports", () => {
+    const over = parityGaps(
+      new Map([["surface_checks", 1_349_625]]),
+      new Map([["surface_checks", 900_000]]),
+    );
+    assert.equal(over.length, 1);
+    assert.equal(over[0]!.delta, 449_625);
+  });
+
+  test("it never LOWERS the floor below PARITY_MIN_ROWS", () => {
+    // A tolerance under the default would make a table noisier, not quieter.
+    for (const [table, n] of Object.entries(PARITY_TOLERANCE)) {
+      assert.ok(n >= PARITY_MIN_ROWS, `${table} tolerance is below the floor`);
+    }
+  });
+
+  test("every tolerance names a table actually being watched", () => {
+    // A tolerance for a table absent from PARITY_TABLES is dead config that
+    // reads as protection.
+    for (const table of Object.keys(PARITY_TOLERANCE)) {
+      assert.ok(
+        (PARITY_TABLES as readonly string[]).includes(table),
+        `${table} has a tolerance but is not in PARITY_TABLES`,
+      );
+    }
+  });
+
+  test("the default is untouched for everything else", () => {
+    const gaps = parityGaps(
+      new Map([["neurons", 30_110]]),
+      new Map([["neurons", 30_104]]),
+    );
+    assert.equal(gaps.length, 1, "6 rows on a dimension table is still a gap");
   });
 });
 

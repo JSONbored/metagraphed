@@ -429,6 +429,21 @@ const CHAIN_CONCENTRATION_DAILY_COLUMNS = [
   "builder_version",
 ] as const;
 
+/** surface_checks, read off pragma_table_info 2026-08-07. The raw probe log:
+ * 1,349,625 rows over a ~27-day window, ~48,000 a day. */
+const SURFACE_CHECKS_COLUMNS = [
+  "surface_id",
+  "surface_key",
+  "netuid",
+  "kind",
+  "status",
+  "classification",
+  "latency_ms",
+  "status_code",
+  "ok",
+  "checked_at",
+] as const;
+
 export const NEON_BACKFILL_PLANS: Readonly<Record<string, BackfillPlan>> = {
   neuron_daily: {
     table: "neuron_daily",
@@ -574,6 +589,33 @@ export const NEON_BACKFILL_PLANS: Readonly<Record<string, BackfillPlan>> = {
   // RECOMPUTED as the day fills in. COUNT alone would let the two stores hold
   // 27 rows each and disagree about today's card indefinitely, so this one
   // compares on computed_at.
+  // THE FIRST append PLAN (#9908). `whole` is impossible here -- it would
+  // recopy 1.35M rows whenever the signature moved, and copyWholeTableToNeon
+  // has no tick budget at all.
+  //
+  // Both preconditions the partition demands are met, and neither is checkable
+  // by the type:
+  //
+  //   the cursor is assigned AT INSERT -- `checked_at` is the probe's own
+  //   clock, written once by the sweep that produced the row, so nothing ever
+  //   arrives below the high-water mark
+  //
+  //   rows are never rewritten -- one probe per surface per millisecond, and
+  //   the writer only ever INSERTs
+  //
+  // freshness IS the cursor here. That the guard it produces can never fire --
+  // checked_at is part of the primary key, so a conflict means equality -- is
+  // correct rather than accidental: a conflicting row is the same probe, and
+  // doing nothing is right.
+  surface_checks: {
+    table: "surface_checks",
+    columns: SURFACE_CHECKS_COLUMNS,
+    conflict: ["surface_id", "checked_at"],
+    keyset: ["checked_at", "surface_id"],
+    partition: "append",
+    booleans: ["ok"],
+    freshness: "checked_at",
+  },
   chain_concentration_daily: {
     table: "chain_concentration_daily",
     columns: CHAIN_CONCENTRATION_DAILY_COLUMNS,
