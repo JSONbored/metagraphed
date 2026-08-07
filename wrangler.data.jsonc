@@ -105,12 +105,26 @@
     // flipping one side alone is the split-brain this pins shut -- the main
     // Worker would stop forwarding while this one kept serving D1.
     "METAGRAPH_NEURONS_SOURCE": "d1",
-    // metagraphed-infra#336. Both EMPTY on purpose: this deploy introduces the
-    // Neon mirror and changes nothing. The order they are turned on in is
-    // fixed -- name a lane here, watch its `neon:` lane in lane_health go green
-    // across several producer ticks, and only then name it in NEON_READ_LANES.
-    // Never the other way round; that is exactly what #9704 was.
-    "NEON_DUAL_WRITE_LANES": "",
+    // metagraphed-infra#336, step one of the order #9711 set out.
+    //
+    // THE MIRROR IS ON; NOTHING READS FROM IT. `neurons` now writes D1 first
+    // and Neon after, for itself plus the two tables handleNeuronsSync derives
+    // (neuron_daily, account_position_daily). Every route still reads D1, so a
+    // Neon that refuses writes costs a mirror and a `neon:` lane verdict -- and
+    // nothing a caller can see.
+    //
+    // NEON_READ_LANES STAYS EMPTY until those three verdicts have been green
+    // across several 15-minute producer ticks AND Neon's own MAX(captured_at)
+    // has been compared against D1's. Reading before that is exactly #9704, and
+    // "the mirror is deployed" is not evidence that it wrote anything.
+    //
+    // Schema note: `neuron_daily` was created in Neon by hand on 2026-08-07
+    // before this flip, mirroring D1's DDL with Postgres types (SMALLINT for
+    // the 0/1 CHECK columns, BIGINT for the epoch-millisecond ones) and the
+    // same PRIMARY KEY (netuid, uid, snapshot_date) the mirror's ON CONFLICT
+    // names. An ON CONFLICT with no unique index behind it is a runtime error,
+    // not a slower query.
+    "NEON_DUAL_WRITE_LANES": "neurons",
     "NEON_READ_LANES": "",
     "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "d1",
     "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "d1",
