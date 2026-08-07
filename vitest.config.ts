@@ -56,7 +56,14 @@ export default defineConfig({
     // leak into the next one when the module registry is shared. A no-op under
     // per-file isolation; required by `isolate: false`. See
     // src/module-state-registry.ts.
-    setupFiles: ["tests/setup/reset-module-state.ts"],
+    // clock-skew.ts is FIRST and is a no-op unless TEST_CLOCK_SKEW_DAYS is set
+    // (#9689). It shifts Date only — never the timers — so an ordinary run is
+    // byte-for-byte unaffected, and a skewed run makes expiring fixtures fail
+    // on demand rather than on whatever morning they age out.
+    setupFiles: [
+      "tests/setup/clock-skew.ts",
+      "tests/setup/reset-module-state.ts",
+    ],
     // Vitest's 5s default is too tight for THIS suite under file parallelism,
     // and the gap was papered over by putting the real number on one npm
     // script. Measured on a 12-core machine during a full parallel run that

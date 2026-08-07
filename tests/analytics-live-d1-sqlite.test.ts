@@ -278,6 +278,9 @@ test("an all() result that is neither an array nor { results } yields zero rows"
 function seedSnapshot(over: Record<string, unknown> = {}) {
   const row = {
     netuid: 8,
+    // Pinned ON PURPOSE: loadSubnetTrajectory's test asserts this exact string
+    // back out, and it reads every snapshot rather than a recent window. The
+    // one caller that IS window-scoped overrides it — see TODAY below.
     snapshot_date: "2026-08-01",
     completeness_score: 70,
     surface_count: 5,
@@ -415,7 +418,17 @@ test("loadLeaderboardD1Rows executes all four reads against a real database", as
     status: "ok",
     latency_ms: 25,
   });
-  seedSnapshot({ netuid: 3, completeness_score: 50 });
+  // TODAY, not the pinned default. loadLeaderboardD1Rows reads growth with
+  // `WHERE snapshot_date >= sevenDaysAgo`, computed from the real clock — so a
+  // fixed date only satisfies it until it ages past seven days. The default
+  // "2026-08-01" was already 6 days old when #9689 found this: the
+  // growthSamples assertion below had one day left before it started failing
+  // every run, for a reason nothing in the diff would have explained.
+  seedSnapshot({
+    netuid: 3,
+    completeness_score: 50,
+    snapshot_date: new Date().toISOString().slice(0, 10),
+  });
   seedUptimeDay({ surface_id: "u1", netuid: 3, samples: 10, ok_count: 9 });
 
   const out = await loadLeaderboardD1Rows(readDb());
