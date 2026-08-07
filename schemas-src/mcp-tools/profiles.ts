@@ -24,16 +24,10 @@ import {
   querySchema,
   sortSchema,
 } from "./shared.ts";
+import { CURATION_LEVEL_VALUES } from "../shared.ts";
 
 const SUBNET_TYPE = ["root", "application"] as const;
-const CURATION_LEVEL = [
-  "native",
-  "candidate-discovered",
-  "community-seeded",
-  "machine-verified",
-  "maintainer-reviewed",
-  "adapter-backed",
-] as const;
+const CURATION_LEVEL = CURATION_LEVEL_VALUES;
 const PROFILE_LEVEL = [
   "directory-only",
   "identity-partial",

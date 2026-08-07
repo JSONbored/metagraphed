@@ -26,6 +26,12 @@ import {
 import { EndpointPoolsArtifactSchema } from "../routes/endpoints-pools.ts";
 import { EndpointIncidentsArtifactSchema } from "../routes/endpoints-pools.ts";
 import { ProviderEndpointsArtifactSchema } from "../routes/providers-rpc.ts";
+import {
+  ENDPOINT_LAYER_VALUES,
+  ENDPOINT_PUBLICATION_STATE_VALUES,
+  SURFACE_KIND_VALUES,
+} from "../routes/subnet-detail.ts";
+import { HEALTH_STATUS_VALUES } from "../shared.ts";
 
 const POOL_KINDS = ["subtensor-rpc", "subtensor-wss", "archive"] as const;
 const POOL_SORT_FIELDS = [
@@ -94,23 +100,8 @@ export type ListEndpointPoolsOutput = z.infer<
   typeof ListEndpointPoolsOutputSchema
 >;
 
-const SURFACE_KINDS = [
-  "archive",
-  "dashboard",
-  "data-artifact",
-  "docs",
-  "example",
-  "openapi",
-  "repo-registry",
-  "sdk",
-  "source-repo",
-  "sse",
-  "subnet-api",
-  "subtensor-rpc",
-  "subtensor-wss",
-  "website",
-] as const;
-const HEALTH_STATUSES = ["ok", "degraded", "failed", "unknown"] as const;
+const SURFACE_KINDS = SURFACE_KIND_VALUES;
+const HEALTH_STATUSES = HEALTH_STATUS_VALUES;
 const INCIDENT_SEVERITIES = ["critical", "warning", "info"] as const;
 const INCIDENT_STATES = ["active", "resolved"] as const;
 const INCIDENT_SORT_FIELDS = [
@@ -164,20 +155,8 @@ export type ListEndpointIncidentsOutput = z.infer<
   typeof ListEndpointIncidentsOutputSchema
 >;
 
-const ENDPOINT_LAYERS = [
-  "bittensor-base",
-  "data-provider",
-  "docs-provider",
-  "subnet-app",
-] as const;
-const ENDPOINT_PUBLICATION_STATES = [
-  "candidate",
-  "verified",
-  "monitored",
-  "pool-eligible",
-  "disabled",
-  "rejected",
-] as const;
+const ENDPOINT_LAYERS = ENDPOINT_LAYER_VALUES;
+const ENDPOINT_PUBLICATION_STATES = ENDPOINT_PUBLICATION_STATE_VALUES;
 const ENDPOINT_SORT_FIELDS = [
   "kind",
   "last_checked",

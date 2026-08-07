@@ -17,33 +17,15 @@ import {
   CountMapSchema,
   successEnvelopeSchema,
 } from "../envelope.ts";
-import { CurationLevelSchema } from "../shared.ts";
-import { ReviewStateSchema, SurfaceKindSchema } from "./subnet-detail.ts";
+import { CURATION_LEVEL_VALUES, CurationLevelSchema } from "../shared.ts";
+import {
+  ReviewStateSchema,
+  SURFACE_KIND_VALUES,
+  SurfaceKindSchema,
+} from "./subnet-detail.ts";
 
-const SURFACE_KINDS = [
-  "archive",
-  "dashboard",
-  "data-artifact",
-  "docs",
-  "example",
-  "openapi",
-  "repo-registry",
-  "sdk",
-  "source-repo",
-  "sse",
-  "subnet-api",
-  "subtensor-rpc",
-  "subtensor-wss",
-  "website",
-] as const;
-const CURATION_LEVELS = [
-  "native",
-  "candidate-discovered",
-  "community-seeded",
-  "machine-verified",
-  "maintainer-reviewed",
-  "adapter-backed",
-] as const;
+const SURFACE_KINDS = SURFACE_KIND_VALUES;
+const CURATION_LEVELS = CURATION_LEVEL_VALUES;
 const PROFILE_LEVELS = [
   "directory-only",
   "identity-partial",
@@ -54,34 +36,52 @@ const PROFILE_LEVELS = [
 const IDENTITY_LEVELS = ["none", "directory", "partial", "complete"] as const;
 const BOOLEAN_STRINGS = ["true", "false"] as const;
 
-export const ReviewEnrichmentLaneSchema = z.enum([
+/** The vocabulary, exported as a tuple so every other schema that needs
+ * these values imports them instead of restating them (#9799). */
+export const REVIEW_ENRICHMENT_LANE_VALUES = [
   "direct-submission",
   "maintainer-review",
   "adapter-candidate",
   "monitoring-followup",
   "baseline-monitoring",
-]);
-export const ReviewEvidenceActionSchema = z.enum([
+] as const;
+export const ReviewEnrichmentLaneSchema = z.enum(REVIEW_ENRICHMENT_LANE_VALUES);
+/** The vocabulary, exported as a tuple so every other schema that needs
+ * these values imports them instead of restating them (#9799). */
+export const REVIEW_EVIDENCE_ACTION_VALUES = [
   "submit-new-evidence",
   "verify-existing-evidence",
   "replace-stale-evidence",
   "review-existing-evidence",
   "maintainer-review-existing-evidence",
   "monitor",
-]);
-export const ReviewEnrichmentTargetTypeSchema = z.enum([
+] as const;
+export const ReviewEvidenceActionSchema = z.enum(REVIEW_EVIDENCE_ACTION_VALUES);
+/** The vocabulary, exported as a tuple so every other schema that needs
+ * these values imports them instead of restating them (#9799). */
+export const REVIEW_ENRICHMENT_TARGET_TYPE_VALUES = [
   "surface-candidate",
   "adapter-review",
   "maintainer-review",
   "monitoring-followup",
-]);
-export const ReviewEnrichmentSubmissionRouteSchema = z.enum([
+] as const;
+export const ReviewEnrichmentTargetTypeSchema = z.enum(
+  REVIEW_ENRICHMENT_TARGET_TYPE_VALUES,
+);
+/** The vocabulary, exported as a tuple so every other schema that needs
+ * these values imports them instead of restating them (#9799). */
+export const REVIEW_ENRICHMENT_SUBMISSION_ROUTE_VALUES = [
   "direct-candidate-pr",
   "adapter-request",
   "maintainer-review",
   "status-report",
-]);
-export const ReviewEnrichmentTargetActionSchema = z.enum([
+] as const;
+export const ReviewEnrichmentSubmissionRouteSchema = z.enum(
+  REVIEW_ENRICHMENT_SUBMISSION_ROUTE_VALUES,
+);
+/** The vocabulary, exported as a tuple so every other schema that needs
+ * these values imports them instead of restating them (#9799). */
+export const REVIEW_ENRICHMENT_TARGET_ACTION_VALUES = [
   "submit-new-candidate",
   "replace-stale-candidate",
   "verify-existing-candidate",
@@ -89,7 +89,10 @@ export const ReviewEnrichmentTargetActionSchema = z.enum([
   "adapter-review",
   "maintainer-review",
   "monitoring-followup",
-]);
+] as const;
+export const ReviewEnrichmentTargetActionSchema = z.enum(
+  REVIEW_ENRICHMENT_TARGET_ACTION_VALUES,
+);
 
 export const ReviewCandidateEvidenceSchema = z
   .object({

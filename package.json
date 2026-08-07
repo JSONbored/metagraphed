@@ -82,6 +82,7 @@
     "validate:no-hand-written-mjs": "node scripts/validate-no-hand-written-mjs.ts",
     "validate:single-schema-source": "node scripts/validate-single-schema-source.ts",
     "validate:schema-opacity": "node scripts/validate-schema-opacity.ts",
+    "validate:schema-vocabularies": "node scripts/validate-schema-vocabularies.ts",
     "validate:module-state-resets": "node scripts/validate-module-state-resets.ts",
     "openapi:generate": "node scripts/generate-openapi.ts --write",
     "openapi:generate:dry-run": "node scripts/generate-openapi.ts",

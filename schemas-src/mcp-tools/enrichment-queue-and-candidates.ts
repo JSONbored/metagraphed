@@ -20,33 +20,17 @@ import {
   querySchema,
   sortSchema,
 } from "./shared.ts";
-import { ReviewEnrichmentQueueArtifactSchema } from "../routes/review-enrichment.ts";
+import {
+  REVIEW_ENRICHMENT_LANE_VALUES,
+  REVIEW_EVIDENCE_ACTION_VALUES,
+  ReviewEnrichmentQueueArtifactSchema,
+} from "../routes/review-enrichment.ts";
 import { ReviewAdapterCandidatesArtifactSchema } from "../routes/review-enrichment.ts";
+import { SURFACE_KIND_VALUES } from "../routes/subnet-detail.ts";
+import { CURATION_LEVEL_VALUES } from "../shared.ts";
 
-const SURFACE_KINDS = [
-  "archive",
-  "dashboard",
-  "data-artifact",
-  "docs",
-  "example",
-  "openapi",
-  "repo-registry",
-  "sdk",
-  "source-repo",
-  "sse",
-  "subnet-api",
-  "subtensor-rpc",
-  "subtensor-wss",
-  "website",
-] as const;
-const CURATION_LEVELS = [
-  "native",
-  "candidate-discovered",
-  "community-seeded",
-  "machine-verified",
-  "maintainer-reviewed",
-  "adapter-backed",
-] as const;
+const SURFACE_KINDS = SURFACE_KIND_VALUES;
+const CURATION_LEVELS = CURATION_LEVEL_VALUES;
 const PROFILE_LEVELS = [
   "directory-only",
   "identity-partial",
@@ -54,22 +38,9 @@ const PROFILE_LEVELS = [
   "operational",
   "adapter-backed",
 ] as const;
-const EVIDENCE_ACTIONS = [
-  "submit-new-evidence",
-  "verify-existing-evidence",
-  "replace-stale-evidence",
-  "review-existing-evidence",
-  "maintainer-review-existing-evidence",
-  "monitor",
-] as const;
+const EVIDENCE_ACTIONS = REVIEW_EVIDENCE_ACTION_VALUES;
 const IDENTITY_LEVELS = ["none", "directory", "partial", "complete"] as const;
-const LANES = [
-  "direct-submission",
-  "maintainer-review",
-  "adapter-candidate",
-  "monitoring-followup",
-  "baseline-monitoring",
-] as const;
+const LANES = REVIEW_ENRICHMENT_LANE_VALUES;
 const BOOLEAN_STRINGS = ["true", "false"] as const;
 const QUEUE_SORT_FIELDS = [
   "adapter_score",
