@@ -371,6 +371,7 @@ import {
 } from "../src/neurons-d1-write.ts";
 import { mirrorNeuronSnapshotToNeon } from "../src/neurons-neon-write.ts";
 import { mirrorNominatorPositionsToNeon } from "../src/nominator-positions-neon-write.ts";
+import { mirrorLedgerToNeon } from "../src/ledger-neon-write.ts";
 import { neonReadEnabled } from "../src/neon-write.ts";
 import {
   writeAccountIdentityToD1,
@@ -1701,7 +1702,11 @@ function coerceNominatorCountSyncRow(row: Row) {
   return out;
 }
 
-async function handleValidatorNominatorCountsSync(request: Request, env: Env) {
+async function handleValidatorNominatorCountsSync(
+  request: Request,
+  env: Env,
+  ctx?: ExecutionContext,
+) {
   if (!env.VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET) {
     return writeJson(
       {
@@ -1822,6 +1827,16 @@ async function handleValidatorNominatorCountsSync(request: Request, env: Env) {
     await captureDataApiError(err, "validator-nominator-counts-sync-d1", env);
     return writeJson({ error: "d1 write failed" }, 502);
   }
+
+  // ONE OF THIS LANE'S TWO WRITERS. The sync-batches queue consumer is the
+  // other and mirrors too -- #9728 was a single unmirrored writer leaving a
+  // table short while the row count looked nearly right.
+  await mirrorLedgerToNeon(
+    env as unknown as Record<string, unknown>,
+    ctx,
+    "validator-nominator-counts",
+    rows,
+  );
 
   return writeJson({
     ok: true,
@@ -2106,7 +2121,11 @@ function coerceAccountBalanceSyncRow(row: Row) {
   return out;
 }
 
-async function handleAccountBalancesSync(request: Request, env: Env) {
+async function handleAccountBalancesSync(
+  request: Request,
+  env: Env,
+  ctx?: ExecutionContext,
+) {
   if (!env.ACCOUNT_BALANCES_SYNC_SECRET) {
     return writeJson(
       { error: "account-balances sync is not provisioned on this deployment" },
@@ -2277,6 +2296,16 @@ async function handleAccountBalancesSync(request: Request, env: Env) {
     return writeJson({ error: "d1 write failed" }, 502);
   }
 
+  // ONE OF THIS LANE'S TWO WRITERS. The sync-batches queue consumer is the
+  // other and mirrors too -- #9728 was a single unmirrored writer leaving a
+  // table short while the row count looked nearly right.
+  await mirrorLedgerToNeon(
+    env as unknown as Record<string, unknown>,
+    ctx,
+    "account-balances",
+    rows,
+  );
+
   return writeJson({
     ok: true,
     account_balances_written: rows.length,
@@ -2353,7 +2382,11 @@ function coerceHotkeyAlphaSyncRow(row: Row) {
   return out;
 }
 
-async function handleHotkeyAlphaSync(request: Request, env: Env) {
+async function handleHotkeyAlphaSync(
+  request: Request,
+  env: Env,
+  ctx?: ExecutionContext,
+) {
   if (!env.HOTKEY_ALPHA_SYNC_SECRET) {
     return writeJson(
       { error: "hotkey-alpha sync is not provisioned on this deployment" },
@@ -2525,6 +2558,16 @@ async function handleHotkeyAlphaSync(request: Request, env: Env) {
     await captureDataApiError(err, "hotkey-alpha-sync-d1", env);
     return writeJson({ error: "d1 write failed" }, 502);
   }
+
+  // ONE OF THIS LANE'S TWO WRITERS. The sync-batches queue consumer is the
+  // other and mirrors too -- #9728 was a single unmirrored writer leaving a
+  // table short while the row count looked nearly right.
+  await mirrorLedgerToNeon(
+    env as unknown as Record<string, unknown>,
+    ctx,
+    "hotkey-alpha",
+    rows,
+  );
 
   return writeJson({
     ok: true,
@@ -6785,7 +6828,7 @@ async function dispatchDataApiRequest(
       request.method === "POST" &&
       url.pathname === "/api/v1/internal/validator-nominator-counts-sync"
     ) {
-      return handleValidatorNominatorCountsSync(request, env);
+      return handleValidatorNominatorCountsSync(request, env, ctx);
     }
     if (
       request.method === "POST" &&
@@ -6797,13 +6840,13 @@ async function dispatchDataApiRequest(
       request.method === "POST" &&
       url.pathname === "/api/v1/internal/account-balances-sync"
     ) {
-      return handleAccountBalancesSync(request, env);
+      return handleAccountBalancesSync(request, env, ctx);
     }
     if (
       request.method === "POST" &&
       url.pathname === "/api/v1/internal/hotkey-alpha-sync"
     ) {
-      return handleHotkeyAlphaSync(request, env);
+      return handleHotkeyAlphaSync(request, env, ctx);
     }
     if (
       request.method === "POST" &&
@@ -7411,15 +7454,24 @@ export default {
       : {};
     const writers: SyncBatchWriters = env.METAGRAPH_HEALTH_DB
       ? {
-          "hotkey-alpha": (rows, pass) =>
-            writeHotkeyAlphaToD1(
+          "hotkey-alpha": async (rows, pass) => {
+            const result = await writeHotkeyAlphaToD1(
               env.METAGRAPH_HEALTH_DB as unknown as Parameters<
                 typeof writeHotkeyAlphaToD1
               >[0],
               rows,
               pass,
-            ),
-          // Recomputes the prune map from THIS message's rows, which is sound
+            );
+            // THE LANE'S OTHER WRITER, mirrored here as well as on the
+            // HTTP path.
+            await mirrorLedgerToNeon(
+              env as unknown as Record<string, unknown>,
+              ctx,
+              "hotkey-alpha",
+              rows,
+            );
+            return result;
+          }, // Recomputes the prune map from THIS message's rows, which is sound
           // only because the message asserted `key_complete` -- the
           // validator rejects it otherwise, so this writer never sees a chunk
           // that could prune rows it did not carry.
@@ -7441,15 +7493,24 @@ export default {
             );
             return result;
           },
-          "account-balances": (rows, pass) =>
-            writeAccountBalancesToD1(
+          "account-balances": async (rows, pass) => {
+            const result = await writeAccountBalancesToD1(
               env.METAGRAPH_HEALTH_DB as unknown as Parameters<
                 typeof writeAccountBalancesToD1
               >[0],
               rows,
               pass,
-            ),
-          // Redoes both derivations from THIS message's rows, which is sound
+            );
+            // THE LANE'S OTHER WRITER, mirrored here as well as on the
+            // HTTP path.
+            await mirrorLedgerToNeon(
+              env as unknown as Record<string, unknown>,
+              ctx,
+              "account-balances",
+              rows,
+            );
+            return result;
+          }, // Redoes both derivations from THIS message's rows, which is sound
           // only because the message asserted `key_complete` -- the validator
           // rejects a neurons message without it, so this writer never sees a
           // chunk whose prune map would delete rows it did not carry.
@@ -7460,13 +7521,23 @@ export default {
               >[0],
               neuronSnapshotWrite(rows, Date.now()),
             ),
-          "validator-nominator-counts": (rows) =>
-            writeValidatorNominatorCountsToD1(
+          "validator-nominator-counts": async (rows) => {
+            const result = await writeValidatorNominatorCountsToD1(
               env.METAGRAPH_HEALTH_DB as unknown as Parameters<
                 typeof writeValidatorNominatorCountsToD1
               >[0],
               rows,
-            ),
+            );
+            // THE LANE'S OTHER WRITER, mirrored here as well as on the
+            // HTTP path.
+            await mirrorLedgerToNeon(
+              env as unknown as Record<string, unknown>,
+              ctx,
+              "validator-nominator-counts",
+              rows,
+            );
+            return result;
+          },
         }
       : {};
     for (const message of batch.messages) {
