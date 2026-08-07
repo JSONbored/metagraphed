@@ -2805,7 +2805,13 @@ export function subnetLifecycle(nativeSubnet: Row): string {
       string | undefined) || ""
   )
     .trim()
-    .toLowerCase();
+    .toLowerCase()
+    // Owners decorate these: the chain carries "pending..." on netuid 94, which
+    // an exact match missed entirely and reported as a live subnet. Only
+    // TRAILING punctuation is stripped, never a prefix or an interior word, so
+    // a real product called "Pending Rewards" is still a real name -- the
+    // deliberate narrowness the comment above argues for.
+    .replace(/[\s.!,;:_\-~*]+$/, "");
   if (name === "deprecated") return "deprecated";
   if (name === "parked") return "parked";
   if (name === "pending") return "pending";

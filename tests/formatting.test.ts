@@ -92,6 +92,22 @@ describe("formatLlmMarkdownText", () => {
 
 // --- classifyNativeName -----------------------------------------------------
 
+describe("stripUrls — a typo'd scheme is still a URL (#9748)", () => {
+  test("strips a scheme whose colon the operator dropped", () => {
+    // The chain carries exactly this on netuid 123. With the colon required,
+    // the URL survived, then shredded into a bare "https" search token that
+    // matches every subnet publishing a link.
+    assert.equal(stripUrls("https//mantis123.com/dashboard/"), "");
+    assert.equal(stripUrls("see http//example.com/x now"), "see now");
+  });
+
+  test("still strips a well-formed one, and leaves prose alone", () => {
+    assert.equal(stripUrls("visit https://example.com/a?b=c ok"), "visit ok");
+    // No false positive on ordinary text that merely contains the letters.
+    assert.equal(stripUrls("https is a protocol"), "https is a protocol");
+  });
+});
+
 describe("classifyNativeName", () => {
   test("empty / whitespace / non-string yields the empty quality", () => {
     assert.deepEqual(classifyNativeName("", 1), {

@@ -143,13 +143,19 @@ describe("registry lifecycle truth (TS4)", () => {
   });
 
   test("chain-deprecated/parked/pending subnets are not reported as live", () => {
-    // netuids 3/39/81 are chain-deprecated, 73 Parked, 58 Pending — they must
-    // NOT carry lifecycle "active" (the bug: shown as active).
+    // netuids 3/39/81 are chain-deprecated, 73 Parked, 94 "pending..." — they
+    // must NOT carry lifecycle "active" (the bug: shown as active).
+    //
+    // 58 used to be the `pending` case and is not any more: its owner renamed
+    // it to "greevils" on chain, which is exactly the drift a 54-day-old
+    // capture hid. 94 carries "pending..." — with the ELLIPSIS, which the
+    // exact-match derivation missed and reported as a live subnet until
+    // subnetLifecycle learned to strip trailing punctuation.
     for (const netuid of [3, 39, 81]) {
       assert.equal(byNetuid.get(netuid)?.lifecycle, "deprecated");
     }
     assert.equal(byNetuid.get(73)?.lifecycle, "parked");
-    assert.equal(byNetuid.get(58)?.lifecycle, "pending");
+    assert.equal(byNetuid.get(94)?.lifecycle, "pending");
   });
 
   test("lifecycle is distinct from chain-registration status", () => {
