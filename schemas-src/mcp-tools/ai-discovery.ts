@@ -4,7 +4,8 @@
 // existing schemas-src/routes/ REST schema -- modeled fresh, matching
 // each hand-written literal field-for-field.
 import { z } from "zod";
-import { OpenObjectArraySchema, limitSchema, netuidSchema } from "./shared.ts";
+import { limitSchema, netuidSchema } from "./shared.ts";
+import { AgentCatalogSubnetEntrySchema } from "../routes/agent-catalog.ts";
 
 // Symbolic in the hand-written original (src/health-serving.ts's
 // ECONOMIC_BOARD_SPECS[].key), cross-checked against the actual runtime
@@ -168,7 +169,29 @@ export const FindSubnetForTaskOutputSchema = z
     count: z.int(),
     discovery: z.unknown().optional(),
     note: z.string().nullable().optional(),
-    results: OpenObjectArraySchema,
+    // COMPOSED from the catalog entry, not restated (#9797). Nine of the
+    // eleven keys are AgentCatalogSubnetEntrySchema's own -- this tool ranks
+    // catalog subnets against a task and returns a discovery-shaped slice of
+    // each -- so `pick` states that relationship and a catalog field rename
+    // lands here as a compile error. The two additions are the ranking itself.
+    // Verified against production 2026-08-07 across 18 rows from four task
+    // queries: no key outside the catalog entry other than these two.
+    results: z.array(
+      AgentCatalogSubnetEntrySchema.pick({
+        netuid: true,
+        slug: true,
+        name: true,
+        base_url: true,
+        categories: true,
+        service_kinds: true,
+        callable_count: true,
+        integration_readiness: true,
+        health: true,
+      }).extend({
+        relevance: z.number(),
+        next_step: z.string(),
+      }),
+    ),
   })
   .passthrough();
 export type FindSubnetForTaskOutput = z.infer<

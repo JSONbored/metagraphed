@@ -19,7 +19,6 @@ import { z } from "zod";
 import {
   McpListPageFields,
   McpSubnetListArtifactStamp,
-  OpenObjectSchema,
   fieldsStringSchema,
   kindSchema,
   limitSchema,
@@ -227,19 +226,58 @@ export const ListSubnetHealthInputSchema = z
   .strict();
 export type ListSubnetHealthInput = z.infer<typeof ListSubnetHealthInputSchema>;
 
-// NOT DERIVED, deliberately (#9796). list_subnet_health does not mirror
-// HealthSubnetArtifact's row shape: the route serves overlaySubnetHealth()'s
-// live-merged 12-field row (strict, and requiring `observed_by`), while the
-// tool serves the registry surface record overlaid with health -- 20 fields,
-// including auth_required/public_safe/content_type/method_tested that the
-// route row has no place for. Verified against production: deriving it would
-// publish a contract the live response violates. It stays hand-written until
-// something types the tool's own row (#9797).
+// NOT DERIVED, deliberately (#9796), and now MODELED rather than left open
+// (#9797). list_subnet_health does not mirror HealthSubnetArtifact's row
+// shape: the route serves overlaySubnetHealth()'s live-merged 12-field row
+// (strict, and requiring `observed_by`), while the tool serves the registry
+// surface record overlaid with health. Re-confirmed against production
+// 2026-08-07 -- deriving it fails with `Unrecognized keys: auth_required,
+// content_type, method_tested, private_redirect_blocked, public_safe,
+// subnet_name, subnet_slug, uptime_sample_ratio, verified_at`, which is that
+// difference stated by the validator rather than by a comment.
+//
+// So this one is modeled from the LIVE RESPONSE, censused across 44 rows from
+// four subnets (1, 8, 53, 64) on 2026-08-07. Optionality is measured, not
+// guessed: the five fields below marked optional were genuinely absent on some
+// rows, and `last_ok` is the one that is present-but-null. Passthrough,
+// because a modeled shape should not reject a field the producer adds before
+// this file learns about it.
+const SubnetHealthSurfaceSchema = z
+  .object({
+    surface_id: z.string(),
+    netuid: netuidSchema(),
+    subnet_slug: z.string(),
+    subnet_name: z.string(),
+    kind: z.string(),
+    provider: z.string(),
+    url: z.string(),
+    auth_required: z.boolean(),
+    public_safe: z.boolean(),
+    method_tested: z.string(),
+    status: z.string(),
+    classification: z.string(),
+    latency_ms: z.number(),
+    last_checked: z.string(),
+    // Present on every row, null when the surface has never been seen healthy.
+    last_ok: z.string().nullable(),
+    verified_at: z.string(),
+    uptime_sample_ratio: z.number(),
+    private_redirect_blocked: z.boolean(),
+    // Absent rather than null when the probe did not record one: 43/44 rows
+    // carried a status_code and content_type, 1/44 an error/error_class, 4/44
+    // a redirect_target.
+    status_code: z.int().optional(),
+    content_type: z.string().optional(),
+    error: z.string().optional(),
+    error_class: z.string().optional(),
+    redirect_target: z.string().optional(),
+  })
+  .passthrough();
 export const ListSubnetHealthOutputSchema = z
   .object({
     generated_at: z.string().nullable().optional(),
     netuid: netuidSchema().nullable().optional(),
-    surfaces: z.array(OpenObjectSchema),
+    surfaces: z.array(SubnetHealthSurfaceSchema),
     total: z.int().optional(),
     returned: z.int().optional(),
     limit: z.int().optional(),

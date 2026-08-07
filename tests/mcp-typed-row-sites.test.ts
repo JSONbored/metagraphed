@@ -51,6 +51,10 @@ const ROW_SITES: Array<[tool: string, key: string, projectable: boolean]> = [
   ["get_domain_summary", "domains", false],
   ["get_subnet_gaps", "priorities", false],
   ["list_search", "documents", true],
+  ["list_subnet_health", "surfaces", false],
+  ["how_do_i_call", "services", false],
+  ["find_subnet_for_task", "results", false],
+  ["list_surface_credentials", "credentials", false],
 ];
 
 describe("typed row sites (#9797)", () => {
@@ -211,5 +215,22 @@ describe("typed row sites (#9797)", () => {
         `${tool}.summary declares no rao-precision pattern`,
       );
     }
+  });
+  test("the #9797 debt list is EMPTY", () => {
+    // The whole point of the epic. `validate:schema-opacity` still allows
+    // reasoned-open sites -- an embedded third-party document, decoded chain
+    // arguments -- but nothing is left carrying NOT_YET_TYPED, which was 33
+    // sites at the start of 2026-08-07.
+    const text = readFileSync("scripts/validate-schema-opacity.ts", "utf8");
+    const block = text.slice(
+      text.indexOf("const MCP_NOT_YET_TYPED"),
+      text.indexOf("/** MCP sites that are open on purpose"),
+    );
+    const entries = [...block.matchAll(/"[^"]+"/g)];
+    assert.deepEqual(
+      entries.map((m) => m[0]),
+      [],
+      "MCP_NOT_YET_TYPED is no longer empty -- a new untyped site was added rather than declared with a reason",
+    );
   });
 });
