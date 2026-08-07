@@ -701,7 +701,7 @@ async function handleNeuronsSync(
   // subnets behind it kept a stamp that was by then 30 hours old."
   //
   // MAX(captured_at) cannot see it, because it reflects only the netuids that
-  // DID land -- 21 of 129 subnets leaves a perfectly fresh-looking stamp.
+  // DID land -- 21 of 129 netuids leaves a perfectly fresh-looking stamp.
   //
   // Optional, like every other lane's: a producer that has not been updated
   // must keep working, and inventing a total would mark an unproven load

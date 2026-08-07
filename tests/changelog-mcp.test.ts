@@ -16,11 +16,30 @@ import { mockEnv, type Row } from "./row-type.ts";
 type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
 
 const SAMPLE_CHANGELOG = {
+  // Required by GET_CHANGELOG_OUTPUT_SCHEMA and present on the real artifact
+  // (GET /api/v1/changelog returns it alongside source/summary/artifacts).
+  // The fixture predated the field and stopped validating when the schema
+  // caught up with what the endpoint had been serving all along.
+  schema_version: 1,
+  contract_version: "2026-07-03.2",
+  generated_at: "2026-08-07T10:09:17.651Z",
   source: "generated-artifact-diff",
+  // The full summary the schema requires, matching GET /api/v1/changelog.
+  // The fixture carried only the three artifact_* counts.
   summary: {
     artifact_added_count: 1,
     artifact_modified_count: 2,
     artifact_removed_count: 0,
+    netuid_added_count: 0,
+    netuid_removed_count: 0,
+    netuid_renamed_count: 0,
+    coverage_delta: {
+      candidate_count: { before: 2171, after: 2174, delta: 3 },
+      curated_overlay_count: { before: 129, after: 129, delta: 0 },
+      native_only_count: { before: 0, after: 0, delta: 0 },
+      provider_count: null,
+      surface_count: { before: 3493, after: 3493, delta: 0 },
+    },
   },
   artifacts: { added: [], modified: [], removed: [] },
   subnets: { added: [], removed: [], renamed: [] },
