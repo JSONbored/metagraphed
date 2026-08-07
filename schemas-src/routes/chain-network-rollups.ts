@@ -82,6 +82,23 @@ export type ChainAxonRemovalsQuery = z.infer<
   typeof ChainAxonRemovalsQuerySchema
 >;
 
+// #9742: how long the slots that turned over had been held. Optional so a
+// body published before this shipped still validates.
+const SlotTenureSchema = z
+  .object({
+    sample_count: z.int().min(0),
+    median_blocks: z.int().min(0).nullable(),
+    p10_blocks: z.int().min(0).nullable(),
+    p90_blocks: z.int().min(0).nullable(),
+    min_blocks: z.int().min(0).nullable(),
+    max_blocks: z.int().min(0).nullable(),
+    // Always true, and published rather than assumed: only a slot that has
+    // ALREADY turned over contributes a sample, so the distribution is
+    // censored toward short tenures and understates how long slots last.
+    censored: z.boolean(),
+  })
+  .strict();
+
 export const ChainDeregistrationsArtifactSchema = z
   .object({
     schema_version: z.int(),
@@ -93,6 +110,7 @@ export const ChainDeregistrationsArtifactSchema = z
         distinct_deregistered_hotkeys: z.int().min(0),
         deregistrations: z.int().min(0),
         deregistrations_per_hotkey: z.number().min(0).nullable(),
+        tenure: SlotTenureSchema.optional(),
       })
       .strict(),
     intensity_distribution: IntensityDistributionSchema.nullable(),
@@ -103,6 +121,7 @@ export const ChainDeregistrationsArtifactSchema = z
           distinct_deregistered_hotkeys: z.int().min(0),
           deregistrations: z.int().min(0),
           deregistrations_per_hotkey: z.number().min(0).nullable(),
+          tenure: SlotTenureSchema.optional(),
         })
         .strict(),
     ),

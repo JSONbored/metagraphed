@@ -109,6 +109,22 @@ export interface DerivedDeregistration {
   successor: string;
   block_number: number;
   observed_at: number;
+  /**
+   * HOW LONG THE DISPLACED HOLDER HELD THE SLOT, in blocks (#9742).
+   *
+   * The derivation already holds both registrations at once -- it needs the
+   * predecessor to name the displaced hotkey at all -- so this is the distance
+   * between two observed events rather than anything modelled. It was being
+   * dropped on the line that builds this object.
+   *
+   * Null when the two registrations carry no usable ordering (a malformed or
+   * equal block height); never zero, because a zero-block tenure would read as
+   * "evicted instantly" rather than "not measurable".
+   */
+  tenure_blocks: number | null;
+  /** The predecessor's own registration timestamp, so a consumer can express
+   * the same span in time without needing the block schedule. */
+  predecessor_observed_at: number;
 }
 
 export interface DerivedDeregistrations {
@@ -234,6 +250,7 @@ export function deriveDeregistrations(
         continue;
       }
       if (previous.hotkey === current.hotkey) continue;
+      const tenureBlocks = current.block_number - previous.block_number;
       events.push({
         netuid: current.netuid,
         uid: current.uid,
@@ -241,6 +258,12 @@ export function deriveDeregistrations(
         successor: current.hotkey,
         block_number: current.block_number,
         observed_at: current.observed_at,
+        // Positive-only: the bucket is sorted by (block, event_index), so a
+        // non-positive span means the two rows are not orderable by block --
+        // publishing 0 would read as an instant eviction rather than as a
+        // measurement that could not be taken.
+        tenure_blocks: tenureBlocks > 0 ? tenureBlocks : null,
+        predecessor_observed_at: previous.observed_at,
       });
     }
   }
@@ -249,11 +272,76 @@ export function deriveDeregistrations(
 
 /** One per-subnet leaderboard row, in the exact shape
  * buildChainDeregistrations / buildSubnetDeregistrations read. */
+/**
+ * The observable distribution of slot tenure (#9742).
+ *
+ * A DISTRIBUTION, not a mean. Slot tenure is not symmetric -- a handful of
+ * long-lived validators over a churn floor of miners evicted inside an epoch
+ * gives a mean that describes neither -- so the median and the tails are what a
+ * caller can act on.
+ *
+ * CENSORED, AND IT SAYS SO. Only a slot that has ALREADY turned over
+ * contributes a sample; one still occupied contributes nothing, however long it
+ * has been held. So the observable distribution is biased toward SHORT tenures
+ * and systematically understates how long slots last. That is published as
+ * `censored: true` rather than left for the reader to deduce, for the same
+ * reason the count publishes `is_lower_bound` -- a number whose bias is known
+ * and unstated is worse than one that declares it.
+ */
+export interface TenureDistribution {
+  /** How many derived events carried a measurable tenure. */
+  sample_count: number;
+  median_blocks: number | null;
+  p10_blocks: number | null;
+  p90_blocks: number | null;
+  min_blocks: number | null;
+  max_blocks: number | null;
+  /** Always true here, and stated anyway: see the note above. */
+  censored: boolean;
+}
+
+/** Nearest-rank percentile over an ascending sample; null on an empty one. */
+function percentileBlocks(
+  ascending: number[],
+  fraction: number,
+): number | null {
+  if (ascending.length === 0) return null;
+  const rank = Math.ceil(fraction * ascending.length);
+  return ascending[Math.min(Math.max(rank, 1), ascending.length) - 1] ?? null;
+}
+
+/**
+ * Summarize the tenure of a set of derived deregistrations.
+ *
+ * Events with a null `tenure_blocks` are DROPPED rather than counted as zero:
+ * an unmeasurable span is not an instant eviction, and `sample_count` is
+ * reported so a caller can see how much of the set was measurable.
+ */
+export function summarizeTenure(
+  events: DerivedDeregistration[],
+): TenureDistribution {
+  const samples = events
+    .map((event) => event.tenure_blocks)
+    .filter((value): value is number => typeof value === "number" && value > 0)
+    .sort((a, b) => a - b);
+  return {
+    sample_count: samples.length,
+    median_blocks: percentileBlocks(samples, 0.5),
+    p10_blocks: percentileBlocks(samples, 0.1),
+    p90_blocks: percentileBlocks(samples, 0.9),
+    min_blocks: samples.length ? samples[0] : null,
+    max_blocks: samples.length ? samples[samples.length - 1] : null,
+    censored: true,
+  };
+}
+
 export interface DeregistrationSubnetRow {
   netuid: number;
   deregistrations: number;
   distinct_deregistered_hotkeys: number;
   newest_observed: number;
+  /** How long the slots that turned over here had been held (#9742). */
+  tenure: TenureDistribution;
 }
 
 /**
@@ -266,17 +354,26 @@ export function deregistrationsByNetuid(
 ): DeregistrationSubnetRow[] {
   const perNetuid = new Map<
     number,
-    { count: number; hotkeys: Set<string>; newest: number }
+    {
+      count: number;
+      hotkeys: Set<string>;
+      newest: number;
+      events: DerivedDeregistration[];
+    }
   >();
   for (const event of events) {
     const bucket = perNetuid.get(event.netuid) ?? {
       count: 0,
       hotkeys: new Set<string>(),
       newest: 0,
+      events: [],
     };
     bucket.count += 1;
     bucket.hotkeys.add(event.hotkey);
     if (event.observed_at > bucket.newest) bucket.newest = event.observed_at;
+    // Kept per netuid rather than summarised on the fly: the distribution needs
+    // the whole sample sorted, and a subnet's churn is a few thousand numbers.
+    bucket.events.push(event);
     perNetuid.set(event.netuid, bucket);
   }
   return [...perNetuid.entries()]
@@ -285,6 +382,7 @@ export function deregistrationsByNetuid(
       deregistrations: bucket.count,
       distinct_deregistered_hotkeys: bucket.hotkeys.size,
       newest_observed: bucket.newest,
+      tenure: summarizeTenure(bucket.events),
     }))
     .sort(
       (a, b) => b.deregistrations - a.deregistrations || a.netuid - b.netuid,
@@ -294,6 +392,10 @@ export function deregistrationsByNetuid(
 export interface DeregistrationNetworkRollup {
   distinct_deregistered_hotkeys: number;
   newest_observed: number | null;
+  /** Network-wide slot tenure (#9742), computed over EVERY event rather than
+   * averaged across per-subnet medians -- an average of medians is not a
+   * median, and subnets differ by orders of magnitude in churn. */
+  tenure: TenureDistribution;
 }
 
 /**
@@ -315,6 +417,7 @@ export function deregistrationsNetworkRollup(
   return {
     distinct_deregistered_hotkeys: hotkeys.size,
     newest_observed: newest,
+    tenure: summarizeTenure(events),
   };
 }
 

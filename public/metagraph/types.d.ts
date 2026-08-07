@@ -7538,6 +7538,15 @@ export interface components {
                 deregistrations: number;
                 deregistrations_per_hotkey: number | null;
                 distinct_deregistered_hotkeys: number;
+                tenure?: {
+                    censored: boolean;
+                    max_blocks: number | null;
+                    median_blocks: number | null;
+                    min_blocks: number | null;
+                    p10_blocks: number | null;
+                    p90_blocks: number | null;
+                    sample_count: number;
+                };
             };
             observed_at: string | null;
             schema_version: number;
@@ -7547,6 +7556,15 @@ export interface components {
                 deregistrations_per_hotkey: number | null;
                 distinct_deregistered_hotkeys: number;
                 netuid: number;
+                tenure?: {
+                    censored: boolean;
+                    max_blocks: number | null;
+                    median_blocks: number | null;
+                    min_blocks: number | null;
+                    p10_blocks: number | null;
+                    p90_blocks: number | null;
+                    sample_count: number;
+                };
             }[];
             window: ("7d" | "30d") | null;
         };

@@ -60,7 +60,22 @@ describe("deriveDeregistrations", () => {
       successor: "B",
       block_number: 200,
       observed_at: T0 + 200_000,
+      // #9742: the span between the two registrations the derivation already
+      // had to hold at once -- 100 blocks, measured rather than modelled.
+      tenure_blocks: 100,
+      predecessor_observed_at: T0 + 100_000,
     });
+  });
+
+  test("tenure is null, never zero, when the two rows are not orderable by block", () => {
+    // A zero-block tenure would read as "evicted instantly"; the honest answer
+    // is that the span could not be measured.
+    const derived = deriveDeregistrations(
+      [reg(5, 216, "A", 100), reg(5, 216, "B", 100)],
+      { since: T0 },
+    );
+    assert.equal(derived.events.length, 1);
+    assert.equal(derived.events[0].tenure_blocks, null);
   });
 
   test("a slot's first observed registration displaces nobody and is counted unattributed", () => {
@@ -210,21 +225,76 @@ const EVENTS = deriveDeregistrations(
 
 describe("deregistrationsByNetuid", () => {
   test("counts events and distinct displaced hotkeys per subnet", () => {
-    assert.deepEqual(deregistrationsByNetuid(EVENTS), [
-      {
-        netuid: 5,
-        deregistrations: 2,
-        // A was displaced twice on subnet 5 -- two events, ONE hotkey.
-        distinct_deregistered_hotkeys: 1,
-        newest_observed: T0 + 220_000,
-      },
-      {
-        netuid: 9,
-        deregistrations: 1,
-        distinct_deregistered_hotkeys: 1,
-        newest_observed: T0 + 240_000,
-      },
-    ]);
+    const rows = deregistrationsByNetuid(EVENTS);
+    assert.deepEqual(
+      rows.map(({ tenure: _tenure, ...rest }) => rest),
+      [
+        {
+          netuid: 5,
+          deregistrations: 2,
+          // A was displaced twice on subnet 5 -- two events, ONE hotkey.
+          distinct_deregistered_hotkeys: 1,
+          newest_observed: T0 + 220_000,
+        },
+        {
+          netuid: 9,
+          deregistrations: 1,
+          distinct_deregistered_hotkeys: 1,
+          newest_observed: T0 + 240_000,
+        },
+      ],
+    );
+    // #9742: tenure rides on every row, and it is a real measurement off the
+    // same fixture. Subnet 5's two slots were held 100 blocks (100->200) and
+    // 10 (210->220); subnet 9's one was held 10 (230->240).
+    const [five, nine] = rows;
+    assert.equal(five.tenure.sample_count, 2);
+    assert.equal(five.tenure.min_blocks, 10);
+    assert.equal(five.tenure.max_blocks, 100);
+    assert.equal(nine.tenure.sample_count, 1);
+    assert.equal(nine.tenure.median_blocks, 10);
+    for (const row of rows) assert.equal(row.tenure.censored, true);
+  });
+
+  test("tenure summarises the DISTRIBUTION, not a mean", () => {
+    // A churn floor plus one long-lived holder: a mean would be ~204 and
+    // describe neither population; the median and the tails do.
+    const spread = [1, 2, 3, 4, 1000].map((blocks, index) => ({
+      netuid: 5,
+      uid: index,
+      hotkey: `H${index}`,
+      successor: "Z",
+      block_number: blocks,
+      observed_at: T0,
+      tenure_blocks: blocks,
+      predecessor_observed_at: T0,
+    }));
+    const [row] = deregistrationsByNetuid(spread);
+    assert.equal(row.tenure.sample_count, 5);
+    assert.equal(row.tenure.median_blocks, 3);
+    assert.equal(row.tenure.min_blocks, 1);
+    assert.equal(row.tenure.max_blocks, 1000);
+    assert.equal(row.tenure.p90_blocks, 1000);
+  });
+
+  test("an unmeasurable tenure is dropped from the sample, not counted as zero", () => {
+    const mixed = [5, null, 15].map((blocks, index) => ({
+      netuid: 5,
+      uid: index,
+      hotkey: `H${index}`,
+      successor: "Z",
+      block_number: 1,
+      observed_at: T0,
+      tenure_blocks: blocks,
+      predecessor_observed_at: T0,
+    }));
+    const [row] = deregistrationsByNetuid(mixed);
+    // Three events, two measurable: counting the null as 0 would drag the
+    // median to 5 and invent a slot that was evicted instantly.
+    assert.equal(row.deregistrations, 3);
+    assert.equal(row.tenure.sample_count, 2);
+    assert.equal(row.tenure.min_blocks, 5);
+    assert.equal(row.tenure.median_blocks, 5);
   });
 
   test("ranks most-active-first, tie-broken by netuid ascending", () => {
@@ -237,6 +307,8 @@ describe("deregistrationsByNetuid", () => {
         successor: "Y",
         block_number: 1,
         observed_at: T0,
+        tenure_blocks: 1,
+        predecessor_observed_at: T0,
       },
     ]);
     assert.deepEqual(
@@ -261,6 +333,8 @@ describe("deregistrationsByNetuid", () => {
         successor: "B",
         block_number: 9,
         observed_at: 900,
+        tenure_blocks: 1,
+        predecessor_observed_at: 900,
       },
       {
         netuid: 5,
@@ -269,6 +343,8 @@ describe("deregistrationsByNetuid", () => {
         successor: "D",
         block_number: 2,
         observed_at: 200,
+        tenure_blocks: 1,
+        predecessor_observed_at: 200,
       },
     ]);
     assert.equal(rows[0]!.newest_observed, 900);
@@ -288,6 +364,18 @@ describe("deregistrationsNetworkRollup", () => {
     assert.deepEqual(deregistrationsNetworkRollup([]), {
       distinct_deregistered_hotkeys: 0,
       newest_observed: null,
+      // An empty sample yields NULLS, never zeros: a zero-block median would
+      // state that slots here are evicted instantly, on a read that measured
+      // nothing at all.
+      tenure: {
+        sample_count: 0,
+        median_blocks: null,
+        p10_blocks: null,
+        p90_blocks: null,
+        min_blocks: null,
+        max_blocks: null,
+        censored: true,
+      },
     });
   });
 
@@ -300,6 +388,8 @@ describe("deregistrationsNetworkRollup", () => {
         successor: "B",
         block_number: 9,
         observed_at: 900,
+        tenure_blocks: 1,
+        predecessor_observed_at: 900,
       },
       {
         netuid: 9,
@@ -308,6 +398,8 @@ describe("deregistrationsNetworkRollup", () => {
         successor: "D",
         block_number: 2,
         observed_at: 200,
+        tenure_blocks: 1,
+        predecessor_observed_at: 200,
       },
     ]);
     assert.equal(rollup.newest_observed, 900);
@@ -337,6 +429,8 @@ describe("deregistrationsByHotkey", () => {
         successor: "B",
         block_number: 3,
         observed_at: 300,
+        tenure_blocks: 1,
+        predecessor_observed_at: 300,
       },
       {
         netuid: 5,
@@ -345,6 +439,8 @@ describe("deregistrationsByHotkey", () => {
         successor: "C",
         block_number: 1,
         observed_at: 100,
+        tenure_blocks: 1,
+        predecessor_observed_at: 100,
       },
       {
         netuid: 5,
@@ -353,6 +449,8 @@ describe("deregistrationsByHotkey", () => {
         successor: "D",
         block_number: 2,
         observed_at: 200,
+        tenure_blocks: 1,
+        predecessor_observed_at: 200,
       },
     ]);
     assert.deepEqual(index.A, [[5, 3, 100, 300]]);
