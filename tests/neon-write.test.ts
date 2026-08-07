@@ -169,6 +169,54 @@ describe("pgFlatValues", () => {
   });
 });
 
+describe("buildPgUpsert with a filter (#9832)", () => {
+  test("switches the row source to a SELECT so a predicate can reject rows", () => {
+    const text = buildPgUpsert(
+      "hotkey_alpha",
+      ["hotkey", "netuid", "total_alpha", "captured_at"],
+      ["hotkey", "netuid"],
+      2,
+      "hotkey_alpha.captured_at < EXCLUDED.captured_at",
+      "EXISTS (SELECT 1 FROM nominator_positions np WHERE np.hotkey = src.hotkey AND np.netuid = src.netuid)",
+    );
+    // The rows arrive as a VALUES list aliased `src`, and the predicate reads
+    // its columns by name -- the Postgres spelling of the EXISTS the D1 writer
+    // has passed to chunkStatements since #9558.
+    assert.match(
+      text,
+      /FROM \(VALUES .*\) AS src \(hotkey, netuid, total_alpha, captured_at\)/,
+    );
+    assert.match(text, /WHERE EXISTS \(SELECT 1 FROM nominator_positions/);
+    // The conflict clause and the out-of-order guard survive the switch.
+    assert.match(text, /ON CONFLICT \(hotkey, netuid\) DO UPDATE SET/);
+    assert.match(
+      text,
+      /WHERE hotkey_alpha\.captured_at < EXCLUDED\.captured_at/,
+    );
+  });
+
+  test("placeholder count is unchanged, so the caller's values still line up", () => {
+    const cols = ["a", "b"];
+    const plain = buildPgUpsert("t", cols, ["a"], 3);
+    const filtered = buildPgUpsert("t", cols, ["a"], 3, undefined, "src.b > 0");
+    const count = (s: string) => (s.match(/\$\d+/g) ?? []).length;
+    assert.equal(count(filtered), count(plain));
+    assert.equal(count(filtered), 6, "3 rows x 2 columns");
+  });
+
+  test("no filter leaves the statement exactly as it was", () => {
+    // Every other lane must be untouched by this: the filtered form is opt-in
+    // and only hotkey-alpha opts in.
+    const cols = ["a", "b"];
+    assert.equal(
+      buildPgUpsert("t", cols, ["a"], 2, "t.a < EXCLUDED.a", undefined),
+      buildPgUpsert("t", cols, ["a"], 2, "t.a < EXCLUDED.a"),
+    );
+    assert.match(buildPgUpsert("t", cols, ["a"], 2), /VALUES \(\$1, \$2\)/);
+    assert.doesNotMatch(buildPgUpsert("t", cols, ["a"], 2), /SELECT/);
+  });
+});
+
 describe("writeRowsToNeon", () => {
   test("writes one statement when the rows fit", async () => {
     const sql = fakeSql();

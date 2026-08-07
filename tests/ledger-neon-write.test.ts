@@ -206,3 +206,38 @@ describe("mirrorLedgerToNeon", () => {
     assert.match(String(spy.rows[0].detail), /hyperdrive unbound/);
   });
 });
+
+describe("the hotkey-alpha filter (#9832)", () => {
+  test("only hotkey-alpha carries a filter, and it matches D1's", () => {
+    // D1 filters this lane and only this lane (REFERENCED_BY_A_POSITION,
+    // #9558). A mirror that stores MORE than its source is a mirror in name
+    // only -- Neon held 47,320 rows against D1's 17,867 until this landed.
+    const filtered = Object.entries(LEDGER_MIRROR_PLANS).filter(
+      ([, p]) => p.filter,
+    );
+    assert.deepEqual(
+      filtered.map(([lane]) => lane),
+      ["hotkey-alpha"],
+    );
+    const [, plan] = filtered[0]!;
+    assert.match(plan.filter!, /EXISTS \(SELECT 1 FROM nominator_positions/);
+    // Both key columns, or the predicate would match on hotkey alone and let
+    // every netuid for a referenced hotkey through.
+    assert.match(plan.filter!, /np\.hotkey = src\.hotkey/);
+    assert.match(plan.filter!, /np\.netuid = src\.netuid/);
+  });
+
+  test("the predicate names only columns the plan actually sends", () => {
+    // `src` is the VALUES alias, so a predicate referring to a column outside
+    // the plan's list is a runtime error on every write.
+    const plan = LEDGER_MIRROR_PLANS["hotkey-alpha"]!;
+    for (const col of [...plan.filter!.matchAll(/src\.(\w+)/g)].map(
+      (m) => m[1]!,
+    )) {
+      assert.ok(
+        plan.columns.includes(col),
+        `filter reads src.${col}, which the plan does not send`,
+      );
+    }
+  });
+});
