@@ -11,7 +11,7 @@ import {
 } from "../src/health-serving.ts";
 import { loadSubnetTrajectory } from "../src/analytics-live.ts";
 import {
-  syncSubnetSnapshotToPostgres,
+  writeSubnetSnapshotRows,
   writeSubnetSnapshot,
 } from "../src/health-prober.ts";
 import { handleRequest, handleScheduled } from "../workers/api.ts";
@@ -1030,15 +1030,14 @@ describe("formatTrajectory", () => {
 
 // --- writeSubnetSnapshot ----------------------------------------------------
 
-// D1 write retired 2026-07-16 (item 2 of the D1->Postgres cleanup):
-// writeSubnetSnapshot's own `subnet_snapshots` result now comes entirely from
-// syncSubnetSnapshotToPostgres -- there is no more D1 batch to inspect, and
-// `ok`/`rows`/`reason` reflect that Postgres write's own outcome. The
-// identity-history mirror (syncSubnetIdentityToPostgres, an unrelated table)
-// stays independent/best-effort exactly as before. The COALESCE-backfill SQL
-// text assertion that used to live here moved to
-// tests/data-api.test.ts's handleSubnetSnapshotSync coverage, since that's
-// where the ON CONFLICT ... COALESCE upsert actually runs now.
+// writeSubnetSnapshot's `subnet_snapshots` result comes from
+// writeSubnetSnapshotRows, which writes ONE store: D1. The Postgres mirror it
+// used to POST alongside was retired to its auth gate with the box (#9193),
+// and until this file changed, its guaranteed 503 was what the lane's verdict
+// was taken from -- so a healthy D1 write reported `stale` on every hourly
+// tick. These tests now assert against the write that actually happens.
+// The identity-history mirror (syncSubnetIdentityToPostgres, an unrelated
+// table) stays independent/best-effort exactly as before.
 describe("writeSubnetSnapshot", () => {
   const profiles = {
     ok: true,
@@ -1064,34 +1063,46 @@ describe("writeSubnetSnapshot", () => {
   };
   const reader = (data: unknown) => () => Promise.resolve(data as Row);
 
-  // Mocks BOTH DATA_API sync routes writeSubnetSnapshot fires --
-  // subnet-identity-sync (unrelated table, best-effort/independent) and
-  // subnet-snapshot-sync (this function's own primary write) -- capturing
-  // each route's request body separately by URL so asserting on one never
-  // depends on call order between the two.
-  function postgresEnv({ snapshotOk = true, identityOk = true } = {}) {
-    const captured: Row = {};
+  /** The snapshot write's real sink (D1) plus the unrelated identity mirror
+   * (DATA_API), captured separately so asserting on one never depends on the
+   * other. `snapshotOk: false` makes the D1 batch throw, which is the only way
+   * this write can now fail. */
+  function snapshotEnv({ snapshotOk = true, identityOk = true } = {}) {
+    const captured: Row = { snapshot: [] as Row[] };
     const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql: string) {
+          return {
+            bind: (...values: unknown[]) => ({ sql, values }),
+          };
+        },
+        async batch(statements: { values: unknown[] }[]) {
+          if (!snapshotOk) throw new Error("D1_ERROR: no such table");
+          for (const statement of statements) {
+            // Column order matches the INSERT in upsertSubnetSnapshotsToD1.
+            const [netuid, snapshot_date, completeness_score] =
+              statement.values;
+            (captured.snapshot as Row[]).push({
+              netuid,
+              snapshot_date,
+              completeness_score,
+              total_stake_tao: statement.values[10],
+              alpha_price_tao: statement.values[11],
+              alpha_in_pool: statement.values[14],
+            });
+          }
+          return statements.map(() => ({ success: true }));
+        },
+      },
       DATA_API: {
         fetch: async (request: Request) => {
-          const body = (await request.json()) as Row;
-          if (request.url.includes("subnet-identity-sync")) {
-            captured.identity = body;
-            return identityOk
-              ? new Response(JSON.stringify({ ok: true }), { status: 200 })
-              : new Response("nope", { status: 502 });
-          }
-          captured.snapshot = body;
-          return snapshotOk
-            ? new Response(
-                JSON.stringify({ ok: true, rows_written: body.length }),
-                { status: 200 },
-              )
+          captured.identity = (await request.json()) as Row;
+          return identityOk
+            ? new Response(JSON.stringify({ ok: true }), { status: 200 })
             : new Response("nope", { status: 502 });
         },
       },
       SUBNET_IDENTITY_SYNC_SECRET: "shh-identity",
-      SUBNET_SNAPSHOT_SYNC_SECRET: "shh-snapshot",
     };
     return { env, captured };
   }
@@ -1118,8 +1129,8 @@ describe("writeSubnetSnapshot", () => {
     });
     assert.equal(r.reason, "no_profiles");
   });
-  test("writes one row per integer-netuid profile to Postgres", async () => {
-    const { env } = postgresEnv();
+  test("writes one row per integer-netuid profile to D1", async () => {
+    const { env } = snapshotEnv();
     const r = await writeSubnetSnapshot(mockEnv(env), {
       readArtifact: reader(profiles),
       now: () => Date.UTC(2026, 5, 10),
@@ -1128,8 +1139,8 @@ describe("writeSubnetSnapshot", () => {
     assert.equal(r.rows, 2); // null-netuid profile skipped
     assert.equal(r.date, "2026-06-10");
   });
-  test("mirrors the same profiles into Postgres identity-sync, independent of the snapshot-sync result", async () => {
-    const { env, captured } = postgresEnv();
+  test("mirrors the same profiles into identity-sync, independent of the snapshot write", async () => {
+    const { env, captured } = snapshotEnv();
     const r = await writeSubnetSnapshot(mockEnv(env), {
       readArtifact: reader(profiles),
       now: () => Date.UTC(2026, 5, 10),
@@ -1138,16 +1149,22 @@ describe("writeSubnetSnapshot", () => {
     assert.equal(r.rows, 2);
     assert.deepEqual(captured.identity, profiles.data.profiles);
   });
-  test("returns ok:false with the sync's reason when the Postgres snapshot sync fails, even if identity-sync succeeds", async () => {
-    const { env } = postgresEnv({ snapshotOk: false });
+  test("returns ok:false with the write's own reason when D1 fails", async () => {
+    // The ONE way this can now fail. Before, it reported the Postgres POST's
+    // status -- which after #9193 was always 503, regardless of the D1 write
+    // sitting above it having succeeded.
+    const { env } = snapshotEnv({ snapshotOk: false });
     const r = await writeSubnetSnapshot(mockEnv(env), {
       readArtifact: reader(profiles),
       now: () => Date.UTC(2026, 5, 10),
     });
     assert.equal(r.ok, false);
-    assert.equal(r.reason, "status_502");
+    assert.equal(r.reason, "write_failed");
   });
-  test("returns unavailable without DATA_API/secret configured", async () => {
+  test("returns unavailable without the D1 binding", async () => {
+    // The guard used to read DATA_API and SUBNET_SNAPSHOT_SYNC_SECRET, neither
+    // of which this write touches -- so a deployment with the database and no
+    // sync secret declined with the write sitting right there.
     const r = await writeSubnetSnapshot(mockEnv(), {
       readArtifact: reader(profiles),
       now: () => Date.UTC(2026, 5, 10),
@@ -1155,23 +1172,8 @@ describe("writeSubnetSnapshot", () => {
     assert.equal(r.ok, false);
     assert.equal(r.reason, "unavailable");
   });
-  test("returns fetch_failed when the Postgres write throws outright", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("boom");
-        },
-      },
-      SUBNET_SNAPSHOT_SYNC_SECRET: "shh-snapshot",
-    };
-    const r = await writeSubnetSnapshot(mockEnv(env), {
-      readArtifact: reader(profiles),
-    });
-    assert.equal(r.ok, false);
-    assert.equal(r.reason, "fetch_failed");
-  });
-  test("ships every integer-netuid profile to Postgres in one request, no D1 batching cap", async () => {
-    const { env, captured } = postgresEnv();
+  test("ships every integer-netuid profile in one write, no batching cap", async () => {
+    const { env, captured } = snapshotEnv();
     const manyProfiles = {
       ok: true,
       data: {
@@ -1191,10 +1193,10 @@ describe("writeSubnetSnapshot", () => {
     });
     assert.equal(r.ok, true);
     assert.equal(r.rows, 55);
-    assert.equal(captured.snapshot.length, 55);
+    assert.equal((captured.snapshot as Row[]).length, 55);
   });
   test("still counts structural rows when optional economics read throws", async () => {
-    const { env, captured } = postgresEnv();
+    const { env, captured } = snapshotEnv();
     const r = await writeSubnetSnapshot(mockEnv(env), {
       readArtifact: (_env, path) => {
         if (path === "/metagraph/economics.json") {
@@ -1207,16 +1209,14 @@ describe("writeSubnetSnapshot", () => {
 
     assert.equal(r.ok, true);
     assert.equal(r.rows, 2);
-    assert.equal(captured.snapshot.length, 2);
-    assert.equal(captured.snapshot[0].total_stake_tao, null);
-    assert.equal(captured.snapshot[0].alpha_in_pool, null);
+    assert.equal((captured.snapshot as Row[]).length, 2);
+    assert.equal((captured.snapshot as Row[])[0].total_stake_tao, null);
+    assert.equal((captured.snapshot as Row[])[0].alpha_in_pool, null);
   });
 });
 
-// #4832 gap-closure: mirrors src/subnet-identity-history.ts's
-// syncSubnetIdentityToPostgres tests -- same shape, own dedicated secret
-// (SUBNET_SNAPSHOT_SYNC_SECRET) and own internal route.
-describe("syncSubnetSnapshotToPostgres", () => {
+// The snapshot rows' one write boundary, now that the Postgres mirror is gone.
+describe("writeSubnetSnapshotRows", () => {
   const profiles = [{ netuid: 8, completeness_score: 90 }];
   const economicsByNetuid = new Map([[8, { validator_count: 5 }]]);
   const opts = {
@@ -1226,18 +1226,72 @@ describe("syncSubnetSnapshotToPostgres", () => {
     capturedAt: 1,
   };
 
-  test("returns unavailable when DATA_API is not bound", async () => {
-    const result = await syncSubnetSnapshotToPostgres(
-      mockEnv({ SUBNET_SNAPSHOT_SYNC_SECRET: "shh" }),
-      opts,
-    );
-    assert.deepEqual(result, { synced: false, reason: "unavailable" });
-  });
+  /** The INSERT's column order, so a bound statement can be read back as the
+   * row it represents. Positional assertions would pass just as well against a
+   * write that shifted two columns, which is the mistake worth catching. */
+  const COLUMNS = [
+    "netuid",
+    "snapshot_date",
+    "completeness_score",
+    "surface_count",
+    "endpoint_count",
+    "monitored_count",
+    "candidate_count",
+    "captured_at",
+    "validator_count",
+    "miner_count",
+    "total_stake_tao",
+    "alpha_price_tao",
+    "emission_share",
+    "tao_in_pool_tao",
+    "alpha_in_pool",
+    "alpha_out_pool",
+    "subnet_volume_tao",
+    "tao_in_emission_tao",
+    "excess_tao",
+    "alpha_in_emission",
+    "alpha_out_emission",
+    "miner_burned_fraction",
+    "emission_enabled",
+    "subtoken_enabled",
+    "first_emission_block",
+    "pipeline_block",
+    "pipeline_block_hash",
+  ] as const;
 
-  test("returns unavailable when the secret is not configured", async () => {
-    const result = await syncSubnetSnapshotToPostgres(
+  /** A D1 double that hands back each written row as a named object. */
+  function d1Env({ ok = true }: { ok?: boolean } = {}) {
+    const written: Row[] = [];
+    const env = {
+      METAGRAPH_HEALTH_DB: {
+        prepare(sql: string) {
+          return { bind: (...values: unknown[]) => ({ sql, values }) };
+        },
+        async batch(statements: { sql: string; values: unknown[] }[]) {
+          if (!ok) throw new Error("D1_ERROR: no such table: subnet_snapshots");
+          for (const statement of statements) {
+            written.push(
+              Object.fromEntries(
+                COLUMNS.map((name, i) => [name, statement.values[i]]),
+              ) as Row,
+            );
+          }
+          return statements.map(() => ({ success: true }));
+        },
+      },
+    };
+    return { env, written };
+  }
+
+  test("returns unavailable when the D1 binding is missing", async () => {
+    // The binding this needs is METAGRAPH_HEALTH_DB. It used to guard on
+    // DATA_API and SUBNET_SNAPSHOT_SYNC_SECRET, which it no longer touches --
+    // so a deployment holding the database and no sync secret would have
+    // declined with the write sitting right there.
+    const result = await writeSubnetSnapshotRows(
       mockEnv({
         DATA_API: { fetch: async () => new Response("{}", { status: 200 }) },
+        SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
       }),
       opts,
     );
@@ -1245,55 +1299,31 @@ describe("syncSubnetSnapshotToPostgres", () => {
   });
 
   test("returns no_profiles for an empty or missing profiles array", async () => {
-    const env = {
-      DATA_API: { fetch: async () => new Response("{}", { status: 200 }) },
-      SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
-    };
+    const { env } = d1Env();
     assert.deepEqual(
-      await syncSubnetSnapshotToPostgres(mockEnv(env), {
-        ...opts,
-        profiles: [],
-      }),
+      await writeSubnetSnapshotRows(mockEnv(env), { ...opts, profiles: [] }),
       { synced: false, reason: "no_profiles" },
     );
-    assert.deepEqual(await syncSubnetSnapshotToPostgres(mockEnv(env), {}), {
+    assert.deepEqual(await writeSubnetSnapshotRows(mockEnv(env), {}), {
       synced: false,
       reason: "no_profiles",
     });
   });
 
   test("returns no_rows when every profile lacks an integer netuid", async () => {
-    const env = {
-      DATA_API: { fetch: async () => new Response("{}", { status: 200 }) },
-      SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
-    };
-    const result = await syncSubnetSnapshotToPostgres(mockEnv(env), {
+    const { env } = d1Env();
+    const result = await writeSubnetSnapshotRows(mockEnv(env), {
       ...opts,
       profiles: [{ netuid: null }],
     });
     assert.deepEqual(result, { synced: false, reason: "no_rows" });
   });
 
-  test("POSTs one row per profile with the token header and reports synced:true on 200", async () => {
-    let receivedToken;
-    let receivedPath;
-    let receivedBody;
-    const env = {
-      DATA_API: {
-        fetch: async (request: Request) => {
-          receivedToken = request.headers.get("x-subnet-snapshot-sync-token");
-          receivedPath = new URL(request.url).pathname;
-          receivedBody = await request.json();
-          return new Response(JSON.stringify({ ok: true }), { status: 200 });
-        },
-      },
-      SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
-    };
-    const result = await syncSubnetSnapshotToPostgres(mockEnv(env), opts);
+  test("writes one row per profile and reports synced:true", async () => {
+    const { env, written } = d1Env();
+    const result = await writeSubnetSnapshotRows(mockEnv(env), opts);
     assert.deepEqual(result, { synced: true, rows: 1 });
-    assert.equal(receivedToken, "shh");
-    assert.equal(receivedPath, "/api/v1/internal/subnet-snapshot-sync");
-    assert.deepEqual(receivedBody, [
+    assert.deepEqual(written, [
       {
         netuid: 8,
         snapshot_date: "2026-06-10",
@@ -1302,6 +1332,7 @@ describe("syncSubnetSnapshotToPostgres", () => {
         endpoint_count: null,
         monitored_count: null,
         candidate_count: null,
+        captured_at: 1,
         validator_count: 5,
         miner_count: null,
         total_stake_tao: null,
@@ -1319,34 +1350,25 @@ describe("syncSubnetSnapshotToPostgres", () => {
         emission_enabled: null,
         subtoken_enabled: null,
         first_emission_block: null,
-        captured_at: 1,
+        pipeline_block: null,
+        pipeline_block_hash: null,
       },
     ]);
   });
 
-  // #8743: the v440 pipeline inputs ride the same row. Two things this pins
-  // that a looser assertion would not.
+  // #8743: the v440 pipeline inputs ride the same row. Zero on both TAO
+  // channels and false on the flag are REAL measurements for a disabled
+  // subnet, and `|| null` would erase all three -- which is exactly the row
+  // worth having. Booleans land as 0/1 against the schema's CHECKs.
   test("carries the v440 pipeline inputs through, zeros and falses included", async () => {
-    let receivedBody: Row[] = [];
-    const env = {
-      DATA_API: {
-        fetch: async (request: Request) => {
-          receivedBody = (await request.json()) as Row[];
-          return new Response(JSON.stringify({ ok: true }), { status: 200 });
-        },
-      },
-      SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
-    };
-    const result = await syncSubnetSnapshotToPostgres(mockEnv(env), {
+    const { env, written } = d1Env();
+    const result = await writeSubnetSnapshotRows(mockEnv(env), {
       ...opts,
       economicsByNetuid: new Map([
         [
           8,
           {
             validator_count: 5,
-            // A disabled subnet: zero on both TAO channels and false on the
-            // flag are REAL measurements, and `|| null` would erase all
-            // three -- which is exactly the row worth having.
             tao_in_emission_tao: 0,
             excess_tao: 0,
             alpha_in_emission: 0.150157337,
@@ -1360,85 +1382,32 @@ describe("syncSubnetSnapshotToPostgres", () => {
       ]),
     });
     assert.deepEqual(result, { synced: true, rows: 1 });
-    const row = receivedBody[0];
-    assert.equal(row.tao_in_emission_tao, 0);
-    assert.equal(row.excess_tao, 0);
-    assert.equal(row.miner_burned_fraction, 0);
-    assert.equal(row.emission_enabled, false);
-    assert.equal(row.subtoken_enabled, true);
-    assert.equal(row.alpha_in_emission, 0.150157337);
-    assert.equal(row.alpha_out_emission, 1);
-    assert.equal(row.first_emission_block, 5228683);
+    assert.equal(written[0].tao_in_emission_tao, 0);
+    assert.equal(written[0].excess_tao, 0);
+    assert.equal(written[0].miner_burned_fraction, 0);
+    assert.equal(written[0].emission_enabled, 0);
+    assert.equal(written[0].subtoken_enabled, 1);
+    assert.equal(written[0].first_emission_block, 5228683);
+    assert.equal(written[0].alpha_in_emission, 0.150157337);
   });
 
-  test("reports the upstream status when the response is not ok, never throws", async () => {
-    const env = {
-      DATA_API: { fetch: async () => new Response("{}", { status: 502 }) },
-      SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
-    };
-    const result = await syncSubnetSnapshotToPostgres(mockEnv(env), opts);
-    assert.deepEqual(result, { synced: false, reason: "status_502" });
-  });
-
-  test("reports fetch_failed and never throws when the binding call rejects", async () => {
-    const env = {
-      DATA_API: {
-        fetch: async () => {
-          throw new Error("network down");
-        },
-      },
-      SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
-    };
-    const result = await syncSubnetSnapshotToPostgres(mockEnv(env), opts);
-    assert.deepEqual(result, { synced: false, reason: "fetch_failed" });
+  test("reports the write's own reason when D1 fails, and never throws", async () => {
+    const { env } = d1Env({ ok: false });
+    const result = await writeSubnetSnapshotRows(mockEnv(env), opts);
+    assert.deepEqual(result, { synced: false, reason: "write_failed" });
   });
 
   test("defaults every optional field to null when absent, without an economics map", async () => {
-    let receivedBody;
-    const env = {
-      DATA_API: {
-        fetch: async (request: Request) => {
-          receivedBody = await request.json();
-          return new Response(JSON.stringify({ ok: true }), { status: 200 });
-        },
-      },
-      SUBNET_SNAPSHOT_SYNC_SECRET: "shh",
-    };
-    const result = await syncSubnetSnapshotToPostgres(mockEnv(env), {
-      profiles: [{ netuid: 9 }],
+    const { env, written } = d1Env();
+    const result = await writeSubnetSnapshotRows(mockEnv(env), {
+      profiles,
       date: "2026-06-10",
       capturedAt: 1,
     });
     assert.deepEqual(result, { synced: true, rows: 1 });
-    assert.deepEqual(receivedBody, [
-      {
-        netuid: 9,
-        snapshot_date: "2026-06-10",
-        completeness_score: null,
-        surface_count: null,
-        endpoint_count: null,
-        monitored_count: null,
-        candidate_count: null,
-        validator_count: null,
-        miner_count: null,
-        total_stake_tao: null,
-        alpha_price_tao: null,
-        emission_share: null,
-        tao_in_pool_tao: null,
-        alpha_in_pool: null,
-        alpha_out_pool: null,
-        subnet_volume_tao: null,
-        tao_in_emission_tao: null,
-        excess_tao: null,
-        alpha_in_emission: null,
-        alpha_out_emission: null,
-        miner_burned_fraction: null,
-        emission_enabled: null,
-        subtoken_enabled: null,
-        first_emission_block: null,
-        captured_at: 1,
-      },
-    ]);
+    assert.equal(written[0].validator_count, null);
+    assert.equal(written[0].emission_share, null);
+    assert.equal(written[0].pipeline_block, null);
   });
 });
 
@@ -1832,31 +1801,30 @@ describe("writeSubnetSnapshot no integer netuids", () => {
 
 describe("hourly cron writes a daily snapshot", () => {
   test("handleScheduled hourly runs prune + snapshot", async () => {
-    // subnet_snapshots is Postgres-only now (D1 write retired, item 2 of the
-    // D1->Postgres cleanup) -- the snapshot batch this test used to capture
-    // off METAGRAPH_HEALTH_DB.batch is now a POST to DATA_API's
-    // subnet-snapshot-sync route instead.
+    // The snapshot rows land in D1, captured off METAGRAPH_HEALTH_DB.batch.
+    // They used to be POSTed to DATA_API's subnet-snapshot-sync route as well,
+    // which #9193 retired to its auth gate -- and until that leg was deleted,
+    // its guaranteed 503 was what this lane's verdict came from.
     let snapshotRowCount: number | null = null;
     const env = {
       ...createLocalArtifactEnv(),
       METAGRAPH_HEALTH_DB: {
         prepare: () => ({
-          bind: () => ({
+          bind: (...values: unknown[]) => ({
+            values,
             run: () => Promise.resolve({ meta: { changes: 0 } }),
           }),
         }),
-      },
-      DATA_API: {
-        fetch: async (request: Request) => {
-          if (request.url.includes("subnet-snapshot-sync")) {
-            const rows = (await request.json()) as Row[];
-            snapshotRowCount = rows.length;
-          }
-          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        batch: async (statements: unknown[]) => {
+          snapshotRowCount = (snapshotRowCount ?? 0) + statements.length;
+          return statements.map(() => ({ success: true }));
         },
       },
+      DATA_API: {
+        fetch: async () =>
+          new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      },
       HEALTH_CHECKS_SYNC_SECRET: "test-secret",
-      SUBNET_SNAPSHOT_SYNC_SECRET: "test-secret",
     };
     const result = await handleScheduled(
       { cron: "0 * * * *" } as unknown as ScheduledController,
@@ -1864,7 +1832,7 @@ describe("hourly cron writes a daily snapshot", () => {
       {} as unknown as ExecutionContext,
     );
     assert.equal((result as Row).pruned, true);
-    assert.ok(snapshotRowCount! > 0, "snapshot sync should ship rows");
+    assert.ok(snapshotRowCount! > 0, "the snapshot write should ship rows");
   });
 });
 

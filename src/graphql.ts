@@ -350,7 +350,6 @@ import {
   SURFACE_HISTORY_LIMIT_DEFAULT,
   SURFACE_HISTORY_LIMIT_MAX,
 } from "./surface-history.ts";
-import { loadTopHoldersFromArtifact } from "./top-holders-artifact.ts";
 import { loadTopHoldersFlowTier } from "./top-holders-flow-tier.ts";
 import { composeLeaderboardsData } from "../workers/request-handlers/analytics-routes.ts";
 import {
@@ -2425,16 +2424,12 @@ const rootValue = {
         postgresTierRequest(context, "/api/v1/accounts/top-holders", params),
         "METAGRAPH_TOP_HOLDERS_SOURCE",
       )) as Row | null) ??
-      // The same two tiers the REST handler and the MCP tool read (#9469).
+      // The same tier the REST handler and the MCP tool read (#9469).
       // This resolver had NEITHER, so with the Postgres source retired it
       // answered a schema-stable EMPTY list while /api/v1/accounts/top-holders
       // served a leaderboard -- the same shape of dead fallback ladder the
       // issue is about, one layer down.
       (await loadTopHoldersFlowTier(context.env, {
-        sort: safeSort,
-        limit: safeLimit,
-      })) ??
-      (await loadTopHoldersFromArtifact(context.env, {
         sort: safeSort,
         limit: safeLimit,
       })) ??
