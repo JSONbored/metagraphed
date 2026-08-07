@@ -87,6 +87,23 @@ if [[ -n "${POSTHOG_CLI_API_KEY:-}" && -n "${POSTHOG_CLI_PROJECT_ID:-}" ]]; then
 fi
 
 if [[ "$POSTHOG_ENABLED" == "true" ]]; then
+  # Phase 0: start from an empty $OUTDIR. `wrangler --outdir` writes into the
+  # directory without clearing it, so anything left there from an earlier run
+  # SURVIVES -- and phase 3 below resolves the bundle by globbing `*.js`, which
+  # assumes exactly one match. A leftover .js (an entry renamed between builds,
+  # a run that died mid-flight, or a `dist/` restored from Cloudflare Workers
+  # Builds' build cache, which is enabled per-project and persists for 7 days)
+  # turns that glob into two paths.
+  #
+  # Why that is worth a line of defence rather than a shrug: the failure is
+  # SILENT and it corrupts symbolication specifically. `posthog-cli sourcemap
+  # inject` stamps a chunk id into the bundle, phase 3 uploads the map under
+  # that id, and phase 4 ships the file. Ship the wrong .js and PostHog happily
+  # resolves stack traces against a map that describes different code -- line
+  # numbers that point at real-looking, wrong source. That is worse than an
+  # unsymbolicated trace, because nothing about it reads as broken.
+  rm -rf "$OUTDIR"
+
   # Phase 1: build only -- writes $OUTDIR/<entry>.js(.map) without deploying
   # (see this file's own header comment for why a single combined build+
   # deploy command can't be injected into afterward).
@@ -122,6 +139,20 @@ if [[ "$POSTHOG_ENABLED" == "true" ]]; then
   # rather than hardcoded per-Worker, since each of the 3 configs' `main`
   # basename differs.
   ENTRY_JS=$(find "$OUTDIR" -maxdepth 1 -name '*.js')
+
+  # Assert the "single flat bundle" the comment above asserts. Phase 0 makes
+  # a stale leftover impossible, so this covers the other half: wrangler
+  # emitting more than one chunk (code-splitting, a future entry shape), or
+  # none at all because the build silently produced nothing. Unguarded,
+  # ENTRY_JS would become an empty or newline-joined string and get passed
+  # straight to `wrangler deploy` in phase 4 -- which is the point where a
+  # wrong or missing bundle would ship. Failing here costs a red build;
+  # not failing costs mis-symbolicated traces nobody can tell are wrong.
+  if [[ -z "$ENTRY_JS" || "$ENTRY_JS" == *$'\n'* ]]; then
+    echo "deploy-worker-with-sourcemaps: expected exactly one .js in $OUTDIR, found:" >&2
+    echo "${ENTRY_JS:-(none)}" >&2
+    exit 1
+  fi
 
   # Phase 3: upload the sourcemap BEFORE the deploy ships traffic. This
   # order is load-bearing: PostHog symbolicates at INGEST, so an error
