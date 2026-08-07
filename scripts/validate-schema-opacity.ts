@@ -79,6 +79,12 @@ const ROUTE_OPEN_SITES: Record<string, string> = {
   "ChainEventsFeedArtifact.events[].args": DECODED_CHAIN_PAYLOAD,
   "ExtrinsicDetailArtifact.extrinsic.call_args": DECODED_CHAIN_PAYLOAD,
   "ExtrinsicsFeedArtifact.extrinsics[].call_args": DECODED_CHAIN_PAYLOAD,
+  // #9967 documented three routes that were served but absent from this
+  // document. Their genuinely-open sites are the SAME four the MCP side has
+  // always declared -- documenting the routes surfaced them here, it did not
+  // create them. The alternative was leaving the routes undescribed, which is
+  // how they went unchecked in the first place.
+  "WebhookSubscriptionArtifact.filters": CALLER_SUPPLIED,
   JsonObject: DELIBERATELY_GENERIC,
   "OpenApiArtifact.components": EMBEDDED_THIRD_PARTY_DOCUMENT,
   "OpenApiArtifact.info": EMBEDDED_THIRD_PARTY_DOCUMENT,

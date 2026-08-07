@@ -1388,6 +1388,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/alerts/triggers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read back one alert trigger: what it watches (`table_filter` plus the four narrowing fields `netuid`, `event_kind`, `account`, `min_amount_tao` -- all nullable, so a trigger that sets none of them matches every event on its table), where it delivers (`channel`, `destination`), whether it is `active`, and its firing record. `last_matched_at` is null until the trigger has fired once, which is NOT the same as `match_count: 0` -- a trigger created and immediately disabled shows the latter too. Requires the owner token issued at creation; it is not recoverable if lost. Mirrored by the `get_alert_trigger` MCP tool. Served live (no static file). */
+        get: operations["alertTrigger"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ask": {
         parameters: {
             query?: never;
@@ -4741,6 +4758,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/webhooks/subscriptions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read back one webhook subscription and its recent delivery outcomes. `delivery.status` is the one field to branch on: `ok` means nothing is outstanding, `retrying` means the queue has the event and will try again (not a loss), and `dead_letter` means an event will never arrive. `last_failure` carries the reason, the HTTP `status_code`, the attempt count and the next scheduled attempt, which is what a subscriber debugging a missed event actually needs. The id is a UUID v4 returned once at creation -- there is no listing route, and an id that was not kept cannot be recovered. Mirrored by the `get_webhook_subscription` MCP tool. Served live (no static file). */
+        get: operations["webhookSubscription"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5671,6 +5705,24 @@ export interface components {
                 callable_service_count: number;
                 subnet_count: number;
             };
+        } & {
+            [key: string]: unknown;
+        };
+        AlertTriggerArtifact: {
+            account?: string | null;
+            active: boolean;
+            channel?: string;
+            created_at?: string | null;
+            destination?: string;
+            event_kind?: string | null;
+            id: string;
+            last_matched_at?: string | null;
+            match_count?: number;
+            min_amount_tao?: number | null;
+            name?: string | null;
+            netuid?: number | null;
+            table_filter?: string | null;
+            updated_at?: string | null;
         } & {
             [key: string]: unknown;
         };
@@ -12117,6 +12169,36 @@ export interface components {
             /** Format: uri */
             url: string;
             verified_at: string;
+        };
+        WebhookSubscriptionArtifact: {
+            active: boolean;
+            created_at?: string | null;
+            delivery?: {
+                dead_letter: number;
+                last_failure?: ({
+                    attempts?: number;
+                    event_id?: string;
+                    last_attempt_at?: string | null;
+                    next_attempt_at?: string | null;
+                    reason?: string | null;
+                    state?: string;
+                    status_code?: number | null;
+                } & {
+                    [key: string]: unknown;
+                }) | null;
+                pending: number;
+                /** @enum {string} */
+                status: "ok" | "retrying" | "dead_letter";
+            } & {
+                [key: string]: unknown;
+            };
+            filters?: {
+                [key: string]: unknown;
+            };
+            id: string;
+            url: string;
+        } & {
+            [key: string]: unknown;
         };
     };
     responses: never;
@@ -21858,6 +21940,120 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["AgentResourcesArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    alertTrigger: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "account": "example",
+                     *         "active": false,
+                     *         "channel": "example",
+                     *         "created_at": "2026-06-01T00:00:00.000Z",
+                     *         "destination": "example",
+                     *         "event_kind": "example",
+                     *         "id": "example",
+                     *         "last_matched_at": "2026-06-01T00:00:00.000Z",
+                     *         "match_count": 1,
+                     *         "min_amount_tao": 0.5,
+                     *         "name": "Example Subnet",
+                     *         "netuid": 7,
+                     *         "table_filter": "example",
+                     *         "updated_at": "2026-06-01T00:00:00.000Z"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["AlertTriggerArtifact"];
                     };
                 };
             };
@@ -46739,6 +46935,119 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["ValidatorEconomicsRankingArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    webhookSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "active": false,
+                     *         "created_at": "2026-06-01T00:00:00.000Z",
+                     *         "delivery": {
+                     *           "dead_letter": 1,
+                     *           "last_failure": {},
+                     *           "pending": 1,
+                     *           "status": "ok"
+                     *         },
+                     *         "filters": {
+                     *           "example": null
+                     *         },
+                     *         "id": "example",
+                     *         "url": "https://api.metagraph.sh/example"
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["WebhookSubscriptionArtifact"];
                     };
                 };
             };

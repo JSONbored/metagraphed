@@ -991,6 +991,25 @@ export const PUBLIC_ARTIFACTS = [
     "SemanticSearchArtifact",
     COMPUTED_LIVE,
   ),
+  // --- Three routes served since their features shipped, documented by #9967.
+  // Each was NAMED in an MCP tool's own description while absent from this
+  // contract, so we were pointing agents at paths the document did not
+  // describe -- and check-response-conformance silently SKIPS a route with no
+  // spec entry, so none of them could drift, because nothing checked them.
+  artifact(
+    "webhook-subscription",
+    "/metagraph/webhooks/subscriptions/{id}.json",
+    "One webhook subscription's own record, served live at GET /api/v1/webhooks/subscriptions/{id} (no static file -- it is one subscriber's record plus the delivery outcomes the queue wrote beside it). Carries the registered `url`, whether it is `active`, the caller-supplied `filters` echoed back, and a `delivery` summary: `status` (ok / retrying / dead_letter), how many events are `pending`, how many reached `dead_letter`, and the `last_failure` with its attempt count and next scheduled attempt. `retrying` is not a lost event -- the queue schedules the retry; `dead_letter` is the state that means an event will never arrive. There is no listing route: an id is returned once, at creation.",
+    "WebhookSubscriptionArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
+    "alert-trigger",
+    "/metagraph/alerts/triggers/{id}.json",
+    "One alert trigger's own record, served live at GET /api/v1/alerts/triggers/{id} (no static file). Carries what the trigger watches -- `table_filter` and the four narrowing fields (`netuid`, `event_kind`, `account`, `min_amount_tao`), all nullable, so a trigger setting none of them matches every event on its table -- plus where it delivers (`channel`, `destination`), whether it is `active`, and its firing record (`last_matched_at`, `match_count`). `last_matched_at` is null until the trigger has fired once, which is distinct from a `match_count` of 0. Reading it back requires the owner token issued at creation.",
+    "AlertTriggerArtifact",
+    COMPUTED_LIVE,
+  ),
   artifact(
     "surface-verify",
     "/metagraph/surfaces/{surface_id}/verify.json",
@@ -2490,6 +2509,29 @@ export const API_ROUTES = [
     [],
     [],
     "AskRequest",
+  ),
+  // The route halves of the three #9967 artifacts above.
+  route(
+    "webhook-subscription",
+    "GET",
+    "/api/v1/webhooks/subscriptions/{id}",
+    "/metagraph/webhooks/subscriptions/{id}.json",
+    "Read back one webhook subscription and its recent delivery outcomes. `delivery.status` is the one field to branch on: `ok` means nothing is outstanding, `retrying` means the queue has the event and will try again (not a loss), and `dead_letter` means an event will never arrive. `last_failure` carries the reason, the HTTP `status_code`, the attempt count and the next scheduled attempt, which is what a subscriber debugging a missed event actually needs. The id is a UUID v4 returned once at creation -- there is no listing route, and an id that was not kept cannot be recovered. Mirrored by the `get_webhook_subscription` MCP tool. Served live (no static file).",
+    "short",
+    ["webhooks"],
+    [],
+    [{ name: "id", schema: { type: "string", format: "uuid" } }],
+  ),
+  route(
+    "alert-trigger",
+    "GET",
+    "/api/v1/alerts/triggers/{id}",
+    "/metagraph/alerts/triggers/{id}.json",
+    "Read back one alert trigger: what it watches (`table_filter` plus the four narrowing fields `netuid`, `event_kind`, `account`, `min_amount_tao` -- all nullable, so a trigger that sets none of them matches every event on its table), where it delivers (`channel`, `destination`), whether it is `active`, and its firing record. `last_matched_at` is null until the trigger has fired once, which is NOT the same as `match_count: 0` -- a trigger created and immediately disabled shows the latter too. Requires the owner token issued at creation; it is not recoverable if lost. Mirrored by the `get_alert_trigger` MCP tool. Served live (no static file).",
+    "short",
+    ["alerts"],
+    [],
+    [{ name: "id", schema: { type: "string" } }],
   ),
   route(
     "search-semantic",
@@ -5482,6 +5524,13 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // it probes a URL off the surface record, which testnet has too.
   "/api/v1/ask",
   "/api/v1/search/semantic",
+  // #9967: a webhook subscription and an alert trigger are per-CALLER records
+  // in one control store, with no network column and no testnet counterpart --
+  // a testnet-addressed request would be served the mainnet record. The router
+  // already refuses it; this is the contract half of that same statement, and
+  // network-addressing asserts the two equal in both directions.
+  "/api/v1/webhooks/subscriptions/{id}",
+  "/api/v1/alerts/triggers/{id}",
   // #9402: subnet_burn_history has no network dimension, so a testnet-addressed
   // request would be served MAINNET prices. Declared rather than silently wrong.
   "/api/v1/subnets/{netuid}/burn/history",
@@ -6515,7 +6564,15 @@ export function compileRoutePattern(pathTemplate: string) {
     .replace(/\{tag\}/g, "__METAGRAPH_TAG__")
     // EVM {h160} (#6725/#6728): a 20-byte 0x-prefixed hex address, distinct
     // from {ss58}/{hotkey}'s base58 shape.
-    .replace(/\{h160\}/g, "__METAGRAPH_H160__");
+    .replace(/\{h160\}/g, "__METAGRAPH_H160__")
+    // {id} (#9967): the opaque record id on the two per-caller routes --
+    // /api/v1/webhooks/subscriptions/{id} (a UUID v4, which the handler
+    // enforces) and /api/v1/alerts/triggers/{id} (an opaque string). One token
+    // for both, at the looser of the two shapes: this only decides whether a
+    // path MATCHES the template, and each handler validates its own id
+    // properly. Tightening it to a UUID here would make the alerts route
+    // unmatchable, which is the bug this is fixing.
+    .replace(/\{id\}/g, "__METAGRAPH_ID__");
   const pattern = tokenized
     .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     .replace(/__METAGRAPH_NETUID__/g, "(?<netuid>\\d+)")
@@ -6531,7 +6588,8 @@ export function compileRoutePattern(pathTemplate: string) {
     .replace(/__METAGRAPH_REF__/g, "(?<ref>\\d+|0x[0-9a-fA-F]{64})")
     .replace(/__METAGRAPH_HASH__/g, "(?<hash>0x[0-9a-fA-F]{64}|\\d+-\\d+)")
     .replace(/__METAGRAPH_TAG__/g, "(?<tag>[a-z-]+)")
-    .replace(/__METAGRAPH_H160__/g, "(?<h160>0x[0-9a-fA-F]{40})");
+    .replace(/__METAGRAPH_H160__/g, "(?<h160>0x[0-9a-fA-F]{40})")
+    .replace(/__METAGRAPH_ID__/g, "(?<id>[A-Za-z0-9][A-Za-z0-9:._-]*)");
   return new RegExp(`^${pattern}\\/?$`);
 }
 
