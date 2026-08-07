@@ -286,7 +286,7 @@ describe("buildValidatorHistory — scoped to one subnet (#9383)", () => {
   });
 
   test("a lost permit is reported, not dropped", () => {
-    // The scoped query deliberately omits the `validator_permit = 1` filter: a day
+    // The scoped query deliberately omits the `validator_permit = TRUE` filter: a day
     // the permit was lost is the event an operator most needs, and filtering it
     // makes it indistinguishable from a day the poller missed.
     const point = (

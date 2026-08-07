@@ -1923,7 +1923,7 @@ describe("metagraph-neurons loaders", () => {
       },
       { sort: "avg_validator_trust", limit: 1 },
     );
-    assert.match(seenSql, /validator_permit = 1 AND hotkey IS NOT NULL/);
+    assert.match(seenSql, /validator_permit = TRUE AND hotkey IS NOT NULL/);
     assert.match(seenSql, /ORDER BY hotkey ASC/);
     assert.deepEqual(seenParams, []);
     assert.equal(data.validators.length, 1);
@@ -1982,7 +1982,7 @@ describe("metagraph-neurons loaders", () => {
         { netuid: 1, uid: 3, hotkey: "hk-a", coldkey: "ck-a", stake_tao: 20 },
       ];
     }, "hk-a");
-    assert.match(seenSql, /hotkey = \? AND validator_permit = 1/);
+    assert.match(seenSql, /hotkey = \? AND validator_permit = TRUE/);
     assert.match(seenSql, /ORDER BY netuid ASC, uid ASC/);
     assert.deepEqual(seenParams, ["hk-a"]);
     assert.equal(data.hotkey, "hk-a");
@@ -2000,7 +2000,7 @@ function neuronsD1(rows: Row[]) {
           return {
             all() {
               let r = rows;
-              if (sql.includes("validator_permit = 1")) {
+              if (sql.includes("validator_permit = TRUE")) {
                 r = r.filter((x: Row) => x.validator_permit === 1);
               }
               if (sql.includes("AND uid = ?")) {

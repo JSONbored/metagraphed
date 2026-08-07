@@ -368,7 +368,7 @@ export async function loadSubnetMovers(
   if (startDate != null && endDate != null && startDate !== endDate) {
     const rows = await d1(
       "SELECT netuid, snapshot_date, COUNT(*) AS neuron_count, " +
-        "SUM(validator_permit) AS validator_count, " +
+        "SUM(CASE WHEN validator_permit THEN 1 ELSE 0 END) AS validator_count, " +
         "SUM(stake_tao) AS total_stake_tao, SUM(emission_tao) AS total_emission_tao " +
         "FROM neuron_daily WHERE snapshot_date IN (?, ?) GROUP BY netuid, snapshot_date",
       [startDate, endDate],
