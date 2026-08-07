@@ -35,6 +35,7 @@ import { GlobalValidatorsArtifactSchema } from "../routes/global-validators.ts";
 import { ValidatorDetailArtifactSchema } from "../routes/validator-detail.ts";
 import { ValidatorHistoryArtifactSchema } from "../routes/validator-history.ts";
 import { ValidatorNominatorsArtifactSchema } from "../routes/validator-nominators.ts";
+import { NeuronSchema } from "../routes/subnet-metagraph.ts";
 
 // Mirrors workers/config.ts's SS58_ADDRESS_PATTERN (inlined rather than
 // cross-imported from workers/, matching this directory's existing
@@ -87,7 +88,12 @@ export const ListSubnetValidatorsOutputSchema = z
     validator_count: z.int(),
     captured_at: z.string().nullable().optional(),
     block_number: z.int().nullable().optional(),
-    validators: OpenObjectArraySchema,
+    // Typed from the route's own NeuronSchema (#9797), PARTIAL because this
+    // tool advertises `fields`: a caller who projects the row must still
+    // satisfy the schema the tool publishes, which is the contract #9884
+    // restored after the derivation in #9855/#9859 broke it. Verified against
+    // production 2026-08-07, whole and projected.
+    validators: z.array(NeuronSchema.partial()),
   })
   .passthrough();
 export type ListSubnetValidatorsOutput = z.infer<

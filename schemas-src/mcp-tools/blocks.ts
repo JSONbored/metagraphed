@@ -13,7 +13,6 @@
 // now publishes.
 import { z } from "zod";
 import {
-  OpenObjectSchema,
   blockBoundSchema,
   keysetCursorSchema,
   limitSchema,
@@ -21,7 +20,7 @@ import {
 } from "./shared.ts";
 import { BlockEventsArtifactSchema } from "../routes/block-events.ts";
 import { BlockExtrinsicsArtifactSchema } from "../routes/block-extrinsics.ts";
-import { BlocksFeedArtifactSchema } from "../routes/blocks.ts";
+import { BlockSchema, BlocksFeedArtifactSchema } from "../routes/blocks.ts";
 
 const Ss58Schema = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{47,48}$/);
 
@@ -107,7 +106,10 @@ export const GetBlockOutputSchema = z
   .object({
     schema_version: z.int().optional(),
     ref: z.unknown(),
-    block: OpenObjectSchema.nullable().optional(),
+    // Typed from the route's own BlockSchema (#9797). Not partial, unlike the
+    // neuron rows: get_block advertises no `fields` parameter, so no caller can
+    // project a field away. Verified against production 2026-08-07.
+    block: BlockSchema.nullable().optional(),
     prev_block_number: z.int().nullable().optional(),
     next_block_number: z.int().nullable().optional(),
   })
