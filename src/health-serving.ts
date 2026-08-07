@@ -153,6 +153,34 @@ export function summarizeRows(rows: Row[]): Row {
 // Per-subnet overlay: build the response from fresh live rows only. Static
 // metadata may supply non-operational identity fields, but stale static surface
 // rows are never preserved. Returns null when there is no live snapshot.
+/**
+ * The `summary` a subnet-health answer carries when there is NO live snapshot
+ * to summarise (#9797).
+ *
+ * Three call sites built this inline as `{status: "unknown", surface_count: 0}`
+ * -- get_subnet_health's two arms and GraphQL's -- and all three omitted the
+ * four counts HealthSubnetSummarySchema declares REQUIRED. It went unnoticed
+ * because production always has health data; only the cold path reaches here,
+ * and only the hermetic harness exercises it. Typing the site is what surfaced
+ * it, the same way typing `extrinsic` surfaced its nested `call_args`.
+ *
+ * The zeros are ARITHMETIC, not invented: with `surface_count: 0` there are no
+ * surfaces, so exactly zero of them are ok, degraded, failed or unknown. The
+ * "we have no reading" signal is carried by `status: "unknown"` and by the
+ * sibling `health_source: "unavailable"`, which is where it belongs -- a count
+ * that says 0 of 0 is a measurement, not a confident zero (#9307).
+ */
+export function emptySubnetHealthSummary(): Row {
+  return {
+    status: "unknown",
+    surface_count: 0,
+    ok_count: 0,
+    degraded_count: 0,
+    failed_count: 0,
+    unknown_count: 0,
+  };
+}
+
 export function overlaySubnetHealth(
   staticArtifact: Row | null | undefined,
   liveCurrent: Row | null | undefined,

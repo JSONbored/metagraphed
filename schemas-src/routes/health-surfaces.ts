@@ -41,7 +41,7 @@ import { HealthSubnetSummarySchema } from "./health.ts";
 
 // ---- GET /api/v1/health/history/{date} -> HealthHistoryArtifact ----
 
-const HealthHistorySurfaceSchema = z
+export const HealthHistorySurfaceSchema = z
   .object({
     surface_id: z.string(),
     netuid: z.int().min(0),
@@ -62,6 +62,22 @@ const HealthHistorySurfaceSchema = z
   })
   .strict();
 
+/**
+ * One day's probe rollup. Named and exported (#9797) so the MCP tool serving
+ * this exact object can carry it instead of publishing a bare `{}`.
+ *
+ * `status_counts` and `classification_counts` are typed RECORDS: their keys are
+ * the verdict vocabulary, so a new verdict adds a key rather than changing the
+ * contract.
+ */
+export const HealthHistorySummarySchema = z
+  .object({
+    surface_count: z.int().min(0),
+    status_counts: CountMapSchema,
+    classification_counts: CountMapSchema,
+  })
+  .passthrough();
+
 export const HealthHistoryArtifactSchema = ArtifactBaseSchema.extend({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   // Bucket (b): buildHealthHistoryArtifact() always sets these 3 (the two
@@ -69,13 +85,7 @@ export const HealthHistoryArtifactSchema = ArtifactBaseSchema.extend({
   source: z.string(),
   probe_started_at: z.string().nullable(),
   probe_finished_at: z.string().nullable(),
-  summary: z
-    .object({
-      surface_count: z.int().min(0),
-      status_counts: CountMapSchema,
-      classification_counts: CountMapSchema,
-    })
-    .passthrough(),
+  summary: HealthHistorySummarySchema,
   surfaces: z.array(HealthHistorySurfaceSchema),
 });
 export type HealthHistoryArtifact = z.infer<typeof HealthHistoryArtifactSchema>;

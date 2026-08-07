@@ -95,7 +95,16 @@ const FRESH_RUN = new Date(Date.now() - 60_000).toISOString();
 const HEALTH_HISTORY_DATE = await latestArtifactDate("health/history");
 const HEALTH_HISTORY_BLOB = {
   date: HEALTH_HISTORY_DATE || "2026-06-06",
-  summary: { incident_count: 0, surface_count: 2 },
+  // The two COUNT MAPS the route declares, recaptured from production
+  // 2026-08-07 when HealthHistorySummarySchema replaced the bare object this
+  // tool used to publish. The old two-key stub satisfied `{"type":"object"}`
+  // and satisfies nothing now, which is the point of typing the site.
+  summary: {
+    incident_count: 0,
+    surface_count: 2,
+    status_counts: { ok: 2 },
+    classification_counts: { live: 2 },
+  },
   surfaces: [
     {
       netuid: 7,

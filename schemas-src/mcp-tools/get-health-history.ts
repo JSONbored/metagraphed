@@ -10,8 +10,6 @@
 // ECONOMICS_SORT_FIELDS precedent -- not cross-imported).
 import { z } from "zod";
 import {
-  OpenObjectArraySchema,
-  OpenObjectSchema,
   fieldsStringSchema,
   kindSchema,
   limitSchema,
@@ -23,6 +21,10 @@ import {
 } from "./shared.ts";
 import { SURFACE_KIND_VALUES } from "../routes/subnet-detail.ts";
 import { HEALTH_STATUS_VALUES } from "../shared.ts";
+import {
+  HealthHistorySummarySchema,
+  HealthHistorySurfaceSchema,
+} from "../routes/health-surfaces.ts";
 
 const SURFACE_KIND = SURFACE_KIND_VALUES;
 const HEALTH_STATUS = HEALTH_STATUS_VALUES;
@@ -93,8 +95,13 @@ export type GetHealthHistoryInput = z.infer<typeof GetHealthHistoryInputSchema>;
 export const GetHealthHistoryOutputSchema = z
   .object({
     date: z.string().nullable(),
-    summary: OpenObjectSchema.nullable().optional(),
-    surfaces: OpenObjectArraySchema,
+    // Typed from the route's own schemas (#9797). Verified against production
+    // 2026-08-07, whole and projected.
+    summary: HealthHistorySummarySchema.nullable().optional(),
+    // PARTIAL: this tool advertises `fields`, so a caller can project a row
+    // down to one column and a strict row schema would break the tool's own
+    // contract the moment they do (#9884).
+    surfaces: z.array(HealthHistorySurfaceSchema.partial()),
     total: z.int().optional(),
     returned: z.int().optional(),
     limit: z.int().optional(),

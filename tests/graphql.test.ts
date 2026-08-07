@@ -18452,7 +18452,20 @@ describe("graphql — subnet_health (#7640, live-cron overlay parity with REST +
     assert.deepEqual(body.data.subnet_health, {
       schema_version: 1,
       netuid: NETUID,
-      summary: { status: "unknown", surface_count: 0 },
+      // ALL SIX counts HealthSubnetSummarySchema requires (#9797). This test
+      // pinned the two-key shape, which is to say it asserted the defect: the
+      // card called itself "schema-stable" while failing the schema it is
+      // published against. The zeros are arithmetic -- with surface_count 0,
+      // exactly zero surfaces are ok/degraded/failed/unknown -- and the "we
+      // have no reading" signal stays on `status` and `health_source`.
+      summary: {
+        status: "unknown",
+        surface_count: 0,
+        ok_count: 0,
+        degraded_count: 0,
+        failed_count: 0,
+        unknown_count: 0,
+      },
       operational_observed_at: null,
       health_source: "unavailable",
       reliability: null,
