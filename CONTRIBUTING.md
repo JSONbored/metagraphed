@@ -30,11 +30,13 @@ npm run build
 
 The contract is generated, so you never edit it by hand:
 
-1. Edit the source under `schemas/` or `schemas/components/`.
+1. Edit the source. **Every published API/artifact component is a Zod schema under `schemas-src/`** — `routes/` for REST routes, `artifacts/` for build-published artifacts with no route, `mcp-tools/` for MCP tools, plus the shared leaves in `envelope.ts`/`shared.ts`. A new component is also registered in `schemas-src/openapi-registry.ts`, or it is not published. (`schemas/*.json` still holds the **input** schemas that validate registry files people write by hand — subnet manifests, providers, candidates. Those are a different thing and stay JSON.)
 2. Run `npm run build` to regenerate `openapi.json` and the types/clients.
 3. **Commit the regenerated artifacts in the same PR.**
 
 Skipping the rebuild trips `validate:contract-drift` in CI. Schemas are the source of truth; everything downstream follows.
+
+There is exactly **one** place a published component can be declared, and `validate:single-schema-source` fails the build if a second one appears. Until [#9830](https://github.com/JSONbored/metagraphed/issues/9830) there were two — a hand-written JSON Schema layer merged under the Zod one — and an edit to the wrong one silently changed nothing at all.
 
 ## Don't hand-bump version fields
 

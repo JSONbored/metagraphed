@@ -10,7 +10,7 @@
 // (buildChainDeregistrations); the D1 loader was retired in #4909 (account_events' D1 table was
 // dropped in #4772, so it always missed -- see #6013). Callers now go
 // tryPostgresTier() ?? buildChainDeregistrations([]). The field semantics live in
-// schemas/components/05-subnets.schema.json (ChainDeregistrationsArtifact).
+// schemas-src/routes/chain-network-rollups.ts (ChainDeregistrationsArtifact).
 
 import { median, percentile } from "./lib/stats.ts";
 import type { DeregistrationDerivation } from "./deregistration-derivation.ts";

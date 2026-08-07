@@ -1,7 +1,7 @@
 // Live network-wide stake-transfer activity from the account_events StakeTransferred stream: a
 // per-subnet leaderboard plus a network rollup and intensity distribution. Pure shaping
 // (buildChainStakeTransfers); the Worker / data-api Postgres tier supplies the rows and adds the
-// REST envelope. The field semantics live in schemas/components/05-subnets.schema.json
+// REST envelope. The field semantics live in schemas-src/routes/chain-network-rollups.ts
 // (ChainStakeTransfersArtifact). The between-coldkeys companion to the within-account re-delegation
 // churn of /chain/stake-moves: StakeTransferred (transfer_stake, #2556) moves staked alpha from one
 // coldkey to ANOTHER coldkey on the same hotkey, so it relocates ownership rather than net capital

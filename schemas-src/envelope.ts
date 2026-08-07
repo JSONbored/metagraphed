@@ -57,27 +57,56 @@ export const ArtifactBaseSchema = z
   .passthrough();
 export type ArtifactBase = z.infer<typeof ArtifactBaseSchema>;
 
+// The bare artifact wrapper as its own published component (#9830) — what an
+// artifact carries before any route-specific field is layered on. z.lazy()
+// rather than a second reference to ArtifactBaseSchema: registering one Zod
+// node under two ids would overwrite the first, and this emits exactly the
+// `{"$ref": "#/components/schemas/ArtifactBase"}` alias the hand-written
+// component published. No route may serve it — see SuccessEnvelopeSchema's
+// note below for the gates that enforce that.
+export const GenericArtifactSchema = z.lazy(() => ArtifactBaseSchema);
+
 export const ResponseMetaSchema = z
   .object({
     artifact_path: z.string().optional(),
     cache: CacheProfileSchema.optional(),
     contract_version: z.string(),
-    // Deterministic build content marker (epoch by default), not a wall
-    // clock — see published_at for human-facing freshness (ResponseMeta's
-    // own OpenAPI description).
-    generated_at: z.string().nullable().optional(),
+    generated_at: z
+      .string()
+      .nullable()
+      .optional()
+      .describe(
+        "Deterministic build content marker (epoch by default); not a wall clock. Use published_at for human-facing freshness.",
+      ),
     pagination: PaginationMetaSchema.optional(),
-    published_at: z.string().nullable().optional(),
+    // `.meta({format})` rather than z.iso.datetime() (#9830): the published
+    // contract has always carried format:date-time here, and this keeps that
+    // annotation without tightening what Zod ACCEPTS -- the schema is used to
+    // validate real handler output in tests, and the producer is a KV pointer
+    // this schema does not own.
+    published_at: z
+      .string()
+      .meta({ format: "date-time" })
+      .nullable()
+      .optional()
+      .describe(
+        "Real publish time from the KV latest pointer, distinct from generated_at. Null before the first publish or when the control KV is unbound.",
+      ),
     source: z.string().optional(),
-    // Present ONLY on serve-time drift (#1001): the served artifact was
-    // built under an older contract than the live one.
     stale_contract: z
       .object({
-        built_under: z.string(),
-        live: z.string(),
+        built_under: z
+          .string()
+          .describe("Contract version the served artifact was built under."),
+        live: z
+          .string()
+          .describe("Current (live) contract version the Worker is running."),
       })
       .strict()
-      .optional(),
+      .optional()
+      .describe(
+        "Present ONLY when the served artifact was built under an older contract than the live one (serve-time drift, #1001) — the body may predate a schema change. Mirrored on the x-metagraph-stale-contract response header for monitoring.",
+      ),
   })
   // meta carries route-specific extra fields beyond this shared shape
   // (workers/responses.ts's `extraMeta`/`payload.meta` are open records) —
@@ -100,6 +129,18 @@ export function successEnvelopeSchema<DataSchema extends z.ZodType>(
     })
     .strict();
 }
+
+// The shared SuccessEnvelope component (#9830) — the envelope shape with an
+// unconstrained `data`, published so a consumer can describe "an envelope"
+// without naming a route. Every real route publishes its OWN envelope with a
+// typed `data`, built by the function above; this is the shape they all
+// share, not a fallback any route is allowed to serve (validate-openapi.ts
+// and validate-contract-drift.ts both reject a route whose data schema is a
+// generic one).
+export const SuccessEnvelopeSchema = successEnvelopeSchema(
+  z.object({}).passthrough(),
+);
+export type SuccessEnvelope = z.infer<typeof SuccessEnvelopeSchema>;
 
 // Matches errorResponse()'s `{ ok: false, schema_version: 1, data: null,
 // error: { code, message }, meta }` — one shape for every error response,

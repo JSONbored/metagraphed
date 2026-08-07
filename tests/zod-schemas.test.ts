@@ -4717,11 +4717,11 @@ describe("batch 9 (#8063) route artifact schemas parse real builder output", () 
   });
 });
 
-// #8827: schemas/components/04-surfaces.schema.json's hand-edited
-// AgentReadinessStatus (additionalProperties: false, no readiness_verified)
-// used to shadow this Zod-owned copy in the merged component bundle -- the
-// hand-edited key is deleted now, but this guards the field the deleted copy
-// would have rejected, and that the carried-over description still ships.
+// #8827: a hand-written AgentReadinessStatus (additionalProperties: false,
+// no readiness_verified) used to shadow this Zod-owned copy in the merged
+// component bundle. There is no merged bundle any more -- #9830 deleted the
+// second source outright -- but this still guards the field that copy would
+// have rejected, and that the carried-over description ships.
 describe("agent-readiness-status: hand-edited copy no longer shadows the Zod owner (#8827)", () => {
   test("AgentReadinessStatusSchema.parse(...) accepts readiness_verified", () => {
     const parsed = AgentReadinessStatusSchema.parse({

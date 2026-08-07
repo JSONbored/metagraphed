@@ -1,9 +1,0 @@
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://metagraph.sh/schemas/components/07-endpoints-rpc.schema.json",
-  "title": "Metagraphed OpenAPI components 07-endpoints-rpc",
-  "type": "object",
-  "components": {
-    "schemas": {}
-  }
-}

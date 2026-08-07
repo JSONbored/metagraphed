@@ -6,12 +6,12 @@
 // missing "unknown" — so a schema-legal `classification: "unknown"` would be
 // hard-rejected by `npm run validate` as an "invalid classification".
 //
-// Reads public/metagraph/openapi.json (the final published document), not
-// schemas/components/01-enums.schema.json directly: Classification became a
-// types-epic B (#7860) Zod-generated component, so the hand-edited file no
-// longer declares it at all (see .claude/skills/metagraphed/reference.md's
-// Zod-owned-components note) — the published document is the only place
-// this enum still exists as a real, checkable artifact.
+// Reads public/metagraph/openapi.json (the final published document) rather
+// than any schema source: Classification is declared in schemas-src as Zod
+// (types-epic B, #7860), and since #9830 the hand-written
+// schemas/components/ layer that used to hold enum components is deleted
+// entirely. The published document is where this enum exists as a real,
+// checkable artifact.
 //
 // validate.ts is a top-level script (it runs and process.exit()s on import,
 // and in isolation fails on unrelated stale generated-artifact checks), so it

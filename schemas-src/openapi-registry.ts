@@ -58,9 +58,43 @@ import {
   CurationLevelSchema,
   HealthStatusSchema,
   PartnershipMetadataSchema,
+  PartnershipTierSchema,
   ScoreDistributionSchema,
+  SubnetStatusSchema,
+  SubnetTypeSchema,
 } from "./shared.ts";
-import { CountMapSchema } from "./envelope.ts";
+import {
+  ArtifactBaseSchema,
+  CacheProfileSchema,
+  CountMapSchema,
+  ErrorEnvelopeSchema,
+  GenericArtifactSchema,
+  PaginationMetaSchema,
+  ResponseMetaSchema,
+  SuccessEnvelopeSchema,
+} from "./envelope.ts";
+import { HealthLatestArtifactSchema } from "./artifacts/health-artifacts.ts";
+import { HealthBadgeArtifactSchema } from "./artifacts/health-artifacts.ts";
+import { OperationalSurfacesArtifactSchema } from "./artifacts/operational-surfaces.ts";
+import {
+  R2ManifestArtifactSchema,
+  R2ManifestEntrySchema,
+} from "./artifacts/r2-manifest.ts";
+import {
+  ReviewCurationArtifactSchema,
+  ReviewDecisionSchema,
+  ReviewDecisionsArtifactSchema,
+  ReviewQueueArtifactSchema,
+} from "./artifacts/review-intake.ts";
+import {
+  SchemaDriftArtifactSchema,
+  SchemaDriftSurfaceSchema,
+} from "./artifacts/schema-drift.ts";
+import { SurfaceAliasesArtifactSchema } from "./artifacts/surface-aliases.ts";
+import {
+  SubnetVerificationArtifactSchema,
+  VerificationArtifactSchema,
+} from "./artifacts/verification.ts";
 import {
   SubnetsArtifactSchema,
   SubnetIndexEntrySchema,
@@ -83,6 +117,8 @@ import {
   EndpointScoreReasonSchema,
   VerificationResultSchema,
   ReviewStateSchema,
+  CandidateStateSchema,
+  EndpointPublicationStateSchema,
 } from "./routes/subnet-detail.ts";
 import { EconomicsArtifactSchema } from "./routes/economics.ts";
 import {
@@ -401,6 +437,7 @@ import {
   RpcUsageArtifactSchema,
   ProviderSchema,
   RpcPoolSchema,
+  ProviderKindSchema,
 } from "./routes/providers-rpc.ts";
 import {
   SubnetProfilesArtifactSchema,
@@ -873,6 +910,52 @@ register(EvidenceClaimSchema, "EvidenceClaim");
 register(EvidenceLedgerArtifactSchema, "EvidenceLedgerArtifact");
 register(SubnetEvidenceArtifactSchema, "SubnetEvidenceArtifact");
 
+// ---------------------------------------------------------------------------
+// The last 27 (#9830). Until this batch, schemas/components/*.schema.json was
+// a SECOND source of published components alongside this registry, and
+// scripts/openapi-components.ts merged the two. That is the whole reason the
+// contract could drift: a component had two possible homes, only one of them
+// type-checked, and `npm run build` silently discarded an edit to the wrong
+// one. These registrations move the remainder here, after which the
+// hand-written layer is deleted and schemas-src is the only place a published
+// schema can be declared.
+//
+// Eleven of the 27 were ALREADY modeled in Zod and simply never registered,
+// so the generator inlined them and the hand-written copy is what got
+// published under the name. Registering them changes nothing about what
+// validates -- it only makes the copy that is actually type-checked the one
+// that ships.
+register(ArtifactBaseSchema, "ArtifactBase");
+register(GenericArtifactSchema, "GenericArtifact");
+register(SuccessEnvelopeSchema, "SuccessEnvelope");
+register(ErrorEnvelopeSchema, "ErrorEnvelope");
+register(ResponseMetaSchema, "ResponseMeta");
+register(PaginationMetaSchema, "PaginationMeta");
+register(CacheProfileSchema, "CacheProfile");
+register(SubnetStatusSchema, "SubnetStatus");
+register(SubnetTypeSchema, "SubnetType");
+register(PartnershipTierSchema, "PartnershipTier");
+register(ProviderKindSchema, "ProviderKind");
+register(CandidateStateSchema, "CandidateState");
+register(EndpointPublicationStateSchema, "EndpointPublicationState");
+
+// The build-published artifacts with no REST route of their own -- see
+// schemas-src/artifacts/'s file headers.
+register(SurfaceAliasesArtifactSchema, "SurfaceAliasesArtifact");
+register(ReviewQueueArtifactSchema, "ReviewQueueArtifact");
+register(OperationalSurfacesArtifactSchema, "OperationalSurfacesArtifact");
+register(HealthLatestArtifactSchema, "HealthLatestArtifact");
+register(HealthBadgeArtifactSchema, "HealthBadgeArtifact");
+register(SchemaDriftSurfaceSchema, "SchemaDriftSurface");
+register(SchemaDriftArtifactSchema, "SchemaDriftArtifact");
+register(R2ManifestEntrySchema, "R2ManifestEntry");
+register(R2ManifestArtifactSchema, "R2ManifestArtifact");
+register(ReviewDecisionSchema, "ReviewDecision");
+register(ReviewCurationArtifactSchema, "ReviewCurationArtifact");
+register(ReviewDecisionsArtifactSchema, "ReviewDecisionsArtifact");
+register(VerificationArtifactSchema, "VerificationArtifact");
+register(SubnetVerificationArtifactSchema, "SubnetVerificationArtifact");
+
 // The component names this registry owns -- used by the generator to know
 // which hand-edited schemas/components/*.schema.json keys to drop (they'd
 // otherwise shadow the generated ones) and by the diff-audit script to know
@@ -1117,6 +1200,37 @@ export const OPENAPI_ZOD_COMPONENT_NAMES = [
   "AskRequest",
   "SemanticSearchArtifact",
   "SurfaceVerifyArtifact",
+  // The last 27 (#9830) -- see the matching register() block above. With
+  // these, the list stops being "the Zod-owned SUBSET of the published
+  // components" and becomes simply the published components: there is no
+  // second source left for it to be a subset of.
+  "ArtifactBase",
+  "GenericArtifact",
+  "SuccessEnvelope",
+  "ErrorEnvelope",
+  "ResponseMeta",
+  "PaginationMeta",
+  "CacheProfile",
+  "SubnetStatus",
+  "SubnetType",
+  "PartnershipTier",
+  "ProviderKind",
+  "CandidateState",
+  "EndpointPublicationState",
+  "SurfaceAliasesArtifact",
+  "ReviewQueueArtifact",
+  "OperationalSurfacesArtifact",
+  "HealthLatestArtifact",
+  "HealthBadgeArtifact",
+  "SchemaDriftSurface",
+  "SchemaDriftArtifact",
+  "R2ManifestEntry",
+  "R2ManifestArtifact",
+  "ReviewDecision",
+  "ReviewCurationArtifact",
+  "ReviewDecisionsArtifact",
+  "VerificationArtifact",
+  "SubnetVerificationArtifact",
 ] as const;
 
 // SubnetEconomics has no registry entry (see header) but its hand-edited

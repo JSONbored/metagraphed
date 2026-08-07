@@ -592,6 +592,14 @@ jobs:
       - name: Validate no hand-written .mjs/.js
         run: npm run validate:no-hand-written-mjs
 
+      # Permanent lock on the single schema source (#9830): every published
+      # OpenAPI component comes from schemas-src/ and nowhere else. Runs
+      # unconditionally for the same reason the .mjs lock does — it reads the
+      # committed contract and the registry, costs well under a second, and a
+      # "docs-only" PR can still re-add a hand-written component file.
+      - name: Validate single schema source
+        run: npm run validate:single-schema-source
+
       # Module-level mutable state in src/ and workers/ must register a reset
       # (src/module-state-registry.ts), or it leaks across test files once the
       # coverage pass runs with `isolate: false` (#8922). Static scan of the

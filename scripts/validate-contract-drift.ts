@@ -1,8 +1,6 @@
 import { spawnSync } from "node:child_process";
 import path from "node:path";
-import { buildApiComponentBundle } from "./bundle-schemas.ts";
 import { generateClientSource } from "./generate-client.ts";
-import { generateOpenApiZodComponents } from "./generate-openapi-zod-components.ts";
 import { buildCanonicalOpenApiArtifact } from "./openapi-components.ts";
 import {
   removeInlinedOpenApiSpec,
@@ -53,31 +51,13 @@ check(
     "run `npm run types:workers` after fixing it (workers/worker-configuration.d.ts embeds the same literal).",
 );
 
-const currentBundle = await readJson(
-  path.join(repoRoot, "schemas/api-components.schema.json"),
-);
-const expectedBundle = await buildApiComponentBundle();
-check(
-  stableStringify(currentBundle) === stableStringify(expectedBundle),
-  "schemas/api-components.schema.json is stale. Run npm run schemas:bundle.",
-);
-
-// scripts/openapi-components.ts overlays the Zod-owned components over the
-// hand-edited bundle -- a name defined on both sides means the hand-edited
-// copy is silently discarded rather than published, so the two key sets must
-// be disjoint (#8827).
-const handEditedComponentNames = Object.keys(
-  (expectedBundle.components as Row).schemas as Row,
-);
-const zodComponentNames = new Set(Object.keys(generateOpenApiZodComponents()));
-const shadowedComponentNames = handEditedComponentNames.filter((name) =>
-  zodComponentNames.has(name),
-);
-check(
-  shadowedComponentNames.length === 0,
-  `Component name(s) defined in BOTH the hand-edited bundle and schemas-src, so the hand-edited copy is silently discarded by scripts/openapi-components.ts: ${shadowedComponentNames.join(", ")}. Delete the hand-edited key.`,
-);
-
+// The bundle-staleness and shadowed-name checks that used to live here are
+// gone with the layer they guarded (#9830). Both existed only because
+// components had two possible homes: one asserted the hand-written bundle was
+// freshly rebuilt, the other that no name was defined on both sides (#8827).
+// schemas-src is the only source now, so neither failure mode exists;
+// scripts/validate-single-schema-source.ts fails the build if a second source
+// reappears.
 const currentOpenApi = await readJson(
   path.join(repoRoot, "public/metagraph/openapi.json"),
 );

@@ -1,7 +1,7 @@
 // Live network-wide stake-movement (re-delegation) activity from the account_events StakeMoved
 // stream: a per-subnet leaderboard plus a network rollup and intensity distribution. Pure shaping
 // (buildChainStakeMoves); the Worker / data-api Postgres tier supplies the rows and adds the REST
-// envelope. The field semantics live in schemas/components/05-subnets.schema.json
+// envelope. The field semantics live in schemas-src/routes/chain-network-rollups.ts
 // (ChainStakeMovesArtifact). The re-delegation-churn companion to the net-capital-flow
 // /chain/stake-flow: StakeMoved is a coldkey relocating its stake between hotkeys/subnets
 // (move_stake) without unstaking, so it never changes a subnet's net stake — it measures churn,

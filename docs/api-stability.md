@@ -119,8 +119,8 @@ Omitting all paging params returns the full collection (back-compatible).
 - **Contract version.** `CONTRACT_VERSION` (date scheme, e.g. `2026-06-06.1`) is
   surfaced in `meta.contract_version` and the `x-metagraph-contract-version`
   header. `npm run contract:summary` classifies each change as additive, risky, or
-  breaking for PR review; `schemas/components/*.schema.json` is the canonical
-  source and `openapi.json`/types/client are generated from it.
+  breaking for PR review; the Zod schemas under `schemas-src/` are the canonical
+  source and `openapi.json`/types/client are generated from them.
 - **Envelope version.** `schema_version` (integer) bumps only on a breaking
   envelope change.
 - **Deprecations.** Announced via `/metagraph/changelog.json` and the contract

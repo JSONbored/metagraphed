@@ -79,11 +79,10 @@ describe("candidate-surface url scheme pattern (#5582)", () => {
 });
 
 describe("Surface component url/schema_url carry the http/ws scheme pattern (#5582)", () => {
-  // Surface is a Zod-owned OpenAPI component since types-epic B (#7860) --
-  // schemas/components/04-surfaces.schema.json no longer defines it (see
-  // .claude/skills/metagraphed/reference.md's Zod-owned-components note), so
-  // the published contract (public/metagraph/openapi.json) is the
-  // authoritative place to read it now. Compares REGEX BEHAVIOR, not the
+  // Surface is declared in schemas-src (types-epic B, #7860), and since
+  // #9830 there is no other place a component CAN be declared -- the
+  // hand-written schemas/components/ layer is deleted. The published contract
+  // (public/metagraph/openapi.json) is the authoritative place to read it. Compares REGEX BEHAVIOR, not the
   // exact `pattern` string: a JS RegExp literal's `.source` always
   // backslash-escapes `/` (src/openapi-sample.ts's valueForPattern has the
   // full explanation), so the emitted pattern is a differently-escaped but
