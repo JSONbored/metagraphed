@@ -20,7 +20,7 @@ import { classNames } from "@/lib/metagraphed/format";
 import { Kbd, safeExternalUrl } from "@jsonbored/ui-kit";
 import { Panel } from "@/components/metagraphed/primitives";
 import { loadRecent, pushRecent } from "@/lib/metagraphed/search-history";
-import { isValidSs58 } from "@/lib/metagraphed/accounts";
+import { isChecksumValidSs58, isValidH160, normalizeH160 } from "@/lib/metagraphed/accounts";
 import { shortHash } from "@/lib/metagraphed/blocks";
 import { resolveAddress } from "@/lib/metagraphed/resolve-address";
 import { isCompositeExtrinsicRef } from "@/lib/metagraphed/extrinsics";
@@ -118,6 +118,9 @@ type NavTarget =
       hint: string;
       to: string;
       params?: Record<string, string | number>;
+      /** Query string for targets whose destination is a search param rather
+       * than a path segment -- `?h160=` and `?uid=` (metagraphed-infra#373/#376). */
+      search?: Record<string, string | number>;
       icon: typeof User;
       badge: string;
     };
@@ -188,7 +191,13 @@ export function NavOmnibox({ onOpenPalette }: Props) {
     const q = debounced.trim();
     const targets: NavTarget[] = [];
 
-    if (isValidSs58(q)) {
+    // CHECKSUM, not shape (metagraphed-infra#376). A one-character typo in an
+    // ss58 is still 48 base58 characters, so the charset regex this used to
+    // call offered it -- and the user landed on an account page reading "no
+    // activity", which sounds like a fact about the address rather than "you
+    // mistyped it". /api/v1/search/resolve has always verified it; this box is
+    // where most people paste, and it did not.
+    if (isChecksumValidSs58(q)) {
       targets.push({
         kind: "nav",
         label: `Account ${resolveAddress(q, { keep: 8 }).display}`,
@@ -197,6 +206,36 @@ export function NavOmnibox({ onOpenPalette }: Props) {
         params: { ss58: q },
         icon: User,
         badge: "wallet",
+      });
+    }
+
+    // An EVM address is a chain identifier too, and this box did not know it.
+    // The page it lands on resolves the mapping (metagraphed-infra#373).
+    if (isValidH160(q)) {
+      targets.push({
+        kind: "nav",
+        label: `EVM ${q.slice(0, 10)}…${q.slice(-6)}`,
+        hint: "Find the account this EVM address maps to",
+        to: "/accounts",
+        search: { h160: normalizeH160(q) },
+        icon: User,
+        badge: "wallet",
+      });
+    }
+
+    // `74:12` -- the netuid:uid form the resolver recognises and this box did
+    // not, so pasting one fell through to keyword search.
+    const neuronRef = /^(\d{1,4}):(\d{1,5})$/.exec(q);
+    if (neuronRef && Number(neuronRef[1]) <= 1024) {
+      targets.push({
+        kind: "nav",
+        label: `Subnet ${neuronRef[1]} · uid ${neuronRef[2]}`,
+        hint: "Jump to a neuron by netuid:uid",
+        to: "/subnets/$netuid",
+        params: { netuid: neuronRef[1]! },
+        search: { uid: Number(neuronRef[2]) },
+        icon: Hash,
+        badge: "subnet",
       });
     }
 
@@ -307,7 +346,11 @@ export function NavOmnibox({ onOpenPalette }: Props) {
       return;
     }
     if (item.kind === "nav") {
-      navigate({ to: item.to as never, params: (item.params ?? {}) as never });
+      navigate({
+        to: item.to as never,
+        params: (item.params ?? {}) as never,
+        search: (item.search ?? {}) as never,
+      });
       return;
     }
     const href = hrefFor(item.hit);
