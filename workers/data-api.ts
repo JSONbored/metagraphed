@@ -387,6 +387,7 @@ import {
   NEON_PARITY_CRON,
   runNeonParityWatchdog,
 } from "../src/neon-parity-watchdog.ts";
+import { NEON_PRUNE_CRON, runNeonPrune } from "../src/neon-prune.ts";
 import { runTableFreshnessWatchdog } from "../src/table-freshness-watchdog.ts";
 import {
   writeAccountIdentityToD1,
@@ -7734,6 +7735,13 @@ export default {
       // No ctx: this reads D1 only. It never touches Neon -- the whole point is
       // to judge the mirrors from evidence they already left behind.
       return runNeonMirrorWatchdog(env as unknown as Record<string, unknown>);
+    }
+    if (controller?.cron === NEON_PRUNE_CRON) {
+      // Neon's own retention for the rolling windows (#9891). Independent of
+      // D1's prune by design -- two stores computing the same boundary from
+      // the same constant stay aligned, whereas one waiting on the other stops
+      // pruning the moment the other breaks.
+      return runNeonPrune(env as unknown as Record<string, unknown>, ctx);
     }
     if (controller?.cron === NEON_PARITY_CRON) {
       // `ctx` because this one DOES touch Neon: it is the only check that

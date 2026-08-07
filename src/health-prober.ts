@@ -72,7 +72,11 @@ const PROBE_CONCURRENCY = 8;
 // Warn when a sweep nears the 15-minute Cron Trigger ceiling (~8 min = generous
 // headroom). Early signal to raise concurrency or shard before runs overlap.
 const PROBE_WALLTIME_WARN_MS = 8 * 60 * 1000;
-const HISTORY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+/** 30 days. EXPORTED because Neon's prune (#9891) must use the same window --
+ * a copy of this number there would be a second source of truth for one
+ * retention, and the failure when they drift is silent: the stores keep
+ * different amounts of history and parity reports a gap nobody can explain. */
+export const HISTORY_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const RPC_KINDS = new Set(["subtensor-rpc", "subtensor-wss", "archive"]);
 const DNS_JSON_ENDPOINT = "https://cloudflare-dns.com/dns-query";
 const DNS_RECORD_TYPES = ["A", "AAAA"];
