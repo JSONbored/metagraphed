@@ -22,10 +22,28 @@ import type { Row } from "./row-type.ts";
 const { default: worker } = await import("../workers/data-api.ts");
 const { QUEUE_MESSAGE_MAX_BYTES } = await import("../src/sync-batch-queue.ts");
 
-const SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0012_validator_nominator_counts.sql"),
-  "utf8",
-);
+const SCHEMA =
+  fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "migrations/d1/0012_validator_nominator_counts.sql",
+    ),
+    "utf8",
+  ) +
+  fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "migrations/d1/0029_nominator_positions_passes.sql",
+    ),
+    "utf8",
+  );
+
+const passes = () =>
+  db
+    .prepare(
+      "SELECT * FROM validator_nominator_counts_passes ORDER BY captured_at",
+    )
+    .all() as Row[];
 
 const PATH = "/api/v1/internal/validator-nominator-counts-sync";
 const SECRET = "test-validator-nominator-counts-sync-secret";
@@ -122,6 +140,8 @@ describe("POST /api/v1/internal/validator-nominator-counts-sync", () => {
       nominator_counts_written: 2,
       stores: ["d1"],
       d1_statements: 1,
+
+      pass_total: null,
     });
     assert.equal(rows().length, 2);
     // A zero IS stored -- the producer's scan is exhaustive, so "this hotkey
@@ -300,5 +320,84 @@ describe("routed to the sync queue (metagraphed-infra#355)", () => {
     );
     assert.equal(response.status, 502);
     assert.equal(rows().length, 0);
+  });
+});
+
+describe("pass completeness (metagraphed#9783)", () => {
+  test("a declared pass is tallied and completes when the rows land", async () => {
+    // A count cannot prove completeness: 100,000 well-formed rows look exactly
+    // like 222,000 of them, only fewer. A short pass here under-reports how
+    // many delegators a validator has, which reads as a validator losing
+    // support rather than as a load that did not finish.
+    const first = await post({ pass_total: 2, rows: [countRow()] });
+    assert.equal(first.status, 200);
+    assert.equal(((await first.json()) as Row).pass_total, 2);
+    assert.equal(passes()[0]!.received_rows, 1);
+    assert.equal(passes()[0]!.completed_at, null);
+
+    await post({ pass_total: 2, rows: [countRow({ hotkey: HOTKEY_B })] });
+    assert.equal(passes()[0]!.received_rows, 2);
+    assert.ok(
+      passes()[0]!.completed_at,
+      "the write that closed the gap stamps it",
+    );
+  });
+
+  test("the queue path carries the declaration too", async () => {
+    // A queue knows a message was DELIVERED; it does not know whether the whole
+    // scan arrived. The declaration has to survive the transport or the tally
+    // means nothing on the path the lane actually takes.
+    const sent: Row[] = [];
+    const res = await post(
+      { pass_total: 9, rows: [countRow()] },
+      SECRET,
+      env({
+        SYNC_BATCHES: { send: async (m: Row) => void sent.push(m) },
+        SYNC_QUEUE_LANES: "validator-nominator-counts",
+      }),
+    );
+    assert.equal(res.status, 200);
+    assert.equal(((await res.json()) as Row).pass_total, 9);
+    assert.equal(sent[0]!.pass_total, 9);
+    assert.equal(rows().length, 0, "enqueued, not written -- never both");
+  });
+
+  test("omitting pass_total writes no tally", async () => {
+    await post({ rows: [countRow()] });
+    assert.equal(passes().length, 0);
+  });
+
+  test("rejects a declaration the request contradicts", async () => {
+    assert.equal(
+      (
+        await post({
+          pass_total: 5,
+          rows: [
+            countRow(),
+            countRow({ hotkey: HOTKEY_B, captured_at: 1_780_000_000_001 }),
+          ],
+        })
+      ).status,
+      400,
+      "two captured_at stamps under one declaration",
+    );
+    assert.equal(
+      (
+        await post({
+          pass_total: 1,
+          rows: [countRow(), countRow({ hotkey: HOTKEY_B })],
+        })
+      ).status,
+      400,
+      "a total smaller than this request's own rows",
+    );
+    for (const bad of [0, -3, 2.5, "lots"]) {
+      assert.equal(
+        (await post({ pass_total: bad, rows: [countRow()] })).status,
+        400,
+        String(bad),
+      );
+    }
+    assert.equal(passes().length, 0, "none of them wrote a tally");
   });
 });
