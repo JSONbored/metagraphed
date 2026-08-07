@@ -104,10 +104,25 @@ export function buildPgUpsert(
   conflict: readonly string[],
   rowCount: number,
   guard?: string,
+  filter?: string,
 ): string {
-  const head =
-    `INSERT INTO ${table} (${columns.join(", ")}) VALUES ` +
-    pgValuesClause(rowCount, columns.length);
+  // `filter` switches the row source from a bare VALUES list to a SELECT over
+  // it, so a predicate can reject rows before they are inserted. The D1 side
+  // has had this since #9558 -- `chunkStatements` takes the same argument --
+  // and its absence here is what let `hotkey_alpha` diverge: D1 stores only
+  // pools a nominator_position references, the mirror stored everything, and
+  // Neon ended up with ~29,000 rows D1 refuses on purpose (#9832).
+  //
+  // The alias is `src`, and the predicate refers to its columns by name.
+  const head = filter
+    ? `INSERT INTO ${table} (${columns.join(", ")}) SELECT ${columns
+        .map((c) => `src.${c}`)
+        .join(", ")} FROM (VALUES ${pgValuesClause(
+        rowCount,
+        columns.length,
+      )}) AS src (${columns.join(", ")}) WHERE ${filter}`
+    : `INSERT INTO ${table} (${columns.join(", ")}) VALUES ` +
+      pgValuesClause(rowCount, columns.length);
   if (conflict.length === 0) return head;
   const updates = columns
     .filter((column) => !conflict.includes(column))
@@ -173,6 +188,7 @@ export async function writeRowsToNeon(
   rows: readonly Record<string, unknown>[],
   conflict: readonly string[] = [],
   guard?: string,
+  filter?: string,
 ): Promise<NeonWriteResult> {
   if (!sql?.unsafe)
     return { ok: false, rows: 0, statements: 0, reason: "unbound" };
@@ -185,7 +201,14 @@ export async function writeRowsToNeon(
   let statements = 0;
   for (let i = 0; i < rows.length; i += perStatement) {
     const chunk = rows.slice(i, i + perStatement);
-    const text = buildPgUpsert(table, columns, conflict, chunk.length, guard);
+    const text = buildPgUpsert(
+      table,
+      columns,
+      conflict,
+      chunk.length,
+      guard,
+      filter,
+    );
     try {
       await sql.unsafe(text, pgFlatValues(chunk, columns));
     } catch (error) {

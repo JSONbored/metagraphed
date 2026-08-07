@@ -46,6 +46,11 @@ interface LedgerPlan {
   table: string;
   columns: readonly string[];
   conflict: readonly string[];
+  /** A SQL predicate rows must satisfy to be inserted, over the `src` alias
+   * buildPgUpsert gives the VALUES list. Present only where the D1 writer
+   * filters too -- a mirror that stores MORE than its source is a mirror in
+   * name only (#9832). */
+  filter?: string;
 }
 
 /**
@@ -65,6 +70,19 @@ export const LEDGER_MIRROR_PLANS: Readonly<Record<string, LedgerPlan>> = {
     table: "hotkey_alpha",
     columns: HOTKEY_ALPHA_INSERT_COLUMNS,
     conflict: ["hotkey", "netuid"],
+    // THE FILTER D1 HAS HAD SINCE #9558, finally on this side too.
+    //
+    // D1 stores only pools a `nominator_positions` row references, because
+    // `TotalHotkeyAlpha` has ~762,577 entries and the positions name ~17,900
+    // -- the other 43x is "written every pass, read by nothing" and saturated
+    // D1 outright. The mirror never had the predicate, so Neon accumulated
+    // 47,320 rows against D1's 17,867 (#9832).
+    //
+    // Postgres spelling of the same EXISTS the D1 writer passes to
+    // chunkStatements; `src` is the alias buildPgUpsert gives the VALUES list.
+    filter:
+      "EXISTS (SELECT 1 FROM nominator_positions np" +
+      " WHERE np.hotkey = src.hotkey AND np.netuid = src.netuid)",
   },
   "validator-nominator-counts": {
     table: "validator_nominator_counts",
@@ -124,6 +142,7 @@ export async function mirrorLedgerToNeon(
     rows,
     plan.conflict,
     `${plan.table}.captured_at < EXCLUDED.captured_at`,
+    plan.filter,
   );
   await recordNeonWriteVerdict(laneDb, lane, result, now());
   return { attempted: true, result };
