@@ -5,6 +5,8 @@ import { summarizeEvent } from "@jsonbored/chain-summaries";
 import {
   MCP_TOOLS,
   MCP_PROTOCOL_VERSIONS,
+  clientReadsStructuredContent,
+  toolResultContent,
   MCP_SERVER_INFO,
   MAX_MCP_BATCH_LENGTH,
   MAX_MCP_BODY_BYTES,
@@ -4122,6 +4124,113 @@ describe("MCP tools (injected deps)", () => {
   test("registry_summary returns the summary artifact", async () => {
     const res = await callTool("registry_summary", {}, { deps });
     assert.equal(res.body.result.structuredContent.completeness, 0.42);
+  });
+
+  describe("the compatibility text block is version-gated (#9789)", () => {
+    // This server used to serialize every payload twice. The duplicate exists
+    // only for clients that predate `structuredContent`, so it is now spent
+    // only on those clients -- which makes the negotiated version part of the
+    // response contract, and worth pinning from both sides.
+    const summaryOf = (res: Row) => res.body.result.structuredContent;
+
+    test("a 2025-06-18+ client gets the payload ONCE", async () => {
+      const res = await callTool(
+        "registry_summary",
+        {},
+        { deps, headers: { "mcp-protocol-version": "2025-06-18" } },
+      );
+      assert.deepEqual(res.body.result.content, []);
+      // The data itself must be untouched -- this is a transport change, not
+      // a narrowing.
+      assert.equal(summaryOf(res).completeness, 0.42);
+    });
+
+    test("every version at or after that one is treated the same", async () => {
+      for (const version of MCP_PROTOCOL_VERSIONS.filter(
+        (v: string) => v >= "2025-06-18",
+      )) {
+        const res = await callTool(
+          "registry_summary",
+          {},
+          { deps, headers: { "mcp-protocol-version": version } },
+        );
+        assert.deepEqual(res.body.result.content, [], version);
+      }
+    });
+
+    test("a 2025-03-26 client still gets the text block", async () => {
+      const res = await callTool(
+        "registry_summary",
+        {},
+        { deps, headers: { "mcp-protocol-version": "2025-03-26" } },
+      );
+      const text = res.body.result.content[0].text;
+      assert.equal(text, JSON.stringify(summaryOf(res)));
+    });
+
+    test("an absent header keeps the text block, per the spec's assumed 2025-03-26", async () => {
+      // The single most important case: a client that sends no header is a
+      // client that cannot read structuredContent, and dropping the text for
+      // it would be a silent break rather than an optimisation.
+      const res = await callTool("registry_summary", {}, { deps });
+      assert.equal(
+        res.body.result.content[0].text,
+        JSON.stringify(summaryOf(res)),
+      );
+    });
+
+    test("an ERROR result keeps its text on every version", async () => {
+      // Error text is a short `code: message`, not a copy of the payload, and
+      // it is what a human reads when a call fails.
+      const res = await callTool(
+        "get_coverage",
+        {},
+        {
+          deps: makeDeps(),
+          headers: { "mcp-protocol-version": MCP_PROTOCOL_VERSIONS[0] },
+        },
+      );
+      assert.equal(res.body.result.isError, true);
+      assert.match(res.body.result.content[0].text, /No resource at/);
+    });
+
+    test("clientReadsStructuredContent is the one place that ordering lives", () => {
+      assert.equal(clientReadsStructuredContent("2025-11-25"), true);
+      assert.equal(clientReadsStructuredContent("2025-06-18"), true);
+      assert.equal(clientReadsStructuredContent("2025-03-26"), false);
+      assert.equal(clientReadsStructuredContent("2024-11-05"), false);
+      assert.equal(clientReadsStructuredContent(null), false);
+      assert.equal(clientReadsStructuredContent(undefined), false);
+    });
+
+    test("BOTH conditions are required to drop the block", () => {
+      // The schema half cannot be exercised through a real tool -- all 225
+      // publish one (asserted below) -- so it is pinned here, where the rule
+      // actually lives. A tool without a declared output schema gives the
+      // client no reason to read structuredContent, so dropping its text
+      // would leave that client with nothing to render.
+      const payload = { a: 1 };
+      const text = [{ type: "text", text: JSON.stringify(payload) }];
+      const schema = { type: "object" };
+      assert.deepEqual(toolResultContent(payload, schema, "2025-06-18"), []);
+      assert.deepEqual(
+        toolResultContent(payload, undefined, "2025-06-18"),
+        text,
+        "no outputSchema -> keep the text however new the client is",
+      );
+      assert.deepEqual(toolResultContent(payload, schema, "2025-03-26"), text);
+      assert.deepEqual(toolResultContent(payload, undefined, null), text);
+    });
+
+    test("every published tool declares an outputSchema", () => {
+      // This is the invariant the guard above leans on, and the reason the
+      // optimisation reaches the whole fleet rather than part of it. A new
+      // tool without one would quietly opt itself out.
+      const missing = listToolDefinitions()
+        .filter((tool: Row) => !tool.outputSchema)
+        .map((tool: Row) => tool.name);
+      assert.deepEqual(missing, []);
+    });
   });
 
   test("get_coverage returns the coverage artifact", async () => {

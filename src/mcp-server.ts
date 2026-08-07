@@ -1631,6 +1631,11 @@ interface McpCtx {
   env: Env;
   domain?: string;
   sessionId?: string | null;
+  // #9789: the protocol revision THIS request declared, which decides whether
+  // a tool result still needs the compatibility text block. Optional because
+  // every direct-call test builds a context without a request to read it from
+  // -- and absent means the spec's assumed 2025-03-26, i.e. keep the block.
+  protocolVersion?: string | null;
   clientIp?: string | null;
   // #8994: the session id a single `initialize` will hand back, generated
   // before dispatch so the $mcp_initialize event can carry the session it is
@@ -1732,6 +1737,62 @@ export const MCP_PROTOCOL_VERSIONS = [
   "2024-11-05",
 ];
 const MCP_LATEST_PROTOCOL = MCP_PROTOCOL_VERSIONS[0];
+
+/**
+ * The revision that introduced `outputSchema` + `structuredContent`. A client
+ * negotiating this or later reads the structured channel directly (#9789).
+ */
+export const MCP_STRUCTURED_CONTENT_PROTOCOL = "2025-06-18";
+
+/**
+ * Per spec, a client that negotiated 2025-06-18+ MUST send
+ * `MCP-Protocol-Version` on every request after `initialize`, and a server that
+ * sees no header MUST assume 2025-03-26. That default is what makes this safe
+ * to act on: a client too old to send the header is also too old to read
+ * `structuredContent`, and lands on the compatibility path either way.
+ *
+ * The version IDs are ISO dates, so lexicographic order is chronological.
+ */
+export const MCP_ASSUMED_PROTOCOL_WITHOUT_HEADER = "2025-03-26";
+
+export function clientReadsStructuredContent(
+  protocolVersion: string | null | undefined,
+): boolean {
+  return (
+    (protocolVersion ?? MCP_ASSUMED_PROTOCOL_WITHOUT_HEADER) >=
+    MCP_STRUCTURED_CONTENT_PROTOCOL
+  );
+}
+
+/**
+ * The `content` blocks a successful tool result carries (#9789).
+ *
+ * This server used to serialize every payload TWICE -- once here as text, once
+ * as `structuredContent` -- so a 437 KB body went out at 924 KB, on every call.
+ *
+ * The spec makes the text block a SHOULD and says what it is for: "backwards
+ * compatibility". So it is spent only on the clients that need it. BOTH
+ * conditions are load-bearing:
+ *
+ *   - the client must have negotiated 2025-06-18+, the revision that
+ *     introduced `structuredContent`;
+ *   - the tool must publish an `outputSchema`, because a client that sees no
+ *     declared output schema has no reason to look at `structuredContent` at
+ *     all -- it renders `content`, and an empty one would be a silent break,
+ *     not an optimisation.
+ *
+ * Every tool publishes an outputSchema today (a gate asserts it), so the
+ * second condition is currently always true. It stays because it is the
+ * reason the rule is correct, not a guess about the future.
+ */
+export function toolResultContent(
+  payload: unknown,
+  outputSchema: unknown,
+  protocolVersion: string | null | undefined,
+): { type: string; text: string }[] {
+  if (outputSchema && clientReadsStructuredContent(protocolVersion)) return [];
+  return [{ type: "text", text: JSON.stringify(payload) }];
+}
 
 // The MCP server's own SemVer — the tool surface is a public contract agents
 // depend on, so it needs a version signal distinct from CONTRACT_VERSION (the
@@ -15473,12 +15534,14 @@ async function dispatchTool(
     // one generic shape onto whichever tool degraded and `degraded` is a
     // per-tool object (#9910). Applied to every result, not just a stamped
     // one: a handler that built its own partial block is the same violation.
+    const outputSchema =
+      tool.outputSchema ?? (TOOL_OUTPUT_SCHEMAS as Row)[tool.name];
     const payload = completeDegradedBlock(
       markMcpTierDegraded(data, tierGenerationBefore),
-      tool.outputSchema ?? (TOOL_OUTPUT_SCHEMAS as Row)[tool.name],
+      outputSchema,
     );
     return {
-      content: [{ type: "text", text: JSON.stringify(payload) }],
+      content: toolResultContent(payload, outputSchema, ctx?.protocolVersion),
       structuredContent: payload as Row,
       isError: false,
     };
@@ -15857,6 +15920,9 @@ function buildContext(
     env,
     domain,
     sessionId,
+    // Already validated by handleMcpRequest, so this is either a version we
+    // support or absent (#9789).
+    protocolVersion: request.headers.get("mcp-protocol-version"),
     clientIp: mcpClientKey(request),
     clientName,
     clientVersion,
