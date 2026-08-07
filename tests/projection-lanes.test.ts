@@ -18,6 +18,7 @@ import {
 import { BLOCKS_SUMMARY_SCAN_CAP } from "../src/blocks-summary.ts";
 import {
   CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY,
+  CHAIN_DEREGISTRATIONS_UID_PROJECTION_KEY,
   CHAIN_DEREGISTRATIONS_PROJECTION_KEY,
 } from "../src/chain-deregistrations-artifact.ts";
 import { LAKEHOUSE_NAMESPACES } from "../src/chain-network.ts";
@@ -1519,9 +1520,13 @@ describe("runProjectionLanes", () => {
       PROJECTION_NETWORKS.flatMap((network) =>
         [
           ...PROJECTION_LANES.map((lane) => lane.artifactKey),
-          // The one lane that fans its single computed body across two objects
-          // (src/chain-deregistrations-artifact.ts's header says why).
+          // The one lane that fans its single computed body across THREE
+          // objects (src/chain-deregistrations-artifact.ts's headers say why):
+          // an ~8 KB rollup, the per-displaced-hotkey index the account scope
+          // reads, and the per-(netuid, uid) eviction index the subnet scope
+          // reads (#9873).
           CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY,
+          CHAIN_DEREGISTRATIONS_UID_PROJECTION_KEY,
         ].map((key) => projectionKey(key, network)),
       ).sort(),
       "each lane writes its own artifact key per network, plus any split it declares",
@@ -1564,7 +1569,11 @@ describe("runProjectionLanes", () => {
       PROJECTION_NETWORKS.flatMap((network) =>
         PROJECTION_LANES.flatMap((lane) =>
           (lane.artifactKey === CHAIN_DEREGISTRATIONS_PROJECTION_KEY
-            ? [lane.artifactKey, CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY]
+            ? [
+                lane.artifactKey,
+                CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY,
+                CHAIN_DEREGISTRATIONS_UID_PROJECTION_KEY,
+              ]
             : [lane.artifactKey]
           ).map((key) => projectionKey(key, network)),
         ),
@@ -1772,7 +1781,7 @@ describe("chain-deregistrations lane compute", () => {
     );
   });
 
-  test("splits the rollup away from the 200x-larger per-hotkey index", async () => {
+  test("splits the rollup away from the two larger per-subject indexes", async () => {
     const { puts, bucket } = archiveBucket();
     lakeFetch(REGS);
     const result = await runProjectionLane(
@@ -1785,17 +1794,27 @@ describe("chain-deregistrations lane compute", () => {
       [
         CHAIN_DEREGISTRATIONS_PROJECTION_KEY,
         CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY,
+        CHAIN_DEREGISTRATIONS_UID_PROJECTION_KEY,
       ],
     );
     const rollup = JSON.parse(puts[0]!.value) as Row;
-    // The rollup must NOT carry the index: the chain and subnet routes read it
-    // per request and would otherwise parse ~200x the bytes they use.
+    // The rollup must NOT carry either index: the chain and subnet routes read
+    // it per request and would otherwise parse far more bytes than they use.
     assert.equal(rollup.hotkey_windows, undefined);
+    assert.equal(rollup.uid_events, undefined);
     assert.ok(((rollup.windows as Row)["7d"] as Row).rows);
     const index = JSON.parse(puts[1]!.value) as Row;
     assert.equal(index.schema_version, 1);
     assert.equal(index.lookback_days, 30);
     assert.ok(((index.windows as Row)["7d"] as Row).hotkeys);
+    // The per-uid index (#9873) carries the WIDEST window only -- every tuple
+    // has its own observed_at, so a narrower view is a filter rather than a
+    // second copy, and there is no per-window nesting to walk.
+    const uids = JSON.parse(puts[2]!.value) as Row;
+    assert.equal(uids.schema_version, 1);
+    assert.equal(uids.lookback_days, 30);
+    assert.equal((uids as Row).windows, undefined);
+    assert.ok(uids.by_netuid, "the per-uid index must be keyed by netuid");
   });
 });
 

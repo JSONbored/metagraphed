@@ -14,6 +14,7 @@ import { describe, test } from "vitest";
 import {
   CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY,
   CHAIN_DEREGISTRATIONS_PROJECTION_KEY,
+  CHAIN_DEREGISTRATIONS_UID_PROJECTION_KEY,
   loadAccountDeregistrationsFromArtifact,
   loadChainDeregistrationsFromArtifact,
   loadSubnetDeregistrationsFromArtifact,
@@ -113,7 +114,39 @@ function envWith(
   };
 }
 
+/**
+ * Per-uid eviction tuples (#9873), anchored to NOW rather than to a frozen
+ * constant: the reader slices by wall-clock age, so a fixture pinned to a date
+ * would start failing the day the window moved past it.
+ */
+const DAY_MS = 24 * 60 * 60 * 1000;
+const recent = (days: number) => Date.now() - days * DAY_MS;
+
+const UID_BODY = {
+  schema_version: 1,
+  generated_at: "2026-08-03T19:14:36.000Z",
+  lookback_days: 30,
+  window_registrations: 8064,
+  unattributed_registrations: 1726,
+  by_netuid: {
+    // Newest-first, as the derivation writes them.
+    "45": [
+      [7, "5A", "5B", 350, recent(2), 150],
+      [7, "5Z", "5A", 200, recent(5), 100],
+      [12, "5C", "5D", 190, recent(20), 40],
+      // Rows a malformed lane could emit. Publishing these would put
+      // `"observed_at": null` (or a five-field row's undefined tail) into a
+      // response that claims every field is present, so they are dropped.
+      [3, "5E", "5F", 100],
+      [3, "5G", "5H", 100, "not-a-number", 10],
+      "not-a-tuple",
+    ],
+    "68": [[1, "5I", "5J", 90, recent(1), 5]],
+  },
+};
+
 const ROLLUP_ENV = { [CHAIN_DEREGISTRATIONS_PROJECTION_KEY]: ROLLUP_BODY };
+const UID_ENV = { [CHAIN_DEREGISTRATIONS_UID_PROJECTION_KEY]: UID_BODY };
 const HOTKEY_ENV = {
   [CHAIN_DEREGISTRATIONS_HOTKEY_PROJECTION_KEY]: HOTKEY_BODY,
 };
@@ -262,7 +295,88 @@ describe("loadSubnetDeregistrationsFromArtifact", () => {
     assert.equal(out.distinct_deregistered_hotkeys, 356);
     assert.equal(out.observed_at, new Date(NEWEST).toISOString());
     assert.deepEqual(out.derivation, DERIVATION_7D);
-    assert.deepEqual(keys, [CHAIN_DEREGISTRATIONS_PROJECTION_KEY]);
+    // Two objects, and only two: the rollup the leaderboard ranks (counts) and
+    // the per-uid index (events, #9873). It must never reach for the per-hotkey
+    // index -- that one is the account scope's, and it is the largest of the
+    // three. Sorted because they are issued as one Promise.all.
+    assert.deepEqual(
+      [...keys].sort(),
+      [
+        CHAIN_DEREGISTRATIONS_PROJECTION_KEY,
+        CHAIN_DEREGISTRATIONS_UID_PROJECTION_KEY,
+      ].sort(),
+    );
+  });
+
+  test("publishes the individual evictions behind the count (#9873)", async () => {
+    const { env } = envWith({ ...ROLLUP_ENV, ...UID_ENV });
+    const out = (await loadSubnetDeregistrationsFromArtifact(env, 45, {
+      window: "7d",
+    })) as Row;
+    const events = out.events as Row[];
+    // The 20-day-old eviction is outside the 7d window; the two malformed rows
+    // and the string are dropped. What is left is the two real 7d evictions.
+    assert.equal(events.length, 2);
+    assert.deepEqual(events[0], {
+      uid: 7,
+      // The DISPLACED holder. Naming 5B here would report the arrival as the
+      // casualty, and no downstream consumer could tell.
+      hotkey: "5A",
+      replaced_by_hotkey: "5B",
+      block_number: 350,
+      observed_at: new Date(
+        UID_BODY.by_netuid["45"][0]![4] as number,
+      ).toISOString(),
+      tenure_blocks: 150,
+    });
+    assert.equal(events[1]!.hotkey, "5Z");
+  });
+
+  test("the window slices the events, not just the count", async () => {
+    // Same published list, two windows. If the reader ignored `observed_at` the
+    // 7d view would carry a 20-day-old eviction and quietly contradict the
+    // count sitting next to it.
+    const { env } = envWith({ ...ROLLUP_ENV, ...UID_ENV });
+    const wide = (await loadSubnetDeregistrationsFromArtifact(env, 45, {
+      window: "30d",
+    })) as Row;
+    assert.deepEqual(
+      (wide.events as Row[]).map((e) => e.uid),
+      [7, 7, 12],
+    );
+  });
+
+  test("reads only its OWN subnet's slice of the shared index", async () => {
+    const { env } = envWith({ ...ROLLUP_ENV, ...UID_ENV });
+    const out = (await loadSubnetDeregistrationsFromArtifact(env, 68, {
+      window: "7d",
+    })) as Row;
+    assert.deepEqual(
+      (out.events as Row[]).map((e) => e.hotkey),
+      ["5I"],
+    );
+  });
+
+  test("a subnet absent from the index reports no events, not a decline", async () => {
+    const { env } = envWith({ ...ROLLUP_ENV, ...UID_ENV });
+    const out = (await loadSubnetDeregistrationsFromArtifact(env, 3, {
+      window: "7d",
+    })) as Row;
+    // 441 evictions on the rollup, none attributable to a uid we indexed --
+    // the same lower-bound story `unattributed_registrations` already tells.
+    assert.equal(out.deregistrations, 441);
+    assert.deepEqual(out.events, []);
+  });
+
+  test("a missing per-uid object leaves the counts intact", async () => {
+    // The three objects are written by one lane but stored separately, so one
+    // can lag. The counts must not go dark because the events did.
+    const { env } = envWith(ROLLUP_ENV);
+    const out = (await loadSubnetDeregistrationsFromArtifact(env, 45, {
+      window: "7d",
+    })) as Row;
+    assert.equal(out.deregistrations, 429);
+    assert.deepEqual(out.events, []);
   });
 
   test("a subnet with no row is a MEASURED zero, not a decline", async () => {

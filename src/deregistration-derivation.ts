@@ -460,6 +460,58 @@ export function deregistrationsByHotkey(
   return index;
 }
 
+/** One displaced occupant, positional for the same reason
+ * DeregistrationHotkeyTuple is: two SS58 keys per event would otherwise be
+ * dwarfed by their own key names.
+ *
+ * `[uid, displaced_hotkey, successor_hotkey, block_number, observed_at,
+ *   tenure_blocks]`
+ */
+export type DeregistrationUidTuple = [
+  number,
+  string,
+  string,
+  number,
+  number,
+  number | null,
+];
+
+/**
+ * Reduce derived events to a per-NETUID index of the individual evictions
+ * (#9873).
+ *
+ * The derivation already holds these -- deregistrationsByNetuid throws them
+ * away to produce counts -- so this costs no extra lakehouse read, only the
+ * bytes. An operator asking "is MY uid at risk" cannot answer it from a
+ * subnet-wide rate, which is what the scalar card serves today.
+ *
+ * Rows arrive newest-first per subnet, because the question is about recent
+ * churn and a caller taking the first N should get the most recent N.
+ */
+export function deregistrationsByNetuidUid(
+  events: DerivedDeregistration[],
+): Record<string, DeregistrationUidTuple[]> {
+  const perNetuid = new Map<number, DeregistrationUidTuple[]>();
+  for (const event of events) {
+    const bucket = perNetuid.get(event.netuid) ?? [];
+    bucket.push([
+      event.uid,
+      event.hotkey,
+      event.successor,
+      event.block_number,
+      event.observed_at,
+      event.tenure_blocks,
+    ]);
+    perNetuid.set(event.netuid, bucket);
+  }
+  const index: Record<string, DeregistrationUidTuple[]> = {};
+  for (const [netuid, rows] of perNetuid) {
+    rows.sort((a, b) => b[4] - a[4] || b[3] - a[3]);
+    index[String(netuid)] = rows;
+  }
+  return index;
+}
+
 /** Expand one hotkey's tuples back into the `{netuid, deregistrations,
  * first_observed, last_observed}` rows buildAccountDeregistrations reads. */
 export function deregistrationRowsForHotkey(

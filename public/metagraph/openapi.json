@@ -8686,6 +8686,16 @@
               "window_registrations": 1
             },
             "distinct_deregistered_hotkeys": 1,
+            "events": [
+              {
+                "block_number": 5000000,
+                "hotkey": "example",
+                "observed_at": "2026-06-01T00:00:00.000Z",
+                "replaced_by_hotkey": "example",
+                "tenure_blocks": 5000000,
+                "uid": 1
+              }
+            ],
             "netuid": 7,
             "observed_at": "2026-06-01T00:00:00.000Z",
             "schema_version": 1,
@@ -43123,6 +43133,56 @@
             "maximum": 9007199254740991,
             "minimum": 0,
             "type": "integer"
+          },
+          "events": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "block_number": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "hotkey": {
+                  "type": "string"
+                },
+                "observed_at": {
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z))$",
+                  "type": "string"
+                },
+                "replaced_by_hotkey": {
+                  "type": "string"
+                },
+                "tenure_blocks": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "uid": {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "uid",
+                "hotkey",
+                "replaced_by_hotkey",
+                "block_number",
+                "observed_at",
+                "tenure_blocks"
+              ],
+              "type": "object"
+            },
+            "type": "array"
           },
           "netuid": {
             "maximum": 9007199254740991,

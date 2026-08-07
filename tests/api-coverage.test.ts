@@ -3560,9 +3560,12 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
       PROJECTION_NETWORKS.flatMap((network) =>
         [
           ...PROJECTION_LANES.map((lane) => lane.artifactKey),
-          // The one lane that fans its single computed body across two objects
-          // (src/chain-deregistrations-artifact.ts's header says why).
+          // The one lane that fans its single computed body across THREE
+          // objects, one per read scope (src/chain-deregistrations-artifact.ts's
+          // headers say why): the rollup, the per-hotkey index the account
+          // scope reads, and the per-uid index the subnet scope reads (#9873).
           "metagraph/projections/chain-deregistrations-by-hotkey.json",
+          "metagraph/projections/chain-deregistrations-by-uid.json",
         ].map((key) => projectionKey(key, network)),
       ).sort(),
       "each lane writes its own artifact key per network, plus any split it declares",
@@ -3608,10 +3611,10 @@ describe("handleScheduled PROJECTION_LANES_CRON", () => {
       !puts.includes("metagraph/projections/chain-transfer-pairs.json"),
     );
     // The Transfer filter is network-agnostic, so BOTH chains' copies of those
-    // two lanes fail: two per network, plus one extra object for the
-    // chain-deregistrations split on each.
+    // two lanes fail: two per network, plus the two extra objects the
+    // chain-deregistrations split writes beyond its own lane key on each.
     const failedPerNetwork = 2;
-    const splitExtraPerNetwork = 1;
+    const splitExtraPerNetwork = 2;
     assert.equal(
       puts.length,
       Object.keys(lanes).length -

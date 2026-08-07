@@ -2096,6 +2096,16 @@ const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
   ],
   ["get_subnet_health", "the harness's health artifact carries no surfaces"],
   [
+    "get_subnet_deregistrations",
+    // `events` (#9873) is sliced from the chain-deregistrations-by-uid
+    // PROJECTION, which the lane writes and the harness has no copy of -- the
+    // same reason every other projection-backed collection is here. The item
+    // shape is covered by the daily check-mcp-conformance sweep against
+    // production, which is a real receiver rather than the unscheduled one
+    // #9879 was about.
+    "the per-uid eviction events come from a projection the lane writes and the harness does not carry",
+  ],
+  [
     "get_subnet_health_percentiles",
     "percentiles are computed over surfaces the harness's health artifact does not carry",
   ],
