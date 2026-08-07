@@ -831,6 +831,12 @@
       // id is content-addressed, so a tick over an unchanged snapshot costs one
       // KV read -- see WEBHOOK_DISPATCH_CRON in workers/config.ts.
       "29,59 * * * *",
+      // 28,58 = twice-hourly lane-health READER (#9330/#9340). Every other
+      // cron on this list produces a verdict; this is the one that reads them.
+      // Without it a stale lane is recorded correctly and reaches nobody --
+      // measured at 112 consecutive correct `stale` verdicts across a 28-hour
+      // metagraph outage -- see LANE_ALARM_CRON in workers/config.ts.
+      "28,58 * * * *",
       // 18 = hourly network-wide concentration rollup (#9628). The only free
       // minute on the hourly grid; hourly rather than daily so the
       // self-backfill of the days already in neuron_daily drains in a working

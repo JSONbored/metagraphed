@@ -394,6 +394,7 @@ import { sampleEmissionGate } from "../src/emission-gate-sampler.ts";
 import { checkEmissionDrift } from "../src/emission-drift-check.ts";
 import { refreshLiveEconomics } from "../src/live-economics-refresh.ts";
 import { runNeuronsStalenessWatchdog } from "../src/neurons-staleness-watchdog.ts";
+import { runLaneAlarm } from "../src/lane-alarm.ts";
 import { runNominatorPositionsStalenessWatchdog } from "../src/nominator-positions-staleness-watchdog.ts";
 import { runProjectionStalenessWatchdog } from "../src/projection-staleness-watchdog.ts";
 import { runValidatorNominatorCountsStalenessWatchdog } from "../src/validator-nominator-counts-staleness-watchdog.ts";
@@ -468,6 +469,7 @@ import {
   EXTRINSICS_FEED_PATH_PATTERN,
   ACCOUNT_EVENTS_ROLLUP_CRON,
   FRESHNESS_WATCHDOG_CRON,
+  LANE_ALARM_CRON,
   LAKEHOUSE_SEAM_CRON,
   SAFE_MODE_WATCHDOG_CRON,
   EMISSION_GATE_SAMPLE_CRON,
@@ -2028,6 +2030,7 @@ function cronLabel(cron: string): string {
   if (cron === ABUSE_SCAN_CRON) return "abuse-scan";
   if (cron === UPGRADE_RADAR_CRON) return "upgrade-radar";
   if (cron === FRESHNESS_WATCHDOG_CRON) return "freshness-watchdog";
+  if (cron === LANE_ALARM_CRON) return "lane-alarm";
   if (cron === LAKEHOUSE_SEAM_CRON) return "lakehouse-seam-watchdog";
   if (cron === SAFE_MODE_WATCHDOG_CRON) return "safe-mode-watchdog";
   if (cron === PROJECTION_LANES_CRON) return "projection-lanes";
@@ -2321,6 +2324,13 @@ async function dispatchScheduled(
     );
     const body = (await response.json()) as Row;
     return { ok: response.ok, status: response.status, body };
+  }
+  if (cron === LANE_ALARM_CRON) {
+    // The reader for everything the watchdogs below write. Every other branch
+    // in this dispatcher produces a verdict; this is the only one that CONSUMES
+    // them, which is why a 28-hour outage could sit in lane_health with a
+    // correct verdict on every tick and reach nobody (#9330/#9340).
+    return runLaneAlarm(env as unknown as Record<string, unknown>);
   }
   if (cron === NEURONS_STALENESS_WATCHDOG_CRON) {
     // The neurons live lane's alarm. Zero alerts is the correct steady state;
