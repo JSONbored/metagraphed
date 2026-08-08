@@ -85,7 +85,6 @@ for (const [key, reason] of Object.entries({
   "get_extrinsic_chain_events.ref": PATH_PARAMETER,
   "get_block_chain_events.block_number": PATH_PARAMETER,
   "get_api_schema.surface_id": PATH_PARAMETER,
-  "get_validator_history.netuid": PATH_PARAMETER,
   "get_agent_catalog.netuid": PATH_PARAMETER,
   "verify_integration.netuid": PATH_PARAMETER,
   "get_domain_summary.domain": PATH_PARAMETER,
@@ -94,7 +93,6 @@ for (const [key, reason] of Object.entries({
   // --- POST bodies ---------------------------------------------------------
   "ask.question": REQUEST_BODY,
   "ask.type": REQUEST_BODY,
-  "semantic_search.type": REQUEST_BODY,
   // --- MCP-native ----------------------------------------------------------
   "find_subnet_for_task.task": MCP_NATIVE,
   "find_subnet_for_task.limit": MCP_NATIVE,
@@ -352,6 +350,12 @@ function classify(toolSchema: Row, routeSchema: Row): Divergence | null {
  */
 const CONSTRAINT_DIVERGENCES: Record<string, Divergence> = {
   // SHAPE -- the same value in the form each surface speaks. Permanent.
+  // #10065 published `type` on /api/v1/search/semantic (the handler has always
+  // scoped on it). A query string can carry one value per key -- a repeat is
+  // ambiguous and is now a 400 -- while an MCP argument is JSON and can carry
+  // the list outright, which parseSemanticTypes already accepts. The same
+  // value in the form each surface speaks.
+  "semantic_search.type": "SHAPE",
   "compare_subnets.dimensions": "SHAPE",
   "compare_subnets.netuids": "SHAPE",
   "compare_validators.hotkeys": "SHAPE",

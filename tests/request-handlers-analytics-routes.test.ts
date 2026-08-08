@@ -114,17 +114,6 @@ describe("handleTrajectory", () => {
     assert.equal(body.data.deltas["7d"], null);
   });
 
-  test("rejects unsupported query parameters", async () => {
-    const res = await handleTrajectory(
-      req("/"),
-      mockEnv(),
-      NETUID,
-      url("/?bogus=1"),
-    );
-    const body = await errorJson(res);
-    assert.equal(body.meta.parameter, "bogus");
-  });
-
   // formatTrajectory's own row-formatting/sorting logic (ascending by date,
   // numeric coercion, deltas) is covered directly in tests/analytics.test.ts
   // and tests/economics-history.test.ts -- these handler tests only need to
@@ -334,16 +323,6 @@ describe("handleEconomicsTrends", () => {
     assert.equal(body.data.day_count, 0);
     assert.deepEqual(body.data.days, []);
     assert.equal(body.data.window, "30d");
-  });
-
-  test("rejects unsupported query parameters", async () => {
-    const res = await handleEconomicsTrends(
-      req("/"),
-      mockEnv(),
-      url("/?bogus=1"),
-    );
-    const body = await errorJson(res);
-    assert.equal(body.meta.parameter, "bogus");
   });
 
   test("rejects an invalid window", async () => {
@@ -667,17 +646,6 @@ describe("handleUptime", () => {
       body.error.message,
       unsupportedWindowMessage("30d", UPTIME_WINDOWS),
     );
-  });
-
-  test("rejects duplicate window parameters", async () => {
-    const res = await handleUptime(
-      req("/"),
-      mockEnv(),
-      NETUID,
-      url("/?window=90d&window=1y"),
-    );
-    const body = await errorJson(res);
-    assert.equal(body.meta.parameter, "window");
   });
 
   // formatUptime's own row-grouping/rollup logic (per-surface aggregation,
@@ -1066,17 +1034,6 @@ describe("handleCompare", () => {
 describe("handleCompareValidators", () => {
   const HOTKEY_A = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
   const HOTKEY_B = "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty";
-
-  test("rejects an unsupported query param with 400", async () => {
-    const env = createLocalArtifactEnv();
-    const res = await handleCompareValidators(
-      req("/"),
-      mockEnv(env),
-      url(`/api/v1/compare/validators?hotkeys=${HOTKEY_A}&bogus=1`),
-    );
-    const body = await errorJson(res);
-    assert.equal(body.meta.parameter, "bogus");
-  });
 
   test("requires hotkeys", async () => {
     const env = createLocalArtifactEnv();

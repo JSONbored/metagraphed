@@ -81,9 +81,19 @@ describe("graphql route parity gate", () => {
     // share one paragraph); a shared constant must itself be prose.
     const source = readFileSync(SCRIPT, "utf8");
     for (const name of DECLARED_MAPS) {
-      const block = new RegExp(
-        `const ${name}: Record<string, string> = \\{([\\s\\S]*?)\\n\\};`,
-      ).exec(source);
+      const block =
+        new RegExp(
+          `const ${name}: Record<string, string> = \\{([\\s\\S]*?)\\n\\};`,
+        ).exec(source) ??
+        // An EMPTY map is the goal state, not a missing one: every gap it
+        // recorded has been closed. `{}` on one line does not match the
+        // multi-line shape above, so accept it explicitly rather than
+        // reporting the finished job as a broken gate.
+        (new RegExp(`const ${name}: Record<string, string> = \\{\\};`).test(
+          source,
+        )
+          ? ([source, ""] as unknown as RegExpExecArray)
+          : null);
       assert.ok(block, `${name} must stay a hand-written map`);
       for (const [, key, reason] of block[1].matchAll(
         /"([\w.]+)":\s*\n?\s*("|[A-Z_]+,)/g,

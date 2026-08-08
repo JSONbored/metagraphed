@@ -1347,7 +1347,11 @@ describe("invalid query handling", () => {
     assert.equal(res.status, 400);
     const body = await res.json();
     assert.equal(body.error.code, "invalid_query");
-    assert.equal(body.error.message, "unknown query parameter.");
+    // #10065: ONE message for one condition. The 34 collection routes reached
+    // this through validateListQuery's own wording while the other 168 used
+    // the router's; now a single derived check answers for all 202, so the
+    // message names the parameter the way it always did everywhere else.
+    assert.match(body.error.message, /is not supported for this route/);
     assert.equal(body.meta.parameter, "statuss");
   });
 
@@ -2316,7 +2320,11 @@ describe("pagination Link header", () => {
     assert.equal(res.status, 400);
     const body = await res.json();
     assert.equal(body.error.code, "invalid_query");
-    assert.equal(body.error.message, "unknown query parameter.");
+    // #10065: ONE message for one condition. The 34 collection routes reached
+    // this through validateListQuery's own wording while the other 168 used
+    // the router's; now a single derived check answers for all 202, so the
+    // message names the parameter the way it always did everywhere else.
+    assert.match(body.error.message, /is not supported for this route/);
     assert.equal(body.meta.parameter, "utm_campaign");
   });
 

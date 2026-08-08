@@ -17,21 +17,10 @@ function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
-function url(path: string) {
-  return new URL(`https://api.metagraph.sh${path}`);
-}
-
 async function json(res: Response) {
   assert.equal(res.status, 200, `expected 200, got ${res.status}`);
   const body = (await res.json()) as Row;
   assert.equal(body.ok, true);
-  return body;
-}
-
-async function errorJson(res: Response) {
-  assert.equal(res.status, 400);
-  const body = (await res.json()) as Row;
-  assert.equal(body.ok, false);
   return body;
 }
 
@@ -74,7 +63,6 @@ describe("handleChainPerformance happy path", () => {
       await handleChainPerformance(
         req("/api/v1/chain/performance"),
         neuronsEnv([]) as unknown as Env,
-        url("/api/v1/chain/performance"),
       ),
     );
     assert.equal(body.data.subnet_count, 0);
@@ -86,15 +74,5 @@ describe("handleChainPerformance happy path", () => {
     assert.equal(body.data.consensus, null);
     assert.equal(body.data.validator_trust, null);
     await assertValidComponent("ChainPerformanceArtifact", body.data);
-  });
-
-  test("rejects an unexpected query parameter with 400", async () => {
-    await errorJson(
-      await handleChainPerformance(
-        req("/api/v1/chain/performance?window=7d"),
-        neuronsEnv([]) as unknown as Env,
-        url("/api/v1/chain/performance?window=7d"),
-      ),
-    );
   });
 });

@@ -367,24 +367,6 @@ const EPOCH_MS_BOUND =
   "The route's `integer` and the SDL's `String` are the same value in the two " +
   "type systems that can each hold it.";
 
-/**
- * `cursor` is REST's positional offset on these five, not an opaque key, and
- * the runtime says so: `economics(cursor:"abc")` answers "cursor must be a
- * non-negative integer" (verified live). So `String` is a genuine
- * under-typing — the schema should reject at validation time what the
- * resolver rejects at execution time.
- *
- * It is declared rather than fixed here because `String` → `Int` is a
- * BREAKING change to a published schema: a client sending `cursor: "2"`
- * today would stop validating. That is a deliberate decision with a migration
- * note, not a line in a gate PR. Tracked separately.
- */
-const CURSOR_UNDERTYPED =
-  "REST's positional offset typed as String. The runtime already rejects a " +
-  "non-integer ('cursor must be a non-negative integer', verified live), so " +
-  "the SDL is looser than the resolver. Tightening to Int is a BREAKING " +
-  "schema change and is tracked on its own.";
-
 /** SDL arguments the mirrored route does not publish, each with the reason. */
 const DECLARED_ARGUMENTS: Record<string, string> = {
   "agent_catalog.netuid":
@@ -398,16 +380,13 @@ const DECLARED_ARGUMENTS: Record<string, string> = {
     "resolver fetches GLOBAL_VALIDATOR_LIMIT_MAX once and paginates in-process, " +
     "keyed by hotkey, the way providers/economics do. A capability GraphQL adds, " +
     "not a claim about the route.",
-  "validator_history.netuid":
-    "the route DOES accept and honour netuid — handleValidatorHistory allowlists " +
-    "['window','netuid'] and the response echoes data.netuid (verified live) — but " +
-    "route-queries.ts declares only `window`, so openapi.json never published it. " +
-    "The divergence is in what the route publishes, not in the SDL; remove this " +
-    "entry when the parameter is declared.",
-  "account_history.cursor":
-    "same shape as validator_history.netuid: handleAccountHistory allowlists " +
-    "cursor and forwards it to loadAccountHistoryColdTier (verified live — " +
-    "?cursor=1 is accepted, not 400'd), but the route publishes only limit/offset.",
+  "endpoints.cursor":
+    "an OPAQUE id keyset, not REST's integer offset -- the same GraphQL-only " +
+    "pagination contract #7920 established for `providers`. Verified live: " +
+    'endpoints(limit:1) answers next_cursor "endpoint-srf-2d3306d2cfa2223e" ' +
+    'and endpoints(cursor:"abc") is accepted, where the four sibling list ' +
+    'fields answer "cursor must be a non-negative integer". Typing this Int ' +
+    "to match the route would break the only pagination the field has.",
   "compare.netuids":
     "/api/v1/compare takes a comma-joined string (pattern ^\\d{1,5}(,\\d{1,5}){0,127}$) " +
     "because a query string has no list type. GraphQL does, so the SDL takes " +
@@ -419,11 +398,6 @@ const DECLARED_ARGUMENTS: Record<string, string> = {
   "blocks.to": EPOCH_MS_BOUND,
   "sudo.from": EPOCH_MS_BOUND,
   "sudo.to": EPOCH_MS_BOUND,
-  "economics.cursor": CURSOR_UNDERTYPED,
-  "surfaces.cursor": CURSOR_UNDERTYPED,
-  "endpoints.cursor": CURSOR_UNDERTYPED,
-  "provider_endpoints.cursor": CURSOR_UNDERTYPED,
-  "rpc_endpoints.cursor": CURSOR_UNDERTYPED,
 };
 
 /**
@@ -434,55 +408,7 @@ const DECLARED_ARGUMENTS: Record<string, string> = {
  * resolver, so they are recorded rather than silently tolerated — every entry
  * here is a gap to close, not a difference to keep.
  */
-const NO_PROJECTION =
-  "the field returns opaque JSON (or JSON rows), so a selection set cannot " +
-  "project it and the route's `fields` parameter is the only projection " +
-  "available — which the SDL does not offer. A real gap.";
-
-const DECLARED_MISSING_ARGUMENTS: Record<string, string> = {
-  "curation.fields": NO_PROJECTION,
-  "candidates.fields": NO_PROJECTION,
-  "search.fields": NO_PROJECTION,
-  "search_index.fields": NO_PROJECTION,
-  "subnet_metagraph.fields": NO_PROJECTION,
-  "provider_endpoints.fields": NO_PROJECTION,
-  "incidents.fields": NO_PROJECTION,
-  "global_incidents.fields": NO_PROJECTION,
-  "emission_pipeline.fields": NO_PROJECTION,
-  "coverage_depth.fields": NO_PROJECTION,
-
-  // /api/v1/coverage-depth publishes ten query parameters and the SDL field
-  // takes none of them: `coverage_depth: JSON` is a bare artifact passthrough.
-  // A GraphQL caller can read the whole report and filter or page none of it.
-  "coverage_depth.netuid": "coverage_depth takes no arguments at all",
-  "coverage_depth.tier": "coverage_depth takes no arguments at all",
-  "coverage_depth.agent_status": "coverage_depth takes no arguments at all",
-  "coverage_depth.blocker_level": "coverage_depth takes no arguments at all",
-  "coverage_depth.q": "coverage_depth takes no arguments at all",
-  "coverage_depth.limit": "coverage_depth takes no arguments at all",
-  "coverage_depth.cursor": "coverage_depth takes no arguments at all",
-  "coverage_depth.sort": "coverage_depth takes no arguments at all",
-  "coverage_depth.order": "coverage_depth takes no arguments at all",
-
-  "health_trends.window": "health_trends takes no arguments at all",
-  "health_trends.limit": "health_trends takes no arguments at all",
-  "health_trends.offset": "health_trends takes no arguments at all",
-
-  "emission_pipeline.sort": "the SDL exposes only netuid of the five",
-  "emission_pipeline.order": "the SDL exposes only netuid of the five",
-  "emission_pipeline.limit": "the SDL exposes only netuid of the five",
-
-  // loadSurfacesList already accepts these three -- `surfaces` passes `args`
-  // straight to it -- so the SDL is the only thing withholding them.
-  "surfaces.auth_required": "filter the shared loader already accepts",
-  "surfaces.public_safe": "filter the shared loader already accepts",
-  "surfaces.rate_limited": "filter the shared loader already accepts",
-
-  "tao_usd.include_points":
-    "REST can opt into the point series; the GraphQL field cannot",
-  "validator_nominators.basis":
-    "REST can pick the stake basis; the GraphQL field cannot",
-};
+const DECLARED_MISSING_ARGUMENTS: Record<string, string> = {};
 
 const argumentFindings: Finding[] = [];
 const suppressedArguments = new Set<string>();

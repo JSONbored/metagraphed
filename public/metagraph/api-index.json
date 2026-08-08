@@ -4521,6 +4521,17 @@
             "minimum": 1,
             "type": "integer"
           }
+        },
+        {
+          "name": "type",
+          "schema": {
+            "enum": [
+              "subnet",
+              "surface",
+              "provider"
+            ],
+            "type": "string"
+          }
         }
       ]
     },
@@ -7680,6 +7691,14 @@
             ],
             "type": "string"
           }
+        },
+        {
+          "name": "netuid",
+          "schema": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+          }
         }
       ]
     },
@@ -7968,6 +7987,12 @@
             "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "type": "string"
           }
         },
         {
@@ -8290,6 +8315,12 @@
             "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "type": "string"
           }
         },
         {

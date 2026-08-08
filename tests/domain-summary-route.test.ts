@@ -40,13 +40,6 @@ describe("GET /api/v1/domains", () => {
     }
   });
 
-  test("rejects an unsupported query param", async () => {
-    const { status, body } = await get("/api/v1/domains?bogus=1");
-    assert.equal(status, 400);
-    assert.equal(body.error.code, "invalid_query");
-    assert.equal(body.meta.parameter, "bogus");
-  });
-
   // Both the subnets index and the economics artifact miss (readArtifact
   // returns {ok:false}) -- every domain still gets a schema-stable empty
   // rollup rather than a thrown error, matching every other live-composition
@@ -186,13 +179,5 @@ describe("GET /api/v1/domains/{tag}/summary", () => {
     assert.equal(status, 400);
     assert.equal(body.error.code, "invalid_request");
     assert.equal(body.meta.parameter, "tag");
-  });
-
-  test("rejects an unsupported query param", async () => {
-    const { status, body } = await get(
-      "/api/v1/domains/inference/summary?bogus=1",
-    );
-    assert.equal(status, 400);
-    assert.equal(body.meta.parameter, "bogus");
   });
 });

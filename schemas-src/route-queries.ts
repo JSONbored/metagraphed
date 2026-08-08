@@ -76,6 +76,7 @@ import {
   SEMANTIC_LIMIT_DEFAULT,
   SEMANTIC_LIMIT_MAX,
   SEMANTIC_QUERY_MAX_LENGTH,
+  SEMANTIC_TYPES,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
   SUBNET_HOLDERS_LIMIT_MAX,
   SURFACE_HISTORY_LIMIT_MAX,
@@ -246,6 +247,12 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
     // directly since #9127.
     q: querySchema(SEMANTIC_QUERY_MAX_LENGTH).optional(),
     limit: limitSchema(SEMANTIC_LIMIT_MAX, SEMANTIC_LIMIT_DEFAULT).optional(),
+    // #10065: the handler has scoped on this since semantic search shipped --
+    // it filters the results and rejects an unknown value by name ("Unknown
+    // type `bogus`. Valid types: subnet, surface, provider", verified live) --
+    // and the contract never mentioned it. The vocabulary comes FROM
+    // src/ai-search.ts rather than being restated, so the two cannot drift.
+    type: z.enum(SEMANTIC_TYPES).optional(),
   }),
   "/api/v1/chain/emission-pipeline": z.object({
     netuid: netuidSchema().optional(),
@@ -437,6 +444,12 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
   }),
   "/api/v1/validators/{hotkey}/history": z.object({
     window: windowSchema(["7d", "30d", "90d", "1y", "all"] as const).optional(),
+    // #9383 added this to the handler's allowlist, the MCP tool and the
+    // GraphQL field, and the response echoes it back as `data.netuid` -- but
+    // it was never declared, so openapi.json told every generated client that
+    // passing it was an error. Verified live before declaring: the scoped and
+    // unscoped series differ (#10065).
+    netuid: netuidSchema().optional(),
   }),
   "/api/v1/subnets/{netuid}/metagraph": z.object({
     // DIVERGENCE: a one-value enum for a boolean filter. The sibling feeds
@@ -474,6 +487,11 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
     block_end: blockBoundSchema("last").optional(),
     limit: limitSchema(MAX_LIMIT).optional(),
     offset: offsetSchema().optional(),
+    // The handler has always accepted and forwarded this, and the sibling
+    // /accounts/{ss58}/events feed publishes it -- but this route did not, so
+    // the contract said passing it was an error while the route paged on it.
+    // Found by sweeping all 202 GET routes through the real router (#10065).
+    cursor: keysetCursorSchema().optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/subnets/{netuid}/event-summary": z.object({
@@ -508,6 +526,9 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
     to: daySchema("last").optional(),
     limit: limitSchema(MAX_LIMIT).optional(),
     offset: offsetSchema().optional(),
+    // handleAccountHistory forwards this to loadAccountHistoryColdTier and has
+    // since #9315; only the contract left it out (#10065).
+    cursor: keysetCursorSchema().optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/accounts/{ss58}/extrinsics": z.object({

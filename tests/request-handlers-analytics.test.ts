@@ -680,20 +680,6 @@ describe("analyticsWindow", () => {
     assert.match(out.error.message, /30d/);
   });
 
-  test("rejects unsupported extra query params", () => {
-    const out = analyticsWindow(url("/x?window=7d&limit=10")) as unknown as Row;
-    assert.ok(out.error);
-    assert.equal(out.error.parameter, "limit");
-  });
-
-  test("rejects duplicate window params", () => {
-    const out = analyticsWindow(
-      url("/x?window=7d&window=30d"),
-    ) as unknown as Row;
-    assert.ok(out.error);
-    assert.equal(out.error.parameter, "window");
-  });
-
   test("rejects empty window string as invalid", () => {
     const out = analyticsWindow(url("/x?window=")) as unknown as Row;
     assert.ok(out.error);
@@ -1039,17 +1025,6 @@ describe("handleBulkHealthTrends", () => {
   // both tests below used `window=7d` as their example of a REJECTED param,
   // which is now a supported one, so the fixtures move to a param that can
   // never be supported rather than to another real name that might later be.
-  test("rejects an unsupported query param with 400", async () => {
-    for (const qs of ["?foo=1", "?cursor=abc", "?sort=name"]) {
-      const res = await handleBulkHealthTrends(
-        req(`/api/v1/health/trends${qs}`),
-        emptyEnv(),
-        url(`/api/v1/health/trends${qs}`),
-      );
-      const body = await errorJson(res);
-      assert.equal(body.error.code, "invalid_query", qs);
-    }
-  });
 
   test("reports the offending parameter name in error details", async () => {
     const res = await handleBulkHealthTrends(

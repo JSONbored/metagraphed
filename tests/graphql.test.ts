@@ -3120,7 +3120,11 @@ describe("graphql — economics pagination", () => {
     assert.equal(first.body.data.economics.next_cursor, "2");
 
     const second = await gql(
-      '{ economics(limit: 2, cursor: "2") { subnets { netuid } next_cursor } }',
+      // #10065: `cursor` is Int here. It was String, and the runtime already
+      // answered "cursor must be a non-negative integer" for a non-integer --
+      // the schema was looser than the resolver. `endpoints` keeps String
+      // because its cursor really is an opaque id keyset.
+      "{ economics(limit: 2, cursor: 2) { subnets { netuid } next_cursor } }",
       env(),
     );
     assert.equal(second.body.data.economics.subnets.length, 1);

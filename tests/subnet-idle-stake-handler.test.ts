@@ -27,21 +27,10 @@ function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);
 }
 
-function url(path: string) {
-  return new URL(`https://api.metagraph.sh${path}`);
-}
-
 async function json(res: Response): Promise<Row> {
   assert.equal(res.status, 200, `expected 200, got ${res.status}`);
   const body = (await res.json()) as Row;
   assert.equal(body.ok, true);
-  return body;
-}
-
-async function errorJson(res: Response): Promise<Row> {
-  assert.equal(res.status, 400, `expected 400, got ${res.status}`);
-  const body = (await res.json()) as Row;
-  assert.equal(body.ok, false);
   return body;
 }
 
@@ -66,24 +55,12 @@ async function assertValidComponent(componentName: string, data: unknown) {
 }
 
 describe("handleSubnetIdleStake", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    await errorJson(
-      await handleSubnetIdleStake(
-        req(`/api/v1/subnets/${NETUID}/idle-stake?window=7d`),
-        emptyEnv(),
-        NETUID,
-        url(`/api/v1/subnets/${NETUID}/idle-stake?window=7d`),
-      ),
-    );
-  });
-
   test("returns a schema-stable zero scorecard on cold D1", async () => {
     const body = await json(
       await handleSubnetIdleStake(
         req(`/api/v1/subnets/${NETUID}/idle-stake`),
         emptyEnv(),
         NETUID,
-        url(`/api/v1/subnets/${NETUID}/idle-stake`),
       ),
     );
     assert.equal(body.data.netuid, NETUID);
@@ -96,23 +73,9 @@ describe("handleSubnetIdleStake", () => {
 });
 
 describe("handleChainIdleStake", () => {
-  test("rejects an unsupported query param with 400", async () => {
-    await errorJson(
-      await handleChainIdleStake(
-        req("/api/v1/chain/idle-stake?window=7d"),
-        emptyEnv(),
-        url("/api/v1/chain/idle-stake?window=7d"),
-      ),
-    );
-  });
-
   test("returns a schema-stable empty ranking on cold D1", async () => {
     const body = await json(
-      await handleChainIdleStake(
-        req("/api/v1/chain/idle-stake"),
-        emptyEnv(),
-        url("/api/v1/chain/idle-stake"),
-      ),
+      await handleChainIdleStake(req("/api/v1/chain/idle-stake"), emptyEnv()),
     );
     assert.equal(body.data.captured_at, null);
     assert.equal(body.data.subnet_count, 0);

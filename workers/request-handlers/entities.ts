@@ -60,7 +60,7 @@ import {
   analyticsQueryError,
   markPostgresTierFallbackResponse,
   validateMaxLength,
-  validateQueryParams,
+  validateDeclaredQueryParams,
 } from "./analytics.ts";
 import { CHAIN_CALL_MODULE_MAX_LENGTH } from "../../src/route-limits.ts";
 import type { QueryError } from "../list-query.ts";
@@ -797,12 +797,6 @@ function validateResponseFormat(url: URL) {
   };
 }
 
-function validateEntityQuery(url: URL, allowedParams: string[]) {
-  const validationError = validateQueryParams(url, allowedParams);
-  if (validationError) return validationError;
-  return validateResponseFormat(url);
-}
-
 function csvCacheVariant(
   url: URL,
   request: Request | null,
@@ -895,11 +889,7 @@ export async function handleSubnetMetagraph(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "validator_permit",
-    "format",
-    "fields",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   // #10096: the published enum is ["true"] -- a PRESENCE flag, because the
   // only thing this filter can do is narrow to permitted neurons. It was not
@@ -973,7 +963,7 @@ export async function handleSubnetYield(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, ["format"]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const data =
     ((await tryPostgresTier(
@@ -1012,7 +1002,7 @@ export async function handleNeuron(
   uid: number,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, ["fields"]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const projection = parseNeuronFields(url.searchParams, "neuron");
   if (projection.error) return analyticsQueryError(projection.error);
@@ -1058,10 +1048,7 @@ export async function handleSubnetHyperparams(
   request: Request,
   env: Env,
   netuid: number,
-  url: URL,
 ) {
-  const validationError = validateQueryParams(url, []);
-  if (validationError) return analyticsQueryError(validationError);
   const data =
     ((await tryPostgresTier(
       env,
@@ -1104,12 +1091,7 @@ export async function handleSubnetHyperparamsHistory(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "limit",
-    "offset",
-    "cursor",
-    "format",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const page = parsePagination(url, FEED_PAGINATION);
   if ("error" in page) return analyticsQueryError(page.error);
@@ -1165,7 +1147,7 @@ export async function handleSubnetValidators(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, ["format", "fields"]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const projection = parseNeuronFields(url.searchParams, "validators");
   if (projection.error) return analyticsQueryError(projection.error);
@@ -1216,7 +1198,7 @@ export async function handleSubnetValidators(
 function parseGlobalValidatorsQuery(
   url: URL,
 ): { sort: string; limit: number } | { error: QueryError } {
-  const validationError = validateEntityQuery(url, ["sort", "limit", "format"]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return { error: validationError };
 
   const sort = url.searchParams.get("sort") || DEFAULT_GLOBAL_VALIDATOR_SORT;
@@ -1318,7 +1300,7 @@ export async function handleGlobalValidators(
 function parseAccountsListQuery(
   url: URL,
 ): { sort: string; limit: number } | { error: QueryError } {
-  const validationError = validateEntityQuery(url, ["sort", "limit", "format"]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return { error: validationError };
 
   const sort = url.searchParams.get("sort") || DEFAULT_ACCOUNTS_LIST_SORT;
@@ -1407,7 +1389,7 @@ export async function handleAccountsList(request: Request, env: Env, url: URL) {
 function parseTopHoldersQuery(
   url: URL,
 ): { sort: string; limit: number } | { error: QueryError } {
-  const validationError = validateEntityQuery(url, ["sort", "limit", "format"]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return { error: validationError };
 
   const sort = url.searchParams.get("sort") || DEFAULT_TOP_HOLDERS_SORT;
@@ -1547,15 +1529,7 @@ export async function handleValidatorNominators(
   hotkey: string,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "basis",
-    "window",
-    "sort",
-    "limit",
-    "offset",
-    "coldkey",
-    "format",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
 
   // #9617: `basis` selects WHICH QUESTION is answered, not how well. `flow`
@@ -1712,8 +1686,6 @@ export async function handleValidatorHistory(
   hotkey: string,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window", "netuid"]);
-  if (validationError) return analyticsQueryError(validationError);
   const labelResult = parseHistoryWindow(url.searchParams.get("window"));
   if ("error" in labelResult) return analyticsQueryError(labelResult.error);
   const { label } = labelResult;
@@ -1762,8 +1734,6 @@ export async function handleNeuronHistory(
   uid: number,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
   const labelResult = parseHistoryWindow(url.searchParams.get("window"));
   if ("error" in labelResult) return analyticsQueryError(labelResult.error);
   const { label } = labelResult;
@@ -1802,8 +1772,6 @@ export async function handleSubnetHistory(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
   const labelResult = parseHistoryWindow(url.searchParams.get("window"));
   if ("error" in labelResult) return analyticsQueryError(labelResult.error);
   const { label } = labelResult;
@@ -1840,12 +1808,7 @@ export async function handleSubnetIdentityHistory(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "limit",
-    "offset",
-    "cursor",
-    "format",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const page = parsePagination(url, FEED_PAGINATION);
   if ("error" in page) return analyticsQueryError(page.error);
@@ -1902,10 +1865,7 @@ export async function handleSubnetConcentration(
   request: Request,
   env: Env,
   netuid: number,
-  url: URL,
 ) {
-  const validationError = validateQueryParams(url, []);
-  if (validationError) return analyticsQueryError(validationError);
   const data =
     ((await tryPostgresTier(
       env,
@@ -1938,10 +1898,7 @@ export async function handleSubnetPerformance(
   request: Request,
   env: Env,
   netuid: number,
-  url: URL,
 ) {
-  const validationError = validateQueryParams(url, []);
-  if (validationError) return analyticsQueryError(validationError);
   const data =
     ((await tryPostgresTier(
       env,
@@ -1968,13 +1925,7 @@ export async function handleSubnetPerformance(
 // but the entity lenses collapse an operator's hotkeys ACROSS subnets, so this is
 // the true network-level control distribution. neurons-tier (source
 // "metagraph-snapshot"), no params. Cold/absent store → schema-stable empties.
-export async function handleChainConcentration(
-  request: Request,
-  env: Env,
-  url: URL,
-) {
-  const validationError = validateQueryParams(url, []);
-  if (validationError) return analyticsQueryError(validationError);
+export async function handleChainConcentration(request: Request, env: Env) {
   const data =
     ((await tryPostgresTier(
       env,
@@ -2008,13 +1959,6 @@ export async function handleChainConcentrationSubnets(
   env: Env,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, [
-    "lens",
-    "sort",
-    "order",
-    "limit",
-  ]);
-  if (validationError) return analyticsQueryError(validationError);
   // Rejected HERE, before the tier read, so a bad parameter costs a 400 rather
   // than a ~30,000-row scan. The data-api side parses with this same function.
   const query = parseConcentrationRankingQuery(url.searchParams, {
@@ -2054,13 +1998,7 @@ export async function handleChainConcentrationSubnets(
 // validators, plus the p10–p90 spread of the 0–1 trust/consensus/validator_trust
 // scores, computed live from the neurons D1 tier. The reward-flow companion to
 // /chain/concentration. No params; a cold/absent store → 200 with null blocks.
-export async function handleChainPerformance(
-  request: Request,
-  env: Env,
-  url: URL,
-) {
-  const validationError = validateQueryParams(url, []);
-  if (validationError) return analyticsQueryError(validationError);
+export async function handleChainPerformance(request: Request, env: Env) {
   const data =
     ((await tryPostgresTier(
       env,
@@ -2093,10 +2031,7 @@ export async function handleSubnetIdleStake(
   request: Request,
   env: Env,
   netuid: number,
-  url: URL,
 ) {
-  const validationError = validateQueryParams(url, []);
-  if (validationError) return analyticsQueryError(validationError);
   const data =
     ((await tryPostgresTier(
       env,
@@ -2122,13 +2057,7 @@ export async function handleSubnetIdleStake(
 // route above -- every subnet's own idle-stake scorecard ranked by
 // idle_stake_tao descending, plus the network total. No params; a
 // cold/absent store -> 200 with an empty ranking.
-export async function handleChainIdleStake(
-  request: Request,
-  env: Env,
-  url: URL,
-) {
-  const validationError = validateQueryParams(url, []);
-  if (validationError) return analyticsQueryError(validationError);
+export async function handleChainIdleStake(request: Request, env: Env) {
   const data =
     ((await tryPostgresTier(
       env,
@@ -2161,8 +2090,6 @@ export async function handleChainIdentityHistory(
   env: Env,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["limit"]);
-  if (validationError) return analyticsQueryError(validationError);
   const limitResult = parseLimitParam(url, {
     defaultLimit: CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
     maxLimit: CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
@@ -2213,9 +2140,7 @@ export async function handleChainIdentityHistory(
 // components, current_ok null, verdict "degraded") rather than a 404 -- the
 // same convention as every sibling Postgres-tier route, and the right answer
 // besides: "we have no readings" is a real state, not a missing resource.
-export async function handleSelfHealth(request: Request, env: Env, url: URL) {
-  const validationError = validateQueryParams(url, []);
-  if (validationError) return analyticsQueryError(validationError);
+export async function handleSelfHealth(request: Request, env: Env) {
   const data =
     ((await tryPostgresTier(
       env,
@@ -2261,9 +2186,7 @@ export async function handleSelfHealth(request: Request, env: Env, url: URL) {
 // per-neuron emission/stake return, computed live from the neurons D1 tier. The
 // return-rate companion to /chain/performance. No params; a cold/absent store →
 // 200 with null blocks.
-export async function handleChainYield(request: Request, env: Env, url: URL) {
-  const validationError = validateQueryParams(url, []);
-  if (validationError) return analyticsQueryError(validationError);
+export async function handleChainYield(request: Request, env: Env) {
   const data =
     ((await tryPostgresTier(
       env,
@@ -2289,7 +2212,7 @@ export async function handleChainYield(request: Request, env: Env, url: URL) {
 // and an explicit-default request share one cache slot; an invalid limit falls
 // through to the raw search so the handler surfaces the 400.
 export function canonicalChainIdentityHistoryCachePath(url: URL) {
-  const validationError = validateQueryParams(url, ["limit"]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const limitResult = parseLimitParam(url, {
     defaultLimit: CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
@@ -2312,7 +2235,7 @@ function canonicalWindowedCachePath(
     | { label: string; error?: undefined }
     | { label?: undefined; error: QueryError },
 ) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const labelResult = parseWindow(url.searchParams.get("window"));
   if ("error" in labelResult) return `${url.pathname}${url.search}`;
@@ -2321,10 +2244,14 @@ function canonicalWindowedCachePath(
 }
 
 export function canonicalSubnetHistoryCachePath(url: URL) {
+  const undeclared = validateDeclaredQueryParams(url);
+  if (undeclared) return `${url.pathname}${url.search}`;
   return canonicalWindowedCachePath(url, parseHistoryWindow);
 }
 
 export function canonicalValidatorHistoryCachePath(url: URL) {
+  const undeclared = validateDeclaredQueryParams(url);
+  if (undeclared) return `${url.pathname}${url.search}`;
   return canonicalWindowedCachePath(url, parseHistoryWindow);
 }
 
@@ -2332,7 +2259,7 @@ export function canonicalSubnetConcentrationHistoryCachePath(
   url: URL,
   request: Request | null = null,
 ) {
-  const validationError = validateQueryParams(url, ["window", "format"]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const formatError = validateResponseFormat(url);
   if (formatError) return `${url.pathname}${url.search}`;
@@ -2352,7 +2279,7 @@ export function canonicalSubnetPerformanceHistoryCachePath(
   url: URL,
   request: Request | null = null,
 ) {
-  const validationError = validateQueryParams(url, ["window", "format"]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const formatError = validateResponseFormat(url);
   if (formatError) return `${url.pathname}${url.search}`;
@@ -2372,7 +2299,7 @@ export function canonicalSubnetYieldHistoryCachePath(
   url: URL,
   request: Request | null = null,
 ) {
-  const validationError = validateQueryParams(url, ["window", "format"]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const formatError = validateResponseFormat(url);
   if (formatError) return `${url.pathname}${url.search}`;
@@ -2392,7 +2319,7 @@ export function canonicalSubnetYieldHistoryCachePath(
 // parseHistoryWindow). Distinct from canonicalSubnetConcentrationHistoryCachePath
 // which uses a different parse function (parseConcentrationHistoryWindow).
 export function canonicalSubnetTurnoverCachePath(url: URL) {
-  const validationError = validateQueryParams(url, ["window", "changes"]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const labelResult = parseHistoryWindow(url.searchParams.get("window"));
   if ("error" in labelResult) return `${url.pathname}${url.search}`;
@@ -2409,7 +2336,7 @@ export function canonicalSubnetTurnoverCachePath(url: URL) {
 // STAKE_FLOW_WINDOWS) and ?direction= (all|in|out) change the response; omitted
 // window/direction and their explicit defaults must share one cache slot.
 export function canonicalSubnetStakeFlowCachePath(url: URL) {
-  const validationError = validateQueryParams(url, ["window", "direction"]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_STAKE_FLOW_WINDOW;
@@ -2433,12 +2360,9 @@ export function canonicalSubnetMoversCachePath(
   url: URL,
   request: Request | null = null,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "window",
-    "sort",
-    "limit",
-    "format",
-  ]);
+  const undeclared = validateDeclaredQueryParams(url);
+  if (undeclared) return `${url.pathname}${url.search}`;
+  const validationError = validateResponseFormat(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam = url.searchParams.get("window") || DEFAULT_MOVERS_WINDOW;
   if (!Object.hasOwn(MOVERS_WINDOWS, windowParam)) {
@@ -2468,11 +2392,9 @@ export function canonicalChainTurnoverCachePath(
   url: URL,
   request: Request | null = null,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "window",
-    "limit",
-    "format",
-  ]);
+  const undeclared = validateDeclaredQueryParams(url);
+  if (undeclared) return `${url.pathname}${url.search}`;
+  const validationError = validateResponseFormat(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_CHAIN_TURNOVER_WINDOW;
@@ -2501,11 +2423,7 @@ export async function handleChainTurnover(
   env: Env,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "window",
-    "limit",
-    "format",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const windowParam =
     url.searchParams.get("window") || DEFAULT_CHAIN_TURNOVER_WINDOW;
@@ -2567,10 +2485,9 @@ export function canonicalSubnetMetagraphCachePath(
   url: URL,
   request: Request | null = null,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "validator_permit",
-    "format",
-  ]);
+  const undeclared = validateDeclaredQueryParams(url);
+  if (undeclared) return `${url.pathname}${url.search}`;
+  const validationError = validateResponseFormat(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const validatorsOnly = url.searchParams.get("validator_permit") === "true";
   const canonicalPath = validatorsOnly
@@ -2585,7 +2502,9 @@ export function canonicalSubnetValidatorsCachePath(
   url: URL,
   request: Request | null = null,
 ) {
-  const validationError = validateEntityQuery(url, ["format"]);
+  const undeclared = validateDeclaredQueryParams(url);
+  if (undeclared) return `${url.pathname}${url.search}`;
+  const validationError = validateResponseFormat(url);
   if (validationError) return `${url.pathname}${url.search}`;
   return csvCacheVariant(url, request, url.pathname);
 }
@@ -2594,7 +2513,9 @@ export function canonicalSubnetYieldCachePath(
   url: URL,
   request: Request | null = null,
 ) {
-  const validationError = validateEntityQuery(url, ["format"]);
+  const undeclared = validateDeclaredQueryParams(url);
+  if (undeclared) return `${url.pathname}${url.search}`;
+  const validationError = validateResponseFormat(url);
   if (validationError) return `${url.pathname}${url.search}`;
   return csvCacheVariant(url, request, url.pathname);
 }
@@ -2611,8 +2532,6 @@ export async function handleSubnetConcentrationHistory(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window", "format"]);
-  if (validationError) return analyticsQueryError(validationError);
   const formatError = validateResponseFormat(url);
   if (formatError) return analyticsQueryError(formatError);
   const labelResult = parseConcentrationHistoryWindow(
@@ -2674,8 +2593,6 @@ export async function handleSubnetPerformanceHistory(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window", "format"]);
-  if (validationError) return analyticsQueryError(validationError);
   const formatError = validateResponseFormat(url);
   if (formatError) return analyticsQueryError(formatError);
   const labelResult = parseSubnetPerformanceHistoryWindow(
@@ -2737,8 +2654,6 @@ export async function handleSubnetYieldHistory(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window", "format"]);
-  if (validationError) return analyticsQueryError(validationError);
   const formatError = validateResponseFormat(url);
   if (formatError) return analyticsQueryError(formatError);
   const labelResult = parseSubnetYieldHistoryWindow(
@@ -2798,8 +2713,6 @@ export async function handleSubnetTurnover(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window", "changes"]);
-  if (validationError) return analyticsQueryError(validationError);
   const labelResult = parseHistoryWindow(url.searchParams.get("window"));
   if ("error" in labelResult) return analyticsQueryError(labelResult.error);
   const { label } = labelResult;
@@ -2840,7 +2753,7 @@ export async function handleSubnetTurnover(
 // Canonical edge-cache key for the subnet-weights route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetWeightsCachePath(url: URL) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_WEIGHTS_WINDOW;
@@ -2860,8 +2773,6 @@ export async function handleSubnetWeights(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_WEIGHTS_WINDOW;
   if (!Object.hasOwn(SUBNET_WEIGHTS_WINDOWS, windowParam)) {
@@ -2908,7 +2819,7 @@ export async function handleSubnetWeights(
 // Canonical edge-cache key for the subnet-weight-setters route: only ?window= (7d/30d) changes
 // the response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetWeightSettersCachePath(url: URL) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW;
@@ -2928,8 +2839,6 @@ export async function handleSubnetWeightSetters(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_WEIGHT_SETTERS_WINDOW;
   if (!Object.hasOwn(SUBNET_WEIGHT_SETTERS_WINDOWS, windowParam)) {
@@ -2978,7 +2887,7 @@ export async function handleSubnetWeightSetters(
 // Canonical edge-cache key for the subnet-serving route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetServingCachePath(url: URL) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_SERVING_WINDOW;
@@ -2998,8 +2907,6 @@ export async function handleSubnetServing(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_SERVING_WINDOW;
   if (!Object.hasOwn(SUBNET_SERVING_WINDOWS, windowParam)) {
@@ -3047,7 +2954,7 @@ export async function handleSubnetServing(
 // Canonical edge-cache key for the subnet-prometheus route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetPrometheusCachePath(url: URL) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_PROMETHEUS_WINDOW;
@@ -3068,8 +2975,6 @@ export async function handleSubnetPrometheus(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_PROMETHEUS_WINDOW;
   if (!Object.hasOwn(SUBNET_PROMETHEUS_WINDOWS, windowParam)) {
@@ -3104,7 +3009,7 @@ export async function handleSubnetPrometheus(
 // Canonical edge-cache key for the subnet-stake-moves route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetStakeMovesCachePath(url: URL) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_STAKE_MOVES_WINDOW;
@@ -3125,8 +3030,6 @@ export async function handleSubnetStakeMoves(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_STAKE_MOVES_WINDOW;
   if (!Object.hasOwn(SUBNET_STAKE_MOVES_WINDOWS, windowParam)) {
@@ -3177,7 +3080,7 @@ export async function handleSubnetStakeMoves(
 // Canonical edge-cache key for the subnet-stake-transfers route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetStakeTransfersCachePath(url: URL) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW;
@@ -3198,8 +3101,6 @@ export async function handleSubnetStakeTransfers(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_STAKE_TRANSFERS_WINDOW;
   if (!Object.hasOwn(SUBNET_STAKE_TRANSFERS_WINDOWS, windowParam)) {
@@ -3250,7 +3151,7 @@ export async function handleSubnetStakeTransfers(
 // Canonical edge-cache key for the subnet-registrations route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetRegistrationsCachePath(url: URL) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_REGISTRATIONS_WINDOW;
@@ -3270,8 +3171,6 @@ export async function handleSubnetRegistrations(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_REGISTRATIONS_WINDOW;
   if (!Object.hasOwn(SUBNET_REGISTRATIONS_WINDOWS, windowParam)) {
@@ -3322,7 +3221,7 @@ export async function handleSubnetRegistrations(
 // Canonical edge-cache key for the subnet-axon-removals route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetAxonRemovalsCachePath(url: URL) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_AXON_REMOVALS_WINDOW;
@@ -3342,8 +3241,6 @@ export async function handleSubnetAxonRemovals(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_AXON_REMOVALS_WINDOW;
   if (!Object.hasOwn(SUBNET_AXON_REMOVALS_WINDOWS, windowParam)) {
@@ -3381,7 +3278,7 @@ export async function handleSubnetAxonRemovals(
 // Canonical edge-cache key for the subnet-deregistrations route: only ?window= (7d/30d) changes the
 // response, canonicalized to its default when omitted so equivalent requests share a slot.
 export function canonicalSubnetDeregistrationsCachePath(url: URL) {
-  const validationError = validateQueryParams(url, ["window"]);
+  const validationError = validateDeclaredQueryParams(url);
   if (validationError) return `${url.pathname}${url.search}`;
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW;
@@ -3401,8 +3298,6 @@ export async function handleSubnetDeregistrations(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
   const windowParam =
     url.searchParams.get("window") || DEFAULT_SUBNET_DEREGISTRATIONS_WINDOW;
   if (!Object.hasOwn(SUBNET_DEREGISTRATIONS_WINDOWS, windowParam)) {
@@ -3459,8 +3354,6 @@ export async function handleSubnetStakeFlow(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window", "direction"]);
-  if (validationError) return analyticsQueryError(validationError);
   const windowParam =
     url.searchParams.get("window") || DEFAULT_STAKE_FLOW_WINDOW;
   if (!Object.hasOwn(STAKE_FLOW_WINDOWS, windowParam)) {
@@ -3595,7 +3488,7 @@ export async function handleSubnetStakeQuote(
   url: URL,
   ctx: { waitUntil?: (promise: Promise<unknown>) => void } = {},
 ) {
-  const validationError = validateEntityQuery(url, ["amount", "direction"]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   // A missing/empty `amount` coerces to 0, which computeStakeQuote rejects as
   // invalid_amount just like a non-numeric value — no separate null check.
@@ -3878,10 +3771,7 @@ export async function handleSubnetValidatorEconomics(
   request: Request,
   env: Env,
   netuid: number,
-  url: URL,
 ) {
-  const validationError = validateQueryParams(url, []);
-  if (validationError) return analyticsQueryError(validationError);
   if (!isU16Netuid(netuid)) {
     return errorResponse(
       "invalid_netuid",
@@ -4053,7 +3943,7 @@ export async function handleSubnetValidatorEconomicsHistory(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, ["window"]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   if (!isU16Netuid(netuid)) {
     return errorResponse(
@@ -4293,13 +4183,7 @@ export async function handleValidatorEconomicsRanking(
   env: Env,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "sort",
-    "limit",
-    "offset",
-    "emission_gate_open",
-    "cap_binding",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
 
   const sortParam = url.searchParams.get("sort");
@@ -4363,10 +4247,7 @@ export async function handleSubnetAlphaVolume(
   request: Request,
   env: Env,
   netuid: number,
-  url: URL,
 ) {
-  const validationError = validateQueryParams(url, []);
-  if (validationError) return analyticsQueryError(validationError);
   const marketCapTao = await resolveSubnetMarketCapTao(env, netuid);
   const { data, generatedAt } = ((await tryPostgresTier(
     env,
@@ -4420,8 +4301,6 @@ export async function handleSubnetOhlc(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["interval", "days"]);
-  if (validationError) return analyticsQueryError(validationError);
   const intervalParam = url.searchParams.get("interval");
   if (intervalParam !== null && !Object.hasOwn(OHLC_INTERVALS, intervalParam)) {
     return analyticsQueryError({
@@ -4477,12 +4356,7 @@ export async function handleSubnetOhlc(
 // snapshot_date read). Cold/absent or single-snapshot store → 200 with movers:[]
 // (schema-stable, never 404), mirroring the sibling history/turnover routes.
 export async function handleSubnetMovers(request: Request, env: Env, url: URL) {
-  const validationError = validateEntityQuery(url, [
-    "window",
-    "sort",
-    "limit",
-    "format",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const windowParam = url.searchParams.get("window") || DEFAULT_MOVERS_WINDOW;
   if (!Object.hasOwn(MOVERS_WINDOWS, windowParam)) {
@@ -4587,8 +4461,6 @@ export async function handleAccountStakeFlow(
   ss58: string,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window", "direction"]);
-  if (validationError) return analyticsQueryError(validationError);
   const windowParam =
     url.searchParams.get("window") || DEFAULT_STAKE_FLOW_WINDOW;
   if (!Object.hasOwn(STAKE_FLOW_WINDOWS, windowParam)) {
@@ -4678,8 +4550,6 @@ function makeAccountEventHandler({
     ss58: string,
     url: URL,
   ) {
-    const validationError = validateQueryParams(url, ["window"]);
-    if (validationError) return analyticsQueryError(validationError);
     const windowParam = url.searchParams.get("window") || defaultWindow;
     if (!Object.hasOwn(windows, windowParam)) {
       return analyticsQueryError({
@@ -4928,16 +4798,7 @@ export async function handleAccountEvents(
   /** Which chain's history to read (#8700). */
   network?: ChainNetworkId,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "kind",
-    "netuid",
-    "block_start",
-    "block_end",
-    "limit",
-    "offset",
-    "cursor",
-    "format",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   // Optional block-height range filter, parity with the extrinsics and
   // chain-events feeds. Index-satisfiable via idx_account_events_hotkey and
@@ -5040,15 +4901,7 @@ export async function handleAccountHistory(
   ss58: string,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "netuid",
-    "from",
-    "to",
-    "limit",
-    "offset",
-    "cursor",
-    "format",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const range = parseDateRange(url);
   if ("error" in range) return analyticsQueryError(range.error);
@@ -5161,14 +5014,7 @@ export async function handleAccountExtrinsics(
   ss58: string,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "block_start",
-    "block_end",
-    "limit",
-    "offset",
-    "cursor",
-    "format",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const blockStart = parseNonNegativeIntParam(
     url.searchParams.get("block_start"),
@@ -5245,15 +5091,7 @@ export async function handleAccountTransfers(
   ss58: string,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "direction",
-    "block_start",
-    "block_end",
-    "limit",
-    "offset",
-    "cursor",
-    "format",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const direction = url.searchParams.get("direction");
   if (
@@ -5339,11 +5177,7 @@ export async function handleAccountCounterparties(
   ss58: string,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "counterparty",
-    "limit",
-    "format",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const counterparty = url.searchParams.get("counterparty");
   const parsedLimit = parseBoundedIntParam(url, "limit", {
@@ -5570,8 +5404,6 @@ export async function handleAccountPositionHistory(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
   const labelResult = parseHistoryWindow(url.searchParams.get("window"));
   if ("error" in labelResult) return analyticsQueryError(labelResult.error);
   const { label } = labelResult;
@@ -5615,10 +5447,7 @@ export async function handleAccountIdentity(
   request: Request,
   env: Env,
   ss58: string,
-  url: URL,
 ) {
-  const validationError = validateQueryParams(url, []);
-  if (validationError) return analyticsQueryError(validationError);
   const data =
     ((await tryPostgresTier(
       env,
@@ -5655,12 +5484,7 @@ export async function handleAccountIdentityHistory(
   ss58: string,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "limit",
-    "offset",
-    "cursor",
-    "format",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const page = parsePagination(url, FEED_PAGINATION);
   if ("error" in page) return analyticsQueryError(page.error);
@@ -5717,15 +5541,7 @@ export async function handleSubnetEvents(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "kind",
-    "block_start",
-    "block_end",
-    "limit",
-    "offset",
-    "cursor",
-    "format",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const kind = url.searchParams.get("kind");
   // Reject an unknown ?kind= up front, validated against the FULL ingested set
@@ -5817,8 +5633,6 @@ export async function handleSubnetEventSummary(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateQueryParams(url, ["window", "limit"]);
-  if (validationError) return analyticsQueryError(validationError);
   const windowLabel =
     url.searchParams.get("window") ?? DEFAULT_SUBNET_EVENT_SUMMARY_WINDOW;
   if (
@@ -6172,8 +5986,6 @@ export async function handleSubnetBurnHistory(
       400,
     );
   }
-  const validationError = validateQueryParams(url, ["window"]);
-  if (validationError) return analyticsQueryError(validationError);
   const label = url.searchParams.get("window") ?? DEFAULT_BURN_HISTORY_WINDOW;
   const windowDays = BURN_HISTORY_WINDOWS[label];
   if (windowDays === undefined) {
@@ -6226,7 +6038,7 @@ export async function handleSubnetHolders(
       400,
     );
   }
-  const validationError = validateEntityQuery(url, ["limit", "format"]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const limit = parseBoundedIntParam(url, "limit", {
     def: SUBNET_HOLDERS_LIMIT_DEFAULT,
@@ -6257,11 +6069,6 @@ export async function handleSubnetHolders(
 // A null price is a stated outcome (`price_basis: insufficient_pools`), not a
 // gap -- see src/tao-usd-series.ts for why this must never coalesce it.
 export async function handleTaoUsd(request: Request, env: Env, url: URL) {
-  const validationError = validateQueryParams(url, [
-    "window",
-    "include_points",
-  ]);
-  if (validationError) return analyticsQueryError(validationError);
   // #9720. The series is 1,428 points and ~143 KB on the default window, while
   // every summary a caller usually wants -- latest, change_usd, change_pct, the
   // two counts -- is a top-level scalar beside it. REST keeps sending the
@@ -6313,7 +6120,7 @@ export async function handleSubnetSurfaceHistory(
       400,
     );
   }
-  const validationError = validateEntityQuery(url, ["limit", "format"]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const limit = parseBoundedIntParam(url, "limit", {
     def: SURFACE_HISTORY_LIMIT_DEFAULT,
@@ -6348,7 +6155,7 @@ export async function handleEmissionChanges(
   env: Env,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, ["kind", "limit", "format"]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
 
   const kindParam = url.searchParams.get("kind");
@@ -6399,7 +6206,7 @@ export async function handleEmissionChanges(
 // subnet whose alpha sits on unregistered hotkeys is measured rather than
 // invisible.
 export async function handleChainHolders(request: Request, env: Env, url: URL) {
-  const validationError = validateEntityQuery(url, ["sort", "limit", "format"]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
 
   const sort = url.searchParams.get("sort") || DEFAULT_CHAIN_HOLDERS_SORT;
@@ -6439,12 +6246,7 @@ export async function handleFailureReasons(
   env: Env,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "window",
-    "netuid",
-    "kind",
-    "format",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
 
   const window =
@@ -6494,7 +6296,7 @@ export async function handleFailureReasons(
 // window, plus how far behind the lane is right now. Two different numbers; see
 // src/indexer-lag.ts for why they are named separately.
 export async function handleIndexerLag(request: Request, env: Env, url: URL) {
-  const validationError = validateEntityQuery(url, ["format"]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
 
   const row = await loadIndexerLag(
@@ -6521,7 +6323,7 @@ export async function handleChainConcentrationHistory(
   env: Env,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, ["window", "format"]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
 
   const window =
@@ -6565,7 +6367,7 @@ export async function handleSubnetPipelineHistory(
   netuid: number,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, ["window", "format"]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
 
   const window =
@@ -6730,7 +6532,7 @@ export async function handleCrowdloans(
   url: URL,
   network?: ChainNetworkId,
 ) {
-  const validationError = validateEntityQuery(url, []);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
 
   const limited = await crowdloanRateLimitResponse(
@@ -6760,7 +6562,7 @@ export async function handleCrowdloan(
   url: URL,
   network?: ChainNetworkId,
 ) {
-  const validationError = validateEntityQuery(url, []);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
 
   if (!isCrowdloanId(crowdloanId)) {
@@ -6798,20 +6600,7 @@ export async function handleBlocks(
   /** Which chain's history to read (#8700). */
   network?: ChainNetworkId,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "limit",
-    "offset",
-    "cursor",
-    "author",
-    "spec_version",
-    "from",
-    "to",
-    "block_start",
-    "block_end",
-    "min_extrinsics",
-    "min_events",
-    "format",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const page = parsePagination(url, BLOCK_PAGINATION);
   if ("error" in page) return analyticsQueryError(page.error);
@@ -6901,8 +6690,6 @@ export async function handleBlocksSummary(
   /** Which chain's projection to serve (#9412). */
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
 ) {
-  const validationError = validateQueryParams(url, []);
-  if (validationError) return analyticsQueryError(validationError);
   const pgData = await tryPostgresTier(env, request, "METAGRAPH_BLOCKS_SOURCE");
   // #9146: on a tier miss, serve the precomputed card from the blocks-summary
   // projection rather than a zeroed one. The reader declines (null) when it
@@ -7011,11 +6798,7 @@ export async function handleBlockExtrinsics(
   /** Which chain's history to read (#8700). */
   network?: ChainNetworkId,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "limit",
-    "offset",
-    "format",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const page = parsePagination(url, BLOCK_PAGINATION);
   if ("error" in page) return analyticsQueryError(page.error);
@@ -7090,11 +6873,7 @@ export async function handleBlockEvents(
   /** Which chain's history to read (#8700). */
   network?: ChainNetworkId,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "limit",
-    "offset",
-    "format",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const page = parsePagination(url, FEED_PAGINATION);
   if ("error" in page) return analyticsQueryError(page.error);
@@ -7170,22 +6949,7 @@ export async function handleExtrinsics(
   /** Which chain's history to read (#8700). */
   network?: ChainNetworkId,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "limit",
-    "offset",
-    "cursor",
-    "block",
-    "signer",
-    "call_module",
-    "call_function",
-    "call_hash",
-    "success",
-    "block_start",
-    "block_end",
-    "from",
-    "to",
-    "format",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   // The same cap the three chain-analytics feeds apply to `call_module`
   // (#10096). This route took the identical filter with no bound at all, so a
@@ -7298,19 +7062,7 @@ export async function handleExtrinsics(
 // signer/call_module query params (signer is always the current sudo key, see
 // GET /api/v1/sudo/key; call_module is fixed).
 export async function handleSudo(request: Request, env: Env, url: URL) {
-  const validationError = validateEntityQuery(url, [
-    "limit",
-    "offset",
-    "cursor",
-    "block",
-    "call_function",
-    "success",
-    "block_start",
-    "block_end",
-    "from",
-    "to",
-    "format",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const page = parsePagination(url, BLOCK_PAGINATION);
   if ("error" in page) return analyticsQueryError(page.error);
@@ -7391,19 +7143,7 @@ export async function handleGovernanceConfigChanges(
   env: Env,
   url: URL,
 ) {
-  const validationError = validateEntityQuery(url, [
-    "limit",
-    "offset",
-    "cursor",
-    "block",
-    "call_function",
-    "success",
-    "block_start",
-    "block_end",
-    "from",
-    "to",
-    "format",
-  ]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   const page = parsePagination(url, BLOCK_PAGINATION);
   if ("error" in page) return analyticsQueryError(page.error);
@@ -7492,7 +7232,7 @@ const RUNTIME_VERSIONS_CSV_COLUMNS = [
 // genesis to head, so coverage_from_block/coverage_gaps describe a complete
 // timeline rather than bounding a partial one.
 export async function handleRuntime(request: Request, env: Env, url: URL) {
-  const validationError = validateEntityQuery(url, ["format"]);
+  const validationError = validateResponseFormat(url);
   if (validationError) return analyticsQueryError(validationError);
   // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.

@@ -150,16 +150,6 @@ describe("handleRpcUsage", () => {
     assert.equal(body.meta.artifact_path, "/metagraph/rpc/usage.json");
   });
 
-  test("rejects unsupported query parameters", async () => {
-    const res = await handleRpcUsage(
-      req("/api/v1/rpc/usage?cacheBust=x"),
-      mockEnv(),
-      url("/api/v1/rpc/usage?cacheBust=x"),
-    );
-    const body = await errorJson(res, 400);
-    assert.equal(body.meta.parameter, "cacheBust");
-  });
-
   test("rejects unknown window values", async () => {
     const res = await handleRpcUsage(
       req("/api/v1/rpc/usage?window=90d"),

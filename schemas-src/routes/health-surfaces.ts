@@ -38,6 +38,7 @@ import { ArtifactBaseSchema, CountMapSchema } from "../envelope.ts";
 import { HealthStatusSchema } from "../shared.ts";
 import { ClassificationSchema, SurfaceKindSchema } from "./subnet-detail.ts";
 import { HealthSubnetSummarySchema } from "./health.ts";
+import { HEALTH_TREND_WINDOW_VALUES } from "../../src/route-limits.ts";
 
 // ---- GET /api/v1/health/history/{date} -> HealthHistoryArtifact ----
 
@@ -142,20 +143,11 @@ export type BulkHealthTrendsArtifact = z.infer<
   typeof BulkHealthTrendsArtifactSchema
 >;
 
-/**
- * The window labels this route derives, single-sourced (#9981).
- *
- * `workers/config.ts`'s HEALTH_TREND_WINDOWS maps each label to its day count
- * and is the runtime's copy; this is the published vocabulary. They are checked
- * against each other by tests/route-limit-contract-parity.test.ts rather than
- * one importing the other, because schemas-src must not depend on the Worker's
- * config module -- see this directory's leaf-module rule.
- *
- * That cross-check named a test file that did not exist until #10089. A comment
- * asserting a guard is not a guard: the vocabularies happened to agree, and
- * nothing would have said so if they stopped.
- */
-export const HEALTH_TREND_WINDOW_VALUES = ["7d", "30d"] as const;
+// The window vocabulary now lives in the zero-import leaf src/route-limits.ts
+// so src/ modules can read it without importing this directory -- see that
+// module for why. Re-exported unchanged, so this file stays the place a reader
+// looks for the route's published vocabulary.
+export { HEALTH_TREND_WINDOW_VALUES };
 
 /**
  * GET /api/v1/health/trends query parameters (#9981).

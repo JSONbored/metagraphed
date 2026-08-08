@@ -118,6 +118,7 @@ export const SDL = /* GraphQL */ `
       order: String
       limit: Int
       cursor: Int
+      fields: String
     ): CurationList!
     "The discovered candidate-surface ledger: every machine-discovered surface awaiting review, with its subnet (netuid), kind, provider, and review state. Filter by netuid/kind/provider/state/id/confidence, sort with sort + order, and page with limit (1-1000) / cursor, exactly like the REST route — an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the candidates rows, as opaque JSON. A cold/absent artifact is a GraphQL error (matching REST/MCP not_found). Mirrors GET /api/v1/candidates."
     candidates(
@@ -131,6 +132,7 @@ export const SDL = /* GraphQL */ `
       order: String
       limit: Int
       cursor: Int
+      fields: String
     ): JSON
     "Run one maintainer-curated saved-query template by id, with its template-defined params object -- the same parameterized query library REST and the run_saved_query MCP tool execute. Resolves to {query_id, params, data} as opaque JSON. An unknown id or invalid params is a BAD_USER_INPUT error listing the valid template ids, not a silently substituted default. Mirrors GET /api/v1/queries/{id}."
     saved_query(id: String!, params: JSON): JSON
@@ -153,6 +155,7 @@ export const SDL = /* GraphQL */ `
       order: String
       limit: Int
       cursor: Int
+      fields: String
     ): SearchDocumentList!
     "The slim search index -- the same documents as search without the per-document token blobs, for fast browser typeahead and listing. Filter by type/netuid/q, sort with sort/order, and page with limit/cursor. An invalid filter/sort/limit/cursor is a GraphQL error. Mirrors GET /api/v1/search-index."
     search_index(
@@ -163,6 +166,7 @@ export const SDL = /* GraphQL */ `
       order: String
       limit: Int
       cursor: Int
+      fields: String
     ): SearchIndexList!
     "The per-domain rollup overview: every tag in the fixed 14-tag capability taxonomy with its member subnet count, total stake, total emission share, and within-domain emission concentration. Computed live from the subnets index + economics tier. Mirrors GET /api/v1/domains."
     domains: DomainOverview!
@@ -173,7 +177,18 @@ export const SDL = /* GraphQL */ `
     "The registry coverage summary: surface/subnet counts, domain coverage, and overall completeness across the whole Bittensor application layer. Null when the coverage artifact has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_coverage MCP/REST shape. Mirrors GET /api/v1/coverage."
     coverage: JSON
     "The machine-usable coverage-depth scorecard and ranked enrichment queue: per-subnet tier/score/priority rows plus the ranked queue of enrichment targets. Null when the coverage-depth artifact has not been baked in this environment (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the /api/v1/coverage-depth REST shape. Mirrors GET /api/v1/coverage-depth."
-    coverage_depth: JSON
+    coverage_depth(
+      netuid: Int
+      tier: String
+      agent_status: String
+      blocker_level: String
+      q: String
+      fields: String
+      sort: String
+      order: String
+      limit: Int
+      cursor: Int
+    ): JSON
     "One subnet's alpha-price OHLC candles bucketed by interval (1h or 1d, default 1h) over the trailing days window (default 90, max 365), from the same executed-trade stream subnet_volume reads. A subnet with no trades resolves to a schema-stable empty candle list, never null. Mirrors GET /api/v1/subnets/{netuid}/ohlc."
     subnet_ohlc(netuid: Int!, interval: String, days: Int): SubnetOhlc!
     "A read-only quote for a hypothetical stake/unstake against one subnet's live AMM pool: expected amount out, spot vs effective price, and estimated price impact. Computes nothing on-chain and signs nothing. Mirrors GET /api/v1/subnets/{netuid}/stake-quote."
@@ -284,6 +299,7 @@ export const SDL = /* GraphQL */ `
       block_end: Int
       limit: Int
       offset: Int
+      cursor: String
     ): SubnetEvents!
     "One subnet's daily history from the neuron_daily rollup over a 7d/30d/90d/1y/all window (default 30d): neuron count, validator count, total stake (TAO), and total emission (TAO) per snapshot_date, newest first. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/history."
     subnet_history(netuid: Int!, window: String): SubnetHistory!
@@ -322,7 +338,7 @@ export const SDL = /* GraphQL */ `
     "How long after a block is produced it becomes queryable here: the write-latency distribution (min/p50/p95/p99/max/mean, in ms) over the retained block window, plus how far behind the lane is right now. TWO DIFFERENT NUMBERS -- write_latency_ms is how long each block TOOK to land, head_age_ms is how stale the newest block IS, and a stalled lane keeps a perfect latency distribution while its head age climbs without bound, so read head_age_ms for staleness. The window is pruned on a rolling basis, so this is the RECENT distribution and window reports which blocks it covers. A NEGATIVE latency is real -- the two timestamps come from different clocks -- and is served as measured rather than clamped. Null measurements are a DECLINE, not a zero-latency lane; check degraded.reason. Mainnet only. Mirrors GET /api/v1/chain/indexer-lag."
     indexer_lag: IndexerLag!
     "The USD price of one TAO with the derivation behind it, plus the recent series. Composed per ADR 0025 -- a liquidity-weighted median across qualifying wTAO/WETH pools with 2% outlier rejection and a two-pool quorum, multiplied through an ETH/USDC anchor -- because no TAO/USD pair exists on chain. A null usd_per_tao is a STATED OUTCOME (price_basis insufficient_pools), never a zero price. window is 1h, 24h (default), 7d or 30d. The series begins 2026-08-02, so a wide window returns everything that exists and oldest_observed_at says how far back that is. Mainnet only. Mirrors GET /api/v1/network/tao-usd."
-    tao_usd(window: String): TaoUsd!
+    tao_usd(window: String, include_points: Boolean): TaoUsd!
     "When one subnet's public surfaces were added, changed or removed, and in which commit. subnet_surfaces says what a subnet exposes TODAY; this says when that became true. A delete entry is the ONLY evidence a surface ever existed -- the registry keeps no trace of a removed surface. surface_count counts distinct surfaces with a recorded mutation, which is NOT the current surface count. The full surface record is not repeated here; read subnet_surfaces for that. Newest first. A subnet whose surfaces never changed resolves to an empty trail, never an error. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/surface-history."
     subnet_surface_history(netuid: Int!, limit: Int): SubnetSurfaceHistory!
     "Per-subnet per-day stake and emission concentration trend from the neuron_daily rollup over a 7d/30d/90d window (default 30d): each day's stake/emission Gini, Nakamoto coefficient, and top-10% share, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/concentration/history."
@@ -344,7 +360,11 @@ export const SDL = /* GraphQL */ `
     "One subnet's weekly structural + economics trajectory from the daily snapshots: a chronological series of points (completeness/surface/endpoint counts plus validator/miner counts and economics — stake, alpha price, emission share, pool reserves, volume), and the latest-vs-window-ago deltas for the 7d and 30d windows. A subnet with no snapshots resolves to a schema-stable empty trajectory (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/trajectory."
     subnet_trajectory(netuid: Int!): SubnetTrajectory!
     "One subnet's live metagraph: every neuron with its uid, keys, stake, trust/consensus/incentive/dividends, emission, and axon, plus the subnet's aggregate counters. Set validator_permit to true to return only permit-holding validators. A subnet with no indexed neurons resolves to a schema-stable empty metagraph, never null. Opaque JSON passed through verbatim, matching the get_subnet_metagraph MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/metagraph."
-    subnet_metagraph(netuid: Int!, validator_permit: Boolean): JSON
+    subnet_metagraph(
+      netuid: Int!
+      validator_permit: Boolean
+      fields: String
+    ): JSON
     "One subnet's composed overview card: the baked static subnet record overlaid with live probe-derived health, exactly as the REST route composes it. Null when no overview has been baked for that netuid (rather than a GraphQL error). Opaque JSON passed through verbatim, matching the get_subnet MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/overview."
     subnet_overview(netuid: Int!): JSON
     "One subnet's contributor-review profile: candidate surfaces, contract version, endpoints, and completeness/curation metadata. Null when no profile has been baked for that netuid (rather than a GraphQL error); a negative netuid is a BAD_USER_INPUT error. Opaque JSON passed through verbatim, matching the get_subnet_profile MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/profile."
@@ -372,7 +392,7 @@ export const SDL = /* GraphQL */ `
       sort: String
       order: String
       limit: Int
-      cursor: String
+      cursor: Int
     ): EconomicsList!
     "Curated public interface surfaces with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/provider/id, sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/surfaces."
     surfaces(
@@ -380,10 +400,14 @@ export const SDL = /* GraphQL */ `
       kind: String
       provider: String
       id: String
+      auth_required: Boolean
+      public_safe: Boolean
+      rate_limited: Boolean
+      fields: String
       sort: String
       order: String
       limit: Int
-      cursor: String
+      cursor: Int
     ): SurfaceList!
     "Endpoint/resource registry with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/layer/provider/publication_state/status/pool_eligible, threshold with min_/max_latency_ms and min_/max_score, project with fields, sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error (matching endpoint_pools/rpc_pools/rpc_endpoints), not a silently substituted default. Mirrors GET /api/v1/endpoints."
     endpoints(
@@ -420,7 +444,8 @@ export const SDL = /* GraphQL */ `
       sort: String
       order: String
       limit: Int
-      cursor: String
+      cursor: Int
+      fields: String
     ): JSON
     "Generalized endpoint pool scores -- each pool's kind, eligible/total endpoint count, and probe-derived routing score. Filter by id/kind, threshold with min_/max_eligible_count and min_/max_endpoint_count, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/endpoint-pools."
     endpoint_pools(
@@ -627,7 +652,7 @@ export const SDL = /* GraphQL */ `
       max_score: Float
       fields: [String!]
       limit: Int
-      cursor: String
+      cursor: Int
       sort: String
       order: String
     ): JSON
@@ -663,6 +688,7 @@ export const SDL = /* GraphQL */ `
     incidents(
       window: String
       netuid: Int
+      fields: String
       sort: String
       order: String
       limit: Int
@@ -672,6 +698,7 @@ export const SDL = /* GraphQL */ `
     global_incidents(
       window: String
       netuid: Int
+      fields: String
       sort: String
       order: String
       limit: Int
@@ -755,6 +782,7 @@ export const SDL = /* GraphQL */ `
     validator_nominators(
       hotkey: String!
       window: String
+      basis: String
       sort: String
       coldkey: String
       limit: Int
@@ -865,7 +893,13 @@ export const SDL = /* GraphQL */ `
     "Network-wide economics time series, aggregated per UTC day across all subnets; day_count is 0 and days is empty on a cold rollup, never null. Mirrors GET /api/v1/economics/trends."
     economics_trends(window: String): EconomicsTrends!
     "The v440 emission pipeline decomposed per subnet at the block the economics capture was pinned to: each subnet's stage-1 price share, its MinerBurned-reweighted and Hill-gated shares, its final share of block emission, and the split of its TAO intake between pool injection (tao_in_emission) and chain buys (excess_tao). netuid narrows the per-subnet rows only -- aggregate and verification stay network-wide, since a one-subnet slice of a network identity cannot be verified. ALWAYS read verification.verified: false means the four identities did not hold on these exact rows and the response is not defensible. field_sources labels every field measured or reconstructed. A capture with no chain_state is an EMISSION_PIPELINE_UNAVAILABLE error, never a partial body. Mirrors GET /api/v1/chain/emission-pipeline."
-    emission_pipeline(netuid: Int): EmissionPipeline!
+    emission_pipeline(
+      netuid: Int
+      fields: String
+      sort: String
+      order: String
+      limit: Int
+    ): EmissionPipeline!
     "Registry leaderboards: the operational boards (healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable) and the economic-opportunity boards (open-slots, cheapest-registration, highest-emission, validator-headroom, biggest-alpha-gain-1d, biggest-alpha-gain-7d), composed live from the registry profiles projection plus D1 health/rpc/growth/reliability rows and the economics tier. Pass board to return just that board (default: every board); limit caps each board's entries (default 20, max 100). An unknown board is a BAD_USER_INPUT error, matching REST's invalid_query 400. Mirrors GET /api/v1/registry/leaderboards."
     registry_leaderboards(board: String, limit: Int): RegistryLeaderboards!
     "Cross-subnet momentum leaderboard: every subnet ranked by its stake/emission/validator change between a window's start and end snapshots; movers is empty on a cold or single-snapshot store, never null. Mirrors GET /api/v1/subnets/movers."
@@ -907,7 +941,7 @@ export const SDL = /* GraphQL */ `
       call_module: String
     ): ChainSigners!
     "Compact all-subnet 7d/30d daily uptime + latency trend matrix from the live health-probe history (probed every ~15 minutes); a cold store still returns both windows, schema-stable and zeroed, never a GraphQL error. Mirrors GET /api/v1/health/trends."
-    health_trends: HealthTrends!
+    health_trends(window: String, limit: Int, offset: Int): HealthTrends!
     "RPC reverse-proxy usage analytics over a 7d/30d window (default 7d): total request volume, error + failover rates, cache-hit rate, latency p50/p95/avg, the per-endpoint and per-network request distribution, and bounded time buckets (1h for 7d, 6h for 30d). Counts are summed across two disjoint stores -- Workers Analytics Engine for live traffic, the R2 lakehouse for history -- and coverage reports the span each contributed plus any gap between them. p50/p95 are measured only over the Analytics Engine span (coverage.latency_percentiles) and are null where nothing measured them; the lakehouse has no percentile function. A cold store yields a schema-stable zeroed card, never a GraphQL error. Mirrors GET /api/v1/rpc/usage."
     rpc_usage(window: String): RpcUsage!
     "Network-wide reward-distribution & score-spread card across every subnet's neurons: incentive/dividends concentration (who actually captures rewards network-wide) plus the trust/consensus/validator_trust score spread. Current snapshot only (no window/params). Every metric block is null (never a GraphQL error) on a cold store. The network analog of subnet_performance. Mirrors GET /api/v1/chain/performance."

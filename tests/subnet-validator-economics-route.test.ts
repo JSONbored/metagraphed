@@ -438,22 +438,8 @@ describe("handleSubnetValidatorEconomics", () => {
       new Request(url.toString()),
       env as never,
       Number(url.pathname.split("/")[4]),
-      url,
     );
   };
-
-  test("rejects an unknown query parameter rather than ignoring it", async () => {
-    // Silently dropping a param the caller believed in is how a filtered request
-    // comes back looking unfiltered.
-    const { env } = envWith({ neurons: [permitted(0)] });
-    const res = await call(
-      "/api/v1/subnets/7/validator-economics?window=30d",
-      env,
-    );
-    assert.equal(res.status, 400);
-    const body = (await res.json()) as Row;
-    assert.equal((body.error as Row).code, "invalid_query");
-  });
 
   test("rejects a netuid outside the u16 range", async () => {
     const { env } = envWith({ neurons: [permitted(0)] });
@@ -817,13 +803,6 @@ describe("handleValidatorEconomicsRanking", () => {
     );
   });
 
-  test("rejects an unknown query parameter", async () => {
-    const res = await call("?window=30d", env);
-    assert.equal(res.status, 400);
-    const body = (await res.json()) as Row;
-    assert.equal((body.error as Row).code, "invalid_query");
-  });
-
   test("rejects a limit above the published ceiling", async () => {
     const res = await call("?limit=100000", env);
     assert.equal(res.status, 400);
@@ -1158,14 +1137,6 @@ describe("handleSubnetValidatorEconomicsHistory", () => {
     assert.equal(res.status, 400);
     const body = (await res.json()) as Row;
     assert.match(String((body.error as Row).message), /window must be one of/);
-  });
-
-  test("rejects an unknown query parameter", async () => {
-    const res = await call(
-      "/api/v1/subnets/7/validator-economics/history?sort=cost",
-      env,
-    );
-    assert.equal(res.status, 400);
   });
 
   test("rejects a netuid outside the u16 range", async () => {
