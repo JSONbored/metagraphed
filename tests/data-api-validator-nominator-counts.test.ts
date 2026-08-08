@@ -1,6 +1,6 @@
 // The revived validator-nominator-counts sync lane (#9146), exercised END TO
 // END against a REAL SQLite database through the real Worker fetch handler --
-// same harness and rationale as tests/data-api-nominator-positions-d1.test.ts.
+// same harness and rationale as tests/data-api-nominator-positions.test.ts.
 //
 // This route answered `503 hyperdrive binding unavailable` from the box wipe
 // (#9193) until migration 0012 gave it a Cloudflare-native store. Its producer
@@ -26,14 +26,14 @@ const SCHEMA =
   fs.readFileSync(
     path.join(
       process.cwd(),
-      "migrations/d1/0012_validator_nominator_counts.sql",
+      "tests/fixtures/sqlite-schema/0012_validator_nominator_counts.sql",
     ),
     "utf8",
   ) +
   fs.readFileSync(
     path.join(
       process.cwd(),
-      "migrations/d1/0029_nominator_positions_passes.sql",
+      "tests/fixtures/sqlite-schema/0029_nominator_positions_passes.sql",
     ),
     "utf8",
   );

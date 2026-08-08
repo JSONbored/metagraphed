@@ -1,7 +1,7 @@
 // The all-tables freshness sweep (src/table-freshness-watchdog.ts, #9786).
 //
 // The test that gives this file its value is the COVERAGE one: every table in
-// migrations/d1 must be classified, so a new table cannot arrive unwatched.
+// tests/fixtures/sqlite-schema must be classified, so a new table cannot arrive unwatched.
 // That is the whole failure this watchdog exists to end -- four tables were
 // frozen for five days because no per-lane watchdog covered them, and none
 // ever would have.
@@ -74,11 +74,11 @@ function fakeDb(byTable: Record<string, unknown>, failOn: string[] = []) {
 }
 
 describe("TABLE_FRESHNESS coverage", () => {
-  test("every table in migrations/d1 is classified", () => {
+  test("every table in tests/fixtures/sqlite-schema is classified", () => {
     // THE LOAD-BEARING TEST. A table absent from the map is one nobody has
     // decided the freshness meaning of, and it would be swept by nothing --
     // exactly how the registry cluster went five days unnoticed (#9779).
-    const dir = path.join(process.cwd(), "migrations/d1");
+    const dir = path.join(process.cwd(), "tests/fixtures/sqlite-schema");
     const declared = new Set<string>();
     for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql"))) {
       const sql = readFileSync(path.join(dir, file), "utf8");
@@ -90,7 +90,7 @@ describe("TABLE_FRESHNESS coverage", () => {
     }
     assert.ok(
       declared.size >= 40,
-      `only ${declared.size} tables parsed out of migrations/d1 -- the parse ` +
+      `only ${declared.size} tables parsed out of tests/fixtures/sqlite-schema -- the parse ` +
         `broke, so this test is passing on nothing`,
     );
     const missing = [...declared].filter((t) => !TABLE_FRESHNESS[t]).sort();
@@ -106,7 +106,7 @@ describe("TABLE_FRESHNESS coverage", () => {
   test("the map names no table that does not exist", () => {
     // A stale entry would be swept forever against a dropped table, which
     // fails every batch it lands in and hides the tables beside it.
-    const dir = path.join(process.cwd(), "migrations/d1");
+    const dir = path.join(process.cwd(), "tests/fixtures/sqlite-schema");
     const declared = new Set<string>();
     for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql"))) {
       for (const m of readFileSync(path.join(dir, file), "utf8").matchAll(
@@ -131,11 +131,11 @@ describe("TABLE_FRESHNESS coverage", () => {
     // cluster carries `updated_at`, surface_status carries `updated_at` not
     // `checked_at` -- and every one of them threw its whole batch.
     //
-    // Reads migrations/d1, which is the same source as the table check and
+    // Reads tests/fixtures/sqlite-schema, which is the same source as the table check and
     // needs no credentials. It cannot see a migration that was never APPLIED
     // (raw_capture_state_v2, #9867) -- that is a different problem, and the
     // reason that entry is excluded with column: "" rather than corrected.
-    const dir = path.join(process.cwd(), "migrations/d1");
+    const dir = path.join(process.cwd(), "tests/fixtures/sqlite-schema");
     const columns = new Map<string, Set<string>>();
     for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql"))) {
       const sql = readFileSync(path.join(dir, file), "utf8");

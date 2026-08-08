@@ -19,7 +19,7 @@
 //
 // A NULL PRICE IS A STATED OUTCOME, NOT A GAP. The producer writes
 // `price_basis: insufficient_pools` with a NULL `usd_per_tao` when the quorum
-// was not met, and migrations/d1/0004_user_state.sql enforces that pairing as a
+// was not met, and tests/fixtures/sqlite-schema/0004_user_state.sql enforces that pairing as a
 // CHECK constraint. Coalescing it to 0 here would erase the one distinction the
 // producer and the schema both went to the trouble of recording, and would
 // publish "TAO is worthless" where the truth is "not priceable at that block".

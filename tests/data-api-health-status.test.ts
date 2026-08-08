@@ -1,6 +1,6 @@
 // GET /api/v1/internal/health-status-live (#9522), exercised END TO END
 // against a REAL SQLite database through the real Worker fetch handler --
-// same harness and rationale as tests/data-api-hotkey-alpha-d1.test.ts.
+// same harness and rationale as tests/data-api-hotkey-alpha.test.ts.
 //
 // This route is the prober's own continuity read, and it did not exist. Two
 // callers in the main Worker have always requested it -- src/health-prober.ts
@@ -38,7 +38,10 @@ const { default: worker } = await import("../workers/data-api.ts");
 
 // surface_status lives in the observations migration, alongside surface_checks.
 const OBSERVATIONS_SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0002_observations.sql"),
+  path.join(
+    process.cwd(),
+    "tests/fixtures/sqlite-schema/0002_observations.sql",
+  ),
   "utf8",
 );
 

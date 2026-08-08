@@ -10,7 +10,7 @@
 // so. Underpricing looks like data.
 //
 // AND THE READER CANNOT RECOVER COMPLETENESS BY COUNTING, even in principle.
-// migrations/d1/0019's producer SKIPS a genuine zero pool rather than writing a
+// tests/fixtures/sqlite-schema/0019's producer SKIPS a genuine zero pool rather than writing a
 // zero row, so a missing (hotkey, netuid) means either "scanned, pool is empty"
 // or "never scanned". The first is a true zero contribution; the second must
 // decline the whole ranking. No query distinguishes them. A coverage ratio over
@@ -18,7 +18,7 @@
 // added together and cannot attribute the gap, which is why this asks the
 // producer's own declaration instead of inferring one.
 //
-// See migrations/d1/0021_hotkey_alpha_passes.sql for what the producer's floor
+// See tests/fixtures/sqlite-schema/0021_hotkey_alpha_passes.sql for what the producer's floor
 // does and does not cover (a failed POST mid-sequence, and a 10%-of-762,577
 // floor that leaves a wide publishing band).
 

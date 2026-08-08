@@ -1,7 +1,7 @@
 // Full-resync import of every subnet/provider/surface fact this system
 // currently knows about into the registry Postgres instance (subnets /
 // providers / surfaces / surface_history — see
-// migrations/d1/0001_registry.sql) — the registry-to-Postgres target
+// tests/fixtures/sqlite-schema/0001_registry.sql) — the registry-to-Postgres target
 // architecture's single source of truth for BOTH the human-authored git tier
 // AND the machine-discovered/promoted tier (see that schema file's own
 // comment on why these live in the same tables rather than a separate

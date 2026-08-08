@@ -1,5 +1,5 @@
 -- Read-path indexes for the neurons family (the READ half of the box
--- decommission; the write half + tables are migrations/d1/0007_neurons.sql,
+-- decommission; the write half + tables are tests/fixtures/sqlite-schema/0007_neurons.sql,
 -- already applied to production, which is why these land as their own
 -- migration instead of edits to 0007).
 --

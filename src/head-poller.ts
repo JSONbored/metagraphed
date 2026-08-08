@@ -37,7 +37,7 @@ export const HeadBlockSchema = z.object({
    * The block's event count, or null when it could not be read.
    *
    * Nullable, never defaulted: a count we do not have is not a count of none.
-   * See migrations/d1/0016_blocks_head_event_count.sql.
+   * See tests/fixtures/sqlite-schema/0016_blocks_head_event_count.sql.
    */
   event_count: z.int().min(0).nullable(),
   /**
@@ -45,7 +45,7 @@ export const HeadBlockSchema = z.object({
    * derived.
    *
    * Nullable, never defaulted: an author we do not have is not a placeholder
-   * address. See migrations/d1/0017_blocks_head_author.sql.
+   * address. See tests/fixtures/sqlite-schema/0017_blocks_head_author.sql.
    */
   author: z.string().nullable(),
   observed_at: z.int(),

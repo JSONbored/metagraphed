@@ -1,4 +1,4 @@
-// The D1-shaped Postgres adapter (src/pg-d1-adapter.ts, #10104).
+// The prepare/bind/batch Postgres client (src/pg-statement-client.ts, #10104).
 //
 // The property this file exists for is ATOMICITY. Several producer lanes write
 // their rows and their prune in ONE d1.batch(), and a partial application
@@ -8,16 +8,16 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
-  createPgD1,
+  createPgStatementClient,
   storeBoolean,
-  type PgD1Client,
-} from "../src/pg-d1-adapter.ts";
+  type PgStatementClient,
+} from "../src/pg-statement-client.ts";
 
 function fakeClient(opts: { failOn?: RegExp; rows?: unknown[] } = {}) {
   const log: { text: string; values: unknown[] }[] = [];
   let connects = 0;
   let ends = 0;
-  const client: PgD1Client = {
+  const client: PgStatementClient = {
     connect: async () => {
       connects += 1;
     },
@@ -39,7 +39,9 @@ function fakeClient(opts: { failOn?: RegExp; rows?: unknown[] } = {}) {
 }
 
 const make = (f: ReturnType<typeof fakeClient>) =>
-  createPgD1("postgresql://example/db", { clientFactory: () => f.client });
+  createPgStatementClient("postgresql://example/db", {
+    clientFactory: () => f.client,
+  });
 
 describe("the D1 object API", () => {
   test("prepare().bind().all() returns rows in D1's envelope", async () => {

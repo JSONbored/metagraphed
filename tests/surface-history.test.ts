@@ -49,7 +49,7 @@ import type { Row } from "./row-type.ts";
 // The real registry DDL, so the table under test is the one production has.
 const SCHEMA = (() => {
   const sql = fs.readFileSync(
-    path.join(process.cwd(), "migrations/d1/0001_registry.sql"),
+    path.join(process.cwd(), "tests/fixtures/sqlite-schema/0001_registry.sql"),
     "utf8",
   );
   const start = sql.indexOf("CREATE TABLE IF NOT EXISTS surface_history");

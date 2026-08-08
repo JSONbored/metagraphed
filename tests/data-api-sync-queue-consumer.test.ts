@@ -27,32 +27,44 @@ const { default: worker } = await import("../workers/data-api.ts");
 
 const SCHEMA =
   fs.readFileSync(
-    path.join(process.cwd(), "migrations/d1/0011_nominator_positions.sql"),
-    "utf8",
-  ) +
-  fs.readFileSync(
-    path.join(process.cwd(), "migrations/d1/0017_account_balances.sql"),
-    "utf8",
-  ) +
-  fs.readFileSync(
-    path.join(process.cwd(), "migrations/d1/0020_account_balances_passes.sql"),
-    "utf8",
-  ) +
-  fs.readFileSync(
-    path.join(process.cwd(), "migrations/d1/0010_chain_detail.sql"),
-    "utf8",
-  ) +
-  fs.readFileSync(
     path.join(
       process.cwd(),
-      "migrations/d1/0012_validator_nominator_counts.sql",
+      "tests/fixtures/sqlite-schema/0011_nominator_positions.sql",
     ),
     "utf8",
   ) +
   fs.readFileSync(
     path.join(
       process.cwd(),
-      "migrations/d1/0029_nominator_positions_passes.sql",
+      "tests/fixtures/sqlite-schema/0017_account_balances.sql",
+    ),
+    "utf8",
+  ) +
+  fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "tests/fixtures/sqlite-schema/0020_account_balances_passes.sql",
+    ),
+    "utf8",
+  ) +
+  fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "tests/fixtures/sqlite-schema/0010_chain_detail.sql",
+    ),
+    "utf8",
+  ) +
+  fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "tests/fixtures/sqlite-schema/0012_validator_nominator_counts.sql",
+    ),
+    "utf8",
+  ) +
+  fs.readFileSync(
+    path.join(
+      process.cwd(),
+      "tests/fixtures/sqlite-schema/0029_nominator_positions_passes.sql",
     ),
     "utf8",
   ) +
@@ -60,16 +72,22 @@ const SCHEMA =
   // retry, per-message disposal, decompression -- not about any lane's SQL, so
   // any lane with a real writer will do.
   //
-  // The schema is still read from migrations/d1: node:sqlite is the engine
+  // The schema is still read from tests/fixtures/sqlite-schema: node:sqlite is the engine
   // behind the pg double, and these DDL files are the closest executable
   // description of the tables. What is under test here is the consumer's
   // disposal decision, not the dialect.
   fs.readFileSync(
-    path.join(process.cwd(), "migrations/d1/0019_hotkey_alpha.sql"),
+    path.join(
+      process.cwd(),
+      "tests/fixtures/sqlite-schema/0019_hotkey_alpha.sql",
+    ),
     "utf8",
   ) +
   fs.readFileSync(
-    path.join(process.cwd(), "migrations/d1/0021_hotkey_alpha_passes.sql"),
+    path.join(
+      process.cwd(),
+      "tests/fixtures/sqlite-schema/0021_hotkey_alpha_passes.sql",
+    ),
     "utf8",
   );
 

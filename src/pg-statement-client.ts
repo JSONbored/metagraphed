@@ -1,9 +1,11 @@
-// A D1-shaped surface backed by Postgres, including batch() (#10104).
+// A prepare/bind/all/run/batch client over Postgres, including a real
+// batch() (#10104).
 //
 // ## Why this exists
 //
-// The producer lanes still on D1 do not read their store through a tagged
-// template -- they take an injected `db` and call D1's own object API:
+// The producer lanes do not read their store through a tagged template -- they
+// take an injected `db` and call an object API, the one D1 defined and they
+// were written against:
 //
 //     db.prepare(sql).bind(...v).all()      the reads
 //     db.prepare(sql).bind(...v).run()      single writes
@@ -38,7 +40,7 @@ import { Client } from "pg";
 import { toPositionalPlaceholders } from "./pg-sql.ts";
 
 /** The minimal pg client this needs, so a test can hand it a fake. */
-export interface PgD1Client {
+export interface PgStatementClient {
   connect(): Promise<void>;
   end(): Promise<void>;
   query(
@@ -54,8 +56,8 @@ interface PendingStatement {
   values: unknown[];
 }
 
-export interface PgD1Deps {
-  clientFactory?: (connectionString: string) => PgD1Client;
+export interface PgStatementDeps {
+  clientFactory?: (connectionString: string) => PgStatementClient;
 }
 
 /**
@@ -65,13 +67,16 @@ export interface PgD1Deps {
  * the caller MUST park on `ctx.waitUntil` -- a leaked connection per producer
  * tick is worse than the read it was opened for.
  */
-export function createPgD1(connectionString: string, deps: PgD1Deps = {}) {
-  let client: PgD1Client | null = null;
-  const open = async (): Promise<PgD1Client> => {
+export function createPgStatementClient(
+  connectionString: string,
+  deps: PgStatementDeps = {},
+) {
+  let client: PgStatementClient | null = null;
+  const open = async (): Promise<PgStatementClient> => {
     if (client) return client;
     client =
       deps.clientFactory?.(connectionString) ??
-      (new Client({ connectionString }) as unknown as PgD1Client);
+      (new Client({ connectionString }) as unknown as PgStatementClient);
     await client.connect();
     return client;
   };

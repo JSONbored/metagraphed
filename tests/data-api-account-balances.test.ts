@@ -1,6 +1,6 @@
 // The revived account-balances sync lane (#9478), exercised END TO END against
 // a REAL SQLite database through the real Worker fetch handler -- same harness
-// and rationale as tests/data-api-validator-nominator-counts-d1.test.ts.
+// and rationale as tests/data-api-validator-nominator-counts.test.ts.
 //
 // This route answered `503 hyperdrive binding unavailable` from the box wipe
 // (#9193) until migration 0017 gave it a Cloudflare-native store, and it came
@@ -40,11 +40,17 @@ vi.mock("pg", () => pg.module);
 const { default: worker } = await import("../workers/data-api.ts");
 
 const SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0017_account_balances.sql"),
+  path.join(
+    process.cwd(),
+    "tests/fixtures/sqlite-schema/0017_account_balances.sql",
+  ),
   "utf8",
 );
 const PASSES_SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0020_account_balances_passes.sql"),
+  path.join(
+    process.cwd(),
+    "tests/fixtures/sqlite-schema/0020_account_balances_passes.sql",
+  ),
   "utf8",
 );
 

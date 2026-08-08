@@ -58,8 +58,8 @@ const env = {
   // matchHyperparamsIdentityD1Route): "postgres" keeps every read route in
   // this suite OFF the D1 lane, which since #9193 means it falls through to
   // the dispatcher's gone-tier 503. The D1 read lanes are exercised for real
-  // in tests/data-api-neurons-d1.test.ts and
-  // tests/data-api-hyperparams-identity-d1.test.ts. Writes ignore these flags.
+  // in tests/data-api-neurons.test.ts and
+  // tests/data-api-hyperparams-identity.test.ts. Writes ignore these flags.
   METAGRAPH_NEURONS_SOURCE: "postgres",
   METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres",
   METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres",
@@ -1161,7 +1161,7 @@ test("nominator-positions-sync is disabled (503) when NOMINATOR_POSITIONS_SYNC_S
 // and the only assertions that survive ("an unreachable store is a 502, never
 // an ok") are the ones the validator-nominator-counts case above already
 // makes. The success path is covered against a real database in
-// tests/data-api-nominator-positions-d1.test.ts.
+// tests/data-api-nominator-positions.test.ts.
 
 // #6742: POST /api/v1/internal/account-balances-sync -- the write path into
 // account_balances (see workers/data-api.ts's handleAccountBalancesSync).
@@ -1221,7 +1221,7 @@ test("account-balances-sync accepts the lane onto the queue (#9478)", async () =
   // It answered 503 for the whole period top-holders was frozen (#9193 retired
   // it with the box), which is why /api/v1/accounts/top-holders served a
   // `captured_at` stuck at 2026-08-02. The end-to-end write contract lives in
-  // tests/data-api-account-balances-d1.test.ts against a real SQLite database;
+  // tests/data-api-account-balances.test.ts against a real SQLite database;
   // this asserts only that the route no longer dead-ends here.
   //
   // `stores: ["queue"]` since metagraphed-infra#353: the route is enqueue-only,

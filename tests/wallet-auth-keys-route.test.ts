@@ -4,7 +4,7 @@
 // 2026-07-19). A dedicated test file (not folded into the already
 // 7500+-line tests/data-api.test.ts), mirroring
 // tests/alert-triggers-route.test.ts's shape: its OWN per-test queue over the
-// shared `pg` double (tests/user-state-d1-queue.ts) -- every route in this file
+// shared `pg` double (tests/user-state-store-queue.ts) -- every route in this file
 // runs on ACCOUNT_STATE_TABLES, and Neon is the only store behind them. Unkey's
 // own HTTP calls (src/unkey-client.ts) are stubbed via global fetch, same
 // per-test-queue shape as the store double.
@@ -18,7 +18,7 @@ import {
 import { encodeAccountId32 } from "../src/ss58.ts";
 import { createSessionToken } from "../src/wallet-auth.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
-import { wireQueuedPg } from "./user-state-d1-queue.ts";
+import { wireQueuedPg } from "./user-state-store-queue.ts";
 import type { Row } from "./row-type.ts";
 
 // The store is Postgres, reached through `new Client(...)` inside

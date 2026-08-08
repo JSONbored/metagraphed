@@ -3,7 +3,10 @@ import {
   CHAIN_CONCENTRATION_DAILY_TABLE,
   rollupChainConcentration,
 } from "../src/chain-concentration-rollup.ts";
-import { createPgD1, storeBoolean } from "../src/pg-d1-adapter.ts";
+import {
+  createPgStatementClient,
+  storeBoolean,
+} from "../src/pg-statement-client.ts";
 import { neonOwnsTable } from "../src/neon-write.ts";
 import {
   API_QUERY_COLLECTIONS,
@@ -2179,7 +2182,7 @@ function producerStore(
     Boolean(env.HYPERDRIVE?.connectionString) &&
     tables.every((table) => neonOwnsTable(bag, table));
   if (!owned) return { db: undefined, close: () => undefined };
-  const pg = createPgD1(env.HYPERDRIVE!.connectionString);
+  const pg = createPgStatementClient(env.HYPERDRIVE!.connectionString);
   return {
     db: pg,
     close: () => ctx?.waitUntil?.(pg.close()),
@@ -3684,7 +3687,7 @@ async function handlePollerLaneHealthSyncProxy(request: Request, env: Env) {
 // with api.ts's own errorResponse envelope, like the other secret-gated route
 // that lives in this Worker (handleChainFirehoseIngest). Direct D1
 // (METAGRAPH_HEALTH_DB), not the DATA_API service binding: these tables live
-// in the same D1 database as the observation tables (migrations/d1/
+// in the same D1 database as the observation tables (tests/fixtures/sqlite-schema/
 // 0005_emission_gate.sql), not in the chain-indexer Postgres.
 const EMISSION_GATE_SYNC_TOKEN_HEADER = "x-emission-gate-sync-token";
 // One observation is ~130 [netuid, boolean] pairs + ~130 EMA entries + four
@@ -3848,7 +3851,7 @@ function emissionGateSyncBodyError(parsed: unknown): string | null {
 }
 
 /** The producer store's read surface, as this lane uses it. */
-type ProducerDb = ReturnType<typeof createPgD1>;
+type ProducerDb = ReturnType<typeof createPgStatementClient>;
 
 async function emissionGateSyncRows(
   db: ProducerDb,

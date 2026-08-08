@@ -4,7 +4,7 @@
 //
 // The producer writes `price_basis: insufficient_pools` with a NULL
 // `usd_per_tao` when the two-pool quorum was not met, and
-// migrations/d1/0004_user_state.sql enforces that pairing as a CHECK
+// tests/fixtures/sqlite-schema/0004_user_state.sql enforces that pairing as a CHECK
 // constraint. So this reader must never coalesce the null to 0 — the two say
 // opposite things ("not priceable at that block" vs "TAO is worthless"), and
 // the producer and the schema both went to the trouble of distinguishing them.
@@ -49,7 +49,10 @@ import type { Row } from "./row-type.ts";
 // production cannot reach.
 const SCHEMA = (() => {
   const sql = fs.readFileSync(
-    path.join(process.cwd(), "migrations/d1/0004_user_state.sql"),
+    path.join(
+      process.cwd(),
+      "tests/fixtures/sqlite-schema/0004_user_state.sql",
+    ),
     "utf8",
   );
   const start = sql.indexOf("CREATE TABLE IF NOT EXISTS tao_usd_index");

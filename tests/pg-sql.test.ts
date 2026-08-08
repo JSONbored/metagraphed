@@ -13,7 +13,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 import {
-  createPgD1Runner,
+  createPgQuestionMarkRunner,
   createPgSql,
   pgStatementText,
   toPositionalPlaceholders,
@@ -144,7 +144,7 @@ describe("createPgSql", () => {
   });
 
   test("unsafe() does not renumber a `?` inside a string literal", async () => {
-    // The conversion is shared with createPgD1Runner and already handles this;
+    // The conversion is shared with createPgQuestionMarkRunner and already handles this;
     // asserting it through THIS path too, because a caller reaching for
     // `unsafe` is the one most likely to embed a literal.
     const { client, calls } = fakeClient([]);
@@ -337,8 +337,8 @@ describe("every dispatch path to Postgres converts placeholders", () => {
     createPgSql: async (h, c, f) => {
       await createPgSql(h, c, f).unsafe(bad, [1, 2]);
     },
-    createPgD1Runner: async (h, c, f) => {
-      await createPgD1Runner(h, c, f)(bad, [1, 2]);
+    createPgQuestionMarkRunner: async (h, c, f) => {
+      await createPgQuestionMarkRunner(h, c, f)(bad, [1, 2]);
     },
   };
 
@@ -389,11 +389,11 @@ describe("every dispatch path to Postgres converts placeholders", () => {
   });
 });
 
-describe("createPgD1Runner", () => {
+describe("createPgQuestionMarkRunner", () => {
   test("translates and binds, so an injected module needs no change", async () => {
     const { client, calls } = fakeClient([{ n: 1 }]);
     const { ctx } = ctxSpy();
-    const run = createPgD1Runner(
+    const run = createPgQuestionMarkRunner(
       { connectionString: "postgres://x" },
       ctx,
       () => client as never,
@@ -413,7 +413,7 @@ describe("createPgD1Runner", () => {
   test("defaults params, matching the D1Runner contract", async () => {
     const { client, calls } = fakeClient();
     const { ctx } = ctxSpy();
-    const run = createPgD1Runner(
+    const run = createPgQuestionMarkRunner(
       { connectionString: "postgres://x" },
       ctx,
       () => client as never,

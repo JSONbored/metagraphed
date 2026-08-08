@@ -149,7 +149,10 @@ beforeEach(() => {
   pg.control.db = db;
   for (const file of MIGRATIONS) {
     db.exec(
-      fs.readFileSync(path.join(process.cwd(), "migrations/d1", file), "utf8"),
+      fs.readFileSync(
+        path.join(process.cwd(), "tests/fixtures/sqlite-schema", file),
+        "utf8",
+      ),
     );
   }
   // subnet_snapshots lives in 0002 alongside a great deal else; only the three

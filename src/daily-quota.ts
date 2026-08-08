@@ -1,6 +1,6 @@
 // Per-account daily quota accounting (#8608).
 //
-// Counters live in `api_quota_daily`, now a D1 table (migrations/d1), reached over
+// Counters live in `api_quota_daily`, now a D1 table (tests/fixtures/sqlite-schema), reached over
 // the DATA_API service binding --
 // the same path workers/api.ts's recordApiKeyUsage already uses on every keyed
 // request. See the schema comment for why that beat a Durable Object and Redis.

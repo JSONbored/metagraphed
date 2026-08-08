@@ -1,5 +1,5 @@
 // metagraphed registry-sync Worker — the ONLY write path into the registry
-// database, now D1 (`metagraphed`, schema in migrations/d1/0001_registry.sql).
+// database, now D1 (`metagraphed`, schema in tests/fixtures/sqlite-schema/0001_registry.sql).
 //
 // MOVED OFF THE SELF-HOSTED POSTGRES. The registry lived on a dedicated
 // Postgres on the indexer box, reached through Hyperdrive. That box is being

@@ -1,6 +1,6 @@
 // The hotkey-alpha sync lane (#9502), exercised END TO END against a REAL
 // SQLite database through the real Worker fetch handler -- same harness and
-// rationale as tests/data-api-account-balances-d1.test.ts.
+// rationale as tests/data-api-account-balances.test.ts.
 //
 // This table is the input `delegated_tao` could not be computed without. A
 // coldkey's `nominator_positions.share_fraction` is a dimensionless slice of a
@@ -42,24 +42,33 @@ const { default: worker } = await import("../workers/data-api.ts");
 const { QUEUE_MESSAGE_MAX_BYTES } = await import("../src/sync-batch-queue.ts");
 
 const SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0019_hotkey_alpha.sql"),
+  path.join(
+    process.cwd(),
+    "tests/fixtures/sqlite-schema/0019_hotkey_alpha.sql",
+  ),
   "utf8",
 );
 const PASSES_SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0021_hotkey_alpha_passes.sql"),
+  path.join(
+    process.cwd(),
+    "tests/fixtures/sqlite-schema/0021_hotkey_alpha_passes.sql",
+  ),
   "utf8",
 );
 // The write filters against nominator_positions (#9557): only pools some
 // position actually references are stored, so the sink's statement reads that
 // table and the fixture has to provide it.
 const POSITIONS_SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0011_nominator_positions.sql"),
+  path.join(
+    process.cwd(),
+    "tests/fixtures/sqlite-schema/0011_nominator_positions.sql",
+  ),
   "utf8",
 );
 const POSITIONS_INDEX = fs.readFileSync(
   path.join(
     process.cwd(),
-    "migrations/d1/0022_nominator_positions_hotkey_netuid.sql",
+    "tests/fixtures/sqlite-schema/0022_nominator_positions_hotkey_netuid.sql",
   ),
   "utf8",
 );
@@ -328,7 +337,7 @@ describe("POST /api/v1/internal/hotkey-alpha-sync", () => {
   });
 });
 
-// --- the pass tally (#9502, migrations/d1/0021) ------------------------------
+// --- the pass tally (#9502, tests/fixtures/sqlite-schema/0021) ------------------------------
 //
 // The twin of the balances lane's accounting, guarding a quieter failure. A
 // short balance ledger visibly drops accounts from a leaderboard; a short POOL

@@ -24,7 +24,7 @@
 //
 // Deliberately NOT provided: a USD figure. #8369 also asks for `usd_at_tx`,
 // but no TAO/USD history exists anywhere in this system — no column in any
-// migrations/d1 table, no field in any route schema, and no ingestion
+// tests/fixtures/sqlite-schema table, no field in any route schema, and no ingestion
 // job. The only TAO/USD in the product is a LIVE spot read from a third-party
 // ticker performed in the browser (apps/ui/src/lib/metagraphed/market.functions.ts),
 // never stored. A dollar price also cannot be derived from chain data on

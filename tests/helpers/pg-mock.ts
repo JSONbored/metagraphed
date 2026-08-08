@@ -5,7 +5,7 @@
 // Before #10179 a route test built its store as `env.METAGRAPH_HEALTH_DB = <a
 // prepare/bind/all fake over node:sqlite>`, and every selector took it. There
 // is one store now, reached through `new Client({ connectionString })` inside
-// src/read-store.ts, src/pg-sql.ts, src/pg-d1-adapter.ts and
+// src/read-store.ts, src/pg-sql.ts, src/pg-statement-client.ts and
 // src/lane-health-store.ts -- none of which a route caller can inject into,
 // because the caller is `worker.fetch(request, env, ctx)`.
 //

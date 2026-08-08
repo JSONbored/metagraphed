@@ -12,7 +12,7 @@
 // look exactly like 554,136 well-formed rows, only fewer. So the producer
 // declares its pass size up front -- it can, because metagraphed-infra#316 made
 // it buffer the whole walk before posting anything -- and
-// `account_balances_passes` (migrations/d1/0018) tallies what actually landed.
+// `account_balances_passes` (tests/fixtures/sqlite-schema/0018) tallies what actually landed.
 // This module is the reader over that tally.
 //
 // WHY NOT JUST TRUST THE PRODUCER'S OWN FLOOR. metagraphed-infra#316 already

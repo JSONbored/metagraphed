@@ -131,7 +131,7 @@ export function createPgSql(
   };
   const sql = ((strings: TemplateStringsArray, ...values: unknown[]) =>
     run(pgStatementText(strings), values)) as PgSql;
-  // `?` -> `$n`, exactly as createPgD1Runner does it, and for the same reason
+  // `?` -> `$n`, exactly as createPgQuestionMarkRunner does it, and for the same reason
   // -- this is the escape hatch route handlers reach for when the statement is
   // assembled from a column-list constant, and they write SQLite's `?` because
   // D1 is what they were written against.
@@ -142,7 +142,7 @@ export function createPgSql(
   // /subnets/{n}/validators, /subnets/{n}/performance, /subnets/{n}/neurons/
   // {uid}, that route's /history, and /validators/{hotkey}/history.
   //
-  // The conversion existed and was wired into createPgD1Runner ONLY, so the
+  // The conversion existed and was wired into createPgQuestionMarkRunner ONLY, so the
   // tagged-template path and the injected-runner path were both safe and the
   // third path -- this one -- was not. A statement that already uses `$n` and
   // no `?` passes through unchanged, so applying it here is not a behaviour
@@ -194,7 +194,7 @@ export function toPositionalPlaceholders(sql: string): string {
 
 /** Build a D1Runner backed by Hyperdrive. Callers pass this where they would
  * otherwise pass the D1-backed runner; the modules themselves are untouched. */
-export function createPgD1Runner(
+export function createPgQuestionMarkRunner(
   hyperdrive: HyperdriveLike,
   ctx: WaitUntilLike,
   clientFactory?: (connectionString: string) => Client,

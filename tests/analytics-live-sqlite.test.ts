@@ -1,9 +1,14 @@
-// Executes the resurrected D1 read loaders in src/analytics-live.ts against a
-// REAL SQLite database built from migrations/d1/0002_observations.sql — same
-// rationale as tests/observations-d1-sqlite.test.ts (the write half): a fake
+// Executes the read loaders in src/analytics-live.ts against a REAL SQLite
+// database built from tests/fixtures/sqlite-schema/0002_observations.sql: a fake
 // records SQL but never parses it, and the riskiest constructs here (the rank
 // CTE, the gap-island window functions, the HAVING-bound min_samples floor)
 // only fail at execution. node:sqlite keeps this dependency-free.
+//
+// THE DIALECT IS NOT THE SERVING ONE. These loaders run on Postgres in
+// production (src/graphql.ts, src/mcp-server.ts, through observationsReadDb),
+// so executing them on SQLite proves the constructs run SOMEWHERE, not that
+// they run where it counts. tests/no-sqlite-only-sql.test.ts is what keeps the
+// two dialects honest with each other; moving this suite onto Postgres is #10227.
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
@@ -25,7 +30,10 @@ import {
 import { loadEconomicsTrends } from "../src/economics-trends.ts";
 
 const SCHEMA = fs.readFileSync(
-  path.join(process.cwd(), "migrations/d1/0002_observations.sql"),
+  path.join(
+    process.cwd(),
+    "tests/fixtures/sqlite-schema/0002_observations.sql",
+  ),
   "utf8",
 );
 

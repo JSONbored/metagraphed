@@ -1,6 +1,6 @@
 // The revived nominator-positions sync lane (#9273), exercised END TO END
 // against a REAL SQLite database through the real Worker fetch handler --
-// same harness and rationale as tests/data-api-hyperparams-identity-d1.test.ts.
+// same harness and rationale as tests/data-api-hyperparams-identity.test.ts.
 //
 // This route answered `503 hyperdrive binding unavailable` for the whole
 // period the ledger was frozen. What matters here is the write CONTRACT, and
@@ -21,13 +21,16 @@ const { default: worker } = await import("../workers/data-api.ts");
 
 const SCHEMA =
   fs.readFileSync(
-    path.join(process.cwd(), "migrations/d1/0011_nominator_positions.sql"),
+    path.join(
+      process.cwd(),
+      "tests/fixtures/sqlite-schema/0011_nominator_positions.sql",
+    ),
     "utf8",
   ) +
   fs.readFileSync(
     path.join(
       process.cwd(),
-      "migrations/d1/0029_nominator_positions_passes.sql",
+      "tests/fixtures/sqlite-schema/0029_nominator_positions_passes.sql",
     ),
     "utf8",
   );
