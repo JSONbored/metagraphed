@@ -13,10 +13,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
+import { D1_MAX_COMPOUND_TERMS } from "../src/d1-compound.ts";
 import {
   describeMirrorLags,
   MIRROR_LAG_THRESHOLD_MS,
   MIRROR_LANE_TABLES,
+  mirrorFreshnessBatches,
   mirrorFreshnessSql,
   mirrorLags,
   NEON_MIRROR_LAG_LANE,
@@ -97,13 +99,71 @@ describe("MIRROR_LANE_TABLES", () => {
 });
 
 describe("mirrorFreshnessSql", () => {
-  test("asks every table in ONE statement", () => {
+  test("asks every table of one batch in ONE statement", () => {
     const sql = mirrorFreshnessSql(["a", "b"]);
     assert.equal(
       sql,
       "SELECT 'a' AS t, MAX(captured_at) AS mx FROM a UNION ALL " +
         "SELECT 'b' AS t, MAX(captured_at) AS mx FROM b",
     );
+  });
+});
+
+describe("mirrorFreshnessBatches", () => {
+  const everyTable = [...new Set(Object.values(MIRROR_LANE_TABLES))];
+
+  test("no batch is wider than D1 will parse", () => {
+    // Measured against production, twice (#9881, #10081): five terms answer,
+    // six throw. Past the ceiling the sweep does not degrade -- it reads
+    // NOTHING, and this watchdog then has nothing to say about ten mirrors.
+    for (const sql of mirrorFreshnessBatches(everyTable)) {
+      assert.ok(
+        sql.split(/\bUNION ALL\b/).length <= D1_MAX_COMPOUND_TERMS,
+        `batch too wide: ${sql}`,
+      );
+    }
+  });
+
+  test("every table is asked exactly once", () => {
+    const named = mirrorFreshnessBatches(everyTable)
+      .flatMap((sql) => [...sql.matchAll(/SELECT '(\w+)' AS t/g)])
+      .map((m) => m[1]);
+    assert.deepEqual(named.sort(), [...everyTable].sort());
+  });
+
+  test("the live table list ACTUALLY needs splitting", () => {
+    // A negative assertion passes on nothing. If the watched set ever shrank
+    // back to five, the two tests above would hold on a single batch and stop
+    // proving the split works -- so pin that the real pairing exercises it.
+    assert.ok(
+      everyTable.length > D1_MAX_COMPOUND_TERMS,
+      "MIRROR_LANE_TABLES no longer exceeds one batch; this suite stopped testing the split",
+    );
+    assert.ok(mirrorFreshnessBatches(everyTable).length > 1);
+  });
+
+  test("a table list that fits stays one statement", () => {
+    assert.equal(mirrorFreshnessBatches(["a", "b"]).length, 1);
+  });
+
+  test("the width is overridable, and the remainder is not dropped", () => {
+    const batches = mirrorFreshnessBatches(["a", "b", "c", "d", "e"], 2);
+    assert.equal(batches.length, 3);
+    assert.equal(batches[2].split(/\bUNION ALL\b/).length, 1);
+  });
+
+  test("each batch carries the right freshness column per table", () => {
+    // The override list is per-table, so a batch boundary must not shift which
+    // column a table is read by. chain_detail_* and the capture-state pair have
+    // no captured_at at all -- naming the default there is a missing-column
+    // error, which for THIS watchdog is the failure it exists to catch.
+    const joined = mirrorFreshnessBatches(everyTable, 1).join(" ");
+    assert.ok(
+      joined.includes("MAX(observed_at) AS mx FROM chain_detail_blocks"),
+    );
+    assert.ok(joined.includes("MAX(observed_at) AS mx FROM blocks_head"));
+    assert.ok(joined.includes("MAX(updated_at) AS mx FROM raw_capture_state"));
+    assert.ok(joined.includes("MAX(captured_at) AS mx FROM neurons"));
   });
 });
 
@@ -442,6 +502,103 @@ describe("runNeonMirrorWatchdog", () => {
     });
     assert.equal(out.attempted, true);
     assert.ok(MIRROR_LAG_THRESHOLD_MS > 0);
+  });
+});
+
+describe("the sweep against a store that enforces D1's ceiling", () => {
+  /** A fake that behaves like D1: it THROWS on an over-wide statement rather
+   * than truncating it, and answers each batch only about its own tables. A
+   * fake that answered everything regardless of what was asked would pass on
+   * the unbatched code this describe exists to keep out. */
+  function ceilingDb(freshness: Readonly<Record<string, number>>) {
+    const statements: string[] = [];
+    return {
+      statements,
+      db: {
+        prepare(sql: string) {
+          return {
+            async all() {
+              if (sql.startsWith("SELECT lane")) return { results: [] };
+              statements.push(sql);
+              const terms = sql.split(/\bUNION ALL\b/).length;
+              if (terms > D1_MAX_COMPOUND_TERMS) {
+                throw new Error(
+                  "D1_ERROR: too many terms in compound SELECT: SQLITE_ERROR",
+                );
+              }
+              const asked = [...sql.matchAll(/SELECT '(\w+)' AS t/g)].map(
+                (m) => m[1],
+              );
+              return {
+                results: asked
+                  .filter((t) => freshness[t] != null)
+                  .map((t) => ({ t, mx: freshness[t] })),
+              };
+            },
+            bind() {
+              return {
+                async run() {},
+                async all() {
+                  return { results: [] };
+                },
+              };
+            },
+          };
+        },
+      },
+    };
+  }
+
+  test("reads every watched table, across more batches than one", async () => {
+    // The whole deployed lane set, which is well past the ceiling -- this is
+    // the exact shape that reported `unknown` in production for an hour.
+    const lanes = Object.keys(MIRROR_LANE_TABLES);
+    const tables = [...new Set(Object.values(MIRROR_LANE_TABLES))];
+    const spy = ceilingDb(Object.fromEntries(tables.map((t) => [t, NOW])));
+
+    const out = await runNeonMirrorWatchdog(
+      { NEON_DUAL_WRITE_LANES: lanes.join(",") },
+      { db: spy.db, laneHealthDb: spy.db, now: () => NOW },
+    );
+
+    assert.ok(spy.statements.length > 1, "expected the sweep to be split");
+    // Every table answered, so no lane can be reported as never-mirrored for
+    // want of a freshness reading.
+    const seen = spy.statements
+      .flatMap((sql) => [...sql.matchAll(/SELECT '(\w+)' AS t/g)])
+      .map((m) => m[1]);
+    assert.deepEqual(seen.sort(), [...tables].sort());
+    assert.notEqual(out.attempted, false);
+    assert.ok(out.survey, "expected a survey rather than an unreadable sweep");
+  });
+
+  test("one unreadable batch fails the whole sweep, not part of it", async () => {
+    // A partial read would understate freshness for the missing tables, and a
+    // missing table reads as "never written" -- an alarm manufactured from a
+    // measurement that was never taken.
+    const lanes = Object.keys(MIRROR_LANE_TABLES);
+    const spy = ceilingDb({});
+    let calls = 0;
+    const db = {
+      prepare(sql: string) {
+        const inner = spy.db.prepare(sql);
+        return {
+          async all() {
+            if (!sql.startsWith("SELECT lane") && calls++ === 1) {
+              throw new Error("D1_ERROR: overloaded");
+            }
+            return inner.all();
+          },
+          bind: inner.bind,
+        };
+      },
+    };
+    const out = await runNeonMirrorWatchdog(
+      { NEON_DUAL_WRITE_LANES: lanes.join(",") },
+      { db, laneHealthDb: db, now: () => NOW },
+    );
+    assert.equal(out.reason, "freshness unreadable");
+    assert.equal(out.survey, undefined);
   });
 });
 

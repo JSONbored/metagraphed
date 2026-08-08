@@ -34,6 +34,7 @@
 // than D1, because the D1 write is lossy (#9832) -- so a check written as "is
 // Neon behind D1" would have reported that table healthy while it was the
 // worst broken of the three. Both directions are surfaced.
+import { compoundBatches, D1_MAX_COMPOUND_TERMS } from "./d1-compound.ts";
 import {
   loadLatestLaneHealth,
   recordLaneVerdict,
@@ -173,43 +174,22 @@ export interface TableParity {
 }
 
 /**
- * D1's compound-SELECT ceiling, MEASURED against production 2026-08-07.
+ * The sweep, split into statements no wider than D1 will parse.
  *
- * Upstream SQLite defaults `SQLITE_MAX_COMPOUND_SELECT` to 500. D1 builds it
- * at FIVE. Probed directly against the production database: 3 and 5 terms
- * answer, 6 and up fail with
- *
- *     D1_ERROR: too many terms in compound SELECT: SQLITE_ERROR
- *
- * This is not a tuning knob, it is the reason this lane never worked. It
- * shipped in #9850 sweeping ten tables in one UNION ALL -- five past the
- * limit -- so the D1 half of the comparison threw before it read a single row
- * and the watchdog recorded `unknown: counts unreadable` every hour from the
- * moment it deployed. A watchdog that cannot read its subject reports the
- * truth about itself and nothing about what it watches, which is why this was
- * only caught by looking at the lane rather than trusting that it was green.
+ * The ceiling itself, and why exceeding it is total rather than partial, live
+ * in src/d1-compound.ts -- this lane is where it was first measured (#9881),
+ * and `neon-mirror-lag` walked into the identical failure later (#10081), which
+ * is what moved the constant somewhere both can read.
  *
  * Batching here rather than at the call site because the ceiling grows more
  * dangerous as PARITY_TABLES grows: every table added to the migration adds a
- * term, and the failure is total (no counts at all) rather than partial.
- */
-export const D1_MAX_COMPOUND_TERMS = 5;
-
-/**
- * The sweep, split into statements no wider than D1 will parse.
- *
- * Postgres has no comparable limit, but both stores run the SAME batches so
- * the two halves stay symmetric and one row-shape reader serves both.
+ * term.
  */
 export function parityCountBatches(
   tables: readonly string[],
   perBatch: number = D1_MAX_COMPOUND_TERMS,
 ): string[] {
-  const batches: string[] = [];
-  for (let i = 0; i < tables.length; i += perBatch) {
-    batches.push(parityCountSql(tables.slice(i, i + perBatch)));
-  }
-  return batches;
+  return compoundBatches(tables, parityCountSql, perBatch);
 }
 
 /** One `SELECT count` per table, unioned. Never call with more than
