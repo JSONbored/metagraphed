@@ -101,9 +101,15 @@ describe("global-operational-health", () => {
   test("MCP tool metadata and outputSchema compile", () => {
     assert.equal(GET_NETWORK_HEALTH_MCP_TOOL.name, "get_network_health");
     assert.match(GET_NETWORK_HEALTH_INSTRUCTIONS, /get_network_health/);
+    // Asserted an EMPTY argument set until #10014: this tool took nothing at
+    // all and returned every subnet's health row on every call. It now takes
+    // the two filters its collection declares. Kept as an EXACT set so an
+    // argument appearing here by accident still fails.
     assert.deepEqual(
-      Object.keys(GET_NETWORK_HEALTH_MCP_TOOL.inputSchema.properties ?? {}),
-      [],
+      Object.keys(
+        GET_NETWORK_HEALTH_MCP_TOOL.inputSchema.properties ?? {},
+      ).sort(),
+      ["netuid", "status"],
     );
     assert.ok(
       new Ajv2020({ strict: false }).compile(GET_NETWORK_HEALTH_OUTPUT_SCHEMA),

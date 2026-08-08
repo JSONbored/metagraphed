@@ -4106,6 +4106,43 @@ const LIST_SUBNETS_RANGE_BOUNDS = [
 // non-numeric cannot satisfy a bound, so it is excluded once any bound on that
 // field is set — identical to rangeFilterRows in workers/list-query.ts. Only
 // finite numeric args count (tools/call does not enforce inputSchema types).
+/**
+ * `netuid` / `netuids`, the two identity filters the subnets collection
+ * declares and this tool did not offer (#10014).
+ *
+ * `min_netuid`/`max_netuid` give a RANGE; neither expresses "these three
+ * subnets", which is why asking for 1, 7 and 64 was three calls or a full
+ * page scan while `?netuids=1,7,64` is one request over REST.
+ *
+ * A separate pass rather than an entry in either existing one: the categorical
+ * filter compares lowercased strings against an enum, and the range filter
+ * needs a numeric bound per arg. Neither shape fits an exact id or a CSV
+ * membership test, and bending one to take it would make both harder to read.
+ */
+export function identityFilterSubnets(rows: Row[], args: Row) {
+  const netuid = Number.isFinite(args?.netuid) ? Number(args.netuid) : null;
+  // The route parses this as a CSV membership filter (csv_filters), so it
+  // arrives as a string. An empty entry is dropped rather than matched as NaN.
+  const netuids =
+    typeof args?.netuids === "string" && args.netuids.trim()
+      ? new Set(
+          args.netuids
+            .split(",")
+            .map((part: string) => Number(part.trim()))
+            .filter((value: number) => Number.isInteger(value)),
+        )
+      : null;
+  if (netuid === null && netuids === null) return rows;
+  return rows.filter((row: Row) => {
+    const value = row.netuid;
+    if (typeof value !== "number") return false;
+    if (netuid !== null && value !== netuid) return false;
+    // Both given: intersect, the same way every other filter pair here does.
+    if (netuids !== null && !netuids.has(value)) return false;
+    return true;
+  });
+}
+
 export function rangeFilterSubnets(rows: Row[], args: Row) {
   const bounds = LIST_SUBNETS_RANGE_BOUNDS.filter(({ arg }) =>
     Number.isFinite(args?.[arg]),
@@ -4637,7 +4674,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // Categorical inclusion (status/subnet_type/domain) and exclusion
       // (not_status/not_subnet_type/not_domain), then the numeric range bounds.
       const categorical = categoricalFilterSubnets(all, args);
-      const filtered = rangeFilterSubnets(categorical, args);
+      const identified = identityFilterSubnets(categorical, args);
+      const filtered = rangeFilterSubnets(identified, args);
       // Sort the filtered list before paging; unscored subnets sort last and
       // equal values tie-break by netuid for a stable page (sortSubnets).
       const sort = optionalEnum(args, "sort", LIST_SUBNETS_SORT_FIELDS);
@@ -4898,12 +4936,23 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
   {
     ...GET_NETWORK_HEALTH_MCP_TOOL,
     async handler(
-      _args: z.infer<typeof GetNetworkHealthInputSchema>,
+      args: z.infer<typeof GetNetworkHealthInputSchema>,
       ctx: McpCtx,
     ) {
-      return loadGlobalOperationalHealth(
-        { env: ctx.env, readHealthKv: ctx.readHealthKv },
-        { contractVersion: () => mcpContractVersion(ctx) },
+      // #10014: this returned every subnet's health on every call with no way
+      // to narrow. Same engine the route uses; "subnets" is the collection's
+      // own data_key. `summary` is left spanning every subnet, not the page --
+      // a caller filtering to `down` still needs the network's real counts.
+      return applySubnetListQuery(
+        (await loadGlobalOperationalHealth(
+          { env: ctx.env, readHealthKv: ctx.readHealthKv },
+          { contractVersion: () => mcpContractVersion(ctx) },
+        )) as Row,
+        args as Row,
+        "health-subnets",
+        "subnets",
+        // Network-wide: `netuid` is an ordinary filter here, not a subject.
+        [],
       );
     },
   },
