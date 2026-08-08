@@ -435,7 +435,7 @@ export const SDL = /* GraphQL */ `
       fields: String
       limit: Int
       cursor: Int
-    ): PoolList!
+    ): EndpointPoolList!
     "The load-balanced Bittensor RPC pool scores -- the RPC-specific predecessor of endpoint_pools (#6570): same pools[] row shape and filter/sort/page surface, with a live 15-minute cron eligibility overlay applied before filtering/sorting. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/rpc/pools."
     rpc_pools(
       id: String
@@ -2233,7 +2233,22 @@ export const SDL = /* GraphQL */ `
     source_urls: [String!]
   }
 
-  "Shared by endpoint_pools and rpc_pools -- same pools[] row shape, filter/sort/page surface, and pagination-metadata fields (#6570); rpc_pools additionally populates source/operational_observed_at from its live cron overlay, which endpoint_pools leaves null."
+  "Endpoint pool scores (#6570): same pools[] row shape, filter/sort/page surface, and pagination metadata as PoolList. Split from it in #9892 for the one field that differs -- operational_observed_at, which GET /api/v1/endpoint-pools does not serve at all, because endpoint pools carry no live cron eligibility overlay and so have no observation stamp to report. The shared type declared it anyway and GraphQL answered null, which reads as not-observed-yet rather than never-observed-here."
+  type EndpointPoolList {
+    generated_at: String
+    notes: JSON
+    source: String
+    pools: [JSON!]!
+    total: Int!
+    returned: Int!
+    limit: Int!
+    cursor: Int!
+    next_cursor: Int
+    sort: String
+    order: String
+  }
+
+  "RPC pool scores (#6570): same pools[] row shape, filter/sort/page surface, and pagination metadata as EndpointPoolList, plus operational_observed_at -- real here and only here, since the RPC pools are the ones carrying a live 15-minute cron eligibility overlay."
   type PoolList {
     generated_at: String
     notes: JSON
@@ -2356,6 +2371,7 @@ export const SDL = /* GraphQL */ `
   }
 
   type ProfileList {
+    "When the profile rows were gathered. Sourced from the artifact's generated_at, which is the only stamp it carries -- profile rows are derived at build time, so there is no separate capture event (#9892)."
     captured_at: String
     profiles: [JSON!]!
     total: Int!
@@ -4329,7 +4345,8 @@ export const SDL = /* GraphQL */ `
 
   type Validator {
     hotkey: String!
-    featured: Boolean!
+    "Whether this validator is in the featured_validators set. NULL from the single-validator lookup, which carries no featured set (buildValidatorDetail never passes one, keeping that artifact shape unchanged) -- null means unknown, not not-featured (#9892). The source table is currently unported, so the list value is its documented degraded default."
+    featured: Boolean
     coldkey: String
     coldkey_identity: Identity
     coldkey_count: Int

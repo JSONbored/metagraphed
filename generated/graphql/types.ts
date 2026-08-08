@@ -2172,6 +2172,22 @@ export type EndpointList = {
   total: Scalars['Int']['output'];
 };
 
+/** Endpoint pool scores (#6570): same pools[] row shape, filter/sort/page surface, and pagination metadata as PoolList. Split from it in #9892 for the one field that differs -- operational_observed_at, which GET /api/v1/endpoint-pools does not serve at all, because endpoint pools carry no live cron eligibility overlay and so have no observation stamp to report. The shared type declared it anyway and GraphQL answered null, which reads as not-observed-yet rather than never-observed-here. */
+export type EndpointPoolList = {
+  __typename?: 'EndpointPoolList';
+  cursor: Scalars['Int']['output'];
+  generated_at?: Maybe<Scalars['String']['output']>;
+  limit: Scalars['Int']['output'];
+  next_cursor?: Maybe<Scalars['Int']['output']>;
+  notes?: Maybe<Scalars['JSON']['output']>;
+  order?: Maybe<Scalars['String']['output']>;
+  pools: Array<Scalars['JSON']['output']>;
+  returned: Scalars['Int']['output'];
+  sort?: Maybe<Scalars['String']['output']>;
+  source?: Maybe<Scalars['String']['output']>;
+  total: Scalars['Int']['output'];
+};
+
 export type EvidenceList = {
   __typename?: 'EvidenceList';
   claims: Array<Scalars['JSON']['output']>;
@@ -2688,7 +2704,7 @@ export type PipelineHistoryPoint = {
   tao_in_pool_tao?: Maybe<Scalars['Float']['output']>;
 };
 
-/** Shared by endpoint_pools and rpc_pools -- same pools[] row shape, filter/sort/page surface, and pagination-metadata fields (#6570); rpc_pools additionally populates source/operational_observed_at from its live cron overlay, which endpoint_pools leaves null. */
+/** RPC pool scores (#6570): same pools[] row shape, filter/sort/page surface, and pagination metadata as EndpointPoolList, plus operational_observed_at -- real here and only here, since the RPC pools are the ones carrying a live 15-minute cron eligibility overlay. */
 export type PoolList = {
   __typename?: 'PoolList';
   cursor: Scalars['Int']['output'];
@@ -2707,6 +2723,7 @@ export type PoolList = {
 
 export type ProfileList = {
   __typename?: 'ProfileList';
+  /** When the profile rows were gathered. Sourced from the artifact's generated_at, which is the only stamp it carries -- profile rows are derived at build time, so there is no separate capture event (#9892). */
   captured_at?: Maybe<Scalars['String']['output']>;
   cursor: Scalars['Int']['output'];
   limit: Scalars['Int']['output'];
@@ -2908,7 +2925,7 @@ export type Query = {
   /** Probe-derived endpoint incident feed -- active endpoint failures/degradations with severity, state, provider, and subnet. Filter by netuid/kind/provider/status/severity/state, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/endpoint-incidents. */
   endpoint_incidents: IncidentList;
   /** Generalized endpoint pool scores -- each pool's kind, eligible/total endpoint count, and probe-derived routing score. Filter by id/kind, threshold with min_/max_eligible_count and min_/max_endpoint_count, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/endpoint-pools. */
-  endpoint_pools: PoolList;
+  endpoint_pools: EndpointPoolList;
   /** Endpoint/resource registry with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/layer/provider/publication_state/status/pool_eligible, threshold with min_/max_latency_ms and min_/max_score, project with fields, sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error (matching endpoint_pools/rpc_pools/rpc_endpoints), not a silently substituted default. Mirrors GET /api/v1/endpoints. */
   endpoints: EndpointList;
   /** Network-wide public evidence ledger -- the append-only provenance record behind registry surfaces. Search with q across subject/claim/source_url/support_summary, sort with sort/order, project with fields, and page with limit (1-100)/cursor. An invalid sort/limit/cursor is a GraphQL error, not a silently substituted default. Distinct from subnet_evidence(netuid) (one subnet's claims). Mirrors GET /api/v1/evidence. */
@@ -6049,7 +6066,8 @@ export type Validator = {
   coldkey?: Maybe<Scalars['String']['output']>;
   coldkey_count?: Maybe<Scalars['Int']['output']>;
   coldkey_identity?: Maybe<Identity>;
-  featured: Scalars['Boolean']['output'];
+  /** Whether this validator is in the featured_validators set. NULL from the single-validator lookup, which carries no featured set (buildValidatorDetail never passes one, keeping that artifact shape unchanged) -- null means unknown, not not-featured (#9892). The source table is currently unported, so the list value is its documented degraded default. */
+  featured?: Maybe<Scalars['Boolean']['output']>;
   hotkey: Scalars['String']['output'];
   max_validator_trust?: Maybe<Scalars['Float']['output']>;
   nominator_count?: Maybe<Scalars['Int']['output']>;
@@ -6470,6 +6488,7 @@ export type ResolversTypes = ResolversObject<{
   Endpoint: ResolverTypeWrapper<Endpoint>;
   EndpointIncident: ResolverTypeWrapper<EndpointIncident>;
   EndpointList: ResolverTypeWrapper<EndpointList>;
+  EndpointPoolList: ResolverTypeWrapper<EndpointPoolList>;
   EvidenceList: ResolverTypeWrapper<EvidenceList>;
   EvmAddressMapping: ResolverTypeWrapper<EvmAddressMapping>;
   Extrinsic: ResolverTypeWrapper<Extrinsic>;
@@ -6815,6 +6834,7 @@ export type ResolversParentTypes = ResolversObject<{
   Endpoint: Endpoint;
   EndpointIncident: EndpointIncident;
   EndpointList: EndpointList;
+  EndpointPoolList: EndpointPoolList;
   EvidenceList: EvidenceList;
   EvmAddressMapping: EvmAddressMapping;
   Extrinsic: Extrinsic;
@@ -8701,6 +8721,20 @@ export type EndpointListResolvers<ContextType = GqlContext, ParentType extends R
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
+export type EndpointPoolListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EndpointPoolList'] = ResolversParentTypes['EndpointPoolList']> = ResolversObject<{
+  cursor?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  generated_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  next_cursor?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  notes?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
+  order?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  pools?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
+  returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type EvidenceListResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EvidenceList'] = ResolversParentTypes['EvidenceList']> = ResolversObject<{
   claims?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
   cursor?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -9255,7 +9289,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   emission_changes?: Resolver<ResolversTypes['EmissionGateChanges'], ParentType, ContextType, Partial<QueryEmission_ChangesArgs>>;
   emission_pipeline?: Resolver<ResolversTypes['EmissionPipeline'], ParentType, ContextType, Partial<QueryEmission_PipelineArgs>>;
   endpoint_incidents?: Resolver<ResolversTypes['IncidentList'], ParentType, ContextType, Partial<QueryEndpoint_IncidentsArgs>>;
-  endpoint_pools?: Resolver<ResolversTypes['PoolList'], ParentType, ContextType, Partial<QueryEndpoint_PoolsArgs>>;
+  endpoint_pools?: Resolver<ResolversTypes['EndpointPoolList'], ParentType, ContextType, Partial<QueryEndpoint_PoolsArgs>>;
   endpoints?: Resolver<ResolversTypes['EndpointList'], ParentType, ContextType, Partial<QueryEndpointsArgs>>;
   evidence?: Resolver<ResolversTypes['EvidenceList'], ParentType, ContextType, Partial<QueryEvidenceArgs>>;
   evm_address?: Resolver<Maybe<ResolversTypes['EvmAddressMapping']>, ParentType, ContextType, RequireFields<QueryEvm_AddressArgs, 'h160'>>;
@@ -10559,7 +10593,7 @@ export type ValidatorResolvers<ContextType = GqlContext, ParentType extends Reso
   coldkey?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   coldkey_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   coldkey_identity?: Resolver<Maybe<ResolversTypes['Identity']>, ParentType, ContextType>;
-  featured?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  featured?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
   hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   max_validator_trust?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   nominator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
@@ -10867,6 +10901,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   Endpoint?: EndpointResolvers<ContextType>;
   EndpointIncident?: EndpointIncidentResolvers<ContextType>;
   EndpointList?: EndpointListResolvers<ContextType>;
+  EndpointPoolList?: EndpointPoolListResolvers<ContextType>;
   EvidenceList?: EvidenceListResolvers<ContextType>;
   EvmAddressMapping?: EvmAddressMappingResolvers<ContextType>;
   Extrinsic?: ExtrinsicResolvers<ContextType>;
