@@ -11,7 +11,7 @@ import { describe, test } from "vitest";
 import { mirroredWatermark } from "../src/raw-capture-sync.ts";
 
 const NOW = 1_786_000_000_000;
-const waitUntil = () => undefined;
+const waitUntil = { waitUntil: () => undefined };
 
 /** An inner (D1) store that records what it was asked to do. */
 function fakeInner(value: number | null) {
