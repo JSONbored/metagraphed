@@ -512,6 +512,57 @@ const SURFACE_FAILURE_DAILY_COLUMNS = [
   "updated_at",
 ] as const;
 
+/** The four chain_detail tables, read off pragma_table_info 2026-08-07. */
+const CHAIN_DETAIL_BLOCKS_COLUMNS = [
+  "block_number",
+  "block_hash",
+  "spec_version",
+  "extrinsic_count",
+  "chain_event_count",
+  "account_event_count",
+  "observed_at",
+  "synced_at",
+] as const;
+
+const CHAIN_DETAIL_EXTRINSICS_COLUMNS = [
+  "block_number",
+  "extrinsic_index",
+  "extrinsic_hash",
+  "signer",
+  "call_module",
+  "call_function",
+  "success",
+  "fee_tao",
+  "tip_tao",
+  "call_args",
+  "observed_at",
+] as const;
+
+const CHAIN_DETAIL_CHAIN_EVENTS_COLUMNS = [
+  "block_number",
+  "event_index",
+  "pallet",
+  "method",
+  "args",
+  "phase",
+  "extrinsic_index",
+  "observed_at",
+] as const;
+
+const CHAIN_DETAIL_ACCOUNT_EVENTS_COLUMNS = [
+  "block_number",
+  "event_index",
+  "extrinsic_index",
+  "event_kind",
+  "hotkey",
+  "coldkey",
+  "netuid",
+  "uid",
+  "amount_tao",
+  "alpha_amount",
+  "observed_at",
+] as const;
+
 /** blocks_head, read off pragma_table_info 2026-08-07. */
 const BLOCKS_HEAD_COLUMNS = [
   "block_number",
@@ -848,6 +899,59 @@ export const NEON_BACKFILL_PLANS: Readonly<Record<string, BackfillPlan>> = {
     // can never fire, and that is correct rather than accidental: block_number
     // is the whole key, so a conflict means equality, and a conflicting row is
     // the same block. Same shape as surface_checks.
+    freshness: "block_number",
+  },
+  // The decoded seam (#10021). All four are append: the poller assigns
+  // block_number as it decodes, so nothing arrives below the mark, and a
+  // decoded block is written once and never rewritten.
+  //
+  // SAFE ONLY BECAUSE THE NEON PRUNE EXISTS NOW (#10017). These are a pruned
+  // ROLLING WINDOW, not an archive -- D1 deletes below an adaptive block
+  // watermark every run. Mirroring the writes without the prune is the shape
+  // that burned surface_checks (#9891): Neon grows forever, the reconciler
+  // reads the pruned tail as a deficit it can never close, and neon-parity
+  // alarms permanently. The prune now applies the SAME resolved bound to both
+  // stores, which is what makes reconciling these converge.
+  //
+  // freshness IS block_number rather than observed_at, on all four, because
+  // the keyset has to BE the primary key -- one that drifts from it resumes a
+  // page from the wrong place and skips rows silently.
+  chain_detail_blocks: {
+    table: "chain_detail_blocks",
+    columns: CHAIN_DETAIL_BLOCKS_COLUMNS,
+    conflict: ["block_number"],
+    keyset: ["block_number"],
+    partition: "append",
+    booleans: [],
+    freshness: "block_number",
+  },
+  chain_detail_extrinsics: {
+    table: "chain_detail_extrinsics",
+    columns: CHAIN_DETAIL_EXTRINSICS_COLUMNS,
+    conflict: ["block_number", "extrinsic_index"],
+    keyset: ["block_number", "extrinsic_index"],
+    partition: "append",
+    // The only boolean in the family. D1 stores 0/1 with a CHECK; Neon
+    // declares BOOLEAN, and Postgres refuses to compare the two.
+    booleans: ["success"],
+    freshness: "block_number",
+  },
+  chain_detail_chain_events: {
+    table: "chain_detail_chain_events",
+    columns: CHAIN_DETAIL_CHAIN_EVENTS_COLUMNS,
+    conflict: ["block_number", "event_index"],
+    keyset: ["block_number", "event_index"],
+    partition: "append",
+    booleans: [],
+    freshness: "block_number",
+  },
+  chain_detail_account_events: {
+    table: "chain_detail_account_events",
+    columns: CHAIN_DETAIL_ACCOUNT_EVENTS_COLUMNS,
+    conflict: ["block_number", "event_index"],
+    keyset: ["block_number", "event_index"],
+    partition: "append",
+    booleans: [],
     freshness: "block_number",
   },
   // Two rows, one per network, rewritten in place on every capture tick. The
