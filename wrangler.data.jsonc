@@ -464,6 +464,17 @@
   // what minute it happens to be.
   "triggers": {
     "crons": [
+      // metagraphed's own uptime probe (#9836), and it runs HERE rather than on
+      // the main Worker for one reason (#10194): api.metagraph.sh is a custom
+      // domain of that Worker, so probing it from inside it is a self-fetch --
+      // Cloudflare refuses, the probe came back 522 every time, and
+      // /api/v1/self-health published `verdict: "outage"` on a healthy API.
+      //
+      // This Worker serves no public hostname, so the fetch leaves and returns
+      // through the real edge: the same DNS, TLS and routing a user gets, which
+      // is what the lane claims to measure. See SELF_HEALTH_PROBE_CRON in
+      // workers/config.ts for why the cadence is 5 minutes and not the box's 1.
+      "3,8,13,18,23,28,33,38,43,48,53,58 * * * *",
       "* * * * *",
       "*/3 * * * *",
       "26 * * * *",
