@@ -2440,7 +2440,7 @@ async function dispatchScheduled(
     // wrapper records the tick either way; `ok:false` on an unbound D1 or a
     // failed delete is a real "did not do the work" outcome, and the wrapper
     // honours it.
-    return pruneChainDetail(env);
+    return pruneChainDetail(env, ctx);
   }
   if (cron === CHAIN_CONCENTRATION_ROLLUP_CRON) {
     // #9628: compute the network-wide concentration card for every COMPLETE

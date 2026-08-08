@@ -56,6 +56,12 @@
 // must not.
 
 import { resolveBlocksSeam } from "./blocks-cold-tier.ts";
+import {
+  createPgSql,
+  type HyperdriveLike,
+  type WaitUntilLike,
+} from "./pg-sql.ts";
+import { neonBackfillLanes } from "./neon-write.ts";
 
 /** ~6h at the chain's 12s cadence: 3x the hourly decode lane's worst-case lag. */
 export const CHAIN_DETAIL_MIN_RETAINED_BLOCKS = 1_800;
@@ -147,6 +153,11 @@ export interface ChainDetailPruneResult {
   deleted_below?: number;
   /** How many blocks this run removed, capped per run. */
   blocks_pruned?: number;
+  /** Whether the SAME bound was applied to Neon, and what happened if not.
+   * Reported separately because the two stores prune INDEPENDENTLY -- see the
+   * runner. */
+  neon_pruned?: boolean;
+  neon_detail?: string;
 }
 
 /**
@@ -155,8 +166,16 @@ export interface ChainDetailPruneResult {
  * Returns a summary rather than throwing, matching the cron family: a tick that
  * cannot run is one missed report, not an outage.
  */
+export interface ChainDetailPruneDeps {
+  /** Injectable Postgres runner, so the Neon half is testable without a
+   * database -- the same escape hatch src/neon-prune.ts takes. */
+  sql?: { unsafe(text: string, values?: unknown[]): Promise<unknown> } | null;
+}
+
 export async function pruneChainDetail(
   env: unknown,
+  ctx?: WaitUntilLike,
+  deps: ChainDetailPruneDeps = {},
 ): Promise<ChainDetailPruneResult> {
   const binding = (env as { METAGRAPH_HEALTH_DB?: D1Like } | null | undefined)
     ?.METAGRAPH_HEALTH_DB;
@@ -199,18 +218,82 @@ export async function pruneChainDetail(
           .bind(deletedBelow),
       ),
     );
+    const neon = await pruneChainDetailNeon(env, ctx, deletedBelow, deps);
     return {
       ok: true,
       keep_from: window.keepFrom,
       retained_blocks: window.retainedBlocks,
       deleted_below: deletedBelow,
       blocks_pruned: deletedBelow - floor,
+      ...neon,
     };
   } catch (err) {
     return {
       ok: false,
       reason: "prune_failed",
       ...(err instanceof Error ? { detail: err.message } : {}),
+    };
+  }
+}
+
+/**
+ * The SAME bound, applied to Neon.
+ *
+ * WHY THE BOUND IS PASSED IN AND NEVER RECOMPUTED (#10017). This is the one
+ * decision the whole function exists to make. `src/neon-prune.ts` expresses
+ * retention as a time window -- a column plus a `retentionMs` -- and this tier
+ * does not have one: `chainDetailPruneWindow` derives an adaptive BLOCK
+ * watermark from the lane head and how far back the lakehouse has not reached,
+ * clamped, recomputed every run. No `retentionMs` reproduces it, because block
+ * production is not constant and the seam moves independently of the clock.
+ *
+ * Recomputing a bound per store would be worse than not pruning at all. A
+ * wider Neon window keeps blocks D1 has dropped and `neon-parity` reports a
+ * permanent surplus; a narrower one drops blocks the hot tier is still
+ * expected to serve and the read cutover silently loses coverage at the seam.
+ * Both states look like an in-flight backfill rather than a design error,
+ * which is why this takes `deletedBelow` as an argument: one resolution per
+ * run, so the two stores cannot disagree about the window even transiently.
+ *
+ * THE STORES STILL PRUNE INDEPENDENTLY. A Neon failure is reported and
+ * swallowed, never rethrown -- blocking D1's retention on Neon's availability
+ * would freeze the surviving store's window, which is the same reasoning
+ * health-prober.ts:949 already applies to its own two-store prune. D1 has
+ * already deleted by the time this runs; the worst case is Neon holding a
+ * little extra until the next tick, which the next tick fixes.
+ *
+ * Gated on `neonBackfillLanes`: a table nothing reconciles has no Neon rows to
+ * prune, and issuing the DELETE anyway would be a connection per tick for
+ * nothing.
+ */
+async function pruneChainDetailNeon(
+  env: unknown,
+  ctx: WaitUntilLike | undefined,
+  deletedBelow: number,
+  deps: ChainDetailPruneDeps,
+): Promise<{ neon_pruned?: boolean; neon_detail?: string }> {
+  const bag = env as Record<string, unknown> | null | undefined;
+  const hyperdrive = bag?.HYPERDRIVE as HyperdriveLike | undefined;
+  const injected = deps.sql;
+  if (!injected && (!hyperdrive?.connectionString || !ctx)) return {};
+  // Every one of the four, or none: they are pruned to a single watermark and
+  // a partially-listed set would leave one table holding blocks its siblings
+  // dropped -- a join across the seam would then find a block header with no
+  // events, which reads as corruption rather than as retention.
+  const lanes = neonBackfillLanes(bag);
+  if (!PRUNE_TABLES.every((table) => lanes.has(table))) return {};
+  try {
+    const sql = injected ?? createPgSql(hyperdrive!, ctx!);
+    for (const table of PRUNE_TABLES) {
+      await sql.unsafe(`DELETE FROM ${table} WHERE block_number < $1`, [
+        deletedBelow,
+      ]);
+    }
+    return { neon_pruned: true };
+  } catch (err) {
+    return {
+      neon_pruned: false,
+      neon_detail: err instanceof Error ? err.message : "neon prune failed",
     };
   }
 }

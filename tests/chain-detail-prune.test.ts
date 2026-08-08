@@ -202,3 +202,109 @@ describe("pruneChainDetail", () => {
     assert.equal(result.detail, undefined);
   });
 });
+
+describe("the Neon side of the prune (#10017)", () => {
+  /** A D1 double that reports a wide window, so a real prune always runs. */
+  function d1WithWindow(floor: number, head: number) {
+    const deleted: unknown[] = [];
+    return {
+      deleted,
+      binding: {
+        prepare: (sql: string) => ({
+          bind: (...v: unknown[]) => {
+            deleted.push({ sql, v });
+            return { sql, v };
+          },
+          first: async () => ({ floor, head }),
+        }),
+        batch: async (s: unknown[]) => s,
+      },
+    };
+  }
+
+  const NEON_LANES =
+    "chain_detail_blocks,chain_detail_extrinsics," +
+    "chain_detail_chain_events,chain_detail_account_events";
+
+  test("Neon is pruned with the SAME bound D1 was, never a recomputed one", async () => {
+    // The entire point of #10017. chainDetailPruneWindow derives an adaptive
+    // BLOCK watermark from the head and the lakehouse seam; there is no
+    // retentionMs that reproduces it, so a per-store recomputation would drift
+    // and the drift is invisible -- a wider Neon window is a permanent parity
+    // surplus, a narrower one is silent coverage loss at the seam.
+    const d1 = d1WithWindow(1, 10_000_000);
+    const seen: { text: string; values: unknown[] }[] = [];
+    const result = await pruneChainDetail(
+      {
+        METAGRAPH_HEALTH_DB: d1.binding,
+        HYPERDRIVE: { connectionString: "postgresql://example/db" },
+        NEON_BACKFILL_LANES: NEON_LANES,
+      },
+      { waitUntil: () => undefined },
+      {
+        sql: {
+          unsafe: async (text: string, values: unknown[] = []) => {
+            seen.push({ text, values });
+            return [];
+          },
+        },
+      },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.neon_pruned, true);
+    // All four tables, and every one of them bound to the SAME number D1 used.
+    assert.equal(seen.length, 4);
+    for (const { text, values } of seen) {
+      assert.match(
+        text,
+        /DELETE FROM chain_detail_\w+ WHERE block_number < \$1/,
+      );
+      assert.deepEqual(values, [result.deleted_below]);
+    }
+    // And it is a real bound, not a vacuous zero that would delete nothing.
+    assert.ok((result.deleted_below ?? 0) > 1);
+  });
+
+  test("no Hyperdrive binding leaves the D1 prune untouched", async () => {
+    const d1 = d1WithWindow(1, 10_000_000);
+    const result = await pruneChainDetail(
+      { METAGRAPH_HEALTH_DB: d1.binding, NEON_BACKFILL_LANES: NEON_LANES },
+      { waitUntil: () => undefined },
+    );
+    assert.equal(result.ok, true);
+    assert.equal(result.neon_pruned, undefined);
+    assert.ok((result.blocks_pruned ?? 0) > 0);
+  });
+
+  test("ONE unreconciled table skips the Neon prune entirely", async () => {
+    // All four or none. They are pruned to a single watermark, so a
+    // partially-listed set would leave one table holding blocks its siblings
+    // dropped -- a join across the seam then finds a block header with no
+    // events, which reads as corruption rather than as retention.
+    const d1 = d1WithWindow(1, 10_000_000);
+    const result = await pruneChainDetail(
+      {
+        METAGRAPH_HEALTH_DB: d1.binding,
+        HYPERDRIVE: { connectionString: "postgresql://example/db" },
+        NEON_BACKFILL_LANES:
+          "chain_detail_blocks,chain_detail_extrinsics,chain_detail_chain_events",
+      },
+      { waitUntil: () => undefined },
+    );
+    assert.equal(result.neon_pruned, undefined);
+  });
+
+  test("no ctx means no Neon prune, and D1 still runs", async () => {
+    // createPgSql returns its connection via waitUntil; without somewhere to
+    // park the teardown the connection would leak per tick.
+    const d1 = d1WithWindow(1, 10_000_000);
+    const result = await pruneChainDetail({
+      METAGRAPH_HEALTH_DB: d1.binding,
+      HYPERDRIVE: { connectionString: "postgresql://example/db" },
+      NEON_BACKFILL_LANES: NEON_LANES,
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.neon_pruned, undefined);
+    assert.ok((result.blocks_pruned ?? 0) > 0);
+  });
+});

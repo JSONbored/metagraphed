@@ -605,6 +605,27 @@
   // second thing to operate for tables that comfortably share one. The
   // binding name keeps the pre-2026-07-16 METAGRAPH_HEALTH_DB, matching the
   // resurrected code that uses it.
+  // Hyperdrive to the same Neon this account's data-api Worker already uses
+  // (#10017). Bound HERE because the chain-detail prune cron runs on THIS
+  // Worker, and pruning a table in one store but not the other is how a mirror
+  // diverges permanently -- the reconciler reads the pruned tail as a deficit
+  // it can never close.
+  //
+  // BINDING IT MOVES NO READ, and that separation is #9704's whole lesson.
+  // Every read gate in this codebase asks an explicit flag as well as the
+  // binding, because provisioning Hyperdrive for a WRITE pilot once silently
+  // moved a public route's read onto a store nothing had written to. "This
+  // Worker can reach Neon" and "this route should read Neon" are different
+  // questions; nothing on this Worker asks the second one yet.
+  //
+  // nodejs_compat is already set above, which is what makes the native pg
+  // driver usable here at all.
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "8a09dc673733497f987434f59689287e",
+    },
+  ],
   "d1_databases": [
     {
       "binding": "METAGRAPH_HEALTH_DB",
