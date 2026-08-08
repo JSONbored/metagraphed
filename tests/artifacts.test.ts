@@ -1356,8 +1356,16 @@ test("public artifacts are internally consistent", () => {
     true,
   );
   // #1006: per-field provenance. Every served surface exposes last_verified_at
-  // (string|null) + a `stale` boolean, and `stale` is reproducible from the
-  // helper against the committed native-snapshot captured_at.
+  // (string|null) + a `stale` flag reproducible from the helper against the
+  // committed native-snapshot captured_at.
+  //
+  // #9906: `stale` is boolean|NULL, and the null is load-bearing -- it means
+  // "never verified, so there is nothing to judge", as opposed to a measured
+  // `false` meaning "checked, and current". Asserting the CORRELATION rather
+  // than just the type is what stops the two collapsing back together: 78% of
+  // served surfaces have no verification, and publishing `false` for them made
+  // `stale === false` select 3,435 surfaces of which only 820 had a current
+  // verification behind them.
   const surfaceNowMs = Date.parse(native.captured_at);
   for (const surface of surfaces.surfaces) {
     assert.ok(
@@ -1365,10 +1373,16 @@ test("public artifacts are internally consistent", () => {
         typeof surface.last_verified_at === "string",
       `surface ${surface.id} last_verified_at must be a string or null`,
     );
+    assert.ok(
+      surface.stale === null || typeof surface.stale === "boolean",
+      `surface ${surface.id} stale must be a boolean or null`,
+    );
     assert.equal(
-      typeof surface.stale,
-      "boolean",
-      `surface ${surface.id} must carry a boolean stale flag`,
+      surface.stale === null,
+      surface.last_verified_at === null,
+      `surface ${surface.id}: stale is null exactly when last_verified_at is null — ` +
+        `a null stale with a verification date (or a boolean stale without one) means ` +
+        `the freshness flag and the evidence it describes have drifted apart`,
     );
     assert.equal(
       surface.stale,

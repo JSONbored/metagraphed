@@ -550,7 +550,17 @@ export const SurfaceSchema = z
       .optional(),
     schema_url: HttpOrWssUrlSchema.optional(),
     source_urls: z.array(z.url()).optional(),
-    stale: z.boolean().optional(),
+    stale: z
+      .boolean()
+      .nullable()
+      .optional()
+      .describe(
+        "Whether this surface's verification has aged past its per-kind freshness TTL. " +
+          "NULL when there is no verification to judge (`last_verified_at` is null, or " +
+          "unparseable) — distinct from a measured `false`, which means we checked and it " +
+          "is current. Filtering on `stale === false` therefore selects surfaces with a " +
+          "CURRENT verification, not merely surfaces that are not known to be stale.",
+      ),
     status: HealthStatusSchema.optional(),
     subnet_name: z.string().optional(),
     subnet_slug: z.string().optional(),

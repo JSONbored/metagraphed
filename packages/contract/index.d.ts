@@ -11704,7 +11704,8 @@ export interface components {
             schema_status?: "machine-readable" | "ui-only" | "not-captured";
             schema_url?: string;
             source_urls?: string[];
-            stale?: boolean;
+            /** @description Whether this surface's verification has aged past its per-kind freshness TTL. NULL when there is no verification to judge (`last_verified_at` is null, or unparseable) — distinct from a measured `false`, which means we checked and it is current. Filtering on `stale === false` therefore selects surfaces with a CURRENT verification, not merely surfaces that are not known to be stale. */
+            stale?: boolean | null;
             status?: components["schemas"]["HealthStatus"];
             subnet_name?: string;
             subnet_slug?: string;

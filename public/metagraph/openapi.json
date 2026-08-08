@@ -52454,7 +52454,15 @@
             "type": "array"
           },
           "stale": {
-            "type": "boolean"
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whether this surface's verification has aged past its per-kind freshness TTL. NULL when there is no verification to judge (`last_verified_at` is null, or unparseable) — distinct from a measured `false`, which means we checked and it is current. Filtering on `stale === false` therefore selects surfaces with a CURRENT verification, not merely surfaces that are not known to be stale."
           },
           "status": {
             "$ref": "#/components/schemas/HealthStatus"

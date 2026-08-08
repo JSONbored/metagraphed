@@ -1111,14 +1111,38 @@ export function surfaceFreshnessTtlDays(kind: string): number {
 // deterministic reference — never wall-clock — so the flag is reproducible). A
 // surface with no last_verified_at is NOT stale: that's "unverified", a distinct
 // state the null timestamp already signals.
+/**
+ * Is this surface's verification stale? `null` when there is nothing to judge.
+ *
+ * #9906: this used to answer `false` for a surface that had never been verified,
+ * which published `stale: false` for 2,731 of 3,493 live surfaces (78%) -- so a
+ * consumer filtering on `stale === false` to mean "this verification is current"
+ * got a set where four in five entries had no verification behind them at all.
+ *
+ * Read narrowly -- "is this verification stale?" -- `false` for "there is no
+ * verification" is defensible. Read as the field name reads to an API consumer
+ * -- "is this surface's status stale?" -- it is backwards: a surface nobody has
+ * ever checked is the MOST unknown, not the least.
+ *
+ * `null` is the same distinction this codebase already keeps elsewhere:
+ * `exists` is null rather than false on RPC failure in /crowdloans/{id},
+ * `leased` is null rather than false in /subnets/{netuid}/lease, and
+ * `verdict: "unknown"` stays distinct from `"ok"` in lane_health -- "a watchdog
+ * that could not evaluate has not observed health, and collapsing the two would
+ * report an unmeasured lane as a healthy one" (migrations/d1/0014).
+ *
+ * The two unmeasurable cases return `null` for the same reason: an unparseable
+ * `last_verified_at` and a non-finite `nowMs` are both "we could not evaluate",
+ * not "we evaluated and it is fine".
+ */
 export function isSurfaceStale(
   lastVerifiedAt: unknown,
   kind: string,
   nowMs: number,
-): boolean {
-  if (!lastVerifiedAt) return false;
+): boolean | null {
+  if (!lastVerifiedAt) return null;
   const verifiedMs = Date.parse(lastVerifiedAt as string);
-  if (!Number.isFinite(verifiedMs) || !Number.isFinite(nowMs)) return false;
+  if (!Number.isFinite(verifiedMs) || !Number.isFinite(nowMs)) return null;
   return nowMs - verifiedMs > surfaceFreshnessTtlDays(kind) * 86_400_000;
 }
 
@@ -1133,6 +1157,12 @@ export function withSurfaceFreshness(surfaces: Row[], nowMs: number): Row[] {
       surface.kind as string,
       nowMs,
     );
+    // `stale === true`, not a truthiness check (#9906). `null` is falsy so the
+    // two agree TODAY and no test can separate them -- the explicit compare is
+    // here because the value is no longer a boolean, and any future
+    // representation of "unmeasured" that is truthy (a "unknown" sentinel, an
+    // object) would silently start demoting all 2,731 never-verified surfaces.
+    const demotedByStaleness = stale === true;
     return {
       ...surface,
       stale,
@@ -1142,7 +1172,7 @@ export function withSurfaceFreshness(surfaces: Row[], nowMs: number): Row[] {
       // elsewhere. subnet_curation_level isn't carried on the flattened row, so
       // an already-resolved maintainer-reviewed/adapter-backed level (set in
       // flattenSurfaces from the subnet ceiling) is preserved when still fresh.
-      curation_level: stale
+      curation_level: demotedByStaleness
         ? resolveSurfaceCurationLevel({
             authority: surface.authority ?? null,
             lastVerifiedAt: surface.last_verified_at,

@@ -32,6 +32,7 @@ import {
   isCredentialedUrl,
   isLikelyExampleLink,
   isSurfaceStale,
+  resolveSurfaceCurationLevel,
   surfaceFreshnessTtlDays,
   withSurfaceFreshness,
   SURFACE_FRESHNESS_DEFAULT_TTL_DAYS,
@@ -1859,12 +1860,16 @@ describe("script utility contracts", () => {
     const now = Date.parse("2026-06-14T00:00:00.000Z");
     const daysAgo = (n: number) => new Date(now - n * 86_400_000).toISOString();
 
-    // Unverified surfaces are NOT stale — null is a distinct state the agent reads.
-    assert.equal(isSurfaceStale(null, "subnet-api", now), false);
-    assert.equal(isSurfaceStale(undefined, "docs", now), false);
-    // Unparseable inputs never throw and never flag stale.
-    assert.equal(isSurfaceStale("not-a-date", "docs", now), false);
-    assert.equal(isSurfaceStale(daysAgo(999), "docs", Number.NaN), false);
+    // #9906: never verified is NULL, not false. `false` here published
+    // "this verification is current" for 2,731 of 3,493 live surfaces that had
+    // no verification at all, making the field useless for the one filter it
+    // exists to serve.
+    assert.equal(isSurfaceStale(null, "subnet-api", now), null);
+    assert.equal(isSurfaceStale(undefined, "docs", now), null);
+    // Unparseable inputs never throw, and are "could not evaluate" -- the same
+    // unknown, not a measured pass.
+    assert.equal(isSurfaceStale("not-a-date", "docs", now), null);
+    assert.equal(isSurfaceStale(daysAgo(999), "docs", Number.NaN), null);
     // Fresh: age below the kind TTL.
     assert.equal(isSurfaceStale(daysAgo(10), "subnet-api", now), false);
     // Boundary: exactly at the TTL is still fresh (strict greater-than).
@@ -1891,10 +1896,77 @@ describe("script utility contracts", () => {
       [
         ["a", true],
         ["b", false],
-        ["c", false],
+        // Never verified: null, distinguishable from b's measured-and-fresh.
+        ["c", null],
       ],
     );
     assert.equal(stamped[0].kind, "openapi");
+  });
+
+  test("#9906: a null `stale` must not change which surfaces are demoted", () => {
+    // The nullable `stale` is a LABELLING fix; the trust ordering must come out
+    // byte-identical. This asserts the OUTCOME -- which tier each of the three
+    // states resolves to -- because that is what consumers see. It does not
+    // (and cannot) distinguish `stale === true` from a truthiness check, since
+    // null is falsy; see the comment on demotedByStaleness in scripts/lib.ts
+    // for why the explicit compare is still the right form.
+    const now = Date.parse("2026-06-14T00:00:00.000Z");
+    const daysAgo = (n: number) => new Date(now - n * 86_400_000).toISOString();
+
+    const stamped = withSurfaceFreshness(
+      [
+        // never verified -> stale null, must NOT be demoted BY STALENESS
+        {
+          id: "never",
+          kind: "docs",
+          authority: "official",
+          last_verified_at: null,
+        },
+        // verified and fresh -> stale false, not demoted
+        {
+          id: "fresh",
+          kind: "openapi",
+          authority: "official",
+          last_verified_at: daysAgo(1),
+        },
+        // verified and aged out -> stale true, demoted
+        {
+          id: "aged",
+          kind: "openapi",
+          authority: "official",
+          last_verified_at: daysAgo(45),
+        },
+      ],
+      now,
+    );
+    const byId = new Map(stamped.map((row) => [row.id, row]));
+
+    assert.equal(byId.get("never")?.stale, null);
+    assert.equal(byId.get("fresh")?.stale, false);
+    assert.equal(byId.get("aged")?.stale, true);
+
+    // A never-verified surface resolves to the same tier it did when `stale`
+    // was false -- it floors through resolveSurfaceCurationLevel on the
+    // missing last_verified_at, not through the staleness demotion.
+    assert.equal(
+      byId.get("never")?.curation_level,
+      resolveSurfaceCurationLevel({
+        authority: "official",
+        lastVerifiedAt: null,
+        stale: false,
+        subnetCurationLevel: null,
+      }),
+    );
+    // And the measured-stale one still takes the demotion path.
+    assert.equal(
+      byId.get("aged")?.curation_level,
+      resolveSurfaceCurationLevel({
+        authority: "official",
+        lastVerifiedAt: daysAgo(45),
+        stale: true,
+        subnetCurationLevel: null,
+      }),
+    );
   });
 
   test("classifies code-example / quickstart links (#1008)", () => {
