@@ -19,34 +19,87 @@ function run() {
   return execFileSync("node", [SCRIPT], { encoding: "utf8" });
 }
 
+const DECLARED_MAPS = [
+  "DECLARED",
+  "DECLARED_ARGUMENTS",
+  "DECLARED_MISSING_ARGUMENTS",
+] as const;
+
 describe("graphql route parity gate", () => {
   test("passes on the committed contract", () => {
-    // Not just an exit code: the summary line carries the counts the rest of
-    // this file asserts against.
-    assert.match(run(), /0 divergence\(s\)/);
+    // Both halves, separately. `0 divergence(s)` appears on two summary lines
+    // now, so matching it once would let the argument half regress unnoticed
+    // while the type half kept the assertion green.
+    const output = run();
+    assert.match(
+      output,
+      /type\/route pairs, \d+ fields compared, 0 divergence/,
+    );
+    assert.match(output, /argument\/parameter pairs, 0 divergence/);
   });
 
   test("the comparison actually reaches the SDL", () => {
     // A gate that resolves no pairs passes while checking nothing. The script
     // has its own floor for this; this pins the same property from outside so
     // lowering the floor alone cannot hide a broken merge.
+    //
+    // The floors moved with #10065: the parser read argument lines as fields,
+    // so every Query field with a multi-line argument list was skipped and the
+    // gate compared 105 pairs while believing it covered the schema. 160/1088
+    // is the whole surface; anything materially under it means the parse broke
+    // again.
     const output = run();
     const pairs = /(\d+) type\/route pairs/.exec(output);
     const fields = /(\d+) fields compared/.exec(output);
-    assert.ok(pairs && Number(pairs[1]) >= 100, `pairs: ${pairs?.[1]}`);
-    assert.ok(fields && Number(fields[1]) >= 700, `fields: ${fields?.[1]}`);
+    const args = /(\d+) argument\/parameter pairs/.exec(output);
+    assert.ok(pairs && Number(pairs[1]) >= 155, `pairs: ${pairs?.[1]}`);
+    assert.ok(fields && Number(fields[1]) >= 1050, `fields: ${fields?.[1]}`);
+    assert.ok(args && Number(args[1]) >= 600, `arguments: ${args?.[1]}`);
+  });
+
+  test("multi-line argument lists are parsed, not read as fields", () => {
+    // The specific parse bug the floors above are a proxy for. `subnets(` opens
+    // an argument list spanning 30 lines; if those lines are read as fields of
+    // Query, `Query.sort`, `Query.order` and friends appear as phantom fields
+    // and the field they belong to vanishes. Assert the shape directly so a
+    // reader can see what the floor is protecting.
+    const sdl = readFileSync("src/graphql-sdl.ts", "utf8");
+    const query = /^ {2}type Query \{\n([\s\S]*?)^ {2}\}/m.exec(sdl);
+    assert.ok(query, "the SDL must still declare `type Query`");
+    const multiLine = [...query[1].matchAll(/^ {4}(\w+)\($/gm)];
+    assert.ok(
+      multiLine.length >= 60,
+      `only ${multiLine.length} multi-line-argument Query fields found — if this ` +
+        "collapsed, the gate's coverage claim rests on a shape that no longer exists",
+    );
   });
 
   test("every declared divergence carries a written reason", () => {
     // A bare marker would let an entry be added without saying why, which is
     // how an allowlist stops being evidence and becomes a place to put things.
+    // A reason may be an inline string or a shared constant (several entries
+    // share one paragraph); a shared constant must itself be prose.
     const source = readFileSync(SCRIPT, "utf8");
-    const block =
-      /const DECLARED: Record<string, string> = \{([\s\S]*?)\n\};/.exec(source);
-    assert.ok(block, "DECLARED must stay a hand-written map");
-    for (const [, key] of block[1].matchAll(/"([\w.]+)":/g)) {
-      const entry = new RegExp(`"${key.replace(".", "\\.")}":\\s*\\n?\\s*"`);
-      assert.match(source, entry, `${key} must carry a prose reason`);
+    for (const name of DECLARED_MAPS) {
+      const block = new RegExp(
+        `const ${name}: Record<string, string> = \\{([\\s\\S]*?)\\n\\};`,
+      ).exec(source);
+      assert.ok(block, `${name} must stay a hand-written map`);
+      for (const [, key, reason] of block[1].matchAll(
+        /"([\w.]+)":\s*\n?\s*("|[A-Z_]+,)/g,
+      )) {
+        if (reason === '"') continue;
+        const constant = reason.replace(/,$/, "");
+        assert.match(
+          source,
+          new RegExp(`const ${constant} =\\s*\\n?\\s*"`),
+          `${key} points at ${constant}, which must be a prose constant`,
+        );
+      }
+      const keys = [...block[1].matchAll(/"([\w.]+)":/g)].length;
+      const reasons = [...block[1].matchAll(/"[\w.]+":\s*\n?\s*("|[A-Z_]+)/g)]
+        .length;
+      assert.equal(reasons, keys, `every ${name} entry needs a reason`);
     }
   });
 

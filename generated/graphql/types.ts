@@ -2197,7 +2197,7 @@ export type EvidenceList = {
   next_cursor?: Maybe<Scalars['Int']['output']>;
   order?: Maybe<Scalars['String']['output']>;
   returned: Scalars['Int']['output'];
-  schema_version?: Maybe<Scalars['String']['output']>;
+  schema_version?: Maybe<Scalars['Int']['output']>;
   sort?: Maybe<Scalars['String']['output']>;
   summary?: Maybe<Scalars['JSON']['output']>;
   total: Scalars['Int']['output'];
@@ -4860,7 +4860,7 @@ export type SourceSnapshotList = {
   next_cursor?: Maybe<Scalars['Int']['output']>;
   order?: Maybe<Scalars['String']['output']>;
   returned: Scalars['Int']['output'];
-  schema_version?: Maybe<Scalars['String']['output']>;
+  schema_version?: Maybe<Scalars['Int']['output']>;
   sort?: Maybe<Scalars['String']['output']>;
   sources: Array<Scalars['JSON']['output']>;
   summary?: Maybe<Scalars['JSON']['output']>;
@@ -8749,7 +8749,7 @@ export type EvidenceListResolvers<ContextType = GqlContext, ParentType extends R
   next_cursor?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   order?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  schema_version?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  schema_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   summary?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   total?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -9667,7 +9667,7 @@ export type SourceSnapshotListResolvers<ContextType = GqlContext, ParentType ext
   next_cursor?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   order?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   returned?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
-  schema_version?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  schema_version?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   sort?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   sources?: Resolver<Array<ResolversTypes['JSON']>, ParentType, ContextType>;
   summary?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
