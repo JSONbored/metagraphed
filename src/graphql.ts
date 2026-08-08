@@ -1,4 +1,5 @@
 import { loadSubnetWeightSettersColdTier } from "./subnet-weight-setters-loader.ts";
+import { observationsReadDb } from "./observations-read-runner.ts";
 import { loadSubnetWeightsColdTier } from "./subnet-weights-loader.ts";
 import { loadSubnetEventCardColdTier } from "./subnet-event-card-loader.ts";
 import { loadSubnetAlphaVolumeFromArtifact } from "./subnet-alpha-volume-artifact.ts";
@@ -886,6 +887,10 @@ export interface GqlContext {
   env: Env;
   cache: Map<string, unknown>;
   request?: Request;
+  /** The request's ExecutionContext, threaded so resolvers can select a store
+   * (#10086). createPgSql returns its connection via waitUntil, so a resolver
+   * without one cannot read Neon and correctly falls back to D1. */
+  ctx?: { waitUntil?: (promise: Promise<unknown>) => void };
   clientIp?: string | null;
   graphqlWsConnection?: unknown;
   chainFirehose?: unknown;
@@ -2478,7 +2483,10 @@ const rootValue = {
         "METAGRAPH_SUBNET_SNAPSHOTS_SOURCE",
       )) as Row | null) ??
       (await loadSubnetTrajectory(netuid, {
-        db: context.env.METAGRAPH_HEALTH_DB,
+        db: observationsReadDb(
+          context.env as unknown as Record<string, unknown>,
+          context.ctx,
+        ),
       }));
     return {
       schema_version: data.schema_version ?? 1,
@@ -4299,7 +4307,10 @@ const rootValue = {
       netuids: parsedNetuids,
       dimensions: parsedDimensions!,
       observedAt: await loadObservedAt(context),
-      db: context.env.METAGRAPH_HEALTH_DB,
+      db: observationsReadDb(
+        context.env as unknown as Record<string, unknown>,
+        context.ctx,
+      ),
     });
   },
 
@@ -4805,7 +4816,10 @@ const rootValue = {
       (await loadSubnetPercentiles(netuid, {
         window: label,
         observedAt: await loadObservedAt(context),
-        db: context.env.METAGRAPH_HEALTH_DB,
+        db: observationsReadDb(
+          context.env as unknown as Record<string, unknown>,
+          context.ctx,
+        ),
       }));
     return {
       schema_version: data.schema_version ?? 1,
@@ -5094,7 +5108,10 @@ const rootValue = {
       (await loadSubnetIncidents(netuid, {
         window: label,
         observedAt: await loadObservedAt(context),
-        db: context.env.METAGRAPH_HEALTH_DB,
+        db: observationsReadDb(
+          context.env as unknown as Record<string, unknown>,
+          context.ctx,
+        ),
       }));
     return {
       schema_version: data.schema_version ?? 1,
@@ -7339,7 +7356,10 @@ const rootValue = {
         await loadEconomicsTrends({
           windowLabel: label,
           windowDays: days,
-          db: context.env.METAGRAPH_HEALTH_DB,
+          db: observationsReadDb(
+            context.env as unknown as Record<string, unknown>,
+            context.ctx,
+          ),
         })
       ).data;
     // Normalized the same way blocks/validators/accounts are (schema-stable,
@@ -8545,7 +8565,10 @@ const rootValue = {
       (
         await loadBulkHealthTrends({
           observedAt: await loadObservedAt(context),
-          db: context.env.METAGRAPH_HEALTH_DB,
+          db: observationsReadDb(
+            context.env as unknown as Record<string, unknown>,
+            context.ctx,
+          ),
         })
       ).data;
     return {
@@ -8575,7 +8598,10 @@ const rootValue = {
       )) as Row | null) ??
       (await loadSubnetHealthTrends(netuid, {
         observedAt: await loadObservedAt(context),
-        db: context.env.METAGRAPH_HEALTH_DB,
+        db: observationsReadDb(
+          context.env as unknown as Record<string, unknown>,
+          context.ctx,
+        ),
       }));
     return {
       schema_version: data.schema_version ?? 1,
@@ -8729,7 +8755,10 @@ const rootValue = {
       ((await loadSubnetUptime(netuid, {
         window: windowParam,
         observedAt: await loadObservedAt(context),
-        db: context.env.METAGRAPH_HEALTH_DB,
+        db: observationsReadDb(
+          context.env as unknown as Record<string, unknown>,
+          context.ctx,
+        ),
       })) as Row);
     return {
       schema_version: data.schema_version ?? 1,
@@ -9448,7 +9477,11 @@ function sdlResponse() {
   });
 }
 
-export async function handleGraphQLRequest(request: Request, env: Env) {
+export async function handleGraphQLRequest(
+  request: Request,
+  env: Env,
+  ctx?: { waitUntil?: (promise: Promise<unknown>) => void },
+) {
   if (request.method === "GET") {
     return sdlResponse();
   }
@@ -9535,7 +9568,7 @@ export async function handleGraphQLRequest(request: Request, env: Env) {
     schema,
     document,
     rootValue,
-    contextValue: { env, cache: new Map(), request },
+    contextValue: { env, cache: new Map(), request, ctx },
     variableValues: variables ?? undefined,
     operationName: operationName ?? undefined,
   });

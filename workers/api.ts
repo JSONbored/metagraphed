@@ -4381,7 +4381,7 @@ export async function handleRequest(
     }
     const limited = await graphqlRateLimited(request, env);
     if (limited) return limited;
-    return handleGraphQLRequest(request, env);
+    return handleGraphQLRequest(request, env, ctx);
   }
 
   if (!["GET", "HEAD"].includes(request.method)) {

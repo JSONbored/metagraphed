@@ -43,7 +43,8 @@ import {
 } from "../../src/emission-pipeline-surface.ts";
 import { EMISSION_PIPELINE_LIMIT_MAX } from "../../src/route-limits.ts";
 import type { Row as FieldProjectionRow } from "../../src/field-projection.ts";
-import { economicsCurrentKvReader } from "./analytics.ts";
+import { economicsCurrentKvReader, type EdgeCacheCtx } from "./analytics.ts";
+import { observationsReadDb } from "../../src/observations-read-runner.ts";
 import {
   COMPARE_DIMENSIONS,
   COMPARE_VALIDATORS_MAX,
@@ -261,6 +262,7 @@ export async function handleTrajectory(
   env: Env,
   netuid: number,
   url: URL,
+  ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
   const validationError = validateQueryParams(url, ["format"]);
   if (validationError) return analyticsQueryError(validationError);
@@ -282,7 +284,7 @@ export async function handleTrajectory(
     // handleHealthTrends in analytics.ts).
     const d1Generation = currentD1ReadFailureGeneration();
     data = (await loadSubnetTrajectory(netuid, {
-      db: env.METAGRAPH_HEALTH_DB,
+      db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
     })) as ReturnType<typeof formatTrajectory>;
     isFallback =
       !env.METAGRAPH_HEALTH_DB ||
@@ -323,6 +325,7 @@ export async function handleEconomicsTrends(
   request: Request,
   env: Env,
   url: URL,
+  ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
   const validationError = validateQueryParams(url, ["window", "format"]);
   if (validationError) return analyticsQueryError(validationError);
@@ -347,7 +350,7 @@ export async function handleEconomicsTrends(
     const loaded = await loadEconomicsTrends({
       windowLabel: label,
       windowDays: days,
-      db: env.METAGRAPH_HEALTH_DB,
+      db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
     });
     data = loaded.data;
     isFallback =
@@ -381,6 +384,7 @@ export async function handleUptime(
   env: Env,
   netuid: number,
   url: URL,
+  ctx: EdgeCacheCtx = {},
 ): Promise<Response> {
   const validationError = validateQueryParams(url, [
     "window",
@@ -429,7 +433,7 @@ export async function handleUptime(
       window: windowParam,
       observedAt: healthMeta?.last_run_at || null,
       minSamples: minSamplesResult.value ?? null,
-      db: env.METAGRAPH_HEALTH_DB,
+      db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
     } as unknown as Parameters<typeof loadSubnetUptime>[1])) as ReturnType<
       typeof formatUptime
     >;

@@ -72,7 +72,6 @@ import {
   loadSubnetHealthTrends,
   loadSubnetIncidents,
   loadSubnetPercentiles,
-  type ObservationsReadDb,
 } from "../../src/analytics-live.ts";
 import { CHAIN_SIGNERS_SORTS } from "../../src/chain-query-loaders.ts";
 import {
@@ -975,12 +974,13 @@ export async function handleHealthIncidents(
 export async function loadGlobalIncidentsLedger(
   env: Env,
   { label = "7d", days = 7 }: { label?: string; days?: number } = {},
+  ctx: EdgeCacheCtx = {},
 ) {
   // D1 reads resurrected (2026-08-02, box decommission): the rows come from
   // the dual-written surface_checks copy in D1 — no binding, no rows, which
   // is exactly the empty stub this was between 2026-07-17 and now.
   const incidentRows = await loadGlobalIncidentRows(
-    env.METAGRAPH_HEALTH_DB as unknown as ObservationsReadDb,
+    observationsReadDb(env as unknown as Record<string, unknown>, ctx),
     days,
   );
   const meta = await readHealthMetaKv(env);
@@ -1015,6 +1015,7 @@ export async function resolveGlobalIncidents(
   request: Request,
   env: Env,
   { label = "7d", days = 7 }: { label?: string; days?: number } = {},
+  ctx: EdgeCacheCtx = {},
 ): Promise<{ data: Record<string, unknown>; isFallback: boolean }> {
   const tiered = (await tryPostgresTier(
     env,
@@ -1023,7 +1024,7 @@ export async function resolveGlobalIncidents(
   )) as Record<string, unknown> | null;
   if (tiered) return { data: tiered, isFallback: false };
   const d1Generation = currentD1ReadFailureGeneration();
-  const result = await loadGlobalIncidentsLedger(env, { label, days });
+  const result = await loadGlobalIncidentsLedger(env, { label, days }, ctx);
   return {
     data: result.data as unknown as Record<string, unknown>,
     // Only an EMPTY ledger counts as a fallback for caching purposes — no D1
