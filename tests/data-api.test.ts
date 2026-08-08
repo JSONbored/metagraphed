@@ -1057,12 +1057,17 @@ test("validator-nominator-counts-sync is disabled (503) when VALIDATOR_NOMINATOR
   expect(res.status).toBe(503);
 });
 
-test("validator-nominator-counts-sync answers 503 when no store is bound (#9146)", async () => {
-  // Was "the Postgres tier it wrote to is gone (#9193)". The lane is no longer
-  // retired -- migration 0012 gave it a D1 store and the handler writes there
-  // (tests/data-api-validator-nominator-counts-d1.test.ts covers the write
-  // against a real database). What this env pins is the remaining 503: an
-  // authenticated, well-formed request with NOTHING bound to write to.
+test("validator-nominator-counts-sync fails loudly when nothing can hold the rows (#10131)", async () => {
+  // Was "answers 503 when no store is bound (#9146)", and before that "the
+  // Postgres tier it wrote to is gone (#9193)". The 503 was D1's: a binding
+  // check that ran BEFORE the write. validator_nominator_counts is Neon's
+  // outright now, so there is no binding to check -- the request reaches the
+  // write, and the write is what fails.
+  //
+  // The status moved; the property being pinned did not. An authenticated,
+  // well-formed request with nothing to write to must never answer ok, because
+  // a producer reads `ok: true` as "these rows are durable" and stops
+  // retrying them.
   const res = await worker.fetch(
     new Request("https://d/api/v1/internal/validator-nominator-counts-sync", {
       method: "POST",
@@ -1076,8 +1081,8 @@ test("validator-nominator-counts-sync answers 503 when no store is bound (#9146)
     { VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET } as unknown as Env,
     ctx,
   );
-  expect(res.status).toBe(503);
-  expect(await res.json()).toEqual({ error: "d1 binding unavailable" });
+  expect(res.status).toBe(502);
+  expect(await res.json()).toEqual({ error: "neon write failed" });
 });
 
 // #5233: POST /api/v1/internal/nominator-positions-sync -- the write path
@@ -1136,12 +1141,17 @@ test("nominator-positions-sync is disabled (503) when NOMINATOR_POSITIONS_SYNC_S
   expect(res.status).toBe(503);
 });
 
-test("nominator-positions-sync writes to D1 -- the lane is live again (#9273)", async () => {
-  // It answered 503 for the whole period the ledger was frozen (#9193 retired
-  // it with the box), which is why /accounts/{ss58}/positions served a stamp
-  // that could never advance. The end-to-end write contract lives in
-  // tests/data-api-nominator-positions-d1.test.ts against a real SQLite
-  // database; this asserts only that the route no longer dead-ends here.
+test("nominator-positions-sync does not fall back to D1 when Neon is unreachable (#10131)", async () => {
+  // Was "writes to D1 -- the lane is live again (#9273)". nominator_positions
+  // is Neon's outright, and this suite's `env` binds a D1 double and no
+  // Hyperdrive -- exactly the shape that a leftover D1 write path would still
+  // answer 200 to. It must not. A D1 store that no reader consults would take
+  // rows, report them written, and leave /accounts/{ss58}/positions serving a
+  // stamp that never advances: the same failure #9273 revived this lane to
+  // fix, arrived at from the other side.
+  //
+  // The success path is covered against a real database in
+  // tests/data-api-nominator-positions-d1.test.ts.
   const res = await worker.fetch(
     new Request("https://d/api/v1/internal/nominator-positions-sync", {
       method: "POST",
@@ -1154,12 +1164,12 @@ test("nominator-positions-sync writes to D1 -- the lane is live again (#9273)", 
     env as unknown as Env,
     ctx,
   );
-  expect(res.status).toBe(200);
-  expect(await res.json()).toMatchObject({
-    ok: true,
-    nominator_positions_written: 1,
-    stores: ["d1"],
-  });
+  expect(res.status).toBe(502);
+  expect(await res.json()).toEqual({ error: "neon write failed" });
+  // The status alone would still pass with the D1 write restored, since the
+  // Neon check fails either way. This is the part that would not: no statement
+  // naming the table may reach the bound D1 double at all.
+  expect(d1Calls.filter((c) => /nominator_positions/.test(c.sql))).toEqual([]);
 });
 
 // #6742: POST /api/v1/internal/account-balances-sync -- the write path into
