@@ -425,8 +425,15 @@ describe("the deployed wiring", () => {
         // pass -- which is why it left this lane and this one did not.
         "account_identity",
       ]);
+      // ACCUMULATING, not just date-partitioned. "date" and "append" both
+      // grow forever, so for both the mirror only ever covers the passes it
+      // ran for and older rows reach Neon by no other path -- which is this
+      // rule's own stated rationale. Only "whole" is latest-only, and only it
+      // makes a reconciler redundant once a mirror exists. Naming just "date"
+      // here was a shortcut that held until blocks_head, the first APPEND
+      // table to gain a mirror.
       assert.ok(
-        plan.partition === "date" ||
+        plan.partition !== "whole" ||
           !mirrored.has(table) ||
           provenStuck.has(table),
         `${table} is latest-only AND mirrored, so the reconciler would copy ` +
