@@ -30,14 +30,33 @@
 -- were verified to hold zero violating rows before this was written, so the
 -- VALIDATE below is expected to be a formality -- it is separate so that a
 -- surprise there fails on its own line rather than taking the ALTER with it.
+--
+-- WRAPPED IN A DO/EXCEPTION BECAUSE THIS ONE WAS APPLIED BY HAND FIRST (#9867).
+-- Both constraints were already present and validated in production before the
+-- runner ever saw this file, so `neon-migrate` failed on `constraint ... already
+-- exists`, never wrote the schema_migrations row, and retried the same file on
+-- every subsequent merge -- wedging the lane and every migration queued behind
+-- it. Postgres has no ADD CONSTRAINT IF NOT EXISTS, so `duplicate_object` is
+-- the guard. VALIDATE needs none: re-validating an already-validated
+-- constraint is a no-op.
+--
+-- This is the general rule here, not a patch for one file: a migration must be
+-- safe to re-run, because "applied" and "recorded" are independent facts and a
+-- hand-applied statement makes them diverge. See scripts/neon-migrate.ts.
 
-ALTER TABLE account_position_daily
-  ADD CONSTRAINT account_position_daily_captured_at_is_millis
-  CHECK (captured_at >= 1000000000000) NOT VALID;
+DO $$ BEGIN
+  ALTER TABLE account_position_daily
+    ADD CONSTRAINT account_position_daily_captured_at_is_millis
+    CHECK (captured_at >= 1000000000000) NOT VALID;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-ALTER TABLE neuron_daily
-  ADD CONSTRAINT neuron_daily_captured_at_is_millis
-  CHECK (captured_at >= 1000000000000) NOT VALID;
+DO $$ BEGIN
+  ALTER TABLE neuron_daily
+    ADD CONSTRAINT neuron_daily_captured_at_is_millis
+    CHECK (captured_at >= 1000000000000) NOT VALID;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Promotes each constraint to fully validated. Takes only a SHARE UPDATE
 -- EXCLUSIVE lock, so writes continue while it scans.

@@ -156,7 +156,7 @@ change, not something a PR can do).
 
 **Two further narrow, independent skips in the same `changes` job — unrelated to `docs_only`.**
 `Validate workflows` (`npm run validate:workflows`) reads only `.github/workflows/*.yml`/`.yaml`, and
-`Validate migration sequence` (`npm run validate:migrations`) reads only `migrations/d1/*.sql` — each
+`Validate migration sequence` (`npm run validate:migrations`) reads only `migrations/neon/*.sql` — each
 verified by reading its script's full source, neither imports anything outside its own directory. The
 `changes` job sets `run_workflows_validation`/`run_migrations_validation` to `true` only when the
 diff touches that specific path, and `checks` gates each validator step on its own flag
