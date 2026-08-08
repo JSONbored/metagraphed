@@ -192,3 +192,32 @@ export function isEmptyPayload(payload: RegistrySyncPayload): boolean {
     payload.delete_subnets.length === 0
   );
 }
+
+/**
+ * Every count the sync route returned, not a chosen subset.
+ *
+ * THE FIRST REAL PASS CAUGHT THIS. Paths sort alphabetically, so page one is
+ * 100 of the 136 `registry/providers/*` files -- and the verdict read
+ *
+ *   ok :: 100/266 -- 100 file(s): 0 subnet(s), 0 surface(s), 0 deleted
+ *
+ * while `providers.updated_at` moved from 160.7h stale to 3.5 minutes. The
+ * lane had done exactly its job and its own report said it had written
+ * nothing, because the detail named three of `RegistrySyncSummary`'s five
+ * fields and `providers_written` was not one of them.
+ *
+ * That is the failure this verdict exists to prevent, one level up: a page
+ * that wrote everything reading like a page that wrote nothing. Enumerating
+ * the RESPONSE rather than a hand-picked list is the only version that cannot
+ * drift -- a count added to the route appears here without anyone remembering
+ * to add it, which is precisely what did not happen the first time.
+ */
+export function summaryCounts(
+  written: Record<string, unknown> | undefined,
+): string {
+  const entries = Object.entries(written ?? {})
+    .filter(([, value]) => typeof value === "number")
+    .sort(([a], [b]) => a.localeCompare(b));
+  if (entries.length === 0) return "no counts returned";
+  return entries.map(([key, value]) => `${key}=${value as number}`).join(", ");
+}
