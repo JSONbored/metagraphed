@@ -60,11 +60,3 @@ export type ChainStakeFlowArtifact = z.infer<
 export const ChainStakeFlowResponseSchema = successEnvelopeSchema(
   ChainStakeFlowArtifactSchema,
 );
-export const ChainStakeFlowQuerySchema = z
-  .object({
-    window: z.enum(["7d", "30d"]).optional(),
-    limit: z.int().min(1).optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type ChainStakeFlowQuery = z.infer<typeof ChainStakeFlowQuerySchema>;

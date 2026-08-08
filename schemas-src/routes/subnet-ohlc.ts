@@ -32,11 +32,3 @@ export type SubnetOhlcArtifact = z.infer<typeof SubnetOhlcArtifactSchema>;
 export const SubnetOhlcResponseSchema = successEnvelopeSchema(
   SubnetOhlcArtifactSchema,
 );
-
-export const SubnetOhlcQuerySchema = z
-  .object({
-    interval: z.enum(["1h", "1d"]).optional(),
-    days: z.int().min(1).max(365).optional(),
-  })
-  .strict();
-export type SubnetOhlcQuery = z.infer<typeof SubnetOhlcQuerySchema>;

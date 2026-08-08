@@ -54,8 +54,6 @@ export type SubnetYieldArtifact = z.infer<typeof SubnetYieldArtifactSchema>;
 export const SubnetYieldResponseSchema = successEnvelopeSchema(
   SubnetYieldArtifactSchema,
 );
-export const SubnetYieldQuerySchema = z.object({}).strict();
-export type SubnetYieldQuery = z.infer<typeof SubnetYieldQuerySchema>;
 
 const SubnetYieldHistoryPointSchema = z
   .object({
@@ -90,11 +88,3 @@ export type SubnetYieldHistoryArtifact = z.infer<
 export const SubnetYieldHistoryResponseSchema = successEnvelopeSchema(
   SubnetYieldHistoryArtifactSchema,
 );
-export const SubnetYieldHistoryQuerySchema = z
-  .object({
-    window: z.enum(SUBNET_YIELD_WINDOW_VALUES).optional(),
-  })
-  .strict();
-export type SubnetYieldHistoryQuery = z.infer<
-  typeof SubnetYieldHistoryQuerySchema
->;

@@ -34,6 +34,7 @@
 // mode of a schema comparison is silence, so the floor counts below exist to
 // make a sweep that stopped covering the surface loud.
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
 import { z } from "zod";
 import { API_ROUTES, querySchemaForRoute } from "../src/contracts.ts";
 import { stripSentinelIntegerBounds } from "../src/mcp-input-schema.ts";
@@ -178,8 +179,71 @@ assert.ok(
   `only ${comparedParameters} parameters were compared; the published set shrank`,
 );
 
+// ---- the dead layer cannot grow back --------------------------------------
+//
+// 142 of the 143 `*QuerySchema` exports in `schemas-src/routes/` were dead
+// code that disagreed with what their route published, and nothing reported
+// it because nothing imported them. Deleting them is only half a fix: the next
+// person adding a route will reach for the pattern they see, so the pattern
+// has to stop existing.
+//
+// Same shape as validate-single-schema-source (#9830): the fix was to delete
+// the second source, and the gate is what stops it coming back.
+
+/**
+ * Query schemas allowed to remain in `schemas-src/routes/`, and why.
+ *
+ * A STALE entry FAILS -- if the named importer stops importing it, the export
+ * is dead again and the allowance must go with it. The list can only shrink.
+ */
+const LIVE_ROUTE_QUERY_SCHEMAS: Record<string, string> = {
+  BulkHealthTrendsQuerySchema: "schemas-src/mcp-tools/get-health-trends.ts",
+};
+
+const ROUTES_DIR = new URL("../schemas-src/routes/", import.meta.url);
+const strayExports: string[] = [];
+for (const file of readdirSync(ROUTES_DIR).sort()) {
+  if (!file.endsWith(".ts")) continue;
+  const source = readFileSync(new URL(file, ROUTES_DIR), "utf8");
+  for (const match of source.matchAll(
+    /^export (?:const|type) ([A-Za-z0-9_]*QuerySchema)\b/gm,
+  )) {
+    if (!(match[1] in LIVE_ROUTE_QUERY_SCHEMAS))
+      strayExports.push(`${file}:${match[1]}`);
+  }
+}
+assert.deepEqual(
+  strayExports,
+  [],
+  "a route query schema belongs in schemas-src/route-queries.ts, which is " +
+    "what src/contracts.ts resolves through. An export here is a SECOND " +
+    "declaration that nothing reads and nothing compares, which is the state " +
+    `#10062 removed:\n  ${strayExports.join("\n  ")}`,
+);
+
+const staleAllowances = Object.entries(LIVE_ROUTE_QUERY_SCHEMAS).filter(
+  ([name, importer]) => {
+    let source: string;
+    try {
+      source = readFileSync(new URL(`../${importer}`, import.meta.url), "utf8");
+    } catch {
+      return true;
+    }
+    return !source.includes(name);
+  },
+);
+assert.deepEqual(
+  staleAllowances.map(([name]) => name),
+  [],
+  "these schemas are allowed to stay because something imports them, and " +
+    "nothing does any more -- delete the export and this entry: " +
+    staleAllowances.map(([name]) => name).join(", "),
+);
+
 console.log(
   `route-query parity: ${comparedRoutes} routes ` +
     `(${collectionRoutes} generated from a collection, ${declaredRoutes} declared), ` +
-    `${comparedParameters} parameters, 0 divergences.`,
+    `${comparedParameters} parameters, 0 divergences. ` +
+    `${Object.keys(LIVE_ROUTE_QUERY_SCHEMAS).length} query schema(s) remain in ` +
+    `schemas-src/routes/, each with a live importer.`,
 );

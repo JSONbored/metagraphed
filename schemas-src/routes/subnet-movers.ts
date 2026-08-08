@@ -84,12 +84,3 @@ export type SubnetMoversArtifact = z.infer<typeof SubnetMoversArtifactSchema>;
 export const SubnetMoversResponseSchema = successEnvelopeSchema(
   SubnetMoversArtifactSchema,
 );
-
-export const SubnetMoversQuerySchema = z
-  .object({
-    window: z.enum(["7d", "30d", "90d"]).optional(),
-    sort: z.enum(["stake", "emission", "validators", "neurons"]).optional(),
-    limit: z.int().min(1).max(100).optional(),
-  })
-  .strict();
-export type SubnetMoversQuery = z.infer<typeof SubnetMoversQuerySchema>;

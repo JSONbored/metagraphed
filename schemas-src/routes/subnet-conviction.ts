@@ -38,5 +38,3 @@ export type SubnetConvictionArtifact = z.infer<
 export const SubnetConvictionResponseSchema = successEnvelopeSchema(
   SubnetConvictionArtifactSchema,
 );
-export const SubnetConvictionQuerySchema = z.object({}).strict();
-export type SubnetConvictionQuery = z.infer<typeof SubnetConvictionQuerySchema>;

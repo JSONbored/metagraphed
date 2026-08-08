@@ -59,15 +59,3 @@ export type SubnetEventsArtifact = z.infer<typeof SubnetEventsArtifactSchema>;
 export const SubnetEventsResponseSchema = successEnvelopeSchema(
   SubnetEventsArtifactSchema,
 );
-
-export const SubnetEventsQuerySchema = z
-  .object({
-    kind: z.string().optional(),
-    block_start: z.int().min(0).optional(),
-    block_end: z.int().min(0).optional(),
-    limit: z.int().min(1).max(1000).optional(),
-    offset: z.int().min(0).optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type SubnetEventsQuery = z.infer<typeof SubnetEventsQuerySchema>;

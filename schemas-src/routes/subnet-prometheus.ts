@@ -29,9 +29,3 @@ export type SubnetPrometheusArtifact = z.infer<
 export const SubnetPrometheusResponseSchema = successEnvelopeSchema(
   SubnetPrometheusArtifactSchema,
 );
-export const SubnetPrometheusQuerySchema = z
-  .object({
-    window: z.enum(["7d", "30d"]).optional(),
-  })
-  .strict();
-export type SubnetPrometheusQuery = z.infer<typeof SubnetPrometheusQuerySchema>;

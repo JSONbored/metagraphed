@@ -130,8 +130,6 @@ export type AccountSummaryArtifact = z.infer<
 export const AccountSummaryResponseSchema = successEnvelopeSchema(
   AccountSummaryArtifactSchema,
 );
-export const AccountSummaryQuerySchema = z.object({}).strict();
-export type AccountSummaryQuery = z.infer<typeof AccountSummaryQuerySchema>;
 
 export const AccountSubnetsArtifactSchema = z
   .object({
@@ -147,5 +145,3 @@ export type AccountSubnetsArtifact = z.infer<
 export const AccountSubnetsResponseSchema = successEnvelopeSchema(
   AccountSubnetsArtifactSchema,
 );
-export const AccountSubnetsQuerySchema = z.object({}).strict();
-export type AccountSubnetsQuery = z.infer<typeof AccountSubnetsQuerySchema>;

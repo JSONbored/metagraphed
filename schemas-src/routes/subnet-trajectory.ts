@@ -65,6 +65,3 @@ export type SubnetTrajectoryArtifact = z.infer<
 export const SubnetTrajectoryResponseSchema = successEnvelopeSchema(
   SubnetTrajectoryArtifactSchema,
 );
-
-export const SubnetTrajectoryQuerySchema = z.object({}).strict();
-export type SubnetTrajectoryQuery = z.infer<typeof SubnetTrajectoryQuerySchema>;

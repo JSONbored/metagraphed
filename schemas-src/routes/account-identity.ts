@@ -43,8 +43,6 @@ export type AccountIdentityArtifact = z.infer<
 export const AccountIdentityResponseSchema = successEnvelopeSchema(
   AccountIdentityArtifactSchema,
 );
-export const AccountIdentityQuerySchema = z.object({}).strict();
-export type AccountIdentityQuery = z.infer<typeof AccountIdentityQuerySchema>;
 
 const AccountIdentityHistoryEntrySchema = z
   .object({
@@ -77,14 +75,3 @@ export type AccountIdentityHistoryArtifact = z.infer<
 export const AccountIdentityHistoryResponseSchema = successEnvelopeSchema(
   AccountIdentityHistoryArtifactSchema,
 );
-export const AccountIdentityHistoryQuerySchema = z
-  .object({
-    limit: z.int().min(1).max(1000).optional(),
-    offset: z.int().min(0).optional(),
-    cursor: z.string().optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type AccountIdentityHistoryQuery = z.infer<
-  typeof AccountIdentityHistoryQuerySchema
->;

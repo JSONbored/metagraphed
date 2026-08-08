@@ -91,11 +91,3 @@ export type TopHoldersArtifact = z.infer<typeof TopHoldersArtifactSchema>;
 export const TopHoldersResponseSchema = successEnvelopeSchema(
   TopHoldersArtifactSchema,
 );
-export const TopHoldersQuerySchema = z
-  .object({
-    sort: z.enum(TOP_HOLDERS_SORT_VALUES).optional(),
-    limit: z.int().min(1).max(100).optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type TopHoldersQuery = z.infer<typeof TopHoldersQuerySchema>;

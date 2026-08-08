@@ -40,5 +40,3 @@ export type AlertTriggerArtifact = z.infer<typeof AlertTriggerArtifactSchema>;
 export const AlertTriggerResponseSchema = successEnvelopeSchema(
   AlertTriggerArtifactSchema,
 );
-export const AlertTriggerQuerySchema = z.object({}).strict();
-export type AlertTriggerQuery = z.infer<typeof AlertTriggerQuerySchema>;

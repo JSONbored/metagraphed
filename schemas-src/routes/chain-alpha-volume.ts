@@ -61,10 +61,3 @@ export type ChainAlphaVolumeArtifact = z.infer<
 export const ChainAlphaVolumeResponseSchema = successEnvelopeSchema(
   ChainAlphaVolumeArtifactSchema,
 );
-export const ChainAlphaVolumeQuerySchema = z
-  .object({
-    limit: z.int().min(1).optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type ChainAlphaVolumeQuery = z.infer<typeof ChainAlphaVolumeQuerySchema>;

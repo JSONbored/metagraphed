@@ -68,16 +68,3 @@ export type AccountExtrinsicsArtifact = z.infer<
 export const AccountExtrinsicsResponseSchema = successEnvelopeSchema(
   AccountExtrinsicsArtifactSchema,
 );
-export const AccountExtrinsicsQuerySchema = z
-  .object({
-    block_start: z.int().min(0).optional(),
-    block_end: z.int().min(0).optional(),
-    limit: z.int().min(1).optional(),
-    offset: z.int().min(0).optional(),
-    cursor: z.string().optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type AccountExtrinsicsQuery = z.infer<
-  typeof AccountExtrinsicsQuerySchema
->;

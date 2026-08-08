@@ -115,11 +115,6 @@ export const SubnetValidatorEconomicsResponseSchema = successEnvelopeSchema(
   SubnetValidatorEconomicsArtifactSchema,
 );
 
-export const SubnetValidatorEconomicsQuerySchema = z.object({}).strict();
-export type SubnetValidatorEconomicsQuery = z.infer<
-  typeof SubnetValidatorEconomicsQuerySchema
->;
-
 // GET /api/v1/validators/economics (#9324) — the cross-subnet ranking.
 //
 // One row per subnet, reusing the per-subnet artifact shape so a caller reading
@@ -159,19 +154,6 @@ export type ValidatorEconomicsRankingArtifact = z.infer<
 export const ValidatorEconomicsRankingResponseSchema = successEnvelopeSchema(
   ValidatorEconomicsRankingArtifactSchema,
 );
-
-export const ValidatorEconomicsRankingQuerySchema = z
-  .object({
-    sort: z.string().optional(),
-    limit: z.int().min(1).optional(),
-    offset: z.int().min(0).optional(),
-    emission_gate_open: z.boolean().optional(),
-    cap_binding: z.boolean().optional(),
-  })
-  .strict();
-export type ValidatorEconomicsRankingQuery = z.infer<
-  typeof ValidatorEconomicsRankingQuerySchema
->;
 
 // GET /api/v1/subnets/{netuid}/validator-economics/history (#9326).
 //
@@ -229,7 +211,3 @@ export type SubnetValidatorEconomicsHistoryArtifact = z.infer<
 
 export const SubnetValidatorEconomicsHistoryResponseSchema =
   successEnvelopeSchema(SubnetValidatorEconomicsHistoryArtifactSchema);
-
-export const SubnetValidatorEconomicsHistoryQuerySchema = z
-  .object({ window: z.string().optional() })
-  .strict();

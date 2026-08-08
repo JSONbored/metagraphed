@@ -43,13 +43,6 @@ export const SubnetRecycledResponseSchema = successEnvelopeSchema(
   SubnetRecycledArtifactSchema,
 );
 
-// Neither route takes query params (netuid is a path segment; both handlers
-// validate only isU16Netuid, no validateQueryParams call).
-export const SubnetRegistrationCostQuerySchema = z.object({}).strict();
-export type SubnetRegistrationCostQuery = z.infer<
-  typeof SubnetRegistrationCostQuerySchema
->;
-
 // GET /api/v1/chain/burn (#9399): every subnet's live registration cost in one
 // response, ranked cheapest-first. Modeled from src/chain-burn.ts's loadChainBurn().
 export const ChainBurnEntrySchema = z
@@ -116,6 +109,3 @@ export type SubnetBurnHistoryArtifact = z.infer<
 export const SubnetBurnHistoryResponseSchema = successEnvelopeSchema(
   SubnetBurnHistoryArtifactSchema,
 );
-export const SubnetBurnHistoryQuerySchema = z
-  .object({ window: z.enum(["24h", "7d", "30d", "90d"]).optional() })
-  .strict();

@@ -23,20 +23,6 @@ export const CURATION_SORT_FIELDS = [
   "netuid",
 ] as const;
 
-export const CurationQuerySchema = z
-  .object({
-    netuid: z.int().min(0).optional(),
-    coverage_level: CoverageLevelSchema.optional(),
-    curation_level: CurationLevelSchema.optional(),
-    sort: z.enum(CURATION_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
-  })
-  .strict();
-export type CurationQuery = z.infer<typeof CurationQuerySchema>;
-
 export const CurationEntrySchema = z
   .object({
     netuid: z.int().min(0),
@@ -69,20 +55,6 @@ export const GAPS_SORT_FIELDS = [
   "name",
   "netuid",
 ] as const;
-
-export const GapsQuerySchema = z
-  .object({
-    netuid: z.int().min(0).optional(),
-    coverage_level: CoverageLevelSchema.optional(),
-    curation_level: CurationLevelSchema.optional(),
-    sort: z.enum(GAPS_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
-  })
-  .strict();
-export type GapsQuery = z.infer<typeof GapsQuerySchema>;
 
 export const GapsEntrySchema = z
   .object({

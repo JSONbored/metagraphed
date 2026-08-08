@@ -65,11 +65,3 @@ export type ChainTurnoverArtifact = z.infer<typeof ChainTurnoverArtifactSchema>;
 export const ChainTurnoverResponseSchema = successEnvelopeSchema(
   ChainTurnoverArtifactSchema,
 );
-export const ChainTurnoverQuerySchema = z
-  .object({
-    window: z.enum(["7d", "30d", "90d"]).optional(),
-    limit: z.int().min(1).optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type ChainTurnoverQuery = z.infer<typeof ChainTurnoverQuerySchema>;

@@ -62,5 +62,3 @@ export type AccountRootClaimArtifact = z.infer<
 export const AccountRootClaimResponseSchema = successEnvelopeSchema(
   AccountRootClaimArtifactSchema,
 );
-export const AccountRootClaimQuerySchema = z.object({}).strict();
-export type AccountRootClaimQuery = z.infer<typeof AccountRootClaimQuerySchema>;

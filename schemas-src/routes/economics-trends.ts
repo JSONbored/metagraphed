@@ -44,10 +44,3 @@ export type EconomicsTrendsArtifact = z.infer<
 export const EconomicsTrendsResponseSchema = successEnvelopeSchema(
   EconomicsTrendsArtifactSchema,
 );
-
-export const EconomicsTrendsQuerySchema = z
-  .object({
-    window: z.enum(ECONOMICS_TRENDS_WINDOW_VALUES).optional(),
-  })
-  .strict();
-export type EconomicsTrendsQuery = z.infer<typeof EconomicsTrendsQuerySchema>;

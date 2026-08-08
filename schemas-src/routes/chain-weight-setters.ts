@@ -38,13 +38,3 @@ export type ChainWeightSettersArtifact = z.infer<
 export const ChainWeightSettersResponseSchema = successEnvelopeSchema(
   ChainWeightSettersArtifactSchema,
 );
-export const ChainWeightSettersQuerySchema = z
-  .object({
-    window: z.enum(["7d", "30d"]).optional(),
-    limit: z.int().min(1).optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type ChainWeightSettersQuery = z.infer<
-  typeof ChainWeightSettersQuerySchema
->;

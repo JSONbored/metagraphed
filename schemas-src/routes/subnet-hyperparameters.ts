@@ -73,10 +73,6 @@ export type SubnetHyperparametersArtifact = z.infer<
 export const SubnetHyperparametersResponseSchema = successEnvelopeSchema(
   SubnetHyperparametersArtifactSchema,
 );
-export const SubnetHyperparametersQuerySchema = z.object({}).strict();
-export type SubnetHyperparametersQuery = z.infer<
-  typeof SubnetHyperparametersQuerySchema
->;
 
 const SubnetHyperparamsHistoryEntrySchema = z
   .object({
@@ -104,14 +100,3 @@ export type SubnetHyperparamsHistoryArtifact = z.infer<
 export const SubnetHyperparamsHistoryResponseSchema = successEnvelopeSchema(
   SubnetHyperparamsHistoryArtifactSchema,
 );
-export const SubnetHyperparamsHistoryQuerySchema = z
-  .object({
-    limit: z.int().min(1).max(1000).optional(),
-    offset: z.int().min(0).optional(),
-    cursor: z.string().optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type SubnetHyperparamsHistoryQuery = z.infer<
-  typeof SubnetHyperparamsHistoryQuerySchema
->;

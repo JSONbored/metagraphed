@@ -59,5 +59,3 @@ export type ChainYieldArtifact = z.infer<typeof ChainYieldArtifactSchema>;
 export const ChainYieldResponseSchema = successEnvelopeSchema(
   ChainYieldArtifactSchema,
 );
-export const ChainYieldQuerySchema = z.object({}).strict();
-export type ChainYieldQuery = z.infer<typeof ChainYieldQuerySchema>;

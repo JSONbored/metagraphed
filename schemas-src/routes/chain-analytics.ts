@@ -38,13 +38,6 @@ export type ChainActivityArtifact = z.infer<typeof ChainActivityArtifactSchema>;
 export const ChainActivityResponseSchema = successEnvelopeSchema(
   ChainActivityArtifactSchema,
 );
-export const ChainActivityQuerySchema = z
-  .object({
-    window: z.enum(["7d", "30d"]).optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type ChainActivityQuery = z.infer<typeof ChainActivityQuerySchema>;
 
 const ChainCallEntrySchema = z
   .object({
@@ -70,16 +63,6 @@ export type ChainCallsArtifact = z.infer<typeof ChainCallsArtifactSchema>;
 export const ChainCallsResponseSchema = successEnvelopeSchema(
   ChainCallsArtifactSchema,
 );
-export const ChainCallsQuerySchema = z
-  .object({
-    window: z.enum(["7d", "30d"]).optional(),
-    group_by: z.enum(["module", "module_function"]).optional(),
-    limit: z.int().min(1).optional(),
-    call_module: z.string().optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type ChainCallsQuery = z.infer<typeof ChainCallsQuerySchema>;
 
 const ChainSignerEntrySchema = z
   .object({
@@ -105,16 +88,6 @@ export type ChainSignersArtifact = z.infer<typeof ChainSignersArtifactSchema>;
 export const ChainSignersResponseSchema = successEnvelopeSchema(
   ChainSignersArtifactSchema,
 );
-export const ChainSignersQuerySchema = z
-  .object({
-    window: z.enum(["7d", "30d"]).optional(),
-    sort: z.enum(["tx_count", "total_fee_tao"]).optional(),
-    limit: z.int().min(1).optional(),
-    call_module: z.string().optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type ChainSignersQuery = z.infer<typeof ChainSignersQuerySchema>;
 
 const ChainFeeDaySchema = z
   .object({
@@ -153,12 +126,3 @@ export type ChainFeesArtifact = z.infer<typeof ChainFeesArtifactSchema>;
 export const ChainFeesResponseSchema = successEnvelopeSchema(
   ChainFeesArtifactSchema,
 );
-export const ChainFeesQuerySchema = z
-  .object({
-    window: z.enum(["7d", "30d"]).optional(),
-    limit: z.int().min(1).optional(),
-    call_module: z.string().optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type ChainFeesQuery = z.infer<typeof ChainFeesQuerySchema>;

@@ -49,15 +49,3 @@ export type SubnetIdentityHistoryArtifact = z.infer<
 export const SubnetIdentityHistoryResponseSchema = successEnvelopeSchema(
   SubnetIdentityHistoryArtifactSchema,
 );
-
-export const SubnetIdentityHistoryQuerySchema = z
-  .object({
-    limit: z.int().min(1).max(1000).optional(),
-    offset: z.int().min(0).optional(),
-    cursor: z.string().optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type SubnetIdentityHistoryQuery = z.infer<
-  typeof SubnetIdentityHistoryQuerySchema
->;

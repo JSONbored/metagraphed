@@ -9,7 +9,6 @@
 // schema must not let a decline masquerade as one.
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
-import { SUBNET_HOLDERS_LIMIT_MAX } from "../../src/route-limits.ts";
 
 export const SubnetHolderSchema = z
   .object({
@@ -80,15 +79,3 @@ export type SubnetHoldersArtifact = z.infer<typeof SubnetHoldersArtifactSchema>;
 export const SubnetHoldersResponseSchema = successEnvelopeSchema(
   SubnetHoldersArtifactSchema,
 );
-// The ceiling is read from src/route-limits.ts rather than restated, so the
-// published `maximum` cannot drift from what the handler enforces (#9127).
-export const SubnetHoldersQuerySchema = z
-  .object({
-    limit: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .max(SUBNET_HOLDERS_LIMIT_MAX)
-      .optional(),
-  })
-  .strict();

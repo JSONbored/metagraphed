@@ -17,17 +17,9 @@ import {
   CountMapSchema,
   successEnvelopeSchema,
 } from "../envelope.ts";
-import { CURATION_LEVEL_VALUES, CurationLevelSchema } from "../shared.ts";
-import {
-  ReviewStateSchema,
-  SURFACE_KIND_VALUES,
-  SurfaceKindSchema,
-} from "./subnet-detail.ts";
+import { CurationLevelSchema } from "../shared.ts";
+import { ReviewStateSchema, SurfaceKindSchema } from "./subnet-detail.ts";
 import { IDENTITY_LEVEL_VALUES, PROFILE_LEVEL_VALUES } from "../shared.ts";
-
-const SURFACE_KINDS = SURFACE_KIND_VALUES;
-const CURATION_LEVELS = CURATION_LEVEL_VALUES;
-const BOOLEAN_STRINGS = ["true", "false"] as const;
 
 /** The vocabulary, exported as a tuple so every other schema that needs
  * these values imports them instead of restating them (#9799). */
@@ -153,29 +145,6 @@ export const QUEUE_SORT_FIELDS = [
   "verified_candidate_count",
 ] as const;
 
-export const EnrichmentQueueQuerySchema = z
-  .object({
-    q: z.string().optional(),
-    netuid: z.int().min(0).optional(),
-    lane: ReviewEnrichmentLaneSchema.optional(),
-    evidence_action: ReviewEvidenceActionSchema.optional(),
-    identity_level: z.enum(IDENTITY_LEVEL_VALUES).optional(),
-    curation_level: z.enum(CURATION_LEVELS).optional(),
-    profile_level: z.enum(PROFILE_LEVEL_VALUES).optional(),
-    direct_submission_kinds: z.enum(SURFACE_KINDS).optional(),
-    missing_kinds: z.enum(SURFACE_KINDS).optional(),
-    manual_review_required: z.enum(BOOLEAN_STRINGS).optional(),
-    reason_codes: z.string().optional(),
-    review_state: z.string().optional(),
-    sort: z.enum(QUEUE_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
-  })
-  .strict();
-export type EnrichmentQueueQuery = z.infer<typeof EnrichmentQueueQuerySchema>;
-
 export const ReviewEnrichmentQueueEntrySchema = z
   .object({
     adapter_score: z.int().min(0),
@@ -248,25 +217,6 @@ export const EVIDENCE_SORT_FIELDS = [
   "priority_score",
 ] as const;
 
-export const EnrichmentEvidenceQuerySchema = z
-  .object({
-    q: z.string().optional(),
-    netuid: z.int().min(0).optional(),
-    lane: ReviewEnrichmentLaneSchema.optional(),
-    evidence_action: ReviewEvidenceActionSchema.optional(),
-    direct_submission_kinds: z.enum(SURFACE_KINDS).optional(),
-    missing_kinds: z.enum(SURFACE_KINDS).optional(),
-    sort: z.enum(EVIDENCE_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
-  })
-  .strict();
-export type EnrichmentEvidenceQuery = z.infer<
-  typeof EnrichmentEvidenceQuerySchema
->;
-
 export const ReviewEnrichmentEvidenceEntrySchema = z
   .object({
     candidate_evidence_by_kind: z.record(
@@ -322,33 +272,6 @@ export const TARGET_SORT_FIELDS = [
   "target_action",
   "target_type",
 ] as const;
-
-export const EnrichmentTargetsQuerySchema = z
-  .object({
-    q: z.string().optional(),
-    netuid: z.int().min(0).optional(),
-    target_type: ReviewEnrichmentTargetTypeSchema.optional(),
-    target_action: ReviewEnrichmentTargetActionSchema.optional(),
-    kind: z.enum(SURFACE_KINDS).optional(),
-    lane: ReviewEnrichmentLaneSchema.optional(),
-    evidence_action: ReviewEvidenceActionSchema.optional(),
-    identity_level: z.enum(IDENTITY_LEVEL_VALUES).optional(),
-    profile_level: z.enum(PROFILE_LEVEL_VALUES).optional(),
-    submission_route: ReviewEnrichmentSubmissionRouteSchema.optional(),
-    auto_review_candidate: z.enum(BOOLEAN_STRINGS).optional(),
-    manual_review_required: z.enum(BOOLEAN_STRINGS).optional(),
-    missing_kinds: z.enum(SURFACE_KINDS).optional(),
-    reason_codes: z.string().optional(),
-    sort: z.enum(TARGET_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
-  })
-  .strict();
-export type EnrichmentTargetsQuery = z.infer<
-  typeof EnrichmentTargetsQuerySchema
->;
 
 export const ReviewEnrichmentTargetSchema = z
   .object({
@@ -437,25 +360,6 @@ export const ADAPTER_CANDIDATES_SORT_FIELDS = [
   "priority_score",
   "recommended_adapter_kind",
 ] as const;
-
-export const AdapterCandidatesQuerySchema = z
-  .object({
-    netuid: z.int().min(0).optional(),
-    curation_level: z.enum(CURATION_LEVELS).optional(),
-    candidate_api_kinds: z.enum(SURFACE_KINDS).optional(),
-    operational_kinds: z.enum(SURFACE_KINDS).optional(),
-    recommended_adapter_kind: z.enum(RECOMMENDED_ADAPTER_KINDS).optional(),
-    reason_codes: z.string().optional(),
-    sort: z.enum(ADAPTER_CANDIDATES_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
-  })
-  .strict();
-export type AdapterCandidatesQuery = z.infer<
-  typeof AdapterCandidatesQuerySchema
->;
 
 export const ReviewAdapterCandidateSchema = z
   .object({

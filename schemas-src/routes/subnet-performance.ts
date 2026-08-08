@@ -38,10 +38,6 @@ export type SubnetPerformanceArtifact = z.infer<
 export const SubnetPerformanceResponseSchema = successEnvelopeSchema(
   SubnetPerformanceArtifactSchema,
 );
-export const SubnetPerformanceQuerySchema = z.object({}).strict();
-export type SubnetPerformanceQuery = z.infer<
-  typeof SubnetPerformanceQuerySchema
->;
 
 const SubnetPerformanceHistoryPointSchema = z
   .object({
@@ -79,12 +75,3 @@ export type SubnetPerformanceHistoryArtifact = z.infer<
 export const SubnetPerformanceHistoryResponseSchema = successEnvelopeSchema(
   SubnetPerformanceHistoryArtifactSchema,
 );
-export const SubnetPerformanceHistoryQuerySchema = z
-  .object({
-    window: z.enum(SUBNET_PERFORMANCE_WINDOW_VALUES).optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type SubnetPerformanceHistoryQuery = z.infer<
-  typeof SubnetPerformanceHistoryQuerySchema
->;

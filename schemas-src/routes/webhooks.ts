@@ -66,7 +66,3 @@ export type WebhookSubscriptionArtifact = z.infer<
 export const WebhookSubscriptionResponseSchema = successEnvelopeSchema(
   WebhookSubscriptionArtifactSchema,
 );
-export const WebhookSubscriptionQuerySchema = z.object({}).strict();
-export type WebhookSubscriptionQuery = z.infer<
-  typeof WebhookSubscriptionQuerySchema
->;

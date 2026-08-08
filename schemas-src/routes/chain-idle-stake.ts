@@ -29,5 +29,3 @@ export type ChainIdleStakeArtifact = z.infer<
 export const ChainIdleStakeResponseSchema = successEnvelopeSchema(
   ChainIdleStakeArtifactSchema,
 );
-export const ChainIdleStakeQuerySchema = z.object({}).strict();
-export type ChainIdleStakeQuery = z.infer<typeof ChainIdleStakeQuerySchema>;

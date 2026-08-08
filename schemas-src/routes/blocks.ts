@@ -44,23 +44,6 @@ export type BlocksFeedArtifact = z.infer<typeof BlocksFeedArtifactSchema>;
 export const BlocksFeedResponseSchema = successEnvelopeSchema(
   BlocksFeedArtifactSchema,
 );
-export const BlocksFeedQuerySchema = z
-  .object({
-    limit: z.int().min(1).optional(),
-    offset: z.int().min(0).optional(),
-    cursor: z.string().optional(),
-    author: z.string().optional(),
-    spec_version: z.int().min(0).optional(),
-    from: z.int().min(0).optional(),
-    to: z.int().min(0).optional(),
-    block_start: z.int().min(0).optional(),
-    block_end: z.int().min(0).optional(),
-    min_extrinsics: z.int().min(0).optional(),
-    min_events: z.int().min(0).optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type BlocksFeedQuery = z.infer<typeof BlocksFeedQuerySchema>;
 
 export const BlockDetailArtifactSchema = z
   .object({
@@ -75,5 +58,3 @@ export type BlockDetailArtifact = z.infer<typeof BlockDetailArtifactSchema>;
 export const BlockDetailResponseSchema = successEnvelopeSchema(
   BlockDetailArtifactSchema,
 );
-export const BlockDetailQuerySchema = z.object({}).strict();
-export type BlockDetailQuery = z.infer<typeof BlockDetailQuerySchema>;

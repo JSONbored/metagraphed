@@ -87,25 +87,6 @@ export const ECONOMIC_LEADERBOARD_BOARDS = [
   "biggest-alpha-gain-1d",
   "biggest-alpha-gain-7d",
 ] as const;
-const LEADERBOARD_BOARDS = [
-  "healthiest",
-  "fastest-rpc",
-  "most-complete",
-  "most-enriched",
-  "fastest-growing",
-  "most-reliable",
-  ...ECONOMIC_LEADERBOARD_BOARDS,
-] as const;
-
-export const RegistryLeaderboardsQuerySchema = z
-  .object({
-    board: z.enum(LEADERBOARD_BOARDS).optional(),
-    limit: z.int().min(1).max(100).optional(),
-  })
-  .strict();
-export type RegistryLeaderboardsQuery = z.infer<
-  typeof RegistryLeaderboardsQuerySchema
->;
 
 /** One row of one leaderboard. `netuid`/`slug`/`name` identify the subnet on
  * every board; everything after that is the metric the board it came from

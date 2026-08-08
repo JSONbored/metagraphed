@@ -84,9 +84,3 @@ export type ValidatorHistoryArtifact = z.infer<
 export const ValidatorHistoryResponseSchema = successEnvelopeSchema(
   ValidatorHistoryArtifactSchema,
 );
-export const ValidatorHistoryQuerySchema = z
-  .object({
-    window: z.enum(["7d", "30d", "90d", "1y", "all"]).optional(),
-  })
-  .strict();
-export type ValidatorHistoryQuery = z.infer<typeof ValidatorHistoryQuerySchema>;

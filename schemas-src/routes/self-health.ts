@@ -87,5 +87,3 @@ export type SelfHealthArtifact = z.infer<typeof SelfHealthArtifactSchema>;
 export const SelfHealthResponseSchema = successEnvelopeSchema(
   SelfHealthArtifactSchema,
 );
-export const SelfHealthQuerySchema = z.object({}).strict();
-export type SelfHealthQuery = z.infer<typeof SelfHealthQuerySchema>;

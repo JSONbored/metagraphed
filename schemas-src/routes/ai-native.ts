@@ -61,10 +61,6 @@ export const AskRequestSchema = z
   .strict();
 export type AskRequest = z.infer<typeof AskRequestSchema>;
 
-/** `/ask` takes no query parameters — everything is in the body. */
-export const AskQuerySchema = z.object({}).strict();
-export type AskQuery = z.infer<typeof AskQuerySchema>;
-
 export const SemanticSearchResultSchema = z
   .object({
     score: z.number(),
@@ -100,14 +96,6 @@ export const SemanticSearchResponseSchema = successEnvelopeSchema(
   SemanticSearchArtifactSchema,
 );
 
-export const SemanticSearchQuerySchema = z
-  .object({
-    q: z.string().optional(),
-    limit: z.string().optional(),
-  })
-  .strict();
-export type SemanticSearchQuery = z.infer<typeof SemanticSearchQuerySchema>;
-
 /**
  * A catalog-resolved probe of one registered surface.
  *
@@ -142,6 +130,3 @@ export type SurfaceVerifyArtifact = z.infer<typeof SurfaceVerifyArtifactSchema>;
 export const SurfaceVerifyResponseSchema = successEnvelopeSchema(
   SurfaceVerifyArtifactSchema,
 );
-
-export const SurfaceVerifyQuerySchema = z.object({}).strict();
-export type SurfaceVerifyQuery = z.infer<typeof SurfaceVerifyQuerySchema>;

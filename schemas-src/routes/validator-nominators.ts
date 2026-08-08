@@ -63,16 +63,3 @@ export type ValidatorNominatorsArtifact = z.infer<
 export const ValidatorNominatorsResponseSchema = successEnvelopeSchema(
   ValidatorNominatorsArtifactSchema,
 );
-export const ValidatorNominatorsQuerySchema = z
-  .object({
-    window: z.enum(VALIDATOR_NOMINATORS_WINDOW_VALUES).optional(),
-    sort: z.enum(["net_staked", "gross_staked", "last_activity"]).optional(),
-    limit: z.int().min(1).max(100).optional(),
-    offset: z.int().min(0).optional(),
-    coldkey: z.string().optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type ValidatorNominatorsQuery = z.infer<
-  typeof ValidatorNominatorsQuerySchema
->;
