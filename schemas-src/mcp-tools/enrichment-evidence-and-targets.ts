@@ -10,6 +10,7 @@
 // matching each hand-written literal field-for-field.
 import { z } from "zod";
 import {
+  reasonCodesSchema,
   reviewStateSchema,
   McpListArtifactStamp,
   McpListPageFields,
@@ -195,13 +196,7 @@ export const ListReviewEnrichmentTargetsInputSchema = z
         "Restrict to subnets where surfaces of this kind the subnet is MISSING. One kind per call; see this parameter's enum.",
       )
       .meta({ examples: [SURFACE_KINDS[0]] }),
-    reason_codes: z
-      .string()
-      .optional()
-      .describe(
-        "Comma-separated reason codes to filter by; an item matches if it carries any of them.",
-      )
-      .meta({ examples: ["stale-evidence"] }),
+    reason_codes: reasonCodesSchema().optional(),
     sort: sortSchema(TARGET_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),

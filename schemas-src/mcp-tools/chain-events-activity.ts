@@ -12,7 +12,12 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { blockEventCursorSchema, limitSchema, windowSchema } from "./shared.ts";
+import {
+  blockEventCursorSchema,
+  limitSchema,
+  runtimeNameSchema,
+  windowSchema,
+} from "./shared.ts";
 import { McpNetworkSchema } from "../shared.ts";
 import { ChainActivityArtifactSchema } from "../routes/chain-analytics.ts";
 import {
@@ -21,6 +26,10 @@ import {
 } from "../routes/chain-events.ts";
 
 const WINDOWS_2 = ["7d", "30d"] as const;
+
+/** The ceiling /chain-events enforces on `pallet` and `method` --
+ * validateListQuery reads it off the PUBLISHED schema to decide a 400. */
+const EVENT_FEED_NAME_MAX = 64;
 
 export const GetChainActivityInputSchema = z
   .object({
@@ -48,17 +57,20 @@ export type GetChainActivityOutput = z.infer<
 
 export const ListChainEventsInputSchema = z
   .object({
-    pallet: z
-      .string()
+    pallet: runtimeNameSchema(EVENT_FEED_NAME_MAX)
       .optional()
       .describe(
         "Restrict to events emitted by this pallet, by runtime name (`SubtensorModule`). Case-sensitive.",
       )
       .meta({ examples: ["SubtensorModule"] }),
-    method: z
-      .string()
+    // NOT an HTTP method. This said "HTTP method to use for the call" beside
+    // an example of `set_weights` -- the prose contradicted its own example,
+    // on a parameter whose whole job is naming a runtime call (#10131).
+    method: runtimeNameSchema(EVENT_FEED_NAME_MAX)
       .optional()
-      .describe("HTTP method to use for the call.")
+      .describe(
+        "Restrict to events emitted by this runtime call, by name (`set_weights`). Case-sensitive.",
+      )
       .meta({ examples: ["set_weights"] }),
     block: z
       .int()

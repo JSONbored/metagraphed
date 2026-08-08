@@ -11,11 +11,14 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+
 import {
   blockBoundSchema,
+  hashSchema,
   keysetCursorSchema,
   limitSchema,
   offsetSchema,
+  runtimeNameSchema,
 } from "./shared.ts";
 
 /**
@@ -24,6 +27,12 @@ import {
  * read it rather than restating it — they previously declared no maximum at all.
  */
 export const EXTRINSICS_LIMIT_MAX = 100;
+
+/** The ceiling /chain/calls, /chain/fees and /chain/signers enforce on
+ * `call_module`. validateListQuery reads it off the PUBLISHED schema to
+ * decide a 400, so a tool that omits it advertises a value the route
+ * rejects (#10131). */
+const CHAIN_ANALYTICS_NAME_MAX = 100;
 import { AccountEventItemSchema } from "./shared.ts";
 import {
   ExtrinsicSchema,
@@ -45,8 +54,7 @@ export const ListExtrinsicsInputSchema = z
         "Restrict to extrinsics signed by this SS58 account. Unsigned (inherent) extrinsics never match.",
       )
       .meta({ examples: ["5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F"] }),
-    call_module: z
-      .string()
+    call_module: runtimeNameSchema(CHAIN_ANALYTICS_NAME_MAX)
       .optional()
       .describe(
         "Restrict to one pallet, by its runtime name (`SubtensorModule`). Case-sensitive.",
@@ -59,8 +67,7 @@ export const ListExtrinsicsInputSchema = z
         "Restrict to one call within the pallet (`add_stake`). Case-sensitive; pair with `call_module` to disambiguate.",
       )
       .meta({ examples: ["add_stake"] }),
-    call_hash: z
-      .string()
+    call_hash: hashSchema("extrinsic's call hash")
       .optional()
       .describe("Restrict to the extrinsic with this 0x-prefixed hash.")
       .meta({

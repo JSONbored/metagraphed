@@ -12,7 +12,13 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { limitSchema, sortSchema, windowSchema } from "./shared.ts";
+
+import {
+  limitSchema,
+  runtimeNameSchema,
+  sortSchema,
+  windowSchema,
+} from "./shared.ts";
 import {
   ChainCallsArtifactSchema,
   ChainFeesArtifactSchema,
@@ -20,6 +26,12 @@ import {
 } from "../routes/chain-analytics.ts";
 
 const WINDOWS_2 = ["7d", "30d"] as const;
+
+/** The ceiling /chain/calls, /chain/fees and /chain/signers enforce on
+ * `call_module`. validateListQuery reads it off the PUBLISHED schema to
+ * decide a 400, so a tool that omits it advertises a value the route
+ * rejects (#10131). */
+const CHAIN_ANALYTICS_NAME_MAX = 100;
 
 export const GetChainCallsInputSchema = z
   .object({
@@ -32,8 +44,7 @@ export const GetChainCallsInputSchema = z
       )
       .meta({ examples: ["module"] }),
     limit: limitSchema(100).optional(),
-    call_module: z
-      .string()
+    call_module: runtimeNameSchema(CHAIN_ANALYTICS_NAME_MAX)
       .optional()
       .describe(
         "Restrict to one pallet, by its runtime name (`SubtensorModule`). Case-sensitive.",
@@ -53,8 +64,7 @@ export const GetChainSignersInputSchema = z
     window: windowSchema(WINDOWS_2).optional(),
     sort: sortSchema(["tx_count", "total_fee_tao"]).optional(),
     limit: limitSchema(100).optional(),
-    call_module: z
-      .string()
+    call_module: runtimeNameSchema(CHAIN_ANALYTICS_NAME_MAX)
       .optional()
       .describe(
         "Restrict to one pallet, by its runtime name (`SubtensorModule`). Case-sensitive.",
@@ -72,8 +82,7 @@ export const GetChainFeesInputSchema = z
   .object({
     window: windowSchema(WINDOWS_2).optional(),
     limit: limitSchema(100).optional(),
-    call_module: z
-      .string()
+    call_module: runtimeNameSchema(CHAIN_ANALYTICS_NAME_MAX)
       .optional()
       .describe(
         "Restrict to one pallet, by its runtime name (`SubtensorModule`). Case-sensitive.",

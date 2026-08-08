@@ -386,20 +386,6 @@ const CONSTRAINT_DIVERGENCES: Record<string, Divergence> = {
 
   // LOOSER -- standing debt. Delete an entry by TIGHTENING the tool
   // (4/5, #10064), never by keeping it.
-  "get_chain_calls.call_module": "LOOSER",
-  "get_chain_fees.call_module": "LOOSER",
-  "get_chain_signers.call_module": "LOOSER",
-  "list_adapter_candidates.reason_codes": "LOOSER",
-  "list_chain_events.method": "LOOSER",
-  "list_chain_events.pallet": "LOOSER",
-  "list_enrichment_queue.reason_codes": "LOOSER",
-  "list_extrinsics.call_hash": "LOOSER",
-  "list_review_enrichment_targets.reason_codes": "LOOSER",
-  "list_review_gaps.sort": "LOOSER",
-  "list_subnets.domain": "LOOSER",
-  "list_subnets.status": "LOOSER",
-  "list_subnets.subnet_type": "LOOSER",
-  "list_validator_economics.offset": "LOOSER",
 };
 
 const errors: string[] = [];
@@ -413,8 +399,26 @@ let compared = 0;
 let aligned = 0;
 
 for (const tool of listToolDefinitions()) {
-  const route = MCP_TOOL_ROUTES[tool.name]?.route;
+  const declaration = MCP_TOOL_ROUTES[tool.name];
+  const route = declaration?.route;
   const parameters = route ? published.get(route) : undefined;
+  /**
+   * The route schemas to compare a shared argument's CONSTRAINTS against.
+   *
+   * Two tools genuinely answer for more than one route (#9880's
+   * `additionalRoutes`) -- `list_review_gaps` reads both gap feeds, and their
+   * `sort` enums differ. Comparing only the primary reported the tool as
+   * LOOSER for naming values its OTHER route accepts, which is the opposite of
+   * a defect. A value any declared route takes is a value the tool may
+   * advertise, so the comparison is against the union.
+   */
+  const constraintSources = [
+    route,
+    ...(declaration?.additionalRoutes ?? []),
+  ].flatMap((path) => {
+    const entry = path ? published.get(path) : undefined;
+    return entry ? [entry.querySchemas] : [];
+  });
   // A route-less tool (declared with a reason in the map) has nothing to
   // compare against; the map already gates that decision.
   if (!parameters) continue;
@@ -442,10 +446,22 @@ for (const tool of listToolDefinitions()) {
   const toolProperties = ((tool.inputSchema as Row)?.properties ??
     {}) as Record<string, Row>;
   for (const [argument, toolSchema] of Object.entries(toolProperties)) {
-    const routeSchema = parameters.querySchemas.get(argument);
-    if (!routeSchema) continue;
+    const routeSchemas = constraintSources
+      .map((source) => source.get(argument))
+      .filter((entry): entry is Row => entry !== undefined);
+    if (routeSchemas.length === 0) continue;
     sharedPairs += 1;
-    const divergence = classify(toolSchema, routeSchema);
+    // Agreeing with ANY route it answers for is agreement. Only a value no
+    // declared route accepts is a divergence.
+    const verdicts = routeSchemas.map((routeSchema) =>
+      classify(toolSchema, routeSchema),
+    );
+    const divergence = verdicts.includes(null)
+      ? null
+      : verdicts.includes("NARROWED")
+        ? "NARROWED"
+        : (verdicts[0] as Divergence);
+    const routeSchema = routeSchemas[0];
     if (divergence === null) {
       identicalPairs += 1;
       continue;

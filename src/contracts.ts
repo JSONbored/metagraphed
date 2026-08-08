@@ -16,7 +16,13 @@ import {
   NO_QUERY_PARAMETERS,
   ROUTE_QUERY_SCHEMAS,
 } from "../schemas-src/route-queries.ts";
+import { QUERY_ENUMS } from "../schemas-src/query-enums.ts";
 import { MAX_LIMIT } from "../workers/request-params.ts";
+
+// Re-exported so the 31 modules that read the filter vocabularies from here
+// keep working; the values themselves live in schemas-src so BOTH surfaces
+// can read them (#10131).
+export { QUERY_ENUMS };
 // Surface-agnostic despite the module name: the sentinel bounds Zod stamps on
 // every `z.int()` are not an MCP concern, and both published surfaces drop them.
 import { stripSentinelIntegerBounds } from "./mcp-input-schema.ts";
@@ -126,116 +132,6 @@ export const CACHE_SECONDS = {
   short: 60,
   standard: 300,
   static: 600,
-};
-
-export const QUERY_ENUMS = {
-  candidateState: [
-    "schema-invalid",
-    "schema-valid",
-    "maintainer-review",
-    "verified",
-    "stale",
-    "rejected",
-  ],
-  coverageLevel: ["native-only", "manifested", "probed"],
-  curationLevel: [
-    "native",
-    "candidate-discovered",
-    "community-seeded",
-    "machine-verified",
-    "maintainer-reviewed",
-    "adapter-backed",
-  ],
-  healthClassification: [
-    "auth-required",
-    "content-mismatch",
-    "dead",
-    "live",
-    "rate-limited",
-    "redirected",
-    "timeout",
-    "transient",
-    "unsupported",
-    "unsafe",
-    "wrong-chain",
-  ],
-  healthStatus: ["ok", "degraded", "failed", "unknown"],
-  providerAuthority: [
-    "community",
-    "official",
-    "provider-claimed",
-    "registry-observed",
-  ],
-  providerKind: [
-    "data-provider",
-    "docs-provider",
-    "infrastructure-provider",
-    "registry",
-    "subnet-team",
-  ],
-  profileLevel: [
-    "directory-only",
-    "identity-partial",
-    "identity-complete",
-    "operational",
-    "adapter-backed",
-  ],
-  subnetStatus: ["active", "inactive"],
-  subnetType: ["root", "application"],
-  endpointLayer: [
-    "bittensor-base",
-    "data-provider",
-    "docs-provider",
-    "subnet-app",
-  ],
-  endpointPublicationState: [
-    "candidate",
-    "verified",
-    "monitored",
-    "pool-eligible",
-    "disabled",
-    "rejected",
-  ],
-  coverageDepthTier: [
-    "agent-ready",
-    "machine-usable",
-    "candidate-review",
-    "needs-evidence",
-    "hard-blocked",
-    "missing-interface",
-  ],
-  agentReadinessStatus: [
-    "callable",
-    "base-layer",
-    "candidate",
-    "needs-evidence",
-    "blocked",
-  ],
-  agentBlockerLevel: ["none", "hard-blocked", "needs-review", "missing-data"],
-  endpointIncidentSeverity: ["critical", "warning", "info"],
-  endpointIncidentState: ["active", "resolved"],
-  recommendedAdapterKind: [
-    "custom-adapter",
-    "data-artifact-adapter",
-    "generic-openapi-or-custom",
-    "stream-adapter",
-  ],
-  surfaceKind: [
-    "archive",
-    "dashboard",
-    "data-artifact",
-    "docs",
-    "example",
-    "openapi",
-    "repo-registry",
-    "sdk",
-    "source-repo",
-    "sse",
-    "subnet-api",
-    "subtensor-rpc",
-    "subtensor-wss",
-    "website",
-  ],
 };
 
 // The published query-parameter schemas, derived from the ONE vocabulary in

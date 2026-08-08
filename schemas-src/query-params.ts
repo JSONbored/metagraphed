@@ -431,6 +431,63 @@ export const kindStringSchema = () =>
     .meta({ examples: ["subnet-api"] });
 
 /**
+ * A 32-byte chain hash -- a block hash, an extrinsic hash, a call hash.
+ *
+ * `identifier-resolver.ts` recognises exactly this shape, and the routes that
+ * filter on one publish the pattern. `list_extrinsics.call_hash` declared a
+ * bare string, so a malformed hash reached the route and came back as an empty
+ * result rather than as "that is not a hash" (#10131).
+ */
+export const HASH_HEX_PATTERN = /^0x[0-9a-fA-F]{64}$/;
+export const hashSchema = (what: string) =>
+  z
+    .string()
+    .regex(HASH_HEX_PATTERN)
+    .describe(`The ${what}, 0x-prefixed and 64 hex characters.`)
+    .meta({
+      examples: [
+        "0x9f1e2d3c4b5a69788796a5b4c3d2e1f009182736455463728190abcdef012345",
+      ],
+    });
+
+/**
+ * A Substrate runtime NAME -- a pallet, or a call module.
+ *
+ * `max` differs by route and is passed in, because the routes genuinely differ:
+ * the chain-analytics feeds cap `call_module` at 100 and the event feeds cap
+ * `pallet`/`method` at 64. What is shared is the meaning -- a runtime
+ * identifier, matched case-sensitively -- and the fact that it is bounded at
+ * all, which four tool sites did not say (#10131).
+ */
+export const runtimeNameSchema = (max: number) =>
+  z
+    .string()
+    .max(max)
+    .describe(
+      "A Substrate runtime name, matched case-sensitively as the runtime " +
+        "spells it (`SubtensorModule`, `set_weights`).",
+    )
+    .meta({ examples: ["SubtensorModule"] });
+
+/**
+ * A `reason_codes` filter -- the codes an item carries, any of which matches.
+ *
+ * The sentence was written out at 3 tool sites and the bound at none of them.
+ * Matched by `validateListQuery`, which reads `maxLength` off the PUBLISHED
+ * schema to decide a 400, so an unbounded declaration advertises a value the
+ * route rejects.
+ */
+export const reasonCodesSchema = () =>
+  z
+    .string()
+    .max(FILTER_TEXT_MAX_LENGTH)
+    .describe(
+      "Comma-separated reason codes to filter by; an item matches if it " +
+        "carries any of them.",
+    )
+    .meta({ examples: ["stale-evidence"] });
+
+/**
  * A `review_state` filter -- where an item sits in maintainer review.
  *
  * The sentence was written out at 4 tool sites and the bound at none of them.

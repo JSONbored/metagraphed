@@ -10,7 +10,16 @@
 // only coverage_level/curation_level/sort/order were actually enum-
 // constrained on the wire, and only those reuse a shared enum.
 import { z } from "zod";
+// The route's own filter vocabularies. These three published a bare
+// `{"type":"string"}` while the route named its values, so an agent had to
+// guess and a wrong guess filtered to nothing rather than erroring (#10115).
+// They were unreachable until QUERY_ENUMS moved out of src/contracts.ts
+// (#10131) -- importing that from here is the edge that broke the data-api
+// build on #10121.
+import { QUERY_ENUMS } from "../query-enums.ts";
+import { DOMAIN_TAGS } from "../../src/domain-tags.ts";
 import {
+  kindSchema,
   limitSchema,
   netuidListSchema,
   netuidSchema,
@@ -35,18 +44,20 @@ export const ListSubnetsInputSchema = z
   .object({
     cursor: numericCursorSchema().optional(),
     limit: limitSchema(100).optional(),
-    status: z
-      .string()
+    // A SUBNET status, not a health one. This described "rows with this health
+    // status" and gave `ok` as the example -- a health verdict, on a parameter
+    // whose route accepts active | inactive. The prose and the example both
+    // named a different parameter, and neither could be seen to be wrong while
+    // the enum was a bare string (#10131).
+    status: kindSchema(QUERY_ENUMS.subnetStatus as [string, ...string[]])
       .optional()
-      .describe("Restrict to rows with this health status.")
-      .meta({ examples: ["ok"] }),
-    subnet_type: z
-      .string()
+      .describe("Restrict to subnets in this lifecycle state.")
+      .meta({ examples: [QUERY_ENUMS.subnetStatus[0]] }),
+    subnet_type: kindSchema(QUERY_ENUMS.subnetType as [string, ...string[]])
       .optional()
       .describe("Root subnet or an application subnet.")
       .meta({ examples: ["application"] }),
-    domain: z
-      .string()
+    domain: kindSchema(DOMAIN_TAGS as [string, ...string[]])
       .optional()
       .describe("The subnet's primary domain of use.")
       .meta({ examples: ["inference"] }),
