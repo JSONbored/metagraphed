@@ -100,6 +100,28 @@ export function findRiskyBinds(
     );
   }
 
+  /**
+   * Whether a tagged template's tag is a SQL runner.
+   *
+   * TYPE FIRST, NAME SECOND. Matching the name `sql` alone is a hole: the
+   * runner is a value, so it can be bound to any identifier, and
+   * workers/data-api.ts already has two `historySql` templates that a `/^sql$/`
+   * matcher walks straight past. They happen to carry no interpolations today,
+   * which is exactly how a gate goes quietly green while its blind spot grows.
+   *
+   * The structural test is what the runner IS: `createPgSql` returns something
+   * callable that also has `.unsafe` (PgSql/D1Sql are defined that way, so the
+   * two stay interchangeable). That holds for any variable name. The name check
+   * remains as a fallback for a tag whose type does not resolve.
+   */
+  function isSqlRunnerTag(tag: ts.Expression): boolean {
+    const type = checker.getTypeAtLocation(tag);
+    if (type.getCallSignatures().length > 0 && type.getProperty("unsafe")) {
+      return true;
+    }
+    return /(^|\.)[A-Za-z0-9_$]*sql$/i.test(tag.getText());
+  }
+
   const found: RiskyBind[] = [];
 
   const consider = (
@@ -130,7 +152,7 @@ export function findRiskyBinds(
       // sql`INSERT ... ${value}`
       if (
         ts.isTaggedTemplateExpression(node) &&
-        /(^|\.)sql$/i.test(node.tag.getText()) &&
+        isSqlRunnerTag(node.tag) &&
         ts.isTemplateExpression(node.template)
       ) {
         const text = node.template.getText();

@@ -17,10 +17,17 @@ import { afterEach, describe, test } from "vitest";
 import { findRiskyBinds } from "../scripts/validate-pg-json-binds.ts";
 
 const PRELUDE = `
-declare const sql: {
+type Runner = {
   (strings: TemplateStringsArray, ...values: unknown[]): Promise<unknown>;
   unsafe(text: string, values?: unknown[]): Promise<unknown>;
 };
+declare const sql: Runner;
+// workers/data-api.ts binds the same runner to this name twice.
+declare const historySql: Runner;
+// ...and nothing stops it being bound to a name with no "sql" in it at all.
+declare const store: Runner;
+// A tagged template that is NOT a SQL runner must be ignored entirely.
+declare function html(strings: TemplateStringsArray, ...values: unknown[]): string;
 interface Condition { metric: string; operator: string; threshold: number }
 declare const tableFilter: string[] | null;
 declare const condition: Condition | null;
@@ -78,6 +85,28 @@ describe("findRiskyBinds — catches the reinterpreted binds", () => {
     assert.equal(hits[0].expression, "tableFilter");
   });
 
+  // A runner is a VALUE, so it can be bound to any identifier. Matching the
+  // name `sql` alone walked straight past workers/data-api.ts's two
+  // `historySql` templates -- which carry no interpolations today, which is
+  // precisely how a gate stays green while its blind spot grows.
+  test("a runner bound to a name ending in Sql", () => {
+    const hits = scan("await historySql`UPDATE t SET f = ${tableFilter}`;");
+    assert.deepEqual(
+      hits.map((h) => h.expression),
+      ["tableFilter"],
+    );
+  });
+
+  // The structural test earns its keep here: no name-based rule would catch
+  // this one, and nothing stops someone writing it.
+  test("a runner bound to a name with no `sql` in it", () => {
+    const hits = scan("await store`UPDATE t SET f = ${tableFilter}`;");
+    assert.deepEqual(
+      hits.map((h) => h.expression),
+      ["tableFilter"],
+    );
+  });
+
   test("every risky bind in one statement, not just the first", () => {
     const hits = scan(
       "await sql`INSERT INTO t (a, b, c) VALUES (${tableFilter}, ${label}, ${condition})`;",
@@ -95,6 +124,12 @@ describe("findRiskyBinds — leaves the correct binds alone", () => {
       scan("await sql`UPDATE t SET f = ${JSON.stringify(tableFilter)}`;"),
       [],
     );
+  });
+
+  // Widening from `sql` to "any runner" must not widen to "any tagged
+  // template" -- an array in an html`` tag is not a SQL bind.
+  test("a tagged template that is not a SQL runner", () => {
+    assert.deepEqual(scan("html`<p>${tableFilter}</p>`;"), []);
   });
 
   test("scalars and Date", () => {
