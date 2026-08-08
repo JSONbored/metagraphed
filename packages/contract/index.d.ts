@@ -21342,7 +21342,7 @@ export interface operations {
     topHolders: {
         parameters: {
             query?: {
-                sort?: "total_tao" | "free_tao" | "delegated_tao";
+                sort?: "total_tao" | "free_tao" | "delegated_tao" | "net_flow_7d" | "net_flow_30d" | "net_flow_90d";
                 /** @description Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916). */
                 limit?: number;
                 /** @description Response format override. Use `csv` to download the route rows as text/csv; `json` keeps the default response envelope. */
@@ -32782,10 +32782,10 @@ export interface operations {
             query?: {
                 /** @description Trailing lookback window the response is computed over, ending at the most recent data point rather than at today. Accepts `7d`, `30d`. A longer window is not a superset of a shorter one -- rankings and rates are recomputed over the whole window, not summed. */
                 window?: "7d" | "30d";
-                /** @description Maximum number of rows to return in one page. A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916). */
-                limit?: string;
+                /** @description Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916). */
+                limit?: number;
                 /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
-                offset?: string;
+                offset?: number;
             };
             header?: never;
             path?: never;

@@ -57,6 +57,7 @@ import {
   tryPostgresTier,
 } from "../postgres-tier.ts";
 import { loadBulkHealthTrends } from "../../src/bulk-health-trends.ts";
+import { BULK_HEALTH_TRENDS_LIMIT_MAX } from "../../src/route-limits.ts";
 import { formatGlobalIncidents } from "../../src/health-serving.ts";
 import {
   applyQueryFilters,
@@ -691,7 +692,9 @@ export async function handleBulkHealthTrends(
     ...HEALTH_TREND_WINDOW_VALUES,
   ]);
   if (windowError) return analyticsQueryError(windowError);
-  const trendsLimit = parseLimitParam(url, { maxLimit: 512 });
+  const trendsLimit = parseLimitParam(url, {
+    maxLimit: BULK_HEALTH_TRENDS_LIMIT_MAX,
+  });
   if ("error" in trendsLimit) return analyticsQueryError(trendsLimit.error);
   const trendsOffset = parseNonNegativeIntParam(
     url.searchParams.get("offset"),

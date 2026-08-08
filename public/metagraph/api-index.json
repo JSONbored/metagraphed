@@ -6598,13 +6598,16 @@
         {
           "name": "limit",
           "schema": {
-            "type": "string"
+            "maximum": 512,
+            "minimum": 1,
+            "type": "integer"
           }
         },
         {
           "name": "offset",
           "schema": {
-            "type": "string"
+            "minimum": 0,
+            "type": "integer"
           }
         }
       ]
@@ -7516,7 +7519,10 @@
             "enum": [
               "total_tao",
               "free_tao",
-              "delegated_tao"
+              "delegated_tao",
+              "net_flow_7d",
+              "net_flow_30d",
+              "net_flow_90d"
             ],
             "type": "string"
           }

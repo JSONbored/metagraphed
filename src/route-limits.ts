@@ -267,3 +267,22 @@ export const SEMANTIC_LIMIT_MAX = 20;
 /** Rejected above this with a 400, not truncated -- an embedded query that was
  * silently cut would rank against text the caller never sent. */
 export const SEMANTIC_QUERY_MAX_LENGTH = 1000;
+
+/**
+ * `/api/v1/health/trends` -- the all-subnet trend matrix (#10089).
+ *
+ * The same defect the semantic block above records, on a second route: `limit`
+ * and `offset` were published as `{"type":"string"}` while
+ * `handleBulkHealthTrends` runs `parseLimitParam(url, { maxLimit: 512 })` and
+ * `parseNonNegativeIntParam`, so `?limit=abc` is a 400 the contract gave a
+ * caller no way to anticipate.
+ *
+ * `BulkHealthTrendsQuerySchema` stated the correct bounds the whole time and is
+ * the ONE route query schema runtime code imports -- it just was not the copy
+ * being published. schemas-src is a leaf and cannot import this module, so
+ * tests/route-limit-contract-parity.test.ts checks the two against each other.
+ *
+ * Rejected rather than clamped, per #9916: a truncated page reads as an
+ * exhausted result set.
+ */
+export const BULK_HEALTH_TRENDS_LIMIT_MAX = 512;
