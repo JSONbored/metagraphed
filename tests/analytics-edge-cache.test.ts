@@ -1991,21 +1991,17 @@ describe("degraded-tier labelling (#9110)", () => {
     const routes = [
       "/api/v1/chain/calls?window=30d",
       "/api/v1/chain/signers?window=7d",
-      // /api/v1/chain/fees was listed here because it carried its own inline
-      // tier branch rather than the shared helper. That branch is gone -- it
-      // was gated on `env.METAGRAPH_EXTRINSICS_SOURCE === "postgres"`, false
-      // since the var went to "retired" (#9193) -- so the route no longer has
-      // a tier that CAN degrade, which is what this sweep enumerates.
+      // Back in this list, and this time for a reason that holds at the
+      // DEPLOYED flag value rather than only under the forced one above.
       //
-      // Worth being precise about what that does and does not mean. Setting
-      // the flag here was the only reason the route ever took the labelled
-      // path: with the deployed value, the inline branch never ran, so an
-      // empty chain-fees payload has been going out UNLABELLED in production
-      // all along. Dropping it from this list removes an assertion that was
-      // only ever true under a forced flag; it does not remove a label
-      // production was emitting. Whether the projection tier's own empty stub
-      // should carry #9110's header is tracked in #10189 -- a serving change,
-      // not a types one.
+      // It was here originally because of an inline `=== "postgres"` tier
+      // branch, which #10186 deleted as dead -- and removing the route from
+      // this sweep then exposed that an empty chain-fees payload had been
+      // going out UNLABELLED in production for months, since the labelled path
+      // only ever ran inside tryPostgresTier and a "retired" flag never
+      // reaches it. #10189 gave the projection tier's own decline the same
+      // label, so the route degrades honestly again.
+      "/api/v1/chain/fees?window=7d",
       "/api/v1/chain/transfers?window=7d",
       "/api/v1/chain/activity?window=7d",
       "/api/v1/chain/stake-flow?window=7d",
@@ -2030,6 +2026,69 @@ describe("degraded-tier labelling (#9110)", () => {
       [],
       `these served an empty payload from a tier miss without saying so: ${unlabelled.join(", ")}`,
     );
+  });
+
+  // #10189 REGRESSION PIN, and the one that matters: NO flag is forced here.
+  //
+  // The sweep above sets METAGRAPH_*_SOURCE to "postgres" so tryPostgresTier
+  // degrades on demand. Useful, but it exercises a configuration production
+  // has not been in since #9193 -- and that is exactly why this gap hid. At
+  // the DEPLOYED value the live tier never runs, the projection tier declines,
+  // and the route serves a schema-stable empty. Measured 2026-08-08 before the
+  // fix: 9 of these 12 answered `ok: true` with zeros and NO header.
+  //
+  // Enumerated rather than spot-checked, so route 13 cannot join quietly.
+  const PROJECTION_ROUTES = [
+    "/api/v1/chain/fees?window=7d",
+    "/api/v1/chain/activity?window=7d",
+    "/api/v1/chain/calls?window=30d",
+    "/api/v1/chain/signers?window=7d",
+    "/api/v1/chain/transfers?window=7d",
+    "/api/v1/chain/transfer-pairs?window=7d",
+    "/api/v1/chain/stake-flow?window=7d",
+    "/api/v1/chain/registrations?window=7d",
+    "/api/v1/chain/deregistrations?window=7d",
+    "/api/v1/chain/stake-moves?window=7d",
+    "/api/v1/chain/stake-transfers?window=7d",
+    "/api/v1/chain/weights?window=7d",
+  ];
+
+  test("every projection route labels its empty answer at the DEPLOYED flag value", async () => {
+    const env = createLocalArtifactEnv() as unknown as Env;
+    const unlabelled: string[] = [];
+    for (const route of PROJECTION_ROUTES) {
+      const res = await handleRequest(
+        new Request(`https://api.metagraph.sh${route}`),
+        env,
+        {},
+      );
+      assert.equal(res.status, 200, `${route}: expected a 200 empty payload`);
+      if (res.headers.get(DEGRADED_HEADER) !== DEGRADED_TIER_UNAVAILABLE) {
+        unlabelled.push(route);
+      }
+    }
+    assert.deepEqual(
+      unlabelled,
+      [],
+      `served an unmeasured empty without saying so: ${unlabelled.join(", ")}`,
+    );
+  });
+
+  test("a pallet-scoped chain-fees request is labelled too — it is never precomputed", async () => {
+    // loadChainFeesFromArtifact declines any call_module scope outright, so
+    // this reaches the same "no tier answered" state by a different door.
+    // Serving zeros for `call_module=Balances` unlabelled would assert that
+    // pallet paid no fees, which is a different claim entirely.
+    const env = createLocalArtifactEnv() as unknown as Env;
+    const res = await handleRequest(
+      new Request(
+        "https://api.metagraph.sh/api/v1/chain/fees?window=7d&call_module=Balances",
+      ),
+      env,
+      {},
+    );
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get(DEGRADED_HEADER), DEGRADED_TIER_UNAVAILABLE);
   });
 
   test("a real tier HIT is NOT labelled", async () => {

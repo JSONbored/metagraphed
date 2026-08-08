@@ -469,37 +469,82 @@ export const DEGRADED_HEADER = "x-metagraph-degraded";
 export const DEGRADED_TIER_UNAVAILABLE = "tier_unavailable";
 
 /**
- * Tag a response as having used the empty-fallback path, and say so to the
- * caller.
+ * An UNMEASURED answer is not the same thing as a DEGRADED one, and #10189
+ * turns on keeping them apart.
  *
- * `withEdgeCache` reads the WeakSet on the object it gets back, so the NEW
- * response is what gets tagged — tagging the original would let a degraded
- * payload into the edge cache (the #1760 bug class this WeakSet exists for).
+ * #9110 gave withEdgeCache one signal for both: tryPostgresTier's counter set
+ * the `x-metagraph-degraded` header AND suppressed caching, which was right
+ * while the two always coincided -- a tier that just failed will probably
+ * succeed next minute, so caching the failure prolongs it.
+ *
+ * A projection decline is different. `loadChainFeesFromArtifact` and its
+ * siblings return null on an absent artifact, an unknown window, or a scope
+ * they never precompute -- states that are stable for the whole cache TTL, not
+ * transient failures. Those answers SHOULD carry the header (a caller must not
+ * read zeros as measured) and SHOULD still be cacheable, which is what the
+ * suite already asserts in a dozen places ("chain-signers ... is
+ * edge-cacheable", "a healthy CSV response is edge-cached").
+ *
+ * So this counter labels without suppressing, and tryPostgresTier's keeps
+ * doing both. Wrapping the final `?? build…()` operand is what makes it exact:
+ * `??` short-circuits, so it runs on precisely the requests that get an empty
+ * body and never on one carrying data.
+ *
+ * Measured 2026-08-08, driving each route with no flag forced -- the
+ * configuration production actually runs -- 9 of 12 answered `ok: true` with
+ * zeros and no header at all.
  */
-function markPostgresTierFallbackResponse(response: Response): Response {
-  // Set in place so the returned object IS the one passed in. Identity matters
-  // here: `withEdgeCache` reads the WeakSet on the object it gets back, and
-  // handlers hand this response straight on, so returning a copy would both
-  // break that invariant and silently change what callers already assert.
-  //
-  // A response read back out of the edge cache has immutable headers; that path
-  // never reaches this function today, and the copy is the correct fallback if
-  // it ever does rather than throwing on a degraded response.
+let unmeasuredGeneration = 0;
+
+registerModuleStateReset(
+  "workers/request-handlers/analytics.ts:unmeasured",
+  () => {
+    unmeasuredGeneration = 0;
+  },
+);
+
+function unmeasured<T>(stub: T): T {
+  unmeasuredGeneration += 1;
+  return stub;
+}
+
+/**
+ * Set the degraded header, returning the SAME object where possible.
+ *
+ * Identity matters: `withEdgeCache` reads a WeakSet on the object it gets
+ * back, and handlers pass this response straight on, so returning a copy would
+ * break that invariant. A response read back out of the edge cache has
+ * immutable headers -- that path does not reach here today, and copying is the
+ * right fallback if it ever does, rather than throwing on a degraded response.
+ */
+function withDegradedHeader(response: Response): Response {
   try {
     response.headers.set(DEGRADED_HEADER, DEGRADED_TIER_UNAVAILABLE);
-    POSTGRES_TIER_FALLBACK_RESPONSES.add(response);
     return response;
   } catch {
     const headers = new Headers(response.headers);
     headers.set(DEGRADED_HEADER, DEGRADED_TIER_UNAVAILABLE);
-    const marked = new Response(response.body, {
+    return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
       headers,
     });
-    POSTGRES_TIER_FALLBACK_RESPONSES.add(marked);
-    return marked;
   }
+}
+
+/**
+ * Tag a response as having used the empty-fallback path, and say so to the
+ * caller.
+ *
+ * Adds the never-cache WeakSet membership on top of the header (the #1760 bug
+ * class it exists for): a tier that just failed will likely succeed on the next
+ * request, so persisting the failure would prolong it. An UNMEASURED answer
+ * takes the header alone -- see `unmeasured`.
+ */
+function markPostgresTierFallbackResponse(response: Response): Response {
+  const marked = withDegradedHeader(response);
+  POSTGRES_TIER_FALLBACK_RESPONSES.add(marked);
+  return marked;
 }
 
 async function analyticsMeta(
@@ -633,6 +678,7 @@ export async function withEdgeCache(
     }
   }
   const pgFallbackGeneration = currentPostgresTierFallbackGeneration();
+  const unmeasuredBefore = unmeasuredGeneration;
   const built = await buildResponse(cacheRequest);
   // #9110: the generation counter already told us the tier degraded while this
   // request was being served -- it is what suppresses caching two lines down.
@@ -652,10 +698,18 @@ export async function withEdgeCache(
   const degraded =
     POSTGRES_TIER_FALLBACK_RESPONSES.has(built) ||
     currentPostgresTierFallbackGeneration() !== pgFallbackGeneration;
-  const response =
-    degraded && built.status === 200 && !built.headers.has(DEGRADED_HEADER)
-      ? markPostgresTierFallbackResponse(built)
-      : built;
+  // #10189: an unmeasured answer is labelled but NOT made uncacheable. See
+  // `unmeasured` above for why the two signals have to be separate -- a
+  // projection decline is stable for the whole TTL, where a tier failure is
+  // transient and caching it would prolong the outage.
+  const unmeasuredAnswer = unmeasuredGeneration !== unmeasuredBefore;
+  const labelled = built.status === 200 && !built.headers.has(DEGRADED_HEADER);
+  let response = built;
+  if (labelled && degraded) {
+    response = markPostgresTierFallbackResponse(built);
+  } else if (labelled && unmeasuredAnswer) {
+    response = withDegradedHeader(built);
+  }
   // Never cache errors / non-200s (a cold Postgres tier still returns a 200
   // empty envelope; a 400 bad-window or 5xx must not be persisted).
   if (
@@ -1360,10 +1414,12 @@ export async function handleChainActivity(
             { window: label },
             network,
           )) ??
-          buildChainActivity({
-            window: label,
-            observedAt: meta?.last_run_at || null,
-          } as unknown as Parameters<typeof buildChainActivity>[0]),
+          unmeasured(
+            buildChainActivity({
+              window: label,
+              observedAt: meta?.last_run_at || null,
+            } as unknown as Parameters<typeof buildChainActivity>[0]),
+          ),
         windowDays,
       );
       if (csv) {
@@ -1566,12 +1622,14 @@ export async function handleChainSigners(
           limit,
           callModule: url.searchParams.get("call_module"),
         })) ??
-        buildChainSigners({
-          window: label,
-          sort,
-          observedAt: meta?.last_run_at || null,
-          rows: [],
-        } as unknown as Parameters<typeof buildChainSigners>[0]);
+        unmeasured(
+          buildChainSigners({
+            window: label,
+            sort,
+            observedAt: meta?.last_run_at || null,
+            rows: [],
+          } as unknown as Parameters<typeof buildChainSigners>[0]),
+        );
       if (csv) {
         return csvResponse(
           data.signers,
@@ -1667,10 +1725,12 @@ export async function handleChainTransfers(
           },
           network,
         )) ??
-        buildChainTransfers({
-          window: label,
-          observedAt: meta?.last_run_at || null,
-        });
+        unmeasured(
+          buildChainTransfers({
+            window: label,
+            observedAt: meta?.last_run_at || null,
+          }),
+        );
       if (csv) {
         return csvResponse(
           [
@@ -1773,11 +1833,13 @@ export async function handleChainTransferPairs(
           },
           network,
         )) ??
-        buildChainTransferPairs({
-          window: label,
-          sort,
-          observedAt: meta?.last_run_at || null,
-        } as unknown as Parameters<typeof buildChainTransferPairs>[0]);
+        unmeasured(
+          buildChainTransferPairs({
+            window: label,
+            sort,
+            observedAt: meta?.last_run_at || null,
+          } as unknown as Parameters<typeof buildChainTransferPairs>[0]),
+        );
       // CSV exports the row-shaped top corridors; the totals + top_pair_share
       // rollup stay JSON-only (mirrors chain-stake-flow / chain-weights).
       if (csv) {
@@ -1872,10 +1934,12 @@ export async function handleChainStakeFlow(
           },
           network,
         )) ??
-        buildChainStakeFlow([], {
-          window: label,
-          limit,
-        } as unknown as Parameters<typeof buildChainStakeFlow>[1]);
+        unmeasured(
+          buildChainStakeFlow([], {
+            window: label,
+            limit,
+          } as unknown as Parameters<typeof buildChainStakeFlow>[1]),
+        );
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // net_flow_distribution stay JSON-only (mirrors chain-fees' top_fee_payers).
       if (csv) {
@@ -1982,9 +2046,11 @@ export async function handleChainAlphaVolume(
           { limit, marketCapByNetuid: await resolveMarketCapIndex(env) },
           network,
         )) ??
-        buildChainAlphaVolume([], {
-          limit,
-        } as unknown as Parameters<typeof buildChainAlphaVolume>[1]);
+        unmeasured(
+          buildChainAlphaVolume([], {
+            limit,
+          } as unknown as Parameters<typeof buildChainAlphaVolume>[1]),
+        );
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // volume_distribution stay JSON-only (mirrors chain-stake-flow).
       if (csv) {
@@ -2067,10 +2133,12 @@ export async function handleChainWeights(
           env as unknown as Parameters<typeof loadChainWeightsColdTier>[0],
           { window: label, limit },
         )) ??
-        buildChainWeights([], {
-          window: label,
-          limit,
-        } as unknown as Parameters<typeof buildChainWeights>[1]);
+        unmeasured(
+          buildChainWeights([], {
+            window: label,
+            limit,
+          } as unknown as Parameters<typeof buildChainWeights>[1]),
+        );
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-stake-flow).
       if (csv) {
@@ -2156,7 +2224,7 @@ export async function handleChainWeightSetters(
           >[0],
           { window: label, limit },
         )) ??
-        buildChainWeightSetters([], null, { window: label, limit });
+        unmeasured(buildChainWeightSetters([], null, { window: label, limit }));
       if (csv) {
         return csvResponse(
           data.setters,
@@ -2239,10 +2307,12 @@ export async function handleChainServing(
           env as unknown as Parameters<typeof loadChainServingColdTier>[0],
           { window: label, limit },
         )) ??
-        buildChainServing([], {
-          window: label,
-          limit,
-        } as unknown as Parameters<typeof buildChainServing>[1]);
+        unmeasured(
+          buildChainServing([], {
+            window: label,
+            limit,
+          } as unknown as Parameters<typeof buildChainServing>[1]),
+        );
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-weights).
       if (csv) {
@@ -2495,10 +2565,12 @@ export async function handleChainRegistrations(
           },
           network,
         )) ??
-        buildChainRegistrations([], {
-          window: label,
-          limit,
-        } as unknown as Parameters<typeof buildChainRegistrations>[1]);
+        unmeasured(
+          buildChainRegistrations([], {
+            window: label,
+            limit,
+          } as unknown as Parameters<typeof buildChainRegistrations>[1]),
+        );
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-serving).
       if (csv) {
@@ -2592,11 +2664,19 @@ export async function handleChainDeregistrations(
         )) ??
         // Still the schema-stable empty when nothing derived it — but MARKED,
         // so a caller can tell "no evictions" from "we could not look".
-        markDeregistrationsNotDerived(
-          buildChainDeregistrations([], {
-            window: label,
-            limit,
-          } as unknown as Parameters<typeof buildChainDeregistrations>[1]),
+        //
+        // Two markers, deliberately, because they speak to different readers:
+        // markDeregistrationsNotDerived writes `degraded.reason` into the BODY
+        // (this route's own long-standing contract), and unmeasured adds
+        // #9110's header so the route degrades the same way its twelve
+        // siblings do and the edge cache declines to store it (#10189).
+        unmeasured(
+          markDeregistrationsNotDerived(
+            buildChainDeregistrations([], {
+              window: label,
+              limit,
+            } as unknown as Parameters<typeof buildChainDeregistrations>[1]),
+          ),
         );
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-registrations).
@@ -2687,10 +2767,12 @@ export async function handleChainStakeMoves(
           },
           network,
         )) ??
-        buildChainStakeMoves([], {
-          window: label,
-          limit,
-        } as unknown as Parameters<typeof buildChainStakeMoves>[1]);
+        unmeasured(
+          buildChainStakeMoves([], {
+            window: label,
+            limit,
+          } as unknown as Parameters<typeof buildChainStakeMoves>[1]),
+        );
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-registrations).
       if (csv) {
@@ -2780,10 +2862,12 @@ export async function handleChainStakeTransfers(
           },
           network,
         )) ??
-        buildChainStakeTransfers([], {
-          window: label,
-          limit,
-        } as unknown as Parameters<typeof buildChainStakeTransfers>[1]);
+        unmeasured(
+          buildChainStakeTransfers([], {
+            window: label,
+            limit,
+          } as unknown as Parameters<typeof buildChainStakeTransfers>[1]),
+        );
       // CSV exports the row-shaped per-subnet leaderboard; the network rollup +
       // intensity_distribution stay JSON-only (mirrors chain-stake-moves).
       if (csv) {
@@ -2885,10 +2969,12 @@ export async function handleChainFees(
           limit,
           callModule: url.searchParams.get("call_module"),
         });
-      data ??= buildChainFees({
-        window: label,
-        observedAt: meta?.last_run_at || null,
-      } as unknown as Parameters<typeof buildChainFees>[0]);
+      data ??= unmeasured(
+        buildChainFees({
+          window: label,
+          observedAt: meta?.last_run_at || null,
+        } as unknown as Parameters<typeof buildChainFees>[0]),
+      );
       // #8242: see handleChainActivity — trim the UTC-day buckets down to the
       // requested window so "7d" never reports 8 days.
       data = trimChainFeesToWindow(data, windowDays);
