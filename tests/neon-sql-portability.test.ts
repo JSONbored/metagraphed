@@ -163,6 +163,12 @@ const BOOLEAN_COLUMNS = [
   // and within that set `ok` is a BOOLEAN column. D1-only SQL is never
   // scanned.
   "ok",
+  // chain_detail_extrinsics (#10024). The only boolean in the decoded seam,
+  // and nullable there -- an extrinsic whose outcome was not decoded has NULL,
+  // not false. That makes `success = 0` doubly wrong on Postgres: rejected
+  // for the type, and it would exclude the undecoded rows a caller counting
+  // failures probably wants.
+  "success",
 ] as const;
 
 /** Comparisons and aggregates that only work against ONE of the two schemas. */
