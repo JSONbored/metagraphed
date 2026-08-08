@@ -47,15 +47,30 @@ export interface ReadStoreClient {
   ): Promise<{ rows?: unknown[]; rowCount?: number } | undefined>;
 }
 
-/** D1's read surface, as the tier readers actually use it. */
+/** A row with no claimed shape.
+ *
+ * The DEFAULT for `all`/`first`, rather than `unknown`, because that is what
+ * D1's own typing gave these call sites: several read a named column straight
+ * off an untyped `first()`, and `unknown` would break them for no benefit --
+ * neither store validates the shape, so the default is about what the caller is
+ * allowed to write, not about safety. */
+type Row = Record<string, unknown>;
+
+/** D1's read surface, as the callers actually use it.
+ *
+ * `all` and `first` are generic for the same reason D1's are: the ~45 call
+ * sites this replaced write `all<SubnetRow>()` and read named columns off the
+ * result. A non-generic `unknown[]` would compile only after adding a cast at
+ * every one of them, which is churn that hides exactly the mistakes a cast-free
+ * swap makes visible. */
 export interface ReadStoreDb {
   prepare(text: string): {
     bind(...values: unknown[]): {
-      all(): Promise<{ results: unknown[] }>;
-      first(): Promise<unknown>;
+      all<T = Row>(): Promise<{ results: T[] }>;
+      first<T = Row>(): Promise<T | null>;
     };
-    all(): Promise<{ results: unknown[] }>;
-    first(): Promise<unknown>;
+    all<T = Row>(): Promise<{ results: T[] }>;
+    first<T = Row>(): Promise<T | null>;
   };
 }
 
@@ -81,9 +96,16 @@ export function pgReadStore(
       await client.end().catch(() => undefined);
     }
   };
+  // The generic parameter is the CALLER's claim about the row shape, exactly as
+  // it is on D1: Postgres hands back whatever the query selected, and neither
+  // store validates it. Cast here rather than at 45 call sites.
   const ops = (text: string, values: unknown[]) => ({
-    all: async () => ({ results: await run(text, values) }),
-    first: async () => (await run(text, values))[0] ?? null,
+    async all<T = unknown>() {
+      return { results: (await run(text, values)) as T[] };
+    },
+    async first<T = unknown>() {
+      return ((await run(text, values))[0] ?? null) as T | null;
+    },
   });
   return {
     prepare(text: string) {
