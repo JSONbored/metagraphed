@@ -28,7 +28,6 @@ import {
   ACCOUNTS_LIST_LIMIT_MAX,
   CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
-  CHAIN_TURNOVER_LIMIT_MAX,
   GLOBAL_VALIDATOR_LIMIT_DEFAULT,
   GLOBAL_VALIDATOR_LIMIT_MAX,
   MOVERS_LIMIT_DEFAULT,
@@ -43,9 +42,6 @@ import {
   SUBNET_HOLDERS_LIMIT_MAX,
   CHAIN_HOLDERS_LIMIT_DEFAULT,
   CHAIN_HOLDERS_LIMIT_MAX,
-  FAILURE_REASONS_WINDOWS,
-  CHAIN_CONCENTRATION_HISTORY_WINDOWS,
-  PIPELINE_HISTORY_WINDOWS,
   SURFACE_HISTORY_LIMIT_DEFAULT,
   SURFACE_HISTORY_LIMIT_MAX,
   EMISSION_CHANGES_LIMIT_DEFAULT,
@@ -53,13 +49,8 @@ import {
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
   EMISSION_PIPELINE_LIMIT_MAX,
-  SEMANTIC_LIMIT_DEFAULT,
-  SEMANTIC_LIMIT_MAX,
-  SEMANTIC_QUERY_MAX_LENGTH,
-  BULK_HEALTH_TRENDS_LIMIT_MAX,
 } from "./route-limits.ts";
 import { EMISSION_PIPELINE_SORT_FIELDS } from "./emission-pipeline-surface.ts";
-import { TOP_HOLDERS_SORTS } from "./top-holders.ts";
 import {
   CONCENTRATION_LENSES,
   CONCENTRATION_RANKING_SORTS,
@@ -2621,23 +2612,7 @@ export const API_ROUTES = [
     "Search the registry by MEANING rather than by keyword: ?q= is embedded and ranked by cosine similarity, so it finds surfaces whose text never contains your terms. The complement to /api/v1/search, which is lexical -- reach for that one when you know the exact name. Each result carries its score, type, netuid/slug, title/subtitle, URL, categories, and service kinds; `model` names the embedding model. ?limit caps the list. Mirrored by the `semantic_search` MCP tool. Served live (no static file); 503 ai_unavailable where no AI binding is configured.",
     "short",
     ["search"],
-    [
-      // Both were wrong (#10075): `q` published no ceiling though the handler
-      // rejects one over SEMANTIC_QUERY_MAX_LENGTH, and `limit` published
-      // `{"type":"string"}` for a value the handler reads as an integer and
-      // clamps -- so a client generated from this spec sent a string where an
-      // integer was wanted, with no way to learn either bound.
-      {
-        name: "q",
-        schema: parameterSchema(querySchema(SEMANTIC_QUERY_MAX_LENGTH)),
-      },
-      {
-        name: "limit",
-        schema: parameterSchema(
-          limitSchema(SEMANTIC_LIMIT_MAX, SEMANTIC_LIMIT_DEFAULT),
-        ),
-      },
-    ],
+    [],
     [],
   ),
   route(
@@ -2688,12 +2663,7 @@ export const API_ROUTES = [
     "Fetch the network-wide economics time series (#1307): per UTC day across all subnets — total stake, stake-weighted + median alpha price, total validator/miner counts, and mean emission share — aggregated live from the daily subnet_snapshots D1 rollup. `mean_emission_share` averages the stage-1 price share, so it inherits the same caveat: `emission_share` is the STAGE-1 PRICE SHARE of the v440 emission pipeline (alpha_price / sum of alpha_price), NOT the share of TAO a subnet receives: spec 440 separates the two by MinerBurned reweighting, the Hill emission gate, the SubnetEmissionEnabled filter, the alpha injection cap, and the liquidity balancer. See /api/v1/network/parameters for the gate parameters and docs/computed-metrics-methodology.md for the eight-stage decomposition. The rollup is the same source the per-subnet /trajectory reads. ?window=7d|30d|90d|1y|all (default 30d). Pass ?format=csv to download the per-day series as CSV. Served live (no static file); day_count:0 / days:[] when the rollup is cold.",
     "short",
     ["subnets", "analytics"],
-    csvRouteQuery([
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
-      },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -2887,22 +2857,7 @@ export const API_ROUTES = [
     "Fetch compact 7d/30d daily uptime and latency trends for all subnets (computed live from D1). `?window=7d|30d` returns just that window and narrows the underlying scan to it rather than reading the widest one and discarding the rest; `?limit`/`?offset` page the `subnets` array within each window. All three are optional and omitting them returns every window and every subnet, which is what this route served before it had them. `subnet_count` always spans every subnet the window measured, not the page, so a paging caller keeps the denominator it is ranking against.",
     "short",
     ["health", "analytics"],
-    [
-      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
-      // Integers, not strings (#10089). handleBulkHealthTrends runs
-      // parseLimitParam/parseNonNegativeIntParam, so `?limit=abc` has always
-      // been a 400 -- the published `{"type":"string"}` said otherwise.
-      // `offset` carries no ceiling because the handler enforces none.
-      {
-        name: "limit",
-        schema: {
-          type: "integer",
-          minimum: 1,
-          maximum: BULK_HEALTH_TRENDS_LIMIT_MAX,
-        },
-      },
-      { name: "offset", schema: { type: "integer", minimum: 0 } },
-    ],
+    [],
   ),
   route(
     "subnet-health-trends",
@@ -2923,7 +2878,7 @@ export const API_ROUTES = [
     "Fetch latency percentiles (p50/p95/p99) per operational surface for one subnet over a 7d or 30d window (computed live from D1).",
     "short",
     ["health", "subnets", "analytics"],
-    [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -2934,7 +2889,7 @@ export const API_ROUTES = [
     "Fetch SLA (uptime ratio) and reconstructed downtime incidents per operational surface for one subnet over a 7d or 30d window (computed live from D1).",
     "short",
     ["health", "subnets", "analytics"],
-    [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -2989,12 +2944,7 @@ export const API_ROUTES = [
     "Fetch the per-day reward-flow & trust trend for one subnet over a 7d/30d/90d window: the incentive/dividends reward concentration (Gini, Nakamoto coefficient, top-10% share) plus the mean & median of the 0–1 trust, consensus, and validator_trust scores (computed live from the neuron_daily D1 rollup). The reward-flow twin of /concentration/history. Pass ?format=csv to download the per-day series as CSV.",
     "short",
     ["subnets", "analytics"],
-    csvRouteQuery([
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d"] },
-      },
-    ]),
+    csvRouteQuery([]),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3005,12 +2955,7 @@ export const API_ROUTES = [
     "Fetch the per-day stake & emission concentration trend (Gini, Nakamoto coefficient, top-10% share) for one subnet over a 7d/30d/90d window (computed live from the neuron_daily D1 rollup). Pass ?format=csv to download the per-day series as CSV.",
     "short",
     ["subnets", "analytics"],
-    csvRouteQuery([
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d"] },
-      },
-    ]),
+    csvRouteQuery([]),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3021,13 +2966,7 @@ export const API_ROUTES = [
     "Fetch validator-set & registration turnover (churn) for one subnet between a window's start and end snapshots — validators entered/exited + retention, UID deregistrations, and a 0-100 stability score. Add ?changes=true to include the entered/exited validator hotkeys and UID reassignment detail (computed live from the neuron_daily D1 rollup).",
     "short",
     ["subnets", "analytics"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
-      },
-      { name: "changes", schema: { type: "string", enum: ["true"] } },
-    ],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3038,7 +2977,7 @@ export const API_ROUTES = [
     "Fetch validator weight-setting activity for one subnet over a 7d or 30d window: the distinct weight-setting validators, the WeightsSet event count, and the average updates per validator, computed live from the account_events WeightsSet stream. The per-subnet drill-in of GET /api/v1/chain/weights (which ranks only the top-N subnets and cannot be queried by netuid). Schema-stable zeroed card when the subnet has no WeightsSet events in the window.",
     "short",
     ["subnets", "analytics"],
-    [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3049,7 +2988,7 @@ export const API_ROUTES = [
     "Fetch the per-subnet weight-setter leaderboard over a 7d or 30d window: the individual validators behind /weights ranked by activity, each with its WeightsSet count, its share of the subnet's total weight-setting, and when it first and last set weights in the window, computed live from the account_events WeightsSet stream. The setter-level drill-in of GET /api/v1/subnets/{netuid}/weights (which reports only the aggregate and never names the setters). Schema-stable empty leaderboard when the subnet has no WeightsSet events in the window.",
     "short",
     ["subnets", "analytics"],
-    [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3060,7 +2999,7 @@ export const API_ROUTES = [
     "Fetch axon-serving announcement activity for one subnet over a 7d or 30d window: the distinct servers (hotkeys), the AxonServed event count, and the average announcements per server, computed live from the account_events AxonServed stream. The per-subnet drill-in of GET /api/v1/chain/serving (which ranks only the top-N subnets and cannot be queried by netuid). Schema-stable zeroed card when the subnet has no AxonServed events in the window.",
     "short",
     ["subnets", "analytics"],
-    [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3071,7 +3010,7 @@ export const API_ROUTES = [
     "Fetch Prometheus-endpoint serving activity for one subnet over a 7d or 30d window: the distinct exporters (hotkeys), the PrometheusServed event count, and the average announcements per exporter, read from the account_events PrometheusServed stream, which carries 0 of the 18,041 PrometheusServed events the chain emitted — an empty card is marked `degraded` rather than published as a measured zero. The per-subnet drill-in of GET /api/v1/chain/prometheus (which ranks only the top-N subnets and cannot be queried by netuid) and the telemetry-endpoint sibling of GET /api/v1/subnets/{netuid}/serving (axon endpoints). The zeroed card carries a `degraded` block whenever it is empty.",
     "short",
     ["subnets", "analytics"],
-    [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3082,7 +3021,7 @@ export const API_ROUTES = [
     "Fetch stake-transfer activity for one subnet over a 7d or 30d window: the distinct senders (accounts), the StakeTransferred event count, and the average transfers per sender, computed live from the account_events StakeTransferred stream. The per-subnet drill-in of GET /api/v1/chain/stake-transfers (which ranks only the top-N subnets and cannot be queried by netuid) and the between-coldkeys sibling of GET /api/v1/subnets/{netuid}/stake-moves (within-account re-delegation churn) — transfer_stake relocates staked alpha from one account to another on the same hotkey (origin leg only), so it moves ownership, not net capital. Schema-stable zeroed card when the subnet has no StakeTransferred events in the window.",
     "short",
     ["subnets", "analytics"],
-    [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3093,7 +3032,7 @@ export const API_ROUTES = [
     "Fetch stake-movement (re-delegation) activity for one subnet over a 7d or 30d window: the distinct movers (accounts), the StakeMoved event count, and the average movements per mover, computed live from the account_events StakeMoved stream. The per-subnet drill-in of GET /api/v1/chain/stake-moves (which ranks only the top-N subnets and cannot be queried by netuid) and the re-delegation-churn sibling of GET /api/v1/subnets/{netuid}/stake-flow (net capital flow) — move_stake relocates stake between hotkeys/subnets without unstaking, so it is churn, not flow. Schema-stable zeroed card when the subnet has no StakeMoved events in the window.",
     "short",
     ["subnets", "analytics"],
-    [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3104,7 +3043,7 @@ export const API_ROUTES = [
     "Fetch neuron-registration activity for one subnet over a 7d or 30d window: the distinct registrants (hotkeys), the NeuronRegistered event count, and the average registrations per registrant, computed live from the account_events NeuronRegistered stream. Raw registration demand — the account_events companion to the neuron_daily validator-set churn in GET /api/v1/subnets/{netuid}/turnover (net snapshot change, not raw event volume). Schema-stable zeroed card when the subnet has no NeuronRegistered events in the window.",
     "short",
     ["subnets", "analytics"],
-    [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3115,7 +3054,7 @@ export const API_ROUTES = [
     "Fetch axon-removal activity for one subnet over a 7d or 30d window: the distinct removers (hotkeys), the AxonInfoRemoved event count, and the average removals per remover, read from the account_events AxonInfoRemoved stream, which the runtime has never populated — an empty card is marked `degraded` rather than published as a measured zero. Raw axon-teardown activity — the removal-side companion to the AxonServed announcements in GET /api/v1/subnets/{netuid}/serving (which counts axon announcements, not teardowns). The zeroed card carries a `degraded` block whenever it is empty.",
     "short",
     ["subnets", "analytics"],
-    [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3126,7 +3065,7 @@ export const API_ROUTES = [
     "Fetch neuron-deregistration activity for one subnet over a 7d or 30d window: the distinct deregistered hotkeys, the NeuronDeregistered event count, and the average deregistrations per hotkey, DERIVED from UID reuse in the NeuronRegistered stream (NeuronDeregistered has never been emitted by the runtime). Raw deregistration/eviction activity — the exit-side companion to the NeuronRegistered demand in GET /api/v1/subnets/{netuid}/registrations and the account_events companion to the neuron_daily churn in GET /api/v1/subnets/{netuid}/turnover (net snapshot change, not raw event volume). The card carries a `derivation` block stating how many window registrations had no observable previous holder, and a `degraded` block when nothing derived it.",
     "short",
     ["subnets", "analytics"],
-    [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3137,16 +3076,7 @@ export const API_ROUTES = [
     "Fetch net stake flow for one subnet over a recent window: total TAO staked (StakeAdded) vs unstaked (StakeRemoved), the net flow, and the stake/unstake event counts, summed live from the account_events stream. ?direction=all|in|out filters to inflow (StakeAdded) or outflow (StakeRemoved) only; omitted defaults to all. Windows (7d/30d/90d) are bounded by the account_events retention.",
     "short",
     ["subnets", "analytics"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d"] },
-      },
-      {
-        name: "direction",
-        schema: { type: "string", enum: ["all", "in", "out"] },
-      },
-    ],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3168,10 +3098,7 @@ export const API_ROUTES = [
     "Fetch open/high/low/close/volume candles for one subnet's alpha price, bucketed by ?interval= (1h or 1d, default 1h) from the same account_events StakeAdded/StakeRemoved stream as GET /api/v1/subnets/{netuid}/volume — each row is one executed trade, price = amount_tao / alpha_amount. Open/high/low/close are the first/max/min/last trade price in the bucket; volume_alpha/volume_tao are summed amounts. ?days= bounds the lookback window (default 90, max 365). Empty buckets are omitted (a gap, not a synthesized flat candle). The root subnet (netuid 0) has no AMM pool — 1:1 TAO, no price impact — so it returns an empty candle array with root_excluded:true rather than a meaningless flat-line series.",
     "short",
     ["subnets", "analytics"],
-    [
-      { name: "interval", schema: { type: "string", enum: ["1h", "1d"] } },
-      { name: "days", schema: { type: "integer", minimum: 1, maximum: 365 } },
-    ],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3182,13 +3109,7 @@ export const API_ROUTES = [
     "Fetch a read-only constant-product stake/unstake slippage quote for one subnet: the expected alpha/TAO out, spot vs effective price (TAO per alpha), and price-impact percent for a swap of ?amount= in ?direction=stake|unstake (default stake), computed live from the subnet's economics-tier AMM pool reserves (tao_in_pool_tao, alpha_in_pool). Pure math — no chain write, no custody — mirroring the chain's own constant-product swap and its InsufficientLiquidity guard: an amount over 1000× the relevant reserve is rejected with 422. The root subnet (netuid 0) has no AMM and returns a 1:1, zero-impact quote.",
     "short",
     ["subnets", "analytics"],
-    [
-      { name: "amount", schema: { type: "number", exclusiveMinimum: 0 } },
-      {
-        name: "direction",
-        schema: { type: "string", enum: ["stake", "unstake"] },
-      },
-    ],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3210,12 +3131,7 @@ export const API_ROUTES = [
     "Fetch whether validating on one subnet is getting cheaper or more expensive: a daily series of the observed permit floor and earning floor in alpha, the validator set composition as three separate counts, and the emission-gate state with daily TAO inflow, over a 7d/30d/90d window (default 30d), newest first. A floor that has doubled means the subnet is filling up and entering now buys a contested position; a falling earning floor means it is emptying out — the same snapshot value, opposite decisions. Set-composition drift is what usually explains a floor change, which is why both ship together. TAO cost is deliberately excluded: a historical cost needs the pool reserves as they were, and reconstructing one from today's reserves would be wrong.",
     "short",
     ["subnets", "analytics", "validators"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d"] },
-      },
-    ],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3226,27 +3142,7 @@ export const API_ROUTES = [
     `Fetch every subnet ranked by what it costs to become an EARNING validator there. One row per subnet with the same fields as /api/v1/subnets/{netuid}/validator-economics: the permit floor and the earning floor (which differ by a median of ~7x — a permit is not income), their TAO cost against live pool reserves, validator set composition as three separate counts, open slots, the take distribution, and the emission-gate state. Sort by earning_floor_cost_tao (default, cheapest first), permit_floor_cost_tao, permit_to_earning_multiple, tao_inflow_per_day or validator_headroom; filter on emission_gate_open or cap_binding, where omitting a filter means BOTH rather than false. limit caps the page (default ${VALIDATOR_ECONOMICS_LIMIT_DEFAULT}, max ${VALIDATOR_ECONOMICS_LIMIT_MAX}). Every subnet the ranking drops is returned in \`excluded\` with a reason. The registration burn is excluded from the ranking — it is a live per-subnet read and immaterial to the order; the per-subnet route reports the true entry cost.`,
     "short",
     ["validators", "subnets", "analytics"],
-    [
-      { name: "sort", schema: { type: "string" } },
-      {
-        name: "limit",
-        schema: {
-          type: "integer",
-          minimum: 1,
-          maximum: VALIDATOR_ECONOMICS_LIMIT_MAX,
-        },
-      },
-      {
-        name: "offset",
-        schema: {
-          type: "integer",
-          minimum: 0,
-          maximum: VALIDATOR_ECONOMICS_LIMIT_MAX,
-        },
-      },
-      { name: "emission_gate_open", schema: { type: "boolean" } },
-      { name: "cap_binding", schema: { type: "boolean" } },
-    ],
+    [],
     [],
   ),
   route(
@@ -3257,23 +3153,7 @@ export const API_ROUTES = [
     `Fetch the cross-subnet momentum leaderboard: every subnet ranked by its change in stake, emission, validator, and neuron count between the window's start and end neuron_daily snapshots, with start/end values, deltas, percentage changes, and each subnet's share of network stake/emission at the end. A network block totals stake/emission/validators across all subnets with gainer/loser/unchanged counts. Sort by stake (default), emission, validators, or neurons; limit caps the list (default ${MOVERS_LIMIT_DEFAULT}, max ${MOVERS_LIMIT_MAX}). Computed live from the neuron_daily D1 rollup.`,
     "short",
     ["subnets", "analytics"],
-    csvRouteQuery([
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d"] },
-      },
-      {
-        name: "sort",
-        schema: {
-          type: "string",
-          enum: ["stake", "emission", "validators", "neurons"],
-        },
-      },
-      {
-        name: "limit",
-        schema: { type: "integer", minimum: 1, maximum: MOVERS_LIMIT_MAX },
-      },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -3284,31 +3164,7 @@ export const API_ROUTES = [
     `Fetch the network-wide validator/operator leaderboard: validator-permit identities grouped across all current subnet memberships, with trust metrics, cross-subnet stake/emission totals, stake dominance, and top membership rows. Sort by subnet_count (default), uid_count, avg_validator_trust, max_validator_trust, total_stake, total_emission, or stake_dominance; limit caps the list (default ${GLOBAL_VALIDATOR_LIMIT_DEFAULT}, max ${GLOBAL_VALIDATOR_LIMIT_MAX}). Computed live from the neurons D1 tier.`,
     "short",
     ["validators", "analytics"],
-    csvRouteQuery([
-      {
-        name: "sort",
-        schema: {
-          type: "string",
-          enum: [
-            "avg_validator_trust",
-            "max_validator_trust",
-            "stake_dominance",
-            "subnet_count",
-            "total_emission",
-            "total_stake",
-            "uid_count",
-          ],
-        },
-      },
-      {
-        name: "limit",
-        schema: {
-          type: "integer",
-          minimum: 1,
-          maximum: GLOBAL_VALIDATOR_LIMIT_MAX,
-        },
-      },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -3319,31 +3175,7 @@ export const API_ROUTES = [
     `Fetch the site-wide accounts leaderboard: every currently-registered hotkey (miners included, not just validator_permit=1 ones) grouped across all current subnet memberships, with cross-subnet stake/emission totals, stake dominance, a validator/miner UID breakdown, and top membership rows. Sort by total_stake (default), total_emission, subnet_count, uid_count, validator_count, stake_dominance, or last_active; limit caps the list (default ${ACCOUNTS_LIST_LIMIT_DEFAULT}, max ${ACCOUNTS_LIST_LIMIT_MAX}). Computed live from the neurons D1 tier. No 'Free'/spendable-balance or 'Total' column — no balance-tracking tier exists to source them from account_events/neurons.`,
     "short",
     ["accounts", "analytics"],
-    csvRouteQuery([
-      {
-        name: "sort",
-        schema: {
-          type: "string",
-          enum: [
-            "total_stake",
-            "total_emission",
-            "subnet_count",
-            "uid_count",
-            "validator_count",
-            "stake_dominance",
-            "last_active",
-          ],
-        },
-      },
-      {
-        name: "limit",
-        schema: {
-          type: "integer",
-          minimum: 1,
-          maximum: ACCOUNTS_LIST_LIMIT_MAX,
-        },
-      },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -3354,22 +3186,7 @@ export const API_ROUTES = [
     `Fetch the balance-based top-holder leaderboard: every account (coldkey) with a nonzero free balance and/or delegated stake position, with free/delegated/total TAO columns matching the taostats-style Account/Free/Delegated/Total benchmark /api/v1/accounts explicitly cannot derive. Sort by total_tao (default), free_tao, delegated_tao, or cross-subnet stake flow over a window (net_flow_7d, net_flow_30d, net_flow_90d, #6886/#6887); limit caps the list (default ${TOP_HOLDERS_LIMIT_DEFAULT}, max ${TOP_HOLDERS_LIMIT_MAX}). free_tao is sourced from a direct System::Account chain-state scan (not event-reconstructed, so it can't drift); delegated_tao is this account's own stake positions across every hotkey/subnet, VALUED IN TAO: every position is non-root and therefore denominated in its subnet's alpha token, so each is multiplied by that netuid's alpha_price_tao from the latest daily subnet_snapshots row before summing (#8803) -- a DAILY cadence, so the price can lag up to ~24h behind the live economics tier, and a netuid with no usable price is excluded from the sum rather than counted as zero. total_tao adds it to free_tao, which is valid because both are TAO; net_flow_* is StakeAdded minus StakeRemoved over the window -- a negative value is a real net outflow, not a missing value -- and null-valued rows sort last on the net_flow_* keys. TWO TIERS, SELECTED BY SORT (#9469/#9502). The net_flow_* sorts are LIVE: the top-holders-flow projection lane recomputes all three windows daily from chain.account_events, so captured_at advances and the ranking is a real one. The same lane composes the three holdings sorts from D1 -- free_tao from account_balances, delegated_tao by valuing each nominator_positions row as share_fraction x hotkey_alpha.total_alpha x that netuid's alpha_price_tao (#9502 captured the pool totals; neurons.stake_tao covers only hotkeys holding a UID on that exact subnet, 22.8% of position rows, so recomputing from it would drop real top holders out of the ranking), and total_tao as free + delegated ranked across the FULL tables rather than summed over the other two sorts' capped rows, since the top of a sum is not contained in the union of the tops of its addends. A holdings sort is served live ONLY while its producer's most recent pass is recorded COMPLETE: ranking over a partially-loaded ledger returns the largest values PRESENT rather than the largest that EXIST, which is a well-formed leaderboard quietly missing real top holders, and for the pool ledger a missing total silently UNDERPRICES rather than dropping a row. While an input is unproven that sort DECLINES and answers from a fixed materialization taken 2026-08-02 whose captured_at and last_updated do not advance -- an account that has moved TAO since is misreported and one first funded since is absent, so read that ranking as historical and use GET /api/v1/accounts/{ss58}/balance for the live per-account balance. Which sorts are currently live is a property of the artifact, not a fixed list. On a net_flow_*-sorted page the three holdings columns are null rather than zero, because a zero would assert an empty wallet.`,
     "short",
     ["accounts", "analytics"],
-    csvRouteQuery([
-      {
-        name: "sort",
-        // From TOP_HOLDERS_SORTS, not a literal copy of it. The copy that used
-        // to sit here listed the three HOLDINGS sorts and omitted
-        // net_flow_7d/30d/90d (#10089) -- so the published enum offered exactly
-        // the three that DECLINE to a fixed 2026-08-02 materialization when
-        // their producer's last pass is unproven, and withheld the three that
-        // are recomputed daily. The route's own 400 has always named all six.
-        schema: parameterSchema(enumSchema(TOP_HOLDERS_SORTS)),
-      },
-      {
-        name: "limit",
-        schema: { type: "integer", minimum: 1, maximum: TOP_HOLDERS_LIMIT_MAX },
-      },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -3391,26 +3208,7 @@ export const API_ROUTES = [
     "Fetch the nominator list for one validator: who has staked to it (across every subnet it operates in) over a 7d/30d/90d window, each with staked/unstaked/net/gross TAO and last activity, ranked by net_staked (default), gross_staked, or last_activity. ?coldkey= narrows to one nominator's own flow (exact match). Summed live from the account_events StakeAdded/StakeRemoved stream. Cold/absent hotkey returns an empty list, never a 404. ?basis= selects WHICH QUESTION is answered (#9617), not how well it is answered. basis=flow (the DEFAULT, and everything above) is TAO MOVED within the window, so it cannot see a nominator who staked before the window and has not touched it since -- a dormant delegator is invisible and a long-standing one reads as smaller than they are. basis=positions instead reads the standing position ledger keyed (coldkey, hotkey, netuid): every coldkey (an ss58 address) currently delegating to this hotkey, and how much ALPHA each holds per subnet, whenever they staked. The two are different units over different time semantics -- TAO moved in a window versus alpha held now -- so they are not comparable and the default does not move. On the positions basis, window and sort are REJECTED rather than ignored, because accepting them would imply the snapshot honoured them; nominator_count is the whole delegator set rather than the returned page; and alpha is reported PER SUBNET with no cross-subnet total, since each subnet's alpha is a different token. Nominators are ranked by how many subnets they hold on, then by their largest single-subnet holding, for the same reason. The positions basis DECLINES with degraded.reason pool_totals_unproven while the hotkey_alpha pool ledger has no complete pass -- a partial ledger underprices a nominator rather than dropping them.",
     "short",
     ["validators", "analytics"],
-    csvRouteQuery([
-      {
-        name: "basis",
-        schema: { type: "string", enum: ["flow", "positions"] },
-      },
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d"] },
-      },
-      {
-        name: "sort",
-        schema: {
-          type: "string",
-          enum: ["net_staked", "gross_staked", "last_activity"],
-        },
-      },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-      { name: "offset", schema: { type: "integer", minimum: 0 } },
-      { name: "coldkey", schema: { type: "string" } },
-    ]),
+    csvRouteQuery([]),
     [{ name: "hotkey", schema: { type: "string" } }],
   ),
   route(
@@ -3421,12 +3219,7 @@ export const API_ROUTES = [
     "Fetch cross-subnet staked-over-time + rewards-per-1000-TAO history for one validator: one point per day, summed across every subnet it operates in that day (stake/emission totals, subnet count, and a normalized reward rate), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
     "short",
     ["validators", "analytics"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
-      },
-    ],
+    [],
     [{ name: "hotkey", schema: { type: "string" } }],
   ),
   route(
@@ -3437,10 +3230,7 @@ export const API_ROUTES = [
     "Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons D1 tier. Add ?validator_permit=true for validators only. Narrow each row to the columns you need with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. The full response is 256 rows x 17 fields (~95 KB on subnet 1), and ?fields=uid,hotkey is ~18 KB. CSV keeps its own fixed column set.",
     "short",
     ["subnets", "analytics"],
-    csvRouteQuery([
-      { name: "validator_permit", schema: { type: "string", enum: ["true"] } },
-      { name: "fields", schema: fieldListSchema },
-    ]),
+    csvRouteQuery([]),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3451,7 +3241,7 @@ export const API_ROUTES = [
     "Fetch a single neuron's metagraph state by UID, computed live from the neurons D1 tier. Narrow the row with ?fields=uid,hotkey — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400.",
     "short",
     ["subnets", "analytics"],
-    [{ name: "fields", schema: fieldListSchema }],
+    [],
     [
       { name: "netuid", schema: { type: "integer", minimum: 0 } },
       { name: "uid", schema: { type: "integer", minimum: 0 } },
@@ -3476,11 +3266,7 @@ export const API_ROUTES = [
     "Fetch the append-only hyperparameter-change timeline for one subnet (#4309): each entry is a subnet_hyperparams snapshot recorded when any hyperparameter changed. Forward-only (no pre-feature history). Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV.",
     "short",
     ["subnets", "analytics"],
-    csvRouteQuery([
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
-      { name: "offset", schema: { type: "integer", minimum: 0 } },
-      { name: "cursor", schema: { type: "string" } },
-    ]),
+    csvRouteQuery([]),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3491,7 +3277,7 @@ export const API_ROUTES = [
     "Fetch the validators (validator_permit) of one subnet ranked by stake, computed live from the neurons D1 tier. Narrow each row to the columns you need with ?fields=hotkey,stake_tao — a comma-separated list of Neuron field names, validated against the published Neuron schema; an unsupported name is a 400. CSV keeps its own fixed column set.",
     "short",
     ["subnets", "analytics"],
-    csvRouteQuery([{ name: "fields", schema: fieldListSchema }]),
+    csvRouteQuery([]),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3513,12 +3299,7 @@ export const API_ROUTES = [
     "Fetch the per-day emission-yield distribution trend for one subnet over a 7d/30d/90d window: the subnet-wide return plus the mean, median, and p25/p75/p90 of the per-UID emission-per-stake yields, one point per day (computed live from the neuron_daily D1 rollup). The time-series companion to /yield and the return-rate twin of /concentration/history. Pass ?format=csv to download the per-day series as CSV.",
     "short",
     ["subnets", "analytics"],
-    csvRouteQuery([
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d"] },
-      },
-    ]),
+    csvRouteQuery([]),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3529,13 +3310,7 @@ export const API_ROUTES = [
     "Fetch the first-party chain-event stream for one subnet (registrations, stake, weights, axon, delegation, lifecycle, transfers), newest first, from the account_events D1 tier filtered by netuid. Optional ?kind= filter and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset. Pass ?format=csv to download the page as CSV.",
     "short",
     ["subnets", "analytics"],
-    csvRouteQuery([
-      { name: "kind", schema: { type: "string" } },
-      { name: "block_start", schema: { type: "integer", minimum: 0 } },
-      { name: "block_end", schema: { type: "integer", minimum: 0 } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
-      { name: "offset", schema: { type: "integer", minimum: 0 } },
-    ]),
+    csvRouteQuery([]),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3546,20 +3321,7 @@ export const API_ROUTES = [
     `Fetch a windowed event summary for one subnet: account_events counts by kind and coarse category, distinct hotkey/coldkey counts, TAO/alpha sums where applicable, first/last evidence bounds, plus a newest-first evidence slice. ?window=7d|30d|90d (default 30d); ?limit caps recent_events (default ${SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT}, max ${SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX}). Computed live from the account_events D1 tier.`,
     "short",
     ["subnets", "analytics"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d"] },
-      },
-      {
-        name: "limit",
-        schema: {
-          type: "integer",
-          minimum: 1,
-          maximum: SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
-        },
-      },
-    ],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3570,12 +3332,7 @@ export const API_ROUTES = [
     "Fetch a UID's per-day metagraph history (stake, trust, consensus, incentive, dividends, emission, rank over time), computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
     "short",
     ["subnets", "analytics"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
-      },
-    ],
+    [],
     [
       { name: "netuid", schema: { type: "integer", minimum: 0 } },
       { name: "uid", schema: { type: "integer", minimum: 0 } },
@@ -3589,12 +3346,7 @@ export const API_ROUTES = [
     "Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
     "short",
     ["subnets", "analytics"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
-      },
-    ],
+    [],
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3605,11 +3357,7 @@ export const API_ROUTES = [
     "Fetch the append-only on-chain identity timeline for one subnet (#1647): each entry is a SubnetIdentitiesV3 snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV. Served from the frozen lakehouse export of subnet_identity_history -- no D1 table backs this route, and the export stops where the capture did, so observed_at on each entry says how current it is.",
     "short",
     ["subnets", "analytics"],
-    csvRouteQuery([
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
-      { name: "offset", schema: { type: "integer", minimum: 0 } },
-      { name: "cursor", schema: { type: "string" } },
-    ]),
+    csvRouteQuery([]),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -3642,15 +3390,7 @@ export const API_ROUTES = [
     "Fetch the paginated first-party chain-event history for one account (hotkey or coldkey), newest first. Optional ?kind= filter, ?netuid= to scope to one subnet, and ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging (#1851). Pass ?format=csv to download the page as CSV.",
     "short",
     ["accounts", "analytics"],
-    csvRouteQuery([
-      { name: "kind", schema: { type: "string" } },
-      { name: "netuid", schema: parameterSchema(netuidSchema()) },
-      { name: "block_start", schema: { type: "integer", minimum: 0 } },
-      { name: "block_end", schema: { type: "integer", minimum: 0 } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
-      { name: "offset", schema: { type: "integer", minimum: 0 } },
-      { name: "cursor", schema: { type: "string" } },
-    ]),
+    csvRouteQuery([]),
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
@@ -3661,13 +3401,7 @@ export const API_ROUTES = [
     "Fetch the durable per-day activity series for one account, newest day first, from the hotkey-keyed account_events_daily rollup (#1854). An ss58 with no hotkey activity returns zero days, since the rollup is hotkey-attributed (unlike /events, which matches the hotkey or coldkey). ?netuid filters to one subnet; ?from / ?to are YYYY-MM-DD bounds; ?limit (<=1000) / ?offset.",
     "short",
     ["accounts", "analytics"],
-    csvRouteQuery([
-      { name: "netuid", schema: parameterSchema(netuidSchema()) },
-      { name: "from", schema: { type: "string", format: "date" } },
-      { name: "to", schema: { type: "string", format: "date" } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
-      { name: "offset", schema: { type: "integer", minimum: 0 } },
-    ]),
+    csvRouteQuery([]),
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
@@ -3678,13 +3412,7 @@ export const API_ROUTES = [
     "Fetch the extrinsics this account signed (matched by signer), newest first, computed live from the extrinsics D1 tier. Optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV.",
     "short",
     ["accounts", "analytics"],
-    csvRouteQuery([
-      { name: "block_start", schema: { type: "integer", minimum: 0 } },
-      { name: "block_end", schema: { type: "integer", minimum: 0 } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
-      { name: "offset", schema: { type: "integer", minimum: 0 } },
-      { name: "cursor", schema: { type: "string" } },
-    ]),
+    csvRouteQuery([]),
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
@@ -3695,17 +3423,7 @@ export const API_ROUTES = [
     "Fetch the native-TAO Balances.Transfer feed for one account, newest first, computed live from the account_events D1 tier. ?direction=all|sent|received; optional ?block_start/?block_end (block-height range); ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV.",
     "short",
     ["accounts", "analytics"],
-    csvRouteQuery([
-      {
-        name: "direction",
-        schema: { type: "string", enum: ["all", "sent", "received"] },
-      },
-      { name: "block_start", schema: { type: "integer", minimum: 0 } },
-      { name: "block_end", schema: { type: "integer", minimum: 0 } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
-      { name: "offset", schema: { type: "integer", minimum: 0 } },
-      { name: "cursor", schema: { type: "string" } },
-    ]),
+    csvRouteQuery([]),
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
@@ -3747,16 +3465,7 @@ export const API_ROUTES = [
     "Fetch one account's StakeAdded vs StakeRemoved flow per subnet over a recent window (7d/30d/90d): per-subnet net and gross flow with a direction label (accumulating/exiting/churning/idle), plus account totals, an HHI concentration of where the flow is focused, and the dominant subnet — summed live from the account_events D1 tier. ?direction=all|in|out filters to inflow (StakeAdded) or outflow (StakeRemoved) only; omitted defaults to all.",
     "short",
     ["accounts", "analytics"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d"] },
-      },
-      {
-        name: "direction",
-        schema: { type: "string", enum: ["all", "in", "out"] },
-      },
-    ],
+    [],
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
@@ -3767,12 +3476,7 @@ export const API_ROUTES = [
     "Fetch one account's stake-movement (re-delegation) footprint per subnet over a recent window (7d/30d/90d): each subnet's StakeMoved count with the first and last movement timestamps and the alpha price on the day of the most recent move (from the daily subnet_snapshots rollup), plus account totals, an HHI concentration of where its re-delegation churn is focused, and the dominant subnet — summed live from the account_events D1 tier. The account-level companion to GET /api/v1/chain/stake-moves and GET /api/v1/subnets/{netuid}/stake-moves, distinct from net capital flow in GET /api/v1/accounts/{ss58}/stake-flow.",
     "short",
     ["accounts", "analytics"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d"] },
-      },
-    ],
+    [],
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
@@ -3783,12 +3487,7 @@ export const API_ROUTES = [
     "Fetch one account's neuron-deregistration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronDeregistered eviction count with the first and last eviction timestamps, plus account totals, an HHI concentration of where its deregistration activity is focused, and the dominant subnet — DERIVED from UID reuse (the slots where this account was the PREVIOUS holder); NeuronDeregistered has never been emitted by the runtime, the payload's `derivation` block states the lower bound, and `degraded` marks an answer nothing derived. The eviction-side complement to GET /api/v1/accounts/{ss58}/registrations and the account-level companion to GET /api/v1/chain/deregistrations, distinct from GET /api/v1/accounts/{ss58}/subnets (current registration state).",
     "short",
     ["accounts", "analytics"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d"] },
-      },
-    ],
+    [],
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
@@ -3799,12 +3498,7 @@ export const API_ROUTES = [
     "Fetch one account's Prometheus-endpoint serving footprint per subnet over a recent window (7d/30d/90d): each subnet's PrometheusServed announcement count with the first and last announcement timestamps, plus account totals, an HHI concentration of where its telemetry activity is focused, and the dominant subnet — read from the account_events PrometheusServed stream, which carries 0 of the 18,041 PrometheusServed events the chain emitted; an empty footprint is marked `degraded` rather than published as a measured zero. Operational activity (announcing a Prometheus telemetry endpoint); the telemetry sibling of GET /api/v1/accounts/{ss58}/serving and the account-level companion to GET /api/v1/chain/prometheus, orthogonal to GET /api/v1/accounts/{ss58}/subnets (registration state).",
     "short",
     ["accounts", "analytics"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d"] },
-      },
-    ],
+    [],
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
@@ -3815,12 +3509,7 @@ export const API_ROUTES = [
     "Fetch one account's axon-removal footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonInfoRemoved count with the first and last removal timestamps, plus account totals, an HHI concentration of where its teardown activity is focused, and the dominant subnet — read from the account_events AxonInfoRemoved stream, which the runtime has never populated; an empty footprint is marked `degraded` rather than published as a measured zero. The teardown-side complement to GET /api/v1/accounts/{ss58}/serving (axon announcements) and the account-level companion to GET /api/v1/chain/axon-removals, orthogonal to GET /api/v1/accounts/{ss58}/subnets (registration state).",
     "short",
     ["accounts", "analytics"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d"] },
-      },
-    ],
+    [],
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
@@ -3831,12 +3520,7 @@ export const API_ROUTES = [
     "Fetch one account's axon-serving footprint per subnet over a recent window (7d/30d/90d): each subnet's AxonServed announcement count with the first and last announcement timestamps, plus account totals, an HHI concentration of where its serving activity is focused, and the dominant subnet — summed live from the account_events D1 tier. Operational activity (announcing an axon endpoint); the account-level companion to GET /api/v1/chain/serving, orthogonal to GET /api/v1/accounts/{ss58}/subnets (registration state) and GET /api/v1/accounts/{ss58}/registrations (registration events).",
     "short",
     ["accounts", "analytics"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d"] },
-      },
-    ],
+    [],
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
@@ -3847,12 +3531,7 @@ export const API_ROUTES = [
     "Fetch one account's (validator's) weight-setting footprint per subnet over a recent window (7d/30d): each subnet's WeightsSet count with the first and last set timestamps, plus account totals, an HHI concentration of where its weight-setting activity is focused, and the dominant subnet — summed live from the account_events D1 tier. Keyed on the hotkey (the validator submitting weights); the account-level companion to GET /api/v1/chain/weights/setters and GET /api/v1/subnets/{netuid}/weights/setters.",
     "short",
     ["accounts", "analytics"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d"] },
-      },
-    ],
+    [],
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
@@ -3863,12 +3542,7 @@ export const API_ROUTES = [
     "Fetch one account's neuron-registration footprint per subnet over a recent window (7d/30d/90d): each subnet's NeuronRegistered count with the first and last registration timestamps, plus account totals, an HHI concentration of where its registration activity is focused, and the dominant subnet — summed live from the account_events D1 tier. Windowed registration events including re-registrations after a deregistration; the account-level companion to GET /api/v1/chain/registrations, distinct from GET /api/v1/accounts/{ss58}/subnets (current registration state).",
     "short",
     ["accounts", "analytics"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d"] },
-      },
-    ],
+    [],
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
@@ -3912,12 +3586,7 @@ export const API_ROUTES = [
     "Fetch one wallet's position on one subnet over time (the 'Alpha Holdings chart'): one point per snapshot_date with the position's economics (stake, emission, rank, trust, incentive, dividends, coldkey, role) and yield, computed live from the account_position_daily D1 rollup tier. ?window=7d|30d|90d|1y|all.",
     "short",
     ["accounts", "subnets", "analytics"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d", "1y", "all"] },
-      },
-    ],
+    [],
     [
       { name: "ss58", schema: { type: "string" } },
       { name: "netuid", schema: { type: "integer", minimum: 0 } },
@@ -3942,11 +3611,7 @@ export const API_ROUTES = [
     "Fetch the append-only diff-tracking timeline for one account's personal chain identity (epic #4301/5.2): each entry is a snapshot recorded when any tracked field changed. Newest first; ?limit (<=1000) / ?offset, or ?cursor= for stable keyset paging. Pass ?format=csv to download the page as CSV.",
     "short",
     ["accounts", "analytics"],
-    csvRouteQuery([
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
-      { name: "offset", schema: { type: "integer", minimum: 0 } },
-      { name: "cursor", schema: { type: "string" } },
-    ]),
+    csvRouteQuery([]),
     [{ name: "ss58", schema: { type: "string" } }],
   ),
   route(
@@ -4023,13 +3688,7 @@ export const API_ROUTES = [
     "Fetch the TAO/USD index. The TAO/USD index (#9609) -- the current USD price of one TAO with the derivation that produced it, plus the recent series. There is no TAO/USD pair on chain, so this is COMPOSED per ADR 0025 (src/tao-usd-index.ts): a LIQUIDITY-WEIGHTED median across qualifying wTAO/WETH pools, rejecting any pool more than 2% from the unweighted median, refusing to publish below a two-pool quorum, multiplied through an ETH/USDC anchor leg. Composed rather than read from a wTAO/USDC pool deliberately: measured 2026-07-31 all three such pools traded $81k/day combined against WETH/USDC's $118M, ~1,455x deeper, and the thin pools demonstrably misprice -- two well-priced hops beat one badly-priced one. `latest` carries the whole reading together (price, price_basis, eth_usd, block_number, pool_count and the per-pool breakdown) so the number and its audit trail always describe the same block. A NULL usd_per_tao is a STATED OUTCOME, not a gap: the producer writes price_basis `insufficient_pools` when the quorum was not met, and the schema enforces that pairing as a CHECK constraint -- read it as 'not priceable at that block', never as a zero price. ?window=1h|24h|7d|30d (default 24h), newest first, capped at 2000 points; change_usd/change_pct describe the movement across the RETURNED window over PRICED points only, and are null when there is nothing to compare against. point_count and priced_point_count are reported separately: a gap between them is how a window with unpriceable blocks announces itself. THE SERIES BEGINS 2026-08-02 and accrues about one point per minute, so a 30d window today returns everything that exists rather than a month -- `oldest_observed_at` says exactly how far back the answer reaches. Mainnet-only: wrapped TAO on Ethereum has no testnet counterpart.",
     "short",
     ["accounts"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: ["1h", "24h", "7d", "30d"] },
-      },
-      { name: "include_points", schema: { type: "boolean" } },
-    ],
+    [],
     [],
   ),
   route(
@@ -4094,12 +3753,7 @@ export const API_ROUTES = [
     "Fetch one subnet's registration-cost series. One subnet's registration-cost series (#9402) — how SubtensorModule.Burn has moved, captured every 15 minutes into D1 from the same single-call chain read /chain/burn uses. The live routes answer 'what does it cost'; this answers 'is it getting more expensive', which is the question an operator deciding where and WHEN to register actually has. ?window=24h|7d|30d|90d (default 7d), newest first, bounded. change_tao/change_pct describe the movement across the RETURNED window and are null when there is nothing to compare against — a single point has no change, and a change from a zero base has no percentage. A subnet with no recorded prices returns an empty series, never a 404.",
     "short",
     ["subnets"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: ["24h", "7d", "30d", "90d"] },
-      },
-    ],
+    [],
     [
       {
         name: "netuid",
@@ -4115,16 +3769,7 @@ export const API_ROUTES = [
     `Fetch who owns one subnet's alpha (#9557) — the top coldkeys by alpha held on that netuid, with each holder's share of the subnet total, how many hotkeys they hold it through, and whole-subnet aggregates (distinct holder count, total measured alpha, top5/top10/top20 concentration). The reverse index of /accounts/{ss58}/positions, which reads the same ledger one coldkey (one account) at a time. Distinct from /subnets/{netuid}/concentration, which computes its scalars off neurons.stake_tao and therefore sees REGISTERED UIDs only: this reads nominator_positions, keyed on (coldkey, hotkey, netuid) whether or not the hotkey holds a UID on the subnet, so alpha staked to UNREGISTERED hotkeys is included — on netuid 74, 92 hotkeys carry positions and 10 are registered there, which is the part no other public source reaches without a full-chain map scan. Valued as share_fraction x hotkey_alpha.total_alpha against ONE proven pool pass, and ranked in ALPHA rather than TAO: within a single subnet alpha is already a common unit, so there is no subnet_snapshots price join and none of its up-to-24h staleness — multiply by the subnet's alpha_price_tao for TAO. limit caps the returned rows (default ${SUBNET_HOLDERS_LIMIT_DEFAULT}, max ${SUBNET_HOLDERS_LIMIT_MAX}); holder_count, total_alpha and the three concentration shares are computed across the FULL holder set and then sliced, never over the capped rows, because the top of a sum is not contained in the union of the tops of its addends. TWO STATES DECLINE rather than answer, both with holders:[] plus a degraded.reason and NULL counts: pool_totals_unproven while no hotkey_alpha pass is recorded complete (a partially loaded pool ledger silently UNDERPRICES holders rather than visibly dropping them, so the ranking would be plausible and wrong), and root_not_in_alpha_map for netuid 0, which SubtensorModule::Alpha does not cover at all. A zero in any count is therefore a measured zero, never a decline. Mainnet-only: neither source table carries a network dimension.`,
     "short",
     ["subnets"],
-    [
-      {
-        name: "limit",
-        schema: {
-          type: "integer",
-          minimum: 1,
-          maximum: SUBNET_HOLDERS_LIMIT_MAX,
-        },
-      },
-    ],
+    [],
     [
       {
         name: "netuid",
@@ -4140,16 +3785,7 @@ export const API_ROUTES = [
     `Fetch one subnet's surface audit trail. When one subnet's public surfaces were added, changed or removed, and in which commit (#9612). The registry publishes what a subnet exposes TODAY; this answers when that became true -- the question behind 'did this API move?' and 'when did this subnet stop publishing an OpenAPI spec?'. Each entry names the surface (id, kind, url, name lifted from the recorded overlay), the action (insert, update or delete), the source_commit that produced it, and when it was recorded. A DELETE entry is the only evidence a surface ever existed -- the registry itself carries no trace of a removed surface, which is what makes this trail rather than the surface list the place to ask. IDENTITY IS COALESCED: the upsert path omitted surface_id from its INSERT column list, so 8,831 of the table's 8,892 rows carried a NULL and only the 61 deletes recorded one. Migration 0024 backfilled the column from the overlay's own id -- present on every row -- and the writer now records it, but this route still falls back to the overlay because migrations here are applied by hand and a fresh or restored database will have the nulls back. The overlay itself is READ, not republished: only the fields identifying WHAT changed are lifted out, and a caller wanting the full surface record reads /subnets/{netuid}/surfaces, which is that document's home. surface_count counts distinct surfaces with a recorded mutation, which is NOT the subnet's current surface count -- a deleted surface appears here and not there, and that difference is the point. limit caps the entries (default ${SURFACE_HISTORY_LIMIT_DEFAULT}, max ${SURFACE_HISTORY_LIMIT_MAX}), newest first. A subnet whose surfaces have never changed returns an empty trail, never a 404 -- stability is the common case. Mainnet-only: the registry sync that writes this table is mainnet's.`,
     "short",
     ["subnets"],
-    [
-      {
-        name: "limit",
-        schema: {
-          type: "integer",
-          minimum: 1,
-          maximum: SURFACE_HISTORY_LIMIT_MAX,
-        },
-      },
-    ],
+    [],
     [
       {
         name: "netuid",
@@ -4165,20 +3801,7 @@ export const API_ROUTES = [
     `Fetch the emission-gate change log. Every recorded change to the emission gate (#9615) -- its governance parameters, the per-subnet emission switches, and the dormant TAO-flow path, in one chronological feed. Three append-on-change tables written only when a value actually MOVED, so the tables ARE the change log. /network/parameters serves these as CURRENT state; this answers when they became that and what they were before, which is the question behind 'did governance move the gate before that emission shift?'. ONE FEED, THREE SHAPES: each entry declares its kind (param, subnet or flow) and carries ONLY the fields that kind has -- a param entry has no netuid, a subnet entry has no numeric value -- with the rest ABSENT rather than null, because an absent field says 'this kind has no such thing' where a null would say 'it has one and we do not know it'. predates_capture IS PUBLISHED ON EVERY ENTRY and matters: the sampler records a row the first time it OBSERVES a value, not the first time that value changed, so on such a row previous_value is null and the flag is true -- it is NOT a governance event. predates_capture_count reports how many of the returned entries are first observations, because a reader counting governance events must subtract them. source separates a value governance SET from one the runtime RECOMPUTED, two different events a bare value cannot tell apart. ?kind= filters to one of the three; ?limit= caps the feed (default ${EMISSION_CHANGES_LIMIT_DEFAULT}, max ${EMISSION_CHANGES_LIMIT_MAX}), newest first ACROSS all three tables -- the union is taken in SQL so the cap means 'the newest N changes' rather than the newest N of each. An empty feed is the steady state, never a 404: these tables only gain rows when something moves. Mainnet-only: the sampler that writes them reads finney.`,
     "short",
     ["chain"],
-    [
-      {
-        name: "kind",
-        schema: { type: "string", enum: ["param", "subnet", "flow"] },
-      },
-      {
-        name: "limit",
-        schema: {
-          type: "integer",
-          minimum: 1,
-          maximum: EMISSION_CHANGES_LIMIT_MAX,
-        },
-      },
-    ],
+    [],
     [],
   ),
   route(
@@ -4189,30 +3812,7 @@ export const API_ROUTES = [
     `Fetch every subnet ranked by alpha-ownership concentration. Every subnet ranked by how concentrated its alpha OWNERSHIP is (#9607) — per subnet: the distinct holder count, the measured alpha total, top1/top5/top10/top20 shares, and the largest holder's coldkey (an ss58 address). The cross-subnet companion to /subnets/{netuid}/holders, which answers this one subnet at a time and so costs 129 requests to compare the network. DISTINCT FROM /chain/concentration, which computes Gini/HHI/Nakamoto off neurons.stake_tao and therefore sees REGISTERED UIDs only — on netuid 74 that is 10 of the 92 hotkeys actually carrying positions. This reads the position ledger, so alpha parked on hotkeys holding no UID is measured rather than invisible, and the two routes disagree by design. ALPHA IS NEVER SUMMED ACROSS SUBNETS: each subnet's alpha is a different token, so total_alpha is reported per subnet and the network rollup carries only dimension-free facts — subnets measured, how many have a single account holding a majority, how many have exactly one holder, and the MEDIAN of the top-1 shares. A cross-subnet total requires pricing each subnet's alpha through its own alpha_price_tao first, which is what /accounts/top-holders does. ?sort=top1_share (default), top5_share, top10_share, top20_share, holder_count or total_alpha; a subnet whose share could not be computed sorts LAST rather than reading as the least concentrated. limit caps the returned subnets (default ${CHAIN_HOLDERS_LIMIT_DEFAULT}, max ${CHAIN_HOLDERS_LIMIT_MAX}) and the max sits above the subnet count so ranking the whole network is one request. DECLINES rather than answering while the hotkey_alpha pool ledger has no complete pass — an empty subnets array with degraded.reason pool_totals_unproven and a NULL subnet_count, never a zero one. Mainnet-only: neither source table carries a network dimension.`,
     "short",
     ["chain"],
-    [
-      {
-        name: "sort",
-        schema: {
-          type: "string",
-          enum: [
-            "top1_share",
-            "top5_share",
-            "top10_share",
-            "top20_share",
-            "holder_count",
-            "total_alpha",
-          ],
-        },
-      },
-      {
-        name: "limit",
-        schema: {
-          type: "integer",
-          minimum: 1,
-          maximum: CHAIN_HOLDERS_LIMIT_MAX,
-        },
-      },
-    ],
+    [],
     [],
   ),
   route(
@@ -4223,17 +3823,7 @@ export const API_ROUTES = [
     "Fetch the probe failure-reason mix. WHY surfaces fail, and whether the mix is changing (#9622). surface_checks.classification is the only record of why a probe failed -- live, redirected, transient, rate-limited, timeout, dead, content-mismatch, unsupported, auth-required, across 1,263,089 checks measured 2026-08-06 -- and nothing served that distribution. /health/history/{date} accepts ?classification= as a FILTER over a dated snapshot ('which surfaces were dead on day D'), which is a different question from 'why are surfaces failing'. THIS READS A ROLLUP, NOT THE RAW TABLE, and that is the point: the raw checks are pruned at 30 days, and the pre-existing daily rollup keeps samples/ok_count/uptime_ratio with NO classification -- it records the RATE of failure and discards the REASON, so every day the answer to 'why did this fail' was expiring. Migration 0025 adds surface_failure_daily, backfills it from everything the raw table still held, and the hourly rollup keeps it current under the same rolled-before-prune contract, so this route is both cheap (7,312 rows for 26 days, against a 7-day raw GROUP BY reading 955,783 rows in 1.14s) and no longer capped at the retention window. SUCCESSFUL PROBES ARE COUNTED TOO, because a rate needs its denominator: 400 timeouts is a different story against 500 checks than against 500,000. share is of every probe in the window and failure_share is of the failing ones only, so neither has to be reconstructed from the other, and failure_share is NULL on a succeeding classification rather than zero. redirected is NOT counted as a failure -- a surface answering from a new location is serving, and the probe's own status says so. THE DEPTH IS PUBLISHED: days_covered is counted from the ROWS rather than from the requested window, so a day the prober did not run is absent rather than reported as a day of perfect health, and oldest_day/newest_day say what was actually covered. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free hour count, because the source is a DAILY rollup and an arbitrary hour would imply a resolution it does not have; ?netuid= scopes to one subnet and ?kind= to one surface kind, both applied in SQL. An EMPTY window is a measurement, not a decline: it means the prober recorded nothing in that range. Mainnet-only: the registry whose surfaces are probed is mainnet's.",
     "short",
     ["health"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: FAILURE_REASONS_WINDOWS },
-      },
-      {
-        name: "netuid",
-        schema: { type: "integer", minimum: 0, maximum: 65535 },
-      },
-      { name: "kind", schema: { type: "string" } },
-    ],
+    [],
     [],
   ),
   route(
@@ -4244,7 +3834,7 @@ export const API_ROUTES = [
     "Resolve a pasted query to the chain entities it could name (metagraphed-infra#362). A block explorer's most common search is an IDENTIFIER, not a question -- an account, a block hash, an extrinsic hash, a netuid -- and every one is recognisable from its shape with no index lookup and no inference. Use this BEFORE /api/v1/search or /api/v1/search/semantic: it answers instantly when the query is an identifier, and returns an empty `matches` when it is not, which is the signal to fall through to corpus search. AMBIGUITY IS RETURNED, NOT GUESSED. `matches` is a list because two inputs have more than one correct reading: a 64-hex string is a block hash OR an extrinsic hash, and a small integer is a netuid AND a block height. Each candidate carries `exact`; `false` means another kind shares the shape, so present the alternatives rather than redirecting. `exact` is NOT an existence claim -- this route looks nothing up. `unambiguous` is true only for a single exact candidate, and is the one field a UI needs to decide between navigating and rendering a choice. An ss58 is checksum-verified, so a one-character typo resolves to NOTHING rather than to an empty account page that reads as 'no activity'. `?q=` is the query; whitespace is trimmed, hex is normalised to lowercase with an 0x prefix. Served live on every network.",
     "short",
     ["search"],
-    [{ name: "q", schema: { type: "string" } }],
+    [],
     [],
   ),
   route(
@@ -4266,15 +3856,7 @@ export const API_ROUTES = [
     "Fetch the network-wide concentration series. Is the NETWORK getting more concentrated (#9628) -- the network-wide concentration card as a per-day series. /subnets/{netuid}/concentration/history has answered that one subnet at a time since it shipped; /chain/concentration had no series at all, so 'is subnet 74 concentrating?' was one request and 'is Bittensor concentrating?' was unanswerable. Each point carries the same five lenses the live card does -- stake, emission, entity_stake, entity_emission, validator_stake, each with holders/total/gini/hhi/hhi_normalized/nakamoto_coefficient/top-K shares/entropy -- plus uids_per_entity and the shape of the day it was computed over (neuron_count, subnet_count, entity_count). THIS READS A ROLLUP, AND THE ROLLUP RAN THE SERVING BUILDER. The per-subnet route computes Gini/HHI/Nakamoto in JS from raw per-UID rows, which works because a netuid slice is about 256 of them; network-wide it is not a slice -- neuron_daily holds 816,803 rows across 27 days, ~30,100 a day (measured 2026-08-06), so a 30-day series computed that way would pull ~900,000 rows into one request. An hourly cron instead computes each COMPLETE day once with buildChainConcentration, the same function /chain/concentration serves, so a historical point and the live card are the same computation by construction rather than a SQL reimplementation that agrees until it quietly does not. The rollup BACKFILLS ITSELF, bounded to a few days a tick, so the history that already exists fills in without a separate recovery path. A STORED COMPUTATION FREEZES THE CODE THAT PRODUCED IT, and that is published rather than hidden: if the builder changes, points computed before and after disagree BY CONSTRUCTION, not because the network moved. Every point carries the builder_version it was computed under and the series reports builder_versions -- more than one means the series changes DEFINITION partway along, and a trend drawn across that boundary is not a trend. THE DEPTH IS THE ROLLUP'S, NOT THE WINDOW'S. neuron_daily is itself only ~27 days deep and the rollup cannot predate it, so a 90d window returns what EXISTS; oldest_day/newest_day and point_count come from the rows, and a day the capture did not run is ABSENT rather than a zero-concentration point, which would read as a perfectly distributed network on a day nothing was measured. Today is never rolled up: neuron_daily gains rows as the capture proceeds, so a mid-day card would be computed over a partial network and then never revisited. A NULL scorecard means no measurable distribution, not a missing one -- computeConcentration returns null when a distribution has no positive values, and substituting zeros would invent a perfectly equal one. ?window= is 7d, 30d (default) or 90d. An EMPTY window is a measurement, not an error. Mainnet-only: neuron_daily carries no network dimension.",
     "short",
     ["chain"],
-    [
-      {
-        name: "window",
-        schema: {
-          type: "string",
-          enum: CHAIN_CONCENTRATION_HISTORY_WINDOWS,
-        },
-      },
-    ],
+    [],
     [],
   ),
   route(
@@ -4285,12 +3867,7 @@ export const API_ROUTES = [
     "Fetch one subnet's emission-pipeline series. One subnet's emission-pipeline decomposition OVER TIME (#9625). /chain/emission-pipeline decomposes the v440 pipeline for every subnet as of ONE BLOCK; subnet_snapshots has persisted that decomposition daily since 2026-08-02 -- emission_share, tao_in_pool_tao, the TAO split (tao_in_emission_tao pool-liquidity injection vs excess_tao chain buys), alpha_in/out_emission, miner_burned_fraction, emission_enabled, first_emission_block, alpha_price_tao, each pinned by pipeline_block/pipeline_block_hash -- and no route read the series, so 'was this subnet's miner burn climbing before its emission dropped?' was unanswerable from data already in the table. THE DEPTH IS FIVE DAYS AND THE ROUTE SAYS SO. subnet_snapshots holds 50,762 rows across 409 days; the PIPELINE columns hold 645 across 5 (measured 2026-08-06, 129 subnets a day, no gaps). oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day rides on every response so a caller receiving 5 points for a 90d window reads it as 'the series begins here' rather than '85 days were dropped'. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED. The daily snapshot writer carries the last pipeline capture forward when a fresh one has not landed for that day -- measured 2026-08-06, that day's row was captured at 05:00 UTC carrying block 8777280, yesterday's, while the chain was at 8782513. So two consecutive points can be THE SAME OBSERVATION, and a consumer reading them as two daily samples would conclude a value was flat when it was simply not re-measured. pipeline_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the number of times the pipeline was actually READ, which is the honest denominator for any claim about how it moved. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily snapshot. An EMPTY series is a measurement, not an error: a subnet registered after the capture began, or a window narrower than the days that exist, both return one legitimately. Mainnet-only: subnet_snapshots carries no network dimension.",
     "short",
     ["subnets"],
-    [
-      {
-        name: "window",
-        schema: { type: "string", enum: PIPELINE_HISTORY_WINDOWS },
-      },
-    ],
+    [],
     [
       {
         name: "netuid",
@@ -4406,19 +3983,7 @@ export const API_ROUTES = [
     "Fetch the recent-block feed (newest first) for the block explorer; ?limit (<=100) / ?offset, or ?cursor= for stable keyset paging under head-of-chain inserts (#1851). A conjunctive (AND-ed) filter set (#1991) narrows the feed: ?author=<ss58>, ?spec_version=<n>, ?from / ?to (observed_at epoch-ms), ?block_start / ?block_end (height range), ?min_extrinsics / ?min_events (non-empty blocks). Pass ?format=csv to download the filtered block rows as CSV. Computed live from the first-party blocks D1 tier (#1345).",
     "short",
     ["blocks", "analytics"],
-    csvRouteQuery([
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-      { name: "offset", schema: { type: "integer", minimum: 0 } },
-      { name: "cursor", schema: { type: "string" } },
-      { name: "author", schema: { type: "string" } },
-      { name: "spec_version", schema: { type: "integer", minimum: 0 } },
-      { name: "from", schema: { type: "integer", minimum: 0 } },
-      { name: "to", schema: { type: "integer", minimum: 0 } },
-      { name: "block_start", schema: { type: "integer", minimum: 0 } },
-      { name: "block_end", schema: { type: "integer", minimum: 0 } },
-      { name: "min_extrinsics", schema: { type: "integer", minimum: 0 } },
-      { name: "min_events", schema: { type: "integer", minimum: 0 } },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -4451,10 +4016,7 @@ export const API_ROUTES = [
     "Fetch the extrinsics in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=100) / ?offset. Computed live from the first-party extrinsics D1 tier (#1845); 200 with extrinsics:[] when cold/unknown.",
     "short",
     ["blocks", "analytics"],
-    csvRouteQuery([
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-      { name: "offset", schema: { type: "integer", minimum: 0 } },
-    ]),
+    csvRouteQuery([]),
     [{ name: "ref", schema: { type: "string" } }],
   ),
   route(
@@ -4465,10 +4027,7 @@ export const API_ROUTES = [
     "Fetch the ACCOUNT-ATTRIBUTED events in one block (by numeric block_number or 0x block_hash), in natural order; ?limit (<=1000) / ?offset. This is the curated account_events projection -- a deliberate SUBSET of /api/v1/blocks/{ref}/chain-events (the complete pallet-level stream the block header's event_count counts), narrower by design rather than by loss. 200 with events:[] when cold/unknown.",
     "short",
     ["blocks", "analytics"],
-    csvRouteQuery([
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
-      { name: "offset", schema: { type: "integer", minimum: 0 } },
-    ]),
+    csvRouteQuery([]),
     [{ name: "ref", schema: { type: "string" } }],
   ),
   route(
@@ -4480,10 +4039,6 @@ export const API_ROUTES = [
     "short",
     ["chain", "analytics"],
     csvRouteQuery([
-      { name: "pallet", schema: { type: "string", maxLength: 64 } },
-      { name: "method", schema: { type: "string", maxLength: 64 } },
-      { name: "block", schema: { type: "integer", minimum: 0 } },
-      { name: "extrinsic", schema: { type: "integer", minimum: 0 } },
       {
         name: "cursor",
         schema: {
@@ -4494,8 +4049,6 @@ export const API_ROUTES = [
             "Opaque block_number.event_index cursor returned as next_cursor; both parts are non-negative safe integers.",
         },
       },
-      { name: "before", schema: { type: "integer", minimum: 0 } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 200 } },
     ]),
     [],
   ),
@@ -4507,12 +4060,7 @@ export const API_ROUTES = [
     "Fetch the chain-activity aggregate — the pallet.method event distribution over the most recent N blocks the decode lane has published — from the chain_events lakehouse table. ?blocks sets the window (default 1000, capped 5000); activity is ordered by count descending (top 100). Backs the get_chain_activity MCP tool. Served live, no static file.",
     "short",
     ["chain", "analytics"],
-    [
-      {
-        name: "blocks",
-        schema: { type: "integer", minimum: 1, maximum: 5000 },
-      },
-    ],
+    [],
     [],
   ),
   route(
@@ -4535,24 +4083,12 @@ export const API_ROUTES = [
     "short",
     ["extrinsics", "analytics"],
     csvRouteQuery([
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-      { name: "offset", schema: { type: "integer", minimum: 0 } },
-      { name: "cursor", schema: { type: "string" } },
-      { name: "block", schema: { type: "integer", minimum: 0 } },
-      { name: "signer", schema: { type: "string" } },
-      { name: "call_module", schema: { type: "string" } },
-      { name: "call_function", schema: { type: "string" } },
       {
         name: "call_hash",
         description:
           "Requires call_module so the decoded call-args JSON scan stays scoped.",
         schema: { type: "string", pattern: "^0x[0-9a-fA-F]{64}$" },
       },
-      { name: "success", schema: { type: "string", enum: ["true", "false"] } },
-      { name: "block_start", schema: { type: "integer", minimum: 0 } },
-      { name: "block_end", schema: { type: "integer", minimum: 0 } },
-      { name: "from", schema: { type: "integer", minimum: 0 } },
-      { name: "to", schema: { type: "integer", minimum: 0 } },
     ]),
     [],
   ),
@@ -4575,18 +4111,7 @@ export const API_ROUTES = [
     "Fetch the root-origin (Sudo pallet) call table, newest first — subtensor has no Council/Senate, so this is the extrinsics feed hardcoded to call_module='Sudo'. ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging) and a conjunctive filter set: ?block=<n>, ?call_function=, ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered rows as CSV. Computed live from the first-party extrinsics D1 tier (#4310/2.2).",
     "short",
     ["extrinsics", "analytics"],
-    csvRouteQuery([
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-      { name: "offset", schema: { type: "integer", minimum: 0 } },
-      { name: "cursor", schema: { type: "string" } },
-      { name: "block", schema: { type: "integer", minimum: 0 } },
-      { name: "call_function", schema: { type: "string" } },
-      { name: "success", schema: { type: "string", enum: ["true", "false"] } },
-      { name: "block_start", schema: { type: "integer", minimum: 0 } },
-      { name: "block_end", schema: { type: "integer", minimum: 0 } },
-      { name: "from", schema: { type: "integer", minimum: 0 } },
-      { name: "to", schema: { type: "integer", minimum: 0 } },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -4597,18 +4122,7 @@ export const API_ROUTES = [
     "Fetch subtensor's own root-origin hyperparameter/network-config change feed, newest first — the extrinsics feed hardcoded to call_module='AdminUtils' (re-scoped from the original Council/Senate framing; subtensor has no such pallet). ?limit (<=100) / ?offset (or ?cursor= for stable keyset paging) and a conjunctive filter set: ?block=<n>, ?call_function= (e.g. sudo_set_tempo), ?success=true|false, ?block_start/?block_end (block range), ?from/?to (observed_at epoch-ms range). Pass ?format=csv to download the filtered rows as CSV. Computed live from the first-party extrinsics D1 tier (#4310/2.3).",
     "short",
     ["extrinsics", "analytics"],
-    csvRouteQuery([
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-      { name: "offset", schema: { type: "integer", minimum: 0 } },
-      { name: "cursor", schema: { type: "string" } },
-      { name: "block", schema: { type: "integer", minimum: 0 } },
-      { name: "call_function", schema: { type: "string" } },
-      { name: "success", schema: { type: "string", enum: ["true", "false"] } },
-      { name: "block_start", schema: { type: "integer", minimum: 0 } },
-      { name: "block_end", schema: { type: "integer", minimum: 0 } },
-      { name: "from", schema: { type: "integer", minimum: 0 } },
-      { name: "to", schema: { type: "integer", minimum: 0 } },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -4733,10 +4247,7 @@ export const API_ROUTES = [
     "Fetch network-wide native-TAO transfer analytics over a 7d or 30d window: total Balances.Transfer volume + count, distinct senders/receivers, the top senders and receivers ranked by volume (?limit, <=100), and the top senders' share of total volume. Computed live from the account_events Transfer feed; schema-stable zeros + empty leaderboards when cold. Pass ?format=csv to download the top senders and receivers as one CSV tagged by a `direction` column (the totals + top_sender_share stay JSON-only).",
     "short",
     ["chain", "analytics"],
-    csvRouteQuery([
-      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -4747,14 +4258,7 @@ export const API_ROUTES = [
     "Fetch network-wide directed native-TAO transfer-pair analytics over a 7d or 30d window: total pairable Balances.Transfer volume + count, unique sender/receiver pairs, returned pair count, top-pair share, and top sender -> receiver pairs ranked by ?sort=volume or ?sort=count (?limit, <=100). Computed live from the account_events Transfer feed; schema-stable zeros + an empty pairs list when cold. Pass ?format=csv to download the ranked pairs as CSV (the totals + top_pair_share stay JSON-only).",
     "short",
     ["chain", "analytics"],
-    csvRouteQuery([
-      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-      {
-        name: "sort",
-        schema: { type: "string", enum: ["volume", "count"] },
-      },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -4791,9 +4295,7 @@ export const API_ROUTES = [
     "Fetch the network-wide rolling 24h buy/sell alpha-volume leaderboard: every subnet that had StakeAdded (buy) or StakeRemoved (sell) volume in the last 24h (subnets with no volume are excluded) ranked by total_volume_tao (biggest market activity first, ?limit <=100), each with the same buy/sell/total volume + sentiment scorecard as GET /api/v1/subnets/{netuid}/volume, plus a network rollup (with its own net/gross sentiment reading) and a distribution (count, mean, min, p25, median, p75, p90, max) of the per-subnet total volume. Computed live from the account_events stream; schema-stable zeros + empty leaderboard when cold. Fixed 24h window (no ?window= param), matching the per-subnet route's own framing.",
     "short",
     ["chain", "analytics"],
-    csvRouteQuery([
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -4804,10 +4306,7 @@ export const API_ROUTES = [
     "Fetch network-wide validator weight-setting activity over a 7d or 30d window across the subnets with observed weight-setting activity (subnets with no WeightsSet events are absent): a per-subnet leaderboard (distinct weight-setting validators, WeightsSet event count, and average updates per validator) ranked by total events, a network rollup with the true distinct setter count (a validator setting weights on several subnets counts once) and total events, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet update intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events WeightsSet stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
     "short",
     ["chain", "analytics"],
-    csvRouteQuery([
-      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -4818,10 +4317,7 @@ export const API_ROUTES = [
     "Fetch the network-wide weight-setter leaderboard over a 7d or 30d window: the individual validators driving consensus across every subnet ranked by activity, each with its total WeightsSet count (summed across every subnet it operates on), its share of the network total, and its first/last set time. `limit` caps the returned page (default 20, max 100); `distinct_setters` always reports the true network-wide total regardless of `limit`. The network-wide companion to GET /api/v1/subnets/{netuid}/weights/setters. Computed live from the account_events WeightsSet stream; schema-stable empty leaderboard when cold. Pass ?format=csv to download the leaderboard as CSV.",
     "short",
     ["chain", "analytics"],
-    csvRouteQuery([
-      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -4832,10 +4328,7 @@ export const API_ROUTES = [
     "Fetch network-wide axon-serving announcement activity over a 7d or 30d window across the subnets with observed serving activity (subnets with no AxonServed events are absent): a per-subnet leaderboard (AxonServed event count, distinct servers, and average announcements per server) ranked by total announcements, a network rollup with the true distinct server count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). Computed live from the account_events AxonServed stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
     "short",
     ["chain", "analytics"],
-    csvRouteQuery([
-      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -4846,10 +4339,7 @@ export const API_ROUTES = [
     "Fetch network-wide axon-removal activity over a 7d or 30d window across the subnets with observed removal activity (subnets with no AxonInfoRemoved events are absent): a per-subnet leaderboard (AxonInfoRemoved event count, distinct removers, and average removals per remover) ranked by total removals, a network rollup with the true distinct remover count (a hotkey removing an axon on several subnets counts once) and total removals, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-teardown intensity. `limit` caps the leaderboard (default 20, max 100). The teardown-side companion to the axon-announcement GET /api/v1/chain/serving and the network-wide companion to GET /api/v1/subnets/{netuid}/axon-removals. Read from the account_events AxonInfoRemoved stream, which the runtime has never populated; an empty block is marked `degraded` rather than published as a measured zero. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
     "short",
     ["chain", "analytics"],
-    csvRouteQuery([
-      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -4860,10 +4350,7 @@ export const API_ROUTES = [
     "Fetch network-wide Prometheus-endpoint serving activity over a 7d or 30d window across the subnets with observed telemetry activity (subnets with no PrometheusServed events are absent): a per-subnet leaderboard (PrometheusServed event count, distinct exporters, and average announcements per exporter) ranked by total announcements, a network rollup with the true distinct exporter count (a hotkey announcing on several subnets counts once) and total announcements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-announcement intensity. `limit` caps the leaderboard (default 20, max 100). The telemetry-endpoint companion to the axon-endpoint GET /api/v1/chain/serving — which subnets run observability infrastructure. Read from the account_events PrometheusServed stream, which carries 0 of the 18,041 PrometheusServed events the chain emitted; an empty block is marked `degraded` rather than published as a measured zero. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
     "short",
     ["chain", "analytics"],
-    csvRouteQuery([
-      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -4874,10 +4361,7 @@ export const API_ROUTES = [
     "Fetch network-wide neuron-registration activity over a 7d or 30d window across the subnets with observed registration activity (subnets with no NeuronRegistered events are absent): a per-subnet leaderboard (NeuronRegistered event count, distinct registrants, and average registrations per registrant) ranked by total registrations, a network rollup with the true distinct registrant count (a hotkey registering on several subnets counts once) and total registrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-registration intensity. `limit` caps the leaderboard (default 20, max 100). Raw registration demand — the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. Computed live from the account_events NeuronRegistered stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
     "short",
     ["chain", "analytics"],
-    csvRouteQuery([
-      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -4888,10 +4372,7 @@ export const API_ROUTES = [
     "Fetch network-wide neuron-deregistration activity over a 7d or 30d window across the subnets with observed deregistration activity (subnets with no NeuronDeregistered events are absent): a per-subnet leaderboard (NeuronDeregistered event count, distinct deregistered hotkeys, and average deregistrations per hotkey) ranked by total deregistrations, a network rollup with the true distinct hotkey count (a hotkey deregistered on several subnets counts once) and total deregistrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-deregistration intensity. `limit` caps the leaderboard (default 20, max 100). Raw deregistration/eviction activity — the exit-side companion to GET /api/v1/chain/registrations and the account_events companion to the neuron_daily validator-set churn in GET /api/v1/chain/turnover. DERIVED from UID reuse in the NeuronRegistered stream by a scheduled projection (NeuronDeregistered has never been emitted by the runtime); the payload's `derivation` block states how many window registrations had no observable previous holder, and `degraded` marks an answer nothing derived. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
     "short",
     ["chain", "analytics"],
-    csvRouteQuery([
-      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -4902,10 +4383,7 @@ export const API_ROUTES = [
     "Fetch network-wide stake-transfer activity over a 7d or 30d window across the subnets with observed transfer activity (subnets with no StakeTransferred events are absent): a per-subnet leaderboard (StakeTransferred event count, distinct senders, and average transfers per sender) ranked by total transfers, a network rollup with the true distinct sender count (an account transferring stake out of several subnets counts once) and total transfers, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet transfer intensity. `limit` caps the leaderboard (default 20, max 100). The between-coldkeys companion to the within-account re-delegation churn of GET /api/v1/chain/stake-moves — transfer_stake relocates staked alpha from one account to another on the same hotkey (origin leg only), so it moves ownership, not net capital. Computed live from the account_events StakeTransferred stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
     "short",
     ["chain", "analytics"],
-    csvRouteQuery([
-      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -4916,10 +4394,7 @@ export const API_ROUTES = [
     "Fetch network-wide stake-movement (re-delegation) activity over a 7d or 30d window across the subnets with observed movement activity (subnets with no StakeMoved events are absent): a per-subnet leaderboard (StakeMoved event count, distinct movers, and average movements per mover) ranked by total movements, a network rollup with the true distinct mover count (an account moving stake out of several subnets counts once) and total movements, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-move intensity. `limit` caps the leaderboard (default 20, max 100). The re-delegation-churn companion to the net-capital-flow GET /api/v1/chain/stake-flow — move_stake relocates stake between hotkeys/subnets without unstaking, so it is churn, not flow. Computed live from the account_events StakeMoved stream; schema-stable empty block when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + intensity distribution stay JSON-only).",
     "short",
     ["chain", "analytics"],
-    csvRouteQuery([
-      { name: "window", schema: { type: "string", enum: ["7d", "30d"] } },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -4968,25 +4443,7 @@ export const API_ROUTES = [
     `Fetch every subnet ranked by distribution spread. ${CHAIN_CONCENTRATION_SUBNETS_DESCRIPTION}`,
     "short",
     ["chain", "analytics", "subnets"],
-    [
-      {
-        name: "lens",
-        schema: parameterSchema(enumSchema(CONCENTRATION_LENSES)),
-      },
-      {
-        name: "sort",
-        schema: parameterSchema(enumSchema(CONCENTRATION_RANKING_SORTS)),
-      },
-      { name: "order", schema: parameterSchema(orderSchema()) },
-      {
-        name: "limit",
-        schema: {
-          type: "integer",
-          minimum: 1,
-          maximum: CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
-        },
-      },
-    ],
+    [],
     [],
   ),
   route(
@@ -5019,16 +4476,7 @@ export const API_ROUTES = [
     `Fetch the network-wide recent subnet-identity-change feed (newest first) aggregated across all subnets: the most-recent SubnetIdentitiesV3 changes, each carrying the netuid it belongs to plus the same tracked identity fields as the per-subnet identity-history route, capped to ?limit (default ${CHAIN_IDENTITY_HISTORY_LIMIT_DEFAULT}, max ${CHAIN_IDENTITY_HISTORY_LIMIT_MAX}) and reporting the distinct subnet_count the feed spans, computed from the frozen lakehouse export of subnet_identity_history; schema-stable empty feed when cold.`,
     "short",
     ["chain", "analytics"],
-    [
-      {
-        name: "limit",
-        schema: {
-          type: "integer",
-          minimum: 1,
-          maximum: CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
-        },
-      },
-    ],
+    [],
     [],
   ),
   route(
@@ -5061,20 +4509,7 @@ export const API_ROUTES = [
     "Fetch network-wide validator-set turnover across all subnets between the window's start and end neuron_daily snapshots: a per-subnet leaderboard (validators entered, exited, Jaccard retention, and a 0-100 stability score) ranked by gross churn, a network rollup over the union of every subnet's validator hotkeys, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet stability scores. Sort is fixed to most-volatile-first; limit caps the leaderboard (default 20, max 100). Computed live from the neuron_daily D1 rollup; schema-stable zeros when cold. Pass ?format=csv to download the per-subnet leaderboard as CSV (the network rollup + stability distribution stay JSON-only).",
     "short",
     ["chain", "analytics"],
-    csvRouteQuery([
-      {
-        name: "window",
-        schema: { type: "string", enum: ["7d", "30d", "90d"] },
-      },
-      {
-        name: "limit",
-        schema: {
-          type: "integer",
-          minimum: 1,
-          maximum: CHAIN_TURNOVER_LIMIT_MAX,
-        },
-      },
-    ]),
+    csvRouteQuery([]),
     [],
   ),
   route(
@@ -5085,10 +4520,7 @@ export const API_ROUTES = [
     "Fetch long-term daily uptime history per operational surface for one subnet over a 90d or 1y window (computed live from the surface_uptime_daily D1 rollup). Pass `min_samples` to drop low-sample day rows (daily probe count below the threshold, including zero-sample 'unknown' days) from the history.",
     "short",
     ["health", "subnets", "analytics"],
-    csvRouteQuery([
-      { name: "window", schema: { type: "string", enum: ["90d", "1y"] } },
-      { name: "min_samples", schema: { type: "integer", minimum: 0 } },
-    ]),
+    csvRouteQuery([]),
     [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
   ),
   route(
@@ -5099,29 +4531,7 @@ export const API_ROUTES = [
     "Fetch registry leaderboards computed live from D1 + registry projections + the economics tier. Operational boards: healthiest, fastest-rpc, most-complete, most-enriched, fastest-growing, most-reliable. Economic opportunity boards (for miners/validators): open-slots, cheapest-registration, highest-emission, validator-headroom, biggest-alpha-gain-1d, biggest-alpha-gain-7d. Omit `board` for all boards.",
     "standard",
     ["registry", "analytics", "subnets"],
-    [
-      {
-        name: "board",
-        schema: {
-          type: "string",
-          enum: [
-            "healthiest",
-            "fastest-rpc",
-            "most-complete",
-            "most-enriched",
-            "fastest-growing",
-            "most-reliable",
-            "open-slots",
-            "cheapest-registration",
-            "highest-emission",
-            "validator-headroom",
-            "biggest-alpha-gain-1d",
-            "biggest-alpha-gain-7d",
-          ],
-        },
-      },
-      { name: "limit", schema: { type: "integer", minimum: 1, maximum: 100 } },
-    ],
+    [],
     [],
   ),
   route(
@@ -5132,17 +4542,7 @@ export const API_ROUTES = [
     "Compare several subnets side by side across the registry structure (completeness + surface counts), the live economics tier, and the live per-subnet health rollup — one call, requested order. `netuids` is a required comma-separated list of 1-128 subnet ids; `dimensions` selects a subset of structure,economics,health (default all). Composed live (no static file); for choosing between subnets without N separate detail/economics/health fetches.",
     "standard",
     ["registry", "subnets", "analytics"],
-    [
-      {
-        name: "netuids",
-        schema: {
-          type: "string",
-          maxLength: 767,
-          pattern: "^\\d{1,5}(,\\d{1,5}){0,127}$",
-        },
-      },
-      { name: "dimensions", schema: { type: "string" } },
-    ],
+    [],
     [],
   ),
   route(
@@ -5153,18 +4553,7 @@ export const API_ROUTES = [
     "Place several validators side by side for a stake/delegate decision: each hotkey's take rate, estimated APY, nominator count, on-chain identity, and cross-subnet stake/emission/trust aggregates. `hotkeys` is a required comma-separated list of 1-16 distinct SS58 validator addresses. `netuid` is an optional subnet context — when set, each validator also carries its membership row in that subnet (or null with no permit there). Composed live (no static file); the validator equivalent of /api/v1/compare.",
     "standard",
     ["validators", "analytics"],
-    [
-      {
-        name: "hotkeys",
-        schema: {
-          type: "string",
-          maxLength: 783,
-          pattern:
-            "^[1-9A-HJ-NP-Za-km-z]{47,48}(,[1-9A-HJ-NP-Za-km-z]{47,48}){0,15}$",
-        },
-      },
-      { name: "netuid", schema: parameterSchema(netuidSchema()) },
-    ],
+    [],
     [],
   ),
   route(
@@ -5202,7 +4591,7 @@ export const API_ROUTES = [
     "Fetch RPC reverse-proxy usage analytics — request volume, latency p50/p95, failover + error rate, cache-hit rate, per-endpoint distribution, and bounded time buckets for heatmaps — over a 7d or 30d window (computed live from D1 telemetry).",
     "short",
     ["rpc", "analytics", "operations"],
-    [{ name: "window", schema: { type: "string", enum: ["7d", "30d"] } }],
+    [],
     [],
   ),
   route(
@@ -6785,10 +6174,106 @@ function route(
     tags,
     query_collection: querySpec.collection,
     query_filter_names: querySpec.filterNames,
-    query_parameters: querySpec.parameters,
+    query_parameters: queryParametersFromSchema(pathValue, querySpec),
     csv_response: querySpec.csvResponse,
     path_parameters: pathParameters,
   };
+}
+
+/**
+ * A route's published query parameters, with every CONSTRAINT read from Zod
+ * (#10063).
+ *
+ * 3/5 of #10060. `schemas-src/route-queries.ts` and `listQuerySchema()` became
+ * the single statement of a route's query contract in 2/5, and
+ * `validate:route-query-parity` proved they equal what is published. This is
+ * where that proof gets cashed in: the `schema` object on every published
+ * parameter now comes from the Zod, so there is nothing left to keep in step.
+ *
+ * WHAT STILL COMES FROM THE CALL SITE. Only `description`. A parameter's prose
+ * is per-route -- it names what the rows are -- and 135 of the 678 published
+ * parameters carry one written at the `route()` call rather than in
+ * `SHARED_QUERY_PARAMETER_DESCRIPTIONS`. Taking descriptions from Zod too
+ * would move all 135 (`formatSchema()` has one sentence; the routes have
+ * three), and that is a contract change worth making deliberately, not one to
+ * smuggle into a refactor that claims to change nothing.
+ *
+ * ORDER IS THE ZOD'S. Object keys are authored in the order the route
+ * published them, which is what makes this emit an identical parameter list
+ * rather than a re-sorted one.
+ *
+ * A route with no schema keeps what it declared. That cannot happen while
+ * `validate:route-query-parity` passes -- it fails on any unclassified route --
+ * but falling back beats emitting nothing if it ever does.
+ */
+function queryParametersFromSchema(
+  pathValue: string,
+  querySpec: ReturnType<typeof normalizeQueryParameters>,
+): QueryParameterSpec[] {
+  const declared = querySpec.parameters as QueryParameterSpec[];
+  const schema = querySchemaForRoute({
+    path: pathValue,
+    query_collection: querySpec.collection,
+    query_filter_names: querySpec.filterNames,
+    csv_response: querySpec.csvResponse,
+  });
+  if (!schema) return declared;
+  const describedBy = new Map(
+    declared.map((parameter) => [parameter.name, parameter.description]),
+  );
+  const emitted = z.toJSONSchema(schema, {
+    target: "draft-2020-12",
+    io: "input",
+  }) as Row;
+  return Object.entries((emitted.properties ?? {}) as Record<string, Row>).map(
+    ([name, property]) => {
+      const description = describedBy.get(name);
+      return {
+        name,
+        ...(description === undefined ? {} : { description }),
+        // `description` is stripped from the schema OBJECT for the same reason
+        // the parity gate strips it: every vocabulary builder carries one, and
+        // the published schema does not. The three parameters that DO publish
+        // one inside their schema keep it, because it is re-applied below from
+        // what the route declared.
+        schema: parameterSchemaFor(property, declared, name),
+      };
+    },
+  );
+}
+
+/**
+ * One parameter's published `schema` object.
+ *
+ * Zod's `.describe()` lands INSIDE the emitted schema, and 675 of the 678
+ * published parameters carry their description at the PARAMETER level instead
+ * -- so the Zod description is dropped. Three publish theirs inside the schema
+ * (`counterparty` and `limit` on /accounts/{ss58}/counterparties, `cursor` on
+ * /chain-events); those keep the one the route declared, so this stays
+ * byte-identical rather than quietly relocating three descriptions.
+ */
+function parameterSchemaFor(
+  property: Row,
+  declared: QueryParameterSpec[],
+  name: string,
+): Row {
+  // `examples` goes with it, for the same reason and with the same list the
+  // parity gate strips: the vocabulary carries example values for the MCP
+  // surface, REST has never published them, and emitting them here would add
+  // an `examples` array to 400+ schema objects under cover of a refactor.
+  // Publishing them is a real improvement and belongs in the content pass,
+  // where the diff is the point rather than a side effect.
+  const {
+    description: _zodDescription,
+    examples: _zodExamples,
+    ...constraints
+  } = stripSentinelIntegerBounds(property);
+  const declaredSchema = declared.find((entry) => entry.name === name)
+    ?.schema as Row | undefined;
+  const inSchemaDescription = declaredSchema?.description as string | undefined;
+  return inSchemaDescription === undefined
+    ? constraints
+    : { description: inSchemaDescription, ...constraints };
 }
 
 function queryCollection(dataKey: string, options: Row = {}) {
