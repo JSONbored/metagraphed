@@ -501,6 +501,8 @@ import {
   VALIDATOR_ECONOMICS_RANKING_TABLES,
   VALIDATOR_ECONOMICS_TABLES,
 } from "../../src/read-store-tables.ts";
+import { loadSelfHealthNeon } from "../../src/self-health-neon.ts";
+import { createPgSql } from "../../src/pg-sql.ts";
 
 const RESPONSE_FORMATS = ["json", "csv"];
 const NEURON_CSV_COLUMNS = [
@@ -2140,16 +2142,32 @@ export async function handleChainIdentityHistory(
 // components, current_ok null, verdict "degraded") rather than a 404 -- the
 // same convention as every sibling Postgres-tier route, and the right answer
 // besides: "we have no readings" is a real state, not a missing resource.
-export async function handleSelfHealth(request: Request, env: Env) {
+export async function handleSelfHealth(
+  request: Request,
+  env: Env,
+  // Threaded so the Neon tier can release its Hyperdrive connection through
+  // waitUntil (#9836). Optional because the route's own tests call this
+  // without one, and a missing ctx means "skip the Neon tier", not "fail".
+  ctx?: { waitUntil?(promise: Promise<unknown>): void },
+) {
   const data =
     ((await tryPostgresTier(
       env,
       request,
       "METAGRAPH_SELF_HEALTH_SOURCE",
     )) as ReturnType<typeof buildSelfHealth> | null) ??
-    // Lakehouse cold tier (src/self-health-cold-tier.ts): the preserved
-    // daily rollup with NO current readings -- the poller died with the box,
-    // so current_ok stays null ("unmeasured") rather than a synthesized tick.
+    // Neon, where the prober writes now (#9836). Asked BEFORE the lakehouse:
+    // the cold tier can only ever answer current_ok:null, and once the probe
+    // lane is running there is a current reading to give.
+    (await loadSelfHealthNeon(
+      env.HYPERDRIVE && typeof ctx?.waitUntil === "function"
+        ? createPgSql(env.HYPERDRIVE, ctx as never)
+        : null,
+    )) ??
+    // Lakehouse cold tier (src/self-health-cold-tier.ts): the preserved daily
+    // rollup, ending 2026-08-02, with NO current readings. Kept because those
+    // 90 days are real history nothing else holds -- but second, because it
+    // cannot answer "are we up right now".
     (await loadSelfHealthColdTier(env)) ??
     buildSelfHealth([], []);
   // #9330/#9340: the lane verdicts ride alongside whichever tier answered above.

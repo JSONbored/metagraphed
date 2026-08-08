@@ -488,6 +488,7 @@ import {
   EXTRINSIC_DETAIL_PATH_PATTERN,
   EXTRINSICS_FEED_PATH_PATTERN,
   FRESHNESS_WATCHDOG_CRON,
+  SELF_HEALTH_PROBE_CRON,
   LANE_ALARM_CRON,
   LAKEHOUSE_SEAM_CRON,
   SAFE_MODE_WATCHDOG_CRON,
@@ -622,6 +623,7 @@ import {
 } from "../src/projection-lanes.ts";
 import { TOP_HOLDERS_FLOW_LANE } from "../src/top-holders-flow-tier.ts";
 import { laneHealthStore } from "../src/lane-health-store.ts";
+import { runSelfHealthProbe } from "../src/self-health-prober.ts";
 
 // #8386: anonymous stays the existing, regression-tested DATA_RATE_LIMITER
 // policy (60/60s, unchanged); a caller with a valid mg_... key gets 5x via a
@@ -2108,6 +2110,7 @@ function cronLabel(cron: string): string {
   if (cron === ABUSE_SCAN_CRON) return "abuse-scan";
   if (cron === UPGRADE_RADAR_CRON) return "upgrade-radar";
   if (cron === FRESHNESS_WATCHDOG_CRON) return "freshness-watchdog";
+  if (cron === SELF_HEALTH_PROBE_CRON) return "self-health-probe";
   if (cron === LANE_ALARM_CRON) return "lane-alarm";
   if (cron === LAKEHOUSE_SEAM_CRON) return "lakehouse-seam-watchdog";
   if (cron === SAFE_MODE_WATCHDOG_CRON) return "safe-mode-watchdog";
@@ -2417,6 +2420,13 @@ async function dispatchScheduled(
     // publish lane stops moving, which serving a 200 from stale artifacts
     // otherwise hides completely.
     return runFreshnessWatchdog(env, ctx);
+  }
+  if (cron === SELF_HEALTH_PROBE_CRON) {
+    // The endpoint that says whether WE are up has had no current reading
+    // since the box died (#9836). This is the writer that gives it one --
+    // probing our own public hostnames, so it measures the same edge, DNS and
+    // TLS path a user's request takes.
+    return runSelfHealthProbe(env as unknown as Record<string, unknown>, ctx);
   }
   if (cron === EMISSION_GATE_SAMPLE_CRON) {
     // The emission-gate sampler, formerly the 10-minute Actions schedule.
@@ -5943,7 +5953,7 @@ export async function handleRequest(
     // the cache window, so a reader always sees a recent-but-cheap answer.
     if (resolved.url.pathname === "/api/v1/self-health") {
       return withEdgeCache(request, ctx, env, "self-health", () =>
-        handleSelfHealth(request, env),
+        handleSelfHealth(request, env, ctx),
       );
     }
     // GET /api/v1/chain/yield: network-wide emission-yield (return rate) aggregate
