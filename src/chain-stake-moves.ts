@@ -13,6 +13,7 @@
 // schema-stable empty stub, never D1.
 
 import { median, percentile } from "./lib/stats.ts";
+import { clampRowLimit } from "../workers/request-params.ts";
 
 // The account_events kind emitted when a coldkey moves stake between hotkeys/subnets (move_stake).
 export const STAKE_MOVED_EVENT_KIND = "StakeMoved";
@@ -157,10 +158,11 @@ export function buildChainStakeMoves(
   } = {},
 ): ChainStakeMovesResult {
   const list = Array.isArray(subnetRows) ? subnetRows : [];
-  const flooredLimit = Math.floor(Number(limit));
-  const normalizedLimit = Number.isFinite(flooredLimit)
-    ? Math.max(0, Math.min(flooredLimit, CHAIN_STAKE_MOVES_LIMIT_MAX))
-    : CHAIN_STAKE_MOVES_LIMIT_DEFAULT;
+  const normalizedLimit = clampRowLimit(
+    limit,
+    CHAIN_STAKE_MOVES_LIMIT_DEFAULT,
+    CHAIN_STAKE_MOVES_LIMIT_MAX,
+  );
   const observedAt = toIso(networkDistinct?.newest_observed);
 
   const empty: ChainStakeMovesResult = {

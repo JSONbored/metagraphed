@@ -5,6 +5,7 @@
 // The field semantics live in schemas-src/routes/chain-network-rollups.ts (ChainServingArtifact).
 
 import { median, percentile } from "./lib/stats.ts";
+import { clampRowLimit } from "../workers/request-params.ts";
 
 // The account_events kind emitted when a neuron announces its axon endpoint on a subnet.
 export const SERVING_EVENT_KIND = "AxonServed";
@@ -152,10 +153,11 @@ export function buildChainServing(
   } = {},
 ): ChainServingResult {
   const list = Array.isArray(subnetRows) ? subnetRows : [];
-  const flooredLimit = Math.floor(Number(limit));
-  const normalizedLimit = Number.isFinite(flooredLimit)
-    ? Math.max(0, Math.min(flooredLimit, CHAIN_SERVING_LIMIT_MAX))
-    : CHAIN_SERVING_LIMIT_DEFAULT;
+  const normalizedLimit = clampRowLimit(
+    limit,
+    CHAIN_SERVING_LIMIT_DEFAULT,
+    CHAIN_SERVING_LIMIT_MAX,
+  );
   const observedAt = toIso(networkDistinct?.newest_observed);
 
   const empty: ChainServingResult = {

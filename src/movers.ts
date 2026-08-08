@@ -1,6 +1,7 @@
 // Page-size ceiling, single-sourced in route-limits.ts so the contract's
 // published `maximum` and this route's enforcement cannot drift (#9127).
 import { MOVERS_LIMIT_DEFAULT, MOVERS_LIMIT_MAX } from "./route-limits.ts";
+import { clampRowLimit } from "../workers/request-params.ts";
 export { MOVERS_LIMIT_DEFAULT, MOVERS_LIMIT_MAX };
 // Cross-subnet momentum ("movers"): rank every subnet by how much its stake, emission,
 // and validator set changed between a window's start and end neuron_daily snapshots.
@@ -311,10 +312,11 @@ export function buildMovers(
   // Clamp limit to a whole number in [0, MOVERS_LIMIT_MAX] so a direct caller cannot make
   // slice() behave oddly with a non-integer, negative, or over-max value (the HTTP layer
   // already validates 1..MOVERS_LIMIT_MAX; this keeps the pure builder's contract aligned).
-  const flooredLimit = Math.floor(Number(limit));
-  const normalizedLimit = Number.isFinite(flooredLimit)
-    ? Math.max(0, Math.min(flooredLimit, MOVERS_LIMIT_MAX))
-    : MOVERS_LIMIT_DEFAULT;
+  const normalizedLimit = clampRowLimit(
+    limit,
+    MOVERS_LIMIT_DEFAULT,
+    MOVERS_LIMIT_MAX,
+  );
   const comparable =
     startDate != null && endDate != null && startDate !== endDate;
   const ranked = comparable

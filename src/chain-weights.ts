@@ -4,6 +4,7 @@
 // Worker adds the envelope. See the schema/contracts for the full response contract.
 
 import { median, percentile } from "./lib/stats.ts";
+import { clampRowLimit } from "../workers/request-params.ts";
 
 // The account_events kind emitted when a validator sets weights on a subnet.
 export const WEIGHTS_EVENT_KIND = "WeightsSet";
@@ -149,10 +150,11 @@ export function buildChainWeights(
   } = {},
 ): ChainWeightsResult {
   const list = Array.isArray(subnetRows) ? subnetRows : [];
-  const flooredLimit = Math.floor(Number(limit));
-  const normalizedLimit = Number.isFinite(flooredLimit)
-    ? Math.max(0, Math.min(flooredLimit, CHAIN_WEIGHTS_LIMIT_MAX))
-    : CHAIN_WEIGHTS_LIMIT_DEFAULT;
+  const normalizedLimit = clampRowLimit(
+    limit,
+    CHAIN_WEIGHTS_LIMIT_DEFAULT,
+    CHAIN_WEIGHTS_LIMIT_MAX,
+  );
   const observedAt = toIso(networkDistinct?.newest_observed);
 
   const empty: ChainWeightsResult = {

@@ -12,6 +12,7 @@
 // the neurons families); that binding is alive, just not for chain events.
 
 import { chainDetailGapMessage } from "./chain-detail-hot-tier.ts";
+import { clampToolLimit } from "../workers/request-params.ts";
 import { hotTierBlockChainEvents } from "./chain-events-degraded.ts";
 import { CHAIN_EVENTS_LIMIT_DEFAULT } from "./route-limits.ts";
 import {
@@ -52,10 +53,12 @@ function throwToolError(code: string, message: string): never {
  */
 const MCP_CHAIN_EVENTS_LIMIT_MAX = 200;
 
+// The shared tool page-size rule (workers/request-params.ts). `Number(value)`
+// first because this surface receives the raw argument: Number(null) is 0 and
+// Number(undefined) is NaN, both of which the shared rule treats as "below 1"
+// and answers with the default -- the same outcome the private copy reached.
 function clampChainEventsLimit(value: unknown, max: number): number {
-  const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return CHAIN_EVENTS_LIMIT_DEFAULT;
-  return Math.min(Math.max(Math.floor(n), 1), max);
+  return clampToolLimit(Number(value), CHAIN_EVENTS_LIMIT_DEFAULT, max);
 }
 
 // The data Worker returns `{ error: "..." }` on 400; some envelopes use

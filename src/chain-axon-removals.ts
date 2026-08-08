@@ -10,6 +10,7 @@
 // per-subnet /api/v1/subnets/{netuid}/axon-removals.
 
 import { median, percentile } from "./lib/stats.ts";
+import { clampRowLimit } from "../workers/request-params.ts";
 import {
   AXON_REMOVALS_DEGRADED_NEVER_EMITTED,
   type EventStreamDegraded,
@@ -163,10 +164,11 @@ export function buildChainAxonRemovals(
   } = {},
 ): ChainAxonRemovalsResult {
   const list = Array.isArray(subnetRows) ? subnetRows : [];
-  const flooredLimit = Math.floor(Number(limit));
-  const normalizedLimit = Number.isFinite(flooredLimit)
-    ? Math.max(0, Math.min(flooredLimit, CHAIN_AXON_REMOVALS_LIMIT_MAX))
-    : CHAIN_AXON_REMOVALS_LIMIT_DEFAULT;
+  const normalizedLimit = clampRowLimit(
+    limit,
+    CHAIN_AXON_REMOVALS_LIMIT_DEFAULT,
+    CHAIN_AXON_REMOVALS_LIMIT_MAX,
+  );
   const observedAt = toIso(networkDistinct?.newest_observed);
 
   const empty: ChainAxonRemovalsResult = {

@@ -8,6 +8,7 @@
 // the same account_events [netuid, hotkey] tuple AxonServed uses.
 
 import { median, percentile } from "./lib/stats.ts";
+import { clampRowLimit } from "../workers/request-params.ts";
 import {
   PROMETHEUS_DEGRADED_NOT_CURATED,
   type EventStreamDegraded,
@@ -164,10 +165,11 @@ export function buildChainPrometheus(
   } = {},
 ): ChainPrometheusResult {
   const list = Array.isArray(subnetRows) ? subnetRows : [];
-  const flooredLimit = Math.floor(Number(limit));
-  const normalizedLimit = Number.isFinite(flooredLimit)
-    ? Math.max(0, Math.min(flooredLimit, CHAIN_PROMETHEUS_LIMIT_MAX))
-    : CHAIN_PROMETHEUS_LIMIT_DEFAULT;
+  const normalizedLimit = clampRowLimit(
+    limit,
+    CHAIN_PROMETHEUS_LIMIT_DEFAULT,
+    CHAIN_PROMETHEUS_LIMIT_MAX,
+  );
   const observedAt = toIso(networkDistinct?.newest_observed);
 
   const empty: ChainPrometheusResult = {

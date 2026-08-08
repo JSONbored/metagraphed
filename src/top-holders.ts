@@ -1,3 +1,4 @@
+import { clampRowLimit } from "../workers/request-params.ts";
 // Page-size ceiling, single-sourced in route-limits.ts so the contract's
 // published `maximum` and this route's enforcement cannot drift (#9127).
 import {
@@ -173,10 +174,11 @@ export function buildTopHoldersList(
   const normalizedSort = TOP_HOLDERS_SORTS.includes(sort)
     ? sort
     : DEFAULT_TOP_HOLDERS_SORT;
-  const flooredLimit = Math.floor(Number(limit));
-  const normalizedLimit = Number.isFinite(flooredLimit)
-    ? Math.max(0, Math.min(flooredLimit, TOP_HOLDERS_LIMIT_MAX))
-    : TOP_HOLDERS_LIMIT_DEFAULT;
+  const normalizedLimit = clampRowLimit(
+    limit,
+    TOP_HOLDERS_LIMIT_DEFAULT,
+    TOP_HOLDERS_LIMIT_MAX,
+  );
 
   let latestCapturedAt: number | null = null;
   const accounts = (Array.isArray(rows) ? rows : [])
