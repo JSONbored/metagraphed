@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { repoRoot } from "./lib.ts";
+import { repoRoot, stripJsonComments } from "./lib.ts";
 
 // Drift gate for the three generated Worker Env files (#10188).
 //
@@ -33,6 +33,14 @@ import { repoRoot } from "./lib.ts";
 // workerd build stamp moves with the pinned dependency rather than with repo
 // content. A Wrangler bump that leaves vars and bindings alone is not drift
 // this gate should fail on.
+//
+// JSONC parsing is scripts/lib.ts's stripJsonComments -- the same helper
+// scripts/cloudflare-verify.ts already reads wrangler.jsonc with. It is
+// string-aware for both comment forms AND trailing commas. The first cut of
+// this file carried its own copy that stripped trailing commas with a regex
+// over the whole document, which would have corrupted any var whose VALUE
+// contained `,}` (POSTHOG_USAGE_SAMPLE_RATES is an embedded JSON object, so
+// that was one config edit away from biting).
 //
 // The fix for any failure here is always the same: `npm run types:workers`,
 // then commit all three files.
@@ -75,49 +83,6 @@ const BINDING_KEYS = [
   "send_email",
   "version_metadata",
 ] as const;
-
-/**
- * JSONC -> JSON. Wrangler's configs carry `//` comments and trailing commas,
- * neither of which JSON.parse accepts. String-aware so a `//` inside a URL
- * (CHAIN_HEAD_RPC_URL is one) is not mistaken for a comment.
- */
-export function parseJsonc(source: string): Record<string, unknown> {
-  let out = "";
-  let inString = false;
-  let escaped = false;
-  for (let i = 0; i < source.length; i += 1) {
-    const ch = source[i]!;
-    if (inString) {
-      out += ch;
-      if (escaped) escaped = false;
-      else if (ch === "\\") escaped = true;
-      else if (ch === '"') inString = false;
-      continue;
-    }
-    if (ch === '"') {
-      inString = true;
-      out += ch;
-      continue;
-    }
-    if (ch === "/" && source[i + 1] === "/") {
-      while (i < source.length && source[i] !== "\n") i += 1;
-      out += "\n";
-      continue;
-    }
-    if (ch === "/" && source[i + 1] === "*") {
-      i += 2;
-      while (i < source.length && !(source[i] === "*" && source[i + 1] === "/"))
-        i += 1;
-      i += 1;
-      continue;
-    }
-    out += ch;
-  }
-  return JSON.parse(out.replace(/,(\s*[}\]])/g, "$1")) as Record<
-    string,
-    unknown
-  >;
-}
 
 /**
  * Every binding name a config declares, across all the binding blocks.
@@ -203,9 +168,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     let config: Record<string, unknown>;
     let types: string;
     try {
-      config = parseJsonc(
-        await fs.readFile(path.join(repoRoot, worker.config), "utf8"),
-      );
+      config = JSON.parse(
+        stripJsonComments(
+          await fs.readFile(path.join(repoRoot, worker.config), "utf8"),
+        ),
+      ) as Record<string, unknown>;
     } catch (error) {
       errors.push(`${worker.config}: could not parse (${String(error)})`);
       continue;

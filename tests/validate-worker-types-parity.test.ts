@@ -14,13 +14,15 @@
 // validator silently skipped every durable-object and rate-limiter binding
 // (they key on `name`, not `binding`) until a deletion test caught it.
 
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   declaredBindings,
-  parseJsonc,
   workerTypesParityErrors,
   WORKERS,
 } from "../scripts/validate-worker-types-parity.ts";
+import { repoRoot, stripJsonComments } from "../scripts/lib.ts";
 
 const worker = { config: "wrangler.jsonc", types: "types.d.ts" };
 
@@ -137,23 +139,41 @@ describe("binding parity", () => {
   });
 });
 
-describe("parseJsonc", () => {
+describe("config parsing (scripts/lib.ts's shared stripJsonComments)", () => {
+  // Not this file's helper any more -- it reuses the one
+  // scripts/cloudflare-verify.ts already reads wrangler.jsonc with. These stay
+  // because the gate depends on all three behaviours, and a change to the
+  // shared helper should fail HERE rather than by silently reporting every
+  // var as missing.
+  const parse = (src: string) => JSON.parse(stripJsonComments(src)) as unknown;
+
   it("strips comments and trailing commas", () => {
-    expect(parseJsonc('{\n// c\n"a": 1,\n}')).toEqual({ a: 1 });
+    expect(parse('{\n// c\n"a": 1,\n}')).toEqual({ a: 1 });
   });
 
   it("does not treat a // inside a string as a comment", () => {
-    // CHAIN_HEAD_RPC_URL is an https:// URL; a naive comment stripper eats it
-    // and the whole config fails to parse.
-    expect(parseJsonc('{"url": "https://x.example/y"}')).toEqual({
+    // CHAIN_HEAD_RPC_URL is an https:// URL; a naive stripper eats it and the
+    // whole config fails to parse.
+    expect(parse('{"url": "https://x.example/y"}')).toEqual({
       url: "https://x.example/y",
     });
   });
 
   it("keeps an escaped quote inside a string", () => {
-    expect(parseJsonc('{"a": "he said \\"hi\\""}')).toEqual({
-      a: 'he said "hi"',
-    });
+    expect(parse('{"a": "he said \\"hi\\""}')).toEqual({ a: 'he said "hi"' });
+  });
+
+  it("does not strip a comma inside a string value", () => {
+    // The regex the first cut of this gate used would have eaten this one.
+    expect(parse('{"a": "{x:1,}"}')).toEqual({ a: "{x:1,}" });
+  });
+
+  it("parses all three real wrangler configs", () => {
+    for (const worker of WORKERS) {
+      expect(() =>
+        parse(readFileSync(path.join(repoRoot, worker.config), "utf8")),
+      ).not.toThrow();
+    }
   });
 });
 
