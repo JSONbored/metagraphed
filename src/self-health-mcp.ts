@@ -43,19 +43,30 @@
 // the flag were flipped back. What remains is the cold tier, the artifact, and
 // the empty floor.
 //
-// KNOWN GAP, and it is NOT closed by that deletion: handleSelfHealth
-// (workers/request-handlers/entities.ts) grew a NEON tier in #9836 --
-// loadSelfHealthNeon, where the prober writes now -- and this chain never got
-// it. So REST answers from current readings while `get_self_health` and the
-// GraphQL `selfHealth` field fall to the cold rollup, which ends 2026-08-02.
-// That is the same divergence as #8633/#8987/#9153, for the same structural
-// reason: a resolution chain maintained in parallel with the route's instead
-// of shared with it. Closing it is a serving change, not a types change, so it
-// is deliberately not folded in here.
+// #10187 -- AND THE FOURTH REPEAT WAS THE NEON TIER. handleSelfHealth
+// (workers/request-handlers/entities.ts) grew one in #9836 --
+// loadSelfHealthNeon, where the prober writes now -- and this chain did not
+// get it, so REST answered from current readings while `get_self_health` and
+// the GraphQL `selfHealth` field fell to the cold rollup ending 2026-08-02.
+// Measured live on 2026-08-08, both surfaces the same minute: REST said
+// verdict "outage" with 3 measured components (api and publish both down),
+// while get_self_health said "degraded", observed_at null, 0 measured. Not
+// merely stale -- an agent asking during a real outage was told there was
+// nothing to measure, which is the reassuring direction to be wrong in.
+//
+// So the Neon tier is now FIRST here, exactly as it is in handleSelfHealth
+// once that route's own dead DATA_API step is skipped. Four repeats
+// (#8633 order, #8987 envelope, #9153 cold tier, #10187 Neon) all have the
+// same structural cause: a resolution chain maintained in parallel with the
+// route's instead of shared with it. Until the two genuinely share one
+// resolver, the tests below pin them tier-for-tier -- that pin is the only
+// thing standing between here and a fifth repeat.
 
 import { z } from "zod";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { loadSelfHealthColdTier } from "./self-health-cold-tier.ts";
+import { loadSelfHealthNeon } from "./self-health-neon.ts";
+import { createPgSql } from "./pg-sql.ts";
 import { loadLatestLaneHealth } from "./lane-health.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { withLaneHealth, type SelfHealth } from "./self-health.ts";
@@ -82,6 +93,36 @@ export function selfHealthToolError(
 }
 
 /**
+ * The ExecutionContext this loader needs to reach Neon, under either of the two
+ * names its callers give it.
+ *
+ * `createPgSql` hands its client back to Hyperdrive's pool through `waitUntil`
+ * rather than awaiting it, so a caller without one genuinely cannot read Neon --
+ * skipping the tier is correct there, not a degradation to paper over. The two
+ * entry points spell the field differently and both are real: the MCP context
+ * carries `executionCtx` (workers/api.ts hands the Worker's own ctx to every
+ * /mcp request -- it is `props`, not the context, that is OAuth-only), and
+ * GqlContext carries `ctx` (#10086, threaded for exactly this purpose).
+ * Accepting both beats renaming one and touching every other reader of it.
+ */
+type SelfHealthExecutionCtx = {
+  executionCtx?: { waitUntil?: (promise: Promise<unknown>) => void };
+  ctx?: { waitUntil?: (promise: Promise<unknown>) => void };
+};
+
+function selfHealthNeonSql(
+  ctx: { env: Env } & SelfHealthExecutionCtx,
+): ReturnType<typeof createPgSql> | null {
+  const waiter = ctx.executionCtx?.waitUntil
+    ? ctx.executionCtx
+    : ctx.ctx?.waitUntil
+      ? ctx.ctx
+      : null;
+  if (!ctx.env?.HYPERDRIVE || !waiter) return null;
+  return createPgSql(ctx.env.HYPERDRIVE, waiter as never);
+}
+
+/**
  * The card, from the first tier that can answer. Lane verdicts are attached by the
  * caller, not here, so that this stays a pure mirror of handleSelfHealth's tier chain
  * and the two can be compared line for line.
@@ -90,10 +131,19 @@ async function resolveSelfHealthCard(
   ctx: {
     env: Env;
     readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
-  },
+  } & SelfHealthExecutionCtx,
   readArtifact?: (env: Env, path: string) => Promise<StorageReadResult>,
 ): Promise<unknown> {
-  // 1. Lakehouse cold tier — the same one REST falls through to.
+  // 1. Neon — where the self-health prober writes now (#9836), and the only
+  //    tier that can answer "are we up RIGHT NOW". Asked first for the same
+  //    reason handleSelfHealth asks it first: the cold tier below can only
+  //    ever report current_ok:null, so letting it answer while Neon has a
+  //    live reading is what produced #10187's "outage on REST, nothing
+  //    measurable on MCP" split.
+  const live = await loadSelfHealthNeon(selfHealthNeonSql(ctx));
+  if (live) return live;
+
+  // 2. Lakehouse cold tier — the same one REST falls through to.
   //
   // #9153 gave the REST route this step and did not give it to us, and when
   // METAGRAPH_SELF_HEALTH_SOURCE went to "retired" the DATA_API tier that used to
@@ -103,17 +153,12 @@ async function resolveSelfHealthCard(
   // component, `get_self_health` returned `days: []` and `uptime_90d: null` for all
   // three.
   //
-  // That is the THIRD time this module has served an empty card beside a working
-  // REST route (#8633 had the tiers in the wrong order, #8987 unwrapped an envelope
-  // the producer never sent). The recurring cause is a resolution chain maintained
-  // in parallel with the route's instead of shared with it, so the fix that matters
-  // is the ordering being identical here to handleSelfHealth's, tier for tier --
-  // which it is NOT today, because REST's #9836 Neon tier is still missing from
-  // this chain. See the KNOWN GAP note in the module header.
+  // Kept below Neon rather than removed: those 90 days are real history nothing
+  // else holds, and a deployment with no Hyperdrive binding still gets them.
   const cold = await loadSelfHealthColdTier(ctx.env);
   if (cold) return cold;
 
-  // 2. Baked artifact — dev/test/fixture environments, and any future bake.
+  // 3. Baked artifact — dev/test/fixture environments, and any future bake.
   const read = readArtifact ?? ctx.readArtifact;
   const result = await read(ctx.env, SELF_HEALTH_ARTIFACT);
   if (result?.ok) return result.data;
@@ -121,7 +166,7 @@ async function resolveSelfHealthCard(
   const code =
     (result as { code?: string } | undefined)?.code || "artifact_unavailable";
 
-  // 3. An ABSENT artifact is not an error: it is production's normal state,
+  // 4. An ABSENT artifact is not an error: it is production's normal state,
   //    and "we have no readings" is a real answer. Returning the schema-stable
   //    empty shape (three components, current_ok null, verdict "degraded") is
   //    precisely handleSelfHealth's own documented convention -- it never 404s
@@ -141,7 +186,7 @@ export async function loadSelfHealth(
   ctx: {
     env: Env;
     readArtifact: (env: Env, path: string) => Promise<StorageReadResult>;
-  },
+  } & SelfHealthExecutionCtx,
   {
     readArtifact,
   }: {

@@ -141,6 +141,105 @@ describe("self-health-mcp", () => {
     code: "artifact_not_found",
   })) as unknown as ReadArtifact;
 
+  // #10187: the Neon tier, and the tier-for-tier pin that should have caught
+  // the previous three repeats. handleSelfHealth asks Neon before the
+  // lakehouse; this loader did not ask it at all, so REST reported a live
+  // outage while get_self_health reported nothing measurable in the same
+  // minute.
+  //
+  // The rows here are the two statements loadSelfHealthNeon actually issues,
+  // matched by substring: the daily rollup and the DISTINCT ON latest tick.
+  // Asserting the PRODUCER's shape (`{ rows }` from pg, snake_case columns),
+  // not a shape convenient to the test -- that inversion is what let #8987
+  // pass green for a month.
+  const neonCtx = (extra: Row = {}) => ({
+    env: { ...pgMockEnv(), ...extra } as unknown as Env,
+    executionCtx: { waitUntil: () => {} },
+    readArtifact: (async () => ({
+      ok: false,
+      code: "artifact_not_found",
+    })) as unknown as ReadArtifact,
+  });
+  const neonAnswers = () => [
+    {
+      match: "self_health_daily",
+      rows: [
+        { day: "2026-08-08", component: "api", checks: 100, ok_count: 90 },
+      ],
+    },
+    {
+      match: "self_health_checks",
+      rows: [
+        {
+          component: "api",
+          ok: false,
+          http_status: 503,
+          latency_ms: 12,
+          checked_at_ms: 1_786_000_000_000,
+        },
+      ],
+    },
+  ];
+
+  test("Neon answers FIRST, so a live outage reaches the MCP card (#10187)", async () => {
+    pg.control.answers = neonAnswers();
+    const out = (await loadSelfHealth(neonCtx())) as Row;
+    const api = (out.components as Row[]).find(
+      (c) => c.component === "api",
+    ) as Row;
+    // The exact split #10187 measured: REST said outage, this said nothing
+    // measurable. A current reading must now reach the card.
+    assert.equal(api.current_ok, false);
+    assert.equal(api.http_status, 503);
+    assert.equal(out.measured_component_count, 1);
+    assert.notEqual(out.observed_at, null);
+  });
+
+  test("Neon is asked BEFORE the lakehouse, matching handleSelfHealth's order", async () => {
+    pg.control.answers = neonAnswers();
+    await loadSelfHealth(neonCtx());
+    // The pin that matters: the cold tier can only ever answer current_ok
+    // null, so if it ever gets asked first the live reading is lost even
+    // though it existed. Proven by the query actually issued.
+    assert.ok(
+      pg.control.queries.some((q: Row) =>
+        /self_health_daily/.test(String(q.text)),
+      ),
+      "expected the Neon daily read to have been issued",
+    );
+  });
+
+  test("no waitUntil means skip Neon, not fail — the cold tier still answers", async () => {
+    // createPgSql returns its client through waitUntil, so a caller without
+    // one cannot read Neon. Skipping is correct; a throw would take the whole
+    // tool down for direct-call tests and any entry point without a ctx.
+    pg.control.answers = neonAnswers();
+    const out = (await loadSelfHealth({
+      env: pgMockEnv() as unknown as Env,
+      readArtifact: (async () => ({
+        ok: true,
+        data: SAMPLE_SELF_HEALTH,
+      })) as unknown as ReadArtifact,
+    })) as Row;
+    assert.equal(out.verdict, "operational"); // the artifact, not a throw
+  });
+
+  test("GraphQL's `ctx` field is accepted as well as MCP's `executionCtx`", async () => {
+    // GqlContext spells it `ctx` (#10086); McpCtx spells it `executionCtx`.
+    // Both are real callers, so both must reach Neon -- otherwise the GraphQL
+    // selfHealth field silently keeps the bug this change fixes.
+    pg.control.answers = neonAnswers();
+    const out = (await loadSelfHealth({
+      env: pgMockEnv() as unknown as Env,
+      ctx: { waitUntil: () => {} },
+      readArtifact: (async () => ({
+        ok: false,
+        code: "artifact_not_found",
+      })) as unknown as ReadArtifact,
+    } as never)) as Row;
+    assert.equal(out.measured_component_count, 1);
+  });
+
   test("falls back to the artifact when no tier is configured", async () => {
     // Dev/test and any fixture-backed environment: the artifact path is kept
     // deliberately, not deleted.
