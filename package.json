@@ -93,6 +93,7 @@
     "types:generate": "node scripts/generate-types.ts",
     "build:graphql-types": "node scripts/generate-graphql-types.ts",
     "validate:graphql-types-drift": "node scripts/validate-graphql-types-drift.ts",
+    "validate:worker-types-parity": "node scripts/validate-worker-types-parity.ts",
     "validate:graphql-route-parity": "node scripts/validate-graphql-route-parity.ts",
     "build:openapi-zod": "node scripts/generate-openapi-zod-components.ts",
     "surface:add": "node scripts/surface-add.ts",
