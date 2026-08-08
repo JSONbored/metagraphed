@@ -44,7 +44,13 @@ bower_components
 build/Release
 
 # Dependency directories
-node_modules/
+#
+# No trailing slash, deliberately. `node_modules/` is a directory-only pattern,
+# and git records a symlink as a blob (mode 120000) -- a file. So a symlinked
+# node_modules slips straight past it, which is how #10191 put an absolute path
+# to one maintainer's worktree on main. Without the slash the pattern covers
+# both shapes.
+node_modules
 jspm_packages/
 
 # Snowpack dependency directory (https://snowpack.dev/)
