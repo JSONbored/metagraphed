@@ -673,7 +673,11 @@ import {
   VALIDATOR_ECONOMICS_HISTORY_WINDOWS,
   VALIDATOR_ECONOMICS_SORTS,
 } from "./validator-economics.ts";
-import { stripSentinelIntegerBounds } from "./mcp-input-schema.ts";
+import {
+  inputJsonSchema,
+  outputJsonSchema,
+  stripSentinelIntegerBounds,
+} from "./mcp-input-schema.ts";
 import {
   buildSubnetValidatorEconomicsPayload,
   buildSubnetValidatorEconomicsHistoryPayload,
@@ -4693,10 +4697,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Paginated like list_subnets: pass `cursor` to page past the first " +
       "results; the response carries `total` and a `next_cursor` (null at the " +
       "end) so the whole ranked match set is reachable.",
-    inputSchema: requireAnyOf(
-      z.toJSONSchema(SearchSubnetsInputSchema, { target: "draft-2020-12" }),
-      ["q", "query"],
-    ),
+    inputSchema: requireAnyOf(inputJsonSchema(SearchSubnetsInputSchema), [
+      "q",
+      "query",
+    ]),
     async handler(args: z.infer<typeof SearchSubnetsInputSchema>, ctx: McpCtx) {
       // Either name (#10018). The route publishes `q`; `query` is the alias
       // this tool shipped with. Canonical wins when both are given, so the
@@ -4733,9 +4737,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       'network:"test" for the Bittensor testnet registry, which is native-only ' +
       "(chain identity, no curated surfaces/health, so readiness and " +
       "surface_count are zero there).",
-    inputSchema: z.toJSONSchema(ListSubnetsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(ListSubnetsInputSchema),
     async handler(args: z.infer<typeof ListSubnetsInputSchema>, ctx: McpCtx) {
       // Validated, not trusted: an unrecognised string used to take
       // networkArtifactPath's testnet branch and silently serve the testnet
@@ -4803,9 +4805,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "list_subnets: pass `cursor` to page past the first results; the response " +
       "carries `total` and a `next_cursor` (null at the end) so the whole " +
       "ranked match set is reachable.",
-    inputSchema: z.toJSONSchema(FindSubnetsByCapabilityInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(FindSubnetsByCapabilityInputSchema),
     async handler(
       args: z.infer<typeof FindSubnetsByCapabilityInputSchema>,
       ctx: McpCtx,
@@ -4863,9 +4863,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     description:
       "Fetch the composed overview for one subnet by netuid: identity, " +
       "completeness, curated surfaces, health summary, gaps, and counts.",
-    inputSchema: z.toJSONSchema(GetSubnetInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetInputSchema),
     async handler(args: z.infer<typeof GetSubnetInputSchema>, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const overview = await loadArtifactData(
@@ -4890,9 +4888,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       'network:"test" for the testnet record (native-only: chain identity and ' +
       "chain economics, no curated surfaces/health, and no mainnet live-economics " +
       "overlay). Testnet netuids are independent of mainnet netuids.",
-    inputSchema: z.toJSONSchema(GetSubnetDetailInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetDetailInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetDetailInputSchema>,
       ctx: McpCtx,
@@ -4936,9 +4932,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "than drilling into just one facet (which the individual tools remain " +
       "better suited for, since each carries its own full parameter set this " +
       "compound view intentionally simplifies).",
-    inputSchema: z.toJSONSchema(GetSubnetSnapshotInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetSnapshotInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetSnapshotInputSchema>,
       ctx: McpCtx,
@@ -5060,9 +5054,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     description:
       "Fetch live operational health for one subnet's surfaces (probed every " +
       "~15 minutes): per-surface status, latency, and last-ok timestamps.",
-    inputSchema: z.toJSONSchema(GetSubnetHealthInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetHealthInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetHealthInputSchema>,
       ctx: McpCtx,
@@ -5117,9 +5109,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "latency per surface for each window. Use it to see whether a surface is " +
       "regressing or recovering, where get_subnet_health only gives current " +
       "status. Mirrors GET /api/v1/subnets/{netuid}/health/trends.",
-    inputSchema: z.toJSONSchema(GetSubnetHealthTrendsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetHealthTrendsInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetHealthTrendsInputSchema>,
       ctx: McpCtx,
@@ -5154,9 +5144,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "page, so paging does not cost you the denominator. Use " +
       "get_subnet_health_trends for one subnet's per-surface breakdown. " +
       "Mirrors GET /api/v1/health/trends.",
-    inputSchema: z.toJSONSchema(GetHealthTrendsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetHealthTrendsInputSchema),
     async handler(
       args: z.infer<typeof GetHealthTrendsInputSchema>,
       ctx: McpCtx,
@@ -5210,9 +5198,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "to see a surface's latency distribution and tail behavior, where " +
       "get_subnet_health_trends gives the uptime+latency trend and get_subnet_health " +
       "the current status. Mirrors GET /api/v1/subnets/{netuid}/health/percentiles.",
-    inputSchema: z.toJSONSchema(GetSubnetHealthPercentilesInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetHealthPercentilesInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetHealthPercentilesInputSchema>,
       ctx: McpCtx,
@@ -5252,9 +5238,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "and how long a surface was actually down, where get_subnet_health_trends " +
       "gives the uptime trend and get_subnet_health_percentiles the latency " +
       "distribution. Mirrors GET /api/v1/subnets/{netuid}/health/incidents.",
-    inputSchema: z.toJSONSchema(GetSubnetHealthIncidentsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetHealthIncidentsInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetHealthIncidentsInputSchema>,
       ctx: McpCtx,
@@ -5300,9 +5284,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "SWEEPING SEVERAL SUBNETS? Pass `include_summary: false` — the `summary` " +
       "block is network-wide and identical on every call, so it is about 19% " +
       "of each response repeated once per subnet.",
-    inputSchema: z.toJSONSchema(GetSubnetEconomicsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetEconomicsInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetEconomicsInputSchema>,
       ctx: McpCtx,
@@ -5329,9 +5311,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "quotes 1:1 with zero price impact. Read-only, pure math -- it builds no " +
       "transaction, signs nothing, and never touches a key. Mirrors " +
       "GET /api/v1/subnets/{netuid}/stake-quote.",
-    inputSchema: z.toJSONSchema(GetSubnetStakeQuoteInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetStakeQuoteInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetStakeQuoteInputSchema>,
       ctx: McpCtx,
@@ -5377,12 +5357,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "the threshold on every subnet at once, so root_tao_to_clear_threshold is the " +
       "cross-subnet alternative to the per-subnet alpha costs. Read-only. " +
       "Mirrors GET /api/v1/subnets/{netuid}/validator-economics.",
-    inputSchema: z.toJSONSchema(GetSubnetValidatorEconomicsInputSchema, {
-      target: "draft-2020-12",
-    }),
-    outputSchema: z.toJSONSchema(GetSubnetValidatorEconomicsOutputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetValidatorEconomicsInputSchema),
+    outputSchema: outputJsonSchema(GetSubnetValidatorEconomicsOutputSchema),
     async handler(
       args: z.infer<typeof GetSubnetValidatorEconomicsInputSchema>,
       ctx: McpCtx,
@@ -5448,12 +5424,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "pool reserves as they were, and reconstructing one from today's reserves " +
       "would be wrong; alpha floors are unambiguous. Read-only. Mirrors " +
       "GET /api/v1/subnets/{netuid}/validator-economics/history.",
-    inputSchema: z.toJSONSchema(GetSubnetValidatorEconomicsHistoryInputSchema, {
-      target: "draft-2020-12",
-    }),
-    outputSchema: z.toJSONSchema(
+    inputSchema: inputJsonSchema(GetSubnetValidatorEconomicsHistoryInputSchema),
+    outputSchema: outputJsonSchema(
       GetSubnetValidatorEconomicsHistoryOutputSchema,
-      { target: "draft-2020-12" },
     ),
     async handler(
       args: z.infer<typeof GetSubnetValidatorEconomicsHistoryInputSchema>,
@@ -5499,12 +5472,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "-- it is a live per-subnet read and immaterial to the order; " +
       "get_subnet_validator_economics reports the true entry cost for one subnet. " +
       "Read-only. Mirrors GET /api/v1/validators/economics.",
-    inputSchema: z.toJSONSchema(ListValidatorEconomicsInputSchema, {
-      target: "draft-2020-12",
-    }),
-    outputSchema: z.toJSONSchema(ListValidatorEconomicsOutputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(ListValidatorEconomicsInputSchema),
+    outputSchema: outputJsonSchema(ListValidatorEconomicsOutputSchema),
     async handler(
       args: z.infer<typeof ListValidatorEconomicsInputSchema>,
       ctx: McpCtx,
@@ -5572,12 +5541,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "artifact, and never touches a wallet or key. Submitting a stake requires " +
       "a separate signed extrinsic outside this tool. Use it to explain a " +
       "prospective stake's outcome to a user, not to act on-chain.",
-    inputSchema: z.toJSONSchema(GetStakeActionPreviewInputSchema, {
-      target: "draft-2020-12",
-    }),
-    outputSchema: z.toJSONSchema(GetStakeActionPreviewOutputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetStakeActionPreviewInputSchema),
+    outputSchema: outputJsonSchema(GetStakeActionPreviewOutputSchema),
     async handler(
       args: z.infer<typeof GetStakeActionPreviewInputSchema>,
       ctx: McpCtx,
@@ -5652,9 +5617,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "total stake, alpha price, and emission share over time, plus 7d/30d " +
       "deltas. Use it to see whether a subnet is growing or contracting before " +
       "committing resources.",
-    inputSchema: z.toJSONSchema(GetSubnetTrajectoryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetTrajectoryInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetTrajectoryInputSchema>,
       ctx: McpCtx,
@@ -5686,9 +5649,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "the Hill emission gate, the SubnetEmissionEnabled filter, the alpha " +
       "injection cap, and the liquidity balancer. Do not present it as TAO " +
       "earned or emitted. get_network_parameters carries the gate parameters.",
-    inputSchema: z.toJSONSchema(GetEconomicsTrendsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetEconomicsTrendsInputSchema),
     async handler(
       args: z.infer<typeof GetEconomicsTrendsInputSchema>,
       ctx: McpCtx,
@@ -5747,9 +5708,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "the subnet list and deliberately leaves the aggregate network-wide. " +
       "Errors rather than returning a body when the capture carries no pinned " +
       "block. Mirrors GET /api/v1/chain/emission-pipeline.",
-    inputSchema: z.toJSONSchema(GetEmissionPipelineInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetEmissionPipelineInputSchema),
     async handler(
       args: z.infer<typeof GetEmissionPipelineInputSchema>,
       ctx: McpCtx,
@@ -5815,9 +5774,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "per-UID, per-entity (coldkey-collapsed), and validator-only distributions. " +
       "Use it to see whether a subnet is broadly distributed or captured by a few " +
       "large holders. Mirrors GET /api/v1/subnets/{netuid}/concentration.",
-    inputSchema: z.toJSONSchema(GetSubnetConcentrationInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetConcentrationInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetConcentrationInputSchema>,
       ctx: McpCtx,
@@ -5844,9 +5801,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "(which measures stake/emission): use it to see whether a subnet's emissions " +
       "are broadly earned or captured by a few UIDs. Mirrors GET " +
       "/api/v1/subnets/{netuid}/performance.",
-    inputSchema: z.toJSONSchema(GetSubnetPerformanceInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetPerformanceInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetPerformanceInputSchema>,
       ctx: McpCtx,
@@ -5871,9 +5826,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "this covers both a hotkey with no validator permit and a permitted hotkey " +
       "whose weight-setting output is currently zero — both pay every delegator " +
       "nothing right now. Mirrors GET /api/v1/subnets/{netuid}/idle-stake.",
-    inputSchema: z.toJSONSchema(GetSubnetIdleStakeInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetIdleStakeInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetIdleStakeInputSchema>,
       ctx: McpCtx,
@@ -5899,9 +5852,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "subnets counts once), and validator-only distributions, plus the " +
       "subnet_count the snapshot spans. The network-level companion of " +
       "get_subnet_concentration. Mirrors GET /api/v1/chain/concentration.",
-    inputSchema: z.toJSONSchema(GetChainConcentrationInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainConcentrationInputSchema),
     async handler(_args: unknown, ctx: McpCtx) {
       return (
         (await tryPostgresTier(
@@ -5939,9 +5890,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "the network. The max limit sits above the subnet count on purpose, so " +
       "ranking the whole network is one request. Mirrors GET " +
       "/api/v1/chain/concentration/subnets.",
-    inputSchema: z.toJSONSchema(GetChainConcentrationSubnetsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainConcentrationSubnetsInputSchema),
     async handler(args: unknown, ctx: McpCtx) {
       const params = new URLSearchParams();
       for (const key of ["lens", "sort", "order", "limit"] as const) {
@@ -5989,9 +5938,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "the snapshot spans. The network-level companion of get_subnet_performance " +
       "and the reward-flow companion of get_chain_concentration. Mirrors GET " +
       "/api/v1/chain/performance.",
-    inputSchema: z.toJSONSchema(GetChainPerformanceInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainPerformanceInputSchema),
     async handler(_args: unknown, ctx: McpCtx) {
       return (
         (await tryPostgresTier(
@@ -6011,9 +5958,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "idle_stake_tao descending, plus the network total. The network-level " +
       "companion of get_subnet_idle_stake and the idle-delegation companion of " +
       "get_chain_performance. Mirrors GET /api/v1/chain/idle-stake.",
-    inputSchema: z.toJSONSchema(GetChainIdleStakeInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainIdleStakeInputSchema),
     async handler(_args: unknown, ctx: McpCtx) {
       return (
         (await tryPostgresTier(
@@ -6037,9 +5982,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ") and reporting the distinct subnet_count the feed spans. The network-level " +
       "companion of get_subnet_identity_history. Mirrors GET " +
       "/api/v1/chain/identity-history.",
-    inputSchema: z.toJSONSchema(GetChainIdentityHistoryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainIdentityHistoryInputSchema),
     async handler(
       args: z.infer<typeof GetChainIdentityHistoryInputSchema>,
       ctx: McpCtx,
@@ -6091,9 +6034,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "and the subnet_count the snapshot spans. The network-level companion of " +
       "get_subnet_yield and the return-rate companion of get_chain_performance. " +
       "Mirrors GET /api/v1/chain/yield.",
-    inputSchema: z.toJSONSchema(GetChainYieldInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainYieldInputSchema),
     async handler(_args: unknown, ctx: McpCtx) {
       return (
         (await tryPostgresTier(
@@ -6117,9 +6058,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "The network-level companion of get_subnet_turnover, mirroring how " +
       "get_chain_concentration companions get_subnet_concentration. Mirrors " +
       "GET /api/v1/chain/turnover.",
-    inputSchema: z.toJSONSchema(GetChainTurnoverInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainTurnoverInputSchema),
     async handler(
       args: z.infer<typeof GetChainTurnoverInputSchema>,
       ctx: McpCtx,
@@ -6165,9 +6104,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "summed live from the account_events stream. The network-level companion " +
       "of get_subnet_stake_flow, mirroring how get_chain_concentration " +
       "companions get_subnet_concentration. Mirrors GET /api/v1/chain/stake-flow.",
-    inputSchema: z.toJSONSchema(GetChainStakeFlowInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainStakeFlowInputSchema),
     async handler(
       args: z.infer<typeof GetChainStakeFlowInputSchema>,
       ctx: McpCtx,
@@ -6219,9 +6156,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "companion of get_subnet_volume, mirroring how get_chain_stake_flow companions " +
       "get_subnet_stake_flow. Fixed 24h window, no window parameter. Mirrors GET " +
       "/api/v1/chain/alpha-volume.",
-    inputSchema: z.toJSONSchema(GetChainAlphaVolumeInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainAlphaVolumeInputSchema),
     async handler(
       args: z.infer<typeof GetChainAlphaVolumeInputSchema>,
       ctx: McpCtx,
@@ -6263,9 +6198,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "consensus-maintenance companion to get_chain_stake_flow (capital) and " +
       "get_chain_turnover (validator churn). Use get_chain_weight_setters for the " +
       "setter-level leaderboard drill-in. Mirrors GET /api/v1/chain/weights.",
-    inputSchema: z.toJSONSchema(GetChainWeightsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainWeightsInputSchema),
     async handler(
       args: z.infer<typeof GetChainWeightsInputSchema>,
       ctx: McpCtx,
@@ -6317,9 +6250,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "The network-wide drill-in behind get_chain_weights — use " +
       "get_subnet_weight_setters for one subnet's setter leaderboard. Mirrors GET " +
       "/api/v1/chain/weights/setters.",
-    inputSchema: z.toJSONSchema(GetChainWeightSettersInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainWeightSettersInputSchema),
     async handler(
       args: z.infer<typeof GetChainWeightSettersInputSchema>,
       ctx: McpCtx,
@@ -6373,9 +6304,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "hotkeys/subnets without unstaking — it measures re-delegation churn, not " +
       "net capital flow (that is get_chain_stake_flow). Mirrors GET " +
       "/api/v1/chain/stake-moves.",
-    inputSchema: z.toJSONSchema(GetChainStakeMovesInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainStakeMovesInputSchema),
     async handler(
       args: z.infer<typeof GetChainStakeMovesInputSchema>,
       ctx: McpCtx,
@@ -6427,9 +6356,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "coldkey to another on the same hotkey — it relocates ownership, not net " +
       "capital (get_chain_stake_flow) or re-delegation churn (get_chain_stake_moves). " +
       "Mirrors GET /api/v1/chain/stake-transfers.",
-    inputSchema: z.toJSONSchema(GetChainStakeTransfersInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainStakeTransfersInputSchema),
     async handler(
       args: z.infer<typeof GetChainStakeTransfersInputSchema>,
       ctx: McpCtx,
@@ -6484,9 +6411,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "removed — the teardown-side companion to get_chain_serving (axon " +
       "announcements) and get_subnet_axon_removals (one subnet). Mirrors GET " +
       "/api/v1/chain/axon-removals.",
-    inputSchema: z.toJSONSchema(GetChainAxonRemovalsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainAxonRemovalsInputSchema),
     async handler(
       args: z.infer<typeof GetChainAxonRemovalsInputSchema>,
       ctx: McpCtx,
@@ -6534,9 +6459,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "get_chain_prometheus (Prometheus telemetry announcements) and " +
       "get_chain_axon_removals (AxonInfoRemoved teardown). Mirrors GET " +
       "/api/v1/chain/serving.",
-    inputSchema: z.toJSONSchema(GetChainServingInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainServingInputSchema),
     async handler(
       args: z.infer<typeof GetChainServingInputSchema>,
       ctx: McpCtx,
@@ -6593,9 +6516,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "telemetry-endpoint companion to get_chain_serving (axon announcements) " +
       "and get_subnet_prometheus (one subnet). Mirrors GET " +
       "/api/v1/chain/prometheus.",
-    inputSchema: z.toJSONSchema(GetChainPrometheusInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainPrometheusInputSchema),
     async handler(
       args: z.infer<typeof GetChainPrometheusInputSchema>,
       ctx: McpCtx,
@@ -6637,9 +6558,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "(concentration over each author's block count, distinct from " +
       "get_chain_signers), and the spec-version spread. Mirrors GET " +
       "/api/v1/blocks/summary.",
-    inputSchema: z.toJSONSchema(GetBlocksSummaryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetBlocksSummaryInputSchema),
     async handler(_args: unknown, ctx: McpCtx) {
       // Mirrors REST's handleBlocksSummary: try Postgres first, fall back to
       // the schema-stable zeroed card now that blocks' D1 write path is
@@ -6666,9 +6585,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "over the requested window (7d, 30d, or 90d). Use it to see whether a " +
       "subnet is centralizing or decentralizing over time. Mirrors GET " +
       "/api/v1/subnets/{netuid}/concentration/history.",
-    inputSchema: z.toJSONSchema(GetSubnetConcentrationHistoryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetConcentrationHistoryInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetConcentrationHistoryInputSchema>,
       ctx: McpCtx,
@@ -6706,9 +6623,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "hotkeys and UID reassignment detail (mirrors ?changes=true on REST). " +
       "Use it to see how stable a subnet's participation base is over time. " +
       "Mirrors GET /api/v1/subnets/{netuid}/turnover.",
-    inputSchema: z.toJSONSchema(GetSubnetTurnoverInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetTurnoverInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetTurnoverInputSchema>,
       ctx: McpCtx,
@@ -6748,9 +6663,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "percentiles over UIDs with stake. Zero-stake UIDs get null yield and " +
       "sink to the bottom. Snapshot-based (no time window). Mirrors " +
       "GET /api/v1/subnets/{netuid}/yield.",
-    inputSchema: z.toJSONSchema(GetSubnetYieldInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetYieldInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetYieldInputSchema>,
       ctx: McpCtx,
@@ -6775,9 +6688,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "p75, and p90 of the per-UID emission-per-stake yields from the " +
       "neuron_daily rollup. The time-series companion to get_subnet_yield. " +
       "Mirrors GET /api/v1/subnets/{netuid}/yield/history.",
-    inputSchema: z.toJSONSchema(GetSubnetYieldHistoryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetYieldHistoryInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetYieldHistoryInputSchema>,
       ctx: McpCtx,
@@ -6814,9 +6725,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "entering or leaving a subnet. ?direction narrows to inflow (in) or " +
       "outflow (out) only; all (default) reports both sides. Mirrors " +
       "GET /api/v1/subnets/{netuid}/stake-flow.",
-    inputSchema: z.toJSONSchema(GetSubnetStakeFlowInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetStakeFlowInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetStakeFlowInputSchema>,
       ctx: McpCtx,
@@ -6875,9 +6784,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       ", default " +
       SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT +
       "). Mirrors GET /api/v1/subnets/{netuid}/event-summary.",
-    inputSchema: z.toJSONSchema(GetSubnetEventSummaryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetEventSummaryInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetEventSummaryInputSchema>,
       ctx: McpCtx,
@@ -6928,9 +6835,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "account_events WeightsSet stream. The per-subnet companion to " +
       "get_chain_weights — use get_subnet_weight_setters for the setter-level " +
       "leaderboard drill-in. Mirrors GET /api/v1/subnets/{netuid}/weights.",
-    inputSchema: z.toJSONSchema(GetSubnetWeightsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetWeightsInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetWeightsInputSchema>,
       ctx: McpCtx,
@@ -6975,9 +6880,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "the account_events WeightsSet stream. The setter-level drill-in of " +
       "get_subnet_weights / get_chain_weights. " +
       "Mirrors GET /api/v1/subnets/{netuid}/weights/setters.",
-    inputSchema: z.toJSONSchema(GetSubnetWeightSettersInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetWeightSettersInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetWeightSettersInputSchema>,
       ctx: McpCtx,
@@ -7024,9 +6927,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "computed live from the account_events NeuronRegistered stream. The " +
       "per-subnet companion to get_chain_registrations. Mirrors " +
       "GET /api/v1/subnets/{netuid}/registrations.",
-    inputSchema: z.toJSONSchema(GetSubnetRegistrationsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetRegistrationsInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetRegistrationsInputSchema>,
       ctx: McpCtx,
@@ -7074,9 +6975,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "the account_events StakeMoved stream. Complements get_subnet_stake_flow " +
       "(net capital in/out); this counts relocation activity between subnets. " +
       "Mirrors GET /api/v1/subnets/{netuid}/stake-moves.",
-    inputSchema: z.toJSONSchema(GetSubnetStakeMovesInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetStakeMovesInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetStakeMovesInputSchema>,
       ctx: McpCtx,
@@ -7125,9 +7024,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "sibling of get_subnet_stake_moves (within-account re-delegation churn) " +
       "and the per-subnet drill-in of get_chain_stake_transfers. " +
       "Mirrors GET /api/v1/subnets/{netuid}/stake-transfers.",
-    inputSchema: z.toJSONSchema(GetSubnetStakeTransfersInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetStakeTransfersInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetStakeTransfersInputSchema>,
       ctx: McpCtx,
@@ -7176,9 +7073,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "the removal-side companion to get_subnet_serving (which measures " +
       "neurons announcing an axon, not tearing one down). " +
       "Mirrors GET /api/v1/subnets/{netuid}/axon-removals.",
-    inputSchema: z.toJSONSchema(GetSubnetAxonRemovalsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetAxonRemovalsInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetAxonRemovalsInputSchema>,
       ctx: McpCtx,
@@ -7215,9 +7110,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "get_subnet_prometheus (Prometheus telemetry announcements) and the " +
       "per-subnet companion to get_chain_serving. Mirrors GET " +
       "/api/v1/subnets/{netuid}/serving.",
-    inputSchema: z.toJSONSchema(GetSubnetServingInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetServingInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetServingInputSchema>,
       ctx: McpCtx,
@@ -7267,9 +7160,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "telemetry endpoint — the telemetry-endpoint companion to get_subnet_serving " +
       "(axon announcements) and the per-subnet companion to get_chain_prometheus. " +
       "Mirrors GET /api/v1/subnets/{netuid}/prometheus.",
-    inputSchema: z.toJSONSchema(GetSubnetPrometheusInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetPrometheusInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetPrometheusInputSchema>,
       ctx: McpCtx,
@@ -7315,9 +7206,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "before the lookback cannot be attributed and is counted in " +
       "`unattributed_registrations` rather than guessed at here. " +
       "Mirrors GET /api/v1/subnets/{netuid}/deregistrations.",
-    inputSchema: z.toJSONSchema(GetSubnetDeregistrationsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetDeregistrationsInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetDeregistrationsInputSchema>,
       ctx: McpCtx,
@@ -7359,9 +7248,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Nakamoto coefficient, top-10% share, plus mean/median trust, consensus, " +
       "and validator_trust scores from the neuron_daily rollup. Mirrors GET " +
       "/api/v1/subnets/{netuid}/performance/history.",
-    inputSchema: z.toJSONSchema(GetSubnetPerformanceHistoryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetPerformanceHistoryInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetPerformanceHistoryInputSchema>,
       ctx: McpCtx,
@@ -7398,9 +7285,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "neuron_daily snapshots. Sort by stake (default), emission, or " +
       "validators; cap with limit (1-100, default 20). Mirrors " +
       "GET /api/v1/subnets/movers.",
-    inputSchema: z.toJSONSchema(GetSubnetMoversInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetMoversInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetMoversInputSchema>,
       ctx: McpCtx,
@@ -7454,9 +7339,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "requested window (90d or 1y). ?min_samples drops low-sample day rows " +
       "(daily probe count below the threshold, incl. zero-sample 'unknown' days). " +
       "Mirrors GET /api/v1/subnets/{netuid}/uptime.",
-    inputSchema: z.toJSONSchema(GetSubnetUptimeInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetUptimeInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetUptimeInputSchema>,
       ctx: McpCtx,
@@ -7494,9 +7377,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "opportunity boards (open-slots, cheapest-registration, highest-emission, " +
       "validator-headroom, biggest-alpha-gain-1d, biggest-alpha-gain-7d). Omit " +
       "board for all boards. Mirrors GET /api/v1/registry/leaderboards.",
-    inputSchema: z.toJSONSchema(GetRegistryLeaderboardsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetRegistryLeaderboardsInputSchema),
     async handler(
       args: z.infer<typeof GetRegistryLeaderboardsInputSchema>,
       ctx: McpCtx,
@@ -7526,9 +7407,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "and within-domain emission concentration, per domain tag. Pass `domain` " +
       "for one tag's own rollup (mirrors GET /api/v1/domains/{tag}/summary); " +
       "omit it for every tag's rollup in one call (mirrors GET /api/v1/domains).",
-    inputSchema: z.toJSONSchema(GetDomainSummaryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetDomainSummaryInputSchema),
     async handler(
       args: z.infer<typeof GetDomainSummaryInputSchema>,
       ctx: McpCtx,
@@ -7590,9 +7469,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Place several subnets side by side across registry structure, economics, " +
       "and live probe health in one call. Choose dimensions to limit the payload " +
       "(structure, economics, health — default all). Mirrors GET /api/v1/compare.",
-    inputSchema: z.toJSONSchema(CompareSubnetsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(CompareSubnetsInputSchema),
     async handler(
       args: z.infer<typeof CompareSubnetsInputSchema>,
       ctx: McpCtx,
@@ -7663,9 +7540,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "probe failures grouped into downtime incidents over the requested window " +
       "(7d or 30d). Filter by netuid, sort with sort + order, and page with " +
       "limit (1-100) / cursor. Mirrors GET /api/v1/incidents.",
-    inputSchema: z.toJSONSchema(GetGlobalIncidentsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetGlobalIncidentsInputSchema),
     async handler(
       args: z.infer<typeof GetGlobalIncidentsInputSchema>,
       ctx: McpCtx,
@@ -7722,9 +7597,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "count is never mistaken for the subnet's size. THEN narrow the columns " +
       "with `fields`. " +
       "EPOCH PROVENANCE (#9871): `incentive`, `dividends`, `emission_tao`, `consensus`, `trust` and `rank` are derived from the weights validators set in the LAST COMPLETED tempo -- not from live activity, and not from the epoch currently open. `captured_at`/`block_number` say when WE sampled the chain, which is a different thing. Comparing these against an in-progress epoch from an off-chain source (a subnet's own API, a dashboard) will disagree, and the disagreement is expected rather than a defect. Read `tempo` from get_subnet_hyperparams to find the epoch length. ",
-    inputSchema: z.toJSONSchema(GetSubnetMetagraphInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetMetagraphInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetMetagraphInputSchema>,
       ctx: McpCtx,
@@ -7783,9 +7656,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "stake-ranked) or drop small-stake rows with min_stake_tao, and narrow " +
       "each row to the columns you need with `fields` (min_stake_tao still " +
       "filters on stake_tao whether or not you asked for it).",
-    inputSchema: z.toJSONSchema(ListSubnetValidatorsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(ListSubnetValidatorsInputSchema),
     async handler(
       args: z.infer<typeof ListSubnetValidatorsInputSchema>,
       ctx: McpCtx,
@@ -7841,9 +7712,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       `max ${GLOBAL_VALIDATOR_LIMIT_MAX}). Use it to ` +
       "find operators spanning many subnets or dominating network stake. Mirrors " +
       "GET /api/v1/validators.",
-    inputSchema: z.toJSONSchema(ListGlobalValidatorsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(ListGlobalValidatorsInputSchema),
     async handler(
       args: z.infer<typeof ListGlobalValidatorsInputSchema>,
       ctx: McpCtx,
@@ -7880,9 +7749,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "The single-entity drill-in of list_global_validators. Returns a zeroed " +
       "aggregate with an empty subnets list for a cold/absent hotkey, never an " +
       "error. Mirrors GET /api/v1/validators/{hotkey}.",
-    inputSchema: z.toJSONSchema(GetValidatorDetailInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetValidatorDetailInputSchema),
     async handler(
       args: z.infer<typeof GetValidatorDetailInputSchema>,
       ctx: McpCtx,
@@ -7914,9 +7781,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Strictly READ-ONLY and decision-support only: it builds no transaction, " +
       "produces no signable/extrinsic artifact, and never touches a wallet or " +
       "key -- the validator equivalent of compare_subnets.",
-    inputSchema: z.toJSONSchema(CompareValidatorsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(CompareValidatorsInputSchema),
     async handler(
       args: z.infer<typeof CompareValidatorsInputSchema>,
       ctx: McpCtx,
@@ -7962,9 +7827,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "enumerate subscriptions, only look one up by an id you already hold " +
       "(the same id returned when it was created). Mirrors GET " +
       "/api/v1/webhooks/subscriptions/{id}.",
-    inputSchema: z.toJSONSchema(GetWebhookSubscriptionInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetWebhookSubscriptionInputSchema),
     async handler(
       args: z.infer<typeof GetWebhookSubscriptionInputSchema>,
       ctx: McpCtx,
@@ -8010,9 +7873,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "/api/v1/alerts/triggers/{id}'s own auth requirement exactly (the " +
       "same 404 is returned for both a wrong token and a nonexistent id, " +
       "so this can't be used to enumerate other callers' triggers).",
-    inputSchema: z.toJSONSchema(GetAlertTriggerInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAlertTriggerInputSchema),
     async handler(
       args: z.infer<typeof GetAlertTriggerInputSchema>,
       ctx: McpCtx,
@@ -8059,9 +7920,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "operates in, over a window (7d, 30d, default 90d), ranked by net_staked " +
       "(default), gross_staked, or last_activity. Optional coldkey narrows to " +
       "one nominator's own flow. Mirrors GET /api/v1/validators/{hotkey}/nominators.",
-    inputSchema: z.toJSONSchema(GetValidatorNominatorsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetValidatorNominatorsInputSchema),
     async handler(
       args: z.infer<typeof GetValidatorNominatorsInputSchema>,
       ctx: McpCtx,
@@ -8126,9 +7985,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "daily alpha earnings, vTrust, consensus, dividends, take and whether the " +
       "validator permit was held that day. Mirrors GET /api/v1/validators/" +
       "{hotkey}/history.",
-    inputSchema: z.toJSONSchema(GetValidatorHistoryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetValidatorHistoryInputSchema),
     async handler(
       args: z.infer<typeof GetValidatorHistoryInputSchema>,
       ctx: McpCtx,
@@ -8166,9 +8023,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "answer to 'is it still registered', not an error. Narrow the row with " +
       "`fields`. " +
       "EPOCH PROVENANCE (#9871): `incentive`, `dividends`, `emission_tao`, `consensus`, `trust` and `rank` are derived from the weights validators set in the LAST COMPLETED tempo -- not from live activity, and not from the epoch currently open. `captured_at`/`block_number` say when WE sampled the chain, which is a different thing. Comparing these against an in-progress epoch from an off-chain source (a subnet's own API, a dashboard) will disagree, and the disagreement is expected rather than a defect. Read `tempo` from get_subnet_hyperparams to find the epoch length. ",
-    inputSchema: z.toJSONSchema(GetNeuronInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetNeuronInputSchema),
     async handler(args: z.infer<typeof GetNeuronInputSchema>, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       // uid is validated for REST-parity but, like the D1 filter it used to
@@ -8242,9 +8097,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "snapshot_date, newest first. Choose the window (7d, 30d, 90d, 1y, all; " +
       "default 30d). Use it to chart how a subnet's size, stake, and emission " +
       "have moved over time. Mirrors GET /api/v1/subnets/{netuid}/history.",
-    inputSchema: z.toJSONSchema(GetSubnetHistoryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetHistoryInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetHistoryInputSchema>,
       ctx: McpCtx,
@@ -8263,9 +8116,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Newest first. Page with limit (1-1000, default 100) / offset, or follow " +
       "next_cursor for stable keyset pagination. Mirrors " +
       "GET /api/v1/subnets/{netuid}/identity-history.",
-    inputSchema: z.toJSONSchema(GetSubnetIdentityHistoryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetIdentityHistoryInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetIdentityHistoryInputSchema>,
       ctx: McpCtx,
@@ -8288,9 +8139,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "first. Choose the window (7d, 30d, 90d, 1y, all; default 30d). Use it to " +
       "track how one miner or validator has performed over time. Mirrors " +
       "GET /api/v1/subnets/{netuid}/neurons/{uid}/history.",
-    inputSchema: z.toJSONSchema(GetNeuronHistoryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetNeuronHistoryInputSchema),
     async handler(
       args: z.infer<typeof GetNeuronHistoryInputSchema>,
       ctx: McpCtx,
@@ -8312,9 +8161,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Optionally constrain block height with block_start/block_end (inclusive). " +
       "Use it to watch what is happening on one subnet right now. Events are " +
       "decoded directly from the chain. Mirrors GET /api/v1/subnets/{netuid}/events.",
-    inputSchema: z.toJSONSchema(GetSubnetEventsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetEventsInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetEventsInputSchema>,
       ctx: McpCtx,
@@ -8367,9 +8214,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "rest of the SubtensorModule hyperparameter set). hyperparameters:null " +
       "when the subnet has never been captured. Mirrors " +
       "GET /api/v1/subnets/{netuid}/hyperparameters.",
-    inputSchema: z.toJSONSchema(GetSubnetHyperparamsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetHyperparamsInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetHyperparamsInputSchema>,
       ctx: McpCtx,
@@ -8393,9 +8238,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "exist from when diff-on-change tracking started. Page with limit " +
       "(1-1000, default 100) / offset, or follow next_cursor. Mirrors " +
       "GET /api/v1/subnets/{netuid}/hyperparameters/history.",
-    inputSchema: z.toJSONSchema(GetSubnetHyperparamsHistoryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetHyperparamsHistoryInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetHyperparamsHistoryInputSchema>,
       ctx: McpCtx,
@@ -8432,9 +8275,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "alpha volume, unsigned (buy + sell, never netted) — a canonical market-" +
       "depth figure, not a windowed analytics view. Mirrors " +
       "GET /api/v1/subnets/{netuid}/volume.",
-    inputSchema: z.toJSONSchema(GetSubnetVolumeInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetVolumeInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetVolumeInputSchema>,
       ctx: McpCtx,
@@ -8476,9 +8317,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Root (netuid 0) has no AMM pool (1:1 TAO, no price impact) and " +
       "returns an empty, root_excluded series rather than a meaningless " +
       "flat line. Mirrors GET /api/v1/subnets/{netuid}/ohlc.",
-    inputSchema: z.toJSONSchema(GetSubnetOhlcInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetOhlcInputSchema),
     async handler(args: z.infer<typeof GetSubnetOhlcInputSchema>, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const interval =
@@ -8530,9 +8369,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "owner cooperation required). A subnet that has never changed hands " +
       "returns an empty list, not an error. Mirrors GET " +
       "/api/v1/subnets/{netuid}/ownership-history.",
-    inputSchema: z.toJSONSchema(GetSubnetOwnershipHistoryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetOwnershipHistoryInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetOwnershipHistoryInputSchema>,
       ctx: McpCtx,
@@ -8556,9 +8393,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "governance-adjustable. A subnet with no active challengers/owner " +
       "lock returns an empty leaderboard, not an error. Mirrors GET " +
       "/api/v1/subnets/{netuid}/conviction.",
-    inputSchema: z.toJSONSchema(GetSubnetConvictionInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetConvictionInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetConvictionInputSchema>,
       ctx: McpCtx,
@@ -8575,9 +8410,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "queried directly from the chain's RAORecycledForRegistration storage at " +
       "request time (not a rollup). recycled_tao is null on an RPC failure. " +
       "Mirrors GET /api/v1/subnets/{netuid}/recycled.",
-    inputSchema: z.toJSONSchema(GetSubnetRecycledInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetRecycledInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetRecycledInputSchema>,
       ctx: McpCtx,
@@ -8618,9 +8451,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "queried directly from the chain's Burn storage at request time (not a " +
       "rollup). burn_tao is null on an RPC failure. Mirrors GET " +
       "/api/v1/subnets/{netuid}/burn.",
-    inputSchema: z.toJSONSchema(GetSubnetBurnInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetBurnInputSchema),
     async handler(args: z.infer<typeof GetSubnetBurnInputSchema>, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       if (!isU16Netuid(netuid)) {
@@ -8661,9 +8492,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "window and are null when there is nothing to compare against. A subnet " +
       "with no recorded prices returns an empty series, not an error. Mirrors " +
       "GET /api/v1/subnets/{netuid}/burn/history.",
-    inputSchema: z.toJSONSchema(GetSubnetBurnHistoryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetBurnHistoryInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetBurnHistoryInputSchema>,
       ctx: McpCtx,
@@ -8713,9 +8542,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "a 30d window today returns everything that exists rather than a month " +
       "-- oldest_observed_at says how far back it reaches. Mainnet only. " +
       "Mirrors GET /api/v1/network/tao-usd.",
-    inputSchema: z.toJSONSchema(GetTaoUsdInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetTaoUsdInputSchema),
     async handler(args: z.infer<typeof GetTaoUsdInputSchema>, ctx: McpCtx) {
       const label =
         optionalEnum(args, "window", Object.keys(TAO_USD_WINDOWS)) ??
@@ -8756,9 +8583,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "surfaces have never changed returns an empty trail, not an error -- " +
       "stability is the common case. Mainnet only. Mirrors GET " +
       "/api/v1/subnets/{netuid}/surface-history.",
-    inputSchema: z.toJSONSchema(GetSubnetSurfaceHistoryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetSurfaceHistoryInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetSurfaceHistoryInputSchema>,
       ctx: McpCtx,
@@ -8808,9 +8633,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "tables. An empty feed is the steady state, not an error: these tables " +
       "only gain rows when a value moves. Mainnet only. Mirrors GET " +
       "/api/v1/chain/governance/emission-changes.",
-    inputSchema: z.toJSONSchema(GetEmissionChangesInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetEmissionChangesInputSchema),
     async handler(
       args: z.infer<typeof GetEmissionChangesInputSchema>,
       ctx: McpCtx,
@@ -8859,9 +8682,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "above the subnet count so ranking the whole network is one call. An " +
       "empty `subnets` list is NOT evidence that nobody holds alpha -- check " +
       "`degraded.reason` first. Mainnet only. Mirrors GET /api/v1/chain/holders.",
-    inputSchema: z.toJSONSchema(GetChainHoldersInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainHoldersInputSchema),
     async handler(
       args: z.infer<typeof GetChainHoldersInputSchema>,
       ctx: McpCtx,
@@ -8907,9 +8728,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "failure -- it means the prober recorded nothing in that range, and " +
       "only `degraded` says the read itself could not be made. Mainnet only. " +
       "Mirrors GET /api/v1/health/failure-reasons.",
-    inputSchema: z.toJSONSchema(GetFailureReasonsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetFailureReasonsInputSchema),
     async handler(
       args: z.infer<typeof GetFailureReasonsInputSchema>,
       ctx: McpCtx,
@@ -8952,9 +8771,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "author clock skew rather than an error. Null measurements are NOT a " +
       "zero-latency lane -- check `degraded.reason` first. Mainnet only. " +
       "Mirrors GET /api/v1/chain/indexer-lag.",
-    inputSchema: z.toJSONSchema(GetIndexerLagInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetIndexerLagInputSchema),
     async handler(
       _args: z.infer<typeof GetIndexerLagInputSchema>,
       ctx: McpCtx,
@@ -8993,9 +8810,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "distribution, not a missing one. window is 7d, 30d (default) or 90d. " +
       "An empty window is a measurement. Mainnet only. Mirrors GET " +
       "/api/v1/chain/concentration/history.",
-    inputSchema: z.toJSONSchema(GetChainConcentrationHistoryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainConcentrationHistoryInputSchema),
     async handler(
       args: z.infer<typeof GetChainConcentrationHistoryInputSchema>,
       ctx: McpCtx,
@@ -9043,9 +8858,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "is a measurement -- a subnet registered after the capture began " +
       "returns one legitimately. Mainnet only. Mirrors GET " +
       "/api/v1/subnets/{netuid}/emission-pipeline/history.",
-    inputSchema: z.toJSONSchema(GetPipelineHistoryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetPipelineHistoryInputSchema),
     async handler(
       args: z.infer<typeof GetPipelineHistoryInputSchema>,
       ctx: McpCtx,
@@ -9094,9 +8907,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "`root_not_in_alpha_map` means netuid 0, which the chain's Alpha map does " +
       "not cover at all. Mainnet only. Mirrors GET " +
       "/api/v1/subnets/{netuid}/holders.",
-    inputSchema: z.toJSONSchema(GetSubnetHoldersInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetHoldersInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetHoldersInputSchema>,
       ctx: McpCtx,
@@ -9136,9 +8947,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "and read_count is how many were read; a gap means the read was partial. " +
       "NOTE: there is no separate validator-permit price -- permits are granted " +
       "by the stake threshold, not bought. Mirrors GET /api/v1/chain/burn.",
-    inputSchema: z.toJSONSchema(GetChainBurnInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainBurnInputSchema),
     async handler(args: z.infer<typeof GetChainBurnInputSchema>, ctx: McpCtx) {
       if (ctx.env.RPC_RATE_LIMITER?.limit) {
         const { success } = await ctx.env.RPC_RATE_LIMITER.limit({
@@ -9176,9 +8985,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "has_dispatch_call is presence only: decoding the Option<Bounded<Call>> " +
       "payload needs the full runtime type registry, which a Worker does not " +
       "carry. Mirrors GET /api/v1/crowdloans.",
-    inputSchema: z.toJSONSchema(ListCrowdloansInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(ListCrowdloansInputSchema),
     async handler(
       args: z.infer<typeof ListCrowdloansInputSchema>,
       ctx: McpCtx,
@@ -9218,9 +9025,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "one that does not exist. Use list_crowdloans to discover valid ids " +
       "rather than counting up to next_crowdloan_id. Mirrors GET " +
       "/api/v1/crowdloans/{crowdloan_id}.",
-    inputSchema: z.toJSONSchema(GetCrowdloanInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetCrowdloanInputSchema),
     async handler(args: z.infer<typeof GetCrowdloanInputSchema>, ctx: McpCtx) {
       const crowdloanId = (args as Row)?.crowdloan_id;
       // The route's own guard, mirrored: u32, not the u16 a netuid is.
@@ -9264,9 +9069,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "request time (not a rollup). leased is null (not false) on an RPC " +
       "failure, distinct from a confirmed no-lease (leased:false). Mirrors " +
       "GET /api/v1/subnets/{netuid}/lease.",
-    inputSchema: z.toJSONSchema(GetSubnetLeaseInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetLeaseInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetLeaseInputSchema>,
       ctx: McpCtx,
@@ -9311,9 +9114,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "account_events row. A subnet that has never been leased returns an " +
       "empty list, not an error. Mirrors GET " +
       "/api/v1/subnets/{netuid}/lease/history.",
-    inputSchema: z.toJSONSchema(GetSubnetLeaseHistoryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetLeaseHistoryInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetLeaseHistoryInputSchema>,
       ctx: McpCtx,
@@ -9334,9 +9135,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "is this wallet doing across the network'. Computed live from the " +
       "account_events + neurons + extrinsics tiers; a never-seen address returns a " +
       "schema-stable zero summary, not an error.",
-    inputSchema: z.toJSONSchema(GetAccountInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountInputSchema),
     async handler(args: z.infer<typeof GetAccountInputSchema>, ctx: McpCtx) {
       const ss58 = requireSs58(args);
       const postgres = await tryPostgresTier(
@@ -9388,9 +9187,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "genesis ownership -- a coldkey that has held a subnet since " +
       "registration and never lost it will not appear in ownership_ties. " +
       "Mirrors GET /api/v1/accounts/{ss58}/entities.",
-    inputSchema: z.toJSONSchema(GetAccountEntitiesInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountEntitiesInputSchema),
     async handler(
       args: z.infer<typeof GetAccountEntitiesInputSchema>,
       ctx: McpCtx,
@@ -9427,9 +9224,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "cache. balance_tao is null on RPC failure (schema-stable, not an error). Use " +
       "it alongside get_account when an agent needs the wallet's current holdings. " +
       "Mirrors GET /api/v1/accounts/{ss58}/balance.",
-    inputSchema: z.toJSONSchema(GetAccountBalanceInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountBalanceInputSchema),
     async handler(
       args: z.infer<typeof GetAccountBalanceInputSchema>,
       ctx: McpCtx,
@@ -9472,9 +9267,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "hotkeys are null on RPC failure (schema-stable, not an error). Read-only " +
       "display only — never submits claim_root or any other extrinsic. Mirrors " +
       "GET /api/v1/accounts/{ss58}/root-claim.",
-    inputSchema: z.toJSONSchema(GetAccountRootClaimInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountRootClaimInputSchema),
     async handler(
       args: z.infer<typeof GetAccountRootClaimInputSchema>,
       ctx: McpCtx,
@@ -9518,9 +9311,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "is who it delegates to). subnets is null on an RPC failure, distinct " +
       "from a confirmed empty graph (the common case for most accounts). " +
       "Mirrors GET /api/v1/accounts/{ss58}/children.",
-    inputSchema: z.toJSONSchema(GetAccountChildrenInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountChildrenInputSchema),
     async handler(
       args: z.infer<typeof GetAccountChildrenInputSchema>,
       ctx: McpCtx,
@@ -9562,9 +9353,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "to get_account_children. subnets is null on an RPC failure, distinct " +
       "from a confirmed empty graph. Mirrors GET " +
       "/api/v1/accounts/{ss58}/parents.",
-    inputSchema: z.toJSONSchema(GetAccountParentsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountParentsInputSchema),
     async handler(
       args: z.infer<typeof GetAccountParentsInputSchema>,
       ctx: McpCtx,
@@ -9608,9 +9397,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "block_start/block_end (inclusive). Page with limit (1-1000, default 100) / " +
       "offset, or follow next_cursor for stable keyset pagination. Mirrors " +
       "GET /api/v1/accounts/{ss58}/events.",
-    inputSchema: z.toJSONSchema(GetAccountEventsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountEventsInputSchema),
     async handler(
       args: z.infer<typeof GetAccountEventsInputSchema>,
       ctx: McpCtx,
@@ -9670,9 +9457,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "subnet — the live cross-subnet footprint of where a wallet mines and " +
       "validates right now. Computed live from the neurons tier; an unregistered or " +
       "never-seen address returns an empty footprint, not an error.",
-    inputSchema: z.toJSONSchema(GetAccountSubnetsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountSubnetsInputSchema),
     async handler(
       args: z.infer<typeof GetAccountSubnetsInputSchema>,
       ctx: McpCtx,
@@ -9697,9 +9482,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "overall return, and how concentrated the wallet's stake is across subnets). " +
       "Richer than get_account_subnets; computed live from the neurons tier. An " +
       "unregistered address returns an empty portfolio, not an error.",
-    inputSchema: z.toJSONSchema(GetAccountPortfolioInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountPortfolioInputSchema),
     async handler(
       args: z.infer<typeof GetAccountPortfolioInputSchema>,
       ctx: McpCtx,
@@ -9730,9 +9513,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "(netuid 0) stake is not covered — root has no alpha pool. An address with " +
       "no delegated positions returns an empty card, not an error. Mirrors " +
       "GET /api/v1/accounts/{ss58}/positions.",
-    inputSchema: z.toJSONSchema(GetAccountPositionsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountPositionsInputSchema),
     async handler(
       args: z.infer<typeof GetAccountPositionsInputSchema>,
       ctx: McpCtx,
@@ -9769,9 +9550,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "+ get_account_subnets + get_account_positions + get_account_events " +
       "separately -- use this instead when an agent needs a broad picture of one " +
       "wallet rather than drilling into just one facet.",
-    inputSchema: z.toJSONSchema(GetAccountSnapshotInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountSnapshotInputSchema),
     async handler(
       args: z.infer<typeof GetAccountSnapshotInputSchema>,
       ctx: McpCtx,
@@ -9877,9 +9656,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "fields set via set_identity). has_identity is false for the common case " +
       "— most accounts never call set_identity. Mirrors " +
       "GET /api/v1/accounts/{ss58}/identity.",
-    inputSchema: z.toJSONSchema(GetAccountIdentityInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountIdentityInputSchema),
     async handler(
       args: z.infer<typeof GetAccountIdentityInputSchema>,
       ctx: McpCtx,
@@ -9901,9 +9678,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Fetch the append-only diff-tracking timeline for one account's on-chain " +
       "identity, newest first. Page with limit (1-1000, default 100) / offset, " +
       "or follow next_cursor. Mirrors GET /api/v1/accounts/{ss58}/identity-history.",
-    inputSchema: z.toJSONSchema(GetAccountIdentityHistoryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountIdentityHistoryInputSchema),
     async handler(
       args: z.infer<typeof GetAccountIdentityHistoryInputSchema>,
       ctx: McpCtx,
@@ -9934,9 +9709,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "emission, rank, trust, incentive, dividends per snapshot_date, newest " +
       "first. Choose the window (7d, 30d, 90d, 1y, all; default 30d). Mirrors " +
       "GET /api/v1/accounts/{ss58}/subnets/{netuid}/history.",
-    inputSchema: z.toJSONSchema(GetAccountPositionHistoryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountPositionHistoryInputSchema),
     async handler(
       args: z.infer<typeof GetAccountPositionHistoryInputSchema>,
       ctx: McpCtx,
@@ -9979,9 +9752,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "its flow is focused, and the dominant subnet. ?direction narrows to inflow " +
       "(in) or outflow (out) only; all (default) reports both sides. Mirrors " +
       "GET /api/v1/accounts/{ss58}/stake-flow.",
-    inputSchema: z.toJSONSchema(GetAccountStakeFlowInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountStakeFlowInputSchema),
     async handler(
       args: z.infer<typeof GetAccountStakeFlowInputSchema>,
       ctx: McpCtx,
@@ -10039,9 +9810,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "operational re-delegation churn, not net capital flow (see get_account_stake_flow). " +
       "The account-level companion to get_chain_stake_moves and get_subnet_stake_moves. " +
       "Mirrors GET /api/v1/accounts/{ss58}/stake-moves.",
-    inputSchema: z.toJSONSchema(GetAccountStakeMovesInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountStakeMovesInputSchema),
     async handler(
       args: z.infer<typeof GetAccountStakeMovesInputSchema>,
       ctx: McpCtx,
@@ -10083,9 +9852,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "removed — the teardown-side complement to get_account_serving (axon announcements) " +
       "and the account-level companion to get_chain_axon_removals and " +
       "get_subnet_axon_removals. Mirrors GET /api/v1/accounts/{ss58}/axon-removals.",
-    inputSchema: z.toJSONSchema(GetAccountAxonRemovalsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountAxonRemovalsInputSchema),
     async handler(
       args: z.infer<typeof GetAccountAxonRemovalsInputSchema>,
       ctx: McpCtx,
@@ -10125,9 +9892,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "companion to get_account_serving (axon announcements) and the account-level " +
       "companion to get_chain_prometheus and get_subnet_prometheus. Mirrors GET " +
       "/api/v1/accounts/{ss58}/prometheus.",
-    inputSchema: z.toJSONSchema(GetAccountPrometheusInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountPrometheusInputSchema),
     async handler(
       args: z.infer<typeof GetAccountPrometheusInputSchema>,
       ctx: McpCtx,
@@ -10166,9 +9931,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "re-registrations after a deregistration — distinct from get_account_subnets " +
       "(current registration state). The account-level companion to get_chain_registrations " +
       "and get_subnet_registrations. Mirrors GET /api/v1/accounts/{ss58}/registrations.",
-    inputSchema: z.toJSONSchema(GetAccountRegistrationsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountRegistrationsInputSchema),
     async handler(
       args: z.infer<typeof GetAccountRegistrationsInputSchema>,
       ctx: McpCtx,
@@ -10211,9 +9974,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "and the dominant subnet. WeightsSet is a validator submitting its weight vector " +
       "for a subnet's consensus. The account-level companion to get_chain_weight_setters " +
       "and get_subnet_weight_setters. Mirrors GET /api/v1/accounts/{ss58}/weight-setters.",
-    inputSchema: z.toJSONSchema(GetAccountWeightSettersInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountWeightSettersInputSchema),
     async handler(
       args: z.infer<typeof GetAccountWeightSettersInputSchema>,
       ctx: McpCtx,
@@ -10256,9 +10017,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "(registration events). The axon-endpoint companion to get_account_prometheus " +
       "(Prometheus telemetry) and the account-level companion to get_chain_serving and " +
       "get_subnet_serving. Mirrors GET /api/v1/accounts/{ss58}/serving.",
-    inputSchema: z.toJSONSchema(GetAccountServingInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountServingInputSchema),
     async handler(
       args: z.infer<typeof GetAccountServingInputSchema>,
       ctx: McpCtx,
@@ -10300,9 +10059,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "distinct from get_account_subnets (current registration state). The " +
       "account-level companion to get_chain_deregistrations and " +
       "get_subnet_deregistrations. Mirrors GET /api/v1/accounts/{ss58}/deregistrations.",
-    inputSchema: z.toJSONSchema(GetAccountDeregistrationsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountDeregistrationsInputSchema),
     async handler(
       args: z.infer<typeof GetAccountDeregistrationsInputSchema>,
       ctx: McpCtx,
@@ -10351,9 +10108,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "offset. Newest day first. Useful for understanding how active a wallet has been " +
       "over time. Note: the rollup is hotkey-attributed only — a delegate-only SS58 " +
       "address returns zero days even if it has events in get_account_events.",
-    inputSchema: z.toJSONSchema(GetAccountHistoryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountHistoryInputSchema),
     async handler(
       args: z.infer<typeof GetAccountHistoryInputSchema>,
       ctx: McpCtx,
@@ -10394,9 +10149,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "block_start/block_end (inclusive). Page with limit (1-1000, default 100) / " +
       "offset, or follow next_cursor for stable keyset pagination. Mirrors " +
       "GET /api/v1/accounts/{ss58}/extrinsics.",
-    inputSchema: z.toJSONSchema(GetAccountExtrinsicsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountExtrinsicsInputSchema),
     async handler(
       args: z.infer<typeof GetAccountExtrinsicsInputSchema>,
       ctx: McpCtx,
@@ -10450,9 +10203,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "height with block_start/block_end (inclusive). Page with limit (1-1000, " +
       "default 100) / offset, or follow next_cursor for stable keyset pagination. " +
       "Mirrors GET /api/v1/accounts/{ss58}/transfers.",
-    inputSchema: z.toJSONSchema(GetAccountTransfersInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountTransfersInputSchema),
     async handler(
       args: z.infer<typeof GetAccountTransfersInputSchema>,
       ctx: McpCtx,
@@ -10534,9 +10285,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "counterparties (1-100, default 20); the relationship drilldown returns up to " +
       "`limit` transfers (default 50). Native-TAO transfers only, NOT stake or other " +
       "events (those are in get_account_events).",
-    inputSchema: z.toJSONSchema(GetAccountCounterpartiesInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAccountCounterpartiesInputSchema),
     async handler(
       args: z.infer<typeof GetAccountCounterpartiesInputSchema>,
       ctx: McpCtx,
@@ -10618,9 +10367,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "block_end (inclusive height range), from/to (observed_at epoch-ms range), " +
       "min_extrinsics, or min_events. Page with limit (1-100, default 50) / offset, " +
       "or follow next_cursor for stable keyset pagination. Mirrors GET /api/v1/blocks.",
-    inputSchema: z.toJSONSchema(ListBlocksInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(ListBlocksInputSchema),
     async handler(args: z.infer<typeof ListBlocksInputSchema>, ctx: McpCtx) {
       // Every filter below is validated for REST-parity and, now that the
       // Postgres tier can be flipped on, forwarded to it below -- only the
@@ -10703,9 +10450,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "(64-char hex). Returns the block header plus the nearest stored prev/next block " +
       "numbers for chain-walk navigation. Returns block:null when the ref is unknown or " +
       "the store is cold — never errors. Use list_blocks to find block refs.",
-    inputSchema: z.toJSONSchema(GetBlockInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetBlockInputSchema),
     async handler(args: z.infer<typeof GetBlockInputSchema>, ctx: McpCtx) {
       const ref = requireString(args, "ref");
       // Mirrors REST's handleBlock: try Postgres first, fall back to the
@@ -10731,9 +10476,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "(1-100, default 50) / offset. Returns block_number:null + extrinsics:[] when " +
       "the ref is unknown or the store is cold — never errors. Use get_block to " +
       "resolve a block header first. Mirrors GET /api/v1/blocks/{ref}/extrinsics.",
-    inputSchema: z.toJSONSchema(ListBlockExtrinsicsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(ListBlockExtrinsicsInputSchema),
     async handler(
       args: z.infer<typeof ListBlockExtrinsicsInputSchema>,
       ctx: McpCtx,
@@ -10788,9 +10531,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "(1-1000, default 100) / offset. Returns block_number:null + events:[] when " +
       "the ref is unknown or the store is cold — never errors. Use get_block to " +
       "resolve a block header first. Mirrors GET /api/v1/blocks/{ref}/events.",
-    inputSchema: z.toJSONSchema(GetBlockEventsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetBlockEventsInputSchema),
     async handler(
       args: z.infer<typeof GetBlockEventsInputSchema>,
       ctx: McpCtx,
@@ -10845,9 +10586,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "height range), and from/to (observed_at epoch-ms range). Page with limit " +
       "(1-100, default 50) / offset, or follow next_cursor for stable keyset " +
       "pagination. Mirrors GET /api/v1/extrinsics.",
-    inputSchema: z.toJSONSchema(ListExtrinsicsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(ListExtrinsicsInputSchema),
     async handler(
       args: z.infer<typeof ListExtrinsicsInputSchema>,
       ctx: McpCtx,
@@ -10948,9 +10687,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "errors. Use list_extrinsics to find extrinsic refs. For every raw pallet.method " +
       "event an extrinsic emitted, use get_extrinsic_chain_events. Mirrors " +
       "GET /api/v1/extrinsics/{hash}.",
-    inputSchema: z.toJSONSchema(GetExtrinsicInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetExtrinsicInputSchema),
     async handler(args: z.infer<typeof GetExtrinsicInputSchema>, ctx: McpCtx) {
       const ref = requireString(args, "ref");
       // Mirrors REST's handleExtrinsic: try Postgres first (#4694), fall back to
@@ -10982,9 +10719,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "filters as list_extrinsics minus signer/call_module (call_module is " +
       "fixed to Sudo). Use get_sudo_key for the current Sudo::Key holder. " +
       "Mirrors GET /api/v1/sudo.",
-    inputSchema: z.toJSONSchema(GetSudoInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSudoInputSchema),
     async handler(args: z.infer<typeof GetSudoInputSchema>, ctx: McpCtx) {
       return (
         (await tryPostgresTier(
@@ -11025,9 +10760,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "request time (1h KV cache). hotkey is null on an RPC failure or an " +
       "unset sudo key. `field_sources` marks it measured and names the " +
       "storage item (Sudo.Key) it was read from. Mirrors GET /api/v1/sudo/key.",
-    inputSchema: z.toJSONSchema(GetSudoKeyInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSudoKeyInputSchema),
     async handler(args: Row, ctx: McpCtx) {
       return loadSudoKey(
         ctx.env,
@@ -11054,9 +10787,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "the storage item is unset, which is its current state on finney -- so " +
       "that 3 comes from our source tree, not from chain. Mirrors GET " +
       "/api/v1/network/parameters.",
-    inputSchema: z.toJSONSchema(GetNetworkParametersInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetNetworkParametersInputSchema),
     async handler(args: Row, ctx: McpCtx) {
       return loadNetworkParameters(
         ctx.env,
@@ -11080,9 +10811,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Drand.OldestStoredRound) and `stored_round_span` reconstructed -- it " +
       "is our subtraction of them, not a retention window the beacon " +
       "publishes. Mirrors GET /api/v1/network/randomness.",
-    inputSchema: z.toJSONSchema(GetRandomnessStatusInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetRandomnessStatusInputSchema),
     async handler(args: Row, ctx: McpCtx) {
       return loadRandomnessStatus(
         ctx.env,
@@ -11101,9 +10830,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "(re-scoped from a Council/Senate framing subtensor doesn't have). Same " +
       "filters as list_extrinsics minus signer/call_module (call_module is " +
       "fixed to AdminUtils). Mirrors GET /api/v1/governance/config-changes.",
-    inputSchema: z.toJSONSchema(GetGovernanceConfigChangesInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetGovernanceConfigChangesInputSchema),
     async handler(
       args: z.infer<typeof GetGovernanceConfigChangesInputSchema>,
       ctx: McpCtx,
@@ -11158,9 +10885,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "`test` — the same spelling call_rpc uses; `mainnet`/`testnet`/`local` are " +
       "rejected there. Only list_subnets and get_subnet_detail take `network` at " +
       "all; `local` is a per-developer chain with no hosted data on any surface.",
-    inputSchema: z.toJSONSchema(GetNetworksInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetNetworksInputSchema),
     async handler() {
       // Pure derivation over the route table — no artifact read, no upstream,
       // so this tool cannot fail or return stale data.
@@ -11186,9 +10911,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "filter or paginate. Every block from genesis to head carries a " +
       "spec_version reading, so coverage_gaps reports real holes rather than " +
       "bounding a partial timeline. Mirrors GET /api/v1/runtime.",
-    inputSchema: z.toJSONSchema(GetRuntimeInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetRuntimeInputSchema),
     async handler(_args: unknown, ctx: McpCtx) {
       // #4909 D1 retirement: blocks' D1 write path is retired (#4772) and the
       // table is dropped in production, so a D1 query here would always miss.
@@ -11223,9 +10946,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "total_stake (default), total_emission, subnet_count, uid_count, " +
       "validator_count, stake_dominance, or last_active. The all-accounts " +
       "generalization of list_global_validators. Mirrors GET /api/v1/accounts.",
-    inputSchema: z.toJSONSchema(ListAccountsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(ListAccountsInputSchema),
     async handler(args: z.infer<typeof ListAccountsInputSchema>, ctx: McpCtx) {
       const sort =
         optionalEnum(args, "sort", ACCOUNTS_LIST_SORTS) ??
@@ -11277,9 +10998,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "no balance source, and a zero there would read as an empty wallet. For " +
       "current per-account balances use get_account_balance, which reads chain " +
       "state live. Mirrors GET /api/v1/accounts/top-holders.",
-    inputSchema: z.toJSONSchema(GetTopHoldersInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetTopHoldersInputSchema),
     async handler(args: z.infer<typeof GetTopHoldersInputSchema>, ctx: McpCtx) {
       const sort =
         optionalEnum(args, "sort", TOP_HOLDERS_SORTS) ??
@@ -11315,9 +11034,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Returns event_count:0 + events:[] when the tier is empty for that block. " +
       "Requires the all-events data Worker (tier_unavailable in preview deploys). " +
       "Mirrors GET /api/v1/blocks/{ref}/chain-events.",
-    inputSchema: z.toJSONSchema(GetBlockChainEventsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetBlockChainEventsInputSchema),
     async handler(
       args: z.infer<typeof GetBlockChainEventsInputSchema>,
       ctx: McpCtx,
@@ -11342,9 +11059,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "default 50) or follow next_cursor for deeper pages. Distinct from the curated " +
       "account_events embedded in get_extrinsic. Pass network to read testnet's " +
       "decoded history instead of mainnet's. Mirrors GET /api/v1/chain-events?block=&extrinsic=.",
-    inputSchema: z.toJSONSchema(GetExtrinsicChainEventsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetExtrinsicChainEventsInputSchema),
     async handler(
       args: z.infer<typeof GetExtrinsicChainEventsInputSchema>,
       ctx: McpCtx,
@@ -11372,9 +11087,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "before drilling into specific blocks (get_block) or extrinsics " +
       "(list_extrinsics). Pass network to aggregate testnet's decoded history " +
       "instead of mainnet's. Mirrors GET /api/v1/chain-events/stats.",
-    inputSchema: z.toJSONSchema(GetChainActivityInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainActivityInputSchema),
     async handler(
       args: z.infer<typeof GetChainActivityInputSchema>,
       ctx: McpCtx,
@@ -11402,9 +11115,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "companion to list_extrinsics and get_chain_activity (the pallet.method " +
       "distribution). Pass network to read testnet's decoded history instead of " +
       "mainnet's. Mirrors GET /api/v1/chain-events.",
-    inputSchema: z.toJSONSchema(ListChainEventsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(ListChainEventsInputSchema),
     async handler(
       args: z.infer<typeof ListChainEventsInputSchema>,
       ctx: McpCtx,
@@ -11440,9 +11151,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "single pallet. Use it to see which pallets and calls dominate on-chain traffic " +
       "before drilling into specific blocks (get_block) or extrinsics " +
       "(list_extrinsics). Mirrors GET /api/v1/chain/calls.",
-    inputSchema: z.toJSONSchema(GetChainCallsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainCallsInputSchema),
     async handler(args: z.infer<typeof GetChainCallsInputSchema>, ctx: McpCtx) {
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
@@ -11502,9 +11211,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "extrinsic count (default) or total fees over the requested window " +
       "(7d or 30d), with total fees, tips, and last signed block. Optionally " +
       "scope to one pallet via call_module. Mirrors GET /api/v1/chain/signers.",
-    inputSchema: z.toJSONSchema(GetChainSignersInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainSignersInputSchema),
     async handler(
       args: z.infer<typeof GetChainSignersInputSchema>,
       ctx: McpCtx,
@@ -11565,9 +11272,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "per-UTC-day fee series (totals + averages) plus a top-fee-payer list. " +
       "Optionally scope to one pallet via call_module. Mirrors " +
       "GET /api/v1/chain/fees.",
-    inputSchema: z.toJSONSchema(GetChainFeesInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainFeesInputSchema),
     async handler(args: z.infer<typeof GetChainFeesInputSchema>, ctx: McpCtx) {
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
@@ -11630,9 +11335,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "NeuronRegistered count) plus the network rollup, computed live from the " +
       "account_events NeuronRegistered stream. limit caps the leaderboard " +
       "(1-100, default 20). Mirrors GET /api/v1/chain/registrations.",
-    inputSchema: z.toJSONSchema(GetChainRegistrationsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainRegistrationsInputSchema),
     async handler(
       args: z.infer<typeof GetChainRegistrationsInputSchema>,
       ctx: McpCtx,
@@ -11682,9 +11385,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "activity — the exit-side companion to get_chain_registrations " +
       "(NeuronRegistered demand) and get_subnet_deregistrations (one subnet). " +
       "Mirrors GET /api/v1/chain/deregistrations.",
-    inputSchema: z.toJSONSchema(GetChainDeregistrationsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainDeregistrationsInputSchema),
     async handler(
       args: z.infer<typeof GetChainDeregistrationsInputSchema>,
       ctx: McpCtx,
@@ -11736,9 +11437,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "of total volume (a concentration signal). The network-level companion of " +
       "get_account_transfers and get_account_counterparties. Mirrors " +
       "GET /api/v1/chain/transfers.",
-    inputSchema: z.toJSONSchema(GetChainTransfersInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainTransfersInputSchema),
     async handler(
       args: z.infer<typeof GetChainTransfersInputSchema>,
       ctx: McpCtx,
@@ -11793,9 +11492,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "get_chain_transfers (top individual senders/receivers) and " +
       "get_account_counterparties (one account's relationships). Mirrors GET " +
       "/api/v1/chain/transfer-pairs.",
-    inputSchema: z.toJSONSchema(GetChainTransferPairsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetChainTransferPairsInputSchema),
     async handler(
       args: z.infer<typeof GetChainTransferPairsInputSchema>,
       ctx: McpCtx,
@@ -11852,9 +11549,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "unique signers, newest day first. Use it for a network-at-a-glance view " +
       "before drilling into call-mix (get_chain_calls) or fee markets " +
       "(get_chain_fees). Mirrors GET /api/v1/chain/activity.",
-    inputSchema: z.toJSONSchema(GetNetworkActivityInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetNetworkActivityInputSchema),
     async handler(
       args: z.infer<typeof GetNetworkActivityInputSchema>,
       ctx: McpCtx,
@@ -11904,9 +11599,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "List the callable services (subnet-api, openapi, sse) one subnet " +
       "exposes, each with base URL, auth requirement, machine-readable schema " +
       "URL, current health, and call eligibility. The agent integration path.",
-    inputSchema: z.toJSONSchema(ListSubnetApisInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(ListSubnetApisInputSchema),
     async handler(
       args: z.infer<typeof ListSubnetApisInputSchema>,
       ctx: McpCtx,
@@ -11939,9 +11632,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "metadata (auth_required, auth_schemes, drift_status). Use it to " +
       "generate a typed client or understand endpoints; prefer the curated " +
       "surface base_url over any upstream server/callback hints.",
-    inputSchema: z.toJSONSchema(GetApiSchemaInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetApiSchemaInputSchema),
     async handler(args: z.infer<typeof GetApiSchemaInputSchema>, ctx: McpCtx) {
       const surfaceId = requireString(args, "surface_id");
       // surface_id is part of an R2 key path; reject anything that could escape
@@ -11966,9 +11657,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "returns — the real shape, not just what its schema claims — so you can " +
       "code against it. Credentials/secrets are redacted and large values " +
       "truncated; treat field values as untrusted data.",
-    inputSchema: z.toJSONSchema(GetFixtureInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetFixtureInputSchema),
     async handler(args: z.infer<typeof GetFixtureInputSchema>, ctx: McpCtx) {
       // #7867: shared loadFixture — same surface_id charset gate, deprecated-id
       // alias resolve, and artifact read GraphQL fixture(surface_id) uses.
@@ -11987,9 +11676,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "MCP detail serves the catalogued endpoints). Mirrors " +
       "GET /api/v1/providers/{slug} (+ /endpoints). Discover slugs via the " +
       "providers list at /metagraph/providers.json.",
-    inputSchema: z.toJSONSchema(GetProviderDetailInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetProviderDetailInputSchema),
     async handler(
       args: z.infer<typeof GetProviderDetailInputSchema>,
       ctx: McpCtx,
@@ -12041,9 +11728,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "and min_/max_score, sort with sort + order, project a subset of fields " +
       "with fields, and page with limit/cursor — the full catalog can be " +
       "large. Mirrors GET /api/v1/endpoints.",
-    inputSchema: z.toJSONSchema(ListEndpointsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(ListEndpointsInputSchema),
     async handler(args: z.infer<typeof ListEndpointsInputSchema>, ctx: McpCtx) {
       const kind = optionalEnum(args, "kind", QUERY_ENUMS.surfaceKind);
       const layer = optionalEnum(args, "layer", QUERY_ENUMS.endpointLayer);
@@ -12198,9 +11883,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "probe-derived status/latency/score. The per-subnet view of " +
       "list_endpoints (the network-wide catalog). Mirrors " +
       "GET /api/v1/subnets/{netuid}/endpoints.",
-    inputSchema: z.toJSONSchema(GetSubnetEndpointsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetEndpointsInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetEndpointsInputSchema>,
       ctx: McpCtx,
@@ -12262,9 +11945,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "curated/promoted, each with its kind, provider, and review state. The " +
       "per-subnet view of list_candidates (the network-wide catalog). Mirrors " +
       "GET /api/v1/subnets/{netuid}/candidates.",
-    inputSchema: z.toJSONSchema(GetSubnetCandidatesInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetCandidatesInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetCandidatesInputSchema>,
       ctx: McpCtx,
@@ -12295,9 +11976,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "provenance and verification evidence recorded for that subnet's surfaces " +
       "(what was checked and the outcome). The per-subnet view of list_evidence " +
       "(the network-wide ledger). Mirrors GET /api/v1/subnets/{netuid}/evidence.",
-    inputSchema: z.toJSONSchema(GetSubnetEvidenceInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetEvidenceInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetEvidenceInputSchema>,
       ctx: McpCtx,
@@ -12324,9 +12003,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "The per-subnet view of list_surfaces (the network-wide catalog); pair " +
       "with list_subnet_apis to drill into a subnet's API surfaces. Mirrors " +
       "GET /api/v1/subnets/{netuid}/surfaces.",
-    inputSchema: z.toJSONSchema(GetSubnetSurfacesInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetSurfacesInputSchema),
     async handler(
       args: z.infer<typeof GetSubnetSurfacesInputSchema>,
       ctx: McpCtx,
@@ -12348,9 +12025,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "surfaces carry a sanitized real sample, with capture status and metadata. " +
       "Use it to discover which surfaces have a fixture, then fetch one with " +
       "get_fixture. Mirrors GET /api/v1/fixtures.",
-    inputSchema: z.toJSONSchema(ListFixturesInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(ListFixturesInputSchema),
     async handler(_args: unknown, ctx: McpCtx) {
       return loadArtifactData(ctx, "/metagraph/fixtures.json");
     },
@@ -12364,9 +12039,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "drift status (new/unchanged/changed). Use it to discover which surfaces " +
       "have a schema, then fetch one with get_api_schema. Mirrors " +
       "GET /api/v1/schemas.",
-    inputSchema: z.toJSONSchema(ListSchemasInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(ListSchemasInputSchema),
     async handler(_args: unknown, ctx: McpCtx) {
       return loadArtifactData(ctx, "/metagraph/schemas/index.json");
     },
@@ -12478,9 +12151,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "subnets have graduated to mainnet (mainnet ↔ testnet pairs with the match " +
       "evidence), plus any flagged broken links. Use it to map a mainnet subnet " +
       "to its testnet counterpart or vice versa. Mirrors GET /api/v1/lineage.",
-    inputSchema: z.toJSONSchema(GetLineageInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetLineageInputSchema),
     async handler(_args: unknown, ctx: McpCtx) {
       return loadArtifactData(ctx, "/metagraph/lineage.json");
     },
@@ -12495,9 +12166,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "health, etc.). The operational surface-health source is overlaid with the " +
       "live 15-minute prober's last run. Use it to judge how current the data is " +
       "before relying on it. Mirrors GET /api/v1/freshness.",
-    inputSchema: z.toJSONSchema(GetFreshnessInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetFreshnessInputSchema),
     async handler(_args: unknown, ctx: McpCtx) {
       return loadFreshness(ctx);
     },
@@ -12517,9 +12186,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "/ dead), endpoint and RPC-endpoint counts, verification-result count, and " +
       "an overall status. Use it to see which providers are publishing healthy, " +
       "still-reachable surfaces. Mirrors GET /api/v1/source-health.",
-    inputSchema: z.toJSONSchema(GetSourceHealthInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSourceHealthInputSchema),
     async handler(_args: unknown, ctx: McpCtx) {
       return loadArtifactData(ctx, "/metagraph/source-health.json");
     },
@@ -12576,9 +12243,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Fetch the machine-readable agent capability catalog. With no argument " +
       "returns the global index of subnets exposing callable services; with a " +
       "netuid returns that subnet's full per-service catalog.",
-    inputSchema: z.toJSONSchema(GetAgentCatalogInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetAgentCatalogInputSchema),
     async handler(
       args: z.infer<typeof GetAgentCatalogInputSchema>,
       ctx: McpCtx,
@@ -12620,9 +12285,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "null where nothing measured them; the lakehouse has no percentile " +
       "function. Use alongside get_best_rpc_endpoint to see which endpoints are " +
       "actually carrying traffic. Mirrors GET /api/v1/rpc/usage.",
-    inputSchema: z.toJSONSchema(GetRpcUsageInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetRpcUsageInputSchema),
     async handler(args: z.infer<typeof GetRpcUsageInputSchema>, ctx: McpCtx) {
       const parsed = parseAnalyticsWindow(args?.window ?? "7d");
       if (args?.window !== undefined && parsed === null) {
@@ -12649,9 +12312,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Return the best currently-eligible Bittensor base-layer RPC/WSS " +
       "endpoint(s), scored and filtered by live health (down endpoints are " +
       "excluded). Use this to pick a node endpoint for on-chain reads.",
-    inputSchema: z.toJSONSchema(GetBestRpcEndpointInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetBestRpcEndpointInputSchema),
     async handler(
       args: z.infer<typeof GetBestRpcEndpointInputSchema>,
       ctx: McpCtx,
@@ -12721,9 +12382,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "rate limiting, and endpoint failover as the public proxy. Use " +
       "get_best_rpc_endpoint to pick a node for direct WSS access instead. " +
       "Mirrors POST /rpc/v1/{network}.",
-    inputSchema: z.toJSONSchema(CallRpcInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(CallRpcInputSchema),
     async handler(args: z.infer<typeof CallRpcInputSchema>, ctx: McpCtx) {
       if (typeof args?.method !== "string" || !args.method) {
         throw toolError(
@@ -12854,12 +12513,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "REST GraphQL endpoint -- a query that exceeds them is rejected. Pass the " +
       "query string in `query` and any GraphQL variables as an object in " +
       "`variables`.",
-    inputSchema: z.toJSONSchema(QueryGraphqlInputSchema, {
-      target: "draft-2020-12",
-    }),
-    outputSchema: z.toJSONSchema(QueryGraphqlOutputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(QueryGraphqlInputSchema),
+    outputSchema: outputJsonSchema(QueryGraphqlOutputSchema),
     async handler(args: z.infer<typeof QueryGraphqlInputSchema>, ctx: McpCtx) {
       const query = requireString(args, "query");
       if (
@@ -12962,9 +12617,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Fetch the registry-wide summary: overall completeness, the most " +
       "complete subnets, coverage-level counts, and the latest registry " +
       "changes. A fast orientation for the whole Bittensor application layer.",
-    inputSchema: z.toJSONSchema(RegistrySummaryInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(RegistrySummaryInputSchema),
     async handler(_args: unknown, ctx: McpCtx) {
       return loadArtifactData(ctx, "/metagraph/registry-summary.json");
     },
@@ -12984,9 +12637,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "queue of enrichment targets. The raw passthrough companion of the " +
       "filtered list_enrichment_targets tool. Mirrors GET /api/v1/coverage-depth.",
     inputSchema: withoutSchemaMeta(
-      z.toJSONSchema(GetCoverageDepthInputSchema, {
-        target: "draft-2020-12",
-      }),
+      inputJsonSchema(GetCoverageDepthInputSchema),
     ),
     async handler(args: unknown, ctx: McpCtx) {
       // #10011: this returned the whole ~293 KB scorecard on every call, with
@@ -13014,9 +12665,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "subnets need schema, fixture, example/SDK, provenance, candidate-review, " +
       "or hard-blocker follow-up next. Use this for curation/work-planning, not " +
       "live uptime; call get_subnet_health for current health.",
-    inputSchema: z.toJSONSchema(ListEnrichmentTargetsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(ListEnrichmentTargetsInputSchema),
     async handler(
       args: z.infer<typeof ListEnrichmentTargetsInputSchema>,
       ctx: McpCtx,
@@ -13100,9 +12749,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "view behind GET /api/v1/subnets/{netuid}/gaps — distinct from " +
       "list_enrichment_targets, which ranks the registry-wide coverage-depth " +
       "scorecard.",
-    inputSchema: z.toJSONSchema(GetSubnetGapsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetSubnetGapsInputSchema),
     async handler(args: z.infer<typeof GetSubnetGapsInputSchema>, ctx: McpCtx) {
       const netuid = requireNetuid(args);
       const gaps = await loadOptionalArtifact(
@@ -13143,9 +12790,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "alpha_price_change_* values. Omit `board` for all economic boards. " +
       "Economics is refreshed periodically, not live-by-the-second; use " +
       "get_subnet for one subnet's full current economics.",
-    inputSchema: z.toJSONSchema(FindSubnetOpportunitiesInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(FindSubnetOpportunitiesInputSchema),
     async handler(
       args: z.infer<typeof FindSubnetOpportunitiesInputSchema>,
       ctx: McpCtx,
@@ -13193,7 +12838,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Requires the AI layer; fall back to search_subnets when it is not " +
       "available.",
     inputSchema: requireAnyOf(
-      z.toJSONSchema(SemanticSearchInputSchema, { target: "draft-2020-12" }),
+      inputJsonSchema(SemanticSearchInputSchema),
       // Both optional in Zod so either may be used; without this the published
       // schema would say NOTHING is required and an agent would call it empty
       // (#10018, same reasoning as how_do_i_call).
@@ -13225,9 +12870,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "citations — e.g. 'Which subnets expose an inference API I can call " +
       "today?'. Returns the answer plus its citations. Scope the retrieved " +
       "context with `type`. Requires the AI layer.",
-    inputSchema: z.toJSONSchema(AskInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(AskInputSchema),
     async handler(args: z.infer<typeof AskInputSchema>, ctx: McpCtx) {
       requireAi(ctx);
       const question = requireString(args, "question");
@@ -13252,9 +12895,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "services, each with its integration readiness, callable service kinds, " +
       "base URL, health, and a next step. Ranks by intent when the AI layer is " +
       "available, otherwise by keyword. Pair each result with how_do_i_call.",
-    inputSchema: z.toJSONSchema(FindSubnetForTaskInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(FindSubnetForTaskInputSchema),
     async handler(
       args: z.infer<typeof FindSubnetForTaskInputSchema>,
       ctx: McpCtx,
@@ -13322,10 +12963,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "last-known health — plus next steps. Accepts a netuid or a slug/chain " +
       "name. When a subnet exposes nothing callable, says so and points to its " +
       "profile. Pairs with find_subnet_for_task / search_subnets.",
-    inputSchema: requireAnyOf(
-      z.toJSONSchema(HowDoICallInputSchema, { target: "draft-2020-12" }),
-      ["netuid", "subnet"],
-    ),
+    inputSchema: requireAnyOf(inputJsonSchema(HowDoICallInputSchema), [
+      "netuid",
+      "subnet",
+    ]),
     async handler(args: z.infer<typeof HowDoICallInputSchema>, ctx: McpCtx) {
       const netuid = await resolveNetuid(ctx, args);
       const staticDetail = await loadArtifactData(
@@ -13414,10 +13055,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     title: "Verify a surface is callable right now",
     description:
       'Live-probe a single catalogued surface (by surface_id, stable surface_key, or deprecated surface_id alias) or a subnet\'s primary surface (by netuid) and return its current health — status, latency, and whether it is callable right now. Use this to confirm "works right now" before wiring an integration. Only the curated catalogued URL is probed (never an arbitrary URL); results are cached ~60s. This is live truth, distinct from the deterministic integration_readiness score.',
-    inputSchema: requireAnyOf(
-      z.toJSONSchema(VerifyIntegrationInputSchema, { target: "draft-2020-12" }),
-      ["surface_id", "netuid"],
-    ),
+    inputSchema: requireAnyOf(inputJsonSchema(VerifyIntegrationInputSchema), [
+      "surface_id",
+      "netuid",
+    ]),
     async handler(
       args: z.infer<typeof VerifyIntegrationInputSchema>,
       ctx: McpCtx,
@@ -13463,9 +13104,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     title: "Call a subnet's live API and return its response",
     description:
       "Actually call a catalogued surface (by surface_id, stable surface_key, or deprecated surface_id alias) and return its real response body -- not just health/status metadata like verify_integration. The response is bounded: JSON is parsed and returned structured, other text is returned capped, and unexpected binary content-types are rejected. With no `path`/`method`, only the surface's own curated url is ever fetched, using its declared probe method (GET/HEAD) -- MCP execute Phase 1 (#7014). Supplying both `path` and `method` (GET/HEAD/POST/PUT) calls a different route on the SAME surface's host instead, but only when that exact path+method is declared in the surface's own captured schema (fetch it first with get_api_schema) -- an undeclared path, or a surface with no captured schema at all, is rejected outright, never guessed -- MCP execute Phase 2 (#7674, #7675). For POST/PUT, `body` is validated against the matched operation's declared request body: rejected if the operation declares none, or if `content_type` isn't one of its declared media types (defaults to application/json when that's declared, or the operation's only declared media type). A surface with `auth_required:true` needs a `credential` argument to be callable at all -- see that argument's own description for which surfaces support it, including multi-value signature bundles (e.g. a Bittensor hotkey-signed request) that can be placed in a header, query param, cookie, or merged into a POST/PUT JSON body (MCP execute Phase 3-4, #7686-#7688, #7701). Never obtains a credential on your behalf. Authenticated callers should register the credential once with store_surface_credential and OMIT the `credential` argument -- it is then resolved from the caller's own store and never travels through tool arguments, client logs, or the conversation transcript; passing it in-band still works but is deprecated for authenticated callers (#9009). Anonymous callers have no store to bind to and keep passing `credential` in-band, which is never retained past the single call.",
-    inputSchema: z.toJSONSchema(CallSubnetSurfaceInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(CallSubnetSurfaceInputSchema),
     async handler(
       args: z.infer<typeof CallSubnetSurfaceInputSchema>,
       ctx: McpCtx,
@@ -13909,9 +13548,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "or a {name: value} bundle for scheme:signature. Expires after " +
       "ttl_seconds (default 30 days). Storing again for the same surface " +
       "replaces the previous value.",
-    inputSchema: z.toJSONSchema(StoreSurfaceCredentialInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(StoreSurfaceCredentialInputSchema),
     async handler(
       args: z.infer<typeof StoreSurfaceCredentialInputSchema>,
       ctx: McpCtx,
@@ -13944,9 +13581,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "reads only non-secret metadata and does not decrypt anything. " +
       "Requires authentication; an anonymous caller has no registrations to " +
       "list.",
-    inputSchema: z.toJSONSchema(ListSurfaceCredentialsInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(ListSurfaceCredentialsInputSchema),
     async handler(_args: Row, ctx: McpCtx) {
       const { identity, storeEnv } = requireCredentialStore(ctx);
       const credentials = await listSurfaceCredentials(storeEnv, identity);
@@ -13961,9 +13596,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "authentication. Returns deleted:false when nothing was registered for " +
       "that surface (already expired, already deleted, or never stored) -- " +
       "not an error, so a cleanup pass is idempotent.",
-    inputSchema: z.toJSONSchema(DeleteSurfaceCredentialInputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(DeleteSurfaceCredentialInputSchema),
     async handler(
       args: z.infer<typeof DeleteSurfaceCredentialInputSchema>,
       ctx: McpCtx,
@@ -13999,12 +13632,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
                 .join(", ")}.`
             : " No params."),
       ).join(" | "),
-    inputSchema: z.toJSONSchema(RunSavedQueryInputSchema, {
-      target: "draft-2020-12",
-    }),
-    outputSchema: z.toJSONSchema(RunSavedQueryOutputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(RunSavedQueryInputSchema),
+    outputSchema: outputJsonSchema(RunSavedQueryOutputSchema),
     async handler(args: z.infer<typeof RunSavedQueryInputSchema>, ctx: McpCtx) {
       if (typeof args?.query_id !== "string" || !args.query_id) {
         throw toolError("invalid_params", "Argument `query_id` is required.");
@@ -14025,12 +13654,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "precompile but the calldata's 4-byte selector doesn't match any of " +
       "its declared functions, function is null but precompile/address are " +
       "still populated.",
-    inputSchema: z.toJSONSchema(DecodeEvmCallInputSchema, {
-      target: "draft-2020-12",
-    }),
-    outputSchema: z.toJSONSchema(DecodeEvmCallOutputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(DecodeEvmCallInputSchema),
+    outputSchema: outputJsonSchema(DecodeEvmCallOutputSchema),
     async handler(args: z.infer<typeof DecodeEvmCallInputSchema>) {
       if (
         typeof args?.to !== "string" ||
@@ -14068,12 +13693,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "(#6725/#6728) -- a deterministic function of the runtime's configured " +
       "mapping algorithm, queried live rather than replicated client-side. " +
       "Mirrors GET /api/v1/evm/address/{h160}. ss58 is null on RPC failure.",
-    inputSchema: z.toJSONSchema(GetEvmAddressMappingInputSchema, {
-      target: "draft-2020-12",
-    }),
-    outputSchema: z.toJSONSchema(GetEvmAddressMappingOutputSchema, {
-      target: "draft-2020-12",
-    }),
+    inputSchema: inputJsonSchema(GetEvmAddressMappingInputSchema),
+    outputSchema: outputJsonSchema(GetEvmAddressMappingOutputSchema),
     async handler(
       args: z.infer<typeof GetEvmAddressMappingInputSchema>,
       ctx: McpCtx,
@@ -14110,538 +13731,238 @@ const TOOLS_BY_NAME = new Map(MCP_TOOLS.map((tool) => [tool.name, tool]));
 // that returns isError (e.g. the AI tools when the AI layer is off) carries no
 // structuredContent, so its schema is simply not applied on that path.
 const TOOL_OUTPUT_SCHEMAS = {
-  search_subnets: z.toJSONSchema(SearchSubnetsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  list_subnets: z.toJSONSchema(ListSubnetsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  find_subnets_by_capability: z.toJSONSchema(
+  search_subnets: outputJsonSchema(SearchSubnetsOutputSchema),
+  list_subnets: outputJsonSchema(ListSubnetsOutputSchema),
+  find_subnets_by_capability: outputJsonSchema(
     FindSubnetsByCapabilityOutputSchema,
-    { target: "draft-2020-12" },
   ),
-  get_subnet: z.toJSONSchema(GetSubnetOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_detail: z.toJSONSchema(GetSubnetDetailOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_snapshot: z.toJSONSchema(GetSubnetSnapshotOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_health: z.toJSONSchema(GetSubnetHealthOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_health_trends: z.toJSONSchema(GetSubnetHealthTrendsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_health_trends: z.toJSONSchema(GetHealthTrendsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_health_percentiles: z.toJSONSchema(
+  get_subnet: outputJsonSchema(GetSubnetOutputSchema),
+  get_subnet_detail: outputJsonSchema(GetSubnetDetailOutputSchema),
+  get_subnet_snapshot: outputJsonSchema(GetSubnetSnapshotOutputSchema),
+  get_subnet_health: outputJsonSchema(GetSubnetHealthOutputSchema),
+  get_subnet_health_trends: outputJsonSchema(GetSubnetHealthTrendsOutputSchema),
+  get_health_trends: outputJsonSchema(GetHealthTrendsOutputSchema),
+  get_subnet_health_percentiles: outputJsonSchema(
     GetSubnetHealthPercentilesOutputSchema,
-    { target: "draft-2020-12" },
   ),
-  get_subnet_health_incidents: z.toJSONSchema(
+  get_subnet_health_incidents: outputJsonSchema(
     GetSubnetHealthIncidentsOutputSchema,
-    { target: "draft-2020-12" },
   ),
-  get_subnet_economics: z.toJSONSchema(GetSubnetEconomicsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_stake_quote: z.toJSONSchema(GetSubnetStakeQuoteOutputSchema, {
-    target: "draft-2020-12",
-  }),
+  get_subnet_economics: outputJsonSchema(GetSubnetEconomicsOutputSchema),
+  get_subnet_stake_quote: outputJsonSchema(GetSubnetStakeQuoteOutputSchema),
   get_economics: GET_ECONOMICS_OUTPUT_SCHEMA,
   get_network_health: GET_NETWORK_HEALTH_OUTPUT_SCHEMA,
   list_profiles: LIST_PROFILES_OUTPUT_SCHEMA,
   get_subnet_profile: GET_SUBNET_PROFILE_OUTPUT_SCHEMA,
   get_health_history: GET_HEALTH_HISTORY_OUTPUT_SCHEMA,
-  get_subnet_trajectory: z.toJSONSchema(GetSubnetTrajectoryOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_economics_trends: z.toJSONSchema(GetEconomicsTrendsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_emission_pipeline: z.toJSONSchema(GetEmissionPipelineOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_concentration: z.toJSONSchema(GetSubnetConcentrationOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_performance: z.toJSONSchema(GetSubnetPerformanceOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_idle_stake: z.toJSONSchema(GetSubnetIdleStakeOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_concentration: z.toJSONSchema(GetChainConcentrationOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_concentration_subnets: z.toJSONSchema(
+  get_subnet_trajectory: outputJsonSchema(GetSubnetTrajectoryOutputSchema),
+  get_economics_trends: outputJsonSchema(GetEconomicsTrendsOutputSchema),
+  get_emission_pipeline: outputJsonSchema(GetEmissionPipelineOutputSchema),
+  get_subnet_concentration: outputJsonSchema(
+    GetSubnetConcentrationOutputSchema,
+  ),
+  get_subnet_performance: outputJsonSchema(GetSubnetPerformanceOutputSchema),
+  get_subnet_idle_stake: outputJsonSchema(GetSubnetIdleStakeOutputSchema),
+  get_chain_concentration: outputJsonSchema(GetChainConcentrationOutputSchema),
+  get_chain_concentration_subnets: outputJsonSchema(
     GetChainConcentrationSubnetsOutputSchema,
-    { target: "draft-2020-12" },
   ),
-  get_chain_performance: z.toJSONSchema(GetChainPerformanceOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_idle_stake: z.toJSONSchema(GetChainIdleStakeOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_identity_history: z.toJSONSchema(
+  get_chain_performance: outputJsonSchema(GetChainPerformanceOutputSchema),
+  get_chain_idle_stake: outputJsonSchema(GetChainIdleStakeOutputSchema),
+  get_chain_identity_history: outputJsonSchema(
     GetChainIdentityHistoryOutputSchema,
-    {
-      target: "draft-2020-12",
-    },
   ),
-  get_chain_yield: z.toJSONSchema(GetChainYieldOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_turnover: z.toJSONSchema(GetChainTurnoverOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_stake_flow: z.toJSONSchema(GetChainStakeFlowOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_alpha_volume: z.toJSONSchema(GetChainAlphaVolumeOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_weights: z.toJSONSchema(GetChainWeightsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_weight_setters: z.toJSONSchema(GetChainWeightSettersOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_stake_moves: z.toJSONSchema(GetChainStakeMovesOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_stake_transfers: z.toJSONSchema(
+  get_chain_yield: outputJsonSchema(GetChainYieldOutputSchema),
+  get_chain_turnover: outputJsonSchema(GetChainTurnoverOutputSchema),
+  get_chain_stake_flow: outputJsonSchema(GetChainStakeFlowOutputSchema),
+  get_chain_alpha_volume: outputJsonSchema(GetChainAlphaVolumeOutputSchema),
+  get_chain_weights: outputJsonSchema(GetChainWeightsOutputSchema),
+  get_chain_weight_setters: outputJsonSchema(GetChainWeightSettersOutputSchema),
+  get_chain_stake_moves: outputJsonSchema(GetChainStakeMovesOutputSchema),
+  get_chain_stake_transfers: outputJsonSchema(
     GetChainStakeTransfersOutputSchema,
-    {
-      target: "draft-2020-12",
-    },
   ),
-  get_chain_axon_removals: z.toJSONSchema(GetChainAxonRemovalsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_serving: z.toJSONSchema(GetChainServingOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_prometheus: z.toJSONSchema(GetChainPrometheusOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_blocks_summary: z.toJSONSchema(GetBlocksSummaryOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_concentration_history: z.toJSONSchema(
+  get_chain_axon_removals: outputJsonSchema(GetChainAxonRemovalsOutputSchema),
+  get_chain_serving: outputJsonSchema(GetChainServingOutputSchema),
+  get_chain_prometheus: outputJsonSchema(GetChainPrometheusOutputSchema),
+  get_blocks_summary: outputJsonSchema(GetBlocksSummaryOutputSchema),
+  get_subnet_concentration_history: outputJsonSchema(
     GetSubnetConcentrationHistoryOutputSchema,
-    { target: "draft-2020-12" },
   ),
-  get_subnet_yield: z.toJSONSchema(GetSubnetYieldOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_yield_history: z.toJSONSchema(GetSubnetYieldHistoryOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_stake_flow: z.toJSONSchema(GetSubnetStakeFlowOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_event_summary: z.toJSONSchema(GetSubnetEventSummaryOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_stake_moves: z.toJSONSchema(GetSubnetStakeMovesOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_stake_transfers: z.toJSONSchema(
+  get_subnet_yield: outputJsonSchema(GetSubnetYieldOutputSchema),
+  get_subnet_yield_history: outputJsonSchema(GetSubnetYieldHistoryOutputSchema),
+  get_subnet_stake_flow: outputJsonSchema(GetSubnetStakeFlowOutputSchema),
+  get_subnet_event_summary: outputJsonSchema(GetSubnetEventSummaryOutputSchema),
+  get_subnet_stake_moves: outputJsonSchema(GetSubnetStakeMovesOutputSchema),
+  get_subnet_stake_transfers: outputJsonSchema(
     GetSubnetStakeTransfersOutputSchema,
-    { target: "draft-2020-12" },
   ),
-  get_subnet_registrations: z.toJSONSchema(GetSubnetRegistrationsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_weights: z.toJSONSchema(GetSubnetWeightsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_weight_setters: z.toJSONSchema(
+  get_subnet_registrations: outputJsonSchema(
+    GetSubnetRegistrationsOutputSchema,
+  ),
+  get_subnet_weights: outputJsonSchema(GetSubnetWeightsOutputSchema),
+  get_subnet_weight_setters: outputJsonSchema(
     GetSubnetWeightSettersOutputSchema,
-    { target: "draft-2020-12" },
   ),
-  get_subnet_axon_removals: z.toJSONSchema(GetSubnetAxonRemovalsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_serving: z.toJSONSchema(GetSubnetServingOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_prometheus: z.toJSONSchema(GetSubnetPrometheusOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_deregistrations: z.toJSONSchema(
+  get_subnet_axon_removals: outputJsonSchema(GetSubnetAxonRemovalsOutputSchema),
+  get_subnet_serving: outputJsonSchema(GetSubnetServingOutputSchema),
+  get_subnet_prometheus: outputJsonSchema(GetSubnetPrometheusOutputSchema),
+  get_subnet_deregistrations: outputJsonSchema(
     GetSubnetDeregistrationsOutputSchema,
-    { target: "draft-2020-12" },
   ),
-  get_subnet_performance_history: z.toJSONSchema(
+  get_subnet_performance_history: outputJsonSchema(
     GetSubnetPerformanceHistoryOutputSchema,
-    { target: "draft-2020-12" },
   ),
-  get_subnet_movers: z.toJSONSchema(GetSubnetMoversOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_turnover: z.toJSONSchema(GetSubnetTurnoverOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_uptime: z.toJSONSchema(GetSubnetUptimeOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_registry_leaderboards: z.toJSONSchema(
+  get_subnet_movers: outputJsonSchema(GetSubnetMoversOutputSchema),
+  get_subnet_turnover: outputJsonSchema(GetSubnetTurnoverOutputSchema),
+  get_subnet_uptime: outputJsonSchema(GetSubnetUptimeOutputSchema),
+  get_registry_leaderboards: outputJsonSchema(
     GetRegistryLeaderboardsOutputSchema,
-    { target: "draft-2020-12" },
   ),
-  get_domain_summary: z.toJSONSchema(GetDomainSummaryOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  compare_subnets: z.toJSONSchema(CompareSubnetsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_global_incidents: z.toJSONSchema(GetGlobalIncidentsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_metagraph: z.toJSONSchema(GetSubnetMetagraphOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  list_subnet_validators: z.toJSONSchema(ListSubnetValidatorsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  list_global_validators: z.toJSONSchema(ListGlobalValidatorsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_validator_detail: z.toJSONSchema(GetValidatorDetailOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  compare_validators: z.toJSONSchema(CompareValidatorsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_webhook_subscription: z.toJSONSchema(GetWebhookSubscriptionOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_alert_trigger: z.toJSONSchema(GetAlertTriggerOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_validator_nominators: z.toJSONSchema(GetValidatorNominatorsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_validator_history: z.toJSONSchema(GetValidatorHistoryOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_neuron: z.toJSONSchema(GetNeuronOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_history: z.toJSONSchema(GetSubnetHistoryOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_identity_history: z.toJSONSchema(
+  get_domain_summary: outputJsonSchema(GetDomainSummaryOutputSchema),
+  compare_subnets: outputJsonSchema(CompareSubnetsOutputSchema),
+  get_global_incidents: outputJsonSchema(GetGlobalIncidentsOutputSchema),
+  get_subnet_metagraph: outputJsonSchema(GetSubnetMetagraphOutputSchema),
+  list_subnet_validators: outputJsonSchema(ListSubnetValidatorsOutputSchema),
+  list_global_validators: outputJsonSchema(ListGlobalValidatorsOutputSchema),
+  get_validator_detail: outputJsonSchema(GetValidatorDetailOutputSchema),
+  compare_validators: outputJsonSchema(CompareValidatorsOutputSchema),
+  get_webhook_subscription: outputJsonSchema(
+    GetWebhookSubscriptionOutputSchema,
+  ),
+  get_alert_trigger: outputJsonSchema(GetAlertTriggerOutputSchema),
+  get_validator_nominators: outputJsonSchema(
+    GetValidatorNominatorsOutputSchema,
+  ),
+  get_validator_history: outputJsonSchema(GetValidatorHistoryOutputSchema),
+  get_neuron: outputJsonSchema(GetNeuronOutputSchema),
+  get_subnet_history: outputJsonSchema(GetSubnetHistoryOutputSchema),
+  get_subnet_identity_history: outputJsonSchema(
     GetSubnetIdentityHistoryOutputSchema,
-    { target: "draft-2020-12" },
   ),
-  get_subnet_hyperparams: z.toJSONSchema(GetSubnetHyperparamsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_hyperparams_history: z.toJSONSchema(
+  get_subnet_hyperparams: outputJsonSchema(GetSubnetHyperparamsOutputSchema),
+  get_subnet_hyperparams_history: outputJsonSchema(
     GetSubnetHyperparamsHistoryOutputSchema,
-    { target: "draft-2020-12" },
   ),
-  get_subnet_volume: z.toJSONSchema(GetSubnetVolumeOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_ohlc: z.toJSONSchema(GetSubnetOhlcOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_ownership_history: z.toJSONSchema(
+  get_subnet_volume: outputJsonSchema(GetSubnetVolumeOutputSchema),
+  get_subnet_ohlc: outputJsonSchema(GetSubnetOhlcOutputSchema),
+  get_subnet_ownership_history: outputJsonSchema(
     GetSubnetOwnershipHistoryOutputSchema,
-    { target: "draft-2020-12" },
   ),
-  get_subnet_conviction: z.toJSONSchema(GetSubnetConvictionOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_recycled: z.toJSONSchema(GetSubnetRecycledOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_burn_history: z.toJSONSchema(GetSubnetBurnHistoryOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_holders: z.toJSONSchema(GetSubnetHoldersOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_holders: z.toJSONSchema(GetChainHoldersOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_concentration_history: z.toJSONSchema(
+  get_subnet_conviction: outputJsonSchema(GetSubnetConvictionOutputSchema),
+  get_subnet_recycled: outputJsonSchema(GetSubnetRecycledOutputSchema),
+  get_subnet_burn_history: outputJsonSchema(GetSubnetBurnHistoryOutputSchema),
+  get_subnet_holders: outputJsonSchema(GetSubnetHoldersOutputSchema),
+  get_chain_holders: outputJsonSchema(GetChainHoldersOutputSchema),
+  get_chain_concentration_history: outputJsonSchema(
     GetChainConcentrationHistoryOutputSchema,
-    { target: "draft-2020-12" },
   ),
-  get_emission_pipeline_history: z.toJSONSchema(
+  get_emission_pipeline_history: outputJsonSchema(
     GetPipelineHistoryOutputSchema,
-    { target: "draft-2020-12" },
   ),
-  get_emission_changes: z.toJSONSchema(GetEmissionChangesOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_failure_reasons: z.toJSONSchema(GetFailureReasonsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_indexer_lag: z.toJSONSchema(GetIndexerLagOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_tao_usd: z.toJSONSchema(GetTaoUsdOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_surface_history: z.toJSONSchema(
+  get_emission_changes: outputJsonSchema(GetEmissionChangesOutputSchema),
+  get_failure_reasons: outputJsonSchema(GetFailureReasonsOutputSchema),
+  get_indexer_lag: outputJsonSchema(GetIndexerLagOutputSchema),
+  get_tao_usd: outputJsonSchema(GetTaoUsdOutputSchema),
+  get_subnet_surface_history: outputJsonSchema(
     GetSubnetSurfaceHistoryOutputSchema,
-    { target: "draft-2020-12" },
   ),
-  get_chain_burn: z.toJSONSchema(GetChainBurnOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_burn: z.toJSONSchema(GetSubnetBurnOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  list_crowdloans: z.toJSONSchema(ListCrowdloansOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_crowdloan: z.toJSONSchema(GetCrowdloanOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_lease: z.toJSONSchema(GetSubnetLeaseOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_lease_history: z.toJSONSchema(GetSubnetLeaseHistoryOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_neuron_history: z.toJSONSchema(GetNeuronHistoryOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_events: z.toJSONSchema(GetSubnetEventsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_account: z.toJSONSchema(GetAccountOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_account_entities: z.toJSONSchema(GetAccountEntitiesOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_account_balance: z.toJSONSchema(GetAccountBalanceOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_account_root_claim: z.toJSONSchema(GetAccountRootClaimOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_account_children: z.toJSONSchema(GetAccountChildrenOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_account_parents: z.toJSONSchema(GetAccountParentsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_account_portfolio: z.toJSONSchema(GetAccountPortfolioOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_account_positions: z.toJSONSchema(GetAccountPositionsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_account_snapshot: z.toJSONSchema(GetAccountSnapshotOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_account_identity: z.toJSONSchema(GetAccountIdentityOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_account_identity_history: z.toJSONSchema(
+  get_chain_burn: outputJsonSchema(GetChainBurnOutputSchema),
+  get_subnet_burn: outputJsonSchema(GetSubnetBurnOutputSchema),
+  list_crowdloans: outputJsonSchema(ListCrowdloansOutputSchema),
+  get_crowdloan: outputJsonSchema(GetCrowdloanOutputSchema),
+  get_subnet_lease: outputJsonSchema(GetSubnetLeaseOutputSchema),
+  get_subnet_lease_history: outputJsonSchema(GetSubnetLeaseHistoryOutputSchema),
+  get_neuron_history: outputJsonSchema(GetNeuronHistoryOutputSchema),
+  get_subnet_events: outputJsonSchema(GetSubnetEventsOutputSchema),
+  get_account: outputJsonSchema(GetAccountOutputSchema),
+  get_account_entities: outputJsonSchema(GetAccountEntitiesOutputSchema),
+  get_account_balance: outputJsonSchema(GetAccountBalanceOutputSchema),
+  get_account_root_claim: outputJsonSchema(GetAccountRootClaimOutputSchema),
+  get_account_children: outputJsonSchema(GetAccountChildrenOutputSchema),
+  get_account_parents: outputJsonSchema(GetAccountParentsOutputSchema),
+  get_account_portfolio: outputJsonSchema(GetAccountPortfolioOutputSchema),
+  get_account_positions: outputJsonSchema(GetAccountPositionsOutputSchema),
+  get_account_snapshot: outputJsonSchema(GetAccountSnapshotOutputSchema),
+  get_account_identity: outputJsonSchema(GetAccountIdentityOutputSchema),
+  get_account_identity_history: outputJsonSchema(
     GetAccountIdentityHistoryOutputSchema,
-    { target: "draft-2020-12" },
   ),
-  get_account_position_history: z.toJSONSchema(
+  get_account_position_history: outputJsonSchema(
     GetAccountPositionHistoryOutputSchema,
-    { target: "draft-2020-12" },
   ),
-  get_account_events: z.toJSONSchema(GetAccountEventsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_account_subnets: z.toJSONSchema(GetAccountSubnetsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_account_stake_flow: z.toJSONSchema(GetAccountStakeFlowOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_account_stake_moves: z.toJSONSchema(GetAccountStakeMovesOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_account_axon_removals: z.toJSONSchema(
+  get_account_events: outputJsonSchema(GetAccountEventsOutputSchema),
+  get_account_subnets: outputJsonSchema(GetAccountSubnetsOutputSchema),
+  get_account_stake_flow: outputJsonSchema(GetAccountStakeFlowOutputSchema),
+  get_account_stake_moves: outputJsonSchema(GetAccountStakeMovesOutputSchema),
+  get_account_axon_removals: outputJsonSchema(
     GetAccountAxonRemovalsOutputSchema,
-    {
-      target: "draft-2020-12",
-    },
   ),
-  get_account_prometheus: z.toJSONSchema(GetAccountPrometheusOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_account_registrations: z.toJSONSchema(
+  get_account_prometheus: outputJsonSchema(GetAccountPrometheusOutputSchema),
+  get_account_registrations: outputJsonSchema(
     GetAccountRegistrationsOutputSchema,
-    {
-      target: "draft-2020-12",
-    },
   ),
-  get_account_weight_setters: z.toJSONSchema(
+  get_account_weight_setters: outputJsonSchema(
     GetAccountWeightSettersOutputSchema,
-    {
-      target: "draft-2020-12",
-    },
   ),
-  get_account_serving: z.toJSONSchema(GetAccountServingOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_account_deregistrations: z.toJSONSchema(
+  get_account_serving: outputJsonSchema(GetAccountServingOutputSchema),
+  get_account_deregistrations: outputJsonSchema(
     GetAccountDeregistrationsOutputSchema,
-    {
-      target: "draft-2020-12",
-    },
   ),
-  get_account_history: z.toJSONSchema(GetAccountHistoryOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_account_extrinsics: z.toJSONSchema(GetAccountExtrinsicsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_account_transfers: z.toJSONSchema(GetAccountTransfersOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_account_counterparties: z.toJSONSchema(
+  get_account_history: outputJsonSchema(GetAccountHistoryOutputSchema),
+  get_account_extrinsics: outputJsonSchema(GetAccountExtrinsicsOutputSchema),
+  get_account_transfers: outputJsonSchema(GetAccountTransfersOutputSchema),
+  get_account_counterparties: outputJsonSchema(
     GetAccountCounterpartiesOutputSchema,
-    {
-      target: "draft-2020-12",
-    },
   ),
-  list_blocks: z.toJSONSchema(ListBlocksOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_block: z.toJSONSchema(GetBlockOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  list_block_extrinsics: z.toJSONSchema(ListBlockExtrinsicsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_block_events: z.toJSONSchema(GetBlockEventsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  list_extrinsics: z.toJSONSchema(ListExtrinsicsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_extrinsic: z.toJSONSchema(GetExtrinsicOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_sudo: z.toJSONSchema(GetSudoOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_sudo_key: z.toJSONSchema(GetSudoKeyOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_network_parameters: z.toJSONSchema(GetNetworkParametersOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_randomness_status: z.toJSONSchema(GetRandomnessStatusOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_governance_config_changes: z.toJSONSchema(
+  list_blocks: outputJsonSchema(ListBlocksOutputSchema),
+  get_block: outputJsonSchema(GetBlockOutputSchema),
+  list_block_extrinsics: outputJsonSchema(ListBlockExtrinsicsOutputSchema),
+  get_block_events: outputJsonSchema(GetBlockEventsOutputSchema),
+  list_extrinsics: outputJsonSchema(ListExtrinsicsOutputSchema),
+  get_extrinsic: outputJsonSchema(GetExtrinsicOutputSchema),
+  get_sudo: outputJsonSchema(GetSudoOutputSchema),
+  get_sudo_key: outputJsonSchema(GetSudoKeyOutputSchema),
+  get_network_parameters: outputJsonSchema(GetNetworkParametersOutputSchema),
+  get_randomness_status: outputJsonSchema(GetRandomnessStatusOutputSchema),
+  get_governance_config_changes: outputJsonSchema(
     GetGovernanceConfigChangesOutputSchema,
-    {
-      target: "draft-2020-12",
-    },
   ),
-  get_networks: z.toJSONSchema(GetNetworksOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_runtime: z.toJSONSchema(GetRuntimeOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  list_accounts: z.toJSONSchema(ListAccountsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_top_holders: z.toJSONSchema(GetTopHoldersOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_block_chain_events: z.toJSONSchema(GetBlockChainEventsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_extrinsic_chain_events: z.toJSONSchema(
+  get_networks: outputJsonSchema(GetNetworksOutputSchema),
+  get_runtime: outputJsonSchema(GetRuntimeOutputSchema),
+  list_accounts: outputJsonSchema(ListAccountsOutputSchema),
+  get_top_holders: outputJsonSchema(GetTopHoldersOutputSchema),
+  get_block_chain_events: outputJsonSchema(GetBlockChainEventsOutputSchema),
+  get_extrinsic_chain_events: outputJsonSchema(
     GetExtrinsicChainEventsOutputSchema,
-    {
-      target: "draft-2020-12",
-    },
   ),
-  get_chain_activity: z.toJSONSchema(GetChainActivityOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  list_chain_events: z.toJSONSchema(ListChainEventsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_calls: z.toJSONSchema(GetChainCallsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_signers: z.toJSONSchema(GetChainSignersOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_fees: z.toJSONSchema(GetChainFeesOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_registrations: z.toJSONSchema(GetChainRegistrationsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_deregistrations: z.toJSONSchema(
+  get_chain_activity: outputJsonSchema(GetChainActivityOutputSchema),
+  list_chain_events: outputJsonSchema(ListChainEventsOutputSchema),
+  get_chain_calls: outputJsonSchema(GetChainCallsOutputSchema),
+  get_chain_signers: outputJsonSchema(GetChainSignersOutputSchema),
+  get_chain_fees: outputJsonSchema(GetChainFeesOutputSchema),
+  get_chain_registrations: outputJsonSchema(GetChainRegistrationsOutputSchema),
+  get_chain_deregistrations: outputJsonSchema(
     GetChainDeregistrationsOutputSchema,
-    {
-      target: "draft-2020-12",
-    },
   ),
-  get_chain_transfers: z.toJSONSchema(GetChainTransfersOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_chain_transfer_pairs: z.toJSONSchema(GetChainTransferPairsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_network_activity: z.toJSONSchema(GetNetworkActivityOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_rpc_usage: z.toJSONSchema(GetRpcUsageOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  list_subnet_apis: z.toJSONSchema(ListSubnetApisOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_api_schema: z.toJSONSchema(GetApiSchemaOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_fixture: z.toJSONSchema(GetFixtureOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_provider_detail: z.toJSONSchema(GetProviderDetailOutputSchema, {
-    target: "draft-2020-12",
-  }),
+  get_chain_transfers: outputJsonSchema(GetChainTransfersOutputSchema),
+  get_chain_transfer_pairs: outputJsonSchema(GetChainTransferPairsOutputSchema),
+  get_network_activity: outputJsonSchema(GetNetworkActivityOutputSchema),
+  get_rpc_usage: outputJsonSchema(GetRpcUsageOutputSchema),
+  list_subnet_apis: outputJsonSchema(ListSubnetApisOutputSchema),
+  get_api_schema: outputJsonSchema(GetApiSchemaOutputSchema),
+  get_fixture: outputJsonSchema(GetFixtureOutputSchema),
+  get_provider_detail: outputJsonSchema(GetProviderDetailOutputSchema),
   list_providers: LIST_PROVIDERS_OUTPUT_SCHEMA,
   list_surfaces: LIST_SURFACES_OUTPUT_SCHEMA,
   list_candidates: LIST_CANDIDATES_OUTPUT_SCHEMA,
-  list_endpoints: z.toJSONSchema(ListEndpointsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_surfaces: z.toJSONSchema(GetSubnetSurfacesOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_evidence: z.toJSONSchema(GetSubnetEvidenceOutputSchema, {
-    target: "draft-2020-12",
-  }),
+  list_endpoints: outputJsonSchema(ListEndpointsOutputSchema),
+  get_subnet_surfaces: outputJsonSchema(GetSubnetSurfacesOutputSchema),
+  get_subnet_evidence: outputJsonSchema(GetSubnetEvidenceOutputSchema),
   list_subnet_evidence: LIST_SUBNET_EVIDENCE_OUTPUT_SCHEMA,
-  get_subnet_candidates: z.toJSONSchema(GetSubnetCandidatesOutputSchema, {
-    target: "draft-2020-12",
-  }),
+  get_subnet_candidates: outputJsonSchema(GetSubnetCandidatesOutputSchema),
   list_subnet_candidates: LIST_SUBNET_CANDIDATES_OUTPUT_SCHEMA,
-  get_subnet_endpoints: z.toJSONSchema(GetSubnetEndpointsOutputSchema, {
-    target: "draft-2020-12",
-  }),
+  get_subnet_endpoints: outputJsonSchema(GetSubnetEndpointsOutputSchema),
   list_subnet_endpoints: LIST_SUBNET_ENDPOINTS_OUTPUT_SCHEMA,
   list_subnet_surfaces: LIST_SUBNET_SURFACES_OUTPUT_SCHEMA,
   list_subnet_health: LIST_SUBNET_HEALTH_OUTPUT_SCHEMA,
@@ -14650,12 +13971,8 @@ const TOOL_OUTPUT_SCHEMAS = {
   list_source_snapshots: LIST_SOURCE_SNAPSHOTS_OUTPUT_SCHEMA,
   list_rpc_endpoints: LIST_RPC_ENDPOINTS_OUTPUT_SCHEMA,
   list_evidence: LIST_EVIDENCE_OUTPUT_SCHEMA,
-  list_fixtures: z.toJSONSchema(ListFixturesOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  list_schemas: z.toJSONSchema(ListSchemasOutputSchema, {
-    target: "draft-2020-12",
-  }),
+  list_fixtures: outputJsonSchema(ListFixturesOutputSchema),
+  list_schemas: outputJsonSchema(ListSchemasOutputSchema),
   list_search_index: LIST_SEARCH_INDEX_OUTPUT_SCHEMA,
   list_search: LIST_SEARCH_OUTPUT_SCHEMA,
   list_curation: LIST_CURATION_OUTPUT_SCHEMA,
@@ -14668,74 +13985,42 @@ const TOOL_OUTPUT_SCHEMAS = {
   list_endpoint_pools: LIST_ENDPOINT_POOLS_OUTPUT_SCHEMA,
   list_endpoint_incidents: LIST_ENDPOINT_INCIDENTS_OUTPUT_SCHEMA,
   list_provider_endpoints: LIST_PROVIDER_ENDPOINTS_OUTPUT_SCHEMA,
-  get_lineage: z.toJSONSchema(GetLineageOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_freshness: z.toJSONSchema(GetFreshnessOutputSchema, {
-    target: "draft-2020-12",
-  }),
+  get_lineage: outputJsonSchema(GetLineageOutputSchema),
+  get_freshness: outputJsonSchema(GetFreshnessOutputSchema),
   get_contracts: GET_CONTRACTS_OUTPUT_SCHEMA,
-  get_source_health: z.toJSONSchema(GetSourceHealthOutputSchema, {
-    target: "draft-2020-12",
-  }),
+  get_source_health: outputJsonSchema(GetSourceHealthOutputSchema),
   get_changelog: GET_CHANGELOG_OUTPUT_SCHEMA,
   get_feed: GET_FEED_OUTPUT_SCHEMA,
   get_build: GET_BUILD_OUTPUT_SCHEMA,
   get_self_health: GET_SELF_HEALTH_OUTPUT_SCHEMA,
   get_adapter: GET_ADAPTER_OUTPUT_SCHEMA,
-  get_agent_catalog: z.toJSONSchema(GetAgentCatalogOutputSchema, {
-    target: "draft-2020-12",
-  }),
+  get_agent_catalog: outputJsonSchema(GetAgentCatalogOutputSchema),
   get_agent_resources: GET_AGENT_RESOURCES_OUTPUT_SCHEMA,
-  get_best_rpc_endpoint: z.toJSONSchema(GetBestRpcEndpointOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  call_rpc: z.toJSONSchema(CallRpcOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  registry_summary: z.toJSONSchema(RegistrySummaryOutputSchema, {
-    target: "draft-2020-12",
-  }),
+  get_best_rpc_endpoint: outputJsonSchema(GetBestRpcEndpointOutputSchema),
+  call_rpc: outputJsonSchema(CallRpcOutputSchema),
+  registry_summary: outputJsonSchema(RegistrySummaryOutputSchema),
   get_coverage: GET_COVERAGE_OUTPUT_SCHEMA,
-  get_coverage_depth: z.toJSONSchema(GetCoverageDepthOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  list_enrichment_targets: z.toJSONSchema(ListEnrichmentTargetsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  get_subnet_gaps: z.toJSONSchema(GetSubnetGapsOutputSchema, {
-    target: "draft-2020-12",
-  }),
+  get_coverage_depth: outputJsonSchema(GetCoverageDepthOutputSchema),
+  list_enrichment_targets: outputJsonSchema(ListEnrichmentTargetsOutputSchema),
+  get_subnet_gaps: outputJsonSchema(GetSubnetGapsOutputSchema),
   list_subnet_gaps: LIST_SUBNET_GAPS_OUTPUT_SCHEMA,
-  find_subnet_for_task: z.toJSONSchema(FindSubnetForTaskOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  how_do_i_call: z.toJSONSchema(HowDoICallOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  find_subnet_opportunities: z.toJSONSchema(
+  find_subnet_for_task: outputJsonSchema(FindSubnetForTaskOutputSchema),
+  how_do_i_call: outputJsonSchema(HowDoICallOutputSchema),
+  find_subnet_opportunities: outputJsonSchema(
     FindSubnetOpportunitiesOutputSchema,
-    { target: "draft-2020-12" },
   ),
-  semantic_search: z.toJSONSchema(SemanticSearchOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  ask: z.toJSONSchema(AskOutputSchema, { target: "draft-2020-12" }),
-  verify_integration: z.toJSONSchema(VerifyIntegrationOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  call_subnet_surface: z.toJSONSchema(CallSubnetSurfaceOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  store_surface_credential: z.toJSONSchema(StoreSurfaceCredentialOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  list_surface_credentials: z.toJSONSchema(ListSurfaceCredentialsOutputSchema, {
-    target: "draft-2020-12",
-  }),
-  delete_surface_credential: z.toJSONSchema(
+  semantic_search: outputJsonSchema(SemanticSearchOutputSchema),
+  ask: outputJsonSchema(AskOutputSchema),
+  verify_integration: outputJsonSchema(VerifyIntegrationOutputSchema),
+  call_subnet_surface: outputJsonSchema(CallSubnetSurfaceOutputSchema),
+  store_surface_credential: outputJsonSchema(
+    StoreSurfaceCredentialOutputSchema,
+  ),
+  list_surface_credentials: outputJsonSchema(
+    ListSurfaceCredentialsOutputSchema,
+  ),
+  delete_surface_credential: outputJsonSchema(
     DeleteSurfaceCredentialOutputSchema,
-    { target: "draft-2020-12" },
   ),
 };
 
