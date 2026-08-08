@@ -89,6 +89,7 @@
 import { laneHealthStore } from "./lane-health-store.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
+import { readStore } from "./read-store.ts";
 
 /**
  * How old the ledger may get before this is a stall.
@@ -290,8 +291,13 @@ export async function runAccountBalancesStalenessWatchdog(
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
   const record = deps.recordException ?? recordExceptionEvent;
-  const db = env?.METAGRAPH_HEALTH_DB as D1Like | undefined;
-  if (!db?.prepare) return { ok: false, reason: "d1 binding unavailable" };
+  // Whichever store holds the table (#10154). The verdict WRITE moved to
+  // laneHealthStore already; this read did not, so the watchdog was measuring
+  // a frozen D1 copy and would have alarmed permanently -- reporting the lane
+  // stalled while the lane was fine.
+  const db = readStore(env, ["account_balances"]) as unknown as
+    D1Like | undefined;
+  if (!db?.prepare) return { ok: false, reason: "no store bound" };
 
   const thresholdMs =
     Number(env?.ACCOUNT_BALANCES_STALENESS_THRESHOLD_MS) ||

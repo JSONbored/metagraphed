@@ -47,6 +47,8 @@ import {
   type DecodeWatermark,
 } from "./decode-watermark.ts";
 import { d1Watermark } from "./raw-capture-sync.ts";
+import { readStore } from "./read-store.ts";
+import { laneHealthStore } from "./lane-health-store.ts";
 
 /**
  * How long the decode lane may go without publishing before that is a fault.
@@ -231,9 +233,11 @@ const num = (value: unknown) =>
  * lane's OWN reader so the two can never disagree about which row and column
  * hold the watermark. */
 async function capturedThrough(env: unknown): Promise<number | null> {
-  const db = (
-    env as { METAGRAPH_HEALTH_DB?: Parameters<typeof d1Watermark>[0] }
-  )?.METAGRAPH_HEALTH_DB;
+  // raw_capture_state is Neon's outright, so this follows it (#10154). The
+  // seam this watchdog measures is capture-vs-lakehouse; against a frozen
+  // watermark it reports a gap that only ever widens.
+  const db = readStore(env, ["raw_capture_state"]) as unknown as
+    Parameters<typeof d1Watermark>[0] | undefined;
   if (!db?.prepare) return null;
   try {
     // `Date.now` rather than a `() => 0` stub: the clock is only used by the
@@ -272,10 +276,12 @@ export async function runLakehouseSeamWatchdog(
   } = {},
 ): Promise<Record<string, unknown>> {
   const query = deps.query ?? r2SqlQuery;
-  const laneHealthDb =
-    deps.laneHealthDb ??
-    ((env as { METAGRAPH_HEALTH_DB?: LaneHealthDb })?.METAGRAPH_HEALTH_DB as
-      LaneHealthDb | undefined);
+  // The only watchdog in the family that still named the binding here; every
+  // other one goes through laneHealthStore (#10154).
+  const laneHealthDb = laneHealthStore(
+    env as unknown as Record<string, unknown>,
+    deps.laneHealthDb,
+  );
   const recordVerdict = (verdict: LaneVerdictInput) =>
     recordLaneVerdict(laneHealthDb, {
       lane: LAKEHOUSE_SEAM_LANE,

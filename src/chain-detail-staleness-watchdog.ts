@@ -29,6 +29,7 @@
 import { laneHealthStore } from "./lane-health-store.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
+import { readStore } from "./read-store.ts";
 
 /**
  * How far behind the lane may fall before this is a stall.
@@ -99,8 +100,8 @@ interface D1Like {
 export async function readChainDetailHead(
   env: Record<string, unknown> | null | undefined,
 ): Promise<{ latestObservedAtMs: number | null; headBlock: number | null }> {
-  const db = (env as { METAGRAPH_HEALTH_DB?: D1Like } | null | undefined)
-    ?.METAGRAPH_HEALTH_DB;
+  const db = readStore(env, ["chain_detail_blocks"]) as unknown as
+    D1Like | undefined;
   if (!db?.prepare) return { latestObservedAtMs: null, headBlock: null };
   const row = (await db
     .prepare(
@@ -140,8 +141,13 @@ export async function runChainDetailStalenessWatchdog(
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
   const record = deps.recordException ?? recordExceptionEvent;
-  const db = env?.METAGRAPH_HEALTH_DB as D1Like | undefined;
-  if (!db?.prepare) return { ok: false, reason: "d1 binding unavailable" };
+  // Whichever store holds the table (#10154). The verdict WRITE moved to
+  // laneHealthStore already; this read did not, so the watchdog was measuring
+  // a frozen D1 copy and would have alarmed permanently -- reporting the lane
+  // stalled while the lane was fine.
+  const db = readStore(env, ["chain_detail_blocks"]) as unknown as
+    D1Like | undefined;
+  if (!db?.prepare) return { ok: false, reason: "no store bound" };
 
   const thresholdMs =
     Number(env?.CHAIN_DETAIL_STALENESS_THRESHOLD_MS) ||

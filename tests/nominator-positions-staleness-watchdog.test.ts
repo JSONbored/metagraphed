@@ -372,11 +372,11 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
   test("a missing binding and a failing query degrade to summaries, never throw", async () => {
     assert.deepEqual(await runNominatorPositionsStalenessWatchdog({}), {
       ok: false,
-      reason: "d1 binding unavailable",
+      reason: "no store bound",
     });
     assert.deepEqual(await runNominatorPositionsStalenessWatchdog(null), {
       ok: false,
-      reason: "d1 binding unavailable",
+      reason: "no store bound",
     });
 
     const { db } = fakeDb(
