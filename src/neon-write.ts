@@ -105,6 +105,27 @@ export function buildPgUpsert(
   rowCount: number,
   guard?: string,
   filter?: string,
+  /**
+   * Target types for the FILTERED form's columns, e.g. `{netuid: "int"}`.
+   *
+   * WHY ONLY THE FILTERED FORM NEEDS THEM (#10121). A plain
+   * `INSERT INTO t (a, b) VALUES ($1, $2)` gives Postgres the target columns as
+   * type context, so every parameter is inferred correctly and nothing has to
+   * be declared. Wrapping the same list in `FROM (VALUES ...) AS src (a, b)`
+   * removes that context entirely: `src` is a standalone relation, its columns
+   * have no declared types, and every untyped parameter falls back to TEXT.
+   *
+   * The insert then fails with `column "netuid" is of type integer but
+   * expression is of type text` -- which took the hotkey_alpha mirror down
+   * TWICE. #10000 fixed only the predicate half (`src.netuid::int` inside the
+   * EXISTS) and left the SELECT list handing text to an integer column.
+   *
+   * Declared per plan rather than discovered, because the failure is silent in
+   * the direction that matters: an unlisted column is simply not cast, and if
+   * its target happens to be text the statement works -- so a missing entry
+   * surfaces only on the one table where it breaks.
+   */
+  columnTypes?: Readonly<Record<string, string>>,
 ): string {
   // `filter` switches the row source from a bare VALUES list to a SELECT over
   // it, so a predicate can reject rows before they are inserted. The D1 side
@@ -116,7 +137,9 @@ export function buildPgUpsert(
   // The alias is `src`, and the predicate refers to its columns by name.
   const head = filter
     ? `INSERT INTO ${table} (${columns.join(", ")}) SELECT ${columns
-        .map((c) => `src.${c}`)
+        .map((c) =>
+          columnTypes?.[c] ? `src.${c}::${columnTypes[c]}` : `src.${c}`,
+        )
         .join(", ")} FROM (VALUES ${pgValuesClause(
         rowCount,
         columns.length,
@@ -189,6 +212,8 @@ export async function writeRowsToNeon(
   conflict: readonly string[] = [],
   guard?: string,
   filter?: string,
+  /** Target types for the filtered form -- see buildPgUpsert. */
+  columnTypes?: Readonly<Record<string, string>>,
 ): Promise<NeonWriteResult> {
   if (!sql?.unsafe)
     return { ok: false, rows: 0, statements: 0, reason: "unbound" };
@@ -208,6 +233,7 @@ export async function writeRowsToNeon(
       chunk.length,
       guard,
       filter,
+      columnTypes,
     );
     try {
       await sql.unsafe(text, pgFlatValues(chunk, columns));
