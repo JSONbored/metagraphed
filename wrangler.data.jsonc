@@ -226,7 +226,7 @@
     // every advance is mirrored and there is no older row to reconcile.
     // blocks_head STAYS despite gaining the same mirror -- it is an APPEND
     // table, so the mirror only covers blocks polled since it existed.
-    "NEON_BACKFILL_LANES": "account_balances",
+    "NEON_BACKFILL_LANES": "",
     // Tables whose ONLY home is Neon -- D1 is not behind them any more.
     //
     // A FOURTH flag, and the one the other three converge on. All three above
