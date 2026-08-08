@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
 import { FieldSourcesSchema } from "../shared.ts";
+import { EventStreamDegradedSchema } from "./event-stream-honesty.ts";
 
 // One decoded CrowdloanInfo record. Every field is set unconditionally by
 // decodeCrowdloan() -- it returns null rather than a partial record -- so
@@ -39,7 +40,13 @@ export const CrowdloansArtifactSchema = z
     schema_version: z.int(),
     // Length of `crowdloans`, which can be LOWER than next_crowdloan_id:
     // `dissolve` removes a record while NextCrowdloanId keeps counting.
-    crowdloan_count: z.int().min(0),
+    //
+    // NULL when the storage batch read failed (#9898). That combination --
+    // a count of 0 alongside a non-null next_crowdloan_id -- is documented
+    // above to mean "every allocated id has been dissolved", so publishing it
+    // for a read that never landed was a confident, specific, wrong claim
+    // about the chain. `degraded` below carries the reason.
+    crowdloan_count: z.int().min(0).nullable(),
     // null only on an RPC failure reading NextCrowdloanId.
     next_crowdloan_id: z.int().min(0).nullable(),
     crowdloans: z.array(CrowdloanSchema),
@@ -47,6 +54,11 @@ export const CrowdloansArtifactSchema = z
     // #9108. Required: attached outside the KV cache on every read, so no
     // response shape legitimately lacks it.
     field_sources: FieldSourcesSchema,
+    // Present ONLY when the chain read did not land (#9898). Absent on a good
+    // read, so its presence is the signal -- the same discipline the sibling
+    // /crowdloans/{id} already uses with `exists: null`, and the list route was
+    // the outlier.
+    degraded: EventStreamDegradedSchema.optional(),
   })
   .passthrough();
 export type CrowdloansArtifact = z.infer<typeof CrowdloansArtifactSchema>;

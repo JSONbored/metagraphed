@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
+  CROWDLOANS_DEGRADED_RPC,
   CROWDLOANS_KV_TTL,
   CROWDLOANS_NEGATIVE_KV_TTL,
   CROWDLOANS_FIELD_SOURCES,
@@ -375,7 +376,14 @@ describe("loadCrowdloans", () => {
     )) as Row;
     assert.equal(out.next_crowdloan_id, null);
     assert.deepEqual(out.crowdloans, []);
-    assert.equal(puts[0].options?.expirationTtl, CROWDLOANS_NEGATIVE_KV_TTL);
+    // This failure WAS discriminable on its own -- a null next_crowdloan_id is
+    // a tell the batch-read failure had no equivalent of -- but it is still a
+    // read that did not land, so it is labelled and uncached the same way
+    // (#9898). CROWDLOANS_NEGATIVE_KV_TTL still governs the DETAIL route, whose
+    // `exists: null` is itself the label.
+    assert.equal(out.crowdloan_count, null);
+    assert.deepEqual(out.degraded, { reason: CROWDLOANS_DEGRADED_RPC });
+    assert.deepEqual(puts, []);
   });
 
   test("a thrown fetch is caught, not propagated", async () => {
@@ -396,7 +404,11 @@ describe("loadCrowdloans", () => {
     assert.deepEqual(out.crowdloans, []);
   });
 
-  test("a failed batch read degrades to empty on the short TTL", async () => {
+  test("a failed batch read says so, and is NOT cached (#9898)", async () => {
+    // Was: `{crowdloan_count: 0, next_crowdloan_id: 2}` with no error and no
+    // marker -- a shape this route's contract documents as "every allocated id
+    // was dissolved". `rpcOk` already knew better and was used only to pick a
+    // cache TTL.
     const puts: Row[] = [];
     const env = mockEnv({
       METAGRAPH_CONTROL: kvStub(new Map(), { puts }),
@@ -410,10 +422,33 @@ describe("loadCrowdloans", () => {
     )) as Row;
     assert.equal(out.next_crowdloan_id, 2);
     assert.deepEqual(out.crowdloans, []);
-    assert.equal(puts[0].options?.expirationTtl, CROWDLOANS_NEGATIVE_KV_TTL);
+    // The count is unknown, not zero.
+    assert.equal(out.crowdloan_count, null);
+    assert.deepEqual(out.degraded, { reason: CROWDLOANS_DEGRADED_RPC });
+    // And the wrong answer is not written to KV at all -- the old 10s negative
+    // TTL served it to every caller in that window, including the `cached`
+    // early return, which cannot tell a negative entry from a good one.
+    assert.deepEqual(puts, []);
   });
 
-  test("a batch response missing its changes array degrades to empty", async () => {
+  test("a good read still caches, on the full TTL, with no degraded marker", async () => {
+    // The positive control: without it, "not cached" would also pass if the
+    // builder stopped caching entirely.
+    const puts: Row[] = [];
+    const env = mockEnv({
+      METAGRAPH_CONTROL: kvStub(new Map(), { puts }),
+    }) as unknown as Env;
+    const out = (await withFetchStub(
+      rpcStub({ state_getStorage: () => hex(u32le(0)) }),
+      () => loadCrowdloans(env),
+    )) as Row;
+    assert.equal(out.crowdloan_count, 0);
+    assert.equal(out.degraded, undefined);
+    assert.equal(puts.length, 1);
+    assert.equal(puts[0].options?.expirationTtl, CROWDLOANS_KV_TTL);
+  });
+
+  test("a batch response missing its changes array is degraded, not empty", async () => {
     const env = mockEnv({ METAGRAPH_CONTROL: kvStub() }) as unknown as Env;
     const out = (await withFetchStub(
       rpcStub({
@@ -423,6 +458,8 @@ describe("loadCrowdloans", () => {
       () => loadCrowdloans(env),
     )) as Row;
     assert.deepEqual(out.crowdloans, []);
+    assert.equal(out.crowdloan_count, null);
+    assert.deepEqual(out.degraded, { reason: CROWDLOANS_DEGRADED_RPC });
   });
 
   test("malformed change entries are skipped, not fatal", async () => {

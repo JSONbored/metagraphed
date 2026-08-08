@@ -549,7 +549,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List every crowdloan the chain has ever opened (#8696), with its terms and how much it raised, queried from the Crowdloan pallet's own NextCrowdloanId/Crowdloans storage at request time with 120s KV cache. Not paginated: the collection is bounded by NextCrowdloanId and fetched in one batched storage read. A dissolved crowdloan is omitted, so crowdloan_count can be lower than next_crowdloan_id. Every crowdloan on finney today is finalized, so this is a record of completed raises rather than a feed of open ones — read `finalized` and `end` rather than assuming liveness.
+         * List every crowdloan the chain has ever opened (#8696), with its terms and how much it raised, queried from the Crowdloan pallet's own NextCrowdloanId/Crowdloans storage at request time with 120s KV cache. Not paginated: the collection is bounded by NextCrowdloanId and fetched in one batched storage read. A dissolved crowdloan is omitted, so crowdloan_count can be lower than next_crowdloan_id; a failed chain read yields crowdloan_count null plus a `degraded` block rather than 0 (#9898). Every crowdloan on finney today is finalized, so this is a record of completed raises rather than a feed of open ones — read `finalized` and `end` rather than assuming liveness.
          * @description Network-addressed form of the route above. `mainnet`/`finney` return the same data as the unprefixed path; `testnet`/`test` return testnet data.
          */
         get: operations["crowdloansByNetwork"];
@@ -2211,7 +2211,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List every crowdloan the chain has ever opened (#8696), with its terms and how much it raised, queried from the Crowdloan pallet's own NextCrowdloanId/Crowdloans storage at request time with 120s KV cache. Not paginated: the collection is bounded by NextCrowdloanId and fetched in one batched storage read. A dissolved crowdloan is omitted, so crowdloan_count can be lower than next_crowdloan_id. Every crowdloan on finney today is finalized, so this is a record of completed raises rather than a feed of open ones — read `finalized` and `end` rather than assuming liveness. */
+        /** List every crowdloan the chain has ever opened (#8696), with its terms and how much it raised, queried from the Crowdloan pallet's own NextCrowdloanId/Crowdloans storage at request time with 120s KV cache. Not paginated: the collection is bounded by NextCrowdloanId and fetched in one batched storage read. A dissolved crowdloan is omitted, so crowdloan_count can be lower than next_crowdloan_id; a failed chain read yields crowdloan_count null plus a `degraded` block rather than 0 (#9898). Every crowdloan on finney today is finalized, so this is a record of completed raises rather than a feed of open ones — read `finalized` and `end` rather than assuming liveness. */
         get: operations["crowdloans"];
         put?: never;
         post?: never;
@@ -7267,7 +7267,7 @@ export interface components {
             [key: string]: unknown;
         };
         CrowdloansArtifact: {
-            crowdloan_count: number;
+            crowdloan_count: number | null;
             crowdloans: ({
                 cap_tao: number;
                 contributors_count: number;
@@ -7285,6 +7285,10 @@ export interface components {
             } & {
                 [key: string]: unknown;
             })[];
+            degraded?: {
+                detail?: string;
+                reason: string;
+            };
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
             field_sources: {
                 [key: string]: {
@@ -15842,6 +15846,10 @@ export interface operations {
                      *             "target_address": "example"
                      *           }
                      *         ],
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "field_sources": {
                      *           "example": {
                      *             "kind": "measured",
@@ -28592,6 +28600,10 @@ export interface operations {
                      *             "target_address": "example"
                      *           }
                      *         ],
+                     *         "degraded": {
+                     *           "detail": "example",
+                     *           "reason": "example"
+                     *         },
                      *         "field_sources": {
                      *           "example": {
                      *             "kind": "measured",

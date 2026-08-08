@@ -1795,7 +1795,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "crowdloans",
     "/metagraph/crowdloans.json",
-    "Live Crowdloan-pallet state (#8696) — every crowdloan the chain has ever opened, with its terms (creator, deposit, cap, min contribution, end block, funds account, target address) and how much it raised, read from the pallet's own NextCrowdloanId/Crowdloans storage at request time with 120s KV cache. Served live, no static file. A crowdloan whose record was dissolved is omitted rather than returned as a null hole, so crowdloan_count can be lower than next_crowdloan_id.",
+    "Live Crowdloan-pallet state (#8696) — every crowdloan the chain has ever opened, with its terms (creator, deposit, cap, min contribution, end block, funds account, target address) and how much it raised, read from the pallet's own NextCrowdloanId/Crowdloans storage at request time with 120s KV cache. Served live, no static file. A crowdloan whose record was dissolved is omitted rather than returned as a null hole, so crowdloan_count can be lower than next_crowdloan_id. If the chain read does not land, crowdloan_count is null and a `degraded` block says so (#9898) — it is never published as 0, which would read as 'every allocated id was dissolved'.",
     "CrowdloansArtifact",
     COMPUTED_LIVE,
   ),
@@ -4252,7 +4252,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/crowdloans",
     "/metagraph/crowdloans.json",
-    "List every crowdloan the chain has ever opened (#8696), with its terms and how much it raised, queried from the Crowdloan pallet's own NextCrowdloanId/Crowdloans storage at request time with 120s KV cache. Not paginated: the collection is bounded by NextCrowdloanId and fetched in one batched storage read. A dissolved crowdloan is omitted, so crowdloan_count can be lower than next_crowdloan_id. Every crowdloan on finney today is finalized, so this is a record of completed raises rather than a feed of open ones — read `finalized` and `end` rather than assuming liveness.",
+    "List every crowdloan the chain has ever opened (#8696), with its terms and how much it raised, queried from the Crowdloan pallet's own NextCrowdloanId/Crowdloans storage at request time with 120s KV cache. Not paginated: the collection is bounded by NextCrowdloanId and fetched in one batched storage read. A dissolved crowdloan is omitted, so crowdloan_count can be lower than next_crowdloan_id; a failed chain read yields crowdloan_count null plus a `degraded` block rather than 0 (#9898). Every crowdloan on finney today is finalized, so this is a record of completed raises rather than a feed of open ones — read `finalized` and `end` rather than assuming liveness.",
     "short",
     ["chain"],
   ),
