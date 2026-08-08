@@ -1356,8 +1356,13 @@ test("public artifacts are internally consistent", () => {
     true,
   );
   // #1006: per-field provenance. Every served surface exposes last_verified_at
-  // (string|null) + a `stale` boolean, and `stale` is reproducible from the
-  // helper against the committed native-snapshot captured_at.
+  // (string|null) + a `stale` boolean-or-null, and `stale` is reproducible from
+  // the helper against the committed native-snapshot captured_at.
+  //
+  // #9906: null is the never-verified case, and it is REQUIRED to line up with
+  // last_verified_at rather than merely being allowed -- the pairing below is
+  // what stops a future change silently reintroducing a confident `false` for
+  // a surface nobody has checked.
   const surfaceNowMs = Date.parse(native.captured_at);
   for (const surface of surfaces.surfaces) {
     assert.ok(
@@ -1365,10 +1370,16 @@ test("public artifacts are internally consistent", () => {
         typeof surface.last_verified_at === "string",
       `surface ${surface.id} last_verified_at must be a string or null`,
     );
+    assert.ok(
+      surface.stale === null || typeof surface.stale === "boolean",
+      `surface ${surface.id} must carry a boolean-or-null stale flag`,
+    );
     assert.equal(
-      typeof surface.stale,
-      "boolean",
-      `surface ${surface.id} must carry a boolean stale flag`,
+      surface.stale === null,
+      surface.last_verified_at === null,
+      `surface ${surface.id}: stale must be null exactly when it has never ` +
+        `been verified (stale=${JSON.stringify(surface.stale)}, ` +
+        `last_verified_at=${JSON.stringify(surface.last_verified_at)})`,
     );
     assert.equal(
       surface.stale,

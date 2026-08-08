@@ -550,7 +550,10 @@ export const SurfaceSchema = z
       .optional(),
     schema_url: HttpOrWssUrlSchema.optional(),
     source_urls: z.array(z.url()).optional(),
-    stale: z.boolean().optional(),
+    stale: z.boolean().nullable().optional().meta({
+      description:
+        "Whether this surface's verification is older than its kind's freshness TTL. NULL when the surface has never been verified (#9906): that is unverified, not fresh, and 78% of surfaces were in that state while publishing false. Same unknown-is-not-a-value convention as `exists` on /crowdloans/{id}, `leased` on /subnets/{netuid}/lease, and lane_health's `verdict: unknown`.",
+    }),
     status: HealthStatusSchema.optional(),
     subnet_name: z.string().optional(),
     subnet_slug: z.string().optional(),
