@@ -16,6 +16,8 @@ import { neonOwnsTable, neonSoleStoreTables } from "../src/neon-write.ts";
 import {
   ACCOUNT_STATE_TABLES,
   ALERT_TRIGGER_TABLES,
+  NEURONS_SNAPSHOT_TABLES,
+  neonOwnsNeuronsSnapshot,
   userStateRunner,
 } from "../workers/data-api.ts";
 
@@ -163,6 +165,52 @@ describe("userStateRunner", () => {
       // which is precisely the under-declaration the all-or-nothing rule
       // exists to make harmless -- and this assertion is what caught it.
       "watch_push_subscriptions",
+    ]);
+  });
+});
+
+describe("neonOwnsNeuronsSnapshot (the write-path inversion)", () => {
+  const ALL = ["neurons", "neuron_daily", "account_position_daily"];
+
+  function env(owned: string[], hyperdrive = true) {
+    return {
+      NEON_SOLE_STORE_TABLES: owned.join(","),
+      HYPERDRIVE: hyperdrive
+        ? { connectionString: "postgresql://example/db" }
+        : undefined,
+    } as never;
+  }
+
+  test("all three owned and Hyperdrive bound", () => {
+    assert.equal(neonOwnsNeuronsSnapshot(env(ALL)), true);
+  });
+
+  test("ONE table left out keeps the whole snapshot on D1", () => {
+    // The pass writes all three from one derivation. A half-listed group would
+    // leave neuron_daily in D1 while its parent moved, and the two would never
+    // agree again -- which no read gate would notice, because each table
+    // answers fine on its own.
+    for (const missing of ALL) {
+      const partial = ALL.filter((t) => t !== missing);
+      assert.equal(
+        neonOwnsNeuronsSnapshot(env(partial)),
+        false,
+        `${missing} missing should pin the snapshot to D1`,
+      );
+    }
+  });
+
+  test("owned but no Hyperdrive binding stays on D1", () => {
+    // Skipping the D1 write with nowhere to put the rows would drop a whole
+    // pass silently. The binding is a precondition, not an optimisation.
+    assert.equal(neonOwnsNeuronsSnapshot(env(ALL, false)), false);
+  });
+
+  test("the declared group is exactly what one snapshot writes", () => {
+    assert.deepEqual([...NEURONS_SNAPSHOT_TABLES].sort(), [
+      "account_position_daily",
+      "neuron_daily",
+      "neurons",
     ]);
   });
 });
