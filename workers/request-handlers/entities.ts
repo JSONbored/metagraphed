@@ -886,6 +886,23 @@ export async function handleSubnetMetagraph(
     "fields",
   ]);
   if (validationError) return analyticsQueryError(validationError);
+  // #10096: the published enum is ["true"] -- a PRESENCE flag, because the
+  // only thing this filter can do is narrow to permitted neurons. It was not
+  // enforced, and the failure was silent in the worst direction: `?validator
+  // _permit=false` returned all 256 rows, which a caller asking for
+  // non-permitted neurons reads as "none of them hold a permit". Measured on
+  // SN1: no filter 256, `=true` 10, `=false` 256, `=bogus` 256.
+  //
+  // Rejected now, exactly as ?changes= is on /subnets/{netuid}/turnover, which
+  // publishes the identical one-value enum for the identical reason. A caller
+  // who wants the complement omits the parameter and filters the rows.
+  const permit = url.searchParams.get("validator_permit");
+  if (permit != null && permit !== "true") {
+    return analyticsQueryError({
+      parameter: "validator_permit",
+      message: `"${permit}" is not a valid validator_permit flag. Supported: true.`,
+    });
+  }
   // #9082. Parsed before the tier read so an unsupported field costs a 400
   // rather than a full 256-row fetch the caller never sees.
   const projection = parseNeuronFields(url.searchParams, "neurons");

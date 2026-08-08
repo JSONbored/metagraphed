@@ -768,6 +768,39 @@ function dbThrows(message = "no such column") {
 }
 
 describe("handleSubnetMetagraph", () => {
+  test("rejects a validator_permit that is not `true`", async () => {
+    // #10096: the published enum is ["true"] -- a presence flag -- and it was
+    // not enforced. `?validator_permit=false` returned ALL 256 rows, which a
+    // caller asking for non-permitted neurons reads as "none hold a permit".
+    // Measured on SN1 before the fix: no filter 256, =true 10, =false 256,
+    // =bogus 256.
+    for (const value of ["false", "bogus", "1"]) {
+      const path = `/api/v1/subnets/${NETUID}/metagraph?validator_permit=${value}`;
+      const res = await handleSubnetMetagraph(
+        req(path),
+        emptyEnv() as unknown as Env,
+        NETUID,
+        url(path),
+      );
+      const body = await errorJson(res);
+      assert.equal(body.error.code, "invalid_query", value);
+      assert.equal(body.meta.parameter, "validator_permit", value);
+    }
+  });
+
+  test("accepts validator_permit=true, the one value it publishes", async () => {
+    // The other side: the published enum must name a value that works, or the
+    // rejection above would just be a parameter nobody can use.
+    const path = `/api/v1/subnets/${NETUID}/metagraph?validator_permit=true`;
+    const res = await handleSubnetMetagraph(
+      req(path),
+      emptyEnv() as unknown as Env,
+      NETUID,
+      url(path),
+    );
+    assert.equal(res.status, 200);
+  });
+
   test("rejects an unsupported query param with 400", async () => {
     const res = await handleSubnetMetagraph(
       req(`/api/v1/subnets/${NETUID}/metagraph`),
