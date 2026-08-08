@@ -4427,6 +4427,15 @@ function applySubnetListQuery(
    * hard-coded skip it started as.
    */
   subjectKeys: readonly string[] = ["netuid"],
+  /**
+   * Page size when the caller names none (#10027).
+   *
+   * limitSchema declares a tool's default in the PUBLISHED contract but does
+   * not apply it -- deliberately, so handlers keep ownership of the decision.
+   * Applying it here is that ownership: null means "every row", which is the
+   * historical behaviour and still right for a per-subject view.
+   */
+  defaultLimit: number | null = null,
 ): Row {
   // Schema-stability guard, same as list_endpoints': an artifact with no rows
   // array must still report an empty list rather than fall through
@@ -4435,6 +4444,9 @@ function applySubnetListQuery(
   const rows = data?.[dataKey];
   const body = Array.isArray(rows) ? data : { ...data, [dataKey]: [] };
   const queryUrl = new URL(`https://mcp.internal/${collection}`);
+  if (defaultLimit !== null && args?.limit == null) {
+    queryUrl.searchParams.set("limit", String(defaultLimit));
+  }
   for (const [key, value] of Object.entries(args ?? {})) {
     // `context` is MCP intent telemetry, never a query parameter.
     if (key === "context" || subjectKeys.includes(key)) continue;
@@ -5089,7 +5101,11 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       // standing between a typo and a silent fallback to every window, while
       // clamping a limit degrades to a usable page instead of an error.
       const window = optionalEnum(row, "window", HEALTH_TREND_WINDOW_VALUES);
-      const limit = row?.limit == null ? null : clampLimit(row.limit, 512, 512);
+      // A page of subnets per window by default (#10027). The full matrix is
+      // 448,827 B, the largest response this server produces; `subnet_count`
+      // still spans every subnet the window measured, so the denominator
+      // survives the narrowing.
+      const limit = clampLimit(row?.limit, 25, 512);
       const offset = Number.isFinite(row?.offset)
         ? Math.max(0, Math.floor(row.offset as number))
         : 0;
@@ -12859,6 +12875,9 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         // Network-wide: nothing is the subject here, so `netuid` is a filter
         // like any other.
         [],
+        // A page by default (#10027) -- 268 KB / 129 rows unbounded. `total`
+        // still spans every row, so the denominator survives the narrowing.
+        25,
       );
     },
   },

@@ -25218,7 +25218,12 @@ describe("MCP health-tier analytics tools — Postgres tier wiring", () => {
     {
       tool: "get_health_trends",
       args: {},
-      path: "/api/v1/health/trends",
+      // The default page size is FORWARDED (#10027). A narrowing honoured on
+      // one tier and dropped on the other is the "looks paged, is not"
+      // failure -- the tool would report `subnet_count` for a page it did not
+      // actually take. So the tier request carries it, exactly as an explicit
+      // limit would.
+      path: "/api/v1/health/trends?limit=25",
     },
     {
       tool: "get_subnet_health_trends",
@@ -25373,6 +25378,60 @@ describe("get_coverage_depth MCP tool (#6983)", () => {
     const out = res.body.result.structuredContent;
     assert.equal(out.rows[0].netuid, 1);
     assert.equal(out.ranked_queue[0].severity, "high");
+  });
+
+  test("returns a PAGE by default, and says so in its contract (#10027)", async () => {
+    // 268,088 B / 129 rows unbounded. The risk of a default page is that it
+    // reads as a complete answer, so all three of these must hold together:
+    // the page is small, `total` still spans every row, and the published
+    // schema advertises the default rather than hiding it in prose.
+    const deps = makeDeps({
+      "/metagraph/coverage-depth.json": {
+        schema_version: 1,
+        rows: Array.from({ length: 40 }, (_, i) => ({
+          netuid: i,
+          tier: "agent-ready",
+        })),
+      },
+    });
+    const res = await callTool("get_coverage_depth", {}, { deps });
+    const out = res.body.result.structuredContent;
+    assert.equal((out.rows as Row[]).length, 25);
+    assert.equal(out.total, 40, "total must span every row, not the page");
+    assert.equal(
+      out.next_cursor,
+      25,
+      "a paged caller must be able to continue",
+    );
+
+    const declared = listToolDefinitions().find(
+      (t) => t.name === "get_coverage_depth",
+    )?.inputSchema.properties?.limit;
+    assert.equal(
+      (declared as Row)?.default,
+      25,
+      "the default must be in the published contract, not only in the handler",
+    );
+  });
+
+  test("an explicit limit still overrides the default", async () => {
+    const deps = makeDeps({
+      "/metagraph/coverage-depth.json": {
+        schema_version: 1,
+        rows: Array.from({ length: 40 }, (_, i) => ({ netuid: i })),
+      },
+    });
+    for (const [limit, expected] of [
+      [5, 5],
+      [40, 40],
+    ] as [number, number][]) {
+      const res = await callTool("get_coverage_depth", { limit }, { deps });
+      assert.equal(
+        (res.body.result.structuredContent.rows as Row[]).length,
+        expected,
+        `limit=${limit}`,
+      );
+    }
   });
 
   test("filters the rows it used to return wholesale (#10011)", async () => {

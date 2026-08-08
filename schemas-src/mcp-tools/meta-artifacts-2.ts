@@ -108,7 +108,13 @@ export const GetCoverageDepthInputSchema = z
     sort: sortSchema(COVERAGE_DEPTH_SORT_VALUES).optional(),
     order: orderSchema().optional(),
     fields: fieldsStringSchema().optional(),
-    limit: limitSchema(500).optional(),
+    // Defaults to a PAGE, not the whole scorecard (#10027). Measured at
+    // 268,088 B for 129 rows -- ~2 KB each -- so an unbounded call spent most
+    // of an agent's context before it had asked anything specific. `total`
+    // still spans every row and `next_cursor` is emitted, so a paged caller
+    // keeps the denominator and can continue; limitSchema puts the default
+    // into the published contract rather than leaving it in prose.
+    limit: limitSchema(500, 25).optional(),
     cursor: numericCursorSchema().optional(),
   })
   .strict();

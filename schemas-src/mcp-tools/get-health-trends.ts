@@ -44,7 +44,12 @@ export const GetHealthTrendsInputSchema = BulkHealthTrendsQuerySchema.extend({
         "rows to discard 23. Omit for every window.",
     )
     .meta({ examples: ["7d"] }),
-  limit: limitSchema(512).optional(),
+  // Defaults to a PAGE of subnets per window (#10027). The full matrix
+  // measured 448,827 B -- the largest response this server produces -- and is
+  // a bulk export rather than the usual question. `subnet_count` still spans
+  // every subnet the window measured, so narrowing does not cost the caller
+  // the denominator it is ranking against.
+  limit: limitSchema(512, 25).optional(),
   offset: offsetSchema().optional(),
 }).strict();
 export type GetHealthTrendsInput = z.infer<typeof GetHealthTrendsInputSchema>;
