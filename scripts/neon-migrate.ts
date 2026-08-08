@@ -18,6 +18,17 @@
 //
 // - TRACKED. `schema_migrations` records each filename. Re-running is a no-op,
 //   which is what makes it safe to run on every push to main.
+// - EACH MIGRATION MUST BE RE-RUNNABLE. The property above holds only while
+//   every file is either recorded here or safe to apply twice, and #9867 is
+//   what happens when neither is true: 0010's constraints were applied BY HAND
+//   before this runner first saw the file, so the ALTER failed on
+//   `already exists`, the bookkeeping row was never written, and the same file
+//   was retried on every later merge -- wedging the lane and everything queued
+//   behind it. "Applied" and "recorded" are independent facts, and only the
+//   migration itself can close the gap. Postgres has no
+//   ADD CONSTRAINT IF NOT EXISTS, so guard with
+//   `DO $$ BEGIN ... EXCEPTION WHEN duplicate_object THEN NULL; END $$`;
+//   CREATE TABLE/INDEX take IF NOT EXISTS directly.
 // - ORDERED. Lexical by filename, so `0001_` precedes `0002_`.
 // - ATOMIC PER FILE. Each migration and its bookkeeping row commit together,
 //   so a failure halfway through leaves the file unrecorded and re-runnable
