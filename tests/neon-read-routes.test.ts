@@ -599,11 +599,27 @@ describe("the deployed flag", () => {
         "chain_detail_account_events",
       ],
     };
+    // A SOLE-STORE TABLE HAS NO MIRROR, AND THAT IS THE POINT. The two flags
+    // above name lanes that COPY a table into Neon while D1 keeps the
+    // original. NEON_SOLE_STORE_TABLES names the tables where Neon IS the
+    // store -- the writer targets it directly (subnet_snapshots is written by
+    // src/observations-neon.ts, reached from src/health-prober.ts), so there
+    // is nothing to mirror and #10078 correctly stopped reconciling them.
+    //
+    // Reading membership as "unwritten" is what turned this guard red on main
+    // after #10095: it would have had someone delete a correct read lane for a
+    // table that is written every hour. The hazard this test exists for is
+    // still covered -- a read lane that is neither mirrored nor sole-store has
+    // no writer anywhere, which is exactly #9704's frozen store.
+    const soleStore = (
+      /"NEON_SOLE_STORE_TABLES":\s*"([^"]*)"/.exec(wrangler)?.[1] ?? ""
+    ).split(",");
     const written = new Set(
       [...writes, ...backfills]
         .map((l) => l.trim())
         .filter(Boolean)
-        .flatMap((lane) => LANE_TABLES[lane] ?? [lane.replace(/-/g, "_")]),
+        .flatMap((lane) => LANE_TABLES[lane] ?? [lane.replace(/-/g, "_")])
+        .concat(soleStore.map((t) => t.trim()).filter(Boolean)),
     );
     for (const lane of named) {
       assert.ok(
