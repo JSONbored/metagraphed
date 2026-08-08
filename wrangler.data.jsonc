@@ -190,7 +190,14 @@
     // the loader modules they reach and fails the build on either construct.
     //
     // Rollback remains deleting the entry.
-    "NEON_READ_LANES": "account_position_daily,neurons,neuron_daily,subnet_snapshots,subnet_hyperparams,account_identity,validator_nominator_counts,subnet_hyperparams_history,account_identity_history",
+    //
+    // `surface_status` is here because it has to be, not because a mirror
+    // proved itself: Neon is its ONLY store (it is in NEON_SOLE_STORE_TABLES
+    // below), and /api/v1/internal/health-status-live reads it. While D1 was
+    // still bound, a table missing from this list simply stayed on D1; with D1
+    // gone the same omission is a 503 on every request, which puts the prober
+    // back on the empty prior map #9522 exists to prevent.
+    "NEON_READ_LANES": "account_position_daily,neurons,neuron_daily,subnet_snapshots,subnet_hyperparams,account_identity,validator_nominator_counts,subnet_hyperparams_history,account_identity_history,surface_status",
     // Tables whose ONLY home is Neon -- D1 is not behind them any more.
     //
     // A FOURTH flag, and the one the other three converge on. All three above

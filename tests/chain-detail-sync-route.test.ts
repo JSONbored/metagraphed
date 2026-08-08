@@ -2,16 +2,31 @@
 // workers/data-api.ts, plus the workers/api.ts proxy in front of them.
 //
 // The ordering the handler gets right is worth a test of its own: a malformed
-// body is a 400 whether or not D1 happens to be bound, so the store check comes
-// AFTER validation. Blaming the infrastructure for the caller's payload sends
-// an operator to the wrong place.
+// body is a 400 whether or not a store happens to be bound, so the store check
+// comes AFTER validation. Blaming the infrastructure for the caller's payload
+// sends an operator to the wrong place.
 import assert from "node:assert/strict";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// One store since #10170. Both halves of this route -- the batch write through
+// mirrorChainDetailToNeon and the head read through readStore -- build their
+// own `new Client(...)`, so the `pg` module is the only seam a route test has.
+// See tests/helpers/pg-mock.ts for why it is a module mock built in vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import dataApi from "../workers/data-api.ts";
 import { handleRequest } from "../workers/api.ts";
 
 const SECRET = "test-chain-detail-sync-secret";
 const HEADER = "x-chain-detail-sync-token";
+/** A real ExecutionContext stand-in. Not optional any more: createPgSql parks
+ * its connection teardown in `ctx.waitUntil`, so an empty object throws inside
+ * the write's own `finally` and every table reports as failed. */
+const CTX = { waitUntil: () => undefined } as never;
 const HASH = `0x${"ab".repeat(32)}`;
 const XT_HASH = `0x${"cd".repeat(32)}`;
 const BLOCK = 8_762_600;
@@ -24,39 +39,40 @@ beforeEach(() => {
   statements = [];
   failure = null;
   head = BLOCK;
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = null;
+  pg.control.failNext = null;
+  // A subscription rather than a read-back: `statements` is destructured-in-
+  // spirit here too -- every assertion below reads it after the handler has
+  // already returned. See tests/helpers/pg-mock.ts.
+  pg.control.onQuery = ({ text, values }) => {
+    const sql = text.replace(/\s+/g, " ").trim();
+    statements.push({ sql, params: values });
+    // Re-armed on every statement: a store that is refusing writes is refusing
+    // them for the whole batch, not only for its first table.
+    pg.control.failNext = failure;
+    pg.control.rows = sql.startsWith("SELECT MIN(block_number)")
+      ? [{ floor: head, head, observed: 1_785_800_000_000 }]
+      : [];
+  };
 });
 
-const db = {
-  prepare(raw: string) {
-    const sql = raw.replace(/\s+/g, " ").trim();
-    const record = { sql, params: [] as unknown[] };
-    return {
-      bind(...params: unknown[]) {
-        record.params = params;
-        statements.push(record);
-        return {
-          ...record,
-          async all() {
-            if (failure) throw failure;
-            return {
-              results: sql.startsWith("SELECT MIN(block_number)")
-                ? [{ floor: head, head, observed: 1_785_800_000_000 }]
-                : [],
-            };
-          },
-        };
-      },
-    };
-  },
-  async batch(slice: unknown[]) {
-    if (failure) throw failure;
-    return slice.map(() => ({ success: true }));
-  },
-};
+/** Only the chain-detail INSERTs, in issue order. The mirror also records a
+ * lane verdict, which is a different lane's write and not what these assert. */
+function insertedTables() {
+  return statements
+    .map((s) => /INSERT INTO (chain_detail_\w+)/.exec(s.sql)?.[1])
+    .filter((t): t is string => Boolean(t));
+}
 
 const env = {
   CHAIN_DETAIL_SYNC_SECRET: SECRET,
-  METAGRAPH_HEALTH_DB: db,
+  // The lane has to be mirroring for the write to be attempted at all, and
+  // Neon has to solely own the four tables for the ack to claim durability --
+  // both are what wrangler.data.jsonc declares for this lane today.
+  NEON_DUAL_WRITE_LANES: "chain-detail",
+  ...pgMockEnv(),
 } as never;
 
 function body(over: Record<string, unknown> = {}) {
@@ -113,7 +129,7 @@ function post(payload: unknown, opts: { secret?: string; raw?: string } = {}) {
       body: opts.raw ?? JSON.stringify(payload),
     }),
     env,
-    {} as never,
+    CTX,
   );
 }
 
@@ -125,12 +141,12 @@ function getHead(opts: { secret?: string; env?: unknown } = {}) {
       headers,
     }),
     (opts.env ?? env) as never,
-    {} as never,
+    CTX,
   );
 }
 
 describe("POST /api/v1/internal/chain-detail-sync", () => {
-  test("an authorised batch lands in D1 and acks per family", async () => {
+  test("an authorised batch lands in the store and acks per family", async () => {
     const res = await post(body(), { secret: SECRET });
     assert.equal(res.status, 200);
     assert.deepEqual(await res.json(), {
@@ -140,15 +156,18 @@ describe("POST /api/v1/internal/chain-detail-sync", () => {
       chain_events_written: 1,
       account_events_written: 0,
       head: BLOCK,
-      stores: ["d1"],
-      d1_statements: 3,
+      // One store: the `["d1"]` / `["d1","neon"]` acks the producer used to see
+      // are unreachable now that a batch is refused outright unless Neon owns
+      // all four tables.
+      stores: ["neon"],
+      d1_statements: 0,
     });
-    const tables = statements.map(
-      (s) => /INSERT INTO (\w+)/.exec(s.sql)?.[1] ?? s.sql,
-    );
-    assert.deepEqual(tables, [
+    assert.deepEqual(insertedTables(), [
       "chain_detail_extrinsics",
       "chain_detail_chain_events",
+      // account_events is empty in this batch, so no statement is issued for
+      // it. The coverage register goes LAST, and only after the detail tables
+      // it vouches for have landed.
       "chain_detail_blocks",
     ]);
   });
@@ -160,8 +179,8 @@ describe("POST /api/v1/internal/chain-detail-sync", () => {
         headers: { [HEADER]: SECRET },
         body: "{}",
       }),
-      { METAGRAPH_HEALTH_DB: db } as never,
-      {} as never,
+      { ...pgMockEnv() } as never,
+      CTX,
     );
     assert.equal(unprovisioned.status, 503);
 
@@ -169,7 +188,7 @@ describe("POST /api/v1/internal/chain-detail-sync", () => {
     assert.equal((await post(body(), { secret: "wrong" })).status, 401);
   });
 
-  test("a malformed body is a 400 EVEN WITH NO D1 BOUND", async () => {
+  test("a malformed body is a 400 EVEN WITH NO STORE BOUND", async () => {
     // Validation before the store check: answering 503 to a bad payload blames
     // the infrastructure for the caller's mistake.
     const res = await dataApi.fetch(
@@ -179,7 +198,7 @@ describe("POST /api/v1/internal/chain-detail-sync", () => {
         body: '{"blocks":[{"block_number":-1}]}',
       }),
       { CHAIN_DETAIL_SYNC_SECRET: SECRET } as never,
-      {} as never,
+      CTX,
     );
     assert.equal(res.status, 400);
   });
@@ -201,7 +220,7 @@ describe("POST /api/v1/internal/chain-detail-sync", () => {
     assert.equal(badRow.status, 400);
   });
 
-  test("a valid batch with no D1 bound is 503, not a silent success", async () => {
+  test("a valid batch with no store bound is 503, not a silent success", async () => {
     const res = await dataApi.fetch(
       new Request("https://d/api/v1/internal/chain-detail-sync", {
         method: "POST",
@@ -209,17 +228,43 @@ describe("POST /api/v1/internal/chain-detail-sync", () => {
         body: JSON.stringify(body()),
       }),
       { CHAIN_DETAIL_SYNC_SECRET: SECRET } as never,
-      {} as never,
+      CTX,
     );
     assert.equal(res.status, 503);
-    assert.deepEqual(await res.json(), { error: "d1 binding unavailable" });
+    assert.deepEqual(await res.json(), {
+      error: "no store bound for this route",
+    });
   });
 
-  test("a D1 write failure is a 502 with a capture label, never a 200", async () => {
-    failure = new Error("d1 exploded");
+  test("ONE table missing from the sole-store list is the same 503", async () => {
+    // All four families land together or the block is readable and wrong, so a
+    // partial declaration is the "no store" case rather than a weaker version
+    // of owned -- and it must not be a 200 that acks blocks nothing holds.
+    const partial = pgMockEnv([
+      "chain_detail_blocks",
+      "chain_detail_extrinsics",
+      "chain_detail_chain_events",
+    ]);
+    const res = await dataApi.fetch(
+      new Request("https://d/api/v1/internal/chain-detail-sync", {
+        method: "POST",
+        headers: { [HEADER]: SECRET },
+        body: JSON.stringify(body()),
+      }),
+      { CHAIN_DETAIL_SYNC_SECRET: SECRET, ...partial } as never,
+      CTX,
+    );
+    assert.equal(res.status, 503);
+    assert.deepEqual(insertedTables(), []);
+  });
+
+  test("a store write failure is a 502 with a capture label, never a 200", async () => {
+    // The producer advances its resume head on `ok`, so a false 200 does not
+    // just lose this batch -- it skips those blocks forever.
+    failure = new Error("neon exploded");
     const res = await post(body(), { secret: SECRET });
     assert.equal(res.status, 502);
-    assert.deepEqual(await res.json(), { error: "d1 write failed" });
+    assert.deepEqual(await res.json(), { error: "neon write failed" });
   });
 });
 
@@ -230,9 +275,13 @@ describe("GET /api/v1/internal/chain-detail-sync/head", () => {
     assert.deepEqual(await res.json(), { head: BLOCK });
 
     assert.equal((await getHead({})).status, 401);
+    // No secret provisioned at all, and a provisioned secret with no store
+    // behind it: both are hard 503s. `head: null` is a documented real answer
+    // that tells the producer to start from the finalized head, so "I cannot
+    // tell you" must never be reported as it -- a 503 makes the producer
+    // retry, a wrong null makes it skip and leave a hole nothing will fill.
     assert.equal(
-      (await getHead({ secret: SECRET, env: { METAGRAPH_HEALTH_DB: db } }))
-        .status,
+      (await getHead({ secret: SECRET, env: { ...pgMockEnv() } })).status,
       503,
     );
     assert.equal(
@@ -337,7 +386,7 @@ describe("the workers/api.ts proxy", () => {
           ...(path.endsWith("/head") ? {} : { body: "{}" }),
         }),
         {} as never,
-        {} as never,
+        CTX,
       );
       assert.equal(res.status, 503);
       assert.equal(

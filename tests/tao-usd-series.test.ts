@@ -16,7 +16,21 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The SERVED path (route, GraphQL, MCP) resolves its store through
+// `readStore(env, TAO_USD_TABLES)`, which builds a `new Client(...)` now that
+// Neon is the only store (#10170) -- there is no binding a caller can hand in.
+// Mocking the module is the seam, and the real SQLite fixture below is
+// attached to the mock's controller so the served path executes the same SQL
+// against the same DDL the loader tests use. See tests/helpers/pg-mock.ts for
+// why the controller has to be built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   DEFAULT_TAO_USD_WINDOW,
   TAO_USD_MAX_POINTS,
@@ -70,6 +84,8 @@ const POOLS = JSON.stringify([
 
 let db: InstanceType<typeof DatabaseSync>;
 
+/** The store handle the LOADER tests inject directly -- loadTaoUsdSeries takes
+ * one, so those tests never need the module mock. */
 function d1() {
   return {
     prepare(text: string) {
@@ -85,7 +101,11 @@ function d1() {
     },
   };
 }
-const env = () => ({ METAGRAPH_HEALTH_DB: d1() }) as unknown as Env;
+
+/** The env the SERVED path resolves its own store from. `pg.control.db` is
+ * assigned in beforeEach, so the same in-memory fixture answers both halves of
+ * this file. */
+const env = () => ({ ...pgMockEnv() }) as unknown as Env;
 
 function reading(
   offsetMs: number,
@@ -111,6 +131,8 @@ function reading(
 beforeEach(() => {
   db = new DatabaseSync(":memory:");
   db.exec(SCHEMA);
+  pg.control.db = db;
+  pg.control.queries.length = 0;
 });
 
 describe("loadTaoUsdSeries against real SQLite", () => {
@@ -570,7 +592,10 @@ describe("GET /api/v1/network/tao-usd", () => {
     assert.notEqual(res.status, 200);
   });
 
-  test("no D1 binding is an empty card rather than a 500", async () => {
+  test("no store bound is an empty card rather than a 500", async () => {
+    // readStore returns undefined without Hyperdrive, the loader returns null,
+    // and the card is built from nothing -- "we have not priced this window"
+    // is a real state, and the route must not turn it into an error.
     const data = await body(await get("/api/v1/network/tao-usd", {} as Env));
     assert.equal(data.latest, null);
   });

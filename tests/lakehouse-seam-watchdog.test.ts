@@ -13,7 +13,19 @@
 // direction. And it has to stay quiet otherwise, because a check that cries
 // wolf gets switched off before the one time it matters.
 import assert from "node:assert/strict";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The capture watermark reaches this watchdog through `readStore`, which
+// builds a `new Client(...)` now that Neon is the only store (#10170) -- the
+// binding these tests used to hand over no longer exists. Mocking the module
+// is the seam; see tests/helpers/pg-mock.ts for why the controller has to be
+// built inside vi.hoisted (vi.mock is hoisted above every import).
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   DECODE_LAG_BLOCKS,
   DECODE_STALE_MS,

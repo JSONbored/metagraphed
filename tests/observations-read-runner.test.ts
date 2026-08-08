@@ -1,9 +1,11 @@
 // Which store answers an observation read (src/observations-read-runner.ts).
 //
-// The property that matters is that the selector cannot move reads onto Neon
-// while the family is still on D1, and cannot leave them on D1 once it is not.
-// Getting that backwards is silent in both directions: a read against the
-// wrong store returns rows, just not the current ones.
+// The property that matters is that the selector cannot hand back a store for
+// a family Neon has not been DECLARED to own -- not partly, not without the
+// binding to reach it, and not without somewhere to release the connection.
+// Getting that wrong is silent: a read against a store that does not hold the
+// rows returns an empty set, which every caller renders as "no data" rather
+// than as an error.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
@@ -13,7 +15,6 @@ import {
 import { d1All } from "../src/analytics-live.ts";
 import { OBSERVATION_TABLES } from "../src/observations-neon.ts";
 
-const D1 = { prepare: () => ({ bind: () => ({ all: async () => [] }) }) };
 const HYPERDRIVE = { connectionString: "postgresql://example/db" };
 const ctx = { waitUntil() {} };
 
@@ -81,102 +82,90 @@ describe("pgObservationsReadDb", () => {
 });
 
 describe("observationsReadDb", () => {
-  test("stays on D1 while the family is not Neon's", () => {
+  // WHAT THESE NOW GUARD. D1 is gone, so "the other store" is `undefined` --
+  // and that is the stronger contract, not the weaker one: an undeclared table
+  // must produce NO store rather than a second one, because the read helpers
+  // treat undefined as zero rows and every caller declines on it. The
+  // distinction each case protects is unchanged; only the negative value is.
+  test("refuses while the family is not declared Neon's", () => {
     for (const env of [
-      { METAGRAPH_HEALTH_DB: D1 },
-      { METAGRAPH_HEALTH_DB: D1, HYPERDRIVE },
-      { METAGRAPH_HEALTH_DB: D1, HYPERDRIVE, NEON_SOLE_STORE_TABLES: "" },
+      {},
+      { HYPERDRIVE },
+      { HYPERDRIVE, NEON_SOLE_STORE_TABLES: "" },
     ]) {
-      assert.equal(observationsReadDb(env, ctx), D1);
+      assert.equal(observationsReadDb(env, ctx), undefined);
     }
   });
 
-  test("a PARTIAL family stays on D1, every table short of the whole", () => {
+  test("a PARTIAL family refuses, every table short of the whole", () => {
     // Two of the writes are INSERT ... SELECT FROM surface_checks -- they
-    // aggregate inside the store. A split family would have a rollup reading
-    // one store while its source rows live in the other.
+    // aggregate inside the store. A family read as partial would have a rollup
+    // aggregating over rows the declaration does not cover.
     for (const table of OBSERVATION_TABLES) {
       const partial = OBSERVATION_TABLES.filter((t) => t !== table).join(",");
       assert.equal(
         observationsReadDb(
-          {
-            METAGRAPH_HEALTH_DB: D1,
-            HYPERDRIVE,
-            NEON_SOLE_STORE_TABLES: partial,
-          },
+          { HYPERDRIVE, NEON_SOLE_STORE_TABLES: partial },
           ctx,
         ),
-        D1,
-        `${table} missing should have kept the whole family on D1`,
+        undefined,
+        `${table} missing should have refused the whole family`,
       );
     }
   });
 
   test("moves to Neon once it owns the WHOLE family", () => {
     const db = observationsReadDb(
-      {
-        METAGRAPH_HEALTH_DB: D1,
-        HYPERDRIVE,
-        NEON_SOLE_STORE_TABLES: ALL_OWNED,
-      },
+      { HYPERDRIVE, NEON_SOLE_STORE_TABLES: ALL_OWNED },
       ctx,
       { sql: { unsafe: async () => [] } },
     );
-    assert.notEqual(db, D1, "expected the Neon-backed adapter");
-    assert.ok(db?.prepare);
+    assert.ok(db?.prepare, "expected the Neon-backed adapter");
   });
 
-  test("no ctx keeps it on D1, so no connection can leak", () => {
+  test("no ctx refuses, so no connection can leak", () => {
     // createPgSql returns its connection via waitUntil; with nowhere to park
-    // the teardown it would leak one per call.
+    // the teardown it would leak one per call. Declining to read is the cheaper
+    // failure.
     assert.equal(
       observationsReadDb(
-        {
-          METAGRAPH_HEALTH_DB: D1,
-          HYPERDRIVE,
-          NEON_SOLE_STORE_TABLES: ALL_OWNED,
-        },
+        { HYPERDRIVE, NEON_SOLE_STORE_TABLES: ALL_OWNED },
         null,
       ),
-      D1,
+      undefined,
     );
   });
 
-  test("a ctx with NO waitUntil keeps it on D1", () => {
+  test("a ctx with NO waitUntil refuses too", () => {
     // Every serving handler defaults `ctx: EdgeCacheCtx = {}`, and EdgeCacheCtx
     // declares waitUntil OPTIONAL. A truthiness check would take `{}` for a
     // usable ctx and hand createPgSql nowhere to return the connection --
-    // leaking one per request on a serving path, which is worse than the stale
-    // read this whole selector exists to avoid.
+    // leaking one per request on a serving path, which is worse than the
+    // decline this selector answers with instead.
     for (const bad of [{}, { waitUntil: undefined }]) {
       assert.equal(
         observationsReadDb(
-          {
-            METAGRAPH_HEALTH_DB: D1,
-            HYPERDRIVE,
-            NEON_SOLE_STORE_TABLES: ALL_OWNED,
-          },
+          { HYPERDRIVE, NEON_SOLE_STORE_TABLES: ALL_OWNED },
           bad as { waitUntil?: (p: Promise<unknown>) => void },
         ),
-        D1,
+        undefined,
       );
     }
   });
 
-  test("no Hyperdrive keeps it on D1 even with every table named", () => {
+  test("no Hyperdrive refuses even with every table named", () => {
+    // Sole-store is a claim about the DATA, not about this isolate: the flag
+    // can say Neon owns the table while the binding to reach it is missing.
     assert.equal(
-      observationsReadDb(
-        { METAGRAPH_HEALTH_DB: D1, NEON_SOLE_STORE_TABLES: ALL_OWNED },
-        ctx,
-      ),
-      D1,
+      observationsReadDb({ NEON_SOLE_STORE_TABLES: ALL_OWNED }, ctx),
+      undefined,
     );
   });
 
-  test("an absent D1 binding is passed through, not faked", () => {
-    // d1All already reads undefined as zero rows. Substituting an empty stub
-    // here would turn "no store" into "a store that answered nothing", which
-    // is the distinction #9754 was about.
+  test("an empty env is undefined, not an empty stub", () => {
+    // The read helpers already treat undefined as zero rows. Substituting an
+    // empty stub here would turn "no store" into "a store that answered
+    // nothing", which is the distinction #9754 was about.
     assert.equal(observationsReadDb({}, ctx), undefined);
     assert.equal(observationsReadDb(null, ctx), undefined);
   });

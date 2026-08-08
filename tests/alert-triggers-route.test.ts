@@ -4,24 +4,37 @@
 // tests/data-api.test.ts) with its OWN per-test-queue fakes scoped to just
 // this table's shape.
 //
-// One fake: a queue-shaped D1 binding (tests/user-state-d1-queue.ts), which
-// is the only tier these routes touch since the accounts-d1 port --
-// chain_alert_triggers/chain_alert_deliveries live on D1, and the Postgres
-// mock that used to stand in for the dereg-risk snapshot's chain-table reads
-// went with the tier itself (#9193). Each test keeps the established
-// convention: push exactly the rows each of ITS statements (in order) should
-// resolve to, and assert on the recorded call text/values.
+// One fake: a per-test queue over the shared `pg` double
+// (tests/user-state-d1-queue.ts), which is the only tier these routes touch --
+// chain_alert_triggers/chain_alert_deliveries are ALERT_TRIGGER_TABLES and Neon
+// is the only store behind them, and the Postgres mock that used to stand in
+// for the dereg-risk snapshot's chain-table reads went with the tier itself
+// (#9193). Each test keeps the established convention: push exactly the rows
+// each of ITS statements (in order) should resolve to, and assert on the
+// recorded call text/values.
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
 import { createTriggerToken } from "../src/wallet-auth.ts";
-import { createQueueD1 } from "./user-state-d1-queue.ts";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { wireQueuedPg } from "./user-state-d1-queue.ts";
 import type { Row } from "./row-type.ts";
+
+// The store is Postgres, reached through `new Client(...)` inside
+// src/pg-sql.ts, and this suite calls `worker.fetch(request, env, ctx)` -- so
+// there is nothing to inject and the module IS the seam. The `vi.hoisted`
+// wrapper is not optional: `vi.mock` is hoisted above every import, so a
+// factory closing over a plain `const` reads it before initialisation.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
 
 const mockQueue = vi.hoisted(() => ({ current: [] as Row[][] }));
 const sqlCalls = vi.hoisted(
   () => [] as Array<{ text: string; values: unknown[] }>,
 );
 const failNextQuery = vi.hoisted(() => ({ error: null as Error | null }));
+wireQueuedPg(pg.control, { mockQueue, sqlCalls, failNextQuery });
 
 const { default: worker } = await import("../workers/data-api.ts");
 
@@ -29,7 +42,7 @@ const CREATE_TOKEN = "test-alert-trigger-create-token";
 const INTERNAL_TOKEN = "test-alert-triggers-internal-token";
 const WATCH_SECRET = "test-watch-trigger-token-secret";
 const env: Env = {
-  METAGRAPH_HEALTH_DB: createQueueD1({ mockQueue, sqlCalls, failNextQuery }),
+  ...pgMockEnv(),
   ALERT_TRIGGER_CREATE_TOKEN: CREATE_TOKEN,
   ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
   WATCH_TRIGGER_TOKEN_SECRET: WATCH_SECRET,
@@ -57,14 +70,22 @@ function req(
 }
 
 async function fetch(request: Request, envOverride: Env = env) {
-  return worker.fetch(request, envOverride, {} as unknown as ExecutionContext);
+  return worker.fetch(request, envOverride, {
+    // A REAL waitUntil: createPgSql parks `client.end()` on it in a `finally`,
+    // so an ExecutionContext without one turns every query into a TypeError
+    // after the rows have already been read.
+    waitUntil() {},
+    passThroughOnException() {},
+  } as unknown as ExecutionContext);
 }
 
-// A chain_alert_triggers row in its D1 shape: INTEGER-0/1 `active`, and
-// table_filter/condition as TEXT holding JSON (pass overrides through
-// JSON.stringify where a test needs them) -- the route code's
-// normalizeAlertTriggerRow is what turns these back into the API's booleans
-// and parsed values, and these fixtures are what exercise it.
+// A chain_alert_triggers row as the store hands it back: `active` as the
+// INTEGER 0/1 the D1-era schema used, and table_filter/condition as TEXT
+// holding JSON (pass overrides through JSON.stringify where a test needs them).
+// normalizeAlertTriggerRow is what turns these back into the API's booleans and
+// parsed values, and these fixtures are what exercise it -- deliberately still
+// the 0/1 shape, because d1Bool accepts BOTH it and Postgres's real boolean and
+// the looser input is the one worth pinning.
 function row(overrides: Row = {}) {
   return {
     id: 1,
@@ -188,12 +209,12 @@ test("create: 503 when no user-state store is bound", async () => {
       headers: { "x-alert-trigger-create-token": CREATE_TOKEN },
       body: { channel: "email", destination: "a@b.com", netuid: 7 },
     }),
-    { ...env, METAGRAPH_HEALTH_DB: undefined } as unknown as Env,
+    { ...env, HYPERDRIVE: undefined } as unknown as Env,
   );
   assert.equal(res.status, 503);
-  // The message names the STORE GROUP, not D1 (#10144): userStateRunner
-  // answers for whichever store owns api_keys/alert_triggers, so an unbound
-  // D1 is only half of what "nothing here" can mean.
+  // The message names the STORE GROUP, not the binding (#10144):
+  // userStateRunner answers for whichever store owns
+  // api_keys/alert_triggers, and the route must not leak which one that is.
   assert.deepEqual(await res.json(), { error: "no user-state store bound" });
 });
 
@@ -254,9 +275,61 @@ test("create: 201 with a condition, binds it as its JSON text and parses the sto
   const body = (await res.json()) as Row;
   assert.deepEqual(body.condition, condition);
   assert.match(sqlCalls[0].text, /INSERT INTO chain_alert_triggers/);
-  // The runner stringifies object binds into the TEXT-holding-JSON column --
-  // the D1 statement receives the JSON text, not a driver-side jsonb value.
-  assert.ok(sqlCalls[0].values.includes(JSON.stringify(condition)));
+  // BOUND AS JSON TEXT, by the route, not by the driver. `pg` would happen to
+  // JSON-stringify a plain object -- but see the table_filter test below for
+  // what it does to an ARRAY, and why the route no longer leaves this to the
+  // driver's discretion for either column.
+  assert.ok(
+    sqlCalls[0].values.includes(JSON.stringify(condition)),
+    `condition was not bound as JSON text: ${JSON.stringify(sqlCalls[0].values)}`,
+  );
+});
+
+test("create: 201 with a table_filter, bound as JSON text rather than a Postgres array literal", async () => {
+  // THE BUG THIS PINS (#10170). `table_filter` is `string[]`, and node-postgres
+  // serializes a JS array as a Postgres ARRAY LITERAL -- ["a","b"] becomes
+  // {"a","b"} -- which is not JSON. The column is TEXT and its reader is
+  // parseJsonColumn, whose JSON.parse then throws and whose catch degrades the
+  // value to null.
+  //
+  // Null is the DANGEROUS answer here, not merely a lossy one:
+  // triggerMatchesEvent skips the table check entirely when tableFilter is
+  // falsy, so a trigger its owner scoped to one table would fire on every
+  // table. Over-delivery, silently.
+  //
+  // It worked while these routes ran on D1 because the deleted createD1Sql
+  // stringified array binds itself. Nothing replaced that when the runner
+  // changed, and no route test sent a table_filter through create or PATCH --
+  // which is exactly why this test exists now.
+  const tableFilter = ["account_events", "chain_events"];
+  mockQueue.current.push([row({ table_filter: JSON.stringify(tableFilter) })]);
+  const res = await fetch(
+    req("/api/v1/alerts/triggers", {
+      method: "POST",
+      headers: { "x-alert-trigger-create-token": CREATE_TOKEN },
+      body: {
+        channel: "email",
+        destination: "a@b.com",
+        netuid: 7,
+        table_filter: tableFilter,
+      },
+    }),
+  );
+  assert.equal(res.status, 201);
+  const body = (await res.json()) as Row;
+  assert.deepEqual(body.table_filter, tableFilter);
+  const bound = sqlCalls[0].values;
+  assert.ok(
+    bound.includes(JSON.stringify(tableFilter)),
+    `table_filter was not bound as JSON text: ${JSON.stringify(bound)}`,
+  );
+  // And the raw array never reaches the driver, which is the half that would
+  // silently produce {"account_events","chain_events"}.
+  assert.equal(
+    bound.some((v) => Array.isArray(v)),
+    false,
+    "an array reached the bind; pg would serialize it as a Postgres array literal",
+  );
 });
 
 test("create: 400 on a malformed condition", async () => {
@@ -665,7 +738,7 @@ test("update: omitting a field on PATCH keeps the existing row's value (partial-
   assert.ok(sqlCalls[1].values.includes("renamed"));
 });
 
-test("update: omitting condition on PATCH keeps the existing row's condition -- the stored TEXT is parsed for the merge, then re-stringified for the bind", async () => {
+test("update: omitting condition on PATCH keeps the existing row's condition -- the stored TEXT is parsed for the merge, then bound back as the same value", async () => {
   const condition = {
     metric: "neuron_immunity_countdown_blocks",
     operator: "lte",
@@ -689,7 +762,13 @@ test("update: omitting condition on PATCH keeps the existing row's condition -- 
     }),
   );
   assert.equal(res.status, 200);
-  assert.ok(sqlCalls[1].values.includes(JSON.stringify(condition)));
+  // The round trip is TEXT -> parsed object (for the merge) -> JSON text again,
+  // re-serialized by the ROUTE rather than by the driver. What matters is that
+  // the condition survives a PATCH that never mentioned it, byte for byte.
+  assert.ok(
+    sqlCalls[1].values.includes(JSON.stringify(condition)),
+    `condition did not survive the PATCH: ${JSON.stringify(sqlCalls[1].values)}`,
+  );
 });
 
 test("update: a resent condition replaces the existing one", async () => {
@@ -979,8 +1058,12 @@ test("watch update: 200 on success -- can pause (active:false) and edit the dest
   assert.equal(sqlCalls.length, 2);
   assert.match(sqlCalls[1].text, /UPDATE chain_alert_triggers SET/);
   assert.ok(sqlCalls[1].values.includes("new@b.com"));
-  // The runner binds booleans as 0/1 for the schema's INTEGER CHECK column.
-  assert.ok(sqlCalls[1].values.includes(0));
+  // A real `false`, not the 0 the D1 runner used to coerce it into:
+  // chain_alert_triggers.active is BOOLEAN on Neon, and `pg` binds the JS
+  // boolean directly. Pinning the exact value matters because the pause
+  // feature IS this bind -- a 0 reaching a BOOLEAN column is an error, not a
+  // silently-false row.
+  assert.ok(sqlCalls[1].values.includes(false));
 });
 
 test("watch update: 400 on a validation failure (e.g. a destination that doesn't fit the existing channel)", async () => {
@@ -1299,8 +1382,13 @@ test("matched writeback: 200, filters out malformed ids, and issues a single bat
   const call = sqlCalls[0];
   assert.match(call.text, /UPDATE chain_alert_triggers/);
   assert.match(call.text, /match_count = match_count \+ 1/);
-  assert.match(call.text, /last_matched_at = \?/);
-  assert.match(call.text, /WHERE id IN \(\?, \?\)/);
+  // `$n`, not `?`: this statement's text is assembled from a placeholder count
+  // and issued through sql.unsafe, which rewrites SQLite's `?` via
+  // toPositionalPlaceholders. #9821 is what happens when that rewrite is
+  // missing -- Postgres does not recognise `?`, so six routes matched nothing
+  // and served zero rows without an error anywhere.
+  assert.match(call.text, /last_matched_at = \$\d/);
+  assert.match(call.text, /WHERE id IN \(\$\d, \$\d\)/);
   // The first bind is the shared `now` timestamp; the rest are the
   // validated ids, in order, with the malformed one already filtered out.
   assert.equal(typeof call.values[0], "number");

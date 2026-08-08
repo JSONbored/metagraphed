@@ -8,7 +8,25 @@ import { RAW_CAPTURE_CRON } from "../workers/config.ts";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The watermark's store is Postgres now (#10170): both halves of it --
+// neonWatermark's read and mirrorRawCaptureStateToNeon's write -- build their
+// own `new Client(...)`, so there is no handle a caller can inject. Mocking the
+// module is the seam, and the real SQLite fixture below is attached to the
+// controller so the watermark SQL is EXECUTED rather than merely recorded --
+// which is the whole point of this file's fixture: the one thing that can break
+// here is a column name, and a fake that records SQL never parses it.
+//
+// See tests/helpers/pg-mock.ts for why the controller has to be built inside
+// vi.hoisted: vi.mock is hoisted above every import, so a plain `const` is read
+// before initialisation.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   watermarkRead,
   RAW_CAPTURE_GENESIS_FLOOR,
@@ -46,10 +64,16 @@ let db: InstanceType<typeof DatabaseSync>;
 beforeEach(() => {
   db = new DatabaseSync(":memory:");
   applyMigrations(db);
+  pg.control.db = db;
+  pg.control.queries.length = 0;
 });
 
-/** D1-shaped facade over a real SQLite database, so the watermark SQL is
- * executed rather than merely recorded. */
+/** A `prepare().bind().first()` facade over the same real SQLite database.
+ *
+ * Still hand-built rather than taken from the mock, because `watermarkRead` is
+ * a READ-ONLY helper that takes a handle -- the lakehouse-seam watchdog passes
+ * it one from `readStore` -- so its tests exercise the function directly rather
+ * than through a store the lane resolves for itself. */
 function d1() {
   return {
     prepare(sql: string) {
@@ -115,7 +139,13 @@ function envWith(over: Record<string, unknown> = {}) {
     METAGRAPH_ARCHIVE: {
       put: async (k: string, v: string) => void puts.set(k, v),
     },
-    METAGRAPH_HEALTH_DB: d1(),
+    // BOTH flags, and they are not interchangeable. The lane's own refusal
+    // gate reads NEON_SOLE_STORE_TABLES ("is there a durable watermark at
+    // all"), while the WRITE inside mirrorRawCaptureStateToNeon is gated on
+    // NEON_DUAL_WRITE_LANES ("should this lane mirror"). Declaring only the
+    // first would let the lane run and silently never persist anything.
+    ...pgMockEnv(),
+    NEON_DUAL_WRITE_LANES: "raw-capture-state",
     ...over,
   };
   return { env, puts };
@@ -124,12 +154,18 @@ function envWith(over: Record<string, unknown> = {}) {
 /** Pacing has its own tests; every other test skips the wait. */
 const noSleep = async () => {};
 
+/** The Worker's ExecutionContext, as this lane uses it: createPgSql hands the
+ * pooled connection back through waitUntil, so the watermark's read and write
+ * are both unreachable without one. workers/api.ts passes the real ctx. */
+const CTX = { waitUntil: () => {} };
+
 describe("runRawCaptureSync — refusal paths", () => {
   test("disabled is a quiet no-op, not an error", async () => {
     const captures: unknown[] = [];
     const { env } = envWith({ RAW_CAPTURE_ENABLED: undefined });
     const result = await runRawCaptureSync(env as never, {
       sleepFn: noSleep,
+      ctx: CTX,
       recordException: (async (...a: unknown[]) => {
         captures.push(a);
         return true;
@@ -144,6 +180,7 @@ describe("runRawCaptureSync — refusal paths", () => {
     const { env } = envWith({ METAGRAPH_ARCHIVE: undefined });
     const result = await runRawCaptureSync(env as never, {
       sleepFn: noSleep,
+      ctx: CTX,
       recordException: (async (_e: unknown, ev: { route?: string }) => {
         captures.push(ev);
         return true;
@@ -154,25 +191,44 @@ describe("runRawCaptureSync — refusal paths", () => {
     assert.equal(captures[0]?.route, "raw-capture-sync");
   });
 
-  test("an unbound watermark refuses LOUDLY — without it a resume point is unknowable", async () => {
-    const captures: unknown[] = [];
-    const { env } = envWith({ METAGRAPH_HEALTH_DB: undefined });
-    const result = await runRawCaptureSync(env as never, {
-      sleepFn: noSleep,
-      recordException: (async () => {
-        captures.push(1);
-        return true;
-      }) as never,
+  // TWO ways to have no watermark, and the lane has to refuse on both. The
+  // refusal is load-bearing rather than defensive: the capture resumes FROM
+  // the stored value, so a tick that runs without one starts at the genesis
+  // floor and re-captures the same blocks every five minutes, forever, while
+  // every other signal says the lane is healthy.
+  for (const [what, over] of [
+    ["Hyperdrive is unbound", { HYPERDRIVE: undefined }],
+    [
+      "the table is not declared Neon's",
+      { NEON_SOLE_STORE_TABLES: "neurons,neuron_daily" },
+    ],
+  ] as [string, Record<string, unknown>][]) {
+    test(`an unbound watermark refuses LOUDLY when ${what}`, async () => {
+      const captures: unknown[] = [];
+      const { env, puts } = envWith(over);
+      const result = await runRawCaptureSync(env as never, {
+        sleepFn: noSleep,
+        ctx: CTX,
+        fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 2),
+        recordException: (async () => {
+          captures.push(1);
+          return true;
+        }) as never,
+      });
+      assert.equal(result.reason, "watermark_unavailable");
+      assert.equal(captures.length, 1);
+      // Refused BEFORE capturing, not after: bytes written under a watermark
+      // that cannot advance are bytes the next tick writes again.
+      assert.equal(puts.size, 0);
     });
-    assert.equal(result.reason, "watermark_unavailable");
-    assert.equal(captures.length, 1);
-  });
+  }
 
   test("an RPC failure is contained and captured, never thrown at the scheduler", async () => {
     const captures: { route?: string }[] = [];
     const { env } = envWith();
     const result = await runRawCaptureSync(env as never, {
       sleepFn: noSleep,
+      ctx: CTX,
       fetchImpl: (async () => {
         throw new Error("rpc down");
       }) as unknown as typeof fetch,
@@ -198,6 +254,7 @@ describe("runRawCaptureSync — capture", () => {
     const { env, puts } = envWith();
     const result = await runRawCaptureSync(env as never, {
       sleepFn: noSleep,
+      ctx: CTX,
       fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 2),
       now: () => 5000,
     });
@@ -218,11 +275,13 @@ describe("runRawCaptureSync — capture", () => {
     const { env, puts } = envWith();
     await runRawCaptureSync(env as never, {
       sleepFn: noSleep,
+      ctx: CTX,
       fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 1),
       now: () => 1,
     });
     const second = await runRawCaptureSync(env as never, {
       sleepFn: noSleep,
+      ctx: CTX,
       fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 4),
       now: () => 2,
     });
@@ -235,11 +294,13 @@ describe("runRawCaptureSync — capture", () => {
     const { env, puts } = envWith();
     await runRawCaptureSync(env as never, {
       sleepFn: noSleep,
+      ctx: CTX,
       fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR),
       now: () => 1,
     });
     const again = await runRawCaptureSync(env as never, {
       sleepFn: noSleep,
+      ctx: CTX,
       fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR),
       now: () => 2,
     });
@@ -252,6 +313,7 @@ describe("runRawCaptureSync — capture", () => {
     const { env } = envWith();
     const result = await runRawCaptureSync(env as never, {
       sleepFn: noSleep,
+      ctx: CTX,
       fetchImpl: rpcFetch(RAW_CAPTURE_GENESIS_FLOOR + 10_000),
       now: () => 1,
     });
@@ -310,6 +372,7 @@ describe("runRawCaptureSync — capture", () => {
     try {
       const result = await runRawCaptureSync(env as never, {
         sleepFn: noSleep,
+        ctx: CTX,
         fetchImpl: flaky,
         now: () => 9,
       });
@@ -331,6 +394,7 @@ describe("runRawCaptureSync — capture", () => {
     const { env } = envWith();
     const result = await runRawCaptureSync(env as never, {
       sleepFn: noSleep,
+      ctx: CTX,
       fetchImpl: (async () => {
         throw "string failure";
       }) as unknown as typeof fetch,
@@ -366,15 +430,32 @@ describe("watermarkRead", () => {
     assert.equal(await watermarkRead(d1() as never, "testnet")(), 99);
   });
 
-  // A row whose column is NULL is not a watermark of zero: the capture treats
-  // null as "start at the floor" and 0 as a real position, so conflating them
-  // would re-capture from genesis.
-  test("a null column reads as null, never as 0", async () => {
-    db.prepare(
-      `INSERT INTO raw_capture_state (network, last_contiguous_block, updated_at)
-       VALUES (?, ?, ?)`,
-    ).run("mainnet", null, 7);
-    assert.equal(await watermarkRead(d1() as never, "mainnet")(), null);
+  // A value that is not a number is not a watermark of zero: the capture
+  // treats null as "start at the floor" and 0 as a real position, so
+  // conflating them would re-capture from block 0.
+  //
+  // ASSERTED AGAINST A STUB, not the fixture, and deliberately so: 0013
+  // declares `last_contiguous_block INTEGER NOT NULL`, and SQLite enforces it
+  // -- the row this guard is about cannot be inserted at all. What CAN reach
+  // the guard is a non-number from the driver: `pg` returns int8 as a STRING
+  // unless a type parser is installed, and `typeof "8756635"` is not "number".
+  // So the shapes below are the ones the store can actually hand back, which
+  // is what the type guard is for.
+  test("a non-numeric reading is null, never 0", async () => {
+    for (const value of [null, undefined, "8756635", {}]) {
+      const stub = {
+        prepare: () => ({
+          bind: () => ({
+            first: async () => ({ last_contiguous_block: value }),
+          }),
+        }),
+      };
+      assert.equal(
+        await watermarkRead(stub as never, "mainnet")(),
+        null,
+        JSON.stringify(value ?? null),
+      );
+    }
   });
 });
 
@@ -387,6 +468,7 @@ describe("the testnet capture lane", () => {
     const { env, puts } = envWith();
     const result = await runRawCaptureSync(env as never, {
       sleepFn: noSleep,
+      ctx: CTX,
       fetchImpl: rpcFetch(
         RAW_CAPTURE_GENESIS_FLOOR + 1,
         TESTNET_RAW_CAPTURE_GENESIS_FLOOR + 1,
@@ -440,6 +522,7 @@ describe("the testnet capture lane", () => {
     const { env, puts } = envWith();
     await runRawCaptureSync(env as never, {
       sleepFn: noSleep,
+      ctx: CTX,
       fetchImpl: rpcFetch(
         RAW_CAPTURE_GENESIS_FLOOR,
         TESTNET_RAW_CAPTURE_GENESIS_FLOOR,
@@ -465,6 +548,7 @@ describe("the testnet capture lane", () => {
     const { env, puts } = envWith();
     const result = await runRawCaptureSync(env as never, {
       sleepFn: noSleep,
+      ctx: CTX,
       fetchImpl: (async (url: unknown, init?: { body?: string }) => {
         if (String(url).includes("test.finney"))
           throw new Error("testnet down");
@@ -607,6 +691,7 @@ describe("the lanes run concurrently, and stay isolated", () => {
     // Only the testnet endpoint fails.
     const result = (await runRawCaptureSync(env as never, {
       sleepFn: noSleep,
+      ctx: CTX,
       now: () => 1,
       fetchImpl: (async (url: string, init: RequestInit) => {
         if (String(url).includes("test.finney")) {
@@ -639,6 +724,7 @@ describe("the lanes run concurrently, and stay isolated", () => {
     const seen = new Set<string>();
     const result = (await runRawCaptureSync(env as never, {
       sleepFn: noSleep,
+      ctx: CTX,
       now: () => 1,
       fetchImpl: (async (url: string, init: RequestInit) => {
         seen.add(String(url).includes("test.finney") ? "testnet" : "mainnet");

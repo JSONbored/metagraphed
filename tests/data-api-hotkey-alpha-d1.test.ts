@@ -23,8 +23,20 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { sqliteBackedPg } from "./helpers/pg-sqlite.ts";
 import type { Row } from "./row-type.ts";
+
+// The store is Postgres now (#10170), reached through `new Client(...)` inside
+// src/neon-write.ts -- which nothing here can inject into, because the route is
+// reached as `worker.fetch(request, env, ctx)`. Mocking the module is the seam;
+// see tests/helpers/pg-mock.ts for why it is a module mock and not a production
+// export, and why the controller is built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
 
 const { default: worker } = await import("../workers/data-api.ts");
 const { QUEUE_MESSAGE_MAX_BYTES } = await import("../src/sync-batch-queue.ts");
@@ -68,46 +80,22 @@ const HOTKEY_B = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
 let db: InstanceType<typeof DatabaseSync>;
 
-function d1() {
-  return {
-    prepare(text: string) {
-      return {
-        bind(...values: unknown[]) {
-          return {
-            text,
-            values,
-            async all() {
-              return { results: db.prepare(text).all(...(values as never[])) };
-            },
-          };
-        },
-      };
-    },
-    async batch(statements: { text: string; values: unknown[] }[]) {
-      db.exec("BEGIN");
-      try {
-        const results = statements.map((statement) => ({
-          results: db
-            .prepare(statement.text)
-            .all(...(statement.values as never[])),
-        }));
-        db.exec("COMMIT");
-        return results;
-      } catch (err) {
-        db.exec("ROLLBACK");
-        throw err;
-      }
-    },
-  };
-}
-
 function env(overrides: Record<string, unknown> = {}): Env {
   return {
-    METAGRAPH_HEALTH_DB: d1(),
+    ...pgMockEnv(),
+    // The inline write runs through mirrorLedgerToNeon, which is a no-op unless
+    // the lane is named here -- so a suite that left this out would assert an
+    // empty table and call it a passing write.
+    NEON_DUAL_WRITE_LANES: "hotkey-alpha",
     HOTKEY_ALPHA_SYNC_SECRET: SECRET,
     ...overrides,
   } as unknown as Env;
 }
+
+/** A ctx with a real `waitUntil`. createPgSql hands the client back through it
+ * from a `finally`, so an object without one turns every successful write into
+ * a TypeError -- silently, because the rejection replaces the result. */
+const ctx = { waitUntil: () => {} } as unknown as ExecutionContext;
 
 function post(body: unknown, token: string | null = SECRET, envOverride?: Env) {
   const headers: Record<string, string> = {
@@ -121,7 +109,7 @@ function post(body: unknown, token: string | null = SECRET, envOverride?: Env) {
       body: typeof body === "string" ? body : JSON.stringify(body),
     }),
     envOverride ?? env(),
-    {} as unknown as ExecutionContext,
+    ctx,
   );
 }
 
@@ -151,6 +139,13 @@ beforeEach(() => {
   db.exec(PASSES_SCHEMA);
   db.exec(POSITIONS_SCHEMA);
   db.exec(POSITIONS_INDEX);
+  pg.control.queries.length = 0;
+  pg.control.failNext = null;
+  // Wrapped rather than handed over raw: this lane's upsert is the one that
+  // carries a FILTER, so its statement is the `(VALUES ...) AS src (cols)` form
+  // with `::int` casts -- neither of which SQLite can parse. See
+  // tests/helpers/pg-sqlite.ts for exactly what is translated and what is not.
+  pg.control.db = sqliteBackedPg(db);
   // The fixtures below use HOTKEY/HOTKEY_B on the netuids alphaRow() defaults
   // to; referencing them keeps every pre-existing assertion about what lands
   // testing what it was written to test.
@@ -160,7 +155,7 @@ beforeEach(() => {
 });
 
 describe("POST /api/v1/internal/hotkey-alpha-sync", () => {
-  test("writes a batch to D1 and reports what it did", async () => {
+  test("writes a batch to the store and reports what it did", async () => {
     const response = await post({
       rows: [alphaRow(), alphaRow({ hotkey: HOTKEY_B, total_alpha: 0 })],
     });
@@ -168,8 +163,7 @@ describe("POST /api/v1/internal/hotkey-alpha-sync", () => {
     assert.deepEqual(await response.json(), {
       ok: true,
       hotkey_alpha_written: 2,
-      stores: ["d1"],
-      d1_statements: 1,
+      stores: ["neon"],
       pass_total: null,
     });
     assert.equal(rows().length, 2);
@@ -300,9 +294,9 @@ describe("POST /api/v1/internal/hotkey-alpha-sync", () => {
     assert.equal(rows().length, 0);
   });
 
-  test("503s when D1 is unbound, and only AFTER validating the body", async () => {
+  test("503s when no store is bound, and only AFTER validating the body", async () => {
     // A malformed body is a 400 whether or not a store happens to be bound.
-    const unbound = env({ METAGRAPH_HEALTH_DB: undefined });
+    const unbound = env({ HYPERDRIVE: undefined });
     assert.equal((await post({ nope: 1 }, SECRET, unbound)).status, 400);
     assert.equal(
       (await post({ rows: [alphaRow()] }, SECRET, unbound)).status,
@@ -310,17 +304,27 @@ describe("POST /api/v1/internal/hotkey-alpha-sync", () => {
     );
   });
 
-  test("502s when the D1 write throws", async () => {
-    const exploding = env({
-      METAGRAPH_HEALTH_DB: {
-        prepare: () => ({ bind: () => ({}) }),
-        batch: async () => {
-          throw new Error("d1 exploded");
-        },
-      },
-    });
-    const response = await post({ rows: [alphaRow()] }, SECRET, exploding);
+  test("503s when the pass ledger is not declared Neon's, not just the table", async () => {
+    // The gate is neonOwnsLedger: hotkey_alpha AND hotkey_alpha_passes. A
+    // half-declared lane would write pools into Neon and the tally into
+    // nothing, which is the one combination that makes completeness
+    // unanswerable -- absence in this table is ambiguous by design, so the
+    // declaration is the only thing that can say a pass was whole.
+    const halfDeclared = env({ NEON_SOLE_STORE_TABLES: "hotkey_alpha" });
+    const response = await post({ rows: [alphaRow()] }, SECRET, halfDeclared);
+    assert.equal(response.status, 503);
+    assert.equal(rows().length, 0);
+  });
+
+  test("502s when the write throws", async () => {
+    pg.control.failNext = new Error("neon exploded");
+    const response = await post({ rows: [alphaRow()] }, SECRET);
     assert.equal(response.status, 502);
+    // Neon IS the store now, so a failed write is the pass's failure rather
+    // than a lost mirror: ok:true here would tell the producer its pools are
+    // durable when nothing holds them.
+    assert.equal(((await response.json()) as Row).error, "neon write failed");
+    assert.equal(rows().length, 0);
   });
 });
 
@@ -339,8 +343,7 @@ describe("pass_total completeness accounting", () => {
     assert.deepEqual(await response.json(), {
       ok: true,
       hotkey_alpha_written: 1,
-      stores: ["d1"],
-      d1_statements: 2,
+      stores: ["neon"],
       pass_total: 1,
     });
     const [row] = passes();
@@ -530,7 +533,7 @@ describe("routed to the sync queue (metagraphed-infra#348)", () => {
     assert.equal(response.status, 200);
     assert.equal(sent.length, 1);
     assert.equal(sent[0]!.pass_total, 2, "the declaration rides along");
-    assert.equal(rows().length, 0, "D1 must not also have been written");
+    assert.equal(rows().length, 0, "the store must not also have been written");
   });
 
   test("a chunk too large for one message is split, not dropped", async () => {

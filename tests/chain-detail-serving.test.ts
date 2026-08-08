@@ -7,7 +7,19 @@
 // never 200-with-an-empty-list -- because an empty list and a block that
 // genuinely had no extrinsics are the same bytes, and that is the bug.
 import assert from "node:assert/strict";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The store is Postgres now (#10170), reached through `new Client(...)` inside
+// src/read-store.ts. A route test cannot inject into that -- the caller is
+// `handleRequest(request, env, ctx)` -- so the `pg` module is the seam. See
+// tests/helpers/pg-mock.ts for why it is a module mock, and why the controller
+// has to be built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import { handleRequest } from "../workers/api.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
 import { DEFAULT_BLOCKS_SEAM } from "../src/blocks-cold-tier.ts";
@@ -18,7 +30,14 @@ const SEAM = DEFAULT_BLOCKS_SEAM; // 8_759_336
 const RECENT = SEAM + 3_264; // 8,762,600 -- the block from the issue
 const XT_HASH = `0x${"cd".repeat(32)}`;
 
-beforeEach(() => resetDecodeWatermarkCache());
+beforeEach(() => {
+  resetDecodeWatermarkCache();
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = null;
+  pg.control.failNext = null;
+  pg.control.onQuery = null;
+});
 
 function extrinsicRow(index = 0) {
   return {
@@ -66,10 +85,16 @@ function chainEventRow(index = 0) {
 }
 
 /**
- * An env whose D1 holds the hot tier for `covered` blocks.
+ * An env whose store holds the hot tier for `covered` blocks.
  *
  * `covered: []` is the GAP: the lane holds a window somewhere else (or nothing
  * at all) and this block is not in it.
+ *
+ * The per-statement answers are installed on the pg double's `onQuery`, which
+ * fires before it consults its canned-answer list -- so assigning
+ * `control.rows` from there is what makes one double answer a whole route's
+ * worth of different statements. `onQuery` rather than a read-back because the
+ * subscription is the only live view; see tests/helpers/pg-mock.ts.
  */
 function envWith({
   covered,
@@ -83,42 +108,32 @@ function envWith({
     (covered.length
       ? { floor: Math.min(...covered), head: Math.max(...covered) }
       : null);
-  return {
-    METAGRAPH_HEALTH_DB: {
-      prepare(raw: string) {
-        const sql = raw.replace(/\s+/g, " ").trim();
-        return {
-          bind(...params: unknown[]) {
-            return {
-              async all() {
-                if (sql.startsWith("SELECT MIN(block_number)"))
-                  return {
-                    results: [
-                      registerWindow
-                        ? { ...registerWindow, observed: 1_785_800_000_000 }
-                        : { floor: null, head: null, observed: null },
-                    ],
-                  };
-                if (sql.includes("FROM chain_detail_blocks WHERE block_number"))
-                  return {
-                    results: covered.includes(params[0] as number)
-                      ? [{ block_number: params[0] }]
-                      : [],
-                  };
-                if (sql.includes("FROM chain_detail_extrinsics"))
-                  return { results: [extrinsicRow(), extrinsicRow(1)] };
-                if (sql.includes("FROM chain_detail_account_events"))
-                  return { results: [accountEventRow()] };
-                if (sql.includes("FROM chain_detail_chain_events"))
-                  return { results: [chainEventRow()] };
-                return { results: [] };
-              },
-            };
-          },
-        };
-      },
-    },
-  } as never;
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = null;
+  pg.control.onQuery = ({ text, values }) => {
+    const sql = text.replace(/\s+/g, " ").trim();
+    pg.control.rows = ((): Record<string, unknown>[] => {
+      if (sql.startsWith("SELECT MIN(block_number)"))
+        return [
+          registerWindow
+            ? { ...registerWindow, observed: 1_785_800_000_000 }
+            : { floor: null, head: null, observed: null },
+        ];
+      if (sql.includes("FROM chain_detail_blocks WHERE block_number"))
+        return covered.includes(values[0] as number)
+          ? [{ block_number: values[0] }]
+          : [];
+      if (sql.includes("FROM chain_detail_extrinsics"))
+        return [extrinsicRow(), extrinsicRow(1)];
+      if (sql.includes("FROM chain_detail_account_events"))
+        return [accountEventRow()];
+      if (sql.includes("FROM chain_detail_chain_events"))
+        return [chainEventRow()];
+      return [];
+    })();
+  };
+  return { ...pgMockEnv() } as never;
 }
 
 function req(path: string) {

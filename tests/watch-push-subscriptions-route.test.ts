@@ -3,19 +3,31 @@
 // watch-token authorized) and handleInternalPushSubscription (AlerterHub-only,
 // internal-token gated).
 //
-// Own queue-shaped D1 fake (tests/user-state-d1-queue.ts), scoped to this
-// file, mirroring tests/wallet-auth-keys-route.test.ts's shape --
-// watch_push_subscriptions lives on the user-state D1 since the accounts-d1
-// port, so the old postgres-module mock is gone from this file.
+// Own per-test queue over the shared `pg` double (tests/user-state-d1-queue.ts),
+// scoped to this file, mirroring tests/wallet-auth-keys-route.test.ts's shape --
+// watch_push_subscriptions is one of ALERT_TRIGGER_TABLES, and Neon is the only
+// store behind them.
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import { createTriggerToken } from "../src/wallet-auth.ts";
-import { createQueueD1 } from "./user-state-d1-queue.ts";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { wireQueuedPg } from "./user-state-d1-queue.ts";
 import type { Row } from "./row-type.ts";
+
+// The store is Postgres, reached through `new Client(...)` inside
+// src/pg-sql.ts, and this suite calls `worker.fetch(request, env, ctx)` -- so
+// there is nothing to inject and the module IS the seam. The `vi.hoisted`
+// wrapper is not optional: `vi.mock` is hoisted above every import, so a
+// factory closing over a plain `const` reads it before initialisation.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
 
 const mockQueue = { current: [] as Row[][] };
 const sqlCalls = [] as Array<{ text: string; values: unknown[] }>;
 const failNextQuery = { error: null as Error | null };
+wireQueuedPg(pg.control, { mockQueue, sqlCalls, failNextQuery });
 
 const { default: worker } = await import("../workers/data-api.ts");
 
@@ -37,7 +49,7 @@ const AUTH = Buffer.from(Array.from({ length: 16 }, (_, i) => i))
 
 function baseEnv(overrides: Record<string, unknown> = {}): Env {
   return {
-    METAGRAPH_HEALTH_DB: createQueueD1({ mockQueue, sqlCalls, failNextQuery }),
+    ...pgMockEnv(),
     WATCH_TRIGGER_TOKEN_SECRET: WATCH_SECRET,
     ALERT_TRIGGERS_INTERNAL_TOKEN: INTERNAL_TOKEN,
     ...overrides,

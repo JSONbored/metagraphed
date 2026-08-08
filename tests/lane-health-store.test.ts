@@ -2,8 +2,15 @@
 //
 // The last table to move, and the one whose failure is hardest to see: if
 // verdicts stop landing, every watchdog goes quiet and an absent verdict reads
-// as health. So this pins BOTH directions of the selection, not just the new
-// one.
+// as health.
+//
+// Since #10170 there is no second store to fall back to -- the D1 binding is
+// gone from the code and from both wrangler configs -- so the selection is now
+// a two-clause GATE rather than a choice: Hyperdrive must be bound AND
+// lane_health must be declared Neon's, or the answer is `undefined`. Both
+// clauses are pinned below, because a gate that opened on either one alone
+// would hand 27 watchdogs a store that cannot answer, and each of them reads
+// that as a dropped verdict rather than as an error.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
@@ -13,9 +20,6 @@ import {
 } from "../src/lane-health-store.ts";
 import { recordLaneVerdict } from "../src/lane-health.ts";
 
-const D1 = {
-  prepare: () => ({ bind: () => ({ run: async () => ({}) }) }),
-} as never;
 const HYPERDRIVE = { connectionString: "postgresql://example/db" };
 
 function fakeClient() {
@@ -49,41 +53,38 @@ describe("laneHealthStore", () => {
     );
   });
 
-  test("stays on D1 until Neon owns lane_health", () => {
+  test("declines until the flag names lane_health", () => {
+    // The flag is still the gate, even with nowhere else to go: a store handed
+    // out before the table is declared Neon's would write verdicts into a
+    // database that is not yet the one the readers query.
     for (const env of [
-      { METAGRAPH_HEALTH_DB: D1 },
-      { METAGRAPH_HEALTH_DB: D1, HYPERDRIVE },
-      {
-        METAGRAPH_HEALTH_DB: D1,
-        HYPERDRIVE,
-        NEON_SOLE_STORE_TABLES: "neurons",
-      },
+      {},
+      { HYPERDRIVE },
+      { HYPERDRIVE, NEON_SOLE_STORE_TABLES: "neurons" },
     ]) {
-      assert.equal(laneHealthStore(env), D1);
+      assert.equal(laneHealthStore(env), undefined, JSON.stringify(env));
     }
   });
 
-  test("no Hyperdrive keeps it on D1 even when the flag names it", () => {
+  test("the flag alone is not enough -- Hyperdrive has to be bound too", () => {
+    // Declaring the table without binding the store is a config half-done, and
+    // it must read as "no store" rather than as a client with no connection
+    // string, which would throw on the first verdict instead of dropping it.
     assert.equal(
-      laneHealthStore({
-        METAGRAPH_HEALTH_DB: D1,
-        NEON_SOLE_STORE_TABLES: "lane_health",
-      }),
-      D1,
+      laneHealthStore({ NEON_SOLE_STORE_TABLES: "lane_health" }),
+      undefined,
     );
   });
 
-  test("moves to Neon once the flag names it AND Hyperdrive is bound", () => {
+  test("returns a store once the flag names it AND Hyperdrive is bound", () => {
     const db = laneHealthStore({
-      METAGRAPH_HEALTH_DB: D1,
       HYPERDRIVE,
       NEON_SOLE_STORE_TABLES: "lane_health",
     });
-    assert.notEqual(db, D1);
     assert.ok(db?.prepare);
   });
 
-  test("an absent D1 binding is passed through, not faked", () => {
+  test("no store available is undefined, never a stub", () => {
     // recordLaneVerdict reads undefined as "no store" and declines. A stub here
     // would turn that into "a store that accepted nothing".
     assert.equal(laneHealthStore({}), undefined);
@@ -111,6 +112,9 @@ describe("pgLaneHealthDb", () => {
     assert.equal(f.log.length, 2);
     // `?` rewritten -- the callers write SQLite's placeholders because D1 is
     // what lane-health.ts was built against.
+    // `?` rewritten to `$n` -- the callers still write SQLite's placeholders,
+    // because lane-health.ts was built against D1 and its statements were not
+    // touched when the store moved. #9821 is what an unrewritten `?` costs.
     assert.match(f.log[0].text, /VALUES \(\$1, \$2, \$3, \$4, \$5\)/);
     assert.deepEqual(f.log[0].values, ["neon:probe", "ok", null, "d", 7]);
     assert.match(f.log[1].text, /DELETE FROM lane_health WHERE lane = \$1/);
@@ -137,7 +141,7 @@ describe("pgLaneHealthDb", () => {
     assert.deepEqual(f.counts(), { connects: 6, ends: 6 });
   });
 
-  test("a failed write is swallowed, exactly as on D1", async () => {
+  test("a failed write is swallowed rather than raised", async () => {
     // recordLaneVerdict promises never to throw: a watchdog whose
     // alarm-recording broke its alarm would be worse than the bug it watches.
     const db = pgLaneHealthDb("postgresql://example/db", {

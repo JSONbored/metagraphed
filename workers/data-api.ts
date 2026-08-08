@@ -745,10 +745,16 @@ async function handleNeuronsSync(
   // migration exists to end.
   const neonOwns = neonOwnsNeuronsSnapshot(env);
 
+  // ALL THREE TABLES, OR NONE. This asks neonOwnsNeuronsSnapshot rather than
+  // just the binding, and the difference is load-bearing: one pass derives all
+  // three tables from one snapshot, so a half-declared family would write the
+  // declared tables and leave the others behind -- and no read gate would
+  // notice, because each table answers fine on its own.
+  //
   // Checked HERE, after parsing and validation, not at the top: a malformed
   // body is a 400 whether or not a store happens to be bound, and answering
   // 503 to it would blame the infrastructure for the caller's payload.
-  if (!env.HYPERDRIVE?.connectionString) {
+  if (!neonOwnsNeuronsSnapshot(env)) {
     return writeJson({ error: "no store bound for this route" }, 503);
   }
 
@@ -885,7 +891,9 @@ async function handleChainDetailSync(
   // body is a 400 whether or not a store happens to be bound, and answering 503
   // to it would blame the infrastructure for the caller's payload. Same
   // ordering, and the same reason, as handleNeuronsSync above.
-  if (!env.HYPERDRIVE?.connectionString) {
+  // ALL FOUR FAMILIES, OR NONE -- they must land together, so a partial
+  // declaration is the "no store" case rather than a weaker version of owned.
+  if (!neonOwnsChainDetail(env)) {
     return writeJson({ error: "no store bound for this route" }, 503);
   }
 
@@ -1139,9 +1147,9 @@ async function handleNeuronDailyBackfill(
   // mirror's position -- a backfill could report success on a D1 write nothing
   // reads, and a Neon failure was invisible.
   //
-  // Checked after validation for the same 400-before-503 reasoning as the sync
-  // handler.
-  if (!env.HYPERDRIVE?.connectionString) {
+  // The same all-or-nothing family gate the sync handler applies, and checked
+  // after validation for the same 400-before-503 reasoning.
+  if (!neonOwnsNeuronsSnapshot(env)) {
     return writeJson({ error: "no store bound for this route" }, 503);
   }
 
@@ -1426,11 +1434,12 @@ async function handleSubnetHyperparamsSync(
     });
   }
 
-  // Hyperdrive is the binding this path REQUIRES -- Neon is the only store
-  // this family has (#10170). Checked HERE, after parsing and validation, not
-  // at the top: a malformed body is a 400 whether or not a store happens to be
-  // bound.
-  if (!env.HYPERDRIVE?.connectionString) {
+  // BOTH TABLES OF THE FAMILY, OR NONE (#10170): the table and its history are
+  // written from one derivation, so a half-declared family would let the two
+  // disagree about which revisions exist. Checked HERE, after parsing and
+  // validation, not at the top: a malformed body is a 400 whether or not a
+  // store happens to be bound.
+  if (!neonOwnsFamily(env, SUBNET_HYPERPARAMS_NEON_LANE)) {
     return writeJson({ error: "no store bound for this route" }, 503);
   }
 
@@ -1672,10 +1681,8 @@ async function handleAccountIdentitySync(
     });
   }
 
-  // Hyperdrive is the binding this path REQUIRES -- Neon is the only store
-  // this family has (#10170). Checked after parsing and validation for the
-  // same reason as the hyperparams sync.
-  if (!env.HYPERDRIVE?.connectionString) {
+  // Both tables of the family, or none -- see the hyperparams sync above.
+  if (!neonOwnsFamily(env, ACCOUNT_IDENTITY_NEON_LANE)) {
     return writeJson({ error: "no store bound for this route" }, 503);
   }
 
@@ -2726,7 +2733,7 @@ async function handleHotkeyAlphaSync(
   // Checked HERE, after validation, not at the top: a malformed body is a 400
   // whether or not a store happens to be bound (handleAccountBalancesSync's
   // own 400-before-503 reasoning).
-  if (!env.HYPERDRIVE?.connectionString) {
+  if (!neonOwnsLedger(env, "hotkey-alpha")) {
     return writeJson({ error: "no store bound for this route" }, 503);
   }
 
@@ -2952,11 +2959,35 @@ interface D1Sql {
   unsafe(text: string, values?: unknown[]): Promise<D1SqlRows>;
 }
 
-/** A TEXT column holding JSON (the D1 translation of Postgres text[]/jsonb),
- * parsed where the row value is consumed. Null-safe; a non-string value
- * passes through untouched (it is already parsed -- e.g. a PATCH body field
- * merged over the row), and unparseable text degrades to null rather than
- * throwing inside a read path. */
+/**
+ * The WRITE half of parseJsonColumn: a value on its way into a TEXT column that
+ * holds JSON.
+ *
+ * EXPLICIT BECAUSE node-postgres DOES NOT DO THIS FOR ARRAYS. `pg` serializes a
+ * JS array as a Postgres ARRAY LITERAL -- `["a","b"]` becomes `{"a","b"}` --
+ * which is not JSON, so parseJsonColumn's `JSON.parse` throws and its catch
+ * degrades the column to null. For `chain_alert_triggers.table_filter` that is
+ * worse than losing the value: triggerMatchesEvent skips the table check when
+ * tableFilter is falsy, so a trigger scoped to one table would fire on every
+ * table instead.
+ *
+ * It happened to work while these routes ran on D1, because the deleted
+ * createD1Sql stringified array and object binds before binding them. Nothing
+ * replaced that when the runner changed, and no route-level test sent a
+ * table_filter through create or PATCH, so the gap was invisible. `pg` DOES
+ * JSON-stringify plain objects, which is why `condition` survived -- but
+ * relying on a driver's object handling for a column we control is the same
+ * bet, so both go through here.
+ */
+function jsonColumn(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  return JSON.stringify(value);
+}
+
+/** A TEXT column holding JSON, parsed where the row value is consumed.
+ * Null-safe; a non-string value passes through untouched (it is already
+ * parsed -- e.g. a PATCH body field merged over the row), and unparseable text
+ * degrades to null rather than throwing inside a read path. */
 function parseJsonColumn(value: unknown): unknown {
   if (typeof value !== "string") return value ?? null;
   try {
@@ -3372,8 +3403,8 @@ async function handleAlertTriggerCreate(
       INSERT INTO chain_alert_triggers
         (owner_token, name, table_filter, netuid, event_kind, account, min_amount_tao, condition, channel, destination, active, owner_ss58, created_at, updated_at)
       VALUES (
-        ${ownerToken}, ${v.name}, ${v.tableFilter}, ${v.netuid}, ${v.eventKind},
-        ${v.account}, ${v.minAmountTao}, ${v.condition ?? null},
+        ${ownerToken}, ${v.name}, ${jsonColumn(v.tableFilter)}, ${v.netuid}, ${v.eventKind},
+        ${v.account}, ${v.minAmountTao}, ${jsonColumn(v.condition ?? null)},
         ${v.channel}, ${v.destination}, ${v.active}, ${ownerSs58}, ${now}, ${now}
       )
       RETURNING *`;
@@ -3476,12 +3507,12 @@ async function runAlertTriggerUpdate(sql: D1Sql, id: string, merged: Row) {
   const [row] = await sql`
     UPDATE chain_alert_triggers SET
       name = ${v.name},
-      table_filter = ${v.tableFilter},
+      table_filter = ${jsonColumn(v.tableFilter)},
       netuid = ${v.netuid},
       event_kind = ${v.eventKind},
       account = ${v.account},
       min_amount_tao = ${v.minAmountTao},
-      condition = ${v.condition ?? null},
+      condition = ${jsonColumn(v.condition ?? null)},
       channel = ${v.channel},
       destination = ${v.destination},
       active = ${v.active},
@@ -6186,6 +6217,17 @@ export const NEON_READ_ROUTE_TABLES: readonly {
       "subnet_hyperparams",
       "validator_nominator_counts",
     ],
+  },
+  // The prober's own continuity read (#9522), and the ONE route in the three
+  // matchers that had no entry here. That was survivable while routeStore fell
+  // back to D1 -- the route simply stayed on D1 like every unmapped route. With
+  // D1 gone (#10170) the fallback is `undefined`, so an unmapped route is not
+  // "still on the old store", it is 503 on every request: src/health-prober.ts
+  // and src/health-serving.ts would both go back to reading null, which is
+  // exactly the empty prior map that made the pool breaker unreachable.
+  {
+    pattern: /^\/api\/v1\/internal\/health-status-live$/,
+    tables: ["surface_status"],
   },
 ];
 

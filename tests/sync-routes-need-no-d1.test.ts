@@ -1,12 +1,19 @@
-// The sync routes must reach their write with no D1 binding at all (#10144).
+// The sync routes must reach their write from the family gate alone (#10144).
 //
-// THE BUG THIS EXISTS TO STOP. Every one of these handlers already skipped its
+// THE BUG THIS EXISTED TO STOP. Every one of these handlers already skipped its
 // D1 write once Neon owned the tables -- but the BINDING CHECK above the write
 // did not know that. So with the tables sole-store on Neon and D1 unbound, the
-// route answered `503 {"error":"d1 binding unavailable"}` and never reached the
-// Neon write that would have succeeded. Nothing failed while D1 stayed bound,
-// which is why it survived the inversions: the check was dead code that only
-// wakes up on the day the database is dropped.
+// route answered 503 and never reached the Neon write that would have
+// succeeded. Nothing failed while D1 stayed bound, which is why it survived the
+// inversions: the check was dead code that only woke up on the day the database
+// was dropped.
+//
+// D1 IS NOW DROPPED (#10170) and the file still earns its place, because the
+// second case below is the one that matters after the collapse: the gate must
+// be the ALL-OR-NOTHING family check, not a bare "is Hyperdrive bound". A
+// half-declared family reaching the write would land the declared tables and
+// leave the rest, and no read gate would notice -- each table answers fine on
+// its own.
 //
 // WHAT IS ASSERTED, and why it is not a weaker test than it looks. There is no
 // Postgres here, so a route that gets past the check fails at the write instead
@@ -14,11 +21,13 @@
 // before trying"; anything else means the request reached the store. The pair
 // of cases per route is what carries the weight:
 //
-//   Neon owns + no D1  ->  must NOT be 503 (the fix)
-//   Neon does not own + no D1  ->  must STILL be 503 (the check is not gone)
+//   Neon owns the whole family      ->  must NOT be 503 (the fix)
+//   Neon owns only part of it        ->  must STILL be 503 (the gate is intact)
 //
-// Without the second case every assertion here would also pass if the binding
-// check had simply been deleted, which is a different and much worse change.
+// Without the second case every assertion here would also pass if the gate had
+// simply been deleted, which is a different and much worse change -- and is
+// exactly what the D1 teardown did on its first pass, until this file caught
+// it.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 
@@ -124,11 +133,11 @@ async function assertStillRefuses(res: Response, label: string) {
   assert.equal(
     res.status,
     503,
-    `${label}: the D1 requirement was removed outright`,
+    `${label}: the all-or-nothing family gate was removed outright`,
   );
   assert.deepEqual(
     await res.json(),
-    { error: "d1 binding unavailable" },
+    { error: "no store bound for this route" },
     label,
   );
 }
