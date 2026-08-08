@@ -7793,6 +7793,7 @@
         {
           "name": "offset",
           "schema": {
+            "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
           }
@@ -7964,6 +7965,7 @@
         {
           "name": "offset",
           "schema": {
+            "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
           }
@@ -8103,6 +8105,7 @@
         {
           "name": "offset",
           "schema": {
+            "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
           }
@@ -8212,6 +8215,7 @@
         {
           "name": "offset",
           "schema": {
+            "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
           }
@@ -8283,6 +8287,7 @@
         {
           "name": "offset",
           "schema": {
+            "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
           }
@@ -8340,6 +8345,7 @@
         {
           "name": "offset",
           "schema": {
+            "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
           }
@@ -8414,6 +8420,7 @@
         {
           "name": "offset",
           "schema": {
+            "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
           }
@@ -8836,6 +8843,7 @@
         {
           "name": "offset",
           "schema": {
+            "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
           }
@@ -9533,6 +9541,7 @@
         {
           "name": "offset",
           "schema": {
+            "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
           }
@@ -9678,6 +9687,7 @@
         {
           "name": "offset",
           "schema": {
+            "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
           }
@@ -9724,6 +9734,7 @@
         {
           "name": "offset",
           "schema": {
+            "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
           }
@@ -9900,6 +9911,7 @@
         {
           "name": "offset",
           "schema": {
+            "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
           }
@@ -10040,6 +10052,7 @@
         {
           "name": "offset",
           "schema": {
+            "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
           }
@@ -10140,6 +10153,7 @@
         {
           "name": "offset",
           "schema": {
+            "maximum": 1000000,
             "minimum": 0,
             "type": "integer"
           }
