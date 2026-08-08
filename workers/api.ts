@@ -387,12 +387,15 @@ import {
 import { tryPostgresTier } from "./postgres-tier.ts";
 import { chainEventsQueryError } from "../src/chain-events-cold-tier.ts";
 import {
+  CHAIN_EVENTS_LIMIT_DEFAULT,
+  CHAIN_EVENTS_LIMIT_MAX,
   type ColdTierAnswer,
   chainEventsQueryFromUrl,
   coldTierChainEventsPayload,
   degradedChainEventsPayload,
   hotTierBlockChainEvents,
 } from "../src/chain-events-degraded.ts";
+import { parseLimitParam } from "./request-params.ts";
 import { markPostgresTierFallbackResponse } from "./request-handlers/analytics.ts";
 import { loadGlobalOperationalHealth } from "../src/global-operational-health.ts";
 import {
@@ -2896,6 +2899,20 @@ export async function handleChainEventsFamily(
   // raises the same condition as `invalid_params` and GraphQL as
   // BAD_USER_INPUT, off this one shared check.
   if (url.pathname === "/api/v1/chain-events") {
+    // #10174: `limit` is checked with the SAME parser the other 81 routes
+    // publishing a ceiling use, so the 400 body is byte-identical rather than
+    // merely similar. This feed used to be the one REST route that silently
+    // clamped -- `?limit=99999` answered 200 with 100 events, and
+    // `?limit=notanumber` answered 200 with the default -- while the shared
+    // `limit` description told callers REST never clamps. A caller who asked
+    // for 5,000 rows and got 100 had no signal they had been capped, which is
+    // exactly the "a short page means the feed is exhausted" property the
+    // rejecting routes buy.
+    const limitResult = parseLimitParam(url, {
+      defaultLimit: CHAIN_EVENTS_LIMIT_DEFAULT,
+      maxLimit: CHAIN_EVENTS_LIMIT_MAX,
+    });
+    if ("error" in limitResult) return analyticsQueryError(limitResult.error);
     const badValue = chainEventsQueryError(chainEventsQueryFromUrl(url));
     if (badValue) {
       return analyticsQueryError({

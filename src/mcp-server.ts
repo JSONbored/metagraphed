@@ -3658,7 +3658,46 @@ function validateToolArguments(tool: Row, args: Row) {
   // merely a courtesy: several handlers forward their whole argument object
   // into a query builder or an upstream call, where an unexpected key becomes
   // a filter, a cache-key difference, or a 400 from someone else's API.
-  return splitMcpIntent(args).rest;
+  return clampPublishedLimit(tool, splitMcpIntent(args).rest);
+}
+
+/**
+ * Clamp `limit` to the ceiling the tool itself publishes (#10174).
+ *
+ * Over-ceiling `limit` used to do two different things depending on which
+ * handler an agent happened to reach: 25 tools rejected it -- 15 through the
+ * shared list-query engine, the rest through a synthetic request whose REST
+ * handler calls parseBoundedIntParam -- and the rest clamped. Clamp-vs-reject
+ * was a property of the HANDLER, invisible from anything published, so an
+ * agent could not predict which it would get.
+ *
+ * Clamping here makes it a property of the SURFACE: MCP always clamps, REST
+ * always rejects, one predictable sentence each. This is the forgiving
+ * direction, so no agent caller that works today stops working -- an agent
+ * that miscounts a page size gets an answer instead of an error, and the
+ * response already reports the limit actually applied.
+ *
+ * The ceiling is read from the tool's OWN inputSchema rather than a list kept
+ * alongside it, so a tool cannot be added with a bound this does not honour.
+ *
+ * Deliberately `limit` only. A published `maximum` on an identifier is a
+ * validity bound, not a page size: clamping `netuid: 99999` to 65535 would
+ * answer a question the caller did not ask, where rejecting it is correct.
+ *
+ * And deliberately only ABOVE the ceiling. `limit: 0`, a negative, and `1.5`
+ * are malformed rather than over-ambitious, and each still reaches the handler
+ * that rejects it -- `0` in particular means different things to the three
+ * page-size rules (REST floors it to 1, MCP falls back to the tool's default,
+ * the row builders honour it as zero), so rewriting it here would flatten a
+ * distinction tests/pagination-bound-parity.test.ts exists to keep.
+ */
+function clampPublishedLimit(tool: Row, args: Row): Row {
+  const schema = tool.inputSchema?.properties?.limit as Row | undefined;
+  const max = schema?.maximum;
+  const value = args?.limit;
+  if (typeof max !== "number" || typeof value !== "number") return args;
+  if (!Number.isInteger(value) || value <= max) return args;
+  return { ...args, limit: max };
 }
 
 /**

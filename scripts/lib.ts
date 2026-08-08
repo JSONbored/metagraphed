@@ -633,7 +633,50 @@ export async function latestArtifactDate(
   );
 }
 
+/**
+ * Directories only `npm run build` produces, used to tell an UNBUILT tree from
+ * a genuinely empty artifact.
+ *
+ * `public/metagraph/` is not empty in a fresh checkout -- openapi.json,
+ * contracts.json and a few other publish-owned files are committed -- so the
+ * root existing proves nothing. These per-entity directories are build output.
+ */
+const BUILT_ARTIFACT_MARKERS = ["subnets", "health"];
+
+/**
+ * Fail loudly when the artifact tree has not been built (#10174).
+ *
+ * METAGRAPH_ARCHIVE.get() returns `null` for a missing file, and `null` is the
+ * CORRECT signal for "this artifact carries no data" -- every reader degrades
+ * on it to a schema-stable empty card. So an unbuilt tree was indistinguishable
+ * from an empty one: the reader degraded, the assertion read
+ * `service_count >= 1` as `false !== true`, and nothing anywhere said "run the
+ * build". Same shape as the confident zeros this repo keeps finding -- a
+ * correct-looking decline standing in for a missing producer.
+ *
+ * Checked once per env rather than per read, and only for the absence of the
+ * whole tree: a single missing artifact stays a `null`, because that is a real
+ * condition the readers are supposed to handle.
+ */
+function assertArtifactsBuilt(): void {
+  const built = BUILT_ARTIFACT_MARKERS.some(
+    (marker) =>
+      existsSync(path.join(r2StagingRoot, marker)) ||
+      existsSync(path.join(publicMetagraphRoot, marker)),
+  );
+  if (built) return;
+  throw new Error(
+    "createLocalArtifactEnv(): the artifact tree is not built, so every read " +
+      "would return null and every reader would degrade to an empty card -- " +
+      "which is indistinguishable from a real empty result.\n" +
+      `Looked for ${BUILT_ARTIFACT_MARKERS.map((m) => `${m}/`).join(" or ")} ` +
+      `under ${publicMetagraphRoot} and ${r2StagingRoot}.\n` +
+      "Run `npm run build` first (CI does this before the suite).",
+  );
+}
+
 export function createLocalArtifactEnv(overrides: Row = {}): Row {
+  assertArtifactsBuilt();
   return {
     ASSETS: {
       async fetch(request: Request) {

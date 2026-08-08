@@ -5508,11 +5508,17 @@ export const SHARED_QUERY_PARAMETER_DESCRIPTIONS: Record<
   // change for agent callers. One shared sentence would make one of the two
   // contracts a lie.
   //
+  // Both sentences are now true of their WHOLE surface (#10174). They were not
+  // when this map was written: /api/v1/chain-events clamped like MCP, so the
+  // "on every route" clause below was false, and 15 MCP tools rejected, so the
+  // clamp promise was false for them. Both are fixed rather than hedged --
+  // chain-events runs the same parseLimitParam as the other 81 routes, and the
+  // MCP dispatch clamps to the ceiling each tool's own inputSchema publishes.
+  //
   // `tests/pagination-bound-parity.test.ts` holds both halves to that, derived
-  // over every route and every tool -- so if either surface changes, the gate
-  // fails and these sentences have to change with it. It is what caught the
-  // "on every route" clause below being false on /api/v1/chain-events, which
-  // clamps like MCP does.
+  // over every route and every tool, with both DECLARED lists now EMPTY -- so
+  // a single route or tool drifting back fails the gate rather than earning an
+  // exemption.
   limit: (parameter) => {
     const maximum = parameter.schema?.maximum;
     // The ceiling is read off the parameter's own schema rather than restated,
