@@ -11,6 +11,10 @@ import {
   sortSchema,
   windowSchema,
 } from "../schemas-src/query-params.ts";
+import {
+  NO_QUERY_PARAMETERS,
+  ROUTE_QUERY_SCHEMAS,
+} from "../schemas-src/route-queries.ts";
 import { MAX_LIMIT } from "../workers/request-params.ts";
 // Surface-agnostic despite the module name: the sentinel bounds Zod stamps on
 // every `z.int()` are not an MCP concern, and both published surfaces drop them.
@@ -6902,6 +6906,61 @@ export function listQuerySchema(
   if (csvResponse) shape.format = z.enum(["json", "csv"]).optional();
 
   return z.object(shape).strict();
+}
+
+/**
+ * The Zod query schema for one route, whichever producer owns it (#10062).
+ *
+ * Two producers, because the surface genuinely has two kinds of route and a
+ * single one would be wrong for half of them:
+ *
+ *   COLLECTION routes generate 9-18 parameters from `API_QUERY_COLLECTIONS`,
+ *   so `listQuerySchema()` composes from that same config. Hand-writing them
+ *   would be a second declaration of a computed thing.
+ *
+ *   EVERY OTHER route states its own, in `ROUTE_QUERY_SCHEMAS`.
+ *
+ * `null` means the route is classified NOWHERE, which
+ * `validate:route-query-parity` treats as a failure rather than as "takes no
+ * parameters" -- the two are different claims, and only one of them should
+ * survive a route quietly losing its query contract.
+ *
+ * Used by the gate today. 3/5 (#10063) makes `route()` emit from it and 4/5
+ * (#10064) derives the MCP tool inputs from it.
+ */
+export function querySchemaForRoute(entry: {
+  path: string;
+  query_collection?: string | null;
+  query_filter_names?: string[];
+  csv_response?: boolean;
+}): z.ZodObject | null {
+  if (entry.query_collection) {
+    const config = (API_QUERY_COLLECTIONS as Record<string, Row>)[
+      entry.query_collection
+    ];
+    /* v8 ignore next 3 -- same developer config invariant listQuery() guards */
+    if (!config) {
+      throw new Error(
+        `Unknown API query collection: ${entry.query_collection}`,
+      );
+    }
+    // `query_filter_names` is the KEPT set, so the exclusion is its complement.
+    // Read that way round rather than re-deriving the exclusions, because the
+    // route entry is what listQuery() actually produced.
+    const kept = new Set(entry.query_filter_names ?? []);
+    return listQuerySchema(entry.query_collection, {
+      exclude: Object.keys(config.filter_schemas as Row).filter(
+        (name) => !kept.has(name),
+      ),
+      csvResponse: entry.csv_response === true,
+      extend: LIST_QUERY_ROUTE_EXTRAS[entry.path] ?? {},
+    });
+  }
+  const declared = ROUTE_QUERY_SCHEMAS[entry.path];
+  if (declared) return declared;
+  return NO_QUERY_PARAMETERS.includes(entry.path)
+    ? z.object({}).strict()
+    : null;
 }
 
 interface ListQuerySchemaOptions {
