@@ -32,6 +32,7 @@ import {
 } from "../src/usage-telemetry.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { mockEnv, type AnyFn, type Row } from "./row-type.ts";
+import { assertValid } from "./helpers/assert-valid.ts";
 
 type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
 
@@ -781,7 +782,7 @@ describe("a provider result satisfies the PUBLISHED schema (#9903)", () => {
         target: "draft-2020-12",
       }),
     );
-    assert.ok(validate(out), JSON.stringify(validate.errors));
+    assertValid(validate, out);
   });
 
   test("the schema would REJECT the pre-fix declaration", () => {

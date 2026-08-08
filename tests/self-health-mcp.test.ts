@@ -12,6 +12,7 @@ import {
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { mockEnv, type Row } from "./row-type.ts";
+import { assertValid } from "./helpers/assert-valid.ts";
 
 type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
 
@@ -325,7 +326,7 @@ describe("self-health-mcp", () => {
     const validate = new Ajv2020({ strict: false }).compile(
       GET_SELF_HEALTH_OUTPUT_SCHEMA,
     );
-    assert.ok(validate(SAMPLE_SELF_HEALTH));
+    assertValid(validate, SAMPLE_SELF_HEALTH);
   });
 
   // #9330/#9340 + the cold-tier parity gap found live on 2026-08-04.

@@ -88,6 +88,7 @@ import {
   PROMETHEUS_DEGRADED_NOT_CURATED,
 } from "../src/uncurated-event-streams.ts";
 import type { AnyFn, Row } from "./row-type.ts";
+import { assertValid } from "./helpers/assert-valid.ts";
 
 const MCP_URL = "https://api.metagraph.sh/mcp";
 
@@ -2692,7 +2693,7 @@ describe("MCP tools (injected deps)", () => {
     });
     const res = await callTool("list_curation", { limit: 1 }, { deps });
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("list_gaps returns filtered gap rows", async () => {
@@ -2770,7 +2771,7 @@ describe("MCP tools (injected deps)", () => {
     });
     const res = await callTool("list_gaps", { limit: 1 }, { deps });
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("list_enrichment_queue returns filtered queue rows", async () => {
@@ -2895,7 +2896,7 @@ describe("MCP tools (injected deps)", () => {
     });
     const res = await callTool("list_enrichment_queue", { limit: 1 }, { deps });
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("list_adapter_candidates returns filtered candidate rows", async () => {
@@ -3005,7 +3006,7 @@ describe("MCP tools (injected deps)", () => {
       { deps },
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("list_enrichment_evidence returns filtered evidence rows", async () => {
@@ -3105,7 +3106,7 @@ describe("MCP tools (injected deps)", () => {
       { deps },
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("list_review_gaps returns filtered priority rows", async () => {
@@ -3178,7 +3179,7 @@ describe("MCP tools (injected deps)", () => {
     });
     const res = await callTool("list_review_gaps", { limit: 1 }, { deps });
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("list_review_enrichment_targets returns filtered target rows", async () => {
@@ -3301,7 +3302,7 @@ describe("MCP tools (injected deps)", () => {
       { deps },
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("list_subnet_endpoints returns filtered endpoint rows", async () => {
@@ -3431,7 +3432,7 @@ describe("MCP tools (injected deps)", () => {
       { deps },
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("list_subnet_health returns filtered health rows", async () => {
@@ -3526,7 +3527,7 @@ describe("MCP tools (injected deps)", () => {
       { deps },
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("list_subnet_surfaces returns filtered surface rows", async () => {
@@ -3618,7 +3619,7 @@ describe("MCP tools (injected deps)", () => {
       { deps },
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("list_endpoint_pools returns filtered pool rows", async () => {
@@ -3831,7 +3832,7 @@ describe("MCP tools (injected deps)", () => {
     });
     const res = await callTool("list_endpoint_pools", { limit: 1 }, { deps });
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("list_provider_endpoints returns filtered endpoint rows", async () => {
@@ -3966,7 +3967,7 @@ describe("MCP tools (injected deps)", () => {
       { deps },
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("list_endpoint_incidents returns filtered incident rows", async () => {
@@ -4118,7 +4119,7 @@ describe("MCP tools (injected deps)", () => {
       { deps },
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("registry_summary returns the summary artifact", async () => {
@@ -4314,7 +4315,7 @@ describe("MCP tools (injected deps)", () => {
     });
     const res = await callTool("get_changelog", {}, { deps });
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("get_build returns the build summary artifact", async () => {
@@ -4363,7 +4364,7 @@ describe("MCP tools (injected deps)", () => {
     });
     const res = await callTool("get_build", {}, { deps });
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("list_enrichment_targets returns ranked coverage-depth targets", async () => {
@@ -6633,7 +6634,7 @@ describe("MCP stake-flow and movers economics tools", () => {
       ]),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   // account_events' D1 write path is retired (#4772) and the table is dropped in
@@ -6686,7 +6687,7 @@ describe("MCP stake-flow and movers economics tools", () => {
       ]),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   // account_events' D1 write path is retired (#4772) and the table is dropped in
@@ -6739,7 +6740,7 @@ describe("MCP stake-flow and movers economics tools", () => {
       ]),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   // account_events' D1 write path is retired (#4772) and the table is dropped in
@@ -6792,7 +6793,7 @@ describe("MCP stake-flow and movers economics tools", () => {
       ]),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   // account_events' D1 write path is retired (#4772) and the table is dropped in
@@ -6845,7 +6846,7 @@ describe("MCP stake-flow and movers economics tools", () => {
       ]),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   // account_events' D1 write path is retired (#4772) and the table is dropped in
@@ -6898,7 +6899,7 @@ describe("MCP stake-flow and movers economics tools", () => {
       ]),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   // account_events' D1 write path is retired (#4772) and the table is dropped in
@@ -6951,7 +6952,7 @@ describe("MCP stake-flow and movers economics tools", () => {
       ]),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   // neuron_daily's D1 write path is retired (#4772) and the table is dropped in
@@ -7236,7 +7237,7 @@ describe("MCP get_subnet_stake_moves", () => {
       }),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 });
 
@@ -7276,7 +7277,7 @@ describe("MCP get_subnet_stake_transfers", () => {
       }),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 });
 
@@ -7315,7 +7316,7 @@ describe("MCP get_subnet_registrations", () => {
       }),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 });
 
@@ -7358,7 +7359,7 @@ describe("MCP get_subnet_weights", () => {
       }),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 });
 
@@ -7467,7 +7468,7 @@ describe("MCP get_subnet_serving", () => {
       }),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 });
 
@@ -7510,7 +7511,7 @@ describe("MCP get_subnet_prometheus", () => {
       }),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 });
 
@@ -7657,7 +7658,7 @@ describe("MCP get_subnet_yield_history", () => {
       },
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 });
 
@@ -11509,7 +11510,7 @@ describe("MCP economics + metagraph data tools", () => {
         env: {} as unknown as Env,
       },
     );
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("get_economics surfaces not_found when neither tier has data", async () => {
@@ -11705,7 +11706,7 @@ describe("MCP economics + metagraph data tools", () => {
         env: {} as unknown as Env,
       },
     );
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("get_subnet_profile payload validates against its declared outputSchema", async () => {
@@ -11835,7 +11836,7 @@ describe("MCP economics + metagraph data tools", () => {
         env: {} as unknown as Env,
       },
     );
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   const liveAnalyticsDeps = makeDeps({
@@ -12794,7 +12795,7 @@ describe("MCP economics + metagraph data tools", () => {
       ]),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   // A grouped account_events aggregate row (one per netuid+event_kind), the
@@ -12905,7 +12906,7 @@ describe("MCP economics + metagraph data tools", () => {
       ]),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   // One GROUP BY netuid, event_kind row from account_events, the shape
@@ -13021,7 +13022,7 @@ describe("MCP economics + metagraph data tools", () => {
       ]),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   // The network-wide aggregate row loadChainWeights reads first (its COUNT/
@@ -13129,7 +13130,7 @@ describe("MCP economics + metagraph data tools", () => {
       ]),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   // D1 fully eliminated (2026-07-16): account_events' D1 write path is
@@ -13280,7 +13281,7 @@ describe("MCP economics + metagraph data tools", () => {
       }),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   // The network-wide aggregate row loadChainStakeMoves reads first (its
@@ -13385,7 +13386,7 @@ describe("MCP economics + metagraph data tools", () => {
       ]),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   // The network-wide aggregate row loadChainStakeTransfers reads first (its
@@ -13494,7 +13495,7 @@ describe("MCP economics + metagraph data tools", () => {
       ]),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   // The network-wide aggregate row loadChainAxonRemovals reads first (its
@@ -13603,7 +13604,7 @@ describe("MCP economics + metagraph data tools", () => {
       ]),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   // The network-wide aggregate row loadChainDeregistrations reads first (its
@@ -13712,7 +13713,7 @@ describe("MCP economics + metagraph data tools", () => {
       ]),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   // The network-wide aggregate row loadChainServing reads first (its
@@ -13813,7 +13814,7 @@ describe("MCP economics + metagraph data tools", () => {
       ]),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   // The network-wide aggregate row loadChainPrometheus reads first (its
@@ -13918,7 +13919,7 @@ describe("MCP economics + metagraph data tools", () => {
       ]),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   // The full-window totals row loadChainTransferPairs reads first (its pair_totals
@@ -14068,7 +14069,7 @@ describe("MCP economics + metagraph data tools", () => {
       ]),
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   // neuron_daily's D1 write path is retired (#4772) and the table is dropped
@@ -14370,7 +14371,7 @@ describe("MCP economics + metagraph data tools", () => {
     const deps = makeDeps({}, { "health:current": globalLiveKv });
     const res = await callTool("get_network_health", {}, { deps });
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("get_health_history serves a dated snapshot with list-query filters", async () => {
@@ -14525,7 +14526,7 @@ describe("MCP economics + metagraph data tools", () => {
       { deps },
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   // surface_uptime_daily's D1 write path is retired (#4772) and the table is
@@ -15370,7 +15371,7 @@ describe("MCP economics + metagraph data tools", () => {
       { deps: feedDeps },
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("the D1 runner swallows a query error and a missing result set", async () => {
@@ -18962,7 +18963,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     });
     const res = await callTool("list_search_index", { limit: 1 }, { deps });
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("list_search returns document rows across all types", async () => {
@@ -19015,7 +19016,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     });
     const res = await callTool("list_search", { limit: 1 }, { deps });
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("list_providers returns filtered provider rows", async () => {
@@ -19085,7 +19086,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     });
     const res = await callTool("list_providers", { limit: 1 }, { deps });
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   function providersDeps() {
@@ -19372,7 +19373,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     });
     const res = await callTool("list_surfaces", { limit: 1 }, { deps });
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   function surfacesDeps() {
@@ -20082,7 +20083,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     });
     const res = await callTool("list_evidence", { limit: 1 }, { deps });
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("list_rpc_endpoints returns the rpc endpoints artifact", async () => {
@@ -20232,7 +20233,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     });
     const res = await callTool("list_source_snapshots", { limit: 1 }, { deps });
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("list_profile_completeness returns filtered profile-completeness rows", async () => {
@@ -20712,7 +20713,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     });
     const res = await callTool("list_rpc_pools", { limit: 1 }, { deps });
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("get_subnet_endpoints returns one subnet's endpoints artifact", async () => {
@@ -20853,7 +20854,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
       { deps },
     );
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("get_subnet_surfaces returns one subnet's surfaces artifact", async () => {
@@ -21063,7 +21064,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     });
     const res = await callTool("get_contracts", {}, { deps });
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("get_adapter returns the adapter snapshot artifact", async () => {
@@ -21128,7 +21129,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
     });
     const res = await callTool("get_adapter", { slug: "gittensor" }, { deps });
     const validate = new Ajv2020({ strict: false }).compile(schema);
-    assert.ok(validate(res.body.result.structuredContent));
+    assertValid(validate, res.body.result.structuredContent);
   });
 
   test("get_source_health returns the source-health artifact", async () => {
