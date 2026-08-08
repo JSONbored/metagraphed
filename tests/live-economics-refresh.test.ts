@@ -823,7 +823,7 @@ describe("refreshLiveEconomics", () => {
     assert.equal(blob.network, null);
   });
 
-  test("declines without a reader, a KV binding or a D1 binding", async () => {
+  test("declines without a reader, a KV binding or any store", async () => {
     const { env } = harness();
     assert.deepEqual(await refreshLiveEconomics(env), {
       ok: false,
@@ -834,10 +834,13 @@ describe("refreshLiveEconomics", () => {
       await refreshLiveEconomics(noKv.env, { readArtifact: noKv.readArtifact }),
       { ok: false, reason: "kv_binding_missing" },
     );
+    // "store_unavailable" rather than "d1_binding_missing" (#10158): the read
+    // follows whichever store owns neurons and subnet_snapshots, so an absent
+    // D1 is only one of the two ways to have nowhere to read from.
     const noDb = harness({ db: false });
     assert.deepEqual(
       await refreshLiveEconomics(noDb.env, { readArtifact: noDb.readArtifact }),
-      { ok: false, reason: "d1_binding_missing" },
+      { ok: false, reason: "store_unavailable" },
     );
   });
 

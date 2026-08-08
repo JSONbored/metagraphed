@@ -54,6 +54,7 @@ import {
   type SurfaceProbeRecord,
 } from "./surface-verification.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
+import { readStore } from "./read-store.ts";
 
 type Row = Record<string, unknown>;
 
@@ -161,7 +162,14 @@ export async function runSurfaceVerificationSync(
   ctx?: Ctx,
   deps: SurfaceVerificationSyncDeps = {},
 ): Promise<SurfaceVerificationSyncResult> {
-  const db = env.METAGRAPH_HEALTH_DB as ObservationsReadDb | undefined;
+  // The probe evidence follows the prober (#10158): surface_uptime_daily and
+  // surface_checks are Neon's, and this lane republishes their verdict as the
+  // registry's machine-verified tiers. Against a frozen copy it would keep
+  // publishing a verification nobody re-measured.
+  const db = readStore(env, [
+    "surface_uptime_daily",
+    "surface_checks",
+  ]) as unknown as ObservationsReadDb | undefined;
   const loud = (message: string, errorCode: string, reason: string) => {
     console.error(`[surface-verification-sync] ${message}`);
     const pending = Promise.resolve(
@@ -176,11 +184,11 @@ export async function runSurfaceVerificationSync(
   };
   if (!db?.prepare) {
     return loud(
-      "METAGRAPH_HEALTH_DB is not bound; refusing to run. A D1-less sweep " +
+      "no store is bound; refusing to run. A storeless sweep " +
         "reads zero rows for every subnet, which would publish a snapshot " +
         "that strips machine-verified from the whole registry.",
-      "surface_verification_d1_missing",
-      "d1_binding_missing",
+      "surface_verification_store_missing",
+      "store_unavailable",
     );
   }
   const bucket = env.METAGRAPH_ARCHIVE;

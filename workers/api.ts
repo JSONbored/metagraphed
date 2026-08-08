@@ -621,6 +621,7 @@ import {
   runProjectionLanes,
 } from "../src/projection-lanes.ts";
 import { TOP_HOLDERS_FLOW_LANE } from "../src/top-holders-flow-tier.ts";
+import { laneHealthStore } from "../src/lane-health-store.ts";
 
 // #8386: anonymous stays the existing, regression-tested DATA_RATE_LIMITER
 // policy (60/60s, unchanged); a caller with a valid mg_... key gets 5x via a
@@ -875,7 +876,12 @@ export async function runFreshnessWatchdog(
   const startedAt = Date.now();
   const readArtifactFn = (deps.readArtifact ??
     (readArtifact as unknown as ArtifactReader)) as ArtifactReader;
-  const laneHealthDb = deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as never);
+  // laneHealthStore, not the binding (#10158) -- one of the last three callers
+  // still reaching past it.
+  const laneHealthDb = laneHealthStore(
+    env as unknown as Record<string, unknown>,
+    deps.laneHealthDb,
+  ) as never;
   try {
     const artifact = (await readArtifactFn(
       env,
@@ -1626,7 +1632,13 @@ export default {
     // has already refused eight times would be POSTed at them a ninth. Acked
     // and recorded, never re-delivered.
     if (isDeadLetterQueue(batch.queue)) {
-      await handleDeadLetterBatch(batch, env.METAGRAPH_HEALTH_DB);
+      // The dead-letter record is a lane verdict, so it goes where the other
+      // 27 do (#10158). recordLaneVerdict swallows failures, so a dead letter
+      // written to a store nobody reads is a message lost twice over.
+      await handleDeadLetterBatch(
+        batch,
+        laneHealthStore(env as unknown as Record<string, unknown>) as never,
+      );
       return;
     }
     return handleWebhookQueue(batch, env, ctx);

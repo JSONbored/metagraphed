@@ -75,6 +75,8 @@ import {
   buildDomainOverview,
   buildDomainSummary,
 } from "../../src/domain-summary.ts";
+import { readStore } from "../../src/read-store.ts";
+import { LEADERBOARD_TABLES } from "../../src/read-store-tables.ts";
 
 type HealthMetaKvReader = (
   env: Env,
@@ -650,7 +652,10 @@ export async function composeLeaderboardsData(
   const meta = await readHealthMetaKv(env);
   const d1Generation = currentD1ReadFailureGeneration();
   const { healthRows, rpcRows, growthSamples, reliabilityRows } =
-    await loadLeaderboardD1Rows(env.METAGRAPH_HEALTH_DB);
+    // The only read in this file that was not already asking observationsReadDb
+    // (#10158). It issues four statements across surface_status,
+    // subnet_snapshots and surface_uptime_daily -- all three Neon's.
+    await loadLeaderboardD1Rows(readStore(env, LEADERBOARD_TABLES) as never);
   const data = formatLeaderboards({
     board,
     limit,
