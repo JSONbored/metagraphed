@@ -2244,19 +2244,22 @@ async function handleNominatorPositionsSync(
   // Checked HERE, after validation, not at the top: a malformed body is a 400
   // whether or not a store happens to be bound (handleSubnetHyperparamsSync's
   // own 400-before-503 reasoning).
-  if (!env.METAGRAPH_HEALTH_DB) {
+  const neonOwns = neonOwnsNominatorPositions(env);
+  if (!neonOwns && !env.METAGRAPH_HEALTH_DB) {
     return writeJson({ error: "d1 binding unavailable" }, 503);
   }
 
-  let d1Statements: number;
+  let d1Statements = 0;
   try {
-    ({ statements: d1Statements } = await writeNominatorPositionsToD1(
-      env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-        typeof writeNominatorPositionsToD1
-      >[0],
-      { rows, coldkeyMaxCapturedAt: cutoffs },
-      pass,
-    ));
+    if (!neonOwns) {
+      ({ statements: d1Statements } = await writeNominatorPositionsToD1(
+        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+          typeof writeNominatorPositionsToD1
+        >[0],
+        { rows, coldkeyMaxCapturedAt: cutoffs },
+        pass,
+      ));
+    }
   } catch (err) {
     console.error("data-api nominator-positions-sync D1 write failed:", err);
     await captureDataApiError(err, "nominator-positions-sync-d1", env);
@@ -2266,17 +2269,41 @@ async function handleNominatorPositionsSync(
   // ONE OF THIS LANE'S TWO WRITERS. The other is the queue consumer below, and
   // it mirrors too -- #9728 was a single unmirrored writer leaving a table 92
   // rows short while the count looked nearly right.
-  await mirrorNominatorPositionsToNeon(
+  const neon = await mirrorNominatorPositionsToNeon(
     env as unknown as Record<string, unknown>,
     ctx,
     { rows, coldkeyMaxCapturedAt: cutoffs, pass },
   );
 
+  // Once Neon is the store, a pass that did not reach it did not happen.
+  if (neonOwns) {
+    // The PRUNE counts as well as the write. Rows landing while stale coldkeys
+    // survive is not a partial success -- top-holders would serve both.
+    const failed = [neon.write, neon.prune].filter((r) => r && !r.ok);
+    if (!neon.attempted || failed.length > 0) {
+      const reason =
+        failed
+          .map((r) => r?.reason)
+          .filter(Boolean)
+          .join("; ") || "neon write not attempted while Neon owns the tables";
+      console.error(
+        "data-api nominator-positions-sync Neon write failed:",
+        reason,
+      );
+      await captureDataApiError(
+        new Error(reason),
+        "nominator-positions-sync-neon",
+        env,
+      );
+      return writeJson({ error: "neon write failed" }, 502);
+    }
+  }
+
   return writeJson({
     ok: true,
     nominator_positions_written: rows.length,
     coldkeys_pruned: cutoffs.size,
-    stores: ["d1"],
+    stores: neonOwns ? ["neon"] : ["d1"],
     d1_statements: d1Statements,
     // Echoed so a producer can see its declaration was understood rather than
     // silently dropped -- the failure mode a purely optional field invites.
@@ -3154,6 +3181,20 @@ export function neonOwnsNeuronsSnapshot(env: Env): boolean {
  * append revisions that already exist, or miss ones that do not. The pair moves
  * together or not at all.
  */
+/** Whether Neon solely owns the nominator-positions pair. Shared by BOTH of
+ * this lane's writers -- #9728 was a single unmirrored writer leaving the table
+ * 92 rows short while the count looked nearly right. The pass ledger moves with
+ * the rows: a tally in one store describing rows in the other answers a
+ * question about nothing. */
+export function neonOwnsNominatorPositions(env: Env): boolean {
+  return (
+    Boolean(env.HYPERDRIVE?.connectionString) &&
+    ["nominator_positions", "nominator_positions_passes"].every((table) =>
+      neonOwnsTable(env as unknown as Record<string, unknown>, table),
+    )
+  );
+}
+
 export function neonOwnsFamily(env: Env, lane: string): boolean {
   const plan = FAMILY_MIRROR_PLANS[lane];
   if (!plan) return false;
@@ -8109,17 +8150,19 @@ export default {
           // that could prune rows it did not carry.
           "nominator-positions": async (rows, pass) => {
             const cutoffs = coldkeyMaxCapturedAt(rows);
-            const result = await writeNominatorPositionsToD1(
-              env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-                typeof writeNominatorPositionsToD1
-              >[0],
-              { rows, coldkeyMaxCapturedAt: cutoffs },
-              // The declared pass rides the transport (metagraphed-infra#346).
-              // A queue knows a message was DELIVERED; it does not know whether
-              // the producer's whole scan arrived, and only the second fact
-              // catches a load that stopped halfway.
-              pass,
-            );
+            const result = neonOwnsNominatorPositions(env)
+              ? { statements: 0 }
+              : await writeNominatorPositionsToD1(
+                  env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+                    typeof writeNominatorPositionsToD1
+                  >[0],
+                  { rows, coldkeyMaxCapturedAt: cutoffs },
+                  // The declared pass rides the transport (metagraphed-infra#346).
+                  // A queue knows a message was DELIVERED; it does not know whether
+                  // the producer's whole scan arrived, and only the second fact
+                  // catches a load that stopped halfway.
+                  pass,
+                );
             // THE LANE'S OTHER WRITER. Mirrored here as well as on the HTTP
             // path: a mirror that covers one of two writers is a lie the
             // moment traffic takes the other, which is exactly #9728.
