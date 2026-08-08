@@ -11,6 +11,7 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { DEFAULT_LIMIT } from "../../workers/request-params.ts";
 import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import { netuidSchema } from "./shared.ts";
 import { SubnetIdentityHistoryArtifactSchema } from "../routes/subnet-identity-history.ts";
@@ -21,7 +22,12 @@ const RouteQuery_subnets_netuid_identity_history =
 export const GetSubnetIdentityHistoryInputSchema = z
   .object({
     netuid: netuidSchema(),
-    limit: RouteQuery_subnets_netuid_identity_history.shape.limit,
+    // The route defaults this through FEED_PAGINATION and the tool's own
+    // description already says "default 100" -- it just was not in the
+    // schema, so only prose carried it (#10101).
+    limit: RouteQuery_subnets_netuid_identity_history.shape.limit.meta({
+      default: DEFAULT_LIMIT,
+    }),
     offset: RouteQuery_subnets_netuid_identity_history.shape.offset,
     cursor: RouteQuery_subnets_netuid_identity_history.shape.cursor,
   })

@@ -11,6 +11,7 @@
 // REQUIRED (a path param, not a filter), unlike every other filter in this
 // file.
 import { z } from "zod";
+import { PROVIDER_ENDPOINTS_LIMIT_DEFAULT } from "../../src/route-limits.ts";
 import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   McpListArtifactStamp,
@@ -211,7 +212,9 @@ export const ListProviderEndpointsInputSchema = z
     sort: sortSchema(API_QUERY_COLLECTIONS.endpoints.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
-    limit: limitSchema(100).optional(),
+    // 50, not the 20 its two siblings above use: src/provider-endpoints-mcp.ts
+    // clamps with clampToolLimit(args.limit, 50, 100) (#10101).
+    limit: limitSchema(100, PROVIDER_ENDPOINTS_LIMIT_DEFAULT).optional(),
     cursor: numericCursorSchema().optional(),
   })
   .strict();

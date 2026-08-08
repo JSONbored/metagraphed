@@ -1,3 +1,12 @@
+/**
+ * Rows `buildCounterparties` returns when the caller names no limit.
+ *
+ * Named so the MCP tool can PUBLISH it (#10101). It was a bare `20` in the
+ * parameter default, which meant the number existed but no schema could cite
+ * it -- the tool advertised a `limit` and left a caller to discover the
+ * default by counting rows.
+ */
+export const COUNTERPARTIES_LIMIT_DEFAULT = 20;
 // Account counterparty / fund-flow analytics: who one account transacts with,
 // aggregated from the account_events Transfer tier (hotkey = from, coldkey = to,
 // amount_tao). Pure + exported for unit tests; workers/data-api.ts does the
@@ -105,7 +114,7 @@ interface PartyEntry {
 export function buildCounterparties(
   rows: Array<Record<string, unknown>> | null | undefined,
   ss58: string,
-  { limit = 20 }: { limit?: number } = {},
+  { limit = COUNTERPARTIES_LIMIT_DEFAULT }: { limit?: number } = {},
 ): CounterpartiesResult {
   const list = Array.isArray(rows) ? rows : [];
   const byParty = new Map<string, PartyEntry>();
