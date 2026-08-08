@@ -512,6 +512,26 @@ const SURFACE_FAILURE_DAILY_COLUMNS = [
   "updated_at",
 ] as const;
 
+/** blocks_head, read off pragma_table_info 2026-08-07. */
+const BLOCKS_HEAD_COLUMNS = [
+  "block_number",
+  "block_hash",
+  "parent_hash",
+  "extrinsic_count",
+  "observed_at",
+  "event_count",
+  "author",
+] as const;
+
+/** raw_capture_state, read off pragma_table_info 2026-08-07. */
+const RAW_CAPTURE_STATE_COLUMNS = [
+  "network",
+  "last_contiguous_block",
+  "updated_at",
+  "stopped_at",
+  "last_error",
+] as const;
+
 /** subnet_burn_history and tao_usd_index, read off pragma_table_info
  * 2026-08-07. Both are append plans (#9908) -- 12,255 and 1,440 rows a DAY
  * measured, which is what makes a whole-table recopy untenable for them. */
@@ -794,6 +814,53 @@ export const NEON_BACKFILL_PLANS: Readonly<Record<string, BackfillPlan>> = {
     partition: "whole",
     booleans: [],
     freshness: "computed_at",
+  },
+  // The capture lane pair (#10018). Both are written by the firehose Worker
+  // rather than a sync request, so neither has a mirror -- the reconciler is
+  // the only thing that puts them in Neon at all, which is why they are here
+  // before their writer moves.
+  //
+  // blocks_head is APPEND, and it earns that partition rather than being given
+  // it. Both preconditions hold and neither is checkable by the type: the head
+  // poller assigns observed_at at insert, so nothing arrives below the mark,
+  // and a block header is written once and never rewritten.
+  //
+  // It is also UNPRUNED, which is the fact that makes this safe. Every other
+  // append table in this file is a rolling window that needed a matching Neon
+  // prune built first (#9891), or the reconciler reads the pruned tail as a
+  // deficit it can never close. A repo-wide search for a DELETE against
+  // blocks_head finds none -- eight modules read or write it, not one deletes
+  // -- so there is no window to mirror and the copy converges.
+  blocks_head: {
+    table: "blocks_head",
+    columns: BLOCKS_HEAD_COLUMNS,
+    conflict: ["block_number"],
+    keyset: ["block_number"],
+    partition: "append",
+    booleans: [],
+    // block_number IS the cursor, not observed_at. Both would be monotonic,
+    // but the keyset has to BE the primary key -- a keyset that drifts from it
+    // resumes a page from the wrong place and skips rows silently, and the
+    // deficit shrinks without ever reaching zero. observed_at is not in this
+    // table's key, so naming it here would have done exactly that.
+    //
+    // The guard this produces (blocks_head.block_number < EXCLUDED.block_number)
+    // can never fire, and that is correct rather than accidental: block_number
+    // is the whole key, so a conflict means equality, and a conflicting row is
+    // the same block. Same shape as surface_checks.
+    freshness: "block_number",
+  },
+  // Two rows, one per network, rewritten in place on every capture tick. The
+  // whole table IS the unit of work at that size, and updated_at moving is
+  // exactly the signal that a tick happened.
+  raw_capture_state: {
+    table: "raw_capture_state",
+    columns: RAW_CAPTURE_STATE_COLUMNS,
+    conflict: ["network"],
+    keyset: ["network"],
+    partition: "whole",
+    booleans: [],
+    freshness: "updated_at",
   },
 };
 
