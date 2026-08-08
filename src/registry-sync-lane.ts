@@ -21,6 +21,7 @@
 // next one still sees the same moved head. Cost is one conditional request per
 // tick and nothing else: the sha is compared against KV before anything is
 // fetched, so an unchanged main is a single API call.
+import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import {
   buildRegistrySyncPayload,
   isEmptyPayload,
@@ -33,6 +34,7 @@ import {
  * repo's registry, and a wrong value would silently sync someone else's. */
 const REPO = "JSONbored/metagraphed";
 const KV_KEY = "registry-sync:last-synced-sha";
+export const REGISTRY_SYNC_LANE = "registry-sync";
 const API = "https://api.github.com";
 /** Enough for a normal merge; a bulk change beyond this resyncs over several
  * ticks because the cursor only advances on success. */
@@ -127,7 +129,54 @@ export async function runRegistrySyncLane(
   deps: {
     kv?: KvLike | null;
     registrySyncApi?: ServiceLike | null;
+    laneHealthDb?: LaneHealthDb | null;
+    now?: () => number;
   } = {},
+): Promise<RegistrySyncLaneResult> {
+  const result = await runRegistrySyncTick(env, deps);
+  // RECORDED, ALWAYS. A lane whose outcome lives only in a returned object is
+  // a lane nothing watches -- which is exactly how the thing this replaces
+  // went unnoticed from 2026-08-02 until somebody read surface_history by
+  // hand. The durable verdict is the point, not a nicety.
+  //
+  // "no new commits" is the overwhelmingly common outcome and it is `ok`: the
+  // lane did its job by looking. Only a tick that could NOT do its job is
+  // `stale`, which is what a watcher should act on.
+  const bag = (env ?? {}) as Record<string, unknown>;
+  await recordLaneVerdict(
+    deps.laneHealthDb ?? (bag.METAGRAPH_HEALTH_DB as LaneHealthDb | undefined),
+    {
+      lane: REGISTRY_SYNC_LANE,
+      verdict: result.ok ? "ok" : "stale",
+      age_ms: null,
+      detail: laneDetail(result),
+      checked_at: (deps.now ?? Date.now)(),
+    },
+  );
+  return result;
+}
+
+/** One line a human can act on, rather than a JSON blob in a TEXT column. */
+function laneDetail(result: RegistrySyncLaneResult): string {
+  if (!result.ok) {
+    return result.detail
+      ? `${result.reason}: ${result.detail}`
+      : `${result.reason}`;
+  }
+  if (result.reason) return result.reason;
+  const w = result.written ?? {};
+  return (
+    `${result.files ?? 0} file(s): ${w.subnets_written ?? 0} subnet(s), ` +
+    `${w.surfaces_written ?? 0} surface(s), ${w.surfaces_deleted ?? 0} deleted`
+  );
+}
+
+async function runRegistrySyncTick(
+  env: unknown,
+  deps: {
+    kv?: KvLike | null;
+    registrySyncApi?: ServiceLike | null;
+  },
 ): Promise<RegistrySyncLaneResult> {
   const bag = (env ?? {}) as Record<string, unknown>;
   const kv = deps.kv ?? (bag.METAGRAPH_CONTROL as KvLike | undefined);
