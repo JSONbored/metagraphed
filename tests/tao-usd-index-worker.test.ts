@@ -206,7 +206,11 @@ describe("writeTaoUsdIndexRow", () => {
   // to hand the pooled connection back, so writing anyway would leak one
   // connection per minute-cadence tick.
   it("declines, saying why, when no store is bound", async () => {
-    const declined = { inserted: false, skipped: true, reason: "no store bound" };
+    const declined = {
+      inserted: false,
+      skipped: true,
+      reason: "no store bound",
+    };
     await expect(writeTaoUsdIndexRow(env, row)).resolves.toEqual(declined);
     await expect(
       writeTaoUsdIndexRow({ ETH_RPC_URL } as typeof env, row, ctx),

@@ -1,10 +1,22 @@
 // The properties this two-tier reader has to hold: the lakehouse leg is the
-// share-fraction ledger and nothing else, the stake leg is D1's live `neurons`
-// (never the frozen lakehouse copy), the D1 IN-list respects the platform's
-// 100-parameter ceiling, and every failure DECLINES rather than publishing a
-// total that is quietly too small.
+// share-fraction ledger and nothing else, the stake leg is the live `neurons`
+// table (never the frozen lakehouse copy), the IN-list respects the 100-
+// parameter ceiling it was written against, and every failure DECLINES rather
+// than publishing a total that is quietly too small.
 import assert from "node:assert/strict";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// One store since #10170: the stake leg reads `neurons` through
+// src/read-store.ts, which builds `new Client(...)` itself -- this loader takes
+// only `(env, ss58)` and cannot be handed a binding. See
+// tests/helpers/pg-mock.ts for why the seam is a module mock and why the
+// controller is built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   D1_BIND_PARAM_CAP,
   LEDGER_STAMP_MEMO_TTL_MS,
@@ -42,35 +54,38 @@ function failingFetch() {
   }) as unknown as typeof fetch;
 }
 
-/** A D1 stub that records every statement + binding it is handed, and answers
- * from a (hotkey, netuid) -> stake_tao table. `mode` forces the two failure
- * shapes the reader has to survive: a throw, and a malformed body. */
+/** A store stub that records every statement + binding it is handed, and
+ * answers from a (hotkey, netuid) -> stake_tao table. `mode` forces the two
+ * failure shapes the reader has to survive: a throw, and a malformed body.
+ *
+ * The dispatch runs in the double's `onQuery` subscription, which fires before
+ * it consults its canned answers -- and it has to be the subscription rather
+ * than a read-back because every caller destructures `calls` and reads it after
+ * the loader has run. See tests/helpers/pg-mock.ts. */
 function d1Stub(
   stakes: { hotkey: string; netuid: number; stake_tao: number }[],
   mode: "ok" | "throw" | "malformed" = "ok",
 ) {
   const calls: { sql: string; params: unknown[] }[] = [];
-  const db = {
-    prepare(sql: string) {
-      return {
-        bind(...params: unknown[]) {
-          return {
-            async all() {
-              calls.push({ sql, params });
-              if (mode === "throw") throw new Error("d1 down");
-              if (mode === "malformed") return { results: null };
-              return {
-                results: stakes.filter((row) =>
-                  params.includes(row.hotkey),
-                ) as unknown[],
-              };
-            },
-          };
-        },
-      };
-    },
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = null;
+  pg.control.failNext = null;
+  pg.control.onQuery = ({ text, values }) => {
+    calls.push({ sql: text, params: values });
+    if (mode === "throw") {
+      pg.control.failNext = new Error("store down");
+      return;
+    }
+    // readStore cannot manufacture a non-array result, so the malformed shape
+    // is injected: the guard it trips is what stops `results.length` becoming a
+    // TypeError inside a path whose whole job is to decline.
+    pg.control.rows =
+      mode === "malformed"
+        ? ("not-an-array" as never)
+        : (stakes.filter((row) => values.includes(row.hotkey)) as unknown[]);
   };
-  return { calls, env: { ...TOKEN, METAGRAPH_HEALTH_DB: db } };
+  return { calls, env: { ...TOKEN, ...pgMockEnv() } };
 }
 
 function positionRow(hotkey: string, netuid: number, fraction: number) {
@@ -129,7 +144,11 @@ describe("loadAccountPositionsColdTier", () => {
     // The lakehouse holds a frozen `neurons` export too; pricing a live
     // position off it would quietly age every stake_tao in the payload.
     assert.doesNotMatch(s, /neurons/);
-    assert.match(calls[0]!.sql, /FROM neurons WHERE hotkey IN \(\?, \?\)/);
+    // `$n`, not `?`: the loader writes SQLite's `?` and readStore rewrites it
+    // through toPositionalPlaceholders on the way to Postgres. #9821 is what
+    // happens when it does not -- six routes served zero rows because `?`
+    // reached Postgres unrewritten and matched nothing.
+    assert.match(calls[0]!.sql, /FROM neurons WHERE hotkey IN \(\$\d, \$\d\)/);
 
     assert.equal(data!.position_count, 2);
     assert.equal(data!.total_stake_alpha, 60);
@@ -237,7 +256,7 @@ describe("loadAccountPositionsColdTier", () => {
     assert.equal(
       await loadAccountPositionsColdTier(TOKEN as never, COLDKEY),
       null,
-      "no D1 binding is a decline, not an empty join",
+      "no store bound is a decline, not an empty join",
     );
 
     sqlFetch([positionRow(HOTKEY_A, 18, 1)]);

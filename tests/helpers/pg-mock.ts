@@ -69,6 +69,31 @@ export function toQuestionMarks(text: string): string {
 }
 
 /**
+ * One bound value, as node:sqlite can accept it.
+ *
+ * A DRIVER-level type mapping, the same category as `$n` -> `?`, and not a
+ * dialect rewrite. `pg` binds a JS boolean straight into a `boolean` column;
+ * node:sqlite accepts no boolean at all -- it throws "Provided value cannot be
+ * bound to SQLite parameter". So a statement that binds real booleans, which
+ * every producer lane does now that Postgres is the only store (#10112's
+ * storeBoolean always answers `true`/`false`), simply cannot execute against a
+ * SQLite fixture without this. SQLite holds those columns as 0/1 and the
+ * migrations' CHECK constraints are written against 0/1, so the mapping is
+ * exact rather than lossy.
+ *
+ * `undefined` goes to null for the same reason on the other side: `pg` rejects
+ * it outright, and a row merely missing a key is an ordinary shape here.
+ *
+ * THE RECORDED LOG KEEPS THE ORIGINAL VALUES -- this is applied on the way
+ * into the engine only -- so a suite can still assert that a real boolean was
+ * bound, which is the property the coercion would otherwise hide.
+ */
+function toSqliteValue(value: unknown): unknown {
+  if (typeof value === "boolean") return value ? 1 : 0;
+  return value === undefined ? null : value;
+}
+
+/**
  * A `pg` double, answering from `control.db` (a node:sqlite database) or, when
  * there is none, from `control.answers` / `control.rows`.
  *
@@ -122,13 +147,14 @@ export function createPgMock() {
       if (control.rows) return { rows: control.rows };
       if (!control.db) return { rows: [] };
       const statement = control.db.prepare(toQuestionMarks(text));
+      const bound = values.map(toSqliteValue) as never[];
       // node:sqlite refuses `.all()` on a statement that returns nothing and
       // `.run()` on one that does, and the caller here does not know which it
       // has -- src/ issues INSERTs and SELECTs through the same `query`.
       try {
-        return { rows: statement.all(...(values as never[])) };
+        return { rows: statement.all(...bound) };
       } catch {
-        statement.run(...(values as never[]));
+        statement.run(...bound);
         return { rows: [] };
       }
     }
@@ -141,20 +167,55 @@ export function createPgMock() {
     module: {
       Client: MockClient,
       types: { setTypeParser: () => undefined },
-      default: { Client: MockClient, types: { setTypeParser: () => undefined } },
+      default: {
+        Client: MockClient,
+        types: { setTypeParser: () => undefined },
+      },
     },
   };
 }
 
-/** The env every mocked suite needs: a connection string for the selectors to
- * find, and every table declared Neon's so they do not decline. */
-export function pgMockEnv(tables: readonly string[] = ALL_TABLES) {
+/**
+ * The env every mocked suite needs.
+ *
+ * FOUR FLAGS, NOT ONE, and each answers a different question. Leaving any of
+ * them out produces a suite that runs and asserts nothing:
+ *
+ *   HYPERDRIVE               can this isolate reach the store at all
+ *   NEON_SOLE_STORE_TABLES   is Neon the declared owner of these tables
+ *   NEON_READ_LANES          may a READ be served from it
+ *   NEON_DUAL_WRITE_LANES    may a WRITER run for this lane
+ *
+ * The last one is the easiest to miss: without it `mirrorLedgerToNeon` and its
+ * siblings answer `{ attempted: false }`, the queue consumer reads that as a
+ * failed write and retries, and the suite sees a retry it will blame on the
+ * consumer rather than on its own env.
+ */
+export function pgMockEnv(
+  tables: readonly string[] = ALL_TABLES,
+  lanes: readonly string[] = ALL_LANES,
+) {
   return {
     HYPERDRIVE: { connectionString: "postgresql://mock/db" },
     NEON_SOLE_STORE_TABLES: tables.join(","),
     NEON_READ_LANES: tables.join(","),
+    NEON_DUAL_WRITE_LANES: lanes.join(","),
   };
 }
+
+/** Every lane with a Neon writer, matching wrangler's own list. */
+export const ALL_LANES = [
+  "neurons",
+  "nominator-positions",
+  "account-balances",
+  "hotkey-alpha",
+  "validator-nominator-counts",
+  "subnet-hyperparams",
+  "account-identity",
+  "chain-detail",
+  "blocks-head",
+  "raw-capture-state",
+] as const;
 
 /** Every table Neon solely owns, matching wrangler's own list -- so a suite
  * that does not care which tables it touches can just take all of them. */

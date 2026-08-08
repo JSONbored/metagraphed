@@ -221,8 +221,10 @@ test("an empty table is an empty row set, not an error", async () => {
 // is the same property one store later -- a route with no store declines rather
 // than answering an empty set that a caller would read as "no surfaces".
 test("declines with 503 when no store is bound for the route", async () => {
-  const res = await get("?since=0", { ...pgMockEnv(), HYPERDRIVE: undefined } as
-    unknown as Env);
+  const res = await get("?since=0", {
+    ...pgMockEnv(),
+    HYPERDRIVE: undefined,
+  } as unknown as Env);
   assert.equal(res.status, 503);
   assert.equal(
     ((await res.json()) as Row).error,

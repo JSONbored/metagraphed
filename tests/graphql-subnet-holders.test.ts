@@ -20,7 +20,20 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// One store since #10170: the ROUTE/GraphQL/MCP surfaces reach it through
+// src/read-store.ts, which builds `new Client(...)` itself -- there is no
+// binding to hand a request handler any more. The loader assertions below keep
+// passing `d1()` straight in, because `load*(db, ...)` takes a db; only the
+// surface half needs the module mock. See tests/helpers/pg-mock.ts for why it
+// is a module mock and why the controller is built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import { FIELD_COMPLEXITY, SDL, handleGraphQLRequest } from "../src/graphql.ts";
 import { SUBNET_HOLDERS_LIMIT_MAX } from "../src/subnet-holders.ts";
 import { handleRequest } from "../workers/api.ts";
@@ -60,7 +73,11 @@ function d1() {
   };
 }
 
-const env = () => ({ METAGRAPH_HEALTH_DB: d1() }) as unknown as Env;
+/** The surface's env: a connection string for readStore to find, every table
+ * declared Neon's, and the SAME in-memory engine `d1()` reads answering behind
+ * the `pg` double -- so a surface assertion and a loader assertion are looking
+ * at one set of rows. */
+const env = () => ({ ...pgMockEnv() }) as unknown as Env;
 
 async function gql(query: string, e: Env = env()) {
   const res = await handleGraphQLRequest(
@@ -119,6 +136,12 @@ const FULL_QUERY = (netuid: number, limit?: number) => `{
 beforeEach(() => {
   db = new DatabaseSync(":memory:");
   for (const schema of MIGRATIONS) db.exec(schema);
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = null;
+  pg.control.failNext = null;
+  pg.control.onQuery = null;
+  pg.control.db = db;
 });
 
 describe("subnet_holders agrees with REST over the same database", () => {
@@ -200,7 +223,7 @@ describe("subnet_holders declines rather than answering zero", () => {
     assert.deepEqual(card.degraded, { reason: "root_not_in_alpha_map" });
   });
 
-  test("no D1 binding declines rather than erroring", async () => {
+  test("no store bound declines rather than erroring", async () => {
     const body = await gql(FULL_QUERY(NETUID), {} as Env);
     assert.equal(body.errors, undefined);
     assert.deepEqual(((body.data as Row).subnet_holders as Row).degraded, {

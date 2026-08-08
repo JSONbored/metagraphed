@@ -7,7 +7,19 @@
 // 34 hours and produced this issue.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The store is Postgres now (#10170), reached through `new Client(...)` inside
+// src/read-store.ts and src/lane-health-store.ts -- neither of which this
+// watchdog can be handed, because it selects its own store from `env`. Mocking
+// the module is the seam; see tests/helpers/pg-mock.ts for why it is a module
+// mock and why the controller has to be built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS,
   NOMINATOR_POSITIONS_EXPECTED_COLDKEYS,
@@ -26,33 +38,46 @@ const HOUR = 60 * 60_000;
  * unless a case says so. */
 const FULL = NOMINATOR_POSITIONS_EXPECTED_COLDKEYS;
 
+/** The lane's one read, answered from the pg double, plus the env that points
+ * the watchdog at it.
+ *
+ * `queries` and `binds` are LIVE views over the mock's log rather than copies,
+ * because every caller destructures them and reads them after the tick has run
+ * -- a getter would be evaluated once, at destructure time, and freeze empty.
+ *
+ * A thrown `latest` fails the NEXT statement, which is the read: the watchdog
+ * catches it and never reaches the lane_health write. A string is accepted as
+ * well as an Error because a driver rejecting with a bare string is one of the
+ * cases under test. */
 function fakeDb(
-  latest: number | null | Error,
+  latest: number | null | Error | string,
   covered: number = FULL,
   total: number = FULL,
 ) {
   const queries: string[] = [];
   const binds: unknown[][] = [];
-  return {
-    queries,
-    binds,
-    db: {
-      prepare(sql: string) {
-        queries.push(sql);
-        return {
-          bind(...values: unknown[]) {
-            binds.push(values);
-            return {
-              async first() {
-                if (latest instanceof Error) throw latest;
-                return { latest, covered, total };
-              },
-            };
-          },
-        };
-      },
-    },
+  const throws = typeof latest === "string" || latest instanceof Error;
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = throws ? null : [{ latest, covered, total }];
+  pg.control.failNext = throws ? (latest as Error) : null;
+  pg.control.onQuery = (q) => {
+    queries.push(q.text);
+    binds.push(q.values);
   };
+  return { queries, binds, env: pgMockEnv() };
+}
+
+/** A store that answers with no row at all, which is not the same as a row of
+ * nulls: `first()` returns null and the rule has to read that as an empty
+ * table rather than throwing on a property of null. */
+function noRowDb() {
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.failNext = null;
+  pg.control.onQuery = null;
+  pg.control.rows = [];
+  return pgMockEnv();
 }
 
 /** The rule's inputs with everything healthy, so each case overrides only the
@@ -192,18 +217,15 @@ describe("evaluateNominatorPositionsStaleness", () => {
 
 describe("runNominatorPositionsStalenessWatchdog", () => {
   test("a fresh lane reports quiet and records nothing", async () => {
-    const { db, queries } = fakeDb(NOW - HOUR);
+    const { env, queries } = fakeDb(NOW - HOUR);
     const recorded: unknown[] = [];
-    const result = await runNominatorPositionsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      {
-        now: () => NOW,
-        recordException: (async (_env: never, event: unknown) => {
-          recorded.push(event);
-          return true;
-        }) as never,
-      },
-    );
+    const result = await runNominatorPositionsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async (_env: never, event: unknown) => {
+        recorded.push(event);
+        return true;
+      }) as never,
+    });
     assert.equal(result.ok, true);
     assert.equal(result.alerted, false);
     assert.deepEqual(recorded, []);
@@ -220,11 +242,11 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
     // A window spanning the 24h poll interval would merge two consecutive
     // passes into one coverage count, so a truncated pass landing on a complete
     // one would report full coverage -- the bug, restored.
-    const { db, queries, binds } = fakeDb(NOW - HOUR);
-    return runNominatorPositionsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      { now: () => NOW, recordException: (async () => true) as never },
-    ).then(() => {
+    const { env, queries, binds } = fakeDb(NOW - HOUR);
+    return runNominatorPositionsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async () => true) as never,
+    }).then(() => {
       assert.deepEqual(binds[0], [NOMINATOR_POSITIONS_PASS_WINDOW_MS]);
       assert.ok(
         NOMINATOR_POSITIONS_PASS_WINDOW_MS < 24 * HOUR,
@@ -232,27 +254,29 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
       );
       // Counted against the newest stamp, not against `now` -- a lane that is
       // merely late must not also read as uncovered.
+      //
+      // `$n`, not `?`: the watchdog writes SQLite's placeholder and
+      // toPositionalPlaceholders rewrites it on the way to Postgres. #9821 is
+      // what happens when it does not -- six routes served zero rows because a
+      // `?` reached Postgres unrewritten and matched nothing.
       assert.match(
         queries[0]!,
-        /captured_at >= \(SELECT MAX\(captured_at\) FROM nominator_positions\) - \?/,
+        /captured_at >= \(SELECT MAX\(captured_at\) FROM nominator_positions\) - \$\d/,
       );
     });
   });
 
   test("a recent but half-scanned keyspace alerts, naming both counts", async () => {
-    const { db } = fakeDb(NOW - HOUR, 11_800, 24_121);
+    const { env } = fakeDb(NOW - HOUR, 11_800, 24_121);
     const recorded: { error?: Error; route?: string; errorCode?: string }[] =
       [];
-    const result = await runNominatorPositionsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      {
-        now: () => NOW,
-        recordException: (async (_env: never, event: never) => {
-          recorded.push(event);
-          return true;
-        }) as never,
-      },
-    );
+    const result = await runNominatorPositionsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async (_env: never, event: never) => {
+        recorded.push(event);
+        return true;
+      }) as never,
+    });
     assert.equal(result.alerted, true);
     assert.equal(result.reason, "partial");
     assert.equal(result.covered_coldkeys, 11_800);
@@ -267,10 +291,10 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
   });
 
   test("the env coverage-floor and pass-window overrides win over the defaults", async () => {
-    const { db, binds } = fakeDb(NOW - HOUR, 20_000, 24_121);
+    const { env, binds } = fakeDb(NOW - HOUR, 20_000, 24_121);
     const raised = await runNominatorPositionsStalenessWatchdog(
       {
-        METAGRAPH_HEALTH_DB: db,
+        ...env,
         NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS: String(22_000),
         NOMINATOR_POSITIONS_PASS_WINDOW_MS: String(HOUR),
       },
@@ -285,7 +309,7 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
     // documented remedy if the delegating population ever genuinely shrinks.
     const lowered = await runNominatorPositionsStalenessWatchdog(
       {
-        METAGRAPH_HEALTH_DB: fakeDb(NOW - HOUR, 20_000, 24_121).db,
+        ...fakeDb(NOW - HOUR, 20_000, 24_121).env,
         NOMINATOR_POSITIONS_COVERAGE_FLOOR_COLDKEYS: String(15_000),
       },
       { now: () => NOW, recordException: (async () => true) as never },
@@ -297,18 +321,18 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
   test("an uncountable coverage number reads as ZERO, never as covered", async () => {
     // A NaN would compare false against the floor and report a half-scanned
     // keyspace healthy -- the exact direction of failure this closes.
-    const { db } = fakeDb(NOW - HOUR, null as unknown as number, 0);
-    const result = await runNominatorPositionsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      { now: () => NOW, recordException: (async () => true) as never },
-    );
+    const { env } = fakeDb(NOW - HOUR, null as unknown as number, 0);
+    const result = await runNominatorPositionsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async () => true) as never,
+    });
     assert.equal(result.covered_coldkeys, 0);
     assert.equal(result.alerted, true);
     assert.equal(result.reason, "partial");
 
     const junk = fakeDb(NOW - HOUR, "not a number" as unknown as number, 0);
     const nonNumeric = await runNominatorPositionsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: junk.db },
+      { ...junk.env },
       { now: () => NOW, recordException: (async () => true) as never },
     );
     assert.equal(nonNumeric.covered_coldkeys, 0);
@@ -316,19 +340,16 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
   });
 
   test("a stalled lane records ONE exception naming the age and the route it breaks", async () => {
-    const { db } = fakeDb(NOW - 34 * HOUR);
+    const { env } = fakeDb(NOW - 34 * HOUR);
     const recorded: { error?: Error; route?: string; errorCode?: string }[] =
       [];
-    const result = await runNominatorPositionsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      {
-        now: () => NOW,
-        recordException: (async (_env: never, event: never) => {
-          recorded.push(event);
-          return true;
-        }) as never,
-      },
-    );
+    const result = await runNominatorPositionsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async (_env: never, event: never) => {
+        recorded.push(event);
+        return true;
+      }) as never,
+    });
     assert.equal(result.alerted, true);
     assert.equal(recorded.length, 1);
     assert.equal(recorded[0]!.route, "watchdog:nominator-positions-staleness");
@@ -339,28 +360,25 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
   });
 
   test("an empty table alerts with the no-rows wording", async () => {
-    const { db } = fakeDb(null);
+    const { env } = fakeDb(null);
     const recorded: { error?: Error }[] = [];
-    const result = await runNominatorPositionsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      {
-        now: () => NOW,
-        recordException: (async (_env: never, event: never) => {
-          recorded.push(event);
-          return true;
-        }) as never,
-      },
-    );
+    const result = await runNominatorPositionsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async (_env: never, event: never) => {
+        recorded.push(event);
+        return true;
+      }) as never,
+    });
     assert.equal(result.alerted, true);
     assert.equal(result.reason, "no_rows");
     assert.match(String(recorded[0]!.error?.message), /no rows at all/);
   });
 
   test("the env threshold override wins over the default", async () => {
-    const { db } = fakeDb(NOW - 2 * HOUR);
+    const { env } = fakeDb(NOW - 2 * HOUR);
     const result = await runNominatorPositionsStalenessWatchdog(
       {
-        METAGRAPH_HEALTH_DB: db,
+        ...env,
         NOMINATOR_POSITIONS_STALENESS_THRESHOLD_MS: String(HOUR),
       },
       { now: () => NOW, recordException: (async () => true) as never },
@@ -379,30 +397,20 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
       reason: "no store bound",
     });
 
-    const { db } = fakeDb(
-      new Error("D1_ERROR: no such table: nominator_positions"),
+    const { env } = fakeDb(
+      new Error('relation "nominator_positions" does not exist'),
     );
-    const failed = await runNominatorPositionsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      { recordException: (async () => true) as never },
-    );
+    const failed = await runNominatorPositionsStalenessWatchdog(env, {
+      recordException: (async () => true) as never,
+    });
     assert.equal(failed.ok, false);
     assert.equal(failed.reason, "query_failed");
-    assert.match(String(failed.detail), /no such table/);
+    assert.match(String(failed.detail), /does not exist/);
 
-    // A non-Error throw (D1 shims have thrown plain objects before) still
-    // yields a readable detail.
-    const stringThrow = {
-      prepare: () => ({
-        bind: () => ({
-          first: async () => {
-            throw "socket hangup";
-          },
-        }),
-      }),
-    };
+    // A non-Error throw (a driver rejecting with a bare string) still yields
+    // a readable detail rather than "[object Object]".
     const nonError = await runNominatorPositionsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: stringThrow },
+      fakeDb("socket hangup").env,
       { recordException: (async () => true) as never },
     );
     assert.equal(nonError.reason, "query_failed");
@@ -410,26 +418,20 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
   });
 
   test("a null row and a telemetry failure never fail the tick", async () => {
-    const nullRow = {
-      prepare: () => ({ bind: () => ({ first: async () => null }) }),
-    };
-    const empty = await runNominatorPositionsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: nullRow },
-      { now: () => NOW, recordException: (async () => true) as never },
-    );
+    const empty = await runNominatorPositionsStalenessWatchdog(noRowDb(), {
+      now: () => NOW,
+      recordException: (async () => true) as never,
+    });
     assert.equal(empty.ok, true);
     assert.equal(empty.reason, "no_rows");
 
-    const { db } = fakeDb(NOW - 48 * HOUR);
-    const result = await runNominatorPositionsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      {
-        now: () => NOW,
-        recordException: (async () => {
-          throw new Error("posthog down");
-        }) as never,
-      },
-    );
+    const { env } = fakeDb(NOW - 48 * HOUR);
+    const result = await runNominatorPositionsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async () => {
+        throw new Error("posthog down");
+      }) as never,
+    });
     assert.equal(result.ok, true);
     assert.equal(result.alerted, true);
   });
@@ -437,20 +439,17 @@ describe("runNominatorPositionsStalenessWatchdog", () => {
   test("the real recordExceptionEvent default engages and no-ops unconfigured", async () => {
     // No telemetry env configured: the real recorder returns false without
     // touching the network, so the default path is exercisable in-process.
-    const { db } = fakeDb(NOW - 48 * HOUR);
-    const result = await runNominatorPositionsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      { now: () => NOW },
-    );
+    const { env } = fakeDb(NOW - 48 * HOUR);
+    const result = await runNominatorPositionsStalenessWatchdog(env, {
+      now: () => NOW,
+    });
     assert.equal(result.ok, true);
     assert.equal(result.alerted, true);
 
     // The default clock is the real one, so a stamp far in the past is stale
     // without injecting `now`.
     const past = fakeDb(0);
-    const defaults = await runNominatorPositionsStalenessWatchdog({
-      METAGRAPH_HEALTH_DB: past.db,
-    });
+    const defaults = await runNominatorPositionsStalenessWatchdog(past.env);
     assert.equal(defaults.alerted, true);
   });
 });
@@ -488,14 +487,12 @@ describe("the cron string is unique and wired", () => {
   });
 
   test("handleScheduled dispatches to the watchdog and returns its summary", async () => {
-    const { db, queries } = fakeDb(Date.now());
+    const { env, queries } = fakeDb(Date.now());
     const result = (await handleScheduled(
       {
         cron: workerConfig.NOMINATOR_POSITIONS_STALENESS_WATCHDOG_CRON,
       } as unknown as ScheduledController,
-      { METAGRAPH_HEALTH_DB: db } as unknown as Parameters<
-        typeof handleScheduled
-      >[1],
+      env as unknown as Parameters<typeof handleScheduled>[1],
       {} as unknown as ExecutionContext,
     )) as { ok: boolean; alerted: boolean };
     assert.equal(result.ok, true);

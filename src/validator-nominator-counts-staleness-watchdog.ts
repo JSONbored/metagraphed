@@ -255,8 +255,7 @@ export async function runValidatorNominatorCountsStalenessWatchdog(
   // threaded in by hand. Each of those alone is silent -- the lane simply stops
   // reporting, and an absent verdict reads as health.
   const db = readStore(env, ["validator_nominator_counts"]) as unknown as
-    | D1Like
-    | undefined;
+    D1Like | undefined;
   if (!db?.prepare) return { ok: false, reason: "no store bound" };
 
   const thresholdMs =

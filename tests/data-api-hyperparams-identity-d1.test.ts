@@ -1,24 +1,35 @@
-// The subnet-hyperparams + account-identity D1 port (box decommission;
-// migrations/d1/0009_hyperparams_identity.sql), exercised END TO END against
-// a REAL SQLite database through the real Worker fetch handler -- same
-// rationale and harness as tests/data-api-neurons-d1.test.ts.
+// The subnet-hyperparams + account-identity family, exercised END TO END
+// against a REAL SQLite database standing in for Postgres, through the real
+// Worker fetch handler -- same rationale and harness as
+// tests/data-api-neurons-d1.test.ts.
 //
-// Writes are DUAL per #9157 (D1 required, Postgres only while HYPERDRIVE
-// exists) and ignore the tier flags; READS switch per family on
-// METAGRAPH_SUBNET_HYPERPARAMS_SOURCE / METAGRAPH_ACCOUNT_IDENTITY_SOURCE,
-// which this suite leaves unset (i.e. not "postgres") so the D1 read
-// dispatcher serves them. The one behavior beyond the neurons port is the
-// COLD-TIER contract: a D1 table with no rows at all answers 503 so the api
-// worker's tryPostgresTier degrades to null and the serving handler falls
-// through to the lakehouse cold-tier snapshot -- pinned here in both
-// directions (empty table -> 503; populated table with an absent row -> the
-// schema-stable shape).
+// Both families are Neon's outright (#10170): the sync reads its own history
+// table to diff, writes both tables, and REPORTS a failure of either rather
+// than swallowing it, because there is no second store left to have got the
+// rows. The one behavior beyond the neurons lane is the COLD-TIER contract: a
+// table with no rows at all answers 503 so the api worker's tryPostgresTier
+// degrades to null and the serving handler falls through to the lakehouse
+// cold-tier snapshot -- pinned here in both directions (empty table -> 503;
+// populated table with an absent row -> the schema-stable shape).
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, test } from "vitest";
+import { beforeEach, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { sqliteBackedPg } from "./helpers/pg-sqlite.ts";
 import type { Row } from "./row-type.ts";
+
+// The store is Postgres now (#10170), reached through `new Client(...)` inside
+// src/pg-sql.ts and src/neon-write.ts -- neither of which a route caller can
+// inject into, because the caller is `worker.fetch(request, env, ctx)`. Mocking
+// the module is the seam; see tests/helpers/pg-mock.ts for why it is a module
+// mock and not a production export, and why the controller is built inside
+// vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
 
 const { default: worker } = await import("../workers/data-api.ts");
 
@@ -27,59 +38,38 @@ const SCHEMA = fs.readFileSync(
   "utf8",
 );
 
+// The one place the two stores' DDL genuinely differs, and it is load bearing.
+//
+// Both history tables carry `UNIQUE (netuid, observed_at)` /
+// `UNIQUE (account, observed_at)` in Neon (migrations/neon/0003), and that
+// constraint is what FAMILY_MIRROR_PLANS conflicts on -- an ON CONFLICT naming
+// columns with no unique index behind them is a runtime error, not a slower
+// query. The D1 file indexes the same pair non-uniquely, because D1's writer
+// appended without an upsert.
+//
+// So the fixture is the D1 tables plus this, rather than a hand-translation of
+// the Postgres DDL: `BIGINT GENERATED ALWAYS AS IDENTITY` and `BOOLEAN` are not
+// SQLite, and translating 37 columns to assert a two-column constraint would
+// put the fixture further from both schemas rather than closer to either.
+const NEON_HISTORY_UNIQUE = [
+  "CREATE UNIQUE INDEX subnet_hyperparams_history_natural_key" +
+    " ON subnet_hyperparams_history (netuid, observed_at)",
+  "CREATE UNIQUE INDEX account_identity_history_natural_key" +
+    " ON account_identity_history (account, observed_at)",
+];
+
 let db: InstanceType<typeof DatabaseSync>;
-
-/** Real D1 converts boolean binds to INTEGER 1/0; node:sqlite rejects them,
- * so the fake applies the platform's documented conversion. */
-function d1Bind(value: unknown): unknown {
-  if (value === true) return 1;
-  if (value === false) return 0;
-  return value;
-}
-
-function d1() {
-  return {
-    prepare(text: string) {
-      return {
-        bind(...values: unknown[]) {
-          return {
-            text,
-            values: values.map(d1Bind),
-            async all() {
-              return {
-                results: db
-                  .prepare(text)
-                  .all(...(values.map(d1Bind) as never[])),
-              };
-            },
-          };
-        },
-      };
-    },
-    async batch(statements: { text: string; values: unknown[] }[]) {
-      db.exec("BEGIN");
-      try {
-        const results = statements.map((statement) => ({
-          results: db
-            .prepare(statement.text)
-            .all(...(statement.values as never[])),
-        }));
-        db.exec("COMMIT");
-        return results;
-      } catch (err) {
-        db.exec("ROLLBACK");
-        throw err;
-      }
-    },
-  };
-}
 
 const HYPERPARAMS_SECRET = "test-subnet-hyperparams-sync-secret";
 const IDENTITY_SECRET = "test-account-identity-sync-secret";
 
 function env(overrides: Record<string, unknown> = {}): Env {
   return {
-    METAGRAPH_HEALTH_DB: d1(),
+    ...pgMockEnv(),
+    // Both writes run through mirrorFamilyToNeon, which is a no-op unless the
+    // lane is named here -- so a suite that left this out would assert an empty
+    // table and call it a passing write.
+    NEON_DUAL_WRITE_LANES: "subnet-hyperparams,account-identity",
     SUBNET_HYPERPARAMS_SYNC_SECRET: HYPERPARAMS_SECRET,
     ACCOUNT_IDENTITY_SYNC_SECRET: IDENTITY_SECRET,
     ...overrides,
@@ -101,8 +91,13 @@ function req(
   });
 }
 
+/** A ctx with a real `waitUntil`. createPgSql hands the client back through it
+ * from a `finally`, so an object without one turns every successful query into
+ * a TypeError -- silently, because the rejection replaces the result. */
+const ctx = { waitUntil: () => {} } as unknown as ExecutionContext;
+
 async function call(request: Request, envOverride: Env = env()) {
-  return worker.fetch(request, envOverride, {} as unknown as ExecutionContext);
+  return worker.fetch(request, envOverride, ctx);
 }
 
 const one = (sql: string, ...params: unknown[]) =>
@@ -113,6 +108,13 @@ const count = (table: string) =>
 beforeEach(() => {
   db = new DatabaseSync(":memory:");
   db.exec(SCHEMA);
+  for (const index of NEON_HISTORY_UNIQUE) db.exec(index);
+  pg.control.queries.length = 0;
+  pg.control.failNext = null;
+  // Wrapped rather than handed over raw: the sync coerces the nine flag columns
+  // to real booleans for Postgres' BOOLEAN type, and node:sqlite refuses a
+  // boolean bind outright. See tests/helpers/pg-sqlite.ts.
+  pg.control.db = sqliteBackedPg(db);
 });
 
 /** One wire-shape hyperparams row (0/1 ints for the boolean-flag columns,
@@ -196,20 +198,41 @@ async function postIdentity(rows: Row[], envOverride: Env = env()) {
   );
 }
 
-// --- the hyperparams D1 write lane ------------------------------------------
+/**
+ * Wait until the wall clock has moved on.
+ *
+ * A history row's identity is (netuid, observed_at) / (account, observed_at),
+ * and Neon declares that pair UNIQUE (migrations/neon/0003) -- so two
+ * revisions stamped in the same millisecond are ONE row there, where D1's
+ * append-only writer made them two rows ordered by id. Every row of one sync
+ * shares a single `now`, and back-to-back posts in a test finish inside a
+ * millisecond routinely.
+ *
+ * So a test that wants a SECOND revision has to let the clock advance, which
+ * production gets for free -- these syncs are minutes apart. Spinning on
+ * Date.now() rather than sleeping a guessed interval, because the thing being
+ * waited for is exactly "the stamp will differ".
+ */
+async function nextObservedAt() {
+  const started = Date.now();
+  while (Date.now() === started) {
+    await new Promise((resolve) => setTimeout(resolve, 1));
+  }
+}
 
-test("hyperparams sync writes D1-only when HYPERDRIVE is unbound", async () => {
+// --- the hyperparams write lane ---------------------------------------------
+
+test("hyperparams sync writes the family and reports what it did", async () => {
   const res = await postHyperparams([
     hyperparamsSyncRow({ netuid: 8 }),
     hyperparamsSyncRow({ netuid: 9, tempo: 100 }),
   ]);
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
-  assert.deepEqual(body.stores, ["d1"]);
+  assert.deepEqual(body.stores, ["neon"]);
   assert.equal(body.subnet_hyperparams_written, 2);
   // Cold history: every netuid diffs as changed on the first sync.
   assert.equal(body.history_appended, 2);
-  assert.ok((body.d1_statements as number) >= 1);
   const row = one("SELECT * FROM subnet_hyperparams WHERE netuid = 8");
   assert.equal(row.tempo, 360);
   assert.equal(row.registration_allowed, 1, "booleans land as 0/1");
@@ -227,6 +250,7 @@ test("a replayed identical batch appends nothing to history", async () => {
 
 test("a changed value appends exactly one history revision", async () => {
   await postHyperparams([hyperparamsSyncRow()]);
+  await nextObservedAt();
   const res = await postHyperparams([
     hyperparamsSyncRow({ tempo: 99, captured_at: 1_780_000_000_001 }),
   ]);
@@ -239,6 +263,37 @@ test("a changed value appends exactly one history revision", async () => {
     .all() as Row[];
   assert.equal(revisions.length, 2);
   assert.equal(revisions[1].tempo, 99);
+});
+
+test("two revisions inside ONE millisecond are one row, not two", async () => {
+  // The consequence of (netuid, observed_at) being the history's declared
+  // identity in Neon, pinned rather than left to be discovered. D1 appended
+  // without an upsert, so this same pair of posts produced TWO rows there,
+  // ordered by an id the two stores numbered differently -- which is what
+  // migrations/neon/0004 was written about.
+  //
+  // The clock is frozen rather than raced, because the whole subject is what
+  // happens when two syncs share a stamp; a real-time version of this test
+  // would assert one thing or the other depending on scheduling.
+  //
+  // Nothing a reader can see is lost -- the surviving row is the LATER
+  // revision, and the intermediate one existed for under a millisecond -- but
+  // it is a real difference from the D1 era and belongs in writing.
+  vi.useFakeTimers();
+  vi.setSystemTime(1_780_000_500_000);
+  try {
+    await postHyperparams([hyperparamsSyncRow()]);
+    await postHyperparams([
+      hyperparamsSyncRow({ tempo: 99, captured_at: 1_780_000_000_001 }),
+    ]);
+  } finally {
+    vi.useRealTimers();
+  }
+  const revisions = db
+    .prepare("SELECT observed_at, tempo FROM subnet_hyperparams_history")
+    .all() as Row[];
+  assert.equal(revisions.length, 1);
+  assert.equal(revisions[0].tempo, 99, "the later revision is the one kept");
 });
 
 test("a stale replay cannot regress the latest-only table", async () => {
@@ -254,51 +309,65 @@ test("a stale replay cannot regress the latest-only table", async () => {
   );
 });
 
-test("a netuid absent from the batch is pruned; its history survives", async () => {
-  await postHyperparams([
-    hyperparamsSyncRow({ netuid: 8 }),
-    hyperparamsSyncRow({ netuid: 9 }),
-  ]);
-  await postHyperparams([
-    hyperparamsSyncRow({ netuid: 8, captured_at: 1_780_000_000_001 }),
-  ]);
-  assert.equal(count("subnet_hyperparams"), 1);
-  assert.equal(one("SELECT netuid FROM subnet_hyperparams").netuid, 8);
-  assert.equal(
-    count("subnet_hyperparams_history"),
-    2,
-    "the audit trail outlives the deregistration",
-  );
-});
+// A netuid absent from the batch used to be PRUNED from subnet_hyperparams --
+// the D1 writer issued a `DELETE ... WHERE netuid NOT IN (this batch)` and its
+// history was deliberately left behind, so the audit trail outlived the
+// deregistration. Nothing on the Neon path does that: LEDGER/FAMILY mirror
+// plans upsert and never delete, and NEON_PRUNE_PLANS covers only
+// surface_checks and subnet_burn_history. The test for it is deleted rather
+// than rewritten because there is no behaviour left to assert -- see the
+// report accompanying this change; a deregistered subnet now keeps its
+// hyperparameter card forever, with an ageing captured_at as the only signal.
 
-test("hyperparams sync answers 503 with no D1 binding, 502 on a D1 failure", async () => {
-  const noD1 = await postHyperparams(
+test("hyperparams sync answers 503 with no store, 502 when the write fails", async () => {
+  const noStore = await postHyperparams(
     [hyperparamsSyncRow()],
-    env({ METAGRAPH_HEALTH_DB: undefined }),
+    env({ HYPERDRIVE: undefined }),
   );
-  assert.equal(noD1.status, 503);
+  assert.equal(noStore.status, 503);
+  assert.equal(
+    ((await noStore.json()) as Row).error,
+    "no store bound for this route",
+  );
+  // Neon IS the store, so a write it did not accept is the pass's failure --
+  // ok:true here would tell the producer its rows are safe when nothing holds
+  // them. The history read still succeeds (that table is intact), so this is
+  // the WRITE half of the two 502s this route can answer.
   db.exec("DROP TABLE subnet_hyperparams");
   const broken = await postHyperparams([hyperparamsSyncRow()]);
   assert.equal(broken.status, 502);
-  assert.equal(((await broken.json()) as Row).error, "d1 write failed");
+  assert.equal(((await broken.json()) as Row).error, "neon write failed");
 });
 
-// --- the identity D1 write lane ---------------------------------------------
+test("a failed history read is its OWN 502, never a silent empty diff", async () => {
+  // The diff is computed against the latest hash per netuid, so a history read
+  // that fails and is treated as "no prior hashes" would append a revision for
+  // every netuid on every sync -- growing the audit trail without a single
+  // value having changed. It has to decline instead.
+  db.exec("DROP TABLE subnet_hyperparams_history");
+  const res = await postHyperparams([hyperparamsSyncRow()]);
+  assert.equal(res.status, 502);
+  assert.equal(((await res.json()) as Row).error, "history read failed");
+  assert.equal(count("subnet_hyperparams"), 0, "nothing was written first");
+});
 
-test("identity sync writes D1-only, strips NUL bytes, and never prunes", async () => {
+// --- the identity write lane ------------------------------------------------
+
+test("identity sync writes the family, strips NUL bytes, and never prunes", async () => {
   const res = await postIdentity([
     identitySyncRow({ discord: "abc\u0000def" }),
   ]);
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
-  assert.deepEqual(body.stores, ["d1"]);
+  assert.deepEqual(body.stores, ["neon"]);
   assert.equal(body.account_identity_written, 1);
   assert.equal(body.history_appended, 1);
   assert.equal(
     one("SELECT discord FROM account_identity WHERE account = '5Alice'")
       .discord,
     "abcdef",
-    "the NUL strip runs before the D1 write too, keeping both stores identical",
+    "Postgres TEXT rejects an embedded NUL outright, so the strip is what " +
+      "keeps one real chain identity from failing the whole batch",
   );
   // A later batch covering a different account leaves the first in place.
   await postIdentity([identitySyncRow({ account: "5Bob", name: "Bob" })]);
@@ -312,21 +381,25 @@ test("a replayed identical identity batch appends nothing to history", async () 
   assert.equal(count("account_identity_history"), 1);
 });
 
-test("identity sync answers 503 with no D1 binding, 502 on a D1 failure", async () => {
-  const noD1 = await postIdentity(
+test("identity sync answers 503 with no store, 502 when the write fails", async () => {
+  const noStore = await postIdentity(
     [identitySyncRow()],
-    env({ METAGRAPH_HEALTH_DB: undefined }),
+    env({ HYPERDRIVE: undefined }),
   );
-  assert.equal(noD1.status, 503);
+  assert.equal(noStore.status, 503);
+  assert.equal(
+    ((await noStore.json()) as Row).error,
+    "no store bound for this route",
+  );
   db.exec("DROP TABLE account_identity");
   const broken = await postIdentity([identitySyncRow()]);
   assert.equal(broken.status, 502);
-  assert.equal(((await broken.json()) as Row).error, "d1 write failed");
+  assert.equal(((await broken.json()) as Row).error, "neon write failed");
 });
 
-// --- the hyperparams D1 read lane -------------------------------------------
+// --- the hyperparams read lane ----------------------------------------------
 
-test("GET /subnets/:netuid/hyperparameters serves the synced snapshot from D1", async () => {
+test("GET /subnets/:netuid/hyperparameters serves the synced snapshot", async () => {
   await postHyperparams([hyperparamsSyncRow()]);
   const res = await call(req("/api/v1/subnets/8/hyperparameters"));
   assert.equal(res.status, 200);
@@ -354,23 +427,17 @@ test("a COLD hyperparams table answers 503 so the cold-tier fallback runs", asyn
   assert.match(((await res.json()) as Row).error as string, /cold/);
 });
 
-test("flag 'postgres' keeps the read on the Postgres lane", async () => {
-  await postHyperparams([hyperparamsSyncRow()]);
-  const res = await call(
-    req("/api/v1/subnets/8/hyperparameters"),
-    env({ METAGRAPH_SUBNET_HYPERPARAMS_SOURCE: "postgres" }),
-  );
-  // No HYPERDRIVE bound in this suite: the Postgres dispatcher's own 503,
-  // proving the D1 dispatcher did not swallow the route.
-  assert.equal(res.status, 503);
-  assert.equal(
-    ((await res.json()) as Row).error,
-    "hyperdrive binding unavailable",
-  );
-});
+// The per-family METAGRAPH_SUBNET_HYPERPARAMS_SOURCE gate is gone from this
+// dispatcher: it existed to hand the route back to a Postgres tier that no
+// longer exists, and the matcher no longer reads env at all. The test that
+// pinned it is deleted rather than rewritten -- the main Worker still consults
+// the flag to decide whether to FORWARD here, which is a different assertion in
+// a different suite. What replaces it as this route's gate is
+// NEON_READ_ROUTE_TABLES, asserted below.
 
 test("GET /subnets/:netuid/hyperparameters/history pages newest-first with a keyset cursor", async () => {
   await postHyperparams([hyperparamsSyncRow()]);
+  await nextObservedAt();
   await postHyperparams([
     hyperparamsSyncRow({ tempo: 99, captured_at: 1_780_000_000_001 }),
   ]);
@@ -411,9 +478,9 @@ test("hyperparams history: cold table 503s; a populated table's empty page serve
   assert.equal(((await empty.json()) as Row).entry_count, 0);
 });
 
-// --- the identity D1 read lane ----------------------------------------------
+// --- the identity read lane -------------------------------------------------
 
-test("GET /accounts/:ss58/identity serves the synced identity from D1", async () => {
+test("GET /accounts/:ss58/identity serves the synced identity", async () => {
   await postIdentity([identitySyncRow()]);
   const res = await call(req("/api/v1/accounts/5Alice/identity"));
   assert.equal(res.status, 200);
@@ -438,21 +505,12 @@ test("a COLD identity table answers 503 so the cold-tier fallback runs", async (
   assert.equal(res.status, 503);
 });
 
-test("flag 'postgres' keeps the identity read on the Postgres lane", async () => {
-  await postIdentity([identitySyncRow()]);
-  const res = await call(
-    req("/api/v1/accounts/5Alice/identity"),
-    env({ METAGRAPH_ACCOUNT_IDENTITY_SOURCE: "postgres" }),
-  );
-  assert.equal(res.status, 503);
-  assert.equal(
-    ((await res.json()) as Row).error,
-    "hyperdrive binding unavailable",
-  );
-});
+// The identity twin of the deleted hyperparams flag test above, gone for the
+// same reason.
 
 test("GET /accounts/:ss58/identity-history pages newest-first with a keyset cursor", async () => {
   await postIdentity([identitySyncRow()]);
+  await nextObservedAt();
   await postIdentity([
     identitySyncRow({ name: "Alice Labs v2", captured_at: 1_780_000_000_001 }),
   ]);
@@ -473,10 +531,10 @@ test("GET /accounts/:ss58/identity-history pages newest-first with a keyset curs
   assert.equal((page2.entries as Row[])[0].name, "Alice Labs");
 });
 
-test("a matched read without the D1 binding answers 503, and a D1 query failure an opaque 502", async () => {
+test("a matched read with no store answers 503, and a query failure an opaque 502", async () => {
   const noBinding = await call(
     req("/api/v1/subnets/8/hyperparameters"),
-    env({ METAGRAPH_HEALTH_DB: undefined }),
+    env({ HYPERDRIVE: undefined }),
   );
   assert.equal(noBinding.status, 503);
   assert.equal(
@@ -493,6 +551,24 @@ test("a matched read without the D1 binding answers 503, and a D1 query failure 
   );
 });
 
+test("a read route declines unless its OWN table is read-enabled", async () => {
+  // routeStore consults neonServesRoute, which requires every table the route
+  // reads to be named in NEON_READ_LANES. That gate is what stopped an
+  // un-migrated table being served from a store that did not hold it, and with
+  // D1 gone it is the ONLY thing between a route and a 503 -- an unmapped or
+  // un-enabled route no longer quietly stays on an older store, it declines.
+  await postIdentity([identitySyncRow()]);
+  const res = await call(
+    req("/api/v1/accounts/5Alice/identity"),
+    env({ NEON_READ_LANES: "subnet_hyperparams" }),
+  );
+  assert.equal(res.status, 503);
+  assert.equal(
+    ((await res.json()) as Row).error,
+    "no store bound for this route",
+  );
+});
+
 test("identity history: cold table 503s; a populated table's empty page serves", async () => {
   const cold = await call(req("/api/v1/accounts/5Alice/identity-history"));
   assert.equal(cold.status, 503);
@@ -502,95 +578,58 @@ test("identity history: cold table 503s; a populated table's empty page serves",
   assert.equal(((await empty.json()) as Row).entry_count, 0);
 });
 
-// --- the inversion: Neon owns the family, D1 is not written (#10094) --------
+// --- the family moves as a PAIR, or not at all (#10094) --------------------
 //
-// The branch that actually retires this table. Everything above pins the
-// dual-write era; these pin the one after it, where the D1 statements stop
-// being issued at all rather than being written and ignored. An untested
-// inversion is how a "migrated" table keeps a second copy diverging quietly.
+// The gate these routes answer 503 on is neonOwnsFamily: the latest-only table
+// AND its history, both named in NEON_SOLE_STORE_TABLES. It survived the D1
+// teardown because it was never really about which store -- it is about the
+// sync deriving its history rows by reading the CURRENT latest hash out of the
+// history table. A family split across stores would diff against the wrong
+// one and append revisions that already exist, or miss ones that do not.
+//
+// The three tests this replaces asserted the same property from the other
+// side, in the era when the alternative to Neon was a D1 write: "owning only
+// one table still writes D1" is now "owning only one table is refused", which
+// is the same rule with the fallback removed.
 
-/** Env with the family named as Neon's and a Hyperdrive bound. The Neon write
- * itself is not exercised here -- that is hyperparams-identity-neon-write's
- * suite -- so it fails, which is exactly what makes the D1 assertion below
- * meaningful: D1 stays untouched even when the Neon write does not land. */
-function neonOwnsEnv(tables: string) {
-  return env({
-    HYPERDRIVE: { connectionString: "postgresql://example/db" },
-    NEON_SOLE_STORE_TABLES: tables,
-  });
-}
-
-test("hyperparams: Neon owning the family drops the D1 BINDING requirement", async () => {
-  // The assertion that actually distinguishes the branch. With no D1 binding
-  // at all, the pre-inversion handler answered 503 "no store bound for this route"
-  // before doing anything. Once Neon owns the family that requirement is gone,
-  // so reaching ANY other outcome proves the D1 dependency was dropped.
-  //
-  // A count-based assertion looked obvious here and proved nothing: the Neon
-  // history read throws against a fake connection string, so D1 goes unwritten
-  // whether or not the skip exists. Mutating the guard left it green.
+test("hyperparams: a family not declared Neon's has no store, and says so", async () => {
   const res = await postHyperparams(
     [hyperparamsSyncRow({ netuid: 7 })],
-    env({
-      METAGRAPH_HEALTH_DB: undefined,
-      HYPERDRIVE: { connectionString: "postgresql://example/db" },
-      NEON_SOLE_STORE_TABLES: "subnet_hyperparams,subnet_hyperparams_history",
-    }),
-  );
-  assert.notEqual(res.status, 503, "still demanding a D1 binding");
-});
-
-test("hyperparams: WITHOUT the family owned, the D1 binding is still required", async () => {
-  const res = await postHyperparams(
-    [hyperparamsSyncRow({ netuid: 7 })],
-    env({ METAGRAPH_HEALTH_DB: undefined }),
+    env({ NEON_SOLE_STORE_TABLES: "" }),
   );
   assert.equal(res.status, 503);
+  assert.equal(
+    ((await res.json()) as Row).error,
+    "no store bound for this route",
+  );
 });
 
-test("hyperparams: owning only ONE table of the family still writes D1", async () => {
-  // The pair moves together. The sync diffs against the history table's
-  // current hashes, so a family split across stores would diff against the
-  // wrong store and append revisions that already exist.
+test("hyperparams: declaring only ONE table of the family is refused, not half-written", async () => {
   const res = await postHyperparams(
     [hyperparamsSyncRow({ netuid: 8, tempo: 42 })],
-    neonOwnsEnv("subnet_hyperparams"),
+    env({ NEON_SOLE_STORE_TABLES: "subnet_hyperparams" }),
   );
-  assert.equal(res.status, 200);
+  assert.equal(res.status, 503);
   assert.equal(
-    one("SELECT tempo FROM subnet_hyperparams WHERE netuid = 8").tempo,
-    42,
+    count("subnet_hyperparams"),
+    0,
+    "refused before the write, so the card cannot outrun its own history",
   );
 });
 
-test("identity: Neon owning the family drops the D1 BINDING requirement", async () => {
+test("identity: a family not declared Neon's has no store, and says so", async () => {
   const res = await postIdentity(
     [identitySyncRow({ account: "5Inversion" })],
-    env({
-      METAGRAPH_HEALTH_DB: undefined,
-      HYPERDRIVE: { connectionString: "postgresql://example/db" },
-      NEON_SOLE_STORE_TABLES: "account_identity,account_identity_history",
-    }),
-  );
-  assert.notEqual(res.status, 503, "still demanding a D1 binding");
-});
-
-test("identity: WITHOUT the family owned, the D1 binding is still required", async () => {
-  const res = await postIdentity(
-    [identitySyncRow({ account: "5Inversion" })],
-    env({ METAGRAPH_HEALTH_DB: undefined }),
+    env({ NEON_SOLE_STORE_TABLES: "" }),
   );
   assert.equal(res.status, 503);
 });
 
-test("identity: owning only ONE table of the family still writes D1", async () => {
+test("identity: declaring only ONE table of the family is refused, not half-written", async () => {
   const res = await postIdentity(
     [identitySyncRow({ account: "5Partial", name: "y" })],
-    neonOwnsEnv("account_identity"),
+    env({ NEON_SOLE_STORE_TABLES: "account_identity" }),
   );
-  assert.equal(res.status, 200);
-  assert.equal(
-    one("SELECT name FROM account_identity WHERE account = '5Partial'").name,
-    "y",
-  );
+  assert.equal(res.status, 503);
+  assert.equal(count("account_identity"), 0);
 });

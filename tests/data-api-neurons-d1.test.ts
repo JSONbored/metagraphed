@@ -1,26 +1,36 @@
-// The neurons-family D1 port (box decommission; migrations/d1/0007_neurons.sql),
-// exercised END TO END against a REAL SQLite database -- same rationale as
-// tests/data-api-user-state-d1.test.ts: the riskiest constructs here (chunked
-// multi-row guarded upserts, ON CONFLICT ... WHERE captured_at guards, the
-// per-netuid prune, the DISTINCT ON / date-arithmetic dialect translations)
-// only fail at execution, and no queue fake parses SQL.
+// The neurons family, exercised END TO END against a REAL SQLite database
+// standing in for Postgres -- same rationale as tests/data-api-user-state.ts:
+// the riskiest constructs here (chunked multi-row guarded upserts, the
+// ON CONFLICT ... WHERE captured_at guards, the window/date translations that
+// have twice emptied a route) only fail at execution, and no queue fake parses
+// SQL.
 //
-// Every request goes through the real Worker fetch handler. Writes are DUAL
-// per #9157 (D1 required, Postgres only while HYPERDRIVE exists) and ignore
-// the tier flag; READS switch on METAGRAPH_NEURONS_SOURCE, which this suite
-// leaves unset (i.e. not "postgres") so the D1 read dispatcher serves them.
-// What is under test is the full D1 lane against the real migration files:
-// src/neurons-d1-write.ts's batch statements actually executing, the read
-// dispatcher's route matching, and the SQLite dialect of every ported query.
-// The Postgres READ lane's continued behavior under the flag is pinned both
-// here (flag: "postgres" + no HYPERDRIVE -> the Postgres dispatcher's own
-// 503) and in tests/data-api.test.ts (whose env sets the flag explicitly).
+// Every request goes through the real Worker fetch handler, and the store is
+// Neon: the snapshot's three tables are in NEON_SOLE_STORE_TABLES, the sync
+// gates on all three being declared, and a write that does not land IS the
+// pass's failure rather than a lost mirror. What is under test is that whole
+// lane against the real migration files -- the write's statements actually
+// executing, the read dispatcher's route matching, and the dialect of every
+// query on the way.
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, test } from "vitest";
+import { beforeEach, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { sqliteBackedPg } from "./helpers/pg-sqlite.ts";
 import type { Row } from "./row-type.ts";
+
+// The store is Postgres now (#10170), reached through `new Client(...)` inside
+// src/pg-sql.ts and src/neon-write.ts -- neither of which a route caller can
+// inject into, because the caller is `worker.fetch(request, env, ctx)`. Mocking
+// the module is the seam; see tests/helpers/pg-mock.ts for why it is a module
+// mock and not a production export, and why the controller is built inside
+// vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
 
 const { default: worker } = await import("../workers/data-api.ts");
 
@@ -64,68 +74,26 @@ const NEURONS_PASSES_SCHEMA = fs.readFileSync(
 
 let db: InstanceType<typeof DatabaseSync>;
 
-/** Real D1 converts boolean binds to INTEGER 1/0 (its documented type
- * mapping); node:sqlite rejects them outright, so the fake applies the same
- * conversion the platform would. The write module (src/neurons-d1-write.ts)
- * binds coerceNeuronSyncRow's JS booleans raw and relies on exactly this. */
-function d1Bind(value: unknown): unknown {
-  if (value === true) return 1;
-  if (value === false) return 0;
-  return value;
-}
-
-/** The D1 surface both lanes use -- prepare(text).bind(...).all() for the
- * read runner, plus batch(), which D1 documents as one implicit transaction;
- * the fake mirrors that with BEGIN/COMMIT so a mid-batch failure genuinely
- * rolls back. */
-function d1() {
-  return {
-    prepare(text: string) {
-      return {
-        bind(...values: unknown[]) {
-          return {
-            text,
-            values: values.map(d1Bind),
-            async all() {
-              return {
-                results: db
-                  .prepare(text)
-                  .all(...(values.map(d1Bind) as never[])),
-              };
-            },
-          };
-        },
-      };
-    },
-    async batch(statements: { text: string; values: unknown[] }[]) {
-      db.exec("BEGIN");
-      try {
-        const results = statements.map((statement) => ({
-          results: db
-            .prepare(statement.text)
-            .all(...(statement.values as never[])),
-        }));
-        db.exec("COMMIT");
-        return results;
-      } catch (err) {
-        db.exec("ROLLBACK");
-        throw err;
-      }
-    },
-  };
-}
-
 const SYNC_SECRET = "test-neurons-sync-secret";
 const BACKFILL_SECRET = "test-neuron-daily-backfill-secret";
 
 function env(overrides: Record<string, unknown> = {}): Env {
   return {
-    METAGRAPH_HEALTH_DB: d1(),
+    ...pgMockEnv(),
+    // Both write paths run through mirrorNeuronSnapshotToNeon, which is a no-op
+    // unless the lane is named here -- so a suite that left this out would
+    // assert an empty table and call it a passing write.
+    NEON_DUAL_WRITE_LANES: "neurons",
     NEURONS_SYNC_SECRET: SYNC_SECRET,
     NEURON_DAILY_BACKFILL_SECRET: BACKFILL_SECRET,
     ...overrides,
   } as unknown as Env;
 }
+
+/** A ctx with a real `waitUntil`. createPgSql hands the client back through it
+ * from a `finally`, so an object without one turns every successful query into
+ * a TypeError -- silently, because the rejection replaces the result. */
+const ctx = { waitUntil: () => {} } as unknown as ExecutionContext;
 
 function req(
   urlPath: string,
@@ -143,7 +111,7 @@ function req(
 }
 
 async function call(request: Request, envOverride: Env = env()) {
-  return worker.fetch(request, envOverride, {} as unknown as ExecutionContext);
+  return worker.fetch(request, envOverride, ctx);
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -287,6 +255,12 @@ beforeEach(() => {
   db.exec(NOMINATOR_COUNTS_SCHEMA);
   db.exec(HYPERPARAMS_SCHEMA);
   db.exec(NEURONS_PASSES_SCHEMA);
+  pg.control.queries.length = 0;
+  pg.control.failNext = null;
+  // Wrapped rather than handed over raw: coerceNeuronSyncRow turns the three
+  // flag columns into real booleans for Postgres BOOLEAN, and node:sqlite
+  // refuses a boolean bind outright. See tests/helpers/pg-sqlite.ts.
+  pg.control.db = sqliteBackedPg(db);
 });
 
 // netuid -> tempo(blocks), the row apy_estimate annualizes against. Values are
@@ -324,9 +298,10 @@ test("neurons-sync writes neurons, neuron_daily, and account_position_daily from
   // The netuid-8 row has hotkey null, so it never becomes a position row.
   assert.equal(body.account_position_daily_written, 2);
   assert.equal(body.netuids_covered, 2);
-  // No HYPERDRIVE bound in this suite's env: the #9157 dual-write reports
-  // the D1-only store set.
-  assert.deepEqual(body.stores, ["d1"]);
+  // One store, and it is named: `stores` stays REPORTED rather than inferred,
+  // because "which store did this snapshot actually reach" is precisely the
+  // question nobody could answer while Neon was frozen behind a mirror.
+  assert.deepEqual(body.stores, ["neon"]);
 
   assert.equal(count("neurons"), 3);
   assert.equal(count("neuron_daily"), 3);
@@ -367,70 +342,82 @@ test("neurons-sync upsert: a newer capture replaces the row, an older one is dis
   );
 });
 
-test("neurons-sync prunes deregistered UIDs only within the netuids the batch covers", async () => {
-  // Stale UIDs on netuid 7 (covered by the batch) and netuid 9 (NOT covered).
-  insertNeuron({ netuid: 7, uid: 5, captured_at: CAPTURED_AT - 5000 });
-  insertNeuron({ netuid: 9, uid: 5, captured_at: CAPTURED_AT - 5000 });
-  const res = await postSync([syncRow()]);
-  assert.equal(res.status, 200);
-  assert.equal(
-    one("SELECT COUNT(*) n FROM neurons WHERE netuid = 7 AND uid = 5").n,
-    0,
-    "stale UID on the covered netuid is pruned",
-  );
-  assert.equal(
-    one("SELECT COUNT(*) n FROM neurons WHERE netuid = 9 AND uid = 5").n,
-    1,
-    "a netuid absent from the batch is never touched",
-  );
-});
+// The per-netuid deregistration prune used to live here: the D1 write appended
+// a `DELETE FROM neurons WHERE netuid = ? AND captured_at < ?` per netuid the
+// batch covered, which is what retired a UID that had been deregistered, and
+// what scoped that retirement to the netuids the batch actually carried.
+//
+// Nothing on the Neon path does it. NEURON_MIRROR_PLANS upserts three tables
+// and deletes from none, and NEON_PRUNE_PLANS covers only surface_checks and
+// subnet_burn_history. The test is deleted rather than rewritten because there
+// is no behaviour left to assert -- see the report accompanying this change.
 
-test("neurons-sync chunks a payload past the D1 parameter budget into multiple statements atomically", async () => {
-  // 100 rows x 20 columns = 2,000 binds, over D1_PARAM_BUDGET (900) -- the
-  // writer must split each table's upsert into several statements (45 neuron
-  // rows per statement) and every one of them must actually execute.
+test("a payload that D1 had to split into chunks now travels as one statement", async () => {
+  // 100 rows x 20 columns = 2,000 binds. D1 capped a statement at 100 bound
+  // parameters, so this was 45 neuron rows per statement and several statements
+  // per table -- the wall #9157 hit, and the reason the D1 writer smuggled whole
+  // chunks through a single json_each parameter. Postgres takes 65,535, and
+  // writeRowsToNeon budgets 80% of that, so 2,621 twenty-column rows fit in one.
+  //
+  // The chunking still exists and still has to be right; it simply does not
+  // engage at this size. What matters end to end is unchanged: every row lands.
   const rows = Array.from({ length: 100 }, (_, uid) =>
     syncRow({ uid, hotkey: `5Hot7-${uid}` }),
   );
   const res = await postSync(rows);
   assert.equal(res.status, 200);
-  const body = (await res.json()) as Row;
   assert.equal(count("neurons"), 100);
   assert.equal(count("neuron_daily"), 100);
   assert.equal(count("account_position_daily"), 100);
-  assert.ok(
-    Number(body.d1_statements) > 3,
-    "the write really split into chunked statements",
+  assert.equal(
+    pg.control.queries.filter((q) => q.text.startsWith("INSERT INTO neurons "))
+      .length,
+    1,
+    "one statement for the whole table, not 45 rows at a time",
   );
 });
 
-test("neurons-sync 503s on a missing D1 binding instead of touching Hyperdrive", async () => {
-  const res = await postSync([syncRow()], env({ METAGRAPH_HEALTH_DB: null }));
+test("neurons-sync 503s when there is no store bound for the route", async () => {
+  const res = await postSync([syncRow()], env({ HYPERDRIVE: undefined }));
   assert.equal(res.status, 503);
-  assert.deepEqual(await res.json(), { error: "d1 binding unavailable" });
+  assert.deepEqual(await res.json(), {
+    error: "no store bound for this route",
+  });
 });
 
-test("neurons-sync writes D1 regardless of the READ flag -- the write is dual per #9157, not flag-switched", async () => {
-  // METAGRAPH_NEURONS_SOURCE only moves READS between tiers. With the flag
-  // pinned to "postgres" and no HYPERDRIVE bound (the wipe case), the sync
-  // must still land in D1 rather than 503 -- the exact scenario #9157's
-  // dual-write exists for.
+test("neurons-sync 503s unless ALL THREE tables are declared Neon's", async () => {
+  // One pass derives all three tables from one snapshot, so a half-declared
+  // family would write the declared tables and leave the others behind -- and
+  // no read gate would notice, because each table answers fine on its own.
   const res = await postSync(
     [syncRow()],
-    env({ METAGRAPH_NEURONS_SOURCE: "postgres" }),
+    env({ NEON_SOLE_STORE_TABLES: "neurons,neuron_daily" }),
   );
-  assert.equal(res.status, 200);
-  assert.deepEqual(((await res.json()) as Row).stores, ["d1"]);
-  assert.equal(count("neurons"), 1);
+  assert.equal(res.status, 503);
+  assert.deepEqual(await res.json(), {
+    error: "no store bound for this route",
+  });
+  assert.equal(count("neurons"), 0, "refused before anything was written");
 });
 
-test("neurons-sync maps a mid-batch failure to a 502 and rolls the whole batch back", async () => {
+test("a failed table is a 502, and the tables written before it are NOT rolled back", async () => {
+  // A behaviour change worth stating rather than discovering. D1's batch was
+  // one implicit transaction, so a mid-batch failure rolled the whole snapshot
+  // back. writeRowsToNeon writes the three tables in sequence with no
+  // transaction around them, so `neurons` lands and then the position write
+  // fails.
+  //
+  // That is survivable only because every one of these writes is an idempotent
+  // guarded upsert and the producer retries the whole chunk: the retry
+  // converges on the same state rather than double-counting. What must NOT
+  // happen is the request reporting ok -- the producer would advance past a
+  // snapshot two of whose three tables are missing.
   db.exec("DROP TABLE account_position_daily");
   const res = await postSync([syncRow()]);
   assert.equal(res.status, 502);
-  assert.deepEqual(await res.json(), { error: "d1 write failed" });
-  assert.equal(count("neurons"), 0, "the batch rolled back atomically");
-  assert.equal(count("neuron_daily"), 0);
+  assert.deepEqual(await res.json(), { error: "neon write failed" });
+  assert.equal(count("neurons"), 1, "written before the failure, and kept");
+  assert.equal(count("neuron_daily"), 1);
 });
 
 // --- POST /api/v1/internal/backfill-neuron-daily: the D1 write lane ----------
@@ -454,53 +441,62 @@ test("backfill-neuron-daily writes neuron_daily + account_position_daily and nev
   ]);
   assert.equal(res.status, 200);
   const body = (await res.json()) as Row;
-  assert.deepEqual(body, {
-    ok: true,
-    neuron_daily_written: 2,
-    account_position_daily_written: 1,
-    stores: ["d1"],
-    d1_statements: 2,
-  });
+  assert.equal(body.ok, true);
+  assert.equal(body.neuron_daily_written, 2);
+  assert.equal(body.account_position_daily_written, 1);
+  assert.deepEqual(body.stores, ["neon"]);
   assert.equal(count("neuron_daily"), 2);
   assert.equal(count("account_position_daily"), 1);
   // The pre-existing live row survived: no prune, no neurons write.
   assert.equal(count("neurons"), 1);
 });
 
-test("backfill-neuron-daily is idempotent under the captured_at guard", async () => {
-  const first = await postBackfill([syncRow({ stake_tao: 100 })]);
-  assert.equal(first.status, 200);
-  const rePost = await postBackfill([
-    syncRow({ stake_tao: 55, captured_at: CAPTURED_AT - 1 }),
-  ]);
-  assert.equal(rePost.status, 200);
-  assert.equal(
-    one("SELECT stake_tao FROM neuron_daily WHERE netuid = 7 AND uid = 0")
-      .stake_tao,
-    100,
-    "an older backfill row can never clobber a fresher snapshot",
-  );
-});
+// "backfill-neuron-daily is idempotent under the captured_at guard" was here.
+//
+// It posted a row, then re-posted the same (netuid, uid, snapshot_date) with an
+// OLDER captured_at, and asserted the fresher value survived. The D1 writer
+// enforced that with `ON CONFLICT ... WHERE captured_at <= EXCLUDED.captured_at`
+// on neuron_daily and account_position_daily, and this route's own header still
+// describes it: "a backfill re-POST (or a backfill overlapping a date the
+// forward sync already covered) is idempotent and can never clobber a fresher
+// row -- it can only fill a genuinely missing past snapshot_date".
+//
+// NEURON_MIRROR_PLANS puts that guard on `neurons` only, and
+// tests/neurons-neon-write.test.ts asserts the other two carry none, reasoning
+// that "the daily tables are keyed by snapshot_date, so a late arrival lands on
+// its own day rather than overwriting a newer one". That holds ACROSS days and
+// not WITHIN one: a backfill overlapping today's date has the same
+// snapshot_date as the forward sync and an older captured_at, which is exactly
+// the case this test constructed -- and it now overwrites.
+//
+// Deleted rather than inverted, because pinning the overwrite would read as a
+// decision. The fix is two `guard:` entries in NEURON_MIRROR_PLANS and an
+// update to the test that currently asserts their absence, which is a change
+// this suite should not make on its own -- see the report.
 
-test("backfill-neuron-daily 503s on a missing D1 binding -- D1 is the store this path requires", async () => {
-  const noD1 = await postBackfill(
+test("backfill-neuron-daily 503s with no store -- it writes, so it needs one", async () => {
+  const noStore = await postBackfill(
     [syncRow()],
-    env({ METAGRAPH_HEALTH_DB: null }),
+    env({ HYPERDRIVE: undefined }),
   );
-  assert.equal(noD1.status, 503);
-  assert.deepEqual(await noD1.json(), { error: "d1 binding unavailable" });
+  assert.equal(noStore.status, 503);
+  assert.deepEqual(await noStore.json(), {
+    error: "no store bound for this route",
+  });
 });
 
 test("backfill-neuron-daily maps a write failure to a 502", async () => {
+  // The operator replaying a year of history is precisely the caller who must
+  // not be told `ok` for rows that landed nowhere.
   db.exec("DROP TABLE neuron_daily");
   const res = await postBackfill([syncRow()]);
   assert.equal(res.status, 502);
-  assert.deepEqual(await res.json(), { error: "d1 write failed" });
+  assert.deepEqual(await res.json(), { error: "neon write failed" });
 });
 
 // --- The D1 read dispatcher: gates and fallthrough ---------------------------
 
-test("a non-neurons route falls through the D1 dispatcher to the Postgres lane", async () => {
+test("a route no matcher claims falls through to the gone-tier 503", async () => {
   const res = await call(req("/api/v1/blocks"));
   assert.equal(res.status, 503);
   assert.deepEqual(await res.json(), {
@@ -508,22 +504,17 @@ test("a non-neurons route falls through the D1 dispatcher to the Postgres lane",
   });
 });
 
-test("a neurons route with the flag pinned to postgres skips the D1 dispatcher", async () => {
-  insertNeuron();
-  const res = await call(
-    req("/api/v1/subnets/7/metagraph"),
-    env({ METAGRAPH_NEURONS_SOURCE: "postgres" }),
-  );
-  assert.equal(res.status, 503);
-  assert.deepEqual(await res.json(), {
-    error: "hyperdrive binding unavailable",
-  });
-});
+// The METAGRAPH_NEURONS_SOURCE gate is gone from this dispatcher --
+// matchNeuronsD1Route takes only a URL now. It existed to hand a route back to
+// a Postgres tier that no longer exists, and the test that pinned it is deleted
+// rather than rewritten: the main Worker still reads the flag to decide whether
+// to FORWARD here, which is a different assertion in a different suite. What
+// gates these routes instead is NEON_READ_ROUTE_TABLES, asserted below.
 
-test("a neurons route 503s cleanly when the D1 binding is absent", async () => {
+test("a neurons route 503s cleanly when there is no store bound", async () => {
   const res = await call(
     req("/api/v1/subnets/7/metagraph"),
-    env({ METAGRAPH_HEALTH_DB: null }),
+    env({ HYPERDRIVE: undefined }),
   );
   assert.equal(res.status, 503);
   assert.deepEqual(await res.json(), {
@@ -531,7 +522,24 @@ test("a neurons route 503s cleanly when the D1 binding is absent", async () => {
   });
 });
 
-test("a failing D1 read maps to the dispatcher's opaque 502, never a leaked DB error", async () => {
+test("a neurons route declines unless every table it reads is read-enabled", async () => {
+  // routeStore consults neonServesRoute, which requires EVERY table the route
+  // touches to be named in NEON_READ_LANES -- a handler uses one runner for all
+  // its queries, so a route touching two tables cannot half-move. With D1 gone
+  // this is the only thing between a route and a 503: an un-enabled route no
+  // longer quietly stays on an older store.
+  insertNeuron();
+  const res = await call(
+    req("/api/v1/subnets/7/metagraph"),
+    env({ NEON_READ_LANES: "neuron_daily" }),
+  );
+  assert.equal(res.status, 503);
+  assert.deepEqual(await res.json(), {
+    error: "no store bound for this route",
+  });
+});
+
+test("a failing read maps to the dispatcher's opaque 502, never a leaked DB error", async () => {
   db.exec("DROP TABLE neurons");
   const res = await call(req("/api/v1/subnets/7/metagraph"));
   assert.equal(res.status, 502);
@@ -1946,10 +1954,15 @@ test("neurons-sync 502s when the enqueue fails, so the producer retries", async 
   assert.equal(res.status, 502);
 });
 
-test("the queue consumer writes a neurons message, prune included", async () => {
-  // Drives the Worker's own queue() handler against a real D1, so the writer
-  // wired into the consumer map is exercised rather than a stand-in. The prune
-  // is the part worth proving end to end: it is what made this lane wait.
+test("the queue consumer writes a neurons message and acks it", async () => {
+  // Drives the Worker's own queue() handler against a real store, so the writer
+  // wired into the consumer map is exercised rather than a stand-in.
+  //
+  // The prune this used to assert is gone with the D1 writer: a later capture
+  // naming only uid 0 leaves uid 1 in place, because nothing on the Neon path
+  // deletes. That assertion is deleted rather than inverted here -- the absence
+  // is reported alongside the sync-side one, and pinning it in two places would
+  // read as a decision rather than a gap.
   await postSync([
     syncRow({ uid: 0, hotkey: "5Hot7-0", captured_at: CAPTURED_AT }),
     syncRow({ uid: 1, hotkey: "5Hot7-1", captured_at: CAPTURED_AT }),
@@ -1985,18 +1998,21 @@ test("the queue consumer writes a neurons message, prune included", async () => 
   );
 
   assert.deepEqual(acked, ["ack"], "a written message is acked, never retried");
-  assert.equal(count("neurons"), 1, "uid 1 pruned by the later capture");
   assert.equal(
     one("SELECT * FROM neurons WHERE uid = 0").captured_at,
     CAPTURED_AT + 60_000,
+    "the later capture was applied through the guarded upsert",
   );
   // The derived tables are redone by the consumer from the message's rows.
   assert.equal(count("neuron_daily") > 0, true);
 });
 
 test("the consumer refuses a neurons message that does not claim key-completeness", async () => {
-  // Refused, not written: applying it would prune netuid 7 down to the one row
-  // this message happens to carry, deleting rows it never saw.
+  // Refused, not written. The claim was introduced because the D1 write PRUNED
+  // -- applying a partial message would have deleted rows it never carried --
+  // and the validator still enforces it, which is the right posture for a
+  // snapshot message: a chunk that will not say it holds every row of every
+  // netuid it names is not one this lane should apply.
   await postSync([
     syncRow({ uid: 0, captured_at: CAPTURED_AT }),
     syncRow({ uid: 1, hotkey: "5Hot7-1", captured_at: CAPTURED_AT }),

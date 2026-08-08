@@ -139,12 +139,16 @@ function envWith(over: Record<string, unknown> = {}) {
     METAGRAPH_ARCHIVE: {
       put: async (k: string, v: string) => void puts.set(k, v),
     },
-    // BOTH flags, and they are not interchangeable. The lane's own refusal
-    // gate reads NEON_SOLE_STORE_TABLES ("is there a durable watermark at
-    // all"), while the WRITE inside mirrorRawCaptureStateToNeon is gated on
-    // NEON_DUAL_WRITE_LANES ("should this lane mirror"). Declaring only the
-    // first would let the lane run and silently never persist anything.
     ...pgMockEnv(),
+    // Narrowed to this lane, and stated here rather than left to the helper,
+    // because the two flags are NOT interchangeable and this lane is where
+    // that bites: the refusal gate reads NEON_SOLE_STORE_TABLES ("is there a
+    // durable watermark at all") while the write inside
+    // mirrorRawCaptureStateToNeon is gated on NEON_DUAL_WRITE_LANES ("may this
+    // lane write"). Declare only the first and the lane runs, reports ok, and
+    // silently never persists a watermark -- so every tick re-captures from
+    // the genesis floor. Verified: dropping this line alone turns the
+    // resume-from-the-watermark test below into a 5-block re-capture.
     NEON_DUAL_WRITE_LANES: "raw-capture-state",
     ...over,
   };

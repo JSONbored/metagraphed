@@ -191,16 +191,13 @@ describe("runNeuronsStalenessWatchdog", () => {
   test("a fresh lane reports quiet and records nothing", async () => {
     const { env } = fakeDb(NOW - 5 * 60_000);
     const recorded: unknown[] = [];
-    const result = await runNeuronsStalenessWatchdog(
-      env,
-      {
-        now: () => NOW,
-        recordException: (async (_env: never, event: unknown) => {
-          recorded.push(event);
-          return true;
-        }) as never,
-      },
-    );
+    const result = await runNeuronsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async (_env: never, event: unknown) => {
+        recorded.push(event);
+        return true;
+      }) as never,
+    });
     assert.equal(result.ok, true);
     assert.equal(result.alerted, false);
     assert.deepEqual(recorded, []);
@@ -211,10 +208,10 @@ describe("runNeuronsStalenessWatchdog", () => {
     // coverage count, letting a half-scanned pass on top of a complete one
     // report full coverage -- the bug this closes.
     const { env, queries, binds } = fakeDb(NOW - 5 * 60_000);
-    return runNeuronsStalenessWatchdog(
-      env,
-      { now: () => NOW, recordException: (async () => true) as never },
-    ).then(() => {
+    return runNeuronsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async () => true) as never,
+    }).then(() => {
       assert.deepEqual(binds[0], [NEURONS_PASS_WINDOW_MS]);
       assert.ok(
         NEURONS_PASS_WINDOW_MS < 15 * 60_000,
@@ -239,16 +236,13 @@ describe("runNeuronsStalenessWatchdog", () => {
     const { env } = fakeDb(NOW - 5 * 60_000, 64, 129);
     const recorded: { error?: Error; route?: string; errorCode?: string }[] =
       [];
-    const result = await runNeuronsStalenessWatchdog(
-      env,
-      {
-        now: () => NOW,
-        recordException: (async (_env: never, event: never) => {
-          recorded.push(event);
-          return true;
-        }) as never,
-      },
-    );
+    const result = await runNeuronsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async (_env: never, event: never) => {
+        recorded.push(event);
+        return true;
+      }) as never,
+    });
     assert.equal(result.alerted, true);
     assert.equal(result.reason, "partial");
     assert.equal(result.covered_netuids, 64);
@@ -293,10 +287,10 @@ describe("runNeuronsStalenessWatchdog", () => {
     // A NaN would compare false against the floor and report a half-scanned
     // network healthy -- the exact direction of failure this closes.
     const { env } = fakeDb(NOW - 5 * 60_000, null as unknown as number, 0);
-    const result = await runNeuronsStalenessWatchdog(
-      env,
-      { now: () => NOW, recordException: (async () => true) as never },
-    );
+    const result = await runNeuronsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async () => true) as never,
+    });
     assert.equal(result.covered_netuids, 0);
     assert.equal(result.alerted, true);
     assert.equal(result.reason, "partial");
@@ -318,16 +312,13 @@ describe("runNeuronsStalenessWatchdog", () => {
     const { env } = fakeDb(NOW - 3 * 60 * 60_000);
     const recorded: { error?: Error; route?: string; errorCode?: string }[] =
       [];
-    const result = await runNeuronsStalenessWatchdog(
-      env,
-      {
-        now: () => NOW,
-        recordException: (async (_env: never, event: never) => {
-          recorded.push(event);
-          return true;
-        }) as never,
-      },
-    );
+    const result = await runNeuronsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async (_env: never, event: never) => {
+        recorded.push(event);
+        return true;
+      }) as never,
+    });
     assert.equal(result.alerted, true);
     assert.equal(recorded.length, 1);
     assert.equal(recorded[0].route, "watchdog:neurons-staleness");
@@ -339,16 +330,13 @@ describe("runNeuronsStalenessWatchdog", () => {
   test("an empty table alerts with the no-rows wording", async () => {
     const { env } = fakeDb(null);
     const recorded: { error?: Error }[] = [];
-    const result = await runNeuronsStalenessWatchdog(
-      env,
-      {
-        now: () => NOW,
-        recordException: (async (_env: never, event: never) => {
-          recorded.push(event);
-          return true;
-        }) as never,
-      },
-    );
+    const result = await runNeuronsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async (_env: never, event: never) => {
+        recorded.push(event);
+        return true;
+      }) as never,
+    });
     assert.equal(result.alerted, true);
     assert.equal(result.reason, "no_rows");
     assert.match(String(recorded[0].error?.message), /no rows at all/);
@@ -373,14 +361,13 @@ describe("runNeuronsStalenessWatchdog", () => {
       ok: false,
       reason: "no store bound",
     });
-    const { env } = fakeDb(new Error("D1_ERROR: no such table: neurons"));
-    const result = await runNeuronsStalenessWatchdog(
-      env,
-      { recordException: (async () => true) as never },
-    );
+    const { env } = fakeDb(new Error('relation "neurons" does not exist'));
+    const result = await runNeuronsStalenessWatchdog(env, {
+      recordException: (async () => true) as never,
+    });
     assert.equal(result.ok, false);
     assert.equal(result.reason, "query_failed");
-    assert.match(String(result.detail), /no such table/);
+    assert.match(String(result.detail), /does not exist/);
 
     // A non-Error throw (a driver rejecting with a bare string) still yields a
     // readable detail rather than "[object Object]".
@@ -394,15 +381,12 @@ describe("runNeuronsStalenessWatchdog", () => {
 
   test("a telemetry failure never fails the tick", async () => {
     const { env } = fakeDb(NOW - 2 * 60 * 60_000);
-    const result = await runNeuronsStalenessWatchdog(
-      env,
-      {
-        now: () => NOW,
-        recordException: (async () => {
-          throw new Error("posthog down");
-        }) as never,
-      },
-    );
+    const result = await runNeuronsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async () => {
+        throw new Error("posthog down");
+      }) as never,
+    });
     assert.equal(result.ok, true);
     assert.equal(result.alerted, true);
   });
@@ -411,10 +395,7 @@ describe("runNeuronsStalenessWatchdog", () => {
     // No telemetry env configured: the real recorder returns false without
     // touching the network, so the default path is exercisable in-process.
     const { env } = fakeDb(NOW - 2 * 60 * 60_000);
-    const result = await runNeuronsStalenessWatchdog(
-      env,
-      { now: () => NOW },
-    );
+    const result = await runNeuronsStalenessWatchdog(env, { now: () => NOW });
     assert.equal(result.ok, true);
     assert.equal(result.alerted, true);
   });
@@ -427,9 +408,7 @@ describe("handleScheduled NEURONS_STALENESS_WATCHDOG_CRON", () => {
       {
         cron: workerConfig.NEURONS_STALENESS_WATCHDOG_CRON,
       } as unknown as ScheduledController,
-      env as unknown as Parameters<
-        typeof handleScheduled
-      >[1],
+      env as unknown as Parameters<typeof handleScheduled>[1],
       {} as unknown as ExecutionContext,
     )) as { ok: boolean; alerted: boolean };
     assert.equal(result.ok, true);

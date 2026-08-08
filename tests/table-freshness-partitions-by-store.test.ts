@@ -142,10 +142,11 @@ describe("the freshness sweep", () => {
       { match: `FROM ${OWNED}`, rows: [{ t: OWNED, mx: NOW - 1_000 }] },
     ];
     const lane = verdicts();
-    await runTableFreshnessWatchdog(
-      { ...pgMockEnv([OWNED]) } as never,
-      { spec: SPEC, now: () => NOW, laneHealthDb: lane.db },
-    );
+    await runTableFreshnessWatchdog({ ...pgMockEnv([OWNED]) } as never, {
+      spec: SPEC,
+      now: () => NOW,
+      laneHealthDb: lane.db,
+    });
     const insert = lane.written.find((call) =>
       call.sql.startsWith("INSERT INTO lane_health"),
     );

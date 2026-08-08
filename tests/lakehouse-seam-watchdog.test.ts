@@ -1,8 +1,8 @@
 // The decode-lane watchdog (#9161), tested without a lakehouse.
 //
 // Runs as a WORKER CRON, not a GitHub Action (#9164): the check needs
-// R2_SQL_TOKEN, the METAGRAPH_ARCHIVE bucket and the D1 binding, and this
-// Worker already holds all three.
+// R2_SQL_TOKEN, the METAGRAPH_ARCHIVE bucket and the store holding
+// raw_capture_state, and this Worker already holds all three.
 //
 // It used to compare a CONSTANT against `max(chain.blocks)`. That question is
 // obsolete now that the constant is only a floor and the seam follows the
@@ -42,7 +42,12 @@ import {
 const NOW = Date.UTC(2026, 7, 3, 12, 0, 0);
 const HI = 8_762_000;
 
-beforeEach(() => resetDecodeWatermarkCache());
+beforeEach(() => {
+  resetDecodeWatermarkCache();
+  pg.control.answers = [];
+  pg.control.failNext = null;
+  pg.control.queries.length = 0;
+});
 
 /** A completely healthy tick: fresh watermark, capture just ahead, a
  * contiguous lakehouse that backs the watermark exactly. */
@@ -216,7 +221,7 @@ describe("the decode-lane rule", () => {
 
   test("independent failures are reported together, not one at a time", () => {
     // Reporting only the first would turn one investigation into four. This is
-    // the 2026-08-03 production shape with the D1 read also failing: nothing
+    // the 2026-08-03 production shape with the store read also failing: nothing
     // published, the capture unmeasurable, a gap in the range, and a lakehouse
     // that has decoded 2,664 blocks past the frozen floor.
     const { reasons } = evaluateDecodeSeam(
@@ -259,16 +264,38 @@ describe("the decode-lane rule", () => {
   });
 });
 
-/** A Worker env with a bucket, a D1 and (optionally) a watermark body. */
+/**
+ * A Worker env with a bucket, a store and (optionally) a watermark body.
+ *
+ * The store half is a canned ANSWER on the pg module double rather than a
+ * binding: `capturedThrough` resolves its own handle through `readStore` and
+ * then runs the capture lane's OWN `watermarkRead` against it, so the seam a
+ * test can reach is the driver, not the argument. The env and the answer are
+ * set together here because they are one fixture -- an env declaring the table
+ * Neon's while the double answers nothing would be a different test.
+ */
 function env(
   opts: {
     body?: unknown;
     captured?: number | null;
-    d1Throws?: boolean;
+    storeThrows?: boolean;
     noBucket?: boolean;
-    noDb?: boolean;
+    noStore?: boolean;
   } = {},
 ) {
+  pg.control.queries.length = 0;
+  pg.control.failNext = opts.storeThrows ? new Error("store cold") : null;
+  pg.control.answers = [
+    {
+      match: "raw_capture_state",
+      rows: [
+        {
+          last_contiguous_block:
+            opts.captured === undefined ? HI + 100 : opts.captured,
+        },
+      ],
+    },
+  ];
   return {
     ...(opts.noBucket
       ? {}
@@ -285,26 +312,9 @@ function env(
             },
           },
         }),
-    ...(opts.noDb
-      ? {}
-      : {
-          METAGRAPH_HEALTH_DB: {
-            prepare() {
-              return {
-                bind() {
-                  return {
-                    async first() {
-                      if (opts.d1Throws) throw new Error("d1 cold");
-                      return opts.captured === undefined
-                        ? { last_contiguous_block: HI + 100 }
-                        : { last_contiguous_block: opts.captured };
-                    },
-                  };
-                },
-              };
-            },
-          },
-        }),
+    // No Hyperdrive is how "no store is bound" reaches the watchdog now:
+    // readStore declines and the capture lag reads as unmeasurable.
+    ...(opts.noStore ? {} : pgMockEnv()),
   };
 }
 
@@ -406,11 +416,11 @@ describe("the watchdog tick", () => {
     );
   });
 
-  test("a D1 that throws degrades to an unmeasurable capture lag", async () => {
+  test("a store that throws degrades to an unmeasurable capture lag", async () => {
     const result = await runLakehouseSeamWatchdog(
       env({
         body: { decoded_through: HI, updated_at: "2026-08-03T11:40:00Z" },
-        d1Throws: true,
+        storeThrows: true,
       }) as never,
       { query: measured(), now: () => NOW },
     );
@@ -421,11 +431,11 @@ describe("the watchdog tick", () => {
     );
   });
 
-  test("an unbound D1 is the same degrade, not a crash", async () => {
+  test("an unbound store is the same degrade, not a crash", async () => {
     const result = await runLakehouseSeamWatchdog(
       env({
         body: { decoded_through: HI, updated_at: "2026-08-03T11:40:00Z" },
-        noDb: true,
+        noStore: true,
       }) as never,
       { query: measured(), now: () => NOW },
     );
@@ -615,7 +625,7 @@ describe("the watchdog's own reporting", () => {
   });
 
   test("a lane_health write that fails never breaks the tick", async () => {
-    // D1 migrations here are applied by hand, so "no such table" is a real
+    // Migrations here are applied by hand, so "no such table" is a real
     // production state until someone applies one.
     const result = await runLakehouseSeamWatchdog(
       env({

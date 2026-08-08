@@ -8,12 +8,13 @@
 // request" are all facts about a row after a real engine ran a real upsert, and
 // no fake that returns canned rows can hold them.
 //
-// The double translates the ONE difference it can see -- `$1` back to `?` -- and
-// that was enough while every statement came from a handler written for SQLite.
-// The write path is not: src/neon-write.ts and src/pass-completeness.ts EMIT
-// Postgres, deliberately, and three of the things they emit are not SQLite at
-// all. Each one fails loudly at `prepare`, which is why this translates rather
-// than hoping:
+// THE SPLIT WITH pg-mock IS VALUES vs TEXT. The double owns the driver-level
+// value mapping -- `$1` back to `?`, a JS boolean to 1/0 -- because those are
+// facts about how the two engines take a bind. This owns the STATEMENT TEXT,
+// because the write path does not merely use different placeholders: it EMITS
+// Postgres. src/neon-write.ts and src/pass-completeness.ts build their own SQL
+// on purpose, and two of the things they build are not SQLite at all. Each
+// fails loudly at `prepare`, which is why this translates rather than hoping:
 //
 //   1. `$1::bigint` / `src.netuid::int` -- the `::` cast operator. SQLite calls
 //      it "unrecognized token: :". It carries no meaning for SQLite (which is
@@ -23,10 +24,6 @@
 //      predicate can name `src.hotkey`. SQLite has no column list on a table
 //      alias, so this becomes the `SELECT ? AS a, ? AS b UNION ALL SELECT ?, ?`
 //      form, which is the same relation with the same column names.
-//   3. A JS `true`/`false` bind. Postgres has a BOOLEAN type and the sync
-//      handlers coerce to real booleans for it; node:sqlite refuses the value
-//      outright ("Provided value cannot be bound"). 1/0 is what the column
-//      holds on either store.
 //
 // WHAT IT DELIBERATELY DOES NOT DO. It is not a dialect layer -- nothing here
 // makes an incompatible query WORK, it makes a compatible query PARSE. A
@@ -68,16 +65,12 @@ export function rewriteAliasedValues(text: string): string {
   );
 }
 
-/** Postgres' BOOLEAN as the integer SQLite stores. */
-function sqliteBind(value: unknown): unknown {
-  if (value === true) return 1;
-  if (value === false) return 0;
-  return value;
-}
-
 /**
  * Wrap a real database so `pg.control.db = sqliteBackedPg(db)` accepts the
  * Postgres the write path emits.
+ *
+ * Values pass straight through: pg-mock has already mapped them on the way in,
+ * and doing it twice here would mean two places to look when a bind is wrong.
  *
  * Cast to `DatabaseSync` because that is the field's declared type on the
  * controller; only `prepare(text).all(...)/.run(...)` is ever called on it.
@@ -85,13 +78,7 @@ function sqliteBind(value: unknown): unknown {
 export function sqliteBackedPg(db: DatabaseSync): DatabaseSync {
   return {
     prepare(text: string) {
-      const statement = db.prepare(rewriteAliasedValues(stripPgCasts(text)));
-      return {
-        all: (...values: unknown[]) =>
-          statement.all(...(values.map(sqliteBind) as never[])),
-        run: (...values: unknown[]) =>
-          statement.run(...(values.map(sqliteBind) as never[])),
-      };
+      return db.prepare(rewriteAliasedValues(stripPgCasts(text)));
     },
   } as unknown as DatabaseSync;
 }

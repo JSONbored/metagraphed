@@ -243,16 +243,13 @@ describe("runValidatorNominatorCountsStalenessWatchdog", () => {
   test("a fresh lane reports quiet and records nothing", async () => {
     const { env, queries } = fakeDb(NOW - HOUR);
     const recorded: unknown[] = [];
-    const result = await runValidatorNominatorCountsStalenessWatchdog(
-      env,
-      {
-        now: () => NOW,
-        recordException: (async (_env: never, event: unknown) => {
-          recorded.push(event);
-          return true;
-        }) as never,
-      },
-    );
+    const result = await runValidatorNominatorCountsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async (_env: never, event: unknown) => {
+        recorded.push(event);
+        return true;
+      }) as never,
+    });
     assert.equal(result.ok, true);
     assert.equal(result.alerted, false);
     assert.deepEqual(recorded, []);
@@ -267,16 +264,13 @@ describe("runValidatorNominatorCountsStalenessWatchdog", () => {
     const { env } = fakeDb(NOW - 48 * HOUR);
     const recorded: { error?: Error; route?: string; errorCode?: string }[] =
       [];
-    const result = await runValidatorNominatorCountsStalenessWatchdog(
-      env,
-      {
-        now: () => NOW,
-        recordException: (async (_env: never, event: never) => {
-          recorded.push(event);
-          return true;
-        }) as never,
-      },
-    );
+    const result = await runValidatorNominatorCountsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async (_env: never, event: never) => {
+        recorded.push(event);
+        return true;
+      }) as never,
+    });
     assert.equal(result.alerted, true);
     assert.equal(recorded.length, 1);
     assert.equal(
@@ -292,16 +286,13 @@ describe("runValidatorNominatorCountsStalenessWatchdog", () => {
   test("an empty table alerts with the no-rows wording", async () => {
     const { env } = fakeDb(null);
     const recorded: { error?: Error }[] = [];
-    const result = await runValidatorNominatorCountsStalenessWatchdog(
-      env,
-      {
-        now: () => NOW,
-        recordException: (async (_env: never, event: never) => {
-          recorded.push(event);
-          return true;
-        }) as never,
-      },
-    );
+    const result = await runValidatorNominatorCountsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async (_env: never, event: never) => {
+        recorded.push(event);
+        return true;
+      }) as never,
+    });
     assert.equal(result.alerted, true);
     assert.equal(result.reason, "no_rows");
     assert.match(String(recorded[0]!.error?.message), /no rows at all/);
@@ -325,10 +316,10 @@ describe("runValidatorNominatorCountsStalenessWatchdog", () => {
     // into one coverage count, so a truncated pass landing on a complete one
     // would report full coverage -- the bug, restored.
     const { env, queries, binds } = fakeDb(NOW - HOUR);
-    return runValidatorNominatorCountsStalenessWatchdog(
-      env,
-      { now: () => NOW, recordException: (async () => true) as never },
-    ).then(() => {
+    return runValidatorNominatorCountsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async () => true) as never,
+    }).then(() => {
       assert.deepEqual(binds[0], [VALIDATOR_NOMINATOR_COUNTS_PASS_WINDOW_MS]);
       assert.ok(
         VALIDATOR_NOMINATOR_COUNTS_PASS_WINDOW_MS < 24 * HOUR,
@@ -352,16 +343,13 @@ describe("runValidatorNominatorCountsStalenessWatchdog", () => {
     const { env } = fakeDb(NOW - HOUR, 54_000, 112_250);
     const recorded: { error?: Error; route?: string; errorCode?: string }[] =
       [];
-    const result = await runValidatorNominatorCountsStalenessWatchdog(
-      env,
-      {
-        now: () => NOW,
-        recordException: (async (_env: never, event: never) => {
-          recorded.push(event);
-          return true;
-        }) as never,
-      },
-    );
+    const result = await runValidatorNominatorCountsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async (_env: never, event: never) => {
+        recorded.push(event);
+        return true;
+      }) as never,
+    });
     assert.equal(result.alerted, true);
     assert.equal(result.reason, "partial");
     assert.equal(result.covered_rows, 54_000);
@@ -407,10 +395,10 @@ describe("runValidatorNominatorCountsStalenessWatchdog", () => {
     // A NaN would compare false against the floor and report a truncated table
     // healthy -- the exact direction of failure this closes.
     const { env } = fakeDb(NOW - HOUR, null as unknown as number, 0);
-    const result = await runValidatorNominatorCountsStalenessWatchdog(
-      env,
-      { now: () => NOW, recordException: (async () => true) as never },
-    );
+    const result = await runValidatorNominatorCountsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async () => true) as never,
+    });
     assert.equal(result.covered_rows, 0);
     assert.equal(result.alerted, true);
     assert.equal(result.reason, "partial");
@@ -435,15 +423,14 @@ describe("runValidatorNominatorCountsStalenessWatchdog", () => {
     });
 
     const { env } = fakeDb(
-      new Error("D1_ERROR: no such table: validator_nominator_counts"),
+      new Error('relation "validator_nominator_counts" does not exist'),
     );
-    const failed = await runValidatorNominatorCountsStalenessWatchdog(
-      env,
-      { recordException: (async () => true) as never },
-    );
+    const failed = await runValidatorNominatorCountsStalenessWatchdog(env, {
+      recordException: (async () => true) as never,
+    });
     assert.equal(failed.ok, false);
     assert.equal(failed.reason, "query_failed");
-    assert.match(String(failed.detail), /no such table/);
+    assert.match(String(failed.detail), /does not exist/);
 
     // A non-Error throw (a driver rejecting with a bare string) still yields
     // a readable detail rather than "[object Object]".
@@ -464,15 +451,12 @@ describe("runValidatorNominatorCountsStalenessWatchdog", () => {
     assert.equal(empty.reason, "no_rows");
 
     const { env } = fakeDb(NOW - 48 * HOUR);
-    const result = await runValidatorNominatorCountsStalenessWatchdog(
-      env,
-      {
-        now: () => NOW,
-        recordException: (async () => {
-          throw new Error("posthog down");
-        }) as never,
-      },
-    );
+    const result = await runValidatorNominatorCountsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async () => {
+        throw new Error("posthog down");
+      }) as never,
+    });
     assert.equal(result.ok, true);
     assert.equal(result.alerted, true);
   });
@@ -481,10 +465,9 @@ describe("runValidatorNominatorCountsStalenessWatchdog", () => {
     // No telemetry env configured: the real recorder returns false without
     // touching the network, so the default path is exercisable in-process.
     const { env } = fakeDb(NOW - 48 * HOUR);
-    const result = await runValidatorNominatorCountsStalenessWatchdog(
-      env,
-      { now: () => NOW },
-    );
+    const result = await runValidatorNominatorCountsStalenessWatchdog(env, {
+      now: () => NOW,
+    });
     assert.equal(result.ok, true);
     assert.equal(result.alerted, true);
 
@@ -537,9 +520,7 @@ describe("the cron string is unique and wired", () => {
       {
         cron: workerConfig.VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON,
       } as unknown as ScheduledController,
-      env as unknown as Parameters<
-        typeof handleScheduled
-      >[1],
+      env as unknown as Parameters<typeof handleScheduled>[1],
       {} as unknown as ExecutionContext,
     )) as { ok: boolean; alerted: boolean };
     assert.equal(result.ok, true);

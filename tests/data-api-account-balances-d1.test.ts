@@ -354,8 +354,9 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
     const response = await postAndConsume({ rows: many });
     assert.equal(response.status, 200);
     assert.equal(
-      pg.control.queries.filter((q) => q.text.includes("INSERT INTO account_balances"))
-        .length,
+      pg.control.queries.filter((q) =>
+        q.text.includes("INSERT INTO account_balances"),
+      ).length,
       1,
       "60 rows travelled as one multi-row INSERT",
     );

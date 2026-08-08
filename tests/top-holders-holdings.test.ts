@@ -10,11 +10,46 @@
 // well-formed, plausible and wrong: a pool total that never arrived prices the
 // positions naming it against nothing, so delegated_tao comes out merely too
 // LOW and no cell says so.
+//
+// EVERY TEST BELOW THAT EXPECTS A LEG IS RED ON PURPOSE. Removing D1 left this
+// module's store selector unable to answer, in three independent ways, and each
+// of them turns a proven leg into a silent decline:
+//
+//   1. `observationsReadDb(env, ctx)` returns `undefined` without a usable ctx
+//      -- it used to fall back to `env.METAGRAPH_HEALTH_DB` -- and
+//      src/top-holders-flow-tier.ts calls `topHoldersHoldings(env)` with none,
+//      because ProjectionLane.compute is `(env, network)` and has no ctx to
+//      give. The tests here pass a ctx so they measure 2 and 3 rather than
+//      stopping at 1.
+//   2. `pgObservationsReadDb` exposes `prepare(text) -> { bind, all }` and NO
+//      `first()`, so both completeness probes (hotkey-alpha and
+//      account-balances) throw, are caught, and report `unavailable` -- nothing
+//      can ever be proven, so nothing can ever be priced.
+//   3. its `all()` resolves to a BARE ARRAY, while this module does
+//      `if (!Array.isArray(res?.results)) throw`. `res.results` on an array is
+//      undefined, so even a successful read lands in the decline branch.
+//
+// src/read-store.ts's handle has `first()` and returns `{ results }`, which is
+// why every readStore-based reader in this repo is unaffected. Weakening these
+// assertions would publish a top-holders leaderboard that has silently lost
+// three of its six sorts, which is the exact class of failure the file opens by
+// describing.
 import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// One store since #10170: this module reaches it through a selector that builds
+// `new Client(...)` itself, and its only parameters are `(env, cap, ctx)` -- so
+// the `pg` module is the seam. See tests/helpers/pg-mock.ts for why it is a
+// module mock, and why the controller is built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   topHoldersHoldings,
   topHoldersHoldingsSql,
@@ -34,24 +69,24 @@ const BAL_AT = 1_785_909_000_000;
 
 let db: InstanceType<typeof DatabaseSync>;
 
-/** The D1 shim this module uses: prepare().first() for the two completeness
- * probes, prepare().all() for the ranking query (which binds nothing -- every
- * value is a constant or a number read out of D1 itself). */
+/** The env this module's store selector reads: a connection string to find,
+ * every table declared Neon's, and the in-memory engine answering behind the
+ * `pg` double. Both call shapes still have to work -- prepare().first() for the
+ * two completeness probes, prepare().all() for the ranking query, which binds
+ * nothing because every value in it is a constant or a number this module read
+ * out of the store itself. */
 function d1() {
-  return {
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql: string) {
-        return {
-          async first() {
-            return db.prepare(sql).get() ?? null;
-          },
-          async all() {
-            return { results: db.prepare(sql).all() };
-          },
-        };
-      },
-    },
-  } as unknown as Env;
+  return { ...pgMockEnv() } as unknown as Env;
+}
+
+/** A real ExecutionContext stand-in. The selector refuses to build a client
+ * without somewhere to park the connection teardown, so a test that omits this
+ * measures the decline rather than the query. */
+const CTX = { waitUntil: () => undefined };
+
+/** The module under test, with the store wired the way production wires it. */
+function holdings(env: Env | null | undefined, cap?: number) {
+  return topHoldersHoldings(env, cap, CTX);
 }
 
 function pass(table: string, capturedAt: number, complete: boolean) {
@@ -105,7 +140,13 @@ function price(
 }
 
 beforeEach(() => {
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = null;
+  pg.control.failNext = null;
+  pg.control.onQuery = null;
   db = new DatabaseSync(":memory:");
+  pg.control.db = db;
   for (const file of MIGRATIONS) {
     db.exec(
       fs.readFileSync(path.join(process.cwd(), "migrations/d1", file), "utf8"),
@@ -196,7 +237,7 @@ describe("topHoldersHoldings prices positions against the pool ledger", () => {
     pool("5Hot", 9, 400);
     price(9, 0.05);
 
-    const leg = await topHoldersHoldings(d1());
+    const leg = await holdings(d1());
     assert.deepEqual(leg?.sorts, ["delegated_tao"]);
     assert.equal(leg?.cells.get("5Holder")?.delegated_tao, 30);
     // free_tao was never proven, so it is absent rather than zero.
@@ -213,7 +254,7 @@ describe("topHoldersHoldings prices positions against the pool ledger", () => {
     pool("5Hot", 8, 5_000);
     price(8, null);
 
-    const leg = await topHoldersHoldings(d1());
+    const leg = await holdings(d1());
     // 80, not 80 + 0 dressed up as a complete total -- the row simply drops out
     // of the addition. The distinction only shows up as a NUMBER when the
     // excluded pool is large, which is why this one is 5,000 alpha.
@@ -230,7 +271,7 @@ describe("topHoldersHoldings prices positions against the pool ledger", () => {
     // entirely for the crime of not being the freshest row in the table.
     price(9, 0.5, "2026-08-05");
 
-    const leg = await topHoldersHoldings(d1());
+    const leg = await holdings(d1());
     assert.equal(leg?.cells.get("5Holder")?.delegated_tao, 2);
   });
 
@@ -242,7 +283,7 @@ describe("topHoldersHoldings prices positions against the pool ledger", () => {
     // coldkey's positions against totals read at a different block.
     pool("5Hot", 7, 999, ALPHA_AT - 86_400_000);
 
-    const leg = await topHoldersHoldings(d1());
+    const leg = await holdings(d1());
     assert.equal(leg, null, "nothing priced, so no holdings leg at all");
   });
 });
@@ -264,7 +305,7 @@ describe("topHoldersHoldings ranks total_tao across the full tables", () => {
     position("5Deleg", "5HotB", 7, 0.9);
     pool("5HotB", 7, 100); // 90 delegated -> total 90
 
-    const leg = await topHoldersHoldings(d1(), 1);
+    const leg = await holdings(d1(), 1);
     assert.deepEqual(leg?.sorts, ["free_tao", "delegated_tao", "total_tao"]);
     const ids = [...leg!.cells.keys()].sort();
     assert.deepEqual(ids, ["5Both", "5Deleg", "5Free"]);
@@ -282,7 +323,7 @@ describe("topHoldersHoldings declines rather than ranking on unproven inputs", (
     position("5Holder", "5Hot", 7, 1);
     pool("5Hot", 7, 100);
     price(7, 1);
-    assert.equal(await topHoldersHoldings(d1()), null);
+    assert.equal(await holdings(d1()), null);
   });
 
   test("an in-flight balance pass leaves free_tao and total_tao out", async () => {
@@ -295,7 +336,7 @@ describe("topHoldersHoldings declines rather than ranking on unproven inputs", (
     pool("5Hot", 7, 100);
     price(7, 1);
 
-    const leg = await topHoldersHoldings(d1());
+    const leg = await holdings(d1());
     assert.deepEqual(leg?.sorts, ["delegated_tao"]);
     assert.equal(leg?.cells.has("5Whale"), false);
     assert.equal(leg?.cells.get("5Holder")?.delegated_tao, 100);
@@ -309,55 +350,40 @@ describe("topHoldersHoldings declines rather than ranking on unproven inputs", (
     pool("5Hot", 7, 100);
     price(7, 1);
 
-    const leg = await topHoldersHoldings(d1());
+    const leg = await holdings(d1());
     assert.deepEqual(leg?.sorts, ["free_tao"]);
     assert.equal(leg?.cells.get("5Whale")?.free_tao, 900_000);
   });
 
   test("declines on an unbound DB and on an unreadable table", async () => {
-    assert.equal(await topHoldersHoldings(null), null);
-    assert.equal(await topHoldersHoldings({} as never), null);
-    const throwing = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql: string) {
-          return {
-            async first() {
-              return db.prepare(sql).get() ?? null;
-            },
-            async all(): Promise<unknown> {
-              throw new Error("no such table: hotkey_alpha");
-            },
-          };
-        },
-      },
-    } as unknown as Env;
+    assert.equal(await holdings(null), null);
+    assert.equal(await holdings({} as never), null);
+    // The completeness probe still answers from the engine; the RANKING query
+    // is the one that fails, which is the state a hand-applied migration that
+    // has not reached this deployment actually produces.
     pass("hotkey_alpha_passes", ALPHA_AT, true);
-    assert.equal(await topHoldersHoldings(throwing), null);
+    pg.control.onQuery = ({ text }) => {
+      if (text.includes("AS delegated_tao"))
+        pg.control.failNext = new Error("no such table: hotkey_alpha");
+    };
+    assert.equal(await holdings(d1()), null);
   });
 
   test("declines when a proven pass yields no usable rows", async () => {
     // The pass completed but the ledger has nothing this query can rank.
     pass("hotkey_alpha_passes", ALPHA_AT, true);
-    assert.equal(await topHoldersHoldings(d1()), null);
+    assert.equal(await holdings(d1()), null);
   });
 
   test("a non-array result declines rather than being treated as empty", async () => {
     pass("hotkey_alpha_passes", ALPHA_AT, true);
-    const weird = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql: string) {
-          return {
-            async first() {
-              return db.prepare(sql).get() ?? null;
-            },
-            async all() {
-              return { results: undefined };
-            },
-          };
-        },
-      },
-    } as unknown as Env;
-    assert.equal(await topHoldersHoldings(weird), null);
+    // A store handing back something that is not a row array. The guard is
+    // cheap and the failure it prevents is not: `results.length` on a non-array
+    // is a TypeError inside a lane whose whole job is to decline quietly.
+    pg.control.answers = [
+      { match: "AS delegated_tao", rows: "not-an-array" as never },
+    ];
+    assert.equal(await holdings(d1()), null);
   });
 
   test("skips unusable cells, and a negative holding is a broken read", async () => {
@@ -368,40 +394,22 @@ describe("topHoldersHoldings declines rather than ranking on unproven inputs", (
       { ss58: "5NaN", delegated_tao: "nope" },
       { ss58: 42, delegated_tao: 9 },
     ];
-    const stub = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql: string) {
-          return {
-            async first() {
-              return db.prepare(sql).get() ?? null;
-            },
-            async all() {
-              return { results: rows };
-            },
-          };
-        },
-      },
-    } as unknown as Env;
-    const leg = await topHoldersHoldings(stub);
+    // Canned rather than engine-produced: SQLite cannot be made to return a
+    // string in a REAL column or an integer where an ss58 belongs, and those
+    // are exactly the shapes the coercion has to survive.
+    pg.control.answers = [{ match: "AS delegated_tao", rows }];
+    const leg = await holdings(d1());
     assert.deepEqual([...leg!.cells.keys()], ["5Ok"]);
   });
 
   test("declines when every row dropped, rather than declaring a sort it cannot rank", async () => {
     pass("hotkey_alpha_passes", ALPHA_AT, true);
-    const stub = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql: string) {
-          return {
-            async first() {
-              return db.prepare(sql).get() ?? null;
-            },
-            async all() {
-              return { results: [{ ss58: "5Neg", delegated_tao: -1 }] };
-            },
-          };
-        },
+    pg.control.answers = [
+      {
+        match: "AS delegated_tao",
+        rows: [{ ss58: "5Neg", delegated_tao: -1 }],
       },
-    } as unknown as Env;
-    assert.equal(await topHoldersHoldings(stub), null);
+    ];
+    assert.equal(await holdings(d1()), null);
   });
 });

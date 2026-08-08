@@ -739,12 +739,6 @@ async function handleNeuronsSync(
     });
   }
 
-  // THE INVERSION (#9787). Once Neon solely owns all three tables the D1
-  // write is skipped outright rather than written and ignored -- leaving it in
-  // would keep a second copy diverging quietly, which is the state this whole
-  // migration exists to end.
-  const neonOwns = neonOwnsNeuronsSnapshot(env);
-
   // ALL THREE TABLES, OR NONE. This asks neonOwnsNeuronsSnapshot rather than
   // just the binding, and the difference is load-bearing: one pass derives all
   // three tables from one snapshot, so a half-declared family would write the
@@ -776,11 +770,8 @@ async function handleNeuronsSync(
       rows,
       dailyRows,
       positionRows,
-      // The tally follows the rows into whichever store holds them (#10056).
-      // Sent only when Neon owns the snapshot: while D1 is still written, its
-      // batch carries the tally atomically and a second copy in Neon would be
-      // a ledger nothing reconciles.
-      pass: neonOwns ? pass : null,
+      // The tally follows the rows into the store that holds them (#10056).
+      pass,
     },
   );
 
@@ -944,9 +935,7 @@ async function handleChainDetailSync(
     });
   }
 
-  let statements = 0;
   let neon: Awaited<ReturnType<typeof mirrorChainDetailToNeon>>;
-  const neonOwns = neonOwnsChainDetail(env);
   try {
     // ONE OF THIS LANE'S TWO WRITERS. The sync-batches queue consumer is the
     // other and mirrors too -- #9728 is the precedent for why covering one of
@@ -962,26 +951,23 @@ async function handleChainDetailSync(
     return writeJson({ error: "d1 write failed" }, 502);
   }
 
-  // Once Neon owns the tables its failure IS the pass's failure. While D1
-  // served the reads it cost a lane verdict; reporting ok:true now would tell
-  // the producer its blocks are durable when nothing holds them -- and this
-  // lane's producer advances its resume head on ok, so a false ok skips those
-  // blocks forever rather than retrying them.
-  if (neonOwns) {
-    const failed = failedTables(neon);
-    if (!neon.attempted || (failed && failed.length > 0)) {
-      console.error("data-api chain-detail-sync Neon write failed:", failed);
-      await captureDataApiError(
-        new Error(
-          failed && failed.length > 0
-            ? `neon write failed: ${failed.join(", ")}`
-            : "neon write not attempted while Neon owns the tables",
-        ),
-        "chain-detail-sync-neon",
-        env,
-      );
-      return writeJson({ error: "neon write failed" }, 502);
-    }
+  // The write's failure IS the pass's failure. Reporting ok:true would tell the
+  // producer its blocks are durable when nothing holds them -- and this lane's
+  // producer advances its resume head on ok, so a false ok skips those blocks
+  // forever rather than retrying them.
+  const failed = failedTables(neon);
+  if (!neon.attempted || (failed && failed.length > 0)) {
+    console.error("data-api chain-detail-sync Neon write failed:", failed);
+    await captureDataApiError(
+      new Error(
+        failed && failed.length > 0
+          ? `neon write failed: ${failed.join(", ")}`
+          : "neon write not attempted",
+      ),
+      "chain-detail-sync-neon",
+      env,
+    );
+    return writeJson({ error: "neon write failed" }, 502);
   }
 
   return writeJson({
@@ -991,8 +977,7 @@ async function handleChainDetailSync(
     chain_events_written: batch.rows.chainEventRows.length,
     account_events_written: batch.rows.accountEventRows.length,
     head: batch.rows.head,
-    stores: neonOwns ? ["neon"] : neon.attempted ? ["d1", "neon"] : ["d1"],
-    d1_statements: statements,
+    stores: ["neon"],
   });
 }
 
@@ -8037,9 +8022,7 @@ export default {
     };
     const writers: SyncBatchWriters = {
       "hotkey-alpha": async (rows, pass) => {
-        const neonOwns = neonOwnsLedger(env, "hotkey-alpha");
         const result = { statements: 0 };
-        // THE LANE'S OTHER WRITER, and the pass rides along here too.
         const neon = await mirrorLedgerToNeon(
           env as unknown as Record<string, unknown>,
           ctx,
@@ -8048,10 +8031,19 @@ export default {
           {},
           pass,
         );
-        // Once Neon is the only store, a normal return would ACK a message
-        // whose rows never landed. writeSyncBatch turns a throw into a
-        // retry, which is the only thing that can still save them.
-        if (neonOwns && !neon.result?.ok) {
+        // UNCONDITIONAL, and the `neonOwns &&` that used to guard it was a
+        // silent data-loss path (#10170).
+        //
+        // neonOwnsLedger requires HYPERDRIVE to be bound. So on the one
+        // deployment where the write CANNOT happen -- no binding -- the guard
+        // read false, the throw was skipped, and the consumer acked a message
+        // whose rows reached no store at all. The condition disabled the check
+        // exactly when the check was needed.
+        //
+        // There is one store now, so "did the write succeed" is the whole
+        // question. writeSyncBatch turns a throw into a retry, which is the
+        // only thing that can still save the rows.
+        if (!neon.result?.ok) {
           throw new Error(
             `hotkey-alpha neon write failed: ${
               neon.result?.reason ?? "not attempted"
@@ -8101,13 +8093,12 @@ export default {
       "account-balances": async (rows, pass) => {
         // The ONLY writer for this lane -- the HTTP route enqueues and
         // never writes inline, so there is no second path to keep in step.
-        const neonOwns = neonOwnsLedger(env, "account-balances");
         const result = { statements: 0 };
-        // THE PASS WAS NEVER PASSED. writeAccountBalancesToD1 takes it and
-        // the mirror did not, so D1 got a completeness tally and Neon got
-        // none -- account_balances_passes is empty there, and this lane was
-        // about to become the only writer of it.
-        await mirrorLedgerToNeon(
+        // THE PASS WAS NEVER PASSED. writeAccountBalancesToD1 took it and the
+        // mirror did not, so D1 got a completeness tally and Neon got none --
+        // account_balances_passes was empty there, and this lane was about to
+        // become the only writer of it.
+        const neon = await mirrorLedgerToNeon(
           env as unknown as Record<string, unknown>,
           ctx,
           "account-balances",
@@ -8115,6 +8106,18 @@ export default {
           {},
           pass,
         );
+        // AND THE RESULT WAS NEVER READ (#10170). This awaited the write and
+        // returned regardless, so a failure was acked and the rows were gone --
+        // on the lane whose own comment says it is the only writer. Every
+        // sibling in this map throws; this one computed `neonOwns` and did
+        // nothing with it.
+        if (!neon.result?.ok) {
+          throw new Error(
+            `account-balances neon write failed: ${
+              neon.result?.reason ?? "not attempted"
+            }`,
+          );
+        }
         return result;
       }, // Redoes both derivations from THIS message's rows, which is sound
       // only because the message asserted `key_complete` -- the validator
@@ -8122,13 +8125,12 @@ export default {
       // chunk whose prune map would delete rows it did not carry.
       neurons: async (rows, pass) => {
         // THE ONE WRITER IN THIS BLOCK THAT NEVER ASKED (#10162). Every
-        // other lane here gates on neonOwns* and mirrors; this wrote D1
+        // other lane here gated on neonOwns* and mirrored; this wrote D1
         // outright and mirrored nothing. It is unreachable today --
         // SYNC_QUEUE_LANES does not list `neurons` -- which is precisely
         // why it survived: adding the lane to that flag would have started
         // writing the only copy of a metagraph snapshot to a store nothing
         // reads.
-        const neonOwns = neonOwnsNeuronsSnapshot(env);
         const write = neuronSnapshotWrite(rows, Date.now());
         const result = { statements: 0 };
         const neon = await mirrorNeuronSnapshotToNeon(
@@ -8136,23 +8138,27 @@ export default {
           ctx,
           { ...write, pass },
         );
-        // THROW, never return, on a failed Neon write once Neon owns the
-        // tables: a normal return acks the queue message and the rows are
-        // gone. writeSyncBatch turns a throw into a retry. Named tables
-        // rather than a fold over neon.results, because the mirror answers
-        // `{ attempted: true, results: {} }` when Hyperdrive is unbound and
-        // a "nothing said not-ok" test reads that as success.
-        if (neonOwns) {
-          const reason = ["neurons", "neuron_daily", "account_position_daily"]
-            .map((table) => {
-              const r = neon.results?.[table];
-              if (!r) return `${table}: no Neon write recorded`;
-              return r.ok ? null : `${table}: ${r.reason ?? "failed"}`;
-            })
-            .filter(Boolean)
-            .join("; ");
-          if (reason) throw new Error(`neurons queue write failed: ${reason}`);
-        }
+        // THROW, never return, on a failed write: a normal return acks the
+        // queue message and the rows are gone. writeSyncBatch turns a throw
+        // into a retry.
+        //
+        // UNCONDITIONAL, and the `neonOwns` that used to guard it was a silent
+        // data-loss path (#10170): neonOwnsNeuronsSnapshot requires HYPERDRIVE,
+        // so on the one deployment where the write cannot happen the guard read
+        // false and the throw was skipped.
+        //
+        // Named tables rather than a fold over neon.results, because the mirror
+        // answers `{ attempted: true, results: {} }` when Hyperdrive is unbound
+        // and a "nothing said not-ok" test reads that as success.
+        const reason = ["neurons", "neuron_daily", "account_position_daily"]
+          .map((table) => {
+            const r = neon.results?.[table];
+            if (!r) return `${table}: no Neon write recorded`;
+            return r.ok ? null : `${table}: ${r.reason ?? "failed"}`;
+          })
+          .filter(Boolean)
+          .join("; ");
+        if (reason) throw new Error(`neurons queue write failed: ${reason}`);
         return result;
       },
       "validator-nominator-counts": async (rows, pass) => {

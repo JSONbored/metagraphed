@@ -7,7 +7,19 @@
 // below -- a late-but-covered lane stays quiet, an empty tier is never
 // "healthy" -- are the whole contract.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The store is Postgres now (#10170), reached through `new Client(...)` inside
+// src/read-store.ts and src/lane-health-store.ts -- neither of which this
+// watchdog can be handed, because it selects its own store from `env`. Mocking
+// the module is the seam; see tests/helpers/pg-mock.ts for why it is a module
+// mock and why the controller has to be built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   CHAIN_DETAIL_STALENESS_THRESHOLD_MS,
   evaluateChainDetailStaleness,
@@ -19,22 +31,40 @@ import * as workerConfig from "../workers/config.ts";
 const NOW = 1_785_800_000_000;
 const HEAD = 8_762_600;
 
-function fakeDb(latest: number | null | Error, head: number | null = HEAD) {
+/** Clear the shared controller, so one test's canned answer cannot leak into
+ * the next -- the mock is module state and outlives a test. */
+function resetPg() {
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = null;
+  pg.control.failNext = null;
+  pg.control.onQuery = null;
+}
+
+/** The lane's one read, answered from the pg double, plus the env that points
+ * the watchdog at it.
+ *
+ * `queries` is a LIVE view over the mock's log rather than a copy, because the
+ * callers destructure it and read it after the tick has run -- a getter would
+ * be evaluated once, at destructure time, and freeze empty.
+ *
+ * `latest` and `head` are deliberately untyped: two cases below hand in
+ * unparseable text, which is exactly the column value a shim can produce and
+ * the thing the rule has to survive. */
+function fakeDb(latest: unknown, head: unknown = HEAD) {
   const queries: string[] = [];
-  return {
-    queries,
-    db: {
-      prepare(sql: string) {
-        queries.push(sql.replace(/\s+/g, " ").trim());
-        return {
-          async first() {
-            if (latest instanceof Error) throw latest;
-            return { latest, head };
-          },
-        };
-      },
-    },
-  };
+  resetPg();
+  pg.control.rows = [{ latest, head }];
+  pg.control.onQuery = (q) => queries.push(q.text.replace(/\s+/g, " ").trim());
+  return { queries, env: pgMockEnv() };
+}
+
+/** A store whose next statement throws. `unknown` rather than `Error` because a
+ * driver rejecting with a bare string is one of the cases under test. */
+function failingDb(error: unknown) {
+  resetPg();
+  pg.control.failNext = error as Error;
+  return pgMockEnv();
 }
 
 function collector() {
@@ -95,12 +125,12 @@ describe("evaluateChainDetailStaleness", () => {
 
 describe("runChainDetailStalenessWatchdog", () => {
   test("a fresh lane reports quiet and records nothing", async () => {
-    const { db, queries } = fakeDb(NOW - 60_000);
+    const { env, queries } = fakeDb(NOW - 60_000);
     const { recorded, recordException } = collector();
-    const result = await runChainDetailStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      { now: () => NOW, recordException },
-    );
+    const result = await runChainDetailStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException,
+    });
     assert.equal(result.ok, true);
     assert.equal(result.alerted, false);
     assert.deepEqual(recorded, []);
@@ -110,12 +140,12 @@ describe("runChainDetailStalenessWatchdog", () => {
   });
 
   test("a stalled lane records ONE exception naming the age, threshold and head", async () => {
-    const { db } = fakeDb(NOW - 90 * 60_000);
+    const { env } = fakeDb(NOW - 90 * 60_000);
     const { recorded, recordException } = collector();
-    const result = await runChainDetailStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      { now: () => NOW, recordException },
-    );
+    const result = await runChainDetailStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException,
+    });
     assert.equal(result.alerted, true);
     assert.equal(recorded.length, 1);
     assert.equal(recorded[0].route, "watchdog:chain-detail-staleness");
@@ -127,37 +157,34 @@ describe("runChainDetailStalenessWatchdog", () => {
   });
 
   test("an empty tier alerts with the no-blocks wording", async () => {
-    const { db } = fakeDb(null, null);
+    const { env } = fakeDb(null, null);
     const { recorded, recordException } = collector();
-    const result = await runChainDetailStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      { now: () => NOW, recordException },
-    );
+    const result = await runChainDetailStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException,
+    });
     assert.equal(result.reason, "no_rows");
     assert.match(String(recorded[0].error?.message), /no blocks at all/);
     assert.match(String(recorded[0].error?.message), /head block none/);
   });
 
   test("a telemetry failure does not fail the tick", async () => {
-    const { db } = fakeDb(NOW - 90 * 60_000);
-    const result = await runChainDetailStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      {
-        now: () => NOW,
-        recordException: (async () => {
-          throw new Error("posthog down");
-        }) as never,
-      },
-    );
+    const { env } = fakeDb(NOW - 90 * 60_000);
+    const result = await runChainDetailStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async () => {
+        throw new Error("posthog down");
+      }) as never,
+    });
     assert.equal(result.ok, true);
     assert.equal(result.alerted, true);
   });
 
   test("the env threshold override wins over the default", async () => {
-    const { db } = fakeDb(NOW - 6 * 60_000);
+    const { env } = fakeDb(NOW - 6 * 60_000);
     const result = await runChainDetailStalenessWatchdog(
       {
-        METAGRAPH_HEALTH_DB: db,
+        ...env,
         CHAIN_DETAIL_STALENESS_THRESHOLD_MS: "300000",
       },
       { now: () => NOW, recordException: (async () => true) as never },
@@ -175,53 +202,39 @@ describe("runChainDetailStalenessWatchdog", () => {
       ok: false,
       reason: "no store bound",
     });
-    const { db } = fakeDb(new Error("d1 exploded"));
     const result = await runChainDetailStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
+      failingDb(new Error("the store exploded")),
       { now: () => NOW },
     );
     assert.equal(result.ok, false);
     assert.equal(result.reason, "query_failed");
-    assert.equal(result.detail, "d1 exploded");
+    assert.equal(result.detail, "the store exploded");
   });
 
   test("an unparseable observed_at reads as no rows, never as epoch 0", async () => {
     // Number("") is 0, which as an epoch is 1970 -- an age of 56 years, which
     // would alert with a wildly wrong number instead of the honest "no rows".
-    const { db } = fakeDb("not-a-number" as never, "also-bad" as never);
+    const { env } = fakeDb("not-a-number" as never, "also-bad" as never);
     const { recorded, recordException } = collector();
-    const result = await runChainDetailStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      { now: () => NOW, recordException },
-    );
+    const result = await runChainDetailStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException,
+    });
     assert.equal(result.reason, "no_rows");
     assert.equal(result.head_block, null);
     assert.match(String(recorded[0].error?.message), /no blocks at all/);
   });
 
   test("a non-Error throw is still reported as a string", async () => {
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare() {
-          return {
-            first() {
-              throw "boom";
-            },
-          };
-        },
-      },
-    };
-    const result = await runChainDetailStalenessWatchdog(env);
+    const result = await runChainDetailStalenessWatchdog(failingDb("boom"));
     assert.equal(result.detail, "boom");
   });
 
   test("uses the real clock and telemetry when no deps are injected", async () => {
     // The default branches (deps.now ?? Date.now, deps.recordException ??
     // recordExceptionEvent) are the ones production actually runs.
-    const { db } = fakeDb(Date.now() - 1_000);
-    const result = await runChainDetailStalenessWatchdog({
-      METAGRAPH_HEALTH_DB: db,
-    });
+    const { env } = fakeDb(Date.now() - 1_000);
+    const result = await runChainDetailStalenessWatchdog(env);
     assert.equal(result.ok, true);
     assert.equal(result.alerted, false);
   });
@@ -249,30 +262,32 @@ describe("the cron wiring", () => {
   });
 
   test("the watchdog cron reaches the watchdog, and reports its verdict", async () => {
-    const { db } = fakeDb(Date.now() - 1_000);
+    const { env } = fakeDb(Date.now() - 1_000);
     const result = (await handleScheduled(
       { cron: workerConfig.CHAIN_DETAIL_STALENESS_WATCHDOG_CRON } as never,
-      { METAGRAPH_HEALTH_DB: db } as never,
+      env as never,
       {} as never,
     )) as Record<string, unknown>;
     assert.equal(result.ok, true);
     assert.equal(result.alerted, false);
   });
 
-  test("the prune cron reaches the prune", async () => {
+  test("the prune cron reaches the prune, not the watchdog", async () => {
+    // The two branches sit next to each other and both decline on an unbound
+    // store, so "reason" no longer tells them apart -- since #10170 they both
+    // say "no store bound". What still does is the SHAPE of a successful
+    // answer: only the prune reports `blocks_pruned`, and an empty tier is a
+    // success for it ("the lane has simply not written yet") where an empty
+    // tier is an ALARM for the watchdog. So this drives it with a store that
+    // answers, and reads the shape.
+    const empty = { floor: null, head: null };
+    resetPg();
+    pg.control.rows = [empty];
     const result = (await handleScheduled(
       { cron: workerConfig.CHAIN_DETAIL_PRUNE_CRON } as never,
-      {} as never,
+      pgMockEnv() as never,
       {} as never,
     )) as Record<string, unknown>;
-    // The PRUNE's reason, not the watchdog's, and it is deliberately still
-    // D1's: with an empty env Neon owns nothing, so the D1 DELETE is still the
-    // one that would run and its binding is still the one that is missing
-    // (#10152). The watchdog above answers "no store bound" because its READ
-    // follows the rows; these are different questions with different answers.
-    assert.deepEqual(result, {
-      ok: false,
-      reason: "d1 binding unavailable",
-    });
+    assert.deepEqual(result, { ok: true, reason: "no rows", blocks_pruned: 0 });
   });
 });

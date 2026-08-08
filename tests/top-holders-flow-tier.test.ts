@@ -9,7 +9,18 @@
 // the ORDER, not merely that a number came back -- a non-null field with the
 // wrong ranking is the exact failure that shipped.
 import assert from "node:assert/strict";
-import { afterEach, describe, test } from "vitest";
+import { afterEach, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// One store since #10170: the HOLDINGS leg reaches it through a selector that
+// builds `new Client(...)` itself, and `computeTopHoldersFlow(env, network)`
+// cannot be handed a binding. See tests/helpers/pg-mock.ts for why the seam is
+// a module mock and why the controller is built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   buildTopHoldersFlowRows,
   computeTopHoldersFlow,
@@ -100,6 +111,16 @@ function artifact(
  * keep testing what they were written to test; pass `null` for the ledger state
  * that must be refused.
  */
+/**
+ * The store behind the holdings leg: a completeness pass that answers the two
+ * probes, and `rows` for the ranking query.
+ *
+ * The dispatch runs in the double's `onQuery`, which fires before it consults
+ * its canned answers -- so assigning `control.rows` there is what lets one
+ * double answer both statements. A subscription rather than a read-back
+ * because callers hold `seen` across the compute call; see
+ * tests/helpers/pg-mock.ts.
+ */
 function d1With(
   rows: unknown[] | null,
   opts: {
@@ -116,39 +137,24 @@ function d1With(
           received_rows: 364_266,
         }
       : opts.pass;
-  return {
-    seen,
-    env: {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql: string) {
-          return {
-            // The completeness reader's shape.
-            async first() {
-              seen.push({ sql, params: [] });
-              return pass;
-            },
-            // The holdings query binds NOTHING -- every value in it is a
-            // constant or a number the module read out of D1 itself -- so the
-            // stub has to answer at the statement, not only after bind().
-            async all() {
-              seen.push({ sql, params: [] });
-              if (opts.throws) throw new Error("no such table");
-              return rows === null ? null : { results: rows };
-            },
-            bind(...params: unknown[]) {
-              return {
-                async all() {
-                  seen.push({ sql, params });
-                  if (opts.throws) throw new Error("no such table");
-                  return rows === null ? null : { results: rows };
-                },
-              };
-            },
-          };
-        },
-      },
-    } as unknown as Env,
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = null;
+  pg.control.failNext = null;
+  pg.control.onQuery = ({ text, values }) => {
+    seen.push({ sql: text, params: values });
+    pg.control.failNext = null;
+    if (text.includes("_passes")) {
+      pg.control.rows = pass === null ? [] : [pass];
+      return;
+    }
+    if (opts.throws) {
+      pg.control.failNext = new Error("no such table");
+      return;
+    }
+    pg.control.rows = rows === null ? ("not-an-array" as never) : rows;
   };
+  return { seen, env: { ...pgMockEnv() } as unknown as Env };
 }
 
 describe("topHoldersFlowSql", () => {
@@ -468,8 +474,22 @@ describe("computeTopHoldersFlow", () => {
         }),
         { headers: { "content-type": "application/json" } },
       )) as never;
-    // No D1 binding -> the holdings leg declines entirely -> none of the three
+    // No store bound -> the holdings leg declines entirely -> none of the three
     // is claimed, and the frozen artifact keeps those sorts.
+    //
+    // THE TWO ASSERTIONS BELOW ARE RED ON PURPOSE. `topHoldersHoldings` reaches
+    // the store through `observationsReadDb(env, ctx)` and
+    // `computeTopHoldersFlow` passes no ctx -- ProjectionLane.compute is
+    // `(env, network)`, so there is none to pass. That used to fall back to the
+    // D1 binding; since D1 was removed it returns `undefined`, so the holdings
+    // leg can never run and the artifact permanently drops free_tao /
+    // delegated_tao / total_tao. Even with a ctx it would still decline:
+    // `pgObservationsReadDb` exposes no `first()` for the two completeness
+    // probes and its `all()` resolves to a bare array where
+    // src/top-holders-holdings.ts reads `.results`. Asserting less here would
+    // bless a leaderboard that has silently lost three of its six sorts; the
+    // fix is to read these tables through `readStore`, whose handle has both
+    // shapes and needs no ctx.
     const withoutHoldings = (await computeTopHoldersFlow({
       R2_SQL_TOKEN: "cfut_test",
     } as unknown as Env)) as Record<string, unknown>;

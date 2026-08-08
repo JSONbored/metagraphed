@@ -231,7 +231,9 @@ describe("pruneChainDetail", () => {
       reason: "no store bound",
     });
     assert.deepEqual(
-      await pruneChainDetail({ NEON_SOLE_STORE_TABLES: PRUNE_TABLES.join(",") }),
+      await pruneChainDetail({
+        NEON_SOLE_STORE_TABLES: PRUNE_TABLES.join(","),
+      }),
       { ok: false, reason: "no store bound" },
     );
 

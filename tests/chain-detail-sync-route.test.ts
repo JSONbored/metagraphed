@@ -66,12 +66,12 @@ function insertedTables() {
     .filter((t): t is string => Boolean(t));
 }
 
+// pgMockEnv carries both flags this route needs: NEON_DUAL_WRITE_LANES, without
+// which the mirror is not even attempted, and NEON_SOLE_STORE_TABLES, without
+// which the ack cannot claim the blocks are durable. Both are what
+// wrangler.data.jsonc declares for this lane today.
 const env = {
   CHAIN_DETAIL_SYNC_SECRET: SECRET,
-  // The lane has to be mirroring for the write to be attempted at all, and
-  // Neon has to solely own the four tables for the ack to claim durability --
-  // both are what wrangler.data.jsonc declares for this lane today.
-  NEON_DUAL_WRITE_LANES: "chain-detail",
   ...pgMockEnv(),
 } as never;
 
@@ -158,9 +158,9 @@ describe("POST /api/v1/internal/chain-detail-sync", () => {
       head: BLOCK,
       // One store: the `["d1"]` / `["d1","neon"]` acks the producer used to see
       // are unreachable now that a batch is refused outright unless Neon owns
-      // all four tables.
+      // all four tables, and `d1_statements` went with them -- a count of
+      // statements against a store that no longer exists.
       stores: ["neon"],
-      d1_statements: 0,
     });
     assert.deepEqual(insertedTables(), [
       "chain_detail_extrinsics",
