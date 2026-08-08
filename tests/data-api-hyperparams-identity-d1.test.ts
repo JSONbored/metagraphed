@@ -501,3 +501,96 @@ test("identity history: cold table 503s; a populated table's empty page serves",
   assert.equal(empty.status, 200);
   assert.equal(((await empty.json()) as Row).entry_count, 0);
 });
+
+// --- the inversion: Neon owns the family, D1 is not written (#10094) --------
+//
+// The branch that actually retires this table. Everything above pins the
+// dual-write era; these pin the one after it, where the D1 statements stop
+// being issued at all rather than being written and ignored. An untested
+// inversion is how a "migrated" table keeps a second copy diverging quietly.
+
+/** Env with the family named as Neon's and a Hyperdrive bound. The Neon write
+ * itself is not exercised here -- that is hyperparams-identity-neon-write's
+ * suite -- so it fails, which is exactly what makes the D1 assertion below
+ * meaningful: D1 stays untouched even when the Neon write does not land. */
+function neonOwnsEnv(tables: string) {
+  return env({
+    HYPERDRIVE: { connectionString: "postgresql://example/db" },
+    NEON_SOLE_STORE_TABLES: tables,
+  });
+}
+
+test("hyperparams: Neon owning the family drops the D1 BINDING requirement", async () => {
+  // The assertion that actually distinguishes the branch. With no D1 binding
+  // at all, the pre-inversion handler answered 503 "d1 binding unavailable"
+  // before doing anything. Once Neon owns the family that requirement is gone,
+  // so reaching ANY other outcome proves the D1 dependency was dropped.
+  //
+  // A count-based assertion looked obvious here and proved nothing: the Neon
+  // history read throws against a fake connection string, so D1 goes unwritten
+  // whether or not the skip exists. Mutating the guard left it green.
+  const res = await postHyperparams(
+    [hyperparamsSyncRow({ netuid: 7 })],
+    env({
+      METAGRAPH_HEALTH_DB: undefined,
+      HYPERDRIVE: { connectionString: "postgresql://example/db" },
+      NEON_SOLE_STORE_TABLES: "subnet_hyperparams,subnet_hyperparams_history",
+    }),
+  );
+  assert.notEqual(res.status, 503, "still demanding a D1 binding");
+});
+
+test("hyperparams: WITHOUT the family owned, the D1 binding is still required", async () => {
+  const res = await postHyperparams(
+    [hyperparamsSyncRow({ netuid: 7 })],
+    env({ METAGRAPH_HEALTH_DB: undefined }),
+  );
+  assert.equal(res.status, 503);
+});
+
+test("hyperparams: owning only ONE table of the family still writes D1", async () => {
+  // The pair moves together. The sync diffs against the history table's
+  // current hashes, so a family split across stores would diff against the
+  // wrong store and append revisions that already exist.
+  const res = await postHyperparams(
+    [hyperparamsSyncRow({ netuid: 8, tempo: 42 })],
+    neonOwnsEnv("subnet_hyperparams"),
+  );
+  assert.equal(res.status, 200);
+  assert.equal(
+    one("SELECT tempo FROM subnet_hyperparams WHERE netuid = 8").tempo,
+    42,
+  );
+});
+
+test("identity: Neon owning the family drops the D1 BINDING requirement", async () => {
+  const res = await postIdentity(
+    [identitySyncRow({ account: "5Inversion" })],
+    env({
+      METAGRAPH_HEALTH_DB: undefined,
+      HYPERDRIVE: { connectionString: "postgresql://example/db" },
+      NEON_SOLE_STORE_TABLES: "account_identity,account_identity_history",
+    }),
+  );
+  assert.notEqual(res.status, 503, "still demanding a D1 binding");
+});
+
+test("identity: WITHOUT the family owned, the D1 binding is still required", async () => {
+  const res = await postIdentity(
+    [identitySyncRow({ account: "5Inversion" })],
+    env({ METAGRAPH_HEALTH_DB: undefined }),
+  );
+  assert.equal(res.status, 503);
+});
+
+test("identity: owning only ONE table of the family still writes D1", async () => {
+  const res = await postIdentity(
+    [identitySyncRow({ account: "5Partial", name: "y" })],
+    neonOwnsEnv("account_identity"),
+  );
+  assert.equal(res.status, 200);
+  assert.equal(
+    one("SELECT name FROM account_identity WHERE account = '5Partial'").name,
+    "y",
+  );
+});
