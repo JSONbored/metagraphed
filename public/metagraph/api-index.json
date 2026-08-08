@@ -4509,13 +4509,17 @@
         {
           "name": "q",
           "schema": {
+            "maxLength": 1000,
             "type": "string"
           }
         },
         {
           "name": "limit",
           "schema": {
-            "type": "string"
+            "default": 10,
+            "maximum": 20,
+            "minimum": 1,
+            "type": "integer"
           }
         }
       ]
@@ -4554,6 +4558,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -8152,6 +8157,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -8222,6 +8228,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -11396,6 +11403,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }

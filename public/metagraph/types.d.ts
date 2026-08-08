@@ -36974,8 +36974,8 @@ export interface operations {
             query?: {
                 /** @description Free-text search query, matched case-insensitively against the collection's indexed text fields. Whitespace-separated terms narrow the result (AND), and an empty or whitespace-only value is treated as no filter rather than as a search matching nothing. */
                 q?: string;
-                /** @description Maximum number of rows to return in one page. A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916). */
-                limit?: string;
+                /** @description Maximum number of rows to return in one page (at most 20). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916). */
+                limit?: number;
             };
             header?: never;
             path?: never;

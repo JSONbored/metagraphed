@@ -49,6 +49,9 @@ import {
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_DEFAULT,
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
   EMISSION_PIPELINE_LIMIT_MAX,
+  SEMANTIC_LIMIT_DEFAULT,
+  SEMANTIC_LIMIT_MAX,
+  SEMANTIC_QUERY_MAX_LENGTH,
 } from "./route-limits.ts";
 import { EMISSION_PIPELINE_SORT_FIELDS } from "./emission-pipeline-surface.ts";
 import {
@@ -2613,8 +2616,21 @@ export const API_ROUTES = [
     "short",
     ["search"],
     [
-      { name: "q", schema: { type: "string" } },
-      { name: "limit", schema: { type: "string" } },
+      // Both were wrong (#10075): `q` published no ceiling though the handler
+      // rejects one over SEMANTIC_QUERY_MAX_LENGTH, and `limit` published
+      // `{"type":"string"}` for a value the handler reads as an integer and
+      // clamps -- so a client generated from this spec sent a string where an
+      // integer was wanted, with no way to learn either bound.
+      {
+        name: "q",
+        schema: parameterSchema(querySchema(SEMANTIC_QUERY_MAX_LENGTH)),
+      },
+      {
+        name: "limit",
+        schema: parameterSchema(
+          limitSchema(SEMANTIC_LIMIT_MAX, SEMANTIC_LIMIT_DEFAULT),
+        ),
+      },
     ],
     [],
   ),
@@ -2639,7 +2655,7 @@ export const API_ROUTES = [
     ["subnets", "analytics"],
     {
       parameters: [
-        { name: "netuid", schema: { type: "integer", minimum: 0 } },
+        { name: "netuid", schema: parameterSchema(netuidSchema()) },
         {
           name: "sort",
           schema: parameterSchema(enumSchema(EMISSION_PIPELINE_SORT_FIELDS)),
@@ -3608,7 +3624,7 @@ export const API_ROUTES = [
     ["accounts", "analytics"],
     csvRouteQuery([
       { name: "kind", schema: { type: "string" } },
-      { name: "netuid", schema: { type: "integer", minimum: 0 } },
+      { name: "netuid", schema: parameterSchema(netuidSchema()) },
       { name: "block_start", schema: { type: "integer", minimum: 0 } },
       { name: "block_end", schema: { type: "integer", minimum: 0 } },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
@@ -3626,7 +3642,7 @@ export const API_ROUTES = [
     "short",
     ["accounts", "analytics"],
     [
-      { name: "netuid", schema: { type: "integer", minimum: 0 } },
+      { name: "netuid", schema: parameterSchema(netuidSchema()) },
       { name: "from", schema: { type: "string", format: "date" } },
       { name: "to", schema: { type: "string", format: "date" } },
       { name: "limit", schema: { type: "integer", minimum: 1, maximum: 1000 } },
@@ -5127,7 +5143,7 @@ export const API_ROUTES = [
             "^[1-9A-HJ-NP-Za-km-z]{47,48}(,[1-9A-HJ-NP-Za-km-z]{47,48}){0,15}$",
         },
       },
-      { name: "netuid", schema: { type: "integer", minimum: 0 } },
+      { name: "netuid", schema: parameterSchema(netuidSchema()) },
     ],
     [],
   ),

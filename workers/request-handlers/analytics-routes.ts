@@ -25,6 +25,7 @@ import {
 } from "./analytics.ts";
 import {
   parseLimitParam,
+  parseNetuidParam,
   parseNonNegativeIntParam,
 } from "../request-params.ts";
 import {
@@ -1110,10 +1111,7 @@ export async function handleCompareValidators(
     );
   }
 
-  const netuidResult = parseNonNegativeIntParam(
-    url.searchParams.get("netuid"),
-    "netuid",
-  );
+  const netuidResult = parseNetuidParam(url.searchParams.get("netuid"));
   if ("error" in netuidResult) return analyticsQueryError(netuidResult.error);
 
   // Sequential, not parallel -- matches compare_validators' own fan-out
@@ -1183,10 +1181,7 @@ export async function handleEmissionPipeline(
     "fields",
   ]);
   if (validationError) return analyticsQueryError(validationError);
-  const netuidResult = parseNonNegativeIntParam(
-    url.searchParams.get("netuid"),
-    "netuid",
-  );
+  const netuidResult = parseNetuidParam(url.searchParams.get("netuid"));
   if ("error" in netuidResult) return analyticsQueryError(netuidResult.error);
 
   const economics = await resolveEmissionPipelineEconomics({

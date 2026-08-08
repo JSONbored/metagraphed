@@ -14,6 +14,11 @@ import type { StorageReadResult } from "../workers/storage.ts";
 import type { TieredRateLimitConfig } from "../workers/tiered-rate-limit.ts";
 import { buildTierPolicies } from "./api-tiers.ts";
 import {
+  SEMANTIC_LIMIT_DEFAULT,
+  SEMANTIC_LIMIT_MAX,
+  SEMANTIC_QUERY_MAX_LENGTH,
+} from "./route-limits.ts";
+import {
   recordAiDegradedEvent,
   recordAiEmbeddingEvent,
   recordAiGenerationEvent,
@@ -92,8 +97,12 @@ export const EMBED_MANIFEST_KEY = [
   EMBED_DIMENSIONS,
 ].join(":");
 
-export const SEMANTIC_DEFAULT_LIMIT = 10;
-export const SEMANTIC_MAX_LIMIT = 20;
+// The ceilings live in route-limits.ts so the published parameter and the
+// enforcement read one constant (#10075); re-exported under their existing
+// names so every current import site keeps working, the same pattern the other
+// six feature modules use.
+export const SEMANTIC_DEFAULT_LIMIT = SEMANTIC_LIMIT_DEFAULT;
+export const SEMANTIC_MAX_LIMIT = SEMANTIC_LIMIT_MAX;
 // Record kinds the registry embeds; the semantic + ask paths can scope to a
 // subset. Single source of truth for the tool schemas and the validator.
 export const SEMANTIC_TYPES = ["subnet", "surface", "provider"];
@@ -102,7 +111,7 @@ export const SEMANTIC_TYPES = ["subnet", "surface", "provider"];
 const FILTERED_RETRIEVE_TOPK = SEMANTIC_MAX_LIMIT;
 export const ASK_CONTEXT_COUNT = 6;
 export const ASK_MAX_QUESTION_LENGTH = 1000;
-export const SEMANTIC_MAX_QUERY_LENGTH = 1000;
+export const SEMANTIC_MAX_QUERY_LENGTH = SEMANTIC_QUERY_MAX_LENGTH;
 export const ASK_MAX_TOKENS = 512;
 const EMBED_BATCH_SIZE = 100;
 const VECTOR_ID_MAX_BYTES = 64;

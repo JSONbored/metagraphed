@@ -247,3 +247,23 @@ export const EMISSION_PIPELINE_MCP_LIMIT_DEFAULT = 20;
  * shape of a collection, small enough that a wrong guess costs nothing.
  */
 export const MCP_LIST_LIMIT_DEFAULT = 20;
+
+/**
+ * `/api/v1/search/semantic` -- the meaning-ranked registry search (#10075).
+ *
+ * Here for the reason this module exists: the route published `limit` as
+ * `{"type":"string"}` and `q` as unbounded, while the handler runs
+ * `clampLimit(value, 10, 20)` and rejects a `q` over 1,000 characters. A client
+ * generated from our own spec sent a string where the handler wanted an
+ * integer, and had no way to know either ceiling. Reading them from here means
+ * the published parameter and the enforcement cannot say different things.
+ *
+ * `limit` is CLAMPED rather than rejected, unlike the #9916 routes -- a
+ * similarity ranking has no meaningful page beyond the top matches, and
+ * Vectorize itself caps `topK` at this value.
+ */
+export const SEMANTIC_LIMIT_DEFAULT = 10;
+export const SEMANTIC_LIMIT_MAX = 20;
+/** Rejected above this with a 400, not truncated -- an embedded query that was
+ * silently cut would rank against text the caller never sent. */
+export const SEMANTIC_QUERY_MAX_LENGTH = 1000;

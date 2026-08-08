@@ -59,17 +59,18 @@ const VOCABULARY: Record<string, z.ZodType> = {
  * decision somebody made, and a STALE entry FAILS, so the list can only shrink
  * or stay honest.
  */
-const NOT_YET_ENFORCED =
-  "the route publishes `netuid` but does not reject an out-of-u16 value -- " +
-  "it answers 200 with an empty result. Publishing the bound before enforcing " +
-  "it would move the lie rather than fix it; see #10075";
-
-const DECLARED: Record<string, string> = {
-  "/api/v1/accounts/{ss58}/events ?netuid": NOT_YET_ENFORCED,
-  "/api/v1/accounts/{ss58}/history ?netuid": NOT_YET_ENFORCED,
-  "/api/v1/chain/emission-pipeline ?netuid": NOT_YET_ENFORCED,
-  "/api/v1/compare/validators ?netuid": NOT_YET_ENFORCED,
-};
+/**
+ * Standing debt: `route ?parameter` -> why it does not yet state the bound.
+ *
+ * Same contract as validate-mcp-input-parity's DECLARED -- every entry is a
+ * decision somebody made, and a STALE entry FAILS, so the list can only shrink
+ * or stay honest.
+ *
+ * EMPTY since #10075: the four routes that published `netuid` without rejecting
+ * an out-of-u16 value now reject it (`parseNetuidParam`), so the bound they
+ * publish is real and they need no admission.
+ */
+const DECLARED: Record<string, string> = {};
 
 /**
  * Key order differs between the two producers -- openapi.json is written
