@@ -1289,11 +1289,25 @@
     // tolerate legitimate chunked historical-backfill scripts (see
     // proxyToDataApi's own comment in workers/api.ts). Skipped when the
     // binding is absent (local dev/CI).
+    //
+    // 300/60s SINCE #10180, AND THIS NUMBER IS THE ENFORCED ONE. The limit
+    // lived here at 30 while workers/api.ts's INTERNAL_SYNC_RATE_LIMIT --
+    // which feeds only the 429 response HEADERS -- was raised to 300. Nothing
+    // read the constant to enforce anything, so the raise advertised headroom
+    // that did not exist and the producer kept being refused: the
+    // validator-nominators lane 429'd from 2026-08-07 18:22 onward, freezing
+    // nominator_positions (30.9h stale), validator_nominator_counts and
+    // hotkey_alpha together, because all three land through this proxy.
+    //
+    // tests/api-tiers.test.ts now pins the two together. That file already
+    // existed to stop exactly this -- an advertised ceiling that no binding
+    // enforces (#8608) -- and this binding was simply outside the tiered loop
+    // it checks.
     {
       "name": "INTERNAL_SYNC_RATE_LIMITER",
       "namespace_id": "1007",
       "simple": {
-        "limit": 30,
+        "limit": 300,
         "period": 60,
       },
     },
