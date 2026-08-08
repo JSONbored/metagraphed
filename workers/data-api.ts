@@ -389,7 +389,10 @@ import {
   mirrorFamilyToNeon,
   FAMILY_MIRROR_PLANS,
 } from "../src/hyperparams-identity-neon-write.ts";
-import { mirrorNominatorPositionsToNeon } from "../src/nominator-positions-neon-write.ts";
+import {
+  coldkeyMaxCapturedAt,
+  mirrorNominatorPositionsToNeon,
+} from "../src/nominator-positions-neon-write.ts";
 import {
   LEDGER_MIRROR_PLANS,
   mirrorLedgerToNeon,
@@ -408,11 +411,7 @@ import {
   writeAccountIdentityToD1,
   writeSubnetHyperparamsToD1,
 } from "../src/hyperparams-identity-d1-write.ts";
-import {
-  coldkeyMaxCapturedAt,
-  writeNominatorPositionsToD1,
-} from "../src/nominator-positions-d1-write.ts";
-import { writeValidatorNominatorCountsToD1 } from "../src/validator-nominator-counts-d1-write.ts";
+
 import {
   ACCOUNT_BALANCE_INSERT_COLUMNS,
   writeAccountBalancesToD1,
@@ -2028,35 +2027,9 @@ async function handleValidatorNominatorCountsSync(
     });
   }
 
-  // D1 is the binding this path REQUIRES -- the only store this family has.
-  // Checked HERE, after validation, not at the top: a malformed body is a 400
-  // whether or not a store happens to be bound (handleNominatorPositionsSync's
-  // own 400-before-503 reasoning).
-  const neonOwns = neonOwnsLedger(env, "validator-nominator-counts");
-  if (!neonOwns && !env.METAGRAPH_HEALTH_DB) {
-    return writeJson({ error: "d1 binding unavailable" }, 503);
-  }
-
-  let d1Statements = 0;
-  try {
-    if (!neonOwns) {
-      ({ statements: d1Statements } = await writeValidatorNominatorCountsToD1(
-        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof writeValidatorNominatorCountsToD1
-        >[0],
-        rows,
-        pass,
-      ));
-    }
-  } catch (err) {
-    console.error(
-      "data-api validator-nominator-counts-sync D1 write failed:",
-      err,
-    );
-    await captureDataApiError(err, "validator-nominator-counts-sync-d1", env);
-    return writeJson({ error: "d1 write failed" }, 502);
-  }
-
+  // NO D1 WRITE, and no D1 binding requirement: validator_nominator_counts and
+  // its pass ledger are Neon's outright (#10116). What used to be a
+  // write-then-mirror pair is now one write, below.
   // ONE OF THIS LANE'S TWO WRITERS. The sync-batches queue consumer is the
   // other and mirrors too -- #9728 was a single unmirrored writer leaving a
   // table short while the row count looked nearly right.
@@ -2070,8 +2043,8 @@ async function handleValidatorNominatorCountsSync(
     pass,
   );
 
-  // Once Neon is the store, a pass that did not reach it did not happen.
-  if (neonOwns && !neon.result?.ok) {
+  // Neon IS the store, so a pass that did not reach it did not happen.
+  if (!neon.result?.ok) {
     const reason = neon.result?.reason ?? "neon write not attempted";
     console.error(
       "data-api validator-nominator-counts-sync Neon write failed:",
@@ -2088,8 +2061,7 @@ async function handleValidatorNominatorCountsSync(
   return writeJson({
     ok: true,
     nominator_counts_written: rows.length,
-    stores: neonOwns ? ["neon"] : ["d1"],
-    d1_statements: d1Statements,
+    stores: ["neon"],
     // Echoed so a producer can see its declaration was understood rather than
     // silently dropped -- the failure mode a purely optional field invites.
     pass_total: pass?.expectedRows ?? null,
@@ -2291,35 +2263,9 @@ async function handleNominatorPositionsSync(
     });
   }
 
-  // D1 is the binding this path REQUIRES -- the only store this family has.
-  // Checked HERE, after validation, not at the top: a malformed body is a 400
-  // whether or not a store happens to be bound (handleSubnetHyperparamsSync's
-  // own 400-before-503 reasoning).
-  const neonOwns = neonOwnsNominatorPositions(env);
-  if (!neonOwns && !env.METAGRAPH_HEALTH_DB) {
-    return writeJson({ error: "d1 binding unavailable" }, 503);
-  }
-
-  let d1Statements = 0;
-  try {
-    if (!neonOwns) {
-      ({ statements: d1Statements } = await writeNominatorPositionsToD1(
-        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof writeNominatorPositionsToD1
-        >[0],
-        { rows, coldkeyMaxCapturedAt: cutoffs },
-        pass,
-      ));
-    }
-  } catch (err) {
-    console.error("data-api nominator-positions-sync D1 write failed:", err);
-    await captureDataApiError(err, "nominator-positions-sync-d1", env);
-    return writeJson({ error: "d1 write failed" }, 502);
-  }
-
-  // ONE OF THIS LANE'S TWO WRITERS. The other is the queue consumer below, and
-  // it mirrors too -- #9728 was a single unmirrored writer leaving a table 92
-  // rows short while the count looked nearly right.
+  // NO D1 WRITE, and no D1 binding requirement: nominator_positions and its
+  // pass ledger are Neon's outright (#10111). The queue consumer below is this
+  // lane's other entry point and it does not write D1 either.
   const neon = await mirrorNominatorPositionsToNeon(
     env as unknown as Record<string, unknown>,
     ctx,
@@ -2327,7 +2273,7 @@ async function handleNominatorPositionsSync(
   );
 
   // Once Neon is the store, a pass that did not reach it did not happen.
-  if (neonOwns) {
+  {
     // The PRUNE and the PASS count as well as the write. Rows landing while
     // stale coldkeys survive is not a partial success -- top-holders would
     // serve both. And nominator_positions_passes has no other writer once this
@@ -2359,8 +2305,7 @@ async function handleNominatorPositionsSync(
     ok: true,
     nominator_positions_written: rows.length,
     coldkeys_pruned: cutoffs.size,
-    stores: neonOwns ? ["neon"] : ["d1"],
-    d1_statements: d1Statements,
+    stores: ["neon"],
     // Echoed so a producer can see its declaration was understood rather than
     // silently dropped -- the failure mode a purely optional field invites.
     pass_total: pass?.expectedRows ?? null,
@@ -8246,28 +8191,38 @@ export default {
           // that could prune rows it did not carry.
           "nominator-positions": async (rows, pass) => {
             const cutoffs = coldkeyMaxCapturedAt(rows);
-            const result = neonOwnsNominatorPositions(env)
-              ? { statements: 0 }
-              : await writeNominatorPositionsToD1(
-                  env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-                    typeof writeNominatorPositionsToD1
-                  >[0],
-                  { rows, coldkeyMaxCapturedAt: cutoffs },
-                  // The declared pass rides the transport (metagraphed-infra#346).
-                  // A queue knows a message was DELIVERED; it does not know whether
-                  // the producer's whole scan arrived, and only the second fact
-                  // catches a load that stopped halfway.
-                  pass,
-                );
-            // THE LANE'S OTHER WRITER. Mirrored here as well as on the HTTP
-            // path: a mirror that covers one of two writers is a lie the
-            // moment traffic takes the other, which is exactly #9728.
-            await mirrorNominatorPositionsToNeon(
+            // D1 IS NOT WRITTEN -- nominator_positions and its pass ledger
+            // are Neon's outright (#10111). The "mirror" is now the write, and
+            // that changes what a failure MEANS here: while D1 held the rows a
+            // Neon failure cost a lane verdict, and this writer could return
+            // normally. Now returning normally ACKS the message and the rows
+            // are gone, so the failure has to throw -- writeSyncBatch turns a
+            // throw into a retry, which is the only thing that can still save
+            // them.
+            //
+            // The declared pass rides the transport (metagraphed-infra#346): a
+            // queue knows a message was DELIVERED, not whether the producer's
+            // whole scan arrived, and only the second fact catches a load that
+            // stopped halfway.
+            const neon = await mirrorNominatorPositionsToNeon(
               env as unknown as Record<string, unknown>,
               ctx,
               { rows, coldkeyMaxCapturedAt: cutoffs, pass },
             );
-            return result;
+            const failed = [neon.write, neon.prune, neon.pass].filter(
+              (r) => r && !r.ok,
+            );
+            if (!neon.attempted || failed.length > 0) {
+              throw new Error(
+                `nominator-positions neon write failed: ${
+                  failed
+                    .map((r) => r?.reason)
+                    .filter(Boolean)
+                    .join("; ") || "not attempted"
+                }`,
+              );
+            }
+            return { statements: 0 };
           },
           "account-balances": async (rows, pass) => {
             // The ONLY writer for this lane -- the HTTP route enqueues and
@@ -8307,18 +8262,11 @@ export default {
               { ...neuronSnapshotWrite(rows, Date.now()), pass },
             ),
           "validator-nominator-counts": async (rows, pass) => {
-            const result = neonOwnsLedger(env, "validator-nominator-counts")
-              ? { statements: 0 }
-              : await writeValidatorNominatorCountsToD1(
-                  env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-                    typeof writeValidatorNominatorCountsToD1
-                  >[0],
-                  rows,
-                  pass,
-                );
-            // THE LANE'S OTHER WRITER, mirrored here as well as on the
-            // HTTP path.
-            await mirrorLedgerToNeon(
+            // D1 is not written -- this lane is Neon's outright (#10116) --
+            // so the Neon write below is the ONLY one, and its failure must
+            // throw rather than return: a normal return acks the message and
+            // the rows are gone. writeSyncBatch turns a throw into a retry.
+            const neon = await mirrorLedgerToNeon(
               env as unknown as Record<string, unknown>,
               ctx,
               "validator-nominator-counts",
@@ -8326,7 +8274,14 @@ export default {
               {},
               pass,
             );
-            return result;
+            if (!neon.result?.ok) {
+              throw new Error(
+                `validator-nominator-counts neon write failed: ${
+                  neon.result?.reason ?? "not attempted"
+                }`,
+              );
+            }
+            return { statements: 0 };
           },
         }
       : {};

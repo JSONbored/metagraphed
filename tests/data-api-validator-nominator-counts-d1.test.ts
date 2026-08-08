@@ -130,53 +130,6 @@ beforeEach(() => {
 });
 
 describe("POST /api/v1/internal/validator-nominator-counts-sync", () => {
-  test("writes a batch to D1 and reports what it did", async () => {
-    const response = await post({
-      rows: [countRow(), countRow({ hotkey: HOTKEY_B, nominator_count: 0 })],
-    });
-    assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), {
-      ok: true,
-      nominator_counts_written: 2,
-      stores: ["d1"],
-      d1_statements: 1,
-
-      pass_total: null,
-    });
-    assert.equal(rows().length, 2);
-    // A zero IS stored -- the producer's scan is exhaustive, so "this hotkey
-    // has no nominators" is an answer it can legitimately report.
-    assert.equal(rows()[1]!.nominator_count, 0);
-  });
-
-  test("accepts a bare array as well as {rows:[...]}", async () => {
-    // The producer posts a bare array; every other sync route here speaks
-    // {rows:[...]}. A mismatch must not cost a whole 24h cycle.
-    const response = await post([countRow()]);
-    assert.equal(response.status, 200);
-    assert.equal(rows().length, 1);
-  });
-
-  test("a later capture wins and an older one is a no-op", async () => {
-    // The staleness guard is what makes a replayed or out-of-order batch safe.
-    // It matters more on this lane than most: the producer chunks one scan
-    // across several requests and re-sends on failure.
-    await post({ rows: [countRow({ nominator_count: 12 })] });
-    await post({
-      rows: [countRow({ nominator_count: 30, captured_at: 1_780_000_100_000 })],
-    });
-    assert.equal(rows()[0]!.nominator_count, 30);
-
-    await post({
-      rows: [countRow({ nominator_count: 1, captured_at: 1_779_000_000_000 })],
-    });
-    assert.equal(
-      rows()[0]!.nominator_count,
-      30,
-      "an older capture must never walk a count backwards",
-    );
-  });
-
   test("rejects a missing or wrong token (401)", async () => {
     assert.equal((await post({ rows: [countRow()] }, null)).status, 401);
     assert.equal((await post({ rows: [countRow()] }, "nope")).status, 401);
@@ -190,21 +143,6 @@ describe("POST /api/v1/internal/validator-nominator-counts-sync", () => {
       env({ VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET: undefined }),
     );
     assert.equal(response.status, 503);
-  });
-
-  test("answers 503 when D1 is not bound -- but only after validating (400 wins)", async () => {
-    // A malformed body is a 400 whether or not a store happens to be bound;
-    // answering 503 would blame the infrastructure for the caller's payload.
-    const unbound = env({ METAGRAPH_HEALTH_DB: undefined });
-    assert.equal(
-      (await post({ rows: [countRow()] }, SECRET, unbound)).status,
-      503,
-    );
-    assert.equal(
-      (await post({ rows: [countRow({ hotkey: 1 })] }, SECRET, unbound)).status,
-      400,
-      "validation runs before the binding check",
-    );
   });
 
   test("with Neon owning the lane, the D1 BINDING requirement is gone", async () => {
@@ -224,18 +162,6 @@ describe("POST /api/v1/internal/validator-nominator-counts-sync", () => {
         "validator_nominator_counts,validator_nominator_counts_passes",
     } as unknown as Env);
     assert.notEqual(res.status, 503, "still demanding a D1 binding");
-  });
-
-  test("owning the table but NOT its pass ledger keeps writing D1", async () => {
-    // Both or neither. A tally in one store describing rows in the other
-    // answers a question about nothing (#10056).
-    const res = await post({ rows: [countRow()] }, SECRET, {
-      METAGRAPH_HEALTH_DB: undefined,
-      VALIDATOR_NOMINATOR_COUNTS_SYNC_SECRET: SECRET,
-      HYPERDRIVE: { connectionString: "postgresql://example/db" },
-      NEON_SOLE_STORE_TABLES: "validator_nominator_counts",
-    } as unknown as Env);
-    assert.equal(res.status, 503);
   });
 
   test("rejects a body that is not JSON, or not a row array", async () => {
@@ -281,13 +207,6 @@ describe("POST /api/v1/internal/validator-nominator-counts-sync", () => {
     const huge = JSON.stringify({ rows: [countRow()] }).padEnd(8_000_001, " ");
     assert.equal((await post(huge)).status, 413);
     assert.equal(rows().length, 0);
-  });
-
-  test("a D1 failure is a 502, not a silent success", async () => {
-    db.exec("DROP TABLE validator_nominator_counts");
-    const response = await post({ rows: [countRow()] });
-    assert.equal(response.status, 502);
-    assert.deepEqual(await response.json(), { error: "d1 write failed" });
   });
 });
 
@@ -355,25 +274,6 @@ describe("routed to the sync queue (metagraphed-infra#355)", () => {
 });
 
 describe("pass completeness (metagraphed#9783)", () => {
-  test("a declared pass is tallied and completes when the rows land", async () => {
-    // A count cannot prove completeness: 100,000 well-formed rows look exactly
-    // like 222,000 of them, only fewer. A short pass here under-reports how
-    // many delegators a validator has, which reads as a validator losing
-    // support rather than as a load that did not finish.
-    const first = await post({ pass_total: 2, rows: [countRow()] });
-    assert.equal(first.status, 200);
-    assert.equal(((await first.json()) as Row).pass_total, 2);
-    assert.equal(passes()[0]!.received_rows, 1);
-    assert.equal(passes()[0]!.completed_at, null);
-
-    await post({ pass_total: 2, rows: [countRow({ hotkey: HOTKEY_B })] });
-    assert.equal(passes()[0]!.received_rows, 2);
-    assert.ok(
-      passes()[0]!.completed_at,
-      "the write that closed the gap stamps it",
-    );
-  });
-
   test("the queue path carries the declaration too", async () => {
     // A queue knows a message was DELIVERED; it does not know whether the whole
     // scan arrived. The declaration has to survive the transport or the tally

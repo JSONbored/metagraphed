@@ -125,83 +125,6 @@ beforeEach(() => {
 });
 
 describe("POST /api/v1/internal/nominator-positions-sync", () => {
-  test("writes a batch to D1 and reports what it did", async () => {
-    const response = await post({
-      rows: [
-        positionRow(),
-        positionRow({ netuid: 4, share_fraction: 0.5 }),
-        positionRow({ coldkey: COLDKEY_B, netuid: 1 }),
-      ],
-    });
-    assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), {
-      ok: true,
-      nominator_positions_written: 3,
-      coldkeys_pruned: 2,
-      stores: ["d1"],
-      d1_statements: 3,
-      pass_total: null,
-    });
-    assert.equal(rows().length, 3);
-    assert.equal(rows()[0]!.share_fraction, 0.5);
-  });
-
-  test("a later capture wins and an older one is a no-op", async () => {
-    // The staleness guard is what makes a replayed or out-of-order batch safe.
-    await post({ rows: [positionRow({ share_fraction: 0.25 })] });
-    await post({
-      rows: [
-        positionRow({ share_fraction: 0.9, captured_at: 1_780_000_100_000 }),
-      ],
-    });
-    assert.equal(rows()[0]!.share_fraction, 0.9);
-
-    await post({
-      rows: [
-        positionRow({ share_fraction: 0.1, captured_at: 1_779_000_000_000 }),
-      ],
-    });
-    assert.equal(
-      rows()[0]!.share_fraction,
-      0.9,
-      "an older capture must never overwrite a newer one",
-    );
-  });
-
-  test("a coldkey's unstaked position is pruned, and ONLY that coldkey's", async () => {
-    // This is the multi-request property: a full Alpha scan does not fit one
-    // body, so a batch-wide prune would delete the rows a sibling request just
-    // wrote. Request 2 covers only COLDKEY_A, at a later capture -- COLDKEY_B's
-    // untouched rows must survive it.
-    await post({
-      rows: [
-        positionRow({ netuid: 18 }),
-        positionRow({ netuid: 4 }),
-        positionRow({ coldkey: COLDKEY_B, netuid: 1 }),
-      ],
-    });
-    assert.equal(rows().length, 3);
-
-    await post({
-      rows: [positionRow({ netuid: 18, captured_at: 1_780_000_100_000 })],
-    });
-    const after = rows();
-    assert.deepEqual(
-      after.map((r) => [r.coldkey, r.netuid]),
-      [
-        [COLDKEY_A, 18],
-        [COLDKEY_B, 1],
-      ],
-      "netuid 4 unstaked and is gone; COLDKEY_B was never in this batch and stays",
-    );
-  });
-
-  test("accepts a bare array as well as {rows:[...]}", async () => {
-    const response = await post([positionRow()]);
-    assert.equal(response.status, 200);
-    assert.equal(rows().length, 1);
-  });
-
   test("rejects an out-of-range share_fraction", async () => {
     // share_fraction multiplies the hotkey's WHOLE stake at serve time, so 12
     // would publish twelve times that hotkey's stake as this coldkey's
@@ -281,81 +204,9 @@ describe("POST /api/v1/internal/nominator-positions-sync", () => {
     assert.equal((await post({ rows: [positionRow()] }, null)).status, 401);
     assert.equal(rows().length, 0);
   });
-
-  test("a malformed body is a 400 even with no store bound", async () => {
-    // 400-before-503: a malformed body is a client error whether or not a
-    // store happens to be bound.
-    const noStore = {
-      NOMINATOR_POSITIONS_SYNC_SECRET: SECRET,
-    } as unknown as Env;
-    assert.equal((await post({ nope: 1 }, SECRET, noStore)).status, 400);
-    const unbound = await post({ rows: [positionRow()] }, SECRET, noStore);
-    assert.equal(unbound.status, 503);
-    assert.match(
-      (await unbound.json<{ error: string }>()).error,
-      /d1 binding unavailable/,
-    );
-  });
-
-  test("a failing D1 write is a 502, not a silent success", async () => {
-    const broken = {
-      METAGRAPH_HEALTH_DB: {
-        prepare() {
-          return { bind: () => ({}) };
-        },
-        async batch() {
-          throw new Error("D1_ERROR: disk full");
-        },
-      },
-      NOMINATOR_POSITIONS_SYNC_SECRET: SECRET,
-    } as unknown as Env;
-    const response = await post({ rows: [positionRow()] }, SECRET, broken);
-    assert.equal(response.status, 502);
-    assert.match(
-      (await response.json<{ error: string }>()).error,
-      /d1 write failed/,
-    );
-  });
 });
 
 describe("pass completeness (metagraphed-infra#346)", () => {
-  test("a declared pass is tallied, and completes when the rows all land", async () => {
-    // THE GAP THIS CLOSES. This ledger feeds /accounts/{ss58}/positions,
-    // /subnets/{netuid}/holders, /chain/holders and delegated_tao on the
-    // top-holders leaderboard. Those already decline while hotkey_alpha has no
-    // complete pass, because a partial POOL ledger underprices a holder -- but
-    // a partial POSITION ledger silently DROPS them, and nothing measured it.
-    const first = await post({ pass_total: 2, rows: [positionRow()] });
-    assert.equal(first.status, 200);
-    assert.equal(((await first.json()) as Row).pass_total, 2);
-    let pass = passes()[0]!;
-    assert.equal(pass.expected_rows, 2);
-    assert.equal(pass.received_rows, 1);
-    assert.equal(pass.completed_at, null, "one of two is not a complete pass");
-
-    const second = await post({
-      pass_total: 2,
-      rows: [positionRow({ hotkey: HOTKEY_B })],
-    });
-    assert.equal(second.status, 200);
-    pass = passes()[0]!;
-    assert.equal(pass.received_rows, 2);
-    assert.ok(pass.completed_at, "the request that closed the gap stamps it");
-  });
-
-  test("a replay cannot un-complete a finished pass", async () => {
-    // At-least-once: the producer re-sends a chunk on failure, so received_rows
-    // can exceed expected_rows. An equality check would call that finished pass
-    // unfinished; the stamp is set once and never cleared.
-    await post({ pass_total: 1, rows: [positionRow()] });
-    const stampedAt = passes()[0]!.completed_at;
-    assert.ok(stampedAt);
-    await post({ pass_total: 1, rows: [positionRow()] });
-    const after = passes()[0]!;
-    assert.equal(after.received_rows, 2, "over-delivered, which is legal");
-    assert.equal(after.completed_at, stampedAt, "and the stamp did not move");
-  });
-
   test("the queue path carries the declaration too", async () => {
     // The path this lane actually takes. A queue knows a message was
     // DELIVERED; it does not know whether the producer's whole scan arrived,
@@ -378,15 +229,6 @@ describe("pass completeness (metagraphed-infra#346)", () => {
       0,
       "and the tally is the consumer's to write",
     );
-  });
-
-  test("omitting pass_total writes no tally at all", async () => {
-    // A producer may post without declaring, and inventing a total would mark
-    // an unproven load complete -- the precise lie the tally exists to prevent.
-    const res = await post({ rows: [positionRow()] });
-    assert.equal(res.status, 200);
-    assert.equal(((await res.json()) as Row).pass_total, null);
-    assert.equal(passes().length, 0);
   });
 
   test("rejects a declaration the request contradicts", async () => {
@@ -478,18 +320,5 @@ describe("routed to the sync queue (metagraphed-infra#355)", () => {
     );
     assert.equal(response.status, 502);
     assert.equal(rows().length, 0, "no fallback write -- the lane is cut over");
-  });
-
-  test("an un-opted deployment still writes D1", async () => {
-    // Rollback has to be boring: these are latest-only upsert tables refreshed
-    // on a tick, so unsetting the flag simply means the next pass writes the
-    // old way. No backfill, no reconciliation.
-    const response = await post(
-      { rows: [positionRow()] },
-      SECRET,
-      env({ SYNC_BATCHES: { send: async () => {} } }),
-    );
-    assert.equal(response.status, 200);
-    assert.equal(rows().length, 1);
   });
 });

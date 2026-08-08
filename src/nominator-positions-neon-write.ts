@@ -190,3 +190,28 @@ export async function mirrorNominatorPositionsToNeon(
   }
   return { attempted: true, write, prune, pass: passResult };
 }
+
+/**
+ * Per-coldkey max captured_at for one batch -- the prune's cutoff map.
+ *
+ * Moved here from the deleted D1 writer (#10131): it never touched a database,
+ * and it feeds the NEON prune, so it outlived the file it happened to live in.
+ *
+ * Pure and exported so the handler can build it without a database and the
+ * test can assert the "later capture wins" rule directly. Rows whose coldkey
+ * or captured_at is unusable are skipped rather than seeding a cutoff of NaN,
+ * which would delete every row for that coldkey.
+ */
+export function coldkeyMaxCapturedAt(rows: Row[]): Map<string, number> {
+  const cutoffs = new Map<string, number>();
+  for (const row of rows) {
+    const coldkey = typeof row?.coldkey === "string" ? row.coldkey : null;
+    const capturedAt = row?.captured_at;
+    if (!coldkey || !Number.isFinite(capturedAt as number)) continue;
+    const current = cutoffs.get(coldkey);
+    if (current == null || (capturedAt as number) > current) {
+      cutoffs.set(coldkey, capturedAt as number);
+    }
+  }
+  return cutoffs;
+}

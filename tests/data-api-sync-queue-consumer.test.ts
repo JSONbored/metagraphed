@@ -45,6 +45,18 @@ const SCHEMA =
       "migrations/d1/0029_nominator_positions_passes.sql",
     ),
     "utf8",
+  ) +
+  // The vehicle lane (#10131). These tests are about the CONSUMER -- ack vs
+  // retry, per-message disposal, decompression -- not about any lane's SQL, so
+  // they need a lane that still writes D1. nominator-positions used to be it
+  // and is now Neon's outright.
+  fs.readFileSync(
+    path.join(process.cwd(), "migrations/d1/0019_hotkey_alpha.sql"),
+    "utf8",
+  ) +
+  fs.readFileSync(
+    path.join(process.cwd(), "migrations/d1/0021_hotkey_alpha_passes.sql"),
+    "utf8",
   );
 
 const COLDKEY = "5CXRfP2ekFhYQ6BCwEy5V8YyxgLmUmTNzHZTKAfTHKhKPBqE";
@@ -96,15 +108,14 @@ function message(body: unknown) {
 
 function positionMessage(overrides: Record<string, unknown> = {}) {
   return message({
-    lane: "nominator-positions",
+    lane: "hotkey-alpha",
     captured_at: 1_780_000_000_000,
     key_complete: true,
     rows: [
       {
-        coldkey: COLDKEY,
         hotkey: HOTKEY,
         netuid: 18,
-        share_fraction: 0.25,
+        total_alpha: 12.5,
         captured_at: 1_780_000_000_000,
       },
     ],
@@ -126,13 +137,18 @@ async function consume(
 beforeEach(() => {
   db = new DatabaseSync(":memory:");
   db.exec(SCHEMA);
+  // THE #9558 FILTER needs a referencing position, or hotkey_alpha stores
+  // nothing: D1 keeps only pools a nominator_positions row actually names, so
+  // an unseeded fixture makes every "the row was written" assertion fail for a
+  // reason that has nothing to do with the consumer.
+  db.prepare(
+    "INSERT INTO nominator_positions (coldkey, hotkey, netuid, share_fraction, captured_at)" +
+      " VALUES (?, ?, ?, ?, ?)",
+  ).run(COLDKEY, HOTKEY, 18, 0.25, 1_780_000_000_000);
 });
 
 const rows = () =>
-  db.prepare("SELECT * FROM nominator_positions").all() as Record<
-    string,
-    unknown
-  >[];
+  db.prepare("SELECT * FROM hotkey_alpha").all() as Record<string, unknown>[];
 
 const balances = () =>
   db.prepare("SELECT * FROM account_balances").all() as Record<
@@ -192,10 +208,28 @@ describe("the sync queue consumer", () => {
     // THE DATA-LOSS GUARD, end to end. Without `key_complete` the write
     // would prune a coldkey against a chunk that may not carry all its rows.
     // The consumer refuses instead, and nothing is written.
-    const m = positionMessage({ key_complete: undefined });
+    // Asserted on the lane that PRUNES. nominator-positions is Neon's now, so
+    // "nothing was written" can no longer be read out of this sqlite fixture --
+    // the disposition is the assertion: refused messages are ACKED, never
+    // retried, because a message that cannot assert completeness never will.
+    const m = message({
+      lane: "nominator-positions",
+      captured_at: 1_780_000_000_000,
+      rows: [
+        {
+          coldkey: COLDKEY,
+          hotkey: HOTKEY,
+          netuid: 18,
+          share_fraction: 0.25,
+          captured_at: 1_780_000_000_000,
+        },
+      ],
+    });
     await consume([m]);
     assert.deepEqual(m.calls, ["ack"]);
-    assert.equal(rows().length, 0, "refused, not written");
+    // And the D1 lane's table is untouched, so the refusal did not leak into
+    // the fixture by another route.
+    assert.equal(rows().length, 0);
   });
 
   test("retries a message whose WRITE failed", async () => {
@@ -288,26 +322,25 @@ describe("the sync queue consumer", () => {
     assert.deepEqual(m.calls, ["ack"]);
   });
 
-  test("credits a declared pass on the nominator lanes too (metagraphed#9783)", async () => {
-    // Both lanes are routed and neither had a tally until #9783. The queue path
-    // is the one they actually take, so the declaration has to survive it --
-    // a queue knows a message arrived, not whether the whole scan did.
-    const m = message({
-      lane: "validator-nominator-counts",
-      captured_at: 1_780_000_000_000,
-      pass_total: 2,
-      rows: [
-        { hotkey: HOTKEY, nominator_count: 3, captured_at: 1_780_000_000_000 },
-      ],
-    });
+  test("credits a declared pass on the lane that still writes D1 (metagraphed#9783)", async () => {
+    // The declaration has to survive the queue: a queue knows a message
+    // arrived, not whether the whole scan did.
+    //
+    // This used to ride validator-nominator-counts. That lane is Neon's
+    // outright now (#10116), so its tally no longer lands anywhere this
+    // sqlite fixture can see -- the Neon side is covered by
+    // tests/pass-tally-neon and tests/ledger-neon-write. hotkey-alpha is the
+    // remaining D1 lane, so it is the one that can still prove the QUEUE
+    // carries a pass_total through to a tally.
+    const m = positionMessage({ pass_total: 2 });
     await consume([m]);
     assert.deepEqual(m.calls, ["ack"]);
     const pass = db
-      .prepare("SELECT * FROM validator_nominator_counts_passes")
+      .prepare("SELECT * FROM hotkey_alpha_passes")
       .all()[0] as Record<string, unknown>;
     assert.equal(pass.expected_rows, 2);
     assert.equal(pass.received_rows, 1);
-    assert.equal(pass.completed_at, null, "one of two is not a complete pass");
+    assert.equal(pass.completed_at, null, "one of two rows is not complete");
   });
 
   test("a dead-letter batch is acked and NOT written (metagraphed-infra#363)", async () => {
