@@ -381,9 +381,13 @@ describe("the deployed wiring", () => {
     //
     // A table needs this lane when the mirror cannot finish the job -- either
     // it ACCUMULATES (the mirror only ever covers the days it ran) or NOTHING
-    // MIRRORS IT AT ALL. subnet_hyperparams and account_identity are the
-    // second case: latest-only, but no dual-write lane writes them, so the
-    // reconciler is their only path into Neon.
+    // MIRRORS IT AT ALL.
+    //
+    // subnet_hyperparams and account_identity USED to be the second case, and
+    // #10046 gave both a mirror. They did not both leave the lane, because
+    // "the mirror covers it" is a claim about the PRODUCER, not the table
+    // shape, and the two producers behave differently -- measured in D1 on
+    // 2026-08-08 rather than assumed.
     const named =
       /"NEON_BACKFILL_LANES":\s*"([^"]*)"/.exec(wrangler)?.[1]?.split(",") ??
       [];
@@ -412,6 +416,14 @@ describe("the deployed wiring", () => {
       const provenStuck = new Set([
         "validator_nominator_counts",
         "nominator_positions",
+        // 499 rows spanning 2026-08-03T03:55 to 2026-08-07T18:34, with ZERO
+        // written in the preceding 10 hours. The identity producer emits only
+        // the accounts it observed, so a row it wrote days ago is never
+        // rewritten and reaches Neon by no other path. Contrast
+        // subnet_hyperparams, measured the same minute: 129 rows, ALL sharing
+        // one captured_at, because that producer rescans every subnet each
+        // pass -- which is why it left this lane and this one did not.
+        "account_identity",
       ]);
       assert.ok(
         plan.partition === "date" ||

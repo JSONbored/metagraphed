@@ -403,8 +403,16 @@ describe("the Neon read cutover (metagraphed-infra#336)", () => {
     const backfills = (
       /"NEON_BACKFILL_LANES":\s*"([^"]*)"/.exec(wrangler)?.[1] ?? ""
     ).split(",");
+    // Mirror lanes are HYPHENATED and the read/backfill flags name UNDERSCORED
+    // tables, so the two lists have to be brought into one vocabulary before
+    // they can be compared. Without this, a table that gained a mirror reads
+    // as unwritten -- which is the opposite of what this test is for, and it
+    // would push someone to delete a correct read lane rather than fix a real
+    // gap. tests/neon-backfill.test.ts normalises the same way.
     const written = new Set(
-      [...writes, ...backfills].map((lane) => lane.trim()).filter(Boolean),
+      [...writes, ...backfills]
+        .map((lane) => lane.trim().replace(/-/g, "_"))
+        .filter(Boolean),
     );
     for (const lane of named) {
       assert.ok(
