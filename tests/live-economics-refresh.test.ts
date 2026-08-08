@@ -14,6 +14,7 @@
 // against what /api/v1/economics served that day (owner_coldkey
 // 5FRYKhbm..., owner_hotkey 5CS3g6nV..., registration_cost_tao 0.0005).
 import assert from "node:assert/strict";
+import { alphaPriceHistoryQuery } from "../scripts/lib/load-alpha-price-history.ts";
 import { describe, test } from "vitest";
 import emissionFixture from "./fixtures/emission-pipeline.json" with { type: "json" };
 import {
@@ -623,10 +624,14 @@ describe("refreshLiveEconomics", () => {
       NEURON_AGGREGATE_QUERY,
       // #9449: captured_at is selected because the %-change windows are
       // measured in elapsed time, not by subtracting snapshot dates.
-      "SELECT netuid, snapshot_date, alpha_price_tao, captured_at " +
-        "FROM subnet_snapshots " +
-        "WHERE snapshot_date >= date('now','-40 days') " +
-        "ORDER BY netuid ASC, snapshot_date ASC",
+      //
+      // Asked of the builder rather than restated, because the cutoff moves
+      // with the clock now: it is a YYYY-MM-DD literal computed in JS, not
+      // `date('now','-40 days')`. That spelling is SQLite's, and this read goes
+      // to Postgres through readStore -- "function date(unknown, unknown) does
+      // not exist" took the whole tick, so KV economics:current stopped
+      // advancing while the last good blob kept being served.
+      alphaPriceHistoryQuery(),
     ]);
   });
 
