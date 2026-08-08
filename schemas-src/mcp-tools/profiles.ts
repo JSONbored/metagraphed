@@ -60,7 +60,7 @@ export const ListProfilesInputSchema = z
     sort: sortSchema(API_QUERY_COLLECTIONS.profiles.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
-    limit: limitSchema(1000).optional(),
+    limit: limitSchema(1000, 20).optional(),
     cursor: numericCursorSchema().optional(),
   })
   .strict();

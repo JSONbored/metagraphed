@@ -40,7 +40,7 @@ export const GetRegistryLeaderboardsInputSchema = z
     board: RouteQuery_registry_leaderboards.shape.board
       .describe("Which leaderboard to return.")
       .meta({ examples: [LEADERBOARD_BOARDS[0]] }),
-    limit: RouteQuery_registry_leaderboards.shape.limit,
+    limit: RouteQuery_registry_leaderboards.shape.limit.meta({ default: 20 }),
   })
   .strict();
 export type GetRegistryLeaderboardsInput = z.infer<

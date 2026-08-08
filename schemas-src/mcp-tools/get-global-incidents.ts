@@ -34,7 +34,7 @@ export const GetGlobalIncidentsInputSchema = z
     netuid: API_QUERY_COLLECTIONS.incidents.filter_schemas.netuid.optional(),
     sort: sortSchema(API_QUERY_COLLECTIONS.incidents.sort_fields).optional(),
     order: orderSchema().optional(),
-    limit: limitSchema(100).optional(),
+    limit: limitSchema(100, 20).optional(),
     cursor: numericCursorSchema().optional(),
   })
   .strict();

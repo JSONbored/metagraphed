@@ -58,7 +58,7 @@ export const ListEvidenceInputSchema = z
     sort: sortSchema(API_QUERY_COLLECTIONS.claims.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
-    limit: limitSchema(100).optional(),
+    limit: limitSchema(100, 20).optional(),
     cursor: numericCursorSchema().optional(),
   })
   .strict();
@@ -143,7 +143,7 @@ export const ListRpcEndpointsInputSchema = z
       .meta({ examples: ["netuid,name,slug"] }),
     // Ceiling is MAX_LIMIT (workers/request-params.ts:21); a literal here
     // because schemas-src/ imports from neither src/ nor workers/.
-    limit: limitSchema(1000).optional(),
+    limit: limitSchema(1000, 20).optional(),
     cursor: z
       .union([z.int().min(0), z.string()])
       .describe(
@@ -203,7 +203,7 @@ export const ListRpcPoolsInputSchema = z
     sort: sortSchema(API_QUERY_COLLECTIONS["rpc-pools"].sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
-    limit: limitSchema(100).optional(),
+    limit: limitSchema(100, 20).optional(),
     cursor: numericCursorSchema().optional(),
   })
   .strict();
@@ -229,7 +229,7 @@ export const ListSourceSnapshotsInputSchema = z
     sort: sortSchema(API_QUERY_COLLECTIONS.sources.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
-    limit: limitSchema(100).optional(),
+    limit: limitSchema(100, 20).optional(),
     cursor: numericCursorSchema().optional(),
   })
   .strict();
@@ -289,7 +289,7 @@ export const ListProfileCompletenessInputSchema = z
     ).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
-    limit: limitSchema(100).optional(),
+    limit: limitSchema(100, 20).optional(),
     cursor: numericCursorSchema().optional(),
   })
   .strict();

@@ -102,7 +102,7 @@ export const ListEndpointsInputSchema = z
     fields: fieldsSchema().optional(),
     // Ceiling is MAX_LIMIT (workers/request-params.ts:21); a literal here
     // because schemas-src/ imports from neither src/ nor workers/.
-    limit: limitSchema(1000).optional(),
+    limit: limitSchema(1000, 20).optional(),
     cursor: numericCursorSchema().optional(),
   })
   .strict();

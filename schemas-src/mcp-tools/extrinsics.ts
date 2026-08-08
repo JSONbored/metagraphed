@@ -87,7 +87,7 @@ export const ListExtrinsicsInputSchema = z
         "Inclusive end of the range. A block height on chain tools, an ISO-8601 date on time-series ones; an EVM address on decode_evm_call.",
       )
       .meta({ examples: [8783000] }),
-    limit: RouteQuery_extrinsics.shape.limit,
+    limit: RouteQuery_extrinsics.shape.limit.meta({ default: 50 }),
     offset: RouteQuery_extrinsics.shape.offset,
     cursor: RouteQuery_extrinsics.shape.cursor,
   })

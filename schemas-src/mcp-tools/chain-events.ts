@@ -4,6 +4,7 @@
 // covered pilot routes -- no existing Zod schema to reuse. Modeled fresh,
 // matching each hand-written literal field-for-field.
 import { z } from "zod";
+import { CHAIN_EVENTS_LIMIT_DEFAULT } from "../../src/route-limits.ts";
 import { blockEventCursorSchema, limitSchema } from "./shared.ts";
 import { McpNetworkSchema } from "../shared.ts";
 
@@ -73,7 +74,7 @@ export const GetExtrinsicChainEventsInputSchema = z
         "Extrinsic reference, as the composite id `block_number-extrinsic_index` -- the index is the extrinsic's position within that block, from 0. A bare block number or block hash is NOT accepted here, unlike the sibling block-scoped tools.",
       )
       .meta({ examples: ["8791987-0"] }),
-    limit: limitSchema(200).optional(),
+    limit: limitSchema(200, CHAIN_EVENTS_LIMIT_DEFAULT).optional(),
     // `block_number.event_index`, not an opaque token -- the route publishes
     // and enforces that shape, so a bare string advertised a value it rejects
     // (#10118). keysetCursorSchema() stays for the genuinely opaque base64

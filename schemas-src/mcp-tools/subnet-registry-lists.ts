@@ -103,7 +103,7 @@ export const ListSubnetCandidatesInputSchema = z
     sort: sortSchema(API_QUERY_COLLECTIONS.candidates.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
-    limit: limitSchema(100).optional(),
+    limit: limitSchema(100, 20).optional(),
     cursor: numericCursorSchema().optional(),
   })
   .strict();
@@ -147,7 +147,7 @@ export const ListSubnetEvidenceInputSchema = z
     sort: sortSchema(API_QUERY_COLLECTIONS.claims.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
-    limit: limitSchema(100).optional(),
+    limit: limitSchema(100, 20).optional(),
     cursor: numericCursorSchema().optional(),
   })
   .strict();

@@ -37,7 +37,7 @@ export const SearchSubnetsInputSchema = z
       )
       .meta({ examples: ["inference"] }),
     cursor: numericCursorSchema().optional(),
-    limit: limitSchema(50).optional(),
+    limit: limitSchema(50, 10).optional(),
   })
   .strict();
 export type SearchSubnetsInput = z.infer<typeof SearchSubnetsInputSchema>;

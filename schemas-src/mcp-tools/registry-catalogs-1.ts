@@ -61,7 +61,7 @@ export const ListProvidersInputSchema = z
     sort: sortSchema(API_QUERY_COLLECTIONS.providers.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
-    limit: limitSchema(100).optional(),
+    limit: limitSchema(100, 20).optional(),
     cursor: numericCursorSchema().optional(),
   })
   .strict();
@@ -123,7 +123,7 @@ export const ListSurfacesInputSchema = z
     ).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
-    limit: limitSchema(100).optional(),
+    limit: limitSchema(100, 20).optional(),
     cursor: numericCursorSchema().optional(),
   })
   .strict();
@@ -152,7 +152,7 @@ export const ListCandidatesInputSchema = z
     sort: sortSchema(API_QUERY_COLLECTIONS.candidates.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
-    limit: limitSchema(1000).optional(),
+    limit: limitSchema(1000, 20).optional(),
     cursor: numericCursorSchema().optional(),
   })
   .strict();

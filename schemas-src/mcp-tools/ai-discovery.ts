@@ -4,6 +4,7 @@
 // existing schemas-src/routes/ REST schema -- modeled fresh, matching
 // each hand-written literal field-for-field.
 import { z } from "zod";
+import { SEMANTIC_LIMIT_DEFAULT } from "../../src/route-limits.ts";
 import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import { limitSchema, netuidSchema, querySchema } from "./shared.ts";
 import { SEMANTIC_QUERY_MAX_LENGTH } from "../../src/route-limits.ts";
@@ -35,7 +36,7 @@ export const FindSubnetOpportunitiesInputSchema = z
       .optional()
       .describe("Which leaderboard to return.")
       .meta({ examples: [ECONOMIC_LEADERBOARD_BOARDS[0]] }),
-    limit: limitSchema(100).optional(),
+    limit: limitSchema(100, 10).optional(),
   })
   .strict();
 export type FindSubnetOpportunitiesInput = z.infer<
@@ -88,7 +89,7 @@ export const SemanticSearchInputSchema = z
         "Alias for `q`, the name this tool shipped with. Search text, embedded and ranked by meaning.",
       )
       .meta({ examples: ["inference"] }),
-    limit: limitSchema(20).optional(),
+    limit: limitSchema(20, SEMANTIC_LIMIT_DEFAULT).optional(),
     type: SemanticTypeSchema.describe("Which entity kind to search over.").meta(
       { examples: ["subnet"] },
     ),
@@ -163,7 +164,7 @@ export const FindSubnetForTaskInputSchema = z
         "Describe the task in plain language; subnets are ranked by how well their published capabilities match it.",
       )
       .meta({ examples: ["summarise long documents"] }),
-    limit: limitSchema(20).optional(),
+    limit: limitSchema(20, 5).optional(),
   })
   .strict();
 export type FindSubnetForTaskInput = z.infer<
