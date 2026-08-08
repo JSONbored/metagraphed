@@ -217,7 +217,7 @@ describe("runNeonPrune", () => {
     const pg = fakeSql({ doomed: 10, survivors: 10 });
     const lane = laneSpy();
     const out = await runNeonPrune(
-      { HYPERDRIVE: {}, NEON_BACKFILL_LANES: "neuron_daily" },
+      { HYPERDRIVE: {}, NEON_SOLE_STORE_TABLES: "neuron_daily" },
       ctx,
       { sql: pg.sql, laneHealthDb: lane.db, now: () => NOW },
     );
@@ -231,7 +231,7 @@ describe("runNeonPrune", () => {
     const pg = fakeSql({ doomed: 7, survivors: 900 });
     const lane = laneSpy();
     await runNeonPrune(
-      { HYPERDRIVE: {}, NEON_BACKFILL_LANES: "surface_checks" },
+      { HYPERDRIVE: {}, NEON_SOLE_STORE_TABLES: "surface_checks" },
       ctx,
       { sql: pg.sql, laneHealthDb: lane.db, now: () => NOW },
     );
@@ -241,13 +241,47 @@ describe("runNeonPrune", () => {
     assert.match(String(lane.written[0]!.detail), /surface_checks -7/);
   });
 
+  test("prunes a table Neon owns even with NEON_BACKFILL_LANES empty (#10164)", async () => {
+    // THE PRODUCTION STATE THIS LANE WAS IN. The gate keyed on the backfill
+    // flag, and a table LEAVES that flag exactly when Neon becomes its sole
+    // store -- so once the lanes finished, the flag went empty and this lane
+    // pruned nothing while reporting a clean run. surface_checks is a 30-day
+    // rolling window with no other writer to trim it.
+    const pg = fakeSql({ doomed: 7, survivors: 900 });
+    const lane = laneSpy();
+    await runNeonPrune(
+      {
+        HYPERDRIVE: {},
+        NEON_BACKFILL_LANES: "",
+        NEON_SOLE_STORE_TABLES: "surface_checks,subnet_burn_history",
+      },
+      ctx,
+      { sql: pg.sql, laneHealthDb: lane.db, now: () => NOW },
+    );
+    assert.equal(pg.deletes().length, 2, "both owned windows must be pruned");
+  });
+
+  test("does not prune a table Neon does not own", async () => {
+    // The other half, and the reason the original gate existed: a table Neon
+    // is not the store for may hold a partial copy, and deleting from that is
+    // deleting a fill in progress rather than trimming a window.
+    const pg = fakeSql({ doomed: 7, survivors: 900 });
+    const lane = laneSpy();
+    await runNeonPrune({ HYPERDRIVE: {}, NEON_SOLE_STORE_TABLES: "" }, ctx, {
+      sql: pg.sql,
+      laneHealthDb: lane.db,
+      now: () => NOW,
+    });
+    assert.equal(pg.deletes().length, 0);
+  });
+
   test("a REFUSAL is stale, not ok", async () => {
     // Silence would make the guard pointless: a plan disagreeing with its own
     // table is exactly the thing somebody has to look at.
     const pg = fakeSql({ doomed: 900, survivors: 0 });
     const lane = laneSpy();
     await runNeonPrune(
-      { HYPERDRIVE: {}, NEON_BACKFILL_LANES: "surface_checks" },
+      { HYPERDRIVE: {}, NEON_SOLE_STORE_TABLES: "surface_checks" },
       ctx,
       { sql: pg.sql, laneHealthDb: lane.db, now: () => NOW },
     );
