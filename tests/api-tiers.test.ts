@@ -24,9 +24,12 @@ import { MCP_TIERED_RATE_LIMIT } from "../src/mcp-server.ts";
 import { AI_TIERED_RATE_LIMIT } from "../src/ai-search.ts";
 import { STATE_QUERY_TIERED_RATE_LIMIT } from "../workers/request-handlers/rpc-proxy.ts";
 import {
+  CHAIN_FIREHOSE_INGEST_RATE_LIMIT,
   DATA_TIERED_RATE_LIMIT,
+  INTERNAL_SYNC_RATE_LIMIT,
   WEBHOOK_SUBSCRIPTION_TIERED_RATE_LIMIT,
 } from "../workers/api.ts";
+import { FULLNODE_RPC_TIER_RATE_LIMITS } from "../workers/request-handlers/fullnode-rpc-proxy.ts";
 
 /** wrangler.jsonc's `ratelimits`, by binding name. */
 function limiterBindings(): Map<string, { limit: number; period: number }> {
@@ -153,5 +156,106 @@ describe("buildTierPolicies", () => {
     for (const tier of API_TIERS) {
       assert.equal(policies[tier].windowSeconds, 10);
     }
+  });
+});
+
+// THE SAME BUG, ON THE BINDINGS THIS FILE'S TIERED LOOP NEVER LOOKED AT
+// (#10180). `SURFACES` covers the five tiered configs, which is 20 of the 27
+// bindings. The rest are flat -- one constant, one binding -- and nothing
+// checked them, so `INTERNAL_SYNC_RATE_LIMIT` sat at 300 in workers/api.ts
+// while INTERNAL_SYNC_RATE_LIMITER enforced 30 in wrangler.jsonc.
+//
+// That constant feeds ONLY the 429 response headers. Raising it advertised
+// headroom that did not exist, and the producer kept being refused: the
+// validator-nominators lane 429'd from 2026-08-07 18:22, freezing
+// nominator_positions, validator_nominator_counts and hotkey_alpha together,
+// because all three land through the same proxy.
+
+/** Flat limiters: one advertised constant, one binding, no tiers. */
+const FLAT_LIMITERS: [
+  string,
+  { limit: number; windowSeconds: number },
+  string,
+][] = [
+  ["internal-sync", INTERNAL_SYNC_RATE_LIMIT, "INTERNAL_SYNC_RATE_LIMITER"],
+  [
+    "chain-firehose-ingest",
+    CHAIN_FIREHOSE_INGEST_RATE_LIMIT,
+    "CHAIN_FIREHOSE_INGEST_RATE_LIMITER",
+  ],
+];
+
+/**
+ * Bindings that enforce a limit but advertise no number to compare against.
+ *
+ * Listed rather than skipped by pattern: the coverage test below fails on any
+ * binding that appears in neither this list nor a config, so a new limiter
+ * cannot be added without someone deciding which kind it is. That decision is
+ * the point -- an advertised limit needs pinning, an unadvertised one does not.
+ */
+const UNADVERTISED_BINDINGS = new Set([
+  // src/mcp-server.ts's call_rpc guard returns a bare `rate_limited` with no
+  // x-ratelimit headers, so there is no second number that could disagree.
+  "RPC_RATE_LIMITER",
+  // fullnode-rpc-proxy's pre-auth guess guard; its 429 carries the TIER's
+  // numbers, checked below, not this binding's.
+  "FULLNODE_RPC_GUESS_RATE_LIMITER",
+]);
+
+describe("untiered ceilings are backed by real bindings (#10180)", () => {
+  const bindings = limiterBindings();
+
+  for (const [name, policy, envVar] of FLAT_LIMITERS) {
+    test(`${name}: enforces the ${policy.limit}/${policy.windowSeconds}s it advertises`, () => {
+      const binding = bindings.get(envVar);
+      assert.ok(binding, `${envVar} exists in wrangler.jsonc`);
+      assert.equal(
+        binding.limit,
+        policy.limit,
+        `${envVar} enforces the limit ${name}'s 429 headers advertise`,
+      );
+      assert.equal(binding.period, policy.windowSeconds);
+    });
+  }
+
+  for (const [tier, policy] of Object.entries(FULLNODE_RPC_TIER_RATE_LIMITS)) {
+    test(`fullnode-rpc ${tier}: enforces the ${policy.limit}/min it advertises`, () => {
+      const binding = bindings.get(policy.envVar);
+      assert.ok(binding, `${policy.envVar} exists in wrangler.jsonc`);
+      assert.equal(binding.limit, policy.limit);
+      assert.equal(binding.period, policy.windowSeconds);
+    });
+  }
+
+  test("every binding in wrangler.jsonc is claimed by some config", () => {
+    // The hole this closes is the one that produced #10180: a binding nothing
+    // compares against drifts silently, and drift is invisible in the
+    // direction that matters -- the enforced number is the low one.
+    // Not vacuous: an empty parse would make `orphans` empty and pass.
+    assert.ok(
+      bindings.size >= 20,
+      `limiterBindings() parsed ${bindings.size} bindings -- it reads wrangler.jsonc`,
+    );
+    const claimed = new Set<string>(UNADVERTISED_BINDINGS);
+    for (const [, config] of SURFACES) {
+      for (const policy of [config.anonymous, config.keyed]) {
+        claimed.add(policy.envVar);
+      }
+      for (const tier of API_TIERS) {
+        const policy = config.tiers?.[tier];
+        if (policy) claimed.add(policy.envVar);
+      }
+    }
+    for (const [, , envVar] of FLAT_LIMITERS) claimed.add(envVar);
+    for (const policy of Object.values(FULLNODE_RPC_TIER_RATE_LIMITS)) {
+      claimed.add(policy.envVar);
+    }
+    const orphans = [...bindings.keys()].filter((name) => !claimed.has(name));
+    assert.deepEqual(
+      orphans,
+      [],
+      "each of these enforces a limit no config declares -- add it to a tier " +
+        "config, to FLAT_LIMITERS, or to UNADVERTISED_BINDINGS",
+    );
   });
 });

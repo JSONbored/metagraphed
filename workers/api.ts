@@ -3423,7 +3423,10 @@ async function internalSyncRateLimited(request: Request, env: Env) {
 // forwardWithRetry now also properly respects retry-after and pauses its
 // whole poll loop on a 429 (the since-retired relay), so a real
 // spike still degrades gracefully instead of repeating this failure mode.
-const CHAIN_FIREHOSE_INGEST_RATE_LIMIT = { limit: 1200, windowSeconds: 60 };
+export const CHAIN_FIREHOSE_INGEST_RATE_LIMIT = {
+  limit: 1200,
+  windowSeconds: 60,
+};
 
 async function chainFirehoseIngestRateLimited(request: Request, env: Env) {
   if (!env.CHAIN_FIREHOSE_INGEST_RATE_LIMITER?.limit) return null;
