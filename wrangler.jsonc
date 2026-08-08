@@ -998,6 +998,12 @@
       "12,27,42,57 * * * *",
       // #9779 registry writer -- see REGISTRY_SYNC_CRON in workers/config.ts.
       "10,25,40,55 * * * *",
+      // #9781 daily-series gap check -- see DAILY_SERIES_COVERAGE_CRON in
+      // workers/config.ts. Twice a day rather than often: a hole does not heal,
+      // so the value is noticing at all, not noticing fast. Every other
+      // watchdog here asks how old the newest row is, which cannot see a
+      // missing day in the middle.
+      "35 7,19 * * *",
       // #10236 registry RECONCILER -- see REGISTRY_RESYNC_CRON. Hourly is the
       // tick, not the pass: the lane walks the whole registry 100 files at a
       // time and then declines to start again for 20h, so this is ~three

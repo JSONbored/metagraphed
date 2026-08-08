@@ -251,6 +251,18 @@ export const REGISTRY_SYNC_CRON = "10,25,40,55 * * * *";
  * same GitHub rate-limit window or the same sync route.
  */
 export const REGISTRY_RESYNC_CRON = "35 * * * *";
+/**
+ * The daily-series gap check (#9781), twice a day.
+ *
+ * A HOLE DOES NOT HEAL, so there is nothing to gain from asking often -- unlike
+ * a staleness watchdog, where the whole value is noticing quickly. Twice a day
+ * bounds how long a missed rollup sits unreported while keeping the cost at two
+ * grouped scans rather than ninety-six.
+ *
+ * 07:35 and 19:35 UTC: after both daily rollup windows, so a day being written
+ * right now is already complete rather than being read mid-pass.
+ */
+export const DAILY_SERIES_COVERAGE_CRON = "35 7,19 * * *";
 // #9464: the top-holders leaderboard's alarm. That lane had NO watchdog and no
 // producer -- `account_balances` died with the box and is not in the poller
 // Container's job set -- so the route served a one-shot pre-decommission
