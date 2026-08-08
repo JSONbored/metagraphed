@@ -29,10 +29,10 @@ import {
   MAX_GLOBAL_INCIDENT_SOURCE_ROWS,
   MAX_INCIDENT_ROWS,
   MAX_UPTIME_ROWS,
-  SS58_ADDRESS_PATTERN,
   UPTIME_WINDOWS,
 } from "../workers/config.ts";
 import { composeCompareData } from "../workers/request-handlers/analytics-routes.ts";
+import { isFinneySs58Address } from "./account-balance.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
 
 export { composeCompareData };
@@ -248,7 +248,7 @@ export function parseCompareHotkeyList(hotkeys: unknown): string[] | null {
   const result: string[] = [];
   const seen = new Set<string>();
   for (const value of hotkeys) {
-    if (typeof value !== "string" || !SS58_ADDRESS_PATTERN.test(value)) {
+    if (typeof value !== "string" || !isFinneySs58Address(value)) {
       return null;
     }
     if (seen.has(value)) continue;

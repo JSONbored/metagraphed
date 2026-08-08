@@ -538,7 +538,6 @@ import { KV_HEALTH_META } from "./kv-keys.ts";
 import {
   ANALYTICS_WINDOWS,
   DEFAULT_ANALYTICS_WINDOW,
-  SS58_ADDRESS_PATTERN,
 } from "../workers/config.ts";
 import { answerRpcUsage } from "./rpc-usage-answer.ts";
 import { loadChainServingColdTier } from "./chain-serving-loader.ts";
@@ -5808,7 +5807,7 @@ const rootValue = {
     // BAD_USER_INPUT error (same guard MCP applies), not a silent no-op. The
     // filter is applied at the Postgres tier's SQL WHERE, so it only needs to
     // ride the request params; the empty-rows builder fallback is unaffected.
-    if (coldkey != null && !SS58_ADDRESS_PATTERN.test(coldkey)) {
+    if (coldkey != null && !isFinneySs58Address(coldkey)) {
       throw new GraphQLError("coldkey must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -5962,7 +5961,7 @@ const rootValue = {
     { ss58, netuid, window }: QueryAccount_Position_HistoryArgs,
     context: GqlContext,
   ) {
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -6045,7 +6044,7 @@ const rootValue = {
   },
 
   async account({ ss58 }: QueryAccountArgs, context: GqlContext) {
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -6088,7 +6087,7 @@ const rootValue = {
     { ss58, window }: QueryAccount_PrometheusArgs,
     context: GqlContext,
   ) {
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -6138,7 +6137,7 @@ const rootValue = {
     { ss58, window, direction }: QueryAccount_Stake_FlowArgs,
     context: GqlContext,
   ) {
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -6208,7 +6207,7 @@ const rootValue = {
     { ss58 }: QueryAccount_PortfolioArgs,
     context: GqlContext,
   ) {
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -6249,7 +6248,7 @@ const rootValue = {
     { ss58 }: QueryAccount_PositionsArgs,
     context: GqlContext,
   ) {
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -6287,7 +6286,7 @@ const rootValue = {
     { ss58 }: QueryAccount_SubnetsArgs,
     context: GqlContext,
   ) {
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -6321,7 +6320,7 @@ const rootValue = {
     // Same SS58 + window validation handleAccountRegistrations (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -6382,7 +6381,7 @@ const rootValue = {
     // Same SS58 + window validation handleAccountDeregistrations (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -6448,7 +6447,7 @@ const rootValue = {
     // Same SS58 + window validation handleAccountServing (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -6509,7 +6508,7 @@ const rootValue = {
     // Same SS58 + window validation handleAccountAxonRemovals (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -6566,7 +6565,7 @@ const rootValue = {
     // Same SS58 + window validation handleAccountStakeMoves (via
     // makeAccountEventHandler) uses -- a malformed address or unsupported
     // window is a GraphQL BAD_USER_INPUT error, not a silent card.
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -6625,7 +6624,7 @@ const rootValue = {
     { ss58, window }: QueryAccount_Weight_SettersArgs,
     context: GqlContext,
   ) {
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -6680,7 +6679,7 @@ const rootValue = {
     { ss58 }: QueryAccount_EntitiesArgs,
     context: GqlContext,
   ) {
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -6727,7 +6726,7 @@ const rootValue = {
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
     // is a GraphQL BAD_USER_INPUT error, not a silent empty card.
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -6767,7 +6766,7 @@ const rootValue = {
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed
     // address is a GraphQL BAD_USER_INPUT error, not a silent empty timeline.
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -6823,7 +6822,7 @@ const rootValue = {
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
     // is a GraphQL BAD_USER_INPUT error, not a silent empty card.
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -6831,7 +6830,7 @@ const rootValue = {
     // The relationship drilldown needs a second, distinct SS58 -- the same two
     // guards the get_account_counterparties MCP tool applies to `counterparty`.
     if (counterparty != null) {
-      if (!SS58_ADDRESS_PATTERN.test(counterparty)) {
+      if (!isFinneySs58Address(counterparty)) {
         throw new GraphQLError("counterparty must be a valid SS58 address.", {
           extensions: { code: "BAD_USER_INPUT" },
         });
@@ -6961,7 +6960,7 @@ const rootValue = {
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
     // is a GraphQL BAD_USER_INPUT error, not a silent empty feed.
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -7040,7 +7039,7 @@ const rootValue = {
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
     // is a GraphQL BAD_USER_INPUT error, not a silent empty feed.
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -7113,7 +7112,7 @@ const rootValue = {
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
     // is a GraphQL BAD_USER_INPUT error, not a silent empty feed.
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });
@@ -7191,7 +7190,7 @@ const rootValue = {
   ) {
     // Same SS58 validation every account_* resolver uses -- a malformed address
     // is a GraphQL BAD_USER_INPUT error, not a silent empty series.
-    if (!SS58_ADDRESS_PATTERN.test(ss58)) {
+    if (!isFinneySs58Address(ss58)) {
       throw new GraphQLError("ss58 must be a valid SS58 address.", {
         extensions: { code: "BAD_USER_INPUT" },
       });

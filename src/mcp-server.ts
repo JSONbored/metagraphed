@@ -207,7 +207,7 @@ import {
   recordTraceSpan,
   shouldSampleTrace,
 } from "./tracing.ts";
-import { resolveClientIp, SS58_ADDRESS_PATTERN } from "../workers/config.ts";
+import { resolveClientIp } from "../workers/config.ts";
 import {
   applyTieredRateLimit,
   spendDeferredDailyQuota,
@@ -3852,14 +3852,21 @@ function requireKnownEventKind(kind: unknown) {
   }
 }
 
-// Require a bare SS58 address (hotkey or coldkey) — the same shape the REST
-// account routes accept, from the shared SS58_ADDRESS_PATTERN.
+// Require a bare SS58 address (hotkey or coldkey) — the same verdict the REST
+// account routes reach, via the shared isFinneySs58Address.
+//
+// This checks the CHECKSUM, not just the base58 shape (#10036). A shape-only
+// test accepts a one-character typo — right alphabet, right length, wrong
+// bytes — and every account tool then answered it with a confident empty
+// result that reads as "this account holds nothing" rather than "that is not
+// an address". isFinneySs58Address subsumes the shape check, so this is
+// strictly narrower than the SS58_ADDRESS_PATTERN test it replaced.
 function requireSs58(args: Row) {
   const value = requireString(args, "ss58");
-  if (!SS58_ADDRESS_PATTERN.test(value)) {
+  if (!isFinneySs58Address(value)) {
     throw toolError(
       "invalid_params",
-      "Argument `ss58` must be a valid SS58 account address (base58, 47-48 chars).",
+      "Argument `ss58` must be a valid finney SS58 account address.",
     );
   }
   return value;
@@ -3867,16 +3874,17 @@ function requireSs58(args: Row) {
 
 // The optional forms of requireHotkey, for the two neuron tools that take a
 // hotkey as an ALTERNATIVE to a UID rather than as the subject (#9872). Each
-// element is pattern-checked, so a caller who passes a coldkey-looking typo
+// element is checksum-checked, so a caller who passes a coldkey-looking typo
 // or a name gets `invalid_params` naming the bad element rather than an empty
-// result they would read as "not registered".
+// result they would read as "not registered" — which is the whole reason this
+// validates at all, and why a shape-only test was not enough (#10036).
 function optionalHotkey(args: Row, key: string): string | null {
   const value = args?.[key];
   if (value === undefined || value === null) return null;
-  if (typeof value !== "string" || !SS58_ADDRESS_PATTERN.test(value)) {
+  if (typeof value !== "string" || !isFinneySs58Address(value)) {
     throw toolError(
       "invalid_params",
-      `Argument \`${key}\` must be a valid SS58 hotkey (base58, 47-48 chars).`,
+      `Argument \`${key}\` must be a valid finney SS58 hotkey.`,
     );
   }
   return value;
@@ -3892,25 +3900,25 @@ function optionalHotkeyArray(args: Row, key: string): string[] | null {
     );
   }
   for (const entry of value) {
-    if (typeof entry !== "string" || !SS58_ADDRESS_PATTERN.test(entry)) {
+    if (typeof entry !== "string" || !isFinneySs58Address(entry)) {
       throw toolError(
         "invalid_params",
-        `Argument \`${key}\` contains an entry that is not a valid SS58 hotkey (base58, 47-48 chars).`,
+        `Argument \`${key}\` contains an entry that is not a valid finney SS58 hotkey.`,
       );
     }
   }
   return value as string[];
 }
 
-// A validator identity is the same SS58 shape as an account, just a different
+// A validator identity is the same SS58 address as an account, just a different
 // argument name (a hotkey the caller already knows, not one they're looking
-// up) -- same runtime pattern check as requireSs58, distinct error text.
+// up) -- same runtime checksum check as requireSs58, distinct error text.
 function requireHotkey(args: Row) {
   const value = requireString(args, "hotkey");
-  if (!SS58_ADDRESS_PATTERN.test(value)) {
+  if (!isFinneySs58Address(value)) {
     throw toolError(
       "invalid_params",
-      "Argument `hotkey` must be a valid SS58 account address (base58, 47-48 chars).",
+      "Argument `hotkey` must be a valid finney SS58 account address.",
     );
   }
   return value;
@@ -8050,10 +8058,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       );
       const offset = optionalNonNegativeInt(args, "offset") ?? 0;
       const coldkey = optionalString(args, "coldkey");
-      if (coldkey && !SS58_ADDRESS_PATTERN.test(coldkey)) {
+      if (coldkey && !isFinneySs58Address(coldkey)) {
         throw toolError(
           "invalid_params",
-          "Argument `coldkey` must be a valid SS58 account address (base58, 47-48 chars).",
+          "Argument `coldkey` must be a valid finney SS58 account address.",
         );
       }
       // The DATA_API route (workers/data-api.ts) wraps its response as
@@ -10500,10 +10508,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       const ss58 = requireSs58(args);
       const counterparty = optionalString(args, "counterparty");
       if (counterparty != null) {
-        if (!SS58_ADDRESS_PATTERN.test(counterparty)) {
+        if (!isFinneySs58Address(counterparty)) {
           throw toolError(
             "invalid_params",
-            "Argument `counterparty` must be a valid SS58 account address (base58, 47-48 chars).",
+            "Argument `counterparty` must be a valid finney SS58 account address.",
           );
         }
         if (counterparty === ss58) {

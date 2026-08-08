@@ -601,6 +601,23 @@ export const SUBNET_IDENTITY_HISTORY_PATH_PATTERN =
 // A bare, anchored SS58 address — the same shape the route patterns capture,
 // reused by the MCP account tools so REST and MCP validate the address identically.
 export const SS58_ADDRESS_PATTERN = /^[1-9A-HJ-NP-Za-km-z]{47,48}$/;
+// The {ss58} segment of ANY /api/v1/accounts/… route, for the single checksum
+// guard in handleRequest (#10036). The per-route patterns below shape-check
+// base58 + length, which rejects obvious junk but cannot see a bad checksum —
+// so a one-character typo used to route through to a confident empty result on
+// 21 of the 25 account routes.
+//
+// This deliberately repeats the {47,48} base58 shape rather than capturing any
+// segment, because the two failure modes are different answers and both are
+// correct: a segment that is not address-SHAPED (`not-an-address`) matches no
+// account route at all and must stay a 404, while a segment that IS shaped and
+// fails the checksum is a malformed path parameter and must be a 400. Widening
+// this to `([^/]+)` collapses the first into the second.
+//
+// The two literal-segment routes (/accounts, /accounts/top-holders) are
+// dispatched before the guard runs, so they never reach it.
+export const ACCOUNT_SS58_SEGMENT_PATH_PATTERN =
+  /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})(?:\/|$)/;
 export const ACCOUNT_PATH_PATTERN =
   /^\/api\/v1\/accounts\/([1-9A-HJ-NP-Za-km-z]{47,48})$/;
 export const ACCOUNT_EVENTS_PATH_PATTERN =

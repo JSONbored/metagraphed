@@ -21531,7 +21531,7 @@ describe("MCP validator detail/nominators/history tools (#5225 parity)", () => {
   // compare_validators (#6035): a read-only side-by-side of several validators
   // for a stake/delegate decision, one get_validator_detail-shaped load per
   // hotkey, projected to take/APY/nominator-count/identity + aggregates.
-  const HOTKEY2 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc6";
+  const HOTKEY2 = "5Co8xWUK9MXiSuLevkfFgUpEnSMx6TfziFax9JcTRY4V6LcU";
 
   test("compare_validators returns a schema-stable comparison over the empty base", async () => {
     const res = await callTool("compare_validators", {

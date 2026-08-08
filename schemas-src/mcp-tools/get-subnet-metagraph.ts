@@ -42,7 +42,7 @@ export const GetSubnetMetagraphInputSchema = z
           "is the answer to 'is it registered', not an error.",
       )
       .meta({
-        examples: [["5CzcUxRe7rFbtGjw4DGfoJZTFqPnMwUFMTiMFURxCWmwBhqK"]],
+        examples: [["5CDYzuoN75FE8fBEJ3A587zsra9ee7xBLEwxrSgSpB3s4nsp"]],
       }),
     active: z
       .boolean()

@@ -22,7 +22,7 @@ const CURSOR3 = "100.123.4";
 const HEX64 = "a3f1".repeat(16); // 64 hex chars, matches ^[a-f0-9]{64}$
 const SAMPLE_SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
 const SAMPLE_COUNTERPARTY_SS58 =
-  "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ";
+  "5D7FVSM1fJM56zHJuMBuQ5LH32mkLni52JonoeppFrezvyHy";
 
 function valueForPattern(pattern: string, name = ""): string {
   const n = String(name || "").toLowerCase();

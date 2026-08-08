@@ -15422,7 +15422,7 @@ export interface operations {
                      *             "from": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
                      *             "last_block": 5000000,
                      *             "last_observed_at": "2026-06-01T00:00:00.000Z",
-                     *             "to": "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+                     *             "to": "5D7FVSM1fJM56zHJuMBuQ5LH32mkLni52JonoeppFrezvyHy",
                      *             "transfer_count": 5,
                      *             "volume_tao": 80
                      *           }
@@ -15551,7 +15551,7 @@ export interface operations {
                      *         "schema_version": 1,
                      *         "top_receivers": [
                      *           {
-                     *             "address": "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+                     *             "address": "5D7FVSM1fJM56zHJuMBuQ5LH32mkLni52JonoeppFrezvyHy",
                      *             "transfer_count": 4,
                      *             "volume_tao": 55
                      *           },
@@ -15569,7 +15569,7 @@ export interface operations {
                      *             "volume_tao": 60
                      *           },
                      *           {
-                     *             "address": "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+                     *             "address": "5D7FVSM1fJM56zHJuMBuQ5LH32mkLni52JonoeppFrezvyHy",
                      *             "transfer_count": 2,
                      *             "volume_tao": 20
                      *           }
@@ -18730,7 +18730,7 @@ export interface operations {
                      *       "data": {
                      *         "counterparties": [
                      *           {
-                     *             "address": "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+                     *             "address": "5D7FVSM1fJM56zHJuMBuQ5LH32mkLni52JonoeppFrezvyHy",
                      *             "last_block": 5000000,
                      *             "net_tao": -0.5,
                      *             "received_tao": 0,
@@ -18740,7 +18740,7 @@ export interface operations {
                      *         ],
                      *         "counterparty_count": 1,
                      *         "relationship": {
-                     *           "counterparty": "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+                     *           "counterparty": "5D7FVSM1fJM56zHJuMBuQ5LH32mkLni52JonoeppFrezvyHy",
                      *           "first_block": 5000000,
                      *           "first_seen_at": "2026-06-01T00:00:00.000Z",
                      *           "last_block": 5000000,
@@ -18762,7 +18762,7 @@ export interface operations {
                      *               "from": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
                      *               "netuid": 7,
                      *               "observed_at": "2026-06-01T00:00:00.000Z",
-                     *               "to": "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ"
+                     *               "to": "5D7FVSM1fJM56zHJuMBuQ5LH32mkLni52JonoeppFrezvyHy"
                      *             }
                      *           ],
                      *           "transfers_scanned": 1
@@ -21109,7 +21109,7 @@ export interface operations {
                      *           {
                      *             "block_number": 5000000,
                      *             "from": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
-                     *             "to": "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ"
+                     *             "to": "5D7FVSM1fJM56zHJuMBuQ5LH32mkLni52JonoeppFrezvyHy"
                      *           }
                      *         ]
                      *       },
@@ -26901,7 +26901,7 @@ export interface operations {
                      *             "from": "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5",
                      *             "last_block": 5000000,
                      *             "last_observed_at": "2026-06-01T00:00:00.000Z",
-                     *             "to": "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+                     *             "to": "5D7FVSM1fJM56zHJuMBuQ5LH32mkLni52JonoeppFrezvyHy",
                      *             "transfer_count": 5,
                      *             "volume_tao": 80
                      *           }
@@ -27027,7 +27027,7 @@ export interface operations {
                      *         "schema_version": 1,
                      *         "top_receivers": [
                      *           {
-                     *             "address": "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+                     *             "address": "5D7FVSM1fJM56zHJuMBuQ5LH32mkLni52JonoeppFrezvyHy",
                      *             "transfer_count": 4,
                      *             "volume_tao": 55
                      *           },
@@ -27045,7 +27045,7 @@ export interface operations {
                      *             "volume_tao": 60
                      *           },
                      *           {
-                     *             "address": "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ",
+                     *             "address": "5D7FVSM1fJM56zHJuMBuQ5LH32mkLni52JonoeppFrezvyHy",
                      *             "transfer_count": 2,
                      *             "volume_tao": 20
                      *           }

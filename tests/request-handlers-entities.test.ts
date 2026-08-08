@@ -115,7 +115,7 @@ import {
 const addFormats = addFormatsPlugin as unknown as (instance: Ajv2020) => void;
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
-const COUNTERPARTY = "5GrwvaEF5zXb26Fz9rcQpDWSLRtG5P9exNzGo5zYt7EGiJtQ";
+const COUNTERPARTY = "5D7FVSM1fJM56zHJuMBuQ5LH32mkLni52JonoeppFrezvyHy";
 const HASH = `0x${"a".repeat(64)}`;
 const NETUID = 7;
 const UID = 3;
