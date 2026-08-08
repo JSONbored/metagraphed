@@ -60,7 +60,10 @@ export const GetFeedInputSchema = z
           "means the END of that UTC day, so the whole day is kept.",
       )
       .meta({ examples: ["2026-08-06T23:59:59Z", "2026-08-06"] }),
-    limit: limitSchema(FEED_MAX_ITEMS).optional(),
+    // resolveLimit() in src/feed-mcp.ts returns FEED_MAX_ITEMS when the
+    // caller names none, so the ceiling IS the default here -- unusual, and
+    // worth publishing precisely because it is (#10101).
+    limit: limitSchema(FEED_MAX_ITEMS, FEED_MAX_ITEMS).optional(),
   })
   .strict();
 export type GetFeedInput = z.infer<typeof GetFeedInputSchema>;

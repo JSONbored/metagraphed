@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { clampToolLimit } from "../workers/request-params.ts";
+import { PROVIDER_ENDPOINTS_LIMIT_DEFAULT } from "./route-limits.ts";
 import { applyMcpQueryFilters, type Row } from "./mcp-list-query.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { API_QUERY_COLLECTIONS, QUERY_ENUMS } from "./contracts.ts";
@@ -162,7 +163,10 @@ export function providerEndpointsQueryUrl(
   const maxScore = optionalRangeBound(args, "max_score");
   if (maxScore !== null) url.searchParams.set("max_score", String(maxScore));
   if (args?.limit !== undefined) {
-    url.searchParams.set("limit", String(clampToolLimit(args.limit, 50, 100)));
+    url.searchParams.set(
+      "limit",
+      String(clampToolLimit(args.limit, PROVIDER_ENDPOINTS_LIMIT_DEFAULT, 100)),
+    );
   }
   if (args?.cursor !== undefined) {
     const cursor = args.cursor;

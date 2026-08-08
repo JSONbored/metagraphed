@@ -339,3 +339,59 @@ describe("published string constraints are enforced at runtime (#10065)", () => 
     );
   }, 180_000);
 });
+
+describe("a published `limit` says what omitting it does (#10101)", () => {
+  // 83 of the 97 tools that publish a `limit` declared no `default`, so a
+  // caller could read the schema and still not know how many rows an omitted
+  // `limit` returns. The server always applied one; it just never said which.
+  //
+  // The two exceptions are real: `get_subnet_metagraph` and
+  // `list_subnet_validators` read their limit with `optionalPositiveInt` and
+  // apply NO default -- omitting it returns everything. Publishing an invented
+  // number there would be the same lie in the other direction, so they are
+  // named rather than defaulted, and a stale entry FAILS.
+  const NO_DEFAULT_APPLIED: Record<string, string> = {
+    get_subnet_metagraph:
+      "optionalPositiveInt with no fallback -- an omitted limit returns the " +
+      "whole metagraph, so there is no default to publish",
+    list_subnet_validators:
+      "optionalPositiveInt with no fallback -- the limit is an MCP-side " +
+      "post-filter, absent means unfiltered",
+  };
+
+  test("every tool publishing a limit publishes the default it applies", () => {
+    const missing: string[] = [];
+    const suppressed = new Set<string>();
+    let checked = 0;
+
+    for (const tool of listToolDefinitions() as Row[]) {
+      const limit = ((tool.inputSchema as Row)?.properties as Row)?.limit as
+        Row | undefined;
+      if (!limit) continue;
+      checked += 1;
+      if (limit.default !== undefined) continue;
+      if ((tool.name as string) in NO_DEFAULT_APPLIED) {
+        suppressed.add(tool.name as string);
+        continue;
+      }
+      missing.push(tool.name as string);
+    }
+
+    const stale = Object.keys(NO_DEFAULT_APPLIED).filter(
+      (name) => !suppressed.has(name),
+    );
+    assert.deepEqual(
+      stale,
+      [],
+      `these now publish a default, so remove them from NO_DEFAULT_APPLIED: ${stale.join(", ")}`,
+    );
+    assert.deepEqual(
+      missing,
+      [],
+      "these publish a `limit` without saying what omitting it does — pass the " +
+        "fallback the handler applies to limitSchema(max, fallback), or attach " +
+        `it with .meta({ default }): ${missing.join(", ")}`,
+    );
+    assert.ok(checked > 90, `only ${checked} tools publish a limit`);
+  });
+});

@@ -220,6 +220,9 @@ export const CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX = 512;
 export const EMISSION_PIPELINE_LIMIT_MAX = 512;
 export const EMISSION_PIPELINE_MCP_LIMIT_DEFAULT = 20;
 
+/** Rows list_provider_endpoints returns when the caller names no limit. */
+export const PROVIDER_ENDPOINTS_LIMIT_DEFAULT = 50;
+
 /**
  * Every MCP list tool that pages through `applyQueryFilters` (#9730).
  *

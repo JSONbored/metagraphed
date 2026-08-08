@@ -11,6 +11,7 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { COUNTERPARTIES_LIMIT_DEFAULT } from "../../src/counterparties.ts";
 import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import { blockBoundSchema, limitSchema, ss58Schema } from "./shared.ts";
 import { AccountTransfersArtifactSchema } from "../routes/account-events-feed.ts";
@@ -58,7 +59,7 @@ export const GetAccountCounterpartiesInputSchema = z
         "The other SS58 account in the transfer pair — results are restricted to flows between the subject account and this one.",
       )
       .meta({ examples: ["5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F"] }),
-    limit: limitSchema(100).optional(),
+    limit: limitSchema(100, COUNTERPARTIES_LIMIT_DEFAULT).optional(),
   })
   .strict();
 export type GetAccountCounterpartiesInput = z.infer<
