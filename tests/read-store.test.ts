@@ -22,21 +22,6 @@ import {
 
 const HYPERDRIVE = { connectionString: "postgresql://example/db" };
 
-/** A D1 binding that records what it was asked to prepare, so a test can tell
- *  WHICH store came back without a real database on either side. */
-function recordingD1() {
-  const seen: string[] = [];
-  return {
-    seen,
-    binding: {
-      prepare(text: string) {
-        seen.push(text);
-        return { bind: () => ({ all: async () => ({ results: [] }) }) };
-      },
-    },
-  };
-}
-
 /** A pg client that records every call, so the lifetime is observable. */
 function fakeClient(rows: unknown[] = [], failWith?: Error) {
   const calls: string[] = [];
@@ -58,14 +43,17 @@ function fakeClient(rows: unknown[] = [], failWith?: Error) {
 }
 
 describe("readStore chooses the store", () => {
-  test("stays on D1 until Neon owns every table it was handed", () => {
-    const d1 = recordingD1();
+  test("refuses until Neon is declared owner of every table it was handed", () => {
     const env = {
-      METAGRAPH_HEALTH_DB: d1.binding,
       HYPERDRIVE,
       // Two of the three. A reader split across stores would run its JOIN
       // against a store missing one side, and that comes back as an empty
       // result set rather than an error -- a wrong answer with a valid shape.
+      //
+      // There is only one store now, so "not all of them" answers UNDEFINED
+      // rather than handing back a second binding. The rule survives the
+      // collapse because what it protects against is unchanged: reading a table
+      // from a store that was never declared to hold it.
       NEON_SOLE_STORE_TABLES: "chain_detail_blocks,chain_detail_extrinsics",
     };
     const tables = [
@@ -73,58 +61,46 @@ describe("readStore chooses the store", () => {
       "chain_detail_extrinsics",
       "chain_detail_chain_events",
     ];
-    assert.equal(readStore(env, tables), d1.binding);
+    assert.equal(readStore(env, tables), undefined);
   });
 
   test("goes to Neon when it owns all of them and Hyperdrive is bound", () => {
-    const d1 = recordingD1();
     const env = {
-      METAGRAPH_HEALTH_DB: d1.binding,
       HYPERDRIVE,
       NEON_SOLE_STORE_TABLES: "blocks_head,chain_detail_blocks",
     };
     const store = readStore(env, ["blocks_head", "chain_detail_blocks"]);
-    assert.notEqual(store, d1.binding);
     assert.equal(typeof store?.prepare, "function");
   });
 
-  test("stays on D1 when Hyperdrive is unbound, however the flag reads", () => {
+  test("refuses when Hyperdrive is unbound, however the flag reads", () => {
     // The flag can say Neon owns the table while the binding to reach it is
     // missing -- a config half-applied, or a Worker whose wrangler file was not
     // updated. Sole-store is a claim about the data, not about this isolate.
-    const d1 = recordingD1();
-    const env = {
-      METAGRAPH_HEALTH_DB: d1.binding,
-      NEON_SOLE_STORE_TABLES: "neurons",
-    };
-    assert.equal(readStore(env, ["neurons"]), d1.binding);
+    const env = { NEON_SOLE_STORE_TABLES: "neurons" };
+    assert.equal(readStore(env, ["neurons"]), undefined);
   });
 
   test("an empty table list is never 'Neon owns them all'", () => {
     // `every` on an empty array is true, so the natural implementation sends a
     // caller who forgot to declare its tables to Postgres unconditionally --
     // the one case where the all-or-nothing rule inverts into its opposite.
-    const d1 = recordingD1();
-    const env = {
-      METAGRAPH_HEALTH_DB: d1.binding,
-      HYPERDRIVE,
-      NEON_SOLE_STORE_TABLES: "neurons",
-    };
-    assert.equal(readStore(env, []), d1.binding);
+    const env = { HYPERDRIVE, NEON_SOLE_STORE_TABLES: "neurons" };
+    assert.equal(readStore(env, []), undefined);
   });
 
   test("an injected store wins, and a missing binding is undefined not a throw", () => {
     const injected = { prepare: () => ({}) } as never;
     assert.equal(readStore({}, ["neurons"], injected), injected);
-    // Every caller already handles undefined -- an unbound D1 has always been
-    // possible, and each one declines rather than failing the request.
+    // Every caller already handles undefined -- an unbound store has always
+    // been possible, and each one declines rather than failing the request.
     assert.equal(readStore({}, ["neurons"]), undefined);
     assert.equal(readStore(null, ["neurons"]), undefined);
   });
 });
 
 describe("the Postgres handle", () => {
-  test("rewrites ? to $n and returns D1's envelope", async () => {
+  test("rewrites ? to $n and returns the callers' expected envelope", async () => {
     const client = fakeClient([{ block_number: 5 }]);
     const db = pgReadStore("postgresql://x/y", { clientFactory: () => client });
     const res = await db

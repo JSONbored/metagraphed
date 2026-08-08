@@ -20,12 +20,11 @@
 // outlives the inversion is worse than dead code -- it would copy a frozen D1
 // over live Neon rows, because it cannot tell the direction reversed.
 import { laneHealthStore } from "./lane-health-store.ts";
-import {
-  SUBNET_HYPERPARAMS_HISTORY_COLUMNS,
-  ACCOUNT_IDENTITY_HISTORY_COLUMNS,
-} from "./hyperparams-identity-d1-write.ts";
 import { SUBNET_HYPERPARAMS_INSERT_COLUMNS } from "./subnet-hyperparams.ts";
-import { ACCOUNT_IDENTITY_INSERT_COLUMNS } from "./account-identity.ts";
+import {
+  ACCOUNT_IDENTITY_INSERT_COLUMNS,
+  IDENTITY_FIELDS,
+} from "./account-identity.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import {
   createPgSql,
@@ -38,6 +37,34 @@ import {
   writeRowsToNeon,
   type NeonWriteResult,
 } from "./neon-write.ts";
+
+// ---------------------------------------------------------------------------
+// Moved here when D1 was deleted (#10179). These describe the TABLE -- its
+// column list, its conflict key, its derivations -- not the store that used to
+// hold it, and this module is now the only writer.
+// ---------------------------------------------------------------------------
+
+/**
+ * Columns of `subnet_hyperparams_history` (minus its AUTOINCREMENT id): the
+ * netuid/block_number/observed_at keying plus the 33 hyperparameter fields --
+ * SUBNET_HYPERPARAMS_INSERT_COLUMNS with netuid (front) and
+ * block_number/captured_at (back) stripped, exactly the derivation the
+ * Postgres write path uses -- and the diff hash.
+ */
+export const SUBNET_HYPERPARAMS_HISTORY_COLUMNS = [
+  "netuid",
+  "block_number",
+  "observed_at",
+  ...SUBNET_HYPERPARAMS_INSERT_COLUMNS.slice(1, -2),
+  "hyperparams_hash",
+];
+
+export const ACCOUNT_IDENTITY_HISTORY_COLUMNS = [
+  "account",
+  "observed_at",
+  ...IDENTITY_FIELDS,
+  "identity_hash",
+];
 
 export const SUBNET_HYPERPARAMS_NEON_LANE = "subnet-hyperparams";
 export const ACCOUNT_IDENTITY_NEON_LANE = "account-identity";

@@ -79,10 +79,9 @@ export interface ObservationsReadDeps {
 /**
  * The store that should answer observation reads.
  *
- * Neon once it owns the family and Hyperdrive is bound and there is a `ctx` to
- * park the connection teardown on; the D1 binding otherwise. Returns whatever
- * `METAGRAPH_HEALTH_DB` is when Neon is not eligible -- including `undefined`,
- * which `d1All` already treats as zero rows.
+ * Neon once it is declared to own the family, Hyperdrive is bound, and there
+ * is a `ctx` to park the connection teardown on. `undefined` otherwise, which
+ * the read helpers already treat as zero rows.
  */
 export function observationsReadDb(
   env: Record<string, unknown> | null | undefined,
@@ -92,8 +91,7 @@ export function observationsReadDb(
   ctx?: Partial<WaitUntilLike> | null,
   deps: ObservationsReadDeps = {},
 ): ObservationsReadDb | undefined {
-  const d1 = env?.METAGRAPH_HEALTH_DB as ObservationsReadDb | undefined;
-  if (!neonOwnsObservations(env, neonOwnsTable)) return d1;
+  if (!neonOwnsObservations(env, neonOwnsTable)) return undefined;
   const injected = deps.sql;
   if (injected) return pgObservationsReadDb(injected);
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
@@ -103,6 +101,6 @@ export function observationsReadDb(
   // releasing it -- and a leak on a serving path is worse than a stale read.
   // `{}` reaches here from every handler defaulting `ctx: EdgeCacheCtx = {}`,
   // which is why this tests the METHOD and not just the object.
-  if (typeof ctx?.waitUntil !== "function") return d1;
+  if (typeof ctx?.waitUntil !== "function") return undefined;
   return pgObservationsReadDb(createPgSql(hyperdrive!, ctx as WaitUntilLike));
 }

@@ -46,6 +46,24 @@ export const ALPHA_PRICING_TABLES = [
   "hotkey_alpha_passes",
 ] as const;
 
+/** topHoldersHoldings -- the alpha-pricing set, plus the balances leg and the
+ * snapshot prices its SQL joins against.
+ *
+ * ALL SIX OR NONE, and that is not conservatism: the statement is one query
+ * with a CTE per leg, so a set split across stores would run a JOIN whose other
+ * side is missing and answer an empty result rather than an error. Both pass
+ * ledgers are in because each leg gates on its own newest COMPLETE pass --
+ * pricing against a scan the rows do not belong to is the failure #9832 was. */
+export const TOP_HOLDERS_HOLDINGS_TABLES = [
+  ...ALPHA_PRICING_TABLES,
+  "account_balances",
+  "account_balances_passes",
+  "subnet_snapshots",
+] as const;
+
+/** loadSubnetTempo, in the weight-setters loader. */
+export const SUBNET_HYPERPARAMS_TEMPO_TABLES = ["subnet_hyperparams"] as const;
+
 /** loadSubnetBurnHistory */
 export const SUBNET_BURN_HISTORY_TABLES = ["subnet_burn_history"] as const;
 
@@ -54,11 +72,12 @@ export const TAO_USD_TABLES = ["tao_usd_index"] as const;
 
 /** loadSurfaceHistory.
  *
- * NOT in NEON_SOLE_STORE_TABLES today, unlike everything else here -- the four
- * registry tables (surface_history, subnets, surfaces, providers) have Neon
- * migrations and a Neon writer but have not been declared sole-store. So this
- * resolves to D1 for now and follows the moment that flag changes, which is the
- * behaviour readStore exists to give. */
+ * The four registry tables (surface_history, subnets, surfaces, providers) are
+ * declared in NEON_SOLE_STORE_TABLES as of #10179. They were the last holdout,
+ * and leaving them out would not have been neutral: readStore refuses a table
+ * it is not told about, so once D1 was dropped this reader -- which catches its
+ * own throw -- would have served an EMPTY trail for every subnet, which is a
+ * real answer for a stable subnet and therefore indistinguishable. */
 export const SURFACE_HISTORY_TABLES = ["surface_history"] as const;
 
 /** loadEmissionChanges.
@@ -113,6 +132,22 @@ export const COMPARE_SUBNETS_TABLES = ["surface_status"] as const;
 export const VALIDATOR_ECONOMICS_TABLES = [
   "neurons",
   "subnet_hyperparams",
+] as const;
+
+/** entities.ts's buildSubnetValidatorEconomicsHistoryPayload, likewise inline.
+ *
+ *  NOT the observation family. This read used to go through observationsReadDb,
+ *  which gates on the five surface_* tables and additionally requires a `ctx` to
+ *  park the connection teardown on -- and none of the three surfaces calling it
+ *  (REST, MCP, GraphQL) passes one. That answered `undefined`, which every
+ *  reader here treats as zero rows, so the route published an empty series for
+ *  every subnet. Declaring the tables it actually names puts the gate on the
+ *  right question and drops the ctx requirement, matching its per-subnet
+ *  sibling above. */
+export const VALIDATOR_ECONOMICS_HISTORY_TABLES = [
+  "neuron_daily",
+  "subnet_snapshots",
+  "subnet_hyperparams_history",
 ] as const;
 
 /** entities.ts's buildValidatorEconomicsRankingPayload, likewise inline. */

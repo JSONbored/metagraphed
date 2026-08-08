@@ -8,7 +8,25 @@ import {
   subscribe,
   validate,
 } from "graphql";
-import { describe, test, vi } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+
+// The resolvers that still read a hot tier reach it through readStore ->
+// `new Client({ connectionString })` (#10179), and a resolver is entered with
+// nothing but `context.env` -- there is no store to inject. Mocking the `pg`
+// module is the seam; see tests/helpers/pg-mock.ts for why it is a module mock
+// and why the controller has to be built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import {
+  LEADERBOARD_TABLES,
+  VALIDATOR_ECONOMICS_HISTORY_TABLES,
+  VALIDATOR_ECONOMICS_RANKING_TABLES,
+  VALIDATOR_ECONOMICS_TABLES,
+} from "../src/read-store-tables.ts";
 import * as listQuery from "../workers/list-query.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
 import { resetDecodeWatermarkCache } from "../src/decode-watermark.ts";
@@ -100,6 +118,17 @@ function fixtureEnv(fixtures: Row = {}, { reads, kv, kvReads }: Row = {}) {
   }
   return env;
 }
+
+// The controller is module state shared by every test in the file, so a set of
+// canned answers left behind would answer the NEXT test's statements.
+beforeEach(() => {
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = null;
+  pg.control.failNext = null;
+  pg.control.onQuery = null;
+  pg.control.db = null;
+});
 
 describe("handleGraphQLRequest — method guard", () => {
   test("GET publishes the SDL document (discoverability)", async () => {
@@ -8057,23 +8086,26 @@ describe("graphql — account_positions (#6324, Postgres-tier flat body + empty-
       };
     }) as unknown as typeof fetch;
     try {
+      // Per statement, because the two legs must answer differently: the HOT
+      // ledger is empty (the point of the test is that the LAKEHOUSE one is
+      // served) and the `neurons` read is what prices it. One shared row set
+      // would let the hot leg answer and the cold tier would never run.
+      pg.control.answers = [
+        { match: /FROM nominator_positions/i, rows: [] },
+        {
+          match: /FROM neurons/i,
+          rows: [
+            {
+              hotkey: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+              netuid: 3,
+              stake_tao: 200,
+            },
+          ],
+        },
+      ];
       const env = {
         R2_SQL_TOKEN: "cfut_test",
-        METAGRAPH_HEALTH_DB: {
-          prepare: () => ({
-            bind: () => ({
-              all: async () => ({
-                results: [
-                  {
-                    hotkey: "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
-                    netuid: 3,
-                    stake_tao: 200,
-                  },
-                ],
-              }),
-            }),
-          }),
-        },
+        ...pgMockEnv(["neurons", "nominator_positions"]),
       };
       const { status, body } = await gql(
         query(`(ss58: "${SS58}")`),
@@ -11049,28 +11081,27 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
         },
       },
     ) as Row;
-    env.METAGRAPH_HEALTH_DB = {
-      prepare(query: string) {
-        const isHyper = /subnet_hyperparams/.test(query);
-        return {
-          bind: () => ({
-            all: async () => ({
-              results: [
-                {
-                  uid: 0,
-                  stake_tao: 5000,
-                  validator_permit: 1,
-                  dividends: 0.5,
-                  active: 1,
-                  take: 0.18,
-                },
-              ],
-            }),
-            first: async () => (isHyper ? null : null),
-          }),
-        };
+    Object.assign(env, pgMockEnv(VALIDATOR_ECONOMICS_TABLES));
+    // The hyperparams probe legitimately has no row here (the resolver falls
+    // back to the artifact's max_validators), so only the metagraph read is
+    // answered -- and it has to BE answered, or `degraded_reason` below comes
+    // back as "no metagraph rows for this subnet" rather than null.
+    pg.control.answers = [
+      { match: /FROM subnet_hyperparams/i, rows: [] },
+      {
+        match: /FROM neurons/i,
+        rows: [
+          {
+            uid: 0,
+            stake_tao: 5000,
+            validator_permit: 1,
+            dividends: 0.5,
+            active: 1,
+            take: 0.18,
+          },
+        ],
       },
-    };
+    ];
     const { status, body } = await gql(
       "{ subnet_validator_economics(netuid: 64) { schema_version netuid emission_gate_open tao_inflow_per_day composition { permitted active earning } takes { median sample_size distribution } degraded_reason } }",
       env,
@@ -11092,28 +11123,26 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
 
   test("subnet_validator_economics_history serves the observed series", async () => {
     const env = fixtureEnv({}) as Row;
-    env.METAGRAPH_HEALTH_DB = {
-      prepare(query: string) {
-        const isEmission = /subnet_snapshots/.test(query);
-        return {
-          bind: () => ({
-            all: async () => ({
-              results: isEmission
-                ? [{ snapshot_date: "2026-08-01", tao_in_emission_tao: 0 }]
-                : [
-                    {
-                      snapshot_date: "2026-08-01",
-                      stake_tao: 4200,
-                      validator_permit: 1,
-                      dividends: 0.5,
-                      active: 1,
-                    },
-                  ],
-            }),
-          }),
-        };
+    Object.assign(env, pgMockEnv(VALIDATOR_ECONOMICS_HISTORY_TABLES));
+    // Two reads, two answers: the emission series says the gate was CLOSED that
+    // day, and the daily metagraph rows are what the floors are derived from.
+    // A single row set would answer both and the closed-gate assertion below
+    // would be reading the metagraph rows' absent tao_in_emission_tao instead.
+    pg.control.answers = [
+      {
+        match: /FROM subnet_snapshots/i,
+        rows: [{ snapshot_date: "2026-08-01", tao_in_emission_tao: 0 }],
       },
-    };
+    ];
+    pg.control.rows = [
+      {
+        snapshot_date: "2026-08-01",
+        stake_tao: 4200,
+        validator_permit: 1,
+        dividends: 0.5,
+        active: 1,
+      },
+    ];
     const { status, body } = await gql(
       '{ subnet_validator_economics_history(netuid: 64, window: "7d") { netuid window points { snapshot_date permit_floor_alpha earning_floor_alpha validators_permitted emission_gate_open } } }',
       env,
@@ -11191,23 +11220,16 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
         },
       },
     ) as Row;
-    env.METAGRAPH_HEALTH_DB = {
-      prepare() {
-        return {
-          all: async () => ({
-            results: [5, 7].map((netuid) => ({
-              netuid,
-              uid: 0,
-              stake_tao: 5000,
-              validator_permit: 1,
-              dividends: 0.5,
-              active: 1,
-              take: 0.18,
-            })),
-          }),
-        };
-      },
-    };
+    Object.assign(env, pgMockEnv(VALIDATOR_ECONOMICS_RANKING_TABLES));
+    pg.control.rows = [5, 7].map((netuid) => ({
+      netuid,
+      uid: 0,
+      stake_tao: 5000,
+      validator_permit: 1,
+      dividends: 0.5,
+      active: 1,
+      take: 0.18,
+    }));
     const { status, body } = await gql(
       '{ validator_economics(sort: "earning_floor_cost_tao") { sort order total stake_threshold_units rows { netuid earning_floor_cost_tao } excluded { netuid reason } } }',
       env,
@@ -11249,25 +11271,18 @@ describe("graphql — subnet market data (#6979, volume/ohlc/stake-quote/validat
         },
       },
     ) as Row;
-    env.METAGRAPH_HEALTH_DB = {
-      prepare() {
-        return {
-          all: async () => ({
-            results: [
-              {
-                netuid: 5,
-                uid: 0,
-                stake_tao: 5000,
-                validator_permit: 1,
-                dividends: 0.5,
-                active: 1,
-                take: 0.18,
-              },
-            ],
-          }),
-        };
+    Object.assign(env, pgMockEnv(VALIDATOR_ECONOMICS_RANKING_TABLES));
+    pg.control.rows = [
+      {
+        netuid: 5,
+        uid: 0,
+        stake_tao: 5000,
+        validator_permit: 1,
+        dividends: 0.5,
+        active: 1,
+        take: 0.18,
       },
-    };
+    ];
     const { body } = await gql(
       "{ validator_economics(emission_gate_open: true) { total excluded { netuid reason } } }",
       env,
@@ -21036,26 +21051,26 @@ describe("graphql — account_root_claim (#7229)", () => {
 });
 
 describe("graphql — registry_leaderboards (#5661, shared composer + REST-matching validation)", () => {
-  // Every D1 query in the composer returns no rows, so the boards resolve from
-  // an empty projection without a live DB. No profiles artifact is injected, so
-  // leaderboardProfilesProjection's module-level cache is never populated —
-  // these tests can't leak a projection into each other.
-  const emptyHealthDb = {
-    prepare: () => ({ bind: () => ({ all: async () => ({ results: [] }) }) }),
-  };
+  // An env with NO store bound, which is what "cold" is now that readStore is
+  // the only way in: it hands back `undefined` when Hyperdrive is unbound, and
+  // the composer resolves its boards from an empty projection. No profiles
+  // artifact is injected either, so leaderboardProfilesProjection's
+  // module-level cache is never populated — these tests can't leak a
+  // projection into each other.
+  const COLD_STORE_ENV = undefined;
 
-  // Same shape handleLeaderboards' surface_status aggregate yields; the stub
-  // ignores the SQL, so a single board is asserted at a time.
-  function healthDb(results: Row[]) {
-    return {
-      prepare: () => ({ bind: () => ({ all: async () => ({ results }) }) }),
-    };
+  /** A warm store answering every read with the same rows — the shape
+   * handleLeaderboards' surface_status aggregate yields. The rows are not
+   * routed by statement, so a single board is asserted at a time. */
+  function healthEnv(results: Row[]) {
+    pg.control.rows = results;
+    return pgMockEnv(LEADERBOARD_TABLES) as unknown as Env;
   }
 
   test("cold store: every board resolves schema-stable and empty, never null", async () => {
     const { status, body } = await gql(
       `{ registry_leaderboards { schema_version board observed_at source boards } }`,
-      { METAGRAPH_HEALTH_DB: emptyHealthDb },
+      COLD_STORE_ENV,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -21076,16 +21091,14 @@ describe("graphql — registry_leaderboards (#5661, shared composer + REST-match
   // D1 reads resurrected (2026-08-03): composeLeaderboardsData reads
   // surface_status again, so a warm D1 binding now RANKS the healthiest board
   // instead of returning an empty list.
-  test("an explicit board returns only that board, ranked from D1", async () => {
-    const env = {
-      METAGRAPH_HEALTH_DB: healthDb([
-        { netuid: 7, total: 4, ok_count: 2, avg_latency_ms: 90 },
-        { netuid: 3, total: 4, ok_count: 4, avg_latency_ms: 42 },
-      ]),
-    };
+  test("an explicit board returns only that board, ranked from the store", async () => {
+    const env = healthEnv([
+      { netuid: 7, total: 4, ok_count: 2, avg_latency_ms: 90 },
+      { netuid: 3, total: 4, ok_count: 4, avg_latency_ms: 42 },
+    ]);
     const { status, body } = await gql(
       `{ registry_leaderboards(board: "healthiest") { board boards } }`,
-      env as unknown as Env,
+      env,
     );
     assert.equal(status, 200);
     assert.equal(body.errors, undefined);
@@ -21104,7 +21117,7 @@ describe("graphql — registry_leaderboards (#5661, shared composer + REST-match
   test("an unknown board is a BAD_USER_INPUT error, not a silent empty board", async () => {
     const { status, body } = await gql(
       `{ registry_leaderboards(board: "not-a-board") { board } }`,
-      { METAGRAPH_HEALTH_DB: emptyHealthDb },
+      COLD_STORE_ENV,
     );
     assert.equal(status, 200);
     assert.ok(body.errors?.length, "expected a GraphQL error");
@@ -21117,7 +21130,7 @@ describe("graphql — registry_leaderboards (#5661, shared composer + REST-match
     for (const limit of [0, 101]) {
       const { body } = await gql(
         `{ registry_leaderboards(limit: ${limit}) { board } }`,
-        { METAGRAPH_HEALTH_DB: emptyHealthDb },
+        COLD_STORE_ENV,
       );
       assert.ok(body.errors?.length, `limit ${limit} should error`);
       assert.equal(body.errors[0].extensions.code, "BAD_USER_INPUT");
@@ -21129,7 +21142,7 @@ describe("graphql — registry_leaderboards (#5661, shared composer + REST-match
     for (const limit of [1, 100]) {
       const { body } = await gql(
         `{ registry_leaderboards(limit: ${limit}) { board } }`,
-        { METAGRAPH_HEALTH_DB: emptyHealthDb },
+        COLD_STORE_ENV,
       );
       assert.equal(body.errors, undefined, `limit ${limit} should be accepted`);
     }

@@ -20,7 +20,6 @@
 import { loadSubnetWeightSettersColdTier } from "../../src/subnet-weight-setters-loader.ts";
 import { loadSubnetWeightsColdTier } from "../../src/subnet-weights-loader.ts";
 import { loadSubnetEventCardColdTier } from "../../src/subnet-event-card-loader.ts";
-import { observationsReadDb } from "../../src/observations-read-runner.ts";
 import {
   CHAIN_SERVING_ROLLUP,
   CHAIN_STAKE_MOVES_ROLLUP,
@@ -498,6 +497,7 @@ import {
   SUBNET_SNAPSHOT_TABLES,
   SURFACE_HISTORY_TABLES,
   TAO_USD_TABLES,
+  VALIDATOR_ECONOMICS_HISTORY_TABLES,
   VALIDATOR_ECONOMICS_RANKING_TABLES,
   VALIDATOR_ECONOMICS_TABLES,
 } from "../../src/read-store-tables.ts";
@@ -3864,9 +3864,6 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
   // read, and a test that cannot stub it exercises only the cap-unknown path.
   deps: {
     loadEconomicsRow?: typeof resolveSubnetEconomicsRow;
-    // Threaded so the subnet_snapshots read can follow the family to Neon
-    // (#10086). Absent, the selector declines and this reads D1, as before.
-    ctx?: { waitUntil?: (promise: Promise<unknown>) => void } | null;
   } = {},
 ): Promise<{ data: Record<string, unknown> }> {
   const readEconomicsRow = deps.loadEconomicsRow ?? resolveSubnetEconomicsRow;
@@ -3874,13 +3871,17 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
   const cutoff = new Date(Date.now() - days * 86_400_000)
     .toISOString()
     .slice(0, 10);
-  const db = observationsReadDb(
-    env as unknown as Record<string, unknown>,
-    deps.ctx,
-    // Typed against the reader, not the binding: naming METAGRAPH_HEALTH_DB
-    // here kept a reference to a D1 shape in a call that had already moved off
-    // it (#10155), and that type disappears with the binding.
-  ) as ReadStoreDb | undefined;
+  // readStore, like the per-subnet composer two hundred lines up, NOT
+  // observationsReadDb. That selector gates on the five surface_* tables --
+  // none of which this reads -- and needs a `ctx` to park the connection
+  // teardown on, which none of this function's three callers (the REST route,
+  // the MCP tool, the GraphQL resolver) has ever passed. It therefore answered
+  // `undefined` on every call, and `undefined` reads here as zero rows: an
+  // empty series published for every subnet, edge-cached, with nothing marking
+  // it a decline. readStore awaits its own teardown, so there is no ctx to
+  // thread and no caller left that can forget one.
+  const db = readStore(env, VALIDATOR_ECONOMICS_HISTORY_TABLES) as
+    ReadStoreDb | undefined;
 
   const neuronRows = db
     ? ((

@@ -3,17 +3,29 @@
 // only via the DATA_API service binding from src/github-oauth.ts's
 // callback handler (see that module's own test file for the OAuth-flow
 // side). Mirrors tests/wallet-auth-keys-route.test.ts's shape: its own
-// per-test queue-shaped D1 fake (tests/user-state-d1-queue.ts), scoped only
-// to this file -- github_accounts lives on the user-state D1 since the
-// accounts-d1 port.
+// per-test queue over the shared `pg` double (tests/user-state-d1-queue.ts),
+// scoped only to this file -- github_accounts is one of ACCOUNT_STATE_TABLES,
+// and Neon is the only store behind them.
 import assert from "node:assert/strict";
-import { beforeEach, test } from "vitest";
-import { createQueueD1 } from "./user-state-d1-queue.ts";
+import { beforeEach, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { wireQueuedPg } from "./user-state-d1-queue.ts";
 import type { Row } from "./row-type.ts";
+
+// The store is Postgres, reached through `new Client(...)` inside
+// src/pg-sql.ts, and this suite calls `worker.fetch(request, env, ctx)` -- so
+// there is nothing to inject and the module IS the seam. The `vi.hoisted`
+// wrapper is not optional: `vi.mock` is hoisted above every import, so a
+// factory closing over a plain `const` reads it before initialisation.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
 
 const mockQueue: { current: Row[][] } = { current: [] };
 const sqlCalls: Array<{ text: string; values: unknown[] }> = [];
 const failNextQuery = { error: null as Error | null };
+wireQueuedPg(pg.control, { mockQueue, sqlCalls, failNextQuery });
 
 const { default: worker } = await import("../workers/data-api.ts");
 
@@ -24,7 +36,7 @@ const INTERNAL_TOKEN = "test-lookup-token";
 
 function baseEnv(overrides = {}) {
   return {
-    METAGRAPH_HEALTH_DB: createQueueD1({ mockQueue, sqlCalls, failNextQuery }),
+    ...pgMockEnv(),
     API_KEY_LOOKUP_INTERNAL_TOKEN: INTERNAL_TOKEN,
     ...overrides,
   };
@@ -51,7 +63,13 @@ async function fetchRoute(request: Request, env: Row) {
   return worker.fetch(
     request,
     env as unknown as Env,
-    {} as unknown as ExecutionContext,
+    {
+      // A REAL waitUntil: createPgSql parks `client.end()` on it in a `finally`,
+      // so an ExecutionContext without one turns every query into a TypeError
+      // after the rows have already been read.
+      waitUntil() {},
+      passThroughOnException() {},
+    } as unknown as ExecutionContext,
   );
 }
 

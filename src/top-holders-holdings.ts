@@ -52,7 +52,8 @@
 // src/hotkey-alpha-completeness.ts for why a row count cannot answer this and
 // the producers declare their pass sizes instead.
 
-import { observationsReadDb } from "./observations-read-runner.ts";
+import { readStore } from "./read-store.ts";
+import { TOP_HOLDERS_HOLDINGS_TABLES } from "./read-store-tables.ts";
 import {
   latestCompleteAccountBalancesPass,
   mayRankAccountBalances,
@@ -240,16 +241,21 @@ function holding(value: unknown): number | null {
 export async function topHoldersHoldings(
   env: Env | null | undefined,
   cap: number = TOP_HOLDERS_HOLDINGS_ROW_CAP,
-  // Threaded so this can follow subnet_snapshots to Neon (#10086). Without it
-  // the selector correctly declines -- createPgSql returns its connection via
-  // waitUntil, and leaking one per artifact build would be worse than reading
-  // the store this lane has always read.
-  ctx?: { waitUntil?: (promise: Promise<unknown>) => void } | null,
 ): Promise<HoldingsLeg | null> {
-  const db = observationsReadDb(
-    env as unknown as Record<string, unknown>,
-    ctx,
-  ) as D1Like | undefined;
+  // readStore, NOT observationsReadDb (#10179), for the same pair of reasons
+  // src/subnet-weight-setters-loader.ts gives: that selector needs an
+  // ExecutionContext to reach Neon, and this lane has none to give -- its
+  // caller is ProjectionLane.compute(env, network), so there is no ctx anywhere
+  // in the chain and threading one is not the fix. Its Neon handle also lacks
+  // the `first()` the two completeness readers below call, and resolves `all()`
+  // to a bare array where the guard here expects `{ results }`.
+  //
+  // The failure is silent in the shape this whole module is careful about: a
+  // null leg drops free_tao / delegated_tao / total_tao from the published
+  // artifact entirely, which reads as "these sorts are unavailable" rather than
+  // as a broken read.
+  const db = readStore(env, TOP_HOLDERS_HOLDINGS_TABLES) as unknown as
+    D1Like | undefined;
   if (!db?.prepare) return null;
 
   // The two readers describe the same binding with different minimal shapes --

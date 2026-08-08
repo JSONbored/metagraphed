@@ -11,7 +11,19 @@
 // resolved watermark the cold tier routes on -- so these tests move the seam by
 // publishing a watermark, never by introducing a second knob.
 import assert from "node:assert/strict";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The store is Postgres now (#10179), reached through `new Client(...)` inside
+// src/read-store.ts -- which these loaders cannot be handed, because they take
+// only `(env, ...)`. Mocking the module is the seam; see tests/helpers/pg-mock.ts
+// for why it is a module mock and not an export, and why the controller has to
+// be built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   answerBlockDetail,
   answerExtrinsicDetail,
@@ -41,8 +53,16 @@ const BELOW = SEAM - 1_000; // history the lakehouse owns
 const HASH = `0x${"ab".repeat(32)}`;
 const XT_HASH = `0x${"cd".repeat(32)}`;
 
-// The watermark memo is module state that outlives a test.
-beforeEach(() => resetDecodeWatermarkCache());
+// The watermark memo is module state that outlives a test; so does the pg
+// double's controller, which is per-file rather than per-test.
+beforeEach(() => {
+  resetDecodeWatermarkCache();
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = null;
+  pg.control.failNext = null;
+  pg.control.onQuery = null;
+});
 
 type Handler = (
   sql: string,
@@ -50,34 +70,32 @@ type Handler = (
 ) => Record<string, unknown>[] | undefined;
 
 /**
- * A D1 stub driven by a per-query handler, recording every statement. The
- * handler may THROW to fail one specific query (a mid-read D1 blip) and may
- * return undefined to hand back a result envelope with no `results` array at
- * all, which is what the binding does for a statement it could not shape.
+ * The hot-tier store, driven by a per-query handler and recording every
+ * statement. The handler may THROW to fail one specific query (a mid-read
+ * store blip) and may return undefined for a query it has nothing to say
+ * about.
+ *
+ * THE HANDLER RUNS IN `onQuery`, which the double calls before it consults its
+ * canned answers -- so assigning `control.rows` from there is what turns a
+ * static double into a per-statement one, with no change to the shared helper.
+ * It has to be the subscription rather than a read-back for the reason
+ * tests/helpers/pg-mock.ts spells out: every caller here destructures `seen`
+ * and reads it after the loader has already run.
  */
 function d1(handler: Handler, opts: { throws?: boolean } = {}) {
   const seen: { sql: string; params: unknown[] }[] = [];
-  return {
-    seen,
-    env: {
-      METAGRAPH_HEALTH_DB: {
-        prepare(raw: string) {
-          const sql = raw.replace(/\s+/g, " ").trim();
-          return {
-            bind(...params: unknown[]) {
-              seen.push({ sql, params });
-              return {
-                async all() {
-                  if (opts.throws) throw new Error("d1 cold");
-                  return { results: handler(sql, params) };
-                },
-              };
-            },
-          };
-        },
-      },
-    },
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = null;
+  pg.control.onQuery = (q) => {
+    const sql = q.text.replace(/\s+/g, " ").trim();
+    seen.push({ sql, params: q.values });
+    // Re-armed on every statement: a store that is cold is cold for the whole
+    // read, not only for its first query.
+    pg.control.failNext = opts.throws ? new Error("store cold") : null;
+    pg.control.rows = handler(sql, q.values) ?? [];
   };
+  return { seen, env: { ...pgMockEnv() } };
 }
 
 /** The coverage register carrying exactly these block heights. */
@@ -93,11 +111,15 @@ function registry(heights: number[], hashes: Record<string, number> = {}) {
         },
       ];
     }
-    if (sql.includes("FROM chain_detail_blocks WHERE block_number = ?"))
+    // `$1`, not `?`: the loaders write SQLite's `?` and readStore rewrites it
+    // through toPositionalPlaceholders on the way to Postgres. #9821 is what
+    // happens when it does not -- six routes served zero rows because `?`
+    // reached Postgres unrewritten and matched nothing.
+    if (sql.includes("FROM chain_detail_blocks WHERE block_number = $1"))
       return heights.includes(params[0] as number)
         ? [{ block_number: params[0] }]
         : [];
-    if (sql.includes("FROM chain_detail_blocks WHERE block_hash = ?")) {
+    if (sql.includes("FROM chain_detail_blocks WHERE block_hash = $1")) {
       const height = hashes[String(params[0])];
       return height == null ? [] : [{ block_number: height }];
     }
@@ -200,19 +222,28 @@ describe("chainDetailCoverage / chainDetailHead", () => {
     assert.equal(await chainDetailHead(env), null);
   });
 
-  test("an unbound or failing D1 is null, never a throw", async () => {
+  test("an unbound or failing store is null, never a throw", async () => {
     assert.equal(await chainDetailCoverage({}), null);
     assert.equal(await chainDetailCoverage(null), null);
-    assert.equal(await chainDetailCoverage({ METAGRAPH_HEALTH_DB: {} }), null);
+    // Hyperdrive bound, but this deployment has not declared the four
+    // chain_detail tables Neon's -- readStore returns nothing rather than
+    // reading a table it was not told the store owns.
+    assert.equal(
+      await chainDetailCoverage({
+        HYPERDRIVE: { connectionString: "postgresql://mock/db" },
+      }),
+      null,
+    );
     const { env } = d1(registry([ABOVE]), { throws: true });
     assert.equal(await chainDetailHead(env), null);
   });
 
-  test("a result envelope with no rows array reads as no rows, not a crash", async () => {
-    // D1 returns `{}` for a statement it could not shape; treating that as
-    // anything but "no rows" would throw inside a read path whose whole job is
-    // to degrade quietly.
-    const { env } = d1(() => undefined);
+  test("a query that returns no rows at all reads as no coverage, not a crash", async () => {
+    // Distinct from the empty register above, which answers ONE row whose
+    // aggregates are null. Here the statement comes back with zero rows, and
+    // reading `.floor` off `rows[0]` would throw inside a read path whose whole
+    // job is to degrade quietly.
+    const { env } = d1(() => []);
     assert.equal(await chainDetailCoverage(env), null);
   });
 });

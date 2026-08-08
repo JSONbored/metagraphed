@@ -1,14 +1,25 @@
-// The D1 hot leg for /accounts/{ss58}/positions (#9273) and the honest-zero
+// The hot leg for /accounts/{ss58}/positions (#9273) and the honest-zero
 // primitives it shares with the lakehouse leg.
 //
 // The properties that matter: the cutover is a property of the DATA (an empty
 // ledger declines so the lakehouse still answers), a coldkey with no rows in a
 // POPULATED ledger is a real live zero and carries the ledger's stamp rather
-// than a null, the IN-list respects D1's 100-bound-parameter binding limit,
-// and every failure declines rather than publishing a total that is quietly
-// too small.
+// than a null, the IN-list stays inside the 100-bound-parameter chunk this
+// reader was written against, and every failure declines rather than publishing
+// a total that is quietly too small.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// One store since #10179, reached through `new Client(...)` inside
+// src/read-store.ts -- which this reader cannot be handed, because it takes
+// only `(env, ss58)`. See tests/helpers/pg-mock.ts for why the seam is a module
+// mock and why the controller is built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import { loadAccountPositionsD1 } from "../src/nominator-positions-hot-tier.ts";
 import { POSITION_SCAN_CAP } from "../src/nominator-positions-cold-tier.ts";
 import {
@@ -31,9 +42,15 @@ interface Stake {
 }
 
 /**
- * A D1 stub that answers the three statements this reader issues: the
+ * A store stub that answers the three statements this reader issues: the
  * coldkey's position rows, the ledger's MAX(captured_at), and the chunked
  * `neurons` IN-lists. `mode` forces the failure shapes.
+ *
+ * The dispatch runs in the double's `onQuery`, which fires before it consults
+ * its canned answers -- so assigning `control.rows` there is what lets one
+ * double answer three different statements. A subscription rather than a
+ * read-back because every caller destructures `calls` and reads it after the
+ * loader has already run; see tests/helpers/pg-mock.ts.
  */
 function d1Stub(
   positions: Record<string, unknown>[],
@@ -42,36 +59,36 @@ function d1Stub(
   mode: "ok" | "throw" | "malformed" | "stake-throw" = "ok",
 ) {
   const calls: { sql: string; params: unknown[] }[] = [];
-  const db = {
-    prepare(sql: string) {
-      const isLedger = sql.includes("MAX(captured_at)");
-      return {
-        bind(...params: unknown[]) {
-          calls.push({ sql, params });
-          return {
-            async all() {
-              if (sql.includes("FROM neurons")) {
-                if (mode === "stake-throw") throw new Error("neurons down");
-                return {
-                  results: stakes.filter((row) => params.includes(row.hotkey)),
-                };
-              }
-              if (mode === "throw") throw new Error("d1 down");
-              if (mode === "malformed") return { results: null };
-              return { results: positions };
-            },
-          };
-        },
-        async first() {
-          calls.push({ sql, params: [] });
-          if (!isLedger) throw new Error("unexpected first()");
-          if (mode === "throw") throw new Error("d1 down");
-          return { latest: ledgerCapturedAt };
-        },
-      };
-    },
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = null;
+  pg.control.failNext = null;
+  pg.control.onQuery = ({ text, values }) => {
+    calls.push({ sql: text, params: values });
+    pg.control.failNext = null;
+    if (text.includes("FROM neurons")) {
+      if (mode === "stake-throw") {
+        pg.control.failNext = new Error("neurons down");
+        return;
+      }
+      pg.control.rows = stakes.filter((row) => values.includes(row.hotkey));
+      return;
+    }
+    if (mode === "throw") {
+      pg.control.failNext = new Error("store down");
+      return;
+    }
+    if (text.includes("MAX(captured_at)")) {
+      pg.control.rows = [{ latest: ledgerCapturedAt }];
+      return;
+    }
+    // A store handing back something that is not a row array. readStore cannot
+    // manufacture one, so it is injected here -- the guard it trips is what
+    // stops `results.length` becoming a TypeError inside a decline path.
+    pg.control.rows =
+      mode === "malformed" ? ("not-an-array" as never) : positions;
   };
-  return { calls, env: { METAGRAPH_HEALTH_DB: db } };
+  return { calls, env: { ...pgMockEnv() } };
 }
 
 function positionRow(hotkey: string, netuid: number, fraction: number) {
@@ -180,9 +197,14 @@ describe("loadAccountPositionsD1", () => {
   test("declines with no binding, a throwing read, a malformed result, or a failed stake leg", async () => {
     assert.equal(await loadAccountPositionsD1({} as never, COLDKEY), null);
     assert.equal(await loadAccountPositionsD1(null, COLDKEY), null);
+    // Hyperdrive bound, but this deployment has not declared nominator_positions
+    // Neon's -- readStore returns nothing rather than reading a table it was
+    // not told the store owns.
     assert.equal(
       await loadAccountPositionsD1(
-        { METAGRAPH_HEALTH_DB: {} } as never,
+        {
+          HYPERDRIVE: { connectionString: "postgresql://mock/db" },
+        } as never,
         COLDKEY,
       ),
       null,

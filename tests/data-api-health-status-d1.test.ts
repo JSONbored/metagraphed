@@ -20,8 +20,19 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, test } from "vitest";
+import { beforeEach, test, vi } from "vitest";
 import type { Row } from "./row-type.ts";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The store is Postgres now (#10179). This suite reaches the route through
+// `worker.fetch(request, env, ctx)`, so there is nothing to inject a runner
+// into -- the `pg` module IS the seam. See tests/helpers/pg-mock.ts for why it
+// is a module mock rather than a production export, and why the controller has
+// to be built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
 
 const { default: worker } = await import("../workers/data-api.ts");
 
@@ -35,39 +46,23 @@ const PATH = "/api/v1/internal/health-status-live";
 
 let db: InstanceType<typeof DatabaseSync>;
 
-function d1() {
-  return {
-    prepare(text: string) {
-      return {
-        bind(...values: unknown[]) {
-          return {
-            text,
-            values,
-            async all() {
-              return { results: db.prepare(text).all(...(values as never[])) };
-            },
-          };
-        },
-      };
-    },
-  };
-}
-
 function env(overrides: Record<string, unknown> = {}): Env {
   return {
-    METAGRAPH_HEALTH_DB: d1(),
-    // What production runs. "postgres" would forward through the legacy tier;
-    // "d1" is the value that was silently not forwarding.
-    METAGRAPH_HEALTH_SOURCE: "d1",
+    ...pgMockEnv(),
     ...overrides,
   } as unknown as Env;
 }
+
+/** A ctx with a real `waitUntil`. createPgSql hands the client back through it
+ * from a `finally`, so an object without one turns every successful read into
+ * a TypeError -- silently, because the rejection replaces the result. */
+const ctx = { waitUntil: () => {} } as unknown as ExecutionContext;
 
 function get(query = "", envOverride?: Env) {
   return worker.fetch(
     new Request(`https://d${PATH}${query}`),
     envOverride ?? env(),
-    {} as unknown as ExecutionContext,
+    ctx,
   );
 }
 
@@ -117,6 +112,9 @@ function insertStatus(overrides: Row = {}) {
 beforeEach(() => {
   db = new DatabaseSync(":memory:");
   db.exec(OBSERVATIONS_SCHEMA);
+  pg.control.queries.length = 0;
+  pg.control.failNext = null;
+  pg.control.db = db;
 });
 
 test("serves the columns both callers read, including last_ok and the failure streak", async () => {
@@ -201,44 +199,58 @@ test("a missing or unparseable since is treated as 0, not NaN", async () => {
   );
 });
 
+// The bound cutoff reaches the store as `$1`, not `?`. The handler writes
+// SQLite's `?` and sql.unsafe rewrites it on the way to Postgres; #9821 is what
+// happens when it does not -- six routes served zero rows because `?` matched
+// nothing.
+test("the cutoff is bound as a Postgres placeholder, never left as `?`", async () => {
+  insertStatus({ last_checked: 5 });
+  await get("?since=3");
+  const [statement] = pg.control.queries;
+  assert.match(statement!.text, /last_checked >= \$\d/);
+  assert.deepEqual(statement!.values, [3]);
+});
+
 test("an empty table is an empty row set, not an error", async () => {
   const res = await get("?since=0");
   assert.equal(res.status, 200);
   assert.deepEqual((await res.json()) as unknown, { rows: [] });
 });
 
-test("declines with 503 when the D1 binding is absent", async () => {
+// The 503 used to be about D1's binding; it is now about Hyperdrive's, which
+// is the same property one store later -- a route with no store declines rather
+// than answering an empty set that a caller would read as "no surfaces".
+test("declines with 503 when no store is bound for the route", async () => {
   const res = await get("?since=0", {
-    METAGRAPH_HEALTH_SOURCE: "d1",
+    ...pgMockEnv(),
+    HYPERDRIVE: undefined,
+  } as unknown as Env);
+  assert.equal(res.status, 503);
+  assert.equal(
+    ((await res.json()) as Row).error,
+    "no store bound for this route",
+  );
+});
+
+// The gate is per ROUTE, not just per binding: routeStore consults
+// neonServesRoute, so a deployment that has not read-enabled surface_status
+// declines here rather than reading a table it has not declared.
+test("declines when surface_status is not read-enabled on this deployment", async () => {
+  insertStatus();
+  const res = await get("?since=0", {
+    ...pgMockEnv(),
+    NEON_READ_LANES: "neurons",
   } as unknown as Env);
   assert.equal(res.status, 503);
 });
 
-// Under "postgres" this route is the legacy tier's to answer, so the D1
-// matcher must decline rather than shadow it.
-test("does not claim the route when the flag says postgres", async () => {
-  insertStatus();
-  const res = await get(
-    "?since=0",
-    env({ METAGRAPH_HEALTH_SOURCE: "postgres" }),
-  );
-  assert.notEqual(res.status, 200);
-});
-
 // A failing query answers an opaque 502 that leaks no DB detail -- the same
-// envelope the neurons and hyperparams D1 blocks use. It matters here because
+// envelope the neurons and hyperparams blocks use. It matters here because
 // the caller reads a non-2xx as "this tier declines" and carries on with an
 // empty prior map, which is the pre-fix behaviour: degraded, not broken.
 test("a failing query is an opaque 502, never a leaked DB error", async () => {
-  const exploding = {
-    METAGRAPH_HEALTH_DB: {
-      prepare() {
-        throw new Error("no such table: surface_status");
-      },
-    },
-    METAGRAPH_HEALTH_SOURCE: "d1",
-  } as unknown as Env;
-  const res = await get("?since=0", exploding);
+  pg.control.failNext = new Error("no such table: surface_status");
+  const res = await get("?since=0");
   assert.equal(res.status, 502);
   const body = (await res.json()) as Row;
   assert.equal(body.error, "data query failed");

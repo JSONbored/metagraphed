@@ -20,18 +20,74 @@ import {
   type NeonWriteResult,
 } from "./neon-write.ts";
 import {
-  CHAIN_DETAIL_ACCOUNT_EVENT_COLUMNS,
-  CHAIN_DETAIL_BLOCK_COLUMNS,
-  CHAIN_DETAIL_CHAIN_EVENT_COLUMNS,
-  CHAIN_DETAIL_CONFLICT_KEYS,
-  CHAIN_DETAIL_EXTRINSIC_COLUMNS,
-} from "./chain-detail-d1-write.ts";
-import {
   createPgSql,
   type HyperdriveLike,
   type WaitUntilLike,
 } from "./pg-sql.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
+
+// ---------------------------------------------------------------------------
+// Moved here when D1 was deleted (#10179). These describe the TABLE -- its
+// column list, its conflict key, its derivations -- not the store that used to
+// hold it, and this module is now the only writer.
+// ---------------------------------------------------------------------------
+
+export const CHAIN_DETAIL_BLOCK_COLUMNS = [
+  "block_number",
+  "block_hash",
+  "spec_version",
+  "extrinsic_count",
+  "chain_event_count",
+  "account_event_count",
+  "observed_at",
+  "synced_at",
+];
+
+export const CHAIN_DETAIL_EXTRINSIC_COLUMNS = [
+  "block_number",
+  "extrinsic_index",
+  "extrinsic_hash",
+  "signer",
+  "call_module",
+  "call_function",
+  "success",
+  "fee_tao",
+  "tip_tao",
+  "call_args",
+  "observed_at",
+];
+
+export const CHAIN_DETAIL_CHAIN_EVENT_COLUMNS = [
+  "block_number",
+  "event_index",
+  "pallet",
+  "method",
+  "args",
+  "phase",
+  "extrinsic_index",
+  "observed_at",
+];
+
+export const CHAIN_DETAIL_ACCOUNT_EVENT_COLUMNS = [
+  "block_number",
+  "event_index",
+  "extrinsic_index",
+  "event_kind",
+  "hotkey",
+  "coldkey",
+  "netuid",
+  "uid",
+  "amount_tao",
+  "alpha_amount",
+  "observed_at",
+];
+
+export const CHAIN_DETAIL_CONFLICT_KEYS = {
+  chain_detail_blocks: ["block_number"],
+  chain_detail_extrinsics: ["block_number", "extrinsic_index"],
+  chain_detail_chain_events: ["block_number", "event_index"],
+  chain_detail_account_events: ["block_number", "event_index"],
+} as const;
 
 /** The lane name this mirror answers to in NEON_DUAL_WRITE_LANES. */
 export const CHAIN_DETAIL_NEON_LANE = "chain-detail";

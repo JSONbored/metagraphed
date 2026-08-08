@@ -20,7 +20,20 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// One store since #10179: the ROUTE/GraphQL/MCP surfaces reach it through
+// src/read-store.ts, which builds `new Client(...)` itself -- there is no
+// binding to hand a request handler any more. The loader assertions below keep
+// passing `d1()` straight in, because `load*(db, ...)` takes a db; only the
+// surface half needs the module mock. See tests/helpers/pg-mock.ts for why it
+// is a module mock and why the controller is built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   CHAIN_HOLDERS_LIMIT_DEFAULT,
   CHAIN_HOLDERS_LIMIT_MAX,
@@ -70,7 +83,11 @@ function d1() {
   };
 }
 
-const env = () => ({ METAGRAPH_HEALTH_DB: d1() }) as unknown as Env;
+/** The surface's env: a connection string for readStore to find, every table
+ * declared Neon's, and the SAME in-memory engine `d1()` reads answering behind
+ * the `pg` double -- so a surface assertion and a loader assertion are looking
+ * at one set of rows. */
+const env = () => ({ ...pgMockEnv() }) as unknown as Env;
 
 function completePass(capturedAt = PASS) {
   db.prepare(
@@ -117,6 +134,12 @@ function threeSubnets() {
 beforeEach(() => {
   db = new DatabaseSync(":memory:");
   for (const s of MIGRATIONS) db.exec(s);
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = null;
+  pg.control.failNext = null;
+  pg.control.onQuery = null;
+  pg.control.db = db;
 });
 
 describe("loadChainHolders against real SQLite", () => {
@@ -592,7 +615,7 @@ describe("GET /api/v1/chain/holders", () => {
     assert.equal((await get("/api/v1/chain/holders?netuid=1")).status, 400);
   });
 
-  test("no D1 binding declines rather than 500ing", async () => {
+  test("no store bound declines rather than 500ing", async () => {
     const data = await body(await get("/api/v1/chain/holders", {} as Env));
     assert.deepEqual(data.degraded, { reason: "unavailable" });
   });

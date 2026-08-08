@@ -127,15 +127,6 @@ export function chainDetailPruneWindow(input: {
   return { keepFrom: head - retainedBlocks + 1, retainedBlocks };
 }
 
-interface D1Statement {
-  bind(...values: unknown[]): D1Statement;
-  first?(): Promise<unknown>;
-}
-interface D1Like {
-  prepare(sql: string): D1Statement;
-  batch(statements: D1Statement[]): Promise<unknown[]>;
-}
-
 function toInt(value: unknown): number | null {
   if (value == null) return null;
   const n = Number(value);
@@ -145,7 +136,7 @@ function toInt(value: unknown): number | null {
 export interface ChainDetailPruneResult {
   ok: boolean;
   reason?: string;
-  /** The D1 error text, when the run failed against a bound database. */
+  /** The error text, when the run failed against a bound database. */
   detail?: string;
   /** The window this run computed, absent when nothing could be computed. */
   keep_from?: number;
@@ -172,8 +163,7 @@ export interface ChainDetailPruneDeps {
    * database -- the same escape hatch src/neon-prune.ts takes. */
   sql?: { unsafe(text: string, values?: unknown[]): Promise<unknown> } | null;
   /** Injectable bounds reader, for the same reason: the MIN/MAX that every
-   * number here is derived from now follows the rows rather than always being
-   * D1's (#10152). */
+   * number here is derived from follows the rows (#10152). */
   readDb?: ReadStoreDb | null;
 }
 
@@ -182,27 +172,13 @@ export async function pruneChainDetail(
   ctx?: WaitUntilLike,
   deps: ChainDetailPruneDeps = {},
 ): Promise<ChainDetailPruneResult> {
-  const binding = (env as { METAGRAPH_HEALTH_DB?: D1Like } | null | undefined)
-    ?.METAGRAPH_HEALTH_DB;
   // THE WATERMARK MUST COME FROM THE STORE THAT HOLDS THE ROWS (#10152).
   //
-  // Every number below is derived from one MIN/MAX read, and that read was
-  // always D1's. Once the chain-detail lane inverted, D1 stopped advancing --
-  // so Neon's retention watermark was pinned to a frozen floor, and the tier it
-  // is supposed to bound grew without limit.
-  //
-  // The end state is worse than the drift. `if (floor === null || head === null)
-  // return { ok: true, reason: "no rows" }` reads an EMPTY D1 as "the lane has
-  // not written yet", which is true exactly once and false forever after. Drop
-  // D1 and this returns success, prunes nothing, and reports a healthy lane
-  // while Neon's chain_detail_* grows unbounded.
-  const neonOwns = PRUNE_TABLES.every((table) =>
-    neonOwnsTable(env as Record<string, unknown>, table),
-  );
-  // The D1 half needs `batch` for its transactional DELETE; the bounds read
-  // does not, so it goes through readStore and follows the rows.
-  if (!neonOwns && (!binding?.prepare || !binding.batch))
-    return { ok: false, reason: "d1 binding unavailable" };
+  // Every number below is derived from one MIN/MAX read, and that read used to
+  // be D1's unconditionally. Once the chain-detail lane inverted, D1 stopped
+  // advancing -- so Neon's retention watermark was pinned to a frozen floor,
+  // and the tier it is supposed to bound grew without limit. Reading through
+  // readStore is what keeps the bound following the rows.
   const reader = readStore(env, PRUNE_TABLES, deps.readDb);
   if (!reader?.prepare) return { ok: false, reason: "no store bound" };
 
@@ -235,18 +211,6 @@ export async function pruneChainDetail(
       window.keepFrom,
       floor + CHAIN_DETAIL_PRUNE_MAX_BLOCKS_PER_RUN,
     );
-    // Skipped outright once Neon owns the tables -- there is nothing behind D1
-    // to delete, and issuing the DELETE anyway would make an unbound binding
-    // fail a prune that had already done its real work below.
-    if (!neonOwns) {
-      await binding!.batch!(
-        PRUNE_TABLES.map((table) =>
-          binding!
-            .prepare(`DELETE FROM ${table} WHERE block_number < ?`)
-            .bind(deletedBelow),
-        ),
-      );
-    }
     const neon = await pruneChainDetailNeon(env, ctx, deletedBelow, deps);
     return {
       ok: true,

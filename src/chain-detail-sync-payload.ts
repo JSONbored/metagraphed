@@ -8,8 +8,9 @@
 //
 // TRUST POSTURE, same as every sync route in this family: the token proves WHO
 // is posting, never WHAT. The producer is our own poller lane, but a payload
-// that reaches D1 unchecked is a payload that can put an unqueryable string in
-// `phase`, a float in an INTEGER column, or a pallet-qualified `event_kind`
+// that reaches the store unchecked is a payload that can put an unqueryable
+// string in `phase`, a float in an INTEGER column, or a pallet-qualified
+// `event_kind`
 // that silently breaks `?kind=` parity with the lakehouse. So every field is
 // checked, and a batch with ONE bad row is rejected whole rather than partially
 // applied -- a half-written block is exactly the ambiguous state
@@ -22,9 +23,21 @@
 // accepts null for exactly those fields and rejects it everywhere else, rather
 // than accepting null anywhere and letting the read path guess.
 
-import { CHAIN_EVENT_PHASES } from "./chain-detail-d1-write.ts";
-
 type Row = Record<string, unknown>;
+
+/**
+ * The three Substrate event phases, and the only values `phase` may take.
+ *
+ * Lives here rather than with the write path because this is the only thing
+ * that reads it: the phase vocabulary is a fact about the CHAIN, not about
+ * whichever store the rows land in, and it followed the validator when the D1
+ * writer that used to host it was deleted (#10179).
+ */
+export const CHAIN_EVENT_PHASES = new Set([
+  "ApplyExtrinsic",
+  "Finalization",
+  "Initialization",
+]);
 
 /** ~662 KiB for the producer's 2-block batch, measured; 16 MiB is generous
  * headroom over that without inviting a pathological body. */

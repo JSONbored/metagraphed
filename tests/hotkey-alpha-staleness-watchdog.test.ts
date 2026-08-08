@@ -22,7 +22,19 @@
 // tick would say so.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The store is Postgres now (#10179), reached through `new Client(...)` inside
+// src/read-store.ts and src/lane-health-store.ts -- neither of which this
+// watchdog can be handed, because it selects its own store from `env`. Mocking
+// the module is the seam; see tests/helpers/pg-mock.ts for why it is a module
+// mock and why the controller has to be built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   HOTKEY_ALPHA_COVERAGE_FLOOR_RATIO,
   HOTKEY_ALPHA_PASS_WINDOW_MS,
@@ -42,34 +54,47 @@ const REFERENCED = 17_902;
  * under test unless a case says so. */
 const FULL = REFERENCED;
 
+/** The lane's one read, answered from the pg double, plus the env that points
+ * the watchdog at it.
+ *
+ * `queries` and `binds` are LIVE views over the mock's log rather than copies,
+ * because every caller destructures them and reads them after the tick has run
+ * -- a getter would be evaluated once, at destructure time, and freeze empty.
+ *
+ * A thrown `latest` fails the NEXT statement, which is the read: the watchdog
+ * catches it and never reaches the lane_health write. A string is accepted as
+ * well as an Error because a driver rejecting with a bare string is one of the
+ * cases under test. */
 function fakeDb(
-  latest: number | null | Error,
+  latest: number | null | Error | string,
   covered: number = FULL,
   total: number = FULL,
   referenced: number = REFERENCED,
 ) {
   const queries: string[] = [];
   const binds: unknown[][] = [];
-  return {
-    queries,
-    binds,
-    db: {
-      prepare(sql: string) {
-        queries.push(sql);
-        return {
-          bind(...values: unknown[]) {
-            binds.push(values);
-            return {
-              async first() {
-                if (latest instanceof Error) throw latest;
-                return { latest, covered, total, referenced };
-              },
-            };
-          },
-        };
-      },
-    },
+  const throws = typeof latest === "string" || latest instanceof Error;
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = throws ? null : [{ latest, covered, total, referenced }];
+  pg.control.failNext = throws ? (latest as Error) : null;
+  pg.control.onQuery = (q) => {
+    queries.push(q.text);
+    binds.push(q.values);
   };
+  return { queries, binds, env: pgMockEnv() };
+}
+
+/** A store that answers with no row at all, which is not the same as a row of
+ * nulls: `first()` returns null and the rule has to read that as an empty
+ * ledger rather than throwing on a property of null. */
+function noRowDb() {
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.failNext = null;
+  pg.control.onQuery = null;
+  pg.control.rows = [];
+  return pgMockEnv();
 }
 
 /** The rule's inputs with everything healthy, so each case overrides only the
@@ -228,11 +253,11 @@ describe("runHotkeyAlphaStalenessWatchdog", () => {
   const noopRecord = async () => true as never;
 
   test("reads the lane once, bound to the pass window", async () => {
-    const { db, queries, binds } = fakeDb(NOW - HOUR);
-    const result = await runHotkeyAlphaStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      { now: () => NOW, recordException: noopRecord },
-    );
+    const { env, queries, binds } = fakeDb(NOW - HOUR);
+    const result = await runHotkeyAlphaStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: noopRecord,
+    });
     assert.equal(result.ok, true);
     assert.equal(result.alerted, false);
     const reads = queries.filter((q) => q.includes("FROM hotkey_alpha"));
@@ -245,17 +270,14 @@ describe("runHotkeyAlphaStalenessWatchdog", () => {
 
   test("an empty ledger alerts and names both affected surfaces", async () => {
     const messages: string[] = [];
-    const { db } = fakeDb(null, 0, 0, REFERENCED);
-    const result = await runHotkeyAlphaStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      {
-        now: () => NOW,
-        recordException: (async (_env: unknown, arg: { error: Error }) => {
-          messages.push(arg.error.message);
-          return true;
-        }) as never,
-      },
-    );
+    const { env } = fakeDb(null, 0, 0, REFERENCED);
+    const result = await runHotkeyAlphaStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async (_env: unknown, arg: { error: Error }) => {
+        messages.push(arg.error.message);
+        return true;
+      }) as never,
+    });
     assert.equal(result.alerted, true);
     assert.equal(result.reason, "no_rows");
     assert.equal(messages.length, 1);
@@ -268,17 +290,14 @@ describe("runHotkeyAlphaStalenessWatchdog", () => {
 
   test("a truncated pass gets its own wording, not the stall wording", async () => {
     const messages: string[] = [];
-    const { db } = fakeDb(NOW - HOUR, 500, 500, REFERENCED);
-    await runHotkeyAlphaStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      {
-        now: () => NOW,
-        recordException: (async (_env: unknown, arg: { error: Error }) => {
-          messages.push(arg.error.message);
-          return true;
-        }) as never,
-      },
-    );
+    const { env } = fakeDb(NOW - HOUR, 500, 500, REFERENCED);
+    await runHotkeyAlphaStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async (_env: unknown, arg: { error: Error }) => {
+        messages.push(arg.error.message);
+        return true;
+      }) as never,
+    });
     assert.match(messages[0], /truncated/);
     // The consequence is UNDERSTATEMENT here, not absence — the fact that
     // separates this ledger's partial failure from the balance ledger's.
@@ -288,59 +307,50 @@ describe("runHotkeyAlphaStalenessWatchdog", () => {
 
   test("a stalled lane gets the stall wording", async () => {
     const messages: string[] = [];
-    const { db } = fakeDb(NOW - 60 * HOUR);
-    await runHotkeyAlphaStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      {
-        now: () => NOW,
-        recordException: (async (_env: unknown, arg: { error: Error }) => {
-          messages.push(arg.error.message);
-          return true;
-        }) as never,
-      },
-    );
+    const { env } = fakeDb(NOW - 60 * HOUR);
+    await runHotkeyAlphaStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async (_env: unknown, arg: { error: Error }) => {
+        messages.push(arg.error.message);
+        return true;
+      }) as never,
+    });
     assert.match(messages[0], /stalled/);
     assert.match(messages[0], /60\.0 h old/);
   });
 
   test("a healthy tick records no exception", async () => {
     let called = 0;
-    const { db } = fakeDb(NOW - HOUR);
-    await runHotkeyAlphaStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      {
-        now: () => NOW,
-        recordException: (async () => {
-          called += 1;
-          return true;
-        }) as never,
-      },
-    );
+    const { env } = fakeDb(NOW - HOUR);
+    await runHotkeyAlphaStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async () => {
+        called += 1;
+        return true;
+      }) as never,
+    });
     assert.equal(called, 0);
   });
 
   test("a failing telemetry post does not fail the tick", async () => {
     // The alert is the notification path, not the record — a dropped $exception
     // must not also lose the lane_health verdict behind it.
-    const { db } = fakeDb(null, 0, 0);
-    const result = await runHotkeyAlphaStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      {
-        now: () => NOW,
-        recordException: (async () => {
-          throw new Error("posthog down");
-        }) as never,
-      },
-    );
+    const { env } = fakeDb(null, 0, 0);
+    const result = await runHotkeyAlphaStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async () => {
+        throw new Error("posthog down");
+      }) as never,
+    });
     assert.equal(result.ok, true);
     assert.equal(result.alerted, true);
   });
 
   test("env overrides the threshold, window and ratio", async () => {
-    const { db, binds } = fakeDb(NOW - 3 * HOUR, 100, 100, 1000);
+    const { env, binds } = fakeDb(NOW - 3 * HOUR, 100, 100, 1000);
     const result = await runHotkeyAlphaStalenessWatchdog(
       {
-        METAGRAPH_HEALTH_DB: db,
+        ...env,
         HOTKEY_ALPHA_STALENESS_THRESHOLD_MS: 2 * HOUR,
         HOTKEY_ALPHA_PASS_WINDOW_MS: 90_000,
         HOTKEY_ALPHA_COVERAGE_FLOOR_RATIO: 0.5,
@@ -355,27 +365,29 @@ describe("runHotkeyAlphaStalenessWatchdog", () => {
   test("a null SUM lands on 0 rather than NaN", async () => {
     // NaN would compare false against the floor and report a truncated ledger
     // healthy — the quiet direction, which is the one that matters.
-    const { db } = fakeDb(NOW - HOUR, null as unknown as number, 0, REFERENCED);
-    const result = await runHotkeyAlphaStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      { now: () => NOW, recordException: noopRecord },
+    const { env } = fakeDb(
+      NOW - HOUR,
+      null as unknown as number,
+      0,
+      REFERENCED,
     );
+    const result = await runHotkeyAlphaStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: noopRecord,
+    });
     assert.equal(result.covered_rows, 0);
     assert.equal(result.reason, "partial");
   });
 
   test("a missing row object is treated as an empty ledger", async () => {
-    const db = {
-      prepare: () => ({ bind: () => ({ first: async () => null }) }),
-    };
-    const result = await runHotkeyAlphaStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      { now: () => NOW, recordException: noopRecord },
-    );
+    const result = await runHotkeyAlphaStalenessWatchdog(noRowDb(), {
+      now: () => NOW,
+      recordException: noopRecord,
+    });
     assert.equal(result.reason, "no_rows");
   });
 
-  test("no D1 binding is a missed report, not a throw", async () => {
+  test("no store bound is a missed report, not a throw", async () => {
     assert.deepEqual(await runHotkeyAlphaStalenessWatchdog({}), {
       ok: false,
       reason: "no store bound",
@@ -387,28 +399,19 @@ describe("runHotkeyAlphaStalenessWatchdog", () => {
   });
 
   test("a failing query is a missed report, not a throw", async () => {
-    const { db } = fakeDb(new Error("D1_ERROR: no such table"));
-    const result = await runHotkeyAlphaStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      { now: () => NOW, recordException: noopRecord },
-    );
+    const { env } = fakeDb(new Error('relation "hotkey_alpha" does not exist'));
+    const result = await runHotkeyAlphaStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: noopRecord,
+    });
     assert.equal(result.ok, false);
     assert.equal(result.reason, "query_failed");
-    assert.match(String(result.detail), /no such table/);
+    assert.match(String(result.detail), /does not exist/);
   });
 
   test("a non-Error throw still reports a detail", async () => {
-    const db = {
-      prepare: () => ({
-        bind: () => ({
-          first: async () => {
-            throw "string rejection";
-          },
-        }),
-      }),
-    };
     const result = await runHotkeyAlphaStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
+      fakeDb("string rejection").env,
       { now: () => NOW, recordException: noopRecord },
     );
     assert.equal(result.reason, "query_failed");
@@ -418,32 +421,27 @@ describe("runHotkeyAlphaStalenessWatchdog", () => {
   test("defaults are used when no deps are injected", async () => {
     // Exercises the `deps.now ?? Date.now` / `deps.recordException ?? …` arms,
     // which a fully-injected test never reaches.
-    const { db } = fakeDb(Date.now());
-    const result = await runHotkeyAlphaStalenessWatchdog({
-      METAGRAPH_HEALTH_DB: db,
-    });
+    const { env } = fakeDb(Date.now());
+    const result = await runHotkeyAlphaStalenessWatchdog(env);
     assert.equal(result.ok, true);
     assert.equal(result.alerted, false);
   });
 
   test("the verdict is written to lane_health under its own name", async () => {
     const lanes: Record<string, unknown>[] = [];
-    const { db } = fakeDb(NOW - HOUR);
-    await runHotkeyAlphaStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      {
-        now: () => NOW,
-        recordException: noopRecord,
-        laneHealthDb: {
-          prepare: (sql: string) => ({
-            bind: (...values: unknown[]) => {
-              lanes.push({ sql, values });
-              return { run: async () => ({}) };
-            },
-          }),
-        } as never,
-      },
-    );
+    const { env } = fakeDb(NOW - HOUR);
+    await runHotkeyAlphaStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: noopRecord,
+      laneHealthDb: {
+        prepare: (sql: string) => ({
+          bind: (...values: unknown[]) => {
+            lanes.push({ sql, values });
+            return { run: async () => ({}) };
+          },
+        }),
+      } as never,
+    });
     // Written EVERY tick, not only when stale: a dropped exception is otherwise
     // indistinguishable from a lane that was fine (#9330/#9340). Asserted by
     // SHAPE rather than by count — recordLaneVerdict's own statement sequence is
@@ -508,14 +506,12 @@ describe("the cron string is unique and wired", () => {
   });
 
   test("handleScheduled dispatches to the watchdog and returns its summary", async () => {
-    const { db, queries } = fakeDb(Date.now());
+    const { env, queries } = fakeDb(Date.now());
     const result = (await handleScheduled(
       {
         cron: workerConfig.HOTKEY_ALPHA_STALENESS_WATCHDOG_CRON,
       } as unknown as ScheduledController,
-      { METAGRAPH_HEALTH_DB: db } as unknown as Parameters<
-        typeof handleScheduled
-      >[1],
+      env as unknown as Parameters<typeof handleScheduled>[1],
       {} as unknown as ExecutionContext,
     )) as { ok: boolean; alerted: boolean };
     assert.equal(result.ok, true);
@@ -531,14 +527,12 @@ describe("the cron string is unique and wired", () => {
     // so a mistake here — a copied constant, a stray `||` — routes that lane
     // into this one and silences it while both crons keep firing. Dispatch keys
     // on the literal string and nothing else proves the two stay distinct.
-    const { db, queries } = fakeDb(Date.now());
+    const { env, queries } = fakeDb(Date.now());
     const result = (await handleScheduled(
       {
         cron: workerConfig.ACCOUNT_BALANCES_STALENESS_WATCHDOG_CRON,
       } as unknown as ScheduledController,
-      { METAGRAPH_HEALTH_DB: db } as unknown as Parameters<
-        typeof handleScheduled
-      >[1],
+      env as unknown as Parameters<typeof handleScheduled>[1],
       {} as unknown as ExecutionContext,
     )) as { ok: boolean };
     assert.equal(result.ok, true);

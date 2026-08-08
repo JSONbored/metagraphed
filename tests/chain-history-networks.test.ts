@@ -12,7 +12,19 @@
 // threading a network through makes mainnet start reading `chain_testnet`.
 
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The hot tier is Postgres now (#10179), reached through `new Client(...)`
+// inside src/read-store.ts. The two namespace tests below assert WHETHER that
+// store was consulted at all, so the seam has to be the `pg` module itself --
+// see tests/helpers/pg-mock.ts for why, and for why the controller is built
+// inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import { chainTable, LAKEHOUSE_NAMESPACES } from "../src/chain-network.ts";
 import {
   CHAIN_HISTORY_ROUTE_PATHS,
@@ -197,7 +209,18 @@ describe("every chain-history reader targets its network's namespace", () => {
   }
 });
 
-describe("the D1 hot tier is mainnet's alone", () => {
+describe("the hot tier is mainnet's alone", () => {
+  /** An env whose hot tier is reachable, plus a live view of the statements it
+   * was asked. Subscribed rather than read back so the array the caller holds
+   * stays live across the loader call. */
+  function hotTierEnv() {
+    const queries: string[] = [];
+    pg.control.queries.length = 0;
+    pg.control.rows = [];
+    pg.control.onQuery = (q) => queries.push(q.text);
+    return { env: mockEnv({ ...TOKEN, ...pgMockEnv() }), queries };
+  }
+
   test("the seam is 0 off mainnet, so nothing is 'above' it", async () => {
     // blocks_head has no network column, so there are no non-mainnet hot rows
     // to reach. A non-zero seam would make the feed believe a hot range exists.
@@ -208,51 +231,31 @@ describe("the D1 hot tier is mainnet's alone", () => {
   test("a testnet feed never queries blocks_head", async () => {
     // The leak this guards against is silent: blocks_head rows are heights and
     // hashes, so mainnet blocks spliced into a testnet feed look entirely real.
-    const d1Queries: string[] = [];
-    const env = mockEnv({
-      ...TOKEN,
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql: string) {
-          d1Queries.push(sql);
-          return {
-            bind: () => ({ all: async () => ({ results: [] }) }),
-          };
-        },
-      },
-    });
+    const { env, queries } = hotTierEnv();
     resetDecodeWatermarkCache();
     await withSql([], async () => {
       await loadBlockFeedColdTier(env, { limit: 5, offset: 0 }, "testnet");
       await loadBlockColdTier(env, "7700001", "testnet");
     });
     assert.deepEqual(
-      d1Queries,
+      queries,
       [],
-      `a testnet read touched D1: ${d1Queries.join(" | ")}`,
+      `a testnet read touched the hot tier: ${queries.join(" | ")}`,
     );
   });
 
-  test("a mainnet feed still uses D1, unchanged", async () => {
-    // The other direction: skipping D1 for testnet must not skip it for
-    // mainnet, which would silently drop every block above the seam.
-    const d1Queries: string[] = [];
-    const env = mockEnv({
-      ...TOKEN,
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql: string) {
-          d1Queries.push(sql);
-          return {
-            bind: () => ({ all: async () => ({ results: [] }) }),
-          };
-        },
-      },
-    });
+  test("a mainnet feed still uses the hot tier, unchanged", async () => {
+    // The other direction: skipping the hot tier for testnet must not skip it
+    // for mainnet, which would silently drop every block above the seam. The
+    // env is identical to the testnet case's, so the two together prove the
+    // network is what decides -- not a store that was simply unreachable.
+    const { env, queries } = hotTierEnv();
     resetDecodeWatermarkCache();
     await withSql([], async () => {
       await loadBlockFeedColdTier(env, { limit: 5, offset: 0 });
     });
     assert.ok(
-      d1Queries.some((q) => q.includes("blocks_head")),
+      queries.some((q) => q.includes("blocks_head")),
       "the mainnet feed stopped consulting its hot tier",
     );
   });

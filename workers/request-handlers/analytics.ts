@@ -24,6 +24,8 @@
 // is imported directly from leaf modules, so this file never imports api.ts.
 
 import { observationsReadDb } from "../../src/observations-read-runner.ts";
+import { readStore } from "../../src/read-store.ts";
+import { HEALTH_CHECK_TABLES } from "../../src/read-store-tables.ts";
 import {
   ANALYTICS_WINDOW_PARAM,
   ANALYTICS_WINDOWS,
@@ -767,7 +769,7 @@ export async function handleBulkHealthTrends(
         });
         data = result.data;
         isFallback =
-          !env.METAGRAPH_HEALTH_DB ||
+          !env.HYPERDRIVE?.connectionString ||
           currentD1ReadFailureGeneration() !== d1Generation;
       }
       const response = await envelopeResponse(
@@ -835,7 +837,7 @@ export async function handleHealthTrends(
         db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
       } as unknown as Parameters<typeof loadSubnetHealthTrends>[1]);
       usedFallback =
-        !env.METAGRAPH_HEALTH_DB ||
+        !env.HYPERDRIVE?.connectionString ||
         currentD1ReadFailureGeneration() !== d1Generation;
     }
     const response = await envelopeResponse(
@@ -900,7 +902,7 @@ export async function handleHealthPercentiles(
           ),
         } as unknown as Parameters<typeof loadSubnetPercentiles>[1]);
         usedFallback =
-          !env.METAGRAPH_HEALTH_DB ||
+          !env.HYPERDRIVE?.connectionString ||
           currentD1ReadFailureGeneration() !== d1Generation;
       }
       const response = await envelopeResponse(
@@ -963,7 +965,7 @@ export async function handleHealthIncidents(
           ),
         } as unknown as Parameters<typeof loadSubnetIncidents>[1]);
         usedFallback =
-          !env.METAGRAPH_HEALTH_DB ||
+          !env.HYPERDRIVE?.connectionString ||
           currentD1ReadFailureGeneration() !== d1Generation;
       }
       const response = await envelopeResponse(
@@ -990,19 +992,28 @@ export async function handleHealthIncidents(
 // per-subnet route but with no netuid filter, grouped by (netuid, surface_id)
 // and capped. Powers a public status page's "recent incidents" feed.
 //
-// D1 fully eliminated (2026-07-17): surface_checks is Postgres-only now (every
-// caller tries the Postgres tier first) -- this is only reached on a tier
-// miss, so it always returns the schema-stable empty payload.
+// Reached only on a Postgres-tier miss, which is now every request: the tier
+// this fell back FROM was retired with the box (#9193), so this read is where
+// the incident ledger actually comes from.
 export async function loadGlobalIncidentsLedger(
   env: Env,
   { label = "7d", days = 7 }: { label?: string; days?: number } = {},
-  ctx: EdgeCacheCtx = {},
 ) {
-  // D1 reads resurrected (2026-08-02, box decommission): the rows come from
-  // the dual-written surface_checks copy in D1 — no binding, no rows, which
-  // is exactly the empty stub this was between 2026-07-17 and now.
+  // readStore, NOT observationsReadDb, and that is the difference between this
+  // ledger having rows and being empty. observationsReadDb needs a `ctx` to
+  // park the pooled connection's teardown on and answers `undefined` without
+  // one -- and none of this function's three callers has one to give: the REST
+  // route reaches it through resolveGlobalIncidents, the feed through
+  // resolveGlobalIncidentsForFeed, and the GraphQL resolver calls it directly.
+  // `undefined` reads as zero rows in loadGlobalIncidentRows, so all three
+  // published "no incidents" while the MCP tool -- which already read this
+  // through readStore(HEALTH_CHECK_TABLES) -- served the real list.
+  //
+  // readStore awaits its own teardown, so there is no ctx to thread and no
+  // caller left that can forget one. surface_checks is the only table the
+  // statement names.
   const incidentRows = await loadGlobalIncidentRows(
-    observationsReadDb(env as unknown as Record<string, unknown>, ctx),
+    readStore(env, HEALTH_CHECK_TABLES) as never,
     days,
   );
   const meta = await readHealthMetaKv(env);
@@ -1037,7 +1048,6 @@ export async function resolveGlobalIncidents(
   request: Request,
   env: Env,
   { label = "7d", days = 7 }: { label?: string; days?: number } = {},
-  ctx: EdgeCacheCtx = {},
 ): Promise<{ data: Record<string, unknown>; isFallback: boolean }> {
   const tiered = (await tryPostgresTier(
     env,
@@ -1046,14 +1056,14 @@ export async function resolveGlobalIncidents(
   )) as Record<string, unknown> | null;
   if (tiered) return { data: tiered, isFallback: false };
   const d1Generation = currentD1ReadFailureGeneration();
-  const result = await loadGlobalIncidentsLedger(env, { label, days }, ctx);
+  const result = await loadGlobalIncidentsLedger(env, { label, days });
   return {
     data: result.data as unknown as Record<string, unknown>,
-    // Only an EMPTY ledger counts as a fallback for caching purposes — no D1
-    // binding, or a D1 read failure mid-load. A D1-served ledger carries
+    // Only an EMPTY ledger counts as a fallback for caching purposes — no
+    // store bound, or a read failure mid-load. A store-served ledger carries
     // real rows.
     isFallback:
-      !env.METAGRAPH_HEALTH_DB ||
+      !env.HYPERDRIVE?.connectionString ||
       currentD1ReadFailureGeneration() !== d1Generation,
   };
 }

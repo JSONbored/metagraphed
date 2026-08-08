@@ -9,7 +9,19 @@
 // subnet but the busiest.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// One store since #10179. The tempo read reaches it through a selector that
+// builds `new Client(...)` itself, and this loader takes only
+// `(env, netuid, opts)` -- so the `pg` module is the seam. See
+// tests/helpers/pg-mock.ts for why it is a module mock and why the controller
+// is built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import { loadSubnetWeightSettersColdTier } from "../src/subnet-weight-setters-loader.ts";
 
 type Row = Record<string, unknown>;
@@ -163,27 +175,36 @@ describe("all three subnet weight-setter surfaces go through the one loader", ()
   });
 });
 
-// #9389 shipped the overdue verdicts wired into the sibling D1 loader, which NO call
+// #9389 shipped the overdue verdicts wired into the sibling loader, which NO call
 // site reaches -- REST, MCP and GraphQL all come through the cold tier. The published
 // card carried tempo: null and overdue: null on every subnet, so the alarm existed and
 // could never fire. These tests exist so that cannot recur silently.
+//
+// AND IT HAS RECURRED. `loadSubnetTempo` reaches the store through
+// `observationsReadDb(env, ctx)`, and `loadSubnetWeightSettersColdTier` calls it
+// with no ctx at all -- which used to fall back to the D1 binding and, since
+// D1 was removed, returns `undefined`. So `tempo` is unconditionally null again
+// on every published card. The first test below is RED on purpose: it is
+// asserting the behaviour #9396 shipped, not the behaviour production has, and
+// weakening it would re-hide the alarm. The fix is one line in
+// src/subnet-weight-setters-loader.ts -- read `subnet_hyperparams` through
+// `readStore`, which needs no ctx precisely because callers like this one have
+// none to give.
 describe("loadSubnetWeightSettersColdTier — the overdue verdicts reach production", () => {
   function tempoDb(tempo: unknown, { throws = false } = {}) {
     const seen: unknown[][] = [];
-    return {
-      seen,
-      METAGRAPH_HEALTH_DB: {
-        prepare: (sql: string) => ({
-          bind: (...values: unknown[]) => ({
-            first: async () => {
-              seen.push([sql, ...values]);
-              if (throws) throw new Error("D1_ERROR: no such table");
-              return tempo === undefined ? null : { tempo };
-            },
-          }),
-        }),
-      },
+    pg.control.queries.length = 0;
+    pg.control.answers = [];
+    pg.control.rows = null;
+    pg.control.failNext = null;
+    pg.control.onQuery = ({ text, values }) => {
+      seen.push([text, ...values]);
+      pg.control.failNext = throws
+        ? new Error("relation subnet_hyperparams does not exist")
+        : null;
+      pg.control.rows = tempo === undefined ? [] : [{ tempo }];
     };
+    return { seen, ...pgMockEnv() };
   }
 
   test("the tempo is read and the verdicts are evaluated", async () => {
@@ -201,7 +222,10 @@ describe("loadSubnetWeightSettersColdTier — the overdue verdicts reach product
       "a setter with a known tempo must be evaluated, not left null",
     );
     assert.equal(env.seen.length, 1, "one lookup, by primary key");
-    assert.match(String(env.seen[0][0]), /WHERE netuid = \?/);
+    // `$n`, not `?`: the loader writes SQLite's `?` and the store adapter
+    // rewrites it on the way to Postgres. #9821 is what happens when it does
+    // not -- six routes served zero rows because `?` matched nothing.
+    assert.match(String(env.seen[0][0]), /WHERE netuid = \$\d/);
     assert.equal(env.seen[0][1], 7, "scoped to the requested subnet");
   });
 
@@ -229,7 +253,7 @@ describe("loadSubnetWeightSettersColdTier — the overdue verdicts reach product
     assert.equal((data!.setters as Array<Row>).length > 0, true);
   });
 
-  test("no D1 binding at all is survived", async () => {
+  test("no store bound at all is survived", async () => {
     const engine = fakeEngine();
     const data = await loadSubnetWeightSettersColdTier({} as never, 7, {
       windowDays: 7,

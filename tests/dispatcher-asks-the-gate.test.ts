@@ -23,9 +23,9 @@ import { describe, test } from "vitest";
 const SOURCE = readFileSync("workers/data-api.ts", "utf8");
 
 /** The body of dispatchDataApiRequest, which is where route dispatch lives.
- * Bounded rather than scanning the file, because createD1Sql is legitimate
- * outside it -- the write paths and the user-state helpers own their store
- * choice for reasons that have nothing to do with a read gate. */
+ * Bounded rather than scanning the file, because a direct `createPgSql` is
+ * legitimate outside it -- the write paths and the user-state helpers own their
+ * store choice for reasons that have nothing to do with a read gate. */
 function dispatcherBody(): string {
   const start = SOURCE.indexOf("async function dispatchDataApiRequest(");
   assert.ok(start > 0, "dispatchDataApiRequest not found -- was it renamed?");
@@ -83,11 +83,11 @@ describe("the read dispatcher", () => {
     // spelling the same ternary would drift, and the drift is invisible: a
     // block that reads the flag wrongly still returns a schema-stable 200.
     const body = dispatcherBody();
-    const direct = [...body.matchAll(/createD1Sql\(/g)].length;
+    const direct = [...body.matchAll(/createPgSql\(/g)].length;
     assert.equal(
       direct,
       0,
-      "the dispatcher constructs a D1 runner directly; routeStore is the only " +
+      "the dispatcher constructs a runner directly; routeStore is the only " +
         "place that should decide, so the gate cannot be skipped by one block",
     );
   });
@@ -104,6 +104,10 @@ describe("the read dispatcher", () => {
     );
     assert.match(fn, /env\.HYPERDRIVE/);
     assert.match(fn, /neonServesRoute\(/);
-    assert.match(fn, /createD1Sql\(env\.METAGRAPH_HEALTH_DB\)/);
+    // And an unmatched route gets NOTHING, rather than a runner over a store
+    // its NEON_READ_ROUTE_TABLES entry never named. With one store left this is
+    // the only remaining way for the gate to be bypassed: returning a handle
+    // unconditionally would make `neonServesRoute` decorative.
+    assert.match(fn, /return undefined;/);
   });
 });

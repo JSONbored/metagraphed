@@ -21,9 +21,21 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
 import { validSyncBatchMessage } from "../src/sync-batch-queue.ts";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { sqliteBackedPg } from "./helpers/pg-sqlite.ts";
 import type { Row } from "./row-type.ts";
+
+// The store is Postgres now (#10179), reached through `new Client(...)` inside
+// src/neon-write.ts -- which nothing here can inject into, because the consumer
+// is reached as `worker.queue(batch, env, ctx)`. Mocking the module is the
+// seam; see tests/helpers/pg-mock.ts for why it is a module mock and not a
+// production export, and why the controller is built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
 
 const { default: worker } = await import("../workers/data-api.ts");
 
@@ -43,47 +55,18 @@ const SS58_B = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
 
 let db: InstanceType<typeof DatabaseSync>;
 
-function d1() {
-  return {
-    prepare(text: string) {
-      return {
-        bind(...values: unknown[]) {
-          return {
-            text,
-            values,
-            async all() {
-              return { results: db.prepare(text).all(...(values as never[])) };
-            },
-          };
-        },
-      };
-    },
-    async batch(statements: { text: string; values: unknown[] }[]) {
-      db.exec("BEGIN");
-      try {
-        const results = statements.map((statement) => ({
-          results: db
-            .prepare(statement.text)
-            .all(...(statement.values as never[])),
-        }));
-        db.exec("COMMIT");
-        return results;
-      } catch (err) {
-        db.exec("ROLLBACK");
-        throw err;
-      }
-    },
-  };
-}
-
 // Every message the route enqueued during the current test. The route is
 // ENQUEUE-ONLY (metagraphed-infra#353), so this is now the only thing it
-// produces -- the D1 write happens at the other end, in the consumer.
+// produces -- the write happens at the other end, in the consumer.
 let enqueued: Record<string, unknown>[] = [];
 
 function env(overrides: Record<string, unknown> = {}): Env {
   return {
-    METAGRAPH_HEALTH_DB: d1(),
+    ...pgMockEnv(),
+    // The consumer's write runs through mirrorLedgerToNeon, which is a no-op
+    // unless the lane is named here -- so a suite that left this out would
+    // assert an empty table and call it a passing write.
+    NEON_DUAL_WRITE_LANES: "account-balances",
     ACCOUNT_BALANCES_SYNC_SECRET: SECRET,
     SYNC_BATCHES: {
       send: async (m: unknown) => {
@@ -93,6 +76,11 @@ function env(overrides: Record<string, unknown> = {}): Env {
     ...overrides,
   } as unknown as Env;
 }
+
+/** A ctx with a real `waitUntil`. createPgSql hands the client back through it
+ * from a `finally`, so an object without one turns every successful write into
+ * a TypeError -- silently, because the rejection replaces the result. */
+const ctx = { waitUntil: () => {} } as unknown as ExecutionContext;
 
 /**
  * Post, then drive what was enqueued through the real consumer.
@@ -123,7 +111,7 @@ async function postAndConsume(
         })),
       } as never,
       e as never,
-      { waitUntil: () => {} } as never,
+      ctx as never,
     );
   }
   return response;
@@ -141,7 +129,7 @@ function post(body: unknown, token: string | null = SECRET, envOverride?: Env) {
       body: typeof body === "string" ? body : JSON.stringify(body),
     }),
     envOverride ?? env(),
-    {} as unknown as ExecutionContext,
+    ctx,
   );
 }
 
@@ -168,10 +156,15 @@ beforeEach(() => {
   db = new DatabaseSync(":memory:");
   db.exec(SCHEMA);
   db.exec(PASSES_SCHEMA);
+  pg.control.queries.length = 0;
+  // Wrapped rather than handed over raw: the upsert and the pass tally are
+  // emitted as Postgres, and `$1::bigint` is a parse error in SQLite. See
+  // tests/helpers/pg-sqlite.ts for exactly what is translated and what is not.
+  pg.control.db = sqliteBackedPg(db);
 });
 
 describe("POST /api/v1/internal/account-balances-sync", () => {
-  test("writes a batch to D1 and reports what it did", async () => {
+  test("writes a batch to the store and reports what it did", async () => {
     const response = await postAndConsume({
       rows: [
         balanceRow(),
@@ -179,8 +172,8 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
       ],
     });
     assert.equal(response.status, 200);
-    // `stores: ["queue"]` and no `d1_statements`: the route is enqueue-only
-    // (metagraphed-infra#353), so it has no statement count to report. The rows
+    // `stores: ["queue"]` and no statement count: the route is enqueue-only
+    // (metagraphed-infra#353), so it has nothing of its own to report. The rows
     // below still land -- postAndConsume drives the real consumer, which is
     // where the write moved to.
     assert.deepEqual(await response.json(), {
@@ -266,13 +259,12 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
     assert.equal(response.status, 503);
   });
 
-  test("answers 503 when D1 is not bound -- but only after validating (400 wins)", async () => {
-    // A malformed body is a 400 whether or not a store happens to be bound;
+  test("answers 503 with no queue bound -- but only after validating (400 wins)", async () => {
+    // A malformed body is a 400 whether or not a binding happens to be present;
     // answering 503 would blame the infrastructure for the caller's payload.
-    // The binding this route REQUIRES is the queue, not D1 -- it stopped
-    // touching D1 when the inline write went (metagraphed-infra#353). The
-    // 400-before-503 ordering is the part worth keeping: a malformed body is
-    // the caller's fault whether or not a binding happens to be present.
+    // The binding this route REQUIRES is the queue and nothing else -- it
+    // stopped touching a database of its own when the inline write went
+    // (metagraphed-infra#353).
     const unbound = env({ SYNC_BATCHES: undefined });
     assert.equal(
       (await postAndConsume({ rows: [balanceRow()] }, SECRET, unbound)).status,
@@ -349,16 +341,25 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
   });
 
   test("a whole batch is ONE statement, end to end through the route", async () => {
-    // The wall #9157 hit: four columns put 25 rows in a statement, so 60 rows
-    // took 3 and a full pass took ~14,600 -- more than the producer's request
-    // had 60 seconds to finish. A chunk now travels as a single json_each
-    // parameter, and this asserts it through the REAL route against REAL
-    // SQLite, so it is the end-to-end proof that the rows still land.
+    // The wall #9157 hit: D1 caps a statement at 100 bound parameters, so four
+    // columns put 25 rows in a statement, 60 rows took 3, and a full pass took
+    // ~14,600 -- more than the producer's request had 60 seconds to finish.
+    // Postgres takes 65,535, so writeRowsToNeon fits 13,107 four-column rows in
+    // one statement and the whole limit disappears. Asserted through the REAL
+    // route and the REAL consumer, so it is still the end-to-end proof that the
+    // rows land rather than a claim about a chunk-size constant.
     const many = Array.from({ length: 60 }, (_unused, i) =>
       balanceRow({ ss58: `acct-${i}` }),
     );
     const response = await postAndConsume({ rows: many });
     assert.equal(response.status, 200);
+    assert.equal(
+      pg.control.queries.filter((q) =>
+        q.text.includes("INSERT INTO account_balances"),
+      ).length,
+      1,
+      "60 rows travelled as one multi-row INSERT",
+    );
     assert.deepEqual(await response.json(), {
       ok: true,
       account_balances_written: 60,
@@ -366,9 +367,10 @@ describe("POST /api/v1/internal/account-balances-sync", () => {
       pass_total: null,
     });
     assert.equal(rows().length, 60, "every row landed");
-    // And the values are not shifted a column: json_extract('$[i]') has to
-    // agree with the writer's own column order, and a silent shift here would
-    // write every balance into the wrong field and still succeed.
+    // And the values are not shifted a column: pgFlatValues' flattening and
+    // pgValuesClause's `$n` numbering have to agree with the writer's own
+    // column order, and a silent shift here would write every balance into the
+    // wrong field and still succeed.
     const first = rows().find((r) => r.ss58 === "acct-7")!;
     assert.equal(first.free_tao, balanceRow().free_tao);
     assert.equal(first.reserved_tao, balanceRow().reserved_tao);
@@ -541,7 +543,7 @@ describe("routed to the sync queue (metagraphed-infra#350)", () => {
       pass_total: null,
     });
     assert.equal(sent.length, 1);
-    assert.equal(rows().length, 0, "D1 must not also have been written");
+    assert.equal(rows().length, 0, "the store must not also have been written");
     assert.equal(passes().length, 0);
   });
 

@@ -229,18 +229,15 @@ export const RAW_CAPTURE_LANES: readonly RawCaptureLane[] = [
 
 interface RawCaptureEnv {
   METAGRAPH_ARCHIVE?: { put(key: string, value: string): Promise<unknown> };
-  METAGRAPH_HEALTH_DB?: D1LikeDb;
   RAW_CAPTURE_ENABLED?: string;
   CHAIN_HEAD_RPC_URL?: string;
   TESTNET_CHAIN_HEAD_RPC_URL?: string;
 }
 
-interface D1LikeDb {
+export interface WatermarkReadDb {
   prepare(sql: string): {
     bind(...values: unknown[]): {
       first?(): Promise<Record<string, unknown> | null>;
-      run?(): Promise<unknown>;
-      all?(): Promise<unknown>;
     };
   };
 }
@@ -284,63 +281,56 @@ function neonWatermarkRead(
   };
 }
 
-export function mirroredWatermark(
-  inner: WatermarkStore,
+/**
+ * The watermark store, on Neon.
+ *
+ * THE READ AND THE WRITE MOVE TOGETHER, always. An earlier version of this
+ * nearly shipped writing Neon while still reading a D1-backed store, so the
+ * watermark would have been read from a row nothing updated again. The capture
+ * resumes FROM that value, so it would have re-captured the same blocks every
+ * tick, forever, while both stores looked healthy.
+ *
+ * Reads return null (rather than 0) on any failure: the capture treats null as
+ * "start at the floor" and 0 as a real watermark, so a failed read must never
+ * be mistaken for a genesis restart.
+ */
+export function neonWatermark(
   env: Record<string, unknown> | null | undefined,
   waitUntil: WaitUntilLike | undefined,
   network: string,
   now: () => number,
 ): WatermarkStore {
-  // Once Neon owns raw_capture_state the inner (D1) write is skipped and the
-  // mirror IS the write.
-  //
-  // THE READ HAS TO MOVE WITH IT. This nearly shipped writing Neon while still
-  // reading `inner` -- the caller always builds a D1-backed store -- so the
-  // watermark would have been read from a D1 row nothing updated again. The
-  // capture resumes FROM that value, so it would have re-captured the same
-  // blocks every tick, forever, while both stores looked healthy.
-  const neonOwns = neonOwnsTable(env, "raw_capture_state");
-  const neonRead = neonWatermarkRead(env, waitUntil, network);
+  const read = neonWatermarkRead(env, waitUntil, network);
   return {
-    read: () => (neonOwns && neonRead ? neonRead() : inner.read()),
+    read: () => (read ? read() : Promise.resolve(null)),
     async write(value: number) {
-      const result = neonOwns ? undefined : await inner.write(value);
       await mirrorRawCaptureStateToNeon(env, waitUntil, network, value, now());
-      return result;
+      return undefined;
     },
   };
 }
 
-/** The watermark row, read/written through D1. Absent row => null, which the
- * capture treats as "start at the floor". */
-export function d1Watermark(
-  db: D1LikeDb,
-  now: () => number,
+/**
+ * The watermark row, read through any `prepare().bind().first()` handle.
+ *
+ * Read-only on purpose: its one caller is the lakehouse-seam watchdog, which
+ * reuses the capture lane's own column names so the two can never disagree
+ * about where the watermark lives. Absent row => null, which the capture
+ * treats as "start at the floor".
+ */
+export function watermarkRead(
+  db: WatermarkReadDb,
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
-): WatermarkStore {
-  return {
-    async read() {
-      const row = await db
-        .prepare(
-          `SELECT last_contiguous_block FROM raw_capture_state WHERE network = ?`,
-        )
-        .bind(network)
-        .first?.();
-      const value = row?.last_contiguous_block;
-      return typeof value === "number" ? value : null;
-    },
-    async write(value: number) {
-      return db
-        .prepare(
-          `INSERT INTO raw_capture_state (network, last_contiguous_block, updated_at)
-           VALUES (?, ?, ?)
-           ON CONFLICT(network) DO UPDATE SET
-             last_contiguous_block = excluded.last_contiguous_block,
-             updated_at = excluded.updated_at`,
-        )
-        .bind(network, value, now())
-        .run?.();
-    },
+): () => Promise<number | null> {
+  return async () => {
+    const row = await db
+      .prepare(
+        `SELECT last_contiguous_block FROM raw_capture_state WHERE network = ?`,
+      )
+      .bind(network)
+      .first?.();
+    const value = row?.last_contiguous_block;
+    return typeof value === "number" ? value : null;
   };
 }
 
@@ -392,12 +382,9 @@ export async function runRawCaptureSync(
       "METAGRAPH_ARCHIVE is not bound; refusing to run. Captured bytes have nowhere durable to land, and a tick that cannot store is a gap.",
     );
   }
-  // A watermark this tick can READ AND WRITE, from whichever store holds
-  // raw_capture_state (#10158). mirroredWatermark already routes both halves to
-  // Neon once it owns the table -- the D1 store it wraps is dead code in that
-  // case -- so this check was refusing to run over a binding the lane no longer
-  // uses. The refusal itself stays: without a durable watermark the next tick
-  // cannot know where to resume, which is exactly how a gap forms.
+  // A watermark this tick can READ AND WRITE (#10158). The refusal stays even
+  // though there is only one store left: without a durable watermark the next
+  // tick cannot know where to resume, which is exactly how a gap forms.
   const captureStateOnNeon =
     neonOwnsTable(
       env as unknown as Record<string, unknown>,
@@ -407,7 +394,7 @@ export async function runRawCaptureSync(
       (env as { HYPERDRIVE?: { connectionString?: string } })?.HYPERDRIVE
         ?.connectionString,
     );
-  if (!captureStateOnNeon && !env?.METAGRAPH_HEALTH_DB?.prepare) {
+  if (!captureStateOnNeon) {
     return loud(
       "watermark_unavailable",
       "no store holds raw_capture_state; refusing to run. Without a durable watermark the next tick cannot know where to resume, which is exactly how a gap forms.",
@@ -487,13 +474,8 @@ async function runLane(
     const result = await captureTick({
       rpcUrl: (env[lane.rpcUrlEnv] as string | undefined) || lane.defaultRpcUrl,
       store,
-      // MIRRORED AT THE WATERMARK, not at the row writes: this table IS the
-      // watermark, so wrapping the store is the whole write path.
-      watermark: mirroredWatermark(
-        // `as never` where the binding may legitimately be absent: once Neon
-        // owns raw_capture_state, mirroredWatermark never calls through to
-        // this store, and d1Watermark only dereferences inside its methods.
-        d1Watermark(env.METAGRAPH_HEALTH_DB as never, now, lane.network),
+      // THE TABLE IS THE WATERMARK, so this store is the whole write path.
+      watermark: neonWatermark(
         ctx.env as unknown as Record<string, unknown>,
         ctx.waitUntil,
         lane.network,

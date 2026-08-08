@@ -11,7 +11,18 @@
 // tier that exists and fails must DECLINE rather than publish a zero card
 // that reads as fact.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+
+// The registration leg reads through readStore -> `new Client(...)` (#10179),
+// and `answerAccountSummary` takes only `(env, ss58)` -- there is nothing to
+// inject a store into. Mocking the `pg` module is the seam; see
+// tests/helpers/pg-mock.ts for why it is a module mock and why the controller
+// has to be built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   ACCOUNT_REGISTRATIONS_SQL,
   ACCOUNT_SUMMARY_GAP_CODE,
@@ -19,7 +30,9 @@ import {
   answerAccountSummary,
   loadAccountRegistrationsD1,
 } from "../src/account-summary-card.ts";
+import { toPositionalPlaceholders } from "../src/pg-sql.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 const SS58 = "5Fv5t8frGG3MKtahp4WafKPmT5xZDbqWf8aFZpXyvjHTgzzx";
 
@@ -86,28 +99,25 @@ function lakehouse({ fail = false }: { fail?: boolean } = {}) {
   return queries;
 }
 
-/** A D1 that answers the neurons read (or throws, when `fail`). */
-function d1({ rows = [NEURON_ROW], fail = false } = {}) {
+/** The store that answers the neurons read (or throws, when `fail`).
+ *
+ * `seen` is a LIVE view over the mock's log rather than a copy, because every
+ * caller destructures this object and holds `seen` across the loader call --
+ * a getter would be evaluated once, at destructure time, and freeze empty. */
+function d1({ rows = [NEURON_ROW] as unknown[], fail = false } = {}) {
   const seen: { sql: string; params: unknown[] }[] = [];
-  return {
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql: string) {
-        return {
-          bind(...params: unknown[]) {
-            seen.push({ sql, params });
-            return {
-              async all() {
-                if (fail) throw new Error("d1 down");
-                return { results: rows };
-              },
-            };
-          },
-        };
-      },
-    },
-    seen,
-  };
+  pg.control.rows = rows;
+  pg.control.failNext = fail ? new Error("store down") : null;
+  pg.control.onQuery = (q) => seen.push({ sql: q.text, params: q.values });
+  return { ...pgMockEnv(["neurons"]), seen };
 }
+
+beforeEach(() => {
+  pg.control.queries.length = 0;
+  pg.control.rows = null;
+  pg.control.failNext = null;
+  pg.control.onQuery = null;
+});
 
 describe("loadAccountRegistrationsD1", () => {
   test("runs the SAME bound query DATA_API's /subnets leg runs", async () => {
@@ -117,7 +127,16 @@ describe("loadAccountRegistrationsD1", () => {
     const db = d1();
     const rows = await loadAccountRegistrationsD1(db as never, SS58);
     assert.deepEqual(rows, [NEURON_ROW]);
-    assert.equal(db.seen[0]!.sql, ACCOUNT_REGISTRATIONS_SQL);
+    // Compared through toPositionalPlaceholders because the store applies it on
+    // the way out: both legs hand the SAME `?` text to the SAME rewriter, so
+    // the equality still says "one statement, two callers" -- and it says it
+    // about the text Postgres actually receives, which is where #9821's six
+    // zero-row routes came from.
+    assert.equal(
+      db.seen[0]!.sql,
+      toPositionalPlaceholders(ACCOUNT_REGISTRATIONS_SQL),
+    );
+    assert.match(db.seen[0]!.sql, /hotkey = \$\d/, "rewritten, not raw `?`");
     assert.deepEqual(db.seen[0]!.params, [SS58], "bound, never interpolated");
   });
 
@@ -134,7 +153,12 @@ describe("loadAccountRegistrationsD1", () => {
   });
 
   test("a non-array result set is an empty list, not a crash", async () => {
-    const db = d1({ rows: null as never });
+    // pgReadStore's own shaping (`result?.rows ?? []`) always hands back an
+    // array, so the guard is exercised one level lower -- at a driver answering
+    // with something that is not a row set at all, which is the only way a
+    // non-array now reaches this loader.
+    const db = d1();
+    pg.control.rows = { not: "rows" } as unknown as unknown[];
     assert.deepEqual(await loadAccountRegistrationsD1(db as never, SS58), []);
   });
 });

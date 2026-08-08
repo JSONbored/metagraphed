@@ -17,22 +17,23 @@
 // is what makes per-operation connections affordable here and would not be
 // against a bare Postgres.
 //
-// ## Why the shape is D1's
+// ## Why the shape is `prepare().bind().all()`
 //
-// Every call site already speaks `prepare(text).bind(...).all()`. Returning
-// that shape means the swap is the binding expression and nothing else -- no
-// query rewriting, no signature changes, no behaviour to re-verify at ~60 sites
+// Every call site already spoke that shape when D1 held these tables. Keeping
+// it meant the swap was the binding expression and nothing else -- no query
+// rewriting, no signature changes, no behaviour to re-verify at ~60 sites
 // across the tier readers. `?` placeholders are rewritten to `$n` on the way
-// through, which is the only dialect difference these queries have: they are
+// through, which was the only dialect difference these queries had: they are
 // plain SELECTs with no SQLite-specific functions.
 //
 // ## All-or-nothing, deliberately
 //
-// A reader is handed EVERY table its statements name. Neon has to own all of
-// them or the D1 binding is returned unchanged. A reader split across stores
-// would run a JOIN against a store missing one side, and that failure is an
-// empty result set rather than an error -- a schema-stable wrong answer, which
-// is the failure mode this whole migration keeps having to design against.
+// A reader is handed EVERY table its statements name, and Neon has to be
+// declared the owner of all of them or nothing is returned. A reader split
+// across stores would run a JOIN against a store missing one side, and that
+// failure is an empty result set rather than an error -- a schema-stable wrong
+// answer, which is the failure mode this whole migration keeps having to
+// design against.
 import { Client } from "pg";
 import { neonOwnsTable } from "./neon-write.ts";
 import { toPositionalPlaceholders, type HyperdriveLike } from "./pg-sql.ts";
@@ -118,12 +119,12 @@ export function pgReadStore(
 }
 
 /**
- * The store to read `tables` from: Neon once it solely owns every one of them
- * and Hyperdrive is bound, the D1 binding until then.
+ * The store to read `tables` from: Neon, once it is declared to solely own
+ * every one of them and Hyperdrive is bound.
  *
  * `injected` wins outright so a test can hand in its own fake, and `undefined`
- * comes back when neither store is available -- which every caller already
- * handles, because an unbound D1 has always been possible.
+ * comes back when no store is available -- which every caller already handles,
+ * because an unbound store has always been possible.
  */
 export function readStore(
   // Deliberately loose: callers hand in an `Env`, a bag, or `unknown`, and a
@@ -135,12 +136,11 @@ export function readStore(
 ): ReadStoreDb | undefined {
   if (injected) return injected;
   const bag = env as Record<string, unknown> | null | undefined;
-  const d1 = bag?.METAGRAPH_HEALTH_DB as ReadStoreDb | undefined;
   const hyperdrive = bag?.HYPERDRIVE as HyperdriveLike | undefined;
-  if (!hyperdrive?.connectionString) return d1;
+  if (!hyperdrive?.connectionString) return undefined;
   // Empty `tables` must never read as "Neon owns them all" -- that would send a
   // caller who forgot to declare its tables to Postgres unconditionally.
-  if (tables.length === 0) return d1;
-  if (!tables.every((table) => neonOwnsTable(bag, table))) return d1;
+  if (tables.length === 0) return undefined;
+  if (!tables.every((table) => neonOwnsTable(bag, table))) return undefined;
   return pgReadStore(hyperdrive.connectionString, deps);
 }

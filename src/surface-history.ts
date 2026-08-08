@@ -57,9 +57,21 @@ export const SURFACE_HISTORY_ACTIONS = ["insert", "update", "delete"] as const;
 /**
  * One subnet's trail, newest first. Null when the read fails.
  *
- * COALESCE, not a bare column read -- see the module header. `json_extract` is
- * plain SQLite and the fallback is what makes this correct on a database the
- * 0024 backfill has not been applied to.
+ * COALESCE, not a bare column read -- see the module header: the fallback is
+ * what makes this correct on a database the 0024 backfill has not been applied
+ * to.
+ *
+ * `overlay::jsonb ->> 'k'`, NOT `json_extract` (#10179). The column is TEXT
+ * holding JSON, and json_extract is plain SQLite -- Postgres has no such
+ * function, so the moment surface_history was declared Neon's this reader would
+ * have thrown into its own catch and served `null`, which buildSurfaceHistory
+ * renders as an EMPTY TRAIL. "Nothing has changed here" is a real answer for a
+ * stable subnet, so the failure would have been indistinguishable from the
+ * ordinary case on every subnet at once.
+ *
+ * The table is ALIASED `sh` because `overlay` is also a Postgres built-in
+ * function name; qualifying the column removes the ambiguity rather than
+ * relying on how the parser resolves it.
  */
 export async function loadSurfaceHistory(
   db: SurfaceHistoryDb | null | undefined,
@@ -71,13 +83,13 @@ export async function loadSurfaceHistory(
     const res = await (
       db
         .prepare(
-          `SELECT COALESCE(surface_id, json_extract(overlay, '$.id')) AS surface_id,` +
-            ` action, source_commit, recorded_at,` +
-            ` json_extract(overlay, '$.kind') AS kind,` +
-            ` json_extract(overlay, '$.url') AS url,` +
-            ` json_extract(overlay, '$.name') AS name` +
-            ` FROM ${SURFACE_HISTORY_TABLE} WHERE subnet_netuid = ?` +
-            ` ORDER BY recorded_at DESC, id DESC LIMIT ${limit}`,
+          `SELECT COALESCE(sh.surface_id, sh.overlay::jsonb ->> 'id') AS surface_id,` +
+            ` sh.action, sh.source_commit, sh.recorded_at,` +
+            ` sh.overlay::jsonb ->> 'kind' AS kind,` +
+            ` sh.overlay::jsonb ->> 'url' AS url,` +
+            ` sh.overlay::jsonb ->> 'name' AS name` +
+            ` FROM ${SURFACE_HISTORY_TABLE} sh WHERE sh.subnet_netuid = ?` +
+            ` ORDER BY sh.recorded_at DESC, sh.id DESC LIMIT ${limit}`,
         )
         .bind(netuid) as {
         all?(): Promise<{ results?: unknown[] } | null>;

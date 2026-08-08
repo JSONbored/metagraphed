@@ -3,37 +3,32 @@
 // Kept out of tests/data-api.test.ts on purpose: that file's mocks carry a
 // large shared result queue tuned to its own routes, and a cron path that
 // must observe an EMPTY `RETURNING` (the ON CONFLICT no-op) would have to
-// fight it. This file fakes the user-state D1 binding (tao_usd_index's home
-// since the accounts-d1 port) and fetch narrowly instead, so what each test
-// asserts about the tick is not entangled with a route it never calls.
+// fight it. This file mocks the `pg` module (tao_usd_index's store since
+// #10179 eliminated D1) and fetch narrowly instead, so what each test asserts
+// about the tick is not entangled with a route it never calls.
 //
 // The batch fixture is the same real capture the aggregator tests use —
 // Ethereum mainnet block 25,650,836, 2026-07-31.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
 import type { Row } from "./row-type.ts";
 
-const sqlCalls: { text: string; values: unknown[] }[] = [];
-/** What the next `RETURNING` yields. Empty models the ON CONFLICT no-op. */
-const returning = { current: [{ block_number: 1 }] as Row[] };
-const writeFailure = { error: null as Error | null };
+// The store is Postgres now, reached through `new Client(...)` inside
+// createPgSql -- which writeTaoUsdIndexRow builds itself from the Hyperdrive
+// binding, so there is nothing for a caller to inject. Mocking the module is
+// the seam; see tests/helpers/pg-mock.ts for why the controller has to be
+// built inside vi.hoisted (vi.mock is hoisted above every import, so a plain
+// `const` would be read before initialisation).
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
 
-// The runner's whole D1 surface: prepare(text).bind(...).all().
-const fakeD1 = {
-  prepare(text: string) {
-    return {
-      bind(...values: unknown[]) {
-        return {
-          async all() {
-            sqlCalls.push({ text, values });
-            if (writeFailure.error) throw writeFailure.error;
-            return { results: returning.current };
-          },
-        };
-      },
-    };
-  },
-};
+/** Every statement the tick issued, in order. A live subscription rather than
+ * a getter, because the assertions read it after the call has returned. */
+const sqlCalls: { text: string; values: unknown[] }[] = [];
+pg.control.onQuery = (q) => sqlCalls.push(q);
 
 const {
   decodeBlockHeader,
@@ -46,7 +41,7 @@ const { rowFromBatch } = await import("../src/tao-usd-ingest.ts");
 
 const ETH_RPC_URL = "https://eth-rpc.example/test";
 const env = {
-  METAGRAPH_HEALTH_DB: fakeD1,
+  ...pgMockEnv(),
   ETH_RPC_URL,
 } as unknown as Parameters<typeof ingestTaoUsdIndex>[0];
 const ctx = { waitUntil() {} } as unknown as ExecutionContext;
@@ -121,8 +116,10 @@ function stubRpc(
 
 beforeEach(() => {
   sqlCalls.length = 0;
-  returning.current = [{ block_number: 1 }];
-  writeFailure.error = null;
+  pg.control.queries.length = 0;
+  // What the next `RETURNING` yields. Empty models the ON CONFLICT no-op.
+  pg.control.rows = [{ block_number: 1 }];
+  pg.control.failNext = null;
   vi.unstubAllGlobals();
 });
 
@@ -169,14 +166,18 @@ describe("writeTaoUsdIndexRow", () => {
   })!;
 
   it("writes the provenance as JSON text into the pools column", () => {
-    // The D1 schema's `pools` is TEXT holding JSON -- the writer stringifies,
-    // and the bound value must be the parseable JSON text itself.
-    return writeTaoUsdIndexRow(env, row).then(() => {
+    // The `pools` column is TEXT holding JSON -- the writer stringifies, and
+    // the bound value must be the parseable JSON text itself.
+    return writeTaoUsdIndexRow(env, row, ctx).then(() => {
       expect(sqlCalls).toHaveLength(1);
       expect(sqlCalls[0].text).toContain("INSERT INTO tao_usd_index");
       expect(sqlCalls[0].text).toContain(
         "ON CONFLICT (block_number, observed_at) DO NOTHING",
       );
+      // `$n`, not `?`: the tagged template numbers its own placeholders, and
+      // #9821 is what an unrewritten `?` costs -- six routes served zero rows
+      // because Postgres does not recognise it as a placeholder at all.
+      expect(sqlCalls[0].text).toMatch(/VALUES \(\s*\$1,/);
       const pools = JSON.parse(String(sqlCalls[0].values[6]));
       expect(pools).toHaveLength(2);
       expect(pools[0].included).toBe(true);
@@ -187,16 +188,34 @@ describe("writeTaoUsdIndexRow", () => {
     // ON CONFLICT DO NOTHING returns zero rows. That is a success — the height
     // is already recorded — and the flag has to say so rather than read as a
     // failed write.
-    returning.current = [];
-    await expect(writeTaoUsdIndexRow(env, row)).resolves.toEqual({
+    pg.control.rows = [];
+    await expect(writeTaoUsdIndexRow(env, row, ctx)).resolves.toEqual({
       inserted: false,
     });
   });
 
   it("reports a first write as inserted", async () => {
-    await expect(writeTaoUsdIndexRow(env, row)).resolves.toEqual({
+    await expect(writeTaoUsdIndexRow(env, row, ctx)).resolves.toEqual({
       inserted: true,
     });
+  });
+
+  // The write DECLINES rather than falling back now that Neon is the only
+  // store (#10179). Both halves matter and neither is a formality: without
+  // Hyperdrive there is nowhere to write, and without a ctx there is nowhere
+  // to hand the pooled connection back, so writing anyway would leak one
+  // connection per minute-cadence tick.
+  it("declines, saying why, when no store is bound", async () => {
+    const declined = {
+      inserted: false,
+      skipped: true,
+      reason: "no store bound",
+    };
+    await expect(writeTaoUsdIndexRow(env, row)).resolves.toEqual(declined);
+    await expect(
+      writeTaoUsdIndexRow({ ETH_RPC_URL } as typeof env, row, ctx),
+    ).resolves.toEqual(declined);
+    expect(sqlCalls).toHaveLength(0);
   });
 });
 
@@ -207,7 +226,7 @@ describe("the ingestion tick", () => {
     const { fetchMock } = stubRpc([]);
     await expect(
       ingestTaoUsdIndex({
-        METAGRAPH_HEALTH_DB: fakeD1,
+        ...pgMockEnv(),
       } as unknown as typeof env),
     ).resolves.toEqual({
       ok: false,
@@ -222,7 +241,7 @@ describe("the ingestion tick", () => {
       { result: LIVE_HEADER },
       LIVE_BATCH,
     ]);
-    const result = await ingestTaoUsdIndex(env);
+    const result = await ingestTaoUsdIndex(env, ctx);
     expect(result).toMatchObject({
       ok: true,
       inserted: true,
@@ -244,7 +263,7 @@ describe("the ingestion tick", () => {
 
   it("stores the row against the block's own timestamp", async () => {
     stubRpc([{ result: LIVE_HEADER }, LIVE_BATCH]);
-    await ingestTaoUsdIndex(env);
+    await ingestTaoUsdIndex(env, ctx);
     const insert = sqlCalls.find((c) =>
       c.text.includes("INSERT INTO tao_usd_index"),
     )!;
@@ -253,9 +272,9 @@ describe("the ingestion tick", () => {
   });
 
   it("reports a re-ingested height without failing", async () => {
-    returning.current = [];
+    pg.control.rows = [];
     stubRpc([{ result: LIVE_HEADER }, LIVE_BATCH]);
-    await expect(ingestTaoUsdIndex(env)).resolves.toMatchObject({
+    await expect(ingestTaoUsdIndex(env, ctx)).resolves.toMatchObject({
       ok: true,
       inserted: false,
     });
@@ -266,7 +285,7 @@ describe("the ingestion tick", () => {
     // recorded refusal is more useful than a gap in the series.
     const noPools = LIVE_BATCH.filter((entry) => entry.id === 0);
     stubRpc([{ result: LIVE_HEADER }, noPools]);
-    const result = await ingestTaoUsdIndex(env);
+    const result = await ingestTaoUsdIndex(env, ctx);
     expect(result).toMatchObject({
       ok: true,
       price_basis: "insufficient_pools",
@@ -283,7 +302,7 @@ describe("the ingestion tick", () => {
 
   it("refuses an unreadable header rather than keying a row on now", async () => {
     stubRpc([{ result: null }, LIVE_BATCH]);
-    await expect(ingestTaoUsdIndex(env)).resolves.toEqual({
+    await expect(ingestTaoUsdIndex(env, ctx)).resolves.toEqual({
       ok: false,
       reason: "block_header_unreadable",
     });
@@ -292,7 +311,7 @@ describe("the ingestion tick", () => {
 
   it("refuses a header that parses but cannot be used", async () => {
     stubRpc([{ result: { number: "0x0", timestamp: "0x0" } }, LIVE_BATCH]);
-    await expect(ingestTaoUsdIndex(env)).resolves.toEqual({
+    await expect(ingestTaoUsdIndex(env, ctx)).resolves.toEqual({
       ok: false,
       reason: "observation_unusable",
     });
@@ -301,7 +320,7 @@ describe("the ingestion tick", () => {
 
   it("survives a transport failure as one missing minute", async () => {
     stubRpc([], { throwOn: 0 });
-    await expect(ingestTaoUsdIndex(env)).resolves.toEqual({
+    await expect(ingestTaoUsdIndex(env, ctx)).resolves.toEqual({
       ok: false,
       reason: "tick_failed",
     });
@@ -309,16 +328,16 @@ describe("the ingestion tick", () => {
 
   it("treats a non-2xx from the endpoint as a failed tick", async () => {
     stubRpc([{ result: LIVE_HEADER }], { status: 429 });
-    await expect(ingestTaoUsdIndex(env)).resolves.toEqual({
+    await expect(ingestTaoUsdIndex(env, ctx)).resolves.toEqual({
       ok: false,
       reason: "tick_failed",
     });
   });
 
   it("survives the write itself failing", async () => {
-    writeFailure.error = new Error("hyperdrive gone");
+    pg.control.failNext = new Error("hyperdrive gone");
     stubRpc([{ result: LIVE_HEADER }, LIVE_BATCH]);
-    await expect(ingestTaoUsdIndex(env)).resolves.toEqual({
+    await expect(ingestTaoUsdIndex(env, ctx)).resolves.toEqual({
       ok: false,
       reason: "tick_failed",
     });

@@ -14,8 +14,20 @@
 // against what /api/v1/economics served that day (owner_coldkey
 // 5FRYKhbm..., owner_hotkey 5CS3g6nV..., registration_cost_tao 0.0005).
 import assert from "node:assert/strict";
-import { alphaPriceHistoryQuery } from "../scripts/lib/load-alpha-price-history.ts";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The neuron aggregate and the alpha-price history come from whichever store
+// holds the metagraph, and that is Neon outright now (#10179): the refresh
+// resolves its own handle through `readStore`, which builds a
+// `new Client(...)`, so the binding this harness used to hand over no longer
+// exists. Mocking the module is the seam; see tests/helpers/pg-mock.ts for why
+// the controller has to be built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import emissionFixture from "./fixtures/emission-pipeline.json" with { type: "json" };
 import {
   ECONOMICS_STORAGE_MAPS,
@@ -34,6 +46,7 @@ import {
   refreshLiveEconomics,
   subnetHasChainData,
 } from "../src/live-economics-refresh.ts";
+import { alphaPriceHistoryQuery } from "../scripts/lib/load-alpha-price-history.ts";
 import { buildEconomicsArtifact } from "../scripts/lib/economics-artifacts.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.ts";
@@ -225,7 +238,6 @@ interface HarnessOptions {
   indexOk?: boolean;
   neuronRows?: Row[] | null;
   historyRows?: Row[] | null;
-  d1Result?: null;
   kv?: boolean;
   db?: boolean;
   env?: Row;
@@ -234,6 +246,22 @@ interface HarnessOptions {
 function harness(options: HarnessOptions = {}) {
   const puts: { key: string; value: string }[] = [];
   const queries: string[] = [];
+  // The two reads are told apart by their SQL text, exactly as the old fake
+  // did -- the store double matches per statement, so the pairing between a
+  // query and its rows survives the move off the binding.
+  pg.control.queries.length = 0;
+  pg.control.answers = [
+    {
+      match: NEURON_AGGREGATE_QUERY,
+      rows: ("neuronRows" in options ? options.neuronRows : NEURON_ROWS) ?? [],
+    },
+    {
+      match: "FROM subnet_snapshots",
+      rows:
+        ("historyRows" in options ? options.historyRows : HISTORY_ROWS) ?? [],
+    },
+  ];
+  pg.control.onQuery = (q) => queries.push(q.text);
   const env: Row = {
     ...(options.kv === false
       ? {}
@@ -244,34 +272,8 @@ function harness(options: HarnessOptions = {}) {
             },
           },
         }),
-    ...(options.db === false
-      ? {}
-      : {
-          METAGRAPH_HEALTH_DB: {
-            prepare(sql: string) {
-              queries.push(sql);
-              return {
-                all: async () => {
-                  if (options.d1Result === null) return null;
-                  if (sql === NEURON_AGGREGATE_QUERY) {
-                    return {
-                      results:
-                        "neuronRows" in options
-                          ? options.neuronRows
-                          : NEURON_ROWS,
-                    };
-                  }
-                  return {
-                    results:
-                      "historyRows" in options
-                        ? options.historyRows
-                        : HISTORY_ROWS,
-                  };
-                },
-              };
-            },
-          },
-        }),
+    // No Hyperdrive is how "nowhere to read from" reaches the refresh now.
+    ...(options.db === false ? {} : pgMockEnv()),
     ...(options.env ?? {}),
   };
   const readArtifact = async (_env: Env, path: string) => {
@@ -620,19 +622,48 @@ describe("refreshLiveEconomics", () => {
     const reads = calls.filter((call) => call.method.startsWith("state_"));
     assert.equal(reads.length, 23);
     for (const call of reads) assert.equal(call.params[1], BLOCK_HASH);
-    assert.deepEqual(queries, [
-      NEURON_AGGREGATE_QUERY,
+    // The two statements, verbatim, as they reach the store. Pinned as TEXT
+    // rather than by count, because the text is the part that has to be right
+    // and the store no longer tells anyone when it is not.
+    //
+    // THE CUTOFF IS THE PART THAT HAD TO CHANGE. This used to read
+    // `date('now','-40 days')` -- SQLite's spelling, and `function
+    // date(unknown, unknown) does not exist` on the only store that is left.
+    // The read sits inside refreshLiveEconomics's own try, so the throw took
+    // the WHOLE tick: KV `economics:current` stopped advancing while the last
+    // good blob kept being served, which is exactly what made it look healthy.
+    // alphaPriceHistoryQuery now inlines a JS-computed 'YYYY-MM-DD' literal,
+    // which compares correctly on both engines, so the assertion that carries
+    // the fix is that NO SQL date function survives in the text at all.
+    //
+    // Everything but the ten date characters is still pinned character for
+    // character; those ten are a function of the tick's OWN clock, so they are
+    // matched by shape and then checked against the shared builder driven by
+    // that same clock -- which also says the refresh does not roll a window of
+    // its own, and that the window is on the same clock as the rows it bounds.
+    assert.equal(queries.length, 2);
+    assert.equal(queries[0], NEURON_AGGREGATE_QUERY);
+    assert.match(
+      queries[1]!,
       // #9449: captured_at is selected because the %-change windows are
       // measured in elapsed time, not by subtracting snapshot dates.
       //
-      // Asked of the builder rather than restated, because the cutoff moves
-      // with the clock now: it is a YYYY-MM-DD literal computed in JS, not
-      // `date('now','-40 days')`. That spelling is SQLite's, and this read goes
-      // to Postgres through readStore -- "function date(unknown, unknown) does
-      // not exist" took the whole tick, so KV economics:current stopped
-      // advancing while the last good blob kept being served.
-      alphaPriceHistoryQuery(),
-    ]);
+      // Matched by SHAPE and then checked against the shared builder driven by
+      // this tick's own clock. The cutoff is a YYYY-MM-DD literal computed in
+      // JS, not `date('now','-40 days')` -- that spelling is SQLite's, and this
+      // read goes to Postgres through readStore, where "function date(unknown,
+      // unknown) does not exist" took the WHOLE tick and left KV
+      // economics:current frozen with the last good blob still being served.
+      /^SELECT netuid, snapshot_date, alpha_price_tao, captured_at FROM subnet_snapshots WHERE snapshot_date >= '\d{4}-\d{2}-\d{2}' ORDER BY netuid ASC, snapshot_date ASC$/,
+    );
+    assert.doesNotMatch(
+      queries[1]!,
+      /\bdate\s*\(/i,
+      "a SQL date function is the defect this query had; it must stay absent",
+    );
+    // The builder on the SAME clock, which also says the refresh does not roll
+    // a window of its own and that the window and the rows it bounds agree.
+    assert.equal(queries[1], alphaPriceHistoryQuery(undefined, NOW));
   });
 
   test("a set emission-gate exponent decodes to the small integer h", async () => {
@@ -774,8 +805,17 @@ describe("refreshLiveEconomics", () => {
     assert.equal(puts.length, 0);
   });
 
-  test("an empty D1 answer degrades to zeroed aggregates, never a throw", async () => {
-    const { env, readArtifact, puts } = harness({ d1Result: null });
+  // Replaces a PAIR of tests -- "an empty D1 answer" and "a null-results D1
+  // answer" -- which are now the same test. D1's envelope could be `null` or
+  // `{results: null}`, and the refresh guards both with `rows?.results`; the
+  // read store cannot produce either, because pgReadStore always answers
+  // `{results: <array>}`. So the only reachable "nothing came back" is an
+  // empty array, and asserting the unreachable shapes would prove nothing.
+  test("an empty store answer degrades to zeroed aggregates, never a throw", async () => {
+    const { env, readArtifact, puts } = harness({
+      neuronRows: [],
+      historyRows: [],
+    });
     const { impl } = chainFetch(defaultChain());
     const result = await refreshLiveEconomics(env, {
       readArtifact,
@@ -785,25 +825,12 @@ describe("refreshLiveEconomics", () => {
     assert.equal(result.ok, true);
     const blob = JSON.parse(puts[0].value) as Row;
     const chutes = (blob.subnets as Row[]).find((row) => row.netuid === 64)!;
+    // Zeroed COUNTS but NULL sums: "no neurons row" is not "zero stake", and
+    // collapsing the two would publish a measured zero for something never
+    // measured.
     assert.equal(chutes.validator_count, 0);
     assert.equal(chutes.total_stake_alpha, null);
     assert.equal(chutes.alpha_price_change_1d, null);
-  });
-
-  test("a null-results D1 answer is handled the same way", async () => {
-    const { env, readArtifact, puts } = harness({
-      neuronRows: null,
-      historyRows: null,
-    });
-    const { impl } = chainFetch(defaultChain());
-    const result = await refreshLiveEconomics(env, {
-      readArtifact,
-      fetchImpl: impl,
-      now: NOW,
-    });
-    assert.equal(result.ok, true);
-    const blob = JSON.parse(puts[0].value) as Row;
-    assert.equal((blob.subnets as Row[])[0].validator_count, 0);
   });
 
   test("a non-string network and non-integer netuids are dropped, not published", async () => {

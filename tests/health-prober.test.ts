@@ -1,5 +1,19 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// One test in this file -- the hourly-cron dispatch below -- reaches
+// `observationsRunner`, which builds a real `new Client(...)` now that Neon is
+// the only store (#10179). Everything else here injects its own fakes, so the
+// module mock exists solely to keep that one path from opening a socket. See
+// tests/helpers/pg-mock.ts for why the controller has to be built inside
+// vi.hoisted: vi.mock is hoisted above every import, so a plain `const` would
+// be read before initialisation.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   KV_HEALTH_CURRENT,
   KV_HEALTH_META,
@@ -624,17 +638,25 @@ describe("runHealthProber", () => {
 
 describe("handleScheduled dispatch", () => {
   test("hourly cron prunes; other crons probe", async () => {
-    const db = makeDb();
     const pruneResult = (await handleScheduled(
       { cron: "0 * * * *" } as unknown as ScheduledController,
       {
-        METAGRAPH_HEALTH_DB: db,
-        // rollupDailyUptime must succeed (Postgres sync ok) for the prune to
-        // run at all -- see "hourly cron skips prune when the Postgres
-        // rollup sync fails" above.
+        // rollupDailyUptime must succeed for the prune to run at all -- see
+        // "hourly cron skips prune when the Postgres rollup sync fails" above.
+        // Its runner is `observationsRunner`, which needs Hyperdrive AND every
+        // observation table declared Neon's; short of that it returns null and
+        // the rollup reports "no store bound", which SKIPS the prune. So the
+        // store bindings are the precondition this test has to satisfy, not
+        // incidental setup.
+        ...pgMockEnv(),
         DATA_API: { fetch: async () => new Response("{}", { status: 200 }) },
         HEALTH_CHECKS_SYNC_SECRET: "test-secret",
       } as unknown as Env,
+      // A REAL waitUntil, unlike the inert FAKE_CTX the prober tests pass:
+      // observationsRunner refuses to build a runner without a ctx (the
+      // connection goes back to Hyperdrive's pool through it), and createPgSql
+      // calls waitUntil on every statement.
+      { waitUntil: () => {} } as unknown as ExecutionContext,
     )) as Row;
     assert.equal(pruneResult.pruned, true);
 
@@ -1909,29 +1931,6 @@ describe("pruneHealthHistory edge paths", () => {
     });
     assert.equal(result.pruned, true);
     assert.equal(result.cutoff, 100_000_000 - 1000);
-  });
-
-  test("pruneD1Checks:true runs the D1 raw-checks delete against the bound DB", async () => {
-    const deletes: { sql: string; values: unknown[] }[] = [];
-    const env = mockEnv({
-      METAGRAPH_HEALTH_DB: {
-        prepare: (sql: string) => ({
-          bind: (...values: unknown[]) => ({ sql, values }),
-        }),
-        batch: async (statements: unknown[]) => {
-          deletes.push(...(statements as { sql: string; values: unknown[] }[]));
-        },
-      },
-    });
-    const result = await pruneHealthHistory(env, {
-      now: () => 1_000_000,
-      retentionMs: 1000,
-      pruneD1Checks: true,
-    });
-    assert.equal(result.pruned, true);
-    assert.equal(deletes.length, 1);
-    assert.match(deletes[0]!.sql, /DELETE FROM surface_checks/);
-    assert.deepEqual(deletes[0]!.values, [999_000]);
   });
 
   test("still resolves {pruned:true} even when the Postgres sync fetch throws", async () => {

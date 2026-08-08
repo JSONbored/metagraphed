@@ -366,12 +366,6 @@ import {
   NEURON_COLUMNS,
   NEURON_INSERT_COLUMNS,
 } from "../src/metagraph-neurons.ts";
-import {
-  neuronSnapshotDate,
-  neuronSnapshotWrite,
-  writeNeuronDailyBackfillToD1,
-  writeNeuronSnapshotToD1,
-} from "../src/neurons-d1-write.ts";
 import { mirrorNeuronSnapshotToNeon } from "../src/neurons-neon-write.ts";
 import {
   chainDetailTables,
@@ -392,27 +386,16 @@ import {
   LEDGER_MIRROR_PLANS,
   mirrorLedgerToNeon,
 } from "../src/ledger-neon-write.ts";
+import {
+  neuronSnapshotDate,
+  neuronSnapshotWrite,
+} from "../src/neurons-neon-write.ts";
 import { PASS_TABLES } from "../src/pass-completeness.ts";
 import { neonOwnsTable, neonReadEnabled } from "../src/neon-write.ts";
 import { NEON_PRUNE_CRON, runNeonPrune } from "../src/neon-prune.ts";
 import { runTableFreshnessWatchdog } from "../src/table-freshness-watchdog.ts";
-import {
-  writeAccountIdentityToD1,
-  writeSubnetHyperparamsToD1,
-} from "../src/hyperparams-identity-d1-write.ts";
 
-import {
-  ACCOUNT_BALANCE_INSERT_COLUMNS,
-  writeAccountBalancesToD1,
-  type AccountBalancesPass,
-} from "../src/account-balances-d1-write.ts";
-import {
-  HOTKEY_ALPHA_INSERT_COLUMNS,
-  writeHotkeyAlphaToD1,
-  type HotkeyAlphaPass,
-} from "../src/hotkey-alpha-d1-write.ts";
 import { VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS } from "../src/validator-nominator-counts-staleness-watchdog.ts";
-import { writeChainDetailToD1 } from "../src/chain-detail-d1-write.ts";
 import {
   CHAIN_DETAIL_SYNC_MAX_BODY_BYTES,
   parseChainDetailSync,
@@ -479,6 +462,10 @@ import {
   verifyWalletChallenge,
   WATCH_TOKEN_TTL_SECONDS,
 } from "../src/wallet-auth.ts";
+import {
+  ACCOUNT_BALANCE_INSERT_COLUMNS,
+  HOTKEY_ALPHA_INSERT_COLUMNS,
+} from "../src/ledger-neon-write.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
@@ -610,19 +597,6 @@ function stripClientSnapshotDate(row: Row) {
 
 // --- Neurons-family READS on D1 (box decommission; migrations/d1/0007) ------
 //
-// The WRITE path lives on D1 (#9157's port in handleNeuronsSync below, whose
-// Postgres half #9193 deleted). Reads switch separately, on
-// METAGRAPH_NEURONS_SOURCE -- the SAME flag the main Worker's tryPostgresTier
-// callers already gate on. Any value but "postgres" serves the neurons family
-// (neurons / neuron_daily / account_position_daily) from the bounded D1
-// database; "postgres" still means "not from D1", and now falls through to the
-// dispatcher's 503, which is what it already did in production once the box
-// was wiped. The flag's behaviour is unchanged by the deletion -- deliberately,
-// so a stale deployed var can't change what a route answers.
-function neuronsServedFromD1(env: Env) {
-  return env.METAGRAPH_NEURONS_SOURCE !== "postgres";
-}
-
 async function handleNeuronsSync(
   request: Request,
   env: Env,
@@ -765,44 +739,17 @@ async function handleNeuronsSync(
     });
   }
 
-  // THE INVERSION (#9787). Once Neon solely owns all three tables the D1
-  // write is skipped outright rather than written and ignored -- leaving it in
-  // would keep a second copy diverging quietly, which is the state this whole
-  // migration exists to end.
-  const neonOwns = neonOwnsNeuronsSnapshot(env);
-
-  // D1 is the binding this path requires UNTIL Neon owns the tables (#10144).
-  // Asked before the write, and only when the write is going to happen: the
-  // check used to be unconditional, so unbinding D1 answered 503 here and the
-  // Neon write below -- the one that would have succeeded -- was never
-  // reached.
+  // ALL THREE TABLES, OR NONE. This asks neonOwnsNeuronsSnapshot rather than
+  // just the binding, and the difference is load-bearing: one pass derives all
+  // three tables from one snapshot, so a half-declared family would write the
+  // declared tables and leave the others behind -- and no read gate would
+  // notice, because each table answers fine on its own.
   //
   // Checked HERE, after parsing and validation, not at the top: a malformed
   // body is a 400 whether or not a store happens to be bound, and answering
   // 503 to it would blame the infrastructure for the caller's payload.
-  if (!neonOwns && !env.METAGRAPH_HEALTH_DB) {
-    return writeJson({ error: "d1 binding unavailable" }, 503);
-  }
-
-  // It must succeed: this is where the data lives, so a D1 failure is a lost
-  // snapshot. db.batch() runs its statements in one implicit transaction --
-  // a mid-batch failure must never leave `neurons` upserted with stale UIDs
-  // left un-pruned.
-  // 0 when Neon owns the tables and the D1 write is skipped entirely.
-  let d1Statements = 0;
-  if (!neonOwns) {
-    try {
-      ({ statements: d1Statements } = await writeNeuronSnapshotToD1(
-        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof writeNeuronSnapshotToD1
-        >[0],
-        { rows, dailyRows, positionRows, netuidMaxCapturedAt, pass },
-      ));
-    } catch (err) {
-      console.error("data-api neurons-sync D1 write failed:", err);
-      await captureDataApiError(err, "neurons-sync-d1", env);
-      return writeJson({ error: "d1 write failed" }, 502);
-    }
+  if (!neonOwnsNeuronsSnapshot(env)) {
+    return writeJson({ error: "no store bound for this route" }, 503);
   }
 
   // THE NEON MIRROR (metagraphed-infra#336), and it runs AFTER the D1 write
@@ -823,11 +770,8 @@ async function handleNeuronsSync(
       rows,
       dailyRows,
       positionRows,
-      // The tally follows the rows into whichever store holds them (#10056).
-      // Sent only when Neon owns the snapshot: while D1 is still written, its
-      // batch carries the tally atomically and a second copy in Neon would be
-      // a ledger nothing reconciles.
-      pass: neonOwns ? pass : null,
+      // The tally follows the rows into the store that holds them (#10056).
+      pass,
     },
   );
 
@@ -836,25 +780,23 @@ async function handleNeuronsSync(
   // store every route read. Once Neon IS the store that reasoning inverts: a
   // pass that did not reach it did not happen, and reporting ok:true would
   // tell the producer its rows are safe when nothing holds them.
-  if (neonOwns) {
-    const failed = Object.entries(neon.results).filter(([, r]) => !r.ok);
-    if (!neon.attempted || failed.length > 0) {
-      console.error("data-api neurons-sync Neon write failed:", failed);
-      await captureDataApiError(
-        new Error(
-          failed.length > 0
-            ? `neon write failed: ${failed.map(([t]) => t).join(", ")}`
-            : "neon write not attempted while Neon owns the tables",
-        ),
-        "neurons-sync-neon",
-        env,
-      );
-      return writeJson({ error: "neon write failed" }, 502);
-    }
+  const failed = Object.entries(neon.results).filter(([, r]) => !r.ok);
+  if (!neon.attempted || failed.length > 0) {
+    console.error("data-api neurons-sync Neon write failed:", failed);
+    await captureDataApiError(
+      new Error(
+        failed.length > 0
+          ? `neon write failed: ${failed.map(([t]) => t).join(", ")}`
+          : "neon write not attempted",
+      ),
+      "neurons-sync-neon",
+      env,
+    );
+    return writeJson({ error: "neon write failed" }, 502);
   }
 
   // `stores` stays REPORTED rather than inferred, so a reader can see which
-  // stores this snapshot actually reached -- which is precisely the question
+  // store this snapshot actually reached -- which is precisely the question
   // nobody could answer while Neon was frozen.
   return writeJson({
     ok: true,
@@ -862,9 +804,8 @@ async function handleNeuronsSync(
     neuron_daily_written: dailyRows.length,
     account_position_daily_written: positionRows.length,
     netuids_covered: netuids.length,
-    stores: neonOwns ? ["neon"] : neon.attempted ? ["d1", "neon"] : ["d1"],
-    d1_statements: d1Statements,
-    neon: neon.attempted ? neon.results : undefined,
+    stores: ["neon"],
+    neon: neon.results,
   });
 }
 
@@ -941,8 +882,10 @@ async function handleChainDetailSync(
   // body is a 400 whether or not a store happens to be bound, and answering 503
   // to it would blame the infrastructure for the caller's payload. Same
   // ordering, and the same reason, as handleNeuronsSync above.
-  if (!neonOwnsChainDetail(env) && !env.METAGRAPH_HEALTH_DB) {
-    return writeJson({ error: "d1 binding unavailable" }, 503);
+  // ALL FOUR FAMILIES, OR NONE -- they must land together, so a partial
+  // declaration is the "no store" case rather than a weaker version of owned.
+  if (!neonOwnsChainDetail(env)) {
+    return writeJson({ error: "no store bound for this route" }, 503);
   }
 
   // Enqueue or write, never both -- see handleHotkeyAlphaSync's own note.
@@ -992,18 +935,8 @@ async function handleChainDetailSync(
     });
   }
 
-  let statements = 0;
   let neon: Awaited<ReturnType<typeof mirrorChainDetailToNeon>>;
-  const neonOwns = neonOwnsChainDetail(env);
   try {
-    if (!neonOwns) {
-      ({ statements } = await writeChainDetailToD1(
-        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof writeChainDetailToD1
-        >[0],
-        batch.rows,
-      ));
-    }
     // ONE OF THIS LANE'S TWO WRITERS. The sync-batches queue consumer is the
     // other and mirrors too -- #9728 is the precedent for why covering one of
     // two is worse than covering neither: the row count looks nearly right.
@@ -1018,26 +951,23 @@ async function handleChainDetailSync(
     return writeJson({ error: "d1 write failed" }, 502);
   }
 
-  // Once Neon owns the tables its failure IS the pass's failure. While D1
-  // served the reads it cost a lane verdict; reporting ok:true now would tell
-  // the producer its blocks are durable when nothing holds them -- and this
-  // lane's producer advances its resume head on ok, so a false ok skips those
-  // blocks forever rather than retrying them.
-  if (neonOwns) {
-    const failed = failedTables(neon);
-    if (!neon.attempted || (failed && failed.length > 0)) {
-      console.error("data-api chain-detail-sync Neon write failed:", failed);
-      await captureDataApiError(
-        new Error(
-          failed && failed.length > 0
-            ? `neon write failed: ${failed.join(", ")}`
-            : "neon write not attempted while Neon owns the tables",
-        ),
-        "chain-detail-sync-neon",
-        env,
-      );
-      return writeJson({ error: "neon write failed" }, 502);
-    }
+  // The write's failure IS the pass's failure. Reporting ok:true would tell the
+  // producer its blocks are durable when nothing holds them -- and this lane's
+  // producer advances its resume head on ok, so a false ok skips those blocks
+  // forever rather than retrying them.
+  const failed = failedTables(neon);
+  if (!neon.attempted || (failed && failed.length > 0)) {
+    console.error("data-api chain-detail-sync Neon write failed:", failed);
+    await captureDataApiError(
+      new Error(
+        failed && failed.length > 0
+          ? `neon write failed: ${failed.join(", ")}`
+          : "neon write not attempted",
+      ),
+      "chain-detail-sync-neon",
+      env,
+    );
+    return writeJson({ error: "neon write failed" }, 502);
   }
 
   return writeJson({
@@ -1047,8 +977,7 @@ async function handleChainDetailSync(
     chain_events_written: batch.rows.chainEventRows.length,
     account_events_written: batch.rows.accountEventRows.length,
     head: batch.rows.head,
-    stores: neonOwns ? ["neon"] : neon.attempted ? ["d1", "neon"] : ["d1"],
-    d1_statements: statements,
+    stores: ["neon"],
   });
 }
 
@@ -1064,18 +993,14 @@ async function handleChainDetailSync(
 async function handleChainDetailSyncHead(request: Request, env: Env) {
   const denied = chainDetailSyncAuth(request, env);
   if (denied) return denied;
-  // DELIBERATELY still unconditional, unlike its sibling above (#10144).
+  // DELIBERATELY still a hard refusal, unlike a route that can degrade.
   //
-  // chainDetailCoverage reads chain_detail_blocks out of src/chain-detail-hot-
-  // tier.ts, which is D1-only -- it has no Neon path to fall through to yet.
   // Relaxing this check would turn "I cannot tell you" into `head: null`, and
   // `head: null` is a documented real answer that tells the producer to start
   // from the current finalized head. A 503 makes it retry; a wrong null makes
   // it skip, and leaves a hole nothing will ever fill.
-  //
-  // This unblocks when the hot tier moves (#9773).
-  if (!env.METAGRAPH_HEALTH_DB) {
-    return writeJson({ error: "d1 binding unavailable" }, 503);
+  if (!env.HYPERDRIVE?.connectionString) {
+    return writeJson({ error: "no store bound for this route" }, 503);
   }
   return writeJson({ head: await chainDetailHead(env) });
 }
@@ -1207,26 +1132,10 @@ async function handleNeuronDailyBackfill(
   // mirror's position -- a backfill could report success on a D1 write nothing
   // reads, and a Neon failure was invisible.
   //
-  // Checked after validation for the same 400-before-503 reasoning as the sync
-  // handler, and only when the D1 write is still going to happen.
-  const neonOwns = neonOwnsNeuronsSnapshot(env);
-  if (!neonOwns && !env.METAGRAPH_HEALTH_DB) {
-    return writeJson({ error: "d1 binding unavailable" }, 503);
-  }
-  let d1Statements = 0;
-  if (!neonOwns) {
-    try {
-      ({ statements: d1Statements } = await writeNeuronDailyBackfillToD1(
-        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof writeNeuronDailyBackfillToD1
-        >[0],
-        { dailyRows, positionRows },
-      ));
-    } catch (err) {
-      console.error("data-api neuron-daily-backfill D1 write failed:", err);
-      await captureDataApiError(err, "neuron-daily-backfill-d1", env);
-      return writeJson({ error: "d1 write failed" }, 502);
-    }
+  // The same all-or-nothing family gate the sync handler applies, and checked
+  // after validation for the same 400-before-503 reasoning.
+  if (!neonOwnsNeuronsSnapshot(env)) {
+    return writeJson({ error: "no store bound for this route" }, 503);
   }
 
   // THE SECOND WRITER, mirrored too (#9717).
@@ -1261,36 +1170,30 @@ async function handleNeuronDailyBackfill(
   // the mirror returns `{ attempted: true, results: {} }` when Hyperdrive is
   // unbound -- a failure a "no result said not-ok" test would read as success.
   // Absent has to fail here, not just present-and-false.
-  if (neonOwns) {
-    const reason = ["neuron_daily", "account_position_daily"]
-      .map((table) => {
-        const result = neon.results?.[table];
-        if (!result) return `${table}: no Neon write recorded`;
-        return result.ok ? null : `${table}: ${result.reason ?? "failed"}`;
-      })
-      .filter(Boolean)
-      .join("; ");
-    if (reason) {
-      console.error(
-        "data-api neuron-daily-backfill Neon write failed:",
-        reason,
-      );
-      await captureDataApiError(
-        new Error(reason),
-        "neuron-daily-backfill-neon",
-        env,
-      );
-      return writeJson({ error: "neon write failed" }, 502);
-    }
+  const reason = ["neuron_daily", "account_position_daily"]
+    .map((table) => {
+      const result = neon.results?.[table];
+      if (!result) return `${table}: no Neon write recorded`;
+      return result.ok ? null : `${table}: ${result.reason ?? "failed"}`;
+    })
+    .filter(Boolean)
+    .join("; ");
+  if (reason) {
+    console.error("data-api neuron-daily-backfill Neon write failed:", reason);
+    await captureDataApiError(
+      new Error(reason),
+      "neuron-daily-backfill-neon",
+      env,
+    );
+    return writeJson({ error: "neon write failed" }, 502);
   }
 
   return writeJson({
     ok: true,
     neuron_daily_written: dailyRows.length,
     account_position_daily_written: positionRows.length,
-    stores: neonOwns ? ["neon"] : neon.attempted ? ["d1", "neon"] : ["d1"],
-    d1_statements: d1Statements,
-    neon: neon.attempted ? neon.results : undefined,
+    stores: ["neon"],
+    neon: neon.results,
   });
 }
 
@@ -1496,7 +1399,6 @@ async function handleSubnetHyperparamsSync(
   }
 
   const rows = incoming.map(coerceSubnetHyperparamsSyncRow);
-  const netuids = incoming.map((row: Row) => row.netuid);
 
   // Hashed ONCE, before either store writes, on the RAW incoming rows
   // (pre-coercion) -- formatSubnetHyperparams' toD1Flag(value) tolerates
@@ -1516,37 +1418,24 @@ async function handleSubnetHyperparamsSync(
     });
   }
 
-  // D1 is the binding this path REQUIRES -- the only store this family has
-  // since the box went away (#9157's contract, applied to this lane). Checked
-  // HERE, after parsing and validation, not at the top: a malformed body is a
-  // 400 whether or not a store happens to be bound.
-  // THE INVERSION (#10094). Once Neon owns both tables of the family the D1
-  // write is skipped outright rather than written and ignored -- a second copy
-  // kept up to date by nothing is the state this migration exists to end.
-  const neonOwns = neonOwnsFamily(env, SUBNET_HYPERPARAMS_NEON_LANE);
-  if (!neonOwns && !env.METAGRAPH_HEALTH_DB) {
-    return writeJson({ error: "d1 binding unavailable" }, 503);
+  // BOTH TABLES OF THE FAMILY, OR NONE (#10179): the table and its history are
+  // written from one derivation, so a half-declared family would let the two
+  // disagree about which revisions exist. Checked HERE, after parsing and
+  // validation, not at the top: a malformed body is a 400 whether or not a
+  // store happens to be bound.
+  if (!neonOwnsFamily(env, SUBNET_HYPERPARAMS_NEON_LANE)) {
+    return writeJson({ error: "no store bound for this route" }, 503);
   }
 
-  // 0 when Neon owns the family and the D1 write is skipped entirely.
-  let d1Statements = 0;
-  let d1HistoryAppended: number;
-  // Hoisted so the Neon write below sees the SAME diff D1 was given -- one
-  // derivation, two stores, so the two histories cannot disagree about which
+  let historyAppended: number;
+  // Hoisted so the write below sees the SAME diff the history read produced --
+  // one derivation, so the table and its history cannot disagree about which
   // revisions exist.
   let neonHistoryRows: Row[];
-  // The latest-hash read comes from the store that HOLDS the history, so the
-  // diff is against the revisions that actually exist. Reading D1's copy while
-  // Neon owns it would re-append every revision Neon already has.
-  const historySql = neonOwns
-    ? createPgSql(env.HYPERDRIVE!, ctx)
-    : createD1Sql(env.METAGRAPH_HEALTH_DB);
+  const historySql = createPgSql(env.HYPERDRIVE, ctx);
   try {
-    const d1Sql = historySql;
-    // Latest hash per netuid -- group-wise MAX(id) join, the SQLite spelling
-    // of the Postgres side's `DISTINCT ON (netuid) ... ORDER BY netuid, id
-    // DESC` below.
-    const latest = await d1Sql`
+    // Latest hash per netuid.
+    const latest = await historySql`
       SELECT h.netuid AS netuid, h.hyperparams_hash AS hyperparams_hash
       FROM subnet_hyperparams_history h
       JOIN (
@@ -1558,29 +1447,13 @@ async function handleSubnetHyperparamsSync(
     );
     const historyRows = diffHyperparamsHistory(hashedRows, latestByNetuid, now);
     neonHistoryRows = historyRows as Row[];
-    d1HistoryAppended = historyRows.length;
-    if (!neonOwns) {
-      ({ statements: d1Statements } = await writeSubnetHyperparamsToD1(
-        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof writeSubnetHyperparamsToD1
-        >[0],
-        { rows, netuids, historyRows },
-      ));
-    }
+    historyAppended = historyRows.length;
   } catch (err) {
-    console.error("data-api subnet-hyperparams-sync D1 write failed:", err);
-    await captureDataApiError(err, "subnet-hyperparams-sync-d1", env);
-    return writeJson({ error: "d1 write failed" }, 502);
+    console.error("data-api subnet-hyperparams-sync history read failed:", err);
+    await captureDataApiError(err, "subnet-hyperparams-sync-history", env);
+    return writeJson({ error: "history read failed" }, 502);
   }
 
-  // THE NEON WRITE (#10046). Runs AFTER the D1 write returns, never instead
-  // of it and never in front of it -- the same ordering handleNeuronsSync
-  // uses, and for the same reason: while D1 serves the reads, a Neon failure
-  // must cost a lane verdict and not the pass.
-  //
-  // This family had NO Neon writer at all until now. Its parity came from the
-  // reconciler, which is why it could not invert on parity alone: a code path
-  // that has never run is not evidence, however equal the row counts look.
   const neon = await mirrorFamilyToNeon(
     env as unknown as Record<string, unknown>,
     ctx,
@@ -1588,38 +1461,33 @@ async function handleSubnetHyperparamsSync(
     { rows, historyRows: neonHistoryRows },
   );
 
-  // THE OTHER HALF OF THE INVERSION. While D1 served the reads a Neon failure
-  // had to cost a lane verdict and not the pass. Once Neon IS the store that
-  // reasoning flips: a pass that did not reach it did not happen, and ok:true
-  // would tell the producer its rows are safe when nothing holds them.
-  if (neonOwns) {
-    const failed = failedTables(neon);
-    if (!neon.attempted || (failed && failed.length > 0)) {
-      console.error(
-        "data-api subnet-hyperparams-sync Neon write failed:",
-        failed,
-      );
-      await captureDataApiError(
-        new Error(
-          failed && failed.length > 0
-            ? `neon write failed: ${failed.join(", ")}`
-            : "neon write not attempted while Neon owns the family",
-        ),
-        "subnet-hyperparams-sync-neon",
-        env,
-      );
-      return writeJson({ error: "neon write failed" }, 502);
-    }
+  // AUTHORITATIVE. Neon is the store, so a pass that did not reach it did not
+  // happen, and ok:true would tell the producer its rows are safe when nothing
+  // holds them.
+  const failed = failedTables(neon);
+  if (!neon.attempted || (failed && failed.length > 0)) {
+    console.error(
+      "data-api subnet-hyperparams-sync Neon write failed:",
+      failed,
+    );
+    await captureDataApiError(
+      new Error(
+        failed && failed.length > 0
+          ? `neon write failed: ${failed.join(", ")}`
+          : "neon write not attempted",
+      ),
+      "subnet-hyperparams-sync-neon",
+      env,
+    );
+    return writeJson({ error: "neon write failed" }, 502);
   }
 
   return writeJson({
     ok: true,
     subnet_hyperparams_written: rows.length,
-    history_appended: neonOwns ? neonHistoryRows.length : d1HistoryAppended,
-    stores: neonOwns ? ["neon"] : neon.attempted ? ["d1", "neon"] : ["d1"],
-    d1_statements: d1Statements,
-    neon: neon.attempted ? neon.results : undefined,
-    neon_failed: neon.attempted ? failedTables(neon) : undefined,
+    history_appended: historyAppended,
+    stores: ["neon"],
+    neon: neon.results,
   });
 }
 
@@ -1797,33 +1665,18 @@ async function handleAccountIdentitySync(
     });
   }
 
-  // D1 is the binding this path REQUIRES -- the only store this family has
-  // since the box went away (#9157's contract, applied to this lane). Checked
-  // after parsing and validation for the same reason as the hyperparams sync.
-  // THE INVERSION (#10094), the identity half. Same shape as the hyperparams
-  // sync above: once Neon owns both tables the D1 write is skipped outright.
-  const neonOwns = neonOwnsFamily(env, ACCOUNT_IDENTITY_NEON_LANE);
-  if (!neonOwns && !env.METAGRAPH_HEALTH_DB) {
-    return writeJson({ error: "d1 binding unavailable" }, 503);
+  // Both tables of the family, or none -- see the hyperparams sync above.
+  if (!neonOwnsFamily(env, ACCOUNT_IDENTITY_NEON_LANE)) {
+    return writeJson({ error: "no store bound for this route" }, 503);
   }
 
-  let d1Statements = 0;
-  let d1HistoryAppended: number;
-  // Hoisted so the Neon write sees the SAME diff D1 was given -- one
-  // derivation, two stores, so the two histories cannot disagree about which
-  // revisions exist.
+  let historyAppended: number;
+  // Hoisted so the write below sees the SAME diff the history read produced.
   let neonHistoryRows: Row[];
-  // The latest-hash read comes from the store that HOLDS the history: diffing
-  // against D1's copy while Neon owns it would re-append every revision Neon
-  // already has.
-  const historySql = neonOwns
-    ? createPgSql(env.HYPERDRIVE!, ctx)
-    : createD1Sql(env.METAGRAPH_HEALTH_DB);
+  const historySql = createPgSql(env.HYPERDRIVE, ctx);
   try {
-    const d1Sql = historySql;
-    // Latest hash per account -- group-wise MAX(id) join, the SQLite
-    // spelling of the Postgres `DISTINCT ON (account)` below.
-    const latest = await d1Sql`
+    // Latest hash per account.
+    const latest = await historySql`
       SELECT h.account AS account, h.identity_hash AS identity_hash
       FROM account_identity_history h
       JOIN (
@@ -1835,25 +1688,13 @@ async function handleAccountIdentitySync(
     );
     const historyRows = diffIdentityHistory(hashedRows, latestByAccount, now);
     neonHistoryRows = historyRows as Row[];
-    d1HistoryAppended = historyRows.length;
-    if (!neonOwns) {
-      ({ statements: d1Statements } = await writeAccountIdentityToD1(
-        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof writeAccountIdentityToD1
-        >[0],
-        { rows, historyRows },
-      ));
-    }
+    historyAppended = historyRows.length;
   } catch (err) {
-    console.error("data-api account-identity-sync D1 write failed:", err);
-    await captureDataApiError(err, "account-identity-sync-d1", env);
-    return writeJson({ error: "d1 write failed" }, 502);
+    console.error("data-api account-identity-sync history read failed:", err);
+    await captureDataApiError(err, "account-identity-sync-history", env);
+    return writeJson({ error: "history read failed" }, 502);
   }
 
-  // THE NEON WRITE (#10046). After the D1 write, never instead of it: while
-  // D1 serves the reads a Neon failure costs a lane verdict, not the pass.
-  // This family had no Neon writer at all until now -- its parity came from
-  // the reconciler, and a code path that has never run is not evidence.
   const neon = await mirrorFamilyToNeon(
     env as unknown as Record<string, unknown>,
     ctx,
@@ -1861,37 +1702,28 @@ async function handleAccountIdentitySync(
     { rows, historyRows: neonHistoryRows },
   );
 
-  // The other half of the inversion -- see the hyperparams sync for the
-  // reasoning. Once Neon is the store, a pass that did not reach it did not
-  // happen.
-  if (neonOwns) {
-    const failed = failedTables(neon);
-    if (!neon.attempted || (failed && failed.length > 0)) {
-      console.error(
-        "data-api account-identity-sync Neon write failed:",
-        failed,
-      );
-      await captureDataApiError(
-        new Error(
-          failed && failed.length > 0
-            ? `neon write failed: ${failed.join(", ")}`
-            : "neon write not attempted while Neon owns the family",
-        ),
-        "account-identity-sync-neon",
-        env,
-      );
-      return writeJson({ error: "neon write failed" }, 502);
-    }
+  // AUTHORITATIVE -- see the hyperparams sync for the reasoning.
+  const failed = failedTables(neon);
+  if (!neon.attempted || (failed && failed.length > 0)) {
+    console.error("data-api account-identity-sync Neon write failed:", failed);
+    await captureDataApiError(
+      new Error(
+        failed && failed.length > 0
+          ? `neon write failed: ${failed.join(", ")}`
+          : "neon write not attempted",
+      ),
+      "account-identity-sync-neon",
+      env,
+    );
+    return writeJson({ error: "neon write failed" }, 502);
   }
 
   return writeJson({
     ok: true,
     account_identity_written: rows.length,
-    history_appended: neonOwns ? neonHistoryRows.length : d1HistoryAppended,
-    stores: neonOwns ? ["neon"] : neon.attempted ? ["d1", "neon"] : ["d1"],
-    d1_statements: d1Statements,
-    neon: neon.attempted ? neon.results : undefined,
-    neon_failed: neon.attempted ? failedTables(neon) : undefined,
+    history_appended: historyAppended,
+    stores: ["neon"],
+    neon: neon.results,
   });
 }
 
@@ -2587,7 +2419,7 @@ async function handleAccountBalancesSync(
   // here is what makes the tally meaningful: two stamps in a request would
   // credit rows to whichever one this code happened to pick, and the reader
   // would trust a total that was never delivered under that key.
-  let pass: AccountBalancesPass | null = null;
+  let pass: PassTallyInput | null = null;
   if (declaredTotal !== undefined) {
     const stamps = new Set<number>(
       rows.map((row: Row) => row.captured_at as number),
@@ -2817,7 +2649,7 @@ async function handleHotkeyAlphaSync(
   // here is what makes the tally meaningful: two stamps in a request would
   // credit rows to whichever one this code happened to pick, and the reader
   // would trust a total that was never delivered under that key.
-  let pass: HotkeyAlphaPass | null = null;
+  let pass: PassTallyInput | null = null;
   if (declaredTotal !== undefined) {
     const stamps = new Set<number>(
       rows.map((row: Row) => row.captured_at as number),
@@ -2882,30 +2714,11 @@ async function handleHotkeyAlphaSync(
     });
   }
 
-  // D1 is the binding this path REQUIRES -- the only store this family has.
   // Checked HERE, after validation, not at the top: a malformed body is a 400
   // whether or not a store happens to be bound (handleAccountBalancesSync's
   // own 400-before-503 reasoning).
-  const neonOwns = neonOwnsLedger(env, "hotkey-alpha");
-  if (!neonOwns && !env.METAGRAPH_HEALTH_DB) {
-    return writeJson({ error: "d1 binding unavailable" }, 503);
-  }
-
-  let d1Statements = 0;
-  try {
-    if (!neonOwns) {
-      ({ statements: d1Statements } = await writeHotkeyAlphaToD1(
-        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof writeHotkeyAlphaToD1
-        >[0],
-        rows,
-        pass,
-      ));
-    }
-  } catch (err) {
-    console.error("data-api hotkey-alpha-sync D1 write failed:", err);
-    await captureDataApiError(err, "hotkey-alpha-sync-d1", env);
-    return writeJson({ error: "d1 write failed" }, 502);
+  if (!neonOwnsLedger(env, "hotkey-alpha")) {
+    return writeJson({ error: "no store bound for this route" }, 503);
   }
 
   // ONE OF THIS LANE'S TWO WRITERS. The sync-batches queue consumer is the
@@ -2921,8 +2734,8 @@ async function handleHotkeyAlphaSync(
     pass,
   );
 
-  // Once Neon is the store, a pass that did not reach it did not happen.
-  if (neonOwns && !neon.result?.ok) {
+  // Neon is the store, so a pass that did not reach it did not happen.
+  if (!neon.result?.ok) {
     const reason = neon.result?.reason ?? "neon write not attempted";
     console.error("data-api hotkey-alpha-sync Neon write failed:", reason);
     await captureDataApiError(new Error(reason), "hotkey-alpha-sync-neon", env);
@@ -2932,8 +2745,7 @@ async function handleHotkeyAlphaSync(
   return writeJson({
     ok: true,
     hotkey_alpha_written: rows.length,
-    stores: neonOwns ? ["neon"] : ["d1"],
-    d1_statements: d1Statements,
+    stores: ["neon"],
     // Echoed so a producer can see its declaration was understood rather than
     // silently dropped -- the failure mode a purely optional field invites.
     pass_total: pass?.expectedRows ?? null,
@@ -3131,39 +2943,35 @@ interface D1Sql {
   unsafe(text: string, values?: unknown[]): Promise<D1SqlRows>;
 }
 
-function coerceD1BindValue(value: unknown): unknown {
-  if (value === undefined) return null;
-  if (value === true) return 1;
-  if (value === false) return 0;
-  if (Array.isArray(value) || (value !== null && typeof value === "object")) {
-    return JSON.stringify(value);
-  }
-  return value;
+/**
+ * The WRITE half of parseJsonColumn: a value on its way into a TEXT column that
+ * holds JSON.
+ *
+ * EXPLICIT BECAUSE node-postgres DOES NOT DO THIS FOR ARRAYS. `pg` serializes a
+ * JS array as a Postgres ARRAY LITERAL -- `["a","b"]` becomes `{"a","b"}` --
+ * which is not JSON, so parseJsonColumn's `JSON.parse` throws and its catch
+ * degrades the column to null. For `chain_alert_triggers.table_filter` that is
+ * worse than losing the value: triggerMatchesEvent skips the table check when
+ * tableFilter is falsy, so a trigger scoped to one table would fire on every
+ * table instead.
+ *
+ * It happened to work while these routes ran on D1, because the deleted
+ * createD1Sql stringified array and object binds before binding them. Nothing
+ * replaced that when the runner changed, and no route-level test sent a
+ * table_filter through create or PATCH, so the gap was invisible. `pg` DOES
+ * JSON-stringify plain objects, which is why `condition` survived -- but
+ * relying on a driver's object handling for a column we control is the same
+ * bet, so both go through here.
+ */
+function jsonColumn(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  return JSON.stringify(value);
 }
 
-// Exported for tests/data-api-user-state-d1.test.ts, which exercises the
-// bind-coercion contract directly against a real SQLite database (routes
-// cannot produce every input shape -- e.g. an undefined bind -- but the
-// runner's contract still covers them).
-export function createD1Sql(db: D1Database): D1Sql {
-  const run = async (text: string, values: unknown[]): Promise<D1SqlRows> => {
-    const result = await db
-      .prepare(text)
-      .bind(...values.map(coerceD1BindValue))
-      .all();
-    return (result.results ?? []) as D1SqlRows;
-  };
-  const sql = ((strings: TemplateStringsArray, ...values: unknown[]) =>
-    run(strings.join("?"), values)) as D1Sql;
-  sql.unsafe = (text: string, values: unknown[] = []) => run(text, values);
-  return sql;
-}
-
-/** A TEXT column holding JSON (the D1 translation of Postgres text[]/jsonb),
- * parsed where the row value is consumed. Null-safe; a non-string value
- * passes through untouched (it is already parsed -- e.g. a PATCH body field
- * merged over the row), and unparseable text degrades to null rather than
- * throwing inside a read path. */
+/** A TEXT column holding JSON, parsed where the row value is consumed.
+ * Null-safe; a non-string value passes through untouched (it is already
+ * parsed -- e.g. a PATCH body field merged over the row), and unparseable text
+ * degrades to null rather than throwing inside a read path. */
 function parseJsonColumn(value: unknown): unknown {
   if (typeof value !== "string") return value ?? null;
   try {
@@ -3367,8 +3175,7 @@ export function userStateRunner(
   if (neonOwnsAll && env.HYPERDRIVE?.connectionString) {
     return createPgSql(env.HYPERDRIVE, ctx);
   }
-  if (!env.METAGRAPH_HEALTH_DB) return null;
-  return createD1Sql(env.METAGRAPH_HEALTH_DB);
+  return null;
 }
 
 async function withAlertTriggersSql(
@@ -3580,8 +3387,8 @@ async function handleAlertTriggerCreate(
       INSERT INTO chain_alert_triggers
         (owner_token, name, table_filter, netuid, event_kind, account, min_amount_tao, condition, channel, destination, active, owner_ss58, created_at, updated_at)
       VALUES (
-        ${ownerToken}, ${v.name}, ${v.tableFilter}, ${v.netuid}, ${v.eventKind},
-        ${v.account}, ${v.minAmountTao}, ${v.condition ?? null},
+        ${ownerToken}, ${v.name}, ${jsonColumn(v.tableFilter)}, ${v.netuid}, ${v.eventKind},
+        ${v.account}, ${v.minAmountTao}, ${jsonColumn(v.condition ?? null)},
         ${v.channel}, ${v.destination}, ${v.active}, ${ownerSs58}, ${now}, ${now}
       )
       RETURNING *`;
@@ -3684,12 +3491,12 @@ async function runAlertTriggerUpdate(sql: D1Sql, id: string, merged: Row) {
   const [row] = await sql`
     UPDATE chain_alert_triggers SET
       name = ${v.name},
-      table_filter = ${v.tableFilter},
+      table_filter = ${jsonColumn(v.tableFilter)},
       netuid = ${v.netuid},
       event_kind = ${v.eventKind},
       account = ${v.account},
       min_amount_tao = ${v.minAmountTao},
-      condition = ${v.condition ?? null},
+      condition = ${jsonColumn(v.condition ?? null)},
       channel = ${v.channel},
       destination = ${v.destination},
       active = ${v.active},
@@ -6395,6 +6202,17 @@ export const NEON_READ_ROUTE_TABLES: readonly {
       "validator_nominator_counts",
     ],
   },
+  // The prober's own continuity read (#9522), and the ONE route in the three
+  // matchers that had no entry here. That was survivable while routeStore fell
+  // back to D1 -- the route simply stayed on D1 like every unmapped route. With
+  // D1 gone (#10179) the fallback is `undefined`, so an unmapped route is not
+  // "still on the old store", it is 503 on every request: src/health-prober.ts
+  // and src/health-serving.ts would both go back to reading null, which is
+  // exactly the empty prior map that made the pool breaker unreachable.
+  {
+    pattern: /^\/api\/v1\/internal\/health-status-live$/,
+    tables: ["surface_status"],
+  },
 ];
 
 /**
@@ -6444,14 +6262,12 @@ function routeStore(
     return createPgSql(env.HYPERDRIVE, ctx);
   }
   // `undefined` rather than a runner over an absent binding (#10162). The three
-  // dispatcher blocks below used to answer 503 on `!env.METAGRAPH_HEALTH_DB`
-  // BEFORE asking this function, so a route Neon already serves was refused
-  // whenever D1 happened to be unbound -- the whole point of the gate, undone
-  // by the check above it. Returning undefined moves the "is there a store"
-  // question here, where the answer is actually known.
-  return env.METAGRAPH_HEALTH_DB
-    ? createD1Sql(env.METAGRAPH_HEALTH_DB)
-    : undefined;
+  // dispatcher blocks below used to answer 503 on the D1 binding BEFORE asking
+  // this function, so a route Neon already serves was refused whenever D1
+  // happened to be unbound -- the whole point of the gate, undone by the check
+  // above it. Returning undefined moves the "is there a store" question here,
+  // where the answer is actually known.
+  return undefined;
 }
 
 export function neonServesRoute(
@@ -7312,18 +7128,6 @@ function matchNeuronsD1Route(url: URL): NeuronsD1RouteHandler | null {
 // merely absent from a POPULATED table serves the same schema-stable shape
 // the retired Postgres route served (deregistered netuid -> null card,
 // account with no identity -> has_identity:false).
-function subnetHyperparamsServedFromD1(env: Env) {
-  return env.METAGRAPH_SUBNET_HYPERPARAMS_SOURCE !== "postgres";
-}
-
-function accountIdentityServedFromD1(env: Env) {
-  return env.METAGRAPH_ACCOUNT_IDENTITY_SOURCE !== "postgres";
-}
-
-function healthStatusServedFromD1(env: Env) {
-  return env.METAGRAPH_HEALTH_SOURCE !== "postgres";
-}
-
 // Every column liveFromStatusRows projects (src/health-serving.ts:1918-1936)
 // plus consecutive_failures, which only the prober reads. Kept as one list
 // because both consumers of this route want the whole surface_status row --
@@ -7347,11 +7151,7 @@ const HEALTH_STATUS_LIVE_D1_READ_COLUMNS =
 // `since` filters on last_checked, the column that records when the row was
 // written; since=0 (or absent/unparseable) returns everything, which is what
 // "the last known row, however stale" means for the prober's continuity read.
-function matchHealthStatusD1Route(
-  url: URL,
-  env: Env,
-): NeuronsD1RouteHandler | null {
-  if (!healthStatusServedFromD1(env)) return null;
+function matchHealthStatusD1Route(url: URL): NeuronsD1RouteHandler | null {
   if (url.pathname !== "/api/v1/internal/health-status-live") return null;
   return async (sql) => {
     const since = Number(url.searchParams.get("since"));
@@ -7394,150 +7194,139 @@ const ACCOUNT_IDENTITY_HISTORY_D1_READ_COLUMNS = `id, observed_at, ${IDENTITY_FI
 
 function matchHyperparamsIdentityD1Route(
   url: URL,
-  env: Env,
 ): NeuronsD1RouteHandler | null {
-  if (subnetHyperparamsServedFromD1(env)) {
-    // GET /api/v1/subnets/:netuid/hyperparameters -- twin of the Postgres
-    // route of the same name below, latest-only single-row lookup.
-    const subnetHyperparams = url.pathname.match(
-      /^\/api\/v1\/subnets\/(\d+)\/hyperparameters$/,
-    );
-    if (subnetHyperparams) {
-      return async (sql) => {
-        const netuid = Number(subnetHyperparams[1]);
-        const rows = await sql.unsafe(
-          `SELECT ${SUBNET_HYPERPARAMS_D1_READ_COLUMNS} FROM subnet_hyperparams WHERE netuid = ? LIMIT 1`,
-          [netuid],
-        );
-        if (!rows.length && !(await d1TableHasRows(sql, "subnet_hyperparams")))
-          return d1TierCold();
-        return json(buildSubnetHyperparams(rows[0] ?? null, netuid));
-      };
-    }
-
-    // GET /api/v1/subnets/:netuid/hyperparameters/history?limit=&offset=
-    // &cursor= -- same FEED_PAGINATION bounds and (observed_at, id) keyset
-    // cursor as the Postgres route; SQLite supports the row-value comparison
-    // directly, so only the placeholder style moves.
-    const subnetHyperparamsHistory = url.pathname.match(
-      /^\/api\/v1\/subnets\/(\d+)\/hyperparameters\/history$/,
-    );
-    if (subnetHyperparamsHistory) {
-      return async (sql) => {
-        const netuid = Number(subnetHyperparamsHistory[1]);
-        const limit = clampRequestLimit(
-          url.searchParams.get("limit"),
-          FEED_PAGINATION,
-        );
-        const offset = clampRequestOffset(url.searchParams.get("offset"));
-        const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
-        const rows = cursor
-          ? await sql.unsafe(
-              `SELECT ${SUBNET_HYPERPARAMS_HISTORY_D1_READ_COLUMNS}
-               FROM subnet_hyperparams_history
-               WHERE netuid = ? AND (observed_at, id) < (?, ?)
-               ORDER BY observed_at DESC, id DESC LIMIT ?`,
-              [netuid, cursor[0], cursor[1], limit],
-            )
-          : await sql.unsafe(
-              `SELECT ${SUBNET_HYPERPARAMS_HISTORY_D1_READ_COLUMNS}
-               FROM subnet_hyperparams_history
-               WHERE netuid = ?
-               ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?`,
-              [netuid, limit, offset],
-            );
-        if (
-          !rows.length &&
-          !(await d1TableHasRows(sql, "subnet_hyperparams_history"))
-        )
-          return d1TierCold();
-        const last = rows.length === limit ? rows[rows.length - 1] : null;
-        const nextCursor = last
-          ? encodeCursor([
-              numberOrNull(last.observed_at),
-              numberOrNull(last.id),
-            ])
-          : null;
-        return json(
-          buildSubnetHyperparamsHistory(rows, netuid, {
-            limit,
-            offset,
-            nextCursor,
-          }),
-        );
-      };
-    }
+  // GET /api/v1/subnets/:netuid/hyperparameters -- twin of the Postgres
+  // route of the same name below, latest-only single-row lookup.
+  const subnetHyperparams = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/hyperparameters$/,
+  );
+  if (subnetHyperparams) {
+    return async (sql) => {
+      const netuid = Number(subnetHyperparams[1]);
+      const rows = await sql.unsafe(
+        `SELECT ${SUBNET_HYPERPARAMS_D1_READ_COLUMNS} FROM subnet_hyperparams WHERE netuid = ? LIMIT 1`,
+        [netuid],
+      );
+      if (!rows.length && !(await d1TableHasRows(sql, "subnet_hyperparams")))
+        return d1TierCold();
+      return json(buildSubnetHyperparams(rows[0] ?? null, netuid));
+    };
   }
 
-  if (accountIdentityServedFromD1(env)) {
-    // GET /api/v1/accounts/:ss58/identity -- latest-only single-row lookup;
-    // an absent row in a populated table is has_identity:false, the common
-    // case, exactly as the Postgres route serves it.
-    const acctIdentity = url.pathname.match(
-      /^\/api\/v1\/accounts\/([^/]+)\/identity$/,
-    );
-    if (acctIdentity) {
-      return async (sql) => {
-        const ss58 = decodeURIComponent(acctIdentity[1]);
-        const rows = await sql.unsafe(
-          `SELECT ${ACCOUNT_IDENTITY_D1_READ_COLUMNS} FROM account_identity WHERE account = ?`,
-          [ss58],
-        );
-        if (!rows.length && !(await d1TableHasRows(sql, "account_identity")))
-          return d1TierCold();
-        return json(buildAccountIdentity(rows[0] ?? null, ss58));
-      };
-    }
+  // GET /api/v1/subnets/:netuid/hyperparameters/history?limit=&offset=
+  // &cursor= -- same FEED_PAGINATION bounds and (observed_at, id) keyset
+  // cursor as the Postgres route; SQLite supports the row-value comparison
+  // directly, so only the placeholder style moves.
+  const subnetHyperparamsHistory = url.pathname.match(
+    /^\/api\/v1\/subnets\/(\d+)\/hyperparameters\/history$/,
+  );
+  if (subnetHyperparamsHistory) {
+    return async (sql) => {
+      const netuid = Number(subnetHyperparamsHistory[1]);
+      const limit = clampRequestLimit(
+        url.searchParams.get("limit"),
+        FEED_PAGINATION,
+      );
+      const offset = clampRequestOffset(url.searchParams.get("offset"));
+      const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+      const rows = cursor
+        ? await sql.unsafe(
+            `SELECT ${SUBNET_HYPERPARAMS_HISTORY_D1_READ_COLUMNS}
+             FROM subnet_hyperparams_history
+             WHERE netuid = ? AND (observed_at, id) < (?, ?)
+             ORDER BY observed_at DESC, id DESC LIMIT ?`,
+            [netuid, cursor[0], cursor[1], limit],
+          )
+        : await sql.unsafe(
+            `SELECT ${SUBNET_HYPERPARAMS_HISTORY_D1_READ_COLUMNS}
+             FROM subnet_hyperparams_history
+             WHERE netuid = ?
+             ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?`,
+            [netuid, limit, offset],
+          );
+      if (
+        !rows.length &&
+        !(await d1TableHasRows(sql, "subnet_hyperparams_history"))
+      )
+        return d1TierCold();
+      const last = rows.length === limit ? rows[rows.length - 1] : null;
+      const nextCursor = last
+        ? encodeCursor([numberOrNull(last.observed_at), numberOrNull(last.id)])
+        : null;
+      return json(
+        buildSubnetHyperparamsHistory(rows, netuid, {
+          limit,
+          offset,
+          nextCursor,
+        }),
+      );
+    };
+  }
 
-    // GET /api/v1/accounts/:ss58/identity-history?limit=&offset=&cursor=
-    const acctIdentityHistory = url.pathname.match(
-      /^\/api\/v1\/accounts\/([^/]+)\/identity-history$/,
-    );
-    if (acctIdentityHistory) {
-      return async (sql) => {
-        const ss58 = decodeURIComponent(acctIdentityHistory[1]);
-        const limit = clampRequestLimit(
-          url.searchParams.get("limit"),
-          FEED_PAGINATION,
-        );
-        const offset = clampRequestOffset(url.searchParams.get("offset"));
-        const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
-        const rows = cursor
-          ? await sql.unsafe(
-              `SELECT ${ACCOUNT_IDENTITY_HISTORY_D1_READ_COLUMNS}
-               FROM account_identity_history
-               WHERE account = ? AND (observed_at, id) < (?, ?)
-               ORDER BY observed_at DESC, id DESC LIMIT ?`,
-              [ss58, cursor[0], cursor[1], limit],
-            )
-          : await sql.unsafe(
-              `SELECT ${ACCOUNT_IDENTITY_HISTORY_D1_READ_COLUMNS}
-               FROM account_identity_history
-               WHERE account = ?
-               ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?`,
-              [ss58, limit, offset],
-            );
-        if (
-          !rows.length &&
-          !(await d1TableHasRows(sql, "account_identity_history"))
-        )
-          return d1TierCold();
-        const last = rows.length === limit ? rows[rows.length - 1] : null;
-        const nextCursor = last
-          ? encodeCursor([
-              numberOrNull(last.observed_at),
-              numberOrNull(last.id),
-            ])
-          : null;
-        return json(
-          buildAccountIdentityHistory(rows, ss58, {
-            limit,
-            offset,
-            nextCursor,
-          }),
-        );
-      };
-    }
+  // GET /api/v1/accounts/:ss58/identity -- latest-only single-row lookup;
+  // an absent row in a populated table is has_identity:false, the common
+  // case, exactly as the Postgres route serves it.
+  const acctIdentity = url.pathname.match(
+    /^\/api\/v1\/accounts\/([^/]+)\/identity$/,
+  );
+  if (acctIdentity) {
+    return async (sql) => {
+      const ss58 = decodeURIComponent(acctIdentity[1]);
+      const rows = await sql.unsafe(
+        `SELECT ${ACCOUNT_IDENTITY_D1_READ_COLUMNS} FROM account_identity WHERE account = ?`,
+        [ss58],
+      );
+      if (!rows.length && !(await d1TableHasRows(sql, "account_identity")))
+        return d1TierCold();
+      return json(buildAccountIdentity(rows[0] ?? null, ss58));
+    };
+  }
+
+  // GET /api/v1/accounts/:ss58/identity-history?limit=&offset=&cursor=
+  const acctIdentityHistory = url.pathname.match(
+    /^\/api\/v1\/accounts\/([^/]+)\/identity-history$/,
+  );
+  if (acctIdentityHistory) {
+    return async (sql) => {
+      const ss58 = decodeURIComponent(acctIdentityHistory[1]);
+      const limit = clampRequestLimit(
+        url.searchParams.get("limit"),
+        FEED_PAGINATION,
+      );
+      const offset = clampRequestOffset(url.searchParams.get("offset"));
+      const cursor = decodeCursor(url.searchParams.get("cursor"), 2);
+      const rows = cursor
+        ? await sql.unsafe(
+            `SELECT ${ACCOUNT_IDENTITY_HISTORY_D1_READ_COLUMNS}
+             FROM account_identity_history
+             WHERE account = ? AND (observed_at, id) < (?, ?)
+             ORDER BY observed_at DESC, id DESC LIMIT ?`,
+            [ss58, cursor[0], cursor[1], limit],
+          )
+        : await sql.unsafe(
+            `SELECT ${ACCOUNT_IDENTITY_HISTORY_D1_READ_COLUMNS}
+             FROM account_identity_history
+             WHERE account = ?
+             ORDER BY observed_at DESC, id DESC LIMIT ? OFFSET ?`,
+            [ss58, limit, offset],
+          );
+      if (
+        !rows.length &&
+        !(await d1TableHasRows(sql, "account_identity_history"))
+      )
+        return d1TierCold();
+      const last = rows.length === limit ? rows[rows.length - 1] : null;
+      const nextCursor = last
+        ? encodeCursor([numberOrNull(last.observed_at), numberOrNull(last.id)])
+        : null;
+      return json(
+        buildAccountIdentityHistory(rows, ss58, {
+          limit,
+          offset,
+          nextCursor,
+        }),
+      );
+    };
   }
 
   return null;
@@ -7790,39 +7579,37 @@ async function dispatchDataApiRequest(
     // Postgres tier at all, which is the whole point of the port. Every other
     // route falls through to the gone-tier 503 below. Log + masked-route
     // capture + an opaque 502 that never leaks DB detail.
-    if (neuronsServedFromD1(env)) {
-      const neuronsD1Handler = matchNeuronsD1Route(url);
-      if (neuronsD1Handler) {
-        const store = routeStore(env, ctx, url);
-        if (!store) {
-          return json({ error: "no store bound for this route" }, 503);
-        }
-        // `account_position_daily` can be served from Neon
-        // (metagraphed-infra#336). The handler is unchanged -- it is written
-        // against a tagged template, and createPgSql is interface-compatible
-        // with createD1Sql -- so the store moves by choosing a runner, not by
-        // rewriting a query.
-        //
-        // THE GATE IS AN EXPLICIT FLAG, NOT THE BINDING'S PRESENCE, and that
-        // change is the whole lesson of metagraphed#9704. It used to read
-        // `env.HYPERDRIVE && ...`, so binding Hyperdrive for a WRITE pilot
-        // silently moved this READ onto a store nothing had ever written to --
-        // and it served a two-day-old snapshot until the binding was pulled.
-        //
-        // "The binding exists" and "this route should read Neon" are different
-        // questions. NEON_READ_LANES answers the second one, defaults to empty,
-        // and must not name a lane until that lane's `neon:` verdict has been
-        // green across several producer ticks.
-        // Every table this route reads must be read-enabled, not just one --
-        // the handler uses ONE runner for all its queries, so a route touching
-        // two tables cannot half-move. See NEON_READ_ROUTE_TABLES.
-        try {
-          return await neuronsD1Handler(store, env);
-        } catch (err) {
-          console.error("data-api neurons query failed:", err);
-          await captureDataApiError(err, maskRouteParams(url.pathname), env);
-          return json({ error: "data query failed" }, 502);
-        }
+    const neuronsD1Handler = matchNeuronsD1Route(url);
+    if (neuronsD1Handler) {
+      const store = routeStore(env, ctx, url);
+      if (!store) {
+        return json({ error: "no store bound for this route" }, 503);
+      }
+      // `account_position_daily` can be served from Neon
+      // (metagraphed-infra#336). The handler is unchanged -- it is written
+      // against a tagged template, and createPgSql is interface-compatible
+      // with createD1Sql -- so the store moves by choosing a runner, not by
+      // rewriting a query.
+      //
+      // THE GATE IS AN EXPLICIT FLAG, NOT THE BINDING'S PRESENCE, and that
+      // change is the whole lesson of metagraphed#9704. It used to read
+      // `env.HYPERDRIVE && ...`, so binding Hyperdrive for a WRITE pilot
+      // silently moved this READ onto a store nothing had ever written to --
+      // and it served a two-day-old snapshot until the binding was pulled.
+      //
+      // "The binding exists" and "this route should read Neon" are different
+      // questions. NEON_READ_LANES answers the second one, defaults to empty,
+      // and must not name a lane until that lane's `neon:` verdict has been
+      // green across several producer ticks.
+      // Every table this route reads must be read-enabled, not just one --
+      // the handler uses ONE runner for all its queries, so a route touching
+      // two tables cannot half-move. See NEON_READ_ROUTE_TABLES.
+      try {
+        return await neuronsD1Handler(store, env);
+      } catch (err) {
+        console.error("data-api neurons query failed:", err);
+        await captureDataApiError(err, maskRouteParams(url.pathname), env);
+        return json({ error: "data query failed" }, 502);
       }
     }
 
@@ -7830,7 +7617,7 @@ async function dispatchDataApiRequest(
     // and the health-serving fallback have both always called. Same envelope
     // as the neurons block above.
     {
-      const healthStatusD1Handler = matchHealthStatusD1Route(url, env);
+      const healthStatusD1Handler = matchHealthStatusD1Route(url);
       if (healthStatusD1Handler) {
         const store = routeStore(env, ctx, url);
         if (!store) {
@@ -7852,10 +7639,7 @@ async function dispatchDataApiRequest(
     // independently). Same catch envelope: log + masked-route capture + an
     // opaque 502 that never leaks DB detail.
     {
-      const hyperparamsIdentityD1Handler = matchHyperparamsIdentityD1Route(
-        url,
-        env,
-      );
+      const hyperparamsIdentityD1Handler = matchHyperparamsIdentityD1Route(url);
       if (hyperparamsIdentityD1Handler) {
         const store = routeStore(env, ctx, url);
         if (!store) {
@@ -7951,33 +7735,20 @@ export async function writeTaoUsdIndexRow(
   env: Env,
   row: TaoUsdIndexRow,
   ctx?: ExecutionContext,
-): Promise<{ inserted: boolean }> {
-  // User-state D1, same runner the account/alert routes use. A missing
-  // binding throws here and surfaces as ingestTaoUsdIndex's caught
-  // "tick_failed" -- the same degrade the old code had when HYPERDRIVE was
-  // unbound. The provenance array is stringified into the TEXT-holding-JSON
-  // `pools` column (the D1 translation of the old jsonb cast).
+): Promise<{ inserted: boolean; skipped?: boolean; reason?: string }> {
+  // The provenance array is stringified into the JSON-holding TEXT `pools`
+  // column.
   //
   // RETURNING plus a length check, rather than trusting a rowcount: ON CONFLICT
   // DO NOTHING returns zero rows on a re-run, which is precisely the signal
   // wanted -- "this height was already recorded" is a success, not a failure.
-  // A RUNNER CHOICE, not a mirror (#9787). This is one of the few writes that
-  // moves stores without a rewrite: createPgSql is interface-compatible with
-  // createD1Sql, and nothing in this statement is dialect-specific -- ON
-  // CONFLICT DO NOTHING and RETURNING both mean the same thing in Postgres.
-  //
-  // So there is no dual-write phase here and nothing to prove across ticks:
-  // the flag names the table or it does not, and whichever store is chosen
-  // gets the ONLY write. `ctx` is required to reach Neon because createPgSql
-  // returns the pooled connection through waitUntil; without one this stays on
-  // D1 rather than leaking a connection per tick.
-  const neonOwns =
-    Boolean(env.HYPERDRIVE?.connectionString) &&
-    Boolean(ctx) &&
-    neonOwnsTable(env as unknown as Record<string, unknown>, "tao_usd_index");
-  const sql = neonOwns
-    ? createPgSql(env.HYPERDRIVE, ctx!)
-    : createD1Sql(env.METAGRAPH_HEALTH_DB);
+  // `ctx` is required because createPgSql returns the pooled connection
+  // through waitUntil; without one this would leak a connection per tick, so
+  // it declines rather than writing.
+  if (!env.HYPERDRIVE?.connectionString || !ctx) {
+    return { inserted: false, skipped: true, reason: "no store bound" };
+  }
+  const sql = createPgSql(env.HYPERDRIVE, ctx);
   const written = await sql`
     INSERT INTO tao_usd_index
       (block_number, observed_at, usd_per_tao, price_basis, eth_usd, pool_count, pools)
@@ -8215,210 +7986,196 @@ export default {
     // WRITES NOW, per message (metagraphed-infra#348). Per message rather than
     // per batch so one bad chunk is retried alone instead of dragging its nine
     // neighbours through the retry budget with it.
-    // ONE CALL per message, so the four families land in a single D1 batch --
-    // writeChainDetailToD1 already does that, which is why this is a straight
-    // hand-off rather than four writes.
-    const familyWriters: SyncBatchFamilyWriters = env.METAGRAPH_HEALTH_DB
-      ? {
-          "chain-detail": async (families) => {
-            const rows = {
-              blockRows: families.blockRows ?? [],
-              extrinsicRows: families.extrinsicRows ?? [],
-              chainEventRows: families.chainEventRows ?? [],
-              accountEventRows: families.accountEventRows ?? [],
-            };
-            const result = neonOwnsChainDetail(env)
-              ? { statements: 0 }
-              : await writeChainDetailToD1(
-                  env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-                    typeof writeChainDetailToD1
-                  >[0],
-                  rows as Parameters<typeof writeChainDetailToD1>[1],
-                );
-            // THE LANE'S OTHER WRITER, mirrored here as well as on the HTTP
-            // path.
-            await mirrorChainDetailToNeon(
-              env as unknown as Record<string, unknown>,
-              ctx,
-              rows,
-            );
-            return result;
-          },
+    // ONE CALL per message, so the four families land together.
+    //
+    // UNCONDITIONAL (#10179). These two maps used to be built only when the D1
+    // binding was present, and an absent binding made them `{}` -- which is not
+    // "no writer available", it is a consumer that acks every message for every
+    // lane and drops the rows. The Neon writers below need no D1 binding and
+    // never did.
+    const familyWriters: SyncBatchFamilyWriters = {
+      "chain-detail": async (families) => {
+        const rows = {
+          blockRows: families.blockRows ?? [],
+          extrinsicRows: families.extrinsicRows ?? [],
+          chainEventRows: families.chainEventRows ?? [],
+          accountEventRows: families.accountEventRows ?? [],
+        };
+        const result = { statements: 0 };
+        // THE LANE'S OTHER WRITER, mirrored here as well as on the HTTP
+        // path.
+        await mirrorChainDetailToNeon(
+          env as unknown as Record<string, unknown>,
+          ctx,
+          rows,
+        );
+        return result;
+      },
+    };
+    const writers: SyncBatchWriters = {
+      "hotkey-alpha": async (rows, pass) => {
+        const result = { statements: 0 };
+        const neon = await mirrorLedgerToNeon(
+          env as unknown as Record<string, unknown>,
+          ctx,
+          "hotkey-alpha",
+          rows,
+          {},
+          pass,
+        );
+        // UNCONDITIONAL, and the `neonOwns &&` that used to guard it was a
+        // silent data-loss path (#10179).
+        //
+        // neonOwnsLedger requires HYPERDRIVE to be bound. So on the one
+        // deployment where the write CANNOT happen -- no binding -- the guard
+        // read false, the throw was skipped, and the consumer acked a message
+        // whose rows reached no store at all. The condition disabled the check
+        // exactly when the check was needed.
+        //
+        // There is one store now, so "did the write succeed" is the whole
+        // question. writeSyncBatch turns a throw into a retry, which is the
+        // only thing that can still save the rows.
+        if (!neon.result?.ok) {
+          throw new Error(
+            `hotkey-alpha neon write failed: ${
+              neon.result?.reason ?? "not attempted"
+            }`,
+          );
         }
-      : {};
-    const writers: SyncBatchWriters = env.METAGRAPH_HEALTH_DB
-      ? {
-          "hotkey-alpha": async (rows, pass) => {
-            const neonOwns = neonOwnsLedger(env, "hotkey-alpha");
-            const result = neonOwns
-              ? { statements: 0 }
-              : await writeHotkeyAlphaToD1(
-                  env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-                    typeof writeHotkeyAlphaToD1
-                  >[0],
-                  rows,
-                  pass,
-                );
-            // THE LANE'S OTHER WRITER, and the pass rides along here too.
-            const neon = await mirrorLedgerToNeon(
-              env as unknown as Record<string, unknown>,
-              ctx,
-              "hotkey-alpha",
-              rows,
-              {},
-              pass,
-            );
-            // Once Neon is the only store, a normal return would ACK a message
-            // whose rows never landed. writeSyncBatch turns a throw into a
-            // retry, which is the only thing that can still save them.
-            if (neonOwns && !neon.result?.ok) {
-              throw new Error(
-                `hotkey-alpha neon write failed: ${
-                  neon.result?.reason ?? "not attempted"
-                }`,
-              );
-            }
-            return result;
-          }, // Recomputes the prune map from THIS message's rows, which is sound
-          // only because the message asserted `key_complete` -- the
-          // validator rejects it otherwise, so this writer never sees a chunk
-          // that could prune rows it did not carry.
-          "nominator-positions": async (rows, pass) => {
-            const cutoffs = coldkeyMaxCapturedAt(rows);
-            // D1 IS NOT WRITTEN -- nominator_positions and its pass ledger
-            // are Neon's outright (#10111). The "mirror" is now the write, and
-            // that changes what a failure MEANS here: while D1 held the rows a
-            // Neon failure cost a lane verdict, and this writer could return
-            // normally. Now returning normally ACKS the message and the rows
-            // are gone, so the failure has to throw -- writeSyncBatch turns a
-            // throw into a retry, which is the only thing that can still save
-            // them.
-            //
-            // The declared pass rides the transport (metagraphed-infra#346): a
-            // queue knows a message was DELIVERED, not whether the producer's
-            // whole scan arrived, and only the second fact catches a load that
-            // stopped halfway.
-            const neon = await mirrorNominatorPositionsToNeon(
-              env as unknown as Record<string, unknown>,
-              ctx,
-              { rows, coldkeyMaxCapturedAt: cutoffs, pass },
-            );
-            const failed = [neon.write, neon.prune, neon.pass].filter(
-              (r) => r && !r.ok,
-            );
-            if (!neon.attempted || failed.length > 0) {
-              throw new Error(
-                `nominator-positions neon write failed: ${
-                  failed
-                    .map((r) => r?.reason)
-                    .filter(Boolean)
-                    .join("; ") || "not attempted"
-                }`,
-              );
-            }
-            return { statements: 0 };
-          },
-          "account-balances": async (rows, pass) => {
-            // The ONLY writer for this lane -- the HTTP route enqueues and
-            // never writes inline, so there is no second path to keep in step.
-            const neonOwns = neonOwnsLedger(env, "account-balances");
-            const result = neonOwns
-              ? { statements: 0 }
-              : await writeAccountBalancesToD1(
-                  env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-                    typeof writeAccountBalancesToD1
-                  >[0],
-                  rows,
-                  pass,
-                );
-            // THE PASS WAS NEVER PASSED. writeAccountBalancesToD1 takes it and
-            // the mirror did not, so D1 got a completeness tally and Neon got
-            // none -- account_balances_passes is empty there, and this lane was
-            // about to become the only writer of it.
-            await mirrorLedgerToNeon(
-              env as unknown as Record<string, unknown>,
-              ctx,
-              "account-balances",
-              rows,
-              {},
-              pass,
-            );
-            return result;
-          }, // Redoes both derivations from THIS message's rows, which is sound
-          // only because the message asserted `key_complete` -- the validator
-          // rejects a neurons message without it, so this writer never sees a
-          // chunk whose prune map would delete rows it did not carry.
-          neurons: async (rows, pass) => {
-            // THE ONE WRITER IN THIS BLOCK THAT NEVER ASKED (#10162). Every
-            // other lane here gates on neonOwns* and mirrors; this wrote D1
-            // outright and mirrored nothing. It is unreachable today --
-            // SYNC_QUEUE_LANES does not list `neurons` -- which is precisely
-            // why it survived: adding the lane to that flag would have started
-            // writing the only copy of a metagraph snapshot to a store nothing
-            // reads.
-            const neonOwns = neonOwnsNeuronsSnapshot(env);
-            const write = neuronSnapshotWrite(rows, Date.now());
-            const result = neonOwns
-              ? { statements: 0 }
-              : await writeNeuronSnapshotToD1(
-                  env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-                    typeof writeNeuronSnapshotToD1
-                  >[0],
-                  { ...write, pass },
-                );
-            const neon = await mirrorNeuronSnapshotToNeon(
-              env as unknown as Record<string, unknown>,
-              ctx,
-              { ...write, pass },
-            );
-            // THROW, never return, on a failed Neon write once Neon owns the
-            // tables: a normal return acks the queue message and the rows are
-            // gone. writeSyncBatch turns a throw into a retry. Named tables
-            // rather than a fold over neon.results, because the mirror answers
-            // `{ attempted: true, results: {} }` when Hyperdrive is unbound and
-            // a "nothing said not-ok" test reads that as success.
-            if (neonOwns) {
-              const reason = [
-                "neurons",
-                "neuron_daily",
-                "account_position_daily",
-              ]
-                .map((table) => {
-                  const r = neon.results?.[table];
-                  if (!r) return `${table}: no Neon write recorded`;
-                  return r.ok ? null : `${table}: ${r.reason ?? "failed"}`;
-                })
+        return result;
+      }, // Recomputes the prune map from THIS message's rows, which is sound
+      // only because the message asserted `key_complete` -- the
+      // validator rejects it otherwise, so this writer never sees a chunk
+      // that could prune rows it did not carry.
+      "nominator-positions": async (rows, pass) => {
+        const cutoffs = coldkeyMaxCapturedAt(rows);
+        // D1 IS NOT WRITTEN -- nominator_positions and its pass ledger
+        // are Neon's outright (#10111). The "mirror" is now the write, and
+        // that changes what a failure MEANS here: while D1 held the rows a
+        // Neon failure cost a lane verdict, and this writer could return
+        // normally. Now returning normally ACKS the message and the rows
+        // are gone, so the failure has to throw -- writeSyncBatch turns a
+        // throw into a retry, which is the only thing that can still save
+        // them.
+        //
+        // The declared pass rides the transport (metagraphed-infra#346): a
+        // queue knows a message was DELIVERED, not whether the producer's
+        // whole scan arrived, and only the second fact catches a load that
+        // stopped halfway.
+        const neon = await mirrorNominatorPositionsToNeon(
+          env as unknown as Record<string, unknown>,
+          ctx,
+          { rows, coldkeyMaxCapturedAt: cutoffs, pass },
+        );
+        const failed = [neon.write, neon.prune, neon.pass].filter(
+          (r) => r && !r.ok,
+        );
+        if (!neon.attempted || failed.length > 0) {
+          throw new Error(
+            `nominator-positions neon write failed: ${
+              failed
+                .map((r) => r?.reason)
                 .filter(Boolean)
-                .join("; ");
-              if (reason)
-                throw new Error(`neurons queue write failed: ${reason}`);
-            }
-            return result;
-          },
-          "validator-nominator-counts": async (rows, pass) => {
-            // D1 is not written -- this lane is Neon's outright (#10116) --
-            // so the Neon write below is the ONLY one, and its failure must
-            // throw rather than return: a normal return acks the message and
-            // the rows are gone. writeSyncBatch turns a throw into a retry.
-            const neon = await mirrorLedgerToNeon(
-              env as unknown as Record<string, unknown>,
-              ctx,
-              "validator-nominator-counts",
-              rows,
-              {},
-              pass,
-            );
-            if (!neon.result?.ok) {
-              throw new Error(
-                `validator-nominator-counts neon write failed: ${
-                  neon.result?.reason ?? "not attempted"
-                }`,
-              );
-            }
-            return { statements: 0 };
-          },
+                .join("; ") || "not attempted"
+            }`,
+          );
         }
-      : {};
+        return { statements: 0 };
+      },
+      "account-balances": async (rows, pass) => {
+        // The ONLY writer for this lane -- the HTTP route enqueues and
+        // never writes inline, so there is no second path to keep in step.
+        const result = { statements: 0 };
+        // THE PASS WAS NEVER PASSED. writeAccountBalancesToD1 took it and the
+        // mirror did not, so D1 got a completeness tally and Neon got none --
+        // account_balances_passes was empty there, and this lane was about to
+        // become the only writer of it.
+        const neon = await mirrorLedgerToNeon(
+          env as unknown as Record<string, unknown>,
+          ctx,
+          "account-balances",
+          rows,
+          {},
+          pass,
+        );
+        // AND THE RESULT WAS NEVER READ (#10179). This awaited the write and
+        // returned regardless, so a failure was acked and the rows were gone --
+        // on the lane whose own comment says it is the only writer. Every
+        // sibling in this map throws; this one computed `neonOwns` and did
+        // nothing with it.
+        if (!neon.result?.ok) {
+          throw new Error(
+            `account-balances neon write failed: ${
+              neon.result?.reason ?? "not attempted"
+            }`,
+          );
+        }
+        return result;
+      }, // Redoes both derivations from THIS message's rows, which is sound
+      // only because the message asserted `key_complete` -- the validator
+      // rejects a neurons message without it, so this writer never sees a
+      // chunk whose prune map would delete rows it did not carry.
+      neurons: async (rows, pass) => {
+        // THE ONE WRITER IN THIS BLOCK THAT NEVER ASKED (#10162). Every
+        // other lane here gated on neonOwns* and mirrored; this wrote D1
+        // outright and mirrored nothing. It is unreachable today --
+        // SYNC_QUEUE_LANES does not list `neurons` -- which is precisely
+        // why it survived: adding the lane to that flag would have started
+        // writing the only copy of a metagraph snapshot to a store nothing
+        // reads.
+        const write = neuronSnapshotWrite(rows, Date.now());
+        const result = { statements: 0 };
+        const neon = await mirrorNeuronSnapshotToNeon(
+          env as unknown as Record<string, unknown>,
+          ctx,
+          { ...write, pass },
+        );
+        // THROW, never return, on a failed write: a normal return acks the
+        // queue message and the rows are gone. writeSyncBatch turns a throw
+        // into a retry.
+        //
+        // UNCONDITIONAL, and the `neonOwns` that used to guard it was a silent
+        // data-loss path (#10179): neonOwnsNeuronsSnapshot requires HYPERDRIVE,
+        // so on the one deployment where the write cannot happen the guard read
+        // false and the throw was skipped.
+        //
+        // Named tables rather than a fold over neon.results, because the mirror
+        // answers `{ attempted: true, results: {} }` when Hyperdrive is unbound
+        // and a "nothing said not-ok" test reads that as success.
+        const reason = ["neurons", "neuron_daily", "account_position_daily"]
+          .map((table) => {
+            const r = neon.results?.[table];
+            if (!r) return `${table}: no Neon write recorded`;
+            return r.ok ? null : `${table}: ${r.reason ?? "failed"}`;
+          })
+          .filter(Boolean)
+          .join("; ");
+        if (reason) throw new Error(`neurons queue write failed: ${reason}`);
+        return result;
+      },
+      "validator-nominator-counts": async (rows, pass) => {
+        // D1 is not written -- this lane is Neon's outright (#10116) --
+        // so the Neon write below is the ONLY one, and its failure must
+        // throw rather than return: a normal return acks the message and
+        // the rows are gone. writeSyncBatch turns a throw into a retry.
+        const neon = await mirrorLedgerToNeon(
+          env as unknown as Record<string, unknown>,
+          ctx,
+          "validator-nominator-counts",
+          rows,
+          {},
+          pass,
+        );
+        if (!neon.result?.ok) {
+          throw new Error(
+            `validator-nominator-counts neon write failed: ${
+              neon.result?.reason ?? "not attempted"
+            }`,
+          );
+        }
+        return { statements: 0 };
+      },
+    };
     for (const { message, body } of decoded) {
       if (!validSyncBatchMessage(body)) {
         // Acked, not retried: a message that cannot parse will not parse on the

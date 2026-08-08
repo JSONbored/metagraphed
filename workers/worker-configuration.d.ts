@@ -5,7 +5,6 @@ interface __BaseEnv_Env {
 	METAGRAPH_CONTROL: KVNamespace;
 	OAUTH_KV: KVNamespace;
 	METAGRAPH_ARCHIVE: R2Bucket;
-	METAGRAPH_HEALTH_DB: D1Database;
 	VECTORIZE: VectorizeIndex;
 	MCP_RATE_LIMITER_COMMUNITY: RateLimit;
 	MCP_RATE_LIMITER_PAID: RateLimit;

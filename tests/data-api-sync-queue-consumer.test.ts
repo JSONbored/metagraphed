@@ -11,7 +11,17 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The store is Postgres now (#10179). The consumer reaches it through
+// `new Client(...)` several layers down, so the module is the only injectable
+// seam -- see tests/helpers/pg-mock.ts.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
 
 const { default: worker } = await import("../workers/data-api.ts");
 
@@ -48,8 +58,12 @@ const SCHEMA =
   ) +
   // The vehicle lane (#10131). These tests are about the CONSUMER -- ack vs
   // retry, per-message disposal, decompression -- not about any lane's SQL, so
-  // they need a lane that still writes D1. nominator-positions used to be it
-  // and is now Neon's outright.
+  // any lane with a real writer will do.
+  //
+  // The schema is still read from migrations/d1: node:sqlite is the engine
+  // behind the pg double, and these DDL files are the closest executable
+  // description of the tables. What is under test here is the consumer's
+  // disposal decision, not the dialect.
   fs.readFileSync(
     path.join(process.cwd(), "migrations/d1/0019_hotkey_alpha.sql"),
     "utf8",
@@ -64,36 +78,9 @@ const HOTKEY = "5FyVinYphF6JS5FZHzhMQffxtgbz1WxwUEBAxTRo9nABwb5g";
 
 let db: InstanceType<typeof DatabaseSync>;
 
-function d1(failing = false) {
-  return {
-    prepare(text: string) {
-      return {
-        bind(...values: unknown[]) {
-          return {
-            text,
-            values,
-            async all() {
-              return { results: db.prepare(text).all(...(values as never[])) };
-            },
-          };
-        },
-      };
-    },
-    async batch(statements: { text: string; values: unknown[] }[]) {
-      if (failing) throw new Error("D1 DB is overloaded");
-      db.exec("BEGIN");
-      try {
-        const results = statements.map((s) => ({
-          results: db.prepare(s.text).all(...(s.values as never[])),
-        }));
-        db.exec("COMMIT");
-        return results;
-      } catch (err) {
-        db.exec("ROLLBACK");
-        throw err;
-      }
-    },
-  };
+/** Make the next statement fail, so the retry path is reachable. */
+function failNextWrite() {
+  pg.control.failNext = new Error("connection terminated");
 }
 
 function message(body: unknown) {
@@ -129,12 +116,16 @@ async function consume(
 ) {
   await worker.queue!(
     { messages } as never,
-    { METAGRAPH_HEALTH_DB: d1(), ...envOverrides } as never,
+    { ...pgMockEnv(), ...envOverrides } as never,
     { waitUntil: () => {} } as never,
   );
 }
 
 beforeEach(() => {
+  // The double is module state and outlives a test; a leftover queue log or a
+  // primed failure would leak into the next one.
+  pg.control.queries.length = 0;
+  pg.control.failNext = null;
   db = new DatabaseSync(":memory:");
   db.exec(SCHEMA);
   // THE #9558 FILTER needs a referencing position, or hotkey_alpha stores
@@ -147,14 +138,27 @@ beforeEach(() => {
   ).run(COLDKEY, HOTKEY, 18, 0.25, 1_780_000_000_000);
 });
 
-const rows = () =>
-  db.prepare("SELECT * FROM hotkey_alpha").all() as Record<string, unknown>[];
+// WHAT COUNTS AS "THE ROWS LANDED", now that the store is Postgres.
+//
+// These used to read the fixture table back. They cannot any more, and not for
+// a reason worth working around: the Neon writers emit `(VALUES ...) AS src
+// (cols)` and `::type` casts, and node:sqlite parses NEITHER -- verified, both
+// are hard syntax errors on SQLite 3.53. Translating those shapes in the double
+// would mean testing the translator.
+//
+// So the evidence moves from the table to the STATEMENT LOG. That is the right
+// level for this file anyway: what is under test here is the consumer's
+// ack/retry disposal, never a lane's SQL, and "an INSERT for this table was
+// issued with these rows bound" is exactly the claim each of these assertions
+// was making. Lane SQL is asserted where it belongs, in the per-writer suites.
+function inserts(table: string) {
+  return pg.control.queries.filter((q) =>
+    new RegExp(`INSERT INTO ${table}\\b`).test(q.text),
+  );
+}
 
-const balances = () =>
-  db.prepare("SELECT * FROM account_balances").all() as Record<
-    string,
-    unknown
-  >[];
+const rows = () => inserts("hotkey_alpha");
+const balances = () => inserts("account_balances");
 
 describe("the sync queue consumer", () => {
   test("writes account-balances and credits its declared pass", async () => {
@@ -177,15 +181,11 @@ describe("the sync queue consumer", () => {
     await consume([m]);
     assert.deepEqual(m.calls, ["ack"]);
     assert.equal(balances().length, 1);
-    const pass = db
-      .prepare("SELECT * FROM account_balances_passes")
-      .all()[0] as Record<string, unknown>;
-    assert.equal(pass.expected_rows, 2);
-    assert.equal(pass.received_rows, 1);
-    assert.equal(
-      pass.completed_at,
-      null,
-      "one of two rows delivered is not a complete pass",
+    const tally = inserts("account_balances_passes");
+    assert.equal(tally.length, 1, "no tally statement was issued");
+    assert.ok(
+      tally[0]!.values.includes(2),
+      `the declared total did not reach the tally: ${JSON.stringify(tally[0]!.values)}`,
     );
   });
 
@@ -237,7 +237,8 @@ describe("the sync queue consumer", () => {
     // one-second inter-chunk sleep stood in for, and the reason deleting that
     // sleep was safe: the queue's backoff now owns it.
     const m = positionMessage();
-    await consume([m], { METAGRAPH_HEALTH_DB: d1(true) });
+    failNextWrite();
+    await consume([m]);
     assert.deepEqual(m.calls, ["retry"]);
   });
 
@@ -252,11 +253,17 @@ describe("the sync queue consumer", () => {
     assert.equal(rows().length, 1);
   });
 
-  test("retries rather than dropping when no D1 binding is present", async () => {
-    // An unbound database is transient-looking from here, and a lane that is
-    // cut over has no other writer -- acking would lose the rows outright.
+  test("retries rather than dropping when no store is bound", async () => {
+    // An unbound store is transient-looking from here, and a cut-over lane has
+    // no other writer -- acking would lose the rows outright.
+    //
+    // THIS IS THE ASSERTION THE TEARDOWN NEARLY BROKE (#10179). Both writer
+    // maps in the consumer used to be built as `env.METAGRAPH_HEALTH_DB ? {...}
+    // : {}`, so an absent binding did not mean "no writer available" -- it
+    // meant an EMPTY writer map, and an empty map acks every message for every
+    // lane and drops the rows. The Neon writers never needed that binding.
     const m = positionMessage();
-    await consume([m], { METAGRAPH_HEALTH_DB: undefined });
+    await consume([m], { HYPERDRIVE: undefined });
     assert.deepEqual(m.calls, ["retry"]);
   });
 
@@ -303,13 +310,11 @@ describe("the sync queue consumer", () => {
 
     assert.deepEqual(m.calls, ["ack"]);
     assert.deepEqual(neighbour.calls, ["ack"], "and its batch-mate is fine");
-    const blocks = db
-      .prepare("SELECT block_number FROM chain_detail_blocks")
-      .all() as Record<string, unknown>[];
-    assert.deepEqual(
-      blocks.map((row) => row.block_number),
-      [6_100_001],
-      "written, not acked into the void",
+    const blocks = inserts("chain_detail_blocks");
+    assert.equal(blocks.length, 1, "written, not acked into the void");
+    assert.ok(
+      blocks[0]!.values.includes(6_100_001),
+      `the decompressed block did not reach the write: ${JSON.stringify(blocks[0]!.values)}`,
     );
   });
 
@@ -322,25 +327,23 @@ describe("the sync queue consumer", () => {
     assert.deepEqual(m.calls, ["ack"]);
   });
 
-  test("credits a declared pass on the lane that still writes D1 (metagraphed#9783)", async () => {
+  test("carries a declared pass through the queue to a tally write (metagraphed#9783)", async () => {
     // The declaration has to survive the queue: a queue knows a message
     // arrived, not whether the whole scan did.
     //
-    // This used to ride validator-nominator-counts. That lane is Neon's
-    // outright now (#10116), so its tally no longer lands anywhere this
-    // sqlite fixture can see -- the Neon side is covered by
-    // tests/pass-tally-neon and tests/ledger-neon-write. hotkey-alpha is the
-    // remaining D1 lane, so it is the one that can still prove the QUEUE
-    // carries a pass_total through to a tally.
+    // What this proves is that the QUEUE carries `pass_total` through to a
+    // tally write -- not what the tally statement itself computes, which is
+    // tests/pass-tally-neon's job. So the evidence is the statement and its
+    // bound values, for the reason `inserts` explains.
     const m = positionMessage({ pass_total: 2 });
     await consume([m]);
     assert.deepEqual(m.calls, ["ack"]);
-    const pass = db
-      .prepare("SELECT * FROM hotkey_alpha_passes")
-      .all()[0] as Record<string, unknown>;
-    assert.equal(pass.expected_rows, 2);
-    assert.equal(pass.received_rows, 1);
-    assert.equal(pass.completed_at, null, "one of two rows is not complete");
+    const tally = inserts("hotkey_alpha_passes");
+    assert.equal(tally.length, 1, "no tally statement was issued");
+    assert.ok(
+      tally[0]!.values.includes(2),
+      `the declared total did not survive the queue: ${JSON.stringify(tally[0]!.values)}`,
+    );
   });
 
   test("a dead-letter batch is acked and NOT written (metagraphed-infra#363)", async () => {
@@ -352,7 +355,7 @@ describe("the sync queue consumer", () => {
     const m = positionMessage();
     await worker.queue!(
       { queue: "sync-batches-dlq", messages: [m] } as never,
-      { METAGRAPH_HEALTH_DB: d1() } as never,
+      { ...pgMockEnv() } as never,
       { waitUntil: () => {} } as never,
     );
     assert.deepEqual(m.calls, ["ack"]);
@@ -366,7 +369,7 @@ describe("the sync queue consumer", () => {
     const m = positionMessage();
     await worker.queue!(
       { queue: "sync-batches", messages: [m] } as never,
-      { METAGRAPH_HEALTH_DB: d1() } as never,
+      { ...pgMockEnv() } as never,
       { waitUntil: () => {} } as never,
     );
     assert.deepEqual(m.calls, ["ack"]);
@@ -422,18 +425,14 @@ describe("the sync queue consumer", () => {
     assert.deepEqual(chainDetail.calls, ["ack"]);
     assert.deepEqual(neighbour.calls, ["ack"], "the batch-mate still landed");
     assert.equal(rows().length, 1, "and its rows were written");
-    const blocks = db
-      .prepare("SELECT block_number FROM chain_detail_blocks")
-      .all() as Record<string, unknown>[];
-    assert.deepEqual(
-      blocks.map((row) => row.block_number),
-      [6_100_000],
+    const blocks = inserts("chain_detail_blocks");
+    assert.equal(blocks.length, 1);
+    assert.ok(
+      blocks[0]!.values.includes(6_100_000),
+      `the block did not reach the write: ${JSON.stringify(blocks[0]!.values)}`,
     );
-    const extrinsics = db
-      .prepare("SELECT COUNT(*) AS n FROM chain_detail_extrinsics")
-      .all() as Record<string, unknown>[];
     assert.equal(
-      extrinsics[0]!.n,
+      inserts("chain_detail_extrinsics").length,
       1,
       "both families landed, which is why they travel together",
     );

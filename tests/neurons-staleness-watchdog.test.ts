@@ -10,7 +10,19 @@
 // run 64 to 256 UIDs, so a scan that died after the largest ones could show
 // high row coverage having missed half the network.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The store is Postgres now (#10179), reached through `new Client(...)` inside
+// src/read-store.ts and src/lane-health-store.ts -- neither of which this
+// watchdog can be handed, because it selects its own store from `env`. Mocking
+// the module is the seam; see tests/helpers/pg-mock.ts for why it is a module
+// mock and why the controller has to be built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   NEURONS_COVERAGE_FLOOR_NETUIDS,
   NEURONS_EXPECTED_NETUIDS,
@@ -27,33 +39,35 @@ const NOW = 1_785_800_000_000;
  * unless a case says so. */
 const FULL = NEURONS_EXPECTED_NETUIDS;
 
+/** The lane's one read, answered from the pg double, plus the env that points
+ * the watchdog at it.
+ *
+ * `queries` and `binds` are LIVE views over the mock's log rather than copies,
+ * because every caller destructures them and reads them after the tick has run
+ * -- a getter would be evaluated once, at destructure time, and freeze empty.
+ *
+ * An `Error` for `latest` fails the NEXT statement, which is the read: the
+ * watchdog catches it and never reaches the lane_health write, exactly as a
+ * throwing store did. */
 function fakeDb(
-  latest: number | null | Error,
+  latest: number | null | Error | string,
   covered: number = FULL,
   total: number = FULL,
 ) {
   const queries: string[] = [];
   const binds: unknown[][] = [];
-  return {
-    queries,
-    binds,
-    db: {
-      prepare(sql: string) {
-        queries.push(sql);
-        return {
-          bind(...values: unknown[]) {
-            binds.push(values);
-            return {
-              async first() {
-                if (latest instanceof Error) throw latest;
-                return { latest, covered, total };
-              },
-            };
-          },
-        };
-      },
-    },
+  const throws = typeof latest === "string" || latest instanceof Error;
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = throws ? null : [{ latest, covered, total }];
+  // Cast rather than typed: a non-Error throw is one of the cases under test
+  // below, and the mock rethrows whatever it is handed.
+  pg.control.failNext = throws ? (latest as Error) : null;
+  pg.control.onQuery = (q) => {
+    queries.push(q.text);
+    binds.push(q.values);
   };
+  return { queries, binds, env: pgMockEnv() };
 }
 
 /** The rule's inputs with everything healthy, so each case overrides only the
@@ -175,18 +189,15 @@ describe("evaluateNeuronsStaleness", () => {
 
 describe("runNeuronsStalenessWatchdog", () => {
   test("a fresh lane reports quiet and records nothing", async () => {
-    const { db } = fakeDb(NOW - 5 * 60_000);
+    const { env } = fakeDb(NOW - 5 * 60_000);
     const recorded: unknown[] = [];
-    const result = await runNeuronsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      {
-        now: () => NOW,
-        recordException: (async (_env: never, event: unknown) => {
-          recorded.push(event);
-          return true;
-        }) as never,
-      },
-    );
+    const result = await runNeuronsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async (_env: never, event: unknown) => {
+        recorded.push(event);
+        return true;
+      }) as never,
+    });
     assert.equal(result.ok, true);
     assert.equal(result.alerted, false);
     assert.deepEqual(recorded, []);
@@ -196,11 +207,11 @@ describe("runNeuronsStalenessWatchdog", () => {
     // A window at or over the 15-minute tick would merge two passes into one
     // coverage count, letting a half-scanned pass on top of a complete one
     // report full coverage -- the bug this closes.
-    const { db, queries, binds } = fakeDb(NOW - 5 * 60_000);
-    return runNeuronsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      { now: () => NOW, recordException: (async () => true) as never },
-    ).then(() => {
+    const { env, queries, binds } = fakeDb(NOW - 5 * 60_000);
+    return runNeuronsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async () => true) as never,
+    }).then(() => {
       assert.deepEqual(binds[0], [NEURONS_PASS_WINDOW_MS]);
       assert.ok(
         NEURONS_PASS_WINDOW_MS < 15 * 60_000,
@@ -210,27 +221,28 @@ describe("runNeuronsStalenessWatchdog", () => {
       // the largest subnets.
       assert.match(queries[0], /COUNT\(DISTINCT netuid\) AS total/);
       assert.match(queries[0], /THEN netuid END\) AS covered/);
+      // `$n`, not `?`: the watchdog writes SQLite's placeholder and
+      // toPositionalPlaceholders rewrites it on the way to Postgres. #9821 is
+      // what happens when it does not -- six routes served zero rows because a
+      // `?` reached Postgres unrewritten and matched nothing.
       assert.match(
         queries[0],
-        /captured_at >= \(SELECT MAX\(captured_at\) FROM neurons\) - \?/,
+        /captured_at >= \(SELECT MAX\(captured_at\) FROM neurons\) - \$\d/,
       );
     });
   });
 
   test("a recent but half-scanned network alerts, naming both counts", async () => {
-    const { db } = fakeDb(NOW - 5 * 60_000, 64, 129);
+    const { env } = fakeDb(NOW - 5 * 60_000, 64, 129);
     const recorded: { error?: Error; route?: string; errorCode?: string }[] =
       [];
-    const result = await runNeuronsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      {
-        now: () => NOW,
-        recordException: (async (_env: never, event: never) => {
-          recorded.push(event);
-          return true;
-        }) as never,
-      },
-    );
+    const result = await runNeuronsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async (_env: never, event: never) => {
+        recorded.push(event);
+        return true;
+      }) as never,
+    });
     assert.equal(result.alerted, true);
     assert.equal(result.reason, "partial");
     assert.equal(result.covered_netuids, 64);
@@ -245,10 +257,10 @@ describe("runNeuronsStalenessWatchdog", () => {
   });
 
   test("the env coverage-floor and pass-window overrides win over the defaults", async () => {
-    const { db, binds } = fakeDb(NOW - 5 * 60_000, 110, 129);
+    const { env, binds } = fakeDb(NOW - 5 * 60_000, 110, 129);
     const raised = await runNeuronsStalenessWatchdog(
       {
-        METAGRAPH_HEALTH_DB: db,
+        ...env,
         NEURONS_COVERAGE_FLOOR_NETUIDS: "120",
         NEURONS_PASS_WINDOW_MS: "60000",
       },
@@ -262,7 +274,7 @@ describe("runNeuronsStalenessWatchdog", () => {
     // Lowered under the same reading, the identical tick is quiet.
     const lowered = await runNeuronsStalenessWatchdog(
       {
-        METAGRAPH_HEALTH_DB: fakeDb(NOW - 5 * 60_000, 110, 129).db,
+        ...fakeDb(NOW - 5 * 60_000, 110, 129).env,
         NEURONS_COVERAGE_FLOOR_NETUIDS: "100",
       },
       { now: () => NOW, recordException: (async () => true) as never },
@@ -274,11 +286,11 @@ describe("runNeuronsStalenessWatchdog", () => {
   test("an uncountable coverage number reads as ZERO, never as covered", async () => {
     // A NaN would compare false against the floor and report a half-scanned
     // network healthy -- the exact direction of failure this closes.
-    const { db } = fakeDb(NOW - 5 * 60_000, null as unknown as number, 0);
-    const result = await runNeuronsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      { now: () => NOW, recordException: (async () => true) as never },
-    );
+    const { env } = fakeDb(NOW - 5 * 60_000, null as unknown as number, 0);
+    const result = await runNeuronsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async () => true) as never,
+    });
     assert.equal(result.covered_netuids, 0);
     assert.equal(result.alerted, true);
     assert.equal(result.reason, "partial");
@@ -289,7 +301,7 @@ describe("runNeuronsStalenessWatchdog", () => {
       0,
     );
     const nonNumeric = await runNeuronsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: junk.db },
+      { ...junk.env },
       { now: () => NOW, recordException: (async () => true) as never },
     );
     assert.equal(nonNumeric.covered_netuids, 0);
@@ -297,19 +309,16 @@ describe("runNeuronsStalenessWatchdog", () => {
   });
 
   test("a stalled lane records ONE exception naming the age and threshold", async () => {
-    const { db } = fakeDb(NOW - 3 * 60 * 60_000);
+    const { env } = fakeDb(NOW - 3 * 60 * 60_000);
     const recorded: { error?: Error; route?: string; errorCode?: string }[] =
       [];
-    const result = await runNeuronsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      {
-        now: () => NOW,
-        recordException: (async (_env: never, event: never) => {
-          recorded.push(event);
-          return true;
-        }) as never,
-      },
-    );
+    const result = await runNeuronsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async (_env: never, event: never) => {
+        recorded.push(event);
+        return true;
+      }) as never,
+    });
     assert.equal(result.alerted, true);
     assert.equal(recorded.length, 1);
     assert.equal(recorded[0].route, "watchdog:neurons-staleness");
@@ -319,27 +328,24 @@ describe("runNeuronsStalenessWatchdog", () => {
   });
 
   test("an empty table alerts with the no-rows wording", async () => {
-    const { db } = fakeDb(null);
+    const { env } = fakeDb(null);
     const recorded: { error?: Error }[] = [];
-    const result = await runNeuronsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      {
-        now: () => NOW,
-        recordException: (async (_env: never, event: never) => {
-          recorded.push(event);
-          return true;
-        }) as never,
-      },
-    );
+    const result = await runNeuronsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async (_env: never, event: never) => {
+        recorded.push(event);
+        return true;
+      }) as never,
+    });
     assert.equal(result.alerted, true);
     assert.equal(result.reason, "no_rows");
     assert.match(String(recorded[0].error?.message), /no rows at all/);
   });
 
   test("the env threshold override wins over the default", async () => {
-    const { db } = fakeDb(NOW - 10 * 60_000);
+    const { env } = fakeDb(NOW - 10 * 60_000);
     const result = await runNeuronsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db, NEURONS_STALENESS_THRESHOLD_MS: "300000" },
+      { ...env, NEURONS_STALENESS_THRESHOLD_MS: "300000" },
       { now: () => NOW, recordException: (async () => true) as never },
     );
     assert.equal(result.alerted, true);
@@ -355,28 +361,18 @@ describe("runNeuronsStalenessWatchdog", () => {
       ok: false,
       reason: "no store bound",
     });
-    const { db } = fakeDb(new Error("D1_ERROR: no such table: neurons"));
-    const result = await runNeuronsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      { recordException: (async () => true) as never },
-    );
+    const { env } = fakeDb(new Error('relation "neurons" does not exist'));
+    const result = await runNeuronsStalenessWatchdog(env, {
+      recordException: (async () => true) as never,
+    });
     assert.equal(result.ok, false);
     assert.equal(result.reason, "query_failed");
-    assert.match(String(result.detail), /no such table/);
+    assert.match(String(result.detail), /does not exist/);
 
-    // A non-Error throw (D1 shims have thrown plain objects before) still
-    // yields a readable detail.
-    const stringThrow = {
-      prepare: () => ({
-        bind: () => ({
-          first: async () => {
-            throw "socket hangup";
-          },
-        }),
-      }),
-    };
+    // A non-Error throw (a driver rejecting with a bare string) still yields a
+    // readable detail rather than "[object Object]".
     const nonError = await runNeuronsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: stringThrow },
+      fakeDb("socket hangup").env,
       { recordException: (async () => true) as never },
     );
     assert.equal(nonError.reason, "query_failed");
@@ -384,16 +380,13 @@ describe("runNeuronsStalenessWatchdog", () => {
   });
 
   test("a telemetry failure never fails the tick", async () => {
-    const { db } = fakeDb(NOW - 2 * 60 * 60_000);
-    const result = await runNeuronsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      {
-        now: () => NOW,
-        recordException: (async () => {
-          throw new Error("posthog down");
-        }) as never,
-      },
-    );
+    const { env } = fakeDb(NOW - 2 * 60 * 60_000);
+    const result = await runNeuronsStalenessWatchdog(env, {
+      now: () => NOW,
+      recordException: (async () => {
+        throw new Error("posthog down");
+      }) as never,
+    });
     assert.equal(result.ok, true);
     assert.equal(result.alerted, true);
   });
@@ -401,11 +394,8 @@ describe("runNeuronsStalenessWatchdog", () => {
   test("the real recordExceptionEvent default engages and no-ops unconfigured", async () => {
     // No telemetry env configured: the real recorder returns false without
     // touching the network, so the default path is exercisable in-process.
-    const { db } = fakeDb(NOW - 2 * 60 * 60_000);
-    const result = await runNeuronsStalenessWatchdog(
-      { METAGRAPH_HEALTH_DB: db },
-      { now: () => NOW },
-    );
+    const { env } = fakeDb(NOW - 2 * 60 * 60_000);
+    const result = await runNeuronsStalenessWatchdog(env, { now: () => NOW });
     assert.equal(result.ok, true);
     assert.equal(result.alerted, true);
   });
@@ -413,14 +403,12 @@ describe("runNeuronsStalenessWatchdog", () => {
 
 describe("handleScheduled NEURONS_STALENESS_WATCHDOG_CRON", () => {
   test("dispatches to the watchdog and returns its summary", async () => {
-    const { db, queries } = fakeDb(Date.now());
+    const { env, queries } = fakeDb(Date.now());
     const result = (await handleScheduled(
       {
         cron: workerConfig.NEURONS_STALENESS_WATCHDOG_CRON,
       } as unknown as ScheduledController,
-      { METAGRAPH_HEALTH_DB: db } as unknown as Parameters<
-        typeof handleScheduled
-      >[1],
+      env as unknown as Parameters<typeof handleScheduled>[1],
       {} as unknown as ExecutionContext,
     )) as { ok: boolean; alerted: boolean };
     assert.equal(result.ok, true);

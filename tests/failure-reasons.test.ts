@@ -15,7 +15,6 @@ import {
   FAILURE_REASONS_TABLE,
   loadFailureReasons,
 } from "../src/failure-reasons.ts";
-import { rollupFailureReasonsToD1 } from "../src/observations-d1.ts";
 
 /** 0025's table, so the expression index is the one under test. */
 function rollupDb() {
@@ -39,26 +38,6 @@ function rollupDb() {
   return sqlite;
 }
 
-/** The ObservationsDb shape the rollup writer binds against. */
-function asDb(sqlite: DatabaseSync) {
-  return {
-    prepare(sql: string) {
-      const stmt = sqlite.prepare(sql);
-      return {
-        bind(...values: unknown[]) {
-          return { __stmt: stmt, __values: values };
-        },
-      };
-    },
-    async batch(stmts: Array<{ __stmt: unknown; __values: unknown[] }>) {
-      for (const s of stmts) {
-        (s.__stmt as { run(...v: unknown[]): void }).run(...s.__values);
-      }
-      return [];
-    },
-  } as never;
-}
-
 /** A read surface over the rollup table, for loadFailureReasons. */
 function readDb(sqlite: DatabaseSync) {
   return {
@@ -77,139 +56,7 @@ function readDb(sqlite: DatabaseSync) {
   };
 }
 
-const DAY_MS = 86_400_000;
 const T = Date.UTC(2026, 7, 5, 12); // 2026-08-05T12:00:00Z
-
-describe("rollupFailureReasonsToD1", () => {
-  const days = [
-    {
-      date: "2026-08-05",
-      start: Date.UTC(2026, 7, 5),
-      end: Date.UTC(2026, 7, 6),
-    },
-  ];
-
-  it("aggregates a day's raw checks by netuid, kind and classification", async () => {
-    const sqlite = rollupDb();
-    const ins = sqlite.prepare(
-      "INSERT INTO surface_checks (netuid, kind, classification, checked_at) VALUES (?,?,?,?)",
-    );
-    ins.run(7, "api", "live", T);
-    ins.run(7, "api", "live", T + 1000);
-    ins.run(7, "api", "timeout", T);
-    ins.run(11, "api", "dead", T);
-
-    const out = await rollupFailureReasonsToD1(asDb(sqlite), days, T);
-    expect(out.rolled).toBe(true);
-    const rows = sqlite
-      .prepare(
-        `SELECT netuid, classification, checks FROM ${FAILURE_REASONS_TABLE} ORDER BY netuid, classification`,
-      )
-      .all();
-    expect(rows).toEqual([
-      { netuid: 7, classification: "live", checks: 2 },
-      { netuid: 7, classification: "timeout", checks: 1 },
-      { netuid: 11, classification: "dead", checks: 1 },
-    ]);
-  });
-
-  it("UPDATES a registry-level (null netuid) row instead of duplicating it", async () => {
-    // The case the expression index exists for. SQLite treats NULLs as distinct
-    // in a unique constraint, so a plain column key would append a second row
-    // here on every hourly tick and double the counts.
-    const sqlite = rollupDb();
-    const ins = sqlite.prepare(
-      "INSERT INTO surface_checks (netuid, kind, classification, checked_at) VALUES (?,?,?,?)",
-    );
-    ins.run(null, "docs", "live", T);
-
-    await rollupFailureReasonsToD1(asDb(sqlite), days, T);
-    ins.run(null, "docs", "live", T + 1000);
-    await rollupFailureReasonsToD1(asDb(sqlite), days, T + 3_600_000);
-
-    const rows = sqlite
-      .prepare(`SELECT netuid, checks FROM ${FAILURE_REASONS_TABLE}`)
-      .all();
-    expect(rows).toEqual([{ netuid: null, checks: 2 }]);
-  });
-
-  it("is idempotent across ticks for a subnet-scoped row too", async () => {
-    const sqlite = rollupDb();
-    sqlite
-      .prepare(
-        "INSERT INTO surface_checks (netuid, kind, classification, checked_at) VALUES (?,?,?,?)",
-      )
-      .run(3, "api", "rate-limited", T);
-    await rollupFailureReasonsToD1(asDb(sqlite), days, T);
-    await rollupFailureReasonsToD1(asDb(sqlite), days, T + 3_600_000);
-    expect(
-      sqlite
-        .prepare(`SELECT COUNT(*) AS n FROM ${FAILURE_REASONS_TABLE}`)
-        .get(),
-    ).toEqual({ n: 1 });
-  });
-
-  it("skips a check that cannot say which kind or reason it describes", async () => {
-    // Not bucketed under a placeholder: a row with no classification cannot
-    // honestly be counted in any classification's mix.
-    const sqlite = rollupDb();
-    const ins = sqlite.prepare(
-      "INSERT INTO surface_checks (netuid, kind, classification, checked_at) VALUES (?,?,?,?)",
-    );
-    ins.run(7, null, "live", T);
-    ins.run(7, "api", null, T);
-    ins.run(7, "api", "live", T);
-    await rollupFailureReasonsToD1(asDb(sqlite), days, T);
-    expect(
-      sqlite.prepare(`SELECT checks FROM ${FAILURE_REASONS_TABLE}`).all(),
-    ).toEqual([{ checks: 1 }]);
-  });
-
-  it("counts only the day it was asked for", async () => {
-    const sqlite = rollupDb();
-    const ins = sqlite.prepare(
-      "INSERT INTO surface_checks (netuid, kind, classification, checked_at) VALUES (?,?,?,?)",
-    );
-    ins.run(7, "api", "live", T);
-    ins.run(7, "api", "live", T - DAY_MS);
-    await rollupFailureReasonsToD1(asDb(sqlite), days, T);
-    expect(
-      sqlite.prepare(`SELECT checks FROM ${FAILURE_REASONS_TABLE}`).all(),
-    ).toEqual([{ checks: 1 }]);
-  });
-
-  it("reports rolled:false without a database rather than throwing", async () => {
-    expect(await rollupFailureReasonsToD1(undefined, days, T)).toEqual({
-      rolled: false,
-    });
-  });
-
-  it("reports rolled:false and the message when the write throws", async () => {
-    // Not swallowed: a silent failure here freezes the reason series while the
-    // uptime series keeps advancing, which reads as "no failures had a reason".
-    const broken = {
-      prepare() {
-        throw new Error("no such table: surface_failure_daily");
-      },
-    } as never;
-    const out = await rollupFailureReasonsToD1(broken, days, T);
-    expect(out.rolled).toBe(false);
-    expect(out.error).toContain("surface_failure_daily");
-  });
-
-  it("reports a thrown non-Error rather than the string 'undefined'", () => {
-    // D1 can reject with a bare string; `.message` is undefined there, and
-    // recording "undefined" as the reason would make the failure undiagnosable.
-    const broken = {
-      prepare() {
-        throw "D1 unavailable";
-      },
-    } as never;
-    return rollupFailureReasonsToD1(broken, days, T).then((out) => {
-      expect(out).toMatchObject({ rolled: false, error: "D1 unavailable" });
-    });
-  });
-});
 
 describe("loadFailureReasons", () => {
   function seeded() {

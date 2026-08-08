@@ -3,12 +3,11 @@
 // handleApiKeyVerify/handleAccountTierPromote functions, reworked onto Unkey
 // 2026-07-19). A dedicated test file (not folded into the already
 // 7500+-line tests/data-api.test.ts), mirroring
-// tests/alert-triggers-route.test.ts's shape: its OWN queue-shaped D1 fake
-// (tests/user-state-d1-queue.ts) bound as METAGRAPH_HEALTH_DB -- every route
-// in this file runs on the user-state D1 since the accounts-d1 port, so no
-// postgres-module mock remains here. Unkey's own HTTP calls
-// (src/unkey-client.ts) are stubbed via global fetch, same per-test-queue
-// shape as the D1 fake.
+// tests/alert-triggers-route.test.ts's shape: its OWN per-test queue over the
+// shared `pg` double (tests/user-state-d1-queue.ts) -- every route in this file
+// runs on ACCOUNT_STATE_TABLES, and Neon is the only store behind them. Unkey's
+// own HTTP calls (src/unkey-client.ts) are stubbed via global fetch, same
+// per-test-queue shape as the store double.
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import {
@@ -18,12 +17,24 @@ import {
 } from "@scure/sr25519";
 import { encodeAccountId32 } from "../src/ss58.ts";
 import { createSessionToken } from "../src/wallet-auth.ts";
-import { createQueueD1 } from "./user-state-d1-queue.ts";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { wireQueuedPg } from "./user-state-d1-queue.ts";
 import type { Row } from "./row-type.ts";
+
+// The store is Postgres, reached through `new Client(...)` inside
+// src/pg-sql.ts, and this suite calls `worker.fetch(request, env, ctx)` -- so
+// there is nothing to inject and the module IS the seam. The `vi.hoisted`
+// wrapper is not optional: `vi.mock` is hoisted above every import, so a
+// factory closing over a plain `const` reads it before initialisation.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
 
 const mockQueue = { current: [] as Row[][] };
 const sqlCalls = [] as Array<{ text: string; values: unknown[] }>;
 const failNextQuery = { error: null as Error | null };
+wireQueuedPg(pg.control, { mockQueue, sqlCalls, failNextQuery });
 
 const { default: worker } = await import("../workers/data-api.ts");
 
@@ -48,7 +59,7 @@ const UNKEY_API_ID = "api_test123";
 
 function baseEnv(overrides: Record<string, unknown> = {}): Env {
   return {
-    METAGRAPH_HEALTH_DB: createQueueD1({ mockQueue, sqlCalls, failNextQuery }),
+    ...pgMockEnv(),
     METAGRAPH_CONTROL: createFakeKv(),
     WALLET_SESSION_SECRET: SESSION_SECRET,
     UNKEY_ROOT_KEY,
@@ -111,8 +122,18 @@ function req(
   });
 }
 
+// A REAL waitUntil: createPgSql parks `client.end()` on it in a `finally`, so
+// an ExecutionContext without one turns every query into a TypeError after the
+// rows have already been read. Shared, because the handful of tests below that
+// build their own Request still go through the same runner.
+const testCtx = () =>
+  ({
+    waitUntil() {},
+    passThroughOnException() {},
+  }) as unknown as ExecutionContext;
+
 async function fetchRoute(request: Request, env: Env) {
-  return worker.fetch(request, env, {} as unknown as ExecutionContext);
+  return worker.fetch(request, env, testCtx());
 }
 
 // --- POST /api/v1/auth/wallet/challenge -------------------------------------
@@ -125,7 +146,7 @@ test("challenge: rejects a missing body (no ss58 field at all)", async () => {
       headers: { "content-type": "application/json" },
     }),
     env,
-    {} as unknown as ExecutionContext,
+    testCtx(),
   );
   assert.equal(res.status, 400);
 });
@@ -177,7 +198,7 @@ test("challenge: 400 on unparsable JSON body", async () => {
       body: "{not json",
     }),
     env,
-    {} as unknown as ExecutionContext,
+    testCtx(),
   );
   assert.equal(res.status, 400);
 });
@@ -304,7 +325,7 @@ test("verify: rejects a missing body (no ss58/signature fields at all)", async (
       headers: { "content-type": "application/json" },
     }),
     env,
-    {} as unknown as ExecutionContext,
+    testCtx(),
   );
   assert.equal(res.status, 401);
 });
@@ -1219,8 +1240,13 @@ test("internal quota: an allowed spend upserts atomically and reports the new ba
   // The spend is one guarded statement -- the reject rule lives in SQL, not
   // in a read-then-write race.
   assert.ok(/ON CONFLICT \(account_id, day\) DO UPDATE/.test(call!.text));
+  // `$n`, not `?`: the runner numbers every tagged-template hole via
+  // pgStatementText. #9821 is what happens when a `?` reaches Postgres
+  // unrewritten -- it is not a placeholder there, so the predicate matches
+  // nothing and the statement quietly does the wrong thing. Here that would
+  // mean the guard never rejects and the quota caps nobody.
   assert.ok(
-    /WHERE api_quota_daily\.units_spent \+ EXCLUDED\.units_spent <= \?/.test(
+    /WHERE api_quota_daily\.units_spent \+ EXCLUDED\.units_spent <= \$\d/.test(
       call!.text,
     ),
     "the reject-spends-nothing rule is enforced in SQL, not after the write",
@@ -1282,10 +1308,13 @@ test("internal quota: a database failure surfaces as 502 so the caller fails OPE
   assert.equal(res.status, 502);
 });
 
-test("internal quota: 503 when the D1 binding is unbound", async () => {
+test("internal quota: 503 when no user-state store is bound", async () => {
+  // The gate is userStateRunner: no store for ACCOUNT_STATE_TABLES means the
+  // spend cannot be recorded, and a quota route that cannot record a spend must
+  // decline rather than answer `allowed` from nothing.
   const env = baseEnv({
     API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN,
-    METAGRAPH_HEALTH_DB: undefined,
+    HYPERDRIVE: undefined,
   });
   const res = await fetchRoute(
     quotaReq({ account_id: 7, cost: 1, limit: 10 }),
@@ -1921,10 +1950,10 @@ test("usage rollup: a bucket with no keyed_count counts as fully keyless", async
   assert.ok(call!.values.includes(0), "keyed_count defaulted to 0");
 });
 
-test("usage rollup READ: 503 when the D1 binding is unbound", async () => {
+test("usage rollup READ: 503 when no user-state store is bound", async () => {
   const env = baseEnv({
     API_KEY_LOOKUP_INTERNAL_TOKEN: LOOKUP_TOKEN,
-    METAGRAPH_HEALTH_DB: undefined,
+    HYPERDRIVE: undefined,
   });
   const res = await fetchRoute(rollupReq(null, LOOKUP_TOKEN, "GET"), env);
   assert.equal(res.status, 503);
@@ -2196,8 +2225,8 @@ test("tier promote: reports keys_failed when an Unkey update call fails", async 
   assert.equal(body.keys_failed, 1);
 });
 
-test("keys: 503 when the D1 binding is unavailable", async () => {
-  const env = baseEnv({ METAGRAPH_HEALTH_DB: undefined });
+test("keys: 503 when no user-state store is bound", async () => {
+  const env = baseEnv({ HYPERDRIVE: undefined });
   const token = await sessionToken();
   const res = await fetchRoute(
     req("/api/v1/keys", {

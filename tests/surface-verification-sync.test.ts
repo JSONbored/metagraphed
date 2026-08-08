@@ -1,7 +1,7 @@
 // Worker-side tests for the surface-verification cron (#9096): the daily
 // scheduled branch that sweeps every registry subnet's 90-day uptime history
-// out of D1 into the probe-evidence store, replacing the retired
-// sync-surface-verification.yml commit-a-file workflow.
+// out of the observation store into the probe-evidence snapshot, replacing the
+// retired sync-surface-verification.yml commit-a-file workflow.
 //
 // This snapshot is the ONLY producer of `machine-verified`, so the refuse-to-
 // run guards are the load-bearing tests here: a lane that publishes a
@@ -10,6 +10,19 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { afterEach, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The probe evidence follows the prober: surface_uptime_daily and
+// surface_checks are Neon's now (#10179), and the lane resolves its own handle
+// through `readStore` -- a `new Client(...)` there is the only store, so the
+// binding these tests used to hand over no longer exists. Mocking the module
+// is the seam; see tests/helpers/pg-mock.ts for why the controller has to be
+// built inside vi.hoisted (vi.mock is hoisted above every import).
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   netuidsFromSubnets,
   readProberLastRunAt,
@@ -82,19 +95,17 @@ function readArtifactStub(doc: Row | null): AnyFn {
   });
 }
 
-/** A D1 double whose only job is to be `prepare`-shaped. */
-const fakeDb = { prepare: () => ({ bind: () => ({ all: async () => [] }) }) };
-
 function syncEnv(overrides: Record<string, unknown> = {}) {
   const { bucket, puts, store } = fakeBucket(
     (overrides.initialStore as Record<string, unknown>) ?? {},
   );
   delete overrides.initialStore;
+  pg.control.queries.length = 0;
   return {
     puts,
     store,
     env: mockEnv({
-      METAGRAPH_HEALTH_DB: fakeDb,
+      ...pgMockEnv(),
       METAGRAPH_ARCHIVE: bucket,
       METAGRAPH_CONTROL: fakeKv({ last_run_at: LAST_RUN_AT }),
       ...overrides,
@@ -364,7 +375,11 @@ describe("readProberLastRunAt", () => {
 describe("runSurfaceVerificationSync", () => {
   test("no store bound: refuses to run LOUDLY rather than publish a registry-wide demotion", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const { env, puts } = syncEnv({ METAGRAPH_HEALTH_DB: undefined });
+    // No Hyperdrive is how "nowhere to read from" reaches the lane now:
+    // readStore declines and the sweep would otherwise see zero rows for every
+    // subnet -- a well-formed snapshot that strips machine-verified from the
+    // whole registry.
+    const { env, puts } = syncEnv({ HYPERDRIVE: undefined });
     const deps = syncDeps();
     const waited: Promise<unknown>[] = [];
     const result = await runSurfaceVerificationSync(
@@ -392,7 +407,7 @@ describe("runSurfaceVerificationSync", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const deps = syncDeps();
     const result = await runSurfaceVerificationSync(
-      mockEnv({ METAGRAPH_HEALTH_DB: fakeDb }),
+      mockEnv(pgMockEnv()),
       undefined,
       deps,
     );
@@ -477,7 +492,20 @@ describe("runSurfaceVerificationSync", () => {
     );
     assert.equal(calls[0][1].window, SURFACE_HEALTH_WINDOW);
     assert.equal(calls[0][1].observedAt, LAST_RUN_AT);
-    assert.equal(calls[0][1].db, fakeDb);
+    // ONE store, resolved once and handed to every subnet's read. The lane
+    // used to be checked against the binding it was given; there is no binding
+    // to compare against now, so the two properties that actually matter are
+    // asserted directly: every subnet is read through the SAME handle (a
+    // per-netuid store would let half the sweep answer from somewhere else),
+    // and that handle really is the one talking to the store.
+    assert.equal(calls[1][1].db, calls[0][1].db, "one store for the sweep");
+    const before = pg.control.queries.length;
+    await calls[0][1].db.prepare("SELECT 1 FROM surface_uptime_daily").all();
+    assert.equal(
+      pg.control.queries.length,
+      before + 1,
+      "the handed-over db is the store, not an inert stand-in",
+    );
     assert.equal(puts[0].key, SURFACE_HEALTH_R2_KEY);
     const written = JSON.parse(puts[0].value) as Row;
     assert.equal(written.source, "live-cron-prober");
@@ -485,7 +513,7 @@ describe("runSurfaceVerificationSync", () => {
     assert.equal(written.surfaces["sn-1-api"].last_ok, LAST_RUN_AT);
   });
 
-  test("a D1 read failure mid-sweep refuses to write a partial snapshot", async () => {
+  test("a store read failure mid-sweep refuses to write a partial snapshot", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const { env, puts } = syncEnv();
     const deps = syncDeps({
@@ -520,7 +548,7 @@ describe("runSurfaceVerificationSync", () => {
     assert.equal(puts.length, 0);
   });
 
-  test("a healthy D1 with a cold uptime rollup never wipes the store", async () => {
+  test("a healthy store with a cold uptime rollup never wipes the snapshot", async () => {
     const { env, puts } = syncEnv();
     const result = await runSurfaceVerificationSync(
       env,
@@ -559,7 +587,7 @@ describe("runSurfaceVerificationSync", () => {
     const puts: Array<{ key: string; value: string }> = [];
     const result = await runSurfaceVerificationSync(
       mockEnv({
-        METAGRAPH_HEALTH_DB: fakeDb,
+        ...pgMockEnv(),
         METAGRAPH_CONTROL: fakeKv({ last_run_at: LAST_RUN_AT }),
         METAGRAPH_ARCHIVE: {
           get: async () => {
@@ -616,8 +644,9 @@ describe("runSurfaceVerificationSync", () => {
   });
 
   test("uses the real loadSubnetUptime when none is injected", async () => {
-    // No D1 rows behind the fake, so the real loader returns a schema-stable
-    // empty payload -- the point is that the default branch is wired.
+    // No rows behind the store double, so the real loader returns a
+    // schema-stable empty payload -- the point is that the default branch is
+    // wired.
     const { env, puts } = syncEnv();
     const result = await runSurfaceVerificationSync(env, undefined, {
       readArtifact: readArtifactStub({ subnets: [{ netuid: 1 }] }),
@@ -635,36 +664,33 @@ describe("runSurfaceVerificationSync", () => {
     const { store, bucket } = fakeBucket({
       "latest/subnets.json": { subnets: [{ netuid: 1 }] },
     });
+    // One canned rollup row, answered by the store double rather than by a
+    // binding: end-to-end here means the CRON reaches the lane and the lane
+    // reaches its store, so the rows have to arrive the way production's do.
+    pg.control.rows = [
+      {
+        surface_id: "sn-1-api",
+        surface_key: "srf-a",
+        day_count: 30,
+        day: "2026-08-01",
+        samples: 2880,
+        ok_count: 2880,
+        status: "ok",
+      },
+    ];
     const result = (await worker.scheduled(
       {
         cron: SURFACE_VERIFICATION_SYNC_CRON,
         scheduledTime: Date.now(),
       } as never,
       mockEnv({
+        ...pgMockEnv(),
         METAGRAPH_ARCHIVE: bucket,
         METAGRAPH_CONTROL: fakeKv({ last_run_at: LAST_RUN_AT }),
-        METAGRAPH_HEALTH_DB: {
-          prepare: () => ({
-            bind: () => ({
-              all: async () => ({
-                results: [
-                  {
-                    surface_id: "sn-1-api",
-                    surface_key: "srf-a",
-                    day_count: 30,
-                    day: "2026-08-01",
-                    samples: 2880,
-                    ok_count: 2880,
-                    status: "ok",
-                  },
-                ],
-              }),
-            }),
-          }),
-        },
       }) as never,
       { waitUntil: () => {} } as never,
     )) as { ok: boolean; changed: boolean };
+    pg.control.rows = null;
     assert.equal(result.ok, true);
     assert.equal(result.changed, true);
     // Proof the branch ran: only this cron writes the surface-health store key.

@@ -16,7 +16,20 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The ROUTE reads its store through src/read-store.ts, which builds
+// `new Client(...)` from the `pg` module -- there is no binding to hand
+// `handleRequest(request, env, ctx)` any more (#10179). The loader tests below
+// keep injecting their db directly, because `loadNominatorPositions(db, ...)`
+// takes one; only the route half needs the module mock. See
+// tests/helpers/pg-mock.ts for why it is a mock and not an export.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   DEFAULT_NOMINATOR_BASIS,
   NOMINATOR_BASES,
@@ -60,7 +73,11 @@ function d1() {
     },
   };
 }
-const env = () => ({ METAGRAPH_HEALTH_DB: d1() }) as unknown as Env;
+/** The route's env: a connection string for readStore to find, every table
+ * declared Neon's, and the SAME in-memory engine `d1()` reads answering behind
+ * the `pg` double -- so a route assertion and a loader assertion below are
+ * looking at one set of rows. */
+const env = () => ({ ...pgMockEnv() }) as unknown as Env;
 
 function completePass() {
   db.prepare(
@@ -88,6 +105,12 @@ function position(
 beforeEach(() => {
   db = new DatabaseSync(":memory:");
   for (const s of MIGRATIONS) db.exec(s);
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = null;
+  pg.control.failNext = null;
+  pg.control.onQuery = null;
+  pg.control.db = db;
 });
 
 describe("the positions basis reads the standing ledger", () => {
@@ -426,7 +449,7 @@ describe("GET /api/v1/validators/{hotkey}/nominators?basis=", () => {
     assert.equal(data.nominator_count, null);
   });
 
-  test("no D1 binding declines rather than 500ing", async () => {
+  test("no store bound declines rather than 500ing", async () => {
     const data = await body(
       await get(
         `/api/v1/validators/${HOTKEY}/nominators?basis=positions`,

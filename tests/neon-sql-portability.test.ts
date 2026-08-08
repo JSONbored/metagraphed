@@ -437,6 +437,14 @@ describe("Neon-movable SQL is portable", () => {
           return (path: string) => re.test(path);
         },
       ),
+      // `if (url.pathname !== "...") return null;` -- the early-return form a
+      // matcher serving exactly ONE route uses. matchHealthStatusD1Route
+      // spells its dispatch this way, and reading only the two forms above
+      // reported it as unscanned when it is scanned: the extraction, not the
+      // coverage, was what had the hole (#10179 put that route on the map).
+      ...[...body.matchAll(/pathname !== "([^"]+)"/g)].map(
+        (m) => (path: string) => path === m[1],
+      ),
     ];
     assert.ok(
       guards.length >= 12,

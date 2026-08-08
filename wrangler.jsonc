@@ -82,8 +82,8 @@
     // what keeps it from becoming drift.
     // ---------------------------------------------------------------------
     "NEON_DUAL_WRITE_LANES": "neurons,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,subnet-hyperparams,account-identity,chain-detail,blocks-head,raw-capture-state",
-    "NEON_READ_LANES": "account_position_daily,neurons,neuron_daily,subnet_snapshots,subnet_hyperparams,account_identity,validator_nominator_counts,subnet_hyperparams_history,account_identity_history",
-    "NEON_SOLE_STORE_TABLES": "rpc_accounts,github_accounts,api_keys,api_key_blocks,api_key_usage_daily,api_quota_daily,api_usage_rollup,chain_alert_triggers,chain_alert_deliveries,watch_push_subscriptions,neurons,neuron_daily,account_position_daily,surface_checks,surface_status,surface_uptime_daily,surface_failure_daily,subnet_snapshots,subnet_hyperparams,subnet_hyperparams_history,account_identity,account_identity_history,validator_nominator_counts,chain_concentration_daily,subnet_burn_history,tao_usd_index,nominator_positions,nominator_positions_passes,blocks_head,raw_capture_state,chain_detail_blocks,chain_detail_extrinsics,chain_detail_chain_events,chain_detail_account_events,neurons_passes,validator_nominator_counts_passes,emission_gate_param_history,subnet_emission_enabled_history,emission_flow_watch,lane_health,account_balances,account_balances_passes,hotkey_alpha,hotkey_alpha_passes,self_health_checks,self_health_daily",
+    "NEON_READ_LANES": "account_position_daily,neurons,neuron_daily,subnet_snapshots,subnet_hyperparams,account_identity,validator_nominator_counts,subnet_hyperparams_history,account_identity_history,surface_status",
+    "NEON_SOLE_STORE_TABLES": "rpc_accounts,github_accounts,api_keys,api_key_blocks,api_key_usage_daily,api_quota_daily,api_usage_rollup,chain_alert_triggers,chain_alert_deliveries,watch_push_subscriptions,neurons,neuron_daily,account_position_daily,surface_checks,surface_status,surface_uptime_daily,surface_failure_daily,subnet_snapshots,subnet_hyperparams,subnet_hyperparams_history,account_identity,account_identity_history,validator_nominator_counts,chain_concentration_daily,subnet_burn_history,tao_usd_index,nominator_positions,nominator_positions_passes,blocks_head,raw_capture_state,chain_detail_blocks,chain_detail_extrinsics,chain_detail_chain_events,chain_detail_account_events,neurons_passes,validator_nominator_counts_passes,emission_gate_param_history,subnet_emission_enabled_history,emission_flow_watch,lane_health,account_balances,account_balances_passes,hotkey_alpha,hotkey_alpha_passes,self_health_checks,self_health_daily,subnets,surfaces,providers,surface_history",
     // Staging drift tripwire (types-epic B, #7860): when "true", the routes
     // schemas-src/ covers (subnets, subnet-detail, health, economics,
     // subnet-stake-quote) parse their own outgoing envelope against the Zod
@@ -624,26 +624,15 @@
       "bucket_name": "metagraphed-artifacts",
     },
   ],
-  // Observation tables on D1 (migrations/d1/0002_observations.sql): the
-  // probe-derived history series, dual-written by the health prober alongside
-  // the Postgres mirrors while the box lives -- see src/observations-d1.ts's
-  // header. Same physical database the registry write path uses
-  // (wrangler.registry.jsonc's REGISTRY_DB); a second D1 database would be a
-  // second thing to operate for tables that comfortably share one. The
-  // binding name keeps the pre-2026-07-16 METAGRAPH_HEALTH_DB, matching the
-  // resurrected code that uses it.
-  // Hyperdrive to the same Neon this account's data-api Worker already uses
-  // (#10017). Bound HERE because the chain-detail prune cron runs on THIS
-  // Worker, and pruning a table in one store but not the other is how a mirror
-  // diverges permanently -- the reconciler reads the pruned tail as a deficit
-  // it can never close.
+  // Hyperdrive to the Neon this account's data-api Worker also uses (#10017).
+  // Bound HERE because the chain-detail prune cron runs on THIS Worker.
   //
   // BINDING IT MOVES NO READ, and that separation is #9704's whole lesson.
   // Every read gate in this codebase asks an explicit flag as well as the
   // binding, because provisioning Hyperdrive for a WRITE pilot once silently
   // moved a public route's read onto a store nothing had written to. "This
   // Worker can reach Neon" and "this route should read Neon" are different
-  // questions; nothing on this Worker asks the second one yet.
+  // questions.
   //
   // nodejs_compat is already set above, which is what makes the native pg
   // driver usable here at all.
@@ -651,13 +640,6 @@
     {
       "binding": "HYPERDRIVE",
       "id": "8a09dc673733497f987434f59689287e",
-    },
-  ],
-  "d1_databases": [
-    {
-      "binding": "METAGRAPH_HEALTH_DB",
-      "database_name": "metagraphed",
-      "database_id": "8e14c15f-d0b0-4ffd-ad65-01e37993efcf",
     },
   ],
   // RPC reverse-proxy usage telemetry (#9228). Both proxy entry points --

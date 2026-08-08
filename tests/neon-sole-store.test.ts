@@ -1,14 +1,15 @@
-// The fourth flag: which tables Neon SOLELY owns, and what that changes.
+// Which tables Neon SOLELY owns, and what that changes.
 //
-// The three older flags all describe a table that still lives in D1 and is
-// being shadowed. This one says D1 is not behind the table any more, which is
-// the only one of the four that can describe the end state (#9787).
+// The flag outlived the migration it was built for: D1 is gone (#10179), so
+// there is no longer a second store to fall back to. What it still decides is
+// whether a group of tables may be READ AT ALL, and that is the property this
+// file guards.
 //
-// What is actually asserted here is the ALL-OR-NOTHING rule. userStateRunner
-// picks one runner for a whole callback, so a group whose tables are only
-// half-listed would send some statements to a store where their table does not
-// exist -- and that failure is a schema-stable empty, not an error. Every test
-// below is a way for that to happen.
+// The rule is ALL-OR-NOTHING. userStateRunner picks one runner for a whole
+// callback, so a group whose tables are only half-listed must get no runner --
+// running the listed statements and failing the rest would leave the callback
+// half-applied, and the failure of the missing half is a schema-stable empty
+// rather than an error. Every test below is a way for that to happen.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 
@@ -23,33 +24,10 @@ import {
 
 const HYPERDRIVE = { connectionString: "postgresql://example/db" };
 
-/** A D1 binding that records the statement text it was asked to prepare, so a
- * test can tell WHICH store a runner reached without a real database. */
-function recordingD1() {
-  const seen: string[] = [];
+function envWith(owned: string[], opts: { hyperdrive?: boolean } = {}) {
   return {
-    seen,
-    binding: {
-      prepare(text: string) {
-        seen.push(text);
-        return {
-          bind: () => ({ all: async () => ({ results: [] }) }),
-        };
-      },
-    } as never,
-  };
-}
-
-function envWith(
-  owned: string[],
-  opts: { d1?: boolean; hyperdrive?: boolean },
-) {
-  const d1 = recordingD1();
-  return {
-    d1,
     env: {
       NEON_SOLE_STORE_TABLES: owned.join(","),
-      METAGRAPH_HEALTH_DB: opts.d1 === false ? undefined : d1.binding,
       HYPERDRIVE: opts.hyperdrive === false ? undefined : HYPERDRIVE,
     } as never,
   };
@@ -82,64 +60,40 @@ describe("neonSoleStoreTables", () => {
 });
 
 describe("userStateRunner", () => {
-  test("a fully-owned group goes to Postgres", async () => {
-    const { d1, env } = envWith([...ACCOUNT_STATE_TABLES], {});
-    const sql = userStateRunner(env, ctx, ACCOUNT_STATE_TABLES);
-    assert.ok(sql);
-    // Proving it is the Postgres runner by what it did NOT touch: a D1 runner
-    // would have called prepare(). Asserting on the returned object's shape
-    // would prove nothing, since the two runners are deliberately identical.
-    assert.deepEqual(d1.seen, []);
+  test("a fully-owned group gets a runner", () => {
+    const { env } = envWith([...ACCOUNT_STATE_TABLES]);
+    assert.ok(userStateRunner(env, ctx, ACCOUNT_STATE_TABLES));
   });
 
-  test("ONE unlisted table pins the whole group to D1", async () => {
+  test("ONE unlisted table refuses the whole group", () => {
     // The failure this exists to stop. api_quota_daily left out means the
-    // quota statement would run against a Postgres that has no such table --
-    // and the group's other six would silently move with it.
+    // quota statement would run against a store the declaration does not cover
+    // -- and the group's other six would silently go with it.
     const partial = ACCOUNT_STATE_TABLES.filter((t) => t !== "api_quota_daily");
-    const { d1, env } = envWith(partial, {});
-    const sql = userStateRunner(env, ctx, ACCOUNT_STATE_TABLES);
-    assert.ok(sql);
-    await sql`SELECT 1`;
-    assert.equal(d1.seen.length, 1);
-  });
-
-  test("the two groups move independently", () => {
-    const { d1, env } = envWith([...ALERT_TRIGGER_TABLES], {});
-    // Alert tables owned, account tables not: the alert group moves, the
-    // account group does not.
-    assert.ok(userStateRunner(env, ctx, ALERT_TRIGGER_TABLES));
-    assert.deepEqual(d1.seen, []);
-    const accounts = userStateRunner(env, ctx, ACCOUNT_STATE_TABLES);
-    assert.ok(accounts);
-    void accounts`SELECT 1`;
-    assert.equal(d1.seen.length, 1);
-  });
-
-  test("an owned group with no Hyperdrive binding falls back to D1", async () => {
-    // Flag set on a deployment that cannot reach Neon. Answering from D1 is
-    // right -- the rows are still there until the copy is retired -- and it is
-    // what makes the flag safe to set before the binding lands.
-    const { d1, env } = envWith([...ACCOUNT_STATE_TABLES], {
-      hyperdrive: false,
-    });
-    const sql = userStateRunner(env, ctx, ACCOUNT_STATE_TABLES);
-    assert.ok(sql);
-    await sql`SELECT 1`;
-    assert.equal(d1.seen.length, 1);
-  });
-
-  test("neither store available is null, which callers turn into a 503", () => {
-    const { env } = envWith([], { d1: false, hyperdrive: false });
+    const { env } = envWith(partial);
     assert.equal(userStateRunner(env, ctx, ACCOUNT_STATE_TABLES), null);
   });
 
-  test("an owned group survives D1 being unbound entirely", () => {
-    // The state this whole flag exists to reach: D1 gone, and the tier still
-    // answering. Once every table is listed, a missing METAGRAPH_HEALTH_DB is
-    // no longer a 503.
-    const { env } = envWith([...ACCOUNT_STATE_TABLES], { d1: false });
-    assert.ok(userStateRunner(env, ctx, ACCOUNT_STATE_TABLES));
+  test("the two groups move independently", () => {
+    // Alert tables declared, account tables not: the alert group gets a
+    // runner, the account group does not.
+    const { env } = envWith([...ALERT_TRIGGER_TABLES]);
+    assert.ok(userStateRunner(env, ctx, ALERT_TRIGGER_TABLES));
+    assert.equal(userStateRunner(env, ctx, ACCOUNT_STATE_TABLES), null);
+  });
+
+  test("an owned group with no Hyperdrive binding gets no runner", () => {
+    // Flag set on a deployment that cannot reach Neon. Sole-store is a claim
+    // about the DATA, not about this isolate, so the flag alone is not enough
+    // -- and answering a 503 beats answering from a store this Worker cannot
+    // actually open.
+    const { env } = envWith([...ACCOUNT_STATE_TABLES], { hyperdrive: false });
+    assert.equal(userStateRunner(env, ctx, ACCOUNT_STATE_TABLES), null);
+  });
+
+  test("no store available is null, which callers turn into a 503", () => {
+    const { env } = envWith([], { hyperdrive: false });
+    assert.equal(userStateRunner(env, ctx, ACCOUNT_STATE_TABLES), null);
   });
 
   test("the declared groups are exactly the user-state tables", () => {
@@ -185,24 +139,23 @@ describe("neonOwnsNeuronsSnapshot (the write-path inversion)", () => {
     assert.equal(neonOwnsNeuronsSnapshot(env(ALL)), true);
   });
 
-  test("ONE table left out keeps the whole snapshot on D1", () => {
-    // The pass writes all three from one derivation. A half-listed group would
-    // leave neuron_daily in D1 while its parent moved, and the two would never
-    // agree again -- which no read gate would notice, because each table
-    // answers fine on its own.
+  test("ONE table left out disowns the whole snapshot", () => {
+    // The pass writes all three from one derivation, so the group has to move
+    // as a unit. A half-listed group would claim two of the three, and no read
+    // gate would notice -- each table answers fine on its own.
     for (const missing of ALL) {
       const partial = ALL.filter((t) => t !== missing);
       assert.equal(
         neonOwnsNeuronsSnapshot(env(partial)),
         false,
-        `${missing} missing should pin the snapshot to D1`,
+        `${missing} missing should disown the snapshot`,
       );
     }
   });
 
-  test("owned but no Hyperdrive binding stays on D1", () => {
-    // Skipping the D1 write with nowhere to put the rows would drop a whole
-    // pass silently. The binding is a precondition, not an optimisation.
+  test("declared but no Hyperdrive binding is not ownership", () => {
+    // Claiming the tables with nowhere to put the rows would drop a whole pass
+    // silently. The binding is a precondition, not an optimisation.
     assert.equal(neonOwnsNeuronsSnapshot(env(ALL, false)), false);
   });
 

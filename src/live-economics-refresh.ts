@@ -500,7 +500,12 @@ export async function refreshLiveEconomics(
 
     const neuronRows = await db.prepare(NEURON_AGGREGATE_QUERY).all();
     const neurons = indexNeuronAggregates(neuronRows?.results);
-    const historyRows = await db.prepare(alphaPriceHistoryQuery()).all();
+    // `now` threaded, not defaulted: every other timestamp in this tick comes
+    // from the injected clock, and a cutoff read off Date.now would put the
+    // window on a different clock from the rows it bounds.
+    const historyRows = await db
+      .prepare(alphaPriceHistoryQuery(undefined, now))
+      .all();
     const priceHistoryByNetuid = indexAlphaPriceHistoryByNetuid(
       historyRows?.results,
     );

@@ -11,7 +11,23 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, test } from "vitest";
+import { beforeEach, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The lane's store is Postgres now (#10179): the handler resolves it itself
+// through `producerStore`, which builds a `new Client(...)` from the Hyperdrive
+// binding, so there is no handle a request can carry in. Mocking the module is
+// the seam, and the real SQLite fixture is attached to the controller so the
+// ROW_NUMBER() window reads and the two-arm CHECK on emission_flow_watch are
+// still EXECUTED rather than merely recorded -- which is this file's whole
+// premise. See tests/helpers/pg-mock.ts for why the controller has to be built
+// inside vi.hoisted, and for why binding a real boolean against SQLite needs a
+// driver-level coercion the log deliberately does not apply.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import { handleRequest } from "../workers/api.ts";
 
 const SCHEMA = fs.readFileSync(
@@ -24,41 +40,10 @@ const ROUTE = "https://api.metagraph.sh/api/v1/internal/emission-gate-sync";
 
 let db: InstanceType<typeof DatabaseSync>;
 
-// D1-shaped wrapper over node:sqlite: reads go through prepare().all() (D1's
-// { results } envelope), writes through prepare().bind() collected into
-// batch(), transactionally like the real thing.
-function d1() {
-  return {
-    prepare(sql: string) {
-      return {
-        async all() {
-          return { results: db.prepare(sql).all() };
-        },
-        bind(...values: unknown[]) {
-          return { sql, values };
-        },
-      };
-    },
-    async batch(statements: { sql: string; values: unknown[] }[]) {
-      db.exec("BEGIN");
-      try {
-        for (const statement of statements) {
-          db.prepare(statement.sql).run(...(statement.values as never[]));
-        }
-        db.exec("COMMIT");
-      } catch (error) {
-        db.exec("ROLLBACK");
-        throw error;
-      }
-      return statements;
-    },
-  };
-}
-
 function env(over: Record<string, unknown> = {}) {
   return {
     EMISSION_GATE_SYNC_SECRET: SECRET,
-    METAGRAPH_HEALTH_DB: d1(),
+    ...pgMockEnv(),
     ...over,
   } as unknown as Env;
 }
@@ -128,6 +113,9 @@ const count = (table: string) =>
 beforeEach(() => {
   db = new DatabaseSync(":memory:");
   db.exec(SCHEMA);
+  pg.control.db = db;
+  pg.control.queries.length = 0;
+  pg.control.failNext = null;
 });
 
 // --- auth / caps boundary ----------------------------------------------------
@@ -144,7 +132,9 @@ test("rejects non-POST before checking auth (405)", async () => {
 test("503s when EMISSION_GATE_SYNC_SECRET is unprovisioned", async () => {
   const res = await handleRequest(
     syncRequest("{}"),
-    { METAGRAPH_HEALTH_DB: d1() } as unknown as Env,
+    // A store, but no secret: the secret check must come FIRST, so a
+    // deployment that can reach the store still refuses unauthenticated writes.
+    pgMockEnv() as unknown as Env,
     {},
   );
   assert.equal(res.status, 503);
@@ -173,7 +163,7 @@ test("401s on a wrong token", async () => {
   assert.equal(res.status, 401);
 });
 
-test("503s when METAGRAPH_HEALTH_DB is not bound", async () => {
+test("503s when no store is bound", async () => {
   const res = await handleRequest(
     syncRequest("{}"),
     { EMISSION_GATE_SYNC_SECRET: SECRET } as unknown as Env,
@@ -465,98 +455,87 @@ test("an EMA advanced past the frozen baseline is recorded and alertable", async
 
 // --- degradation --------------------------------------------------------------
 
-test("a read tier returning no rows envelope is treated as a first run", async () => {
-  const recorded: unknown[] = [];
-  const bare = {
-    prepare(sql: string) {
-      return {
-        // D1 always envelopes rows in { results }; a degraded/foreign shape
-        // must read as zero rows, not throw.
-        async all() {
-          return undefined;
-        },
-        bind(...values: unknown[]) {
-          return { sql, values };
-        },
-      };
-    },
-    async batch(statements: unknown[]) {
-      recorded.push(...statements);
-      return statements;
-    },
-  };
-  const res = await post(baseBody(), env({ METAGRAPH_HEALTH_DB: bare }));
+test("a store with no prior rows is treated as a first run, in ONE transaction", async () => {
+  // No engine behind the double, so all three previous-state reads answer
+  // zero rows -- which is what a first run looks like, and what a cold or
+  // just-migrated store looks like too. Both must produce the full 10-row
+  // append rather than an error.
+  pg.control.db = null;
+  const res = await post(baseBody());
   assert.equal(res.status, 200);
   assert.equal((await res.json()).gate_param_rows, 4);
-  assert.equal(recorded.length, 10);
+  // ONE batch, and it really is a transaction: the three change sets are
+  // derived from a single observation, so a partial application would leave
+  // the enabled history claiming a state the param history never recorded.
+  const texts = pg.control.queries.map((q) => q.text.trim().split(/\s+/)[0]);
+  assert.equal(texts.filter((t) => t === "BEGIN").length, 1);
+  assert.equal(texts.filter((t) => t === "COMMIT").length, 1);
+  assert.equal(texts.filter((t) => t === "INSERT").length, 10);
 });
 
-test("a D1 failure is contained as a 502, never an uncaught throw", async () => {
-  const exploding = {
-    prepare() {
-      throw new Error("d1 down");
-    },
-    batch: async () => {},
-  };
-  const res = await post(baseBody(), env({ METAGRAPH_HEALTH_DB: exploding }));
+test("a store failure is contained as a 502, never an uncaught throw", async () => {
+  pg.control.failNext = new Error("store down");
+  const res = await post(baseBody());
   assert.equal(res.status, 502);
   assert.equal((await res.json()).error.code, "emission_gate_sync_failed");
 });
 
-// --- the store swap, and the booleans it turns on (#10112) -------------------
+// --- the booleans, and the all-or-nothing family (#10112, #10179) -----------
 //
 // All four flag columns -- enabled, previous_enabled, is_set, predates_capture
-// -- are BOOLEAN in Neon and INTEGER in D1. Binding 1/0 is `operator does not
-// exist: boolean = integer` on one store; binding true/false is wrong on the
-// other. So the coercion is per store, and this pins both directions.
+// -- are BOOLEAN in Postgres. Binding 1/0 there is `operator does not exist:
+// boolean = integer`, so the handler binds real booleans. That is invisible in
+// the fixture, which is SQLite and stores them as 0/1 (the double coerces on
+// the way into the engine, exactly as a driver would), so the binding itself
+// is asserted off the recorded statement instead.
+//
+// The two tests this replaces asked which of two stores answered and whether a
+// half-declared family fell back to D1. Both questions are gone with D1: there
+// is nothing to fall back TO. What survives is the property underneath -- the
+// family moves together or not at all -- and it now shows up as a refusal.
 
-/** The three tables named as Neon's, plus a Hyperdrive to reach it with. */
-const NEON_OWNED = {
-  HYPERDRIVE: { connectionString: "postgresql://example/db" },
-  NEON_SOLE_STORE_TABLES:
-    "emission_gate_param_history,subnet_emission_enabled_history,emission_flow_watch",
-};
-
-test("on D1, the flag columns still bind as 0/1", async () => {
-  // The pre-existing tests above assert `predates_capture === 1` against the
-  // real SQLite fixture, so this only has to pin that the D1 path was NOT
-  // switched to booleans by the port.
+test("the flag columns are bound as real booleans, never as 0/1", async () => {
   const res = await post(baseBody());
   assert.equal(res.status, 200);
+  const inserts = pg.control.queries.filter((q) =>
+    q.text.includes("INSERT INTO subnet_emission_enabled_history"),
+  );
+  assert.equal(inserts.length, 2);
+  // (netuid, enabled, previous_enabled, block_number, observed_at,
+  //  predates_capture) -- the flags are positions 1, 2 and 5. previous_enabled
+  // is NULL on a first sighting and must STAY null: it means "no prior
+  // observation", which is not the same as false.
+  assert.deepEqual(inserts[0]!.values.slice(0, 3), [1, true, null]);
+  assert.equal(inserts[0]!.values[5], true);
+  assert.equal(inserts[1]!.values[1], false, "netuid 2 is disabled");
+  // ...and the row that lands still reads back as SQLite's own 0/1, so the
+  // CHECK (predates_capture IN (0, 1)) in the migration is really exercised.
   const row = db
     .prepare(
-      "SELECT predates_capture FROM emission_gate_param_history WHERE param = 'emission_gate_bar'",
+      "SELECT enabled, previous_enabled FROM subnet_emission_enabled_history WHERE netuid = 1",
     )
-    .get() as { predates_capture: unknown };
-  assert.equal(row.predates_capture, 1, "D1 must keep integer flags");
+    .get() as Record<string, unknown>;
+  assert.equal(row.enabled, 1);
+  assert.equal(row.previous_enabled, null);
 });
 
-test("owning all three tables moves the lane off D1 entirely", async () => {
-  // The Neon write cannot succeed against a fake connection string, so a 502
-  // is the outcome -- and that is the point: it proves the handler took the
-  // Neon path rather than quietly writing D1. A row-count assertion could not
-  // tell those apart.
-  const before = count("emission_gate_param_history");
-  const res = await post(baseBody(), env(NEON_OWNED));
-  assert.equal(res.status, 502);
-  assert.equal(
-    count("emission_gate_param_history"),
-    before,
-    "D1 was written while Neon owns the family",
-  );
-});
-
-test("owning only SOME of the three keeps the whole lane on D1", async () => {
+test("owning only SOME of the three tables refuses the whole lane", async () => {
   // One sync derives all three change sets from ONE observation and writes
   // them in ONE batch, so a family split across stores would put a param
   // change and the enabled change it was derived alongside into different
-  // databases.
+  // databases. With one store left, "split" is unreachable and a partial
+  // declaration is simply a misconfiguration -- so producerStore hands back
+  // nothing and the route says so, rather than writing two of three tables.
+  const before = count("emission_gate_param_history");
   const res = await post(
     baseBody(),
-    env({
-      HYPERDRIVE: { connectionString: "postgresql://example/db" },
-      NEON_SOLE_STORE_TABLES: "emission_gate_param_history",
-    }),
+    env({ NEON_SOLE_STORE_TABLES: "emission_gate_param_history" }),
   );
-  assert.equal(res.status, 200, "a partial family must stay on D1");
+  assert.equal(res.status, 503);
+  assert.equal((await res.json()).error.code, "emission_gate_sync_unavailable");
+  assert.equal(
+    count("emission_gate_param_history"),
+    before,
+    "a half-declared family must write nothing at all",
+  );
 });

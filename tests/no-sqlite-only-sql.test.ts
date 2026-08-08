@@ -38,8 +38,40 @@ const SQLITE_ONLY: [RegExp, string][] = [
   [/\bstrftime\s*\(/i, "strftime() — Postgres uses to_char/date_trunc"],
   [/\bjulianday\s*\(/i, "julianday() — no Postgres equivalent"],
   [/\bdatetime\s*\(\s*'now'/i, "datetime('now') — Postgres uses now()"],
+  // TWO-ARGUMENT date(), which is the one that got through (#10179).
+  //
+  // The list already had datetime('now') and stopped there, so
+  // `date('now','-40 days')` in scripts/lib/load-alpha-price-history.ts sailed
+  // past -- and that query has two engines behind it. Postgres answers
+  // `function date(unknown, unknown) does not exist`, the read sits inside
+  // refreshLiveEconomics's own try, and the whole economics tick died with the
+  // last good KV blob still being served.
+  //
+  // Matched on the SHAPE OF THE MODIFIER, not merely on the arity: `date(x)`
+  // alone is legitimate, and a bare two-argument match also hits English prose
+  // that happens to read "date (`2026-06-01`, a whole UTC day)". SQLite's
+  // modifiers are a closed set, so requiring one keeps this precise.
+  //
+  // The sign alternative is `'[+-]` with no digit after it, deliberately: the
+  // statement that broke was built by interpolation -- `'-${days} days'` -- so
+  // the character after the sign in SOURCE is `$`, not a digit. Requiring a
+  // digit here would pass the scanner on exactly the file it was extended for.
+  [
+    /\bdate\s*\([^()]*,\s*'(?:[+-]|now|unixepoch|localtime|utc|start of|weekday)/i,
+    "date(x, modifier) — SQLite date arithmetic; compute the cutoff in JS and bind or inline a YYYY-MM-DD literal",
+  ],
   [/\bLIMIT\s+\d+\s*,\s*\d+/i, "LIMIT a, b — Postgres needs LIMIT b OFFSET a"],
   [/\bPRAGMA\b/i, "PRAGMA — SQLite only"],
+  // json_extract / json_each, which is how src/surface-history.ts nearly
+  // shipped an empty trail for every subnet (#10179): the column is TEXT
+  // holding JSON, the reader wraps its own read in a catch, and a thrown
+  // "function json_extract does not exist" renders as "nothing has changed
+  // here" -- a real answer for a stable subnet, so indistinguishable.
+  [
+    /\bjson_extract\s*\(/i,
+    "json_extract() — Postgres uses ->> / jsonb_extract_path_text",
+  ],
+  [/\bjson_each\s*\(/i, "json_each() — Postgres uses jsonb_array_elements"],
 ];
 
 /** SQL lives in string literals; the prose around it does not. Scanning raw
@@ -70,13 +102,20 @@ function walk(dir: string): string[] {
 describe("store-neutral SQL", () => {
   test("no file that can reach either store uses SQLite-only syntax", () => {
     const offenders: string[] = [];
-    // Everything shipped. The `*-d1-write.ts` modules are exempt only while
-    // they exist: they are D1's by name and are being deleted with it, and a
-    // file that is deleted cannot be handed a Postgres runner.
-    for (const file of [...walk("src"), ...walk("workers")]) {
-      if (/-d1-write\.ts$/.test(file) || /\/observations-d1\.ts$/.test(file)) {
-        continue;
-      }
+    // Everything shipped, AND scripts/ (#10179).
+    //
+    // scripts/ was outside this walk, which is half of why
+    // `date('now','-40 days')` survived: it lives in
+    // scripts/lib/load-alpha-price-history.ts and is imported by
+    // src/live-economics-refresh.ts, so the statement was built in an unscanned
+    // file and executed against Postgres in a scanned one. A query does not
+    // become store-neutral by being defined somewhere the scanner does not
+    // look.
+    for (const file of [
+      ...walk("src"),
+      ...walk("workers"),
+      ...walk("scripts"),
+    ]) {
       const sql = sqlLiterals(readFileSync(file, "utf8"));
       for (const [pattern, why] of SQLITE_ONLY) {
         const hit = pattern.exec(sql);
@@ -108,6 +147,45 @@ describe("store-neutral SQL", () => {
     assert.ok(
       !SQLITE_ONLY.some(([p]) => p.test(sqlLiterals(fixed))),
       "the portable form is being reported as SQLite-only",
+    );
+  });
+
+  test("the scanner would catch the date() arithmetic that broke economics", () => {
+    // The second real statement this file exists for (#10179). Same shape of
+    // proof as above: the pattern set has to recognise the byte-for-byte
+    // original, or a green run means nothing.
+    const real =
+      "const sql = `WHERE snapshot_date >= date('now','-${days} days') ORDER BY netuid`;";
+    assert.ok(
+      SQLITE_ONLY.some(([p]) => p.test(sqlLiterals(real))),
+      "the scanner no longer recognises the date('now', ...) that froze economics:current",
+    );
+    // The unixepoch form too -- the same function, the other modifier.
+    assert.ok(
+      SQLITE_ONLY.some(([p]) =>
+        p.test(sqlLiterals("`date(captured_at / 1000, 'unixepoch')`")),
+      ),
+      "the scanner no longer recognises date(x, 'unixepoch')",
+    );
+    // And the replacement must NOT trip it: a bound or inlined YYYY-MM-DD
+    // literal has no date function left for two dialects to disagree about.
+    assert.ok(
+      !SQLITE_ONLY.some(([p]) =>
+        p.test(sqlLiterals("`WHERE snapshot_date >= '2026-06-29' ORDER BY x`")),
+      ),
+      "the portable date literal is being reported as SQLite-only",
+    );
+    // Nor may it trip on ordinary English prose that mentions a date, which a
+    // bare two-argument match does.
+    assert.ok(
+      !SQLITE_ONLY.some(([p]) =>
+        p.test(
+          sqlLiterals(
+            '"an ISO-8601 date (`2026-06-01`, a whole UTC day) or date-time"',
+          ),
+        ),
+      ),
+      "the date() rule is matching prose",
     );
   });
 });

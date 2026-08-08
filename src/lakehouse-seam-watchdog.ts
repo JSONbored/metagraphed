@@ -46,7 +46,7 @@ import {
   resolveDecodeWatermark,
   type DecodeWatermark,
 } from "./decode-watermark.ts";
-import { d1Watermark } from "./raw-capture-sync.ts";
+import { watermarkRead } from "./raw-capture-sync.ts";
 import { readStore } from "./read-store.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 
@@ -237,13 +237,10 @@ async function capturedThrough(env: unknown): Promise<number | null> {
   // seam this watchdog measures is capture-vs-lakehouse; against a frozen
   // watermark it reports a gap that only ever widens.
   const db = readStore(env, ["raw_capture_state"]) as unknown as
-    Parameters<typeof d1Watermark>[0] | undefined;
+    Parameters<typeof watermarkRead>[0] | undefined;
   if (!db?.prepare) return null;
   try {
-    // `Date.now` rather than a `() => 0` stub: the clock is only used by the
-    // store's WRITE half, which this watchdog never calls, and an inline arrow
-    // here would be a function nothing ever invokes.
-    return await d1Watermark(db, Date.now).read();
+    return await watermarkRead(db)();
   } catch {
     return null;
   }

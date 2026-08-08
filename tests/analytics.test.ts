@@ -1,5 +1,17 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The observation family's store is Postgres now (#10179), reached through
+// `new Client(...)` inside src/pg-sql.ts and src/read-store.ts. Neither the
+// prober writers nor a `handleRequest(request, env, ctx)` caller can inject
+// into that, so the `pg` module is the seam -- see tests/helpers/pg-mock.ts
+// for why, and for why the controller has to be built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   formatPercentiles,
   formatIncidents,
@@ -1095,37 +1107,41 @@ describe("writeSubnetSnapshot", () => {
   };
   const reader = (data: unknown) => () => Promise.resolve(data as Row);
 
-  /** The snapshot write's real sink (D1) plus the unrelated identity mirror
-   * (DATA_API), captured separately so asserting on one never depends on the
-   * other. `snapshotOk: false` makes the D1 batch throw, which is the only way
-   * this write can now fail. */
+  /** The snapshot write's real sink (the store) plus the unrelated identity
+   * mirror (DATA_API), captured separately so asserting on one never depends
+   * on the other. `snapshotOk: false` makes the store reject, which is the
+   * only way this write can now fail.
+   *
+   * The `ctx` comes back with the env because it is a PRECONDITION, not
+   * plumbing: observationsRunner hands the pooled connection back through
+   * ctx.waitUntil and returns null without one, so a snapshot write called
+   * without a ctx declines `unavailable` no matter what is bound. */
   function snapshotEnv({ snapshotOk = true, identityOk = true } = {}) {
     const captured: Row = { snapshot: [] as Row[] };
+    pg.control.queries.length = 0;
+    pg.control.rows = null;
+    pg.control.failNext = null;
+    pg.control.onQuery = (query) => {
+      // Re-armed per statement: failNext is consumed by the query it fails,
+      // and this write issues one INSERT per row.
+      if (!snapshotOk) {
+        pg.control.failNext = new Error("store rejected: no such table");
+        return;
+      }
+      if (!/INSERT INTO subnet_snapshots\b/.test(query.text)) return;
+      // Column order matches the INSERT in upsertSubnetSnapshotsToNeon.
+      const [netuid, snapshot_date, completeness_score] = query.values;
+      (captured.snapshot as Row[]).push({
+        netuid,
+        snapshot_date,
+        completeness_score,
+        total_stake_tao: query.values[10],
+        alpha_price_tao: query.values[11],
+        alpha_in_pool: query.values[14],
+      });
+    };
     const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql: string) {
-          return {
-            bind: (...values: unknown[]) => ({ sql, values }),
-          };
-        },
-        async batch(statements: { values: unknown[] }[]) {
-          if (!snapshotOk) throw new Error("D1_ERROR: no such table");
-          for (const statement of statements) {
-            // Column order matches the INSERT in upsertSubnetSnapshotsToD1.
-            const [netuid, snapshot_date, completeness_score] =
-              statement.values;
-            (captured.snapshot as Row[]).push({
-              netuid,
-              snapshot_date,
-              completeness_score,
-              total_stake_tao: statement.values[10],
-              alpha_price_tao: statement.values[11],
-              alpha_in_pool: statement.values[14],
-            });
-          }
-          return statements.map(() => ({ success: true }));
-        },
-      },
+      ...pgMockEnv(),
       DATA_API: {
         fetch: async (request: Request) => {
           captured.identity = (await request.json()) as Row;
@@ -1136,7 +1152,11 @@ describe("writeSubnetSnapshot", () => {
       },
       SUBNET_IDENTITY_SYNC_SECRET: "shh-identity",
     };
-    return { env, captured };
+    return {
+      env,
+      captured,
+      ctx: { waitUntil: (p: Promise<unknown>) => void p } as ExecutionContext,
+    };
   }
 
   test("returns unavailable without a reader", async () => {
@@ -1161,29 +1181,36 @@ describe("writeSubnetSnapshot", () => {
     });
     assert.equal(r.reason, "no_profiles");
   });
-  test("writes one row per integer-netuid profile to D1", async () => {
-    const { env } = snapshotEnv();
+  test("writes one row per integer-netuid profile to the store", async () => {
+    const { env, ctx } = snapshotEnv();
     const r = await writeSubnetSnapshot(mockEnv(env), {
       readArtifact: reader(profiles),
       now: () => Date.UTC(2026, 5, 10),
+      ctx,
     });
     assert.equal(r.ok, true);
     assert.equal(r.rows, 2); // null-netuid profile skipped
     assert.equal(r.date, "2026-06-10");
   });
-  test("returns ok:false with the write's own reason when D1 fails", async () => {
+  test("returns ok:false with the write's own reason when the store fails", async () => {
     // The ONE way this can now fail. Before, it reported the Postgres POST's
-    // status -- which after #9193 was always 503, regardless of the D1 write
+    // status -- which after #9193 was always 503, regardless of the write
     // sitting above it having succeeded.
-    const { env } = snapshotEnv({ snapshotOk: false });
+    //
+    // The reason is the STORE'S OWN message, not a generic marker: this test
+    // is named for reporting the write's own reason, and a lane verdict that
+    // says only "write_failed" cannot tell a missing table from a dropped
+    // connection.
+    const { env, ctx } = snapshotEnv({ snapshotOk: false });
     const r = await writeSubnetSnapshot(mockEnv(env), {
       readArtifact: reader(profiles),
       now: () => Date.UTC(2026, 5, 10),
+      ctx,
     });
     assert.equal(r.ok, false);
-    assert.equal(r.reason, "write_failed");
+    assert.equal(r.reason, "store rejected: no such table");
   });
-  test("returns unavailable without the D1 binding", async () => {
+  test("returns unavailable with no store bound", async () => {
     // The guard used to read DATA_API and SUBNET_SNAPSHOT_SYNC_SECRET, neither
     // of which this write touches -- so a deployment with the database and no
     // sync secret declined with the write sitting right there.
@@ -1195,7 +1222,7 @@ describe("writeSubnetSnapshot", () => {
     assert.equal(r.reason, "unavailable");
   });
   test("ships every integer-netuid profile in one write, no batching cap", async () => {
-    const { env, captured } = snapshotEnv();
+    const { env, captured, ctx } = snapshotEnv();
     const manyProfiles = {
       ok: true,
       data: {
@@ -1212,13 +1239,14 @@ describe("writeSubnetSnapshot", () => {
     const r = await writeSubnetSnapshot(mockEnv(env), {
       readArtifact: reader(manyProfiles),
       now: () => Date.UTC(2026, 5, 10),
+      ctx,
     });
     assert.equal(r.ok, true);
     assert.equal(r.rows, 55);
     assert.equal((captured.snapshot as Row[]).length, 55);
   });
   test("still counts structural rows when optional economics read throws", async () => {
-    const { env, captured } = snapshotEnv();
+    const { env, captured, ctx } = snapshotEnv();
     const r = await writeSubnetSnapshot(mockEnv(env), {
       readArtifact: (_env, path) => {
         if (path === "/metagraph/economics.json") {
@@ -1227,6 +1255,7 @@ describe("writeSubnetSnapshot", () => {
         return Promise.resolve(profiles);
       },
       now: () => Date.UTC(2026, 5, 10),
+      ctx,
     });
 
     assert.equal(r.ok, true);
@@ -1281,35 +1310,39 @@ describe("writeSubnetSnapshotRows", () => {
     "pipeline_block_hash",
   ] as const;
 
-  /** A D1 double that hands back each written row as a named object. */
-  function d1Env({ ok = true }: { ok?: boolean } = {}) {
+  /** A reachable store that hands back each written row as a named object,
+   * plus the ctx without which there is no store at all -- observationsRunner
+   * returns null with no ctx to park the connection teardown on, and this
+   * writer declines `unavailable` on exactly that. */
+  function storeEnv({ ok = true }: { ok?: boolean } = {}) {
     const written: Row[] = [];
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql: string) {
-          return { bind: (...values: unknown[]) => ({ sql, values }) };
-        },
-        async batch(statements: { sql: string; values: unknown[] }[]) {
-          if (!ok) throw new Error("D1_ERROR: no such table: subnet_snapshots");
-          for (const statement of statements) {
-            written.push(
-              Object.fromEntries(
-                COLUMNS.map((name, i) => [name, statement.values[i]]),
-              ) as Row,
-            );
-          }
-          return statements.map(() => ({ success: true }));
-        },
-      },
+    pg.control.queries.length = 0;
+    pg.control.rows = null;
+    pg.control.failNext = null;
+    pg.control.onQuery = (query) => {
+      if (!ok) {
+        // Re-armed per statement: failNext is consumed by the query it fails.
+        pg.control.failNext = new Error("no such table: subnet_snapshots");
+        return;
+      }
+      if (!/INSERT INTO subnet_snapshots\b/.test(query.text)) return;
+      written.push(
+        Object.fromEntries(
+          COLUMNS.map((name, i) => [name, query.values[i]]),
+        ) as Row,
+      );
     };
-    return { env, written };
+    return {
+      env: { ...pgMockEnv() },
+      written,
+      ctx: { waitUntil: (p: Promise<unknown>) => void p } as ExecutionContext,
+    };
   }
 
-  test("returns unavailable when the D1 binding is missing", async () => {
-    // The binding this needs is METAGRAPH_HEALTH_DB. It used to guard on
-    // DATA_API and SUBNET_SNAPSHOT_SYNC_SECRET, which it no longer touches --
-    // so a deployment holding the database and no sync secret would have
-    // declined with the write sitting right there.
+  test("returns unavailable when no store is reachable", async () => {
+    // It used to guard on DATA_API and SUBNET_SNAPSHOT_SYNC_SECRET, which it
+    // no longer touches -- so a deployment holding the database and no sync
+    // secret would have declined with the write sitting right there.
     const result = await writeSubnetSnapshotRows(
       mockEnv({
         DATA_API: { fetch: async () => new Response("{}", { status: 200 }) },
@@ -1321,29 +1354,37 @@ describe("writeSubnetSnapshotRows", () => {
   });
 
   test("returns no_profiles for an empty or missing profiles array", async () => {
-    const { env } = d1Env();
+    const { env, ctx } = storeEnv();
     assert.deepEqual(
-      await writeSubnetSnapshotRows(mockEnv(env), { ...opts, profiles: [] }),
+      await writeSubnetSnapshotRows(mockEnv(env), {
+        ...opts,
+        profiles: [],
+        ctx,
+      }),
       { synced: false, reason: "no_profiles" },
     );
-    assert.deepEqual(await writeSubnetSnapshotRows(mockEnv(env), {}), {
+    assert.deepEqual(await writeSubnetSnapshotRows(mockEnv(env), { ctx }), {
       synced: false,
       reason: "no_profiles",
     });
   });
 
   test("returns no_rows when every profile lacks an integer netuid", async () => {
-    const { env } = d1Env();
+    const { env, ctx } = storeEnv();
     const result = await writeSubnetSnapshotRows(mockEnv(env), {
       ...opts,
       profiles: [{ netuid: null }],
+      ctx,
     });
     assert.deepEqual(result, { synced: false, reason: "no_rows" });
   });
 
   test("writes one row per profile and reports synced:true", async () => {
-    const { env, written } = d1Env();
-    const result = await writeSubnetSnapshotRows(mockEnv(env), opts);
+    const { env, written, ctx } = storeEnv();
+    const result = await writeSubnetSnapshotRows(mockEnv(env), {
+      ...opts,
+      ctx,
+    });
     assert.deepEqual(result, { synced: true, rows: 1 });
     assert.deepEqual(written, [
       {
@@ -1381,10 +1422,16 @@ describe("writeSubnetSnapshotRows", () => {
   // #8743: the v440 pipeline inputs ride the same row. Zero on both TAO
   // channels and false on the flag are REAL measurements for a disabled
   // subnet, and `|| null` would erase all three -- which is exactly the row
-  // worth having. Booleans land as 0/1 against the schema's CHECKs.
+  // worth having.
+  //
+  // The two flags bind as REAL BOOLEANS, not as 0/1 (#10112): those columns
+  // are `boolean` on Neon, so a bound integer is `operator does not exist:
+  // boolean = integer`. The distinction that matters here is unchanged --
+  // `false` must survive as false rather than be erased to null.
   test("carries the v440 pipeline inputs through, zeros and falses included", async () => {
-    const { env, written } = d1Env();
+    const { env, written, ctx } = storeEnv();
     const result = await writeSubnetSnapshotRows(mockEnv(env), {
+      ctx,
       ...opts,
       economicsByNetuid: new Map([
         [
@@ -1407,24 +1454,33 @@ describe("writeSubnetSnapshotRows", () => {
     assert.equal(written[0].tao_in_emission_tao, 0);
     assert.equal(written[0].excess_tao, 0);
     assert.equal(written[0].miner_burned_fraction, 0);
-    assert.equal(written[0].emission_enabled, 0);
-    assert.equal(written[0].subtoken_enabled, 1);
+    assert.equal(written[0].emission_enabled, false);
+    assert.equal(written[0].subtoken_enabled, true);
     assert.equal(written[0].first_emission_block, 5228683);
     assert.equal(written[0].alpha_in_emission, 0.150157337);
   });
 
-  test("reports the write's own reason when D1 fails, and never throws", async () => {
-    const { env } = d1Env({ ok: false });
-    const result = await writeSubnetSnapshotRows(mockEnv(env), opts);
-    assert.deepEqual(result, { synced: false, reason: "write_failed" });
+  test("reports the write's own reason when the store fails, and never throws", async () => {
+    const { env, ctx } = storeEnv({ ok: false });
+    const result = await writeSubnetSnapshotRows(mockEnv(env), {
+      ...opts,
+      ctx,
+    });
+    assert.deepEqual(result, {
+      synced: false,
+      // The store's own message, not a generic marker -- see the sibling
+      // assertion in writeSubnetSnapshot above.
+      reason: "no such table: subnet_snapshots",
+    });
   });
 
   test("defaults every optional field to null when absent, without an economics map", async () => {
-    const { env, written } = d1Env();
+    const { env, written, ctx } = storeEnv();
     const result = await writeSubnetSnapshotRows(mockEnv(env), {
       profiles,
       date: "2026-06-10",
       capturedAt: 1,
+      ctx,
     });
     assert.deepEqual(result, { synced: true, rows: 1 });
     assert.equal(written[0].validator_count, null);
@@ -1433,23 +1489,26 @@ describe("writeSubnetSnapshotRows", () => {
   });
 });
 
-// --- Worker dispatch (cold D1 -> empty-valid; fake D1 -> with data) ----------
+// --- Worker dispatch (cold store -> empty-valid; fake store -> with data) ---
 
-function captureD1Env(queries: Row[]) {
+/** A REACHABLE store that records every statement and answers from rowsForSql.
+ *
+ * Reachable is the point: the one caller asserts that a malformed parameter
+ * reaches no store at all, and an unbound store would satisfy that whatever
+ * the route did with the parameter. */
+function captureStoreEnv(queries: Row[]) {
+  pg.control.queries.length = 0;
+  pg.control.failNext = null;
+  // Answered from inside the subscription, which the double calls BEFORE it
+  // consults `rows` -- the only way one double answers each statement
+  // differently.
+  pg.control.onQuery = (query) => {
+    queries.push({ sql: query.text, params: query.values });
+    pg.control.rows = rowsForSql(query.text);
+  };
   return {
     ...createLocalArtifactEnv(),
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql: string) {
-        return {
-          bind(...params: unknown[]) {
-            queries.push({ sql, params });
-            return {
-              all: () => Promise.resolve({ results: rowsForSql(sql) }),
-            };
-          },
-        };
-      },
-    },
+    ...pgMockEnv(),
   };
 }
 function rowsForSql(sql: string) {
@@ -1766,7 +1825,7 @@ describe("analytics routes reject malformed params before any tier call", () => 
   // contract is the only thing left to assert here.
   test("uptime rejects a malformed min_samples with a 400", async () => {
     const queries: Row[] = [];
-    const envWithCapture = captureD1Env(queries);
+    const envWithCapture = captureStoreEnv(queries);
     const { status, body } = await getJson(
       "https://api.metagraph.sh/api/v1/subnets/7/uptime?min_samples=lots",
       envWithCapture,
@@ -1774,7 +1833,7 @@ describe("analytics routes reject malformed params before any tier call", () => 
     assert.equal(status, 400);
     assert.equal(body.error.code, "invalid_query");
     assert.equal(body.meta.parameter, "min_samples");
-    assert.equal(queries.length, 0, "malformed input must not reach D1");
+    assert.equal(queries.length, 0, "malformed input must not reach the store");
   });
 });
 
@@ -1823,25 +1882,23 @@ describe("writeSubnetSnapshot no integer netuids", () => {
 
 describe("hourly cron writes a daily snapshot", () => {
   test("handleScheduled hourly runs prune + snapshot", async () => {
-    // The snapshot rows land in D1, captured off METAGRAPH_HEALTH_DB.batch.
-    // They used to be POSTed to DATA_API's subnet-snapshot-sync route as well,
-    // which #9193 retired to its auth gate -- and until that leg was deleted,
-    // its guaranteed 503 was what this lane's verdict came from.
+    // The snapshot rows land in the store, counted off the INSERT the writer
+    // issues per row. They used to be POSTed to DATA_API's
+    // subnet-snapshot-sync route as well, which #9193 retired to its auth gate
+    // -- and until that leg was deleted, its guaranteed 503 was what this
+    // lane's verdict came from.
     let snapshotRowCount: number | null = null;
+    pg.control.queries.length = 0;
+    pg.control.rows = null;
+    pg.control.failNext = null;
+    pg.control.onQuery = (query) => {
+      if (/INSERT INTO subnet_snapshots\b/.test(query.text)) {
+        snapshotRowCount = (snapshotRowCount ?? 0) + 1;
+      }
+    };
     const env = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare: () => ({
-          bind: (...values: unknown[]) => ({
-            values,
-            run: () => Promise.resolve({ meta: { changes: 0 } }),
-          }),
-        }),
-        batch: async (statements: unknown[]) => {
-          snapshotRowCount = (snapshotRowCount ?? 0) + statements.length;
-          return statements.map(() => ({ success: true }));
-        },
-      },
+      ...pgMockEnv(),
       DATA_API: {
         fetch: async () =>
           new Response(JSON.stringify({ ok: true }), { status: 200 }),
@@ -1851,7 +1908,10 @@ describe("hourly cron writes a daily snapshot", () => {
     const result = await handleScheduled(
       { cron: "0 * * * *" } as unknown as ScheduledController,
       env as unknown as Env,
-      {} as unknown as ExecutionContext,
+      // A REAL waitUntil: every writer on this tick reaches its store through
+      // createPgSql, which hands the pooled connection back through it -- a
+      // bare `{}` leaves the whole hourly lane storeless.
+      { waitUntil: (p: Promise<unknown>) => void p } as ExecutionContext,
     );
     assert.equal((result as Row).pruned, true);
     assert.ok(snapshotRowCount! > 0, "the snapshot write should ship rows");

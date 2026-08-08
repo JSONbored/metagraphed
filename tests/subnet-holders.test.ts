@@ -20,7 +20,20 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// One store since #10179: the ROUTE/GraphQL/MCP surfaces reach it through
+// src/read-store.ts, which builds `new Client(...)` itself -- there is no
+// binding to hand a request handler any more. The loader assertions below keep
+// passing `d1()` straight in, because `load*(db, ...)` takes a db; only the
+// surface half needs the module mock. See tests/helpers/pg-mock.ts for why it
+// is a module mock and why the controller is built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import { Ajv2020 } from "ajv/dist/2020.js";
 import addFormatsPlugin from "ajv-formats";
 import { buildOpenApiArtifact } from "../src/contracts.ts";
@@ -80,9 +93,13 @@ function d1() {
   };
 }
 
+/** The surface's env: a connection string for readStore to find, every table
+ * declared Neon's, and the SAME in-memory engine `d1()` reads answering behind
+ * the `pg` double -- so a surface assertion and a loader assertion are looking
+ * at one set of rows. */
 function env(overrides: Record<string, unknown> = {}): Env {
   return {
-    METAGRAPH_HEALTH_DB: d1(),
+    ...pgMockEnv(),
     ...overrides,
   } as unknown as Env;
 }
@@ -167,6 +184,12 @@ async function body(res: Response): Promise<Row> {
 beforeEach(() => {
   db = new DatabaseSync(":memory:");
   for (const schema of MIGRATIONS) db.exec(schema);
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = null;
+  pg.control.failNext = null;
+  pg.control.onQuery = null;
+  pg.control.db = db;
 });
 
 describe("loadSubnetHolders against real SQLite", () => {
@@ -627,7 +650,7 @@ describe("GET /api/v1/subnets/{netuid}/holders", () => {
     assert.notEqual(res.status, 200);
   });
 
-  test("no D1 binding declines rather than 500ing", async () => {
+  test("no store bound declines rather than 500ing", async () => {
     const data = await body(
       await get(`/api/v1/subnets/${NETUID}/holders`, {} as Env),
     );

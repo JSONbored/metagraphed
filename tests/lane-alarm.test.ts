@@ -12,7 +12,24 @@
 // fire for a watchdog that stopped writing while its last verdict said `ok`,
 // which is the fault that had no detector at all before this file.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The store is Postgres now (#10179), reached through `new Client(...)` inside
+// src/lane-health-store.ts -- which runLaneAlarm cannot be handed, because it
+// selects its own store from `env` and takes no db dep. Mocking the module is
+// the seam; see tests/helpers/pg-mock.ts for why it is a module mock and why
+// the controller has to be built inside vi.hoisted.
+//
+// The three pure readers below (loadLaneStaleRuns, loadLaneCadence) still take
+// a `db` argument, so they keep their own hand-rolled double -- injection is
+// still injection, and a module mock would say less about them than the fake
+// they are handed.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   LANE_ALARM_MAX_OPENS_PER_TICK,
   LANE_ALARM_MIN_STALE_MS,
@@ -48,7 +65,10 @@ function record(over: Partial<LaneHealthRecord> = {}): LaneHealthRecord {
   };
 }
 
-/** A D1 double: returns rows, or throws however asked. */
+/** A double for the `db` these two readers TAKE. They are the injectable half
+ * of this module -- runLaneAlarm selects its own store, but loadLaneStaleRuns
+ * and loadLaneCadence are handed one -- so a hand-rolled fake still says more
+ * here than the module mock does. Returns rows, or throws however asked. */
 function fakeDb(rows: Record<string, unknown>[] | Error = []) {
   const calls: { sql: string; values: unknown[] }[] = [];
   const answer = () => {
@@ -385,8 +405,8 @@ describe("laneAlarmIssueBody", () => {
   });
 
   test("never renders a negative duration from a clock that disagrees", () => {
-    // `since` comes from D1 and `now` from the Worker; they are different
-    // clocks, and "-3s" in an alarm reads as a bug in the alarm.
+    // `since` comes from the store and `now` from the Worker; they are
+    // different clocks, and "-3s" in an alarm reads as a bug in the alarm.
     assert.match(laneAlarmIssueBody(alarm({ since: NOW + 3000 }), NOW), /0s/);
   });
 });
@@ -446,8 +466,8 @@ describe("loadLaneStaleRuns / loadLaneCadence", () => {
   });
 
   test("treat a driver that answers with no rows key as empty", async () => {
-    // D1 shims and older bindings have both answered `{}` and `null` here; a
-    // reader that trusted `.results` would throw on the first such tick.
+    // Drivers have answered both `{}` and `null` here; a reader that trusted
+    // `.results` would throw on the first such tick.
     const shim = {
       prepare: () => ({
         bind: () => ({
@@ -615,41 +635,47 @@ describe("runLaneAlarm", () => {
     };
   }
 
-  /** A D1 double answering each of the three reads with its own rows. */
+  /** The store, answering each of the three reads with its own rows.
+   *
+   * Matched by SUBSTRING rather than by whole statement, because the text that
+   * reaches the double has been through toPositionalPlaceholders -- the cadence
+   * read's `checked_at > ?` arrives as `checked_at > $1`, so an equality test
+   * against LANE_CADENCE_SQL would silently fall through to the wrong rows. The
+   * three fragments below are each unique to one statement: the stale-run read
+   * is the only one selecting `MIN(checked_at) AS since`, the cadence read the
+   * only one selecting `COUNT(*) AS n`, and the latest read the only one whose
+   * projection is the five verdict columns.
+   *
+   * `written` collects the INSERTs only. The prune that recordLaneVerdict
+   * issues on the way through binds the same lane name, so counting every
+   * statement would make "one verdict" read as two. */
   function healthDb(rows: {
     latest?: Record<string, unknown>[];
     runs?: Record<string, unknown>[];
     cadence?: Record<string, unknown>[];
   }) {
     const written: Record<string, unknown>[] = [];
-    return {
-      written,
-      prepare(sql: string) {
-        const answer = async () => {
-          if (sql === LANE_STALE_RUN_SQL) return { results: rows.runs ?? [] };
-          if (sql === LANE_CADENCE_SQL) return { results: rows.cadence ?? [] };
-          return { results: rows.latest ?? [] };
-        };
-        return {
-          bind(...values: unknown[]) {
-            return {
-              run: async () => {
-                if (sql.startsWith("INSERT")) {
-                  written.push({ sql, values });
-                }
-                return {};
-              },
-              first: async () => null,
-              all: answer,
-            };
-          },
-          all: answer,
-        };
+    pg.control.queries.length = 0;
+    pg.control.rows = null;
+    pg.control.failNext = null;
+    pg.control.answers = [
+      { match: "MIN(checked_at) AS since", rows: rows.runs ?? [] },
+      { match: "COUNT(*) AS n", rows: rows.cadence ?? [] },
+      {
+        match: "SELECT lane, verdict, age_ms, detail, checked_at",
+        rows: rows.latest ?? [],
       },
+    ];
+    pg.control.onQuery = (q) => {
+      if (q.text.startsWith("INSERT")) {
+        written.push({ sql: q.text, values: q.values });
+      }
     };
+    return { written, env: pgMockEnv() };
   }
 
-  const env = { GITHUB_TOKEN: "t", METAGRAPH_HEALTH_DB: null as unknown };
+  /** Everything the alarm needs from env other than its store. */
+  const TOKEN = { GITHUB_TOKEN: "t" };
 
   test("opens an issue for a lane stale past the threshold, and records its own tick", async () => {
     const db = healthDb({
@@ -674,7 +700,7 @@ describe("runLaneAlarm", () => {
     });
     const github = fakeGitHub();
     const out = await runLaneAlarm(
-      { ...env, METAGRAPH_HEALTH_DB: db },
+      { ...TOKEN, ...db.env },
       { github, now: () => NOW, recordException: async () => true },
     );
     assert.equal(out.ok, true);
@@ -706,7 +732,7 @@ describe("runLaneAlarm", () => {
     });
     const github = fakeGitHub({ "neurons-staleness": 4242 });
     const out = await runLaneAlarm(
-      { ...env, METAGRAPH_HEALTH_DB: db },
+      { ...TOKEN, ...db.env },
       { github, now: () => NOW, recordException: async () => true },
     );
     assert.equal(out.recovered, 1);
@@ -734,7 +760,7 @@ describe("runLaneAlarm", () => {
       throw new Error("502 from github");
     };
     const out = await runLaneAlarm(
-      { ...env, METAGRAPH_HEALTH_DB: db },
+      { ...TOKEN, ...db.env },
       { github, now: () => NOW },
     );
     assert.deepEqual(out, {
@@ -761,16 +787,13 @@ describe("runLaneAlarm", () => {
       runs: [{ lane: "a", since: NOW - 28 * HOUR, ticks: 100 }],
     });
     const seen: unknown[] = [];
-    const out = await runLaneAlarm(
-      { METAGRAPH_HEALTH_DB: db },
-      {
-        now: () => NOW,
-        recordException: async (_env, payload) => {
-          seen.push(payload);
-          return true;
-        },
+    const out = await runLaneAlarm(db.env, {
+      now: () => NOW,
+      recordException: async (_env, payload) => {
+        seen.push(payload);
+        return true;
       },
-    );
+    });
     assert.equal(out.ok, true);
     assert.equal(out.delivered, false);
     assert.equal(out.opened, 0);
@@ -795,7 +818,7 @@ describe("runLaneAlarm", () => {
       throw new Error("rate limited");
     };
     const out = await runLaneAlarm(
-      { ...env, METAGRAPH_HEALTH_DB: db },
+      { ...TOKEN, ...db.env },
       { github, now: () => NOW, recordException: async () => true },
     );
     assert.equal(out.alarming, 1);
@@ -813,7 +836,7 @@ describe("runLaneAlarm", () => {
       throw new Error("rate limited");
     };
     const out = await runLaneAlarm(
-      { ...env, METAGRAPH_HEALTH_DB: db },
+      { ...TOKEN, ...db.env },
       { github, now: () => NOW, recordException: async () => true },
     );
     assert.equal(out.recovered, 1);
@@ -839,7 +862,7 @@ describe("runLaneAlarm", () => {
         GITHUB_TOKEN: "t",
         LANE_ALARM_REPO: "o/other",
         LANE_ALARM_MIN_STALE_MS: 2 * HOUR,
-        METAGRAPH_HEALTH_DB: db,
+        ...db.env,
       },
       {
         now: () => NOW,
@@ -882,7 +905,7 @@ describe("runLaneAlarm", () => {
     }) as unknown as typeof fetch;
     try {
       const out = await runLaneAlarm(
-        { ...env, METAGRAPH_HEALTH_DB: db },
+        { ...TOKEN, ...db.env },
         { now: () => NOW, recordException: async () => true },
       );
       // Silent, not stale -- so this also exercises the `lane_silent` code.
@@ -921,15 +944,12 @@ describe("runLaneAlarm", () => {
       ],
       runs: [{ lane: "a", since: NOW - 28 * HOUR, ticks: 100 }],
     });
-    const out = await runLaneAlarm(
-      { METAGRAPH_HEALTH_DB: db },
-      {
-        now: () => NOW,
-        recordException: async () => {
-          throw new Error("posthog is down");
-        },
+    const out = await runLaneAlarm(db.env, {
+      now: () => NOW,
+      recordException: async () => {
+        throw new Error("posthog is down");
       },
-    );
+    });
     assert.equal(out.ok, true);
     assert.equal(out.alarming, 1);
   });

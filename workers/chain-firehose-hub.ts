@@ -66,7 +66,6 @@ import {
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "./mcp-session-hub.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
 import { mirrorBlocksHeadToNeon } from "../src/capture-state-neon-write.ts";
-import { neonOwnsTable } from "../src/neon-write.ts";
 
 export const CHAIN_FIREHOSE_INGEST_TOKEN_HEADER = "x-chain-firehose-sync-token";
 
@@ -1086,50 +1085,10 @@ export class ChainFirehoseHub implements DurableObject {
           this.env.CHAIN_HEAD_AUTHOR_ENABLED !== "false",
         );
         await this.broadcast(block as unknown as ChainFirehoseIngestPayload);
-        // THE INVERSION (#10107). Once Neon owns blocks_head the D1 write is
-        // skipped outright; the mirror below becomes the only write. Reading
-        // the flag per block rather than caching it is deliberate -- this is a
-        // Durable Object that outlives a deploy, so a cached answer would keep
-        // writing the store the config has already moved off.
-        const neonOwns =
-          Boolean(this.env.HYPERDRIVE?.connectionString) &&
-          neonOwnsTable(
-            this.env as unknown as Record<string, unknown>,
-            "blocks_head",
-          );
-        const db = neonOwns ? null : this.env.METAGRAPH_HEALTH_DB;
-        if (db?.prepare) {
-          await db
-            .prepare(
-              `INSERT INTO blocks_head (block_number, block_hash, parent_hash, extrinsic_count, event_count, author, observed_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?)
-               ON CONFLICT(block_number) DO UPDATE SET
-                 block_hash=excluded.block_hash,
-                 parent_hash=excluded.parent_hash,
-                 extrinsic_count=excluded.extrinsic_count,
-                 -- COALESCE, not excluded: a re-poll that could not read the
-                 -- count must not erase one an earlier tick already stored.
-                 event_count=COALESCE(excluded.event_count, blocks_head.event_count),
-                 -- Same COALESCE rule, same reason: a re-poll whose storage
-                 -- read failed must not blank an author already derived.
-                 author=COALESCE(excluded.author, blocks_head.author),
-                 observed_at=excluded.observed_at`,
-            )
-            .bind(
-              block.block_number,
-              block.block_hash,
-              block.parent_hash,
-              block.extrinsic_count,
-              block.event_count,
-              block.author,
-              block.observed_at,
-            )
-            .run();
-        }
-        // THE MIRROR, after the D1 write returns and never instead of it.
-        // `this.state` is the waitUntil handle here -- a Durable Object has no
-        // ExecutionContext, and createPgSql needs one to hand the pooled
-        // connection back to Hyperdrive.
+        // THE ONLY WRITE (#10107, #10179). `this.state` is the waitUntil
+        // handle here -- a Durable Object has no ExecutionContext, and
+        // createPgSql needs one to hand the pooled connection back to
+        // Hyperdrive.
         await mirrorBlocksHeadToNeon(
           this.env as unknown as Record<string, unknown>,
           this.state,

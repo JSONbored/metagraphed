@@ -44,7 +44,7 @@
 // ~5.4M D1 rows read a day.
 
 import { laneHealthStore } from "./lane-health-store.ts";
-import { observationsReadDb } from "./observations-read-runner.ts";
+import { readStore } from "./read-store.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 
@@ -217,8 +217,10 @@ interface D1Like {
 }
 
 export interface ValidatorNominatorCountsStalenessDeps {
-  /** Threaded so the read can follow the table to Neon (#10086). */
-  ctx?: { waitUntil?: (promise: Promise<unknown>) => void } | null;
+  // No `ctx`. readStore opens and closes a connection per operation precisely
+  // so the tier readers and the cron watchdogs -- none of which hold an
+  // ExecutionContext -- can follow their table without one. A dep that only a
+  // test could ever supply is a dep that hides an unreachable production path.
   /** Injectable durable sink, so a test can assert the verdict was RECORDED and
    * not merely notified — the distinction #9330/#9340 exist about. */
   laneHealthDb?: LaneHealthDb | null;
@@ -238,14 +240,23 @@ export async function runValidatorNominatorCountsStalenessWatchdog(
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
   const record = deps.recordException ?? recordExceptionEvent;
-  // Follows validator_nominator_counts to whichever store owns it (#10086).
-  // A watchdog left on the abandoned store reports the frozen copy's staleness,
+  // Follows validator_nominator_counts to whichever store owns it (#10086),
+  // through readStore -- the same selector its three sibling watchdogs use. A
+  // watchdog left on the abandoned store reports the frozen copy's staleness,
   // which is the alarm firing about the wrong thing entirely.
-  const db = observationsReadDb(
-    env as Record<string, unknown> | null | undefined,
-    deps.ctx,
-  ) as D1Like | undefined;
-  if (!db?.prepare) return { ok: false, reason: "d1 binding unavailable" };
+  //
+  // NOT observationsReadDb, which this briefly used and which cannot serve this
+  // lane at all. It gates on the OBSERVATION family (surface_checks and four
+  // others) rather than on this table, so the flag that would move this lane is
+  // not the flag it reads; it requires an ExecutionContext to park its
+  // connection teardown on, and handleScheduled passes the cron watchdogs none,
+  // so it answered `undefined` on every tick; and its adapter exposes only
+  // `all()`, so the `.first()` below threw `not a function` even when a ctx was
+  // threaded in by hand. Each of those alone is silent -- the lane simply stops
+  // reporting, and an absent verdict reads as health.
+  const db = readStore(env, ["validator_nominator_counts"]) as unknown as
+    D1Like | undefined;
+  if (!db?.prepare) return { ok: false, reason: "no store bound" };
 
   const thresholdMs =
     Number(env?.VALIDATOR_NOMINATOR_COUNTS_STALENESS_THRESHOLD_MS) ||

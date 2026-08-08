@@ -5,7 +5,18 @@
 // the collapsed counterparties UNION (see the module header for the
 // arguments each test pins down).
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// One store since #10179: the neuron-slot read goes through src/read-store.ts,
+// which builds `new Client(...)` itself -- these loaders take only `(env, ...)`
+// and cannot be handed a binding. See tests/helpers/pg-mock.ts for why the seam
+// is a module mock and why the controller is built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   loadAccountRegistrationsColdTier,
   loadAccountServingColdTier,
@@ -62,17 +73,26 @@ function failingFetch() {
 }
 
 /** A D1 stub whose `neurons` read returns the given rows (or throws). */
+/**
+ * The store answering the neuron-slot read, installed on the pg double.
+ *
+ * A function stands for a store that FAILS the read. `onQuery` rather than a
+ * canned answer because the value has to be chosen per call and the callers
+ * below hold the env across the loader call; see tests/helpers/pg-mock.ts.
+ */
 function d1With(rows: unknown[] | (() => never)) {
-  return {
-    prepare: () => ({
-      bind: () => ({
-        all: async () => {
-          if (typeof rows === "function") rows();
-          return { results: rows as unknown[] };
-        },
-      }),
-    }),
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = null;
+  pg.control.failNext = null;
+  pg.control.onQuery = () => {
+    if (typeof rows === "function") {
+      pg.control.failNext = new Error("store down");
+      return;
+    }
+    pg.control.rows = rows as unknown[];
   };
+  return pgMockEnv();
 }
 
 describe("loadAccountTransfersColdTier", () => {
@@ -364,8 +384,7 @@ describe("loadAccountWeightSettersColdTier", () => {
     first_observed: 1_700_000_000_100,
     last_observed: 1_700_000_000_800,
   };
-  const envWith = (db: unknown) =>
-    ({ ...TOKEN, METAGRAPH_HEALTH_DB: db }) as never;
+  const envWith = (store: unknown) => ({ ...TOKEN, ...(store ?? {}) }) as never;
 
   test("collapses data-api's UNION into one disjunction over the D1 neuron slots", async () => {
     const q = sqlFetch([WS_ROW]);
@@ -444,27 +463,31 @@ describe("loadAccountWeightSettersColdTier", () => {
     assert.equal(res!.data.window, "7d", "the route's own default window");
   });
 
-  test("declines without the slot source: no binding, a D1 failure, or an unusable slot", async () => {
-    for (const db of [
+  test("declines without the slot source: no store, a failed read, or an unusable slot", async () => {
+    // The old list ended with a binding whose statement had no `.all` at all.
+    // readStore's handle always has one, so that shape is gone; what replaces
+    // it is the other way a store can be absent -- bound, but this deployment
+    // has not declared `neurons` Neon's, so the selector refuses to read a
+    // table it was not told the store owns.
+    for (const store of [
       undefined,
-      {},
+      { HYPERDRIVE: { connectionString: "postgresql://mock/db" } },
       d1With(() => {
-        throw new Error("d1 down");
+        throw new Error("store down");
       }),
       d1With([{ netuid: "bad", uid: 1 }]),
       d1With([{ netuid: 1, uid: null }]),
-      { prepare: () => ({ bind: () => ({}) }) }, // no .all on this D1 shim
     ]) {
       const q = sqlFetch([WS_ROW]);
       assert.equal(
-        await loadAccountWeightSettersColdTier(envWith(db), ADDR, {}),
+        await loadAccountWeightSettersColdTier(envWith(store), ADDR, {}),
         null,
       );
       assert.equal(q.length, 0, "decline issues no lakehouse query");
     }
   });
 
-  test("declines a bad address before touching D1; a failed query yields null", async () => {
+  test("declines a bad address before touching the store; a failed query yields null", async () => {
     const q = sqlFetch([WS_ROW]);
     assert.equal(
       await loadAccountWeightSettersColdTier(

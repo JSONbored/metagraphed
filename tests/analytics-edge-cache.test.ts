@@ -1,5 +1,17 @@
 import assert from "node:assert/strict";
-import { afterEach, describe, test } from "vitest";
+import { afterEach, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The analytics store is Postgres now (#10179), reached through
+// `new Client(...)` inside src/read-store.ts. A route test cannot inject into
+// that -- the caller is `handleRequest(request, env, ctx)` -- so the module is
+// the seam; see tests/helpers/pg-mock.ts for why, and for why the controller is
+// built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import { handleRequest } from "../workers/api.ts";
 import { envelopeResponse } from "../workers/responses.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
@@ -89,33 +101,44 @@ function rowsForSql(sql: string) {
   return [];
 }
 
-// Local artifact env + a query-recording D1 + a KV control plane that serves the
-// snapshot stamp. `queries` records every {sql, params} so a test can assert
-// whether D1 was touched at all (the whole point of the cache).
+// Local artifact env + a query-recording store + a KV control plane that serves
+// the snapshot stamp. `queries` records every {sql, params} so a test can assert
+// whether the store was touched at all (the whole point of the cache).
+//
+// The recorded `sql` is POSTGRES text -- `$1, $2`, not `?` -- because that is
+// what reaches the driver now. rowsForSql matches on table and CTE names, which
+// the rewrite leaves alone, so it needs no change; a suite asserting a
+// placeholder here would need `/= \$\d/`.
+//
+// ARMING IS SIDE-EFFECTING: there is one `pg` double per FILE, so building an
+// env installs this env's recorder and answers over whatever the previous one
+// left. Each test builds its env before it issues a request, which is what
+// keeps that safe.
 function analyticsEnv(
   queries: Row[],
   {
     lastRunAt = LAST_RUN_AT,
-    d1Error = null,
-  }: { lastRunAt?: string | null; d1Error?: Error | null } = {},
+    storeError = null,
+  }: { lastRunAt?: string | null; storeError?: Error | null } = {},
 ) {
+  pg.control.queries.length = 0;
+  pg.control.failNext = null;
+  // Answered from inside the subscription, which the double calls BEFORE it
+  // consults `rows`/`answers` -- the only way one double can answer each
+  // statement differently. `failNext` is re-armed per query for the same
+  // reason: it is consumed by the query it fails, and the error cases here
+  // issue several.
+  pg.control.onQuery = (q) => {
+    queries.push({ sql: q.text, params: q.values });
+    if (storeError) {
+      pg.control.failNext = storeError;
+      return;
+    }
+    pg.control.rows = rowsForSql(q.text);
+  };
   return {
     ...createLocalArtifactEnv(),
-    METAGRAPH_HEALTH_DB: {
-      prepare(sql: string) {
-        return {
-          bind(...params: unknown[]) {
-            queries.push({ sql, params });
-            return {
-              all: () =>
-                d1Error
-                  ? Promise.reject(d1Error)
-                  : Promise.resolve({ results: rowsForSql(sql) }),
-            };
-          },
-        };
-      },
-    },
+    ...pgMockEnv(),
     METAGRAPH_CONTROL: {
       async get(key: string) {
         if (key === "health:meta") {
@@ -1257,12 +1280,14 @@ describe("analytics edge cache", () => {
     assert.equal(cache.matchCalls, 2);
   });
 
-  test("NO-CACHE-ON-ERROR: a D1 failure with a snapshot stamp is served but not cached", async () => {
+  test("NO-CACHE-ON-ERROR: a store failure with a snapshot stamp is served but not cached", async () => {
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
     const queries: Row[] = [];
-    const env = analyticsEnv(queries, { d1Error: new Error("D1 unavailable") });
+    const env = analyticsEnv(queries, {
+      storeError: new Error("store unavailable"),
+    });
 
     const res = await handleRequest(
       new Request(
@@ -1276,12 +1301,12 @@ describe("analytics edge cache", () => {
     assert.deepEqual(
       cache.putKeys,
       [],
-      "a D1 fallback response must not poison the edge cache",
+      "a store-fallback response must not poison the edge cache",
     );
     assert.equal(cache.store.size, 0);
   });
 
-  test("NO-CACHE-ON-ERROR: D1 fallback on the five additional edge-cached routes is not cached", async () => {
+  test("NO-CACHE-ON-ERROR: store fallback on the five additional edge-cached routes is not cached", async () => {
     const routes = [
       {
         path: "/api/v1/registry/leaderboards",
@@ -1310,7 +1335,7 @@ describe("analytics edge cache", () => {
       cache.install();
       const queries: Row[] = [];
       const env = analyticsEnv(queries, {
-        d1Error: new Error("D1 unavailable"),
+        storeError: new Error("store unavailable"),
       });
       const url = `https://api.metagraph.sh${r.path}${r.search}`;
 
@@ -1324,17 +1349,17 @@ describe("analytics edge cache", () => {
       assert.deepEqual(
         cache.putKeys,
         [],
-        `${r.path}: D1 fallback must not poison the edge cache`,
+        `${r.path}: a store fallback must not poison the edge cache`,
       );
       assert.equal(cache.store.size, 0, `${r.path}: cache stays empty`);
     }
   });
 
-  test("a D1-served leaderboards payload IS cached", async () => {
+  test("a store-served leaderboards payload IS cached", async () => {
     // The other half of the resurrection (#9146): before it, every
     // leaderboards response was barred from the edge cache unconditionally
-    // because its operational boards were always empty. With a working
-    // binding the response is a real read and must cache like any other.
+    // because its operational boards were always empty. With a reachable store
+    // the response is a real read and must cache like any other.
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
@@ -1348,22 +1373,23 @@ describe("analytics edge cache", () => {
     assert.equal(res.status, 200);
     assert.ok(
       queries.some((q) => String(q.sql).includes("FROM surface_status")),
-      "the leaderboards route must actually read D1",
+      "the leaderboards route must actually read the store",
     );
     assert.equal(
       cache.putKeys.length,
       1,
-      "a D1-served leaderboards payload is cacheable",
+      "a store-served leaderboards payload is cacheable",
     );
   });
 
-  test("NO-CACHE-ON-ERROR: an unbound D1 binding with a warm snapshot stamp is not cached", async () => {
+  test("NO-CACHE-ON-ERROR: an unbound store with a warm snapshot stamp is not cached", async () => {
     originalCaches = globalWithCaches.caches;
     const cache = mockCaches();
     cache.install();
+    // No HYPERDRIVE at all -- readStore answers `undefined`, so every board is
+    // cold. Deliberately NOT pgMockEnv: "unbound" is the case under test.
     const env = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {},
       METAGRAPH_CONTROL: {
         async get(key: string) {
           return key === "health:meta" ? { last_run_at: LAST_RUN_AT } : null;
@@ -1381,7 +1407,7 @@ describe("analytics edge cache", () => {
     assert.deepEqual(
       cache.putKeys,
       [],
-      "an unbound D1 cold fallback must not seed the edge cache",
+      "an unbound-store cold fallback must not seed the edge cache",
     );
     assert.equal(cache.store.size, 0);
   });
@@ -1393,7 +1419,8 @@ describe("analytics edge cache", () => {
     const url =
       "https://api.metagraph.sh/api/v1/subnets/7/health/percentiles?window=7d";
 
-    // Uncached: no globalWithCaches.caches → withEdgeCache falls through to D1.
+    // Uncached: no globalWithCaches.caches -> withEdgeCache falls through to
+    // the store.
     globalWithCaches.caches = undefined;
     const uncached = await handleRequest(
       new Request(url),
@@ -1748,32 +1775,25 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
     cache.install();
     const queries: Row[] = [];
     let neuronCapturedAt = 1_700_000_000_000;
-    // A D1 stub that WOULD answer a captured_at-keyed stamp query if anything
-    // still asked one. `queries` staying empty across both passes below is
-    // itself part of the regression proof (#4909 already moved these routes to
-    // Postgres-tier-only, so nothing should ever reach this stub).
+    // A REACHABLE store that would answer a captured_at-keyed stamp query if
+    // anything still asked one. No such query appearing across both passes
+    // below is part of the regression proof (#4909 moved the stamp off this
+    // signal), and it only proves anything because the store IS bound here --
+    // an unbound one would answer nothing whatever the routes asked.
     const env = {
       ...createLocalArtifactEnv(),
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql: string) {
-          return {
-            bind(...params: unknown[]) {
-              queries.push({ sql, params });
-              return {
-                all: () =>
-                  Promise.resolve({
-                    results: [{ captured_at: neuronCapturedAt }],
-                  }),
-              };
-            },
-          };
-        },
-      },
+      ...pgMockEnv(),
       METAGRAPH_CONTROL: {
         async get(key: string) {
           return key === "health:meta" ? { last_run_at: LAST_RUN_AT } : null;
         },
       },
+    };
+    pg.control.queries.length = 0;
+    pg.control.failNext = null;
+    pg.control.onQuery = (q) => {
+      queries.push({ sql: q.text, params: q.values });
+      pg.control.rows = [{ captured_at: neuronCapturedAt }];
     };
 
     for (const { path } of FORMERLY_NEURONS_TIER_SUBNET_ROUTES) {
@@ -1813,10 +1833,10 @@ describe("formerly neurons-tier routes now share the health-cron edge-cache stam
       "a changed neuron captured_at must not seed any new cache entry",
     );
     assert.equal(cache.store.size, FORMERLY_NEURONS_TIER_SUBNET_ROUTES.length);
-    assert.equal(
-      queries.length,
-      0,
-      "none of these routes touch D1 at all anymore (Postgres-tier only, #4909)",
+    assert.deepEqual(
+      queries.filter((q) => String(q.sql).includes("captured_at")),
+      [],
+      "the captured_at stamp query is gone entirely (#4909, #5358)",
     );
   });
 

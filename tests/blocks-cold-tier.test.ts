@@ -6,7 +6,19 @@
 //   3. ONE FORMATTING PASS — rows from both sources go through the shared
 //      formatter together, never formatted twice.
 import assert from "node:assert/strict";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The store is Postgres now (#10179), reached through `new Client(...)` inside
+// src/read-store.ts -- which a loader test cannot inject into, because the
+// loader takes only `(env, ...)`. Mocking the module is the seam; see
+// tests/helpers/pg-mock.ts for why it is a module mock and not an export, and
+// why the controller has to be built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   blocksSeamFloor,
   d1CanServe,
@@ -27,30 +39,24 @@ const SEAM = DEFAULT_BLOCKS_SEAM; // 8_759_336
 // first test to publish one silently moves the seam for every test after it.
 beforeEach(() => resetDecodeWatermarkCache());
 
-/** A D1 stub that records the SQL it was asked for. */
+/** The hot-tier store, answering with `rows` and recording what it was asked.
+ *
+ * `sql` and `params` are LIVE views over the mock's log rather than copies, so
+ * the existing assertions -- several of which read them after the loader has
+ * run -- keep working unchanged. */
 function d1(rows: Record<string, unknown>[], opts: { throws?: boolean } = {}) {
   const sql: string[] = [];
   const params: unknown[][] = [];
-  return {
-    sql,
-    params,
-    db: {
-      prepare(q: string) {
-        sql.push(q.replace(/\s+/g, " ").trim());
-        return {
-          bind(...values: unknown[]) {
-            params.push(values);
-            return {
-              async all() {
-                if (opts.throws) throw new Error("d1 cold");
-                return { results: rows };
-              },
-            };
-          },
-        };
-      },
-    },
+  pg.control.queries.length = 0;
+  pg.control.rows = rows;
+  pg.control.failNext = opts.throws ? new Error("store cold") : null;
+  // Subscribed rather than read back, because every caller destructures this
+  // and holds `sql`/`params` across the loader call.
+  pg.control.onQuery = (q) => {
+    sql.push(q.text.replace(/\s+/g, " ").trim());
+    params.push(q.values);
   };
+  return { sql, params, db: pgMockEnv() };
 }
 
 function headRow(n: number) {
@@ -183,7 +189,7 @@ describe("the resolved seam actually routes the request", () => {
       {
         ...TOKEN,
         ...archive({ decoded_through: above }),
-        METAGRAPH_HEALTH_DB: db,
+        ...db,
       } as never,
       String(above),
     );
@@ -199,7 +205,7 @@ describe("the resolved seam actually routes the request", () => {
       {
         ...TOKEN,
         ...archive({ decoded_through: SEAM + 4_000 }),
-        METAGRAPH_HEALTH_DB: db,
+        ...db,
       } as never,
       { limit: 1, offset: 0 },
     );
@@ -231,16 +237,16 @@ describe("loadBlockFeedColdTier", () => {
   test("serves entirely from D1 when the page fits above the seam", async () => {
     const { db, sql, params } = d1([headRow(SEAM + 3), headRow(SEAM + 2)]);
     const queries = lakeFetch([]);
-    const data = await loadBlockFeedColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
-      {
-        limit: 2,
-        offset: 0,
-      },
-    );
+    const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+      limit: 2,
+      offset: 0,
+    });
     assert.equal(data!.blocks.length, 2);
     assert.equal(data!.blocks[0]!.block_number, SEAM + 3);
-    assert.match(sql[0]!, /block_number > \?/);
+    // `$n`, not `?`: the loader writes SQLite's `?` and toPositionalPlaceholders
+    // rewrites it on the way to Postgres. #9821 is what happens when it does
+    // not -- six routes served zero rows because `?` matched nothing.
+    assert.match(sql[0]!, /block_number > \$\d/);
     assert.equal(params[0]![0], SEAM, "the seam is the D1 floor");
     assert.equal(queries.length, 0, "no lakehouse query needed");
   });
@@ -248,13 +254,10 @@ describe("loadBlockFeedColdTier", () => {
   test("stitches D1 then the lakehouse, strictly below the last D1 row", async () => {
     const { db } = d1([headRow(SEAM + 1)]);
     const queries = lakeFetch([lakeRow(SEAM), lakeRow(SEAM - 1)]);
-    const data = await loadBlockFeedColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
-      {
-        limit: 3,
-        offset: 0,
-      },
-    );
+    const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+      limit: 3,
+      offset: 0,
+    });
     assert.deepEqual(
       data!.blocks.map((b) => b.block_number),
       [SEAM + 1, SEAM, SEAM - 1],
@@ -272,13 +275,10 @@ describe("loadBlockFeedColdTier", () => {
   test("with no D1 rows the lakehouse leg starts at the seam itself", async () => {
     const { db } = d1([]);
     const queries = lakeFetch([lakeRow(SEAM)]);
-    await loadBlockFeedColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
-      {
-        limit: 1,
-        offset: 0,
-      },
-    );
+    await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+      limit: 1,
+      offset: 0,
+    });
     // No D1 rows -> an exclusive block ceiling at the seam, not a tuple seek.
     assert.match(queries[0]!, new RegExp(`block_number < ${SEAM + 1}`));
   });
@@ -287,7 +287,7 @@ describe("loadBlockFeedColdTier", () => {
     const { db, sql } = d1([headRow(SEAM + 1)]);
     const queries = lakeFetch([lakeRow(10)]);
     const data = await loadBlockFeedColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
+      { ...TOKEN, ...db } as never,
       {
         limit: 5,
         offset: 0,
@@ -306,13 +306,10 @@ describe("loadBlockFeedColdTier", () => {
   test("offset is applied once, after both legs are concatenated", async () => {
     const { db } = d1([headRow(SEAM + 2), headRow(SEAM + 1)]);
     const queries = lakeFetch([lakeRow(SEAM), lakeRow(SEAM - 1)]);
-    const data = await loadBlockFeedColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
-      {
-        limit: 2,
-        offset: 2,
-      },
-    );
+    const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+      limit: 2,
+      offset: 2,
+    });
     assert.deepEqual(
       data!.blocks.map((b) => b.block_number),
       [SEAM, SEAM - 1],
@@ -324,13 +321,10 @@ describe("loadBlockFeedColdTier", () => {
   test("D1 rows are formatted ONCE, by the shared formatter", async () => {
     const { db } = d1([headRow(SEAM + 1)]);
     lakeFetch([]);
-    const data = await loadBlockFeedColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
-      {
-        limit: 1,
-        offset: 0,
-      },
-    );
+    const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+      limit: 1,
+      offset: 0,
+    });
     const b = data!.blocks[0]!;
     assert.equal(b.block_number, SEAM + 1);
     assert.equal(b.block_hash, `0xhead${SEAM + 1}`);
@@ -344,13 +338,10 @@ describe("loadBlockFeedColdTier", () => {
   test("a cold D1 degrades to the lakehouse rather than failing", async () => {
     const { db } = d1([], { throws: true });
     lakeFetch([lakeRow(SEAM)]);
-    const data = await loadBlockFeedColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
-      {
-        limit: 1,
-        offset: 0,
-      },
-    );
+    const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+      limit: 1,
+      offset: 0,
+    });
     assert.equal(data!.blocks.length, 1);
   });
 
@@ -381,13 +372,10 @@ describe("loadBlockFeedColdTier", () => {
   test("a full page carries a next cursor, a short page does not", async () => {
     const { db } = d1([headRow(SEAM + 2), headRow(SEAM + 1)]);
     lakeFetch([]);
-    const full = await loadBlockFeedColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
-      {
-        limit: 2,
-        offset: 0,
-      },
-    );
+    const full = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+      limit: 2,
+      offset: 0,
+    });
     // The Postgres tier's own token for this row: observed_at.block_number.
     assert.equal(
       full!.next_cursor,
@@ -419,7 +407,7 @@ describe("loadBlockFeedColdTier", () => {
     const { db, sql, params } = d1([headRow(SEAM + 5)]);
     lakeFetch([]);
     await loadBlockFeedColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
+      { ...TOKEN, ...db } as never,
       {
         limit: 1,
         offset: 0,
@@ -433,11 +421,14 @@ describe("loadBlockFeedColdTier", () => {
     // Qualified to `b`: these columns exist on BOTH sides of the
     // chain_detail_blocks join, so an unqualified predicate is an ambiguous
     // -column error in SQLite rather than a silently wrong answer.
-    assert.match(sql[0]!, /\(b\.observed_at, b\.block_number\) < \(\?, \?\)/);
-    assert.match(sql[0]!, /b\.block_number >= \?/);
-    assert.match(sql[0]!, /b\.block_number <= \?/);
-    assert.match(sql[0]!, /b\.observed_at >= \?/);
-    assert.match(sql[0]!, /b\.extrinsic_count >= \?/);
+    assert.match(
+      sql[0]!,
+      /\(b\.observed_at, b\.block_number\) < \(\$\d, \$\d\)/,
+    );
+    assert.match(sql[0]!, /b\.block_number >= \$\d/);
+    assert.match(sql[0]!, /b\.block_number <= \$\d/);
+    assert.match(sql[0]!, /b\.observed_at >= \$\d/);
+    assert.match(sql[0]!, /b\.extrinsic_count >= \$\d/);
     // Bound, never interpolated — order matters as much as presence.
     assert.deepEqual(params[0], [
       SEAM,
@@ -460,7 +451,7 @@ describe("loadBlockFeedColdTier", () => {
       const { db } = d1([headRow(SEAM + 1)]);
       lakeFetch([lakeRow(1)]);
       const data = await loadBlockFeedColdTier(
-        { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
+        { ...TOKEN, ...db } as never,
         { limit: 2, offset: 0, ...bad } as never,
       );
       assert.equal(data, null, JSON.stringify(bad));
@@ -474,10 +465,10 @@ describe("loadBlockFeedColdTier", () => {
       }),
     };
     lakeFetch([lakeRow(SEAM)]);
-    const data = await loadBlockFeedColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
-      { limit: 1, offset: 0 },
-    );
+    const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+      limit: 1,
+      offset: 0,
+    });
     assert.equal(data!.blocks.length, 1);
     assert.equal(
       data!.blocks[0]!.block_number,
@@ -490,7 +481,7 @@ describe("loadBlockFeedColdTier", () => {
     const { db } = d1([headRow(SEAM + 1)]);
     lakeFetch([]);
     const ok = await loadBlockFeedColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
+      { ...TOKEN, ...db } as never,
       { limit: 2 } as never,
     );
     assert.ok(ok, "offset is optional");
@@ -512,7 +503,7 @@ describe("loadBlockFeedColdTier", () => {
     const { db } = d1([]);
     const queries = lakeFetch([lakeRow(500)]);
     await loadBlockFeedColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
+      { ...TOKEN, ...db } as never,
       {
         limit: 1,
         offset: 0,
@@ -531,10 +522,10 @@ describe("loadBlockFeedColdTier", () => {
     globalThis.fetch = (async () => {
       throw new Error("lakehouse down");
     }) as unknown as typeof fetch;
-    const data = await loadBlockFeedColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
-      { limit: 5, offset: 0 },
-    );
+    const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+      limit: 5,
+      offset: 0,
+    });
     assert.equal(data!.blocks.length, 1, "partial beats nothing");
     assert.equal(data!.blocks[0]!.block_number, SEAM + 1);
   });
@@ -542,10 +533,10 @@ describe("loadBlockFeedColdTier", () => {
   test("a full page whose last row has no usable height carries no cursor", async () => {
     const { db } = d1([{ ...headRow(SEAM + 1), block_number: "not-a-height" }]);
     lakeFetch([]);
-    const data = await loadBlockFeedColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
-      { limit: 1, offset: 0 },
-    );
+    const data = await loadBlockFeedColdTier({ ...TOKEN, ...db } as never, {
+      limit: 1,
+      offset: 0,
+    });
     assert.equal(
       data!.next_cursor ?? null,
       null,
@@ -557,7 +548,7 @@ describe("loadBlockFeedColdTier", () => {
     const { db, sql } = d1([headRow(SEAM + 1)]);
     const queries = lakeFetch([lakeRow(5)]);
     const data = await loadBlockFeedColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
+      { ...TOKEN, ...db } as never,
       { limit: 5, offset: 0, blockStart: 20, blockEnd: 10 } as never,
     );
     assert.equal(data!.block_count, 0);
@@ -573,7 +564,7 @@ describe("loadBlockFeedColdTier", () => {
     const { db, params } = d1([headRow(SEAM + 1)]);
     lakeFetch([]);
     const data = await loadBlockFeedColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
+      { ...TOKEN, ...db } as never,
       {
         limit: 2,
         offset: 0,
@@ -590,7 +581,7 @@ describe("loadBlockColdTier", () => {
     const { db, params } = d1([headRow(SEAM + 5)]);
     const queries = lakeFetch([]);
     const data = await loadBlockColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
+      { ...TOKEN, ...db } as never,
       String(SEAM + 5),
     );
     assert.equal(data!.block!.block_number, SEAM + 5);
@@ -602,7 +593,7 @@ describe("loadBlockColdTier", () => {
     const { db, sql } = d1([]);
     const queries = lakeFetch([lakeRow(SEAM)]);
     const data = await loadBlockColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
+      { ...TOKEN, ...db } as never,
       String(SEAM),
     );
     assert.equal(data!.block!.block_number, SEAM);
@@ -614,7 +605,7 @@ describe("loadBlockColdTier", () => {
     const { db } = d1([]);
     const queries = lakeFetch([]);
     const data = await loadBlockColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
+      { ...TOKEN, ...db } as never,
       String(SEAM + 99),
     );
     assert.ok(data, "an absence is an answer");
@@ -630,10 +621,10 @@ describe("loadBlockColdTier", () => {
     const { db, sql } = d1([]);
     const queries = lakeFetch([lakeRow(42)]);
     const data = await loadBlockColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
+      { ...TOKEN, ...db } as never,
       "0xABCD",
     );
-    assert.match(sql[0]!, /lower\(b\.block_hash\) = \?/);
+    assert.match(sql[0]!, /lower\(b\.block_hash\) = \$\d/);
     assert.match(queries[0]!, /block_hash = '0xabcd'/);
     assert.equal(data!.block!.block_number, 42);
   });
@@ -648,7 +639,7 @@ describe("loadBlockColdTier", () => {
     ]);
     const queries = lakeFetch([]);
     const data = await loadBlockColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
+      { ...TOKEN, ...db } as never,
       String(SEAM + 4),
     );
     assert.equal(data!.block!.event_count, 320);
@@ -666,7 +657,7 @@ describe("loadBlockColdTier", () => {
     ]);
     lakeFetch([]);
     const data = await loadBlockColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
+      { ...TOKEN, ...db } as never,
       String(SEAM + 4),
     );
     assert.equal(data!.block!.block_number, SEAM + 4);
@@ -678,7 +669,7 @@ describe("loadBlockColdTier", () => {
     const { db } = d1([headRow(SEAM + 7)]);
     const queries = lakeFetch([]);
     const data = await loadBlockColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
+      { ...TOKEN, ...db } as never,
       "0xabc123",
     );
     assert.equal(data!.block!.block_number, SEAM + 7);
@@ -689,10 +680,7 @@ describe("loadBlockColdTier", () => {
     const { db, sql } = d1([]);
     const queries = lakeFetch([]);
     assert.equal(
-      await loadBlockColdTier(
-        { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
-        "'; DROP TABLE --",
-      ),
+      await loadBlockColdTier({ ...TOKEN, ...db } as never, "'; DROP TABLE --"),
       null,
     );
     assert.equal(sql.length, 0);
@@ -703,7 +691,7 @@ describe("loadBlockColdTier", () => {
     const { db } = d1([], { throws: true });
     lakeFetch([lakeRow(SEAM)]);
     const data = await loadBlockColdTier(
-      { ...TOKEN, METAGRAPH_HEALTH_DB: db } as never,
+      { ...TOKEN, ...db } as never,
       String(SEAM),
     );
     assert.equal(data!.block!.block_number, SEAM);

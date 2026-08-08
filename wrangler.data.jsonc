@@ -190,7 +190,14 @@
     // the loader modules they reach and fails the build on either construct.
     //
     // Rollback remains deleting the entry.
-    "NEON_READ_LANES": "account_position_daily,neurons,neuron_daily,subnet_snapshots,subnet_hyperparams,account_identity,validator_nominator_counts,subnet_hyperparams_history,account_identity_history",
+    //
+    // `surface_status` is here because it has to be, not because a mirror
+    // proved itself: Neon is its ONLY store (it is in NEON_SOLE_STORE_TABLES
+    // below), and /api/v1/internal/health-status-live reads it. While D1 was
+    // still bound, a table missing from this list simply stayed on D1; with D1
+    // gone the same omission is a 503 on every request, which puts the prober
+    // back on the empty prior map #9522 exists to prevent.
+    "NEON_READ_LANES": "account_position_daily,neurons,neuron_daily,subnet_snapshots,subnet_hyperparams,account_identity,validator_nominator_counts,subnet_hyperparams_history,account_identity_history,surface_status",
     // Tables whose ONLY home is Neon -- D1 is not behind them any more.
     //
     // A FOURTH flag, and the one the other three converge on. All three above
@@ -250,7 +257,7 @@
     // writing and ignoring it, and the Neon write becomes authoritative -- any
     // table's failure is now the request's failure. A pass that did not reach
     // the store did not happen.
-    "NEON_SOLE_STORE_TABLES": "rpc_accounts,github_accounts,api_keys,api_key_blocks,api_key_usage_daily,api_quota_daily,api_usage_rollup,chain_alert_triggers,chain_alert_deliveries,watch_push_subscriptions,neurons,neuron_daily,account_position_daily,surface_checks,surface_status,surface_uptime_daily,surface_failure_daily,subnet_snapshots,subnet_hyperparams,subnet_hyperparams_history,account_identity,account_identity_history,validator_nominator_counts,chain_concentration_daily,subnet_burn_history,tao_usd_index,nominator_positions,nominator_positions_passes,blocks_head,raw_capture_state,chain_detail_blocks,chain_detail_extrinsics,chain_detail_chain_events,chain_detail_account_events,neurons_passes,validator_nominator_counts_passes,emission_gate_param_history,subnet_emission_enabled_history,emission_flow_watch,lane_health,account_balances,account_balances_passes,hotkey_alpha,hotkey_alpha_passes,self_health_checks,self_health_daily",
+    "NEON_SOLE_STORE_TABLES": "rpc_accounts,github_accounts,api_keys,api_key_blocks,api_key_usage_daily,api_quota_daily,api_usage_rollup,chain_alert_triggers,chain_alert_deliveries,watch_push_subscriptions,neurons,neuron_daily,account_position_daily,surface_checks,surface_status,surface_uptime_daily,surface_failure_daily,subnet_snapshots,subnet_hyperparams,subnet_hyperparams_history,account_identity,account_identity_history,validator_nominator_counts,chain_concentration_daily,subnet_burn_history,tao_usd_index,nominator_positions,nominator_positions_passes,blocks_head,raw_capture_state,chain_detail_blocks,chain_detail_extrinsics,chain_detail_chain_events,chain_detail_account_events,neurons_passes,validator_nominator_counts_passes,emission_gate_param_history,subnet_emission_enabled_history,emission_flow_watch,lane_health,account_balances,account_balances_passes,hotkey_alpha,hotkey_alpha_passes,self_health_checks,self_health_daily,subnets,surfaces,providers,surface_history",
     "METAGRAPH_SUBNET_HYPERPARAMS_SOURCE": "d1",
     "METAGRAPH_ACCOUNT_IDENTITY_SOURCE": "d1",
     // THE QUEUE CUTOVER (metagraphed-infra#348). Comma-separated lanes whose D1
@@ -538,13 +545,6 @@
       },
     ],
   },
-  "d1_databases": [
-    {
-      "binding": "METAGRAPH_HEALTH_DB",
-      "database_name": "metagraphed",
-      "database_id": "8e14c15f-d0b0-4ffd-ad65-01e37993efcf",
-    },
-  ],
   // Neon Postgres, via Hyperdrive (metagraphed-infra#336). NOT the return of the
   // box: HYPERDRIVE was unbound in #9186 because the Postgres it fronted was
   // wiped, and the two Hyperdrive configs that pointed at it have since been
