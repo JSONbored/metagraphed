@@ -15,23 +15,18 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import { ChangelogArtifactSchema } from "../routes/meta-contracts.ts";
 import { CoverageDepthArtifactSchema } from "../routes/coverage.ts";
 import { SelfHealthArtifactSchema } from "../routes/self-health.ts";
+import { CoverageArtifactSchema } from "../routes/coverage.ts";
 import {
-  AGENT_READINESS_STATUSES,
-  BLOCKER_LEVELS,
-  COVERAGE_DEPTH_TIERS,
-  CoverageArtifactSchema,
-} from "../routes/coverage.ts";
-import {
-  COVERAGE_DEPTH_SORT_VALUES,
   fieldsSchema,
   limitSchema,
-  netuidSchema,
   numericCursorSchema,
   orderSchema,
   sortSchema,
+  projectableRows,
 } from "./shared.ts";
 import { BuildSummaryArtifactSchema } from "../routes/meta-contracts.ts";
 
@@ -85,27 +80,31 @@ export type GetCoverageOutput = z.infer<typeof GetCoverageOutputSchema>;
  */
 export const GetCoverageDepthInputSchema = z
   .object({
-    netuid: netuidSchema().optional(),
-    tier: z
-      .enum(COVERAGE_DEPTH_TIERS)
+    netuid:
+      API_QUERY_COLLECTIONS["coverage-depth"].filter_schemas.netuid.optional(),
+    tier: API_QUERY_COLLECTIONS["coverage-depth"].filter_schemas.tier
       .optional()
       .describe(
         "Restrict to subnets in this readiness tier. Applied across the whole scorecard, not to one page.",
       )
       .meta({ examples: ["agent-ready"] }),
-    agent_status: z
-      .enum(AGENT_READINESS_STATUSES)
+    agent_status: API_QUERY_COLLECTIONS[
+      "coverage-depth"
+    ].filter_schemas.agent_status
       .optional()
       .describe("Restrict to subnets with this agent-readiness status.")
       .meta({ examples: ["callable"] }),
-    blocker_level: z
-      .enum(BLOCKER_LEVELS)
+    blocker_level: API_QUERY_COLLECTIONS[
+      "coverage-depth"
+    ].filter_schemas.blocker_level
       .optional()
       .describe(
         "Restrict to subnets blocked this badly. `none` means nothing is blocking promotion.",
       )
       .meta({ examples: ["hard-blocked"] }),
-    sort: sortSchema(COVERAGE_DEPTH_SORT_VALUES).optional(),
+    sort: sortSchema(
+      API_QUERY_COLLECTIONS["coverage-depth"].sort_fields,
+    ).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     // Defaults to a PAGE, not the whole scorecard (#10027). Measured at
@@ -130,7 +129,17 @@ export type GetCoverageDepthInput = z.infer<typeof GetCoverageDepthInputSchema>;
 // and CoverageDepthQueueEntrySchema in full, so an agent now gets the shape of
 // the thing it is ranking instead of {"type":"object"}. Verified against
 // production before the switch.
-export const GetCoverageDepthOutputSchema = CoverageDepthArtifactSchema;
+// #10064 production sweep: this tool advertises `fields`, so a caller can ask
+// for a SUBSET of each row -- and the artifact schema requires every property
+// on it. Production answered `?fields=` with rows that failed the tool's own
+// published schema; `projectableRows` is the convention the sibling tools
+// already use. Field names and types still come from the route, so a rename
+// there is still a compile error here; only requiredness changes, because the
+// caller controls it.
+export const GetCoverageDepthOutputSchema = CoverageDepthArtifactSchema.extend({
+  rows: projectableRows(CoverageDepthArtifactSchema.shape.rows),
+  ranked_queue: projectableRows(CoverageDepthArtifactSchema.shape.ranked_queue),
+});
 export type GetCoverageDepthOutput = z.infer<
   typeof GetCoverageDepthOutputSchema
 >;

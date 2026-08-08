@@ -11,23 +11,21 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import {
-  blockBoundSchema,
-  keysetCursorSchema,
-  limitSchema,
-  offsetSchema,
-  ss58Schema,
-} from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { blockBoundSchema, ss58Schema } from "./shared.ts";
 import { AccountExtrinsicsArtifactSchema } from "../routes/account-extrinsics.ts";
+
+const RouteQuery_accounts_ss58_extrinsics =
+  ROUTE_QUERY_SCHEMAS["/api/v1/accounts/{ss58}/extrinsics"];
 
 export const GetAccountExtrinsicsInputSchema = z
   .object({
     ss58: ss58Schema(),
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
-    limit: limitSchema(1000).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
+    limit: RouteQuery_accounts_ss58_extrinsics.shape.limit,
+    offset: RouteQuery_accounts_ss58_extrinsics.shape.offset,
+    cursor: RouteQuery_accounts_ss58_extrinsics.shape.cursor,
   })
   .strict();
 export type GetAccountExtrinsicsInput = z.infer<

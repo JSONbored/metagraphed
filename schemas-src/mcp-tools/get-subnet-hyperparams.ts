@@ -15,16 +15,15 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import {
-  keysetCursorSchema,
-  limitSchema,
-  netuidSchema,
-  offsetSchema,
-} from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { netuidSchema } from "./shared.ts";
 import {
   SubnetHyperparametersArtifactSchema,
   SubnetHyperparamsHistoryArtifactSchema,
 } from "../routes/subnet-hyperparameters.ts";
+
+const RouteQuery_subnets_netuid_hyperparameters_history =
+  ROUTE_QUERY_SCHEMAS["/api/v1/subnets/{netuid}/hyperparameters/history"];
 
 export const GetSubnetHyperparamsInputSchema = z
   .object({
@@ -44,9 +43,9 @@ export type GetSubnetHyperparamsOutput = z.infer<
 export const GetSubnetHyperparamsHistoryInputSchema = z
   .object({
     netuid: netuidSchema(),
-    limit: limitSchema(1000).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
+    limit: RouteQuery_subnets_netuid_hyperparameters_history.shape.limit,
+    offset: RouteQuery_subnets_netuid_hyperparameters_history.shape.offset,
+    cursor: RouteQuery_subnets_netuid_hyperparameters_history.shape.cursor,
   })
   .strict();
 export type GetSubnetHyperparamsHistoryInput = z.infer<

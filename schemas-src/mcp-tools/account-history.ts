@@ -4,30 +4,27 @@
 // reuse. Modeled fresh, matching the hand-written literal it replaces
 // field-for-field.
 import { z } from "zod";
-import {
-  daySchema,
-  keysetCursorSchema,
-  limitSchema,
-  netuidSchema,
-  offsetSchema,
-  ss58Schema,
-} from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { netuidSchema, ss58Schema } from "./shared.ts";
+
+const RouteQuery_accounts_ss58_history =
+  ROUTE_QUERY_SCHEMAS["/api/v1/accounts/{ss58}/history"];
 
 export const GetAccountHistoryInputSchema = z
   .object({
     ss58: ss58Schema(),
-    netuid: netuidSchema().optional(),
+    netuid: RouteQuery_accounts_ss58_history.shape.netuid,
     // DAYS, not block heights. These carried the generic cross-tool sentence
     // ("a block height on chain tools, an ISO-8601 date on time-series ones")
     // and a block-height EXAMPLE, while this route reads a day-partitioned
     // table and takes YYYY-MM-DD only -- verified live, `?from=8700000` is a
     // 400 and `?from=2026-08-01` is a 200. An agent following the tool's own
     // example was rejected (#10115).
-    from: daySchema("first").optional(),
-    to: daySchema("last").optional(),
-    limit: limitSchema(1000).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
+    from: RouteQuery_accounts_ss58_history.shape.from,
+    to: RouteQuery_accounts_ss58_history.shape.to,
+    limit: RouteQuery_accounts_ss58_history.shape.limit,
+    offset: RouteQuery_accounts_ss58_history.shape.offset,
+    cursor: RouteQuery_accounts_ss58_history.shape.cursor,
   })
   .strict();
 export type GetAccountHistoryInput = z.infer<

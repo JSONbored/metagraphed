@@ -12,12 +12,8 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import {
-  blockEventCursorSchema,
-  limitSchema,
-  runtimeNameSchema,
-  windowSchema,
-} from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { blockEventCursorSchema, limitSchema } from "./shared.ts";
 import { McpNetworkSchema } from "../shared.ts";
 import { ChainActivityArtifactSchema } from "../routes/chain-analytics.ts";
 import {
@@ -25,19 +21,19 @@ import {
   ChainEventsStatsArtifactSchema,
 } from "../routes/chain-events.ts";
 
-const WINDOWS_2 = ["7d", "30d"] as const;
-
 /** The ceiling /chain-events enforces on `pallet` and `method` --
  * validateListQuery reads it off the PUBLISHED schema to decide a 400. */
-const EVENT_FEED_NAME_MAX = 64;
+
+const RouteQuery_chain_activity = ROUTE_QUERY_SCHEMAS["/api/v1/chain/activity"];
+
+const RouteQuery_chain_events_stats =
+  ROUTE_QUERY_SCHEMAS["/api/v1/chain-events/stats"];
+
+const RouteQuery_chain_events = ROUTE_QUERY_SCHEMAS["/api/v1/chain-events"];
 
 export const GetChainActivityInputSchema = z
   .object({
-    blocks: z
-      .int()
-      .min(1)
-      .max(5000)
-      .optional()
+    blocks: RouteQuery_chain_events_stats.shape.blocks
       .describe("How many trailing blocks to cover, ending at the chain head.")
       .meta({ examples: [1200] }),
     // #8700: which chain's decoded history to aggregate. The same published
@@ -57,8 +53,7 @@ export type GetChainActivityOutput = z.infer<
 
 export const ListChainEventsInputSchema = z
   .object({
-    pallet: runtimeNameSchema(EVENT_FEED_NAME_MAX)
-      .optional()
+    pallet: RouteQuery_chain_events.shape.pallet
       .describe(
         "Restrict to events emitted by this pallet, by runtime name (`SubtensorModule`). Case-sensitive.",
       )
@@ -66,8 +61,7 @@ export const ListChainEventsInputSchema = z
     // NOT an HTTP method. This said "HTTP method to use for the call" beside
     // an example of `set_weights` -- the prose contradicted its own example,
     // on a parameter whose whole job is naming a runtime call (#10131).
-    method: runtimeNameSchema(EVENT_FEED_NAME_MAX)
-      .optional()
+    method: RouteQuery_chain_events.shape.method
       .describe(
         "Restrict to events emitted by this runtime call, by name (`set_weights`). Case-sensitive.",
       )
@@ -115,7 +109,7 @@ export type ListChainEventsOutput = z.infer<typeof ListChainEventsOutputSchema>;
 
 export const GetNetworkActivityInputSchema = z
   .object({
-    window: windowSchema(WINDOWS_2).optional(),
+    window: RouteQuery_chain_activity.shape.window,
   })
   .strict();
 export type GetNetworkActivityInput = z.infer<

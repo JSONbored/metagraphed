@@ -11,16 +11,20 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { kindSchema, limitSchema } from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { limitSchema } from "./shared.ts";
 import {
   EMISSION_CHANGES_LIMIT_DEFAULT,
   EMISSION_CHANGES_LIMIT_MAX,
 } from "../../src/route-limits.ts";
 import { EmissionGateChangesArtifactSchema } from "../routes/emission-gate-changes.ts";
 
+const RouteQuery_chain_governance_emission_changes =
+  ROUTE_QUERY_SCHEMAS["/api/v1/chain/governance/emission-changes"];
+
 export const GetEmissionChangesInputSchema = z
   .object({
-    kind: kindSchema(["param", "subnet", "flow"]).optional(),
+    kind: RouteQuery_chain_governance_emission_changes.shape.kind,
     limit: limitSchema(
       EMISSION_CHANGES_LIMIT_MAX,
       EMISSION_CHANGES_LIMIT_DEFAULT,

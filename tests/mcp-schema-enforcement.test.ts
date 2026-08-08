@@ -222,3 +222,50 @@ describe("published MCP enums are enforced at runtime (#8942)", () => {
     );
   }, 120_000);
 });
+
+describe("a tool that advertises `fields` publishes projectable rows (#10064)", () => {
+  // Found by a PRODUCTION sweep, which is the wrong place to find it.
+  //
+  // `?fields=auth_required` returns rows carrying ONLY that key. Four tools
+  // published their route's whole artifact schema, which requires every
+  // property on a row, so the projected answer failed the tool's own published
+  // schema: 1,060 violations across get_subnet_endpoints, get_subnet_candidates,
+  // get_subnet_surfaces and get_coverage_depth. A generated client validating
+  // the response would reject data the server considers correct.
+  //
+  // conformance:mcp catches this, but only against production and only out of
+  // band -- #9884 is the same failure, and the same gap let it recur. The rule
+  // is decidable offline from the EMITTED schemas alone: if a tool takes
+  // `fields`, any subset of a row is a legal answer, so no row property may be
+  // required. `projectableRows()` is how the sibling tools say that.
+  test("no fields-capable tool requires properties on a row it can project", () => {
+    const offenders: string[] = [];
+    let checked = 0;
+    for (const tool of listToolDefinitions() as Row[]) {
+      const input = tool.inputSchema as Row | undefined;
+      if (!(input?.properties as Row)?.fields) continue;
+      checked += 1;
+      for (const [key, value] of Object.entries(
+        ((tool.outputSchema as Row)?.properties ?? {}) as Row,
+      )) {
+        const node = value as Row;
+        const items = node?.items as Row | undefined;
+        const required = (items?.required ?? []) as string[];
+        if (
+          node?.type === "array" &&
+          items?.type === "object" &&
+          required.length
+        ) {
+          offenders.push(`${tool.name}.${key} requires ${required.length}`);
+        }
+      }
+    }
+    assert.deepEqual(
+      offenders,
+      [],
+      "these answer a `fields` request with rows that fail their own published " +
+        `schema — wrap the row array in projectableRows(): ${offenders.join(", ")}`,
+    );
+    assert.ok(checked >= 30, `only ${checked} fields-capable tools found`);
+  });
+});

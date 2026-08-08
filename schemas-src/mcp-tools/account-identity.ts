@@ -12,16 +12,15 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import {
-  keysetCursorSchema,
-  limitSchema,
-  offsetSchema,
-  ss58Schema,
-} from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { ss58Schema } from "./shared.ts";
 import {
   AccountIdentityArtifactSchema,
   AccountIdentityHistoryArtifactSchema,
 } from "../routes/account-identity.ts";
+
+const RouteQuery_accounts_ss58_identity_history =
+  ROUTE_QUERY_SCHEMAS["/api/v1/accounts/{ss58}/identity-history"];
 
 export const GetAccountIdentityInputSchema = z
   .object({
@@ -40,9 +39,9 @@ export type GetAccountIdentityOutput = z.infer<
 export const GetAccountIdentityHistoryInputSchema = z
   .object({
     ss58: ss58Schema(),
-    limit: limitSchema(1000).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
+    limit: RouteQuery_accounts_ss58_identity_history.shape.limit,
+    offset: RouteQuery_accounts_ss58_identity_history.shape.offset,
+    cursor: RouteQuery_accounts_ss58_identity_history.shape.cursor,
   })
   .strict();
 export type GetAccountIdentityHistoryInput = z.infer<

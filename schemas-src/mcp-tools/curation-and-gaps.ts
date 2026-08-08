@@ -10,13 +10,13 @@
 // notes shape, see shared.ts's NotesFieldSchema) -- a genuine difference,
 // preserved as-is.
 import { z } from "zod";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   McpListArtifactStamp,
   McpListPageFields,
   fieldsSchema,
   kindSchema,
   limitSchema,
-  netuidSchema,
   numericCursorSchema,
   orderSchema,
   projectableRows,
@@ -25,25 +25,21 @@ import {
 import { CurationArtifactSchema } from "../routes/curation-gaps.ts";
 import { GapsArtifactSchema } from "../routes/curation-gaps.ts";
 import { COVERAGE_LEVEL_VALUES, CURATION_LEVEL_VALUES } from "../shared.ts";
-import {
-  CURATION_SORT_FIELDS,
-  GAPS_SORT_FIELDS,
-} from "../routes/curation-gaps.ts";
+import {} from "../routes/curation-gaps.ts";
 
 const COVERAGE_LEVELS = COVERAGE_LEVEL_VALUES;
 const CURATION_LEVELS = CURATION_LEVEL_VALUES;
 export const ListCurationInputSchema = z
   .object({
-    netuid: netuidSchema().optional(),
-    coverage_level: z
-      .enum(COVERAGE_LEVELS)
+    netuid: API_QUERY_COLLECTIONS.curation.filter_schemas.netuid.optional(),
+    coverage_level: API_QUERY_COLLECTIONS.curation.filter_schemas.coverage_level
       .optional()
       .describe(
         "How much of the subnet is covered: on-chain data only, a manifest, or actively probed surfaces.",
       )
       .meta({ examples: [COVERAGE_LEVELS[0]] }),
     curation_level: kindSchema(CURATION_LEVELS).optional(),
-    sort: sortSchema(CURATION_SORT_FIELDS).optional(),
+    sort: sortSchema(API_QUERY_COLLECTIONS.curation.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
@@ -63,16 +59,15 @@ export type ListCurationOutput = z.infer<typeof ListCurationOutputSchema>;
 
 export const ListGapsInputSchema = z
   .object({
-    netuid: netuidSchema().optional(),
-    coverage_level: z
-      .enum(COVERAGE_LEVELS)
+    netuid: API_QUERY_COLLECTIONS.gaps.filter_schemas.netuid.optional(),
+    coverage_level: API_QUERY_COLLECTIONS.gaps.filter_schemas.coverage_level
       .optional()
       .describe(
         "How much of the subnet is covered: on-chain data only, a manifest, or actively probed surfaces.",
       )
       .meta({ examples: [COVERAGE_LEVELS[0]] }),
     curation_level: kindSchema(CURATION_LEVELS).optional(),
-    sort: sortSchema(GAPS_SORT_FIELDS).optional(),
+    sort: sortSchema(API_QUERY_COLLECTIONS.gaps.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),

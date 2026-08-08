@@ -14,20 +14,24 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import {
   SubnetValidatorEconomicsArtifactSchema,
   ValidatorEconomicsRankingArtifactSchema,
   SubnetValidatorEconomicsHistoryArtifactSchema,
 } from "../routes/validator-economics.ts";
-import { limitSchema, netuidSchema, sortSchema } from "./shared.ts";
+import { limitSchema, netuidSchema } from "./shared.ts";
 import {
   VALIDATOR_ECONOMICS_LIMIT_DEFAULT,
   VALIDATOR_ECONOMICS_LIMIT_MAX,
 } from "../../src/route-limits.ts";
-import {
-  VALIDATOR_ECONOMICS_HISTORY_WINDOWS,
-  VALIDATOR_ECONOMICS_SORTS,
-} from "../../src/validator-economics.ts";
+import { VALIDATOR_ECONOMICS_HISTORY_WINDOWS } from "../../src/validator-economics.ts";
+
+const RouteQuery_validators_economics =
+  ROUTE_QUERY_SCHEMAS["/api/v1/validators/economics"];
+
+const RouteQuery_subnets_netuid_validator_economics_history =
+  ROUTE_QUERY_SCHEMAS["/api/v1/subnets/{netuid}/validator-economics/history"];
 
 export const GetSubnetValidatorEconomicsInputSchema = z
   .object({
@@ -54,7 +58,7 @@ export const ListValidatorEconomicsInputSchema = z
     // ranked by the default, echoing that default back as `sort`. A model that guessed
     // got a plausible list answering a question nobody asked. Read from the same
     // constant the ranking and the REST validator use.
-    sort: sortSchema(VALIDATOR_ECONOMICS_SORTS).optional(),
+    sort: RouteQuery_validators_economics.shape.sort,
     // Was unbounded while the mirrored route rejected anything over 512.
     limit: limitSchema(
       VALIDATOR_ECONOMICS_LIMIT_MAX,
@@ -64,25 +68,18 @@ export const ListValidatorEconomicsInputSchema = z
     // generic MAX_OFFSET offsetSchema() carries -- this ranking is bounded by
     // the subnet count, so paging past it seeks nothing. The tool advertised
     // 1,000,000 (#10131).
-    offset: z
-      .int()
-      .min(0)
-      .max(VALIDATOR_ECONOMICS_LIMIT_MAX)
+    offset: RouteQuery_validators_economics.shape.offset
       .describe(
         `Rows to skip before the first returned row (0-${VALIDATOR_ECONOMICS_LIMIT_MAX}).`,
       )
       .meta({ examples: [0] })
       .optional(),
-    emission_gate_open: z
-      .boolean()
-      .optional()
+    emission_gate_open: RouteQuery_validators_economics.shape.emission_gate_open
       .describe(
         "Restrict to subnets whose emission gate is open (`true`) or closed (`false`).",
       )
       .meta({ examples: [true] }),
-    cap_binding: z
-      .boolean()
-      .optional()
+    cap_binding: RouteQuery_validators_economics.shape.cap_binding
       .describe(
         "Restrict to subnets where the validator cap is actually binding (`true`).",
       )
@@ -106,14 +103,7 @@ export const GetSubnetValidatorEconomicsHistoryInputSchema = z
     // The one window parameter of 55 that was not an enum. Its sibling
     // get_subnet_burn_history already declared one, so a model reading the two
     // together had no way to know this was the same kind of closed set.
-    window: z
-      .enum(
-        Object.keys(VALIDATOR_ECONOMICS_HISTORY_WINDOWS) as [
-          string,
-          ...string[],
-        ],
-      )
-      .optional()
+    window: RouteQuery_subnets_netuid_validator_economics_history.shape.window
       .describe(
         "Trailing time window to aggregate over, ending at the latest data point rather than a calendar boundary. Options are per-tool; see this parameter's enum.",
       )

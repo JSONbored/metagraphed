@@ -120,6 +120,7 @@ import {
   orderSchema,
   querySchema,
   sortSchema,
+  stakeActionSchema,
   ss58Schema,
   windowSchema,
 } from "./query-params.ts";
@@ -235,7 +236,15 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
  * and a route-specific one is not forced into a vocabulary it does not belong
  * to.
  */
-export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
+/**
+ * The literal-keyed map is the point: `Record<string, z.ZodObject>` erased the
+ * per-route type, so a consumer indexing it got a generic object and could not
+ * `z.infer<>` the real shape. `satisfies` keeps the annotation's guarantee
+ * (every value is a ZodObject) while preserving each key's own type, which is
+ * what lets schemas-src/mcp-tools/* build a tool input FROM its route instead
+ * of restating it (#10064).
+ */
+export const ROUTE_QUERY_SCHEMAS = {
   "/api/v1/search/semantic": z.object({
     // Both were wrong before #10075: `q` published no ceiling though the
     // handler rejects one over SEMANTIC_QUERY_MAX_LENGTH, and `limit`
@@ -347,7 +356,7 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
   }),
   "/api/v1/subnets/{netuid}/stake-quote": z.object({
     amount: z.number().gt(0).optional(),
-    direction: directionSchema(["stake", "unstake"] as const).optional(),
+    direction: stakeActionSchema().optional(),
   }),
   "/api/v1/subnets/{netuid}/validator-economics/history": z.object({
     window: windowSchema(["7d", "30d", "90d"] as const).optional(),
@@ -903,4 +912,4 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
   "/api/v1/rpc/usage": z.object({
     window: windowSchema(["7d", "30d"] as const).optional(),
   }),
-};
+} satisfies Record<string, z.ZodObject>;

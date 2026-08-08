@@ -6,6 +6,7 @@
 // array). None mirror an existing schemas-src/routes/ REST schema --
 // modeled fresh, matching each hand-written literal field-for-field.
 import { z } from "zod";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import { RegistrySummaryArtifactSchema } from "../routes/registry-summary-leaderboards.ts";
 import {
   reviewStateSchema,
@@ -29,11 +30,9 @@ import {
 } from "../routes/coverage.ts";
 import {
   AGENT_READINESS_STATUSES,
-  BLOCKER_LEVELS,
   COVERAGE_DEPTH_SEVERITIES,
   COVERAGE_DEPTH_TIERS,
 } from "../routes/coverage.ts";
-import { PRIORITY_SORT_FIELDS } from "../routes/review-gaps-profile.ts";
 
 export const RegistrySummaryInputSchema = z.object({}).strict();
 export type RegistrySummaryInput = z.infer<typeof RegistrySummaryInputSchema>;
@@ -51,8 +50,7 @@ export type RegistrySummaryOutput = z.infer<typeof RegistrySummaryOutputSchema>;
 export const ListEnrichmentTargetsInputSchema = z
   .object({
     limit: limitSchema(50).optional(),
-    tier: z
-      .enum(COVERAGE_DEPTH_TIERS)
+    tier: API_QUERY_COLLECTIONS["coverage-depth"].filter_schemas.tier
       .optional()
       .describe("How agent-ready the subnet is.")
       .meta({ examples: [COVERAGE_DEPTH_TIERS[0]] }),
@@ -70,22 +68,25 @@ export const ListEnrichmentTargetsInputSchema = z
           "and hyphenated — not the human-readable label shown beside it.",
       )
       .meta({ examples: ["missing-openapi"] }),
-    agent_status: z
-      .enum(AGENT_READINESS_STATUSES)
+    agent_status: API_QUERY_COLLECTIONS[
+      "coverage-depth"
+    ].filter_schemas.agent_status
       .optional()
       .describe("How usable the subnet is to an agent right now.")
       .meta({ examples: [AGENT_READINESS_STATUSES[0]] }),
     // #10011: the fourth filter the coverage-depth collection declares. Its
     // three siblings above were already here, so this one's absence was an
     // omission rather than a narrowing.
-    blocker_level: z
-      .enum(BLOCKER_LEVELS)
+    blocker_level: API_QUERY_COLLECTIONS[
+      "coverage-depth"
+    ].filter_schemas.blocker_level
       .optional()
       .describe(
         "How badly the subnet is blocked. `none` means nothing is blocking promotion.",
       )
       .meta({ examples: ["hard-blocked"] }),
-    netuid: netuidSchema().optional(),
+    netuid:
+      API_QUERY_COLLECTIONS["coverage-depth"].filter_schemas.netuid.optional(),
   })
   .strict();
 export type ListEnrichmentTargetsInput = z.infer<
@@ -208,7 +209,9 @@ export const ListSubnetGapsInputSchema = z
       )
       .meta({ examples: [SURFACE_KINDS[0]] }),
     review_state: reviewStateSchema().optional(),
-    sort: sortSchema(PRIORITY_SORT_FIELDS).optional(),
+    sort: sortSchema(
+      API_QUERY_COLLECTIONS["review-gap-priorities"].sort_fields,
+    ).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),

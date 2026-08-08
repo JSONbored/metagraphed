@@ -14,20 +14,23 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import {
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,
   SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
 } from "../../src/route-limits.ts";
-import { limitSchema, netuidSchema, windowSchema } from "./shared.ts";
+import { limitSchema, netuidSchema } from "./shared.ts";
 import { SubnetEventSummaryArtifactSchema } from "../routes/subnet-event-summary.ts";
-import { SUBNET_EVENT_SUMMARY_WINDOW_VALUES } from "../routes/subnet-event-summary.ts";
 
 // objectItems(...) properties, none required at the item level (see
 // search-subnets.ts's same note from the pilot batch).
+const RouteQuery_subnets_netuid_event_summary =
+  ROUTE_QUERY_SCHEMAS["/api/v1/subnets/{netuid}/event-summary"];
+
 export const GetSubnetEventSummaryInputSchema = z
   .object({
     netuid: netuidSchema(),
-    window: windowSchema(SUBNET_EVENT_SUMMARY_WINDOW_VALUES).optional(),
+    window: RouteQuery_subnets_netuid_event_summary.shape.window,
     limit: limitSchema(
       SUBNET_EVENT_SUMMARY_RECENT_LIMIT_MAX,
       SUBNET_EVENT_SUMMARY_RECENT_LIMIT_DEFAULT,

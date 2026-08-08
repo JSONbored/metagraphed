@@ -6245,7 +6245,10 @@ function parameterSchemaFor(
     : { description: inSchemaDescription, ...constraints };
 }
 
-function queryCollection(dataKey: string, options: Row = {}) {
+function queryCollection<
+  Filters extends Record<string, z.ZodType> = Record<string, z.ZodType>,
+  Sort extends readonly [string, ...string[]] = readonly [string, ...string[]],
+>(dataKey: string, options: Row & { filters?: Filters; sort?: Sort } = {}) {
   // `filters` is authored as ZOD and stored twice (#10080): once as the emitted
   // JSON every existing reader already uses, and once as the Zod itself so
   // `listQuerySchema()` can compose with it.
@@ -6255,7 +6258,12 @@ function queryCollection(dataKey: string, options: Row = {}) {
   // `validateListQuery` reads at RUNTIME (`type`, `enum`, `maxLength`,
   // `pattern`, `maximum`) to decide a 400, so it cannot become a second thing
   // somebody edits.
-  const filterSchemas = (options.filters || {}) as Record<string, z.ZodType>;
+  // Typed as the AUTHORED filters, not widened to Record<string, ZodType>.
+  // Widening erased which filters a collection has, so a reader could not
+  // reference `API_QUERY_COLLECTIONS.curation.filter_schemas.netuid` and had to
+  // restate the schema instead -- which is exactly what the 34 collection
+  // routes' MCP tools were doing (#10064).
+  const filterSchemas = (options.filters || {}) as Filters;
   return {
     data_key: dataKey,
     filters: Object.fromEntries(
@@ -6287,7 +6295,10 @@ function queryCollection(dataKey: string, options: Row = {}) {
     // /apis had to filter this one client-side over a single page (#9117).
     presence_filters: options.presenceFilters || {},
     search_keys: options.search || [],
-    sort_fields: options.sort || [],
+    // Typed as the AUTHORED list for the same reason `filter_schemas` is: a
+    // reader that cannot see WHICH columns a collection sorts by has to
+    // restate the enum, and 30 MCP tools did (#10064).
+    sort_fields: (options.sort || []) as Sort,
   };
 }
 
@@ -6410,7 +6421,12 @@ export function querySchemaForRoute(entry: {
       extend: LIST_QUERY_ROUTE_EXTRAS[entry.path] ?? {},
     });
   }
-  const declared = ROUTE_QUERY_SCHEMAS[entry.path];
+  // ROUTE_QUERY_SCHEMAS is literal-keyed so mcp-tools can `z.infer<>` a single
+  // route's shape (#10064); this lookup is by a runtime string, which that
+  // typing deliberately does not admit.
+  const declared = (ROUTE_QUERY_SCHEMAS as Record<string, z.ZodObject>)[
+    entry.path
+  ];
   if (declared) return declared;
   return NO_QUERY_PARAMETERS.includes(entry.path)
     ? z.object({}).strict()

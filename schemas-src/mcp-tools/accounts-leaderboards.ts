@@ -11,20 +11,23 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { limitSchema, sortSchema } from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import { AccountsListArtifactSchema } from "../routes/accounts-list.ts";
 import { TopHoldersArtifactSchema } from "../routes/top-holders.ts";
-import { ACCOUNTS_LIST_LIST_SORTS_VALUES } from "../routes/accounts-list.ts";
-import { TOP_HOLDERS_SORT_VALUES } from "../routes/top-holders.ts";
 
 // Symbolic in the hand-written originals (src/accounts-list.ts's
 // ACCOUNTS_LIST_LIST_SORTS_VALUES/*_LIMIT_*, src/top-holders.ts's TOP_HOLDERS_SORT_VALUES/
 // *_LIMIT_*), cross-checked against the actual runtime source at the time
 // of writing.
+const RouteQuery_accounts = ROUTE_QUERY_SCHEMAS["/api/v1/accounts"];
+
+const RouteQuery_accounts_top_holders =
+  ROUTE_QUERY_SCHEMAS["/api/v1/accounts/top-holders"];
+
 export const ListAccountsInputSchema = z
   .object({
-    sort: sortSchema(ACCOUNTS_LIST_LIST_SORTS_VALUES).optional(),
-    limit: limitSchema(100).optional(),
+    sort: RouteQuery_accounts.shape.sort,
+    limit: RouteQuery_accounts.shape.limit,
   })
   .strict();
 export type ListAccountsInput = z.infer<typeof ListAccountsInputSchema>;
@@ -36,8 +39,8 @@ export type ListAccountsOutput = z.infer<typeof ListAccountsOutputSchema>;
 
 export const GetTopHoldersInputSchema = z
   .object({
-    sort: sortSchema(TOP_HOLDERS_SORT_VALUES).optional(),
-    limit: limitSchema(100).optional(),
+    sort: RouteQuery_accounts_top_holders.shape.sort,
+    limit: RouteQuery_accounts_top_holders.shape.limit,
   })
   .strict();
 export type GetTopHoldersInput = z.infer<typeof GetTopHoldersInputSchema>;

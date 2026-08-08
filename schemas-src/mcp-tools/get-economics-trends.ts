@@ -19,13 +19,15 @@
 // schema files and is tracked separately in #9799 -- single-sourcing it is that
 // issue's job, not this one's.
 import { z } from "zod";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import { EconomicsTrendsArtifactSchema } from "../routes/economics-trends.ts";
-import { windowSchema } from "./shared.ts";
-import { ECONOMICS_TRENDS_WINDOW_VALUES } from "../routes/economics-trends.ts";
+
+const RouteQuery_economics_trends =
+  ROUTE_QUERY_SCHEMAS["/api/v1/economics/trends"];
 
 export const GetEconomicsTrendsInputSchema = z
   .object({
-    window: windowSchema(ECONOMICS_TRENDS_WINDOW_VALUES).optional(),
+    window: RouteQuery_economics_trends.shape.window,
   })
   .strict();
 export type GetEconomicsTrendsInput = z.infer<

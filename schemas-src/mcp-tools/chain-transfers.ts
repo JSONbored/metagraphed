@@ -11,21 +11,25 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { limitSchema, sortSchema, windowSchema } from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import {
   ChainTransferPairsArtifactSchema,
   ChainTransfersArtifactSchema,
 } from "../routes/chain-transfers.ts";
 
-const WINDOWS_2 = ["7d", "30d"] as const;
-
 // Mirrors mcp-server.ts's shared CHAIN_TRANSFER_PARTY_ITEM object literal
 // (this batch's last consumer -- get_chain_transfer_pairs.pairs items have
 // their own distinct shape, not this one).
+const RouteQuery_chain_transfers =
+  ROUTE_QUERY_SCHEMAS["/api/v1/chain/transfers"];
+
+const RouteQuery_chain_transfer_pairs =
+  ROUTE_QUERY_SCHEMAS["/api/v1/chain/transfer-pairs"];
+
 export const GetChainTransfersInputSchema = z
   .object({
-    window: windowSchema(WINDOWS_2).optional(),
-    limit: limitSchema(100).optional(),
+    window: RouteQuery_chain_transfers.shape.window,
+    limit: RouteQuery_chain_transfers.shape.limit,
   })
   .strict();
 export type GetChainTransfersInput = z.infer<
@@ -39,9 +43,9 @@ export type GetChainTransfersOutput = z.infer<
 
 export const GetChainTransferPairsInputSchema = z
   .object({
-    window: windowSchema(WINDOWS_2).optional(),
-    sort: sortSchema(["volume", "count"]).optional(),
-    limit: limitSchema(100).optional(),
+    window: RouteQuery_chain_transfer_pairs.shape.window,
+    sort: RouteQuery_chain_transfer_pairs.shape.sort,
+    limit: RouteQuery_chain_transfer_pairs.shape.limit,
   })
   .strict();
 export type GetChainTransferPairsInput = z.infer<

@@ -8,17 +8,20 @@
 // the same bytes, and the fresh model disagreed with it on `observed_at`
 // (#9794). It now reuses the route schema outright.
 import { z } from "zod";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import { RpcUsageArtifactSchema } from "../routes/providers-rpc.ts";
 import { McpNetworkSchema } from "../shared.ts";
-import { OpenObjectSchema, limitSchema, windowSchema } from "./shared.ts";
+import { OpenObjectSchema, limitSchema } from "./shared.ts";
 import {
   SAFE_RPC_METHODS,
   SAFE_RPC_STATE_QUERY_METHODS,
 } from "../../workers/config.ts";
 
+const RouteQuery_rpc_usage = ROUTE_QUERY_SCHEMAS["/api/v1/rpc/usage"];
+
 export const GetRpcUsageInputSchema = z
   .object({
-    window: windowSchema(["7d", "30d"]).optional(),
+    window: RouteQuery_rpc_usage.shape.window,
   })
   .strict();
 export type GetRpcUsageInput = z.infer<typeof GetRpcUsageInputSchema>;

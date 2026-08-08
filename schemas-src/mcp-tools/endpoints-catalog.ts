@@ -15,6 +15,7 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   fieldsSchema,
   kindSchema,
@@ -36,7 +37,6 @@ import {
   SURFACE_KIND_VALUES,
 } from "../routes/subnet-detail.ts";
 import { HEALTH_STATUS_VALUES } from "../shared.ts";
-import { ENDPOINT_SORT_VALUES } from "./shared.ts";
 
 const SURFACE_KINDS = SURFACE_KIND_VALUES;
 const ENDPOINT_LAYERS = ENDPOINT_LAYER_VALUES;
@@ -52,15 +52,15 @@ export const ListEndpointsInputSchema = z
         "Which layer of the stack the endpoint belongs to: the Bittensor base chain, a data or docs provider, or a subnet's own app.",
       )
       .meta({ examples: [ENDPOINT_LAYERS[0]] }),
-    netuid: netuidSchema().optional(),
+    netuid: API_QUERY_COLLECTIONS.endpoints.filter_schemas.netuid.optional(),
     provider: providerSlugSchema().optional(),
-    publication_state: z
-      .enum(ENDPOINT_PUBLICATION_STATES)
-      .optional()
-      .describe(
-        "Where the endpoint sits in the review pipeline, from unreviewed candidate through to pool-eligible or rejected.",
-      )
-      .meta({ examples: [ENDPOINT_PUBLICATION_STATES[0]] }),
+    publication_state:
+      API_QUERY_COLLECTIONS.endpoints.filter_schemas.publication_state
+        .optional()
+        .describe(
+          "Where the endpoint sits in the review pipeline, from unreviewed candidate through to pool-eligible or rejected.",
+        )
+        .meta({ examples: [ENDPOINT_PUBLICATION_STATES[0]] }),
     status: kindSchema(HEALTH_STATUSES).optional(),
     pool_eligible: z
       .boolean()
@@ -97,7 +97,7 @@ export const ListEndpointsInputSchema = z
         "Inclusive upper bound on endpoint score; rows above it are excluded.",
       )
       .meta({ examples: [100] }),
-    sort: sortSchema(ENDPOINT_SORT_VALUES).optional(),
+    sort: sortSchema(API_QUERY_COLLECTIONS.endpoints.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     // Ceiling is MAX_LIMIT (workers/request-params.ts:21); a literal here
@@ -134,7 +134,17 @@ export type GetSubnetEndpointsInput = z.infer<
   typeof GetSubnetEndpointsInputSchema
 >;
 
-export const GetSubnetEndpointsOutputSchema = SubnetEndpointsArtifactSchema;
+// #10064 production sweep: this tool advertises `fields`, so a caller can ask
+// for a SUBSET of each row -- and the artifact schema requires every property
+// on it. Production answered `?fields=` with rows that failed the tool's own
+// published schema; `projectableRows` is the convention the sibling tools
+// already use. Field names and types still come from the route, so a rename
+// there is still a compile error here; only requiredness changes, because the
+// caller controls it.
+export const GetSubnetEndpointsOutputSchema =
+  SubnetEndpointsArtifactSchema.extend({
+    endpoints: projectableRows(SubnetEndpointsArtifactSchema.shape.endpoints),
+  });
 export type GetSubnetEndpointsOutput = z.infer<
   typeof GetSubnetEndpointsOutputSchema
 >;

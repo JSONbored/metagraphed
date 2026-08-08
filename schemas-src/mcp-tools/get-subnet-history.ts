@@ -11,14 +11,17 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { netuidSchema, windowSchema } from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { netuidSchema } from "./shared.ts";
 import { SubnetHistoryArtifactSchema } from "../routes/subnet-history.ts";
-import { SUBNET_HISTORY_WINDOW_VALUES } from "../routes/subnet-history.ts";
+
+const RouteQuery_subnets_netuid_history =
+  ROUTE_QUERY_SCHEMAS["/api/v1/subnets/{netuid}/history"];
 
 export const GetSubnetHistoryInputSchema = z
   .object({
     netuid: netuidSchema(),
-    window: windowSchema(SUBNET_HISTORY_WINDOW_VALUES).optional(),
+    window: RouteQuery_subnets_netuid_history.shape.window,
   })
   .strict();
 export type GetSubnetHistoryInput = z.infer<typeof GetSubnetHistoryInputSchema>;

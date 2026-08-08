@@ -6,14 +6,17 @@
 // writing (mirrors the pilot batch's ECONOMICS_SORT_FIELDS precedent -- not
 // cross-imported).
 import { z } from "zod";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import { SubnetTurnoverArtifactSchema } from "../routes/subnet-turnover.ts";
-import { netuidSchema, windowSchema } from "./shared.ts";
-import { SUBNET_TURNOVER_WINDOW_VALUES } from "../routes/subnet-turnover.ts";
+import { netuidSchema } from "./shared.ts";
+
+const RouteQuery_subnets_netuid_turnover =
+  ROUTE_QUERY_SCHEMAS["/api/v1/subnets/{netuid}/turnover"];
 
 export const GetSubnetTurnoverInputSchema = z
   .object({
     netuid: netuidSchema(),
-    window: windowSchema(SUBNET_TURNOVER_WINDOW_VALUES).optional(),
+    window: RouteQuery_subnets_netuid_turnover.shape.window,
     changes: z
       .boolean()
       .optional()

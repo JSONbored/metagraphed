@@ -18,6 +18,7 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   idFilterSchema,
   McpListPageFields,
@@ -43,7 +44,6 @@ import {
   SURFACE_KIND_VALUES,
 } from "../routes/subnet-detail.ts";
 import { CONFIDENCE_LEVEL_VALUES } from "../shared.ts";
-import { CANDIDATE_SORT_VALUES, EVIDENCE_ENTRY_SORT_VALUES } from "./shared.ts";
 // #9998: the per-subnet views below are these two with `netuid` moved from an
 // optional filter to the required subject.
 import {
@@ -68,7 +68,19 @@ export type GetSubnetCandidatesInput = z.infer<
   typeof GetSubnetCandidatesInputSchema
 >;
 
-export const GetSubnetCandidatesOutputSchema = SubnetCandidatesArtifactSchema;
+// #10064 production sweep: this tool advertises `fields`, so a caller can ask
+// for a SUBSET of each row -- and the artifact schema requires every property
+// on it. Production answered `?fields=` with rows that failed the tool's own
+// published schema; `projectableRows` is the convention the sibling tools
+// already use. Field names and types still come from the route, so a rename
+// there is still a compile error here; only requiredness changes, because the
+// caller controls it.
+export const GetSubnetCandidatesOutputSchema =
+  SubnetCandidatesArtifactSchema.extend({
+    candidates: projectableRows(
+      SubnetCandidatesArtifactSchema.shape.candidates,
+    ),
+  });
 export type GetSubnetCandidatesOutput = z.infer<
   typeof GetSubnetCandidatesOutputSchema
 >;
@@ -79,18 +91,16 @@ export const ListSubnetCandidatesInputSchema = z
     netuid: netuidSchema(),
     kind: kindSchema(SURFACE_KINDS).optional(),
     provider: providerSlugSchema().optional(),
-    state: z
-      .enum(CANDIDATE_STATES)
+    state: API_QUERY_COLLECTIONS.candidates.filter_schemas.state
       .optional()
       .describe("The incident's lifecycle state.")
       .meta({ examples: [CANDIDATE_STATES[0]] }),
     id: idFilterSchema().optional(),
-    confidence: z
-      .enum(CONFIDENCE_LEVEL_VALUES)
+    confidence: API_QUERY_COLLECTIONS.candidates.filter_schemas.confidence
       .optional()
       .describe("How confident the machine assessment is.")
       .meta({ examples: [CONFIDENCE_LEVEL_VALUES[0]] }),
-    sort: sortSchema(CANDIDATE_SORT_VALUES).optional(),
+    sort: sortSchema(API_QUERY_COLLECTIONS.candidates.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
@@ -134,7 +144,7 @@ export const ListSubnetEvidenceInputSchema = z
   .object({
     netuid: netuidSchema(),
     q: querySchema().optional(),
-    sort: sortSchema(EVIDENCE_ENTRY_SORT_VALUES).optional(),
+    sort: sortSchema(API_QUERY_COLLECTIONS.claims.sort_fields).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(100).optional(),
@@ -179,7 +189,17 @@ export type GetSubnetSurfacesInput = z.infer<
   typeof GetSubnetSurfacesInputSchema
 >;
 
-export const GetSubnetSurfacesOutputSchema = SubnetSurfacesArtifactSchema;
+// #10064 production sweep: this tool advertises `fields`, so a caller can ask
+// for a SUBSET of each row -- and the artifact schema requires every property
+// on it. Production answered `?fields=` with rows that failed the tool's own
+// published schema; `projectableRows` is the convention the sibling tools
+// already use. Field names and types still come from the route, so a rename
+// there is still a compile error here; only requiredness changes, because the
+// caller controls it.
+export const GetSubnetSurfacesOutputSchema =
+  SubnetSurfacesArtifactSchema.extend({
+    surfaces: projectableRows(SubnetSurfacesArtifactSchema.shape.surfaces),
+  });
 export type GetSubnetSurfacesOutput = z.infer<
   typeof GetSubnetSurfacesOutputSchema
 >;

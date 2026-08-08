@@ -11,15 +11,17 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { netuidSchema, windowSchema } from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { netuidSchema } from "./shared.ts";
 import { SubnetWeightSettersArtifactSchema } from "../routes/subnet-weights.ts";
 
-const SUBNET_WEIGHT_SETTERS_WINDOWS = ["7d", "30d"] as const;
+const RouteQuery_subnets_netuid_weights_setters =
+  ROUTE_QUERY_SCHEMAS["/api/v1/subnets/{netuid}/weights/setters"];
 
 export const GetSubnetWeightSettersInputSchema = z
   .object({
     netuid: netuidSchema(),
-    window: windowSchema(SUBNET_WEIGHT_SETTERS_WINDOWS).optional(),
+    window: RouteQuery_subnets_netuid_weights_setters.shape.window,
   })
   .strict();
 export type GetSubnetWeightSettersInput = z.infer<

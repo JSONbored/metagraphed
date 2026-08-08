@@ -11,22 +11,17 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { CHAIN_CALL_MODULE_MAX_LENGTH } from "../../src/route-limits.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 
-import {
-  blockBoundSchema,
-  hashSchema,
-  keysetCursorSchema,
-  limitSchema,
-  offsetSchema,
-  runtimeNameSchema,
-} from "./shared.ts";
+import { blockBoundSchema } from "./shared.ts";
 
 /**
  * Page-size ceiling for the extrinsics feeds and the two fixed-call_module feeds
  * modelled on them (get_sudo, get_governance_config_changes). Exported so those two
  * read it rather than restating it — they previously declared no maximum at all.
  */
+const RouteQuery_extrinsics = ROUTE_QUERY_SCHEMAS["/api/v1/extrinsics"];
+
 export const EXTRINSICS_LIMIT_MAX = 100;
 
 import { AccountEventItemSchema } from "./shared.ts";
@@ -50,21 +45,17 @@ export const ListExtrinsicsInputSchema = z
         "Restrict to extrinsics signed by this SS58 account. Unsigned (inherent) extrinsics never match.",
       )
       .meta({ examples: ["5EYCAe5jLQhn6ofDSvqF6iY53erXNkwhyE1aCEgvi1NNs91F"] }),
-    call_module: runtimeNameSchema(CHAIN_CALL_MODULE_MAX_LENGTH)
-      .optional()
+    call_module: RouteQuery_extrinsics.shape.call_module
       .describe(
         "Restrict to one pallet, by its runtime name (`SubtensorModule`). Case-sensitive.",
       )
       .meta({ examples: ["SubtensorModule"] }),
-    call_function: z
-      .string()
-      .optional()
+    call_function: RouteQuery_extrinsics.shape.call_function
       .describe(
         "Restrict to one call within the pallet (`add_stake`). Case-sensitive; pair with `call_module` to disambiguate.",
       )
       .meta({ examples: ["add_stake"] }),
-    call_hash: hashSchema("extrinsic's call hash")
-      .optional()
+    call_hash: RouteQuery_extrinsics.shape.call_hash
       .describe("Restrict to the extrinsic with this 0x-prefixed hash.")
       .meta({
         examples: [
@@ -96,9 +87,9 @@ export const ListExtrinsicsInputSchema = z
         "Inclusive end of the range. A block height on chain tools, an ISO-8601 date on time-series ones; an EVM address on decode_evm_call.",
       )
       .meta({ examples: [8783000] }),
-    limit: limitSchema(EXTRINSICS_LIMIT_MAX).optional(),
-    offset: offsetSchema().optional(),
-    cursor: keysetCursorSchema().optional(),
+    limit: RouteQuery_extrinsics.shape.limit,
+    offset: RouteQuery_extrinsics.shape.offset,
+    cursor: RouteQuery_extrinsics.shape.cursor,
   })
   .strict();
 export type ListExtrinsicsInput = z.infer<typeof ListExtrinsicsInputSchema>;

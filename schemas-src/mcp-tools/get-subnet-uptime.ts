@@ -14,15 +14,17 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { netuidSchema, windowSchema } from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { netuidSchema } from "./shared.ts";
 import { UptimeArtifactSchema } from "../routes/health-surfaces.ts";
 
-const UPTIME_WINDOWS = ["90d", "1y"] as const;
+const RouteQuery_subnets_netuid_uptime =
+  ROUTE_QUERY_SCHEMAS["/api/v1/subnets/{netuid}/uptime"];
 
 export const GetSubnetUptimeInputSchema = z
   .object({
     netuid: netuidSchema(),
-    window: windowSchema(UPTIME_WINDOWS).optional(),
+    window: RouteQuery_subnets_netuid_uptime.shape.window,
     min_samples: z
       .int()
       .min(0)

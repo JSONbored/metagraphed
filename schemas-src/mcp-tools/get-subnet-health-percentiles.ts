@@ -11,15 +11,17 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { netuidSchema, windowSchema } from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { netuidSchema } from "./shared.ts";
 import { HealthPercentilesArtifactSchema } from "../routes/health-surfaces.ts";
 
-const HEALTH_WINDOWS = ["7d", "30d"] as const;
+const RouteQuery_subnets_netuid_health_percentiles =
+  ROUTE_QUERY_SCHEMAS["/api/v1/subnets/{netuid}/health/percentiles"];
 
 export const GetSubnetHealthPercentilesInputSchema = z
   .object({
     netuid: netuidSchema(),
-    window: windowSchema(HEALTH_WINDOWS).optional(),
+    window: RouteQuery_subnets_netuid_health_percentiles.shape.window,
   })
   .strict();
 export type GetSubnetHealthPercentilesInput = z.infer<

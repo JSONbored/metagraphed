@@ -11,21 +11,21 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import {
   MOVERS_LIMIT_DEFAULT,
   MOVERS_LIMIT_MAX,
 } from "../../src/route-limits.ts";
-import { limitSchema, sortSchema, windowSchema } from "./shared.ts";
+import { limitSchema } from "./shared.ts";
 import { SubnetMoversArtifactSchema } from "../routes/subnet-movers.ts";
-import {
-  SUBNET_MOVERS_MOVERS_SORTS_VALUES,
-  SUBNET_MOVERS_WINDOW_VALUES,
-} from "../routes/subnet-movers.ts";
+import {} from "../routes/subnet-movers.ts";
+
+const RouteQuery_subnets_movers = ROUTE_QUERY_SCHEMAS["/api/v1/subnets/movers"];
 
 export const GetSubnetMoversInputSchema = z
   .object({
-    window: windowSchema(SUBNET_MOVERS_WINDOW_VALUES).optional(),
-    sort: sortSchema(SUBNET_MOVERS_MOVERS_SORTS_VALUES).optional(),
+    window: RouteQuery_subnets_movers.shape.window,
+    sort: RouteQuery_subnets_movers.shape.sort,
     limit: limitSchema(MOVERS_LIMIT_MAX, MOVERS_LIMIT_DEFAULT).optional(),
   })
   .strict();

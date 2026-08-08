@@ -19,7 +19,8 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { ss58Schema, windowSchema } from "./shared.ts";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
+import { ss58Schema } from "./shared.ts";
 import {
   AccountAxonRemovalsArtifactSchema,
   AccountDeregistrationsArtifactSchema,
@@ -31,18 +32,37 @@ import {
   AccountServingArtifactSchema,
   AccountStakeMovesArtifactSchema,
 } from "../routes/account-activity.ts";
-import { WINDOW_ENUM_90D } from "../routes/account-activity-registrations.ts";
 
 // Symbolic in each hand-written original (src/account-*.ts's own
 // *_WINDOWS/DEFAULT_*_WINDOW constants), cross-checked against the actual
 // runtime source at the time of writing. Six of the seven tools share the
 // same 3-way set; get_account_weight_setters uses a 2-way set.
-const WEIGHT_SETTERS_WINDOWS_2 = ["7d", "30d"] as const;
+
+const RouteQuery_accounts_ss58_stake_moves =
+  ROUTE_QUERY_SCHEMAS["/api/v1/accounts/{ss58}/stake-moves"];
+
+const RouteQuery_accounts_ss58_axon_removals =
+  ROUTE_QUERY_SCHEMAS["/api/v1/accounts/{ss58}/axon-removals"];
+
+const RouteQuery_accounts_ss58_deregistrations =
+  ROUTE_QUERY_SCHEMAS["/api/v1/accounts/{ss58}/deregistrations"];
+
+const RouteQuery_accounts_ss58_serving =
+  ROUTE_QUERY_SCHEMAS["/api/v1/accounts/{ss58}/serving"];
+
+const RouteQuery_accounts_ss58_weight_setters =
+  ROUTE_QUERY_SCHEMAS["/api/v1/accounts/{ss58}/weight-setters"];
+
+const RouteQuery_accounts_ss58_registrations =
+  ROUTE_QUERY_SCHEMAS["/api/v1/accounts/{ss58}/registrations"];
+
+const RouteQuery_accounts_ss58_prometheus =
+  ROUTE_QUERY_SCHEMAS["/api/v1/accounts/{ss58}/prometheus"];
 
 export const GetAccountStakeMovesInputSchema = z
   .object({
     ss58: ss58Schema(),
-    window: windowSchema(WINDOW_ENUM_90D).optional(),
+    window: RouteQuery_accounts_ss58_stake_moves.shape.window,
   })
   .strict();
 export type GetAccountStakeMovesInput = z.infer<
@@ -57,7 +77,7 @@ export type GetAccountStakeMovesOutput = z.infer<
 export const GetAccountAxonRemovalsInputSchema = z
   .object({
     ss58: ss58Schema(),
-    window: windowSchema(WINDOW_ENUM_90D).optional(),
+    window: RouteQuery_accounts_ss58_axon_removals.shape.window,
   })
   .strict();
 export type GetAccountAxonRemovalsInput = z.infer<
@@ -73,7 +93,7 @@ export type GetAccountAxonRemovalsOutput = z.infer<
 export const GetAccountPrometheusInputSchema = z
   .object({
     ss58: ss58Schema(),
-    window: windowSchema(WINDOW_ENUM_90D).optional(),
+    window: RouteQuery_accounts_ss58_prometheus.shape.window,
   })
   .strict();
 export type GetAccountPrometheusInput = z.infer<
@@ -88,7 +108,7 @@ export type GetAccountPrometheusOutput = z.infer<
 export const GetAccountRegistrationsInputSchema = z
   .object({
     ss58: ss58Schema(),
-    window: windowSchema(WINDOW_ENUM_90D).optional(),
+    window: RouteQuery_accounts_ss58_registrations.shape.window,
   })
   .strict();
 export type GetAccountRegistrationsInput = z.infer<
@@ -104,7 +124,7 @@ export type GetAccountRegistrationsOutput = z.infer<
 export const GetAccountWeightSettersInputSchema = z
   .object({
     ss58: ss58Schema(),
-    window: windowSchema(WEIGHT_SETTERS_WINDOWS_2).optional(),
+    window: RouteQuery_accounts_ss58_weight_setters.shape.window,
   })
   .strict();
 export type GetAccountWeightSettersInput = z.infer<
@@ -120,7 +140,7 @@ export type GetAccountWeightSettersOutput = z.infer<
 export const GetAccountServingInputSchema = z
   .object({
     ss58: ss58Schema(),
-    window: windowSchema(WINDOW_ENUM_90D).optional(),
+    window: RouteQuery_accounts_ss58_serving.shape.window,
   })
   .strict();
 export type GetAccountServingInput = z.infer<
@@ -135,7 +155,7 @@ export type GetAccountServingOutput = z.infer<
 export const GetAccountDeregistrationsInputSchema = z
   .object({
     ss58: ss58Schema(),
-    window: windowSchema(WINDOW_ENUM_90D).optional(),
+    window: RouteQuery_accounts_ss58_deregistrations.shape.window,
   })
   .strict();
 export type GetAccountDeregistrationsInput = z.infer<

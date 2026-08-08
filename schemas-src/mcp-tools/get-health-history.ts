@@ -9,11 +9,11 @@
 // .sort_fields at the time of writing (mirrors the pilot batch's
 // ECONOMICS_SORT_FIELDS precedent -- not cross-imported).
 import { z } from "zod";
+import { API_QUERY_COLLECTIONS } from "../../src/contracts.ts";
 import {
   fieldsSchema,
   kindSchema,
   limitSchema,
-  netuidSchema,
   numericCursorSchema,
   orderSchema,
   providerSlugSchema,
@@ -25,10 +25,7 @@ import {
   HealthHistorySummarySchema,
   HealthHistorySurfaceSchema,
 } from "../routes/health-surfaces.ts";
-import {
-  HEALTH_CLASSIFICATION_VALUES,
-  HEALTH_SURFACE_SORT_VALUES,
-} from "./shared.ts";
+import { HEALTH_CLASSIFICATION_VALUES } from "./shared.ts";
 
 const SURFACE_KIND = SURFACE_KIND_VALUES;
 const HEALTH_STATUS = HEALTH_STATUS_VALUES;
@@ -45,22 +42,25 @@ export const GetHealthHistoryInputSchema = z
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .describe("A single UTC day, `YYYY-MM-DD`.")
       .meta({ format: "date", examples: ["2026-08-05"] }),
-    netuid: netuidSchema().optional(),
+    netuid:
+      API_QUERY_COLLECTIONS["health-surfaces"].filter_schemas.netuid.optional(),
     kind: kindSchema(SURFACE_KIND).optional(),
     provider: providerSlugSchema().optional(),
-    status: z
-      .enum(HEALTH_STATUS)
+    status: API_QUERY_COLLECTIONS["health-surfaces"].filter_schemas.status
       .optional()
       .describe("Restrict to rows with this health status.")
       .meta({ examples: [HEALTH_STATUS[0]] }),
-    classification: z
-      .enum(HEALTH_CLASSIFICATION_VALUES)
+    classification: API_QUERY_COLLECTIONS[
+      "health-surfaces"
+    ].filter_schemas.classification
       .optional()
       .describe(
         "Why a probe ended as it did — the reason behind the status, not the status itself.",
       )
       .meta({ examples: [HEALTH_CLASSIFICATION_VALUES[0]] }),
-    sort: sortSchema(HEALTH_SURFACE_SORT_VALUES).optional(),
+    sort: sortSchema(
+      API_QUERY_COLLECTIONS["health-surfaces"].sort_fields,
+    ).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
     limit: limitSchema(1000).optional(),

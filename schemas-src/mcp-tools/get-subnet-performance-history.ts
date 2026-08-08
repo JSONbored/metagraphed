@@ -4,14 +4,17 @@
 // schema to reuse. Modeled fresh, shallow, from the hand-written literal it
 // replaces.
 import { z } from "zod";
+import { ROUTE_QUERY_SCHEMAS } from "../route-queries.ts";
 import { SubnetPerformanceHistoryArtifactSchema } from "../routes/subnet-performance.ts";
-import { netuidSchema, windowSchema } from "./shared.ts";
-import { SUBNET_PERFORMANCE_WINDOW_VALUES } from "../routes/subnet-performance.ts";
+import { netuidSchema } from "./shared.ts";
+
+const RouteQuery_subnets_netuid_performance_history =
+  ROUTE_QUERY_SCHEMAS["/api/v1/subnets/{netuid}/performance/history"];
 
 export const GetSubnetPerformanceHistoryInputSchema = z
   .object({
     netuid: netuidSchema(),
-    window: windowSchema(SUBNET_PERFORMANCE_WINDOW_VALUES).optional(),
+    window: RouteQuery_subnets_netuid_performance_history.shape.window,
   })
   .strict();
 export type GetSubnetPerformanceHistoryInput = z.infer<
