@@ -169,11 +169,11 @@ describe("runChainDetailStalenessWatchdog", () => {
   test("a missing binding and a failing query degrade to summaries, never throw", async () => {
     assert.deepEqual(await runChainDetailStalenessWatchdog({}), {
       ok: false,
-      reason: "d1 binding unavailable",
+      reason: "no store bound",
     });
     assert.deepEqual(await runChainDetailStalenessWatchdog(null), {
       ok: false,
-      reason: "d1 binding unavailable",
+      reason: "no store bound",
     });
     const { db } = fakeDb(new Error("d1 exploded"));
     const result = await runChainDetailStalenessWatchdog(
@@ -265,6 +265,11 @@ describe("the cron wiring", () => {
       {} as never,
       {} as never,
     )) as Record<string, unknown>;
+    // The PRUNE's reason, not the watchdog's, and it is deliberately still
+    // D1's: with an empty env Neon owns nothing, so the D1 DELETE is still the
+    // one that would run and its binding is still the one that is missing
+    // (#10152). The watchdog above answers "no store bound" because its READ
+    // follows the rows; these are different questions with different answers.
     assert.deepEqual(result, {
       ok: false,
       reason: "d1 binding unavailable",

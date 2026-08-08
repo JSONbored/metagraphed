@@ -349,11 +349,11 @@ describe("runNeuronsStalenessWatchdog", () => {
   test("a missing binding and a failing query degrade to summaries, never throws", async () => {
     assert.deepEqual(await runNeuronsStalenessWatchdog({}), {
       ok: false,
-      reason: "d1 binding unavailable",
+      reason: "no store bound",
     });
     assert.deepEqual(await runNeuronsStalenessWatchdog(null), {
       ok: false,
-      reason: "d1 binding unavailable",
+      reason: "no store bound",
     });
     const { db } = fakeDb(new Error("D1_ERROR: no such table: neurons"));
     const result = await runNeuronsStalenessWatchdog(

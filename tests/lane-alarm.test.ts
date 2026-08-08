@@ -900,11 +900,11 @@ describe("runLaneAlarm", () => {
   test("reports a missing binding rather than throwing", async () => {
     assert.deepEqual(await runLaneAlarm({}), {
       ok: false,
-      reason: "d1 binding unavailable",
+      reason: "no lane_health store bound",
     });
     assert.deepEqual(await runLaneAlarm(null), {
       ok: false,
-      reason: "d1 binding unavailable",
+      reason: "no lane_health store bound",
     });
   });
 

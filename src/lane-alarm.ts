@@ -56,6 +56,7 @@ import {
 } from "./lane-health.ts";
 import { recordLaneVerdict } from "./lane-health.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
+import { laneHealthStore } from "./lane-health-store.ts";
 
 /**
  * How long a lane must stay stale before it earns an issue.
@@ -521,8 +522,12 @@ export async function runLaneAlarm(
 ): Promise<Record<string, unknown>> {
   const now = deps.now ?? Date.now;
   const record = deps.recordException ?? recordExceptionEvent;
-  const db = env?.METAGRAPH_HEALTH_DB as D1Like | undefined;
-  if (!db?.prepare) return { ok: false, reason: "d1 binding unavailable" };
+  // laneHealthStore, not the binding (#10154). This is the reader that opens
+  // GitHub issues from lane_health verdicts, so pointing it at a store nothing
+  // writes any more would replay stale verdicts forever -- filing issues for
+  // lanes that recovered, and none for lanes that broke.
+  const db = laneHealthStore(env) as unknown as D1Like | undefined;
+  if (!db?.prepare) return { ok: false, reason: "no lane_health store bound" };
 
   const token = typeof env?.GITHUB_TOKEN === "string" ? env.GITHUB_TOKEN : "";
   const repo =

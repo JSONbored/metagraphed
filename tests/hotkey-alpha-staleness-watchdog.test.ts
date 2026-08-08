@@ -378,11 +378,11 @@ describe("runHotkeyAlphaStalenessWatchdog", () => {
   test("no D1 binding is a missed report, not a throw", async () => {
     assert.deepEqual(await runHotkeyAlphaStalenessWatchdog({}), {
       ok: false,
-      reason: "d1 binding unavailable",
+      reason: "no store bound",
     });
     assert.deepEqual(await runHotkeyAlphaStalenessWatchdog(null), {
       ok: false,
-      reason: "d1 binding unavailable",
+      reason: "no store bound",
     });
   });
 
