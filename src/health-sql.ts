@@ -90,8 +90,27 @@ export function latencyStatColumns({
   // one whenever q*N was an integer (e.g. N=100 → p50/p95/p99 picked ranks
   // 51/96/100 instead of 50/95/99).
   const pick = (q: number, name: string): string => {
-    const pos = `${q} * lat_cnt`;
-    return `MAX(CASE WHEN rn = CAST(${pos} AS INTEGER) + (${pos} > CAST(${pos} AS INTEGER)) THEN latency_ms END) AS ${name}`;
+    // CEIL, not trunc-plus-carry. The carry form was written for SQLite, which
+    // had no ceil, and it does not survive Postgres -- twice over. `CAST(x AS
+    // INTEGER)` TRUNCATES in SQLite and ROUNDS in Postgres, and `(a > b)` is a
+    // boolean Postgres will not add to an integer.
+    //
+    // The second half errors, which is how this was found: every serving read
+    // of surface_checks threw `operator does not exist: integer + boolean`,
+    // d1All degraded the failure to zero rows, and /uptime, /health/percentiles
+    // and the per-subnet /health/trends each published an empty card over a
+    // table with rows in it (#10200).
+    //
+    // The FIRST half would not have errored. On its own the rounding CAST
+    // returns a confidently wrong percentile -- which is the more dangerous
+    // half, and the reason this is one expression rather than a patch to the
+    // comparison.
+    //
+    // Both engines have had ceil since SQLite 3.35, and it is what the carry
+    // form was always spelling. src/observations-neon.ts made the same move for
+    // the rollup path and verified the two agree at lat_cnt = 1, 3, 7, 20 and
+    // 100 for all three quantiles.
+    return `MAX(CASE WHEN rn = CAST(CEIL(${q} * lat_cnt) AS INTEGER) THEN latency_ms END) AS ${name}`;
   };
   const columns = [
     `MAX(lat_cnt) AS latency_samples`,

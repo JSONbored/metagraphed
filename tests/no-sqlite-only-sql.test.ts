@@ -72,6 +72,33 @@ const SQLITE_ONLY: [RegExp, string][] = [
     "json_extract() — Postgres uses ->> / jsonb_extract_path_text",
   ],
   [/\bjson_each\s*\(/i, "json_each() — Postgres uses jsonb_array_elements"],
+  // BOOLEAN ARITHMETIC. SQLite has no boolean type, so `n + (a > b)` adds 1 or
+  // 0; Postgres answers `operator does not exist: integer + boolean`.
+  //
+  // This is how src/health-sql.ts's percentile picker shipped a SQLite-only
+  // expression into every serving read of surface_checks (#10200):
+  // `CAST(q*n AS INTEGER) + (q*n > CAST(q*n AS INTEGER))` -- SQLite's ceil,
+  // written as trunc-plus-carry because SQLite had no ceil. `d1All` degrades a
+  // read failure to zero rows, so /uptime, /health/percentiles and the
+  // per-subnet /health/trends each published an empty card over a table that
+  // had rows in it. Both engines have ceil(); use it.
+  [
+    // Spaces around the operator, and never a shift: `(high >>> 0)` is a JS
+    // expression that lives in a string literal in this tree, and an
+    // unanchored `[<>]` matched it.
+    /[)\w ]\+ \((?:[^()\n]|\([^()\n]*\))*?\s(?<![<>])(?:<=|>=|<>|!=|<|>)(?![<>=])\s(?:[^()\n]|\([^()\n]*\))*?\)/,
+    "arithmetic on a comparison — SQLite treats a boolean as 0/1, Postgres does not; use CASE WHEN ... THEN 1 ELSE 0 END, or ceil()/floor() where that is what it spells",
+  ],
+  // TWO-ARGUMENT ROUND over a float. Postgres has round(numeric, int) and
+  // round(double precision), but NOT round(double precision, int). The same
+  // #10200 sweep found `ROUND(CAST(SUM(ok_count) AS REAL) / SUM(samples), 4)`
+  // in src/analytics-live.ts, one line from the boolean above and failing the
+  // same silent way. Cast the value to NUMERIC first; SQLite is happy either
+  // way. Anything already naming NUMERIC is exempt.
+  [
+    /\bROUND\s*\((?!(?:[^()\n]|\((?:[^()\n]|\([^()\n]*\))*\))*?(?:NUMERIC|::numeric))(?:[^()\n]|\((?:[^()\n]|\([^()\n]*\))*\))*?,\s*\d+\s*\)/i,
+    "ROUND(x, n) on a non-numeric — Postgres has no round(double precision, integer); CAST the value AS NUMERIC first",
+  ],
 ];
 
 /** SQL lives in string literals; the prose around it does not. Scanning raw

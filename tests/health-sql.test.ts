@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
 import { describe, test } from "vitest";
 import {
   OK_COUNT,
@@ -88,24 +89,67 @@ describe("health-sql latency builders", () => {
     assert.ok(!cols.includes("CAST(ROUND("));
   });
 
-  test("latencyStatColumns picks percentiles by nearest rank (ceil), not floor+1", () => {
+  test("latencyStatColumns picks percentiles by nearest rank, EXECUTED", () => {
+    // ASSERTED BY RUNNING IT, not by matching the spelling. The previous
+    // version of this test pinned the exact string
+    // `CAST(q*lat_cnt AS INTEGER) + (q*lat_cnt > CAST(...))`, which is a
+    // restatement of the implementation: it passed for a SQLite-only
+    // expression that threw `operator does not exist: integer + boolean` on
+    // every Postgres read, and it would have blocked the fix (#10200).
+    //
+    // What matters is the rank each quantile selects. node:sqlite evaluates it
+    // here; tests/analytics-live-sqlite.test.ts runs the whole loader.
     const cols = latencyStatColumns();
-    // ceil(q*N): truncate toward zero, then add 1 only on a fractional part.
-    // The old floor(q*N)+1 overshot by one whenever q*N was an integer (the
-    // common case, e.g. N=100 → p50/p95/p99 hit ranks 51/96/100, not 50/95/99).
-    for (const q of ["0.5", "0.95", "0.99"]) {
-      assert.ok(
-        cols.includes(
-          `CAST(${q} * lat_cnt AS INTEGER) + (${q} * lat_cnt > CAST(${q} * lat_cnt AS INTEGER))`,
-        ),
-        `percentile ${q} must select the nearest-rank (ceil) position`,
+    for (const p of ["AS p50", "AS p95", "AS p99"]) {
+      assert.ok(cols.includes(p), p);
+    }
+    const db = new DatabaseSync(":memory:");
+    const rank = (q: number, n: number): number => {
+      const expr = cols
+        .split("\n")
+        .map((line) => line.trim())
+        .find(
+          (line) =>
+            line.startsWith(`MAX(CASE WHEN rn = `) &&
+            line.includes(`${q} * lat_cnt`),
+        );
+      assert.ok(expr, `an expression exists for q=${q}`);
+      const position = expr
+        .replace("MAX(CASE WHEN rn = ", "")
+        .replace(/ THEN latency_ms END\) AS \w+,?$/, "")
+        .replaceAll("lat_cnt", String(n));
+      const row = db.prepare(`SELECT ${position} AS pos`).get() as {
+        pos: number;
+      };
+      return row.pos;
+    };
+    // ceil(q * N). The floor(q*N)+1 form this replaced overshot by one whenever
+    // q*N was an integer -- N=100 picked ranks 51/96/100 instead of 50/95/99.
+    const cases: [number, number, number][] = [
+      [0.5, 1, 1],
+      [0.95, 1, 1],
+      [0.99, 1, 1],
+      [0.5, 3, 2],
+      [0.95, 3, 3],
+      [0.99, 3, 3],
+      [0.5, 7, 4],
+      [0.95, 7, 7],
+      [0.99, 7, 7],
+      [0.5, 20, 10],
+      [0.95, 20, 19],
+      [0.99, 20, 20],
+      [0.5, 100, 50],
+      [0.95, 100, 95],
+      [0.99, 100, 99],
+    ];
+    for (const [q, n, expected] of cases) {
+      assert.equal(
+        rank(q, n),
+        expected,
+        `p${q * 100} of ${n} rows is rank ${expected}`,
       );
     }
-    // The off-by-one `floor(q*N) + 1` form must be gone.
-    assert.ok(
-      !/CAST\([0-9.]+ \* lat_cnt AS INTEGER\) \+ 1\b/.test(cols),
-      "must not use the floor+1 rank that overshoots at integer boundaries",
-    );
+    db.close();
   });
 
   test("latencyStatColumns honours roundedAvg and includeMinMax options", () => {

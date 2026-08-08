@@ -334,7 +334,7 @@ export async function loadSubnetUptime(
             SUM(samples) AS samples,
             SUM(ok_count) AS ok_count,
             CASE
-              WHEN SUM(samples) > 0 THEN ROUND(CAST(SUM(ok_count) AS REAL) / SUM(samples), 4)
+              WHEN SUM(samples) > 0 THEN ROUND(CAST(CAST(SUM(ok_count) AS REAL) / SUM(samples) AS NUMERIC), 4)
               ELSE NULL
             END AS uptime_ratio,
             ${dailyLatencyColumns({ roundedAvg: true })},
