@@ -93,3 +93,122 @@ describe("every sole-store table exists in Neon", () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// The other direction (#10263).
+//
+// The block above asks "is every DECLARED table real". This one asks "is every
+// table we READ declared" -- and nothing asked that until #10264 shipped a lane
+// that could never run.
+//
+// `readStore` is ALL-OR-NOTHING: it returns `undefined` unless
+// NEON_SOLE_STORE_TABLES contains EVERY table the caller names. #10264 added
+// `readStore(env, ["neurons", "subnet_lifecycle"])` and no wrangler config
+// declared `subnet_lifecycle`, so the call answered `undefined`, the lane
+// returned "no store bound" BEFORE it could record a verdict, and the failure
+// was invisible from both ends: `subnet_lifecycle` had 0 rows and `lane_health`
+// had no `subnet-lifecycle` row to explain why. Measured on production after
+// the merge -- exactly the "find out by querying production" outcome the block
+// above was written to prevent, arriving through the door it left open.
+//
+// The tests passed because `pgMockEnv(tables)` DECLARES whatever it is handed.
+// A suite naming its own tables always satisfies the gate it is exercising, so
+// only a static check against wrangler can catch this.
+
+/** Every .ts file under the given roots. */
+function sourceFiles(roots: readonly string[]): string[] {
+  const out: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) walk(path);
+      else if (entry.name.endsWith(".ts")) out.push(path);
+    }
+  };
+  for (const root of roots) walk(root);
+  return out;
+}
+
+/** Table names any caller gates a Neon read on.
+ *
+ * Two shapes, because both are in use: an inline literal array at the
+ * `readStore(...)` call site (the common one), and the named constants in
+ * `src/read-store-tables.ts` that the inline form was factored out into. A scan
+ * covering only the first would miss every route whose tables were hoisted. */
+function tablesReadStoreGatesOn(): Map<string, string[]> {
+  const byTable = new Map<string, string[]>();
+  const note = (table: string, where: string) => {
+    const seen = byTable.get(table);
+    if (seen) seen.push(where);
+    else byTable.set(table, [where]);
+  };
+
+  for (const file of sourceFiles(["src", "workers"])) {
+    // read-store.ts DEFINES readStore; its own signature is not a call site.
+    if (file.endsWith("src/read-store.ts")) continue;
+    const source = readFileSync(file, "utf8").replace(/\/\/[^\n]*/g, "");
+
+    if (file.endsWith("src/read-store-tables.ts")) {
+      // This file is nothing but table lists, so every quoted string in an
+      // exported array is a table name.
+      for (const block of source.matchAll(
+        /export const (\w+)[^=]*=\s*\[([^\]]*)\]/g,
+      )) {
+        for (const name of block[2]!.matchAll(/"(\w+)"/g)) {
+          note(name[1]!, `read-store-tables.ts ${block[1]}`);
+        }
+      }
+      continue;
+    }
+
+    for (const call of source.matchAll(/readStore\([^,]*,\s*\[([^\]]*)\]/g)) {
+      for (const name of call[1]!.matchAll(/"(\w+)"/g)) note(name[1]!, file);
+    }
+  }
+  return byTable;
+}
+
+describe("every table a reader gates on is declared", () => {
+  const gated = tablesReadStoreGatesOn();
+
+  for (const config of [
+    "wrangler.data.jsonc",
+    "wrangler.jsonc",
+    "wrangler.registry.jsonc",
+  ]) {
+    test(`${config} declares every table readStore gates on`, () => {
+      const declared = new Set(soleStoreTables(config));
+      const undeclared = [...gated.keys()]
+        .filter((t) => !declared.has(t))
+        .sort();
+      assert.deepEqual(
+        undeclared,
+        [],
+        `${config}: ${undeclared
+          .map((t) => `${t} (read by ${gated.get(t)![0]})`)
+          .join(", ")} is read through readStore but not in ` +
+          `NEON_SOLE_STORE_TABLES. readStore is all-or-nothing -- it returns ` +
+          `undefined unless EVERY named table is declared -- so that caller ` +
+          `silently reads nothing on this deployment.`,
+      );
+    });
+  }
+
+  test("the scan finds real call sites in both shapes", () => {
+    // Same reasoning as the sibling self-check: a regex that matched nothing
+    // would make the three tests above pass against an empty set forever.
+    assert.ok(gated.size > 20, `only found ${gated.size} gated tables`);
+    assert.ok(
+      gated
+        .get("subnet_lifecycle")
+        ?.some((w) => w.includes("subnet-lifecycle")),
+      "the inline-array shape must be found (src/subnet-lifecycle.ts)",
+    );
+    assert.ok(
+      gated
+        .get("subnet_hyperparams_history")
+        ?.some((w) => w.includes("read-store-tables")),
+      "the hoisted-constant shape must be found (read-store-tables.ts)",
+    );
+  });
+});
