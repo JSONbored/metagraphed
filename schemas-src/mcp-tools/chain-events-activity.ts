@@ -12,7 +12,7 @@
 // this file was called live and its response validated against the schema it
 // now publishes.
 import { z } from "zod";
-import { keysetCursorSchema, limitSchema, windowSchema } from "./shared.ts";
+import { blockEventCursorSchema, limitSchema, windowSchema } from "./shared.ts";
 import { McpNetworkSchema } from "../shared.ts";
 import { ChainActivityArtifactSchema } from "../routes/chain-analytics.ts";
 import {
@@ -74,7 +74,11 @@ export const ListChainEventsInputSchema = z
         "Restrict to one extrinsic's events by its index within the block. Requires `block`.",
       )
       .meta({ examples: [14] }),
-    cursor: keysetCursorSchema().optional(),
+    // `block_number.event_index`, not an opaque token -- the route publishes
+    // and enforces that shape, so a bare string advertised a value it rejects
+    // (#10118). keysetCursorSchema() stays for the genuinely opaque base64
+    // cursors, which have nothing to bound.
+    cursor: blockEventCursorSchema().optional(),
     before: z
       .int()
       .min(0)

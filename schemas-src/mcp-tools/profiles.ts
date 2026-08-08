@@ -15,6 +15,7 @@
 import { z } from "zod";
 import { SubnetProfileArtifactSchema } from "../routes/subnet-profiles.ts";
 import {
+  reviewStateSchema,
   fieldsSchema,
   limitSchema,
   netuidSchema,
@@ -57,11 +58,7 @@ export const ListProfilesInputSchema = z
         "How the record entered the registry — native chain data, discovered candidate, community submission, or machine-derived.",
       )
       .meta({ examples: [CURATION_LEVEL[0]] }),
-    review_state: z
-      .string()
-      .optional()
-      .describe("Where the item sits in maintainer review.")
-      .meta({ examples: ["pending"] }),
+    review_state: reviewStateSchema().optional(),
     confidence: z
       .enum(["low", "medium", "high"])
       .optional()
