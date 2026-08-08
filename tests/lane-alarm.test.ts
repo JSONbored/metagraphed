@@ -15,7 +15,7 @@ import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// The store is Postgres now (#10170), reached through `new Client(...)` inside
+// The store is Postgres now (#10179), reached through `new Client(...)` inside
 // src/lane-health-store.ts -- which runLaneAlarm cannot be handed, because it
 // selects its own store from `env` and takes no db dep. Mocking the module is
 // the seam; see tests/helpers/pg-mock.ts for why it is a module mock and why

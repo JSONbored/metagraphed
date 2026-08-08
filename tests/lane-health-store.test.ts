@@ -4,7 +4,7 @@
 // verdicts stop landing, every watchdog goes quiet and an absent verdict reads
 // as health.
 //
-// Since #10170 there is no second store to fall back to -- the D1 binding is
+// Since #10179 there is no second store to fall back to -- the D1 binding is
 // gone from the code and from both wrangler configs -- so the selection is now
 // a two-clause GATE rather than a choice: Hyperdrive must be bound AND
 // lane_health must be declared Neon's, or the answer is `undefined`. Both

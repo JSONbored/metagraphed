@@ -1,6 +1,23 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, test, vi } from "vitest";
 import { Ajv2020 } from "ajv/dist/2020.js";
+
+// The tool handlers that read a hot tier reach it through readStore ->
+// `new Client({ connectionString })` (#10179), and a handler is entered with
+// nothing but its MCP ctx -- there is no store to inject. Mocking the `pg`
+// module is the seam; see tests/helpers/pg-mock.ts for why it is a module mock
+// and why the controller has to be built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import {
+  VALIDATOR_ECONOMICS_HISTORY_TABLES,
+  VALIDATOR_ECONOMICS_RANKING_TABLES,
+  VALIDATOR_ECONOMICS_TABLES,
+} from "../src/read-store-tables.ts";
 import { summarizeEvent } from "@jsonbored/chain-summaries";
 import {
   MCP_TOOLS,
@@ -207,6 +224,17 @@ function callTool(name: string, args?: unknown, opts?: Row) {
     opts,
   );
 }
+
+// The controller is module state shared by every test in the file, so a set of
+// canned answers left behind would answer the NEXT test's statements.
+beforeEach(() => {
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = null;
+  pg.control.failNext = null;
+  pg.control.onQuery = null;
+  pg.control.db = null;
+});
 
 describe("MCP tool registry", () => {
   test("every tool has a unique name, description, and object inputSchema", () => {
@@ -10747,36 +10775,34 @@ describe("MCP economics + metagraph data tools", () => {
     // The agent-facing twin of the REST route, running the SAME composer — so an
     // agent and an HTTP caller cannot get different answers to the identical
     // question (#9229's parity lesson).
-    const db = {
-      prepare(query: string) {
-        const isHyper = /subnet_hyperparams/.test(query);
-        return {
-          bind: () => ({
-            all: async () => ({
-              results: [
-                {
-                  uid: 0,
-                  stake_tao: 5000,
-                  validator_permit: 1,
-                  dividends: 0.5,
-                  active: 1,
-                  take: 0.18,
-                },
-                {
-                  uid: 1,
-                  stake_tao: 900,
-                  validator_permit: 0,
-                  dividends: 0,
-                  active: 0,
-                  take: null,
-                },
-              ],
-            }),
-            first: async () => (isHyper ? null : null),
-          }),
-        };
+    // The hyperparams probe legitimately has no row here (the cap comes off the
+    // economics artifact below), so only the metagraph read is answered -- and
+    // it has to BE answered, or the whole card degrades and every assertion
+    // below passes on a null.
+    pg.control.answers = [
+      { match: /FROM subnet_hyperparams/i, rows: [] },
+      {
+        match: /FROM neurons/i,
+        rows: [
+          {
+            uid: 0,
+            stake_tao: 5000,
+            validator_permit: 1,
+            dividends: 0.5,
+            active: 1,
+            take: 0.18,
+          },
+          {
+            uid: 1,
+            stake_tao: 900,
+            validator_permit: 0,
+            dividends: 0,
+            active: 0,
+            take: null,
+          },
+        ],
       },
-    };
+    ];
     const res = await callTool(
       "get_subnet_validator_economics",
       { netuid: 64 },
@@ -10798,7 +10824,7 @@ describe("MCP economics + metagraph data tools", () => {
           {},
         ),
         env: {
-          METAGRAPH_HEALTH_DB: db,
+          ...pgMockEnv(VALIDATOR_ECONOMICS_TABLES),
           // StakeThreshold/TaoWeight are read from this KV snapshot before any
           // live RPC. Supplying it keeps the test deterministic — without it the
           // tool falls through to the chain, which passes in isolation and fails
@@ -10857,34 +10883,31 @@ describe("MCP economics + metagraph data tools", () => {
   });
 
   test("get_subnet_validator_economics_history serves the observed series", async () => {
-    const db = {
-      prepare(query: string) {
-        const isEmission = /subnet_snapshots/.test(query);
-        return {
-          bind: () => ({
-            all: async () => ({
-              results: isEmission
-                ? [{ snapshot_date: "2026-08-01", tao_in_emission_tao: 0.01 }]
-                : [
-                    {
-                      snapshot_date: "2026-08-01",
-                      stake_tao: 4200,
-                      validator_permit: 1,
-                      dividends: 0.5,
-                      active: 1,
-                    },
-                  ],
-            }),
-          }),
-        };
+    // Two reads, two answers: the emission series says the gate was OPEN that
+    // day, and the daily metagraph rows are what the floors are derived from. A
+    // single row set would answer both and the gate assertion below would be
+    // reading the metagraph rows' absent tao_in_emission_tao instead.
+    pg.control.answers = [
+      {
+        match: /FROM subnet_snapshots/i,
+        rows: [{ snapshot_date: "2026-08-01", tao_in_emission_tao: 0.01 }],
       },
-    };
+    ];
+    pg.control.rows = [
+      {
+        snapshot_date: "2026-08-01",
+        stake_tao: 4200,
+        validator_permit: 1,
+        dividends: 0.5,
+        active: 1,
+      },
+    ];
     const res = await callTool(
       "get_subnet_validator_economics_history",
       { netuid: 64, window: "7d" },
       {
         deps: makeDeps({}, {}),
-        env: { METAGRAPH_HEALTH_DB: db } as unknown as Env,
+        env: pgMockEnv(VALIDATOR_ECONOMICS_HISTORY_TABLES) as unknown as Env,
       },
     );
     const out = res.body.result.structuredContent;
@@ -10915,34 +10938,26 @@ describe("MCP economics + metagraph data tools", () => {
   test("list_validator_economics ranks subnets across the MCP surface", async () => {
     // The ranking reads economics through ctx like its per-subnet sibling, so
     // this exercises the real derivation rather than a degraded stub.
-    const db = {
-      prepare() {
-        return {
-          all: async () => ({
-            results: [
-              {
-                netuid: 5,
-                uid: 0,
-                stake_tao: 5000,
-                validator_permit: 1,
-                dividends: 0.5,
-                active: 1,
-                take: 0.18,
-              },
-              {
-                netuid: 7,
-                uid: 0,
-                stake_tao: 5000,
-                validator_permit: 1,
-                dividends: 0.5,
-                active: 1,
-                take: 0.02,
-              },
-            ],
-          }),
-        };
+    pg.control.rows = [
+      {
+        netuid: 5,
+        uid: 0,
+        stake_tao: 5000,
+        validator_permit: 1,
+        dividends: 0.5,
+        active: 1,
+        take: 0.18,
       },
-    };
+      {
+        netuid: 7,
+        uid: 0,
+        stake_tao: 5000,
+        validator_permit: 1,
+        dividends: 0.5,
+        active: 1,
+        take: 0.02,
+      },
+    ];
     const res = await callTool(
       "list_validator_economics",
       { sort: "earning_floor_cost_tao" },
@@ -10973,7 +10988,7 @@ describe("MCP economics + metagraph data tools", () => {
           {},
         ),
         env: {
-          METAGRAPH_HEALTH_DB: db,
+          ...pgMockEnv(VALIDATOR_ECONOMICS_RANKING_TABLES),
           METAGRAPH_CONTROL: {
             get: async () => ({
               stake_threshold_tao: 1000,
@@ -16901,16 +16916,11 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
         last_observed: 1750009000000,
       },
     ]);
-    const envWithD1 = {
-      ...LAKE_ENV,
-      METAGRAPH_HEALTH_DB: {
-        prepare: () => ({
-          bind: () => ({
-            all: async () => ({ results: [{ netuid: 11, uid: 4 }] }),
-          }),
-        }),
-      },
-    };
+    // The slots leg reads `neurons` from the store; the counts leg reads the
+    // lakehouse. Two sources, one card -- which is what the tuple IN list below
+    // is the join between.
+    pg.control.rows = [{ netuid: 11, uid: 4 }];
+    const envWithD1 = { ...LAKE_ENV, ...pgMockEnv(["neurons"]) };
     const res = await callTool(
       "get_account_weight_setters",
       { ss58: LAKE_EXTRINSIC.signer },
@@ -16995,23 +17005,20 @@ describe("MCP block-explorer tools — lakehouse cold tier answers when Postgres
         captured_at: 1785634702670,
       },
     ]);
+    // Per statement, because the two legs must answer differently: the HOT
+    // ledger is empty (the point of the test is that the LAKEHOUSE one is
+    // served) and the `neurons` read is what prices it. One shared row set
+    // would let the hot leg answer and the cold tier would never run.
+    pg.control.answers = [
+      { match: /FROM nominator_positions/i, rows: [] },
+      {
+        match: /FROM neurons/i,
+        rows: [{ hotkey: LAKE_EXTRINSIC.signer, netuid: 18, stake_tao: 100 }],
+      },
+    ];
     const envWithD1 = {
       ...LAKE_ENV,
-      METAGRAPH_HEALTH_DB: {
-        prepare: () => ({
-          bind: () => ({
-            all: async () => ({
-              results: [
-                {
-                  hotkey: LAKE_EXTRINSIC.signer,
-                  netuid: 18,
-                  stake_tao: 100,
-                },
-              ],
-            }),
-          }),
-        }),
-      },
+      ...pgMockEnv(["neurons", "nominator_positions"]),
     };
     const res = await callTool(
       "get_account_positions",

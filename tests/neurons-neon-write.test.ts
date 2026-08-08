@@ -12,12 +12,24 @@
 //   * THE CONFLICT KEYS MATCH NEON'S REAL PRIMARY KEYS. An ON CONFLICT naming
 //     columns with no unique index behind them is a runtime error.
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+
+// One test below runs the DEFAULT wiring -- no injected runner, no injected
+// lane sink -- and both of those now reach Postgres through `new Client(...)`
+// (createPgSql for the mirror, lane-health-store for the verdicts). Mocking the
+// `pg` module is the seam; see tests/helpers/pg-mock.ts for why it is a module
+// mock and why the controller has to be built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   mirrorNeuronSnapshotToNeon,
   NEURON_MIRROR_PLANS,
   NEURONS_NEON_LANE,
 } from "../src/neurons-neon-write.ts";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 const NOW = 1_785_800_000_000;
 
@@ -68,6 +80,13 @@ const input = {
 };
 
 const ctx = { waitUntil() {} };
+
+beforeEach(() => {
+  pg.control.queries.length = 0;
+  pg.control.onQuery = null;
+  pg.control.failNext = null;
+  pg.control.rows = null;
+});
 
 describe("NEURON_MIRROR_PLANS", () => {
   test("conflict keys match the primary keys read off the live database", () => {
@@ -210,26 +229,38 @@ describe("mirrorNeuronSnapshotToNeon", () => {
   });
 
   test("builds a real runner from a bound Hyperdrive, and reports its failure", async () => {
-    // The wiring the Worker actually uses: no injected sql, a real binding, a
-    // real ctx. The connection string is deliberately unreachable, so this also
-    // pins that a Neon that will not accept writes becomes a lane verdict
-    // rather than an exception escaping into the sync handler.
-    const spy = laneSpy();
+    // The wiring the Worker actually uses: no injected sql, no injected sink,
+    // no injected clock, a real binding and a real ctx. Every mirror statement
+    // is rejected, so this pins that a Neon that will not accept writes becomes
+    // a lane verdict rather than an exception escaping into the sync handler.
+    //
+    // The mirror's writes fail and the LANE SINK's do not, which is the whole
+    // point of the test and the reason the failure is per statement rather than
+    // an unreachable connection string: the two now share one store, so an
+    // origin that refuses everything would take the verdicts down with the
+    // writes they are supposed to report. `onQuery` fires before the double
+    // consults `failNext`, which is what makes arming it per statement work.
+    const verdicts: Record<string, unknown>[] = [];
+    pg.control.onQuery = (query) => {
+      if (/INSERT\s+INTO\s+lane_health/i.test(query.text)) {
+        verdicts.push({
+          lane: query.values[0],
+          verdict: query.values[1],
+          detail: query.values[3],
+        });
+        return;
+      }
+      pg.control.failNext = new Error("could not connect to server");
+    };
     const out = await mirrorNeuronSnapshotToNeon(
-      {
-        NEON_DUAL_WRITE_LANES: NEURONS_NEON_LANE,
-        HYPERDRIVE: { connectionString: "postgresql://u:p@127.0.0.1:1/none" },
-        METAGRAPH_HEALTH_DB: spy.db,
-      },
+      { ...pgMockEnv(), NEON_DUAL_WRITE_LANES: NEURONS_NEON_LANE },
       ctx,
       input,
     );
     assert.equal(out.attempted, true);
-    assert.equal(out.results.neurons.ok, false, "an unreachable origin fails");
-    // Recorded through env.METAGRAPH_HEALTH_DB, with no injected sink and no
-    // injected clock -- the defaults the cron path relies on.
-    assert.equal(spy.rows.length, 3);
-    assert.ok(spy.rows.every((r) => r.verdict === "stale"));
+    assert.equal(out.results.neurons.ok, false, "a rejected write fails");
+    assert.equal(verdicts.length, 3);
+    assert.ok(verdicts.every((r) => r.verdict === "stale"));
   });
 
   test("an empty snapshot is a clean no-op per table", async () => {

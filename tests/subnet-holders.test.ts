@@ -23,7 +23,7 @@ import path from "node:path";
 import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// One store since #10170: the ROUTE/GraphQL/MCP surfaces reach it through
+// One store since #10179: the ROUTE/GraphQL/MCP surfaces reach it through
 // src/read-store.ts, which builds `new Client(...)` itself -- there is no
 // binding to hand a request handler any more. The loader assertions below keep
 // passing `d1()` straight in, because `load*(db, ...)` takes a db; only the

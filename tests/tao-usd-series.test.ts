@@ -21,7 +21,7 @@ import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 // The SERVED path (route, GraphQL, MCP) resolves its store through
 // `readStore(env, TAO_USD_TABLES)`, which builds a `new Client(...)` now that
-// Neon is the only store (#10170) -- there is no binding a caller can hand in.
+// Neon is the only store (#10179) -- there is no binding a caller can hand in.
 // Mocking the module is the seam, and the real SQLite fixture below is
 // attached to the mock's controller so the served path executes the same SQL
 // against the same DDL the loader tests use. See tests/helpers/pg-mock.ts for

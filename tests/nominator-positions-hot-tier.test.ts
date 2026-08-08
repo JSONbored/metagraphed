@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// One store since #10170, reached through `new Client(...)` inside
+// One store since #10179, reached through `new Client(...)` inside
 // src/read-store.ts -- which this reader cannot be handed, because it takes
 // only `(env, ss58)`. See tests/helpers/pg-mock.ts for why the seam is a module
 // mock and why the controller is built inside vi.hoisted.

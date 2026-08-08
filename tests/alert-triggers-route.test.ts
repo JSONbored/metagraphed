@@ -286,7 +286,7 @@ test("create: 201 with a condition, binds it as its JSON text and parses the sto
 });
 
 test("create: 201 with a table_filter, bound as JSON text rather than a Postgres array literal", async () => {
-  // THE BUG THIS PINS (#10170). `table_filter` is `string[]`, and node-postgres
+  // THE BUG THIS PINS (#10179). `table_filter` is `string[]`, and node-postgres
   // serializes a JS array as a Postgres ARRAY LITERAL -- ["a","b"] becomes
   // {"a","b"} -- which is not JSON. The column is TEXT and its reader is
   // parseJsonColumn, whose JSON.parse then throws and whose catch degrades the

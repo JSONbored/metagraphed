@@ -11,7 +11,7 @@ import path from "node:path";
 import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// The watermark's store is Postgres now (#10170): both halves of it --
+// The watermark's store is Postgres now (#10179): both halves of it --
 // neonWatermark's read and mirrorRawCaptureStateToNeon's write -- build their
 // own `new Client(...)`, so there is no handle a caller can inject. Mocking the
 // module is the seam, and the real SQLite fixture below is attached to the

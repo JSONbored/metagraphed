@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// One store since #10170. The tempo read reaches it through a selector that
+// One store since #10179. The tempo read reaches it through a selector that
 // builds `new Client(...)` itself, and this loader takes only
 // `(env, netuid, opts)` -- so the `pg` module is the seam. See
 // tests/helpers/pg-mock.ts for why it is a module mock and why the controller

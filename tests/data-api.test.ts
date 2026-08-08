@@ -1,10 +1,24 @@
 // Unit tests for the data Worker (workers/data-api.ts). The Postgres tier this
 // file was originally written against -- the read dispatcher, the Postgres half
 // of every dual-write sync route, and the postgres.js mock that stood in for it
-// -- was deleted in #9193 along with the box it fronted. What remains is the D1
-// write path (mocked against a recording D1 stub) and the auth/size/shape gates
-// every internal sync route still answers with.
+// -- was deleted in #9193 along with the box it fronted. What remains is the
+// write path and the auth/size/shape gates every internal sync route still
+// answers with.
+//
+// THE STORE BEHIND THAT WRITE PATH IS NEON NOW (#10170). Every lane here used
+// to land in D1 through a `METAGRAPH_HEALTH_DB` binding this file could hand
+// the worker; there is no binding to hand any more, because each writer builds
+// its own `new Client(...)` from `env.HYPERDRIVE`. So the seam is the `pg`
+// module -- see tests/helpers/pg-mock.ts for why that rather than an injection
+// point, and for why the controller has to be built inside vi.hoisted.
 import { beforeEach, test, expect, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import { POSTHOG_PROJECT_TOKEN_ENV } from "../src/usage-telemetry.ts";
 import type { Row } from "./row-type.ts";
 
@@ -23,40 +37,23 @@ const SUBNET_SNAPSHOT_SYNC_SECRET = "test-subnet-snapshot-sync-secret";
 const RPC_USAGE_SYNC_SECRET = "test-rpc-usage-sync-secret";
 const NOMINATOR_POSITIONS_SYNC_SECRET = "test-nominator-positions-sync-secret";
 const ACCOUNT_BALANCES_SYNC_SECRET = "test-account-balances-sync-secret";
-/** Statements the neurons-sync D1 write path prepared (#9146), so a test can
- *  assert the snapshot really reached the store rather than merely being
- *  acknowledged. */
-const d1Calls = vi.hoisted((): { sql: string; values: unknown[] }[] => []);
-/** Set by a test to make the next D1 batch reject, for the failure paths. */
-const d1Failure = vi.hoisted((): { error: Error | null } => ({ error: null }));
+/** Statements the write path issued, so a test can assert the snapshot really
+ *  reached the store rather than merely being acknowledged.
+ *
+ *  The SQL recorded here is POSTGRES text -- `$1, $2`, never `?` -- because
+ *  that is what reaches the driver now. A placeholder assertion would need
+ *  `/= \$\d/`; the assertions below match on table names, which the rewrite
+ *  leaves alone. */
+const storeCalls: { sql: string; values: unknown[] }[] = [];
+/** Set by a test to make every store statement reject, for the failure paths. */
+const storeFailure: { error: Error | null } = { error: null };
 
 const env = {
-  METAGRAPH_HEALTH_DB: {
-    prepare(sql: string) {
-      const entry = { sql, values: [] as unknown[] };
-      d1Calls.push(entry);
-      return {
-        bind(...values: unknown[]) {
-          entry.values = values;
-          return {
-            ...entry,
-            // The hyperparams/identity syncs READ their D1 latest-hash state
-            // through createD1Sql (prepare().bind().all()) before writing; an
-            // empty result set means "cold history" -> every row diffs as
-            // changed, which is the state this mocked suite wants.
-            async all() {
-              if (d1Failure.error) throw d1Failure.error;
-              return { results: [] };
-            },
-          };
-        },
-      };
-    },
-    async batch(statements: unknown[]) {
-      if (d1Failure.error) throw d1Failure.error;
-      return statements.map(() => ({ success: true }));
-    },
-  },
+  // No answers and no engine: the double returns zero rows for every read,
+  // which is what the hyperparams/identity syncs need -- they read their
+  // latest-hash state before writing, and an empty result set means "cold
+  // history", so every row diffs as changed.
+  ...pgMockEnv(),
   // The read families flag-switch on these (neuronsServedFromD1 /
   // matchHyperparamsIdentityD1Route): "postgres" keeps every read route in
   // this suite OFF the D1 lane, which since #9193 means it falls through to
@@ -88,8 +85,19 @@ const req = (path: string, init?: RequestInit) =>
     ctx as unknown as ExecutionContext,
   );
 beforeEach(() => {
-  d1Calls.length = 0;
-  d1Failure.error = null;
+  storeCalls.length = 0;
+  storeFailure.error = null;
+  pg.control.queries.length = 0;
+  pg.control.rows = null;
+  pg.control.answers = [];
+  pg.control.failNext = null;
+  // The subscription fires BEFORE the double consults failNext, so re-arming
+  // it here is what makes EVERY statement fail rather than only the first --
+  // and these lanes issue several per request.
+  pg.control.onQuery = (query) => {
+    storeCalls.push({ sql: query.text, values: query.values });
+    if (storeFailure.error) pg.control.failNext = storeFailure.error;
+  };
 });
 
 // #4832 Tier 2: the live-`neurons` routes with no shared D1 loader (the
@@ -328,10 +336,11 @@ test("neurons-sync rejects an empty array (400)", async () => {
   expect(res.status).toBe(400);
 });
 
-test("neurons-sync writes to D1 with no Postgres tier at all -- the wipe case (#9146)", async () => {
-  // The whole point of the D1 port, and now the only path: without it this
-  // handler would answer 503 to every sync now that the box is wiped, and the
-  // only live-refreshed family in the product would stop advancing.
+test("neurons-sync lands the snapshot in the store -- the wipe case (#9146)", async () => {
+  // Was "writes to D1 with no Postgres tier at all". The store changed; the
+  // property did not: this is the only live-refreshed family in the product,
+  // and a handler that acknowledged a sync without landing it would stop that
+  // family advancing while every reader kept looking healthy.
   const res = await worker.fetch(
     new Request("https://d/api/v1/internal/neurons-sync", {
       method: "POST",
@@ -344,30 +353,32 @@ test("neurons-sync writes to D1 with no Postgres tier at all -- the wipe case (#
     env as unknown as Env,
     ctx as unknown as ExecutionContext,
   );
-  expect(res.status, "with no Postgres, D1 is the only store").toEqual(200);
+  expect(res.status).toEqual(200);
   const body = (await res.json()) as Row;
-  expect(body.stores, "with no Postgres, D1 is the only store").toEqual(["d1"]);
+  // `stores` is REPORTED rather than inferred, so a reader can see which store
+  // the snapshot actually reached -- the question nobody could answer while
+  // Neon was frozen.
+  expect(body.stores).toEqual(["neon"]);
   expect(
     body.neurons_written,
-    "the snapshot must reach D1, not merely be acknowledged",
+    "the snapshot must reach the store, not merely be acknowledged",
   ).toEqual(1);
-  // And it really wrote: the snapshot reached D1, it was not just acknowledged.
   expect(
-    d1Calls.some((call) => call.sql.startsWith("INSERT INTO neurons")),
-    "the snapshot must reach D1, not merely be acknowledged",
+    storeCalls.some((call) => /INSERT INTO neurons\b/.test(call.sql)),
+    "the snapshot must reach the store, not merely be acknowledged",
   ).toBe(true);
 });
 
-test("neurons-sync fails the whole sync when D1 rejects (#9146)", async () => {
-  // D1 is where this data lives once the box is gone, so a D1 failure is a
-  // LOST snapshot -- it must not be reported as a success just because
-  // Postgres still happened to accept the same rows.
-  d1Failure.error = new Error("d1 down");
+test("neurons-sync fails the whole sync when the store rejects (#9146)", async () => {
+  // The store is where this data lives once the box is gone, so a failed write
+  // is a LOST snapshot -- it must never come back as ok, because the producer
+  // reads ok as "durable" and stops retrying.
+  storeFailure.error = new Error("store down");
   const res = await postNeurons([neuronSyncRow()], {
     secret: NEURONS_SYNC_SECRET,
   });
-  expect(res.status, "d1 write failed").toEqual(502);
-  expect(((await res.json()) as Row).error).toBe("d1 write failed");
+  expect(res.status, "store write failed").toEqual(502);
+  expect(((await res.json()) as Row).error).toBe("neon write failed");
 });
 
 test("neurons-sync skips account_position_daily for a row with a null hotkey", async () => {
@@ -379,8 +390,8 @@ test("neurons-sync skips account_position_daily for a row with a null hotkey", a
   const body = (await res.json()) as Row;
   expect(body.account_position_daily_written).toBe(0);
   expect(
-    d1Calls.some((call) =>
-      call.sql.startsWith("INSERT INTO account_position_daily"),
+    storeCalls.some((call) =>
+      /INSERT INTO account_position_daily\b/.test(call.sql),
     ),
   ).toBe(false);
 });
@@ -1141,36 +1152,16 @@ test("nominator-positions-sync is disabled (503) when NOMINATOR_POSITIONS_SYNC_S
   expect(res.status).toBe(503);
 });
 
-test("nominator-positions-sync does not fall back to D1 when Neon is unreachable (#10131)", async () => {
-  // Was "writes to D1 -- the lane is live again (#9273)". nominator_positions
-  // is Neon's outright, and this suite's `env` binds a D1 double and no
-  // Hyperdrive -- exactly the shape that a leftover D1 write path would still
-  // answer 200 to. It must not. A D1 store that no reader consults would take
-  // rows, report them written, and leave /accounts/{ss58}/positions serving a
-  // stamp that never advances: the same failure #9273 revived this lane to
-  // fix, arrived at from the other side.
-  //
-  // The success path is covered against a real database in
-  // tests/data-api-nominator-positions-d1.test.ts.
-  const res = await worker.fetch(
-    new Request("https://d/api/v1/internal/nominator-positions-sync", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-nominator-positions-sync-token": NOMINATOR_POSITIONS_SYNC_SECRET,
-      },
-      body: JSON.stringify([nominatorPositionRow()]),
-    }),
-    env as unknown as Env,
-    ctx,
-  );
-  expect(res.status).toBe(502);
-  expect(await res.json()).toEqual({ error: "neon write failed" });
-  // The status alone would still pass with the D1 write restored, since the
-  // Neon check fails either way. This is the part that would not: no statement
-  // naming the table may reach the bound D1 double at all.
-  expect(d1Calls.filter((c) => /nominator_positions/.test(c.sql))).toEqual([]);
-});
+// "nominator-positions-sync does not fall back to D1 when Neon is unreachable
+// (#10131)" was DELETED here. Its subject was that a LEFTOVER D1 write path
+// would take the rows and report them written while no reader ever consulted
+// that store -- it asserted no statement naming nominator_positions reached
+// the bound D1 double. There is no D1 binding in the code or in either
+// wrangler config any more, so the fallback it guarded against cannot exist
+// and the only assertions that survive ("an unreachable store is a 502, never
+// an ok") are the ones the validator-nominator-counts case above already
+// makes. The success path is covered against a real database in
+// tests/data-api-nominator-positions-d1.test.ts.
 
 // #6742: POST /api/v1/internal/account-balances-sync -- the write path into
 // account_balances (see workers/data-api.ts's handleAccountBalancesSync).

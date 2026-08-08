@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// One store since #10170: the neuron-slot read goes through src/read-store.ts,
+// One store since #10179: the neuron-slot read goes through src/read-store.ts,
 // which builds `new Client(...)` itself -- these loaders take only `(env, ...)`
 // and cannot be handed a binding. See tests/helpers/pg-mock.ts for why the seam
 // is a module mock and why the controller is built inside vi.hoisted.

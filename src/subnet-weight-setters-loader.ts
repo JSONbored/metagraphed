@@ -77,7 +77,7 @@ async function loadSubnetTempo(
   env: Parameters<typeof r2SqlQuery>[0],
   netuid: number,
 ): Promise<unknown> {
-  // readStore, NOT observationsReadDb (#10170). Two reasons, either fatal:
+  // readStore, NOT observationsReadDb (#10179). Two reasons, either fatal:
   //
   //   observationsReadDb needs an ExecutionContext to reach Neon, and this
   //   function's only caller is `loadSubnetTempo(env, netuid)` -- there is no

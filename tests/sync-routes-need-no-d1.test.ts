@@ -8,7 +8,7 @@
 // inversions: the check was dead code that only woke up on the day the database
 // was dropped.
 //
-// D1 IS NOW DROPPED (#10170) and the file still earns its place, because the
+// D1 IS NOW DROPPED (#10179) and the file still earns its place, because the
 // second case below is the one that matters after the collapse: the gate must
 // be the ALL-OR-NOTHING family check, not a bare "is Hyperdrive bound". A
 // half-declared family reaching the write would land the declared tables and

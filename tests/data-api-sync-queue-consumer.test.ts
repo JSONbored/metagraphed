@@ -15,7 +15,7 @@ import { beforeEach, describe, test, vi } from "vitest";
 
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// The store is Postgres now (#10170). The consumer reaches it through
+// The store is Postgres now (#10179). The consumer reaches it through
 // `new Client(...)` several layers down, so the module is the only injectable
 // seam -- see tests/helpers/pg-mock.ts.
 const { pg } = await vi.hoisted(async () => ({
@@ -257,7 +257,7 @@ describe("the sync queue consumer", () => {
     // An unbound store is transient-looking from here, and a cut-over lane has
     // no other writer -- acking would lose the rows outright.
     //
-    // THIS IS THE ASSERTION THE TEARDOWN NEARLY BROKE (#10170). Both writer
+    // THIS IS THE ASSERTION THE TEARDOWN NEARLY BROKE (#10179). Both writer
     // maps in the consumer used to be built as `env.METAGRAPH_HEALTH_DB ? {...}
     // : {}`, so an absent binding did not mean "no writer available" -- it
     // meant an EMPTY writer map, and an empty map acks every message for every

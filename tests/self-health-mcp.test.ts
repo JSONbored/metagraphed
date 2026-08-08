@@ -1,6 +1,17 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
 import { Ajv2020 } from "ajv/dist/2020.js";
+
+// The lane verdicts are read through laneHealthStore now (#10148), which
+// reaches Postgres with `new Client(...)` -- and loadSelfHealth takes only an
+// MCP context, so there is nothing to inject a store into. Mocking the `pg`
+// module is the seam; see tests/helpers/pg-mock.ts for why it is a module mock
+// and why the controller has to be built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   SELF_HEALTH_ARTIFACT,
   GET_SELF_HEALTH_INSTRUCTIONS,
@@ -12,6 +23,7 @@ import {
 import { MCP_INSTRUCTIONS, MCP_TOOLS } from "../src/mcp-server.ts";
 import type { StorageReadResult } from "../workers/storage.ts";
 import { mockEnv, type Row } from "./row-type.ts";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
 import { assertValid } from "./helpers/assert-valid.ts";
 
 type ReadArtifact = (env: Env, path: string) => Promise<StorageReadResult>;
@@ -56,6 +68,12 @@ const SAMPLE_SELF_HEALTH = {
   stale_lane_count: 1,
   observed_at: "2026-07-01T00:00:00.000Z",
 };
+
+beforeEach(() => {
+  pg.control.answers = [];
+  pg.control.rows = null;
+  pg.control.queries.length = 0;
+});
 
 describe("self-health-mcp", () => {
   test("selfHealthToolError is shaped for MCP toolError handling", () => {
@@ -406,21 +424,24 @@ describe("self-health-mcp", () => {
     test("lane verdicts reach the MCP card, not only the REST one", async () => {
       const env = mockEnv() as unknown as Row;
       env.METAGRAPH_SELF_HEALTH_SOURCE = "retired";
-      env.METAGRAPH_HEALTH_DB = {
-        prepare: () => ({
-          all: async () => ({
-            results: [
-              {
-                lane: "chain-detail",
-                verdict: "stale",
-                age_ms: 14_400_000,
-                detail: "frozen",
-                checked_at: 1_785_800_000_000,
-              },
-            ],
-          }),
-        }),
-      };
+      // Hyperdrive bound and lane_health declared Neon's, which is what makes
+      // laneHealthStore hand back a store at all -- #10148's point being that
+      // this reader must not depend on which tier answered for the CARD.
+      Object.assign(env, pgMockEnv(["lane_health"]));
+      pg.control.answers = [
+        {
+          match: /FROM\s+lane_health/i,
+          rows: [
+            {
+              lane: "chain-detail",
+              verdict: "stale",
+              age_ms: 14_400_000,
+              detail: "frozen",
+              checked_at: 1_785_800_000_000,
+            },
+          ],
+        },
+      ];
       const result = (await loadSelfHealth({
         env: env as unknown as Env,
         readArtifact: NOT_FOUND,

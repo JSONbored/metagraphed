@@ -4966,11 +4966,16 @@ export async function handleRequest(
         env,
         "trajectory",
         () =>
+          // ctx forwarded, not just handed to withEdgeCache: observationsReadDb
+          // parks the pooled connection's teardown on waitUntil and answers
+          // `undefined` without one (#10086), which `d1All` reads as zero rows
+          // -- a confident empty trajectory that nothing marks as a fallback.
           handleTrajectory(
             request,
             env,
             Number(trajectoryMatch[1]),
             resolved.url,
+            ctx,
           ),
         canonicalTrajectoryCachePath(resolved.url, request),
       );
@@ -4982,7 +4987,9 @@ export async function handleRequest(
         ctx,
         env,
         "uptime",
-        () => handleUptime(request, env, Number(uptimeMatch[1]), resolved.url),
+        // ctx forwarded for the same reason as the trajectory route above.
+        () =>
+          handleUptime(request, env, Number(uptimeMatch[1]), resolved.url, ctx),
         canonicalUptimeCachePath(resolved.url, request),
       );
     }
@@ -6020,7 +6027,8 @@ export async function handleRequest(
         ctx,
         env,
         "economics-trends",
-        () => handleEconomicsTrends(request, env, resolved.url),
+        // ctx forwarded for the same reason as the trajectory route above.
+        () => handleEconomicsTrends(request, env, resolved.url, ctx),
         canonicalEconomicsTrendsCachePath(resolved.url, request),
       );
     }

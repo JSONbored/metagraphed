@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// The store is Postgres now (#10170), reached through `new Client(...)` inside
+// The store is Postgres now (#10179), reached through `new Client(...)` inside
 // src/read-store.ts and src/lane-health-store.ts -- neither of which this
 // watchdog can be handed, because it selects its own store from `env`. Mocking
 // the module is the seam; see tests/helpers/pg-mock.ts for why it is a module
@@ -274,7 +274,7 @@ describe("the cron wiring", () => {
 
   test("the prune cron reaches the prune, not the watchdog", async () => {
     // The two branches sit next to each other and both decline on an unbound
-    // store, so "reason" no longer tells them apart -- since #10170 they both
+    // store, so "reason" no longer tells them apart -- since #10179 they both
     // say "no store bound". What still does is the SHAPE of a successful
     // answer: only the prune reports `blocks_pruned`, and an empty tier is a
     // success for it ("the lane has simply not written yet") where an empty

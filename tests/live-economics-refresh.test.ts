@@ -14,7 +14,6 @@
 // against what /api/v1/economics served that day (owner_coldkey
 // 5FRYKhbm..., owner_hotkey 5CS3g6nV..., registration_cost_tao 0.0005).
 import assert from "node:assert/strict";
-import { alphaPriceHistoryQuery } from "../scripts/lib/load-alpha-price-history.ts";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
@@ -47,6 +46,7 @@ import {
   refreshLiveEconomics,
   subnetHasChainData,
 } from "../src/live-economics-refresh.ts";
+import { alphaPriceHistoryQuery } from "../scripts/lib/load-alpha-price-history.ts";
 import { buildEconomicsArtifact } from "../scripts/lib/economics-artifacts.ts";
 import { CONTRACT_VERSION } from "../src/contracts.ts";
 import { KV_ECONOMICS_CURRENT } from "../src/kv-keys.ts";
@@ -626,28 +626,44 @@ describe("refreshLiveEconomics", () => {
     // rather than by count, because the text is the part that has to be right
     // and the store no longer tells anyone when it is not.
     //
-    // `date('now','-40 days')` IS SQLITE, and it is asserted here because that
-    // is what the code sends -- alphaPriceHistoryQuery says so in its own
-    // header ("SQLite date arithmetic, not Postgres'"). Postgres has no
-    // two-argument `date()`, so this statement cannot execute against the only
-    // store that is left; the throw is swallowed by refreshLiveEconomics's own
-    // catch and the whole tick reports `unreachable`. This assertion is
-    // therefore a marker, not an endorsement: when the query is rewritten to
-    // `CURRENT_DATE - INTERVAL '40 days'`, this line is the one that has to
-    // change with it.
-    assert.deepEqual(queries, [
-      NEURON_AGGREGATE_QUERY,
+    // THE CUTOFF IS THE PART THAT HAD TO CHANGE. This used to read
+    // `date('now','-40 days')` -- SQLite's spelling, and `function
+    // date(unknown, unknown) does not exist` on the only store that is left.
+    // The read sits inside refreshLiveEconomics's own try, so the throw took
+    // the WHOLE tick: KV `economics:current` stopped advancing while the last
+    // good blob kept being served, which is exactly what made it look healthy.
+    // alphaPriceHistoryQuery now inlines a JS-computed 'YYYY-MM-DD' literal,
+    // which compares correctly on both engines, so the assertion that carries
+    // the fix is that NO SQL date function survives in the text at all.
+    //
+    // Everything but the ten date characters is still pinned character for
+    // character; those ten are a function of the tick's OWN clock, so they are
+    // matched by shape and then checked against the shared builder driven by
+    // that same clock -- which also says the refresh does not roll a window of
+    // its own, and that the window is on the same clock as the rows it bounds.
+    assert.equal(queries.length, 2);
+    assert.equal(queries[0], NEURON_AGGREGATE_QUERY);
+    assert.match(
+      queries[1]!,
       // #9449: captured_at is selected because the %-change windows are
       // measured in elapsed time, not by subtracting snapshot dates.
       //
-      // Asked of the builder rather than restated, because the cutoff moves
-      // with the clock now: it is a YYYY-MM-DD literal computed in JS, not
-      // `date('now','-40 days')`. That spelling is SQLite's, and this read goes
-      // to Postgres through readStore -- "function date(unknown, unknown) does
-      // not exist" took the whole tick, so KV economics:current stopped
-      // advancing while the last good blob kept being served.
-      alphaPriceHistoryQuery(),
-    ]);
+      // Matched by SHAPE and then checked against the shared builder driven by
+      // this tick's own clock. The cutoff is a YYYY-MM-DD literal computed in
+      // JS, not `date('now','-40 days')` -- that spelling is SQLite's, and this
+      // read goes to Postgres through readStore, where "function date(unknown,
+      // unknown) does not exist" took the WHOLE tick and left KV
+      // economics:current frozen with the last good blob still being served.
+      /^SELECT netuid, snapshot_date, alpha_price_tao, captured_at FROM subnet_snapshots WHERE snapshot_date >= '\d{4}-\d{2}-\d{2}' ORDER BY netuid ASC, snapshot_date ASC$/,
+    );
+    assert.doesNotMatch(
+      queries[1]!,
+      /\bdate\s*\(/i,
+      "a SQL date function is the defect this query had; it must stay absent",
+    );
+    // The builder on the SAME clock, which also says the refresh does not roll
+    // a window of its own and that the window and the rows it bounds agree.
+    assert.equal(queries[1], alphaPriceHistoryQuery(undefined, NOW));
   });
 
   test("a set emission-gate exponent decodes to the small integer h", async () => {

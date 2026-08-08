@@ -21,7 +21,7 @@ import { pgMockEnv } from "./helpers/pg-mock.ts";
 import { sqliteBackedPg } from "./helpers/pg-sqlite.ts";
 import type { Row } from "./row-type.ts";
 
-// The store is Postgres now (#10170), reached through `new Client(...)` inside
+// The store is Postgres now (#10179), reached through `new Client(...)` inside
 // src/pg-sql.ts and src/neon-write.ts -- neither of which a route caller can
 // inject into, because the caller is `worker.fetch(request, env, ctx)`. Mocking
 // the module is the seam; see tests/helpers/pg-mock.ts for why it is a module

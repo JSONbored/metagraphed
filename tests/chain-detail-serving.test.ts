@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// The store is Postgres now (#10170), reached through `new Client(...)` inside
+// The store is Postgres now (#10179), reached through `new Client(...)` inside
 // src/read-store.ts. A route test cannot inject into that -- the caller is
 // `handleRequest(request, env, ctx)` -- so the `pg` module is the seam. See
 // tests/helpers/pg-mock.ts for why it is a module mock, and why the controller

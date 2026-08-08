@@ -5974,7 +5974,7 @@ const rootValue = {
         }
       }
       // Through readStore, matching the REST route's own call in
-      // workers/request-handlers/entities.ts (#10170). This resolver was the
+      // workers/request-handlers/entities.ts (#10179). This resolver was the
       // last reader still handed the raw binding, so it kept asking the store
       // the alpha-pricing tables had already left -- and a frozen table answers
       // with a schema-stable wrong number rather than an error.

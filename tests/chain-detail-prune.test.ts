@@ -6,7 +6,7 @@
 // declining -- the prune would manufacture the exact gap the tier exists to
 // close. The floor and the ceiling are the two ends of that adaptation.
 //
-// SINCE #10170 THERE IS ONE STORE. The prune used to have two halves: a
+// SINCE #10179 THERE IS ONE STORE. The prune used to have two halves: a
 // `binding.batch()` of DELETEs against D1, and the same bound applied to Neon.
 // D1 is gone, so the whole function is now "read the bound from Neon, apply it
 // to Neon" -- which is why the tests that existed to prove the two stores could

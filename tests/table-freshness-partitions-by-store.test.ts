@@ -6,7 +6,7 @@
 // EVERY table named in the call is declared Neon's, and `undefined` otherwise.
 // For every other reader that is the safe answer, because every table it names
 // belongs to one lane. Here it is not. A batch mixing a declared table with an
-// undeclared one gets `undefined` for the whole batch, and since #10170 there
+// undeclared one gets `undefined` for the whole batch, and since #10179 there
 // is no second store to fall back to -- so the declared table is not read
 // either.
 //
@@ -25,7 +25,7 @@ import assert from "node:assert/strict";
 import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// The store is Postgres now (#10170), reached through `new Client(...)` inside
+// The store is Postgres now (#10179), reached through `new Client(...)` inside
 // src/read-store.ts -- which this watchdog cannot be handed, because it selects
 // its own store per partition from `env`. Mocking the module is the seam; see
 // tests/helpers/pg-mock.ts for why it is a module mock and why the controller

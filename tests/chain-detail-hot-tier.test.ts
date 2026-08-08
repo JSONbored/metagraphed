@@ -14,7 +14,7 @@ import assert from "node:assert/strict";
 import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// The store is Postgres now (#10170), reached through `new Client(...)` inside
+// The store is Postgres now (#10179), reached through `new Client(...)` inside
 // src/read-store.ts -- which these loaders cannot be handed, because they take
 // only `(env, ...)`. Mocking the module is the seam; see tests/helpers/pg-mock.ts
 // for why it is a module mock and not an export, and why the controller has to

@@ -12,7 +12,7 @@
 // LOW and no cell says so.
 //
 // THE STORE SELECTOR THIS MODULE USES, and why it is `readStore` and not
-// `observationsReadDb` (#10170). Removing D1 exposed three independent ways the
+// `observationsReadDb` (#10179). Removing D1 exposed three independent ways the
 // latter could not answer here, each of which turns a proven leg into a silent
 // decline -- and a null leg drops free_tao / delegated_tao / total_tao from the
 // published artifact entirely, which reads as "these sorts are unavailable"
@@ -45,7 +45,7 @@ import path from "node:path";
 import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// One store since #10170: this module reaches it through a selector that builds
+// One store since #10179: this module reaches it through a selector that builds
 // `new Client(...)` itself, and its only parameters are `(env, cap, ctx)` -- so
 // the `pg` module is the seam. See tests/helpers/pg-mock.ts for why it is a
 // module mock, and why the controller is built inside vi.hoisted.

@@ -12,7 +12,7 @@ import assert from "node:assert/strict";
 import { afterEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// One store since #10170: the HOLDINGS leg reaches it through a selector that
+// One store since #10179: the HOLDINGS leg reaches it through a selector that
 // builds `new Client(...)` itself, and `computeTopHoldersFlow(env, network)`
 // cannot be handed a binding. See tests/helpers/pg-mock.ts for why the seam is
 // a module mock and why the controller is built inside vi.hoisted.

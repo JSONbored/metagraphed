@@ -19,7 +19,21 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { sqliteBackedPg } from "./helpers/pg-sqlite.ts";
+
+// The serving paths (REST/GraphQL/MCP) reach their store through
+// `new Client(...)` inside src/read-store.ts (#10170), which none of their
+// callers can inject into -- so the `pg` module is the seam. The DIRECT
+// loadEmissionChanges tests below keep passing their own D1-shaped fake,
+// because that function still takes its store as an argument; only the three
+// surfaces that resolve one from `env` need this.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   EMISSION_CHANGES_LIMIT_DEFAULT,
   EMISSION_CHANGES_LIMIT_MAX,
@@ -58,7 +72,16 @@ function d1() {
     },
   };
 }
-const env = () => ({ METAGRAPH_HEALTH_DB: d1() }) as unknown as Env;
+/** An env whose store is the same in-memory fixture `d1()` wraps.
+ *
+ * Assigned per call rather than once, because `db` is rebuilt in beforeEach --
+ * a controller still holding the previous test's database would answer from a
+ * fixture this test never wrote to. */
+const env = () => {
+  pg.control.db = sqliteBackedPg(db);
+  pg.control.rows = null;
+  return pgMockEnv() as unknown as Env;
+};
 
 function param(
   at: number,
@@ -385,7 +408,7 @@ describe("GET /api/v1/chain/governance/emission-changes", () => {
     );
   });
 
-  test("no D1 binding is an empty feed rather than a 500", async () => {
+  test("no store bound is an empty feed rather than a 500", async () => {
     const data = await body(
       await get("/api/v1/chain/governance/emission-changes", {} as Env),
     );

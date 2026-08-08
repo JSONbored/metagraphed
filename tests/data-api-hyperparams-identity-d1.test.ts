@@ -3,7 +3,7 @@
 // Worker fetch handler -- same rationale and harness as
 // tests/data-api-neurons-d1.test.ts.
 //
-// Both families are Neon's outright (#10170): the sync reads its own history
+// Both families are Neon's outright (#10179): the sync reads its own history
 // table to diff, writes both tables, and REPORTS a failure of either rather
 // than swallowing it, because there is no second store left to have got the
 // rows. The one behavior beyond the neurons lane is the COLD-TIER contract: a
@@ -20,7 +20,7 @@ import { pgMockEnv } from "./helpers/pg-mock.ts";
 import { sqliteBackedPg } from "./helpers/pg-sqlite.ts";
 import type { Row } from "./row-type.ts";
 
-// The store is Postgres now (#10170), reached through `new Client(...)` inside
+// The store is Postgres now (#10179), reached through `new Client(...)` inside
 // src/pg-sql.ts and src/neon-write.ts -- neither of which a route caller can
 // inject into, because the caller is `worker.fetch(request, env, ctx)`. Mocking
 // the module is the seam; see tests/helpers/pg-mock.ts for why it is a module

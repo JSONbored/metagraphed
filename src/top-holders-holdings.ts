@@ -242,7 +242,7 @@ export async function topHoldersHoldings(
   env: Env | null | undefined,
   cap: number = TOP_HOLDERS_HOLDINGS_ROW_CAP,
 ): Promise<HoldingsLeg | null> {
-  // readStore, NOT observationsReadDb (#10170), for the same pair of reasons
+  // readStore, NOT observationsReadDb (#10179), for the same pair of reasons
   // src/subnet-weight-setters-loader.ts gives: that selector needs an
   // ExecutionContext to reach Neon, and this lane has none to give -- its
   // caller is ProjectionLane.compute(env, network), so there is no ctx anywhere

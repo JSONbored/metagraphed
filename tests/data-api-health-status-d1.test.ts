@@ -24,7 +24,7 @@ import { beforeEach, test, vi } from "vitest";
 import type { Row } from "./row-type.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// The store is Postgres now (#10170). This suite reaches the route through
+// The store is Postgres now (#10179). This suite reaches the route through
 // `worker.fetch(request, env, ctx)`, so there is nothing to inject a runner
 // into -- the `pg` module IS the seam. See tests/helpers/pg-mock.ts for why it
 // is a module mock rather than a production export, and why the controller has

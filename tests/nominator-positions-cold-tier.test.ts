@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// One store since #10170: the stake leg reads `neurons` through
+// One store since #10179: the stake leg reads `neurons` through
 // src/read-store.ts, which builds `new Client(...)` itself -- this loader takes
 // only `(env, ss58)` and cannot be handed a binding. See
 // tests/helpers/pg-mock.ts for why the seam is a module mock and why the

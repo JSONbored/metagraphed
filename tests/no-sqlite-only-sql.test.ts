@@ -38,7 +38,7 @@ const SQLITE_ONLY: [RegExp, string][] = [
   [/\bstrftime\s*\(/i, "strftime() — Postgres uses to_char/date_trunc"],
   [/\bjulianday\s*\(/i, "julianday() — no Postgres equivalent"],
   [/\bdatetime\s*\(\s*'now'/i, "datetime('now') — Postgres uses now()"],
-  // TWO-ARGUMENT date(), which is the one that got through (#10170).
+  // TWO-ARGUMENT date(), which is the one that got through (#10179).
   //
   // The list already had datetime('now') and stopped there, so
   // `date('now','-40 days')` in scripts/lib/load-alpha-price-history.ts sailed
@@ -63,7 +63,7 @@ const SQLITE_ONLY: [RegExp, string][] = [
   [/\bLIMIT\s+\d+\s*,\s*\d+/i, "LIMIT a, b — Postgres needs LIMIT b OFFSET a"],
   [/\bPRAGMA\b/i, "PRAGMA — SQLite only"],
   // json_extract / json_each, which is how src/surface-history.ts nearly
-  // shipped an empty trail for every subnet (#10170): the column is TEXT
+  // shipped an empty trail for every subnet (#10179): the column is TEXT
   // holding JSON, the reader wraps its own read in a catch, and a thrown
   // "function json_extract does not exist" renders as "nothing has changed
   // here" -- a real answer for a stable subnet, so indistinguishable.
@@ -102,7 +102,7 @@ function walk(dir: string): string[] {
 describe("store-neutral SQL", () => {
   test("no file that can reach either store uses SQLite-only syntax", () => {
     const offenders: string[] = [];
-    // Everything shipped, AND scripts/ (#10170).
+    // Everything shipped, AND scripts/ (#10179).
     //
     // scripts/ was outside this walk, which is half of why
     // `date('now','-40 days')` survived: it lives in
@@ -151,7 +151,7 @@ describe("store-neutral SQL", () => {
   });
 
   test("the scanner would catch the date() arithmetic that broke economics", () => {
-    // The second real statement this file exists for (#10170). Same shape of
+    // The second real statement this file exists for (#10179). Same shape of
     // proof as above: the pattern set has to recognise the byte-for-byte
     // original, or a green run means nothing.
     const real =

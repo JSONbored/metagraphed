@@ -19,7 +19,7 @@ import { readFileSync } from "node:fs";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// The store is Postgres now (#10170), reached through `new Client(...)` inside
+// The store is Postgres now (#10179), reached through `new Client(...)` inside
 // src/read-store.ts and src/lane-health-store.ts -- neither of which this
 // watchdog can be handed, because it selects its own store from `env`. Mocking
 // the module is the seam; see tests/helpers/pg-mock.ts for why it is a module

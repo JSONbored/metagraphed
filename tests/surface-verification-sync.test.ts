@@ -13,7 +13,7 @@ import { afterEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 // The probe evidence follows the prober: surface_uptime_daily and
-// surface_checks are Neon's now (#10170), and the lane resolves its own handle
+// surface_checks are Neon's now (#10179), and the lane resolves its own handle
 // through `readStore` -- a `new Client(...)` there is the only store, so the
 // binding these tests used to hand over no longer exists. Mocking the module
 // is the seam; see tests/helpers/pg-mock.ts for why the controller has to be

@@ -1,6 +1,6 @@
 // Which tables Neon SOLELY owns, and what that changes.
 //
-// The flag outlived the migration it was built for: D1 is gone (#10170), so
+// The flag outlived the migration it was built for: D1 is gone (#10179), so
 // there is no longer a second store to fall back to. What it still decides is
 // whether a group of tables may be READ AT ALL, and that is the property this
 // file guards.

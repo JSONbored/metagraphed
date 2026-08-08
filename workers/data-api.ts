@@ -1419,7 +1419,7 @@ async function handleSubnetHyperparamsSync(
     });
   }
 
-  // BOTH TABLES OF THE FAMILY, OR NONE (#10170): the table and its history are
+  // BOTH TABLES OF THE FAMILY, OR NONE (#10179): the table and its history are
   // written from one derivation, so a half-declared family would let the two
   // disagree about which revisions exist. Checked HERE, after parsing and
   // validation, not at the top: a malformed body is a 400 whether or not a
@@ -6206,7 +6206,7 @@ export const NEON_READ_ROUTE_TABLES: readonly {
   // The prober's own continuity read (#9522), and the ONE route in the three
   // matchers that had no entry here. That was survivable while routeStore fell
   // back to D1 -- the route simply stayed on D1 like every unmapped route. With
-  // D1 gone (#10170) the fallback is `undefined`, so an unmapped route is not
+  // D1 gone (#10179) the fallback is `undefined`, so an unmapped route is not
   // "still on the old store", it is 503 on every request: src/health-prober.ts
   // and src/health-serving.ts would both go back to reading null, which is
   // exactly the empty prior map that made the pool breaker unreachable.
@@ -7996,7 +7996,7 @@ export default {
     // neighbours through the retry budget with it.
     // ONE CALL per message, so the four families land together.
     //
-    // UNCONDITIONAL (#10170). These two maps used to be built only when the D1
+    // UNCONDITIONAL (#10179). These two maps used to be built only when the D1
     // binding was present, and an absent binding made them `{}` -- which is not
     // "no writer available", it is a consumer that acks every message for every
     // lane and drops the rows. The Neon writers below need no D1 binding and
@@ -8032,7 +8032,7 @@ export default {
           pass,
         );
         // UNCONDITIONAL, and the `neonOwns &&` that used to guard it was a
-        // silent data-loss path (#10170).
+        // silent data-loss path (#10179).
         //
         // neonOwnsLedger requires HYPERDRIVE to be bound. So on the one
         // deployment where the write CANNOT happen -- no binding -- the guard
@@ -8106,7 +8106,7 @@ export default {
           {},
           pass,
         );
-        // AND THE RESULT WAS NEVER READ (#10170). This awaited the write and
+        // AND THE RESULT WAS NEVER READ (#10179). This awaited the write and
         // returned regardless, so a failure was acked and the rows were gone --
         // on the lane whose own comment says it is the only writer. Every
         // sibling in this map throws; this one computed `neonOwns` and did
@@ -8143,7 +8143,7 @@ export default {
         // into a retry.
         //
         // UNCONDITIONAL, and the `neonOwns` that used to guard it was a silent
-        // data-loss path (#10170): neonOwnsNeuronsSnapshot requires HYPERDRIVE,
+        // data-loss path (#10179): neonOwnsNeuronsSnapshot requires HYPERDRIVE,
         // so on the one deployment where the write cannot happen the guard read
         // false and the throw was skipped.
         //

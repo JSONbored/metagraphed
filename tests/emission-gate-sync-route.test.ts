@@ -14,7 +14,7 @@ import path from "node:path";
 import { beforeEach, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// The lane's store is Postgres now (#10170): the handler resolves it itself
+// The lane's store is Postgres now (#10179): the handler resolves it itself
 // through `producerStore`, which builds a `new Client(...)` from the Hyperdrive
 // binding, so there is no handle a request can carry in. Mocking the module is
 // the seam, and the real SQLite fixture is attached to the controller so the
@@ -480,7 +480,7 @@ test("a store failure is contained as a 502, never an uncaught throw", async () 
   assert.equal((await res.json()).error.code, "emission_gate_sync_failed");
 });
 
-// --- the booleans, and the all-or-nothing family (#10112, #10170) -----------
+// --- the booleans, and the all-or-nothing family (#10112, #10179) -----------
 //
 // All four flag columns -- enabled, previous_enabled, is_set, predates_capture
 // -- are BOOLEAN in Postgres. Binding 1/0 there is `operator does not exist:

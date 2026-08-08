@@ -1,5 +1,17 @@
 import assert from "node:assert/strict";
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The store is Postgres now (#10170), reached through `new Client(...)` inside
+// src/read-store.ts. These composers take `(env, netuid, deps)` and resolve
+// their own handle from `env`, so there is nothing to inject -- the `pg` module
+// is the seam. See tests/helpers/pg-mock.ts for why, and for why the controller
+// has to be built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   buildSubnetValidatorEconomicsPayload,
   buildValidatorEconomicsRankingPayload,
@@ -19,27 +31,32 @@ import { handleRequest } from "../workers/api.ts";
 
 type Row = Record<string, unknown>;
 
-// Minimal D1 stub: `.prepare().bind().all()` for the neuron scan and
-// `.prepare().bind().first()` for the single hyperparameter row.
+/** Arm the store: the neuron scan answers `neurons`, the single-row
+ * hyperparameter read answers `hyper`.
+ *
+ * Routed by TABLE rather than by call order, exactly as the old stub was: both
+ * reads go through one double now, and answering the hyperparameter read with
+ * neuron rows would feed a validator row into `max_validators`.
+ *
+ * `sql` is a live view over the double's log rather than a copy, so the
+ * assertions that read it after the composer has run keep working -- and it is
+ * filled from `onQuery`, which the double calls BEFORE it consults
+ * `rows`/`answers`, which is also what lets the answer depend on the statement.
+ */
 function fakeDb(neurons: Row[], hyper: Row | null = null) {
   const sql: string[] = [];
-  return {
-    sql,
-    db: {
-      prepare(query: string) {
-        sql.push(query);
-        const isHyper = /subnet_hyperparams/.test(query);
-        return {
-          bind() {
-            return {
-              all: async () => ({ results: neurons }),
-              first: async () => (isHyper ? hyper : null),
-            };
-          },
-        };
-      },
-    },
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.failNext = null;
+  pg.control.onQuery = (query) => {
+    sql.push(query.text);
+    pg.control.rows = /subnet_hyperparams/.test(query.text)
+      ? hyper
+        ? [hyper]
+        : []
+      : neurons;
   };
+  return { sql };
 }
 
 // The economics artifact the reserves, cap and emission are read from. Shaped like a
@@ -68,11 +85,11 @@ function envWith({
   hyper = null as Row | null,
   economics = economicsArtifact() as unknown,
 } = {}) {
-  const { db, sql } = fakeDb(neurons, hyper);
+  const { sql } = fakeDb(neurons, hyper);
   return {
     sql,
     env: {
-      METAGRAPH_HEALTH_DB: db,
+      ...pgMockEnv(),
       // readArtifact reads economics.json out of R2 (it is an R2-only artifact),
       // so the archive bucket is what has to answer. Anything else misses.
       METAGRAPH_ARCHIVE: {
@@ -123,7 +140,10 @@ describe("buildSubnetValidatorEconomicsPayload", () => {
   test("reads only the columns the derivation needs", async () => {
     const { env, sql } = envWith({ neurons: [permitted(0)] });
     await buildSubnetValidatorEconomicsPayload(env, 7, deps());
-    assert.match(sql[0], /FROM neurons WHERE netuid = \?/);
+    // `$n`, not `?`: pgReadStore rewrites the loader's SQLite-shaped `?` on the
+    // way to Postgres. #9821 is what happens when it does not -- six routes
+    // served zero rows because `?` reached Postgres unrewritten.
+    assert.match(sql[0], /FROM neurons WHERE netuid = \$\d/);
     assert.match(sql[0], /stake_tao/);
     assert.match(sql[0], /take/);
     // The owner exception needs the hotkey to find the owner's UID; without it
@@ -187,23 +207,12 @@ describe("buildSubnetValidatorEconomicsPayload", () => {
     assert.equal(data.root_tao_to_clear_threshold, 1000 / 0.18);
   });
 
-  test("treats a result set with no rows array as empty, not as a crash", async () => {
-    // D1's `.all()` is not guaranteed to carry `results` — a cold or shimmed
-    // binding can return a bare object, and reading `.results` off it would
-    // throw inside the request rather than degrade.
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare: () => ({
-          bind: () => ({ all: async () => ({}), first: async () => null }),
-        }),
-      },
-      METAGRAPH_ARCHIVE: { get: async () => null },
-    } as never;
-    const { data } = await buildSubnetValidatorEconomicsPayload(env, 7, deps());
-    assert.equal(data.netuid, 7);
-    assert.equal(data.permit_floor_units, null);
-    assert.equal(data.degraded_reason, "max_validators unavailable");
-  });
+  // "treats a result set with no rows array as empty, not as a crash" was
+  // DELETED here. Its subject was D1's `.all()` envelope arriving without a
+  // `results` key -- a shape src/read-store.ts's pgReadStore cannot produce,
+  // because it BUILDS that envelope itself from `rows ?? []`. Restating it as
+  // "an empty read degrades with a stated reason" would only duplicate the
+  // no-store case below.
 
   test("carries the netuid and a stable schema_version", async () => {
     const { env } = envWith({ neurons: [permitted(0)] });
@@ -212,8 +221,8 @@ describe("buildSubnetValidatorEconomicsPayload", () => {
     assert.equal(data.schema_version, 1);
   });
 
-  test("degrades with a stated reason when the D1 binding is absent", async () => {
-    // An unbound database must not read as "this subnet has no validators".
+  test("degrades with a stated reason when no store is bound", async () => {
+    // An unbound store must not read as "this subnet has no validators".
     const { data } = await buildSubnetValidatorEconomicsPayload(
       { METAGRAPH_ARCHIVE: { get: async () => null } } as never,
       7,
@@ -248,7 +257,7 @@ describe("buildSubnetValidatorEconomicsPayload", () => {
     assert.equal(Number.isNaN(data.permit_floor_units as number), false);
   });
 
-  test("reads active and validator_permit as the 0/1 flags D1 stores", async () => {
+  test("reads active and validator_permit as flags, not as counts", async () => {
     const { env } = envWith({
       neurons: [
         permitted(0, { active: 0 }),
@@ -476,26 +485,24 @@ describe("buildValidatorEconomicsRankingPayload", () => {
   });
 
   // Routes by table, not by call order: the ranking makes three bulk reads
-  // (neuron scan, latest burn per subnet, hyperparams) and a stub that answered
-  // all of them with the neuron scan would feed burn rows into the burn map.
+  // (neuron scan, latest burn per subnet, hyperparams) and a double that
+  // answered all of them with the neuron scan would feed burn rows into the
+  // burn map. Answered from `onQuery`, which the double calls BEFORE it
+  // consults `rows`, so one double can answer each statement differently.
   function rankEnv(scan: Row[], burn: Row[] = [], hyper: Row[] = []) {
     const sql: string[] = [];
-    return {
-      sql,
-      env: {
-        METAGRAPH_HEALTH_DB: {
-          prepare(query: string) {
-            sql.push(query);
-            const results = /subnet_burn_history/.test(query)
-              ? burn
-              : /subnet_hyperparams/.test(query)
-                ? hyper
-                : scan;
-            return { all: async () => ({ results }) };
-          },
-        },
-      } as never,
+    pg.control.queries.length = 0;
+    pg.control.answers = [];
+    pg.control.failNext = null;
+    pg.control.onQuery = (query) => {
+      sql.push(query.text);
+      pg.control.rows = /subnet_burn_history/.test(query.text)
+        ? burn
+        : /subnet_hyperparams/.test(query.text)
+          ? hyper
+          : scan;
     };
+    return { sql, env: { ...pgMockEnv() } as never };
   }
 
   const economicsFor = (rows: Row[]) => async () => ({
@@ -634,7 +641,7 @@ describe("buildValidatorEconomicsRankingPayload", () => {
     ]);
   });
 
-  test("degrades every subnet rather than guessing when the D1 binding is absent", async () => {
+  test("degrades every subnet rather than guessing when no store is bound", async () => {
     const { data } = await buildValidatorEconomicsRankingPayload(
       {} as never,
       {},
@@ -675,22 +682,10 @@ describe("buildValidatorEconomicsRankingPayload", () => {
     ]);
   });
 
-  test("tolerates a scan result carrying no rows array", async () => {
-    // Same D1 shape guard the per-subnet composer has: `.all()` is not
-    // guaranteed to carry `results`.
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare: () => ({ all: async () => ({}) }),
-      },
-    } as never;
-    const { data } = await buildValidatorEconomicsRankingPayload(
-      env,
-      {},
-      rankDeps([pool(5)]),
-    );
-    assert.equal(data.total, 0);
-    assert.deepEqual(data.rows, []);
-  });
+  // "tolerates a scan result carrying no rows array" was DELETED here, for the
+  // same reason as its per-subnet twin: pgReadStore constructs the `{ results }`
+  // envelope itself, so the shape it guarded against is unreachable, and the
+  // no-store case above already covers an empty scan.
 
   test("carries the artifact timestamp for the envelope meta", async () => {
     const { env } = rankEnv([scanRow(5, 0)]);
@@ -882,39 +877,25 @@ describe("buildSubnetValidatorEconomicsHistoryPayload", () => {
   ) {
     const sql: string[] = [];
     const binds: unknown[][] = [];
+    pg.control.queries.length = 0;
+    pg.control.answers = [];
+    pg.control.failNext = null;
+    // Three different reads share this double, so each has to be told apart by
+    // its table -- returning the neuron rows for all of them would let a broken
+    // cap query pass by accident.
+    pg.control.onQuery = (query) => {
+      sql.push(query.text);
+      binds.push(query.values);
+      pg.control.rows = /subnet_snapshots/.test(query.text)
+        ? emissionRows
+        : /subnet_hyperparams_history/.test(query.text)
+          ? capRows
+          : neuronRows;
+    };
     return {
       sql,
       binds,
-      env: {
-        METAGRAPH_HEALTH_DB: {
-          prepare(query: string) {
-            sql.push(query);
-            // Three different reads share this stub, so each has to be told apart by
-            // its table — returning the neuron rows for all of them would let a
-            // broken cap query pass by accident.
-            const table = /subnet_snapshots/.test(query)
-              ? "emission"
-              : /subnet_hyperparams_history/.test(query)
-                ? "cap"
-                : "neurons";
-            return {
-              bind(...args: unknown[]) {
-                binds.push(args);
-                return {
-                  all: async () => ({
-                    results:
-                      table === "emission"
-                        ? emissionRows
-                        : table === "cap"
-                          ? capRows
-                          : neuronRows,
-                  }),
-                };
-              },
-            };
-          },
-        },
-      } as never,
+      env: { ...pgMockEnv() } as never,
     };
   }
 
@@ -930,11 +911,13 @@ describe("buildSubnetValidatorEconomicsHistoryPayload", () => {
   test("reads the daily rollups, bounded by the window and a row cap", async () => {
     const { env, sql, binds } = historyEnv([dayRow("2026-08-01")]);
     await buildSubnetValidatorEconomicsHistoryPayload(env, 7, "7d");
+    // `$n`, not `?`: pgReadStore rewrites the loader's SQLite-shaped `?` on the
+    // way to Postgres, and #9821 is what happens when it does not.
     assert.match(
       sql[0],
-      /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \?/,
+      /FROM neuron_daily WHERE netuid = \$\d AND snapshot_date >= \$\d/,
     );
-    assert.match(sql[0], /LIMIT \?/);
+    assert.match(sql[0], /LIMIT \$\d/);
     // The owner's unconditional permit has to be identifiable to stay out of the
     // observed floor.
     assert.match(sql[0], /hotkey/);
@@ -1093,7 +1076,7 @@ describe("buildSubnetValidatorEconomicsHistoryPayload", () => {
     assert.equal(sources.validators_permitted.kind, "measured");
   });
 
-  test("degrades to an empty series when the D1 binding is absent", async () => {
+  test("degrades to an empty series when no store is bound", async () => {
     const { data } = await buildSubnetValidatorEconomicsHistoryPayload(
       {} as never,
       7,
@@ -1102,19 +1085,11 @@ describe("buildSubnetValidatorEconomicsHistoryPayload", () => {
     assert.deepEqual(data.points, []);
   });
 
-  test("tolerates a result set with no rows array", async () => {
-    const env = {
-      METAGRAPH_HEALTH_DB: {
-        prepare: () => ({ bind: () => ({ all: async () => ({}) }) }),
-      },
-    } as never;
-    const { data } = await buildSubnetValidatorEconomicsHistoryPayload(
-      env,
-      7,
-      "30d",
-    );
-    assert.deepEqual(data.points, []);
-  });
+  // "tolerates a result set with no rows array" was DELETED here, for the same
+  // reason as its two siblings above: pgReadStore builds the `{ results }`
+  // envelope itself from `rows ?? []`, so a result object without that key
+  // cannot reach these readers, and the no-store case above already covers an
+  // empty series.
 });
 
 describe("handleSubnetValidatorEconomicsHistory", () => {

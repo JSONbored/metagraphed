@@ -1,4 +1,4 @@
-// The raw-capture watermark store (src/raw-capture-sync.ts, #10107, #10170).
+// The raw-capture watermark store (src/raw-capture-sync.ts, #10107, #10179).
 //
 // THE READ MUST MOVE WITH THE WRITE. This nearly shipped inverted on the write
 // side only: the caller built a D1-backed inner store, so skipping the D1 write

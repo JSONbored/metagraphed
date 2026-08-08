@@ -2,7 +2,7 @@
 //
 // ## Why this exists
 //
-// Before #10170 a route test built its store as `env.METAGRAPH_HEALTH_DB = <a
+// Before #10179 a route test built its store as `env.METAGRAPH_HEALTH_DB = <a
 // prepare/bind/all fake over node:sqlite>`, and every selector took it. There
 // is one store now, reached through `new Client({ connectionString })` inside
 // src/read-store.ts, src/pg-sql.ts, src/pg-d1-adapter.ts and
@@ -266,4 +266,13 @@ export const ALL_TABLES = [
   "hotkey_alpha_passes",
   "self_health_checks",
   "self_health_daily",
+  // The registry cluster. Declared Neon-owned in both wrangler configs, and
+  // easy to forget here because nothing in this list is generated -- but
+  // readStore is ALL-OR-NOTHING, so a suite taking bare pgMockEnv() for a
+  // reader that touches one of these silently gets `undefined` and asserts
+  // nothing at all.
+  "subnets",
+  "surfaces",
+  "providers",
+  "surface_history",
 ] as const;

@@ -17,7 +17,19 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+
+// `surface_history` is declared Neon's (#10179), so this reader is reached
+// through readStore -> `new Client({ connectionString })`, which no caller can
+// inject into: the route, the resolver and the MCP handler each build their own
+// store from `env`. Mocking the `pg` module is the seam; see
+// tests/helpers/pg-mock.ts for why it is a module mock rather than a
+// production export, and why the controller has to be built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   SURFACE_HISTORY_ACTIONS,
   SURFACE_HISTORY_LIMIT_DEFAULT,
@@ -25,9 +37,13 @@ import {
   buildSurfaceHistory,
   loadSurfaceHistory,
 } from "../src/surface-history.ts";
+import { readStore } from "../src/read-store.ts";
+import { SURFACE_HISTORY_TABLES } from "../src/read-store-tables.ts";
 import { handleRequest } from "../workers/api.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { sqliteBackedPg } from "./helpers/pg-sqlite.ts";
 import type { Row } from "./row-type.ts";
 
 // The real registry DDL, so the table under test is the one production has.
@@ -45,22 +61,23 @@ const T = 1_785_642_908_000;
 
 let db: InstanceType<typeof DatabaseSync>;
 
-function d1() {
-  return {
-    prepare(text: string) {
-      return {
-        bind(...values: unknown[]) {
-          return {
-            async all() {
-              return { results: db.prepare(text).all(...(values as never[])) };
-            },
-          };
-        },
-      };
-    },
-  };
-}
-const env = () => ({ METAGRAPH_HEALTH_DB: d1() }) as unknown as Env;
+/** The env a served request gets: Hyperdrive bound and `surface_history`
+ * declared Neon's, which is what makes readStore hand back a store at all. */
+const env = () => pgMockEnv(SURFACE_HISTORY_TABLES) as unknown as Env;
+
+/**
+ * The store the route, the resolver and the MCP handler each build for
+ * themselves, so a direct loader call runs down the same path a served request
+ * does -- including the `?` -> `$n` rewrite, which is the difference that made
+ * six routes serve zero rows in #9821.
+ *
+ * The cast mirrors the call sites: readStore is typed for its own D1-shaped
+ * interface and the loader declares a narrower one of its own.
+ */
+const store = () =>
+  readStore(env(), SURFACE_HISTORY_TABLES) as never as unknown as Parameters<
+    typeof loadSurfaceHistory
+  >[0];
 
 function change({
   surfaceId = null,
@@ -94,6 +111,14 @@ function change({
 beforeEach(() => {
   db = new DatabaseSync(":memory:");
   db.exec(SCHEMA);
+  // The double answers from the real registry table rather than canned rows,
+  // because half of what is asserted below -- the COALESCE, the ordering, the
+  // LIMIT -- is a fact about what an engine did, not about the statement text.
+  // `overlay::jsonb ->> 'k'` reaches an engine that parses it only because
+  // sqliteBackedPg strips the `::jsonb`: SQLite has had `->>` since 3.38 with
+  // the same "a bare label means $.label" rule Postgres uses, so what is left
+  // performs the identical extraction.
+  pg.control.db = sqliteBackedPg(db);
 });
 
 describe("identity survives a missing surface_id column", () => {
@@ -101,20 +126,20 @@ describe("identity survives a missing surface_id column", () => {
     // The shape 8,831 of 8,892 production rows had before 0024, and the shape a
     // pre-migration database still has.
     change({ surfaceId: null, overlayId: "surf-abc" });
-    const rows = await loadSurfaceHistory(d1(), NETUID);
+    const rows = await loadSurfaceHistory(store(), NETUID);
     assert.equal(rows?.[0].surface_id, "surf-abc");
   });
 
   test("prefers the column when it is set", async () => {
     // A delete row, and every row after the writer fix.
     change({ surfaceId: "surf-column", overlayId: "surf-overlay" });
-    const rows = await loadSurfaceHistory(d1(), NETUID);
+    const rows = await loadSurfaceHistory(store(), NETUID);
     assert.equal(rows?.[0].surface_id, "surf-column");
   });
 
   test("a row with neither is null rather than a fabricated id", async () => {
     change({ surfaceId: null, overlayId: null });
-    const rows = await loadSurfaceHistory(d1(), NETUID);
+    const rows = await loadSurfaceHistory(store(), NETUID);
     assert.equal(rows?.[0].surface_id, null);
     // It is still a real change, so it is still reported -- just unidentified.
     const card = buildSurfaceHistory(rows, NETUID);
@@ -128,7 +153,7 @@ describe("loadSurfaceHistory", () => {
     change({ at: T, overlayId: "a" });
     change({ at: T - 1000, overlayId: "b" });
     change({ at: T + 1000, netuid: 99, overlayId: "other" });
-    const rows = await loadSurfaceHistory(d1(), NETUID);
+    const rows = await loadSurfaceHistory(store(), NETUID);
     assert.deepEqual(
       rows?.map((r) => r.surface_id),
       ["a", "b"],
@@ -141,7 +166,7 @@ describe("loadSurfaceHistory", () => {
       url: "https://x.test/openapi.json",
       name: "Spec",
     });
-    const rows = await loadSurfaceHistory(d1(), NETUID);
+    const rows = await loadSurfaceHistory(store(), NETUID);
     assert.equal(rows?.[0].kind, "openapi");
     assert.equal(rows?.[0].url, "https://x.test/openapi.json");
     assert.equal(rows?.[0].name, "Spec");
@@ -150,14 +175,14 @@ describe("loadSurfaceHistory", () => {
   test("honours the limit", async () => {
     for (let i = 0; i < 5; i += 1)
       change({ at: T - i * 1000, overlayId: `s${i}` });
-    const rows = await loadSurfaceHistory(d1(), NETUID, { limit: 2 });
+    const rows = await loadSurfaceHistory(store(), NETUID, { limit: 2 });
     assert.equal(rows?.length, 2);
   });
 
   test("no binding and a failed read both return null", async () => {
     assert.equal(await loadSurfaceHistory(null, NETUID), null);
     db.exec("DROP TABLE surface_history");
-    assert.equal(await loadSurfaceHistory(d1(), NETUID), null);
+    assert.equal(await loadSurfaceHistory(store(), NETUID), null);
   });
 });
 
@@ -169,7 +194,7 @@ describe("buildSurfaceHistory", () => {
     change({ overlayId: "a", at: T - 2 });
     change({ overlayId: "b", at: T - 3 });
     const card = buildSurfaceHistory(
-      await loadSurfaceHistory(d1(), NETUID),
+      await loadSurfaceHistory(store(), NETUID),
       NETUID,
     );
     assert.equal(card.change_count, 4);
@@ -179,7 +204,7 @@ describe("buildSurfaceHistory", () => {
   test("keeps a delete, which is the only trace a surface ever existed", async () => {
     change({ action: "delete", surfaceId: "gone", at: T });
     const card = buildSurfaceHistory(
-      await loadSurfaceHistory(d1(), NETUID),
+      await loadSurfaceHistory(store(), NETUID),
       NETUID,
     );
     assert.equal((card.changes as Row[])[0].action, "delete");
@@ -258,7 +283,7 @@ describe("buildSurfaceHistory", () => {
     // The loader's default-parameter arm, which a fully-specified call never
     // reaches -- and it is what every caller that does not paginate uses.
     for (let i = 0; i < 3; i += 1) change({ at: T - i, overlayId: `s${i}` });
-    const rows = await loadSurfaceHistory(d1(), NETUID);
+    const rows = await loadSurfaceHistory(store(), NETUID);
     assert.equal(rows?.length, 3);
   });
 

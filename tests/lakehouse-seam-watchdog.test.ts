@@ -17,7 +17,7 @@ import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 // The capture watermark reaches this watchdog through `readStore`, which
-// builds a `new Client(...)` now that Neon is the only store (#10170) -- the
+// builds a `new Client(...)` now that Neon is the only store (#10179) -- the
 // binding these tests used to hand over no longer exists. Mocking the module
 // is the seam; see tests/helpers/pg-mock.ts for why the controller has to be
 // built inside vi.hoisted (vi.mock is hoisted above every import).

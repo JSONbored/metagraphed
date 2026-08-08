@@ -4,9 +4,22 @@
 // through workers/api.ts.
 
 import assert from "node:assert/strict";
-import { CHAIN_CALL_MODULE_MAX_LENGTH } from "../src/route-limits.ts";
 import { DatabaseSync } from "node:sqlite";
-import { afterEach, describe, test } from "vitest";
+import { afterEach, beforeEach, describe, test, vi } from "vitest";
+
+// Every hot-tier read in these handlers goes through readStore -> `new
+// Client({ connectionString })` (#10179), and a handler is entered as
+// `handler(request, env, ...)` -- there is no store parameter to inject. So the
+// `pg` module is the seam; see tests/helpers/pg-mock.ts for why it is a module
+// mock rather than a production export, and why the controller has to be built
+// inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
+import { CHAIN_CALL_MODULE_MAX_LENGTH } from "../src/route-limits.ts";
+import { ALL_TABLES, pgMockEnv, toQuestionMarks } from "./helpers/pg-mock.ts";
 import {
   buildSubnetMetagraph,
   buildSubnetValidators,
@@ -408,8 +421,47 @@ function hyperparamsHistoryRow(overrides = {}) {
   };
 }
 
-// A D1 mock that routes SQL by regex patterns (order-sensitive: specific first).
-// Named buckets let each handler test supply only the rows it needs.
+/**
+ * Every table these handlers may read, so readStore hands one of them a store.
+ *
+ * readStore is ALL-OR-NOTHING per reader: a reader whose tables are not every
+ * one of them declared Neon's gets `undefined` and serves its schema-stable
+ * empty, silently. The four names appended here are in both wrangler configs'
+ * NEON_SOLE_STORE_TABLES and not (yet) in the helper's ALL_TABLES, and a
+ * handler reading one of them would otherwise test nothing at all.
+ */
+const HANDLER_TABLES = [
+  ...ALL_TABLES,
+  "subnets",
+  "surfaces",
+  "providers",
+  "surface_history",
+];
+
+beforeEach(() => {
+  pg.control.queries.length = 0;
+  pg.control.answers = [];
+  pg.control.rows = null;
+  pg.control.failNext = null;
+  pg.control.onQuery = null;
+  pg.control.db = null;
+});
+
+/**
+ * The captured statements MINUS the lane-health read.
+ *
+ * lane_health is the one table a handler reads no matter which tier served
+ * (#9330/#9340: a lane's verdict has to stay readable when the serving tier is
+ * not), and it now lives in the same store as the serving tables -- so a
+ * "the serving tier was never asked" assertion has to say which reads it
+ * means, or it starts failing for the reason the feature exists.
+ */
+function servingSql(captures: { sql: string[] }): string[] {
+  return captures.sql.filter((sql) => !/FROM lane_health/i.test(sql));
+}
+
+// A store mock that routes SQL by regex patterns (order-sensitive: specific
+// first). Named buckets let each handler test supply only the rows it needs.
 function dbWith({
   neurons,
   neuronDailyUid,
@@ -448,275 +500,247 @@ function dbWith({
   captures,
 }: Row = {}) {
   const cap = captures || { sql: [], params: [] };
-  const record = (sql: string, params: unknown[]) => {
+  // The router is still written against the `?` placeholders every handler
+  // emits; the store rewrites them to `$n` on the way out
+  // (toPositionalPlaceholders), and toQuestionMarks below undoes exactly that
+  // so ~40 patterns keep matching the statements they were written for.
+  //
+  // Respelling each pattern as `\$\d` instead would have been the same
+  // conversion done forty times with forty chances to stop matching silently:
+  // a pattern that misses falls through to `[]`, and a schema-stable empty is
+  // what most of the assertions in this file are guarding against being
+  // served -- so the miss would look like a pass.
+  const answer = (sql: string): { results: unknown[] } => {
+    // Block prev/next neighbor lookup (#1853).
+    if (
+      /SELECT MAX\(block_number\) FROM blocks WHERE block_number < \?/.test(sql)
+    ) {
+      return {
+        results: [blockNeighbors || { prev: null, next: null }],
+      };
+    }
+    // Subnet history: GROUP BY snapshot_date over neuron_daily.
+    if (/GROUP BY snapshot_date/.test(sql)) {
+      return { results: neuronDailySubnet || [] };
+    }
+    // Per-UID neuron_daily history.
+    if (/FROM neuron_daily WHERE netuid = \? AND uid = \?/.test(sql)) {
+      return { results: neuronDailyUid || [] };
+    }
+    // Turnover: MIN/MAX boundary-date probe (checked before the
+    // generic `snapshot_date >=` history match below).
+    if (/MIN\(snapshot_date\) AS start_date/.test(sql)) {
+      return { results: turnoverBounds || [] };
+    }
+    // Turnover: the two boundary snapshots' rows.
+    if (/FROM neuron_daily WHERE netuid = \? AND snapshot_date IN/.test(sql)) {
+      return { results: turnoverRows || [] };
+    }
+    // Raw per-day neuron_daily rows (concentration history).
+    if (
+      /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \?/.test(sql)
+    ) {
+      return { results: neuronDailyHistory || [] };
+    }
+    // Net stake flow: SUM(amount_tao) over stake kinds
+    // (checked before the generic event_kind aggregate below).
+    if (/SUM\(amount_tao\)/.test(sql) && /event_kind IN \(/.test(sql)) {
+      return { results: stakeFlow || [] };
+    }
+    // Account stake-movement footprint: GROUP BY netuid over StakeMoved.
+    if (
+      /COUNT\(\*\) AS movements/.test(sql) &&
+      /event_kind = \?/.test(sql) &&
+      /GROUP BY netuid/.test(sql)
+    ) {
+      return { results: stakeMoves || [] };
+    }
+    // Price-at-tx enrichment follow-up: subnet_snapshots.alpha_price_tao
+    // lookup for the stake-moves rows' (netuid, last-moved-date) pairs.
+    if (/FROM subnet_snapshots/.test(sql)) {
+      return { results: stakeMovesPrices || [] };
+    }
+    // Account summary aggregates (order matters).
+    if (
+      /GROUP BY event_kind ORDER BY event_count DESC/.test(sql) &&
+      /observed_at >= \?/.test(sql)
+    ) {
+      return { results: subnetEventSummaryKinds || [] };
+    }
+    if (
+      /FROM account_events WHERE netuid = \? AND observed_at >= \?/.test(sql) &&
+      /ORDER BY block_number DESC, event_index DESC LIMIT \?/.test(sql)
+    ) {
+      return { results: subnetEventSummaryRecent || [] };
+    }
+    if (/GROUP BY event_kind/.test(sql)) {
+      return { results: kinds || [] };
+    }
+    if (/GROUP BY call_module/.test(sql)) {
+      return { results: modules || [] };
+    }
+    if (/AS tx_count/.test(sql)) {
+      return { results: activity ? [activity] : [] };
+    }
+    if (/COUNT\(\*\) AS c\b/.test(sql)) {
+      return { results: agg ? [agg] : [] };
+    }
+    // Account per-day rollup (#1854).
+    if (/FROM account_events_daily/.test(sql)) {
+      return { results: accountEventsDaily || [] };
+    }
+    // Subnet on-chain identity history (#1647).
+    if (/FROM subnet_identity_history/.test(sql)) {
+      return { results: subnetIdentityHistory || [] };
+    }
+    // Historical hyperparameter change tracking (#4309).
+    if (/FROM subnet_hyperparams_history/.test(sql)) {
+      return { results: subnetHyperparamsHistory || [] };
+    }
+    // Subnet hyperparameters, latest-only (#4307/1.4).
+    if (/FROM subnet_hyperparams WHERE netuid = \?/.test(sql)) {
+      return { results: subnetHyperparams || [] };
+    }
+    // Personal chain identity, latest-only (epic #4301/5.4) —
+    // checked before the history branch below (both match
+    // "account_identity" but this one is NOT the _history table).
+    if (/FROM account_identity WHERE account = \?/.test(sql)) {
+      return { results: accountIdentity || [] };
+    }
+    // Personal chain identity diff-tracking history (epic #4301/5.2).
+    if (/FROM account_identity_history/.test(sql)) {
+      return { results: accountIdentityHistory || [] };
+    }
+    // Extrinsic-emitted events embed (#1849) — before generic events.
+    if (
+      /FROM account_events WHERE block_number = \? AND extrinsic_index = \?/.test(
+        sql,
+      )
+    ) {
+      return { results: extrinsicEvents || [] };
+    }
+    // Block-scoped events (natural event_index ASC order).
+    if (
+      /FROM account_events WHERE block_number = \? ORDER BY event_index ASC/.test(
+        sql,
+      )
+    ) {
+      return { results: blockEvents || [] };
+    }
+    // Account/counterparty pair detail: two indexed pair seeks
+    // (forward + reverse), then one bounded newest-first merge.
+    if (
+      /UNION ALL/.test(sql) &&
+      /event_kind = 'Transfer' AND hotkey = \? AND coldkey = \?/.test(sql)
+    ) {
+      return { results: relationshipTransfers || [] };
+    }
+    // Native transfer feed.
+    if (/event_kind = 'Transfer'/.test(sql)) {
+      return { results: transfers || [] };
+    }
+    // Per-subnet event stream (netuid filter; SELECT lists hotkey
+    // as a column so match the WHERE clause, not the column name).
+    if (
+      /FROM account_events WHERE netuid = \?/.test(sql) &&
+      !/\(hotkey = \?/.test(sql)
+    ) {
+      return { results: subnetEvents || [] };
+    }
+    // Account events (hotkey OR coldkey union).
+    if (/FROM account_events/.test(sql)) {
+      return { results: accountEvents || [] };
+    }
+    // Ref → block_number resolution for block extrinsics/events.
+    if (/SELECT block_number FROM blocks WHERE block_hash = \?/.test(sql)) {
+      if (blockNumberByHash != null) {
+        return { results: [{ block_number: blockNumberByHash }] };
+      }
+      if (blockDetail?.block_number != null) {
+        return {
+          results: [{ block_number: blockDetail.block_number }],
+        };
+      }
+      return { results: [] };
+    }
+    if (/SELECT block_number FROM blocks WHERE block_number = \?/.test(sql)) {
+      if (blockDetail?.block_number != null) {
+        return {
+          results: [{ block_number: blockDetail.block_number }],
+        };
+      }
+      return { results: [] };
+    }
+    // Blocks keyset cursor feed.
+    if (/WHERE block_number < \?/.test(sql)) {
+      return { results: blocksFeed || [] };
+    }
+    // Block detail by hash or number.
+    if (
+      /FROM blocks WHERE block_hash = \?|FROM blocks WHERE block_number = \?/.test(
+        sql,
+      ) &&
+      /BLOCK_READ|block_number, block_hash/.test(sql)
+    ) {
+      return { results: blockDetail ? [blockDetail] : [] };
+    }
+    // Extrinsic detail by hash.
+    if (/WHERE extrinsic_hash = \?/.test(sql)) {
+      return {
+        results: extrinsicDetail ? [extrinsicDetail] : [],
+      };
+    }
+    // Extrinsic detail by composite PK.
+    if (/WHERE block_number = \? AND extrinsic_index = \?/.test(sql)) {
+      return {
+        results: extrinsicDetail ? [extrinsicDetail] : [],
+      };
+    }
+    // Block extrinsics (extrinsic_index ASC).
+    if (
+      /FROM extrinsics WHERE block_number = \? ORDER BY extrinsic_index ASC/.test(
+        sql,
+      )
+    ) {
+      return { results: extrinsics || [] };
+    }
+    // Account-signed extrinsics or generic extrinsic feed.
+    if (/FROM extrinsics/.test(sql)) {
+      return { results: extrinsics || [] };
+    }
+    // Neurons: single UID lookup.
+    if (/FROM neurons WHERE netuid = \? AND uid = \?/.test(sql)) {
+      if (Array.isArray(neurons) && neurons.length === 1) {
+        return { results: neurons };
+      }
+      return { results: neurons?.length ? [neurons[0]] : [] };
+    }
+    // Validators ranking (stake_tao DESC).
+    if (/validator_permit = TRUE ORDER BY stake_tao DESC/.test(sql)) {
+      const rows = neurons || [];
+      return { results: rows };
+    }
+    // Metagraph / validator_permit filter / hotkey registrations.
+    if (/FROM neurons/.test(sql)) {
+      return { results: registrations ?? neurons ?? [] };
+    }
+    // Blocks OFFSET feed (after more-specific block queries).
+    if (/FROM blocks/.test(sql)) {
+      return { results: blocksFeed || [] };
+    }
+    return { results: [] };
+  };
+  pg.control.onQuery = (query) => {
+    const sql = toQuestionMarks(query.text);
     cap.sql.push(sql);
-    cap.params.push(params);
+    cap.params.push(query.values);
+    // Assigned from inside the subscription, which fires BEFORE the double
+    // consults `rows` -- that ordering is what lets one env answer each
+    // statement differently, the way the per-SQL D1 fake did.
+    pg.control.rows = answer(sql).results;
   };
   return {
-    env: {
-      METAGRAPH_HEALTH_DB: {
-        prepare(sql: string) {
-          return {
-            bind(...params: unknown[]) {
-              record(sql, params);
-              return {
-                async all() {
-                  // Block prev/next neighbor lookup (#1853).
-                  if (
-                    /SELECT MAX\(block_number\) FROM blocks WHERE block_number < \?/.test(
-                      sql,
-                    )
-                  ) {
-                    return {
-                      results: [blockNeighbors || { prev: null, next: null }],
-                    };
-                  }
-                  // Subnet history: GROUP BY snapshot_date over neuron_daily.
-                  if (/GROUP BY snapshot_date/.test(sql)) {
-                    return { results: neuronDailySubnet || [] };
-                  }
-                  // Per-UID neuron_daily history.
-                  if (
-                    /FROM neuron_daily WHERE netuid = \? AND uid = \?/.test(sql)
-                  ) {
-                    return { results: neuronDailyUid || [] };
-                  }
-                  // Turnover: MIN/MAX boundary-date probe (checked before the
-                  // generic `snapshot_date >=` history match below).
-                  if (/MIN\(snapshot_date\) AS start_date/.test(sql)) {
-                    return { results: turnoverBounds || [] };
-                  }
-                  // Turnover: the two boundary snapshots' rows.
-                  if (
-                    /FROM neuron_daily WHERE netuid = \? AND snapshot_date IN/.test(
-                      sql,
-                    )
-                  ) {
-                    return { results: turnoverRows || [] };
-                  }
-                  // Raw per-day neuron_daily rows (concentration history).
-                  if (
-                    /FROM neuron_daily WHERE netuid = \? AND snapshot_date >= \?/.test(
-                      sql,
-                    )
-                  ) {
-                    return { results: neuronDailyHistory || [] };
-                  }
-                  // Net stake flow: SUM(amount_tao) over stake kinds
-                  // (checked before the generic event_kind aggregate below).
-                  if (
-                    /SUM\(amount_tao\)/.test(sql) &&
-                    /event_kind IN \(/.test(sql)
-                  ) {
-                    return { results: stakeFlow || [] };
-                  }
-                  // Account stake-movement footprint: GROUP BY netuid over StakeMoved.
-                  if (
-                    /COUNT\(\*\) AS movements/.test(sql) &&
-                    /event_kind = \?/.test(sql) &&
-                    /GROUP BY netuid/.test(sql)
-                  ) {
-                    return { results: stakeMoves || [] };
-                  }
-                  // Price-at-tx enrichment follow-up: subnet_snapshots.alpha_price_tao
-                  // lookup for the stake-moves rows' (netuid, last-moved-date) pairs.
-                  if (/FROM subnet_snapshots/.test(sql)) {
-                    return { results: stakeMovesPrices || [] };
-                  }
-                  // Account summary aggregates (order matters).
-                  if (
-                    /GROUP BY event_kind ORDER BY event_count DESC/.test(sql) &&
-                    /observed_at >= \?/.test(sql)
-                  ) {
-                    return { results: subnetEventSummaryKinds || [] };
-                  }
-                  if (
-                    /FROM account_events WHERE netuid = \? AND observed_at >= \?/.test(
-                      sql,
-                    ) &&
-                    /ORDER BY block_number DESC, event_index DESC LIMIT \?/.test(
-                      sql,
-                    )
-                  ) {
-                    return { results: subnetEventSummaryRecent || [] };
-                  }
-                  if (/GROUP BY event_kind/.test(sql)) {
-                    return { results: kinds || [] };
-                  }
-                  if (/GROUP BY call_module/.test(sql)) {
-                    return { results: modules || [] };
-                  }
-                  if (/AS tx_count/.test(sql)) {
-                    return { results: activity ? [activity] : [] };
-                  }
-                  if (/COUNT\(\*\) AS c\b/.test(sql)) {
-                    return { results: agg ? [agg] : [] };
-                  }
-                  // Account per-day rollup (#1854).
-                  if (/FROM account_events_daily/.test(sql)) {
-                    return { results: accountEventsDaily || [] };
-                  }
-                  // Subnet on-chain identity history (#1647).
-                  if (/FROM subnet_identity_history/.test(sql)) {
-                    return { results: subnetIdentityHistory || [] };
-                  }
-                  // Historical hyperparameter change tracking (#4309).
-                  if (/FROM subnet_hyperparams_history/.test(sql)) {
-                    return { results: subnetHyperparamsHistory || [] };
-                  }
-                  // Subnet hyperparameters, latest-only (#4307/1.4).
-                  if (/FROM subnet_hyperparams WHERE netuid = \?/.test(sql)) {
-                    return { results: subnetHyperparams || [] };
-                  }
-                  // Personal chain identity, latest-only (epic #4301/5.4) —
-                  // checked before the history branch below (both match
-                  // "account_identity" but this one is NOT the _history table).
-                  if (/FROM account_identity WHERE account = \?/.test(sql)) {
-                    return { results: accountIdentity || [] };
-                  }
-                  // Personal chain identity diff-tracking history (epic #4301/5.2).
-                  if (/FROM account_identity_history/.test(sql)) {
-                    return { results: accountIdentityHistory || [] };
-                  }
-                  // Extrinsic-emitted events embed (#1849) — before generic events.
-                  if (
-                    /FROM account_events WHERE block_number = \? AND extrinsic_index = \?/.test(
-                      sql,
-                    )
-                  ) {
-                    return { results: extrinsicEvents || [] };
-                  }
-                  // Block-scoped events (natural event_index ASC order).
-                  if (
-                    /FROM account_events WHERE block_number = \? ORDER BY event_index ASC/.test(
-                      sql,
-                    )
-                  ) {
-                    return { results: blockEvents || [] };
-                  }
-                  // Account/counterparty pair detail: two indexed pair seeks
-                  // (forward + reverse), then one bounded newest-first merge.
-                  if (
-                    /UNION ALL/.test(sql) &&
-                    /event_kind = 'Transfer' AND hotkey = \? AND coldkey = \?/.test(
-                      sql,
-                    )
-                  ) {
-                    return { results: relationshipTransfers || [] };
-                  }
-                  // Native transfer feed.
-                  if (/event_kind = 'Transfer'/.test(sql)) {
-                    return { results: transfers || [] };
-                  }
-                  // Per-subnet event stream (netuid filter; SELECT lists hotkey
-                  // as a column so match the WHERE clause, not the column name).
-                  if (
-                    /FROM account_events WHERE netuid = \?/.test(sql) &&
-                    !/\(hotkey = \?/.test(sql)
-                  ) {
-                    return { results: subnetEvents || [] };
-                  }
-                  // Account events (hotkey OR coldkey union).
-                  if (/FROM account_events/.test(sql)) {
-                    return { results: accountEvents || [] };
-                  }
-                  // Ref → block_number resolution for block extrinsics/events.
-                  if (
-                    /SELECT block_number FROM blocks WHERE block_hash = \?/.test(
-                      sql,
-                    )
-                  ) {
-                    if (blockNumberByHash != null) {
-                      return { results: [{ block_number: blockNumberByHash }] };
-                    }
-                    if (blockDetail?.block_number != null) {
-                      return {
-                        results: [{ block_number: blockDetail.block_number }],
-                      };
-                    }
-                    return { results: [] };
-                  }
-                  if (
-                    /SELECT block_number FROM blocks WHERE block_number = \?/.test(
-                      sql,
-                    )
-                  ) {
-                    if (blockDetail?.block_number != null) {
-                      return {
-                        results: [{ block_number: blockDetail.block_number }],
-                      };
-                    }
-                    return { results: [] };
-                  }
-                  // Blocks keyset cursor feed.
-                  if (/WHERE block_number < \?/.test(sql)) {
-                    return { results: blocksFeed || [] };
-                  }
-                  // Block detail by hash or number.
-                  if (
-                    /FROM blocks WHERE block_hash = \?|FROM blocks WHERE block_number = \?/.test(
-                      sql,
-                    ) &&
-                    /BLOCK_READ|block_number, block_hash/.test(sql)
-                  ) {
-                    return { results: blockDetail ? [blockDetail] : [] };
-                  }
-                  // Extrinsic detail by hash.
-                  if (/WHERE extrinsic_hash = \?/.test(sql)) {
-                    return {
-                      results: extrinsicDetail ? [extrinsicDetail] : [],
-                    };
-                  }
-                  // Extrinsic detail by composite PK.
-                  if (
-                    /WHERE block_number = \? AND extrinsic_index = \?/.test(sql)
-                  ) {
-                    return {
-                      results: extrinsicDetail ? [extrinsicDetail] : [],
-                    };
-                  }
-                  // Block extrinsics (extrinsic_index ASC).
-                  if (
-                    /FROM extrinsics WHERE block_number = \? ORDER BY extrinsic_index ASC/.test(
-                      sql,
-                    )
-                  ) {
-                    return { results: extrinsics || [] };
-                  }
-                  // Account-signed extrinsics or generic extrinsic feed.
-                  if (/FROM extrinsics/.test(sql)) {
-                    return { results: extrinsics || [] };
-                  }
-                  // Neurons: single UID lookup.
-                  if (/FROM neurons WHERE netuid = \? AND uid = \?/.test(sql)) {
-                    if (Array.isArray(neurons) && neurons.length === 1) {
-                      return { results: neurons };
-                    }
-                    return { results: neurons?.length ? [neurons[0]] : [] };
-                  }
-                  // Validators ranking (stake_tao DESC).
-                  if (
-                    /validator_permit = TRUE ORDER BY stake_tao DESC/.test(sql)
-                  ) {
-                    const rows = neurons || [];
-                    return { results: rows };
-                  }
-                  // Metagraph / validator_permit filter / hotkey registrations.
-                  if (/FROM neurons/.test(sql)) {
-                    return { results: registrations ?? neurons ?? [] };
-                  }
-                  // Blocks OFFSET feed (after more-specific block queries).
-                  if (/FROM blocks/.test(sql)) {
-                    return { results: blocksFeed || [] };
-                  }
-                  return { results: [] };
-                },
-              };
-            },
-          };
-        },
-      },
-    } as unknown as Row,
+    env: { ...pgMockEnv(HANDLER_TABLES) } as unknown as Row,
     captures: cap,
   };
 }
@@ -2891,15 +2915,13 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
         last_observed: 1_700_000_004_200,
       },
     ]);
+    // The slots leg reads `neurons` from the store; the counts leg reads the
+    // lakehouse. Two sources, one card -- which is what the tuple IN list below
+    // is the join between.
+    pg.control.rows = [{ netuid: 11, uid: 4 }];
     const envWithD1 = {
       ...LAKE_ENV,
-      METAGRAPH_HEALTH_DB: {
-        prepare: () => ({
-          bind: () => ({
-            all: async () => ({ results: [{ netuid: 11, uid: 4 }] }),
-          }),
-        }),
-      },
+      ...pgMockEnv(["neurons"]),
     } as unknown as Env;
     const body = await json(
       await handleAccountWeightSetters(
@@ -3038,17 +3060,20 @@ describe("cold tier answers when Postgres misses (lakehouse-backed handlers)", (
         captured_at: 1_785_634_702_670,
       },
     ]);
+    // Per statement, because the two legs must answer differently: the HOT
+    // ledger is empty (this test is about the COLD one being served) and the
+    // stake read is what prices it. One shared row set would let the hot leg
+    // answer and the cold tier would never run.
+    pg.control.answers = [
+      { match: /FROM nominator_positions/i, rows: [] },
+      {
+        match: /FROM neurons/i,
+        rows: [{ hotkey: COUNTERPARTY, netuid: 18, stake_tao: 100 }],
+      },
+    ];
     const envWithD1 = {
       ...LAKE_ENV,
-      METAGRAPH_HEALTH_DB: {
-        prepare: () => ({
-          bind: () => ({
-            all: async () => ({
-              results: [{ hotkey: COUNTERPARTY, netuid: 18, stake_tao: 100 }],
-            }),
-          }),
-        }),
-      },
+      ...pgMockEnv(["neurons", "nominator_positions"]),
     } as unknown as Env;
     const body = await json(
       await handleAccountPositions(
@@ -6033,41 +6058,49 @@ describe("D1 -> Postgres serving-cutover flag (#4656 followup)", () => {
       await handleSelfHealth(req("/api/v1/self-health"), env as unknown as Env),
     );
     assert.equal(body.data.marker, "pg");
-    assert.deepEqual(captures.sql, []);
+    // The lane read is EXCLUDED rather than absent, and that is the honest
+    // statement of what this test is about: #9330/#9340 makes lane_health read
+    // regardless of which tier served the card, and lane_health now lives in
+    // the same store the serving tier would have been asked, so it shows up in
+    // the same capture log. What must stay empty is the SERVING read -- the
+    // test's next-door neighbour asserts the lane read is there.
+    assert.deepEqual(servingSql(captures), []);
   });
 
   test("handleSelfHealth: lane verdicts ride on whichever tier answered", async () => {
-    // #9330/#9340. The lanes come from D1, not from the tier that produced the card,
-    // because the point of the change is that a lane's health stays readable when the
-    // serving tier does not -- so the live-tier card above must carry them too.
+    // #9330/#9340. The lanes come from lane_health, not from the tier that produced
+    // the card, because the point of the change is that a lane's health stays readable
+    // when the serving tier does not -- so the live-tier card above must carry them too.
     const { env } = dbWith({ neurons: [] });
     env.METAGRAPH_SELF_HEALTH_SOURCE = "postgres";
     env.DATA_API = {
       fetch: async () =>
         Response.json({ schema_version: 1, marker: "pg", components: [] }),
     };
-    env.METAGRAPH_HEALTH_DB = {
-      prepare: () => ({
-        all: async () => ({
-          results: [
-            {
-              lane: "neurons",
-              verdict: "ok",
-              age_ms: 30_000,
-              detail: null,
-              checked_at: 1_785_800_000_000,
-            },
-            {
-              lane: "chain-detail",
-              verdict: "stale",
-              age_ms: 14_400_000,
-              detail: "hot_window.to frozen",
-              checked_at: 1_785_800_000_000,
-            },
-          ],
-        }),
-      }),
-    };
+    // A canned answer rather than a router bucket: `answers` is consulted
+    // before the row set dbWith assigns, so this one statement can differ from
+    // everything else the handler asks without touching the router.
+    pg.control.answers = [
+      {
+        match: /FROM lane_health/i,
+        rows: [
+          {
+            lane: "neurons",
+            verdict: "ok",
+            age_ms: 30_000,
+            detail: null,
+            checked_at: 1_785_800_000_000,
+          },
+          {
+            lane: "chain-detail",
+            verdict: "stale",
+            age_ms: 14_400_000,
+            detail: "hot_window.to frozen",
+            checked_at: 1_785_800_000_000,
+          },
+        ],
+      },
+    ];
     const body = await json(
       await handleSelfHealth(req("/api/v1/self-health"), env as unknown as Env),
     );

@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { beforeEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// One store since #10170. Both halves of this route -- the batch write through
+// One store since #10179. Both halves of this route -- the batch write through
 // mirrorChainDetailToNeon and the head read through readStore -- build their
 // own `new Client(...)`, so the `pg` module is the only seam a route test has.
 // See tests/helpers/pg-mock.ts for why it is a module mock built in vi.hoisted.

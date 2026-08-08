@@ -16,13 +16,25 @@
 // A view is allowed to DECLINE (503). What it may not do is claim a tier
 // answered and hand back nothing while its twin hands back rows.
 import assert from "node:assert/strict";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
+
+// The hot tier is Postgres now (#10179), reached through `new Client(...)`
+// inside src/read-store.ts -- and every view here is entered through
+// `handleRequest(request, env, ctx)` or a tool handler, neither of which takes
+// a store. Mocking the `pg` module is the seam; see tests/helpers/pg-mock.ts
+// for why it is a module mock and why the controller is built in vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import { handleRequest } from "../workers/api.ts";
 import { handleGraphQLRequest } from "../src/graphql.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
 import { DEFAULT_BLOCKS_SEAM } from "../src/blocks-cold-tier.ts";
 import { resetDecodeWatermarkCache } from "../src/decode-watermark.ts";
 import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
 import { jsonBody } from "./row-type.ts";
 
 const SEAM = DEFAULT_BLOCKS_SEAM; // 8_759_336
@@ -119,43 +131,49 @@ function lakehouse() {
   return queries;
 }
 
-/** An env with a lakehouse, an empty hot tier, and a D1 holding one neuron. */
+/** The registration `/subnets` serves for this hotkey, which the card must
+ * reproduce exactly rather than approximate. */
+const NEURON_ROW = {
+  netuid: 46,
+  uid: 232,
+  stake_tao: "54085.698671464",
+  validator_permit: 1,
+  active: 1,
+};
+
+/**
+ * An env with a lakehouse, an EMPTY hot tier, and a store holding one neuron.
+ *
+ * Per-statement answers rather than one row set, because the two things this
+ * env has to be at once are contradictory: the neurons read must return a row
+ * (the card's registrations leg is what #9263 found missing) while the blocks
+ * hot tier must return nothing (the whole first describe is about the LAKEHOUSE
+ * answering for a historic block). A single `rows` would feed the block header
+ * a neuron and the assertions would pass on the wrong tier.
+ *
+ * Matched by regex, not substring, because the statement text arrives verbatim
+ * from src/ -- multi-line, with its own indentation.
+ */
 function env() {
-  return {
-    [R2_SQL_TOKEN_ENV]: "cfut_test",
-    METAGRAPH_HEALTH_DB: {
-      prepare(raw: string) {
-        const sql = raw.replace(/\s+/g, " ").trim();
-        return {
-          bind(...params: unknown[]) {
-            return {
-              async all() {
-                if (sql.includes("FROM neurons"))
-                  return {
-                    results: [
-                      {
-                        netuid: 46,
-                        uid: 232,
-                        stake_tao: "54085.698671464",
-                        validator_permit: 1,
-                        active: 1,
-                      },
-                    ],
-                  };
-                if (sql.startsWith("SELECT MIN(block_number)"))
-                  return {
-                    results: [{ floor: null, head: null, observed: null }],
-                  };
-                void params;
-                return { results: [] };
-              },
-            };
-          },
-        };
-      },
+  pg.control.answers = [
+    { match: /FROM\s+neurons/i, rows: [NEURON_ROW] },
+    // The blocks hot tier's watermark probe: bound, present, and holding
+    // nothing -- which is what routes a historic block to the cold tier.
+    {
+      match: /SELECT\s+MIN\(block_number\)/i,
+      rows: [{ floor: null, head: null, observed: null }],
     },
-  } as never;
+  ];
+  // Everything else the hot tier asks answers empty, as the D1 fake did.
+  pg.control.rows = [];
+  return { [R2_SQL_TOKEN_ENV]: "cfut_test", ...pgMockEnv() } as never;
 }
+
+beforeEach(() => {
+  pg.control.answers = [];
+  pg.control.rows = null;
+  pg.control.queries.length = 0;
+});
 
 function req(path: string) {
   return new Request(`https://api.metagraph.sh${path}`);

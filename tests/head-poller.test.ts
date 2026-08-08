@@ -1,7 +1,19 @@
 // The firehose head poller (#204): src/head-poller.ts's pure logic, plus the
 // hub's alarm/poll-start wiring with a storage-stubbed DO state.
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The hub's only durable write is `mirrorBlocksHeadToNeon`, which reaches
+// Postgres through `new Client(...)` inside src/pg-sql.ts (#10179). A DO test
+// cannot inject into that -- the hub builds its own runner from `this.env` and
+// `this.state` -- so the module is the seam; see tests/helpers/pg-mock.ts for
+// why, and for why the controller is built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import {
   auraSlotFromDigest,
   AURA_AUTHORITIES_KEY,
@@ -312,6 +324,10 @@ function hubWith(env: Record<string, unknown>, storage: Map<string, unknown>) {
   let alarmAt: number | null = null;
   const state = {
     getWebSockets: () => [],
+    // A DurableObjectState IS the waitUntil handle -- createPgSql hands the
+    // pooled connection back through it, so a stub without one turns every
+    // mirror write into a TypeError swallowed as a lane verdict.
+    waitUntil: (promise: Promise<unknown>) => void promise?.catch?.(() => {}),
     storage: {
       get: async (k: string) => storage.get(k),
       put: async (k: string, v: unknown) => void storage.set(k, v),
@@ -350,17 +366,19 @@ test("alarm: kill switch off -> no polling, but always re-arms", async () => {
 test("alarm: broadcasts and durably records each new block, advancing last_seen", async () => {
   const storage = new Map<string, unknown>();
   storage.set("head:last_seen", 14);
-  const d1Writes: unknown[][] = [];
+  // The head rows the hub actually persisted. Filtered by statement text
+  // because the same store also takes the lane-health verdict each write
+  // records -- counting every query would count those too.
+  const headWrites: unknown[][] = [];
+  pg.control.queries.length = 0;
+  pg.control.rows = [];
+  pg.control.onQuery = (q) => {
+    if (/INSERT INTO blocks_head/i.test(q.text)) headWrites.push(q.values);
+  };
   const env = {
     CHAIN_HEAD_POLL_ENABLED: "true",
     CHAIN_HEAD_RPC_URL: "https://rpc.example",
-    METAGRAPH_HEALTH_DB: {
-      prepare: () => ({
-        bind: (...values: unknown[]) => ({
-          run: async () => void d1Writes.push(values),
-        }),
-      }),
-    },
+    ...pgMockEnv(),
   };
   const { hub, alarm } = hubWith(env, storage);
   const seen: unknown[] = [];
@@ -381,7 +399,12 @@ test("alarm: broadcasts and durably records each new block, advancing last_seen"
   }
   assert.equal(seen.length, 2, "blocks 15 and 16 broadcast");
   assert.equal((seen[1] as { block_number: number }).block_number, 16);
-  assert.equal(d1Writes.length, 2, "both blocks written to D1");
+  assert.equal(headWrites.length, 2, "both blocks written to blocks_head");
+  assert.deepEqual(
+    headWrites.map((values) => values[0]),
+    [15, 16],
+    "each block is persisted under its own height",
+  );
   assert.equal(storage.get("head:last_seen"), 16);
   assert.ok(alarm() !== null, "re-armed");
 });

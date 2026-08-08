@@ -4,7 +4,7 @@ import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 // One test in this file -- the hourly-cron dispatch below -- reaches
 // `observationsRunner`, which builds a real `new Client(...)` now that Neon is
-// the only store (#10170). Everything else here injects its own fakes, so the
+// the only store (#10179). Everything else here injects its own fakes, so the
 // module mock exists solely to keep that one path from opening a socket. See
 // tests/helpers/pg-mock.ts for why the controller has to be built inside
 // vi.hoisted: vi.mock is hoisted above every import, so a plain `const` would

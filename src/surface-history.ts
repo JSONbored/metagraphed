@@ -61,7 +61,7 @@ export const SURFACE_HISTORY_ACTIONS = ["insert", "update", "delete"] as const;
  * what makes this correct on a database the 0024 backfill has not been applied
  * to.
  *
- * `overlay::jsonb ->> 'k'`, NOT `json_extract` (#10170). The column is TEXT
+ * `overlay::jsonb ->> 'k'`, NOT `json_extract` (#10179). The column is TEXT
  * holding JSON, and json_extract is plain SQLite -- Postgres has no such
  * function, so the moment surface_history was declared Neon's this reader would
  * have thrown into its own catch and served `null`, which buildSurfaceHistory

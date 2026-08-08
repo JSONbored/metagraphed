@@ -31,7 +31,7 @@ type Row = Record<string, unknown>;
  * Lives here rather than with the write path because this is the only thing
  * that reads it: the phase vocabulary is a fact about the CHAIN, not about
  * whichever store the rows land in, and it followed the validator when the D1
- * writer that used to host it was deleted (#10170).
+ * writer that used to host it was deleted (#10179).
  */
 export const CHAIN_EVENT_PHASES = new Set([
   "ApplyExtrinsic",

@@ -3,7 +3,19 @@
 // through workers/api.ts.
 
 import assert from "node:assert/strict";
-import { describe, test, beforeEach } from "vitest";
+import { describe, test, beforeEach, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+
+// The store these handlers read is Postgres now (#10086/#10170), reached
+// through `new Client(...)` inside src/pg-sql.ts. observationsReadDb builds
+// that runner itself from `(env, ctx)`, so the seam is the `pg` module -- see
+// tests/helpers/pg-mock.ts for why, and for why the controller has to be built
+// inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import {
   canonicalCompareCachePath,
@@ -44,6 +56,33 @@ async function json(res: Response): Promise<Row> {
   const body = (await res.json()) as Row;
   assert.equal(body.ok, true);
   return body;
+}
+
+/**
+ * A store these handlers can actually reach, answering `rows` from every
+ * statement, plus the ctx they need to reach it.
+ *
+ * THE ctx IS NOT PLUMBING. observationsReadDb parks the pooled connection's
+ * teardown on `waitUntil` and answers `undefined` without one, and `d1All`
+ * reads `undefined` as zero rows -- so a handler called with the default
+ * `ctx = {}` serves a confident empty payload no matter what the store holds.
+ * Passing `{}` here would make every assertion below vacuous.
+ */
+function storeEnv(rows: Row[], opts: { throws?: boolean } = {}) {
+  pg.control.queries.length = 0;
+  pg.control.rows = rows;
+  pg.control.failNext = null;
+  // Re-armed per query rather than set once: `failNext` is consumed by the
+  // query it fails, and these handlers issue more than one.
+  pg.control.onQuery = opts.throws
+    ? () => {
+        pg.control.failNext = new Error("store down");
+      }
+    : null;
+  return {
+    env: mockEnv(pgMockEnv()),
+    ctx: { waitUntil: (promise: Promise<unknown>) => void promise } as never,
+  };
 }
 
 async function errorJson(res: Response, status = 400): Promise<Row> {
@@ -526,19 +565,14 @@ describe("handleUptime", () => {
       alpha_out_pool: 81000,
       subnet_volume_tao: 55.25,
     };
-    const env = mockEnv({
-      METAGRAPH_HEALTH_DB: {
-        prepare: () => ({
-          bind: () => ({ all: async () => ({ results: [snapshotRow] }) }),
-        }),
-      },
-    });
+    const { env, ctx } = storeEnv([snapshotRow]);
     const trajectory = await json(
       await handleTrajectory(
         req("/"),
         env,
         NETUID,
         url(`/api/v1/subnets/${NETUID}/trajectory`),
+        ctx,
       ),
     );
     assert.equal(trajectory.data.point_count, 1);
@@ -547,35 +581,27 @@ describe("handleUptime", () => {
         req("/"),
         env,
         url("/api/v1/economics/trends?window=30d"),
+        ctx,
       ),
     );
     assert.equal((trends.data.days as unknown[]).length, 1);
   });
 
-  test("a throwing D1 binding degrades trajectory to the empty payload", async () => {
-    const env = mockEnv({
-      METAGRAPH_HEALTH_DB: {
-        prepare: () => ({
-          bind: () => ({
-            all: async () => {
-              throw new Error("d1 down");
-            },
-          }),
-        }),
-      },
-    });
+  test("a throwing store degrades trajectory to the empty payload", async () => {
+    const { env, ctx } = storeEnv([], { throws: true });
     const body = await json(
       await handleTrajectory(
         req("/"),
         env,
         NETUID,
         url(`/api/v1/subnets/${NETUID}/trajectory`),
+        ctx,
       ),
     );
     assert.equal(body.data.point_count, 0);
   });
 
-  test("serves day rows from the D1 binding on a tier miss", async () => {
+  test("serves day rows from the store on a tier miss", async () => {
     const rows = [
       {
         surface_id: "sn7-docs",
@@ -592,42 +618,28 @@ describe("handleUptime", () => {
         status: "ok",
       },
     ];
-    const env = mockEnv({
-      METAGRAPH_HEALTH_DB: {
-        prepare: () => ({
-          bind: () => ({ all: async () => ({ results: rows }) }),
-        }),
-      },
-    });
+    const { env, ctx } = storeEnv(rows);
     const body = await json(
       await handleUptime(
         req("/"),
         env,
         NETUID,
         url(`/api/v1/subnets/${NETUID}/uptime`),
+        ctx,
       ),
     );
     assert.equal((body.data.surfaces as unknown[]).length, 1);
   });
 
-  test("a throwing D1 binding still serves the schema-stable empty payload", async () => {
-    const env = mockEnv({
-      METAGRAPH_HEALTH_DB: {
-        prepare: () => ({
-          bind: () => ({
-            all: async () => {
-              throw new Error("d1 down");
-            },
-          }),
-        }),
-      },
-    });
+  test("a throwing store still serves the schema-stable empty payload", async () => {
+    const { env, ctx } = storeEnv([], { throws: true });
     const body = await json(
       await handleUptime(
         req("/"),
         env,
         NETUID,
         url(`/api/v1/subnets/${NETUID}/uptime`),
+        ctx,
       ),
     );
     assert.deepEqual(body.data.surfaces, []);

@@ -1,7 +1,20 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { afterEach, describe, test } from "vitest";
+import { afterEach, describe, test, vi } from "vitest";
+import { pgMockEnv } from "./helpers/pg-mock.ts";
+import { sqliteBackedPg } from "./helpers/pg-sqlite.ts";
+
+// The store is Postgres now (#10170), reached through `new Client(...)` inside
+// src/read-store.ts and src/pg-d1-adapter.ts -- neither of which a
+// `handleRequest(request, env, ctx)` or `handleScheduled(...)` caller can
+// inject into. Mocking the module is the seam; see tests/helpers/pg-mock.ts
+// for why, and for why the controller has to be built inside vi.hoisted.
+const { pg } = await vi.hoisted(async () => ({
+  pg: (await import("./helpers/pg-mock.ts")).createPgMock(),
+}));
+vi.mock("pg", () => pg.module);
+
 import { createLocalArtifactEnv } from "../scripts/lib.ts";
 import {
   handleRequest,
@@ -675,17 +688,19 @@ describe("/health readiness", () => {
     assert.match(res.headers.get("cache-control"), /max-age=/);
   });
 
-  /** A D1 stub over the two aggregates the heartbeat reads (#8700). */
+  /** A reachable store answering the two aggregates the heartbeat reads
+   * (#8700), returned as the env fragment that makes it reachable.
+   *
+   * `health_db` in the /health payload is now HYPERDRIVE's connection string
+   * rather than a D1 binding, and that flag is what gates the whole
+   * chain_events block -- so arming the answers and binding the store are one
+   * step here, or a test would arm rows nothing ever reads. */
   function healthDb(row: { head: unknown; latest: unknown } | null) {
-    return {
-      prepare() {
-        return {
-          async first() {
-            return row;
-          },
-        };
-      },
-    };
+    pg.control.db = null;
+    pg.control.failNext = null;
+    pg.control.onQuery = null;
+    pg.control.rows = row ? [row] : [];
+    return pgMockEnv();
   }
 
   test("reports chain-event index freshness (#1361, #5357)", async () => {
@@ -694,7 +709,7 @@ describe("/health readiness", () => {
       METAGRAPH_CONTROL: makeKv({
         "metagraph:latest": { published_at: new Date().toISOString() },
       }),
-      METAGRAPH_HEALTH_DB: healthDb({ head: 8461200, latest: atMs }),
+      ...healthDb({ head: 8461200, latest: atMs }),
     });
     const res = await handleRequest(req("/health"), env as unknown as Env, {});
     assert.equal(res.status, 200);
@@ -717,7 +732,7 @@ describe("/health readiness", () => {
         METAGRAPH_CONTROL: makeKv({
           "metagraph:latest": { published_at: new Date().toISOString() },
         }),
-        METAGRAPH_HEALTH_DB: healthDb({ head: 8461200, latest: at }),
+        ...healthDb({ head: 8461200, latest: at }),
       });
       const body = await (
         await handleRequest(req("/health"), env as unknown as Env, {})
@@ -737,7 +752,7 @@ describe("/health readiness", () => {
       METAGRAPH_CONTROL: makeKv({
         "metagraph:latest": { published_at: new Date().toISOString() },
       }),
-      METAGRAPH_HEALTH_DB: healthDb({ head: null, latest: null }),
+      ...healthDb({ head: null, latest: null }),
     });
     const res = await handleRequest(req("/health"), env as unknown as Env, {});
     assert.equal(res.status, 200);
@@ -747,7 +762,7 @@ describe("/health readiness", () => {
     assert.equal(body.chain_events.age_seconds, null);
   });
 
-  test("chain_events is null when no D1 health binding exists (#1361, #5357)", async () => {
+  test("chain_events is null when no store is bound (#1361, #5357)", async () => {
     const env = {
       ASSETS: {
         async fetch() {
@@ -759,21 +774,18 @@ describe("/health readiness", () => {
     assert.equal((await res.json()).chain_events, null);
   });
 
-  test("chain_events is schema-stable nulls when the D1 read throws (#5357)", async () => {
+  test("chain_events is schema-stable nulls when the store read throws (#5357)", async () => {
     const env = createLocalArtifactEnv({
       METAGRAPH_CONTROL: makeKv({
         "metagraph:latest": { published_at: new Date().toISOString() },
       }),
-      METAGRAPH_HEALTH_DB: {
-        prepare() {
-          return {
-            async first(): Promise<unknown> {
-              throw new Error("d1 unavailable");
-            },
-          };
-        },
-      },
+      ...healthDb(null),
     });
+    // Re-armed from inside the subscription, which the double calls BEFORE it
+    // consults failNext -- so every read throws, not merely the first.
+    pg.control.onQuery = () => {
+      pg.control.failNext = new Error("store unavailable");
+    };
     const res = await handleRequest(req("/health"), env as unknown as Env, {});
     assert.equal(res.status, 200);
     const body = await res.json();
@@ -2919,28 +2931,39 @@ describe("R2 timeout and static fallback", () => {
   });
 });
 
-// --- handleHealthTrends D1 throw ---------------------------------------------
-describe("health trends D1 error handling", () => {
-  test("returns a schema-stable empty payload when D1 throws", async () => {
-    const env = createLocalArtifactEnv({
-      METAGRAPH_HEALTH_DB: {
-        prepare() {
-          return {
-            bind() {
-              return {
-                async all() {
-                  throw new Error("d1 down");
-                },
-              };
-            },
-          };
-        },
-      },
-    });
+// --- handleHealthTrends store throw ------------------------------------------
+describe("health trends store error handling", () => {
+  /** A store bound AND reachable, whose every read throws.
+   *
+   * BOTH HALVES MATTER. `health_db` is HYPERDRIVE's connection string now, and
+   * observationsReadDb additionally needs a ctx with a real `waitUntil` to park
+   * the connection teardown on -- without one it answers `undefined`, `d1All`
+   * reads that as zero rows, and the route returns the same empty payload for
+   * a reason that has nothing to do with the failure under test. */
+  function throwingStore() {
+    pg.control.db = null;
+    pg.control.rows = null;
+    pg.control.answers = [];
+    pg.control.failNext = null;
+    // Re-armed per query: failNext is consumed by the query it fails, and
+    // these routes issue one read per window.
+    pg.control.onQuery = () => {
+      pg.control.failNext = new Error("store down");
+    };
+    return {
+      env: createLocalArtifactEnv(pgMockEnv()) as unknown as Env,
+      ctx: {
+        waitUntil: (promise: Promise<unknown>) => void promise,
+      } as unknown as ExecutionContext,
+    };
+  }
+
+  test("returns a schema-stable empty payload when the store throws", async () => {
+    const { env, ctx } = throwingStore();
     const res = await handleRequest(
       req("/api/v1/subnets/0/health/trends"),
-      env as unknown as Env,
-      {} as unknown as ExecutionContext,
+      env,
+      ctx,
     );
     assert.equal(res.status, 200);
     const body = await res.json();
@@ -2960,27 +2983,9 @@ describe("health trends D1 error handling", () => {
   // analytics.ts, so there is no direct-unit-test alternative to keep; the
   // test was deleted rather than converted.
 
-  test("bulk route returns a schema-stable empty payload when D1 throws", async () => {
-    const env = createLocalArtifactEnv({
-      METAGRAPH_HEALTH_DB: {
-        prepare() {
-          return {
-            bind() {
-              return {
-                async all() {
-                  throw new Error("d1 down");
-                },
-              };
-            },
-          };
-        },
-      },
-    });
-    const res = await handleRequest(
-      req("/api/v1/health/trends"),
-      env as unknown as Env,
-      {},
-    );
+  test("bulk route returns a schema-stable empty payload when the store throws", async () => {
+    const { env, ctx } = throwingStore();
+    const res = await handleRequest(req("/api/v1/health/trends"), env, ctx);
     assert.equal(res.status, 200);
     const body = await res.json();
     assert.equal(body.data.windows["7d"].subnet_count, 0);
@@ -3022,32 +3027,12 @@ describe("health trends D1 error handling", () => {
     }
   });
 
-  test("bulk route treats a D1 response without results as empty", async () => {
-    const env = createLocalArtifactEnv({
-      METAGRAPH_HEALTH_DB: {
-        prepare() {
-          return {
-            bind() {
-              return {
-                async all() {
-                  return {};
-                },
-              };
-            },
-          };
-        },
-      },
-    });
-    const res = await handleRequest(
-      req("/api/v1/health/trends"),
-      env as unknown as Env,
-      {},
-    );
-    assert.equal(res.status, 200);
-    const body = await res.json();
-    assert.equal(body.data.windows["7d"].subnet_count, 0);
-    assert.deepEqual(body.data.windows["30d"].subnets, []);
-  });
+  // "bulk route treats a D1 response without results as empty" was DELETED
+  // here. Its subject was D1's `{ results }` envelope arriving without the
+  // key; on Postgres src/pg-d1-adapter.ts constructs that envelope itself from
+  // `res.rows ?? []`, so the shape it guarded against cannot occur and the
+  // test could only have been restated as "an empty read is an empty payload"
+  // -- which the two cases above already cover.
 });
 
 // --- readAsset with no ASSETS binding ----------------------------------------
@@ -3287,32 +3272,17 @@ describe("handleScheduled EMISSION_GATE_SAMPLE_CRON", () => {
     const fs = await import("node:fs");
     const db = new DatabaseSync(":memory:");
     db.exec(fs.readFileSync("migrations/d1/0005_emission_gate.sql", "utf8"));
-    const d1 = {
-      prepare(sql: string) {
-        const bound: unknown[] = [];
-        const shim = {
-          bind(...values: unknown[]) {
-            bound.push(...values);
-            return shim;
-          },
-          async all() {
-            return { results: db.prepare(sql).all(...(bound as never[])) };
-          },
-          async first() {
-            return db.prepare(sql).get(...(bound as never[])) ?? null;
-          },
-          async run() {
-            return db.prepare(sql).run(...(bound as never[]));
-          },
-        };
-        return shim;
-      },
-      async batch(statements: { run(): Promise<unknown> }[]) {
-        const out = [];
-        for (const s of statements) out.push(await s.run());
-        return out;
-      },
-    };
+    // The sqlite fixture stands BEHIND the pg double rather than being handed
+    // to the handler: producerStore builds its own `createPgD1` handle from
+    // env.HYPERDRIVE, so there is nothing to inject. sqliteBackedPg translates
+    // the statement text the writer emits; pg-mock maps the binds -- the gate
+    // lane writes real booleans now (#10112) and node:sqlite takes no boolean
+    // at all, while this migration's CHECKs are written against 0/1.
+    pg.control.db = sqliteBackedPg(db);
+    pg.control.rows = null;
+    pg.control.answers = [];
+    pg.control.failNext = null;
+    pg.control.onQuery = null;
     const realFetch = globalThis.fetch;
     globalThis.fetch = (async (_u: string, init: RequestInit) => {
       const body = JSON.parse(String(init.body)) as {
@@ -3334,7 +3304,7 @@ describe("handleScheduled EMISSION_GATE_SAMPLE_CRON", () => {
         } as unknown as ScheduledController,
         {
           EMISSION_GATE_SYNC_SECRET: "cron-test-secret",
-          METAGRAPH_HEALTH_DB: d1,
+          ...pgMockEnv(),
         } as unknown as Env,
         {} as unknown as ExecutionContext,
       )) as Row;

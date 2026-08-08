@@ -1086,7 +1086,7 @@ export class ChainFirehoseHub implements DurableObject {
           this.env.CHAIN_HEAD_AUTHOR_ENABLED !== "false",
         );
         await this.broadcast(block as unknown as ChainFirehoseIngestPayload);
-        // THE ONLY WRITE (#10107, #10170). `this.state` is the waitUntil
+        // THE ONLY WRITE (#10107, #10179). `this.state` is the waitUntil
         // handle here -- a Durable Object has no ExecutionContext, and
         // createPgSql needs one to hand the pooled connection back to
         // Hyperdrive.

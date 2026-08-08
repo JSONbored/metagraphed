@@ -39,7 +39,7 @@ import {
 } from "./neon-write.ts";
 
 // ---------------------------------------------------------------------------
-// Moved here when D1 was deleted (#10170). These describe the TABLE -- its
+// Moved here when D1 was deleted (#10179). These describe the TABLE -- its
 // column list, its conflict key, its derivations -- not the store that used to
 // hold it, and this module is now the only writer.
 // ---------------------------------------------------------------------------

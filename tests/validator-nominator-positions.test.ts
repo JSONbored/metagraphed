@@ -21,7 +21,7 @@ import { pgMockEnv } from "./helpers/pg-mock.ts";
 
 // The ROUTE reads its store through src/read-store.ts, which builds
 // `new Client(...)` from the `pg` module -- there is no binding to hand
-// `handleRequest(request, env, ctx)` any more (#10170). The loader tests below
+// `handleRequest(request, env, ctx)` any more (#10179). The loader tests below
 // keep injecting their db directly, because `loadNominatorPositions(db, ...)`
 // takes one; only the route half needs the module mock. See
 // tests/helpers/pg-mock.ts for why it is a mock and not an export.

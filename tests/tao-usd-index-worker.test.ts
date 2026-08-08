@@ -4,7 +4,7 @@
 // large shared result queue tuned to its own routes, and a cron path that
 // must observe an EMPTY `RETURNING` (the ON CONFLICT no-op) would have to
 // fight it. This file mocks the `pg` module (tao_usd_index's store since
-// #10170 eliminated D1) and fetch narrowly instead, so what each test asserts
+// #10179 eliminated D1) and fetch narrowly instead, so what each test asserts
 // about the tick is not entangled with a route it never calls.
 //
 // The batch fixture is the same real capture the aggregator tests use —
@@ -201,7 +201,7 @@ describe("writeTaoUsdIndexRow", () => {
   });
 
   // The write DECLINES rather than falling back now that Neon is the only
-  // store (#10170). Both halves matter and neither is a formality: without
+  // store (#10179). Both halves matter and neither is a formality: without
   // Hyperdrive there is nowhere to write, and without a ctx there is nowhere
   // to hand the pooled connection back, so writing anyway would leak one
   // connection per minute-cadence tick.
