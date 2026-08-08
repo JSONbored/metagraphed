@@ -1,6 +1,6 @@
 {
   // Dedicated registry-sync Worker — the sole write path into the registry
-  // database, now D1 (see the d1_databases binding below). Deployed separately
+  // database, now Neon via Hyperdrive (see the binding below). Deployed separately
   // from the main api.ts Worker because it is a write tier with its own auth
   // gate, which the main Worker should not grow. Reached only via the main
   // Worker's REGISTRY_SYNC_API service binding (no public routes of its own).
@@ -88,19 +88,19 @@
       "head_sampling_rate": 1,
     },
   },
-  // The registry moved off the self-hosted Postgres (reached via Hyperdrive)
-  // onto D1 as its box was decommissioned -- 9,157 rows across four tables,
-  // roughly 450x under D1's ceiling. The Hyperdrive binding is deliberately
-  // REMOVED rather than left alongside: leaving it would keep a dead
-  // connection string in config and let a future change silently write to a
-  // database nothing reads. Schema: migrations/d1/0001_registry.sql.
-  "d1_databases": [
-    {
-      "binding": "REGISTRY_DB",
-      "database_name": "metagraphed",
-      "database_id": "8e14c15f-d0b0-4ffd-ad65-01e37993efcf",
-    },
-  ],
+  // NO D1 BINDING (#10101). The registry lived on D1 for exactly as long as it
+  // took Neon to arrive: this Worker has written Neon and nothing else since
+  // #10068, and the four tables were verified at EXACT parity before the
+  // binding came out -- subnets 129, surfaces 3,444, surface_history 8,892,
+  // providers 136, identical on both stores.
+  //
+  // Removing it is the point rather than tidying. While both bindings existed
+  // the handler fell back to D1 whenever Hyperdrive was unbound, so a
+  // misconfiguration wrote a database nothing reads and answered 200 -- a
+  // successful-looking sync into a dead store. It now 503s instead, which is
+  // the truth.
+  //
+  // Schema: migrations/neon/. The D1 copies are frozen and slated for DROP.
   // AND BACK AGAIN (#10060). The paragraph above removed Hyperdrive when this
   // Worker left the self-hosted Postgres box for D1, on the reasoning that a
   // dead connection string in config is a hazard. That reasoning was right and
@@ -112,7 +112,6 @@
   // that is safe: nothing outside this Worker reads these four tables (the
   // public registry serves from R2 artifacts), and all four are rebuildable by
   // re-running the sync from registry/subnets/*.json. Rollback is removing this
-  // binding, which falls the handler back to REGISTRY_DB.
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
