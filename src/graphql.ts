@@ -1822,7 +1822,16 @@ function extrinsicNode(extrinsic: Row) {
 function validatorNode(validator: Row) {
   return {
     ...validator,
-    featured: validator.featured === true,
+    // `featured` is absent from the validator DETAIL artifact by design --
+    // buildValidatorDetail never passes featuredHotkeys (src/metagraph-neurons.ts:362),
+    // which keeps that artifact's shape unchanged. `=== true` turned that
+    // absence into a confident `false`, indistinguishable from a real "this
+    // validator is not featured" and set to contradict the list outright the
+    // moment anything is featured (#9892). Absent now means null: unknown.
+    //
+    // The LIST builder always emits a boolean here, so this preserves it.
+    featured:
+      typeof validator.featured === "boolean" ? validator.featured : null,
     captured_at: validator.latest_captured_at ?? validator.captured_at ?? null,
     block_number:
       validator.latest_block_number ?? validator.block_number ?? null,
@@ -1838,6 +1847,9 @@ function validatorDetailNode(data: Row, hotkey: string) {
     priceByNetuid: NO_ALPHA_PRICES,
   });
   const raw = data && typeof data === "object" ? data : {};
+  const subnets: unknown[] = Array.isArray(raw.subnets)
+    ? raw.subnets
+    : (base.subnets as unknown[]);
   return validatorNode({
     ...base,
     ...raw,
@@ -1845,7 +1857,22 @@ function validatorDetailNode(data: Row, hotkey: string) {
       typeof raw.hotkey === "string" && raw.hotkey.length > 0
         ? raw.hotkey
         : hotkey,
-    subnets: Array.isArray(raw.subnets) ? raw.subnets : base.subnets,
+    subnets,
+    // The detail artifact carries no `uid_count` (it is the list builder's
+    // entry.uidCount, which buildValidatorDetail has no counterpart for), so
+    // GraphQL answered null while the LIST answered 117 for the same hotkey
+    // (#9892). The detail's `subnets` is the UNCAPPED per-membership row list
+    // -- one entry per UID -- so its length is uid_count exactly; verified
+    // 117 == 117 against production.
+    //
+    // This derivation belongs here rather than in validatorNode because the
+    // list caps `subnets` at the top 10 by stake (GLOBAL_VALIDATOR_SUBNET_LIMIT),
+    // where the same length would be wrong -- and the list already carries a
+    // real uid_count anyway.
+    // `subnets` is always an array here (raw's own array, else base's, and
+    // buildValidatorDetail always returns one), so no second guard.
+    uid_count:
+      typeof raw.uid_count === "number" ? raw.uid_count : subnets.length,
   });
 }
 
@@ -4089,8 +4116,27 @@ const rootValue = {
   // pass. A cold/absent artifact makes the loader throw, which the graphql
   // executor surfaces as a normal GraphQL error, matching REST's 404 and the
   // source_snapshots convention for a missing artifact.
-  changelog(_args: unknown, context: GqlContext) {
-    return loadChangelog(mcpCtx(context), { readArtifact });
+  // `coverage_delta` is declared at the top level of type Changelog, but the
+  // artifact nests it INSIDE `summary` -- so the flattened path never existed
+  // and the field resolved null on every call, reading as "this changelog has
+  // no coverage delta" when in fact every changelog has one (#9892).
+  //
+  // Flattened here rather than taught to a field resolver because the schema is
+  // built with buildSchema(SDL) and carries no resolver map: reshaping in the
+  // Query resolver is the only hook there is, and the same one subnet_trajectory
+  // already uses for its window-keyed deltas.
+  async changelog(_args: unknown, context: GqlContext) {
+    const data = (await loadChangelog(mcpCtx(context), {
+      readArtifact,
+    })) as Row;
+    // loadChangelog throws on a cold/absent artifact (the test below pins that
+    // it surfaces as a GraphQL error), so `data` is always an object here.
+    const { summary } = data;
+    const nested =
+      summary !== null && typeof summary === "object"
+        ? (summary as Row).coverage_delta
+        : undefined;
+    return { ...data, coverage_delta: data.coverage_delta ?? nested ?? null };
   },
 
   contracts(_args: unknown, context: GqlContext) {

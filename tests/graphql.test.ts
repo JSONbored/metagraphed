@@ -3,6 +3,7 @@ import { Blob } from "node:buffer";
 import {
   buildSchema,
   getIntrospectionQuery,
+  type GraphQLObjectType,
   parse,
   subscribe,
   validate,
@@ -1928,6 +1929,37 @@ describe("graphql — endpoint_pools / rpc_pools / endpoint_incidents", () => {
     ],
   };
 
+  test("only rpc_pools declares operational_observed_at (#9892)", async () => {
+    // /api/v1/endpoint-pools does not serve this field at all -- endpoint pools
+    // carry no live cron eligibility overlay, so there is no observation stamp
+    // to report. A shared PoolList declared it for both, and GraphQL answered
+    // null, which reads as "not observed yet" rather than "never observed
+    // here". Asserted against the SCHEMA rather than a response, because the
+    // defect is what the type promises, not what one call happened to return.
+    const query = chainEventsSchema.getQueryType();
+    const endpointType = String(query?.getFields().endpoint_pools?.type);
+    const rpcType = String(query?.getFields().rpc_pools?.type);
+    assert.equal(endpointType, "EndpointPoolList!");
+    assert.equal(rpcType, "PoolList!");
+
+    const endpointFields = (
+      chainEventsSchema.getType("EndpointPoolList") as GraphQLObjectType
+    ).getFields();
+    const rpcFields = (
+      chainEventsSchema.getType("PoolList") as GraphQLObjectType
+    ).getFields();
+    assert.ok(!("operational_observed_at" in endpointFields));
+    assert.ok("operational_observed_at" in rpcFields);
+    // The split is ONLY that field -- everything else stays identical, so this
+    // fails if the two drift apart for any other reason.
+    assert.deepEqual(
+      Object.keys(endpointFields).sort(),
+      Object.keys(rpcFields)
+        .filter((f) => f !== "operational_observed_at")
+        .sort(),
+    );
+  });
+
   test("endpoint_pools filters by kind and paginates", async () => {
     const env = fixtureEnv({ "/metagraph/endpoint-pools.json": POOLS_BLOB });
     const filtered = await gql(
@@ -2136,6 +2168,31 @@ describe("graphql — source_snapshots", () => {
     assert.ok(body.errors?.length);
   });
 
+  test("coverage_delta is null when no changelog carries one, however summary is shaped", async () => {
+    // The other half of the flattening: it must not invent a value. Both
+    // shapes a real artifact can take when the delta is genuinely absent --
+    // no summary at all, and an explicit null -- resolve to null rather than
+    // throwing on the property read.
+    for (const summary of [undefined, null, { artifacts_changed: 0 }]) {
+      const blob: Record<string, unknown> = {
+        generated_at: "2026-07-01T00:00:00.000Z",
+      };
+      if (summary !== undefined) blob.summary = summary;
+      const env = fixtureEnv({ "/metagraph/changelog.json": blob });
+      const { status, body } = await gql(
+        "{ changelog { coverage_delta } }",
+        env as unknown as Env,
+      );
+      assert.equal(status, 200, JSON.stringify(summary));
+      assert.equal(body.errors, undefined, JSON.stringify(body.errors));
+      assert.equal(
+        body.data.changelog.coverage_delta,
+        null,
+        `summary=${JSON.stringify(summary)}`,
+      );
+    }
+  });
+
   test("surfaces a cold/missing artifact as a GraphQL error, matching REST/MCP", async () => {
     const { body } = await gql("{ source_snapshots { total } }", emptyEnv);
     assert.ok(body.errors?.length);
@@ -2177,6 +2234,37 @@ describe("graphql — changelog", () => {
     assert.deepEqual(changelog.artifacts.added, ["adapters.json"]);
     assert.deepEqual(changelog.subnets.renamed, ["sn-7"]);
     assert.equal(changelog.coverage_delta.surfaces, 4);
+  });
+
+  test("coverage_delta resolves from summary, where the real artifact nests it (#9892)", async () => {
+    // CHANGELOG_BLOB above puts coverage_delta at the TOP level, which the
+    // published artifact never does -- verified against production, where it
+    // lives only under `summary`. So the field resolved null on every real
+    // call while this suite stayed green, and null reads as "this changelog
+    // has no coverage delta" when every changelog has one.
+    const nested = {
+      generated_at: "2026-07-01T00:00:00.000Z",
+      summary: {
+        artifacts_changed: 3,
+        coverage_delta: {
+          surface_count: { before: 3493, after: 3496, delta: 3 },
+        },
+      },
+    };
+    const env = fixtureEnv({ "/metagraph/changelog.json": nested });
+    const { status, body } = await gql(
+      "{ changelog { coverage_delta summary } }",
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.changelog.coverage_delta.surface_count.delta, 3);
+    // Still reachable the long way, so this flattening adds an accessor
+    // rather than moving the data.
+    assert.equal(
+      body.data.changelog.summary.coverage_delta.surface_count.delta,
+      3,
+    );
   });
 
   test("surfaces a cold/missing artifact as a GraphQL error, matching REST/MCP", async () => {
@@ -2489,6 +2577,26 @@ describe("graphql — profiles", () => {
       },
     ],
   };
+
+  test("captured_at falls back to the artifact's generated_at (#9892)", async () => {
+    // PROFILES_BLOB invents a top-level captured_at. The published artifact
+    // has never carried one -- verified against production, whose only stamp
+    // is generated_at -- so the field resolved null on every real call, for
+    // GraphQL AND for the list_profiles MCP tool that shares this loader.
+    const env = fixtureEnv({
+      "/metagraph/profiles.json": {
+        generated_at: "2026-08-07T10:09:17.651Z",
+        profiles: [{ slug: "allways", netuid: 7 }],
+      },
+    });
+    const { status, body } = await gql(
+      "{ profiles { captured_at total } }",
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.profiles.captured_at, "2026-08-07T10:09:17.651Z");
+  });
 
   test("filters by netuid and paginates", async () => {
     const env = fixtureEnv({ "/metagraph/profiles.json": PROFILES_BLOB });
@@ -5266,7 +5374,11 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     assert.equal(body.errors, undefined);
     assert.deepEqual(body.data.validator, {
       hotkey: "5NoRows",
-      featured: false,
+      // null, not false, since #9892: the detail carries no featured set, and
+      // `featured === true` used to turn that absence into a confident "this
+      // validator is not featured". The point of this test -- that the OBJECT
+      // is schema-stable and never null -- is unchanged.
+      featured: null,
       subnet_count: 0,
       total_stake_tao: 0,
       captured_at: null,
@@ -5333,13 +5445,67 @@ describe("graphql — validators / validator (#5573, Postgres-tier leaderboard)"
     assert.equal(body.errors, undefined);
     assert.deepEqual(body.data.validator, {
       hotkey: "5NoRows",
-      featured: false,
+      // null, not false, since #9892: the detail carries no featured set, and
+      // `featured === true` used to turn that absence into a confident "this
+      // validator is not featured". The point of this test -- that the OBJECT
+      // is schema-stable and never null -- is unchanged.
+      featured: null,
       subnet_count: 0,
       total_stake_tao: 0,
       captured_at: null,
       block_number: null,
       subnets: [],
     });
+  });
+
+  test("validator: uid_count is derived from the uncapped subnets list (#9892)", async () => {
+    // The detail artifact carries no uid_count, so GraphQL answered null while
+    // the LIST answered a real count for the same hotkey -- two views of one
+    // entity disagreeing. The detail's `subnets` is the uncapped
+    // per-membership row list, one entry per UID, so its length IS uid_count.
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          hotkey: "5Validator",
+          subnet_count: 3,
+          subnets: [{ netuid: 1 }, { netuid: 2 }, { netuid: 3 }],
+        }),
+      ),
+    };
+    const { status, body } = await gql(
+      '{ validator(hotkey: "5Validator") { hotkey uid_count featured } }',
+      env as unknown as Env,
+    );
+    assert.equal(status, 200);
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.validator.uid_count, 3);
+    // Absent featured stays unknown rather than becoming a confident false.
+    assert.equal(body.data.validator.featured, null);
+  });
+
+  test("validator: an explicit uid_count from the tier wins over the derivation", async () => {
+    // The derivation is a fallback, not an override -- if the tier ever starts
+    // serving uid_count, that value is authoritative. Pinned because subnets
+    // and uid_count measure different things (distinct netuids vs rows) and
+    // agree only because a hotkey holds one UID per subnet.
+    const env = {
+      METAGRAPH_NEURONS_SOURCE: "postgres",
+      DATA_API: dataApi(
+        Response.json({
+          schema_version: 1,
+          hotkey: "5Validator",
+          uid_count: 9,
+          subnets: [{ netuid: 1 }, { netuid: 2 }],
+        }),
+      ),
+    };
+    const { body } = await gql(
+      '{ validator(hotkey: "5Validator") { uid_count } }',
+      env as unknown as Env,
+    );
+    assert.equal(body.data.validator.uid_count, 9);
   });
 
   test("validators / validator are weighted as fan-out fields", () => {

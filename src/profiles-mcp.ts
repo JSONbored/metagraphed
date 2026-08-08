@@ -174,7 +174,13 @@ export async function loadProfilesList(
   const profiles = Array.isArray(data.profiles) ? (data.profiles as Row[]) : [];
   const profileLen = profiles.length;
   return {
-    captured_at: data.captured_at ?? null,
+    // The profiles artifact has never carried a `captured_at` -- its only
+    // stamp is `generated_at`, and there is no separate capture event to
+    // report: profile rows are derived at build time, unlike a chain snapshot.
+    // So this resolved null on every call for both list_profiles and GraphQL's
+    // `profiles`, which reads as "we don't know when this was gathered" rather
+    // than "nothing published it" (#9892). Falls back to the real stamp.
+    captured_at: data.captured_at ?? data.generated_at ?? null,
     profiles,
     total: page.total ?? profileLen,
     returned: page.returned ?? profileLen,
