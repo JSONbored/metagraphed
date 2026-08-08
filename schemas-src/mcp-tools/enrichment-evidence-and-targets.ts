@@ -10,6 +10,7 @@
 // matching each hand-written literal field-for-field.
 import { z } from "zod";
 import {
+  reviewStateSchema,
   McpListArtifactStamp,
   McpListPageFields,
   fieldsSchema,
@@ -109,11 +110,7 @@ export const ListReviewGapsInputSchema = z
         "Restrict to subnets where surfaces of this kind the subnet is MISSING. One kind per call; see this parameter's enum.",
       )
       .meta({ examples: [SURFACE_KINDS[0]] }),
-    review_state: z
-      .string()
-      .optional()
-      .describe("Where the item sits in maintainer review.")
-      .meta({ examples: ["pending"] }),
+    review_state: reviewStateSchema().optional(),
     sort: sortSchema(PRIORITY_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),

@@ -4,7 +4,7 @@
 // covered pilot routes -- no existing Zod schema to reuse. Modeled fresh,
 // matching each hand-written literal field-for-field.
 import { z } from "zod";
-import { keysetCursorSchema, limitSchema } from "./shared.ts";
+import { blockEventCursorSchema, limitSchema } from "./shared.ts";
 import { McpNetworkSchema } from "../shared.ts";
 
 export const GetBlockChainEventsInputSchema = z
@@ -74,7 +74,11 @@ export const GetExtrinsicChainEventsInputSchema = z
       )
       .meta({ examples: ["8791987-0"] }),
     limit: limitSchema(200).optional(),
-    cursor: keysetCursorSchema().optional(),
+    // `block_number.event_index`, not an opaque token -- the route publishes
+    // and enforces that shape, so a bare string advertised a value it rejects
+    // (#10118). keysetCursorSchema() stays for the genuinely opaque base64
+    // cursors, which have nothing to bound.
+    cursor: blockEventCursorSchema().optional(),
     network: McpNetworkSchema.optional(),
   })
   .strict();

@@ -272,6 +272,29 @@ export const numericCursorSchema = () =>
         "shift it, so prefer the keyset cursor where a tool offers one.",
     )
     .meta({ examples: [0, 100] });
+/**
+ * The `block_number.event_index` pagination cursor.
+ *
+ * A SEPARATE builder from `keysetCursorSchema()` on purpose. That one is a
+ * genuinely opaque base64 token with nothing to bound; this one has a shape the
+ * route publishes and enforces -- two non-negative integers joined by a dot,
+ * at most 33 characters. Declaring it as a bare string, which the two chain
+ * feeds did on the MCP side, advertises a value their own route rejects.
+ */
+export const BLOCK_EVENT_CURSOR_MAX_LENGTH = 33;
+export const BLOCK_EVENT_CURSOR_PATTERN = /^\d+\.\d+$/;
+export const blockEventCursorSchema = () =>
+  z
+    .string()
+    .max(BLOCK_EVENT_CURSOR_MAX_LENGTH)
+    .regex(BLOCK_EVENT_CURSOR_PATTERN)
+    .describe(
+      "Pagination cursor as `block_number.event_index` -- pass back the " +
+        "`next_cursor` from the previous response. Both parts are " +
+        "non-negative safe integers.",
+    )
+    .meta({ examples: ["8783000.4"] });
+
 export const keysetCursorSchema = () =>
   z
     .string()
@@ -406,6 +429,22 @@ export const kindStringSchema = () =>
         "result rather than an error. Omit for every kind.",
     )
     .meta({ examples: ["subnet-api"] });
+
+/**
+ * A `review_state` filter -- where an item sits in maintainer review.
+ *
+ * The sentence was written out at 4 tool sites and the bound at none of them.
+ * `review_state` is matched by `validateListQuery`, which reads `maxLength`
+ * off the PUBLISHED schema to decide a 400, so an unbounded declaration
+ * advertises a value the route rejects. Open set, like every other
+ * exact-match filter here.
+ */
+export const reviewStateSchema = () =>
+  z
+    .string()
+    .max(FILTER_TEXT_MAX_LENGTH)
+    .describe("Where the item sits in maintainer review.")
+    .meta({ examples: ["pending"] });
 
 /**
  * An `id` filter -- the record's own stable identifier.

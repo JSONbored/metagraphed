@@ -8,6 +8,7 @@
 import { z } from "zod";
 import { RegistrySummaryArtifactSchema } from "../routes/registry-summary-leaderboards.ts";
 import {
+  reviewStateSchema,
   McpListPageFields,
   McpSubnetListArtifactStamp,
   fieldsSchema,
@@ -206,11 +207,7 @@ export const ListSubnetGapsInputSchema = z
         "Restrict to subnets where surfaces of this kind the subnet is MISSING. One kind per call; see this parameter's enum.",
       )
       .meta({ examples: [SURFACE_KINDS[0]] }),
-    review_state: z
-      .string()
-      .optional()
-      .describe("Where the item sits in maintainer review.")
-      .meta({ examples: ["pending"] }),
+    review_state: reviewStateSchema().optional(),
     sort: sortSchema(PRIORITY_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),

@@ -9,6 +9,7 @@
 // field-for-field.
 import { z } from "zod";
 import {
+  reviewStateSchema,
   McpListArtifactStamp,
   McpListPageFields,
   fieldsSchema,
@@ -94,11 +95,7 @@ export const ListEnrichmentQueueInputSchema = z
         "Comma-separated reason codes to filter by; an item matches if it carries any of them.",
       )
       .meta({ examples: ["stale-evidence"] }),
-    review_state: z
-      .string()
-      .optional()
-      .describe("Where the item sits in maintainer review.")
-      .meta({ examples: ["pending"] }),
+    review_state: reviewStateSchema().optional(),
     sort: sortSchema(QUEUE_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
