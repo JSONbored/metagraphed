@@ -19,12 +19,7 @@ import {
   ValidatorEconomicsRankingArtifactSchema,
   SubnetValidatorEconomicsHistoryArtifactSchema,
 } from "../routes/validator-economics.ts";
-import {
-  limitSchema,
-  netuidSchema,
-  offsetSchema,
-  sortSchema,
-} from "./shared.ts";
+import { limitSchema, netuidSchema, sortSchema } from "./shared.ts";
 import {
   VALIDATOR_ECONOMICS_LIMIT_DEFAULT,
   VALIDATOR_ECONOMICS_LIMIT_MAX,
@@ -65,7 +60,19 @@ export const ListValidatorEconomicsInputSchema = z
       VALIDATOR_ECONOMICS_LIMIT_MAX,
       VALIDATOR_ECONOMICS_LIMIT_DEFAULT,
     ).optional(),
-    offset: offsetSchema().optional(),
+    // The route caps `offset` at VALIDATOR_ECONOMICS_LIMIT_MAX, not at the
+    // generic MAX_OFFSET offsetSchema() carries -- this ranking is bounded by
+    // the subnet count, so paging past it seeks nothing. The tool advertised
+    // 1,000,000 (#10131).
+    offset: z
+      .int()
+      .min(0)
+      .max(VALIDATOR_ECONOMICS_LIMIT_MAX)
+      .describe(
+        `Rows to skip before the first returned row (0-${VALIDATOR_ECONOMICS_LIMIT_MAX}).`,
+      )
+      .meta({ examples: [0] })
+      .optional(),
     emission_gate_open: z
       .boolean()
       .optional()

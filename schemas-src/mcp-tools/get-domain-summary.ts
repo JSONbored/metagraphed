@@ -8,35 +8,24 @@
 // rationale) the output stays deliberately loose rather than reusing either
 // REST schema or forcing a discriminated union that doesn't reflect how the
 // original was ever validated. Modeled fresh, shallow, from the hand-written
-// literal it replaces. Domain enum hardcoded from src/domain-tags.ts's
-// DOMAIN_TAGS at the time of writing.
+// literal it replaces.
+//
+// The domain enum is READ from src/domain-tags.ts rather than hardcoded. It
+// used to be a local copy whose own comment said "at the time of writing" --
+// a list that announced it could drift and had no way to be told when it did
+// (#10131). That module is a zero-import leaf, the same shape as
+// src/route-limits.ts, which this directory has read since #9127.
 import { z } from "zod";
+import { DOMAIN_TAGS } from "../../src/domain-tags.ts";
 import {
   ConcentrationScorecardSchema,
   DomainSummaryArtifactSchema,
 } from "../routes/domains.ts";
 
-const DOMAIN_TAGS = [
-  "agents",
-  "compute",
-  "data",
-  "finance",
-  "inference",
-  "media",
-  "prediction",
-  "privacy",
-  "robotics",
-  "science",
-  "search",
-  "security",
-  "storage",
-  "training",
-] as const;
-
 export const GetDomainSummaryInputSchema = z
   .object({
     domain: z
-      .enum(DOMAIN_TAGS)
+      .enum(DOMAIN_TAGS as [string, ...string[]])
       .optional()
       .describe("The subnet's primary domain of use.")
       .meta({ examples: [DOMAIN_TAGS[0]] }),

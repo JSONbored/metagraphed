@@ -9,6 +9,7 @@
 // field-for-field.
 import { z } from "zod";
 import {
+  reasonCodesSchema,
   reviewStateSchema,
   McpListArtifactStamp,
   McpListPageFields,
@@ -88,13 +89,7 @@ export const ListEnrichmentQueueInputSchema = z
       .optional()
       .describe("Restrict to items that do (or do not) need a human reviewer.")
       .meta({ examples: [BOOLEAN_STRINGS[0]] }),
-    reason_codes: z
-      .string()
-      .optional()
-      .describe(
-        "Comma-separated reason codes to filter by; an item matches if it carries any of them.",
-      )
-      .meta({ examples: ["stale-evidence"] }),
+    reason_codes: reasonCodesSchema().optional(),
     review_state: reviewStateSchema().optional(),
     sort: sortSchema(QUEUE_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
@@ -142,13 +137,7 @@ export const ListAdapterCandidatesInputSchema = z
       .optional()
       .describe("Which adapter shape suits this surface.")
       .meta({ examples: [RECOMMENDED_ADAPTER_KINDS[0]] }),
-    reason_codes: z
-      .string()
-      .optional()
-      .describe(
-        "Comma-separated reason codes to filter by; an item matches if it carries any of them.",
-      )
-      .meta({ examples: ["stale-evidence"] }),
+    reason_codes: reasonCodesSchema().optional(),
     sort: sortSchema(ADAPTER_CANDIDATES_SORT_FIELDS).optional(),
     order: orderSchema().optional(),
     fields: fieldsSchema().optional(),
