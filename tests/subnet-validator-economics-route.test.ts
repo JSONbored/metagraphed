@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// The store is Postgres now (#10170), reached through `new Client(...)` inside
+// The store is Postgres now (#10179), reached through `new Client(...)` inside
 // src/read-store.ts. These composers take `(env, netuid, deps)` and resolve
 // their own handle from `env`, so there is nothing to inject -- the `pg` module
 // is the seam. See tests/helpers/pg-mock.ts for why, and for why the controller

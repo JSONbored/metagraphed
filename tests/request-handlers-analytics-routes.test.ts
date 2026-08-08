@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { describe, test, beforeEach, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// The store these handlers read is Postgres now (#10086/#10170), reached
+// The store these handlers read is Postgres now (#10086/#10179), reached
 // through `new Client(...)` inside src/pg-sql.ts. observationsReadDb builds
 // that runner itself from `(env, ctx)`, so the seam is the `pg` module -- see
 // tests/helpers/pg-mock.ts for why, and for why the controller has to be built

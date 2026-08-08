@@ -5,7 +5,7 @@ import { afterEach, describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 import { sqliteBackedPg } from "./helpers/pg-sqlite.ts";
 
-// The store is Postgres now (#10170), reached through `new Client(...)` inside
+// The store is Postgres now (#10179), reached through `new Client(...)` inside
 // src/read-store.ts and src/pg-d1-adapter.ts -- neither of which a
 // `handleRequest(request, env, ctx)` or `handleScheduled(...)` caller can
 // inject into. Mocking the module is the seam; see tests/helpers/pg-mock.ts

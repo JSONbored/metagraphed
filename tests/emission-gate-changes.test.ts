@@ -24,7 +24,7 @@ import { pgMockEnv } from "./helpers/pg-mock.ts";
 import { sqliteBackedPg } from "./helpers/pg-sqlite.ts";
 
 // The serving paths (REST/GraphQL/MCP) reach their store through
-// `new Client(...)` inside src/read-store.ts (#10170), which none of their
+// `new Client(...)` inside src/read-store.ts (#10179), which none of their
 // callers can inject into -- so the `pg` module is the seam. The DIRECT
 // loadEmissionChanges tests below keep passing their own D1-shaped fake,
 // because that function still takes its store as an argument; only the three

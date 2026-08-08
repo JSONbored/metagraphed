@@ -5,7 +5,7 @@
 // write path and the auth/size/shape gates every internal sync route still
 // answers with.
 //
-// THE STORE BEHIND THAT WRITE PATH IS NEON NOW (#10170). Every lane here used
+// THE STORE BEHIND THAT WRITE PATH IS NEON NOW (#10179). Every lane here used
 // to land in D1 through a `METAGRAPH_HEALTH_DB` binding this file could hand
 // the worker; there is no binding to hand any more, because each writer builds
 // its own `new Client(...)` from `env.HYPERDRIVE`. So the seam is the `pg`

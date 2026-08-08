@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test, vi } from "vitest";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 
-// The observation family's store is Postgres now (#10170), reached through
+// The observation family's store is Postgres now (#10179), reached through
 // `new Client(...)` inside src/pg-sql.ts and src/read-store.ts. Neither the
 // prober writers nor a `handleRequest(request, env, ctx)` caller can inject
 // into that, so the `pg` module is the seam -- see tests/helpers/pg-mock.ts
