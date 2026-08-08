@@ -32,22 +32,6 @@ import {
 
 type Row = Record<string, unknown>;
 
-/**
- * The writer's exact column list and order, and the single source the route's
- * validator, the migration's drift test and the producer's payload all agree
- * against.
- *
- * `total_alpha` is ALPHA, not TAO. Converting needs the subnet's alpha price
- * (daily, from `subnet_snapshots`) and belongs to the reader that prices a
- * position, not to this write path -- storing the unit the producer measured
- * keeps the column one hop from the chain.
- */
-export const HOTKEY_ALPHA_INSERT_COLUMNS = [
-  "hotkey",
-  "netuid",
-  "total_alpha",
-  "captured_at",
-];
 
 /**
  * Only pools some position actually references are stored (#9558).

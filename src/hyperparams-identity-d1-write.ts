@@ -30,28 +30,8 @@ import {
 
 type Row = Record<string, unknown>;
 
-/**
- * Columns of `subnet_hyperparams_history` (minus its AUTOINCREMENT id): the
- * netuid/block_number/observed_at keying plus the 33 hyperparameter fields --
- * SUBNET_HYPERPARAMS_INSERT_COLUMNS with netuid (front) and
- * block_number/captured_at (back) stripped, exactly the derivation the
- * Postgres write path uses -- and the diff hash.
- */
-export const SUBNET_HYPERPARAMS_HISTORY_COLUMNS = [
-  "netuid",
-  "block_number",
-  "observed_at",
-  ...SUBNET_HYPERPARAMS_INSERT_COLUMNS.slice(1, -2),
-  "hyperparams_hash",
-];
 
 /** Columns of `account_identity_history` (minus its AUTOINCREMENT id). */
-export const ACCOUNT_IDENTITY_HISTORY_COLUMNS = [
-  "account",
-  "observed_at",
-  ...IDENTITY_FIELDS,
-  "identity_hash",
-];
 
 /**
  * The batch-coverage prune: every successful upstream hyperparams fetch

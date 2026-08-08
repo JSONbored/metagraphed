@@ -48,75 +48,18 @@ export type { D1Like, D1PreparedStatement };
 type Row = Record<string, unknown>;
 
 /** Columns of `chain_detail_blocks` -- the coverage register. */
-export const CHAIN_DETAIL_BLOCK_COLUMNS = [
-  "block_number",
-  "block_hash",
-  "spec_version",
-  "extrinsic_count",
-  "chain_event_count",
-  "account_event_count",
-  "observed_at",
-  "synced_at",
-];
 
 /** Columns of `chain_detail_extrinsics`. */
-export const CHAIN_DETAIL_EXTRINSIC_COLUMNS = [
-  "block_number",
-  "extrinsic_index",
-  "extrinsic_hash",
-  "signer",
-  "call_module",
-  "call_function",
-  "success",
-  "fee_tao",
-  "tip_tao",
-  "call_args",
-  "observed_at",
-];
 
 /** Columns of `chain_detail_chain_events`. */
-export const CHAIN_DETAIL_CHAIN_EVENT_COLUMNS = [
-  "block_number",
-  "event_index",
-  "pallet",
-  "method",
-  "args",
-  "phase",
-  "extrinsic_index",
-  "observed_at",
-];
 
 /** Columns of `chain_detail_account_events`. */
-export const CHAIN_DETAIL_ACCOUNT_EVENT_COLUMNS = [
-  "block_number",
-  "event_index",
-  "extrinsic_index",
-  "event_kind",
-  "hotkey",
-  "coldkey",
-  "netuid",
-  "uid",
-  "amount_tao",
-  "alpha_amount",
-  "observed_at",
-];
 
 /** The natural key of each table, in the order the PRIMARY KEY declares it. */
-export const CHAIN_DETAIL_CONFLICT_KEYS = {
-  chain_detail_blocks: ["block_number"],
-  chain_detail_extrinsics: ["block_number", "extrinsic_index"],
-  chain_detail_chain_events: ["block_number", "event_index"],
-  chain_detail_account_events: ["block_number", "event_index"],
-} as const;
 
 /** The three SCALE phase variants an event can carry. A value outside this set
  * is a decoder the Worker does not understand, so the row is rejected rather
  * than stored as an unqueryable string. */
-export const CHAIN_EVENT_PHASES = new Set([
-  "ApplyExtrinsic",
-  "Finalization",
-  "Initialization",
-]);
 
 /**
  * A multi-row INSERT ... ON CONFLICT DO UPDATE on the natural key, with every

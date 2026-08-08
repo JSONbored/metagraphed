@@ -18,30 +18,8 @@ import {
 } from "./pass-completeness.ts";
 
 /** Columns of `neuron_daily` = the neuron row plus its day and write stamp. */
-export const NEURON_DAILY_COLUMNS = [
-  ...NEURON_INSERT_COLUMNS,
-  "snapshot_date",
-  "updated_at",
-];
 
 /** Columns of `account_position_daily` -- the same snapshot re-keyed by account. */
-export const ACCOUNT_POSITION_DAILY_COLUMNS = [
-  "account",
-  "netuid",
-  "snapshot_date",
-  "uid",
-  "coldkey",
-  "active",
-  "validator_permit",
-  "rank",
-  "trust",
-  "incentive",
-  "dividends",
-  "stake_tao",
-  "emission_tao",
-  "captured_at",
-  "updated_at",
-];
 
 /**
  * Bound-parameter budget per statement.
@@ -385,9 +363,6 @@ export function netuidMaxCapturedAt(rows: Row[]): Map<number, number> {
 
 /** The UTC day a capture belongs to, matching D1's `rollupNeuronDaily`
  * (`date(captured_at / 1000, 'unixepoch')`). */
-export function neuronSnapshotDate(capturedAtMs: number): string {
-  return new Date(capturedAtMs).toISOString().slice(0, 10);
-}
 
 /** `neuron_daily` rows: the posted row plus its day and a write stamp. */
 export function neuronDailyRows(rows: Row[], nowMs: number): Row[] {
@@ -428,18 +403,6 @@ export function neuronPositionRows(dailyRows: Row[]): Row[] {
 
 /** Everything `writeNeuronSnapshotToD1` needs, derived from the rows alone --
  * so the sync handler and the queue consumer build it the same way. */
-export function neuronSnapshotWrite(
-  rows: Row[],
-  nowMs: number,
-): NeuronSnapshotWrite {
-  const dailyRows = neuronDailyRows(rows, nowMs);
-  return {
-    rows,
-    dailyRows,
-    positionRows: neuronPositionRows(dailyRows),
-    netuidMaxCapturedAt: netuidMaxCapturedAt(rows),
-  };
-}
 
 /**
  * Write one sync batch to D1, atomically.

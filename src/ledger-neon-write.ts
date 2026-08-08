@@ -218,3 +218,51 @@ export async function mirrorLedgerToNeon(
   }
   return { attempted: true, result };
 }
+
+// ---------------------------------------------------------------------------
+// Moved here when D1 was deleted (#10170). These describe the TABLE -- its
+// column list, its conflict key, its derivations -- not the store that used to
+// hold it, and this module is now the only writer.
+// ---------------------------------------------------------------------------
+
+/**
+ * The writer's exact column list and order, and the single source the route's
+ * validator, the migration's drift test and the producer's payload all agree
+ * against.
+ *
+ * It lives HERE rather than in a reader module -- unlike
+ * NOMINATOR_POSITION_INSERT_COLUMNS (src/account-nominator-positions.ts) or
+ * VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS (src/validator-nominator-summary.ts)
+ * -- because this table has no reader of its own yet: the leaderboard that will
+ * consume it composes three separate sources and is a different change. The
+ * writer owns the write contract until something reads it.
+ */
+export const ACCOUNT_BALANCE_INSERT_COLUMNS = [
+  "ss58",
+  "free_tao",
+  "reserved_tao",
+  "captured_at",
+];
+
+// ---------------------------------------------------------------------------
+// Moved here when D1 was deleted (#10170). These describe the TABLE -- its
+// column list, its conflict key, its derivations -- not the store that used to
+// hold it, and this module is now the only writer.
+// ---------------------------------------------------------------------------
+
+/**
+ * The writer's exact column list and order, and the single source the route's
+ * validator, the migration's drift test and the producer's payload all agree
+ * against.
+ *
+ * `total_alpha` is ALPHA, not TAO. Converting needs the subnet's alpha price
+ * (daily, from `subnet_snapshots`) and belongs to the reader that prices a
+ * position, not to this write path -- storing the unit the producer measured
+ * keeps the column one hop from the chain.
+ */
+export const HOTKEY_ALPHA_INSERT_COLUMNS = [
+  "hotkey",
+  "netuid",
+  "total_alpha",
+  "captured_at",
+];

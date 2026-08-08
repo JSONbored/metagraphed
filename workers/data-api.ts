@@ -402,12 +402,12 @@ import {
 } from "../src/hyperparams-identity-d1-write.ts";
 
 import {
-  ACCOUNT_BALANCE_INSERT_COLUMNS,
+  
   writeAccountBalancesToD1,
   type AccountBalancesPass,
 } from "../src/account-balances-d1-write.ts";
 import {
-  HOTKEY_ALPHA_INSERT_COLUMNS,
+  
   writeHotkeyAlphaToD1,
   type HotkeyAlphaPass,
 } from "../src/hotkey-alpha-d1-write.ts";

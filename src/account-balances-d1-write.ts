@@ -39,24 +39,6 @@ import {
 
 type Row = Record<string, unknown>;
 
-/**
- * The writer's exact column list and order, and the single source the route's
- * validator, the migration's drift test and the producer's payload all agree
- * against.
- *
- * It lives HERE rather than in a reader module -- unlike
- * NOMINATOR_POSITION_INSERT_COLUMNS (src/account-nominator-positions.ts) or
- * VALIDATOR_NOMINATOR_COUNT_INSERT_COLUMNS (src/validator-nominator-summary.ts)
- * -- because this table has no reader of its own yet: the leaderboard that will
- * consume it composes three separate sources and is a different change. The
- * writer owns the write contract until something reads it.
- */
-export const ACCOUNT_BALANCE_INSERT_COLUMNS = [
-  "ss58",
-  "free_tao",
-  "reserved_tao",
-  "captured_at",
-];
 
 /**
  * One pass's completeness accounting, when the producer declares it.
