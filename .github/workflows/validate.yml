@@ -491,6 +491,9 @@ jobs:
       - name: Validate the MCP route map
         if: env.DOCS_ONLY != 'true'
         run: npm run validate:mcp-route-map
+      - name: Validate the MCP input parity
+        if: env.DOCS_ONLY != 'true'
+        run: npm run validate:mcp-input-parity
 
       - name: Validate AI routes
         if: env.DOCS_ONLY != 'true'
