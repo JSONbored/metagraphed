@@ -17,6 +17,7 @@
 // unit-testable without a live runtime. Decoupled from the data build: a stale
 // structural snapshot can never freeze health again.
 
+import { laneHealthStore } from "./lane-health-store.ts";
 import {
   isUnsafePublicUrl,
   mapLimit,
@@ -1244,19 +1245,16 @@ async function reportSnapshotOutcome(
   deps: WriteSubnetSnapshotOverrides,
 ): Promise<void> {
   const now = deps.now || (() => Date.now());
-  await recordLaneVerdict(
-    deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as unknown as LaneHealthDb),
-    {
-      lane: SUBNET_SNAPSHOT_LANE,
-      verdict: outcome.ok ? "ok" : "stale",
-      // The write either happened for this run or it did not; there is no
-      // meaningful "how far behind" to report from inside a single run, and
-      // inventing one would put a fabricated number in the column triage reads.
-      age_ms: null,
-      detail: outcome.ok ? null : (outcome.reason ?? "unknown"),
-      checked_at: now(),
-    },
-  );
+  await recordLaneVerdict(laneHealthStore(env, deps.laneHealthDb), {
+    lane: SUBNET_SNAPSHOT_LANE,
+    verdict: outcome.ok ? "ok" : "stale",
+    // The write either happened for this run or it did not; there is no
+    // meaningful "how far behind" to report from inside a single run, and
+    // inventing one would put a fabricated number in the column triage reads.
+    age_ms: null,
+    detail: outcome.ok ? null : (outcome.reason ?? "unknown"),
+    checked_at: now(),
+  });
   if (outcome.ok) return;
   const record = deps.recordExceptionEvent ?? recordExceptionEvent;
   await record(env, {

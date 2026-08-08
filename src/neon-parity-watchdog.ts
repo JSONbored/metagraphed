@@ -34,6 +34,7 @@
 // than D1, because the D1 write is lossy (#9832) -- so a check written as "is
 // Neon behind D1" would have reported that table healthy while it was the
 // worst broken of the three. Both directions are surfaced.
+import { laneHealthStore } from "./lane-health-store.ts";
 import { compoundBatches, D1_MAX_COMPOUND_TERMS } from "./d1-compound.ts";
 import {
   loadLatestLaneHealth,
@@ -285,8 +286,7 @@ export async function runNeonParityWatchdog(
   deps: ParityDeps = {},
 ): Promise<ParityOutcome> {
   const db = deps.db ?? (env?.METAGRAPH_HEALTH_DB as ParityDb | undefined);
-  const laneDb =
-    deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as LaneHealthDb | undefined);
+  const laneDb = laneHealthStore(env, deps.laneHealthDb);
   const hyperdrive = env?.HYPERDRIVE as HyperdriveLike | undefined;
   const sql =
     deps.sql ?? (hyperdrive ? createPgSql(hyperdrive, ctx) : undefined);

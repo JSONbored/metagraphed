@@ -43,6 +43,7 @@
 // COST: one walk of ~112k rows on a `19,49 * * * *` cron, 48 ticks a day, so
 // ~5.4M D1 rows read a day.
 
+import { laneHealthStore } from "./lane-health-store.ts";
 import { observationsReadDb } from "./observations-read-runner.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
@@ -296,16 +297,13 @@ export async function runValidatorNominatorCountsStalenessWatchdog(
     // a dropped $exception is indistinguishable from a lane that was fine. Writing on
     // every tick is also what makes "the watchdog stopped running" visible at all.
     // Never throws -- see recordLaneVerdict.
-    await recordLaneVerdict(
-      deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as never),
-      {
-        lane: "validator-nominator-counts-staleness",
-        verdict: verdict.stale ? "stale" : "ok",
-        age_ms: verdict.age_ms,
-        detail: verdict.reason ?? null,
-        checked_at: now(),
-      },
-    );
+    await recordLaneVerdict(laneHealthStore(env, deps.laneHealthDb), {
+      lane: "validator-nominator-counts-staleness",
+      verdict: verdict.stale ? "stale" : "ok",
+      age_ms: verdict.age_ms,
+      detail: verdict.reason ?? null,
+      checked_at: now(),
+    });
     // `ok` describes whether the TICK ran, not whether the lane is fresh.
     return { ok: true, alerted: verdict.stale, ...verdict };
   } catch (err) {

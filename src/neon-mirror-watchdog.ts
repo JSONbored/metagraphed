@@ -50,6 +50,7 @@
 // its own cron and would report health whether or not the producer ever ran.
 // Table freshness is the one signal every mirrored lane actually has.
 
+import { laneHealthStore } from "./lane-health-store.ts";
 import { compoundBatches, D1_MAX_COMPOUND_TERMS } from "./d1-compound.ts";
 import { neonDualWriteLanes } from "./neon-write.ts";
 import { LEDGER_MIRROR_PLANS } from "./ledger-neon-write.ts";
@@ -322,8 +323,7 @@ export async function runNeonMirrorWatchdog(
 
   const db =
     deps.db ?? (env?.METAGRAPH_HEALTH_DB as MirrorWatchdogDb | undefined);
-  const laneDb =
-    deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as LaneHealthDb | undefined);
+  const laneDb = laneHealthStore(env, deps.laneHealthDb);
   const now = deps.now ?? Date.now;
   const thresholdMs = deps.thresholdMs ?? MIRROR_LAG_THRESHOLD_MS;
 

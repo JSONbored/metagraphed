@@ -19,6 +19,7 @@
 // erase one an earlier tick already stored. Rebuilding these as a generic
 // upsert would silently drop that and replace a known value with NULL -- the
 // same shape as #9634's last_ok, one table over.
+import { laneHealthStore } from "./lane-health-store.ts";
 import {
   neonDualWriteEnabled,
   recordNeonWriteVerdict,
@@ -57,8 +58,7 @@ async function runner(
   attempted: boolean;
 }> {
   const now = deps.now ?? Date.now;
-  const laneDb =
-    deps.laneHealthDb ?? (env?.METAGRAPH_HEALTH_DB as LaneHealthDb | undefined);
+  const laneDb = laneHealthStore(env, deps.laneHealthDb);
   if (!neonDualWriteEnabled(env, lane)) {
     return { sql: null, laneDb, now, attempted: false };
   }
