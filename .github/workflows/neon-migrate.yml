@@ -1,9 +1,12 @@
 # Apply migrations/neon/*.sql to the production Neon branch on merge (#9814).
 #
-# The companion to neon-pr-branch.yml, which gives a schema PR its own database
-# branch to be reviewed against but never applies anything to production. Until
-# this existed, the only way a Neon table came into being was by hand -- and a
-# hand-applied schema is one nobody can verify: `neuron_daily`'s only written
+# This is now the ONLY Neon automation. It had a companion, neon-pr-branch.yml,
+# which gave a schema PR its own database branch to be reviewed against; that
+# workflow was deleted in #9813 because the repository's Actions allowlist does
+# not permit `neondatabase/*`, so it was rejected at startup on every run it
+# ever had, and nothing consumed the branch it would have created. Until THIS
+# workflow existed, the only way a Neon table came into being was by hand -- and
+# a hand-applied schema is one nobody can verify: `neuron_daily`'s only written
 # record was a config comment that had drifted to claim SMALLINT for columns
 # information_schema reports as BOOLEAN.
 #
