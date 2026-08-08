@@ -115,6 +115,7 @@ import {
   limitSchema,
   netuidListSchema,
   netuidSchema,
+  offsetSchema,
   orderSchema,
   querySchema,
   sortSchema,
@@ -123,21 +124,25 @@ import {
 } from "./query-params.ts";
 
 /**
- * DIVERGENCE: `offset` is published two different ways.
+ * `offset` on the two routes that genuinely enforce NO ceiling.
  *
- * The 34 collection routes publish `offsetSchema()`, which carries
- * `maximum: MAX_OFFSET` -- the deep-paging bound `clampOffset()` applies. Every
- * one of the 17 sites below publishes the same parameter with no ceiling, while
- * running through the same clamp. One enforcement, two published statements,
- * and the split is total: not a single non-collection route publishes the
- * bounded form, which is why nobody noticed one of them was different.
+ * Everything else clamps at MAX_OFFSET via `clampOffset`/`parsePagination` and
+ * publishes `offsetSchema()` for it. These two read the parameter with
+ * `parseNonNegativeIntParam`, which applies no upper bound at all, so
+ * publishing one would claim a limit the handler does not impose.
  *
- * Reproduced as-published so this step stays byte-identical. The correction is
- * to publish the bound everywhere, which is a contract change and belongs with
- * the other content fixes rather than in a refactor that claims to change
- * nothing.
+ * Told apart by probe rather than by reading, because the two paths are
+ * indistinguishable from a normal request: a non-safe integer
+ * (`?offset=99999999999999999999`) is a 400 from parseNonNegativeIntParam and
+ * a clamp-to-empty 200 from clampOffset. Measured 2026-08-08 -- these two
+ * answered 400, the other 14 answered 200 with zero rows, which is the clamp
+ * honouring the parameter rather than ignoring it (`?offset=0` returns rows).
+ *
+ * #10096 originally recorded all 16 as one divergence. They are not: two of
+ * them are correct, and publishing MAX_OFFSET on those would have been a new
+ * contract lie rather than a fix.
  */
-const uncappedOffsetSchema = () => z.int().min(0);
+const unboundedOffsetSchema = () => z.int().min(0);
 
 /**
  * Routes that accept no query parameters at all.
@@ -273,7 +278,7 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
     // carries no ceiling because the handler enforces none.
     window: windowSchema(["7d", "30d"] as const).optional(),
     limit: limitSchema(BULK_HEALTH_TRENDS_LIMIT_MAX).optional(),
-    offset: uncappedOffsetSchema().optional(),
+    offset: unboundedOffsetSchema().optional(),
   }),
   "/api/v1/subnets/{netuid}/health/percentiles": z.object({
     window: windowSchema(["7d", "30d"] as const).optional(),
@@ -415,7 +420,7 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
       "last_activity",
     ] as const).optional(),
     limit: limitSchema(NOMINATOR_LIMIT_MAX).optional(),
-    offset: uncappedOffsetSchema().optional(),
+    offset: unboundedOffsetSchema().optional(),
     // The handler DOES validate this -- `?coldkey=notanaddress` is a 400,
     // verified live -- and the contract simply did not say so, while
     // ss58Schema() carries the same 47-48 base58 pattern on 26 other
@@ -448,7 +453,7 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
   }),
   "/api/v1/subnets/{netuid}/hyperparameters/history": z.object({
     limit: limitSchema(MAX_LIMIT).optional(),
-    offset: uncappedOffsetSchema().optional(),
+    offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
     format: formatSchema().optional(),
   }),
@@ -468,7 +473,7 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
     limit: limitSchema(MAX_LIMIT).optional(),
-    offset: uncappedOffsetSchema().optional(),
+    offset: offsetSchema().optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/subnets/{netuid}/event-summary": z.object({
@@ -483,7 +488,7 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
   }),
   "/api/v1/subnets/{netuid}/identity-history": z.object({
     limit: limitSchema(MAX_LIMIT).optional(),
-    offset: uncappedOffsetSchema().optional(),
+    offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
     format: formatSchema().optional(),
   }),
@@ -493,7 +498,7 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
     limit: limitSchema(MAX_LIMIT).optional(),
-    offset: uncappedOffsetSchema().optional(),
+    offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
     format: formatSchema().optional(),
   }),
@@ -502,14 +507,14 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
     from: daySchema("first").optional(),
     to: daySchema("last").optional(),
     limit: limitSchema(MAX_LIMIT).optional(),
-    offset: uncappedOffsetSchema().optional(),
+    offset: offsetSchema().optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/accounts/{ss58}/extrinsics": z.object({
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
     limit: limitSchema(MAX_LIMIT).optional(),
-    offset: uncappedOffsetSchema().optional(),
+    offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
     format: formatSchema().optional(),
   }),
@@ -518,7 +523,7 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
     block_start: blockBoundSchema("first").optional(),
     block_end: blockBoundSchema("last").optional(),
     limit: limitSchema(MAX_LIMIT).optional(),
-    offset: uncappedOffsetSchema().optional(),
+    offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
     format: formatSchema().optional(),
   }),
@@ -560,7 +565,7 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
   }),
   "/api/v1/accounts/{ss58}/identity-history": z.object({
     limit: limitSchema(MAX_LIMIT).optional(),
-    offset: uncappedOffsetSchema().optional(),
+    offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
     format: formatSchema().optional(),
   }),
@@ -619,7 +624,7 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
   }),
   "/api/v1/blocks": z.object({
     limit: limitSchema(BLOCK_PAGINATION.maxLimit).optional(),
-    offset: uncappedOffsetSchema().optional(),
+    offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
     // DIVERGENCE: the block author is an SS58 and publishes no pattern.
     author: z.string().optional(),
@@ -634,12 +639,12 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
   }),
   "/api/v1/blocks/{ref}/extrinsics": z.object({
     limit: limitSchema(BLOCK_PAGINATION.maxLimit).optional(),
-    offset: uncappedOffsetSchema().optional(),
+    offset: offsetSchema().optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/blocks/{ref}/events": z.object({
     limit: limitSchema(MAX_LIMIT).optional(),
-    offset: uncappedOffsetSchema().optional(),
+    offset: offsetSchema().optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain-events": z.object({
@@ -666,7 +671,7 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
   }),
   "/api/v1/extrinsics": z.object({
     limit: limitSchema(BLOCK_PAGINATION.maxLimit).optional(),
-    offset: uncappedOffsetSchema().optional(),
+    offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
     block: blockBoundSchema("first").optional(),
     // DIVERGENCE: see `coldkey` on /validators/{hotkey}/nominators -- an SS58
@@ -691,7 +696,7 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
   }),
   "/api/v1/sudo": z.object({
     limit: limitSchema(BLOCK_PAGINATION.maxLimit).optional(),
-    offset: uncappedOffsetSchema().optional(),
+    offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
     block: blockBoundSchema("first").optional(),
     call_function: z.string().optional(),
@@ -704,7 +709,7 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
   }),
   "/api/v1/governance/config-changes": z.object({
     limit: limitSchema(BLOCK_PAGINATION.maxLimit).optional(),
-    offset: uncappedOffsetSchema().optional(),
+    offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
     block: blockBoundSchema("first").optional(),
     call_function: z.string().optional(),
