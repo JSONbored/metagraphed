@@ -2277,9 +2277,14 @@ async function handleNominatorPositionsSync(
 
   // Once Neon is the store, a pass that did not reach it did not happen.
   if (neonOwns) {
-    // The PRUNE counts as well as the write. Rows landing while stale coldkeys
-    // survive is not a partial success -- top-holders would serve both.
-    const failed = [neon.write, neon.prune].filter((r) => r && !r.ok);
+    // The PRUNE and the PASS count as well as the write. Rows landing while
+    // stale coldkeys survive is not a partial success -- top-holders would
+    // serve both. And nominator_positions_passes has no other writer once this
+    // inverts, so a tally that did not land leaves a completeness ledger
+    // nobody can tell is empty.
+    const failed = [neon.write, neon.prune, neon.pass].filter(
+      (r) => r && !r.ok,
+    );
     if (!neon.attempted || failed.length > 0) {
       const reason =
         failed

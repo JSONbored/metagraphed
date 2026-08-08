@@ -272,3 +272,55 @@ describe("mirrorNominatorPositionsToNeon", () => {
     assert.equal(out.prune, undefined);
   });
 });
+
+// --- the tally is REPORTED, not merely written (#10109) ---------------------
+//
+// It was written and dropped on the floor. That was survivable while D1 held
+// the ledger; once this lane is Neon's, nominator_positions_passes has NO
+// other writer, so a caller that cannot see the tally failed will answer ok
+// over an empty completeness ledger -- the one table whose whole job is to say
+// whether a pass was complete.
+test("the outcome carries the pass result", async () => {
+  const sql = fakeSql();
+  const out = await mirrorNominatorPositionsToNeon(
+    { NEON_DUAL_WRITE_LANES: "nominator-positions" },
+    { waitUntil: () => undefined },
+    {
+      rows,
+      coldkeyMaxCapturedAt: new Map(),
+      pass: { expectedRows: 1, receivedRows: 1, capturedAt: 1 },
+    },
+    { sql, laneHealthDb: null },
+  );
+  assert.equal(out.pass?.ok, true);
+});
+
+test("a withheld tally is reported as failed, not as absent", async () => {
+  // `prune did not land; tally withheld` is a FAILURE the caller must see. An
+  // undefined pass would read as "this batch declared none", which is a
+  // legitimate state and would let the 502 be skipped.
+  const sql = fakeSql("delete");
+  const out = await mirrorNominatorPositionsToNeon(
+    { NEON_DUAL_WRITE_LANES: "nominator-positions" },
+    { waitUntil: () => undefined },
+    {
+      rows,
+      coldkeyMaxCapturedAt: new Map([["ck", 1]]),
+      pass: { expectedRows: 1, receivedRows: 1, capturedAt: 1 },
+    },
+    { sql, laneHealthDb: null },
+  );
+  assert.equal(out.pass?.ok, false);
+  assert.match(String(out.pass?.reason), /withheld/);
+});
+
+test("no declared pass leaves the result undefined", async () => {
+  const sql = fakeSql();
+  const out = await mirrorNominatorPositionsToNeon(
+    { NEON_DUAL_WRITE_LANES: "nominator-positions" },
+    { waitUntil: () => undefined },
+    { rows, coldkeyMaxCapturedAt: new Map() },
+    { sql, laneHealthDb: null },
+  );
+  assert.equal(out.pass, undefined);
+});
