@@ -414,6 +414,7 @@ import {
   readChainDetailHead,
   runChainDetailStalenessWatchdog,
 } from "../src/chain-detail-staleness-watchdog.ts";
+import { runRegistrySyncLane } from "../src/registry-sync-lane.ts";
 import { pruneChainDetail } from "../src/chain-detail-prune.ts";
 import { runRpcUsageStalenessWatchdog } from "../src/rpc-usage-staleness-watchdog.ts";
 import { runTopHoldersStalenessWatchdog } from "../src/top-holders-staleness-watchdog.ts";
@@ -489,6 +490,7 @@ import {
   PROJECTION_STALENESS_WATCHDOG_CRON,
   VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON,
   CHAIN_DETAIL_PRUNE_CRON,
+  REGISTRY_SYNC_CRON,
   CHAIN_CONCENTRATION_ROLLUP_CRON,
   CHAIN_DETAIL_STALENESS_WATCHDOG_CRON,
   TOP_HOLDERS_FLOW_CRON,
@@ -2101,6 +2103,7 @@ function cronLabel(cron: string): string {
   if (cron === VALIDATOR_NOMINATOR_COUNTS_STALENESS_WATCHDOG_CRON)
     return "validator-nominator-counts-staleness-watchdog";
   if (cron === CHAIN_DETAIL_PRUNE_CRON) return "chain-detail-prune";
+  if (cron === REGISTRY_SYNC_CRON) return "registry-sync";
   if (cron === CHAIN_CONCENTRATION_ROLLUP_CRON)
     return "chain-concentration-rollup";
   if (cron === CHAIN_DETAIL_STALENESS_WATCHDOG_CRON)
@@ -2434,6 +2437,13 @@ async function dispatchScheduled(
     return runValidatorNominatorCountsStalenessWatchdog(
       env as unknown as Record<string, unknown>,
     );
+  }
+  if (cron === REGISTRY_SYNC_CRON) {
+    // #9779: the registry had NO writer. Its only sync path was a pair of
+    // scripts invoked from GitHub Actions that no workflow calls, and
+    // surface_history froze on 2026-08-02 as a result. Returns a summary
+    // rather than throwing, like the rest of the cron family.
+    return runRegistrySyncLane(env);
   }
   if (cron === CHAIN_DETAIL_PRUNE_CRON) {
     // #9208 retention. Returns a summary rather than throwing so the #8998

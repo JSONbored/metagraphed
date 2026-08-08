@@ -987,6 +987,8 @@
       // whole backlog in one D1 transaction. See CHAIN_DETAIL_PRUNE_CRON in
       // workers/config.ts and src/chain-detail-prune.ts's measured sizing.
       "12,27,42,57 * * * *",
+      // #9779 registry writer -- see REGISTRY_SYNC_CRON in workers/config.ts.
+      "10,25,40,55 * * * *",
       // 14,29,44,59 = the chain-detail staleness watchdog (#9208): alarms when
       // the live-follow decode lane stops advancing. Its own trigger rather
       // than a step inside the prune, so a prune failure cannot swallow the
