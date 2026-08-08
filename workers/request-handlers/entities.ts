@@ -20,6 +20,7 @@
 import { loadSubnetWeightSettersColdTier } from "../../src/subnet-weight-setters-loader.ts";
 import { loadSubnetWeightsColdTier } from "../../src/subnet-weights-loader.ts";
 import { loadSubnetEventCardColdTier } from "../../src/subnet-event-card-loader.ts";
+import { observationsReadDb } from "../../src/observations-read-runner.ts";
 import {
   CHAIN_SERVING_ROLLUP,
   CHAIN_STAKE_MOVES_ROLLUP,
@@ -3914,14 +3915,22 @@ export async function buildSubnetValidatorEconomicsHistoryPayload(
   windowLabel: string,
   // Same injection seam the per-subnet composer uses: the economics row is an artifact
   // read, and a test that cannot stub it exercises only the cap-unknown path.
-  deps: { loadEconomicsRow?: typeof resolveSubnetEconomicsRow } = {},
+  deps: {
+    loadEconomicsRow?: typeof resolveSubnetEconomicsRow;
+    // Threaded so the subnet_snapshots read can follow the family to Neon
+    // (#10086). Absent, the selector declines and this reads D1, as before.
+    ctx?: { waitUntil?: (promise: Promise<unknown>) => void } | null;
+  } = {},
 ): Promise<{ data: Record<string, unknown> }> {
   const readEconomicsRow = deps.loadEconomicsRow ?? resolveSubnetEconomicsRow;
   const days = VALIDATOR_ECONOMICS_HISTORY_WINDOWS[windowLabel];
   const cutoff = new Date(Date.now() - days * 86_400_000)
     .toISOString()
     .slice(0, 10);
-  const db = env.METAGRAPH_HEALTH_DB;
+  const db = observationsReadDb(
+    env as unknown as Record<string, unknown>,
+    deps.ctx,
+  ) as typeof env.METAGRAPH_HEALTH_DB | undefined;
 
   const neuronRows = db
     ? ((

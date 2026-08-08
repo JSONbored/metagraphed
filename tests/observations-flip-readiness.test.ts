@@ -61,9 +61,22 @@ const STORE_AWARE = [
   "src/health-sql.ts",
 ];
 
-/** A marker that a module chooses its store rather than assuming one. */
+/**
+ * A marker that a module does not hard-wire itself to D1.
+ *
+ * TWO WAYS to qualify, and missing the second made this over-report:
+ *
+ *   1. it SELECTS a store   -- observationsReadDb / createPgSql / routeStore
+ *   2. it takes an INJECTED runner -- `ObservationsReadDb`, a `D1Runner`, or a
+ *      bare `(sql, params) => rows` parameter
+ *
+ * A module in group 2 is already store-agnostic; whichever store it reads is
+ * decided by its caller, so flagging it sends you editing a file that has
+ * nothing wrong with it. economics-trends, metagraph-neurons and
+ * account-stake-moves are all group 2 and were all reported as blockers.
+ */
 const SELECTS_A_STORE =
-  /observationsReadDb|createPgSql|routeStore|neonOwnsTable|neonReadLanes/;
+  /observationsReadDb|createPgSql|routeStore|neonOwnsTable|neonReadLanes|ObservationsReadDb|D1Runner|d1:\s*\(\s*\n?\s*sql/;
 
 /**
  * Files that name an observation table in SQL but cannot reach Neon.
@@ -182,23 +195,32 @@ describe("observation flip readiness", () => {
     }
   });
 
-  test("the side-reader scan actually finds the known ones", () => {
-    // Non-vacuous: these five are D1-only today and MUST be visible to the
-    // scan. When they are ported this assertion is what has to be updated
-    // deliberately, rather than the gate quietly starting to pass on nothing.
-    const files = tableReadersWithoutASelector().map((s) => s.file);
-    for (const known of [
-      "src/metagraph-neurons.ts",
-      "src/top-holders-holdings.ts",
-      "src/economics-trends.ts",
-      "src/account-stake-moves.ts",
-      "workers/request-handlers/entities.ts",
-    ]) {
-      assert.ok(
-        files.includes(known),
-        `${known} reads an observation table from D1 but the scan missed it`,
-      );
-    }
+  test("every side reader is ported -- the scan finds NOTHING", () => {
+    // This assertion is the flip precondition, and it was written the other way
+    // round first: it pinned the five files that were then unported, so the gate
+    // could not quietly start passing on an empty set while they were still
+    // hard-wired. They are ported now, so the pin inverts -- and the fixture
+    // test below is what keeps THIS from passing on a broken scanner.
+    assert.deepEqual(
+      tableReadersWithoutASelector().map(
+        (s) => `${s.file} -> ${s.tables.join(",")}`,
+      ),
+      [],
+    );
+  });
+
+  test("the side-reader scan still WORKS, against a file it must flag", () => {
+    // Non-vacuous guard for the assertion above. A scanner broken to match
+    // nothing would make "every side reader is ported" trivially true, which is
+    // the exact failure mode this whole file exists to prevent one layer down.
+    const selects = /observationsReadDb|createPgSql|routeStore/;
+    const hardWired = `const db = env.METAGRAPH_HEALTH_DB;
+      await db.prepare("SELECT netuid FROM subnet_snapshots").all();`;
+    assert.equal(selects.test(hardWired), false);
+    assert.ok(
+      /\b(?:FROM|JOIN|INTO|UPDATE)\s+subnet_snapshots\b/.test(hardWired),
+      "the table regex no longer matches a plain FROM",
+    );
   });
 
   test("the detector actually matches the shapes in this repo", () => {
