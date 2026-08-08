@@ -50,6 +50,64 @@ import {
  */
 export const LANE_HEALTH_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 
+/**
+ * Lanes whose PRODUCER was deleted, so no future tick can ever revise them.
+ *
+ * A verdict is a statement about a lane as of `checked_at`, and the serving read
+ * takes the newest row per lane with no liveness bound. That is right while a
+ * producer exists -- the newest thing it said is the current truth. It stops being
+ * right the moment the producer goes: the last thing a deleted lane ever said is
+ * served forever, and if that was `stale` it is a permanent alarm nothing can clear.
+ *
+ * Live case this fixes (#10222). #10167 deleted the reconciler, the parity sweep and
+ * the mirror-lag watchdog, correctly, because Neon is the sole store now. Their rows
+ * stayed:
+ *
+ *   neon-parity  stale  "chain_detail_chain_events -169126, chain_detail_account_events -126582"
+ *
+ * `neon-parity` counted Neon against D1. D1 was deleted on 2026-08-08, so those
+ * deficits are the size of the store, they only grow, and no pass will ever revise
+ * them. `stale_lane_count` could not return to zero, on either
+ * `GET /api/v1/self-health` or `get_self_health`.
+ *
+ * THIS IS NOT SUPPRESSION, and the distinction is the whole design. Suppressing a
+ * watchdog means muting a lane that still runs. These lanes do not run. Serving their
+ * last verdict is not vigilance, it is reporting a fact about the past as though it
+ * were current -- and a stale count that can never reach zero teaches everyone to
+ * ignore the number, which costs more than the one row.
+ *
+ * The entries are tied to deleted FILES, and tests/lane-health-retired.test.ts asserts
+ * those files are still absent. So a lane cannot be quietly retired while its producer
+ * lives, and resurrecting a producer fails the test until its name is removed here.
+ */
+export const RETIRED_LANES: readonly string[] = [
+  // src/neon-parity.ts -- compared row counts against D1 (#10167).
+  "neon-parity",
+  // src/neon-mirror-lag.ts -- measured how far a mirror trailed its D1 source
+  // (#10167). Reports `ok`, so it alarms nothing; it is equally a lie.
+  "neon-mirror-lag",
+];
+
+/**
+ * Retired lane FAMILIES, by prefix.
+ *
+ * `neon:backfill:<table>` was one lane per table reconciled, named at runtime from
+ * NEON_BACKFILL_LANES. Both the flag and src/neon-backfill.ts are gone, and 24 of
+ * these rows remain -- including `neon:backfill:tao_usd_index`, whose verdict says
+ * `stale` while its own detail says "0 date(s) / 0 row(s) still behind". A prefix
+ * rather than 24 names because the family is defined by its producer, not its members:
+ * a table nobody ever named cannot come back.
+ */
+export const RETIRED_LANE_PREFIXES: readonly string[] = ["neon:backfill:"];
+
+/** Whether `lane`'s producer has been deleted. */
+export function isRetiredLane(lane: string): boolean {
+  return (
+    RETIRED_LANES.includes(lane) ||
+    RETIRED_LANE_PREFIXES.some((prefix) => lane.startsWith(prefix))
+  );
+}
+
 /** The minimal D1 surface these helpers use, so callers can inject a fake. */
 export interface LaneHealthDb {
   prepare(sql: string): {
@@ -145,6 +203,10 @@ export async function loadLatestLaneHealth(
     for (const row of rows) {
       const lane = row.lane == null ? "" : String(row.lane);
       if (!lane) continue;
+      // Filtered HERE rather than in the SQL so the rule is one testable
+      // predicate shared by every caller, and so a row that outlives its
+      // deletion is still visible to anyone querying the table directly.
+      if (isRetiredLane(lane)) continue;
       out[lane] = {
         lane,
         verdict: normalizeVerdict(row.verdict),
