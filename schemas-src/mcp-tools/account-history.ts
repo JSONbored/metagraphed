@@ -5,6 +5,7 @@
 // field-for-field.
 import { z } from "zod";
 import {
+  daySchema,
   keysetCursorSchema,
   limitSchema,
   netuidSchema,
@@ -16,20 +17,14 @@ export const GetAccountHistoryInputSchema = z
   .object({
     ss58: ss58Schema(),
     netuid: netuidSchema().optional(),
-    from: z
-      .string()
-      .optional()
-      .describe(
-        "Inclusive start of the range. A block height on chain tools, an ISO-8601 date on time-series ones.",
-      )
-      .meta({ examples: [8700000] }),
-    to: z
-      .string()
-      .optional()
-      .describe(
-        "Inclusive end of the range. A block height on chain tools, an ISO-8601 date on time-series ones; an EVM address on decode_evm_call.",
-      )
-      .meta({ examples: [8783000] }),
+    // DAYS, not block heights. These carried the generic cross-tool sentence
+    // ("a block height on chain tools, an ISO-8601 date on time-series ones")
+    // and a block-height EXAMPLE, while this route reads a day-partitioned
+    // table and takes YYYY-MM-DD only -- verified live, `?from=8700000` is a
+    // 400 and `?from=2026-08-01` is a 200. An agent following the tool's own
+    // example was rejected (#10115).
+    from: daySchema("first").optional(),
+    to: daySchema("last").optional(),
     limit: limitSchema(1000).optional(),
     offset: offsetSchema().optional(),
     cursor: keysetCursorSchema().optional(),
