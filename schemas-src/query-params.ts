@@ -159,6 +159,27 @@ export const windowSchema = <T extends readonly [string, ...string[]]>(
     )
     .meta({ examples: [values[0]] });
 
+/**
+ * Which side of a two-sided flow to count. Values are per-route -- the transfer
+ * feeds say `all|sent|received`, the stake feeds `all|in|out`, the stake quote
+ * `stake|unstake` -- so, like `window` and `sort`, only the meaning is shared.
+ *
+ * The sentence carries the part no enum can: that the default is BOTH sides,
+ * and that a direction is relative to the account or subnet in the path rather
+ * than to the network.
+ */
+export const directionSchema = <T extends readonly [string, ...string[]]>(
+  values: T,
+) =>
+  z
+    .enum(values)
+    .describe(
+      "Which side of the flow to count, relative to the account or subnet " +
+        "this route is scoped to. Omit to count both. Options are per-route; " +
+        "see this parameter's enum.",
+    )
+    .meta({ examples: [values[0]] });
+
 /** Which column the result is ranked by. Values are per-tool. */
 export const sortSchema = <T extends readonly [string, ...string[]]>(
   values: T,
@@ -307,6 +328,50 @@ export const fieldsStringSchema = () =>
         "Omit for the full row.",
     )
     .meta({ examples: ["netuid,name,slug"] });
+
+/**
+ * A YYYY-MM-DD calendar-date bound on a day-partitioned feed.
+ *
+ * Deliberately NOT `z.iso.date()`. That emits a calendar-correct pattern —
+ * rejecting `2026-02-30`, `2027-02-29` and every 31st of a 30-day month — and
+ * the routes taking these bounds validate with `DAY_PATTERN`
+ * (`workers/request-params.ts`), which is format-only and says so: it does not
+ * range-check the month or day fields. Publishing the stricter regex would
+ * refuse input the server accepts, which is the defect #10073 fixed on
+ * `fields` and is not worth reintroducing for a bound whose only job is to
+ * compare lexicographically against a TEXT `day` column.
+ *
+ * `format: date` rather than a pattern, so a generated client gets a date
+ * picker and the shape stays exactly what the handler enforces.
+ */
+export const daySchema = (edge: "first" | "last") =>
+  z
+    .string()
+    .meta({ format: "date", examples: ["2026-08-01"] })
+    .describe(
+      `Inclusive ${edge} day of the range to read, as YYYY-MM-DD. ` +
+        "Omit for an unbounded end.",
+    );
+
+/**
+ * The `format=` response-format override.
+ *
+ * The most repeated parameter on the surface: 85 routes publish it and every
+ * one is this exact pair. It belongs here for the same reason `order` does --
+ * one constraint, one meaning, everywhere it appears.
+ *
+ * The per-route PROSE stays per-route (each description names what the rows
+ * are), so this carries the part that is genuinely shared: which two values
+ * exist and which is the default.
+ */
+export const formatSchema = () =>
+  z
+    .enum(["json", "csv"])
+    .describe(
+      "Response format override. `csv` downloads the route's rows as " +
+        "text/csv; `json` is the default and keeps the response envelope.",
+    )
+    .meta({ examples: ["csv"] });
 
 /**
  * A `kind` filter. Like `window`/`sort`, the value sets are per-tool (surface
