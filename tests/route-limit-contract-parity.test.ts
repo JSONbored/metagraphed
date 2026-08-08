@@ -37,6 +37,7 @@ import {
 import {
   ACCOUNTS_LIST_LIMIT_MAX,
   BULK_HEALTH_TRENDS_LIMIT_MAX,
+  CHAIN_EVENTS_LIMIT_MAX,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
   CHAIN_TURNOVER_LIMIT_MAX,
   GLOBAL_VALIDATOR_LIMIT_MAX,
@@ -81,6 +82,12 @@ const CONSTANT_BACKED: Record<string, number> = {
   // parseNonNegativeIntParam over them. `declaredMaximum` returns undefined
   // for a string schema, so this entry alone would have caught it.
   "/api/v1/health/trends": BULK_HEALTH_TRENDS_LIMIT_MAX,
+  // #10109: this published 200 and served 100, because TWO constants carried
+  // the name CHAIN_EVENTS_LIMIT_MAX with different values -- 100 in
+  // src/chain-events-degraded.ts (what workers/api.ts clamps to) and 200 in
+  // src/data-api-mcp.ts (what the contract was written from). One constant
+  // now; this entry is what keeps it one.
+  "/api/v1/chain-events": CHAIN_EVENTS_LIMIT_MAX,
 };
 
 interface ParameterSchema {

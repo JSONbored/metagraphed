@@ -61,6 +61,7 @@ import {
   BULK_HEALTH_TRENDS_LIMIT_MAX,
   CHAIN_CONCENTRATION_HISTORY_WINDOWS,
   CHAIN_CONCENTRATION_SUBNETS_LIMIT_MAX,
+  CHAIN_EVENTS_LIMIT_MAX,
   CHAIN_HOLDERS_LIMIT_MAX,
   CHAIN_IDENTITY_HISTORY_LIMIT_MAX,
   CHAIN_TURNOVER_LIMIT_MAX,
@@ -635,15 +636,12 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
       .max(33)
       .optional(),
     before: blockBoundSchema("first").optional(),
-    // DIVERGENCE (#10109): published `maximum` is 200 and the serving path
-    // clamps at 100 -- `?limit=200` answers `count: 100`, HTTP 200, no error,
-    // which is the truncation-as-a-complete-answer #9916 removed everywhere
-    // else. The cause is TWO constants named CHAIN_EVENTS_LIMIT_MAX with
-    // different values (src/data-api-mcp.ts 200, src/chain-events-degraded.ts
-    // 100); the contract was written from the one the request path does not
-    // use. Left stating 200 so this refactor changes nothing published -- the
-    // correction is a contract change and belongs in its own diff.
-    limit: limitSchema(200).optional(),
+    // Resolved (#10109): this published 200 while the serving path clamped at
+    // 100, because TWO constants carried the name CHAIN_EVENTS_LIMIT_MAX with
+    // different values and the contract was written from the one the request
+    // path does not use. One constant now, in src/route-limits.ts, and it is
+    // the number the route enforces.
+    limit: limitSchema(CHAIN_EVENTS_LIMIT_MAX).optional(),
     format: formatSchema().optional(),
   }),
   "/api/v1/chain-events/stats": z.object({

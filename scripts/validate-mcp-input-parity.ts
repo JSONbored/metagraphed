@@ -386,6 +386,22 @@ const CONSTRAINT_DIVERGENCES: Record<string, Divergence> = {
 
   // LOOSER -- standing debt. Delete an entry by TIGHTENING the tool
   // (4/5, #10064), never by keeping it.
+  //
+  // The one that is a DECISION rather than an oversight, and it is backwards.
+  // /api/v1/chain-events clamps at 100 (workers/api.ts); the reader serving
+  // MCP and GraphQL clamps at 200, with a stated rationale in
+  // src/data-api-mcp.ts ("both are already public API"). #9701's premise is
+  // the opposite -- a browser can stream 9 MB and a context window cannot --
+  // so the MCP surface being the WIDER of the two is worth a deliberate
+  // decision, not a silent flip by whoever noticed. Left as found (#10109),
+  // and declared here so it is visible while that decision is made.
+  //
+  // BOTH tools that mirror this route, because there is no separate extrinsic
+  // route -- get_extrinsic_chain_events is the same feed with two filters and
+  // is declared against /api/v1/chain-events too. So an agent can page 200
+  // events out of a route whose own contract caps at 100, by either door.
+  "get_extrinsic_chain_events.limit": "LOOSER",
+  "list_chain_events.limit": "LOOSER",
 };
 
 const errors: string[] = [];

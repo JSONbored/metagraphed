@@ -13,6 +13,7 @@
 
 import { chainDetailGapMessage } from "./chain-detail-hot-tier.ts";
 import { hotTierBlockChainEvents } from "./chain-events-degraded.ts";
+import { CHAIN_EVENTS_LIMIT_DEFAULT } from "./route-limits.ts";
 import {
   chainEventsQueryError,
   loadChainEventsColdTier,
@@ -32,13 +33,29 @@ function throwToolError(code: string, message: string): never {
   throw error;
 }
 
-const CHAIN_EVENTS_LIMIT_DEFAULT = 50;
-const CHAIN_EVENTS_LIMIT_MAX = 200;
+/**
+ * This surface's own page ceiling, deliberately WIDER than the REST route's
+ * (#10109).
+ *
+ * The two are different public surfaces and always have been: workers/api.ts
+ * clamps /api/v1/chain-events at CHAIN_EVENTS_LIMIT_MAX (100), and this reader
+ * -- which serves the MCP tools and GraphQL, and which
+ * loadExtrinsicChainEvents delegates to -- clamps at 200. What was WRONG is
+ * that openapi.json published THIS number for the REST route, so /chain-events
+ * advertised 200 while its request path returned 100 rows with HTTP 200 and no
+ * error. Fixed by publishing what REST enforces; the surface difference itself
+ * is left as it was found, because it is a product decision with a stated
+ * rationale, not an accident.
+ *
+ * Named separately so the two can never again be confused for one number --
+ * CHAIN_EVENTS_LIMIT_MAX is REST's, this is this reader's.
+ */
+const MCP_CHAIN_EVENTS_LIMIT_MAX = 200;
 
-function clampChainEventsLimit(value: unknown): number {
+function clampChainEventsLimit(value: unknown, max: number): number {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return CHAIN_EVENTS_LIMIT_DEFAULT;
-  return Math.min(Math.max(Math.floor(n), 1), CHAIN_EVENTS_LIMIT_MAX);
+  return Math.min(Math.max(Math.floor(n), 1), max);
 }
 
 // The data Worker returns `{ error: "..." }` on 400; some envelopes use
@@ -231,7 +248,7 @@ export async function loadExtrinsicChainEvents(
       "ref must be the composite id 'block_number-extrinsic_index' (e.g. '4200000-3').",
     );
   }
-  const lim = clampChainEventsLimit(limit);
+  const lim = clampChainEventsLimit(limit, MCP_CHAIN_EVENTS_LIMIT_MAX);
   // Through the feed loader rather than a hand-built query: a single-block,
   // single-extrinsic lookup is the SAME read with two filters, and composing it
   // here kept a second copy of the limit/cursor semantics alive that could
@@ -298,7 +315,7 @@ export async function loadChainEventsFeed(
   const query = {
     // Clamped to THIS surface's published 1-200 bound, not REST's 1-100: both
     // are already public API, and the reader takes the caller's word.
-    limit: clampChainEventsLimit(limit),
+    limit: clampChainEventsLimit(limit, MCP_CHAIN_EVENTS_LIMIT_MAX),
     pallet,
     method,
     block,

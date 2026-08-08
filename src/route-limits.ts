@@ -269,6 +269,34 @@ export const SEMANTIC_LIMIT_MAX = 20;
 export const SEMANTIC_QUERY_MAX_LENGTH = 1000;
 
 /**
+ * `/api/v1/chain-events` -- the network-wide event feed (#10109).
+ *
+ * TWO constants carried this name with DIFFERENT values, and the contract was
+ * written from the one the request path does not use:
+ *
+ *   src/chain-events-degraded.ts  100   what workers/api.ts clamps the REST
+ *                                       route to -- verified live, `?limit=200`
+ *                                       answered `count: 100`
+ *   src/data-api-mcp.ts           200   what the MCP + GraphQL path clamps to,
+ *                                       and what openapi.json published
+ *
+ * So a caller asking for the advertised ceiling got half of it, with HTTP 200,
+ * no error and no header -- data truncation presented as a complete answer,
+ * which is exactly what #9916 removed everywhere else.
+ *
+ * 100 is the resolution because it is what the route ENFORCES; publishing the
+ * larger number was the lie. It also restores the direction #9701 assumes --
+ * an MCP surface narrows against its route, never widens past it.
+ *
+ * The clamp itself is left alone. Rejecting an over-limit page rather than
+ * truncating it is the #9916 rule and is worth doing here too, but it is a
+ * behaviour change for existing callers and does not belong in the same diff
+ * as making the published number true.
+ */
+export const CHAIN_EVENTS_LIMIT_DEFAULT = 50;
+export const CHAIN_EVENTS_LIMIT_MAX = 100;
+
+/**
  * `/api/v1/health/trends` -- the all-subnet trend matrix (#10089).
  *
  * The same defect the semantic block above records, on a second route: `limit`
