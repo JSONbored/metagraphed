@@ -87,9 +87,9 @@ export function pgLaneHealthDb(
  * The store lane_health verdicts should be written to and read from.
  *
  * `injected` wins outright so tests keep handing in their own fake. Otherwise
- * Neon once it owns the table and Hyperdrive is bound, and the D1 binding until
- * then -- including when the binding is absent, which recordLaneVerdict already
- * treats as "no store" rather than as an error.
+ * Neon, once it is declared to own the table and Hyperdrive is bound --
+ * `undefined` when it is not, which recordLaneVerdict already treats as "no
+ * store" rather than as an error.
  */
 export function laneHealthStore(
   // Deliberately loose: the callers hand in an `Env`, a bag, or nothing, and a
@@ -105,5 +105,5 @@ export function laneHealthStore(
   if (hyperdrive?.connectionString && neonOwnsTable(bag, "lane_health")) {
     return pgLaneHealthDb(hyperdrive.connectionString, deps);
   }
-  return bag?.METAGRAPH_HEALTH_DB as LaneHealthDb | undefined;
+  return undefined;
 }

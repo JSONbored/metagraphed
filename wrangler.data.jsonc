@@ -538,13 +538,6 @@
       },
     ],
   },
-  "d1_databases": [
-    {
-      "binding": "METAGRAPH_HEALTH_DB",
-      "database_name": "metagraphed",
-      "database_id": "8e14c15f-d0b0-4ffd-ad65-01e37993efcf",
-    },
-  ],
   // Neon Postgres, via Hyperdrive (metagraphed-infra#336). NOT the return of the
   // box: HYPERDRIVE was unbound in #9186 because the Postgres it fronted was
   // wiped, and the two Hyperdrive configs that pointed at it have since been

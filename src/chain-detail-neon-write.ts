@@ -89,12 +89,6 @@ export const CHAIN_DETAIL_CONFLICT_KEYS = {
   chain_detail_account_events: ["block_number", "event_index"],
 } as const;
 
-export const CHAIN_EVENT_PHASES = new Set([
-  "ApplyExtrinsic",
-  "Finalization",
-  "Initialization",
-]);
-
 /** The lane name this mirror answers to in NEON_DUAL_WRITE_LANES. */
 export const CHAIN_DETAIL_NEON_LANE = "chain-detail";
 

@@ -287,7 +287,7 @@ export async function handleTrajectory(
       db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
     })) as ReturnType<typeof formatTrajectory>;
     isFallback =
-      !env.METAGRAPH_HEALTH_DB ||
+      !env.HYPERDRIVE?.connectionString ||
       currentD1ReadFailureGeneration() !== d1Generation;
   }
   if (csvRequested(url, request)) {
@@ -352,7 +352,7 @@ export async function handleEconomicsTrends(
     });
     data = loaded.data;
     isFallback =
-      !env.METAGRAPH_HEALTH_DB ||
+      !env.HYPERDRIVE?.connectionString ||
       currentD1ReadFailureGeneration() !== d1Generation;
   }
   if (csvRequested(url, request)) {
@@ -430,7 +430,7 @@ export async function handleUptime(
       typeof formatUptime
     >;
     isFallback =
-      !env.METAGRAPH_HEALTH_DB ||
+      !env.HYPERDRIVE?.connectionString ||
       currentD1ReadFailureGeneration() !== d1Generation;
   }
   if (csvRequested(url, request)) {
@@ -656,17 +656,16 @@ export async function composeLeaderboardsData(
   } as unknown as Parameters<typeof formatLeaderboards>[0]);
   return {
     data,
-    // Only a payload whose D1 boards are genuinely empty is barred from the
-    // edge cache. Before the resurrection that was every response, so this was
-    // an unconditional bar.
+    // Only a payload whose boards are genuinely empty is barred from the edge
+    // cache. Before the resurrection that was every response, so this was an
+    // unconditional bar.
     //
-    // Tested for `prepare`, not mere presence: an env can carry a
-    // METAGRAPH_HEALTH_DB that is not a usable D1 handle, and d1All answers
-    // that with zero rows WITHOUT bumping the failure generation -- so a
-    // truthiness check would call an empty payload fresh and cache it.
+    // Tested for a usable connection string, not mere presence of the binding:
+    // a store that cannot answer returns zero rows WITHOUT bumping the failure
+    // generation, so a truthiness check would call an empty payload fresh and
+    // cache it.
     isFallback:
-      typeof (env.METAGRAPH_HEALTH_DB as { prepare?: unknown } | undefined)
-        ?.prepare !== "function" ||
+      !env.HYPERDRIVE?.connectionString ||
       currentD1ReadFailureGeneration() !== d1Generation,
   };
 }

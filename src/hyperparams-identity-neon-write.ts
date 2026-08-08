@@ -21,7 +21,10 @@
 // over live Neon rows, because it cannot tell the direction reversed.
 import { laneHealthStore } from "./lane-health-store.ts";
 import { SUBNET_HYPERPARAMS_INSERT_COLUMNS } from "./subnet-hyperparams.ts";
-import { ACCOUNT_IDENTITY_INSERT_COLUMNS } from "./account-identity.ts";
+import {
+  ACCOUNT_IDENTITY_INSERT_COLUMNS,
+  IDENTITY_FIELDS,
+} from "./account-identity.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import {
   createPgSql,

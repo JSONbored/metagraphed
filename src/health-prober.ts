@@ -43,14 +43,6 @@ import {
 import { observationsReadDb } from "./observations-read-runner.ts";
 import { neonOwnsTable } from "./neon-write.ts";
 import { createPgSql, type HyperdriveLike } from "./pg-sql.ts";
-import {
-  persistProbesToD1,
-  pruneChecksD1,
-  rollupFailureReasonsToD1,
-  rollupUptimeDailyToD1,
-  upsertSubnetSnapshotsToD1,
-  type ObservationsDb,
-} from "./observations-d1.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { recordSubnetIdentityChanges } from "./subnet-identity-history.ts";
@@ -725,23 +717,12 @@ export async function runHealthProber(
   if (changedNetuids.length > 0) {
     await notifySubnetStatusChanged(env, changedNetuids);
   }
-  // D1 is the only store here now. The Postgres mirror that used to run first
-  // was retired with the box (#9193) and its endpoint has answered 503 ever
-  // since; the call stayed behind and fired every sweep for nothing.
-  // the copy that keeps accumulating; nothing about this sweep changes.
   const probeSql = observationsRunner(env, ctx);
   if (probeSql) {
     await persistProbesToNeon(
       probeSql,
       probed as unknown as Record<string, unknown>[],
       runAt,
-    );
-  } else {
-    await persistProbesToD1(
-      env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
-      probed as unknown as Record<string, unknown>[],
-      runAt,
-      env,
     );
   }
 
@@ -945,46 +926,32 @@ export async function rollupDailyUptime(
   // INSERT ... SELECT FROM surface_checks, so aggregating in the store that no
   // longer receives probes would roll up an empty window and report success.
   const rollupSql = observationsRunner(env, overrides.ctx);
-  const d1Rollup = rollupSql
+  const uptimeRollup = rollupSql
     ? await rollupUptimeDailyToNeon(rollupSql, days, runAt).then((r) => ({
         rolled: r.ok,
         ...(r.reason ? { error: r.reason } : {}),
       }))
-    : await rollupUptimeDailyToD1(
-        env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
-        days,
-        runAt,
-        env,
-      );
+    : { rolled: false, error: "no store bound" };
   // #9622: the reason rollup runs beside the uptime one and is folded into
-  // `d1_rolled` below, which is what gates the raw prune. Reporting the day as
-  // rolled while only the uptime half landed would let pruneHealthHistory
-  // delete the raw checks whose classifications never made it anywhere durable
-  // -- the exact orphaning `d1_rolled` was introduced to prevent, one table
-  // over.
-  const d1Failures = rollupSql
+  // `checks_rolled` below.
+  const failureRollup = rollupSql
     ? await rollupFailureReasonsToNeon(rollupSql, days, runAt).then((r) => ({
         rolled: r.ok,
         ...(r.reason ? { error: r.reason } : {}),
       }))
-    : await rollupFailureReasonsToD1(
-        env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
-        days,
-        runAt,
-        env,
-      );
-  // The failure reason used to come from the Postgres mirror, which has
-  // returned 503 since #9193 -- so `result.synced` was always false and this
-  // guard had already reduced to "did D1 roll". Now it says so, and reports
-  // D1's own error rather than a dead tier's.
-  if (!d1Rollup.rolled) {
-    return { rolled: false, reason: d1Rollup.error ?? "d1_rollup_failed" };
+    : { rolled: false, error: "no store bound" };
+  if (!uptimeRollup.rolled) {
+    return { rolled: false, reason: uptimeRollup.error ?? "rollup_failed" };
   }
   return {
     rolled: true,
     days: days.map((d) => d.date),
-    d1_rolled: d1Rollup.rolled && d1Failures.rolled,
-    d1_failures_rolled: d1Failures.rolled,
+    // BOTH halves, because this is what gates the raw prune below. Reporting
+    // the day as rolled while only the uptime half landed would let
+    // pruneHealthHistory delete the raw checks whose classifications never made
+    // it anywhere durable.
+    checks_rolled: uptimeRollup.rolled && failureRollup.rolled,
+    failures_rolled: failureRollup.rolled,
   };
 }
 
@@ -1007,26 +974,18 @@ export async function pruneHealthHistory(
     // not enough: Postgres having rolled says nothing about D1's daily rows,
     // and deleting D1's raw window without D1's aggregate would silently
     // orphan the one store that survives the box.
-    pruneD1Checks?: boolean;
+    pruneRawChecks?: boolean;
     ctx?: ExecutionContext;
   } = {},
 ): Promise<Row> {
   const now = overrides.now || (() => Date.now());
   const cutoff = now() - (overrides.retentionMs || HISTORY_RETENTION_MS);
-  if (overrides.pruneD1Checks === true) {
+  if (overrides.pruneRawChecks === true) {
     // The prune follows the rows: deleting D1's raw window while Neon holds
     // the checks would drop nothing that matters, but deleting Neon's while D1
     // holds them would orphan the aggregate the gate above just wrote.
     const pruneSql = observationsRunner(env, overrides.ctx);
-    if (pruneSql) {
-      await pruneChecksNeon(pruneSql, cutoff);
-    } else {
-      await pruneChecksD1(
-        env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
-        cutoff,
-        env,
-      );
-    }
+    if (pruneSql) await pruneChecksNeon(pruneSql, cutoff);
   }
   return { pruned: true, cutoff };
 }
@@ -1118,12 +1077,9 @@ export async function writeSubnetSnapshotRows(
   // this function touches any more -- so on a deployment with the D1 binding
   // and no sync secret it would have declined with the write sitting right
   // there, ready to run.
-  // Gated on a store, not on the D1 binding (#10158). The write below already
-  // goes through observationsRunner, so this check was asking about a binding
-  // the write no longer uses -- unbinding D1 would have declined here with the
-  // Neon write sitting right there, ready to run. Which is the same shape as
-  // the bug the comment above describes, one binding later.
-  if (!observationsRunner(env, ctx) && !env?.METAGRAPH_HEALTH_DB) {
+  // Gated on a store, not on a binding (#10158). The write below goes through
+  // observationsRunner, so this asks the same question the write does.
+  if (!observationsRunner(env, ctx)) {
     return { synced: false, reason: "unavailable" };
   }
   if (!Array.isArray(profiles) || profiles.length === 0) {
@@ -1179,24 +1135,17 @@ export async function writeSubnetSnapshotRows(
     });
   if (!rows.length) return { synced: false, reason: "no_rows" };
   const snapshotSql = observationsRunner(env, ctx);
-  const write = snapshotSql
-    ? upsertSubnetSnapshotsToNeon(
-        snapshotSql,
-        rows as unknown as Record<string, unknown>[],
-      ).then((r) => ({ ok: r.ok, reason: r.reason }))
-    : upsertSubnetSnapshotsToD1(
-        env.METAGRAPH_HEALTH_DB as unknown as ObservationsDb,
-        rows as unknown as Record<string, unknown>[],
-        env,
-      );
+  if (!snapshotSql) return { synced: false, reason: "unavailable" };
+  const write = upsertSubnetSnapshotsToNeon(
+    snapshotSql,
+    rows as unknown as Record<string, unknown>[],
+  ).then((r) => ({ ok: r.ok, reason: r.reason }));
   return write.then((result) =>
-    // The D1 write's own verdict is now the lane's verdict, rather than being
-    // discarded in favour of a second store's. upsertSubnetSnapshotsToD1 never
-    // throws and reports its own reason, so a genuine write failure still
-    // declines -- what is gone is a decline that could not mean anything.
+    // The write's own verdict is the lane's verdict, rather than being
+    // discarded in favour of a second store's.
     result.ok
       ? { synced: true, rows: rows.length }
-      : { synced: false, reason: String(result.reason ?? "d1_write_failed") },
+      : { synced: false, reason: String(result.reason ?? "write_failed") },
   );
 }
 
@@ -1209,7 +1158,7 @@ interface WriteSubnetSnapshotOverrides {
   laneHealthDb?: LaneHealthDb;
   recordExceptionEvent?: typeof recordExceptionEvent;
   /** Needed to reach Neon: createPgSql returns the pooled connection through
-   * ctx.waitUntil, so without one this lane stays on D1. */
+   * ctx.waitUntil, so without one this lane has no store. */
   ctx?: ExecutionContext;
 }
 

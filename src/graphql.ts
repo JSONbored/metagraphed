@@ -5973,10 +5973,16 @@ const rootValue = {
           );
         }
       }
+      // Through readStore, matching the REST route's own call in
+      // workers/request-handlers/entities.ts (#10170). This resolver was the
+      // last reader still handed the raw binding, so it kept asking the store
+      // the alpha-pricing tables had already left -- and a frozen table answers
+      // with a schema-stable wrong number rather than an error.
       const positions = await loadNominatorPositions(
-        context.env?.METAGRAPH_HEALTH_DB as unknown as Parameters<
-          typeof loadNominatorPositions
-        >[0],
+        readStore(
+          context.env,
+          ALPHA_PRICING_TABLES,
+        ) as never as unknown as Parameters<typeof loadNominatorPositions>[0],
         hotkey,
       );
       return buildNominatorPositions(positions, hotkey, {

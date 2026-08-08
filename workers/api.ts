@@ -2181,7 +2181,7 @@ function producerStore(
   const owned =
     Boolean(env.HYPERDRIVE?.connectionString) &&
     tables.every((table) => neonOwnsTable(bag, table));
-  if (!owned) return { db: env.METAGRAPH_HEALTH_DB, close: () => undefined };
+  if (!owned) return { db: undefined, close: () => undefined };
   const pg = createPgD1(env.HYPERDRIVE!.connectionString);
   return {
     db: pg,
@@ -2309,8 +2309,8 @@ async function dispatchScheduled(
       // combined `rolled` only proves SOME store aggregated the day.
       pruneHealthHistory(env, {
         ctx,
-        pruneD1Checks:
-          (uptimeRollup as { d1_rolled?: boolean }).d1_rolled === true,
+        pruneRawChecks:
+          (uptimeRollup as { checks_rolled?: boolean }).checks_rolled === true,
       }).catch(() => ({ pruned: false })),
       snapshotPromise,
     ]);
@@ -3830,8 +3830,11 @@ function emissionGateSyncBodyError(parsed: unknown): string | null {
   return null;
 }
 
+/** The producer store's read surface, as this lane uses it. */
+type ProducerDb = ReturnType<typeof createPgD1>;
+
 async function emissionGateSyncRows(
-  db: D1Database,
+  db: ProducerDb,
   sql: string,
 ): Promise<Row[]> {
   const outcome = await db.prepare(sql).all();
@@ -3871,10 +3874,10 @@ async function handleEmissionGateSync(
       401,
     );
   }
-  if (!env.METAGRAPH_HEALTH_DB && !env.HYPERDRIVE?.connectionString) {
+  if (!env.HYPERDRIVE?.connectionString) {
     return errorResponse(
       "emission_gate_sync_unavailable",
-      "The health D1 database is not bound to this deployment.",
+      "No store is bound to this deployment.",
       503,
     );
   }
@@ -3909,18 +3912,20 @@ async function handleEmissionGateSync(
 
   // Opened HERE rather than at the top of the handler: every check above can
   // return, and a connection opened before them leaks on each one (#10112).
-  // producerStore hands back the SAME D1-shaped object either way, so the
-  // reads, the prepares and the batch below are untouched -- only the handle.
   const store = producerStore(env, ctx, EMISSION_GATE_TABLES);
-  const neonOwns = store.db !== env.METAGRAPH_HEALTH_DB;
+  if (!store.db) {
+    return errorResponse(
+      "emission_gate_sync_unavailable",
+      "No store is bound to this deployment.",
+      503,
+    );
+  }
   // BOOLEANS ARE BOOLEANS ON NEON. `enabled`, `previous_enabled`, `is_set` and
-  // `predates_capture` are all `boolean` there and INTEGER in D1, so binding
-  // 1/0 is `operator does not exist: boolean = integer` on one store and
-  // binding true/false is wrong on the other. Null stays null on both --
-  // previous_enabled uses it to mean "no prior observation", which is not the
-  // same as false.
-  const flag = (v: boolean | null) => storeBoolean(neonOwns, v);
-  const db = store.db as NonNullable<typeof env.METAGRAPH_HEALTH_DB>;
+  // `predates_capture` are all `boolean` there, so a bound 1/0 is `operator
+  // does not exist: boolean = integer`. Null stays null -- previous_enabled
+  // uses it to mean "no prior observation", which is not the same as false.
+  const flag = (v: boolean | null) => storeBoolean(true, v);
+  const db = store.db as ProducerDb;
 
   try {
     // Last known value per key, from the three history tables -- the same
@@ -7858,7 +7863,7 @@ async function handleHealthRequest(request: Request, env: Env) {
     r2: Boolean(env.METAGRAPH_ARCHIVE?.get),
     kv: Boolean(env.METAGRAPH_CONTROL?.get),
     data_api: Boolean(env.DATA_API?.fetch),
-    health_db: Boolean(env.METAGRAPH_HEALTH_DB?.prepare),
+    health_db: Boolean(env.HYPERDRIVE?.connectionString),
   };
 
   // Data freshness — the event-driven data publish (ADR 0007) advances the KV

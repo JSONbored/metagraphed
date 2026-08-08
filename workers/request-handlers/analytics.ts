@@ -767,7 +767,7 @@ export async function handleBulkHealthTrends(
         });
         data = result.data;
         isFallback =
-          !env.METAGRAPH_HEALTH_DB ||
+          !env.HYPERDRIVE?.connectionString ||
           currentD1ReadFailureGeneration() !== d1Generation;
       }
       const response = await envelopeResponse(
@@ -835,7 +835,7 @@ export async function handleHealthTrends(
         db: observationsReadDb(env as unknown as Record<string, unknown>, ctx),
       } as unknown as Parameters<typeof loadSubnetHealthTrends>[1]);
       usedFallback =
-        !env.METAGRAPH_HEALTH_DB ||
+        !env.HYPERDRIVE?.connectionString ||
         currentD1ReadFailureGeneration() !== d1Generation;
     }
     const response = await envelopeResponse(
@@ -900,7 +900,7 @@ export async function handleHealthPercentiles(
           ),
         } as unknown as Parameters<typeof loadSubnetPercentiles>[1]);
         usedFallback =
-          !env.METAGRAPH_HEALTH_DB ||
+          !env.HYPERDRIVE?.connectionString ||
           currentD1ReadFailureGeneration() !== d1Generation;
       }
       const response = await envelopeResponse(
@@ -963,7 +963,7 @@ export async function handleHealthIncidents(
           ),
         } as unknown as Parameters<typeof loadSubnetIncidents>[1]);
         usedFallback =
-          !env.METAGRAPH_HEALTH_DB ||
+          !env.HYPERDRIVE?.connectionString ||
           currentD1ReadFailureGeneration() !== d1Generation;
       }
       const response = await envelopeResponse(
@@ -1049,11 +1049,11 @@ export async function resolveGlobalIncidents(
   const result = await loadGlobalIncidentsLedger(env, { label, days }, ctx);
   return {
     data: result.data as unknown as Record<string, unknown>,
-    // Only an EMPTY ledger counts as a fallback for caching purposes — no D1
-    // binding, or a D1 read failure mid-load. A D1-served ledger carries
+    // Only an EMPTY ledger counts as a fallback for caching purposes — no
+    // store bound, or a read failure mid-load. A store-served ledger carries
     // real rows.
     isFallback:
-      !env.METAGRAPH_HEALTH_DB ||
+      !env.HYPERDRIVE?.connectionString ||
       currentD1ReadFailureGeneration() !== d1Generation,
   };
 }

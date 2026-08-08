@@ -74,8 +74,94 @@ export const ACCOUNT_POSITION_DAILY_COLUMNS = [
   "updated_at",
 ];
 
+/** The UTC day a capture belongs to. */
 export function neuronSnapshotDate(capturedAtMs: number): string {
   return new Date(capturedAtMs).toISOString().slice(0, 10);
+}
+
+// --- The three derivations, pure and shared ---------------------------------
+//
+// `neuron_daily` and `account_position_daily` are pure functions of the posted
+// rows, and the prune cutoff is a pure function of them too. They used to be
+// computed inline in the sync handler, which was fine while the handler was the
+// only writer. It is not any more: the queue consumer receives a message that
+// carries `rows` and nothing else (metagraphed-infra#359 is the standing reason
+// SyncBatchMessage stays one array), so it has to redo all three.
+//
+// Two implementations of a prune cutoff is two chances to compute a different
+// one, and the failure mode there is deleted rows. So there is one.
+
+/**
+ * Per-netuid max `captured_at`, the cutoff the snapshot write prunes on.
+ *
+ * NOT one batch-wide value: a global max would let one netuid's later capture
+ * delete rows this same write just upserted for a different, earlier-captured
+ * netuid -- its own fresh rows would satisfy `captured_at < max`.
+ *
+ * Rows with an unusable netuid or captured_at are skipped rather than seeding a
+ * NaN cutoff, which would delete every row for that netuid. Same rule, and the
+ * same reason, as `coldkeyMaxCapturedAt` in the positions lane.
+ */
+export function netuidMaxCapturedAt(rows: Row[]): Map<number, number> {
+  const cutoffs = new Map<number, number>();
+  for (const row of rows) {
+    const netuid = row?.netuid;
+    const capturedAt = row?.captured_at;
+    if (!Number.isFinite(netuid as number)) continue;
+    if (!Number.isFinite(capturedAt as number)) continue;
+    const current = cutoffs.get(netuid as number);
+    if (current == null || (capturedAt as number) > current) {
+      cutoffs.set(netuid as number, capturedAt as number);
+    }
+  }
+  return cutoffs;
+}
+
+/** `neuron_daily` rows: the posted row plus its day and a write stamp. */
+export function neuronDailyRows(rows: Row[], nowMs: number): Row[] {
+  return rows.map((row) => ({
+    ...row,
+    snapshot_date: neuronSnapshotDate(row.captured_at as number),
+    updated_at: nowMs,
+  }));
+}
+
+/**
+ * `account_position_daily` rows, re-keyed by account.
+ *
+ * Rows with no hotkey are dropped: the table is keyed on `account`, so a null
+ * one has nowhere to go.
+ */
+export function neuronPositionRows(dailyRows: Row[]): Row[] {
+  return dailyRows
+    .filter((row) => row.hotkey != null)
+    .map((row) => ({
+      account: row.hotkey,
+      netuid: row.netuid,
+      snapshot_date: row.snapshot_date,
+      uid: row.uid,
+      coldkey: row.coldkey,
+      active: row.active,
+      validator_permit: row.validator_permit,
+      rank: row.rank,
+      trust: row.trust,
+      incentive: row.incentive,
+      dividends: row.dividends,
+      stake_tao: row.stake_tao,
+      emission_tao: row.emission_tao,
+      captured_at: row.captured_at,
+      updated_at: row.updated_at,
+    }));
+}
+
+/** Everything a snapshot write needs, derived from the rows alone -- so the
+ * sync handler and the queue consumer build it the same way. */
+export interface NeuronSnapshotWrite {
+  rows: Row[];
+  dailyRows: Row[];
+  positionRows: Row[];
+  /** Per-netuid max captured_at -- NOT one batch-wide value. */
+  netuidMaxCapturedAt: Map<number, number>;
 }
 
 export function neuronSnapshotWrite(

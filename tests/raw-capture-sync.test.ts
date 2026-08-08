@@ -10,7 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { beforeEach, describe, test } from "vitest";
 import {
-  d1Watermark,
+  watermarkRead,
   RAW_CAPTURE_GENESIS_FLOOR,
   RAW_CAPTURE_LANES,
   cronStepMinutes,
@@ -341,22 +341,40 @@ describe("runRawCaptureSync — capture", () => {
   });
 });
 
-describe("d1Watermark", () => {
+// The read half of the watermark, which is all that survives as a standalone
+// helper: the WRITE goes through neonWatermark, and the lakehouse-seam watchdog
+// is the only caller that needs to read the row without writing it.
+//
+// Executed against a real engine rather than a recording fake, because the one
+// thing that can break here is the column names being wrong -- and a fake that
+// records SQL never parses it.
+describe("watermarkRead", () => {
   test("returns null when no row exists yet", async () => {
-    const wm = d1Watermark(d1() as never, () => 1);
-    assert.equal(await wm.read(), null);
+    assert.equal(await watermarkRead(d1() as never)(), null);
   });
 
-  test("write then read round-trips, and a second write updates in place", async () => {
-    const wm = d1Watermark(d1() as never, () => 7);
-    await wm.write(42);
-    assert.equal(await wm.read(), 42);
-    await wm.write(99);
-    assert.equal(await wm.read(), 99);
-    const count = db
-      .prepare(`SELECT count(*) AS n FROM raw_capture_state`)
-      .get() as Record<string, number>;
-    assert.equal(count.n, 1, "single-row table stays single-row");
+  test("reads back the row the capture lane writes, per network", async () => {
+    db.prepare(
+      `INSERT INTO raw_capture_state (network, last_contiguous_block, updated_at)
+       VALUES (?, ?, ?)`,
+    ).run("mainnet", 42, 7);
+    db.prepare(
+      `INSERT INTO raw_capture_state (network, last_contiguous_block, updated_at)
+       VALUES (?, ?, ?)`,
+    ).run("testnet", 99, 7);
+    assert.equal(await watermarkRead(d1() as never, "mainnet")(), 42);
+    assert.equal(await watermarkRead(d1() as never, "testnet")(), 99);
+  });
+
+  // A row whose column is NULL is not a watermark of zero: the capture treats
+  // null as "start at the floor" and 0 as a real position, so conflating them
+  // would re-capture from genesis.
+  test("a null column reads as null, never as 0", async () => {
+    db.prepare(
+      `INSERT INTO raw_capture_state (network, last_contiguous_block, updated_at)
+       VALUES (?, ?, ?)`,
+    ).run("mainnet", null, 7);
+    assert.equal(await watermarkRead(d1() as never, "mainnet")(), null);
   });
 });
 
