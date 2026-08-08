@@ -1,9 +1,31 @@
 import { promises as fs } from "node:fs";
+// Moved to src/ so the registry-sync Worker can reach the SAME derivation
+// (#10026). Re-exported rather than re-implemented: surface_key joins a
+// surface to its probe history, and two normalisers that disagree about one
+// url mint a key matching nothing, silently.
+export {
+  isUnsafeUrl,
+  isBrandImpersonationUrl,
+  isCredentialedUrl,
+  normalizePublicUrl,
+  normalizePublicHttpUrl,
+  registrySurfaceKey,
+  subnetSurfaceKey,
+} from "../src/registry-surface-key.ts";
+import {
+  isCredentialedUrl,
+  isUnsafeIpAddress,
+  isUnsafeUrl,
+  normalizeHostname,
+  normalizePublicHttpUrl,
+  normalizePublicUrl,
+  registrySurfaceKey,
+} from "../src/registry-surface-key.ts";
 import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createHash, type BinaryLike } from "node:crypto";
 import { lookup } from "node:dns/promises";
-import { BlockList, isIP } from "node:net";
+import { isIP } from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Agent } from "undici";
@@ -215,79 +237,6 @@ export function dirtyTrackedPaths(
     .map((line) => line.slice(3).trim())
     .filter(Boolean);
 }
-
-const credentialedUrlParams = new Set([
-  "access_key",
-  "access-token",
-  "access_token",
-  "app_domain",
-  "api-key",
-  "api_key",
-  "apikey",
-  "auth",
-  "authorization",
-  "authuser",
-  "bearer",
-  "client_id",
-  "code_challenge",
-  "code_challenge_method",
-  "continue",
-  "cookie",
-  "credential",
-  "dsh",
-  "flowname",
-  "jwt",
-  "key",
-  "nonce",
-  "opparams",
-  "part",
-  "password",
-  "prompt",
-  "rart",
-  "redirect_uri",
-  "refresh-token",
-  "refresh_token",
-  "response_type",
-  "scope",
-  "secret",
-  "service",
-  "session",
-  "sig",
-  "signature",
-  "state",
-  "token",
-  "x-amz-credential",
-  "x-amz-signature",
-  "x-amz-security-token",
-  "x-goog-credential",
-  "x-goog-signature",
-  "x-goog-security-token",
-  "x-goog-signedheaders",
-  "x-goog-expires",
-  "x-oss-signature",
-  "x-oss-credential",
-]);
-
-const unsafeIpBlocks = new BlockList();
-unsafeIpBlocks.addSubnet("0.0.0.0", 8);
-unsafeIpBlocks.addSubnet("10.0.0.0", 8);
-unsafeIpBlocks.addSubnet("100.64.0.0", 10);
-unsafeIpBlocks.addSubnet("127.0.0.0", 8);
-unsafeIpBlocks.addSubnet("169.254.0.0", 16);
-unsafeIpBlocks.addSubnet("172.16.0.0", 12);
-unsafeIpBlocks.addSubnet("192.0.0.0", 24);
-unsafeIpBlocks.addSubnet("192.168.0.0", 16);
-unsafeIpBlocks.addSubnet("198.18.0.0", 15);
-unsafeIpBlocks.addSubnet("224.0.0.0", 4);
-unsafeIpBlocks.addSubnet("255.255.255.255", 32);
-unsafeIpBlocks.addSubnet("::", 128, "ipv6");
-unsafeIpBlocks.addSubnet("::1", 128, "ipv6");
-unsafeIpBlocks.addSubnet("64:ff9b:1::", 48, "ipv6");
-unsafeIpBlocks.addSubnet("100::", 64, "ipv6");
-unsafeIpBlocks.addSubnet("fc00::", 7, "ipv6");
-unsafeIpBlocks.addSubnet("fe80::", 10, "ipv6");
-unsafeIpBlocks.addSubnet("fec0::", 10, "ipv6"); // deprecated site-local (RFC 3879)
-unsafeIpBlocks.addSubnet("ff00::", 8, "ipv6");
 
 export function buildEvidenceSubjectNetuidIndex({
   candidates = [],
@@ -1437,23 +1386,6 @@ export function isValidUrl(value: unknown): boolean {
   }
 }
 
-export function isUnsafeUrl(value: unknown): boolean {
-  try {
-    const url = new URL(value as string);
-    if (!["http:", "https:", "ws:", "wss:"].includes(url.protocol)) {
-      return true;
-    }
-    if (url.username || url.password) {
-      return true;
-    }
-
-    const host = normalizeHostname(url.hostname);
-    return isUnsafeHostname(host);
-  } catch {
-    return true;
-  }
-}
-
 interface ResolvedAddress {
   address: string;
   family: number;
@@ -1728,92 +1660,6 @@ export async function safeFetch(
   return { ok: false, error: "too many redirects" };
 }
 
-function isUnsafeHostname(host: string): boolean {
-  if (
-    !host ||
-    host === "localhost" ||
-    host.endsWith(".localhost") ||
-    host === "local" ||
-    host.endsWith(".local")
-  ) {
-    return true;
-  }
-
-  return isUnsafeIpAddress(host);
-}
-
-// metagraphed's own public domain. Candidate base_urls that impersonate it must
-// never enter the discovery bundle.
-const SELF_DOMAIN = "metagraph.sh";
-
-// Reject candidate URLs that trade on metagraphed's own identity. The SSRF guard
-// (isUnsafeUrl/isUnsafeResolvedUrl) passes for an attacker-registered PUBLIC
-// domain, so a base_url that reads as "metagraph.sh" — metagraph.sh.evil.com,
-// metagraphsh.com, metagraph-sh.io — would clear it yet could get an agent to
-// trust and call it. The real metagraph.sh and its subdomains are exempt; this
-// targets squats of our exact domain, not the generic "metagraph" Bittensor term
-// (a subnet legitimately named "…metagraph…" is unaffected).
-export function isBrandImpersonationUrl(value: unknown): boolean {
-  let url: URL;
-  try {
-    url = new URL(value as string);
-  } catch {
-    return false;
-  }
-
-  // A trailing dot is the FQDN-canonical form of the same hostname, so strip it
-  // before the self-domain exemption — otherwise "metagraph.sh." (and real
-  // subdomains like "api.metagraph.sh.") fail the `=== SELF_DOMAIN` / `.endsWith`
-  // check and get wrongly flagged as impersonating our own domain.
-  const host = url.hostname
-    .toLowerCase()
-    .replace(/\.$/, "")
-    .replace(/^www\./, "");
-  if (host === SELF_DOMAIN || host.endsWith(`.${SELF_DOMAIN}`)) {
-    return false;
-  }
-
-  const userinfo = `${url.username}:${url.password}`.toLowerCase();
-  return (
-    /metagraph\.sh(?:[.-]|$)|metagraph-?sh(?:[.-]|$)|metagraphsh/.test(host) ||
-    /metagraph\.sh|metagraph-?sh|metagraphsh/.test(userinfo)
-  );
-}
-
-function isUnsafeIpAddress(address: string): boolean {
-  const normalized = normalizeHostname(address);
-  const family = isIP(normalized);
-  return (
-    family !== 0 &&
-    unsafeIpBlocks.check(normalized, family === 4 ? "ipv4" : "ipv6")
-  );
-}
-
-function normalizeHostname(hostname: unknown): string {
-  return String(hostname || "")
-    .trim()
-    .toLowerCase()
-    .replace(/^\[(.*)\]$/, "$1")
-    .replace(/\.$/, "");
-}
-
-export function isCredentialedUrl(value: unknown): boolean {
-  try {
-    const url = new URL(value as string);
-    if (url.username || url.password) {
-      return true;
-    }
-    for (const key of url.searchParams.keys()) {
-      if (credentialedUrlParams.has(key.toLowerCase())) {
-        return true;
-      }
-    }
-    return false;
-  } catch {
-    return false;
-  }
-}
-
 export function redactCredentialedUrl(value: string): string {
   if (!isCredentialedUrl(value)) {
     return value;
@@ -1955,64 +1801,6 @@ export function surfaceFixtureReference(
     },
     artifact_path: `/metagraph/fixtures/${surfaceId}.json`,
   };
-}
-
-export function normalizePublicUrl(value: unknown): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  let candidate = value
-    .trim()
-    .replace(/^[<`"']+|[>`"',.;:!]+$/g, "")
-    .split("](")[0]
-    .replace(/[\]`"',.;:!]+$/g, "");
-  if (!candidate) {
-    return null;
-  }
-
-  if (
-    !/^(https?|wss?):\/\//i.test(candidate) &&
-    /^[a-z0-9.-]+\.[a-z]{2,}(?:\/.*)?$/i.test(candidate)
-  ) {
-    candidate = `https://${candidate}`;
-  }
-
-  try {
-    const url = new URL(candidate);
-    if (
-      !["http:", "https:", "ws:", "wss:"].includes(url.protocol) ||
-      url.username ||
-      url.password ||
-      isCredentialedUrl(url.toString()) ||
-      isUnsafeUrl(url.toString()) ||
-      // #5990: the brand-impersonation guard (ADR 0004) previously ran only on
-      // the deprecated discovery path's local copy; run it here too so every
-      // contributor-submitted surface URL -- the path that actually ships today
-      // (validate-surface.ts / surface-add.ts) -- is checked, not just
-      // auto-discovered candidates.
-      isBrandImpersonationUrl(url.toString())
-    ) {
-      return null;
-    }
-    url.hash = "";
-    if (url.pathname !== "/") {
-      url.pathname = url.pathname.replace(/\/+$/, "");
-    }
-    return url.toString();
-  } catch {
-    return null;
-  }
-}
-
-export function normalizePublicHttpUrl(value: unknown): string | null {
-  const normalized = normalizePublicUrl(value);
-  if (!normalized) {
-    return null;
-  }
-
-  const protocol = new URL(normalized).protocol;
-  return ["http:", "https:"].includes(protocol) ? normalized : null;
 }
 
 // Placeholder/junk identity URLs some subnets carry on-chain (e.g. the
@@ -2159,24 +1947,6 @@ export function subnetContact(overlayContact: unknown): string | null {
   }
   const url = normalizePublicHttpUrl(value);
   return url && !isPlaceholderIdentityUrl(url) ? url : null;
-}
-
-export function registrySurfaceKey(entry: Row): string {
-  const normalizedUrl = normalizePublicUrl(entry?.url);
-  return [
-    entry?.netuid ?? "unknown",
-    entry?.kind || "unknown",
-    normalizedUrl || entry?.url || "unknown",
-  ]
-    .join("|")
-    .toLowerCase();
-}
-
-// Locator key for a surface stored under a subnet. Stored surfaces have no
-// netuid (it lives on the parent), so inject it before keying — otherwise
-// registrySurfaceKey degrades to "unknown|kind|url" and never matches.
-export function subnetSurfaceKey(surface: Row, netuid: unknown): string {
-  return registrySurfaceKey({ ...surface, netuid });
 }
 
 export function sha256Hex(value: BinaryLike): string {
