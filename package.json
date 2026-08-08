@@ -59,6 +59,7 @@
     "validate:mcp": "node scripts/validate-mcp.ts",
     "validate:mcp-route-map": "node scripts/validate-mcp-route-map.ts",
     "validate:mcp-input-parity": "node scripts/validate-mcp-input-parity.ts",
+    "validate:query-vocabulary": "node scripts/validate-query-vocabulary.ts",
     "validate:ai": "node scripts/validate-ai-routes.ts",
     "validate:openapi": "node scripts/validate-openapi.ts",
     "validate:types": "node scripts/validate-types.ts",

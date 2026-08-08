@@ -164,17 +164,49 @@ export const blockBoundSchema = (edge: "first" | "last") =>
     .meta({ examples: [8783000] });
 
 /**
+ * Length ceilings for the free-text parameters.
+ *
+ * An unbounded value drives per-term, per-row scan work in `searchRows` and in
+ * filter matching (#5544), so both are capped: `q` is typed search prose and
+ * gets a generous 200, while the exact-ish filters (`provider`, `id`,
+ * `review_state`, `reason_codes`) are structured tokens and are bounded tighter.
+ * `workers/list-query.ts` rejects an over-length value by reading the ceiling
+ * off the published schema, so these numbers ARE the enforcement, not a
+ * description of it.
+ */
+export const SEARCH_TEXT_MAX_LENGTH = 200;
+export const FILTER_TEXT_MAX_LENGTH = 100;
+
+/**
  * A free-text search query. Substring/keyword, not a query language — worth
  * saying, because an agent that assumes operators will silently get no match.
  */
 export const querySchema = () =>
   z
     .string()
+    .max(SEARCH_TEXT_MAX_LENGTH)
     .describe(
       "Free-text search terms, matched as case-insensitive substrings. " +
         "Not a query language: operators, quotes and wildcards are matched literally.",
     )
     .meta({ examples: ["inference", "text embedding"] });
+
+/**
+ * An exact-ish filter token — a slug, an id, a state name. Distinct from
+ * `querySchema()` in the bound and in the matching: this is compared against a
+ * field, not searched for inside one, so an unknown value yields an empty
+ * result rather than an error.
+ */
+export const filterTokenSchema = () =>
+  z
+    .string()
+    .max(FILTER_TEXT_MAX_LENGTH)
+    .describe(
+      "Restrict the result to rows whose field equals this value. Matched " +
+        "exactly (case-insensitively), not searched for as a substring — an " +
+        "unmatched value yields an empty result rather than an error.",
+    )
+    .meta({ examples: ["opentensor-foundation"] });
 
 /**
  * A page cursor. TWO kinds, and conflating them is the mistake this pair
@@ -202,6 +234,38 @@ export const keysetCursorSchema = () =>
         "or constructed. Stable across inserts, unlike a row offset.",
     )
     .meta({ examples: ["eyJiIjo4NzgzMDAwLCJpIjo0fQ"] });
+
+/**
+ * The accepted `fields` syntax, which was documented NOWHERE a caller could see it:
+ * 27 of 31 `fields` parameters were bare `{"type":"string"}`, 19 of them with no
+ * mention in the tool description either. The format is a comma-separated list of bare
+ * row-field names — mirrors `FIELD_NAME_PATTERN` in src/field-projection.ts, which is
+ * what actually rejects a malformed value.
+ *
+ * Deliberately as permissive as `parseFieldsParam` actually is, not as tidy as the
+ * canonical form looks: that parser trims each segment and drops empty ones, so
+ * `"netuid, name"` and `"netuid,,name"` are both accepted. A stricter pattern would
+ * make a generated client reject input the server takes — the same defect as an MCP
+ * tool declaring a page-size ceiling its own route does not enforce.
+ *
+ * Both surfaces publish this one. REST used to publish a strictly tighter regex
+ * (`^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$`) that nothing enforced and
+ * that the route contradicts — confirmed against production, where
+ * `?fields=netuid,%20name` and `?fields=netuid,,name` both return 200 with the
+ * projection applied.
+ */
+export const FIELDS_PATTERN =
+  "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$";
+export const fieldsSchema = () =>
+  z
+    .string()
+    .regex(new RegExp(FIELDS_PATTERN))
+    .describe(
+      "Comma-separated row field names to project, e.g. `netuid,name,slug`. " +
+        "Bare identifiers only — not a JSON array, no paths or indices. " +
+        "An unknown name is rejected rather than ignored.",
+    )
+    .meta({ examples: ["netuid,name,slug"] });
 
 /**
  * The `fields=` projection as a bare string. Same syntax as `fieldsSchema()`

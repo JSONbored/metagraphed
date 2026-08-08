@@ -4,10 +4,12 @@
 // the query-collection contract and nothing from api.ts, so there is no cycle.
 // `applyQueryFilters` is the main public entry; route preflight uses the same
 // validator before artifact/cache reads.
-import {
-  API_QUERY_COLLECTIONS,
-  SEARCH_TEXT_MAX_LENGTH,
-} from "../src/contracts.ts";
+import { API_QUERY_COLLECTIONS } from "../src/contracts.ts";
+// The ceiling is the vocabulary's, not this module's and not contracts.ts's
+// (#10073) — `q` is a search param rather than a filter, so the generic
+// maxLength check below never sees it and it is enforced explicitly here off
+// the same constant the published schema is built from.
+import { SEARCH_TEXT_MAX_LENGTH } from "../schemas-src/query-params.ts";
 import { linkHeader } from "./http.ts";
 import { DEFAULT_LIMIT, MAX_LIMIT, MIN_LIMIT } from "./request-params.ts";
 import {
@@ -30,6 +32,8 @@ export interface FilterSchema {
   enum?: string[];
   maxLength?: number;
   pattern?: string;
+  minimum?: number;
+  maximum?: number;
 }
 
 export interface QueryCollectionConfig {
@@ -585,11 +589,16 @@ function validateListQuery(
       continue;
     }
     const value = params.get(key) as string;
-    if (schema.type === "integer" && integerParam(value) === null) {
-      return {
-        parameter: key,
-        message: `${key} must be a non-negative integer.`,
-      };
+    if (schema.type === "integer") {
+      const parsed = integerParam(value);
+      if (parsed === null) {
+        return {
+          parameter: key,
+          message: `${key} must be a non-negative integer.`,
+        };
+      }
+      const tooLarge = integerCeilingError(key, parsed, schema);
+      if (tooLarge) return tooLarge;
     }
     // Enum membership is case-insensitive (#2073): the configured vocabularies are
     // all lowercase, so ?status=Active matches like the MCP list_subnets tool
@@ -669,6 +678,38 @@ function parseProjection(
   dataKey: string,
 ): FieldProjectionResult {
   return parseFieldsParam(params, unknownAgainstRows(rows), dataKey);
+}
+
+/**
+ * Reject an integer filter above the ceiling its published schema declares
+ * (#10073), or null when it is within bounds.
+ *
+ * `maximum` used to be published and never checked: `?netuid=70000` came back
+ * 200 with zero rows, which is indistinguishable from "that subnet exists and
+ * matches nothing" for a value no u16 netuid can hold. Same rule as #9916
+ * applied to a filter instead of a page size -- an out-of-range value is
+ * rejected, never answered with a confident empty set.
+ *
+ * Only the ceiling: `integerParam` already rejects anything that is not a
+ * non-negative safe integer, so `minimum: 0` is enforced before this is
+ * reached and a `minimum` check here would be unreachable.
+ *
+ * Exported for its own unit test. A filter that declares no ceiling is the
+ * branch production data does not currently exercise -- every integer filter
+ * is `netuid` today -- and pinning it here is what keeps it honest when the
+ * next one is added.
+ */
+export function integerCeilingError(
+  key: string,
+  parsed: number,
+  schema: FilterSchema,
+): QueryError | null {
+  const { maximum } = schema;
+  if (typeof maximum !== "number" || parsed <= maximum) return null;
+  return {
+    parameter: key,
+    message: `${key} must be an integer between 0 and ${maximum}.`,
+  };
 }
 
 function integerParam(value: string | null): number | null {

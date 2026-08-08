@@ -2349,7 +2349,11 @@ describe("pagination Link header", () => {
   });
 
   test("empty result set advertises no page to walk to", async () => {
-    const { res, links } = await page("netuid=999999&limit=50");
+    // 65535 rather than 999999: a netuid past the u16 ceiling is now a 400
+    // (#10073), and this test wants an EMPTY page, not a rejected request.
+    // 65535 is a valid netuid with no subnet registered against it, which is
+    // the condition being exercised.
+    const { res, links } = await page("netuid=65535&limit=50");
     assert.equal(res.status, 200);
     assert.equal((await res.json()).meta.pagination.total, 0);
     assert.deepEqual(Object.keys(links), []);

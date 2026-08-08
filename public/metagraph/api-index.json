@@ -2372,6 +2372,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -2557,7 +2558,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -2606,7 +2607,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         },
         {
@@ -2666,6 +2668,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -2735,7 +2738,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -2780,7 +2783,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         },
         {
@@ -2886,6 +2890,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -2959,7 +2964,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -2999,7 +3004,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         },
         {
@@ -3106,7 +3112,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -3146,7 +3152,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         },
         {
@@ -3222,6 +3229,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -3296,7 +3304,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -3341,7 +3349,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         },
         {
@@ -3483,7 +3492,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -3528,7 +3537,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         },
         {
@@ -3569,6 +3579,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -3637,7 +3648,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -3679,7 +3690,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         },
         {
@@ -3780,7 +3792,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -3822,7 +3834,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         },
         {
@@ -3892,7 +3905,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -3931,7 +3944,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         },
         {
@@ -4022,6 +4036,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -4089,7 +4104,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -4134,7 +4149,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         },
         {
@@ -4192,6 +4208,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -4245,7 +4262,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -4287,7 +4304,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         },
         {
@@ -4327,6 +4345,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -4351,7 +4370,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -4407,7 +4426,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         },
         {
@@ -4579,6 +4599,7 @@
         {
           "name": "fields",
           "schema": {
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         }
@@ -4727,6 +4748,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -4759,7 +4781,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -4798,7 +4820,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         }
       ]
@@ -4825,6 +4848,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -4857,7 +4881,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -4897,7 +4921,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         }
       ]
@@ -4925,6 +4950,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -4975,7 +5001,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -5018,7 +5044,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         },
         {
@@ -5099,7 +5126,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -5142,7 +5169,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         },
         {
@@ -5183,6 +5211,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -5259,7 +5288,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -5308,7 +5337,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         },
         {
@@ -5349,6 +5379,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -5433,7 +5464,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -5477,7 +5508,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         },
         {
@@ -5620,6 +5652,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -5671,7 +5704,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -5724,7 +5757,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         },
         {
@@ -5835,6 +5869,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -5849,7 +5884,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -5889,7 +5924,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         }
       ]
@@ -6029,6 +6065,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -6102,7 +6139,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -6150,7 +6187,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         }
       ]
@@ -6176,6 +6214,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -6195,7 +6234,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -6241,7 +6280,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         }
       ]
@@ -6270,6 +6310,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -6337,7 +6378,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -6383,7 +6424,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         }
       ]
@@ -6471,7 +6513,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -6517,7 +6559,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         }
       ]
@@ -7637,6 +7680,7 @@
         {
           "name": "fields",
           "schema": {
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -7671,6 +7715,7 @@
         {
           "name": "fields",
           "schema": {
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         }
@@ -7759,6 +7804,7 @@
         {
           "name": "fields",
           "schema": {
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -11472,7 +11518,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -11511,7 +11557,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         }
       ]
@@ -11541,7 +11588,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -11580,7 +11627,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         }
       ]
@@ -11626,7 +11674,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -11665,7 +11713,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         }
       ]
@@ -11730,6 +11779,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -11804,7 +11854,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -11849,7 +11899,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         }
       ]
@@ -11917,7 +11968,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -11956,7 +12007,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         }
       ]
@@ -12024,7 +12076,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -12063,7 +12115,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         }
       ]
@@ -12093,6 +12146,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -12162,7 +12216,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -12206,7 +12260,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         }
       ]
@@ -12241,6 +12296,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -12248,7 +12304,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -12287,7 +12343,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         }
       ]
@@ -12356,6 +12413,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -12370,7 +12428,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -12409,7 +12467,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         }
       ]
@@ -12446,6 +12505,7 @@
         {
           "name": "netuid",
           "schema": {
+            "maximum": 65535,
             "minimum": 0,
             "type": "integer"
           }
@@ -12460,7 +12520,7 @@
         {
           "name": "fields",
           "schema": {
-            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+            "pattern": "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$",
             "type": "string"
           }
         },
@@ -12499,7 +12559,8 @@
             "enum": [
               "asc",
               "desc"
-            ]
+            ],
+            "type": "string"
           }
         }
       ]

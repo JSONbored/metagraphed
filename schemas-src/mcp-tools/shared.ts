@@ -138,31 +138,10 @@ export const ENDPOINT_LAYER_VALUES = [
 // the schema. Put on the shared primitive rather than at ~260 call sites, so
 // one sentence covers every tool and the wording cannot drift between them.
 
-/**
- * The accepted `fields` syntax, which was documented NOWHERE a caller could see it:
- * 27 of 31 `fields` parameters were bare `{"type":"string"}`, 19 of them with no
- * mention in the tool description either. The format is a comma-separated list of bare
- * row-field names — mirrors `FIELD_NAME_PATTERN` in src/field-projection.ts, which is
- * what actually rejects a malformed value.
- *
- * Deliberately as permissive as `parseFieldsParam` actually is, not as tidy as the
- * canonical form looks: that parser trims each segment and drops empty ones, so
- * `"netuid, name"` and `"netuid,,name"` are both accepted. A stricter pattern would
- * make a generated client reject input the server takes — the same defect as an MCP
- * tool declaring a page-size ceiling its own route does not enforce.
- */
-export const FIELDS_PATTERN =
-  "^[\\s,]*[A-Za-z_][A-Za-z0-9_]*(\\s*,[\\s,]*[A-Za-z_][A-Za-z0-9_]*)*[\\s,]*$";
-export const fieldsSchema = () =>
-  z
-    .string()
-    .regex(new RegExp(FIELDS_PATTERN))
-    .describe(
-      "Comma-separated row field names to project, e.g. `netuid,name,slug`. " +
-        "Bare identifiers only — not a JSON array, no paths or indices. " +
-        "An unknown name is rejected rather than ignored.",
-    )
-    .meta({ examples: ["netuid,name,slug"] });
+// `FIELDS_PATTERN` / `fieldsSchema()` moved to ../query-params.ts with the rest
+// of the vocabulary (#10073): REST publishes them too now, and importing them
+// out of an mcp-tools/ module from src/contracts.ts is the exact layering
+// mistake #10061 fixed. Still reachable from here via the `export *` above.
 
 // Bare `{type:"object"}` (hand-written, no `properties`/`additionalProperties`
 // declared -- JSON Schema's own default for an omitted additionalProperties

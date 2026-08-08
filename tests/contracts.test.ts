@@ -19,6 +19,7 @@ import {
   compileRoutePattern,
 } from "../src/contracts.ts";
 import { RETIRED_CURRENT_HEALTH_ARTIFACT_PATTERN } from "../workers/config.ts";
+import { FIELDS_PATTERN } from "../schemas-src/query-params.ts";
 import {
   ARTIFACT_SIZE_BUDGETS,
   evaluateArtifactBudgets,
@@ -382,10 +383,15 @@ describe("public contract registry", () => {
     }
 
     const subnetParameters = openapi.paths["/api/v1/subnets"].get.parameters;
+    // The vocabulary's pattern (#10073), which is deliberately as permissive as
+    // `parseFieldsParam` really is. The stricter regex this used to assert
+    // rejected `netuid, name` and `netuid,,name`, both of which the route
+    // serves -- so a client generated from our own spec refused input the
+    // server accepts.
     assert.equal(
       subnetParameters.find((parameter: Row) => parameter.name === "fields")
         .schema.pattern,
-      "^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$",
+      FIELDS_PATTERN,
     );
     assert.deepEqual(
       subnetParameters.find((parameter: Row) => parameter.name === "sort")
