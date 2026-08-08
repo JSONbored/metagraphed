@@ -35,7 +35,7 @@
 
 import { laneHealthStore } from "./lane-health-store.ts";
 import { assertIdentifier } from "./neon-backfill.ts";
-import { neonBackfillLanes, type PgUnsafe } from "./neon-write.ts";
+import { neonOwnsTable, type PgUnsafe } from "./neon-write.ts";
 import {
   createPgSql,
   type HyperdriveLike,
@@ -60,12 +60,23 @@ export interface NeonPrunePlan {
 }
 
 /**
- * One plan per rolling window, keyed by the NEON_BACKFILL_LANES name.
+ * One plan per rolling window, keyed by table name.
  *
- * A table absent from that flag is skipped entirely rather than pruned to
- * empty: nothing is mirroring it yet, so Neon's copy is not a window with a
- * tail, it is a table that has not been filled. Deleting from it would be
- * deleting a backfill in progress.
+ * GATED ON OWNERSHIP, NOT ON THE BACKFILL FLAG (#10164). This was keyed to
+ * NEON_BACKFILL_LANES, and the reasoning was sound while the reconciler ran: a
+ * table absent from that flag was not being mirrored yet, so Neon's copy was
+ * not a window with a tail but a table still filling, and deleting from it
+ * would delete a backfill in progress.
+ *
+ * That inverted when the lanes finished. A table leaves NEON_BACKFILL_LANES
+ * exactly when Neon becomes its sole store (#10078), so "absent from the flag"
+ * stopped meaning "not filled yet" and started meaning "Neon holds the only
+ * copy" -- the precise moment the window most needs bounding. The flag is now
+ * empty in both configs, so this lane has been pruning NOTHING while reporting
+ * a clean run, and surface_checks is a 30-day rolling window with no other
+ * writer to trim it.
+ *
+ * Same inversion, and the same reason, as the chain-detail prune in #10152.
  */
 export const NEON_PRUNE_PLANS: Readonly<Record<string, NeonPrunePlan>> = {
   surface_checks: {
@@ -203,11 +214,10 @@ export async function runNeonPrune(
   const now = deps.now ?? Date.now;
   if (!sql?.unsafe) return { attempted: false };
 
-  // Only tables Neon is actually being given rows for. One absent from the
-  // flag has an EMPTY Neon copy, not a window with a tail.
-  const enabled = new Set(neonBackfillLanes(env));
+  // Only tables Neon actually owns. See NEON_PRUNE_PLANS' header for why this
+  // is ownership and no longer the backfill flag.
   const plans = Object.entries(NEON_PRUNE_PLANS)
-    .filter(([lane]) => enabled.has(lane))
+    .filter(([table]) => neonOwnsTable(env, table))
     .map(([, plan]) => plan);
 
   const outcomes: PruneTableOutcome[] = [];
