@@ -4455,8 +4455,18 @@ function applySubnetListQuery(
    *
    * limitSchema declares a tool's default in the PUBLISHED contract but does
    * not apply it -- deliberately, so handlers keep ownership of the decision.
-   * Applying it here is that ownership: null means "every row", which is the
-   * historical behaviour and still right for a per-subject view.
+   * Passing a number here is that ownership.
+   *
+   * `null` DOES NOT MEAN "every row", though it used to say so. This function
+   * only decides whether to put a `limit` on the internal URL;
+   * applyMcpQueryFilters is called with no options below, so when there is no
+   * `limit` it applies MCP_LIST_LIMIT_DEFAULT (20) anyway. Measured: 30 rows
+   * in, 20 rows out, `pagination.limit: 20`.
+   *
+   * So `null` means "take the shared MCP page default", and a per-subject view
+   * that wants every row has to say so -- there is no way to express it from
+   * here today (#10101). Corrected rather than deleted because a comment
+   * promising unpaginated output is exactly what a caller would rely on.
    */
   defaultLimit: number | null = null,
 ): Row {
