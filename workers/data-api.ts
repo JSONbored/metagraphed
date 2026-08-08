@@ -822,6 +822,11 @@ async function handleNeuronsSync(
       rows,
       dailyRows,
       positionRows,
+      // The tally follows the rows into whichever store holds them (#10056).
+      // Sent only when Neon owns the snapshot: while D1 is still written, its
+      // batch carries the tally atomically and a second copy in Neon would be
+      // a ledger nothing reconciles.
+      pass: neonOwns ? pass : null,
     },
   );
 

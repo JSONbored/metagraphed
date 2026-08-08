@@ -184,3 +184,83 @@ export function passTallyStatement<S>(
       pass.nowMs,
     );
 }
+
+/** The runner shape `createPgSql` hands out. Structural, so a test can assert
+ * the emitted text and values without a database. */
+export interface PassTallySql {
+  unsafe(text: string, values?: unknown[]): Promise<unknown>;
+}
+
+export interface PassTallyWrite {
+  ok: boolean;
+  reason?: string;
+}
+
+/**
+ * The same tally, against Postgres.
+ *
+ * WHY THIS IS NOT A `?`-TO-`$n` TRANSLATION of the statement above. Postgres
+ * infers a parameter's type from the context it appears in, and inside a VALUES
+ * list the only context is the target column. `completed_at` is filled by a
+ * CASE whose OPERANDS are parameters, and a comparison gives Postgres nothing
+ * to infer from, so `$4 >= $5` resolves to text and the whole statement is
+ * rejected before it runs:
+ *
+ *     column "completed_at" is of type bigint but expression is of type text
+ *
+ * Loud rather than silent, which is luck rather than design -- the same shape
+ * in a context Postgres CAN coerce would compare `'9' >= '100'`, which is TRUE
+ * as text and FALSE as integer, and would stamp an incomplete pass complete.
+ * The casts below are therefore written for the semantics, not for the error.
+ *
+ * ONE STATEMENT, so the read-modify-write of `received_rows` stays inside the
+ * upsert. Reading the running total into the Worker and writing back a sum
+ * would race every other chunk of the same pass.
+ */
+export async function writePassTallyToNeon(
+  sql: PassTallySql,
+  lane: string,
+  pass: PassTallyInput,
+): Promise<PassTallyWrite> {
+  const table = PASS_TABLES[lane];
+  if (!table) {
+    // Same posture as the D1 builder: a writer names its own lane, so an
+    // unknown one is a programming error rather than a runtime condition.
+    throw new Error(
+      `pass-completeness: no pass table for lane ${lane}; add it to PASS_TABLES ` +
+        `and ship the migration, or the tally has nowhere to land`,
+    );
+  }
+  try {
+    await sql.unsafe(
+      `INSERT INTO ${table}
+         (captured_at, expected_rows, received_rows, completed_at)
+       VALUES ($1::bigint, $2::int, $3::int,
+               CASE WHEN $4::int >= $5::int THEN $6::bigint ELSE NULL END)
+       ON CONFLICT (captured_at) DO UPDATE SET
+         expected_rows = EXCLUDED.expected_rows,
+         received_rows = ${table}.received_rows + EXCLUDED.received_rows,
+         completed_at = COALESCE(
+           ${table}.completed_at,
+           CASE
+             WHEN ${table}.received_rows + EXCLUDED.received_rows
+                  >= EXCLUDED.expected_rows
+             THEN $7::bigint
+             ELSE NULL
+           END
+         )`,
+      [
+        pass.capturedAt,
+        pass.expectedRows,
+        pass.receivedRows,
+        pass.receivedRows,
+        pass.expectedRows,
+        pass.nowMs,
+        pass.nowMs,
+      ],
+    );
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, reason: String((error as Error)?.message ?? error) };
+  }
+}

@@ -42,6 +42,10 @@ import {
   type WaitUntilLike,
 } from "./pg-sql.ts";
 import type { LaneHealthDb } from "./lane-health.ts";
+import {
+  writePassTallyToNeon,
+  type PassTallyInput,
+} from "./pass-completeness.ts";
 
 /** The lane name this mirror answers to in NEON_DUAL_WRITE_LANES. */
 export const NEURONS_NEON_LANE = "neurons";
@@ -91,6 +95,15 @@ export interface NeuronMirrorInput {
   rows: Row[];
   dailyRows: Row[];
   positionRows: Row[];
+  /** This chunk's completeness tally, when the producer declared a pass.
+   *
+   * Carried here rather than written by the caller because of the invariant
+   * src/neurons-d1-write.ts states for the D1 side: the tally must not be able
+   * to report a pass complete whose rows never landed. D1 gets that from one
+   * atomic batch. Postgres cannot, because writeRowsToNeon chunks -- so it is
+   * enforced below instead, by writing the tally ONLY after every table
+   * succeeded. */
+  pass?: PassTallyInput | null;
 }
 
 export interface NeuronMirrorOutcome {
@@ -164,6 +177,37 @@ export async function mirrorNeuronSnapshotToNeon(
     );
     results[name] = result;
     await recordNeonWriteVerdict(laneDb, name, result, now());
+  }
+
+  // THE TALLY GOES LAST, AND ONLY IF EVERY TABLE LANDED (#10056).
+  //
+  // This is the Postgres form of the ordering src/neurons-d1-write.ts gets for
+  // free by appending the tally to its batch. A pass marked complete whose rows
+  // did not land is the one failure this ledger exists to make impossible, so a
+  // partial write must leave the tally alone: the next chunk re-sends its rows
+  // and the pass completes then, whereas a tally written over missing rows is
+  // never revisited.
+  if (input.pass) {
+    const rowsLanded = Object.values(results).every((r) => r.ok);
+    const tally = rowsLanded
+      ? await writePassTallyToNeon(sql, NEURONS_NEON_LANE, input.pass)
+      : { ok: false, reason: "rows did not land; tally withheld" };
+    const verdict: NeonWriteResult = {
+      ok: tally.ok,
+      rows: tally.ok ? 1 : 0,
+      statements: 1,
+      ...(tally.reason ? { reason: tally.reason } : {}),
+    };
+    // Its OWN lane name, not the snapshot's: a tally that failed while the
+    // three tables landed is a different fault from a table failing, and
+    // folding them into one verdict would hide whichever came second.
+    await recordNeonWriteVerdict(
+      laneDb,
+      `${NEURONS_NEON_LANE}-pass`,
+      verdict,
+      now(),
+    );
+    results[`${NEURONS_NEON_LANE}_passes`] = verdict;
   }
   return { attempted: true, results };
 }
