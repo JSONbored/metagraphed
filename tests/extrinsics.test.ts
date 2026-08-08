@@ -643,15 +643,17 @@ function dbWith({
   };
 }
 
-test("GET /extrinsics clamps limit to <=100 + rejects unsupported params", async () => {
+test("GET /extrinsics rejects an over-cap limit + unsupported params", async () => {
   const env = dbWith({ feed: [] });
-  const ok = await handleRequest(
+  // #9916: was 200 with limit clamped to 100, so a caller asking for 999 got
+  // a short page and no signal that it was short.
+  const over = await handleRequest(
     req("/api/v1/extrinsics?limit=999"),
     env as unknown as Env,
     {},
   );
-  assert.equal(ok.status, 200);
-  assert.equal((await ok.json()).data.limit, 100);
+  assert.equal(over.status, 400);
+  assert.equal((await over.json()).error.code, "invalid_query");
 
   const bad = await handleRequest(
     req("/api/v1/extrinsics?bogus=1"),

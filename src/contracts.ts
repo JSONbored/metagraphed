@@ -6090,10 +6090,9 @@ export const SHARED_QUERY_PARAMETER_DESCRIPTIONS: Record<
     return (
       "Maximum number of rows to return in one page" +
       (typeof maximum === "number" ? ` (at most ${maximum})` : "") +
-      ". Routes differ in how they handle a larger value: some reject it with " +
-      "400 `invalid_query`, others clamp to the maximum and answer 200. Read " +
-      "the `limit` echoed in the response body rather than assuming the page " +
-      "is the size you asked for."
+      ". A larger value, or a non-positive one, is rejected with 400 " +
+      "`invalid_query` on every route -- it is never silently clamped, so a " +
+      "short page always means the result set is exhausted (#9916)."
     );
   },
   offset: () =>

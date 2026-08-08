@@ -188,7 +188,7 @@ describe("shared query parameters are described in the published spec (#9131)", 
     const shared = PARAMETERS.filter(
       ({ parameter }) =>
         parameter.name === "limit" &&
-        (parameter.description ?? "").includes("Read the `limit` echoed"),
+        (parameter.description ?? "").includes("never silently clamped"),
     );
     assert.ok(
       shared.length > 50,

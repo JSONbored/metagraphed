@@ -4415,16 +4415,18 @@ describe("handleBlocks", () => {
     );
   });
 
-  test("clamps limit to <=100", async () => {
+  test("REJECTS a limit above the declared maximum (#9916)", async () => {
+    // Was: clamped to 100 and answered 200, so a caller asking for 999 got
+    // a short page with no signal that it was short.
     const { env } = dbWith({ blocksFeed: [] });
-    const body = await json(
-      await handleBlocks(
-        req("/api/v1/blocks"),
-        env as unknown as Env,
-        url("/api/v1/blocks?limit=999"),
-      ),
+    const res = await handleBlocks(
+      req("/api/v1/blocks"),
+      env as unknown as Env,
+      url("/api/v1/blocks?limit=999"),
     );
-    assert.equal(body.data.limit, 100);
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.match(body.error.message, /between 1 and 100\./);
   });
 
   test("short-circuits impossible count floors before querying D1", async () => {
@@ -4787,16 +4789,18 @@ describe("handleExtrinsics", () => {
     assert.equal(captures.sql.length, 0);
   });
 
-  test("clamps limit to <=100", async () => {
+  test("REJECTS a limit above the declared maximum (#9916)", async () => {
+    // Was: clamped to 100 and answered 200, so a caller asking for 500 got
+    // a short page with no signal that it was short.
     const { env } = dbWith({ extrinsics: [] });
-    const body = await json(
-      await handleExtrinsics(
-        req("/api/v1/extrinsics"),
-        env as unknown as Env,
-        url("/api/v1/extrinsics?limit=500"),
-      ),
+    const res = await handleExtrinsics(
+      req("/api/v1/extrinsics"),
+      env as unknown as Env,
+      url("/api/v1/extrinsics?limit=500"),
     );
-    assert.equal(body.data.limit, 100);
+    const body = await errorJson(res);
+    assert.equal(body.error.code, "invalid_query");
+    assert.match(body.error.message, /between 1 and 100\./);
   });
 
   const EXTRINSICS_CSV_HEADER =
