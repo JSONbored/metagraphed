@@ -1,5 +1,10 @@
 import { economicsFieldSources } from "../src/economics-field-sources.ts";
-import { rollupChainConcentration } from "../src/chain-concentration-rollup.ts";
+import {
+  CHAIN_CONCENTRATION_DAILY_TABLE,
+  rollupChainConcentration,
+} from "../src/chain-concentration-rollup.ts";
+import { createPgD1 } from "../src/pg-d1-adapter.ts";
+import { neonOwnsTable } from "../src/neon-write.ts";
 import {
   API_QUERY_COLLECTIONS,
   API_ROUTES,
@@ -442,6 +447,7 @@ import { runLinkStatusSync } from "../src/link-status-sync.ts";
 import { runRawCaptureSync } from "../src/raw-capture-sync.ts";
 import {
   captureSubnetBurnHistory,
+  SUBNET_BURN_HISTORY_TABLE,
   type BurnHistoryDb,
 } from "../src/subnet-burn-history.ts";
 import { runOperationalSurfacesSync } from "../src/operational-surfaces-sync.ts";
@@ -2134,6 +2140,36 @@ function cronLabel(cron: string): string {
  * ROLLUP_SYNC_SECRET is unset, and that is a real "did not do the work"
  * outcome, not a success.
  */
+/**
+ * The D1-shaped handle a producer lane should write through (#10104).
+ *
+ * Neon when it owns every table the lane touches, D1 otherwise. The lanes
+ * themselves take an injected `db` and never learn which store answered, which
+ * is the point: no lane needs a Postgres variant, only a different handle.
+ *
+ * The connection is parked on ctx.waitUntil rather than awaited -- these run on
+ * a cron whose result the caller already reports, and blocking a tick's return
+ * on a socket teardown buys nothing. Leaving it unparked would leak one
+ * connection per tick, which is why this returns the closer rather than hiding
+ * it.
+ */
+function producerStore(
+  env: Env,
+  ctx: ExecutionContext | undefined,
+  tables: readonly string[],
+): { db: unknown; close: () => void } {
+  const bag = env as unknown as Record<string, unknown>;
+  const owned =
+    Boolean(env.HYPERDRIVE?.connectionString) &&
+    tables.every((table) => neonOwnsTable(bag, table));
+  if (!owned) return { db: env.METAGRAPH_HEALTH_DB, close: () => undefined };
+  const pg = createPgD1(env.HYPERDRIVE!.connectionString);
+  return {
+    db: pg,
+    close: () => ctx?.waitUntil?.(pg.close()),
+  };
+}
+
 export async function handleScheduled(
   controller: ScheduledController,
   env: Env = {} as unknown as Env,
@@ -2268,9 +2304,16 @@ async function dispatchScheduled(
     // #9402: one state_queryStorageAt covering every subnet, then one batched D1
     // write. Never throws -- a capture lane that could take down the cron it runs on
     // would be worse than a gap in the series.
-    return captureSubnetBurnHistory(env, {
-      db: env.METAGRAPH_HEALTH_DB as unknown as BurnHistoryDb,
-    });
+    {
+      const store = producerStore(env, ctx, [SUBNET_BURN_HISTORY_TABLE]);
+      try {
+        return await captureSubnetBurnHistory(env, {
+          db: store.db as BurnHistoryDb,
+        });
+      } finally {
+        store.close();
+      }
+    }
   }
   if (cron === RAW_CAPTURE_CRON) {
     // Gap-free capture of raw extrinsic/event bytes into R2, replacing what
@@ -2461,12 +2504,24 @@ async function dispatchScheduled(
     // day that has none yet, bounded per tick. Runs the same builder
     // /chain/concentration serves, so a historical point and the live card are
     // one computation -- see src/chain-concentration-rollup.ts.
-    return rollupChainConcentration(
-      env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-        typeof rollupChainConcentration
-      >[0],
-      { env },
-    );
+    {
+      // Reads neuron_daily (already Neon's) and writes the rollup, so BOTH
+      // must be Neon's before this lane moves -- a rollup reading one store
+      // and writing the other would derive a day from rows it then cannot
+      // reconcile against.
+      const store = producerStore(env, ctx, [
+        "neuron_daily",
+        CHAIN_CONCENTRATION_DAILY_TABLE,
+      ]);
+      try {
+        return await rollupChainConcentration(
+          store.db as Parameters<typeof rollupChainConcentration>[0],
+          { env },
+        );
+      } finally {
+        store.close();
+      }
+    }
   }
   if (cron === CHAIN_DETAIL_STALENESS_WATCHDOG_CRON) {
     // The chain-detail live lane's alarm. Zero alerts is the correct steady
