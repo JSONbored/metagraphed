@@ -30,6 +30,10 @@
 // to a payload cannot drift out of its degraded twin.
 
 import {
+  CHAIN_EVENTS_LIMIT_DEFAULT,
+  CHAIN_EVENTS_LIMIT_MAX,
+} from "./route-limits.ts";
+import {
   answerBlockDetail,
   isEmptyChainEventPayload,
   loadBlockChainEventsHotTier,
@@ -300,8 +304,11 @@ function chainEventsLimit(raw: string | null): number {
   return Math.min(parsed, CHAIN_EVENTS_LIMIT_MAX);
 }
 
-export const CHAIN_EVENTS_LIMIT_DEFAULT = 50;
-export const CHAIN_EVENTS_LIMIT_MAX = 100;
+// Re-exported from the module that owns per-route ceilings (#10109). It used
+// to be declared here AND, with a different value, in src/data-api-mcp.ts --
+// one name, two numbers, and openapi.json published the one this path never
+// uses.
+export { CHAIN_EVENTS_LIMIT_DEFAULT, CHAIN_EVENTS_LIMIT_MAX };
 
 export interface BlockChainEventsPayload {
   block_number: number;
