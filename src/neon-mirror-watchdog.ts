@@ -54,6 +54,7 @@ import { neonDualWriteLanes } from "./neon-write.ts";
 import { LEDGER_MIRROR_PLANS } from "./ledger-neon-write.ts";
 import { NEURON_MIRROR_PLANS } from "./neurons-neon-write.ts";
 import { NOMINATOR_POSITIONS_NEON_LANE } from "./nominator-positions-neon-write.ts";
+import { CHAIN_DETAIL_NEON_LANE } from "./chain-detail-neon-write.ts";
 import { FAMILY_MIRROR_PLANS } from "./hyperparams-identity-neon-write.ts";
 import {
   loadLatestLaneHealth,
@@ -113,6 +114,10 @@ export const MIRROR_LANE_TABLES: Readonly<Record<string, string>> = {
     ]),
   ),
   [NOMINATOR_POSITIONS_NEON_LANE]: "nominator_positions",
+  // The coverage register, not one of the three detail tables: it is the one
+  // this lane writes LAST, so it is the one whose freshness means the whole
+  // batch landed.
+  [CHAIN_DETAIL_NEON_LANE]: "chain_detail_blocks",
 };
 
 /** The minimal D1 surface this needs, so a test can hand it a fake. */
@@ -144,9 +149,34 @@ export interface MirrorLag {
 export function mirrorFreshnessSql(tables: readonly string[]): string {
   return tables
     .map(
-      (table) => `SELECT '${table}' AS t, MAX(captured_at) AS mx FROM ${table}`,
+      (table) =>
+        `SELECT '${table}' AS t, MAX(${freshnessColumn(table)}) AS mx FROM ${table}`,
     )
     .join(" UNION ALL ");
+}
+
+/**
+ * Which column carries "when was this row last written", per table.
+ *
+ * `captured_at` for everything the producers stamp, which is nearly all of
+ * them -- so this is an OVERRIDE LIST rather than a full map, and a table
+ * absent from it keeps the default.
+ *
+ * chain_detail_* are the exception: they record `observed_at` (when the chain
+ * produced the block) and `synced_at`, and have no captured_at at all. Naming
+ * them here without this would have made the watchdog query fail on a missing
+ * column -- which for THIS watchdog means the check built to catch a frozen
+ * mirror is itself the thing that stops reporting.
+ */
+const FRESHNESS_COLUMNS: Readonly<Record<string, string>> = {
+  chain_detail_blocks: "observed_at",
+  chain_detail_extrinsics: "observed_at",
+  chain_detail_chain_events: "observed_at",
+  chain_detail_account_events: "observed_at",
+};
+
+export function freshnessColumn(table: string): string {
+  return FRESHNESS_COLUMNS[table] ?? "captured_at";
 }
 
 export interface MirrorSurvey {
