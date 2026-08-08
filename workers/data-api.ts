@@ -776,18 +776,26 @@ async function handleNeuronsSync(
   // snapshot. db.batch() runs its statements in one implicit transaction --
   // a mid-batch failure must never leave `neurons` upserted with stale UIDs
   // left un-pruned.
-  let d1Statements: number;
-  try {
-    ({ statements: d1Statements } = await writeNeuronSnapshotToD1(
-      env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-        typeof writeNeuronSnapshotToD1
-      >[0],
-      { rows, dailyRows, positionRows, netuidMaxCapturedAt, pass },
-    ));
-  } catch (err) {
-    console.error("data-api neurons-sync D1 write failed:", err);
-    await captureDataApiError(err, "neurons-sync-d1", env);
-    return writeJson({ error: "d1 write failed" }, 502);
+  // 0 when Neon owns the tables and the D1 write is skipped entirely.
+  let d1Statements = 0;
+  // THE INVERSION (#9787). Once Neon solely owns all three tables the D1
+  // write is skipped outright rather than written and ignored -- leaving it in
+  // would keep a second copy diverging quietly, which is the state this whole
+  // migration exists to end.
+  const neonOwns = neonOwnsNeuronsSnapshot(env);
+  if (!neonOwns) {
+    try {
+      ({ statements: d1Statements } = await writeNeuronSnapshotToD1(
+        env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+          typeof writeNeuronSnapshotToD1
+        >[0],
+        { rows, dailyRows, positionRows, netuidMaxCapturedAt, pass },
+      ));
+    } catch (err) {
+      console.error("data-api neurons-sync D1 write failed:", err);
+      await captureDataApiError(err, "neurons-sync-d1", env);
+      return writeJson({ error: "d1 write failed" }, 502);
+    }
   }
 
   // THE NEON MIRROR (metagraphed-infra#336), and it runs AFTER the D1 write
@@ -811,6 +819,28 @@ async function handleNeuronsSync(
     },
   );
 
+  // AUTHORITATIVE ONCE NEON OWNS THE TABLES. During dual-write a Neon failure
+  // cost a mirror and a lane verdict, never the pass, because D1 was still the
+  // store every route read. Once Neon IS the store that reasoning inverts: a
+  // pass that did not reach it did not happen, and reporting ok:true would
+  // tell the producer its rows are safe when nothing holds them.
+  if (neonOwns) {
+    const failed = Object.entries(neon.results).filter(([, r]) => !r.ok);
+    if (!neon.attempted || failed.length > 0) {
+      console.error("data-api neurons-sync Neon write failed:", failed);
+      await captureDataApiError(
+        new Error(
+          failed.length > 0
+            ? `neon write failed: ${failed.map(([t]) => t).join(", ")}`
+            : "neon write not attempted while Neon owns the tables",
+        ),
+        "neurons-sync-neon",
+        env,
+      );
+      return writeJson({ error: "neon write failed" }, 502);
+    }
+  }
+
   // `stores` stays REPORTED rather than inferred, so a reader can see which
   // stores this snapshot actually reached -- which is precisely the question
   // nobody could answer while Neon was frozen.
@@ -820,7 +850,7 @@ async function handleNeuronsSync(
     neuron_daily_written: dailyRows.length,
     account_position_daily_written: positionRows.length,
     netuids_covered: netuids.length,
-    stores: neon.attempted ? ["d1", "neon"] : ["d1"],
+    stores: neonOwns ? ["neon"] : neon.attempted ? ["d1", "neon"] : ["d1"],
     d1_statements: d1Statements,
     neon: neon.attempted ? neon.results : undefined,
   });
@@ -2939,6 +2969,38 @@ function normalizeDeliveryRow(row: Row): Row {
  * accident -- a table added to one of these groups cannot move until someone
  * puts its name in the flag.
  */
+/**
+ * The three tables one neurons snapshot writes.
+ *
+ * All or nothing, the same rule every other group in this file follows: the
+ * pass writes them from ONE derivation, so a half-listed group would leave
+ * neuron_daily in D1 while its parent moved and the two would never agree
+ * again.
+ */
+export const NEURONS_SNAPSHOT_TABLES = [
+  "neurons",
+  "neuron_daily",
+  "account_position_daily",
+] as const;
+
+/**
+ * Whether Neon is the ONLY store behind a neurons snapshot on this deployment.
+ *
+ * When true the D1 write is skipped outright and the Neon write becomes
+ * authoritative -- its failure is the request's failure, where during
+ * dual-write it was only a lane verdict. That inversion is the point: while D1
+ * still served reads, a Neon failure had to cost a mirror and not the pass;
+ * once Neon is the store, a pass that did not reach it did not happen.
+ */
+export function neonOwnsNeuronsSnapshot(env: Env): boolean {
+  return (
+    Boolean(env.HYPERDRIVE?.connectionString) &&
+    NEURONS_SNAPSHOT_TABLES.every((table) =>
+      neonOwnsTable(env as unknown as Record<string, unknown>, table),
+    )
+  );
+}
+
 export const ALERT_TRIGGER_TABLES = [
   "chain_alert_triggers",
   "chain_alert_deliveries",
