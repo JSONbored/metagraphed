@@ -41,7 +41,11 @@ import { R2_SQL_TOKEN_ENV } from "../src/r2-sql.ts";
 import * as profilesMcp from "../src/profiles-mcp.ts";
 import * as healthHistoryMcp from "../src/health-history-mcp.ts";
 import { KV_HEALTH_RPC_POOL } from "../src/health-prober.ts";
-import { createLocalArtifactEnv, latestArtifactDate } from "../scripts/lib.ts";
+import {
+  assertArtifactsBuilt,
+  createLocalArtifactEnv,
+  latestArtifactDate,
+} from "../scripts/lib.ts";
 import { handleRequest } from "../workers/api.ts";
 import { EXPOSED_RESPONSE_HEADERS_VALUE } from "../workers/http.ts";
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "../workers/mcp-session-hub.ts";
@@ -8742,6 +8746,10 @@ describe("MCP edge cases", () => {
 
 describe("MCP end-to-end through the Worker dispatch", () => {
   test("POST /mcp tools/call resolves real artifacts from the local env", async () => {
+    // Needs the per-entity artifacts, not just the committed seed. Without
+    // the assert every read returns null, the reader degrades to an empty
+    // card, and this fails as `false !== true` with no mention of the build.
+    assertArtifactsBuilt();
     const env = createLocalArtifactEnv();
     const request = new Request(MCP_URL, {
       method: "POST",

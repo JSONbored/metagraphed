@@ -49,7 +49,10 @@ import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { z } from "zod";
 import { API_ROUTES, querySchemaForRoute } from "../src/contracts.ts";
-import { createLocalArtifactEnv } from "../scripts/lib.ts";
+import {
+  assertArtifactsBuilt,
+  createLocalArtifactEnv,
+} from "../scripts/lib.ts";
 import { handleRequest } from "../workers/api.ts";
 import { handleMcpRequest, listToolDefinitions } from "../src/mcp-server.ts";
 import type { Row } from "./row-type.ts";
@@ -131,6 +134,9 @@ function publishedLimitMaximum(entry: Row): number | null {
 
 describe("a published `limit` ceiling means what its surface says (#10064)", () => {
   test("every REST route publishing a ceiling rejects one over it", async () => {
+    // Routes answer 503 without their artifacts, and a 503 is skipped here --
+    // so an unbuilt tree would silently check almost nothing rather than fail.
+    assertArtifactsBuilt();
     const env = await createLocalArtifactEnv();
     const ctx = { waitUntil() {}, passThroughOnException() {} };
     const clamping: string[] = [];
