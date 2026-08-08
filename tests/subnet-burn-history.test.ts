@@ -127,14 +127,33 @@ describe("captureSubnetBurnHistory", () => {
     );
   });
 
-  test("the write is idempotent, so a retried tick is not a key error", async () => {
+  test("the write is idempotent in a form BOTH engines accept", async () => {
+    // Idempotence is still the requirement -- a retried tick at the same
+    // millisecond must not be a primary-key error that fails the whole batch.
+    // What changed is the spelling (#10172): this was `INSERT OR REPLACE`,
+    // which is SQLite's alone and a SYNTAX ERROR in Postgres. The moment
+    // subnet_burn_history became sole-store on Neon and producerStore handed
+    // this lane a Postgres runner, every write failed -- silently, for five
+    // hours, because the capture never throws and had no lane_health verdict.
+    //
+    // `ON CONFLICT ... DO UPDATE` is understood by both, so the assertion is
+    // now that the statement is PORTABLE, not that it is D1's.
     const { db, calls } = fakeDb();
     await captureSubnetBurnHistory({} as never, {
       db,
       now: () => NOW,
       load: card([{ netuid: 1, burn_tao: 1 }]) as never,
     });
-    assert.match(calls[0].sql, /^INSERT OR REPLACE INTO /);
+    assert.match(calls[0].sql, /^INSERT INTO /);
+    assert.match(
+      calls[0].sql,
+      /ON CONFLICT \(netuid, observed_at\) DO UPDATE SET burn_tao = EXCLUDED\.burn_tao/,
+    );
+    assert.doesNotMatch(
+      calls[0].sql,
+      /INSERT\s+OR\s+REPLACE/i,
+      "the SQLite-only spelling is back; Postgres rejects it outright",
+    );
   });
 
   test("expired rows are swept, bounded by the retention horizon", async () => {

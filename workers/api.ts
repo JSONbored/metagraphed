@@ -2323,9 +2323,31 @@ async function dispatchScheduled(
     {
       const store = producerStore(env, ctx, [SUBNET_BURN_HISTORY_TABLE]);
       try {
-        return await captureSubnetBurnHistory(env, {
+        const result = await captureSubnetBurnHistory(env, {
           db: store.db as BurnHistoryDb,
         });
+        // A VERDICT, because this lane had none (#10172). captureSubnetBurnHistory
+        // never throws by design -- a capture lane that could take down its own
+        // cron would be worse than a gap -- so its failures arrive as a returned
+        // `{ ok: false, reason }` that nothing was reading. That is how an
+        // INSERT OR REPLACE rejected by Postgres went unnoticed for five hours
+        // while the series sat frozen. Now it lands where every other lane's
+        // does, and lane-alarm can see it.
+        ctx.waitUntil(
+          recordLaneVerdict(
+            laneHealthStore(env as unknown as Record<string, unknown>),
+            {
+              lane: "subnet-burn",
+              verdict: result.ok ? "ok" : "stale",
+              age_ms: null,
+              detail: result.ok
+                ? `captured ${result.captured}${result.pruned ? ", pruned" : ""}`
+                : (result.reason ?? "capture failed"),
+              checked_at: Date.now(),
+            },
+          ).then(() => undefined),
+        );
+        return result;
       } finally {
         store.close();
       }
