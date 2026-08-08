@@ -99,6 +99,7 @@ import { CHAIN_TRANSFER_LIMIT_MAX } from "../src/chain-transfers.ts";
 import { CHAIN_WEIGHT_SETTERS_LIMIT_MAX } from "../src/chain-weight-setters.ts";
 import { CHAIN_WEIGHTS_LIMIT_MAX } from "../src/chain-weights.ts";
 import { TOP_HOLDERS_SORTS } from "../src/top-holders.ts";
+import { VALIDATOR_ECONOMICS_SORTS } from "../src/validator-economics.ts";
 import { NOMINATOR_LIMIT_MAX } from "../src/validator-nominators.ts";
 import {
   blockBoundSchema,
@@ -337,13 +338,19 @@ export const ROUTE_QUERY_SCHEMAS: Record<string, z.ZodObject> = {
     window: windowSchema(["7d", "30d", "90d"] as const).optional(),
   }),
   "/api/v1/validators/economics": z.object({
-    // DIVERGENCE: the only `sort` on the surface published without an enum.
-    // Every other one names its columns, and the handler here does have a
-    // closed set -- so a caller has to guess, and a wrong guess is a silent
-    // no-op rather than a 400.
-    sort: z.string().optional(),
+    // Was the only `sort` on the surface published without an enum, while the
+    // handler has a closed set and says so in its own 400 ("Supported:
+    // earning_floor_cost_tao, ..."). A caller had to guess a column name, and
+    // every wrong guess was a rejected request the contract gave no way to
+    // avoid (#10096). Read from VALIDATOR_ECONOMICS_SORTS, the module that
+    // owns it, not a fourth copy.
+    sort: sortSchema(
+      VALIDATOR_ECONOMICS_SORTS as unknown as [string, ...string[]],
+    ).optional(),
     limit: limitSchema(VALIDATOR_ECONOMICS_LIMIT_MAX).optional(),
-    offset: z.int().min(0).max(512).optional(),
+    // Bounded by the ranking's own ceiling, not the generic deep-paging one:
+    // one row per subnet, so seeking past the limit seeks nothing.
+    offset: z.int().min(0).max(VALIDATOR_ECONOMICS_LIMIT_MAX).optional(),
     emission_gate_open: z.boolean().optional(),
     cap_binding: z.boolean().optional(),
   }),

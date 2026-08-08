@@ -7304,6 +7304,13 @@
         {
           "name": "sort",
           "schema": {
+            "enum": [
+              "earning_floor_cost_tao",
+              "permit_floor_cost_tao",
+              "permit_to_earning_multiple",
+              "tao_inflow_per_day",
+              "validator_headroom"
+            ],
             "type": "string"
           }
         },
