@@ -39,6 +39,28 @@ export const netuidSchema = () =>
     .meta({ examples: [64, 0] });
 
 /**
+ * A comma-separated list of subnet ids, for the routes that filter on a SET.
+ *
+ * Both bounds are real and both matter: at most 128 ids, each at most 5 digits
+ * (a netuid is a u16), which is exactly the 767-character ceiling — 128 ids
+ * plus 127 commas. The MCP side published `^\d+(,\d+)*$` for the same
+ * parameter: unbounded in count and accepting a 9-digit "netuid", so a tool
+ * caller could send a list its own route rejects.
+ */
+export const NETUID_LIST_MAX_LENGTH = 767;
+export const NETUID_LIST_PATTERN = /^\d{1,5}(,\d{1,5}){0,127}$/;
+export const netuidListSchema = () =>
+  z
+    .string()
+    .max(NETUID_LIST_MAX_LENGTH)
+    .regex(NETUID_LIST_PATTERN)
+    .describe(
+      "Comma-separated subnet ids to restrict the result to, e.g. `1,7,64`. " +
+        "At most 128 ids, each 0-65535. Unknown ids match nothing rather than erroring.",
+    )
+    .meta({ examples: ["1,7,64"] });
+
+/**
  * A page size, capped at the mirrored route's own ceiling.
  *
  * `fallback` is the value the handler uses when the argument is omitted, and
