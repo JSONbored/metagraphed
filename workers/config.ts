@@ -208,6 +208,15 @@ export const CHAIN_DETAIL_PRUNE_CRON = "12,27,42,57 * * * *";
 // lane keeps the block list live and merely starts declining drill-down, which
 // is silent in aggregate. Minutes 14/29/44/59 are likewise unused elsewhere.
 export const CHAIN_DETAIL_STALENESS_WATCHDOG_CRON = "14,29,44,59 * * * *";
+// The registry writer (#9779). Four times an hour: registry changes arrive on
+// merges, so the only cost of a slower tick is how stale surface_history is,
+// and the only cost of a faster one is GitHub API calls against a 5,000/hour
+// authenticated budget. An unchanged main is ONE conditional request -- the
+// head sha is compared against KV before anything else is fetched.
+//
+// Minutes 10/25/40/55 tick on none of the hourly crons in this file and stay
+// off the */5 raw-capture and */15 probe grids.
+export const REGISTRY_SYNC_CRON = "10,25,40,55 * * * *";
 // #9464: the top-holders leaderboard's alarm. That lane had NO watchdog and no
 // producer -- `account_balances` died with the box and is not in the poller
 // Container's job set -- so the route served a one-shot pre-decommission
