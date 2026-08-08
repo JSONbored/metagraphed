@@ -7,6 +7,7 @@
 // so the two-snapshot read stays bounded (validators, not every neuron across the network).
 
 import { median, percentile } from "./lib/stats.ts";
+import { clampRowLimit } from "../workers/request-params.ts";
 
 // Page-size ceiling, single-sourced in route-limits.ts so the contract's
 // published `maximum` and this route's enforcement cannot drift (#9127).
@@ -224,10 +225,11 @@ export function buildChainTurnover(
   };
   // Clamp limit to a whole number in [0, MAX] so a direct caller cannot make slice() behave
   // oddly (the HTTP layer already validates 1..MAX; this keeps the pure builder aligned).
-  const flooredLimit = Math.floor(Number(limit));
-  const normalizedLimit = Number.isFinite(flooredLimit)
-    ? Math.max(0, Math.min(flooredLimit, CHAIN_TURNOVER_LIMIT_MAX))
-    : CHAIN_TURNOVER_LIMIT_DEFAULT;
+  const normalizedLimit = clampRowLimit(
+    limit,
+    CHAIN_TURNOVER_LIMIT_DEFAULT,
+    CHAIN_TURNOVER_LIMIT_MAX,
+  );
 
   const empty: ChainTurnoverResult = {
     ...base,

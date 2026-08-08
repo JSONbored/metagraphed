@@ -23,6 +23,7 @@ import {
   type AlphaVolumeSentiment,
 } from "./alpha-volume.ts";
 import { median, percentile } from "./lib/stats.ts";
+import { clampRowLimit } from "../workers/request-params.ts";
 
 export const CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT = 20;
 export const CHAIN_ALPHA_VOLUME_LIMIT_MAX = 100;
@@ -148,10 +149,11 @@ export function buildChainAlphaVolume(
   } = {},
 ): ChainAlphaVolumeResult {
   const list = Array.isArray(rows) ? rows : [];
-  const flooredLimit = Math.floor(Number(limit));
-  const normalizedLimit = Number.isFinite(flooredLimit)
-    ? Math.max(0, Math.min(flooredLimit, CHAIN_ALPHA_VOLUME_LIMIT_MAX))
-    : CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT;
+  const normalizedLimit = clampRowLimit(
+    limit,
+    CHAIN_ALPHA_VOLUME_LIMIT_DEFAULT,
+    CHAIN_ALPHA_VOLUME_LIMIT_MAX,
+  );
 
   const perNetuid = new Map<number, Array<Record<string, unknown>>>();
   let newestObserved: number | null = null;

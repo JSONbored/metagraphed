@@ -1,3 +1,4 @@
+import { clampRowLimit } from "../workers/request-params.ts";
 // Nominator list for one validator hotkey (#4334/7.2): who has staked to this
 // validator (across every subnet it operates in), derived from the same
 // StakeAdded/StakeRemoved account_events flow src/account-stake-flow.ts
@@ -203,10 +204,11 @@ export function buildValidatorNominators(
   const normalizedSort = NOMINATOR_SORTS.includes(sort)
     ? sort
     : DEFAULT_NOMINATOR_SORT;
-  const flooredLimit = Math.floor(Number(limit));
-  const normalizedLimit = Number.isFinite(flooredLimit)
-    ? Math.max(0, Math.min(flooredLimit, NOMINATOR_LIMIT_MAX))
-    : NOMINATOR_LIMIT_DEFAULT;
+  const normalizedLimit = clampRowLimit(
+    limit,
+    NOMINATOR_LIMIT_DEFAULT,
+    NOMINATOR_LIMIT_MAX,
+  );
   const flooredOffset = Math.floor(Number(offset));
   const normalizedOffset =
     Number.isFinite(flooredOffset) && flooredOffset > 0 ? flooredOffset : 0;

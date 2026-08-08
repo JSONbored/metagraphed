@@ -1,3 +1,4 @@
+import { clampRowLimit } from "../workers/request-params.ts";
 // Network-wide weight-setter leaderboard: across EVERY subnet over a 7d/30d window, the
 // individual validators driving consensus network-wide — each setter's total WeightsSet event
 // count (summed across every subnet it operates on), its share of the network total, and when it
@@ -110,10 +111,11 @@ export function buildChainWeightSetters(
   }: { window?: string | null; limit?: number } = {},
 ): ChainWeightSettersResult {
   const list = Array.isArray(rows) ? rows : [];
-  const flooredLimit = Math.floor(Number(limit));
-  const normalizedLimit = Number.isFinite(flooredLimit)
-    ? Math.max(0, Math.min(flooredLimit, CHAIN_WEIGHT_SETTERS_LIMIT_MAX))
-    : CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT;
+  const normalizedLimit = clampRowLimit(
+    limit,
+    CHAIN_WEIGHT_SETTERS_LIMIT_DEFAULT,
+    CHAIN_WEIGHT_SETTERS_LIMIT_MAX,
+  );
   const totalSets = toCount(totals?.weight_sets);
   const setters: ChainWeightSetter[] = list
     .slice(0, normalizedLimit)

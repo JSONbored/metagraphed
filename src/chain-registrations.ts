@@ -8,6 +8,7 @@
 // semantics live in schemas-src/routes/chain-network-rollups.ts (ChainRegistrationsArtifact).
 
 import { median, percentile } from "./lib/stats.ts";
+import { clampRowLimit } from "../workers/request-params.ts";
 
 // The account_events kind emitted when a neuron registers (or re-registers) on a subnet.
 export const REGISTRATION_EVENT_KIND = "NeuronRegistered";
@@ -157,10 +158,11 @@ export function buildChainRegistrations(
   } = {},
 ): ChainRegistrationsResult {
   const list = Array.isArray(subnetRows) ? subnetRows : [];
-  const flooredLimit = Math.floor(Number(limit));
-  const normalizedLimit = Number.isFinite(flooredLimit)
-    ? Math.max(0, Math.min(flooredLimit, CHAIN_REGISTRATIONS_LIMIT_MAX))
-    : CHAIN_REGISTRATIONS_LIMIT_DEFAULT;
+  const normalizedLimit = clampRowLimit(
+    limit,
+    CHAIN_REGISTRATIONS_LIMIT_DEFAULT,
+    CHAIN_REGISTRATIONS_LIMIT_MAX,
+  );
   const observedAt = toIso(networkDistinct?.newest_observed);
 
   const empty: ChainRegistrationsResult = {

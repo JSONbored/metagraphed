@@ -11,6 +11,7 @@ import {
   loadIdentityByColdkeyMap,
 } from "./account-identity.ts";
 import { NeuronSchema } from "../schemas-src/routes/subnet-metagraph.ts";
+import { clampRowLimit } from "../workers/request-params.ts";
 import {
   parseFieldsParam,
   projectRow,
@@ -896,13 +897,13 @@ export function buildGlobalValidators(
   const normalizedSort = GLOBAL_VALIDATOR_SORTS.includes(sort)
     ? sort
     : DEFAULT_GLOBAL_VALIDATOR_SORT;
-  const flooredLimit = Math.floor(Number(limit));
-  // Floor the limit at 0, not 1, so an explicit limit=0 returns an empty
-  // leaderboard rather than being silently bumped up to a single validator.
-  // Mirrors the chain-turnover / chain-stake-flow / chain-weights (#2984) clamp.
-  const normalizedLimit = Number.isFinite(flooredLimit)
-    ? Math.max(0, Math.min(flooredLimit, GLOBAL_VALIDATOR_LIMIT_MAX))
-    : GLOBAL_VALIDATOR_LIMIT_DEFAULT;
+  // Floor at 0, not 1: an explicit limit=0 returns an empty leaderboard
+  // rather than one row nobody asked for. clampRowLimit is that rule.
+  const normalizedLimit = clampRowLimit(
+    limit,
+    GLOBAL_VALIDATOR_LIMIT_DEFAULT,
+    GLOBAL_VALIDATOR_LIMIT_MAX,
+  );
   const validatorsByHotkey = new Map<string, ValidatorAccumEntry>();
   let latestCapturedAt: number | null = null;
   let latestBlockNumber: number | null = null;
