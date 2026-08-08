@@ -65,6 +65,11 @@ export const PASS_TABLES: Readonly<Record<string, string>> = {
   // tally is not a narrowing here -- it writes exactly what D1's own statement
   // writes.
   "account-balances": "account_balances_passes",
+  // Absent until #10137, for the same reason account-balances was: the D1
+  // writer takes the pass and writes the tally itself, so D1's copy filled
+  // while Neon's stayed empty. A lane missing from this map is skipped by the
+  // mirror without complaint, because "no pass table" is a legitimate state.
+  "hotkey-alpha": "hotkey_alpha_passes",
   "nominator-positions": "nominator_positions_passes",
   "validator-nominator-counts": "validator_nominator_counts_passes",
 };

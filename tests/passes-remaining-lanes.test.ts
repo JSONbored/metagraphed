@@ -81,10 +81,19 @@ describe("validator-nominator-counts", () => {
     );
   });
 
-  test("a lane with no pass table writes no tally", async () => {
-    // hotkey-alpha and account-balances share this mirror but keep their own
-    // bespoke ledgers with extra columns, so PASS_TABLES gates them out.
-    assert.equal(PASS_TABLES["hotkey-alpha"], undefined);
+  test("hotkey-alpha writes its tally, like the other ledger lanes", async () => {
+    // THIS ASSERTED THE OPPOSITE until #10137, on the reasoning that
+    // hotkey-alpha and account-balances "keep their own bespoke ledgers with
+    // extra columns, so PASS_TABLES gates them out".
+    //
+    // The schemas do carry two extra columns -- `scanned` and `outcome` -- but
+    // NEITHER WRITER SETS THEM. writeHotkeyAlphaToD1 and
+    // writeAccountBalancesToD1 both insert exactly the four standard columns,
+    // the same four writePassTallyToNeon writes. So the exclusion was based on
+    // the table's shape rather than on anything a writer did, and its effect
+    // was that D1's tally filled while Neon's stayed empty -- on a lane about
+    // to become the only writer of it.
+    assert.equal(PASS_TABLES["hotkey-alpha"], "hotkey_alpha_passes");
     const { calls, sql } = recordingSql();
     await mirrorLedgerToNeon(
       { ...env, NEON_DUAL_WRITE_LANES: "hotkey-alpha" },
@@ -94,9 +103,29 @@ describe("validator-nominator-counts", () => {
       { sql, laneHealthDb: null },
       PASS,
     );
+    assert.ok(
+      calls.some((c) => c.includes("INSERT INTO hotkey_alpha_passes")),
+      `no tally written; statements were: ${calls.join(" | ")}`,
+    );
+  });
+
+  test("the tally is still WITHHELD when the rows did not land", async () => {
+    // The gate that matters is "rows first", not "which lane" -- a pass marked
+    // complete whose rows failed is the one failure this ledger exists to make
+    // impossible, and it is never revisited.
+    const { calls, sql } = recordingSql(/INSERT INTO hotkey_alpha /);
+    await mirrorLedgerToNeon(
+      { ...env, NEON_DUAL_WRITE_LANES: "hotkey-alpha" },
+      ctx,
+      "hotkey-alpha",
+      [{ hotkey: "h", netuid: 1, captured_at: 1 }],
+      { sql, laneHealthDb: null },
+      PASS,
+    );
     assert.equal(
-      calls.some((c) => c.includes("_passes")),
+      calls.some((c) => c.includes("hotkey_alpha_passes")),
       false,
+      "a tally was written for rows that never landed",
     );
   });
 });

@@ -181,10 +181,14 @@ describe("passTallyStatement", () => {
       () =>
         passTallyStatement(
           { prepare: () => ({ bind: () => ({}) }) },
-          "hotkey-alpha",
+          // A lane with no pass table. hotkey-alpha was the example until
+          // #10137 gave it one; chain-detail declares no completeness ledger
+          // and is not expected to grow one -- its coverage register is
+          // chain_detail_blocks, not a tally.
+          "chain-detail",
           { capturedAt: 1, expectedRows: 1, receivedRows: 1, nowMs: 1 },
         ),
-      /no pass table for lane hotkey-alpha/,
+      /no pass table for lane chain-detail/,
     );
   });
 
@@ -202,6 +206,7 @@ describe("passTallyStatement", () => {
       // missing from it is skipped silently (a lane with no pass table being a
       // legitimate state). Neon's copy therefore had zero rows.
       "account-balances",
+      "hotkey-alpha",
       "neurons",
       "nominator-positions",
       "validator-nominator-counts",
