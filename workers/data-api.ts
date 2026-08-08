@@ -6443,11 +6443,26 @@ export const NEON_READ_ROUTE_TABLES: readonly {
  * A route with no NEON_READ_ROUTE_TABLES entry gets D1, which is why applying
  * this to two more blocks moves nothing on its own.
  */
-function routeStore(env: Env, ctx: ExecutionContext, url: URL): D1Sql {
-  return env.HYPERDRIVE &&
+function routeStore(
+  env: Env,
+  ctx: ExecutionContext,
+  url: URL,
+): D1Sql | undefined {
+  if (
+    env.HYPERDRIVE &&
     neonServesRoute(env as unknown as Record<string, unknown>, url)
-    ? createPgSql(env.HYPERDRIVE, ctx)
-    : createD1Sql(env.METAGRAPH_HEALTH_DB);
+  ) {
+    return createPgSql(env.HYPERDRIVE, ctx);
+  }
+  // `undefined` rather than a runner over an absent binding (#10162). The three
+  // dispatcher blocks below used to answer 503 on `!env.METAGRAPH_HEALTH_DB`
+  // BEFORE asking this function, so a route Neon already serves was refused
+  // whenever D1 happened to be unbound -- the whole point of the gate, undone
+  // by the check above it. Returning undefined moves the "is there a store"
+  // question here, where the answer is actually known.
+  return env.METAGRAPH_HEALTH_DB
+    ? createD1Sql(env.METAGRAPH_HEALTH_DB)
+    : undefined;
 }
 
 export function neonServesRoute(
@@ -7789,8 +7804,9 @@ async function dispatchDataApiRequest(
     if (neuronsServedFromD1(env)) {
       const neuronsD1Handler = matchNeuronsD1Route(url);
       if (neuronsD1Handler) {
-        if (!env.METAGRAPH_HEALTH_DB) {
-          return json({ error: "d1 binding unavailable" }, 503);
+        const store = routeStore(env, ctx, url);
+        if (!store) {
+          return json({ error: "no store bound for this route" }, 503);
         }
         // `account_position_daily` can be served from Neon
         // (metagraphed-infra#336). The handler is unchanged -- it is written
@@ -7812,7 +7828,7 @@ async function dispatchDataApiRequest(
         // the handler uses ONE runner for all its queries, so a route touching
         // two tables cannot half-move. See NEON_READ_ROUTE_TABLES.
         try {
-          return await neuronsD1Handler(routeStore(env, ctx, url), env);
+          return await neuronsD1Handler(store, env);
         } catch (err) {
           console.error("data-api neurons query failed:", err);
           await captureDataApiError(err, maskRouteParams(url.pathname), env);
@@ -7827,11 +7843,12 @@ async function dispatchDataApiRequest(
     {
       const healthStatusD1Handler = matchHealthStatusD1Route(url, env);
       if (healthStatusD1Handler) {
-        if (!env.METAGRAPH_HEALTH_DB) {
-          return json({ error: "d1 binding unavailable" }, 503);
+        const store = routeStore(env, ctx, url);
+        if (!store) {
+          return json({ error: "no store bound for this route" }, 503);
         }
         try {
-          return await healthStatusD1Handler(routeStore(env, ctx, url), env);
+          return await healthStatusD1Handler(store, env);
         } catch (err) {
           console.error("data-api health-status D1 query failed:", err);
           await captureDataApiError(err, maskRouteParams(url.pathname), env);
@@ -7851,14 +7868,12 @@ async function dispatchDataApiRequest(
         env,
       );
       if (hyperparamsIdentityD1Handler) {
-        if (!env.METAGRAPH_HEALTH_DB) {
-          return json({ error: "d1 binding unavailable" }, 503);
+        const store = routeStore(env, ctx, url);
+        if (!store) {
+          return json({ error: "no store bound for this route" }, 503);
         }
         try {
-          return await hyperparamsIdentityD1Handler(
-            routeStore(env, ctx, url),
-            env,
-          );
+          return await hyperparamsIdentityD1Handler(store, env);
         } catch (err) {
           console.error("data-api hyperparams/identity D1 query failed:", err);
           await captureDataApiError(err, maskRouteParams(url.pathname), env);
@@ -8364,13 +8379,53 @@ export default {
           // only because the message asserted `key_complete` -- the validator
           // rejects a neurons message without it, so this writer never sees a
           // chunk whose prune map would delete rows it did not carry.
-          neurons: (rows, pass) =>
-            writeNeuronSnapshotToD1(
-              env.METAGRAPH_HEALTH_DB as unknown as Parameters<
-                typeof writeNeuronSnapshotToD1
-              >[0],
-              { ...neuronSnapshotWrite(rows, Date.now()), pass },
-            ),
+          neurons: async (rows, pass) => {
+            // THE ONE WRITER IN THIS BLOCK THAT NEVER ASKED (#10162). Every
+            // other lane here gates on neonOwns* and mirrors; this wrote D1
+            // outright and mirrored nothing. It is unreachable today --
+            // SYNC_QUEUE_LANES does not list `neurons` -- which is precisely
+            // why it survived: adding the lane to that flag would have started
+            // writing the only copy of a metagraph snapshot to a store nothing
+            // reads.
+            const neonOwns = neonOwnsNeuronsSnapshot(env);
+            const write = neuronSnapshotWrite(rows, Date.now());
+            const result = neonOwns
+              ? { statements: 0 }
+              : await writeNeuronSnapshotToD1(
+                  env.METAGRAPH_HEALTH_DB as unknown as Parameters<
+                    typeof writeNeuronSnapshotToD1
+                  >[0],
+                  { ...write, pass },
+                );
+            const neon = await mirrorNeuronSnapshotToNeon(
+              env as unknown as Record<string, unknown>,
+              ctx,
+              { ...write, pass },
+            );
+            // THROW, never return, on a failed Neon write once Neon owns the
+            // tables: a normal return acks the queue message and the rows are
+            // gone. writeSyncBatch turns a throw into a retry. Named tables
+            // rather than a fold over neon.results, because the mirror answers
+            // `{ attempted: true, results: {} }` when Hyperdrive is unbound and
+            // a "nothing said not-ok" test reads that as success.
+            if (neonOwns) {
+              const reason = [
+                "neurons",
+                "neuron_daily",
+                "account_position_daily",
+              ]
+                .map((table) => {
+                  const r = neon.results?.[table];
+                  if (!r) return `${table}: no Neon write recorded`;
+                  return r.ok ? null : `${table}: ${r.reason ?? "failed"}`;
+                })
+                .filter(Boolean)
+                .join("; ");
+              if (reason)
+                throw new Error(`neurons queue write failed: ${reason}`);
+            }
+            return result;
+          },
           "validator-nominator-counts": async (rows, pass) => {
             // D1 is not written -- this lane is Neon's outright (#10116) --
             // so the Neon write below is the ONLY one, and its failure must

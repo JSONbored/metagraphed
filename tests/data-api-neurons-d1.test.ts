@@ -526,7 +526,7 @@ test("a neurons route 503s cleanly when the D1 binding is absent", async () => {
     env({ METAGRAPH_HEALTH_DB: null }),
   );
   assert.equal(res.status, 503);
-  assert.deepEqual(await res.json(), { error: "d1 binding unavailable" });
+  assert.deepEqual(await res.json(), { error: "no store bound for this route" });
 });
 
 test("a failing D1 read maps to the dispatcher's opaque 502, never a leaked DB error", async () => {

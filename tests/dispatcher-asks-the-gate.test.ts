@@ -48,13 +48,32 @@ describe("the read dispatcher", () => {
       dispatches.length >= 3,
       `expected at least the three known dispatcher blocks, found ${dispatches.length}`,
     );
+    // The store is bound to a local now (#10162), because each block has to
+    // test it for undefined before dispatching -- routeStore answers "no store
+    // at all" rather than handing back a runner over an absent binding. So the
+    // first argument is `store`, and what this checks is that `store` in each
+    // block came FROM routeStore and nowhere else.
     const offenders = dispatches
-      .filter(([, , firstArg]) => !firstArg.trim().startsWith("routeStore("))
+      .filter(([, , firstArg]) => firstArg.trim() !== "store")
       .map(([, name, firstArg]) => `${name} <- ${firstArg.trim()}`);
     assert.deepEqual(
       offenders,
       [],
-      "a dispatcher block chose its store without asking neonServesRoute; " +
+      "a dispatcher block dispatched on something other than the `store` " +
+        "local that routeStore fills, so its store choice bypassed the gate",
+    );
+    const bindings = [...body.matchAll(/const store = ([^;]+);/g)].map(
+      ([, expr]) => expr.trim(),
+    );
+    assert.equal(
+      bindings.length,
+      dispatches.length,
+      `${dispatches.length} dispatcher blocks but ${bindings.length} store bindings`,
+    );
+    assert.deepEqual(
+      bindings.filter((expr) => expr !== "routeStore(env, ctx, url)"),
+      [],
+      "a `store` local was filled from something other than routeStore; " +
         "its route's NEON_READ_ROUTE_TABLES entry would be read by nothing",
     );
   });

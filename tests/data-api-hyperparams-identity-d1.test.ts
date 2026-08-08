@@ -481,7 +481,7 @@ test("a matched read without the D1 binding answers 503, and a D1 query failure 
   assert.equal(noBinding.status, 503);
   assert.equal(
     ((await noBinding.json()) as Row).error,
-    "d1 binding unavailable",
+    "no store bound for this route",
   );
   db.exec("DROP TABLE account_identity");
   const broken = await call(req("/api/v1/accounts/5Alice/identity"));
@@ -522,7 +522,7 @@ function neonOwnsEnv(tables: string) {
 
 test("hyperparams: Neon owning the family drops the D1 BINDING requirement", async () => {
   // The assertion that actually distinguishes the branch. With no D1 binding
-  // at all, the pre-inversion handler answered 503 "d1 binding unavailable"
+  // at all, the pre-inversion handler answered 503 "no store bound for this route"
   // before doing anything. Once Neon owns the family that requirement is gone,
   // so reaching ANY other outcome proves the D1 dependency was dropped.
   //
