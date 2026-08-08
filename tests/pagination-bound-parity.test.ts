@@ -20,18 +20,31 @@
 //     than rejected" was false for a quarter of the tools that publish a
 //     ceiling.
 //
-// Clamp-vs-reject is a property of the HANDLER, not of the surface. Both
-// sentences have been corrected to stop promising a behaviour their surface
-// does not uniformly have.
+// Clamp-vs-reject was a property of the HANDLER, not of the surface, so a
+// caller could not predict it from anything published.
 //
-// ── Why DECLARED lists rather than one green rule ───────────────────────────
+// ── Both DECLARED lists are now EMPTY (#10174) ──────────────────────────────
 //
-// Every way of unifying this is a behaviour change for callers being served
-// today -- making chain-events reject 400s them, making the 25 clamp silently
-// shortens their pages. That should be one deliberate decision (#10174), not
-// 26 taken by a refactor. So the current partition is pinned, with the reason,
-// and a STALE entry FAILS: the same idiom the MCP-parity and GraphQL-parity
-// gates use, so the lists can only shrink.
+// The split was pinned rather than fixed because unifying it is a behaviour
+// change either way, and that is one deliberate decision rather than 26 taken
+// by a refactor. The decision: REST rejects, MCP clamps -- per SURFACE, one
+// predictable sentence each, and the MCP half is the forgiving direction so no
+// agent caller that works today stops working.
+//
+//   * /api/v1/chain-events now runs the same parseLimitParam as the other 81
+//     routes, so its 400 body is byte-identical rather than merely similar.
+//   * The MCP dispatch clamps `limit` to the ceiling each tool's OWN
+//     inputSchema publishes (validateToolArguments -> clampPublishedLimit), so
+//     a tool cannot ship with a bound the dispatch does not honour.
+//
+// Ten of the 25 tools this file once declared were never rejecting on `limit`
+// at all: the probe filled every required string with "1", so `ss58: "1"` and
+// `date: "1"` answered invalid_params about the SUBJECT and were read as a
+// rejected limit. ARG_FIXTURES supplies real values, and the clamp assertion
+// below checks the applied limit rather than merely the absence of an error --
+// not erroring is not the same as honouring the bound.
+//
+// A STALE entry in either list still FAILS, so neither can grow back quietly.
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import { z } from "zod";
@@ -45,60 +58,16 @@ import type { Row } from "./row-type.ts";
  * REST routes that CLAMP an over-large `limit` instead of rejecting it, and
  * why each is allowed to. A stale entry fails.
  */
-const DECLARED_CLAMPING_ROUTES: Record<string, string> = {
-  "/api/v1/chain-events":
-    "clamps to the published maximum instead of 400ing, unlike the other 81 " +
-    "routes that publish a ceiling. Verified live: ?limit=99999 answers 200 " +
-    "with 100 events. Left as-is because tightening it would 400 callers " +
-    "being served today; the shared `limit` description no longer claims " +
-    "every route rejects.",
-};
+const DECLARED_CLAMPING_ROUTES: Record<string, string> = {};
 
 /**
  * MCP tools that REJECT an over-ceiling `limit` instead of clamping it.
  *
- * The clamp is not a property of the surface, it is a property of the handler:
- * 15 of these are collection-backed and reject through `validateListQuery`,
- * and the rest reject through `parseBoundedIntParam`. Measured by dispatching
- * `limit: maximum + 1` at every tool that publishes a ceiling -- which is why
- * `limitSchema`'s description no longer promises clamping to all of them.
- *
- * Declared rather than "fixed": making them clamp, or making the others
- * reject, is a behaviour change for live agent callers either way, and it
- * should be one decision taken deliberately rather than 25 taken by a
- * refactor. A stale entry FAILS, so the list can only shrink.
+ * EMPTY (#10174): the dispatch clamps to the ceiling each tool publishes, so
+ * there is nothing left to declare. A stale entry FAILS, so this cannot grow
+ * back without someone noticing.
  */
-const REJECTS_BY_SHARED_ENGINE =
-  "rejects an over-ceiling limit rather than clamping, through the shared " +
-  "list-query engine or parseBoundedIntParam. See #10174.";
-
-const DECLARED_REJECTING_TOOLS: Record<string, string> = {
-  get_account_counterparties: REJECTS_BY_SHARED_ENGINE,
-  get_account_events: REJECTS_BY_SHARED_ENGINE,
-  get_account_extrinsics: REJECTS_BY_SHARED_ENGINE,
-  get_account_history: REJECTS_BY_SHARED_ENGINE,
-  get_account_identity_history: REJECTS_BY_SHARED_ENGINE,
-  get_account_transfers: REJECTS_BY_SHARED_ENGINE,
-  get_chain_concentration_subnets: REJECTS_BY_SHARED_ENGINE,
-  get_chain_identity_history: REJECTS_BY_SHARED_ENGINE,
-  get_extrinsic_chain_events: REJECTS_BY_SHARED_ENGINE,
-  get_global_incidents: REJECTS_BY_SHARED_ENGINE,
-  get_health_history: REJECTS_BY_SHARED_ENGINE,
-  get_validator_nominators: REJECTS_BY_SHARED_ENGINE,
-  list_candidates: REJECTS_BY_SHARED_ENGINE,
-  list_curation: REJECTS_BY_SHARED_ENGINE,
-  list_endpoint_incidents: REJECTS_BY_SHARED_ENGINE,
-  list_endpoint_pools: REJECTS_BY_SHARED_ENGINE,
-  list_evidence: REJECTS_BY_SHARED_ENGINE,
-  list_gaps: REJECTS_BY_SHARED_ENGINE,
-  list_providers: REJECTS_BY_SHARED_ENGINE,
-  list_rpc_endpoints: REJECTS_BY_SHARED_ENGINE,
-  list_rpc_pools: REJECTS_BY_SHARED_ENGINE,
-  list_search_index: REJECTS_BY_SHARED_ENGINE,
-  list_source_snapshots: REJECTS_BY_SHARED_ENGINE,
-  list_surfaces: REJECTS_BY_SHARED_ENGINE,
-  search_subnets: REJECTS_BY_SHARED_ENGINE,
-};
+const DECLARED_REJECTING_TOOLS: Record<string, string> = {};
 
 const PATH_FIXTURES: Record<string, string> = {
   "{netuid}": "1",
@@ -114,6 +83,39 @@ const PATH_FIXTURES: Record<string, string> = {
   "{h160}": `0x${"0".repeat(40)}`,
   "{id}": "00000000-0000-0000-0000-000000000000",
   "{crowdloan_id}": "0",
+};
+
+/**
+ * Realistic values for an MCP tool's REQUIRED arguments, so the dispatch
+ * reaches the `limit` handling this test exists to measure.
+ *
+ * Filling every required string with `"1"` made ten tools answer
+ * `invalid_params` for reasons that had nothing to do with `limit` --
+ * `ss58: "1"` is not an address and `date: "1"` is not a day -- and the test
+ * read those as "this tool rejects an over-ceiling limit". Ten entries sat in
+ * DECLARED_REJECTING_TOOLS describing a fixture, not a contract (#10174).
+ *
+ * Keyed by argument name and shared with PATH_FIXTURES' values, so the two
+ * halves of this file agree on what a valid subject looks like.
+ */
+const ARG_FIXTURES: Record<string, unknown> = {
+  ss58: PATH_FIXTURES["{ss58}"],
+  hotkey: PATH_FIXTURES["{hotkey}"],
+  coldkey: PATH_FIXTURES["{ss58}"],
+  address: PATH_FIXTURES["{ss58}"],
+  date: PATH_FIXTURES["{date}"],
+  slug: PATH_FIXTURES["{slug}"],
+  surface_id: PATH_FIXTURES["{surface_id}"],
+  // Not PATH_FIXTURES["{ref}"]: the REST path accepts a bare block number,
+  // but get_extrinsic_chain_events requires the composite
+  // `block_number-extrinsic_index` and rejects anything else as invalid_params.
+  ref: "4200000-3",
+  netuid: 1,
+  uid: 0,
+  q: "subnet",
+  query: "subnet",
+  task: "inference",
+  capability: PATH_FIXTURES["{tag}"],
 };
 
 function publishedLimitMaximum(entry: Row): number | null {
@@ -191,6 +193,7 @@ describe("a published `limit` ceiling means what its surface says (#10064)", () 
     >[1];
     const rejecting: string[] = [];
     const suppressed = new Set<string>();
+    const unclamped: string[] = [];
     let checked = 0;
 
     for (const tool of listToolDefinitions() as Row[]) {
@@ -209,11 +212,21 @@ describe("a published `limit` ceiling means what its surface says (#10064)", () 
         const values = property?.enum as unknown[] | undefined;
         args[key] = values?.length
           ? values[0]
-          : type === "string"
-            ? "1"
-            : type === "array"
-              ? [1]
-              : 1;
+          : (ARG_FIXTURES[key] ??
+            (type === "string" ? "1" : type === "array" ? [1] : 1));
+      }
+      // A tool can state its requirement as `anyOf: [{required:["q"]}, ...]`
+      // rather than in `required` -- search_subnets takes either `q` or its
+      // `query` alias. Filling only `required` left it with neither, so it
+      // answered invalid_params about the missing query and this test read
+      // that as a rejected `limit`.
+      for (const branch of ((tool.inputSchema as Row)?.anyOf ?? []) as Row[]) {
+        const names = (branch?.required ?? []) as string[];
+        if (!names.length || names.some((name) => name in args)) continue;
+        for (const name of names) {
+          args[name] = ARG_FIXTURES[name] ?? "1";
+        }
+        break;
       }
       const response = await handleMcpRequest(
         new Request("https://api.metagraph.sh/mcp", {
@@ -230,13 +243,24 @@ describe("a published `limit` ceiling means what its surface says (#10064)", () 
         {},
       );
       const body = (await response.json()) as Row;
-      const code = ((body?.result?.structuredContent as Row)?.error as Row)
-        ?.code;
+      const structured = (body?.result?.structuredContent ?? {}) as Row;
+      const code = (structured.error as Row)?.code;
       // Only `invalid_params` is the failure being guarded against. A tool
       // that cannot reach its tier under this env answers something else, and
       // that says nothing about how it treats `limit`.
       if (code === undefined || code === null) {
         checked += 1;
+        // Absence of an error is not proof of a clamp -- a tool could ignore
+        // `limit` entirely and pass. Where the answer reports the limit it
+        // applied, hold it to the published ceiling.
+        if (
+          typeof structured.limit === "number" &&
+          structured.limit > maximum
+        ) {
+          unclamped.push(
+            `${tool.name} applied limit=${structured.limit} above its published ${maximum}`,
+          );
+        }
         continue;
       }
       if (code !== "invalid_params") continue;
@@ -263,6 +287,14 @@ describe("a published `limit` ceiling means what its surface says (#10064)", () 
         "and limitSchema's published description promises they do. If this is " +
         "a deliberate contract change, that sentence has to change with it: " +
         rejecting.join(", "),
+    );
+    assert.deepEqual(
+      unclamped,
+      [],
+      "these answered without error but applied a limit ABOVE their published " +
+        "ceiling, so the clamp did not happen -- passing this test by not " +
+        "erroring is not the same as honouring the bound: " +
+        unclamped.join(", "),
     );
     assert.ok(checked > 40, `only ${checked} tools were reachable`);
   }, 300_000);

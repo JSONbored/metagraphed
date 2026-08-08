@@ -12464,7 +12464,10 @@ describe("MCP economics + metagraph data tools", () => {
   // #8832: out-of-range limit must hard-error before tryPostgresTier, not
   // degrade into a success-shaped empty feed.
   describe("get_chain_identity_history limit validation", () => {
-    for (const limit of [0, -1, 1.5, 201, 500, "abc"]) {
+    // Malformed rather than over-ambitious: 0, a negative, a fraction and a
+    // string are still rejected. Only a value ABOVE the published ceiling
+    // clamps (#10174) -- see the over-ceiling test below.
+    for (const limit of [0, -1, 1.5, "abc"]) {
       test(`rejects limit=${JSON.stringify(limit)} as invalid_params`, async () => {
         let fetched = false;
         const env = {
@@ -12501,6 +12504,36 @@ describe("MCP economics + metagraph data tools", () => {
           subnet_count: 0,
           changes: [],
         });
+      });
+    }
+
+    // #10174: MCP clamps an over-ceiling limit to the maximum this tool's own
+    // inputSchema publishes, instead of rejecting it. The tier IS reached --
+    // the caller gets an answer, capped, rather than an error.
+    for (const limit of [201, 500]) {
+      test(`clamps limit=${limit} to the published 200`, async () => {
+        let seenLimit: string | null = null;
+        const env = {
+          METAGRAPH_SUBNET_IDENTITY_SOURCE: "postgres",
+          DATA_API: {
+            fetch: async (request: Request) => {
+              seenLimit = new URL(request.url).searchParams.get("limit");
+              return Response.json({
+                schema_version: 1,
+                count: 0,
+                subnet_count: 0,
+                changes: [],
+              });
+            },
+          },
+        };
+        const res = await callTool(
+          "get_chain_identity_history",
+          { limit },
+          { env },
+        );
+        assert.equal(res.body.result.isError, false);
+        assert.equal(seenLimit, "200");
       });
     }
 
@@ -20115,7 +20148,7 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
   // contract and must behave identically at the ceiling -- both bound at
   // maximum 1000 in the published schema and both REJECT (not clamp) an
   // out-of-range value with the same invalid_params message.
-  test("list_endpoints and list_rpc_endpoints both publish limit maximum 1000 and reject an out-of-range limit identically", async () => {
+  test("list_endpoints and list_rpc_endpoints both publish limit maximum 1000 and clamp an out-of-range limit identically", async () => {
     const defs = listToolDefinitions();
     for (const name of ["list_endpoints", "list_rpc_endpoints"]) {
       const def = defs.find((t) => t.name === name);
@@ -20139,16 +20172,20 @@ describe("MCP parity tools — provider + discovery bundle (artifact-backed)", (
       ["list_endpoints", endpointsDeps()],
       ["list_rpc_endpoints", endpointsDepsFixture],
     ] as const) {
-      const rejected = await callTool(name, { limit: 1001 }, { deps });
-      assert.equal(
-        rejected.body.result.isError,
+      // #10174: MCP clamps an over-ceiling limit to the published maximum
+      // rather than rejecting it -- the dispatch reads the bound off this
+      // tool's own inputSchema, so the two tools cannot diverge. REST still
+      // rejects; the split is now per surface rather than per handler.
+      const clamped = await callTool(name, { limit: 1001 }, { deps });
+      assert.notEqual(
+        clamped.body.result.isError,
         true,
-        `${name} rejects limit 1001`,
+        `${name} clamps limit 1001 instead of rejecting it`,
       );
-      assert.match(rejected.body.result.content[0].text, /invalid_params/);
-      assert.match(
-        rejected.body.result.content[0].text,
-        /limit must be an integer between 1 and 1000\./,
+      assert.equal(
+        clamped.body.result.structuredContent.limit,
+        1000,
+        `${name} applies its published ceiling`,
       );
       // The ceiling itself is accepted (not rejected as out-of-range).
       const okAtMax = await callTool(name, { limit: 1000 }, { deps });
