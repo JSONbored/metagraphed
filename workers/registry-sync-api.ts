@@ -36,6 +36,7 @@ import {
 } from "../src/tracing.ts";
 import { timingSafeEqual } from "../src/webhooks.ts";
 import { resolveClientIp } from "./config.ts";
+import { applyRegistrySyncToNeon } from "../src/registry-sync-neon.ts";
 
 const TOKEN_HEADER = "x-registry-sync-token";
 const MAX_BODY_BYTES = 4_194_304; // 4 MiB -- the full registry is ~1.5k surfaces, comfortably under this
@@ -475,7 +476,8 @@ async function dispatchRegistrySyncRequest(
         );
       }
     }
-    if (!env.REGISTRY_DB) {
+    // Either store will do, but one of them has to be there.
+    if (!env.HYPERDRIVE?.connectionString && !env.REGISTRY_DB) {
       return json({ error: "registry database binding unavailable" }, 503);
     }
 
@@ -547,11 +549,36 @@ async function dispatchRegistrySyncRequest(
       // D1 enforces its own query limits, and a bare SET was only ever needed
       // because Hyperdrive could hand the follow-up query a different physical
       // connection.
-      const summary = await applyRegistrySyncToD1(
-        env.REGISTRY_DB as unknown as D1Like,
-        { providers, subnets, surfaces, pruneSurfaces, deleteSubnets },
-      );
-      return json({ ok: true, ...summary });
+      // NEON WHEN IT IS BOUND, and then D1 is not written at all (#10060).
+      //
+      // No dual-write here, unlike every producer lane. Those mirror because a
+      // probe or a metagraph pass not stored is gone forever, so the second
+      // copy has to prove itself before the first is dropped. These four tables
+      // are re-derived from registry/subnets/*.json on every sync, so the proof
+      // is just running the lane again -- and a second copy nothing reads is
+      // the exact hazard the binding comment in wrangler.registry.jsonc
+      // describes.
+      const payload = {
+        providers,
+        subnets,
+        surfaces,
+        pruneSurfaces,
+        deleteSubnets,
+      };
+      const summary = env.HYPERDRIVE?.connectionString
+        ? await applyRegistrySyncToNeon(
+            env.HYPERDRIVE.connectionString,
+            payload,
+          )
+        : await applyRegistrySyncToD1(
+            env.REGISTRY_DB as unknown as D1Like,
+            payload,
+          );
+      return json({
+        ok: true,
+        store: env.HYPERDRIVE ? "neon" : "d1",
+        ...summary,
+      });
     } catch (err) {
       console.error("registry-sync-api write failed:", err);
       await captureRegistrySyncError(err, env);
