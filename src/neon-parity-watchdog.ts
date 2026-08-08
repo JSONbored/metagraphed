@@ -87,6 +87,11 @@ export const PARITY_TABLES = [
   "surface_failure_daily",
   "subnet_burn_history",
   "tao_usd_index",
+  // The capture-lane pair (#10019). blocks_head is unpruned, so it is watched
+  // at the default threshold; raw_capture_state is two rows and any drift in
+  // it is total.
+  "blocks_head",
+  "raw_capture_state",
 ] as const;
 
 /**
