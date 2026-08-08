@@ -22,6 +22,9 @@ import { readArtifact, readHealthKv } from "../workers/storage.ts";
 import { loadChainStakeFlowFromArtifact } from "./chain-stake-flow-artifact.ts";
 import { loadChainStakeMovesFromArtifact } from "./chain-stake-moves-artifact.ts";
 import { loadChainStakeTransfersFromArtifact } from "./chain-stake-transfers-artifact.ts";
+import { loadChainSignersFromArtifact } from "./chain-signers-artifact.ts";
+import { loadChainTransferPairsFromArtifact } from "./chain-transfer-pairs-artifact.ts";
+import { loadChainTransfersFromArtifact } from "./chain-transfers-artifact.ts";
 import { loadChainAlphaVolumeFromArtifact } from "./chain-alpha-volume-artifact.ts";
 import { resolveMarketCapIndex } from "./market-cap-index.ts";
 import { loadChainCallsFromArtifact } from "./chain-calls-artifact.ts";
@@ -8324,6 +8327,16 @@ const rootValue = {
     );
     const data =
       (tier as Row | null) ??
+      // The projection tier (#9146) REST reads and this field skipped. The
+      // loader declines a pallet-scoped call itself (serving the unfiltered
+      // leaderboard under a filtered label would be a wrong answer), so
+      // call_module is passed through rather than gated here.
+      ((await loadChainSignersFromArtifact(context.env, {
+        window: label,
+        sort,
+        limit: safeLimit,
+        callModule,
+      })) as Row | null) ??
       buildChainSigners({
         window: label,
         sort: sort ?? undefined,
@@ -8674,6 +8687,12 @@ const rootValue = {
         postgresTierRequest(context, "/api/v1/chain/transfer-pairs", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
+      // The projection tier (#9146) REST reads and this field skipped.
+      ((await loadChainTransferPairsFromArtifact(context.env, {
+        window: requestedWindow,
+        sort,
+        limit: safeLimit,
+      })) as Row | null) ??
       buildChainTransferPairs({
         window: requestedWindow,
         sort,
@@ -8723,6 +8742,17 @@ const rootValue = {
         postgresTierRequest(context, "/api/v1/chain/transfers", params),
         "METAGRAPH_ACCOUNT_EVENTS_SOURCE",
       )) as Row | null) ??
+      // The projection tier (#9146): a cron recomputes this window's scorecard
+      // from the lakehouse and REST reads it here. GraphQL was never given the
+      // rung, so it fell straight past the tier that HAS the data to the empty
+      // card -- serving transfer_count 0 while REST answered 2,883,743 for the
+      // same window in the same second, and without a degraded marker to say
+      // so. The three fields left off when #9146 landed are exactly the three
+      // that disagreed: this, chain_transfer_pairs and chain_signers.
+      ((await loadChainTransfersFromArtifact(context.env, {
+        window: requestedWindow,
+        limit: safeLimit,
+      })) as Row | null) ??
       buildChainTransfers({
         window: requestedWindow,
         observedAt: await loadObservedAt(context),

@@ -24702,3 +24702,114 @@ describe("graphql — component fields the resolvers used to drop (#10214)", () 
     });
   });
 });
+
+// The projection tier (#9146) these three fields skipped, so they fell past
+// the tier holding the data to the empty card and answered a confident zero
+// while REST answered with the real figures (#10217).
+describe("graphql — chain analytics read the projection tier (#10217)", () => {
+  /** An R2 stub serving one projection artifact and nothing else. */
+  function projection(key: string, body: Row) {
+    return {
+      METAGRAPH_ARCHIVE: {
+        get: async (requested: string) =>
+          requested === key ? { json: async () => body } : null,
+      },
+    } as unknown as Env;
+  }
+
+  test("chain_transfers reads the projection instead of zeroing", async () => {
+    const env = projection("metagraph/projections/chain-transfers.json", {
+      schema_version: 1,
+      windows: {
+        "7d": {
+          totals: {
+            total_volume_tao: 1985390.406792952,
+            transfer_count: 2883743,
+            unique_senders: 12351,
+            unique_receivers: 13712,
+            observed_at: "2026-08-08T20:10:12.000Z",
+          },
+          senders: [
+            {
+              address: "5Sender",
+              volume_tao: 195605.27,
+              transfer_count: 28000,
+            },
+          ],
+          receivers: [
+            { address: "5Receiver", volume_tao: 1.5, transfer_count: 2 },
+          ],
+        },
+      },
+    });
+    const { body } = await gql(
+      "{ chain_transfers { window transfer_count total_volume_tao unique_senders unique_receivers } }",
+      env,
+    );
+    assert.equal(body.errors, undefined);
+    // The whole regression: this was 0 in production while REST said 2,883,743.
+    assert.equal(body.data.chain_transfers.transfer_count, 2883743);
+    assert.equal(body.data.chain_transfers.unique_senders, 12351);
+    assert.equal(body.data.chain_transfers.unique_receivers, 13712);
+  });
+
+  test("chain_transfer_pairs reads the projection instead of zeroing", async () => {
+    const env = projection("metagraph/projections/chain-transfer-pairs.json", {
+      schema_version: 1,
+      windows: {
+        "7d": {
+          totals: {
+            total_volume_tao: 1989521.188734243,
+            transfer_count: 2908305,
+            unique_pairs: 76433,
+            observed_at: "2026-08-08T20:10:12.000Z",
+          },
+          // Keyed by sort: only the precomputed orders exist, so the reader
+          // declines rather than answer one order's rows under another's name.
+          sorts: {
+            volume: [
+              {
+                sender: "5Sender",
+                receiver: "5Receiver",
+                volume_tao: 13000.5,
+                transfer_count: 12,
+              },
+            ],
+          },
+        },
+      },
+    });
+    const { body } = await gql(
+      "{ chain_transfer_pairs { window unique_pairs transfer_count pair_count } }",
+      env,
+    );
+    assert.equal(body.errors, undefined);
+    assert.equal(body.data.chain_transfer_pairs.unique_pairs, 76433);
+    assert.equal(body.data.chain_transfer_pairs.transfer_count, 2908305);
+  });
+
+  test("chain_signers reads the projection instead of zeroing", async () => {
+    const env = projection("metagraph/projections/chain-signers.json", {
+      schema_version: 1,
+      windows: {
+        "7d": {
+          newest_observed: "2026-08-08T20:10:12.000Z",
+          sorts: {
+            tx_count: [
+              { signer: "5SignerA", tx_count: 900, modules_called: 3 },
+              { signer: "5SignerB", tx_count: 120, modules_called: 1 },
+            ],
+          },
+        },
+      },
+    });
+    const { body } = await gql(
+      "{ chain_signers { window signer_count signers { signer tx_count } } }",
+      env,
+    );
+    assert.equal(body.errors, undefined);
+    // signer_count is the leaderboard's own length, not a stored total.
+    assert.equal(body.data.chain_signers.signer_count, 2);
+    assert.equal(body.data.chain_signers.signers[0].signer, "5SignerA");
+  });
+});

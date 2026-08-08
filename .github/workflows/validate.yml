@@ -391,6 +391,7 @@ jobs:
           npm run validate:worker-types-parity
           npm run validate:graphql-route-parity
           npm run validate:graphql-component-parity
+          npm run validate:graphql-tier-parity
           npm run validate:committed-seed
 
       # Stage artifacts for BOTH halves: the suite's reader tests serve R2-only artifacts with NO
