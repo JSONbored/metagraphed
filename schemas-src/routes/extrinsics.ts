@@ -60,25 +60,6 @@ export type ExtrinsicsFeedArtifact = z.infer<
 export const ExtrinsicsFeedResponseSchema = successEnvelopeSchema(
   ExtrinsicsFeedArtifactSchema,
 );
-export const ExtrinsicsFeedQuerySchema = z
-  .object({
-    limit: z.int().min(1).optional(),
-    offset: z.int().min(0).optional(),
-    cursor: z.string().optional(),
-    signer: z.string().optional(),
-    call_module: z.string().optional(),
-    call_function: z.string().optional(),
-    call_hash: z.string().optional(),
-    block: z.int().min(0).optional(),
-    block_start: z.int().min(0).optional(),
-    block_end: z.int().min(0).optional(),
-    from: z.int().min(0).optional(),
-    to: z.int().min(0).optional(),
-    success: z.enum(["true", "false"]).optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type ExtrinsicsFeedQuery = z.infer<typeof ExtrinsicsFeedQuerySchema>;
 
 export const ExtrinsicDetailArtifactSchema = z
   .object({
@@ -94,5 +75,3 @@ export type ExtrinsicDetailArtifact = z.infer<
 export const ExtrinsicDetailResponseSchema = successEnvelopeSchema(
   ExtrinsicDetailArtifactSchema,
 );
-export const ExtrinsicDetailQuerySchema = z.object({}).strict();
-export type ExtrinsicDetailQuery = z.infer<typeof ExtrinsicDetailQuerySchema>;

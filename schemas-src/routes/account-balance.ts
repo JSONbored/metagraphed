@@ -29,5 +29,3 @@ export type AccountBalanceArtifact = z.infer<
 export const AccountBalanceResponseSchema = successEnvelopeSchema(
   AccountBalanceArtifactSchema,
 );
-export const AccountBalanceQuerySchema = z.object({}).strict();
-export type AccountBalanceQuery = z.infer<typeof AccountBalanceQuerySchema>;

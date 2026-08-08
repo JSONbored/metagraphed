@@ -41,8 +41,6 @@ export type SubnetLeaseArtifact = z.infer<typeof SubnetLeaseArtifactSchema>;
 export const SubnetLeaseResponseSchema = successEnvelopeSchema(
   SubnetLeaseArtifactSchema,
 );
-export const SubnetLeaseQuerySchema = z.object({}).strict();
-export type SubnetLeaseQuery = z.infer<typeof SubnetLeaseQuerySchema>;
 
 // objectItems-equivalent looseness: no field required at the item level,
 // matching the hand-written original exactly.
@@ -77,7 +75,3 @@ export type SubnetLeaseHistoryArtifact = z.infer<
 export const SubnetLeaseHistoryResponseSchema = successEnvelopeSchema(
   SubnetLeaseHistoryArtifactSchema,
 );
-export const SubnetLeaseHistoryQuerySchema = z.object({}).strict();
-export type SubnetLeaseHistoryQuery = z.infer<
-  typeof SubnetLeaseHistoryQuerySchema
->;

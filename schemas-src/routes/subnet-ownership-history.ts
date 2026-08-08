@@ -54,7 +54,3 @@ export type SubnetOwnershipHistoryArtifact = z.infer<
 export const SubnetOwnershipHistoryResponseSchema = successEnvelopeSchema(
   SubnetOwnershipHistoryArtifactSchema,
 );
-export const SubnetOwnershipHistoryQuerySchema = z.object({}).strict();
-export type SubnetOwnershipHistoryQuery = z.infer<
-  typeof SubnetOwnershipHistoryQuerySchema
->;

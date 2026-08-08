@@ -7,7 +7,6 @@
 // where a null would say "it has one and we do not know it".
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
-import { EMISSION_CHANGES_LIMIT_MAX } from "../../src/route-limits.ts";
 
 /** Shared by every kind. `predates_capture` is the honesty flag: true means the
  * row is the FIRST OBSERVATION of a value, not a change to it. */
@@ -76,14 +75,3 @@ export type EmissionGateChangesArtifact = z.infer<
 export const EmissionGateChangesResponseSchema = successEnvelopeSchema(
   EmissionGateChangesArtifactSchema,
 );
-export const EmissionGateChangesQuerySchema = z
-  .object({
-    kind: z.enum(["param", "subnet", "flow"]).optional(),
-    limit: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .max(EMISSION_CHANGES_LIMIT_MAX)
-      .optional(),
-  })
-  .strict();

@@ -127,8 +127,3 @@ export type EmissionPipelineArtifact = z.infer<
 export const EmissionPipelineResponseSchema = successEnvelopeSchema(
   EmissionPipelineArtifactSchema,
 );
-
-export const EmissionPipelineQuerySchema = z
-  .object({ netuid: z.int().min(0).optional() })
-  .strict();
-export type EmissionPipelineQuery = z.infer<typeof EmissionPipelineQuerySchema>;

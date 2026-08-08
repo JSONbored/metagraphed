@@ -83,13 +83,3 @@ export type SubnetEventSummaryArtifact = z.infer<
 export const SubnetEventSummaryResponseSchema = successEnvelopeSchema(
   SubnetEventSummaryArtifactSchema,
 );
-
-export const SubnetEventSummaryQuerySchema = z
-  .object({
-    window: z.enum(["7d", "30d", "90d"]).optional(),
-    limit: z.int().min(1).max(50).optional(),
-  })
-  .strict();
-export type SubnetEventSummaryQuery = z.infer<
-  typeof SubnetEventSummaryQuerySchema
->;

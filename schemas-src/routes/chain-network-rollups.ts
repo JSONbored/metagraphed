@@ -34,14 +34,6 @@ const IntensityDistributionSchema = z
   })
   .strict();
 
-const WindowQuerySchema = z
-  .object({
-    window: z.enum(["7d", "30d"]).optional(),
-    limit: z.int().min(1).optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-
 export const ChainAxonRemovalsArtifactSchema = z
   .object({
     schema_version: z.int(),
@@ -77,10 +69,6 @@ export type ChainAxonRemovalsArtifact = z.infer<
 export const ChainAxonRemovalsResponseSchema = successEnvelopeSchema(
   ChainAxonRemovalsArtifactSchema,
 );
-export const ChainAxonRemovalsQuerySchema = WindowQuerySchema;
-export type ChainAxonRemovalsQuery = z.infer<
-  typeof ChainAxonRemovalsQuerySchema
->;
 
 // #9742: how long the slots that turned over had been held. Optional so a
 // body published before this shipped still validates.
@@ -137,10 +125,6 @@ export type ChainDeregistrationsArtifact = z.infer<
 export const ChainDeregistrationsResponseSchema = successEnvelopeSchema(
   ChainDeregistrationsArtifactSchema,
 );
-export const ChainDeregistrationsQuerySchema = WindowQuerySchema;
-export type ChainDeregistrationsQuery = z.infer<
-  typeof ChainDeregistrationsQuerySchema
->;
 
 export const ChainPrometheusArtifactSchema = z
   .object({
@@ -177,8 +161,6 @@ export type ChainPrometheusArtifact = z.infer<
 export const ChainPrometheusResponseSchema = successEnvelopeSchema(
   ChainPrometheusArtifactSchema,
 );
-export const ChainPrometheusQuerySchema = WindowQuerySchema;
-export type ChainPrometheusQuery = z.infer<typeof ChainPrometheusQuerySchema>;
 
 export const ChainRegistrationsArtifactSchema = z
   .object({
@@ -212,10 +194,6 @@ export type ChainRegistrationsArtifact = z.infer<
 export const ChainRegistrationsResponseSchema = successEnvelopeSchema(
   ChainRegistrationsArtifactSchema,
 );
-export const ChainRegistrationsQuerySchema = WindowQuerySchema;
-export type ChainRegistrationsQuery = z.infer<
-  typeof ChainRegistrationsQuerySchema
->;
 
 export const ChainServingArtifactSchema = z
   .object({
@@ -247,8 +225,6 @@ export type ChainServingArtifact = z.infer<typeof ChainServingArtifactSchema>;
 export const ChainServingResponseSchema = successEnvelopeSchema(
   ChainServingArtifactSchema,
 );
-export const ChainServingQuerySchema = WindowQuerySchema;
-export type ChainServingQuery = z.infer<typeof ChainServingQuerySchema>;
 
 export const ChainStakeMovesArtifactSchema = z
   .object({
@@ -282,8 +258,6 @@ export type ChainStakeMovesArtifact = z.infer<
 export const ChainStakeMovesResponseSchema = successEnvelopeSchema(
   ChainStakeMovesArtifactSchema,
 );
-export const ChainStakeMovesQuerySchema = WindowQuerySchema;
-export type ChainStakeMovesQuery = z.infer<typeof ChainStakeMovesQuerySchema>;
 
 export const ChainStakeTransfersArtifactSchema = z
   .object({
@@ -317,10 +291,6 @@ export type ChainStakeTransfersArtifact = z.infer<
 export const ChainStakeTransfersResponseSchema = successEnvelopeSchema(
   ChainStakeTransfersArtifactSchema,
 );
-export const ChainStakeTransfersQuerySchema = WindowQuerySchema;
-export type ChainStakeTransfersQuery = z.infer<
-  typeof ChainStakeTransfersQuerySchema
->;
 
 export const ChainWeightsArtifactSchema = z
   .object({
@@ -352,5 +322,3 @@ export type ChainWeightsArtifact = z.infer<typeof ChainWeightsArtifactSchema>;
 export const ChainWeightsResponseSchema = successEnvelopeSchema(
   ChainWeightsArtifactSchema,
 );
-export const ChainWeightsQuerySchema = WindowQuerySchema;
-export type ChainWeightsQuery = z.infer<typeof ChainWeightsQuerySchema>;

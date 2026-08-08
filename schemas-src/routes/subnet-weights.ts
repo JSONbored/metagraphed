@@ -24,12 +24,6 @@ export type SubnetWeightsArtifact = z.infer<typeof SubnetWeightsArtifactSchema>;
 export const SubnetWeightsResponseSchema = successEnvelopeSchema(
   SubnetWeightsArtifactSchema,
 );
-export const SubnetWeightsQuerySchema = z
-  .object({
-    window: z.enum(["7d", "30d"]).optional(),
-  })
-  .strict();
-export type SubnetWeightsQuery = z.infer<typeof SubnetWeightsQuerySchema>;
 
 const SubnetWeightSetterSchema = z
   .object({
@@ -76,11 +70,3 @@ export type SubnetWeightSettersArtifact = z.infer<
 export const SubnetWeightSettersResponseSchema = successEnvelopeSchema(
   SubnetWeightSettersArtifactSchema,
 );
-export const SubnetWeightSettersQuerySchema = z
-  .object({
-    window: z.enum(["7d", "30d"]).optional(),
-  })
-  .strict();
-export type SubnetWeightSettersQuery = z.infer<
-  typeof SubnetWeightSettersQuerySchema
->;

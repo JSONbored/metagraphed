@@ -65,8 +65,6 @@ export type CrowdloansArtifact = z.infer<typeof CrowdloansArtifactSchema>;
 export const CrowdloansResponseSchema = successEnvelopeSchema(
   CrowdloansArtifactSchema,
 );
-export const CrowdloansQuerySchema = z.object({}).strict();
-export type CrowdloansQuery = z.infer<typeof CrowdloansQuerySchema>;
 
 export const CrowdloanDetailArtifactSchema = z
   .object({
@@ -86,5 +84,3 @@ export type CrowdloanDetailArtifact = z.infer<
 export const CrowdloanDetailResponseSchema = successEnvelopeSchema(
   CrowdloanDetailArtifactSchema,
 );
-export const CrowdloanDetailQuerySchema = z.object({}).strict();
-export type CrowdloanDetailQuery = z.infer<typeof CrowdloanDetailQuerySchema>;

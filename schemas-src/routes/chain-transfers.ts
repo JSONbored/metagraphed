@@ -46,17 +46,6 @@ export type ChainTransferPairsArtifact = z.infer<
 export const ChainTransferPairsResponseSchema = successEnvelopeSchema(
   ChainTransferPairsArtifactSchema,
 );
-export const ChainTransferPairsQuerySchema = z
-  .object({
-    window: z.enum(["7d", "30d"]).optional(),
-    limit: z.int().min(1).optional(),
-    sort: z.enum(["volume", "count"]).optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type ChainTransferPairsQuery = z.infer<
-  typeof ChainTransferPairsQuerySchema
->;
 
 const ChainTransferPartySchema = z
   .object({
@@ -86,11 +75,3 @@ export type ChainTransfersArtifact = z.infer<
 export const ChainTransfersResponseSchema = successEnvelopeSchema(
   ChainTransfersArtifactSchema,
 );
-export const ChainTransfersQuerySchema = z
-  .object({
-    window: z.enum(["7d", "30d"]).optional(),
-    limit: z.int().min(1).optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type ChainTransfersQuery = z.infer<typeof ChainTransfersQuerySchema>;

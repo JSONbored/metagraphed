@@ -56,10 +56,6 @@ export type AccountServingArtifact = z.infer<
 export const AccountServingResponseSchema = successEnvelopeSchema(
   AccountServingArtifactSchema,
 );
-export const AccountServingQuerySchema = z
-  .object({ window: z.enum(WINDOW_ENUM).optional() })
-  .strict();
-export type AccountServingQuery = z.infer<typeof AccountServingQuerySchema>;
 
 export const AccountPrometheusArtifactSchema = z
   .object({
@@ -92,12 +88,6 @@ export type AccountPrometheusArtifact = z.infer<
 export const AccountPrometheusResponseSchema = successEnvelopeSchema(
   AccountPrometheusArtifactSchema,
 );
-export const AccountPrometheusQuerySchema = z
-  .object({ window: z.enum(WINDOW_ENUM).optional() })
-  .strict();
-export type AccountPrometheusQuery = z.infer<
-  typeof AccountPrometheusQuerySchema
->;
 
 export const AccountStakeMovesArtifactSchema = z
   .object({
@@ -127,12 +117,6 @@ export type AccountStakeMovesArtifact = z.infer<
 export const AccountStakeMovesResponseSchema = successEnvelopeSchema(
   AccountStakeMovesArtifactSchema,
 );
-export const AccountStakeMovesQuerySchema = z
-  .object({ window: z.enum(WINDOW_ENUM).optional() })
-  .strict();
-export type AccountStakeMovesQuery = z.infer<
-  typeof AccountStakeMovesQuerySchema
->;
 
 const FLOW_DIRECTION_ENUM = [
   "accumulating",
@@ -180,10 +164,3 @@ export type AccountStakeFlowArtifact = z.infer<
 export const AccountStakeFlowResponseSchema = successEnvelopeSchema(
   AccountStakeFlowArtifactSchema,
 );
-export const AccountStakeFlowQuerySchema = z
-  .object({
-    window: z.enum(WINDOW_ENUM).optional(),
-    direction: z.enum(ACCOUNT_ACTIVITY_FLOW_DIRECTIONS_VALUES).optional(),
-  })
-  .strict();
-export type AccountStakeFlowQuery = z.infer<typeof AccountStakeFlowQuerySchema>;

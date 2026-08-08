@@ -100,21 +100,3 @@ export type AccountsListArtifact = z.infer<typeof AccountsListArtifactSchema>;
 export const AccountsListResponseSchema = successEnvelopeSchema(
   AccountsListArtifactSchema,
 );
-export const AccountsListQuerySchema = z
-  .object({
-    sort: z
-      .enum([
-        "total_stake",
-        "total_emission",
-        "subnet_count",
-        "uid_count",
-        "validator_count",
-        "stake_dominance",
-        "last_active",
-      ])
-      .optional(),
-    limit: z.int().min(1).max(100).optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type AccountsListQuery = z.infer<typeof AccountsListQuerySchema>;

@@ -72,5 +72,3 @@ export type AccountEntitiesArtifact = z.infer<
 export const AccountEntitiesResponseSchema = successEnvelopeSchema(
   AccountEntitiesArtifactSchema,
 );
-export const AccountEntitiesQuerySchema = z.object({}).strict();
-export type AccountEntitiesQuery = z.infer<typeof AccountEntitiesQuerySchema>;

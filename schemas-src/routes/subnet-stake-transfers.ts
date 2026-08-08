@@ -23,12 +23,3 @@ export type SubnetStakeTransfersArtifact = z.infer<
 export const SubnetStakeTransfersResponseSchema = successEnvelopeSchema(
   SubnetStakeTransfersArtifactSchema,
 );
-
-export const SubnetStakeTransfersQuerySchema = z
-  .object({
-    window: z.enum(["7d", "30d"]).optional(),
-  })
-  .strict();
-export type SubnetStakeTransfersQuery = z.infer<
-  typeof SubnetStakeTransfersQuerySchema
->;

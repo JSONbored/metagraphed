@@ -83,5 +83,3 @@ export type AccountPortfolioArtifact = z.infer<
 export const AccountPortfolioResponseSchema = successEnvelopeSchema(
   AccountPortfolioArtifactSchema,
 );
-export const AccountPortfolioQuerySchema = z.object({}).strict();
-export type AccountPortfolioQuery = z.infer<typeof AccountPortfolioQuerySchema>;

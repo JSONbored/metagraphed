@@ -67,11 +67,3 @@ export type SubnetTurnoverArtifact = z.infer<
 export const SubnetTurnoverResponseSchema = successEnvelopeSchema(
   SubnetTurnoverArtifactSchema,
 );
-
-export const SubnetTurnoverQuerySchema = z
-  .object({
-    window: z.enum(SUBNET_TURNOVER_WINDOW_VALUES).optional(),
-    changes: z.enum(["true"]).optional(),
-  })
-  .strict();
-export type SubnetTurnoverQuery = z.infer<typeof SubnetTurnoverQuerySchema>;

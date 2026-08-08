@@ -31,11 +31,3 @@ export type BlockEventsArtifact = z.infer<typeof BlockEventsArtifactSchema>;
 export const BlockEventsResponseSchema = successEnvelopeSchema(
   BlockEventsArtifactSchema,
 );
-export const BlockEventsQuerySchema = z
-  .object({
-    limit: z.int().min(1).optional(),
-    offset: z.int().min(0).optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type BlockEventsQuery = z.infer<typeof BlockEventsQuerySchema>;

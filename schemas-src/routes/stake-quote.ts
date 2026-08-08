@@ -33,11 +33,3 @@ export type SubnetStakeQuoteArtifact = z.infer<
 export const StakeQuoteResponseSchema = successEnvelopeSchema(
   SubnetStakeQuoteArtifactSchema,
 );
-
-export const StakeQuoteQuerySchema = z
-  .object({
-    amount: z.number().gt(0).optional(),
-    direction: z.enum(["stake", "unstake"]).optional(),
-  })
-  .strict();
-export type StakeQuoteQuery = z.infer<typeof StakeQuoteQuerySchema>;

@@ -28,10 +28,6 @@ export type EvmAddressMappingArtifact = z.infer<
 export const EvmAddressMappingResponseSchema = successEnvelopeSchema(
   EvmAddressMappingArtifactSchema,
 );
-export const EvmAddressMappingQuerySchema = z.object({}).strict();
-export type EvmAddressMappingQuery = z.infer<
-  typeof EvmAddressMappingQuerySchema
->;
 
 export const NetworkParametersArtifactSchema = z
   .object({
@@ -70,10 +66,6 @@ export type NetworkParametersArtifact = z.infer<
 export const NetworkParametersResponseSchema = successEnvelopeSchema(
   NetworkParametersArtifactSchema,
 );
-export const NetworkParametersQuerySchema = z.object({}).strict();
-export type NetworkParametersQuery = z.infer<
-  typeof NetworkParametersQuerySchema
->;
 
 export const RandomnessArtifactSchema = z
   .object({
@@ -91,8 +83,6 @@ export type RandomnessArtifact = z.infer<typeof RandomnessArtifactSchema>;
 export const RandomnessResponseSchema = successEnvelopeSchema(
   RandomnessArtifactSchema,
 );
-export const RandomnessQuerySchema = z.object({}).strict();
-export type RandomnessQuery = z.infer<typeof RandomnessQuerySchema>;
 
 export const SudoKeyArtifactSchema = z
   .object({
@@ -109,5 +99,3 @@ export type SudoKeyArtifact = z.infer<typeof SudoKeyArtifactSchema>;
 export const SudoKeyResponseSchema = successEnvelopeSchema(
   SudoKeyArtifactSchema,
 );
-export const SudoKeyQuerySchema = z.object({}).strict();
-export type SudoKeyQuery = z.infer<typeof SudoKeyQuerySchema>;

@@ -63,9 +63,3 @@ export type DomainsArtifact = z.infer<typeof DomainsArtifactSchema>;
 export const DomainsResponseSchema = successEnvelopeSchema(
   DomainsArtifactSchema,
 );
-
-// Neither route takes query params (validateQueryParams(url, []) in both
-// handleDomains and handleDomainSummary -- domain-summary's `tag` is a path
-// segment, not a query param).
-export const DomainsQuerySchema = z.object({}).strict();
-export type DomainsQuery = z.infer<typeof DomainsQuerySchema>;

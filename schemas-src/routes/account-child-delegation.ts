@@ -47,8 +47,6 @@ export type AccountChildrenArtifact = z.infer<
 export const AccountChildrenResponseSchema = successEnvelopeSchema(
   AccountChildrenArtifactSchema,
 );
-export const AccountChildrenQuerySchema = z.object({}).strict();
-export type AccountChildrenQuery = z.infer<typeof AccountChildrenQuerySchema>;
 
 const ParentDelegationEntrySchema = z
   .object({
@@ -82,5 +80,3 @@ export type AccountParentsArtifact = z.infer<
 export const AccountParentsResponseSchema = successEnvelopeSchema(
   AccountParentsArtifactSchema,
 );
-export const AccountParentsQuerySchema = z.object({}).strict();
-export type AccountParentsQuery = z.infer<typeof AccountParentsQuerySchema>;

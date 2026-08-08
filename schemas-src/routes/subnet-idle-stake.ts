@@ -22,7 +22,3 @@ export type SubnetIdleStakeArtifact = z.infer<
 export const SubnetIdleStakeResponseSchema = successEnvelopeSchema(
   SubnetIdleStakeArtifactSchema,
 );
-
-// No query params (validateQueryParams(url, []) in handleSubnetIdleStake).
-export const SubnetIdleStakeQuerySchema = z.object({}).strict();
-export type SubnetIdleStakeQuery = z.infer<typeof SubnetIdleStakeQuerySchema>;

@@ -96,8 +96,6 @@ export type AccountPositionsArtifact = z.infer<
 export const AccountPositionsResponseSchema = successEnvelopeSchema(
   AccountPositionsArtifactSchema,
 );
-export const AccountPositionsQuerySchema = z.object({}).strict();
-export type AccountPositionsQuery = z.infer<typeof AccountPositionsQuerySchema>;
 
 const AccountPositionHistoryPointSchema = z
   .object({
@@ -141,11 +139,3 @@ export type AccountPositionHistoryArtifact = z.infer<
 export const AccountPositionHistoryResponseSchema = successEnvelopeSchema(
   AccountPositionHistoryArtifactSchema,
 );
-export const AccountPositionHistoryQuerySchema = z
-  .object({
-    window: z.string().optional(),
-  })
-  .strict();
-export type AccountPositionHistoryQuery = z.infer<
-  typeof AccountPositionHistoryQuerySchema
->;

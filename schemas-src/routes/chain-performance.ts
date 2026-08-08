@@ -34,5 +34,3 @@ export type ChainPerformanceArtifact = z.infer<
 export const ChainPerformanceResponseSchema = successEnvelopeSchema(
   ChainPerformanceArtifactSchema,
 );
-export const ChainPerformanceQuerySchema = z.object({}).strict();
-export type ChainPerformanceQuery = z.infer<typeof ChainPerformanceQuerySchema>;

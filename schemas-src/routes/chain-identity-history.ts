@@ -50,11 +50,3 @@ export type ChainIdentityHistoryArtifact = z.infer<
 export const ChainIdentityHistoryResponseSchema = successEnvelopeSchema(
   ChainIdentityHistoryArtifactSchema,
 );
-export const ChainIdentityHistoryQuerySchema = z
-  .object({
-    limit: z.int().min(1).optional(),
-  })
-  .strict();
-export type ChainIdentityHistoryQuery = z.infer<
-  typeof ChainIdentityHistoryQuerySchema
->;

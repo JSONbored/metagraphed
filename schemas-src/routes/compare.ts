@@ -6,19 +6,6 @@
 // #8061's CompareValidatorsArtifact).
 import { z } from "zod";
 
-// netuids: required, comma-separated (parseCompareNetuids, 1-128 ids).
-// dimensions: optional, comma-separated from COMPARE_DIMENSIONS
-// (src/analytics-live.ts) -- modeled as plain strings, matching this epic's
-// established convention for comma-separated list params (e.g. `fields`
-// elsewhere), not re-deriving the CSV-parsing/validation logic in Zod.
-export const CompareQuerySchema = z
-  .object({
-    netuids: z.string(),
-    dimensions: z.string().optional(),
-  })
-  .strict();
-export type CompareQuery = z.infer<typeof CompareQuerySchema>;
-
 const CompareSubnetStructureSchema = z
   .object({
     completeness_score: z.number().nullable().optional(),

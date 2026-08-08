@@ -42,10 +42,3 @@ export type SubnetHistoryArtifact = z.infer<typeof SubnetHistoryArtifactSchema>;
 export const SubnetHistoryResponseSchema = successEnvelopeSchema(
   SubnetHistoryArtifactSchema,
 );
-
-export const SubnetHistoryQuerySchema = z
-  .object({
-    window: z.enum(SUBNET_HISTORY_WINDOW_VALUES).optional(),
-  })
-  .strict();
-export type SubnetHistoryQuery = z.infer<typeof SubnetHistoryQuerySchema>;

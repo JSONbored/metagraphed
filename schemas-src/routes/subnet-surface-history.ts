@@ -2,7 +2,6 @@
 // audit trail. Modeled from src/surface-history.ts's buildSurfaceHistory().
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
-import { SURFACE_HISTORY_LIMIT_MAX } from "../../src/route-limits.ts";
 
 export const SurfaceHistoryChangeSchema = z
   .object({
@@ -39,13 +38,3 @@ export type SubnetSurfaceHistoryArtifact = z.infer<
 export const SubnetSurfaceHistoryResponseSchema = successEnvelopeSchema(
   SubnetSurfaceHistoryArtifactSchema,
 );
-export const SubnetSurfaceHistoryQuerySchema = z
-  .object({
-    limit: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .max(SURFACE_HISTORY_LIMIT_MAX)
-      .optional(),
-  })
-  .strict();

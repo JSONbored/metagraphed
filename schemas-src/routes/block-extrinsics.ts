@@ -31,11 +31,3 @@ export type BlockExtrinsicsArtifact = z.infer<
 export const BlockExtrinsicsResponseSchema = successEnvelopeSchema(
   BlockExtrinsicsArtifactSchema,
 );
-export const BlockExtrinsicsQuerySchema = z
-  .object({
-    limit: z.int().min(1).optional(),
-    offset: z.int().min(0).optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type BlockExtrinsicsQuery = z.infer<typeof BlockExtrinsicsQuerySchema>;

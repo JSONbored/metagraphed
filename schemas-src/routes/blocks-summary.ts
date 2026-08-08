@@ -52,5 +52,3 @@ export type BlocksSummaryArtifact = z.infer<typeof BlocksSummaryArtifactSchema>;
 export const BlocksSummaryResponseSchema = successEnvelopeSchema(
   BlocksSummaryArtifactSchema,
 );
-export const BlocksSummaryQuerySchema = z.object({}).strict();
-export type BlocksSummaryQuery = z.infer<typeof BlocksSummaryQuerySchema>;

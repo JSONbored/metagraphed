@@ -22,10 +22,3 @@ export type SubnetStakeMovesArtifact = z.infer<
 export const SubnetStakeMovesResponseSchema = successEnvelopeSchema(
   SubnetStakeMovesArtifactSchema,
 );
-
-export const SubnetStakeMovesQuerySchema = z
-  .object({
-    window: z.enum(["7d", "30d"]).optional(),
-  })
-  .strict();
-export type SubnetStakeMovesQuery = z.infer<typeof SubnetStakeMovesQuerySchema>;

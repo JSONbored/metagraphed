@@ -32,9 +32,3 @@ export type SubnetAlphaVolumeArtifact = z.infer<
 export const SubnetAlphaVolumeResponseSchema = successEnvelopeSchema(
   SubnetAlphaVolumeArtifactSchema,
 );
-
-// No query params (validateQueryParams(url, []) in handleSubnetAlphaVolume).
-export const SubnetAlphaVolumeQuerySchema = z.object({}).strict();
-export type SubnetAlphaVolumeQuery = z.infer<
-  typeof SubnetAlphaVolumeQuerySchema
->;

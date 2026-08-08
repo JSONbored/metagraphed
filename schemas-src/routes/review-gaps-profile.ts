@@ -15,12 +15,8 @@ import {
   CountMapSchema,
   successEnvelopeSchema,
 } from "../envelope.ts";
-import { CURATION_LEVEL_VALUES, CurationLevelSchema } from "../shared.ts";
-import {
-  ReviewStateSchema,
-  SURFACE_KIND_VALUES,
-  SurfaceKindSchema,
-} from "./subnet-detail.ts";
+import { CurationLevelSchema } from "../shared.ts";
+import { ReviewStateSchema, SurfaceKindSchema } from "./subnet-detail.ts";
 import { SubnetProfileIdentityEvidenceSchema } from "./subnet-profile.ts";
 import { ReviewEnrichmentQueueEntrySchema } from "./review-enrichment.ts";
 import {
@@ -29,9 +25,6 @@ import {
   NATIVE_NAME_QUALITY_VALUES,
   PROFILE_LEVEL_VALUES,
 } from "../shared.ts";
-
-const CURATION_LEVELS = CURATION_LEVEL_VALUES;
-const SURFACE_KINDS = SURFACE_KIND_VALUES;
 export const PRIORITY_SORT_FIELDS = [
   "candidate_count",
   "curation_level",
@@ -42,21 +35,6 @@ export const PRIORITY_SORT_FIELDS = [
   "surface_count",
   "verified_candidate_count",
 ] as const;
-
-export const ReviewGapsQuerySchema = z
-  .object({
-    netuid: z.int().min(0).optional(),
-    curation_level: z.enum(CURATION_LEVELS).optional(),
-    missing_kinds: z.enum(SURFACE_KINDS).optional(),
-    review_state: z.string().optional(),
-    sort: z.enum(PRIORITY_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
-  })
-  .strict();
-export type ReviewGapsQuery = z.infer<typeof ReviewGapsQuerySchema>;
 
 export const ReviewGapPrioritySchema = z
   .object({
@@ -112,25 +90,6 @@ export const PROFILE_SORT_FIELDS = [
   "profile_level",
   "stale_identity_candidate_kind_count",
 ] as const;
-
-export const ReviewProfileCompletenessQuerySchema = z
-  .object({
-    netuid: z.int().min(0).optional(),
-    profile_level: z.enum(PROFILE_LEVEL_VALUES).optional(),
-    confidence: z.enum(CONFIDENCE_LEVEL_VALUES).optional(),
-    identity_level: z.enum(IDENTITY_LEVEL_VALUES).optional(),
-    identity_promotion_kinds: z.enum(SURFACE_KINDS).optional(),
-    native_name_quality: z.enum(NATIVE_NAME_QUALITY_VALUES).optional(),
-    sort: z.enum(PROFILE_SORT_FIELDS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    fields: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    cursor: z.int().min(0).optional(),
-  })
-  .strict();
-export type ReviewProfileCompletenessQuery = z.infer<
-  typeof ReviewProfileCompletenessQuerySchema
->;
 
 export const ReviewProfileCompletenessEntrySchema = z
   .object({

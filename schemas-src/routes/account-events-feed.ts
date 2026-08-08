@@ -48,19 +48,6 @@ export type AccountEventsArtifact = z.infer<typeof AccountEventsArtifactSchema>;
 export const AccountEventsResponseSchema = successEnvelopeSchema(
   AccountEventsArtifactSchema,
 );
-export const AccountEventsQuerySchema = z
-  .object({
-    kind: z.string().optional(),
-    netuid: z.int().min(0).optional(),
-    block_start: z.int().min(0).optional(),
-    block_end: z.int().min(0).optional(),
-    limit: z.int().min(1).max(1000).optional(),
-    offset: z.int().min(0).optional(),
-    cursor: z.string().optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type AccountEventsQuery = z.infer<typeof AccountEventsQuerySchema>;
 
 const AccountDaySchema = z
   .object({
@@ -90,16 +77,6 @@ export type AccountHistoryArtifact = z.infer<
 export const AccountHistoryResponseSchema = successEnvelopeSchema(
   AccountHistoryArtifactSchema,
 );
-export const AccountHistoryQuerySchema = z
-  .object({
-    netuid: z.int().min(0).optional(),
-    from: z.string().optional(),
-    to: z.string().optional(),
-    limit: z.int().min(1).optional(),
-    offset: z.int().min(0).optional(),
-  })
-  .strict();
-export type AccountHistoryQuery = z.infer<typeof AccountHistoryQuerySchema>;
 
 const AccountTransferEntrySchema = z
   .object({
@@ -130,15 +107,3 @@ export type AccountTransfersArtifact = z.infer<
 export const AccountTransfersResponseSchema = successEnvelopeSchema(
   AccountTransfersArtifactSchema,
 );
-export const AccountTransfersQuerySchema = z
-  .object({
-    direction: z.enum(["all", "sent", "received"]).optional(),
-    block_start: z.int().min(0).optional(),
-    block_end: z.int().min(0).optional(),
-    limit: z.int().min(1).optional(),
-    offset: z.int().min(0).optional(),
-    cursor: z.string().optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type AccountTransfersQuery = z.infer<typeof AccountTransfersQuerySchema>;

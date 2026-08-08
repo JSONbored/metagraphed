@@ -51,6 +51,3 @@ export const TaoUsdArtifactSchema = z
   .passthrough();
 export type TaoUsdArtifact = z.infer<typeof TaoUsdArtifactSchema>;
 export const TaoUsdResponseSchema = successEnvelopeSchema(TaoUsdArtifactSchema);
-export const TaoUsdQuerySchema = z
-  .object({ window: z.enum(["1h", "24h", "7d", "30d"]).optional() })
-  .strict();

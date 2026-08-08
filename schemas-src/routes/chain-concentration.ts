@@ -29,7 +29,3 @@ export type ChainConcentrationArtifact = z.infer<
 export const ChainConcentrationResponseSchema = successEnvelopeSchema(
   ChainConcentrationArtifactSchema,
 );
-export const ChainConcentrationQuerySchema = z.object({}).strict();
-export type ChainConcentrationQuery = z.infer<
-  typeof ChainConcentrationQuerySchema
->;

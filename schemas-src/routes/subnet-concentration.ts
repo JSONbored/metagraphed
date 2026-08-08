@@ -54,10 +54,6 @@ export type SubnetConcentrationArtifact = z.infer<
 export const SubnetConcentrationResponseSchema = successEnvelopeSchema(
   SubnetConcentrationArtifactSchema,
 );
-export const SubnetConcentrationQuerySchema = z.object({}).strict();
-export type SubnetConcentrationQuery = z.infer<
-  typeof SubnetConcentrationQuerySchema
->;
 
 const SubnetConcentrationHistoryPointSchema = z
   .object({
@@ -87,11 +83,3 @@ export type SubnetConcentrationHistoryArtifact = z.infer<
 export const SubnetConcentrationHistoryResponseSchema = successEnvelopeSchema(
   SubnetConcentrationHistoryArtifactSchema,
 );
-export const SubnetConcentrationHistoryQuerySchema = z
-  .object({
-    window: z.enum(SUBNET_CONCENTRATION_WINDOW_VALUES).optional(),
-  })
-  .strict();
-export type SubnetConcentrationHistoryQuery = z.infer<
-  typeof SubnetConcentrationHistoryQuerySchema
->;

@@ -135,13 +135,3 @@ export type SubnetServingArtifact = z.infer<typeof SubnetServingArtifactSchema>;
 export const SubnetServingResponseSchema = successEnvelopeSchema(
   SubnetServingArtifactSchema,
 );
-
-// All four routes take the same single ?window=7d|30d param (src/contracts.ts's
-// route() query-param arrays for subnet-axon-removals/deregistrations/
-// registrations/serving are identical).
-export const SubnetActivityQuerySchema = z
-  .object({
-    window: z.enum(ACTIVITY_WINDOWS).optional(),
-  })
-  .strict();
-export type SubnetActivityQuery = z.infer<typeof SubnetActivityQuerySchema>;

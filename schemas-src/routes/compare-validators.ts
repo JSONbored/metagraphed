@@ -42,12 +42,3 @@ export type CompareValidatorsArtifact = z.infer<
 export const CompareValidatorsResponseSchema = successEnvelopeSchema(
   CompareValidatorsArtifactSchema,
 );
-export const CompareValidatorsQuerySchema = z
-  .object({
-    hotkeys: z.string(),
-    netuid: z.int().min(0).optional(),
-  })
-  .strict();
-export type CompareValidatorsQuery = z.infer<
-  typeof CompareValidatorsQuerySchema
->;

@@ -152,21 +152,3 @@ export type GlobalValidatorsArtifact = z.infer<
 export const GlobalValidatorsResponseSchema = successEnvelopeSchema(
   GlobalValidatorsArtifactSchema,
 );
-export const GlobalValidatorsQuerySchema = z
-  .object({
-    sort: z
-      .enum([
-        "avg_validator_trust",
-        "max_validator_trust",
-        "stake_dominance",
-        "subnet_count",
-        "total_emission",
-        "total_stake",
-        "uid_count",
-      ])
-      .optional(),
-    limit: z.int().min(1).max(2000).optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type GlobalValidatorsQuery = z.infer<typeof GlobalValidatorsQuerySchema>;

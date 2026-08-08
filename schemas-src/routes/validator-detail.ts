@@ -125,5 +125,3 @@ export type ValidatorDetailArtifact = z.infer<
 export const ValidatorDetailResponseSchema = successEnvelopeSchema(
   ValidatorDetailArtifactSchema,
 );
-export const ValidatorDetailQuerySchema = z.object({}).strict();
-export type ValidatorDetailQuery = z.infer<typeof ValidatorDetailQuerySchema>;

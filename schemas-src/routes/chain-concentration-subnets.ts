@@ -27,18 +27,6 @@ export const CONCENTRATION_RANKING_SORTS = [
   "netuid",
 ] as const;
 
-export const ChainConcentrationSubnetsQuerySchema = z
-  .object({
-    lens: z.enum(CONCENTRATION_LENSES).optional(),
-    sort: z.enum(CONCENTRATION_RANKING_SORTS).optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-    limit: z.int().min(1).max(512).optional(),
-  })
-  .strict();
-export type ChainConcentrationSubnetsQuery = z.infer<
-  typeof ChainConcentrationSubnetsQuerySchema
->;
-
 // Every metric is nullable together: a subnet whose chosen lens has no positive
 // distribution carries nulls across the board and says so via `unmeasured`,
 // rather than carrying zeros that would read as a perfectly equal subnet.

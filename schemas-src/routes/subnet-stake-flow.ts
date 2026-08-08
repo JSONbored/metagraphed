@@ -33,11 +33,3 @@ export type SubnetStakeFlowArtifact = z.infer<
 export const SubnetStakeFlowResponseSchema = successEnvelopeSchema(
   SubnetStakeFlowArtifactSchema,
 );
-
-export const SubnetStakeFlowQuerySchema = z
-  .object({
-    window: z.enum(["7d", "30d", "90d"]).optional(),
-    direction: z.enum(SUBNET_STAKE_FLOW_FLOW_DIRECTIONS_VALUES).optional(),
-  })
-  .strict();
-export type SubnetStakeFlowQuery = z.infer<typeof SubnetStakeFlowQuerySchema>;

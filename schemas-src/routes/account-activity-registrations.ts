@@ -48,12 +48,6 @@ export type AccountAxonRemovalsArtifact = z.infer<
 export const AccountAxonRemovalsResponseSchema = successEnvelopeSchema(
   AccountAxonRemovalsArtifactSchema,
 );
-export const AccountAxonRemovalsQuerySchema = z
-  .object({ window: z.enum(WINDOW_ENUM_90D).optional() })
-  .strict();
-export type AccountAxonRemovalsQuery = z.infer<
-  typeof AccountAxonRemovalsQuerySchema
->;
 
 export const AccountDeregistrationsArtifactSchema = z
   .object({
@@ -86,12 +80,6 @@ export type AccountDeregistrationsArtifact = z.infer<
 export const AccountDeregistrationsResponseSchema = successEnvelopeSchema(
   AccountDeregistrationsArtifactSchema,
 );
-export const AccountDeregistrationsQuerySchema = z
-  .object({ window: z.enum(WINDOW_ENUM_90D).optional() })
-  .strict();
-export type AccountDeregistrationsQuery = z.infer<
-  typeof AccountDeregistrationsQuerySchema
->;
 
 export const AccountRegistrationsArtifactSchema = z
   .object({
@@ -120,12 +108,6 @@ export type AccountRegistrationsArtifact = z.infer<
 export const AccountRegistrationsResponseSchema = successEnvelopeSchema(
   AccountRegistrationsArtifactSchema,
 );
-export const AccountRegistrationsQuerySchema = z
-  .object({ window: z.enum(WINDOW_ENUM_90D).optional() })
-  .strict();
-export type AccountRegistrationsQuery = z.infer<
-  typeof AccountRegistrationsQuerySchema
->;
 
 export const AccountWeightSettersArtifactSchema = z
   .object({
@@ -154,9 +136,3 @@ export type AccountWeightSettersArtifact = z.infer<
 export const AccountWeightSettersResponseSchema = successEnvelopeSchema(
   AccountWeightSettersArtifactSchema,
 );
-export const AccountWeightSettersQuerySchema = z
-  .object({ window: z.enum(WINDOW_ENUM_7_30D).optional() })
-  .strict();
-export type AccountWeightSettersQuery = z.infer<
-  typeof AccountWeightSettersQuerySchema
->;

@@ -50,5 +50,3 @@ export type RuntimeVersionsArtifact = z.infer<
 export const RuntimeVersionsResponseSchema = successEnvelopeSchema(
   RuntimeVersionsArtifactSchema,
 );
-export const RuntimeVersionsQuerySchema = z.object({}).strict();
-export type RuntimeVersionsQuery = z.infer<typeof RuntimeVersionsQuerySchema>;

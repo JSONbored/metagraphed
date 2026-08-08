@@ -57,5 +57,3 @@ export type BlockChainEventsArtifact = z.infer<
 export const BlockChainEventsResponseSchema = successEnvelopeSchema(
   BlockChainEventsArtifactSchema,
 );
-export const BlockChainEventsQuerySchema = z.object({}).strict();
-export type BlockChainEventsQuery = z.infer<typeof BlockChainEventsQuerySchema>;

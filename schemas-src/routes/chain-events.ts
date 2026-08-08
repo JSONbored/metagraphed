@@ -62,19 +62,6 @@ export type ChainEventsFeedArtifact = z.infer<
 export const ChainEventsFeedResponseSchema = successEnvelopeSchema(
   ChainEventsFeedArtifactSchema,
 );
-export const ChainEventsFeedQuerySchema = z
-  .object({
-    pallet: z.string().optional(),
-    method: z.string().optional(),
-    block: z.int().min(0).optional(),
-    extrinsic: z.int().min(0).optional(),
-    cursor: z.string().optional(),
-    before: z.int().min(0).optional(),
-    limit: z.int().min(1).max(200).optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type ChainEventsFeedQuery = z.infer<typeof ChainEventsFeedQuerySchema>;
 
 const ChainEventEntrySchema = z
   .object({
@@ -97,9 +84,3 @@ export type ChainEventsStatsArtifact = z.infer<
 export const ChainEventsStatsResponseSchema = successEnvelopeSchema(
   ChainEventsStatsArtifactSchema,
 );
-export const ChainEventsStatsQuerySchema = z
-  .object({
-    blocks: z.int().min(1).max(5000).optional(),
-  })
-  .strict();
-export type ChainEventsStatsQuery = z.infer<typeof ChainEventsStatsQuerySchema>;

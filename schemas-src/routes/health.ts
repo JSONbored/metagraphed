@@ -64,33 +64,3 @@ export type HealthSummaryArtifact = z.infer<typeof HealthSummaryArtifactSchema>;
 export const HealthResponseSchema = successEnvelopeSchema(
   HealthSummaryArtifactSchema,
 );
-
-export const HealthQuerySchema = z
-  .object({
-    netuid: z.int().min(0).optional(),
-    status: HealthStatusSchema.optional(),
-    fields: z
-      .string()
-      .regex(/^[A-Za-z_][A-Za-z0-9_]*(,[A-Za-z_][A-Za-z0-9_]*)*$/)
-      .optional(),
-    limit: z.int().min(1).max(1000).optional(),
-    cursor: z.int().min(0).optional(),
-    sort: z
-      .enum([
-        "avg_latency_ms",
-        "degraded_count",
-        "failed_count",
-        "last_checked",
-        "last_ok",
-        "name",
-        "netuid",
-        "ok_count",
-        "status",
-        "surface_count",
-        "unknown_count",
-      ])
-      .optional(),
-    order: z.enum(["asc", "desc"]).optional(),
-  })
-  .strict();
-export type HealthQuery = z.infer<typeof HealthQuerySchema>;

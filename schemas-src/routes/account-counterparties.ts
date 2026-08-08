@@ -94,13 +94,3 @@ export type AccountCounterpartiesArtifact = z.infer<
 export const AccountCounterpartiesResponseSchema = successEnvelopeSchema(
   AccountCounterpartiesArtifactSchema,
 );
-export const AccountCounterpartiesQuerySchema = z
-  .object({
-    counterparty: z.string().optional(),
-    limit: z.int().min(1).max(100).optional(),
-    format: z.enum(["json", "csv"]).optional(),
-  })
-  .strict();
-export type AccountCounterpartiesQuery = z.infer<
-  typeof AccountCounterpartiesQuerySchema
->;

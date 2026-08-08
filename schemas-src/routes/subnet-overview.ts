@@ -61,8 +61,3 @@ export type SubnetOverviewArtifact = z.infer<
 export const SubnetOverviewResponseSchema = successEnvelopeSchema(
   SubnetOverviewArtifactSchema,
 );
-
-// No query params (route()'s query-parameter array for subnet-overview is
-// empty; netuid is a path segment).
-export const SubnetOverviewQuerySchema = z.object({}).strict();
-export type SubnetOverviewQuery = z.infer<typeof SubnetOverviewQuerySchema>;

@@ -8,7 +8,6 @@
 // survive the mismatch.
 import { z } from "zod";
 import { successEnvelopeSchema } from "../envelope.ts";
-import { CHAIN_HOLDERS_LIMIT_MAX } from "../../src/route-limits.ts";
 
 export const ChainHoldersSubnetSchema = z
   .object({
@@ -58,23 +57,3 @@ export type ChainHoldersArtifact = z.infer<typeof ChainHoldersArtifactSchema>;
 export const ChainHoldersResponseSchema = successEnvelopeSchema(
   ChainHoldersArtifactSchema,
 );
-export const ChainHoldersQuerySchema = z
-  .object({
-    sort: z
-      .enum([
-        "top1_share",
-        "top5_share",
-        "top10_share",
-        "top20_share",
-        "holder_count",
-        "total_alpha",
-      ])
-      .optional(),
-    limit: z.coerce
-      .number()
-      .int()
-      .min(1)
-      .max(CHAIN_HOLDERS_LIMIT_MAX)
-      .optional(),
-  })
-  .strict();
