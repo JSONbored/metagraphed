@@ -1075,7 +1075,9 @@ export async function handleSubnetHyperparamsHistory(
     "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
-  const { limit, offset } = parsePagination(url, FEED_PAGINATION);
+  const page = parsePagination(url, FEED_PAGINATION);
+  if ("error" in page) return analyticsQueryError(page.error);
+  const { limit, offset } = page;
   const data =
     ((await tryPostgresTier(
       env,
@@ -1809,7 +1811,9 @@ export async function handleSubnetIdentityHistory(
     "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
-  const { limit, offset } = parsePagination(url, FEED_PAGINATION);
+  const page = parsePagination(url, FEED_PAGINATION);
+  if ("error" in page) return analyticsQueryError(page.error);
+  const { limit, offset } = page;
   const identityTier =
     ((await tryPostgresTier(
       env,
@@ -4915,10 +4919,9 @@ export async function handleAccountEvents(
   }
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
-  const { limit: parsedLimit, offset: parsedOffset } = parsePagination(
-    url,
-    FEED_PAGINATION,
-  );
+  const page = parsePagination(url, FEED_PAGINATION);
+  if ("error" in page) return analyticsQueryError(page.error);
+  const { limit: parsedLimit, offset: parsedOffset } = page;
   const data =
     ((await tryPostgresTier(
       env,
@@ -5000,7 +5003,9 @@ export async function handleAccountHistory(
   const range = parseDateRange(url);
   if ("error" in range) return analyticsQueryError(range.error);
   const { from, to } = range;
-  const { limit, offset } = parsePagination(url, FEED_PAGINATION);
+  const page = parsePagination(url, FEED_PAGINATION);
+  if ("error" in page) return analyticsQueryError(page.error);
+  const { limit, offset } = page;
   const netuid = url.searchParams.get("netuid");
   if (
     netuid != null &&
@@ -5134,10 +5139,9 @@ export async function handleAccountExtrinsics(
   if ("error" in blockEnd) return analyticsQueryError(blockEnd.error);
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
-  const { limit: parsedLimit, offset: parsedOffset } = parsePagination(
-    url,
-    FEED_PAGINATION,
-  );
+  const page = parsePagination(url, FEED_PAGINATION);
+  if ("error" in page) return analyticsQueryError(page.error);
+  const { limit: parsedLimit, offset: parsedOffset } = page;
   const data =
     ((await tryPostgresTier(
       env,
@@ -5220,7 +5224,9 @@ export async function handleAccountTransfers(
       message: `"${direction}" is not a valid direction. Supported: all, sent, received.`,
     });
   }
-  const { limit, offset } = parsePagination(url, FEED_PAGINATION);
+  const page = parsePagination(url, FEED_PAGINATION);
+  if ("error" in page) return analyticsQueryError(page.error);
+  const { limit, offset } = page;
   const blockStart = parseNonNegativeIntParam(
     url.searchParams.get("block_start"),
     "block_start",
@@ -5613,7 +5619,9 @@ export async function handleAccountIdentityHistory(
     "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
-  const { limit, offset } = parsePagination(url, FEED_PAGINATION);
+  const page = parsePagination(url, FEED_PAGINATION);
+  if ("error" in page) return analyticsQueryError(page.error);
+  const { limit, offset } = page;
   const data =
     ((await tryPostgresTier(
       env,
@@ -5702,10 +5710,9 @@ export async function handleSubnetEvents(
   if ("error" in blockEnd) return analyticsQueryError(blockEnd.error);
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
-  const { limit: parsedLimit, offset: parsedOffset } = parsePagination(
-    url,
-    FEED_PAGINATION,
-  );
+  const page = parsePagination(url, FEED_PAGINATION);
+  if ("error" in page) return analyticsQueryError(page.error);
+  const { limit: parsedLimit, offset: parsedOffset } = page;
   // #9146: this feed has always read empty -- data-api never registered
   // /api/v1/subnets/:netuid/events, so the tier call below has never had a
   // handler to reach, even while the box was alive. Live proof of the gap:
@@ -6757,7 +6764,9 @@ export async function handleBlocks(
     "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
-  const { limit, offset } = parsePagination(url, BLOCK_PAGINATION);
+  const page = parsePagination(url, BLOCK_PAGINATION);
+  if ("error" in page) return analyticsQueryError(page.error);
+  const { limit, offset } = page;
   const sp = url.searchParams;
   // Reject non-integer numeric filters with 400 (mirrors handleExtrinsics / #2274).
   for (const param of [
@@ -6959,7 +6968,9 @@ export async function handleBlockExtrinsics(
     "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
-  const { limit, offset } = parsePagination(url, BLOCK_PAGINATION);
+  const page = parsePagination(url, BLOCK_PAGINATION);
+  if ("error" in page) return analyticsQueryError(page.error);
+  const { limit, offset } = page;
   // #4909 D1 retirement: extrinsics' D1 write path is retired (#4772) and the
   // table is dropped in production, so a D1 query here would always miss.
   const postgres = (await tryPostgresTier(
@@ -7036,7 +7047,9 @@ export async function handleBlockEvents(
     "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
-  const { limit, offset } = parsePagination(url, FEED_PAGINATION);
+  const page = parsePagination(url, FEED_PAGINATION);
+  if ("error" in page) return analyticsQueryError(page.error);
+  const { limit, offset } = page;
   // #4909 D1 retirement: account_events' D1 write path is retired (#4772) and
   // the table is dropped in production, so a D1 query here would always miss.
   const postgres = (await tryPostgresTier(
@@ -7125,7 +7138,9 @@ export async function handleExtrinsics(
     "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
-  const { limit, offset } = parsePagination(url, BLOCK_PAGINATION);
+  const page = parsePagination(url, BLOCK_PAGINATION);
+  if ("error" in page) return analyticsQueryError(page.error);
+  const { limit, offset } = page;
   const sp = url.searchParams;
   for (const param of ["block", "block_start", "block_end", "from", "to"]) {
     const raw = sp.get(param);
@@ -7239,7 +7254,9 @@ export async function handleSudo(request: Request, env: Env, url: URL) {
     "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
-  const { limit, offset } = parsePagination(url, BLOCK_PAGINATION);
+  const page = parsePagination(url, BLOCK_PAGINATION);
+  if ("error" in page) return analyticsQueryError(page.error);
+  const { limit, offset } = page;
   const sp = url.searchParams;
   for (const param of ["block", "block_start", "block_end", "from", "to"]) {
     const raw = sp.get(param);
@@ -7330,7 +7347,9 @@ export async function handleGovernanceConfigChanges(
     "format",
   ]);
   if (validationError) return analyticsQueryError(validationError);
-  const { limit, offset } = parsePagination(url, BLOCK_PAGINATION);
+  const page = parsePagination(url, BLOCK_PAGINATION);
+  if ("error" in page) return analyticsQueryError(page.error);
+  const { limit, offset } = page;
   const sp = url.searchParams;
   for (const param of ["block", "block_start", "block_end", "from", "to"]) {
     const raw = sp.get(param);

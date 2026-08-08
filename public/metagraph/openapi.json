@@ -56113,7 +56113,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -56613,7 +56613,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -56759,7 +56759,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -57071,7 +57071,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 200). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 200). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -57502,7 +57502,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -57794,7 +57794,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -57967,7 +57967,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -58131,7 +58131,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -58304,7 +58304,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -58480,7 +58480,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -58653,7 +58653,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -58817,7 +58817,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -58981,7 +58981,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -59145,7 +59145,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -59321,7 +59321,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -59872,7 +59872,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -60200,7 +60200,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -61304,7 +61304,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -62121,7 +62121,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -62716,7 +62716,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -63122,7 +63122,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -63300,7 +63300,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -63488,7 +63488,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -63722,7 +63722,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -65201,7 +65201,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -65486,7 +65486,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -66242,7 +66242,7 @@
         "operationId": "blocksFeed",
         "parameters": [
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -66694,7 +66694,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -66824,7 +66824,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -67234,7 +67234,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -67463,7 +67463,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 200). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 200). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -67846,7 +67846,7 @@
         "operationId": "chainAlphaVolume",
         "parameters": [
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -67994,7 +67994,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -68251,7 +68251,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -68648,7 +68648,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 512). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -68772,7 +68772,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -68951,7 +68951,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 512). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -69083,7 +69083,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -69240,7 +69240,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 200). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 200). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -69365,7 +69365,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 512). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -69474,7 +69474,7 @@
         "operationId": "chainIdentityHistory",
         "parameters": [
           {
-            "description": "Maximum number of rows to return in one page (at most 200). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 200). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -69890,7 +69890,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -70036,7 +70036,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -70184,7 +70184,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -70342,7 +70342,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -70499,7 +70499,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -70647,7 +70647,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -70795,7 +70795,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -70943,7 +70943,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -71103,7 +71103,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -71252,7 +71252,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -71398,7 +71398,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -71544,7 +71544,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -72380,7 +72380,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -72812,7 +72812,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -73221,7 +73221,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -73639,7 +73639,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -73855,7 +73855,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -74142,7 +74142,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -74337,7 +74337,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -74591,7 +74591,7 @@
         "operationId": "extrinsicsFeed",
         "parameters": [
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -77497,7 +77497,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -77644,7 +77644,7 @@
         "operationId": "governanceConfigChanges",
         "parameters": [
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -77895,7 +77895,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -78277,7 +78277,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -78443,7 +78443,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page. Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page. A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -78593,7 +78593,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -79448,7 +79448,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -79672,7 +79672,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -80089,7 +80089,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -80287,7 +80287,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -80602,7 +80602,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -80886,7 +80886,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -81219,7 +81219,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -81620,7 +81620,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -81846,7 +81846,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -82119,7 +82119,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -82441,7 +82441,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -82657,7 +82657,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -83178,7 +83178,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -83367,7 +83367,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -83631,7 +83631,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page. Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page. A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -83952,7 +83952,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -84343,7 +84343,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -85077,7 +85077,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -85995,7 +85995,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -86194,7 +86194,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 50). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 50). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -86339,7 +86339,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -86511,7 +86511,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -86726,7 +86726,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -86988,7 +86988,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -87628,7 +87628,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -87854,7 +87854,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -88015,7 +88015,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -90600,7 +90600,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 200). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 200). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -90806,7 +90806,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -92400,7 +92400,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -92533,7 +92533,7 @@
         "operationId": "sudoCalls",
         "parameters": [
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -92947,7 +92947,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 1000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 1000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -93240,7 +93240,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 2000). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 2000). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -93650,7 +93650,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 100). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 100). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,
@@ -93786,7 +93786,7 @@
             }
           },
           {
-            "description": "Maximum number of rows to return in one page (at most 512). Routes differ in how they handle a larger value: some reject it with 400 `invalid_query`, others clamp to the maximum and answer 200. Read the `limit` echoed in the response body rather than assuming the page is the size you asked for.",
+            "description": "Maximum number of rows to return in one page (at most 512). A larger value, or a non-positive one, is rejected with 400 `invalid_query` on every route -- it is never silently clamped, so a short page always means the result set is exhausted (#9916).",
             "in": "query",
             "name": "limit",
             "required": false,

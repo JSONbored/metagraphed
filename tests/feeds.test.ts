@@ -1763,9 +1763,12 @@ describe("feeds — Worker dispatch integration", () => {
       ctx,
     );
     assert.equal(invalid.status, 400);
+    // `invalid_query`, the code every other route already used for this
+    // violation -- the feed family's own `invalid_limit` was a second name for
+    // one mistake and appeared nowhere in the published contract (#9916).
     assert.equal(
       invalid.headers.get("x-metagraph-error-code"),
-      "invalid_limit",
+      "invalid_query",
     );
   });
 

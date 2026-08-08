@@ -924,9 +924,15 @@ export async function handleFeedRequest(
   if (limitParam != null) {
     limit = parseFeedLimit(limitParam);
     if (Number.isNaN(limit)) {
+      // `invalid_query`, not the `invalid_limit` this family used to answer
+      // (#9916). One violation had two codes -- the feed family's own, and the
+      // `invalid_query` every other route returns -- so a client moving
+      // between families had to learn a second name for the same mistake.
+      // `invalid_limit` appeared nowhere in the published contract, which made
+      // it the one to drop. The message now matches parseLimitParam's exactly.
       return fail(
-        "invalid_limit",
-        `\`limit\` must be an integer between 1 and ${FEED_MAX_ITEMS}.`,
+        "invalid_query",
+        `limit must be an integer between 1 and ${FEED_MAX_ITEMS}.`,
         400,
       );
     }

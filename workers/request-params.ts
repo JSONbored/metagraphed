@@ -5,7 +5,8 @@
 // caps drifted between handlers (and a fix in one route never reached the others).
 // This module is the single place those rules live: the absolute bounds are named
 // constants, the per-route page-size pairs are named profiles, and `parsePagination`
-// returns the same `{ limit, offset, cursor }` shape for every handler. The raw
+// returns the same `{ limit, offset, cursor }` shape for every handler -- or a
+// ParamError, since an out-of-range `limit` is rejected rather than clamped (#9916). The raw
 // `clampLimit`/`clampOffset` primitives let the shared D1 loaders + MCP tools clamp
 // identically off plain values (they never see a URL).
 //
@@ -60,19 +61,42 @@ export function clampOffset(raw: string | number | null | undefined): number {
   return clampInt(raw, 0, 0, MAX_OFFSET);
 }
 
-// Parse the shared pagination triplet from a request URL: a clamped `limit`, a
+// Parse the shared pagination triplet from a request URL: a VALIDATED `limit`, a
 // clamped `offset`, and the raw opaque keyset `cursor` (or null) for the caller to
 // decode at its own arity. `options` is a page-size profile ({ defaultLimit,
-// maxLimit }), e.g. FEED_PAGINATION or BLOCK_PAGINATION.
+// maxLimit }), e.g. FEED_PAGINATION or BLOCK_PAGINATION. Returns a ParamError for
+// the caller to surface as a 400 when `limit` is out of range.
+//
+// `limit` is validated, not clamped (#9916). It used to be clamped, which
+// meant a route declaring `maximum: 100` answered `limit=500` with 100 rows,
+// HTTP 200, no error and no header. That is data truncation presented as a
+// complete answer: a client asking for 500 and receiving 100 has every reason
+// to conclude the result set is exhausted and stop paginating. The 80 routes on
+// parseLimitParam already rejected the identical violation, so the surface gave
+// four different answers to one mistake, two of them silent.
+//
+// It shares parseLimitParam's rule rather than restating it, so there is one
+// definition of a valid limit and one message. `limit=0` falls out of the same
+// check: it is not a positive integer, and the three different things routes
+// used to do with it (1 row, the route default, or a 400) were all guesses at
+// an intent no caller had.
+//
+// `offset` is still clamped: unlike a short page, a clamped offset cannot be
+// mistaken for the end of a result set, and MAX_OFFSET is a deep-paging guard
+// rather than a per-route declared bound.
 export function parsePagination(
   url: URL,
   options: PaginationProfile = {},
-): { limit: number; offset: number; cursor: string | null } {
-  const params = url.searchParams;
+): { limit: number; offset: number; cursor: string | null } | ParamError {
+  // No `defaultLimit` passed down: parseLimitParam then returns `undefined` for
+  // an absent limit and the fallback is resolved once, here. Resolving it in
+  // both places instead would make this `??` chain unreachable.
+  const parsed = parseLimitParam(url, { maxLimit: options.maxLimit });
+  if ("error" in parsed) return parsed;
   return {
-    limit: clampLimit(params.get("limit"), options),
-    offset: clampOffset(params.get("offset")),
-    cursor: params.get("cursor"),
+    limit: parsed.limit ?? options.defaultLimit ?? DEFAULT_LIMIT,
+    offset: clampOffset(url.searchParams.get("offset")),
+    cursor: url.searchParams.get("cursor"),
   };
 }
 

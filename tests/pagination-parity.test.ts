@@ -11,11 +11,25 @@
 import assert from "node:assert/strict";
 import { describe, test } from "vitest";
 import {
+  BLOCK_PAGINATION,
   FEED_PAGINATION,
   MAX_OFFSET,
   MIN_LIMIT,
 } from "../workers/request-params.ts";
-import { handleAccountHistory } from "../workers/request-handlers/entities.ts";
+import {
+  handleAccountEvents,
+  handleAccountExtrinsics,
+  handleAccountHistory,
+  handleAccountIdentityHistory,
+  handleAccountTransfers,
+  handleBlockEvents,
+  handleBlockExtrinsics,
+  handleGovernanceConfigChanges,
+  handleSubnetEvents,
+  handleSubnetHyperparamsHistory,
+  handleSubnetIdentityHistory,
+  handleSudo,
+} from "../workers/request-handlers/entities.ts";
 import type { Row } from "./row-type.ts";
 
 const SS58 = "5G9hfkx9wGB1CLMT9WXkpHSAiYzjZb5o1Boyq4KAdDhjwrc5";
@@ -43,16 +57,145 @@ function url(path: string) {
 // data.limit/data.offset off the plain JSON response (no env flag, no D1/
 // DATA_API mock needed) is enough to observe the bound clamp, no SQL capture
 // required.
+// The full set is back for the REJECTION assertions (#9916). The D1-retirement
+// note above is why only /history can still be driven for its resolved
+// limit/offset -- but an out-of-range `limit` is now rejected in
+// parsePagination, BEFORE any tier or artifact work, so every one of these can
+// be driven with an empty env and no mock. That is what makes "one rule for the
+// whole surface" assertable rather than asserted on one route and assumed for
+// the rest.
+const ENV = {} as unknown as Env;
+const BLOCK_REF = "1";
+
 const ROUTES = [
   {
     name: "GET /accounts/{ss58}/history",
     profile: FEED_PAGINATION,
+    resolvesPage: true,
     invoke: (qs: string) =>
       handleAccountHistory(
         req(`/api/v1/accounts/${SS58}/history`),
-        {} as unknown as Env,
+        ENV,
         SS58,
         url(`/api/v1/accounts/${SS58}/history?${qs}`),
+      ),
+  },
+  {
+    name: "GET /accounts/{ss58}/events",
+    profile: FEED_PAGINATION,
+    invoke: (qs: string) =>
+      handleAccountEvents(
+        req(`/api/v1/accounts/${SS58}/events`),
+        ENV,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/events?${qs}`),
+      ),
+  },
+  {
+    name: "GET /accounts/{ss58}/extrinsics",
+    profile: FEED_PAGINATION,
+    invoke: (qs: string) =>
+      handleAccountExtrinsics(
+        req(`/api/v1/accounts/${SS58}/extrinsics`),
+        ENV,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/extrinsics?${qs}`),
+      ),
+  },
+  {
+    name: "GET /accounts/{ss58}/transfers",
+    profile: FEED_PAGINATION,
+    invoke: (qs: string) =>
+      handleAccountTransfers(
+        req(`/api/v1/accounts/${SS58}/transfers`),
+        ENV,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/transfers?${qs}`),
+      ),
+  },
+  {
+    name: "GET /accounts/{ss58}/identity-history",
+    profile: FEED_PAGINATION,
+    invoke: (qs: string) =>
+      handleAccountIdentityHistory(
+        req(`/api/v1/accounts/${SS58}/identity-history`),
+        ENV,
+        SS58,
+        url(`/api/v1/accounts/${SS58}/identity-history?${qs}`),
+      ),
+  },
+  {
+    name: "GET /subnets/{netuid}/events",
+    profile: FEED_PAGINATION,
+    invoke: (qs: string) =>
+      handleSubnetEvents(
+        req("/api/v1/subnets/1/events"),
+        ENV,
+        1,
+        url(`/api/v1/subnets/1/events?${qs}`),
+      ),
+  },
+  {
+    name: "GET /subnets/{netuid}/hyperparameters/history",
+    profile: FEED_PAGINATION,
+    invoke: (qs: string) =>
+      handleSubnetHyperparamsHistory(
+        req("/api/v1/subnets/1/hyperparameters/history"),
+        ENV,
+        1,
+        url(`/api/v1/subnets/1/hyperparameters/history?${qs}`),
+      ),
+  },
+  {
+    name: "GET /subnets/{netuid}/identity-history",
+    profile: FEED_PAGINATION,
+    invoke: (qs: string) =>
+      handleSubnetIdentityHistory(
+        req("/api/v1/subnets/1/identity-history"),
+        ENV,
+        1,
+        url(`/api/v1/subnets/1/identity-history?${qs}`),
+      ),
+  },
+  {
+    // FEED_PAGINATION, unlike its /extrinsics sibling -- the published contract
+    // declares maximum 1000 here and 100 there, so code and contract agree and
+    // this is a real per-route difference, not drift.
+    name: "GET /blocks/{ref}/events",
+    profile: FEED_PAGINATION,
+    invoke: (qs: string) =>
+      handleBlockEvents(
+        req(`/api/v1/blocks/${BLOCK_REF}/events`),
+        ENV,
+        BLOCK_REF,
+        url(`/api/v1/blocks/${BLOCK_REF}/events?${qs}`),
+      ),
+  },
+  {
+    name: "GET /blocks/{ref}/extrinsics",
+    profile: BLOCK_PAGINATION,
+    invoke: (qs: string) =>
+      handleBlockExtrinsics(
+        req(`/api/v1/blocks/${BLOCK_REF}/extrinsics`),
+        ENV,
+        BLOCK_REF,
+        url(`/api/v1/blocks/${BLOCK_REF}/extrinsics?${qs}`),
+      ),
+  },
+  {
+    name: "GET /sudo",
+    profile: BLOCK_PAGINATION,
+    invoke: (qs: string) =>
+      handleSudo(req("/api/v1/sudo"), ENV, url(`/api/v1/sudo?${qs}`)),
+  },
+  {
+    name: "GET /governance/config-changes",
+    profile: BLOCK_PAGINATION,
+    invoke: (qs: string) =>
+      handleGovernanceConfigChanges(
+        req("/api/v1/governance/config-changes"),
+        ENV,
+        url(`/api/v1/governance/config-changes?${qs}`),
       ),
   },
 ];
@@ -65,24 +208,44 @@ async function pageFor(route: (typeof ROUTES)[number], qs: string) {
 
 for (const route of ROUTES) {
   describe(`pagination parity — ${route.name}`, () => {
-    test("clamps an over-cap limit down to the profile maximum", async () => {
-      const { limit } = await pageFor(route, "limit=99999");
-      assert.equal(limit, route.profile.maxLimit);
+    test("REJECTS an over-cap limit instead of clamping it (#9916)", async () => {
+      // This used to clamp to the profile maximum and answer 200. A caller
+      // asking for 99999 and receiving maxLimit rows reads that as "the result
+      // set is exhausted" and stops paginating -- truncation presented as a
+      // complete answer, and the only signal was the echoed `limit`.
+      const res = await route.invoke("limit=99999");
+      assert.equal(res.status, 400);
+      const body = (await res.json()) as Row;
+      assert.equal(body.error.code, "invalid_query");
+      assert.match(
+        body.error.message,
+        new RegExp(`between ${MIN_LIMIT} and ${route.profile.maxLimit}\\.`),
+      );
     });
 
-    test("clamps a zero limit up to MIN_LIMIT", async () => {
-      const { limit } = await pageFor(route, "limit=0");
-      assert.equal(limit, MIN_LIMIT);
+    test("REJECTS limit=0 rather than reinterpreting it (#9916)", async () => {
+      // Routes used to answer this three different ways -- 1 row, the route
+      // default, or a 400 -- and none of them is "zero rows".
+      const res = await route.invoke("limit=0");
+      assert.equal(res.status, 400);
+      const body = (await res.json()) as Row;
+      assert.equal(body.error.code, "invalid_query");
     });
 
-    test("falls back to the profile default when limit is absent", async () => {
-      const { limit } = await pageFor(route, "offset=0");
-      assert.equal(limit, route.profile.defaultLimit);
-    });
+    test.skipIf(!route.resolvesPage)(
+      "falls back to the profile default when limit is absent",
+      async () => {
+        const { limit } = await pageFor(route, "offset=0");
+        assert.equal(limit, route.profile.defaultLimit);
+      },
+    );
 
-    test("clamps an over-cap offset down to MAX_OFFSET", async () => {
-      const { offset } = await pageFor(route, "offset=99999999");
-      assert.equal(offset, MAX_OFFSET);
-    });
+    test.skipIf(!route.resolvesPage)(
+      "clamps an over-cap offset down to MAX_OFFSET",
+      async () => {
+        const { offset } = await pageFor(route, "offset=99999999");
+        assert.equal(offset, MAX_OFFSET);
+      },
+    );
   });
 }

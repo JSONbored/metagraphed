@@ -136,22 +136,48 @@ describe("parsePagination", () => {
     });
   });
 
-  test("clamps limit and offset per the active profile", () => {
-    assert.deepEqual(
-      parsePagination(url("limit=9999&offset=-3"), FEED_PAGINATION),
-      { limit: 1000, offset: 0, cursor: null },
-    );
-    assert.equal(
-      parsePagination(url("limit=9999"), BLOCK_PAGINATION).limit,
-      100,
-    );
+  test("REJECTS a limit above the profile maximum, and clamps offset", () => {
+    // #9916: this used to clamp, so a route declaring `maximum: 100` answered
+    // limit=9999 with 100 rows and HTTP 200. A caller asking for 9999 and
+    // getting 100 reads that as "the result set is exhausted" and stops --
+    // truncation presented as a complete answer. Offset still clamps: a
+    // clamped offset cannot be mistaken for the end of a result set.
+    for (const [profile, max] of [
+      [FEED_PAGINATION, 1000],
+      [BLOCK_PAGINATION, 100],
+    ] as const) {
+      const result = parsePagination(url("limit=9999&offset=-3"), profile);
+      assert.ok("error" in result, `expected a rejection at max ${max}`);
+      assert.equal(result.error.parameter, "limit");
+      assert.match(result.error.message, new RegExp(`between 1 and ${max}\\.`));
+    }
+    const ok = parsePagination(url("offset=-3"), FEED_PAGINATION);
+    assert.ok(!("error" in ok));
+    assert.equal(ok.offset, 0);
+  });
+
+  test("falls back to DEFAULT_LIMIT when the profile names no default", () => {
+    // The bare-profile path: every caller today passes FEED_PAGINATION or
+    // BLOCK_PAGINATION, both of which set defaultLimit, so without this the
+    // module-level fallback is never exercised.
+    const result = parsePagination(url(""), {});
+    assert.ok(!("error" in result));
+    assert.equal(result.limit, DEFAULT_LIMIT);
+  });
+
+  test("REJECTS limit=0 rather than guessing what it meant", () => {
+    // Three routes used to answer it three ways -- 1 row, the route default,
+    // or a 400. None of them is "zero rows", the only reading a caller could
+    // have intended (#9916).
+    const result = parsePagination(url("limit=0"), FEED_PAGINATION);
+    assert.ok("error" in result);
+    assert.equal(result.error.parameter, "limit");
   });
 
   test("passes the raw cursor token through opaque (never decoded)", () => {
-    assert.equal(
-      parsePagination(url("cursor=150.2"), FEED_PAGINATION).cursor,
-      "150.2",
-    );
+    const result = parsePagination(url("cursor=150.2"), FEED_PAGINATION);
+    assert.ok(!("error" in result));
+    assert.equal(result.cursor, "150.2");
   });
 
   test("parses limit, offset, and cursor together", () => {
