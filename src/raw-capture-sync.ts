@@ -24,6 +24,8 @@ import {
 } from "./raw-chain-capture.ts";
 import { RAW_CAPTURE_CRON } from "../workers/config.ts";
 import { recordExceptionEvent } from "./usage-telemetry.ts";
+import { mirrorRawCaptureStateToNeon } from "./capture-state-neon-write.ts";
+import type { WaitUntilLike } from "./pg-sql.ts";
 import {
   CHAIN_RPC_URLS,
   type ChainNetworkId,
@@ -241,6 +243,31 @@ interface D1LikeDb {
   };
 }
 
+/**
+ * The same store, plus a Neon mirror on every write.
+ *
+ * Wrapping rather than duplicating: `raw_capture_state` has exactly one writer
+ * and it is this store's `write`, so there is no second path to keep in step.
+ * The mirror runs AFTER D1 returns and its failure is a lane verdict only --
+ * the capture must not lose a tick because the copy is unreachable.
+ */
+export function mirroredWatermark(
+  inner: WatermarkStore,
+  env: Record<string, unknown> | null | undefined,
+  waitUntil: WaitUntilLike | undefined,
+  network: string,
+  now: () => number,
+): WatermarkStore {
+  return {
+    read: () => inner.read(),
+    async write(value: number) {
+      const result = await inner.write(value);
+      await mirrorRawCaptureStateToNeon(env, waitUntil, network, value, now());
+      return result;
+    },
+  };
+}
+
 /** The watermark row, read/written through D1. Absent row => null, which the
  * capture treats as "start at the floor". */
 export function d1Watermark(
@@ -296,6 +323,9 @@ export async function runRawCaptureSync(
     recordException?: typeof recordExceptionEvent;
     /** Injectable so a test asserts the PACING without waiting for it (#9430). */
     sleepFn?: (ms: number) => Promise<void>;
+    /** Needed to reach Neon: createPgSql returns the pooled connection through
+     * waitUntil, so without one the mirror is skipped rather than leaking. */
+    ctx?: WaitUntilLike;
   } = {},
 ): Promise<RawCaptureSyncResult> {
   const now = deps.now ?? Date.now;
@@ -350,6 +380,7 @@ export async function runRawCaptureSync(
         store,
         now,
         capture,
+        waitUntil: deps.ctx,
         fetchImpl: deps.fetchImpl,
         sleepFn: deps.sleepFn,
       }),
@@ -390,6 +421,7 @@ async function runLane(
     capture: typeof recordExceptionEvent;
     fetchImpl?: typeof fetch;
     sleepFn?: (ms: number) => Promise<void>;
+    waitUntil?: WaitUntilLike;
   },
 ): Promise<RawCaptureLaneResult> {
   const { env, store, now, capture } = ctx;
@@ -397,7 +429,15 @@ async function runLane(
     const result = await captureTick({
       rpcUrl: (env[lane.rpcUrlEnv] as string | undefined) || lane.defaultRpcUrl,
       store,
-      watermark: d1Watermark(env.METAGRAPH_HEALTH_DB!, now, lane.network),
+      // MIRRORED AT THE WATERMARK, not at the row writes: this table IS the
+      // watermark, so wrapping the store is the whole write path.
+      watermark: mirroredWatermark(
+        d1Watermark(env.METAGRAPH_HEALTH_DB!, now, lane.network),
+        ctx.env as unknown as Record<string, unknown>,
+        ctx.waitUntil,
+        lane.network,
+        now,
+      ),
       genesisFloor: lane.genesisFloor,
       maxPerTick: lane.maxPerTick,
       network: lane.network,

@@ -55,6 +55,10 @@ import { LEDGER_MIRROR_PLANS } from "./ledger-neon-write.ts";
 import { NEURON_MIRROR_PLANS } from "./neurons-neon-write.ts";
 import { NOMINATOR_POSITIONS_NEON_LANE } from "./nominator-positions-neon-write.ts";
 import { CHAIN_DETAIL_NEON_LANE } from "./chain-detail-neon-write.ts";
+import {
+  BLOCKS_HEAD_NEON_LANE,
+  RAW_CAPTURE_STATE_NEON_LANE,
+} from "./capture-state-neon-write.ts";
 import { FAMILY_MIRROR_PLANS } from "./hyperparams-identity-neon-write.ts";
 import {
   loadLatestLaneHealth,
@@ -118,6 +122,8 @@ export const MIRROR_LANE_TABLES: Readonly<Record<string, string>> = {
   // this lane writes LAST, so it is the one whose freshness means the whole
   // batch landed.
   [CHAIN_DETAIL_NEON_LANE]: "chain_detail_blocks",
+  [BLOCKS_HEAD_NEON_LANE]: "blocks_head",
+  [RAW_CAPTURE_STATE_NEON_LANE]: "raw_capture_state",
 };
 
 /** The minimal D1 surface this needs, so a test can hand it a fake. */
@@ -169,6 +175,11 @@ export function mirrorFreshnessSql(tables: readonly string[]): string {
  * mirror is itself the thing that stops reporting.
  */
 const FRESHNESS_COLUMNS: Readonly<Record<string, string>> = {
+  // The head register stamps when the CHAIN produced the block, and the
+  // watermark row stamps when the lane last advanced -- neither carries a
+  // captured_at either.
+  blocks_head: "observed_at",
+  raw_capture_state: "updated_at",
   chain_detail_blocks: "observed_at",
   chain_detail_extrinsics: "observed_at",
   chain_detail_chain_events: "observed_at",

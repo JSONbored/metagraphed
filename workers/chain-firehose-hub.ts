@@ -65,6 +65,7 @@ import {
 } from "../src/graphql.ts";
 import { MCP_CHAIN_STREAM_RESOURCE_URI } from "./mcp-session-hub.ts";
 import { registerModuleStateReset } from "../src/module-state-registry.ts";
+import { mirrorBlocksHeadToNeon } from "../src/capture-state-neon-write.ts";
 
 export const CHAIN_FIREHOSE_INGEST_TOKEN_HEADER = "x-chain-firehose-sync-token";
 
@@ -1113,6 +1114,15 @@ export class ChainFirehoseHub implements DurableObject {
             )
             .run();
         }
+        // THE MIRROR, after the D1 write returns and never instead of it.
+        // `this.state` is the waitUntil handle here -- a Durable Object has no
+        // ExecutionContext, and createPgSql needs one to hand the pooled
+        // connection back to Hyperdrive.
+        await mirrorBlocksHeadToNeon(
+          this.env as unknown as Record<string, unknown>,
+          this.state,
+          block as unknown as Parameters<typeof mirrorBlocksHeadToNeon>[2],
+        );
         await this.state.storage.put("head:last_seen", block.block_number);
       }
     } catch (error) {

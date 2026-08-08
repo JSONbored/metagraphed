@@ -131,7 +131,7 @@
     // same PRIMARY KEY (netuid, uid, snapshot_date) the mirror's ON CONFLICT
     // names. An ON CONFLICT with no unique index behind it is a runtime error,
     // not a slower query.
-    "NEON_DUAL_WRITE_LANES": "neurons,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,subnet-hyperparams,account-identity,chain-detail",
+    "NEON_DUAL_WRITE_LANES": "neurons,nominator-positions,account-balances,hotkey-alpha,validator-nominator-counts,subnet-hyperparams,account-identity,chain-detail,blocks-head,raw-capture-state",
     // THE CUTOVER (metagraphed-infra#336). `GET /api/v1/accounts/{ss58}/
     // subnets/{netuid}/history` now reads Neon.
     //
@@ -210,7 +210,13 @@
     // the whole thing. Reconciling it would copy 129 rows every tick to learn
     // what the mirror already wrote. account_identity STAYS despite gaining
     // the same mirror -- see the provenStuck note in tests/neon-backfill.test.ts.
-    "NEON_BACKFILL_LANES": "neuron_daily,account_position_daily,subnet_snapshots,account_identity,validator_nominator_counts,nominator_positions,account_identity_history,subnet_hyperparams_history,emission_gate_param_history,subnet_emission_enabled_history,chain_concentration_daily,surface_checks,surface_status,surface_uptime_daily,surface_failure_daily,subnet_burn_history,tao_usd_index,blocks_head,raw_capture_state,chain_detail_blocks,chain_detail_extrinsics,chain_detail_chain_events,chain_detail_account_events",
+    // raw_capture_state LEFT on 2026-08-08 (#9787). It gained a mirror, and it
+    // is the one table here a mirror finishes completely: ONE ROW PER NETWORK,
+    // written by exactly one writer (the watermark store's own `write`), so
+    // every advance is mirrored and there is no older row to reconcile.
+    // blocks_head STAYS despite gaining the same mirror -- it is an APPEND
+    // table, so the mirror only covers blocks polled since it existed.
+    "NEON_BACKFILL_LANES": "neuron_daily,account_position_daily,subnet_snapshots,account_identity,validator_nominator_counts,nominator_positions,account_identity_history,subnet_hyperparams_history,emission_gate_param_history,subnet_emission_enabled_history,chain_concentration_daily,surface_checks,surface_status,surface_uptime_daily,surface_failure_daily,subnet_burn_history,tao_usd_index,blocks_head,chain_detail_blocks,chain_detail_extrinsics,chain_detail_chain_events,chain_detail_account_events",
     // Tables whose ONLY home is Neon -- D1 is not behind them any more.
     //
     // A FOURTH flag, and the one the other three converge on. All three above

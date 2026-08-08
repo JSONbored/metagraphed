@@ -2277,7 +2277,7 @@ async function dispatchScheduled(
     // the decommissioned indexer box used to produce. Durable-first on
     // purpose: the bytes land before anything decodes them, because decode is
     // re-runnable and a missed block is not. See src/raw-chain-capture.ts.
-    return runRawCaptureSync(env);
+    return runRawCaptureSync(env, { ctx });
   }
   if (cron === GITHUB_SIGNALS_SYNC_CRON) {
     // #233 pattern: daily GitHub dev-signal capture written straight to the
